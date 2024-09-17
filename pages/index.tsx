@@ -26,6 +26,7 @@ export default function Home() {
     },
   })
   const { data: stats, isLoading, isError, isSuccess, error } = useGeneralSalesStats({ after: queryFilters.period.after, before: queryFilters.period.before })
+  console.log(stats)
   return (
     <div className="flex h-full flex-col md:flex-row">
       <div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6">
