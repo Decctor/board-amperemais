@@ -1,4 +1,4 @@
-import { formatDateForInput } from '@/utils/methods'
+import { formatDateForInput } from '@/lib/formatting'
 import React, { Dispatch, SetStateAction, useRef, useState } from 'react'
 import { AiOutlineSearch } from 'react-icons/ai'
 import { IoIosCalendar } from 'react-icons/io'

@@ -1,4 +1,4 @@
-import { isEmpty } from '@/utils/methods'
+import { isEmpty } from '@/lib/utils'
 import React from 'react'
 type NumberInputProps = {
   width?: string

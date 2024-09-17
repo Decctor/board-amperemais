@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react'
-import lodash from 'lodash'
 import { HiCheck } from 'react-icons/hi'
 import { IoMdArrowDropdown, IoMdArrowDropup } from 'react-icons/io'
 import { VariableSizeList } from 'react-window'

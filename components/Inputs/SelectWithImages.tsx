@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
-import lodash from 'lodash'
 import { HiCheck } from 'react-icons/hi'
 import { IoMdArrowDropdown, IoMdArrowDropup } from 'react-icons/io'
-import Avatar from '../utils/Avatar'
+import Avatar from '../Utils/Avatar'
 
 type SelectOption<T> = {
   id: string | number
