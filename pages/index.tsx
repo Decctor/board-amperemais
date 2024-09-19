@@ -262,7 +262,7 @@ function ProductGroupsGraph({ data }: { data: TGeneralSalesStats['porGrupo'] }) 
     .sort((a, b) => b.qtde - a.qtde)
     .map((p, index) => ({ ...p, fill: Collors[index] || '#000' }))
   const projectTypesChartConfig = { titulo: { label: 'GRUPO' } }
-
+  console.log('TEST')
   return (
     <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
       <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
