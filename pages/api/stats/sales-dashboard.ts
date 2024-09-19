@@ -3,6 +3,7 @@ import { PeriodQueryParamSchema } from '@/schemas/query-params-utils'
 import { TSale } from '@/schemas/sales'
 import { TSaleItem } from '@/schemas/sales-items'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
+import dayjs from 'dayjs'
 import { Collection, Filter } from 'mongodb'
 import { NextApiHandler } from 'next'
 
@@ -11,6 +12,9 @@ type TSalesReduced = {
   gastoBruto: number
   qtdeVendas: number
   qtdeItensVendidos: number
+  porItem: {
+    [key: string]: { qtde: number; total: number }
+  }
   porGrupo: {
     [key: string]: { qtde: number; total: number }
   }
@@ -26,6 +30,12 @@ export type TGeneralSalesStats = {
   ticketMedio: number
   qtdeItensVendidos: number
   itensPorVendaMedio: number
+  valorDiarioVendido: number
+  porItem: {
+    titulo: string
+    qtde: number
+    total: number
+  }[]
   porGrupo: {
     titulo: string
     qtde: number
@@ -43,7 +53,6 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
 
   const db = await connectToDatabase()
   const salesCollection: Collection<TSale> = db.collection('sales')
-  const salesItemsCollection: Collection<TSaleItem> = db.collection('sales-items')
 
   const sales = await getSales({ collection: salesCollection, after, before })
 
@@ -63,9 +72,13 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
       // stats by item
       current.itensVenda.forEach((item) => {
         if (!acc.porGrupo[item.grupo]) acc.porGrupo[item.grupo] = { qtde: 0, total: 0 }
+        if (!acc.porItem[item.descricao]) acc.porItem[item.descricao] = { qtde: 0, total: 0 }
 
         acc.porGrupo[item.grupo].qtde += 1
         acc.porGrupo[item.grupo].total += item.vprod
+
+        acc.porItem[item.descricao].qtde += 1
+        acc.porItem[item.descricao].total += item.vprod
       })
       return acc
     },
@@ -76,6 +89,7 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
       qtdeItensVendidos: 0,
       porGrupo: {},
       porVendedor: {},
+      porItem: {},
     } as TSalesReduced
   )
 
@@ -87,6 +101,10 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
       ticketMedio: stats.faturamentoBruto / stats.qtdeVendas,
       qtdeItensVendidos: stats.qtdeItensVendidos,
       itensPorVendaMedio: stats.qtdeItensVendidos / stats.qtdeVendas,
+      valorDiarioVendido: stats.faturamentoBruto / dayjs(before).diff(dayjs(after), 'days'),
+      porItem: Object.entries(stats.porItem)
+        .map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
+        .sort((a, b) => b.total - a.total),
       porGrupo: Object.entries(stats.porGrupo)
         .map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
         .sort((a, b) => b.total - a.total),

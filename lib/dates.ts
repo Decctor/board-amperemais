@@ -33,6 +33,18 @@ export function getDayStringsBetweenDates({ initialDate, endDate, format }: { in
 
   return strings
 }
+export function getYearStringsBetweenDates({ initialDate, endDate }: { initialDate: string; endDate: string }) {
+  let strings = []
+  let iteratingYear = dayjs(initialDate).year()
+  const goalYear = dayjs(endDate).year()
+
+  while (iteratingYear <= goalYear) {
+    strings.push(iteratingYear)
+    iteratingYear += 1
+  }
+
+  return strings
+}
 export function getHoursDiff({ start, finish, businessOnly }: { start: string | Date; finish: string | Date; businessOnly?: boolean }) {
   // if (businessOnly) {
   //   // @ts-ignore

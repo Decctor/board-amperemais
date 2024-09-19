@@ -65,3 +65,11 @@ export function formatWithoutDiacritics(string: string, useUpperCase?: boolean) 
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
 }
+
+export function formatLongString(str: string, size: number) {
+  if (str.length > size) {
+    return str.substring(0, size) + '\u2026'
+  } else {
+    return str
+  }
+}
