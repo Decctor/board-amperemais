@@ -19,6 +19,8 @@ import { useSalesGraph } from '@/lib/queries/stats/sales-graph'
 import { before } from 'node:test'
 import { TIntervalGrouping } from '@/utils/graphs'
 import { cn } from '@/lib/utils'
+import { useRFMData } from '@/lib/queries/stats/rfm'
+import * as AspectRatio from '@radix-ui/react-aspect-ratio'
 const currentDate = new Date()
 const firstDayOfMonth = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()
 const lastDayOfMonth = getLastDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()
@@ -153,14 +155,120 @@ export default function Home() {
                 <ProductGroupsGraph data={stats.porGrupo} />
               </div>
             </div>
+            <CustomerGrid />
           </div>
         ) : null}
       </div>
     </div>
   )
 }
+const CustomerGrid = () => {
+  const { data } = useRFMData()
+  const gridItems = [
+    {
+      text: 'NÃO PODE PERDÊ-LOS',
+      color: 'bg-blue-400',
+      gridArea: '1 / 1 / 2 / 3',
+      clientsQty: data?.filter((x) => x.RFMLabel == 'NÃO PODE PERDÊ-LOS').length || 0,
+    },
+    {
+      text: 'CLIENTES LEAIS',
+      color: 'bg-green-400',
+      gridArea: '1 / 3 / 3 / 6',
+      clientsQty: data?.filter((x) => x.RFMLabel == 'LIENTES LEAIS').length || 0,
+    },
+    { text: 'CAMPEÕES', color: 'bg-orange-400', gridArea: '1 / 5 / 2 / 6', clientsQty: data?.filter((x) => x.RFMLabel == 'CAMPEÕES').length || 0 },
+    { text: 'EM RISCO', color: 'bg-yellow-400', gridArea: '2 / 1 / 4 / 3', clientsQty: data?.filter((x) => x.RFMLabel == 'EM RISCO').length || 0 },
+    {
+      text: 'PRECISAM DE ATENÇÃO',
+      color: 'bg-indigo-400',
+      gridArea: '3 / 3 / 4 / 4',
+      clientsQty: data?.filter((x) => x.RFMLabel == 'RECISAM DE ATENÇÃO').length || 0,
+    },
+    {
+      text: 'POTENCIAIS CLIENTES LEAIS',
+      color: 'bg-[#5C4033]',
+      gridArea: '3 / 4 / 5 / 6',
+      clientsQty: data?.filter((x) => x.RFMLabel == 'POTENCIAIS CLIENTES LEAIS').length || 0,
+    },
+    { text: 'HIBERNANDO', color: 'bg-purple-400', gridArea: '4 / 2 / 5 / 3', clientsQty: data?.filter((x) => x.RFMLabel == 'NÃO PODE PERDÊ-LOS').length || 0 },
+    {
+      text: 'PRESTES A DORMIR',
+      color: 'bg-yellow-600',
+      gridArea: '4 / 3 / 6 / 4',
+      clientsQty: data?.filter((x) => x.RFMLabel == 'PRESTES A DORMIR').length || 0,
+    },
+    { text: 'PERDIDOS', color: 'bg-red-500', gridArea: '4 / 1 / 6 / 2', clientsQty: data?.filter((x) => x.RFMLabel == 'PERDIDOS').length || 0 },
+    {
+      text: 'PERDIDOS (extensão)',
+      color: 'bg-red-500',
+      gridArea: '5 / 2 / 6 / 3',
+      clientsQty: null,
+    },
+    { text: 'PROMISSORES', color: 'bg-pink-400', gridArea: '5 / 4 / 6 / 5', clientsQty: data?.filter((x) => x.RFMLabel == 'PROMISSORES').length || 0 },
+    {
+      text: 'CLIENTES RECENTES',
+      color: 'bg-teal-400',
+      gridArea: '5 / 5 / 6 / 6',
+      clientsQty: data?.filter((x) => x.RFMLabel == 'CLIENTES RECENTES').length || 0,
+    },
+  ]
 
+  return (
+    <div className="w-full flex items-center flex-col lg:flex-row gap-2 h-full">
+      <div className="w-full lg:w-1/2 h-full">
+        <div className="flex min-h-[90px] h-full w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+          <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
+            <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">CLIENTES</h1>
+          </div>
+          <div className="px-6 py-2 flex flex-col max-h-[750px] w-full gap-2 grow scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 overflow-y-auto overscroll-y-auto">
+            {data?.map((client) => (
+              <div key={client.clientId} className="border border-primary flex flex-col p-3 rounded w-full">
+                <div className="w-full flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.clientName}</h1>
+                    <h1 className={cn('px-2 py-1 rounded-lg text-white text-[0.6rem]', gridItems.find((x) => x.text == client.RFMLabel)?.color)}>
+                      {client.RFMLabel}
+                    </h1>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="w-full lg:w-1/2 h-full">
+        <div className="flex min-h-[90px] h-full w-full  flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+          <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
+            <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">MATRIZ RFM</h1>
+          </div>
+          <div className="px-6 py-2 flex w-full grow max-h-[750px]">
+            <div className="grid grid-cols-5 grid-rows-5 w-full h-full p-4">
+              {gridItems.map((item, index) => (
+                <div
+                  key={index}
+                  className={`${item.color} flex flex-col gap-2 items-center justify-center p-2 text-white font-bold text-center`}
+                  style={{ gridArea: item.gridArea }}
+                >
+                  {item.text !== 'PERDIDOS (extensão)' ? item.text : ''}
+                  {item.text !== 'PERDIDOS (extensão)' ? (
+                    <div className="bg-black h-16 w-16 min-h-16 min-w-16 p-2 rounded-full text-sm font-bold text-white flex items-center justify-center">
+                      <h1>{item.clientsQty}</h1>
+                    </div>
+                  ) : (
+                    ''
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 function SellersGraph({ data }: { data: TGeneralSalesStats['porVendedor'] }) {
+  const [type, setType] = useState<'qtde' | 'total'>('total')
   const chartConfig = {
     total: {
       label: 'Valor Vendido',
@@ -171,21 +279,42 @@ function SellersGraph({ data }: { data: TGeneralSalesStats['porVendedor'] }) {
     <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
       <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
         <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RANKING DE VENDEDORES</h1>
-        <FaRankingStar size={12} />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setType('total')}
+            className={cn(
+              'px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded',
+              type == 'total' ? 'bg-black text-white' : 'bg-transparent text-black'
+            )}
+          >
+            VALOR
+          </button>
+          <button
+            onClick={() => setType('qtde')}
+            className={cn(
+              'px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded',
+              type == 'qtde' ? 'bg-black text-white' : 'bg-transparent text-black'
+            )}
+          >
+            QUANTIDADE
+          </button>
+          <FaRankingStar size={12} />
+        </div>
       </div>
+
       <div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] max-h-[450px]">
         <ChartContainer config={chartConfig}>
-          <BarChart accessibilityLayer data={data} layout="vertical">
-            <XAxis type="number" dataKey="total" hide />
+          <BarChart accessibilityLayer data={data.sort((a, b) => (type == 'total' ? b.total - a.total : b.qtde - a.qtde))} layout="vertical">
+            <XAxis type="number" dataKey={type} hide />
             <YAxis dataKey="titulo" type="category" tickLine={false} tickMargin={0} axisLine={false} tickFormatter={(value) => value.slice(0, 36)} />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-            <Bar dataKey="total" fill="#15599a" radius={5}>
+            <Bar dataKey={type} fill="#15599a" radius={5}>
               <LabelList
-                dataKey="total"
+                dataKey={type}
                 position="right"
                 offset={8}
                 className="fill-foreground text-[0.5rem]"
-                formatter={(value: any) => formatToMoney(value)}
+                formatter={(value: any) => (type == 'total' ? formatToMoney(value) : value)}
               />
             </Bar>
           </BarChart>
@@ -288,7 +417,7 @@ function ProductNameGraph({ data }: { data: TGeneralSalesStats['porItem'] }) {
         <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">PARTICIPAÇÃO POR ITEM</h1>
         <BsCart size={12} />
       </div>
-      <div className="px-6 py-2 flex w-full flex-col gap-3 h-[350px] max-h-[350px] scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 overflow-y-auto overscroll-y-auto">
+      <div className="px-6 py-4 flex w-full flex-col gap-3 h-[350px] max-h-[350px] scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 overflow-y-auto overscroll-y-auto">
         {data.map((d, index) => (
           <div key={index} className="w-full flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
