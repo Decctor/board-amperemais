@@ -1,5 +1,32 @@
 import { z } from 'zod'
 
+const SaleItemSchema = z.object({
+  codigo: z.string({}),
+  descricao: z.string({}),
+  unidade: z.string({}),
+  qtde: z.number(),
+  valorunit: z.number(),
+  vprod: z.number(),
+  vdesc: z.number(),
+  vcusto: z.number(),
+  baseicms: z.number(),
+  percent: z.number(),
+  icms: z.number(),
+  cst_icms: z.string({}),
+  csosn: z.string({}),
+  cst_pis: z.string({}),
+  cfop: z.string({}),
+  tipo: z.string({}),
+  vfrete: z.number(),
+  vseg: z.number(),
+  voutro: z.number(),
+  vipi: z.number(),
+  vicmsst: z.number(),
+  vicms_desonera: z.number(),
+  ncm: z.string({}),
+  cest: z.string({}),
+  grupo: z.string({}),
+})
 export const SaleSchema = z.object({
   id: z.string({}),
   chave: z.string({}),
@@ -16,6 +43,8 @@ export const SaleSchema = z.object({
   valor: z.number({}),
   vendedor: z.string({}),
   idCliente: z.string({}),
+  itens: z.array(SaleItemSchema),
+  custoTotal: z.number(),
 })
 
 export type TSale = z.infer<typeof SaleSchema>

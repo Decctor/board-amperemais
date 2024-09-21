@@ -1,10 +1,9 @@
-import { apiHandler } from '@/lib/api'
 import { TClient } from '@/schemas/clients'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
 import axios from 'axios'
 import dayjs from 'dayjs'
 import { Collection, ObjectId } from 'mongodb'
-import { NextApiHandler, NextApiRequest, NextApiResponse } from 'next'
+import { NextApiRequest, NextApiResponse } from 'next'
 import dayjsCustomFormatter from 'dayjs/plugin/customParseFormat'
 dayjs.extend(dayjsCustomFormatter)
 
@@ -29,54 +28,51 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
   var clientsToInsert: any[] = []
   const allSales = onlineResults
 
-  const allSalesFormatted = allSales.map((sale: any) => {
-    const saleObjectId = new ObjectId()
+  const allSalesFormatted = allSales.map((sale: any, index: number) => {
     const dateFormatted = dayjs(sale.data, 'DD/MM/YYYY').toISOString()
+    const salesItemsFormatted = sale.itens.map((saleItem: any) => ({
+      ...saleItem,
+      qtde: Number(saleItem.qtde),
+      valorunit: Number(saleItem.valorunit),
+      vprod: Number(saleItem.vprod),
+      vdesc: Number(saleItem.vdesc),
+      vcusto: Number(saleItem.vcusto),
+      baseicms: Number(saleItem.baseicms),
+      percent: Number(saleItem.percent),
+      icms: Number(saleItem.icms),
+      vfrete: Number(saleItem.vfrete),
+      vseg: Number(saleItem.vseg),
+      voutro: Number(saleItem.voutro),
+      vipi: Number(saleItem.vipi),
+      vicmsst: Number(saleItem.vicmsst),
+      vicms_desonera: Number(saleItem.vicms_desonera),
+    }))
+    const custoTotal = salesItemsFormatted.reduce((acc: number, current: any) => acc + current.vcusto, 0)
+    salesItems = [...salesItems, ...salesItemsFormatted]
 
     const equivalentClient = clients.find((c) => c.nome == sale.cliente)
     if (!!equivalentClient) {
-      const salesItemsFormatted = sale.itens.map((i: any) => ({
-        ...i,
-        idVenda: saleObjectId.toString(),
-        idCliente: equivalentClient._id.toString(),
+      return {
+        ...sale,
+        valor: Number(sale.valor),
         dataVenda: dateFormatted,
-      }))
-      salesItems = [...salesItems, ...salesItemsFormatted]
-      return { _id: saleObjectId, ...sale, valor: Number(sale.valor), dataVenda: dateFormatted, idCliente: equivalentClient._id.toString(), itens: undefined }
+        idCliente: equivalentClient._id.toString(),
+        itens: salesItemsFormatted,
+        custoTotal,
+      }
     } else {
       const clientObjectId = new ObjectId()
       clientsToInsert = [...clientsToInsert, { _id: clientObjectId, nome: sale.cliente }]
-
-      const salesItemsFormatted = sale.itens.map((i: any) => ({
-        ...i,
-        idVenda: saleObjectId.toString(),
-        idCliente: clientObjectId.toString(),
-        dataVenda: dateFormatted,
-      }))
-      salesItems = [...salesItems, ...salesItemsFormatted]
-      return { _id: saleObjectId, ...sale, valor: Number(sale.valor), dataVenda: dateFormatted, idCliente: clientObjectId.toString(), itens: undefined }
+      return { ...sale, valor: Number(sale.valor), dataVenda: dateFormatted, idCliente: clientObjectId.toString(), itens: salesItemsFormatted, custoTotal }
     }
   })
-  const allSalesItemsFormatted = salesItems.map((saleItem) => ({
-    ...saleItem,
-    qtde: Number(saleItem.qtde),
-    valorunit: Number(saleItem.valorunit),
-    vprod: Number(saleItem.vprod),
-    vdesc: Number(saleItem.vdesc),
-    vcusto: Number(saleItem.vcusto),
-    baseicms: Number(saleItem.baseicms),
-    percent: Number(saleItem.percent),
-    icms: Number(saleItem.icms),
-    vfrete: Number(saleItem.vfrete),
-    vseg: Number(saleItem.vseg),
-    voutro: Number(saleItem.voutro),
-    vipi: Number(saleItem.vipi),
-    vicmsst: Number(saleItem.vicmsst),
-    vicms_desonera: Number(saleItem.vicms_desonera),
-  }))
-
-  const salesInsertResponse = await salesCollection.insertMany(allSalesFormatted)
-  const salesItemsInsertResponse = await salesItemsCollection.insertMany(allSalesItemsFormatted)
-  const clientsInsertResponse = await clientsCollection.insertMany(clientsToInsert)
-  return res.json({ salesInsertResponse, salesItemsInsertResponse, clientsInsertResponse })
+  if (allSalesFormatted.length > 0) {
+    const salesInsertResponse = await salesCollection.insertMany(allSalesFormatted)
+    console.log(salesInsertResponse)
+  }
+  if (clientsToInsert.length > 0) {
+    const clientsInsertResponse = await clientsCollection.insertMany(clientsToInsert)
+    console.log(clientsInsertResponse)
+  }
+  return res.status(201).json('EXECUTADO COM SUCESSO!')
 }

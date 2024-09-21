@@ -2,16 +2,20 @@ import { apiHandler } from '@/lib/api'
 import { TClient } from '@/schemas/clients'
 import { TSale } from '@/schemas/sales'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
+import { TRFMConfig } from '@/utils/rfm'
 import dayjs from 'dayjs'
 import { Collection, WithId } from 'mongodb'
 import { NextApiHandler } from 'next'
 
 export type TRFMResult = {
-  clientId: string
   clientName: string
-  recencyScore: number
-  frequencyScore: number
-  monetaryScore: number
+  clientId: string
+  recency: number
+  frequency: number
+  rfmScore: {
+    recency: number
+    frequency: number
+  }
   RFMLabel: string
 }[]
 const intervalStart = dayjs().subtract(12, 'month').startOf('day').toISOString()
@@ -21,14 +25,14 @@ const getSalesRFM: NextApiHandler<{ data: TRFMResult }> = async (req, res) => {
   const db = await connectToDatabase()
   const clientsCollection: Collection<TClient> = db.collection('clients')
   const salesCollection: Collection<TSale> = db.collection('sales')
+  const utilsCollection: Collection<TRFMConfig> = db.collection('utils')
 
   const allClients = await clientsCollection.find({}).toArray()
-
   const sales = await getSales({ collection: salesCollection, after: intervalStart, before: intervalEnd })
+  const rfmConfig = (await utilsCollection.findOne({ identificador: 'CONFIG_RFM' })) as TRFMConfig
 
-  const rfm = categorizeRFM(allClients, sales)
-  const rfmNormalized = calculateRFMScore(rfm)
-  return res.status(200).json({ data: rfmNormalized })
+  const rfm = categorizeRFM(allClients, sales, rfmConfig)
+  return res.status(200).json({ data: rfm })
 }
 
 export default apiHandler({ GET: getSalesRFM })
@@ -58,9 +62,13 @@ async function getSales({ collection, after, before }: GetSalesParams) {
 
 const calculateRecency = (clientId: string, sales: TSaleResult[]) => {
   const clientSales = sales.filter((sale) => sale.idCliente === clientId)
-  const lastSaleDate = Math.max(...clientSales.map((sale) => new Date(sale.dataVenda).getTime())) || 0
-  const today = new Date().getTime()
-  const recency = Math.floor((today - lastSaleDate) / (1000 * 60 * 60 * 24)) // Diferença em dias
+  const lastSale = clientSales.sort((a, b) => {
+    return new Date(b.dataVenda).getTime() - new Date(a.dataVenda).getTime()
+  })[0]
+  if (!lastSale) return 999999
+  const lastSaleDate = new Date(lastSale.dataVenda)
+
+  const recency = dayjs().diff(dayjs(lastSaleDate), 'days')
   return recency
 }
 const calculateFrequency = (clientId: string, sales: TSaleResult[]) => {
@@ -70,19 +78,28 @@ const calculateMonetaryValue = (clientId: string, sales: TSaleResult[]) => {
   return sales.filter((sale) => sale.idCliente === clientId).reduce((total, sale) => total + sale.valor, 0)
 }
 
-const categorizeRFM = (clients: WithId<TClient>[], sales: TSaleResult[]) => {
+const categorizeRFM = (clients: WithId<TClient>[], sales: TSaleResult[], config: TRFMConfig) => {
   return clients.map((client) => {
-    const recency = calculateRecency(client._id.toString(), sales)
-    const frequency = calculateFrequency(client._id.toString(), sales) || 0
-    const monetary = calculateMonetaryValue(client._id.toString(), sales) || 0
-    if (client._id.toString() === '66e8cec1d669276d760a266a') console.log(recency, frequency, monetary)
+    const calculatedRecency = calculateRecency(client._id.toString(), sales)
+    const calculatedFrequency = calculateFrequency(client._id.toString(), sales) || 0
+
+    const recency = calculatedRecency == Infinity ? 999999 : calculatedRecency
+    const frequency = calculatedFrequency || 0
+
+    const configRecency = Object.entries(config.recencia).find(([key, value]) => recency >= value.min && recency <= value.max)
+    const recencyScore = configRecency ? Number(configRecency[0]) : 1
+
+    const configFrequency = Object.entries(config.frequencia).find(([key, value]) => frequency >= value.min && frequency <= value.max)
+    const frequencyScore = configFrequency ? Number(configFrequency[0]) : 1
+
+    const label = getRFMLabel(frequencyScore, recencyScore)
     return {
       clientName: client.nome,
       clientId: client._id.toString(),
-      recency: recency == Infinity ? 365 : recency,
+      recency,
       frequency,
-      monetary,
-      rfmScore: { recency: recency == Infinity ? 365 : recency, frequency, monetary },
+      rfmScore: { recency: recencyScore, frequency: frequencyScore },
+      RFMLabel: label,
     }
   })
 }

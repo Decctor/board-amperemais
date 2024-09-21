@@ -51,18 +51,18 @@ export type TGeneralSalesStats = {
 const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> = async (req, res) => {
   const { after, before } = PeriodQueryParamSchema.parse(req.query)
 
+  console.log('PARÂMETRO DE PERÍODO', after, before)
   const db = await connectToDatabase()
   const salesCollection: Collection<TSale> = db.collection('sales')
 
   const sales = await getSales({ collection: salesCollection, after, before })
-
   const stats = sales.reduce(
     (acc: TSalesReduced, current) => {
       // updating general stats
       acc.faturamentoBruto += current.valor
       acc.qtdeVendas += 1
-      acc.gastoBruto += current.itensVenda.reduce((acc, current) => acc + current.vcusto, 0)
-      acc.qtdeItensVendidos += current.itensVenda.length
+      acc.gastoBruto += current.custoTotal
+      acc.qtdeItensVendidos += current.itens.length
 
       // stats by seller
       if (!acc.porVendedor[current.vendedor]) acc.porVendedor[current.vendedor] = { qtde: 0, total: 0 }
@@ -70,7 +70,7 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
       acc.porVendedor[current.vendedor].total += current.valor
 
       // stats by item
-      current.itensVenda.forEach((item) => {
+      current.itens.forEach((item) => {
         if (!acc.porGrupo[item.grupo]) acc.porGrupo[item.grupo] = { qtde: 0, total: 0 }
         if (!acc.porItem[item.descricao]) acc.porItem[item.descricao] = { qtde: 0, total: 0 }
 
@@ -138,35 +138,33 @@ type TSaleResult = {
   natureza: TSale['natureza']
   parceiro: TSale['parceiro']
   valor: TSale['valor']
+  custoTotal: TSale['custoTotal']
   vendedor: TSale['vendedor']
-  itensVenda: {
+  itens: {
     descricao: TSaleItem['descricao']
     qtde: TSaleItem['qtde']
     vprod: TSaleItem['vprod']
-    vcusto: TSaleItem['vcusto']
     grupo: TSaleItem['grupo']
   }[]
 }
 async function getSales({ collection, after, before }: GetSalesParams) {
   try {
     const match: Filter<TSale> = { $and: [{ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } }] }
-    const addFields = { idAsString: { $toString: '$_id' } }
-    const lookup = { from: 'sales-items', localField: 'idAsString', foreignField: 'idVenda', as: 'itensVenda' }
     const projection = {
       cliente: 1,
       dataVenda: 1,
       natureza: 1,
       parceiro: 1,
       valor: 1,
+      custoTotal: 1,
       vendedor: 1,
-      'itensVenda.descricao': 1,
-      'itensVenda.qtde': 1,
-      'itensVenda.vprod': 1,
-      'itensVenda.vcusto': 1,
-      'itensVenda.grupo': 1,
+      'itens.descricao': 1,
+      'itens.qtde': 1,
+      'itens.vprod': 1,
+      'itens.grupo': 1,
     }
 
-    const result = await collection.aggregate([{ $match: match }, { $addFields: addFields }, { $lookup: lookup }, { $project: projection }]).toArray()
+    const result = await collection.aggregate([{ $match: match }, { $project: projection }]).toArray()
     return result as TSaleResult[]
   } catch (error) {
     throw error
