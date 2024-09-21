@@ -1,6 +1,6 @@
 import { apiHandler } from '@/lib/api'
 import { PeriodQueryParamSchema } from '@/schemas/query-params-utils'
-import { TSale } from '@/schemas/sales'
+import { SalesQueryFilters, TSale, TSalesQueryFilter } from '@/schemas/sales'
 import { TSaleItem } from '@/schemas/sales-items'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
 import dayjs from 'dayjs'
@@ -50,12 +50,13 @@ export type TGeneralSalesStats = {
 
 const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> = async (req, res) => {
   const { after, before } = PeriodQueryParamSchema.parse(req.query)
+  const filters = SalesQueryFilters.parse(req.body)
 
   console.log('PARÂMETRO DE PERÍODO', after, before)
   const db = await connectToDatabase()
   const salesCollection: Collection<TSale> = db.collection('sales')
 
-  const sales = await getSales({ collection: salesCollection, after, before })
+  const sales = await getSales({ collection: salesCollection, after, before, filters })
   const stats = sales.reduce(
     (acc: TSalesReduced, current) => {
       // updating general stats
@@ -124,12 +125,13 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
   // )
 }
 
-export default apiHandler({ GET: getSalesDashboardStatsRoute })
+export default apiHandler({ POST: getSalesDashboardStatsRoute })
 
 type GetSalesParams = {
   collection: Collection<TSale>
   after: string
   before: string
+  filters: TSalesQueryFilter
 }
 
 type TSaleResult = {
@@ -147,9 +149,19 @@ type TSaleResult = {
     grupo: TSaleItem['grupo']
   }[]
 }
-async function getSales({ collection, after, before }: GetSalesParams) {
+async function getSales({ collection, after, before, filters }: GetSalesParams) {
   try {
-    const match: Filter<TSale> = { $and: [{ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } }] }
+    function getAndQuery() {
+      var andQuery: any[] = [{ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } }]
+      if (!!filters.total.min && !!filters.total.max) andQuery = [...andQuery, { valor: { $gte: filters.total.min } }, { valor: { $lte: filters.total.max } }]
+
+      return { $and: andQuery }
+    }
+    const andQuery = getAndQuery()
+    const querySaleNature: Filter<TSale> = filters.saleNature.length > 0 ? { natureza: { $in: filters.saleNature } } : {}
+
+    const querySeller: Filter<TSale> = filters.sellers.length > 0 ? { vendedor: { $in: filters.sellers } } : {}
+    const match: Filter<TSale> = { ...andQuery, ...querySaleNature, ...querySeller }
     const projection = {
       cliente: 1,
       dataVenda: 1,

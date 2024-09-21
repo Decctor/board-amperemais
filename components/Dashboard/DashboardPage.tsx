@@ -23,6 +23,10 @@ import * as AspectRatio from '@radix-ui/react-aspect-ratio'
 import { TGeneralSalesStats } from '@/pages/api/stats/sales-dashboard'
 import { TUser } from '@/schemas/users'
 import { Session } from 'lucia'
+import { useSaleQueryFilterOptions } from '@/lib/queries/stats/utils'
+import MultipleSelectInput from '../Inputs/MultipleSelectInput'
+import { TSale } from '@/schemas/sales'
+import NumberInput from '../Inputs/NumberInput'
 const currentDate = new Date()
 const firstDayOfMonth = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()
 const lastDayOfMonth = getLastDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()
@@ -31,28 +35,90 @@ type DashboardPageProps = {
   user: Session
 }
 export default function DashboardPage({ user }: DashboardPageProps) {
-  const [queryFilters, setQueryFilters] = useState<{ period: { after: string; before: string } }>({
+  const [queryParams, setQueryParams] = useState<{ period: { after: string; before: string } }>({
     period: {
       after: firstDayOfMonth,
       before: lastDayOfMonth,
     },
   })
-  const { data: stats, isLoading, isError, isSuccess, error } = useGeneralSalesStats({ after: queryFilters.period.after, before: queryFilters.period.before })
-  console.log(stats)
+  const {
+    data: stats,
+    isLoading,
+    isError,
+    isSuccess,
+    error,
+    queryFilters,
+    setQueryFilters,
+  } = useGeneralSalesStats({ after: queryParams.period.after, before: queryParams.period.before })
+  const { data: filterOptions } = useSaleQueryFilterOptions()
   return (
     <div className="flex h-full flex-col md:flex-row">
       <div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6">
-        <div className="flex w-full flex-col items-center justify-between border-b border-primary pb-2 lg:flex-row">
+        <div className="flex w-full flex-col items-center justify-between border-b border-primary pb-2 lg:flex-row gap-2">
           <h1 className="font-Raleway text-2xl font-black text-black">DASHBOARD</h1>
           <div className="flex w-full flex-col lg:w-fit">
             <div className="flex flex-col items-center gap-2 lg:flex-row">
+              <div className="w-full lg:w-[250px]">
+                <NumberInput
+                  label="VALOR MÁX"
+                  placeholder="Valor máximo..."
+                  value={queryFilters.total.max || null}
+                  handleChange={(value) => setQueryFilters((prev) => ({ ...prev, total: { ...prev.total, max: value } }))}
+                  showLabel={false}
+                  width="100%"
+                />
+              </div>
+              <div className="w-full lg:w-[250px]">
+                <NumberInput
+                  label="VALOR MIN"
+                  placeholder="Valor mínimo..."
+                  value={queryFilters.total.min || null}
+                  handleChange={(value) => setQueryFilters((prev) => ({ ...prev, total: { ...prev.total, min: value } }))}
+                  showLabel={false}
+                  width="100%"
+                />
+              </div>
+              <div className="w-full lg:w-[250px]">
+                <MultipleSelectInput
+                  showLabel={false}
+                  label="VENDEDOR"
+                  selected={queryFilters.sellers}
+                  options={filterOptions?.sellers.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+                  handleChange={(value) =>
+                    setQueryFilters((prev) => ({
+                      ...prev,
+                      sellers: value as TSale['natureza'][],
+                    }))
+                  }
+                  selectedItemLabel="VENDEDOR"
+                  onReset={() => setQueryFilters((prev) => ({ ...prev, sellers: [] }))}
+                  width="100%"
+                />
+              </div>
+              <div className="w-full lg:w-[250px]">
+                <MultipleSelectInput
+                  showLabel={false}
+                  label="NATUREZA DA VENDA"
+                  selected={queryFilters.saleNature}
+                  options={filterOptions?.saleNatures.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+                  handleChange={(value) =>
+                    setQueryFilters((prev) => ({
+                      ...prev,
+                      saleNature: value as TSale['natureza'][],
+                    }))
+                  }
+                  selectedItemLabel="NATUREZA DA VENDA"
+                  onReset={() => setQueryFilters((prev) => ({ ...prev, saleNature: [] }))}
+                  width="100%"
+                />
+              </div>
               <div className="w-full lg:w-[150px]">
                 <DateInput
                   label="PERÍODO"
                   showLabel={false}
-                  value={formatDateForInput(queryFilters.period.after)}
+                  value={formatDateForInput(queryParams.period.after)}
                   handleChange={(value) =>
-                    setQueryFilters((prev) => ({
+                    setQueryParams((prev) => ({
                       ...prev,
                       period: {
                         ...prev.period,
@@ -67,9 +133,9 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 <DateInput
                   label="PERÍODO"
                   showLabel={false}
-                  value={formatDateForInput(queryFilters.period.before)}
+                  value={formatDateForInput(queryParams.period.before)}
                   handleChange={(value) =>
-                    setQueryFilters((prev) => ({
+                    setQueryParams((prev) => ({
                       ...prev,
                       period: {
                         ...prev.period,

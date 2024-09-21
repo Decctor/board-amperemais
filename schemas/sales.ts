@@ -47,4 +47,14 @@ export const SaleSchema = z.object({
   custoTotal: z.number(),
 })
 
+export const SalesQueryFilters = z.object({
+  saleNature: z.array(z.enum(['SN08', 'SN03', 'SN11', 'SN20', 'SN04', 'SN09', 'SN02', 'COND', 'SN99', 'SN01', 'SN05'])),
+  total: z.object({
+    min: z.number().optional().nullable(),
+    max: z.number().optional().nullable(),
+  }),
+  sellers: z.array(z.string()),
+})
+
+export type TSalesQueryFilter = z.infer<typeof SalesQueryFilters>
 export type TSale = z.infer<typeof SaleSchema>

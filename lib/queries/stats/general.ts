@@ -1,10 +1,12 @@
 import { TGeneralSalesStats } from '@/pages/api/stats/sales-dashboard'
+import { TSalesQueryFilter } from '@/schemas/sales'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
+import { useState } from 'react'
 
-async function fetchGeneralSalesStats({ after, before }: { after: string; before: string }) {
+async function fetchGeneralSalesStats({ after, before, filters }: { after: string; before: string; filters: TSalesQueryFilter }) {
   try {
-    const { data } = await axios.get(`/api/stats/sales-dashboard?after=${after}&before=${before}`)
+    const { data } = await axios.post(`/api/stats/sales-dashboard?after=${after}&before=${before}`, filters)
 
     return data.data as TGeneralSalesStats
   } catch (error) {
@@ -13,8 +15,17 @@ async function fetchGeneralSalesStats({ after, before }: { after: string; before
 }
 
 export function useGeneralSalesStats({ after, before }: { after: string; before: string }) {
-  return useQuery({
-    queryKey: ['general-stats', after, before],
-    queryFn: async () => await fetchGeneralSalesStats({ after, before }),
+  const [queryFilters, setQueryFilters] = useState<TSalesQueryFilter>({
+    total: {},
+    saleNature: [],
+    sellers: [],
   })
+  return {
+    ...useQuery({
+      queryKey: ['general-stats', after, before, queryFilters],
+      queryFn: async () => await fetchGeneralSalesStats({ after, before, filters: queryFilters }),
+    }),
+    queryFilters,
+    setQueryFilters,
+  }
 }
