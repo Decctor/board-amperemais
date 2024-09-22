@@ -4,6 +4,7 @@ import Header from '../Layouts/Header'
 import ErrorComponent from '../Layouts/ErrorComponent'
 import { cn } from '@/lib/utils'
 import UsersView from './UsersView'
+import SaleGoalsView from './SaleGoalsView'
 
 type ConfigurationPageProps = {
   session: TUserSession
@@ -25,6 +26,7 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
       <div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6">
         <div className="w-full flex items-center justify-center gap-4 flex-wrap">
           <button
+            onClick={() => setView('users')}
             className={cn(
               'px-2 py-1 rounded-lg bg-transparent font-bold tracking-tight duration-300 ease-in-out',
               view == 'users' ? 'bg-[#fead41] text-[#15599a]' : 'hover:bg-gray-100'
@@ -33,6 +35,7 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
             Painel de Usuários
           </button>
           <button
+            onClick={() => setView('goals')}
             className={cn(
               'px-2 py-1 rounded-lg bg-transparent font-bold tracking-tight duration-300 ease-in-out',
               view == 'goals' ? 'bg-[#fead41] text-[#15599a]' : 'hover:bg-gray-100'
@@ -42,6 +45,7 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
           </button>
         </div>
         {view == 'users' ? <UsersView session={session} /> : null}
+        {view == 'goals' ? <SaleGoalsView session={session} /> : null}
       </div>
     </div>
   )

@@ -49,7 +49,7 @@ function EditUser({ userId, session, closeModal }: EditUserProps) {
       <Dialog.Content className="fixed left-[50%] top-[50%] z-[100] h-[70%] w-[90%] translate-x-[-50%] translate-y-[-50%] rounded-md bg-background p-[10px] lg:h-[60%] lg:w-[40%]">
         <div className="flex h-full w-full flex-col">
           <div className="flex flex-col items-center justify-between border-b border-gray-200 px-2 pb-2 text-lg lg:flex-row">
-            <h3 className="text-sm font-bold lg:text-xl">NOVO USUÁRIO</h3>
+            <h3 className="text-sm font-bold lg:text-xl">EDITAR USUÁRIO</h3>
             <button
               onClick={() => closeModal()}
               type="button"
