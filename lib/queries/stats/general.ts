@@ -20,6 +20,7 @@ export function useGeneralSalesStats({ period, total, sellers, saleNatures }: TS
     ...useQuery({
       queryKey: ['general-stats', period, total, sellers, saleNatures],
       queryFn: async () => await fetchGeneralSalesStats({ period, total, sellers, saleNatures }),
+      refetchOnWindowFocus: false,
     }),
   }
 }

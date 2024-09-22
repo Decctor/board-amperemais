@@ -40,6 +40,7 @@ export function useRFMData({ period, total, saleNatures, sellers }: UseRFMDataPa
       queryKey: ['rfm', period, total, saleNatures, sellers],
       queryFn: async () => fetchRFM({ period, total, saleNatures, sellers }),
       select: (data) => handleModelData(data),
+      refetchOnWindowFocus: false,
     }),
     selectFilters,
     setSelectFilters,

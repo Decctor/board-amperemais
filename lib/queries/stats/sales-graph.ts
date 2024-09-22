@@ -17,5 +17,6 @@ export function useSalesGraph({ period, group, total, saleNatures, sellers }: TS
   return useQuery({
     queryKey: ['sales-graph', period, group, total, saleNatures, sellers],
     queryFn: async () => await fetchSalesGraph({ period, group, total, saleNatures, sellers }),
+    refetchOnWindowFocus: false,
   })
 }
