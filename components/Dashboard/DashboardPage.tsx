@@ -234,7 +234,7 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 <ProductGroupsGraph data={stats.porGrupo} />
               </div>
             </div>
-            <MatrixRFMAnalysis sellerOptions={filterOptions?.sellers || []} saleNatureOptions={filterOptions?.saleNatures || []} />
+            <MatrixRFMAnalysis session={user} sellerOptions={filterOptions?.sellers || []} saleNatureOptions={filterOptions?.saleNatures || []} />
           </div>
         ) : null}
       </div>
