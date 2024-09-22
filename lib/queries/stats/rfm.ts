@@ -1,19 +1,21 @@
 import { TRFMResult } from '@/pages/api/stats/sales-rfm'
+import { TSalesRFMFilters } from '@/schemas/query-params-utils'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 
-async function fetchRFM() {
+async function fetchRFM(filters: TSalesRFMFilters) {
   try {
-    const { data } = await axios.get('/api/stats/sales-rfm')
+    const { data } = await axios.post('/api/stats/sales-rfm', filters)
     return data.data as TRFMResult
   } catch (error) {
     throw error
   }
 }
 
-export function useRFMData() {
+type UseRFMDataParams = TSalesRFMFilters
+export function useRFMData({ period, total, saleNatures, sellers }: UseRFMDataParams) {
   return useQuery({
-    queryKey: ['rfm'],
-    queryFn: fetchRFM,
+    queryKey: ['rfm', period, total, saleNatures, sellers],
+    queryFn: async () => fetchRFM({ period, total, saleNatures, sellers }),
   })
 }

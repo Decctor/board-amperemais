@@ -1,6 +1,6 @@
 import { apiHandler } from '@/lib/api'
-import { PeriodQueryParamSchema } from '@/schemas/query-params-utils'
-import { SalesQueryFilters, TSale, TSalesQueryFilter } from '@/schemas/sales'
+import { SalesGeneralStatsFiltersSchema, TSalesGeneralStatsFilters } from '@/schemas/query-params-utils'
+import { TSale } from '@/schemas/sales'
 import { TSaleItem } from '@/schemas/sales-items'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
 import dayjs from 'dayjs'
@@ -49,14 +49,12 @@ export type TGeneralSalesStats = {
 }
 
 const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> = async (req, res) => {
-  const { after, before } = PeriodQueryParamSchema.parse(req.query)
-  const filters = SalesQueryFilters.parse(req.body)
+  const { period, total, sellers, saleNatures } = SalesGeneralStatsFiltersSchema.parse(req.body)
 
-  console.log('PARÂMETRO DE PERÍODO', after, before)
   const db = await connectToDatabase()
   const salesCollection: Collection<TSale> = db.collection('sales')
 
-  const sales = await getSales({ collection: salesCollection, after, before, filters })
+  const sales = await getSales({ collection: salesCollection, after: period.after, before: period.before, total, sellers, saleNatures })
   const stats = sales.reduce(
     (acc: TSalesReduced, current) => {
       // updating general stats
@@ -102,7 +100,7 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
       ticketMedio: stats.faturamentoBruto / stats.qtdeVendas,
       qtdeItensVendidos: stats.qtdeItensVendidos,
       itensPorVendaMedio: stats.qtdeItensVendidos / stats.qtdeVendas,
-      valorDiarioVendido: stats.faturamentoBruto / dayjs(before).diff(dayjs(after), 'days'),
+      valorDiarioVendido: stats.faturamentoBruto / dayjs(period.before).diff(dayjs(period.after), 'days'),
       porItem: Object.entries(stats.porItem)
         .map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
         .sort((a, b) => b.total - a.total),
@@ -131,7 +129,9 @@ type GetSalesParams = {
   collection: Collection<TSale>
   after: string
   before: string
-  filters: TSalesQueryFilter
+  total: TSalesGeneralStatsFilters['total']
+  saleNatures: TSalesGeneralStatsFilters['saleNatures']
+  sellers: TSalesGeneralStatsFilters['sellers']
 }
 
 type TSaleResult = {
@@ -149,18 +149,20 @@ type TSaleResult = {
     grupo: TSaleItem['grupo']
   }[]
 }
-async function getSales({ collection, after, before, filters }: GetSalesParams) {
+async function getSales({ collection, after, before, total, saleNatures, sellers }: GetSalesParams) {
   try {
     function getAndQuery() {
-      var andQuery: any[] = [{ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } }]
-      if (!!filters.total.min && !!filters.total.max) andQuery = [...andQuery, { valor: { $gte: filters.total.min } }, { valor: { $lte: filters.total.max } }]
+      const andQueryArr: Filter<TSale>[] = []
+      if (after && before) andQueryArr.push({ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } })
+      if (total.min) andQueryArr.push({ valor: { $gte: total.min } })
+      if (total.max) andQueryArr.push({ valor: { $lte: total.max } })
 
-      return { $and: andQuery }
+      return { $and: andQueryArr }
     }
     const andQuery = getAndQuery()
-    const querySaleNature: Filter<TSale> = filters.saleNature.length > 0 ? { natureza: { $in: filters.saleNature } } : {}
+    const querySaleNature: Filter<TSale> = saleNatures.length > 0 ? { natureza: { $in: saleNatures } } : {}
 
-    const querySeller: Filter<TSale> = filters.sellers.length > 0 ? { vendedor: { $in: filters.sellers } } : {}
+    const querySeller: Filter<TSale> = sellers.length > 0 ? { vendedor: { $in: sellers } } : {}
     const match: Filter<TSale> = { ...andQuery, ...querySaleNature, ...querySeller }
     const projection = {
       cliente: 1,

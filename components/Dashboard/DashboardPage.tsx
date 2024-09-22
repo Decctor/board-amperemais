@@ -9,61 +9,64 @@ import LoadingComponent from '@/components/Layouts/LoadingComponent'
 import ErrorComponent from '@/components/Layouts/ErrorComponent'
 import { getErrorMessage } from '@/lib/errors'
 import { VscDiffAdded } from 'react-icons/vsc'
-import { BsCart, BsFileEarmarkText, BsFillFileBarGraphFill, BsTicketPerforated } from 'react-icons/bs'
+import { BsCart, BsFileEarmarkText, BsTicketPerforated } from 'react-icons/bs'
 import { FaLayerGroup, FaPercent } from 'react-icons/fa'
 import { FaRankingStar } from 'react-icons/fa6'
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Bar, BarChart, CartesianGrid, Label, LabelList, Pie, PieChart, XAxis, YAxis } from 'recharts'
-import { useSalesGraph } from '@/lib/queries/stats/sales-graph'
-import { before } from 'node:test'
-import { TIntervalGrouping } from '@/utils/graphs'
+import { Bar, BarChart, LabelList, Pie, PieChart, XAxis, YAxis, ResponsiveContainer } from 'recharts'
+
 import { cn } from '@/lib/utils'
-import { useRFMData } from '@/lib/queries/stats/rfm'
-import * as AspectRatio from '@radix-ui/react-aspect-ratio'
+
 import { TGeneralSalesStats } from '@/pages/api/stats/sales-dashboard'
-import { TUser } from '@/schemas/users'
-import { Session } from 'lucia'
+import { TUserSession } from '@/schemas/users'
+
 import { useSaleQueryFilterOptions } from '@/lib/queries/stats/utils'
 import MultipleSelectInput from '../Inputs/MultipleSelectInput'
 import { TSale } from '@/schemas/sales'
 import NumberInput from '../Inputs/NumberInput'
+import { TSalesGeneralStatsFilters } from '@/schemas/query-params-utils'
+import { useDebounce } from 'use-debounce'
+import MatrixRFMAnalysis from './MatrixRFMAnalysis'
+import SalesGraph from './SalesGraph'
+import Header from '../Layouts/Header'
 const currentDate = new Date()
 const firstDayOfMonth = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()
 const lastDayOfMonth = getLastDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()
 
 type DashboardPageProps = {
-  user: Session
+  user: TUserSession
 }
 export default function DashboardPage({ user }: DashboardPageProps) {
-  const [queryParams, setQueryParams] = useState<{ period: { after: string; before: string } }>({
+  const userViewPermission = user.visualizacao
+  const [filters, setFilters] = useState<TSalesGeneralStatsFilters>({
     period: {
       after: firstDayOfMonth,
       before: lastDayOfMonth,
     },
+    total: {},
+    saleNatures: [],
+    sellers: userViewPermission == 'GERAL' ? [] : [user.vendedor],
   })
-  const {
-    data: stats,
-    isLoading,
-    isError,
-    isSuccess,
-    error,
-    queryFilters,
-    setQueryFilters,
-  } = useGeneralSalesStats({ after: queryParams.period.after, before: queryParams.period.before })
+  const [filtersDebounced] = useDebounce(filters, 1000)
+
+  const { data: stats, isLoading, isError, isSuccess, error } = useGeneralSalesStats({ ...filtersDebounced })
   const { data: filterOptions } = useSaleQueryFilterOptions()
+
+  const selectableSellers = userViewPermission == 'GERAL' ? filterOptions?.sellers || [] : [user.vendedor]
   return (
-    <div className="flex h-full flex-col md:flex-row">
+    <div className="flex h-full flex-col">
+      <Header session={user} />
       <div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6">
         <div className="flex w-full flex-col items-center justify-between border-b border-primary pb-2 lg:flex-row gap-2">
-          <h1 className="font-Raleway text-2xl font-black text-black">DASHBOARD</h1>
+          <h1 className="text-2xl font-black text-black">Dashboard</h1>
           <div className="flex w-full flex-col lg:w-fit">
             <div className="flex flex-col items-center gap-2 lg:flex-row">
               <div className="w-full lg:w-[250px]">
                 <NumberInput
                   label="VALOR MÁX"
                   placeholder="Valor máximo..."
-                  value={queryFilters.total.max || null}
-                  handleChange={(value) => setQueryFilters((prev) => ({ ...prev, total: { ...prev.total, max: value } }))}
+                  value={filters.total.max || null}
+                  handleChange={(value) => setFilters((prev) => ({ ...prev, total: { ...prev.total, max: value } }))}
                   showLabel={false}
                   width="100%"
                 />
@@ -72,8 +75,8 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 <NumberInput
                   label="VALOR MIN"
                   placeholder="Valor mínimo..."
-                  value={queryFilters.total.min || null}
-                  handleChange={(value) => setQueryFilters((prev) => ({ ...prev, total: { ...prev.total, min: value } }))}
+                  value={filters.total.min || null}
+                  handleChange={(value) => setFilters((prev) => ({ ...prev, total: { ...prev.total, min: value } }))}
                   showLabel={false}
                   width="100%"
                 />
@@ -82,16 +85,16 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 <MultipleSelectInput
                   showLabel={false}
                   label="VENDEDOR"
-                  selected={queryFilters.sellers}
-                  options={filterOptions?.sellers.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+                  selected={filters.sellers}
+                  options={selectableSellers.map((s, index) => ({ id: index + 1, label: s, value: s }))}
                   handleChange={(value) =>
-                    setQueryFilters((prev) => ({
+                    setFilters((prev) => ({
                       ...prev,
                       sellers: value as TSale['natureza'][],
                     }))
                   }
                   selectedItemLabel="VENDEDOR"
-                  onReset={() => setQueryFilters((prev) => ({ ...prev, sellers: [] }))}
+                  onReset={() => setFilters((prev) => ({ ...prev, sellers: [] }))}
                   width="100%"
                 />
               </div>
@@ -99,16 +102,16 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 <MultipleSelectInput
                   showLabel={false}
                   label="NATUREZA DA VENDA"
-                  selected={queryFilters.saleNature}
+                  selected={filters.saleNatures}
                   options={filterOptions?.saleNatures.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
                   handleChange={(value) =>
-                    setQueryFilters((prev) => ({
+                    setFilters((prev) => ({
                       ...prev,
-                      saleNature: value as TSale['natureza'][],
+                      saleNatures: value as TSale['natureza'][],
                     }))
                   }
                   selectedItemLabel="NATUREZA DA VENDA"
-                  onReset={() => setQueryFilters((prev) => ({ ...prev, saleNature: [] }))}
+                  onReset={() => setFilters((prev) => ({ ...prev, saleNatures: [] }))}
                   width="100%"
                 />
               </div>
@@ -116,9 +119,9 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 <DateInput
                   label="PERÍODO"
                   showLabel={false}
-                  value={formatDateForInput(queryParams.period.after)}
+                  value={formatDateForInput(filters.period.after)}
                   handleChange={(value) =>
-                    setQueryParams((prev) => ({
+                    setFilters((prev) => ({
                       ...prev,
                       period: {
                         ...prev.period,
@@ -133,9 +136,9 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 <DateInput
                   label="PERÍODO"
                   showLabel={false}
-                  value={formatDateForInput(queryParams.period.before)}
+                  value={formatDateForInput(filters.period.before)}
                   handleChange={(value) =>
-                    setQueryParams((prev) => ({
+                    setFilters((prev) => ({
                       ...prev,
                       period: {
                         ...prev.period,
@@ -170,18 +173,23 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 </div>
                 <div className="flex w-full flex-col py-2 px-6">
                   <div className="text-xl font-bold text-[#15599a]">{formatToMoney(stats.faturamentoBruto)}</div>
-                  <p className="text-xs text-green-500 font-bold lg:text-[0.7rem]">{formatToMoney(stats.faturamentoLiquido)} líquidos</p>
+                  {userViewPermission == 'GERAL' ? (
+                    <p className="text-xs text-green-500 font-bold lg:text-[0.7rem]">{formatToMoney(stats.faturamentoLiquido)} líquidos</p>
+                  ) : null}
                 </div>
               </div>
-              <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
-                <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-                  <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Margem</h1>
-                  <FaPercent size={12} />
+              {userViewPermission == 'GERAL' ? (
+                <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
+                  <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
+                    <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Margem</h1>
+                    <FaPercent size={12} />
+                  </div>
+                  <div className="px-6 py-2 flex w-full flex-col">
+                    <div className="text-xl font-bold text-[#15599a]">{formatDecimalPlaces((100 * stats.faturamentoLiquido) / stats.faturamentoBruto)}%</div>
+                  </div>
                 </div>
-                <div className="px-6 py-2 flex w-full flex-col">
-                  <div className="text-xl font-bold text-[#15599a]">{formatDecimalPlaces((100 * stats.faturamentoLiquido) / stats.faturamentoBruto)}%</div>
-                </div>
-              </div>
+              ) : null}
+
               <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
                 <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
                   <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Ticket Médio</h1>
@@ -212,7 +220,7 @@ export default function DashboardPage({ user }: DashboardPageProps) {
             </div>
             <div className="w-full flex flex-col items-center gap-2 lg:flex-row">
               <div className="w-full lg:w-[60%]">
-                <SalesGraph />
+                <SalesGraph period={filters.period} total={filters.total} sellers={filters.sellers} saleNatures={filters.saleNatures} />
               </div>
               <div className="w-full lg:w-[40%]">
                 <SellersGraph data={stats.porVendedor} />
@@ -226,118 +234,14 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 <ProductGroupsGraph data={stats.porGrupo} />
               </div>
             </div>
-            <CustomerGrid />
+            <MatrixRFMAnalysis sellerOptions={filterOptions?.sellers || []} saleNatureOptions={filterOptions?.saleNatures || []} />
           </div>
         ) : null}
       </div>
     </div>
   )
 }
-const CustomerGrid = () => {
-  const { data } = useRFMData()
-  const gridItems = [
-    {
-      text: 'NÃO PODE PERDÊ-LOS',
-      color: 'bg-blue-400',
-      gridArea: '1 / 1 / 2 / 3',
-      clientsQty: data?.filter((x) => x.RFMLabel == 'NÃO PODE PERDÊ-LOS').length || 0,
-    },
-    {
-      text: 'CLIENTES LEAIS',
-      color: 'bg-green-400',
-      gridArea: '1 / 3 / 3 / 6',
-      clientsQty: data?.filter((x) => x.RFMLabel == 'LIENTES LEAIS').length || 0,
-    },
-    { text: 'CAMPEÕES', color: 'bg-orange-400', gridArea: '1 / 5 / 2 / 6', clientsQty: data?.filter((x) => x.RFMLabel == 'CAMPEÕES').length || 0 },
-    { text: 'EM RISCO', color: 'bg-yellow-400', gridArea: '2 / 1 / 4 / 3', clientsQty: data?.filter((x) => x.RFMLabel == 'EM RISCO').length || 0 },
-    {
-      text: 'PRECISAM DE ATENÇÃO',
-      color: 'bg-indigo-400',
-      gridArea: '3 / 3 / 4 / 4',
-      clientsQty: data?.filter((x) => x.RFMLabel == 'RECISAM DE ATENÇÃO').length || 0,
-    },
-    {
-      text: 'POTENCIAIS CLIENTES LEAIS',
-      color: 'bg-[#5C4033]',
-      gridArea: '3 / 4 / 5 / 6',
-      clientsQty: data?.filter((x) => x.RFMLabel == 'POTENCIAIS CLIENTES LEAIS').length || 0,
-    },
-    { text: 'HIBERNANDO', color: 'bg-purple-400', gridArea: '4 / 2 / 5 / 3', clientsQty: data?.filter((x) => x.RFMLabel == 'NÃO PODE PERDÊ-LOS').length || 0 },
-    {
-      text: 'PRESTES A DORMIR',
-      color: 'bg-yellow-600',
-      gridArea: '4 / 3 / 6 / 4',
-      clientsQty: data?.filter((x) => x.RFMLabel == 'PRESTES A DORMIR').length || 0,
-    },
-    { text: 'PERDIDOS', color: 'bg-red-500', gridArea: '4 / 1 / 6 / 2', clientsQty: data?.filter((x) => x.RFMLabel == 'PERDIDOS').length || 0 },
-    {
-      text: 'PERDIDOS (extensão)',
-      color: 'bg-red-500',
-      gridArea: '5 / 2 / 6 / 3',
-      clientsQty: null,
-    },
-    { text: 'PROMISSORES', color: 'bg-pink-400', gridArea: '5 / 4 / 6 / 5', clientsQty: data?.filter((x) => x.RFMLabel == 'PROMISSORES').length || 0 },
-    {
-      text: 'CLIENTES RECENTES',
-      color: 'bg-teal-400',
-      gridArea: '5 / 5 / 6 / 6',
-      clientsQty: data?.filter((x) => x.RFMLabel == 'CLIENTES RECENTES').length || 0,
-    },
-  ]
 
-  return (
-    <div className="w-full flex items-center flex-col lg:flex-row gap-2 h-full">
-      <div className="w-full lg:w-1/2 h-full">
-        <div className="flex min-h-[90px] h-full w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
-          <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
-            <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">CLIENTES</h1>
-          </div>
-          <div className="px-6 py-2 flex flex-col max-h-[750px] w-full gap-2 grow scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 overflow-y-auto overscroll-y-auto">
-            {data?.map((client) => (
-              <div key={client.clientId} className="border border-primary flex flex-col p-3 rounded w-full">
-                <div className="w-full flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.clientName}</h1>
-                    <h1 className={cn('px-2 py-1 rounded-lg text-white text-[0.6rem]', gridItems.find((x) => x.text == client.RFMLabel)?.color)}>
-                      {client.RFMLabel}
-                    </h1>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="w-full lg:w-1/2 h-full">
-        <div className="flex min-h-[90px] h-full w-full  flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
-          <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
-            <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">MATRIZ RFM</h1>
-          </div>
-          <div className="px-6 py-2 flex w-full grow max-h-[750px]">
-            <div className="grid grid-cols-5 grid-rows-5 w-full h-full p-4">
-              {gridItems.map((item, index) => (
-                <div
-                  key={index}
-                  className={`${item.color} flex flex-col gap-2 items-center justify-center p-2 text-white font-bold text-center`}
-                  style={{ gridArea: item.gridArea }}
-                >
-                  {item.text !== 'PERDIDOS (extensão)' ? item.text : ''}
-                  {item.text !== 'PERDIDOS (extensão)' ? (
-                    <div className="bg-black h-16 w-16 min-h-16 min-w-16 p-2 rounded-full text-sm font-bold text-white flex items-center justify-center">
-                      <h1>{item.clientsQty}</h1>
-                    </div>
-                  ) : (
-                    ''
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 function SellersGraph({ data }: { data: TGeneralSalesStats['porVendedor'] }) {
   const [type, setType] = useState<'qtde' | 'total'>('total')
   const chartConfig = {
@@ -378,82 +282,24 @@ function SellersGraph({ data }: { data: TGeneralSalesStats['porVendedor'] }) {
       </div>
 
       <div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] max-h-[450px]">
-        <ChartContainer config={chartConfig}>
-          <BarChart accessibilityLayer data={data.sort((a, b) => (type == 'total' ? b.total - a.total : b.qtde - a.qtde))} layout="vertical">
-            <XAxis type="number" dataKey={type} hide />
-            <YAxis dataKey="titulo" type="category" tickLine={false} tickMargin={0} axisLine={false} tickFormatter={(value) => value.slice(0, 36)} />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-            <Bar dataKey={type} fill="#15599a" radius={5}>
-              <LabelList
-                dataKey={type}
-                position="right"
-                offset={8}
-                className="fill-foreground text-[0.5rem]"
-                formatter={(value: any) => (type == 'total' ? formatToMoney(value) : value)}
-              />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-      </div>
-    </div>
-  )
-}
-
-function SalesGraph() {
-  const [params, setParams] = useState<{ type: 'total' | 'qtde'; period: { after: string; before: string }; group: TIntervalGrouping }>({
-    type: 'total',
-    period: {
-      after: firstDayOfMonth,
-      before: lastDayOfMonth,
-    },
-    group: 'DIA',
-  })
-  const { data: graph } = useSalesGraph({ after: params.period.after, before: params.period.before, group: params.group })
-  const chartConfig = {
-    total: {
-      label: 'Valor Vendido',
-      color: '#fead41',
-    },
-    qtde: {
-      label: 'Qtde de Vendas',
-      color: '#fead41',
-    },
-  } satisfies ChartConfig
-  return (
-    <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
-      <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
-        <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS</h1>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setParams((prev) => ({ ...prev, type: 'total' }))}
-            className={cn(
-              'px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded',
-              params.type == 'total' ? 'bg-black text-white' : 'bg-transparent text-black'
-            )}
-          >
-            VALOR
-          </button>
-          <button
-            onClick={() => setParams((prev) => ({ ...prev, type: 'qtde' }))}
-            className={cn(
-              'px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded',
-              params.type == 'qtde' ? 'bg-black text-white' : 'bg-transparent text-black'
-            )}
-          >
-            QUANTIDADE
-          </button>
-          <BsFillFileBarGraphFill size={12} />
-        </div>
-      </div>
-      <div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] max-h-[450px]">
-        <ChartContainer className="w-full h-full" config={chartConfig}>
-          <BarChart accessibilityLayer data={graph || []}>
-            <CartesianGrid vertical={false} />
-            <XAxis dataKey="chave" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(value) => value.slice(0, 12)} />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-            <Bar dataKey={params.type} fill="#15599a" radius={8} />
-          </BarChart>
-        </ChartContainer>
+        <ResponsiveContainer className={'w-full h-full'}>
+          <ChartContainer config={chartConfig} className="w-full h-full">
+            <BarChart accessibilityLayer data={data.sort((a, b) => (type == 'total' ? b.total - a.total : b.qtde - a.qtde))} layout="vertical">
+              <XAxis type="number" dataKey={type} hide />
+              <YAxis dataKey="titulo" type="category" tickLine={false} tickMargin={0} axisLine={false} tickFormatter={(value) => value.slice(0, 36)} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+              <Bar dataKey={type} fill="#15599a" radius={5}>
+                <LabelList
+                  dataKey={type}
+                  position="right"
+                  offset={8}
+                  className="fill-foreground text-[0.5rem]"
+                  formatter={(value: any) => (type == 'total' ? formatToMoney(value) : value)}
+                />
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        </ResponsiveContainer>
       </div>
     </div>
   )

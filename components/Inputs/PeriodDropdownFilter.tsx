@@ -1,59 +1,59 @@
-import { formatDateForInput } from '@/lib/formatting'
-import React, { Dispatch, SetStateAction, useRef, useState } from 'react'
-import { AiOutlineSearch } from 'react-icons/ai'
-import { IoIosCalendar } from 'react-icons/io'
+import { formatDateForInput } from "@/lib/formatting";
+import React, { Dispatch, SetStateAction, useRef, useState } from "react";
+import { AiOutlineSearch } from "react-icons/ai";
+import { IoIosCalendar } from "react-icons/io";
 type DateFilterType = {
-  after: string | undefined
-  before: string | undefined
-}
+  after: string | undefined;
+  before: string | undefined;
+};
 type PeriodDropdownFilterProps = {
-  initialAfter: string | undefined
-  initialBefore: string | undefined
+  initialAfter: string | undefined;
+  initialBefore: string | undefined;
   setDateParam: Dispatch<
     SetStateAction<{
-      after: string | undefined
-      before: string | undefined
+      after: string | undefined;
+      before: string | undefined;
     }>
-  >
-}
+  >;
+};
 function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: PeriodDropdownFilterProps) {
-  const ref = useRef<any>(null)
-  const [dropdownIsOpen, setDropdownIsOpen] = useState<boolean>(false)
+  const ref = useRef<any>(null);
+  const [dropdownIsOpen, setDropdownIsOpen] = useState<boolean>(false);
   const [dateFilter, setDateFilter] = useState<DateFilterType>({
     after: initialAfter,
     before: initialBefore,
-  })
+  });
   const [msg, setMsg] = useState({
-    text: '',
-    color: '',
-  })
+    text: "",
+    color: "",
+  });
   function handleFilter() {
     if (!dateFilter.after) {
       setMsg({
-        text: 'Por favor, preencha a data de início.',
-        color: 'text-red-500',
-      })
-      return
+        text: "Por favor, preencha a data de início.",
+        color: "text-red-500",
+      });
+      return;
     }
     if (!dateFilter.before) {
       setMsg({
-        text: 'Por favor, preencha a data de fim.',
-        color: 'text-red-500',
-      })
-      return
+        text: "Por favor, preencha a data de fim.",
+        color: "text-red-500",
+      });
+      return;
     }
     if (new Date(dateFilter.after) > new Date(dateFilter.before)) {
       setMsg({
-        text: 'Por favor, preencha um período válido.',
-        color: 'text-red-500',
-      })
-      return
+        text: "Por favor, preencha um período válido.",
+        color: "text-red-500",
+      });
+      return;
     }
     setMsg({
-      text: '',
-      color: '',
-    })
-    setDateParam({ after: dateFilter.after, before: dateFilter.before })
+      text: "",
+      color: "",
+    });
+    setDateParam({ after: dateFilter.after, before: dateFilter.before });
   }
   return (
     <div ref={ref} className="relative flex h-[46.6px] w-[46.6px] justify-end">
@@ -76,7 +76,7 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
                 onChange={(e) =>
                   setDateFilter((prev) => ({
                     ...prev,
-                    after: e.target.value != '' ? new Date(e.target.value).toISOString() : undefined,
+                    after: e.target.value != "" ? new Date(e.target.value).toISOString() : undefined,
                   }))
                 }
               />
@@ -90,7 +90,7 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
                 onChange={(e) =>
                   setDateFilter((prev) => ({
                     ...prev,
-                    before: e.target.value != '' ? new Date(e.target.value).toISOString() : undefined,
+                    before: e.target.value != "" ? new Date(e.target.value).toISOString() : undefined,
                   }))
                 }
               />
@@ -98,17 +98,14 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
           </div>
           <div className="mt-2 flex w-full justify-between">
             {msg.text ? <p className={`text-xs ${msg.color} italic`}>{msg.text}</p> : <div></div>}
-            <button
-              onClick={handleFilter}
-              className="rounded bg-[#fead61] p-1 text-[#15599a] duration-300 ease-in-out hover:scale-105 hover:bg-[#15599a] hover:text-white"
-            >
+            <button onClick={handleFilter} className="rounded bg-[#fead61] p-1 text-[#15599a] duration-300 ease-in-out hover:scale-105 hover:bg-[#15599a] hover:text-white">
               <AiOutlineSearch />
             </button>
           </div>
         </div>
       ) : null}
     </div>
-  )
+  );
 }
 
-export default PeriodDropdownFilter
+export default PeriodDropdownFilter;

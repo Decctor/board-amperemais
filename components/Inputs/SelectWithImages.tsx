@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { HiCheck } from 'react-icons/hi'
 import { IoMdArrowDropdown, IoMdArrowDropup } from 'react-icons/io'
-import Avatar from '../Utils/Avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { formatNameAsInitials } from '@/lib/formatting'
 
 type SelectOption<T> = {
   id: string | number
@@ -25,7 +26,7 @@ type SelectWithImagesProps<T> = {
 function SelectWithImages<T>({
   width,
   label,
-  labelClassName = 'font-sans font-bold  text-[#353432] text-start',
+  labelClassName = 'text-sm tracking-tight text-primary/80 font-medium text-start',
   showLabel = true,
   value,
   editable = true,
@@ -48,6 +49,7 @@ function SelectWithImages<T>({
   const [items, setItems] = useState<SelectOption<T>[] | null>(options)
   const [selectMenuIsOpen, setSelectMenuIsOpen] = useState<boolean>(false)
   const [selectedId, setSelectedId] = useState<number | string | null>(getValueID(value))
+  const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>('down')
 
   const [searchFilter, setSearchFilter] = useState<string>('')
   const inputIdentifier = label.toLowerCase().replace(' ', '_')
@@ -92,6 +94,20 @@ function SelectWithImages<T>({
       document.removeEventListener('click', (e) => handleClickOutside(e), true)
     }
   }, [onClickOutside])
+
+  useEffect(() => {
+    if (selectMenuIsOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+
+      if (spaceBelow < 250 && spaceAbove > spaceBelow) {
+        setDropdownDirection('up')
+      } else {
+        setDropdownDirection('down')
+      }
+    }
+  }, [selectMenuIsOpen])
   return (
     <div ref={ref} className={`relative flex w-full flex-col gap-1 lg:w-[${width ? width : '350px'}]`}>
       {showLabel ? (
@@ -99,7 +115,11 @@ function SelectWithImages<T>({
           {label}
         </label>
       ) : null}
-      <div className="flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border border-gray-200 bg-[#fff] p-3 text-sm shadow-sm">
+      <div
+        className={`flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border duration-500 ease-in-out ${
+          selectMenuIsOpen ? 'border-primary' : 'border-primary/20'
+        } bg-[#fff] p-3 text-sm shadow-sm dark:bg-[#121212]`}
+      >
         {selectMenuIsOpen ? (
           <input
             type="text"
@@ -113,15 +133,17 @@ function SelectWithImages<T>({
           <div className="flex grow items-center gap-2">
             {selectedId && options ? (
               <>
-                <Avatar url={options.find((item) => item.id == selectedId)?.url} fallback="O" height={20} width={20} />
-
+                <Avatar className="h-[20px] w-[20px]">
+                  <AvatarImage src={options.find((item) => item.id == selectedId)?.url} alt={'Avatar'} />
+                  <AvatarFallback>{formatNameAsInitials(options.find((item) => item.id == selectedId)?.label || '')}</AvatarFallback>
+                </Avatar>
                 <p
                   onClick={() => {
                     if (editable) setSelectMenuIsOpen((prev) => !prev)
                   }}
-                  className="grow cursor-pointer text-[#353432]"
+                  className="grow cursor-pointer text-primary"
                 >
-                  {selectedId && options ? options.filter((item) => item.id == selectedId)[0].label : 'NÃO DEFINIDO'}
+                  {selectedId && options ? options.filter((item) => item.id == selectedId)[0]?.label : 'NÃO DEFINIDO'}
                 </p>
               </>
             ) : (
@@ -129,7 +151,7 @@ function SelectWithImages<T>({
                 onClick={() => {
                   if (editable) setSelectMenuIsOpen((prev) => !prev)
                 }}
-                className="grow cursor-pointer text-[#353432]"
+                className="grow cursor-pointer text-primary"
               >
                 NÃO DEFINIDO
               </p>
@@ -153,12 +175,16 @@ function SelectWithImages<T>({
         )}
       </div>
       {selectMenuIsOpen ? (
-        <div className="absolute top-[75px] z-[100] flex h-[250px] max-h-[250px] w-full flex-col self-center overflow-y-auto overscroll-y-auto rounded-md border border-gray-200 bg-[#fff] p-2 py-1 shadow-sm scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300">
+        <div
+          className={`absolute ${
+            dropdownDirection === 'down' ? 'top-[75px]' : 'bottom-[75px]'
+          } scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 z-[100] flex h-[250px] max-h-[250px] w-full flex-col gap-1 self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-[#fff] p-2 py-1 shadow-sm dark:bg-[#121212]`}
+        >
           <div
             onClick={() => resetState()}
-            className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-gray-100 ${!selectedId ? 'bg-gray-100' : ''}`}
+            className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedId ? 'bg-primary/20' : ''}`}
           >
-            <p className="grow font-medium text-[#353432]">{selectedItemLabel}</p>
+            <p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
             {!selectedId ? <HiCheck style={{ color: '#fead61', fontSize: '20px' }} /> : null}
           </div>
           <div className="my-2 h-[1px] w-full bg-gray-200"></div>
@@ -167,15 +193,18 @@ function SelectWithImages<T>({
               <div
                 onClick={() => handleSelect(item.id, item.value)}
                 key={item.id ? item.id : index}
-                className={`flex w-full cursor-pointer items-center rounded p-2 px-2 hover:bg-gray-100 ${selectedId == item.id ? 'bg-gray-100' : ''}`}
+                className={`flex w-full cursor-pointer items-center rounded p-2 px-2 hover:bg-primary/20 ${selectedId == item.id ? 'bg-primary/20' : ''}`}
               >
-                <Avatar url={item.url} height={20} width={20} fallback="O" />
-                <p className="grow pl-2 text-sm font-medium text-[#353432]">{item.label}</p>
+                <Avatar className="h-[20px] w-[20px]">
+                  <AvatarImage src={item.url} alt={'Avatar'} />
+                  <AvatarFallback>{formatNameAsInitials(item.label)}</AvatarFallback>
+                </Avatar>
+                <p className="grow pl-2 text-sm font-medium text-primary">{item.label}</p>
                 {selectedId == item.id ? <HiCheck style={{ color: '#fead61', fontSize: '20px' }} /> : null}
               </div>
             ))
           ) : (
-            <p className="w-full text-center text-sm italic text-[#353432]">Sem opções disponíveis.</p>
+            <p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
           )}
         </div>
       ) : (

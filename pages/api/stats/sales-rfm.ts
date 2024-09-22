@@ -1,10 +1,13 @@
 import { apiHandler } from '@/lib/api'
+import { getUserSession } from '@/lib/auth/session'
 import { TClient } from '@/schemas/clients'
+import { SalesRFMFiltersSchema, TSalesGraphFilters } from '@/schemas/query-params-utils'
 import { TSale } from '@/schemas/sales'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
 import { TRFMConfig } from '@/utils/rfm'
 import dayjs from 'dayjs'
-import { Collection, WithId } from 'mongodb'
+import createHttpError from 'http-errors'
+import { Collection, Filter, WithId } from 'mongodb'
 import { NextApiHandler } from 'next'
 
 export type TRFMResult = {
@@ -12,34 +15,47 @@ export type TRFMResult = {
   clientId: string
   recency: number
   frequency: number
+  monetary: number
   rfmScore: {
     recency: number
     frequency: number
   }
-  RFMLabel: string
+  rfmLabel: string
 }[]
 const intervalStart = dayjs().subtract(12, 'month').startOf('day').toISOString()
 const intervalEnd = dayjs().endOf('day').toISOString()
 
 const getSalesRFM: NextApiHandler<{ data: TRFMResult }> = async (req, res) => {
+  const session = await getUserSession({ request: req })
+  const userSeller = session.vendedor
+  const userViewPermission = session.visualizacao
+  const { period, total, saleNatures, sellers } = SalesRFMFiltersSchema.parse(req.body)
+
+  // Validating view permission
+  if (userViewPermission == 'PRÓPRIA') {
+    if (sellers.some((s) => s != userSeller)) throw new createHttpError.BadRequest('Você não tem permissão para acessar esse escopo.')
+  }
   const db = await connectToDatabase()
   const clientsCollection: Collection<TClient> = db.collection('clients')
   const salesCollection: Collection<TSale> = db.collection('sales')
   const utilsCollection: Collection<TRFMConfig> = db.collection('utils')
 
   const allClients = await clientsCollection.find({}).toArray()
-  const sales = await getSales({ collection: salesCollection, after: intervalStart, before: intervalEnd })
+  const sales = await getSales({ collection: salesCollection, after: period.after, before: period.before, total, saleNatures, sellers })
   const rfmConfig = (await utilsCollection.findOne({ identificador: 'CONFIG_RFM' })) as TRFMConfig
 
   const rfm = categorizeRFM(allClients, sales, rfmConfig)
   return res.status(200).json({ data: rfm })
 }
 
-export default apiHandler({ GET: getSalesRFM })
+export default apiHandler({ POST: getSalesRFM })
 type GetSalesParams = {
   collection: Collection<TSale>
   after: string
   before: string
+  total: TSalesGraphFilters['total']
+  saleNatures: TSalesGraphFilters['saleNatures']
+  sellers: TSalesGraphFilters['sellers']
 }
 
 type TSaleResult = {
@@ -47,11 +63,21 @@ type TSaleResult = {
   dataVenda: TSale['dataVenda']
   idCliente: TSale['idCliente']
 }
-async function getSales({ collection, after, before }: GetSalesParams) {
+async function getSales({ collection, after, before, total, saleNatures, sellers }: GetSalesParams) {
   try {
-    const match = {
-      dataVenda: { $gte: after, $lte: before },
+    function getAndQuery() {
+      const andQueryArr: Filter<TSale>[] = []
+      if (after && before) andQueryArr.push({ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } })
+      if (total.min) andQueryArr.push({ valor: { $gte: total.min } })
+      if (total.max) andQueryArr.push({ valor: { $lte: total.max } })
+
+      return { $and: andQueryArr }
     }
+    const andQuery: Filter<TSale> = getAndQuery()
+    const saleNaturesQuery: Filter<TSale> = saleNatures.length > 0 ? { natureza: { $in: saleNatures } } : {}
+    const sellersQuery: Filter<TSale> = sellers.length > 0 ? { vendedor: { $in: sellers } } : {}
+    const match: Filter<TSale> = { ...andQuery, ...saleNaturesQuery, ...sellersQuery }
+
     const project = { idCliente: 1, valor: 1, dataVenda: 1 }
     const result = await collection.aggregate([{ $match: match }, { $project: project }]).toArray()
     return result as TSaleResult[]
@@ -92,14 +118,17 @@ const categorizeRFM = (clients: WithId<TClient>[], sales: TSaleResult[], config:
     const configFrequency = Object.entries(config.frequencia).find(([key, value]) => frequency >= value.min && frequency <= value.max)
     const frequencyScore = configFrequency ? Number(configFrequency[0]) : 1
 
+    const monetary = calculateMonetaryValue(client._id.toString(), sales)
+
     const label = getRFMLabel(frequencyScore, recencyScore)
     return {
       clientName: client.nome,
       clientId: client._id.toString(),
       recency,
       frequency,
+      monetary,
       rfmScore: { recency: recencyScore, frequency: frequencyScore },
-      RFMLabel: label,
+      rfmLabel: label,
     }
   })
 }

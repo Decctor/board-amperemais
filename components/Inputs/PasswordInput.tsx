@@ -1,19 +1,19 @@
-import React from 'react'
+import React from "react";
 type TextInputProps = {
-  width?: string
-  label: string
-  labelClassName?: string
-  showLabel?: boolean
-  value: string
-  placeholder: string
-  editable?: boolean
-  handleChange: (value: string) => void
-  handleOnBlur?: () => void
-}
+  width?: string;
+  label: string;
+  labelClassName?: string;
+  showLabel?: boolean;
+  value: string;
+  placeholder: string;
+  editable?: boolean;
+  handleChange: (value: string) => void;
+  handleOnBlur?: () => void;
+};
 function PasswordInput({
   width,
   label,
-  labelClassName = 'font-sans font-bold  text-[#353432]',
+  labelClassName = "text-sm tracking-tight text-primary/80 font-medium",
   showLabel = true,
   value,
   placeholder,
@@ -21,9 +21,9 @@ function PasswordInput({
   handleChange,
   handleOnBlur,
 }: TextInputProps) {
-  const inputIdentifier = label.toLowerCase().replace(' ', '_')
+  const inputIdentifier = label.toLowerCase().replace(" ", "_");
   return (
-    <div className={`flex w-full flex-col gap-1 lg:w-[${width ? width : '350px'}]`}>
+    <div className={`flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
       {showLabel ? (
         <label htmlFor={inputIdentifier} className={labelClassName}>
           {label}
@@ -35,8 +35,8 @@ function PasswordInput({
         onChange={(e) => handleChange(e.target.value)}
         id={inputIdentifier}
         onBlur={() => {
-          if (handleOnBlur) handleOnBlur()
-          else return
+          if (handleOnBlur) handleOnBlur();
+          else return;
         }}
         readOnly={!editable}
         type="password"
@@ -44,7 +44,7 @@ function PasswordInput({
         className="w-full rounded-md border border-gray-200 p-3 text-sm shadow-sm outline-none placeholder:italic"
       />
     </div>
-  )
+  );
 }
 
-export default PasswordInput
+export default PasswordInput;

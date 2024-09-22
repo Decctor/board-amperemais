@@ -1,6 +1,6 @@
 import { apiHandler } from '@/lib/api'
 import { getDayStringsBetweenDates, getYearStringsBetweenDates } from '@/lib/dates'
-import { PeriodQueryParamWithGroupingSchema } from '@/schemas/query-params-utils'
+import { SalesGraphFilterSchema, TSalesGraphFilters } from '@/schemas/query-params-utils'
 import { TSale } from '@/schemas/sales'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
 import { TIntervalGrouping } from '@/utils/graphs'
@@ -15,12 +15,12 @@ export type TSaleGraph = {
 }[]
 
 const getSalesGraphStatsRoute: NextApiHandler<{ data: TSaleGraph }> = async (req, res) => {
-  const { period, group } = PeriodQueryParamWithGroupingSchema.parse(req.body)
+  const { period, group, total, saleNatures, sellers } = SalesGraphFilterSchema.parse(req.body)
 
   const db = await connectToDatabase()
   const salesCollection: Collection<TSale> = db.collection('sales')
 
-  const sales = await getSales({ collection: salesCollection, after: period.after, before: period.before })
+  const sales = await getSales({ collection: salesCollection, after: period.after, before: period.before, total, saleNatures, sellers })
 
   const stats = sales.reduce((acc: { [key: string]: { qtde: number; total: number } }, current) => {
     if (group == 'DIA') {
@@ -107,28 +107,34 @@ function getInitialGroupReduce({ initialDate, endDate, group }: { initialDate: s
 }
 
 type TSaleResult = {
-  cliente: TSale['cliente']
   dataVenda: TSale['dataVenda']
-  natureza: TSale['natureza']
-  parceiro: TSale['parceiro']
   valor: TSale['valor']
-  vendedor: TSale['vendedor']
 }
 type GetSalesParams = {
   collection: Collection<TSale>
   after: string
   before: string
+  total: TSalesGraphFilters['total']
+  saleNatures: TSalesGraphFilters['saleNatures']
+  sellers: TSalesGraphFilters['sellers']
 }
-async function getSales({ collection, after, before }: GetSalesParams) {
+async function getSales({ collection, after, before, total, saleNatures, sellers }: GetSalesParams) {
   try {
-    const match: Filter<TSale> = { $and: [{ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } }] }
+    function getAndQuery() {
+      const andQueryArr: Filter<TSale>[] = []
+      if (after && before) andQueryArr.push({ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } })
+      if (total.min) andQueryArr.push({ valor: { $gte: total.min } })
+      if (total.max) andQueryArr.push({ valor: { $lte: total.max } })
+
+      return { $and: andQueryArr }
+    }
+    const andQuery: Filter<TSale> = getAndQuery()
+    const saleNaturesQuery: Filter<TSale> = saleNatures.length > 0 ? { natureza: { $in: saleNatures } } : {}
+    const sellersQuery: Filter<TSale> = sellers.length > 0 ? { vendedor: { $in: sellers } } : {}
+    const match: Filter<TSale> = { ...andQuery, ...saleNaturesQuery, ...sellersQuery }
     const projection = {
-      cliente: 1,
       dataVenda: 1,
-      natureza: 1,
-      parceiro: 1,
       valor: 1,
-      vendedor: 1,
     }
     const result = await collection.aggregate([{ $match: match }, { $project: projection }]).toArray()
 

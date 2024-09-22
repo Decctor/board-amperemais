@@ -9,7 +9,7 @@ function UnauthenticatedPage() {
         <Image src={Unauthenticated} fill={true} alt="Não autenticado." />
       </div>
       <p className="text-sm font-medium italic text-gray-500 text-center">Oops, aparentemente você não está autenticado.</p>
-      <Link href={'/login'}>
+      <Link href={'/auth/login'}>
         <p className="font-medium bg-gray-800 text-white px-3 py-2 rounded-lg hover:bg-cyan-500 duration-300 ease-in-out">Clique aqui para fazer seu login.</p>
       </Link>
     </div>
