@@ -6,7 +6,7 @@ import { useDebounce } from 'use-debounce'
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '../ui/chart'
 import { cn } from '@/lib/utils'
 import { BsFillFileBarGraphFill } from 'react-icons/bs'
-import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from 'recharts'
 
 const currentDate = new Date()
 const firstDayOfMonth = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()

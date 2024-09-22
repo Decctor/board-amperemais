@@ -34,7 +34,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
     sellers: userViewPermissions == 'GERAL' ? [] : [session._id],
   })
   const [filtersDebounced] = useDebounce(filters, 1000)
-  const { data } = useRFMData({ ...filtersDebounced })
+  const { data, selectFilters, setSelectFilters } = useRFMData({ ...filtersDebounced })
   const gridItems = [
     {
       text: 'NÃO PODE PERDÊ-LOS',
@@ -173,6 +173,22 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
             width="100%"
           />
         </div>
+        <div className="w-full lg:w-[150px]">
+          <MultipleSelectInput
+            label="CATEGORIA DO CLIENTE"
+            selected={selectFilters.rfmLabels}
+            handleChange={(value) =>
+              setSelectFilters((prev) => ({
+                ...prev,
+                rfmLabels: value as string[],
+              }))
+            }
+            onReset={() => setSelectFilters((prev) => ({ ...prev, rfmLabels: [] }))}
+            options={gridItems.map((item) => ({ id: item.text, label: item.text, value: item.text }))}
+            selectedItemLabel="NÃO DEFINIDO"
+            width="100%"
+          />
+        </div>
       </div>
       <div className="w-full flex items-center flex-col lg:flex-row gap-2 h-full p-6">
         <div className="w-full lg:w-1/2 h-full">
@@ -180,6 +196,16 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
             <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
               <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">CLIENTES</h1>
             </div>
+            <div className="px-1 lg:px-6 w-full py-2">
+              <TextInput
+                label="NOME DO CLIENTE"
+                showLabel={false}
+                placeholder="Filtre pelo nome do cliente..."
+                value={selectFilters.clientName}
+                handleChange={(value) => setSelectFilters((prev) => ({ ...prev, clientName: value }))}
+              />
+            </div>
+
             <div className="px-1 lg:px-6 py-2 flex flex-col max-h-[500px] lg:max-h-[750px] w-full gap-2 grow scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 overflow-y-auto overscroll-y-auto">
               {data?.map((client) => (
                 <div key={client.clientId} className="border border-primary flex flex-col px-3 py-2 rounded w-full">
