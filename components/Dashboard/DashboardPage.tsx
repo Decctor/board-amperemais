@@ -156,6 +156,24 @@ export default function DashboardPage({ user }: DashboardPageProps) {
         {isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
         {isSuccess ? (
           <div className="w-full flex flex-col grow gap-2 py-2">
+            <div className="w-full flex flex-col gap-1 rounded-xl border border-primary shadow-sm  overflow-hidden">
+              <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white ">
+                <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">ACOMPANHAMENTO DE META DO PERÍODO</h1>
+                <VscDiffAdded size={12} />
+              </div>
+              <div className="w-full flex items-center justify-center p-2">
+                <GoalTrackingBar
+                  barBgColor="bg-gradient-to-r from-yellow-200 to-amber-400"
+                  goalText={`${stats.faturamentoMeta}`}
+                  barHeigth="25px"
+                  valueGoal={stats.faturamentoMeta}
+                  valueHit={stats.faturamentoBruto}
+                  formattedValueGoal={formatToMoney(stats.faturamentoMeta || 0)}
+                  formattedValueHit={formatToMoney(stats.faturamentoBruto || 0)}
+                />
+              </div>
+            </div>
+
             <div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
               <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
                 <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
@@ -351,6 +369,59 @@ function ProductNameGraph({ data }: { data: TGeneralSalesStats['porItem'] }) {
             <h1 className="text-xs lg:text-base font-black">{formatToMoney(d.total)}</h1>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+type GoalTrackingBarProps = {
+  valueGoal?: number
+  valueHit: number
+  formattedValueGoal?: string
+  formattedValueHit?: string
+  goalText: string
+  barHeigth: string
+  barBgColor: string
+}
+function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedValueHit, goalText, barHeigth, barBgColor }: GoalTrackingBarProps) {
+  function getPercentage({ goal, hit }: { goal: number | undefined; hit: number | undefined }) {
+    if (!hit || hit == 0) return '0%'
+    if (!goal && hit) return '100%'
+    if (goal && !hit) return '0%'
+    if (goal && hit) {
+      var percentage = ((hit / goal) * 100).toFixed(2)
+      return `${percentage}%`
+    }
+    // return `${(Math.random() * 100).toFixed(2)}%`
+  }
+  function getWidth({ goal, hit }: { goal: number | undefined; hit: number | undefined }) {
+    if (!hit || hit == 0) return '0%'
+    if (!goal && hit) return '100%'
+    if (goal && !hit) return '0%'
+    if (goal && hit) {
+      var percentage: number | string = (hit / goal) * 100
+      percentage = percentage > 100 ? 100 : percentage.toFixed(2)
+      return `${percentage}%`
+    }
+    // return `${(Math.random() * 100).toFixed(2)}%`
+  }
+
+  return (
+    <div className="flex w-full items-center gap-1">
+      <div className="flex grow gap-2">
+        <div className="grow">
+          <div
+            style={{ width: getWidth({ goal: valueGoal, hit: valueHit }), height: barHeigth }}
+            className={cn('flex items-center justify-center rounded-sm text-xs text-white shadow-sm', barBgColor)}
+          ></div>
+        </div>
+      </div>
+      <div className="flex min-w-[70px] flex-col items-end justify-end lg:min-w-[100px]">
+        <p className="text-xs font-medium uppercase tracking-tight lg:text-sm">{getPercentage({ goal: valueGoal, hit: valueHit })}</p>
+        <p className="text-[0.5rem] italic text-gray-500 lg:text-[0.65rem]">
+          <strong>{formattedValueHit || valueHit?.toLocaleString('pt-br', { maximumFractionDigits: 2 }) || 0}</strong> de{' '}
+          <strong>{formattedValueGoal || valueGoal?.toLocaleString('pt-br', { maximumFractionDigits: 2 }) || 0}</strong>{' '}
+        </p>
       </div>
     </div>
   )
