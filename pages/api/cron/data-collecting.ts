@@ -9,8 +9,8 @@ dayjs.extend(dayjsCustomFormatter)
 
 export default async function getResults(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const currentDateFormatted = dayjs().subtract(3, 'hour').format('DD/MM/YYYY').replaceAll('/', '')
-    console.log('DATA BEING USED', dayjs().format('DD/MM/YYYY HH:mm'), dayjs().subtract(3, 'hour').format('DD/MM/YYYY HH:mm'), currentDateFormatted)
+    const currentDateFormatted = dayjs().subtract(5, 'hour').format('DD/MM/YYYY').replaceAll('/', '')
+    console.log('DATA BEING USED', dayjs().format('DD/MM/YYYY HH:mm'), dayjs().subtract(5, 'hour').format('DD/MM/YYYY HH:mm'), currentDateFormatted)
     console.log('TOKEN', process.env.ONLINE_API_TOKEN)
     const { data: onlineAPIResponse } = await axios.post('https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php', {
       token: process.env.ONLINE_API_TOKEN,
