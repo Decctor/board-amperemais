@@ -10,6 +10,8 @@ dayjs.extend(dayjsCustomFormatter)
 export default async function getResults(req: NextApiRequest, res: NextApiResponse) {
   try {
     const currentDateFormatted = dayjs().format('DD/MM/YYYY').replaceAll('/', '')
+    console.log('DATA BEING USED', currentDateFormatted)
+    console.log('TOKEN', process.env.ONLINE_API_TOKEN)
     const { data: onlineAPIResponse } = await axios.post('https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php', {
       token: process.env.ONLINE_API_TOKEN,
       rotina: 'listarVendas001',
