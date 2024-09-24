@@ -17,7 +17,7 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
       dtfim: currentDateFormatted,
     })
     const onlineResults = onlineAPIResponse.resultado
-
+    console.log('ONLINE RESULTS', onlineResults)
     // Verificar se onlineResults é um array
     if (!Array.isArray(onlineResults)) {
       console.error('onlineResults não é um array:', onlineResults)
