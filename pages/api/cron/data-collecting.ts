@@ -74,5 +74,5 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
     const clientsInsertResponse = await clientsCollection.insertMany(clientsToInsert)
     console.log(clientsInsertResponse)
   }
-  return res.status(201).json('EXECUTADO COM SUCESSO!')
+  return res.status(201).json('EXECUTADO COM SUCESSO')
 }
