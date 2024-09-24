@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/data-collecting",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/data-rfm-analysis",
+      "schedule": "0 5 * * *"
     }
   ]
 }

@@ -299,7 +299,7 @@ function SellersGraph({ data }: { data: TGeneralSalesStats['porVendedor'] }) {
         </div>
       </div>
 
-      <div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] max-h-[450px]">
+      <div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] :max-h-[450px]">
         <ResponsiveContainer className={'w-full h-full'}>
           <ChartContainer config={chartConfig} className="w-full h-full">
             <BarChart accessibilityLayer data={data.sort((a, b) => (type == 'total' ? b.total - a.total : b.qtde - a.qtde))} layout="vertical">
@@ -360,7 +360,7 @@ function ProductGroupsGraph({ data }: { data: TGeneralSalesStats['porGrupo'] }) 
           <FaLayerGroup size={12} />
         </div>
       </div>
-      <div className="px-6 py-2 flex w-full flex-col gap-2 h-[350px] max-h-[350px]">
+      <div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px]">
         <ChartContainer config={projectTypesChartConfig} className="h-full">
           <PieChart>
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
@@ -373,7 +373,7 @@ function ProductGroupsGraph({ data }: { data: TGeneralSalesStats['porGrupo'] }) 
                 return `${formatDecimalPlaces((100 * x.value) / total)}%`
               }}
               innerRadius={60}
-              strokeWidth={5}
+              strokeWidth={2}
             ></Pie>
             <ChartLegend content={<ChartLegendContent color="#000" />} className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center" />
           </PieChart>

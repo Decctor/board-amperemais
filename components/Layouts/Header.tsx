@@ -12,11 +12,13 @@ type HeaderProps = {
 function Header({ session }: HeaderProps) {
   return (
     <div className="border-b border-gray-300 shadow-sm rounded-bl rounded-br w-full flex items-center justify-between gap-2 p-3">
-      <div className="p-2 flex items-center justify-center rounded-full bg-white">
-        <div className="min-w-[25px] w-[25px] min-h-[25px] h-[25px] relative">
-          <Image src={LogoIcon} alt="Logo Ampère+" fill={true} />
+      <Link href="/">
+        <div className="p-2 flex items-center justify-center rounded-full bg-white">
+          <div className="min-w-[25px] w-[25px] min-h-[25px] h-[25px] relative">
+            <Image src={LogoIcon} alt="Logo Ampère+" fill={true} />
+          </div>
         </div>
-      </div>
+      </Link>
 
       <div className="flex items-center gap-2">
         <div className="text-xs lg:text-sm font-bold">{session.nome}</div>
