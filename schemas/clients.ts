@@ -5,3 +5,4 @@ export const ClientSchema = z.object({
 })
 
 export type TClient = z.infer<typeof ClientSchema>
+export type TClientDTO = TClient & { _id: string }

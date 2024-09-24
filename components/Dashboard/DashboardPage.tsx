@@ -324,7 +324,10 @@ function SellersGraph({ data }: { data: TGeneralSalesStats['porVendedor'] }) {
 }
 
 function ProductGroupsGraph({ data }: { data: TGeneralSalesStats['porGrupo'] }) {
+  const [type, setType] = useState<'qtde' | 'total'>('total')
+
   const Collors = ['#15599a', '#fead41', '#ff595e', '#8ac926', '#6a4c93', '#5adbff']
+  const total = data.reduce((acc, current) => (type == 'total' ? acc + current.total : acc + current.qtde), 0)
   const graphData = data
     .filter((d) => d.qtde > 100)
     .sort((a, b) => b.qtde - a.qtde)
@@ -335,13 +338,43 @@ function ProductGroupsGraph({ data }: { data: TGeneralSalesStats['porGrupo'] }) 
     <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
       <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
         <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">PARTICIPAÇÃO POR GRUPO</h1>
-        <FaLayerGroup size={12} />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setType('total')}
+            className={cn(
+              'px-2 py-0.5 text-[0.6rem] font-medium border border-white rounded',
+              type == 'total' ? 'bg-white text-black' : 'bg-transparent text-white'
+            )}
+          >
+            VALOR
+          </button>
+          <button
+            onClick={() => setType('qtde')}
+            className={cn(
+              'px-2 py-0.5 text-[0.6rem] font-medium border border-white rounded',
+              type == 'qtde' ? 'bg-white text-black' : 'bg-transparent text-white'
+            )}
+          >
+            QUANTIDADE
+          </button>
+          <FaLayerGroup size={12} />
+        </div>
       </div>
       <div className="px-6 py-2 flex w-full flex-col gap-2 h-[350px] max-h-[350px]">
         <ChartContainer config={projectTypesChartConfig} className="h-full">
           <PieChart>
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-            <Pie data={graphData} dataKey="qtde" nameKey="titulo" innerRadius={60} strokeWidth={5}></Pie>
+            <Pie
+              data={graphData}
+              dataKey={type}
+              nameKey="titulo"
+              label={(x) => {
+                console.log('PIE', x)
+                return `${formatDecimalPlaces((100 * x.value) / total)}%`
+              }}
+              innerRadius={60}
+              strokeWidth={5}
+            ></Pie>
             <ChartLegend content={<ChartLegendContent color="#000" />} className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center" />
           </PieChart>
         </ChartContainer>
@@ -350,15 +383,37 @@ function ProductGroupsGraph({ data }: { data: TGeneralSalesStats['porGrupo'] }) 
   )
 }
 function ProductNameGraph({ data }: { data: TGeneralSalesStats['porItem'] }) {
+  const [type, setType] = useState<'qtde' | 'total'>('total')
+  const dataSorted = data.sort((a, b) => (type == 'total' ? b.total - a.total : b.qtde - a.qtde))
   return (
     <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
       <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
         <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">PARTICIPAÇÃO POR ITEM</h1>
-        <BsCart size={12} />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setType('total')}
+            className={cn(
+              'px-2 py-0.5 text-[0.6rem] font-medium border border-white rounded',
+              type == 'total' ? 'bg-white text-black' : 'bg-transparent text-white'
+            )}
+          >
+            VALOR
+          </button>
+          <button
+            onClick={() => setType('qtde')}
+            className={cn(
+              'px-2 py-0.5 text-[0.6rem] font-medium border border-white rounded',
+              type == 'qtde' ? 'bg-white text-black' : 'bg-transparent text-white'
+            )}
+          >
+            QUANTIDADE
+          </button>
+          <BsCart size={12} />
+        </div>
       </div>
       <div className="px-6 py-4 flex w-full flex-col gap-3 h-[350px] max-h-[350px] scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 overflow-y-auto overscroll-y-auto">
-        {data.map((d, index) => (
-          <div key={index} className="w-full flex items-center justify-between gap-2">
+        {dataSorted.map((d, index) => (
+          <div key={`${type}-${index}`} className="w-full flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               <div className="w-6 h-6 rounded-full flex items-center justify-center border border-primary">
                 <BsCart size={10} />
@@ -366,7 +421,7 @@ function ProductNameGraph({ data }: { data: TGeneralSalesStats['porItem'] }) {
               <h1 className="hidden lg:block text-[0.6rem] lg:text-xs tracking-tight font-medium">{d.titulo}</h1>
               <h1 className="block lg:hidden text-[0.6rem] lg:text-xs tracking-tight font-medium">{formatLongString(d.titulo, 25)}</h1>
             </div>
-            <h1 className="text-xs lg:text-base font-black">{formatToMoney(d.total)}</h1>
+            <h1 className="text-xs lg:text-base font-black">{type == 'total' ? formatToMoney(d.total) : d.qtde}</h1>
           </div>
         ))}
       </div>

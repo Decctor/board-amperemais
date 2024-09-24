@@ -5,6 +5,7 @@ import LogoIcon from '@/utils/images/logo-icon.png'
 import Link from 'next/link'
 import { MdLogout, MdSettings } from 'react-icons/md'
 import { Settings } from 'lucide-react'
+import { BsDatabaseFill } from 'react-icons/bs'
 type HeaderProps = {
   session: TUserSession
 }
@@ -18,7 +19,14 @@ function Header({ session }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="text-sm font-bold">{session.nome}</div>
+        <div className="text-xs lg:text-sm font-bold">{session.nome}</div>
+        {session.visualizacao == 'GERAL' ? (
+          <Link href={'/databases'}>
+            <button className="text-sm hover:bg-gray-200 ease-in-out duration-300 rounded-full p-2">
+              <BsDatabaseFill />
+            </button>
+          </Link>
+        ) : null}
         {session.visualizacao == 'GERAL' ? (
           <Link href={'/admin/configuracoes'}>
             <button className="text-sm hover:bg-gray-200 ease-in-out duration-300 rounded-full p-2">
