@@ -50,6 +50,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
             analiseRFM: {
               notas: { recencia: recencyScore, frequencia: frequencyScore },
               titulo: label,
+              ultimaAtualizacao: new Date().toISOString(),
             },
             analisePeriodo: {
               recencia: recency,
