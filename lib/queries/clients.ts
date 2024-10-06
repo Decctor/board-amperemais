@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { useState } from 'react'
 import { formatWithoutDiacritics } from '../formatting'
-import { TClient, TClientDTO } from '@/schemas/clients'
+import { TClient, TClientDTO, TClientSearchQueryParams } from '@/schemas/clients'
+import { TClientsBySearch } from '@/pages/api/clients/search'
 
 async function fetchClients() {
   try {
@@ -33,5 +34,38 @@ export function useClients() {
     }),
     filters,
     setFilters,
+  }
+}
+
+async function fetchClientsBySearch(params: TClientSearchQueryParams) {
+  try {
+    const { data } = await axios.post('/api/clients/search', params)
+
+    return data.data as TClientsBySearch
+  } catch (error) {
+    throw error
+  }
+}
+
+export function useClientsBySearch() {
+  const [queryParams, setQueryParams] = useState<TClientSearchQueryParams>({
+    page: 1,
+    name: '',
+    phone: '',
+    acquisitionChannels: [],
+    period: { after: null, before: null },
+  })
+
+  function updateQueryParams(newParams: Partial<TClientSearchQueryParams>) {
+    setQueryParams((prevParams) => ({ ...prevParams, ...newParams }))
+  }
+
+  return {
+    ...useQuery({
+      queryKey: ['clients-by-search', queryParams.page, queryParams.name, queryParams.phone, queryParams.acquisitionChannels, queryParams.period],
+      queryFn: () => fetchClientsBySearch(queryParams),
+    }),
+    queryParams,
+    updateQueryParams,
   }
 }

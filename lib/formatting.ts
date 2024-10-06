@@ -16,9 +16,14 @@ export function formatDateForInput(value: any) {
   if (isNaN(new Date(value).getMilliseconds())) return undefined
   return new Date(value).toISOString().slice(0, 10)
 }
-export function formatDateInputChange(value: any) {
-  if (isNaN(new Date(value).getMilliseconds())) return undefined
-  return new Date(value).toISOString()
+export function formatDateInputChange(value: any, returnType?: 'date' | 'string', normalizeHours: boolean = true) {
+  if (isNaN(new Date(value).getMilliseconds())) return null
+  if (!returnType || returnType === 'string') {
+    if (!normalizeHours) return new Date(value).toISOString()
+    return dayjs(value).add(3, 'hours').toISOString()
+  }
+  if (!normalizeHours) return new Date(value)
+  return dayjs(value).add(3, 'hours').toDate()
 }
 export function formatToDateTime(date: string | null) {
   if (!date) return ''
@@ -72,4 +77,29 @@ export function formatLongString(str: string, size: number) {
   } else {
     return str
   }
+}
+
+export function formatToPhone(value: string): string {
+  if (!value) return ''
+  value = value.replace(/\D/g, '')
+  value = value.replace(/(\d{2})(\d)/, '($1) $2')
+  value = value.replace(/(\d)(\d{4})$/, '$1-$2')
+  return value
+}
+export function formatToCPForCNPJ(value: string): string {
+  const cnpjCpf = value.replace(/\D/g, '')
+
+  if (cnpjCpf.length === 11) {
+    return cnpjCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/g, '$1.$2.$3-$4')
+  }
+
+  return cnpjCpf.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/g, '$1.$2.$3/$4-$5')
+}
+export function formatToCEP(value: string): string {
+  let cep = value
+    .replace(/\D/g, '')
+    .replace(/(\d{5})(\d)/, '$1-$2')
+    .replace(/(-\d{3})\d+?$/, '$1')
+
+  return cep
 }

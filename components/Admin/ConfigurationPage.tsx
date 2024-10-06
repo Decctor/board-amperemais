@@ -5,12 +5,13 @@ import ErrorComponent from '../Layouts/ErrorComponent'
 import { cn } from '@/lib/utils'
 import UsersView from './UsersView'
 import SaleGoalsView from './SaleGoalsView'
+import MarketingControlView from './MarketingControlsView'
 
 type ConfigurationPageProps = {
   session: TUserSession
 }
 function ConfigurationPage({ session }: ConfigurationPageProps) {
-  const [view, setView] = useState<'users' | 'goals'>('users')
+  const [view, setView] = useState<'users' | 'goals' | 'marketing-controls'>('users')
 
   if (session.visualizacao != 'GERAL')
     return (
@@ -43,9 +44,19 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
           >
             Painel de Metas
           </button>
+          <button
+            onClick={() => setView('marketing-controls')}
+            className={cn(
+              'px-2 py-1 rounded-lg bg-transparent font-bold tracking-tight duration-300 ease-in-out',
+              view == 'marketing-controls' ? 'bg-[#fead41] text-[#15599a]' : 'hover:bg-gray-100'
+            )}
+          >
+            Painel de Marketing
+          </button>
         </div>
         {view == 'users' ? <UsersView session={session} /> : null}
         {view == 'goals' ? <SaleGoalsView session={session} /> : null}
+        {view == 'marketing-controls' ? <MarketingControlView session={session} /> : null}
       </div>
     </div>
   )

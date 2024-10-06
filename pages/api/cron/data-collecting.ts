@@ -2,7 +2,7 @@ import { TClient } from '@/schemas/clients'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
 import axios from 'axios'
 import dayjs from 'dayjs'
-import { Collection, ObjectId } from 'mongodb'
+import { Collection, ObjectId, WithId } from 'mongodb'
 import { NextApiRequest, NextApiResponse } from 'next'
 import dayjsCustomFormatter from 'dayjs/plugin/customParseFormat'
 dayjs.extend(dayjsCustomFormatter)
@@ -34,7 +34,7 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
     const clients = await clientsCollection.find({}, { projection: { nome: 1 } }).toArray()
 
     var salesItems: any[] = []
-    var clientsToInsert: any[] = []
+    var clientsToInsert: WithId<TClient>[] = []
     const allSales = onlineResults
 
     const allSalesFormatted = allSales.map((sale: any, index: number) => {

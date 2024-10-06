@@ -3,9 +3,9 @@ import React from 'react'
 import { Button } from '../ui/button'
 import { BsCalendarCheck, BsCheck } from 'react-icons/bs'
 import { ptBR } from 'date-fns/locale'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { formatDateAsLocale } from '@/lib/formatting'
-import { Calendar } from '@/components/ui/calendar'
+import { Calendar } from '../ui/calendar'
 type CheckboxWithDateProps = {
   date: Date | string | null
   labelTrue: string
@@ -18,7 +18,7 @@ function CheckboxWithDate({ date, labelTrue, labelFalse, showDate = true, handle
   return (
     <Popover>
       <PopoverTrigger disabled={!editable} asChild className="flex flex-col border-0 hover:bg-transparent">
-        <Button variant={'outline'} className={cn('flex flex-col gap-1', !date && 'text-muted-foreground')}>
+        <Button variant={'outline'} className={cn('flex flex-col gap-1 shadow-none', !date && 'text-muted-foreground')}>
           <div className="flex items-center gap-2">
             <div className={`flex h-[16px] w-[16px] items-center justify-center rounded-full border border-black`}>
               {date ? <BsCheck style={{ color: 'black' }} /> : null}

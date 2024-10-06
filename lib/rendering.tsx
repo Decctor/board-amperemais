@@ -54,7 +54,6 @@ export function renderPaginationPageItemsIcons({
   } else {
     // If active page is around the middle of the total pages
     if (totalPages - activePage > 3 && activePage - 1 > 3) {
-      console.log('AQUI 1')
       pages = [1, '...', activePage - 1, activePage, activePage + 1, '...', totalPages]
     } else {
       // if active page is 3 elements from the total page
@@ -73,8 +72,8 @@ export function renderPaginationPageItemsIcons({
         return selectPage(p)
       }}
       className={`${
-        activePage == p ? 'border-black bg-black text-white' : 'border-transparent text-black hover:bg-gray-500'
-      } max-w-10 min-w-10 min-h-10 h-10 max-h-10 w-10 rounded-full border text-xs font-medium`}
+        activePage == p ? 'border-primary bg-primary text-secondary' : 'border-transparent text-primary hover:bg-primary/50'
+      } h-8 max-h-10 min-h-8 w-8 min-w-8 max-w-10 rounded-full border text-xs font-medium lg:h-10 lg:min-h-10 lg:w-10 lg:min-w-10`}
     >
       {p}
     </button>
