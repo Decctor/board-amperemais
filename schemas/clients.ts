@@ -6,6 +6,8 @@ export const ClientSchema = z.object({
   email: z.string({ invalid_type_error: 'Tipo não válido para email.' }).optional().nullable(),
   canalAquisicao: z.string({ invalid_type_error: 'Tipo não válido para canal de aquisição.' }).optional().nullable(),
   dataInsercao: z.string({ invalid_type_error: 'Tipo não válido para data de inserção.' }).optional().nullable(),
+  dataPrimeiraCompra: z.string({ invalid_type_error: 'Tipo não válido para data da primeira compra.' }),
+  idPrimeiraCompra: z.string({ invalid_type_error: 'Tipo não válido para data da primeira compra.' }),
   autor: z
     .object({
       id: z.string({ required_error: 'ID do autor não informado.', invalid_type_error: 'Tipo não válido para o ID do autor.' }),

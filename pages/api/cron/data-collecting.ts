@@ -71,7 +71,7 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
         }
       } else {
         const clientObjectId = new ObjectId()
-        clientsToInsert = [...clientsToInsert, { _id: clientObjectId, nome: sale.cliente }]
+        clientsToInsert = [...clientsToInsert, { _id: clientObjectId, nome: sale.cliente, dataInsercao: dateFormatted, dataPrimeiraCompra: dateFormatted }]
         return { ...sale, valor: Number(sale.valor), dataVenda: dateFormatted, idCliente: clientObjectId.toString(), itens: salesItemsFormatted, custoTotal }
       }
     })

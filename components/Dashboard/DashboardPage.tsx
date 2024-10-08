@@ -125,7 +125,7 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                       ...prev,
                       period: {
                         ...prev.period,
-                        after: formatDateInputChange(value) || firstDayOfMonth,
+                        after: (formatDateInputChange(value) as string) || firstDayOfMonth,
                       },
                     }))
                   }
@@ -142,7 +142,7 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                       ...prev,
                       period: {
                         ...prev.period,
-                        before: formatDateInputChange(value) || lastDayOfMonth,
+                        before: (formatDateInputChange(value) as string) || lastDayOfMonth,
                       },
                     }))
                   }

@@ -106,3 +106,21 @@ export const SalesGeneralStatsFiltersSchema = z.object({
   sellers: z.array(z.string({ required_error: 'Nome do vendedor não informado.', invalid_type_error: 'Tipo não válido para o nome do vendedor.' })),
 })
 export type TSalesGeneralStatsFilters = z.infer<typeof SalesGeneralStatsFiltersSchema>
+
+export const SalesMarketingStatsFiltersSchema = z.object({
+  period: z.object({
+    after: z
+      .string({
+        required_error: 'Parâmetros de período não fornecidos ou inválidos.',
+        invalid_type_error: 'Parâmetros de período não fornecidos ou inválidos.',
+      })
+      .datetime({ message: 'Tipo inválido para parâmetro de período.' }),
+    before: z
+      .string({
+        required_error: 'Parâmetros de período não fornecidos ou inválidos.',
+        invalid_type_error: 'Parâmetros de período não fornecidos ou inválidos.',
+      })
+      .datetime({ message: 'Tipo inválido para parâmetro de período.' }),
+  }),
+})
+export type TSalesMarketingStatsFilters = z.infer<typeof SalesMarketingStatsFiltersSchema>
