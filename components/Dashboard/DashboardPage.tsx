@@ -418,6 +418,7 @@ function ProductNameGraph({ data }: { data: TGeneralSalesStats['porItem'] }) {
               <div className="w-6 h-6 rounded-full flex items-center justify-center border border-primary">
                 <BsCart size={10} />
               </div>
+              <h1 className="rounded-full p-1 text-[0.55rem] bg-[#15599a] text-white font-bold">{index + 1}º</h1>
               <h1 className="hidden lg:block text-[0.6rem] lg:text-xs tracking-tight font-medium">{d.titulo}</h1>
               <h1 className="block lg:hidden text-[0.6rem] lg:text-xs tracking-tight font-medium">{formatLongString(d.titulo, 25)}</h1>
             </div>
