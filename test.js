@@ -1,3 +1,9 @@
-const dayjs = require('dayjs')
+function formatToCPForCNPJ(value) {
+  const cnpjCpf = value.replace(/\D/g, '')
 
-console.log(dayjs('2024-09-30T03:00:00.000Z').endOf('day').toISOString())
+  if (cnpjCpf.length === 11) {
+    return cnpjCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/g, '$1.$2.$3-$4')
+  }
+
+  return cnpjCpf.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/g, '$1.$2.$3/$4-$5')
+}

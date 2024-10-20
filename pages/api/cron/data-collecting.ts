@@ -38,6 +38,7 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
     const allSales = onlineResults
 
     const allSalesFormatted = allSales.map((sale: any, index: number) => {
+      const saleId = new ObjectId()
       const dateFormatted = dayjs(sale.data, 'DD/MM/YYYY').toISOString()
       const salesItemsFormatted = sale.itens.map((saleItem: any) => ({
         ...saleItem,
@@ -63,6 +64,7 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
       if (!!equivalentClient) {
         return {
           ...sale,
+          _id: saleId,
           valor: Number(sale.valor),
           dataVenda: dateFormatted,
           idCliente: equivalentClient._id.toString(),
@@ -71,8 +73,26 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
         }
       } else {
         const clientObjectId = new ObjectId()
-        clientsToInsert = [...clientsToInsert, { _id: clientObjectId, nome: sale.cliente, dataInsercao: dateFormatted, dataPrimeiraCompra: dateFormatted }]
-        return { ...sale, valor: Number(sale.valor), dataVenda: dateFormatted, idCliente: clientObjectId.toString(), itens: salesItemsFormatted, custoTotal }
+        clientsToInsert = [
+          ...clientsToInsert,
+          {
+            _id: clientObjectId,
+            nome: sale.cliente,
+            telefone: sale.clientefone,
+            dataInsercao: dateFormatted,
+            dataPrimeiraCompra: dateFormatted,
+            idPrimeiraCompra: saleId.toString(),
+          },
+        ]
+        return {
+          ...sale,
+          _id: saleId,
+          valor: Number(sale.valor),
+          dataVenda: dateFormatted,
+          idCliente: clientObjectId.toString(),
+          itens: salesItemsFormatted,
+          custoTotal,
+        }
       }
     })
     if (allSalesFormatted.length > 0) {
