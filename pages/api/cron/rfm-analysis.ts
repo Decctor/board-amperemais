@@ -7,6 +7,9 @@ import { Collection, Filter, ObjectId } from 'mongodb'
 import { TClient } from '@/schemas/clients'
 import { getRFMLabel, TRFMConfig } from '@/utils/rfm'
 
+export const config = {
+  maxDuration: 25,
+}
 const intervalStart = dayjs().subtract(12, 'month').startOf('day').toISOString()
 const intervalEnd = dayjs().endOf('day').toISOString()
 
