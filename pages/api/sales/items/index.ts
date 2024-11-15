@@ -24,6 +24,11 @@ const getSaleItemsRoute: NextApiHandler<GetResponse> = async (req, res) => {
       {
         $group: {
           _id: '$itens.descricao',
+          descricao: { $first: '$itens.descricao' },
+          unidade: { $first: '$itens.unidade' },
+          valorunit: { $first: '$itens.valorunit' },
+          vprod: { $first: '$itens.vprod' },
+          vcusto: { $first: '$itens.vcusto' },
         },
       },
       {

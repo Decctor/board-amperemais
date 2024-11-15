@@ -32,3 +32,13 @@ const SaleItemSchema = z.object({
 })
 
 export type TSaleItem = z.infer<typeof SaleItemSchema>
+export type TSaleItemSimplified = {
+  descricao: TSaleItem['descricao']
+  unidade: TSaleItem['unidade']
+  valorunit: TSaleItem['valorunit']
+  vprod: TSaleItem['vprod']
+  vcusto: TSaleItem['vcusto']
+}
+export type TSaleItemSimplifiedDTO = TSaleItemSimplified & {
+  _id: string
+}
