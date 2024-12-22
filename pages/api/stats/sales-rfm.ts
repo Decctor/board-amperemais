@@ -37,15 +37,21 @@ const getSalesRFM: NextApiHandler<{ data: TRFMResult }> = async (req, res) => {
   }
   const db = await connectToDatabase()
   const clientsCollection: Collection<TClient> = db.collection('clients')
-  const salesCollection: Collection<TSale> = db.collection('sales')
-  const utilsCollection: Collection<TRFMConfig> = db.collection('utils')
 
   const allClients = await clientsCollection.find({}).toArray()
-  const sales = await getSales({ collection: salesCollection, after: period.after, before: period.before, total, saleNatures, sellers })
-  const rfmConfig = (await utilsCollection.findOne({ identificador: 'CONFIG_RFM' })) as TRFMConfig
 
-  const rfm = categorizeRFM(allClients, sales, rfmConfig)
-  return res.status(200).json({ data: rfm })
+  const rfmResult: TRFMResult = allClients.map((client) => {
+    return {
+      clientName: client.nome,
+      clientId: client._id.toString(),
+      recency: client.analisePeriodo.recencia,
+      frequency: client.analisePeriodo.frequencia,
+      monetary: client.analisePeriodo.valor,
+      rfmScore: { recency: client.analiseRFM.notas.recencia, frequency: client.analiseRFM.notas.frequencia },
+      rfmLabel: client.analiseRFM.titulo,
+    }
+  })
+  return res.status(200).json({ data: rfmResult })
 }
 
 export default apiHandler({ POST: getSalesRFM })

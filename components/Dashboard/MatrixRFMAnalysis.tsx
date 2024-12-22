@@ -236,7 +236,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
                     <div className="flex items-center gap-1">
                       <BsCalendar width={10} height={10} />
                       <h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">DIAS DESDE ÚLTIMA COMPRA</h1>
-                      <h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">{client.recency} DIAS</h1>
+                      <h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">{client.recency ? `${client.recency} DIAS` : 'N/A'}</h1>
                     </div>
                   </div>
                 </div>

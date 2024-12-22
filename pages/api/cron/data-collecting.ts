@@ -82,6 +82,19 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
             dataInsercao: dateFormatted,
             dataPrimeiraCompra: dateFormatted,
             idPrimeiraCompra: saleId.toString(),
+            analiseRFM: {
+              notas: {
+                recencia: 0,
+                frequencia: 0,
+              },
+              titulo: '',
+              ultimaAtualizacao: '',
+            },
+            analisePeriodo: {
+              recencia: 0,
+              frequencia: 0,
+              valor: 0,
+            },
           },
         ]
         return {

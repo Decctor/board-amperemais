@@ -8,6 +8,19 @@ export const ClientSchema = z.object({
   dataInsercao: z.string({ invalid_type_error: 'Tipo não válido para data de inserção.' }).optional().nullable(),
   dataPrimeiraCompra: z.string({ invalid_type_error: 'Tipo não válido para data da primeira compra.' }),
   idPrimeiraCompra: z.string({ invalid_type_error: 'Tipo não válido para data da primeira compra.' }),
+  analiseRFM: z.object({
+    notas: z.object({
+      recencia: z.number(),
+      frequencia: z.number(),
+    }),
+    titulo: z.string(),
+    ultimaAtualizacao: z.string(),
+  }),
+  analisePeriodo: z.object({
+    recencia: z.number(),
+    frequencia: z.number(),
+    valor: z.number(),
+  }),
   autor: z
     .object({
       id: z.string({ required_error: 'ID do autor não informado.', invalid_type_error: 'Tipo não válido para o ID do autor.' }),

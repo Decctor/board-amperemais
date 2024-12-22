@@ -81,10 +81,10 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
         if (!acc.porItem[item.descricao]) acc.porItem[item.descricao] = { qtde: 0, total: 0 }
 
         acc.porGrupo[item.grupo].qtde += 1
-        acc.porGrupo[item.grupo].total += item.vprod
+        acc.porGrupo[item.grupo].total += item.vprod - item.vdesc
 
         acc.porItem[item.descricao].qtde += 1
-        acc.porItem[item.descricao].total += item.vprod
+        acc.porItem[item.descricao].total += item.vprod - item.vdesc
       })
       return acc
     },
@@ -156,6 +156,7 @@ type TSaleResult = {
     qtde: TSaleItem['qtde']
     vprod: TSaleItem['vprod']
     grupo: TSaleItem['grupo']
+    vdesc: TSaleItem['vdesc']
   }[]
 }
 async function getSales({ collection, after, before, total, saleNatures, sellers }: GetSalesParams) {
@@ -185,6 +186,7 @@ async function getSales({ collection, after, before, total, saleNatures, sellers
       'itens.qtde': 1,
       'itens.vprod': 1,
       'itens.grupo': 1,
+      'itens.vdesc': 1,
     }
 
     const result = await collection.aggregate([{ $match: match }, { $project: projection }]).toArray()
