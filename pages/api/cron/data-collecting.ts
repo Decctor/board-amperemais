@@ -57,6 +57,7 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
         vicmsst: Number(saleItem.vicmsst),
         vicms_desonera: Number(saleItem.vicms_desonera),
       }))
+      const applicableItemGroups = [...new Set(salesItemsFormatted.map((i: any) => i.grupo))]
       const custoTotal = salesItemsFormatted.reduce((acc: number, current: any) => acc + current.vcusto, 0)
       salesItems = [...salesItems, ...salesItemsFormatted]
 
@@ -69,6 +70,7 @@ export default async function getResults(req: NextApiRequest, res: NextApiRespon
           dataVenda: dateFormatted,
           idCliente: equivalentClient._id.toString(),
           itens: salesItemsFormatted,
+          gruposItems: applicableItemGroups,
           custoTotal,
         }
       } else {
