@@ -46,7 +46,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
       text: 'CLIENTES LEAIS',
       color: 'bg-green-400',
       gridArea: '1 / 3 / 3 / 6',
-      clientsQty: data?.filter((x) => x.rfmLabel == 'LIENTES LEAIS').length || 0,
+      clientsQty: data?.filter((x) => x.rfmLabel == 'CLIENTES LEAIS').length || 0,
     },
     { text: 'CAMPEÕES', color: 'bg-orange-400', gridArea: '1 / 5 / 2 / 6', clientsQty: data?.filter((x) => x.rfmLabel == 'CAMPEÕES').length || 0 },
     { text: 'EM RISCO', color: 'bg-yellow-400', gridArea: '2 / 1 / 4 / 3', clientsQty: data?.filter((x) => x.rfmLabel == 'EM RISCO').length || 0 },
@@ -54,7 +54,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
       text: 'PRECISAM DE ATENÇÃO',
       color: 'bg-indigo-400',
       gridArea: '3 / 3 / 4 / 4',
-      clientsQty: data?.filter((x) => x.rfmLabel == 'RECISAM DE ATENÇÃO').length || 0,
+      clientsQty: data?.filter((x) => x.rfmLabel == 'PRECISAM DE ATENÇÃO').length || 0,
     },
     {
       text: 'POTENCIAIS CLIENTES LEAIS',
@@ -62,7 +62,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
       gridArea: '3 / 4 / 5 / 6',
       clientsQty: data?.filter((x) => x.rfmLabel == 'POTENCIAIS CLIENTES LEAIS').length || 0,
     },
-    { text: 'HIBERNANDO', color: 'bg-purple-400', gridArea: '4 / 2 / 5 / 3', clientsQty: data?.filter((x) => x.rfmLabel == 'NÃO PODE PERDÊ-LOS').length || 0 },
+    { text: 'HIBERNANDO', color: 'bg-purple-400', gridArea: '4 / 2 / 5 / 3', clientsQty: data?.filter((x) => x.rfmLabel == 'HIBERNANDO').length || 0 },
     {
       text: 'PRESTES A DORMIR',
       color: 'bg-yellow-600',
@@ -117,7 +117,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
             handleChange={(value) =>
               setFilters((prev) => ({
                 ...prev,
-                sellers: value as TSale['natureza'][],
+                sellers: value as string[],
               }))
             }
             selectedItemLabel="VENDEDOR"
@@ -150,7 +150,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
                 ...prev,
                 period: {
                   ...prev.period,
-                  after: formatDateInputChange(value) || intervalStart,
+                  after: (formatDateInputChange(value) as string) || intervalStart,
                 },
               }))
             }
@@ -166,7 +166,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
                 ...prev,
                 period: {
                   ...prev.period,
-                  before: formatDateInputChange(value) || intervalEnd,
+                  before: (formatDateInputChange(value) as string) || intervalEnd,
                 },
               }))
             }

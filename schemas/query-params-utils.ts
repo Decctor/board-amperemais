@@ -45,6 +45,11 @@ export const SalesGraphFilterSchema = z.object({
     })
   ),
   sellers: z.array(z.string({ required_error: 'Nome do vendedor não informado.', invalid_type_error: 'Tipo não válido para o nome do vendedor.' })),
+  clientRFMTitles: z.array(
+    z.string({ required_error: 'Título RFM do cliente não informado.', invalid_type_error: 'Tipo não válido para o título RFM do cliente.' })
+  ),
+  productGroups: z.array(z.string({ required_error: 'Grupo de produto não informado.', invalid_type_error: 'Tipo não válido para o grupo de produto.' })),
+  excludedSalesIds: z.array(z.string({ required_error: 'ID da venda não informado.', invalid_type_error: 'Tipo não válido para o ID da venda.' })),
 })
 export type TSalesGraphFilters = z.infer<typeof SalesGraphFilterSchema>
 
@@ -104,6 +109,11 @@ export const SalesGeneralStatsFiltersSchema = z.object({
     })
   ),
   sellers: z.array(z.string({ required_error: 'Nome do vendedor não informado.', invalid_type_error: 'Tipo não válido para o nome do vendedor.' })),
+  clientRFMTitles: z.array(
+    z.string({ required_error: 'Título RFM do cliente não informado.', invalid_type_error: 'Tipo não válido para o título RFM do cliente.' })
+  ),
+  productGroups: z.array(z.string({ required_error: 'Grupo de produto não informado.', invalid_type_error: 'Tipo não válido para o grupo de produto.' })),
+  excludedSalesIds: z.array(z.string({ required_error: 'ID da venda não informado.', invalid_type_error: 'Tipo não válido para o ID da venda.' })),
 })
 export type TSalesGeneralStatsFilters = z.infer<typeof SalesGeneralStatsFiltersSchema>
 

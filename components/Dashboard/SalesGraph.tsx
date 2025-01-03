@@ -19,8 +19,11 @@ type SalesGraphProps = {
   total: { min?: number | null; max?: number | null }
   sellers: string[]
   saleNatures: TSalesGraphFilters['saleNatures']
+  clientRFMTitles: string[]
+  productGroups: string[]
+  excludedSalesIds: string[]
 }
-function SalesGraph({ period, total, sellers, saleNatures }: SalesGraphProps) {
+function SalesGraph({ period, total, sellers, saleNatures, clientRFMTitles, productGroups, excludedSalesIds }: SalesGraphProps) {
   const [type, setType] = useState<'total' | 'qtde'>('total')
   const [filters, setFilters] = useState<TSalesGraphFilters>({
     period: { after: period.after || firstDayOfMonth, before: period.before || lastDayOfMonth },
@@ -28,6 +31,9 @@ function SalesGraph({ period, total, sellers, saleNatures }: SalesGraphProps) {
     group: 'DIA',
     saleNatures: saleNatures,
     sellers: sellers,
+    clientRFMTitles: clientRFMTitles,
+    productGroups: productGroups,
+    excludedSalesIds: excludedSalesIds,
   })
   const [filtersDebounced] = useDebounce(filters, 1000)
 
@@ -45,8 +51,8 @@ function SalesGraph({ period, total, sellers, saleNatures }: SalesGraphProps) {
   } satisfies ChartConfig
 
   useEffect(() => {
-    setFilters((prev) => ({ ...prev, period, total, sellers, saleNatures }))
-  }, [period, total, sellers, saleNatures])
+    setFilters((prev) => ({ ...prev, period, total, sellers, saleNatures, clientRFMTitles, productGroups, excludedSalesIds }))
+  }, [period, total, sellers, saleNatures, clientRFMTitles, productGroups, excludedSalesIds])
   return (
     <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
       <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { HiCheck } from 'react-icons/hi'
 import { IoMdArrowDropdown, IoMdArrowDropup } from 'react-icons/io'
 import { Drawer, DrawerContent } from '../ui/drawer'
+import { cn } from '@/lib/utils'
 
 type SelectOption<T> = {
   id: string | number
@@ -14,6 +15,7 @@ type SelectInputProps<T> = {
   width?: string
   label: string
   labelClassName?: string
+  holderClassName?: string
   showLabel?: boolean
   value: T | null
   editable?: boolean
@@ -27,6 +29,7 @@ function SelectInput<T>({
   width,
   label,
   labelClassName = 'text-sm tracking-tight text-primary/80 font-medium text-start',
+  holderClassName = 'text-sm p-2 min-h-[34px]',
   showLabel = true,
   value,
   editable = true,
@@ -118,14 +121,16 @@ function SelectInput<T>({
     return (
       <div ref={ref} className={`relative flex w-full flex-col gap-1 lg:w-[${width ? width : '350px'}]`}>
         {showLabel ? (
-          <label htmlFor={inputIdentifier} className={labelClassName}>
+          <label htmlFor={inputIdentifier} className={cn('text-sm tracking-tight text-primary/80 font-medium text-start', labelClassName)}>
             {label}
           </label>
         ) : null}
         <div
-          className={`flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border duration-500 ease-in-out ${
-            selectMenuIsOpen ? 'border-primary' : 'border-primary/20'
-          } bg-[#fff] p-3 text-sm shadow-sm dark:bg-[#121212]`}
+          className={cn(
+            'flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border bg-[#fff] p-3 text-sm shadow-sm duration-500 ease-in-out dark:bg-[#121212]',
+            selectMenuIsOpen ? 'border-primary' : 'border-primary/20',
+            holderClassName
+          )}
         >
           {selectMenuIsOpen ? (
             <input
@@ -202,14 +207,16 @@ function SelectInput<T>({
     <Drawer open={selectMenuIsOpen} onOpenChange={setSelectMenuIsOpen}>
       <div ref={ref} className={`relative flex w-full flex-col gap-1 lg:w-[${width ? width : '350px'}]`}>
         {showLabel ? (
-          <label htmlFor={inputIdentifier} className={labelClassName}>
+          <label htmlFor={inputIdentifier} className={cn('text-sm tracking-tight text-primary/80 font-medium', labelClassName)}>
             {label}
           </label>
         ) : null}
         <div
-          className={`flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border duration-500 ease-in-out ${
-            selectMenuIsOpen ? 'border-primary' : 'border-primary/20'
-          } bg-[#fff] p-3 text-sm shadow-sm dark:bg-[#121212]`}
+          className={cn(
+            'flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border bg-[#fff] p-3 text-sm shadow-sm duration-500 ease-in-out dark:bg-[#121212]',
+            selectMenuIsOpen ? 'border-primary' : 'border-primary/20',
+            holderClassName
+          )}
         >
           <p
             onClick={() => {

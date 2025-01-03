@@ -5,6 +5,8 @@ import ReactDOM from 'react-dom/server'
 import { BsCart } from 'react-icons/bs'
 import { IconType } from 'react-icons'
 import { AiFillFile } from 'react-icons/ai'
+import { cn } from './utils'
+import { cva } from 'class-variance-authority'
 
 export function renderIcon(icon: React.ComponentType | IconType, size: number | undefined = 12) {
   const IconComponent = icon
@@ -41,13 +43,28 @@ export function renderPaginationPageItemsIcons({
   activePage,
   selectPage,
   disabled,
+  pageIconSize = 'default',
 }: {
   totalPages: number
   activePage: number
   selectPage: (page: number) => void
   disabled: boolean
+  pageIconSize?: 'default' | 'sm' | 'xs'
 }) {
   const MAX_RENDER = 5
+
+  const pageButtonVariants = cva('rounded-full border font-medium', {
+    variants: {
+      size: {
+        default: 'min-h-8 min-w-8 max-w-10 lg:min-h-10 lg:min-w-10 h-8 max-h-10 w-8 lg:h-10 lg:w-10 text-xs',
+        sm: 'min-h-7 min-w-7 max-w-9 lg:min-h-9 lg:min-w-9 h-7 max-h-9 w-7 lg:h-9 lg:w-9 text-[0.7rem]',
+        xs: 'min-h-6 min-w-6 max-w-8 lg:min-h-8 lg:min-w-8 h-6 max-h-8 w-6 lg:h-8 lg:w-8 text-[0.65rem]',
+      },
+    },
+    defaultVariants: {
+      size: 'default',
+    },
+  })
   var pages: (number | string)[] = []
   if (totalPages <= MAX_RENDER) {
     pages = Array.from({ length: totalPages }, (v, i) => i + 1)
@@ -71,9 +88,10 @@ export function renderPaginationPageItemsIcons({
         if (typeof p != 'number') return
         return selectPage(p)
       }}
-      className={`${
-        activePage == p ? 'border-primary bg-primary text-secondary' : 'border-transparent text-primary hover:bg-primary/50'
-      } h-8 max-h-10 min-h-8 w-8 min-w-8 max-w-10 rounded-full border text-xs font-medium lg:h-10 lg:min-h-10 lg:w-10 lg:min-w-10`}
+      className={cn(
+        pageButtonVariants({ size: pageIconSize, className: '' }),
+        activePage == p ? 'border-primary bg-primary text-secondary' : 'border-transparent text-primary hover:bg-primary/10'
+      )}
     >
       {p}
     </button>

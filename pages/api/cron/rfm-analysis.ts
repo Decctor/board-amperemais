@@ -56,7 +56,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
               ultimaAtualizacao: new Date().toISOString(),
             },
             analisePeriodo: {
-              recencia: recency,
+              recencia: recency || 0,
               frequencia: frequency,
               valor: monetary,
             },

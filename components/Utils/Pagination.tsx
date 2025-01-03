@@ -6,10 +6,21 @@ type GeneralPaginationComponentProps = {
   totalPages: number
   itemsMatchedText?: string
   itemsShowingText?: string
+  showSteppersText?: boolean
   selectPage: (page: number) => void
   queryLoading: boolean
+  pageIconSize?: 'default' | 'sm' | 'xs'
 }
-function GeneralPaginationComponent({ totalPages, activePage, selectPage, itemsMatchedText, itemsShowingText, queryLoading }: GeneralPaginationComponentProps) {
+function GeneralPaginationComponent({
+  totalPages,
+  activePage,
+  selectPage,
+  itemsMatchedText,
+  itemsShowingText,
+  queryLoading,
+  showSteppersText = true,
+  pageIconSize = 'default',
+}: GeneralPaginationComponentProps) {
   return (
     <div className="my-2 flex w-full flex-col items-center gap-3">
       {totalPages > 1 ? (
@@ -18,14 +29,14 @@ function GeneralPaginationComponent({ totalPages, activePage, selectPage, itemsM
             Um número grande de resultados foi encontrado, separamos em páginas para facilitar a visualização. Clique na página desejada para visualizar os
             demais resultados.
           </p>
-          <div className="flex flex-col items-center justify-center gap-1 lg:flex-row lg:gap-4">
+          <div className="flex flex-col flex-wrap items-center justify-center gap-1 lg:flex-row lg:gap-4">
             <button
               disabled={queryLoading}
               onClick={() => {
                 if (activePage - 1 > 0) return selectPage(activePage - 1)
                 else return
               }}
-              className="flex select-none items-center gap-2 rounded-full px-6 py-3 text-center align-middle font-sans text-xs font-bold uppercase text-primary transition-all hover:bg-primary/10 active:bg-primary/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+              className="font-sans flex select-none items-center gap-2 rounded-full px-6 py-3 text-center align-middle text-xs font-bold uppercase text-primary transition-all disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none hover:bg-primary/10 active:bg-primary/20"
               type="button"
             >
               <svg
@@ -39,19 +50,21 @@ function GeneralPaginationComponent({ totalPages, activePage, selectPage, itemsM
               >
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path>
               </svg>
-              ANTERIOR
+              {showSteppersText ? 'ANTERIOR' : null}
             </button>
-            <div className="flex items-center gap-2">{renderPaginationPageItemsIcons({ totalPages, activePage, selectPage, disabled: queryLoading })}</div>
+            <div className="flex items-center gap-2">
+              {renderPaginationPageItemsIcons({ totalPages, activePage, selectPage, disabled: queryLoading, pageIconSize })}
+            </div>
             <button
               disabled={queryLoading}
               onClick={() => {
                 if (activePage + 1 <= totalPages) selectPage(activePage + 1)
                 else return
               }}
-              className="flex select-none items-center gap-2 rounded-full px-6 py-3 text-center align-middle font-sans text-xs font-bold uppercase text-primary transition-all hover:bg-primary/10 active:bg-primary/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+              className="font-sans flex select-none items-center gap-2 rounded-full px-6 py-3 text-center align-middle text-xs font-bold uppercase text-primary transition-all disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none hover:bg-primary/10 active:bg-primary/20"
               type="button"
             >
-              PRÓXIMA
+              {showSteppersText ? 'PRÓXIMA' : null}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"

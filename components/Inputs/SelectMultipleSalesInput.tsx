@@ -3,13 +3,15 @@ import { HiCheck } from 'react-icons/hi'
 import { IoMdArrowDropdown, IoMdArrowDropup } from 'react-icons/io'
 import { Drawer, DrawerContent } from '../ui/drawer'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
+import { useSalesSimplifiedSearch } from '@/lib/queries/sales'
+import { TSalesSimplifiedSearchResult } from '@/pages/api/sales/simplified-search'
+import ErrorComponent from '../Layouts/ErrorComponent'
+import { getErrorMessage } from '@/lib/errors'
+import { BadgeDollarSign } from 'lucide-react'
+import { formatToMoney } from '@/lib/formatting'
+import GeneralPaginationComponent from '../Utils/Pagination'
 import { cn } from '@/lib/utils'
 
-type SelectOption<T> = {
-  id: string | number
-  value: any
-  label: string
-}
 type SelectInputProps<T> = {
   width?: string
   label: string
@@ -19,12 +21,11 @@ type SelectInputProps<T> = {
   selected: (string | number)[] | null
   editable?: boolean
   selectedItemLabel: string
-  options: SelectOption<T>[] | null
   handleChange: (value: T[]) => void
   onReset: () => void
 }
 
-function MultipleSelectInput<T>({
+function MultipleSalesSelectInput<T>({
   width,
   label,
   labelClassName,
@@ -32,74 +33,60 @@ function MultipleSelectInput<T>({
   showLabel = true,
   selected,
   editable = true,
-  options,
   selectedItemLabel,
   handleChange,
   onReset,
 }: SelectInputProps<T>) {
-  function getValueID(selected: (string | number)[] | null) {
-    if (options && selected) {
-      const filteredOptions = options?.filter((option) => selected.includes(option.value))
+  const { data: salesResult, isLoading, isError, isSuccess, error, params, updateParams } = useSalesSimplifiedSearch()
+  const sales = salesResult?.sales
+  const salesMatched = salesResult?.salesMatched || 0
+  const salesShowing = sales?.length || 0
+  const totalPages = salesResult?.totalPages || 0
+
+  function getValueID({ sales, selected }: { selected: (string | number)[] | null; sales: TSalesSimplifiedSearchResult['sales'] }) {
+    if (sales && selected) {
+      const filteredOptions = sales.filter((sale) => selected.includes(sale._id))
       if (filteredOptions) {
-        const arrOfIds = filteredOptions.map((option) => option.id)
+        const arrOfIds = filteredOptions.map((option) => option._id)
         return arrOfIds
       } else return null
     } else return null
   }
 
   const ref = useRef<any>(null)
-  const [items, setItems] = useState<SelectOption<T>[] | null>(options)
   const isDesktop = useMediaQuery('(min-width: 768px)')
 
   const [selectMenuIsOpen, setSelectMenuIsOpen] = useState<boolean>(false)
-  const [selectedIds, setSelectedIds] = useState<(string | number)[] | null>(getValueID(selected))
+  const [selectedIds, setSelectedIds] = useState<(string | number)[] | null>(getValueID({ sales: sales ?? [], selected }))
 
-  const [searchFilter, setSearchFilter] = useState<string>('')
   const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>('down')
 
   const inputIdentifier = label.toLowerCase().replace(' ', '_')
-  function handleSelect(id: string | number, item: T) {
+  function handleSelect({ id, sales }: { id: string | number; sales: TSalesSimplifiedSearchResult['sales'] }) {
     var itemsSelected
     var ids = selectedIds ? [...selectedIds] : []
     if (!ids?.includes(id)) {
-      ids.push(id)
-      itemsSelected = options?.filter((option) => ids?.includes(option.id))
-      itemsSelected = itemsSelected?.map((item) => item.value)
+      setSelectedIds((prev) => [...(prev || []), id])
+      handleChange([...ids, id] as T[])
     } else {
-      let index = ids.indexOf(id)
-      ids.splice(index, 1)
-      itemsSelected = options?.filter((option) => ids?.includes(option.id))
-      itemsSelected = itemsSelected?.map((item) => item.value)
-    }
-    handleChange(itemsSelected as T[])
-    setSelectedIds(ids)
-  }
-  function handleFilter(value: string) {
-    setSearchFilter(value)
-    if (!items) return
-    if (value.trim().length > 0 && options) {
-      let filteredItems = options.filter((item) => item.label.toUpperCase().includes(value.toUpperCase()))
-      setItems(filteredItems)
-      return
-    } else {
-      setItems(options)
-      return
+      setSelectedIds((prev) => prev?.filter((item) => item !== id) || [])
+      handleChange(ids.filter((item) => item !== id) as T[])
     }
   }
+
   function resetState() {
     onReset()
     setSelectedIds(null)
     setSelectMenuIsOpen(false)
   }
   function onClickOutside() {
-    setSearchFilter('')
+    updateParams({ search: '' })
     setSelectMenuIsOpen(false)
   }
 
-  useEffect(() => {
-    setSelectedIds(getValueID(selected))
-    setItems(options)
-  }, [options, selected])
+  // useEffect(() => {
+  //   setSelectedIds(getValueID({ sales: sales ?? [], selected }))
+  // }, [sales, selected])
   useEffect(() => {
     const handleClickOutside = (event: any) => {
       if (ref.current && !ref.current.contains(event.target) && isDesktop) {
@@ -124,11 +111,13 @@ function MultipleSelectInput<T>({
       }
     }
   }, [selectMenuIsOpen])
+
+  console.log(selectedIds)
   if (isDesktop)
     return (
       <div ref={ref} draggable={false} className={`relative flex w-full flex-col gap-1 lg:w-[${width ? width : '350px'}]`}>
         {showLabel ? (
-          <label htmlFor={inputIdentifier} className={cn('text-sm tracking-tight text-primary/80 font-medium text-start', labelClassName)}>
+          <label htmlFor={inputIdentifier} className={cn('text-sm tracking-tight text-primary/80 font-medium', labelClassName)}>
             {label}
           </label>
         ) : null}
@@ -144,8 +133,8 @@ function MultipleSelectInput<T>({
             <input
               type="text"
               autoFocus
-              value={searchFilter}
-              onChange={(e) => handleFilter(e.target.value)}
+              value={params.search}
+              onChange={(e) => updateParams({ search: e.target.value })}
               placeholder="Filtre o item desejado..."
               className="h-full w-full text-sm italic outline-none"
             />
@@ -156,10 +145,10 @@ function MultipleSelectInput<T>({
               }}
               className="grow cursor-pointer text-primary"
             >
-              {selectedIds && selectedIds.length > 0 && options
-                ? options.filter((item) => selectedIds.includes(item.id)).length > 1
+              {selectedIds && selectedIds.length > 0 && sales
+                ? sales.filter((item) => selectedIds.includes(item._id)).length > 1
                   ? 'MÚLTIPLAS SELEÇÕES'
-                  : options.filter((item) => selectedIds.includes(item.id))[0]?.label
+                  : sales.filter((item) => selectedIds.includes(item._id))[0]?.cliente
                 : 'NÃO DEFINIDO'}
             </p>
           )}
@@ -193,24 +182,46 @@ function MultipleSelectInput<T>({
               {!selectedIds ? <HiCheck style={{ color: '#fead61', fontSize: '20px' }} /> : null}
             </div>
             <div className="my-2 h-[1px] w-full bg-gray-200"></div>
-            {items ? (
-              items.map((item, index) => (
-                <div
-                  onClick={() => {
-                    if (editable) handleSelect(item.id, item.value)
-                  }}
-                  key={item.id ? item.id : index}
-                  className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${
-                    selectedIds?.includes(item.id) ? 'bg-primary/20' : ''
-                  }`}
-                >
-                  <p className="grow text-sm font-medium text-primary">{item.label}</p>
-                  {selectedIds?.includes(item.id) ? <HiCheck style={{ color: '#fead61', fontSize: '20px' }} /> : null}
-                </div>
-              ))
-            ) : (
-              <p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
-            )}
+            {isLoading ? <p className="w-full text-center text-xs tracking-tight text-primary/80">Carregando...</p> : null}
+            {isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+            {isSuccess ? (
+              sales ? (
+                <>
+                  <GeneralPaginationComponent
+                    activePage={params.page}
+                    queryLoading={isLoading}
+                    selectPage={(page) => updateParams({ page })}
+                    totalPages={totalPages}
+                    itemsMatchedText={salesMatched > 1 ? `${salesMatched} vendas encontradas.` : `${salesMatched} venda encontrada.`}
+                    itemsShowingText={salesShowing > 1 ? `Mostrando ${salesShowing} vendas.` : `Mostrando ${salesShowing} venda.`}
+                    showSteppersText={false}
+                    pageIconSize={'sm'}
+                  />
+                  {sales.map((item, index) => (
+                    <div
+                      onClick={() => {
+                        if (editable) handleSelect({ id: item._id, sales: sales })
+                      }}
+                      key={item.id ? item.id : index}
+                      className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${
+                        selectedIds?.includes(item._id) ? 'bg-primary/20' : ''
+                      }`}
+                    >
+                      <div className="grow flex items-center gap-1">
+                        <p className="text-xs font-medium text-primary">{item.cliente}</p>
+                        <div className="min-w-fit flex items-center gap-1">
+                          <BadgeDollarSign size={12} />
+                          <p className="text-[0.65rem] font-medium text-primary/80">{formatToMoney(item.valor)}</p>
+                        </div>
+                      </div>
+                      {selectedIds?.includes(item._id) ? <HiCheck style={{ color: '#fead61', fontSize: '20px' }} /> : null}
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
+              )
+            ) : null}
           </div>
         ) : (
           false
@@ -239,10 +250,10 @@ function MultipleSelectInput<T>({
             }}
             className="grow cursor-pointer text-primary"
           >
-            {selectedIds && selectedIds.length > 0 && options
-              ? options.filter((item) => selectedIds.includes(item.id)).length > 1
+            {selectedIds && selectedIds.length > 0 && sales
+              ? sales.filter((item) => selectedIds.includes(item._id)).length > 1
                 ? 'MÚLTIPLAS SELEÇÕES'
-                : options.filter((item) => selectedIds.includes(item.id))[0]?.label
+                : sales.filter((item) => selectedIds.includes(item._id))[0]?.cliente
               : 'NÃO DEFINIDO'}
           </p>
           <IoMdArrowDropdown
@@ -254,20 +265,20 @@ function MultipleSelectInput<T>({
         </div>
         <DrawerContent className="gap-2 p-2">
           <p className="w-full text-center text-xs tracking-tight text-primary/80">
-            {selectedIds && selectedIds.length > 0 && options
-              ? options.filter((item) => selectedIds.includes(item.id)).length > 3
+            {selectedIds && selectedIds.length > 0 && sales
+              ? sales.filter((item) => selectedIds.includes(item._id)).length > 3
                 ? 'Múltiplas opções selecionadas.'
-                : `Selecionando: ${options
-                    .filter((item) => selectedIds.includes(item.id))
-                    .map((o) => o.label)
+                : `Selecionando: ${sales
+                    .filter((item) => selectedIds.includes(item._id))
+                    .map((o) => o.cliente)
                     .join(',')}.`
               : 'Nenhuma opção selecionada.'}
           </p>
           <input
             type="text"
             autoFocus={true}
-            value={searchFilter}
-            onChange={(e) => handleFilter(e.target.value)}
+            value={params.search}
+            onChange={(e) => updateParams({ search: e.target.value })}
             placeholder="Filtre o item desejado..."
             className="w-full bg-transparent p-2 text-sm italic outline-none"
           />
@@ -280,24 +291,46 @@ function MultipleSelectInput<T>({
           </div>
           <div className="my-2 h-[1px] w-full bg-gray-200"></div>
           <div className="scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 flex h-[200px] min-h-[200px] flex-col gap-2 overflow-y-auto overscroll-y-auto lg:h-[350px] lg:max-h-[350px]">
-            {items ? (
-              items.map((item, index) => (
-                <div
-                  onClick={() => {
-                    if (editable) handleSelect(item.id, item.value)
-                  }}
-                  key={item.id ? item.id : index}
-                  className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${
-                    selectedIds?.includes(item.id) ? 'bg-primary/20' : ''
-                  }`}
-                >
-                  <p className="grow text-sm font-medium text-primary">{item.label}</p>
-                  {selectedIds?.includes(item.id) ? <HiCheck style={{ color: '#fead61', fontSize: '20px' }} /> : null}
-                </div>
-              ))
-            ) : (
-              <p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
-            )}
+            {isLoading ? <p className="w-full text-center text-xs tracking-tight text-primary/80">Carregando...</p> : null}
+            {isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+            {isSuccess ? (
+              sales ? (
+                <>
+                  <GeneralPaginationComponent
+                    activePage={params.page}
+                    queryLoading={isLoading}
+                    selectPage={(page) => updateParams({ page })}
+                    totalPages={totalPages}
+                    itemsMatchedText={salesMatched > 1 ? `${salesMatched} vendas encontradas.` : `${salesMatched} venda encontrada.`}
+                    itemsShowingText={salesShowing > 1 ? `Mostrando ${salesShowing} vendas.` : `Mostrando ${salesShowing} venda.`}
+                    showSteppersText={false}
+                    pageIconSize={'sm'}
+                  />
+                  {sales.map((item, index) => (
+                    <div
+                      onClick={() => {
+                        if (editable) handleSelect({ id: item._id, sales: sales })
+                      }}
+                      key={item._id ? item._id : index}
+                      className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${
+                        selectedIds?.includes(item._id) ? 'bg-primary/20' : ''
+                      }`}
+                    >
+                      <div className="grow flex items-center gap-1">
+                        <p className="text-xs font-medium text-primary">{item.cliente}</p>
+                        <div className="min-w-fit flex items-center gap-1">
+                          <BadgeDollarSign size={12} />
+                          <p className="text-[0.65rem] font-medium text-primary/80">{formatToMoney(item.valor)}</p>
+                        </div>
+                      </div>
+                      {selectedIds?.includes(item._id) ? <HiCheck style={{ color: '#fead61', fontSize: '20px' }} /> : null}
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
+              )
+            ) : null}
           </div>
         </DrawerContent>
       </div>
@@ -305,4 +338,4 @@ function MultipleSelectInput<T>({
   )
 }
 
-export default MultipleSelectInput
+export default MultipleSalesSelectInput

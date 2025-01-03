@@ -46,7 +46,7 @@ export type TRFMConfig = {
   }
 }
 
-const RFMLabels = [
+export const RFMLabels = [
   {
     text: 'NÃO PODE PERDÊ-LOS',
     combinations: [

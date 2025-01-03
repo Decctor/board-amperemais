@@ -5,6 +5,8 @@ import { formatWithoutDiacritics } from '../formatting'
 import { TItemsSearchQueryParams } from '@/pages/api/sales/items/search'
 import { TSaleItemsBySearch } from '@/pages/api/sales/items/search'
 import { TItemsExport } from '@/pages/api/sales/items/export'
+import { TSalesSimplifiedSearchQueryParams } from '@/schemas/sales'
+import { TSalesSimplifiedSearchResult } from '@/pages/api/sales/simplified-search'
 
 async function fetchSaleItems() {
   try {
@@ -70,5 +72,34 @@ export async function fetchItemsExport() {
     return data.data as TItemsExport[]
   } catch (error) {
     throw error
+  }
+}
+
+async function fetchSalesSimplifiedSearch(params: TSalesSimplifiedSearchQueryParams) {
+  try {
+    const { data } = await axios.post('/api/sales/simplified-search', params)
+
+    return data.data as TSalesSimplifiedSearchResult
+  } catch (error) {
+    throw error
+  }
+}
+
+export function useSalesSimplifiedSearch() {
+  const [params, setParams] = useState<TSalesSimplifiedSearchQueryParams>({
+    search: '',
+    page: 1,
+  })
+  function updateParams(newParams: Partial<TSalesSimplifiedSearchQueryParams>) {
+    setParams((prev) => ({ ...prev, ...newParams }))
+  }
+  return {
+    ...useQuery({
+      queryKey: ['sales-simplified-search', params],
+      queryFn: async () => await fetchSalesSimplifiedSearch(params),
+      refetchOnWindowFocus: false,
+    }),
+    params,
+    updateParams,
   }
 }

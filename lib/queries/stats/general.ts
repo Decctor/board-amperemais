@@ -15,11 +15,11 @@ async function fetchGeneralSalesStats(filters: TSalesGeneralStatsFilters) {
   }
 }
 
-export function useGeneralSalesStats({ period, total, sellers, saleNatures }: TSalesGeneralStatsFilters) {
+export function useGeneralSalesStats({ period, total, sellers, saleNatures, clientRFMTitles, productGroups, excludedSalesIds }: TSalesGeneralStatsFilters) {
   return {
     ...useQuery({
-      queryKey: ['general-stats', period, total, sellers, saleNatures],
-      queryFn: async () => await fetchGeneralSalesStats({ period, total, sellers, saleNatures }),
+      queryKey: ['general-stats', period, total, sellers, saleNatures, clientRFMTitles, productGroups, excludedSalesIds],
+      queryFn: async () => await fetchGeneralSalesStats({ period, total, sellers, saleNatures, clientRFMTitles, productGroups, excludedSalesIds }),
       refetchOnWindowFocus: false,
     }),
   }

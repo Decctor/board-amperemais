@@ -55,6 +55,19 @@ export const SalesQueryFilters = z.object({
   }),
   sellers: z.array(z.string()),
 })
-
 export type TSalesQueryFilter = z.infer<typeof SalesQueryFilters>
+
+export const SalesSimplifiedSearchQueryParams = z.object({
+  search: z.string({ required_error: 'Parâmetro de busca não informado.', invalid_type_error: 'Parâmetro de busca não informado.' }),
+  page: z
+    .number({ required_error: 'Parâmetro de página não informado.', invalid_type_error: 'Parâmetro de página não informado.' })
+    .min(1, { message: 'Página não informada.' }),
+})
+export type TSalesSimplifiedSearchQueryParams = z.infer<typeof SalesSimplifiedSearchQueryParams>
+
 export type TSale = z.infer<typeof SaleSchema>
+
+export type TSaleSimplified = Pick<TSale, 'id' | 'cliente' | 'valor'>
+export type TSaleSimplifiedDTO = TSaleSimplified & { _id: string }
+
+export const SaleSimplifiedProjection = { id: 1, cliente: 1, valor: 1 }

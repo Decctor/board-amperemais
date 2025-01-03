@@ -1,11 +1,12 @@
 import { apiHandler } from '@/lib/api'
+import { TClient } from '@/schemas/clients'
 import { SalesGeneralStatsFiltersSchema, TSalesGeneralStatsFilters } from '@/schemas/query-params-utils'
 import { TSaleGoal } from '@/schemas/sale-goals'
 import { TSale } from '@/schemas/sales'
 import { TSaleItem } from '@/schemas/sales-items'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
 import dayjs from 'dayjs'
-import { Collection, Filter } from 'mongodb'
+import { Collection, Filter, ObjectId } from 'mongodb'
 import { NextApiHandler } from 'next'
 
 type TSalesReduced = {
@@ -52,7 +53,7 @@ export type TGeneralSalesStats = {
 }
 
 const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> = async (req, res) => {
-  const { period, total, sellers, saleNatures } = SalesGeneralStatsFiltersSchema.parse(req.body)
+  const { period, total, sellers, saleNatures, clientRFMTitles, productGroups, excludedSalesIds } = SalesGeneralStatsFiltersSchema.parse(req.body)
 
   const db = await connectToDatabase()
   const salesCollection: Collection<TSale> = db.collection('sales')
@@ -60,15 +61,22 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
 
   const ajustedAfter = period.after
   const ajustedBefore = dayjs(period.before).endOf('day').toISOString()
-  const sales = await getSales({ collection: salesCollection, after: ajustedAfter, before: ajustedBefore, total, sellers, saleNatures })
+  const sales = await getSales({
+    collection: salesCollection,
+    after: ajustedAfter,
+    before: ajustedBefore,
+    total,
+    sellers,
+    saleNatures,
+    clientRFMTitles,
+    productGroups,
+    excludedSalesIds,
+  })
   const overallSaleGoal = await getOverallSaleGoal({ collection: goalsCollection, after: ajustedAfter, before: ajustedBefore })
   const stats = sales.reduce(
     (acc: TSalesReduced, current) => {
-      // updating general stats
-      acc.faturamentoBruto += current.valor
+      // updating sales quantity stats
       acc.qtdeVendas += 1
-      acc.gastoBruto += current.custoTotal
-      acc.qtdeItensVendidos += current.itens.length
 
       // stats by seller
       if (!acc.porVendedor[current.vendedor]) acc.porVendedor[current.vendedor] = { qtde: 0, total: 0 }
@@ -76,16 +84,24 @@ const getSalesDashboardStatsRoute: NextApiHandler<{ data: TGeneralSalesStats }> 
       acc.porVendedor[current.vendedor].total += current.valor
 
       // stats by item
-      current.itens.forEach((item) => {
-        if (!acc.porGrupo[item.grupo]) acc.porGrupo[item.grupo] = { qtde: 0, total: 0 }
-        if (!acc.porItem[item.descricao]) acc.porItem[item.descricao] = { qtde: 0, total: 0 }
+      current.itens
+        .filter((item) => (productGroups.length > 0 ? productGroups.includes(item.grupo) : true))
+        .forEach((item) => {
+          if (!acc.porGrupo[item.grupo]) acc.porGrupo[item.grupo] = { qtde: 0, total: 0 }
+          if (!acc.porItem[item.descricao]) acc.porItem[item.descricao] = { qtde: 0, total: 0 }
 
-        acc.porGrupo[item.grupo].qtde += 1
-        acc.porGrupo[item.grupo].total += item.vprod - item.vdesc
+          // Updating other general stats
+          acc.faturamentoBruto += item.vprod - item.vdesc
+          acc.gastoBruto += item.vcusto
+          acc.qtdeItensVendidos += item.qtde
 
-        acc.porItem[item.descricao].qtde += 1
-        acc.porItem[item.descricao].total += item.vprod - item.vdesc
-      })
+          // Updating stats by group
+          acc.porGrupo[item.grupo].qtde += 1
+          acc.porGrupo[item.grupo].total += item.vprod - item.vdesc
+
+          acc.porItem[item.descricao].qtde += 1
+          acc.porItem[item.descricao].total += item.vprod - item.vdesc
+        })
       return acc
     },
     {
@@ -141,6 +157,9 @@ type GetSalesParams = {
   total: TSalesGeneralStatsFilters['total']
   saleNatures: TSalesGeneralStatsFilters['saleNatures']
   sellers: TSalesGeneralStatsFilters['sellers']
+  clientRFMTitles: TSalesGeneralStatsFilters['clientRFMTitles']
+  productGroups: TSalesGeneralStatsFilters['productGroups']
+  excludedSalesIds: TSalesGeneralStatsFilters['excludedSalesIds']
 }
 
 type TSaleResult = {
@@ -157,39 +176,52 @@ type TSaleResult = {
     vprod: TSaleItem['vprod']
     grupo: TSaleItem['grupo']
     vdesc: TSaleItem['vdesc']
+    vcusto: TSaleItem['vcusto']
   }[]
+  clienteDados: {
+    analiseRFM: {
+      titulo: TClient['analiseRFM']['titulo']
+    }
+  }
 }
-async function getSales({ collection, after, before, total, saleNatures, sellers }: GetSalesParams) {
+async function getSales({ collection, after, before, total, saleNatures, sellers, clientRFMTitles, productGroups, excludedSalesIds }: GetSalesParams) {
   try {
-    function getAndQuery() {
-      const andQueryArr: Filter<TSale>[] = []
-      if (after && before) andQueryArr.push({ dataVenda: { $gte: after } }, { dataVenda: { $lte: before } })
-      if (total.min) andQueryArr.push({ valor: { $gte: total.min } })
-      if (total.max) andQueryArr.push({ valor: { $lte: total.max } })
-
-      return { $and: andQueryArr }
+    function getQueryByTotal(total: TSalesGeneralStatsFilters['total']) {
+      if (total.min && total.max) return { valor: { $gte: total.min, $lte: total.max } }
+      if (total.min) return { valor: { $gte: total.min } }
+      if (total.max) return { valor: { $lte: total.max } }
     }
-    const andQuery = getAndQuery()
+
+    const queryPeriod = after && before ? { dataVenda: { $gte: after, $lte: before } } : {}
+    const queryTotal = getQueryByTotal(total)
     const querySaleNature: Filter<TSale> = saleNatures.length > 0 ? { natureza: { $in: saleNatures } } : {}
-
     const querySeller: Filter<TSale> = sellers.length > 0 ? { vendedor: { $in: sellers } } : {}
-    const match: Filter<TSale> = { ...andQuery, ...querySaleNature, ...querySeller }
+    const queryProductGroups: Filter<TSale> = productGroups.length > 0 ? { 'itens.grupo': { $in: productGroups } } : {}
+    const queryExcludedSalesIds: Filter<TSale> = excludedSalesIds.length > 0 ? { _id: { $nin: excludedSalesIds.map((id) => new ObjectId(id)) } } : {}
+    const match: Filter<TSale> = { ...queryPeriod, ...queryTotal, ...querySaleNature, ...querySeller, ...queryProductGroups, ...queryExcludedSalesIds }
+    const addFields = { $addFields: { clientIdAsObjectId: { $toObjectId: '$idCliente' } } }
+    const lookupClient = { $lookup: { from: 'clients', localField: 'clientIdAsObjectId', foreignField: '_id', as: 'clienteDados' } }
+    const postLookupMatch = { $match: { 'clienteDados.analiseRFM.titulo': clientRFMTitles.length > 0 ? { $in: clientRFMTitles } : { $ne: null } } }
     const projection = {
-      cliente: 1,
-      dataVenda: 1,
-      natureza: 1,
-      parceiro: 1,
-      valor: 1,
-      custoTotal: 1,
-      vendedor: 1,
-      'itens.descricao': 1,
-      'itens.qtde': 1,
-      'itens.vprod': 1,
-      'itens.grupo': 1,
-      'itens.vdesc': 1,
+      $project: {
+        cliente: 1,
+        dataVenda: 1,
+        natureza: 1,
+        parceiro: 1,
+        valor: 1,
+        custoTotal: 1,
+        vendedor: 1,
+        'itens.descricao': 1,
+        'itens.qtde': 1,
+        'itens.vprod': 1,
+        'itens.grupo': 1,
+        'itens.vdesc': 1,
+        'itens.vcusto': 1,
+        'clienteDados.analiseRFM.titulo': 1,
+      },
     }
 
-    const result = await collection.aggregate([{ $match: match }, { $project: projection }]).toArray()
+    const result = await collection.aggregate([{ $match: match }, addFields, lookupClient, postLookupMatch, projection]).toArray()
     return result as TSaleResult[]
   } catch (error) {
     throw error

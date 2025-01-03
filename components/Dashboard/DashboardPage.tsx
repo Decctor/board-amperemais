@@ -29,6 +29,8 @@ import { useDebounce } from 'use-debounce'
 import MatrixRFMAnalysis from './MatrixRFMAnalysis'
 import SalesGraph from './SalesGraph'
 import Header from '../Layouts/Header'
+import { RFMLabels } from '@/utils/rfm'
+import MultipleSalesSelectInput from '../Inputs/SelectMultipleSalesInput'
 const currentDate = new Date()
 const firstDayOfMonth = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()
 const lastDayOfMonth = getLastDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString()
@@ -46,6 +48,9 @@ export default function DashboardPage({ user }: DashboardPageProps) {
     total: {},
     saleNatures: [],
     sellers: userViewPermission == 'GERAL' ? [] : [user.vendedor],
+    clientRFMTitles: [],
+    productGroups: [],
+    excludedSalesIds: [],
   })
   const [filtersDebounced] = useDebounce(filters, 1000)
 
@@ -57,98 +62,156 @@ export default function DashboardPage({ user }: DashboardPageProps) {
     <div className="flex h-full flex-col">
       <Header session={user} />
       <div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6">
-        <div className="flex w-full flex-col items-center justify-between border-b border-primary pb-2 lg:flex-row gap-2">
+        <div className="flex w-full flex-col justify-between border-b border-primary pb-2 gap-2">
           <h1 className="text-2xl font-black text-black">Dashboard</h1>
-          <div className="flex w-full flex-col lg:w-fit">
-            <div className="flex flex-col items-center gap-2 lg:flex-row">
-              <div className="w-full lg:w-[250px]">
-                <NumberInput
-                  label="VALOR MÁX"
-                  placeholder="Valor máximo..."
-                  value={filters.total.max || null}
-                  handleChange={(value) => setFilters((prev) => ({ ...prev, total: { ...prev.total, max: value } }))}
-                  showLabel={false}
-                  width="100%"
-                />
-              </div>
-              <div className="w-full lg:w-[250px]">
-                <NumberInput
-                  label="VALOR MIN"
-                  placeholder="Valor mínimo..."
-                  value={filters.total.min || null}
-                  handleChange={(value) => setFilters((prev) => ({ ...prev, total: { ...prev.total, min: value } }))}
-                  showLabel={false}
-                  width="100%"
-                />
-              </div>
-              <div className="w-full lg:w-[250px]">
-                <MultipleSelectInput
-                  showLabel={false}
-                  label="VENDEDOR"
-                  selected={filters.sellers}
-                  options={selectableSellers.map((s, index) => ({ id: index + 1, label: s, value: s }))}
-                  handleChange={(value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      sellers: value as TSale['natureza'][],
-                    }))
-                  }
-                  selectedItemLabel="VENDEDOR"
-                  onReset={() => setFilters((prev) => ({ ...prev, sellers: [] }))}
-                  width="100%"
-                />
-              </div>
-              <div className="w-full lg:w-[250px]">
-                <MultipleSelectInput
-                  showLabel={false}
-                  label="NATUREZA DA VENDA"
-                  selected={filters.saleNatures}
-                  options={filterOptions?.saleNatures.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
-                  handleChange={(value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      saleNatures: value as TSale['natureza'][],
-                    }))
-                  }
-                  selectedItemLabel="NATUREZA DA VENDA"
-                  onReset={() => setFilters((prev) => ({ ...prev, saleNatures: [] }))}
-                  width="100%"
-                />
-              </div>
-              <div className="w-full lg:w-[150px]">
-                <DateInput
-                  label="PERÍODO"
-                  showLabel={false}
-                  value={formatDateForInput(filters.period.after)}
-                  handleChange={(value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      period: {
-                        ...prev.period,
-                        after: (formatDateInputChange(value) as string) || firstDayOfMonth,
-                      },
-                    }))
-                  }
-                  width="100%"
-                />
-              </div>
-              <div className="w-full lg:w-[150px]">
-                <DateInput
-                  label="PERÍODO"
-                  showLabel={false}
-                  value={formatDateForInput(filters.period.before)}
-                  handleChange={(value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      period: {
-                        ...prev.period,
-                        before: (formatDateInputChange(value) as string) || lastDayOfMonth,
-                      },
-                    }))
-                  }
-                  width="100%"
-                />
-              </div>
+          <div className="flex flex-col items-center gap-2 lg:flex-row flex-wrap justify-center lg:justify-end">
+            <div className="w-full lg:w-[250px]">
+              <NumberInput
+                label="VALOR MÁX"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                placeholder="Valor máximo..."
+                value={filters.total.max || null}
+                handleChange={(value) => setFilters((prev) => ({ ...prev, total: { ...prev.total, max: value } }))}
+                width="100%"
+              />
+            </div>
+            <div className="w-full lg:w-[250px]">
+              <NumberInput
+                label="VALOR MIN"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                placeholder="Valor mínimo..."
+                value={filters.total.min || null}
+                handleChange={(value) => setFilters((prev) => ({ ...prev, total: { ...prev.total, min: value } }))}
+                width="100%"
+              />
+            </div>
+            <div className="w-full lg:w-[250px]">
+              <MultipleSelectInput
+                label="VENDEDOR"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                selected={filters.sellers}
+                options={selectableSellers.map((s, index) => ({ id: index + 1, label: s, value: s }))}
+                handleChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    sellers: value as TSale['natureza'][],
+                  }))
+                }
+                selectedItemLabel="VENDEDOR"
+                onReset={() => setFilters((prev) => ({ ...prev, sellers: [] }))}
+                width="100%"
+              />
+            </div>
+            <div className="w-full lg:w-[350px]">
+              <MultipleSalesSelectInput
+                label="VENDAS EXCLUÍDAS"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                selected={filters.excludedSalesIds}
+                handleChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    excludedSalesIds: value as string[],
+                  }))
+                }
+                selectedItemLabel="VENDAS EXCLUÍDAS"
+                onReset={() => setFilters((prev) => ({ ...prev, excludedSalesIds: [] }))}
+                width="100%"
+              />
+            </div>
+
+            <div className="w-full lg:w-[250px]">
+              <MultipleSelectInput
+                label="GRUPO DE PRODUTOS"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                selected={filters.productGroups}
+                options={filterOptions?.productsGroups.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+                handleChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    productGroups: value as string[],
+                  }))
+                }
+                selectedItemLabel="GRUPO DE PRODUTOS"
+                onReset={() => setFilters((prev) => ({ ...prev, productGroups: [] }))}
+                width="100%"
+              />
+            </div>
+            <div className="w-full lg:w-[250px]">
+              <MultipleSelectInput
+                label="CATEGORIA DE CLIENTES"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                selected={filters.clientRFMTitles}
+                options={RFMLabels.map((s, index) => ({ id: index + 1, label: s.text, value: s.text })) || []}
+                handleChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    clientRFMTitles: value as string[],
+                  }))
+                }
+                selectedItemLabel="CATEGORIA DE CLIENTES"
+                onReset={() => setFilters((prev) => ({ ...prev, clientRFMTitles: [] }))}
+                width="100%"
+              />
+            </div>
+            <div className="w-full lg:w-[250px]">
+              <MultipleSelectInput
+                label="NATUREZA DA VENDA"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                selected={filters.saleNatures}
+                options={filterOptions?.saleNatures.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+                handleChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    saleNatures: value as TSale['natureza'][],
+                  }))
+                }
+                selectedItemLabel="NATUREZA DA VENDA"
+                onReset={() => setFilters((prev) => ({ ...prev, saleNatures: [] }))}
+                width="100%"
+              />
+            </div>
+            <div className="w-full lg:w-[150px]">
+              <DateInput
+                label="PERÍODO"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                value={formatDateForInput(filters.period.after)}
+                handleChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    period: {
+                      ...prev.period,
+                      after: (formatDateInputChange(value) as string) || firstDayOfMonth,
+                    },
+                  }))
+                }
+                width="100%"
+              />
+            </div>
+            <div className="w-full lg:w-[150px]">
+              <DateInput
+                label="PERÍODO"
+                labelClassName="text-[0.6rem]"
+                holderClassName="text-xs p-2 min-h-[34px]"
+                value={formatDateForInput(filters.period.before)}
+                handleChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    period: {
+                      ...prev.period,
+                      before: (formatDateInputChange(value) as string) || lastDayOfMonth,
+                    },
+                  }))
+                }
+                width="100%"
+              />
             </div>
           </div>
         </div>
@@ -238,7 +301,15 @@ export default function DashboardPage({ user }: DashboardPageProps) {
             </div>
             <div className="w-full flex flex-col items-center gap-2 lg:flex-row">
               <div className="w-full lg:w-[60%]">
-                <SalesGraph period={filters.period} total={filters.total} sellers={filters.sellers} saleNatures={filters.saleNatures} />
+                <SalesGraph
+                  period={filters.period}
+                  total={filters.total}
+                  sellers={filters.sellers}
+                  saleNatures={filters.saleNatures}
+                  clientRFMTitles={filters.clientRFMTitles}
+                  productGroups={filters.productGroups}
+                  excludedSalesIds={filters.excludedSalesIds}
+                />
               </div>
               <div className="w-full lg:w-[40%]">
                 <SellersGraph data={stats.porVendedor} />
