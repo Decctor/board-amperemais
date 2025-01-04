@@ -66,12 +66,12 @@ async function getClients({ collection, filters, skip, limit }: GetClientsParams
   const clients = (await collection
     .aggregate([
       { $match: query },
+      { $sort: { dataUltimaCompra: -1 } },
       { $addFields: addFields },
       { $lookup: salesLookup },
       { $project: projection },
       { $skip: skip },
       { $limit: limit },
-      { $sort: { dataUltimaCompra: -1 } },
     ])
     .toArray()) as TClientSimplifiedWithSalesDTO[]
 
