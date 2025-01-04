@@ -7,13 +7,16 @@ import { TSaleStatsGeneralQueryParams } from '@/schemas/query-params-utils'
 import { TUserSession } from '@/schemas/users'
 import React, { useEffect, useState } from 'react'
 import { BsCart } from 'react-icons/bs'
-import { FaLayerGroup } from 'react-icons/fa'
+import { FaDownload, FaLayerGroup } from 'react-icons/fa'
 import { useDebounce } from 'use-debounce'
 
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Bar, BarChart, LabelList, Pie, PieChart, XAxis, YAxis, ResponsiveContainer } from 'recharts'
 import { FaRankingStar } from 'react-icons/fa6'
 import { VariableSizeList as List, VariableSizeList } from 'react-window'
+import { getExcelFromJSON } from '@/lib/excel-utils'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/errors'
 
 type GroupedStatsBlockProps = {
   generalQueryParams: TSaleStatsGeneralQueryParams
@@ -52,6 +55,21 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats['porItem'] }) {
   const [type, setType] = useState<'qtde' | 'total'>('total')
   const dataSorted = data.sort((a, b) => (type == 'total' ? b.total - a.total : b.qtde - a.qtde))
 
+  async function handleExportData(data: TGroupedSalesStats['porItem'] | undefined) {
+    try {
+      if (!data) throw new Error('Não há dados para exportar')
+      const exportationJSON = data.map((item) => ({
+        ITEM: item.titulo,
+        'VALOR VENDIDO': item.total,
+        'Nº DE VENDAS': item.qtde,
+      }))
+      getExcelFromJSON(exportationJSON, 'RESULTADOS_POR_ITEM.xlsx')
+      return toast.success('Dados exportados com sucesso')
+    } catch (error) {
+      const msg = getErrorMessage(error)
+      return toast.error(msg)
+    }
+  }
   const ProductsList = ({ height, width, list }: { height: number | string; width: number | string; list: TGroupedSalesStats['porItem'] }) => (
     <VariableSizeList
       height={height}
@@ -81,6 +99,9 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats['porItem'] }) {
       <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
         <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">PARTICIPAÇÃO POR ITEM</h1>
         <div className="flex items-center gap-1">
+          <button className="text-white hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData(data)}>
+            <FaDownload size={10} />
+          </button>
           <button
             onClick={() => setType('total')}
             className={cn(
@@ -115,6 +136,21 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats['porItem'] }) {
 function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats['porGrupo'] }) {
   const [type, setType] = useState<'qtde' | 'total'>('total')
 
+  async function handleExportData(data: TGroupedSalesStats['porGrupo'] | undefined) {
+    try {
+      if (!data) throw new Error('Não há dados para exportar')
+      const exportationJSON = data.map((item) => ({
+        GRUPO: item.titulo,
+        'VALOR VENDIDO': item.total,
+        'Nº DE VENDAS': item.qtde,
+      }))
+      getExcelFromJSON(exportationJSON, 'RESULTADOS_POR_GRUPO.xlsx')
+      return toast.success('Dados exportados com sucesso')
+    } catch (error) {
+      const msg = getErrorMessage(error)
+      return toast.error(msg)
+    }
+  }
   const Collors = ['#15599a', '#fead41', '#ff595e', '#8ac926', '#6a4c93', '#5adbff']
   const total = data.reduce((acc, current) => (type == 'total' ? acc + current.total : acc + current.qtde), 0)
   const graphData = data
@@ -122,12 +158,14 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats['porGru
     .sort((a, b) => b.qtde - a.qtde)
     .map((p, index) => ({ ...p, fill: Collors[index] || '#000' }))
   const projectTypesChartConfig = { titulo: { label: 'GRUPO' } }
-  console.log('TEST')
   return (
     <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
       <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
         <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">PARTICIPAÇÃO POR GRUPO</h1>
         <div className="flex items-center gap-1">
+          <button className="text-white hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData(data)}>
+            <FaDownload size={10} />
+          </button>
           <button
             onClick={() => setType('total')}
             className={cn(
@@ -174,6 +212,22 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats['porGru
 
 function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats['porVendedor'] }) {
   const [type, setType] = useState<'qtde' | 'total'>('total')
+
+  async function handleExportData(data: TGroupedSalesStats['porVendedor'] | undefined) {
+    try {
+      if (!data) throw new Error('Não há dados para exportar')
+      const exportationJSON = data.map((item) => ({
+        'NOME DO VENDEDOR': item.titulo,
+        'VALOR VENDIDO': item.total,
+        'Nº DE VENDAS': item.qtde,
+      }))
+      getExcelFromJSON(exportationJSON, 'RESULTADOS_POR_VENDEDOR.xlsx')
+      return toast.success('Dados exportados com sucesso')
+    } catch (error) {
+      const msg = getErrorMessage(error)
+      return toast.error(msg)
+    }
+  }
   const chartConfig = {
     total: {
       label: 'Valor Vendido',
@@ -189,6 +243,9 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats['porVendedor'
       <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
         <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RANKING DE VENDEDORES</h1>
         <div className="flex items-center gap-1">
+          <button className="text-black hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData(data)}>
+            <FaDownload size={10} />
+          </button>
           <button
             onClick={() => setType('total')}
             className={cn(

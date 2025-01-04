@@ -7,6 +7,11 @@ import { BsFillFileBarGraphFill } from 'react-icons/bs'
 import { useDebounce } from 'use-debounce'
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '../../ui/chart'
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from 'recharts'
+import { TSaleGraph } from '@/pages/api/stats/sales-graph'
+import { getExcelFromJSON } from '@/lib/excel-utils'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/errors'
+import { FaDownload } from 'react-icons/fa'
 
 type SalesGraphBlockProps = {
   user: TUserSession
@@ -21,6 +26,21 @@ function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
 
   const { data: salesGraph, isLoading: salesGraphLoading } = useSalesGraph(debouncedQueryParams)
 
+  async function handleExportData(data: TSaleGraph | undefined) {
+    try {
+      if (!data) throw new Error('Não há dados para exportar')
+      const exportationJSON = data.map((item) => ({
+        PERÍODO: item.chave,
+        'VALOR VENDIDO': item.total,
+        'Nº DE VENDAS': item.qtde,
+      }))
+      getExcelFromJSON(exportationJSON, 'VENDAS_POR_PERÍODO.xlsx')
+      return toast.success('Dados exportados com sucesso')
+    } catch (error) {
+      const msg = getErrorMessage(error)
+      return toast.error(msg)
+    }
+  }
   const chartConfig = {
     total: {
       label: 'Valor Vendido',
@@ -40,6 +60,9 @@ function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
         <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
           <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS</h1>
           <div className="flex items-center gap-1">
+            <button className="text-black hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData(salesGraph)}>
+              <FaDownload size={10} />
+            </button>
             <button
               onClick={() => setGraphMetric('total')}
               className={cn(
