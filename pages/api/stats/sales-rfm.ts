@@ -32,9 +32,7 @@ const getSalesRFM: NextApiHandler<{ data: TRFMResult }> = async (req, res) => {
   const { period, total, saleNatures, sellers } = SalesRFMFiltersSchema.parse(req.body)
 
   // Validating view permission
-  if (userViewPermission == 'PRÓPRIA') {
-    if (sellers.some((s) => s != userSeller)) throw new createHttpError.BadRequest('Você não tem permissão para acessar esse escopo.')
-  }
+
   const db = await connectToDatabase()
   const clientsCollection: Collection<TClient> = db.collection('clients')
 

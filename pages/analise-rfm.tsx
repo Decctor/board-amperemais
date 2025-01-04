@@ -1,18 +1,19 @@
-import LoadingComponent from '@/components/Layouts/LoadingComponent'
-import ErrorComponent from '@/components/Layouts/ErrorComponent'
 import { getErrorMessage } from '@/lib/errors'
+import LoadingComponent from '@/components/Layouts/LoadingComponent'
 import { useUserSession } from '@/lib/queries/session'
-import DashboardPage from '@/components/Dashboard/DashboardPage'
+import React from 'react'
 import UnauthenticatedPage from '@/components/Utils/UnauthenticatedPage'
-import SalesStatsMain from '@/components/SalesStats/SalesStatsMain'
-const currentDate = new Date()
+import ErrorComponent from '@/components/Layouts/ErrorComponent'
+import RFMAnalysis from '@/components/RFMAnalysis/RFMAnalysis'
 
-export default function Home() {
+function RFMAnalysisPage() {
   const { data: session, isLoading, isError, isSuccess, error } = useUserSession()
 
   if (isLoading) return <LoadingComponent />
   if (isError) return <ErrorComponent msg={getErrorMessage(error)} />
   if (isSuccess && !session) return <UnauthenticatedPage />
-  if (isSuccess && !!session) return <SalesStatsMain user={session} />
+  if (isSuccess && !!session) return <RFMAnalysis user={session} />
   return <></>
 }
+
+export default RFMAnalysisPage

@@ -53,6 +53,7 @@ export function useClientsBySearch() {
     name: '',
     phone: '',
     acquisitionChannels: [],
+    rfmTitles: [],
     period: { after: null, before: null },
   })
 
@@ -62,7 +63,15 @@ export function useClientsBySearch() {
 
   return {
     ...useQuery({
-      queryKey: ['clients-by-search', queryParams.page, queryParams.name, queryParams.phone, queryParams.acquisitionChannels, queryParams.period],
+      queryKey: [
+        'clients-by-search',
+        queryParams.page,
+        queryParams.name,
+        queryParams.phone,
+        queryParams.acquisitionChannels,
+        queryParams.rfmTitles,
+        queryParams.period,
+      ],
       queryFn: () => fetchClientsBySearch(queryParams),
     }),
     queryParams,

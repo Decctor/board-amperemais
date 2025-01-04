@@ -1,41 +1,79 @@
 import { apiHandler } from '@/lib/api'
-import { ClientSearchQueryParams, TClient, TClientDTO } from '@/schemas/clients'
+import {
+  ClientSearchQueryParams,
+  ClientSimplifiedProjection,
+  TClient,
+  TClientDTO,
+  TClientSearchQueryParams,
+  TClientSimplifiedWithSalesDTO,
+} from '@/schemas/clients'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
-import { Filter } from 'mongodb'
+import { Collection, Filter, ObjectId } from 'mongodb'
 import { NextApiHandler } from 'next'
 
-export type TClientsBySearch = { clients: TClientDTO[]; clientsMatched: number; totalPages: number }
+export type TClientsBySearch = { clients: TClientSimplifiedWithSalesDTO[]; clientsMatched: number; totalPages: number }
 const getClientsBySearchRoute: NextApiHandler<{ data: TClientsBySearch }> = async (req, res) => {
-  const PAGE_SIZE = 500
+  const PAGE_SIZE = 100
 
   const db = await connectToDatabase()
   const collection = db.collection<TClient>('clients')
 
-  const { page, name, phone, acquisitionChannels, period } = ClientSearchQueryParams.parse(req.body)
+  const filters = ClientSearchQueryParams.parse(req.body)
 
-  const nameQuery: Filter<TClient> = name.trim().length > 0 ? { $or: [{ nome: { $regex: name, $options: 'i' } }, { nome: name }] } : {}
-  const phoneQuery: Filter<TClient> = phone.trim().length > 0 ? { $or: [{ telefone: { $regex: phone, $options: 'i' } }, { telefone: phone }] } : {}
-  const acquisitionChannelsQuery: Filter<TClient> = acquisitionChannels.length > 0 ? { canalAquisicao: { $in: acquisitionChannels } } : {}
-  const periodQuery: Filter<TClient> = period.after && period.before ? { dataInsercao: { $gte: period.after, $lte: period.before } } : {}
-
-  const query = { ...nameQuery, ...phoneQuery, ...acquisitionChannelsQuery, ...periodQuery }
-
-  const skip = PAGE_SIZE * (Number(page) - 1)
+  const skip = PAGE_SIZE * (Number(filters.page) - 1)
   const limit = PAGE_SIZE
 
-  const clientsMatched = await collection.countDocuments({ ...query })
-
-  const clientsResult = await collection
-    .find({ ...query })
-    .sort({ _id: -1 })
-    .skip(skip)
-    .limit(limit)
-    .toArray()
-
-  const clients = clientsResult.map((c) => ({ ...c, _id: c._id.toString() }))
+  const { clients, clientsMatched } = await getClients({ collection, filters, skip, limit })
   const totalPages = Math.round(clientsMatched / PAGE_SIZE)
 
   return res.status(200).json({ data: { clients, clientsMatched, totalPages } })
 }
 
 export default apiHandler({ POST: getClientsBySearchRoute })
+
+type GetClientsParams = {
+  collection: Collection<TClient>
+  filters: TClientSearchQueryParams
+  skip: number
+  limit: number
+}
+async function getClients({ collection, filters, skip, limit }: GetClientsParams) {
+  const nameOrQuery: Filter<TClient>[] = filters.name.trim().length > 0 ? [{ nome: { $regex: filters.name, $options: 'i' } }, { nome: filters.name }] : []
+  const phoneOrQuery: Filter<TClient>[] =
+    filters.phone.trim().length > 0 ? [{ telefone: { $regex: filters.phone, $options: 'i' } }, { telefone: filters.phone }] : []
+  const acquisitionChannelsQuery: Filter<TClient> = filters.acquisitionChannels.length > 0 ? { canalAquisicao: { $in: filters.acquisitionChannels } } : {}
+
+  const rfmTitlesQuery: Filter<TClient> = filters.rfmTitles.length > 0 ? { 'analiseRFM.titulo': { $in: filters.rfmTitles } } : {}
+
+  const orQueries = [...nameOrQuery, ...phoneOrQuery]
+  const orQuery = orQueries.length > 0 ? { $or: orQueries } : {}
+  const query = { _id: { $ne: new ObjectId('66ef0e4f9f7840d7584fb768') }, ...orQuery, ...acquisitionChannelsQuery, ...rfmTitlesQuery }
+
+  const addFields = { idAsString: { $toString: '$_id' } }
+  const salesLookup = {
+    from: 'sales',
+    localField: 'idAsString',
+    foreignField: 'idCliente',
+    as: 'vendas',
+  }
+  const projection = {
+    ...ClientSimplifiedProjection,
+    'vendas.valor': 1,
+    'vendas.dataVenda': 1,
+  }
+
+  const clientsMatched = await collection.countDocuments({ ...query })
+  const clients = (await collection
+    .aggregate([
+      { $match: query },
+      { $addFields: addFields },
+      { $lookup: salesLookup },
+      { $project: projection },
+      { $skip: skip },
+      { $limit: limit },
+      { $sort: { dataUltimaCompra: -1 } },
+    ])
+    .toArray()) as TClientSimplifiedWithSalesDTO[]
+
+  return { clients, clientsMatched }
+}

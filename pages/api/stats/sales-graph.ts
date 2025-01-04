@@ -16,59 +16,49 @@ export type TSaleGraph = {
 }[]
 
 const getSalesGraphStatsRoute: NextApiHandler<{ data: TSaleGraph }> = async (req, res) => {
-  const { period, group, total, saleNatures, sellers, clientRFMTitles, productGroups, excludedSalesIds } = SalesGraphFilterSchema.parse(req.body)
+  const filters = SalesGraphFilterSchema.parse(req.body)
 
   const db = await connectToDatabase()
   const salesCollection: Collection<TSale> = db.collection('sales')
 
-  const sales = await getSales({
-    collection: salesCollection,
-    after: period.after,
-    before: period.before,
-    total,
-    saleNatures,
-    sellers,
-    clientRFMTitles,
-    productGroups,
-    excludedSalesIds,
-  })
+  const sales = await getSales({ collection: salesCollection, filters })
 
   const stats = sales.reduce((acc: { [key: string]: { qtde: number; total: number } }, current) => {
     const total = current.itens
-      .filter((item) => (productGroups.length > 0 ? productGroups.includes(item.grupo) : true))
+      .filter((item) => (filters.productGroups.length > 0 ? filters.productGroups.includes(item.grupo) : true))
       .reduce((acc, item) => acc + item.vprod - item.vdesc, 0)
-    if (group == 'DIA') {
+    if (filters.group == 'DIA') {
       const saleDay = dayjs(current.dataVenda).format('DD/MM')
       acc[saleDay].qtde += 1
       acc[saleDay].total += total
     }
-    if (group == 'MÊS') {
+    if (filters.group == 'MÊS') {
       const saleMonth = dayjs(current.dataVenda).month() + 1
       acc[`${saleMonth}`].qtde += 1
       acc[`${saleMonth}`].total += total
     }
-    if (group == 'BIMESTRE') {
+    if (filters.group == 'BIMESTRE') {
       const saleBimester = `${Math.ceil((dayjs(current.dataVenda).month() + 1) / 2)}º`
       acc[saleBimester].qtde += 1
       acc[saleBimester].total += total
     }
-    if (group == 'TRIMESTRE') {
+    if (filters.group == 'TRIMESTRE') {
       const saleTrimester = `${Math.ceil((dayjs(current.dataVenda).month() + 1) / 3)}º`
       acc[saleTrimester].qtde += 1
       acc[saleTrimester].total += total
     }
-    if (group == 'SEMESTRE') {
+    if (filters.group == 'SEMESTRE') {
       const saleTrimester = `${Math.ceil((dayjs(current.dataVenda).month() + 1) / 6)}º`
       acc[saleTrimester].qtde += 1
       acc[saleTrimester].total += total
     }
-    if (group == 'ANO') {
+    if (filters.group == 'ANO') {
       const saleYear = dayjs(current.dataVenda).year()
       acc[saleYear].qtde += 1
       acc[saleYear].total += total
     }
     return acc
-  }, getInitialGroupReduce({ initialDate: period.after, endDate: period.before, group }))
+  }, getInitialGroupReduce({ initialDate: filters.period.after, endDate: filters.period.before, group: filters.group }))
 
   return res.status(200).json({ data: Object.entries(stats).map(([key, value]) => ({ chave: key, ...value })) })
 }
@@ -131,32 +121,28 @@ type TSaleResult = {
 }
 type GetSalesParams = {
   collection: Collection<TSale>
-  after: string
-  before: string
-  total: TSalesGraphFilters['total']
-  saleNatures: TSalesGraphFilters['saleNatures']
-  sellers: TSalesGraphFilters['sellers']
-  clientRFMTitles: TSalesGraphFilters['clientRFMTitles']
-  productGroups: TSalesGraphFilters['productGroups']
-  excludedSalesIds: TSalesGraphFilters['excludedSalesIds']
+  filters: TSalesGraphFilters
 }
-async function getSales({ collection, after, before, total, saleNatures, sellers, clientRFMTitles, productGroups, excludedSalesIds }: GetSalesParams) {
+async function getSales({ collection, filters }: GetSalesParams) {
   try {
     function getQueryByTotal(total: TSalesGraphFilters['total']) {
       if (total.min && total.max) return { valor: { $gte: total.min, $lte: total.max } }
       if (total.min) return { valor: { $gte: total.min } }
       if (total.max) return { valor: { $lte: total.max } }
     }
-    const queryPeriod = after && before ? { dataVenda: { $gte: after, $lte: before } } : {}
-    const queryTotal = getQueryByTotal(total)
-    const saleNaturesQuery: Filter<TSale> = saleNatures.length > 0 ? { natureza: { $in: saleNatures } } : {}
-    const sellersQuery: Filter<TSale> = sellers.length > 0 ? { vendedor: { $in: sellers } } : {}
-    const queryProductGroups: Filter<TSale> = productGroups.length > 0 ? { 'itens.grupo': { $in: productGroups } } : {}
-    const queryExcludedSalesIds: Filter<TSale> = excludedSalesIds.length > 0 ? { _id: { $nin: excludedSalesIds.map((id) => new ObjectId(id)) } } : {}
+    const queryPeriod = filters.period.after && filters.period.before ? { dataVenda: { $gte: filters.period.after, $lte: filters.period.before } } : {}
+    const queryTotal = getQueryByTotal(filters.total)
+    const saleNaturesQuery: Filter<TSale> = filters.saleNatures.length > 0 ? { natureza: { $in: filters.saleNatures } } : {}
+    const sellersQuery: Filter<TSale> = filters.sellers.length > 0 ? { vendedor: { $in: filters.sellers } } : {}
+    const queryProductGroups: Filter<TSale> = filters.productGroups.length > 0 ? { 'itens.grupo': { $in: filters.productGroups } } : {}
+    const queryExcludedSalesIds: Filter<TSale> =
+      filters.excludedSalesIds.length > 0 ? { _id: { $nin: filters.excludedSalesIds.map((id) => new ObjectId(id)) } } : {}
     const match: Filter<TSale> = { ...queryPeriod, ...queryTotal, ...saleNaturesQuery, ...sellersQuery, ...queryProductGroups, ...queryExcludedSalesIds }
     const addFields = { $addFields: { clientIdAsObjectId: { $toObjectId: '$idCliente' } } }
     const lookupClient = { $lookup: { from: 'clients', localField: 'clientIdAsObjectId', foreignField: '_id', as: 'clienteDados' } }
-    const postLookupMatch = { $match: { 'clienteDados.analiseRFM.titulo': clientRFMTitles.length > 0 ? { $in: clientRFMTitles } : { $ne: null } } }
+    const postLookupMatch = {
+      $match: { 'clienteDados.analiseRFM.titulo': filters.clientRFMTitles.length > 0 ? { $in: filters.clientRFMTitles } : { $ne: null } },
+    }
     const projection = {
       $project: {
         dataVenda: 1,

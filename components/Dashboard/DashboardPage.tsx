@@ -236,7 +236,6 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                 />
               </div>
             </div>
-
             <div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
               <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
                 <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
@@ -270,7 +269,6 @@ export default function DashboardPage({ user }: DashboardPageProps) {
                   </div>
                 </div>
               ) : null}
-
               <div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
                 <div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
                   <h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Ticket Médio</h1>

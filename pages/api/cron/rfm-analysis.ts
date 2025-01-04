@@ -23,13 +23,13 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 
   const match: Filter<TSale> = { $and: [{ dataVenda: { $gte: intervalStart } }, { dataVenda: { $lte: intervalEnd } }] }
 
-  const project = { idCliente: 1, valor: 1, dataVenda: 1 }
+  const project = { _id: 1, idCliente: 1, valor: 1, dataVenda: 1 }
   const sales = (await salesCollection.aggregate([{ $match: match }, { $project: project }]).toArray()) as TSaleResult[]
 
   const rfmConfig = (await utilsCollection.findOne({ identificador: 'CONFIG_RFM' })) as TRFMConfig
 
   const bulkWriteArr = allClients.map((client) => {
-    const calculatedRecency = calculateRecency(client._id.toString(), sales)
+    const { recency: calculatedRecency, lastSale } = calculateRecency(client._id.toString(), sales)
     const calculatedFrequency = calculateFrequency(client._id.toString(), sales) || 0
 
     const recency = calculatedRecency == Infinity ? null : calculatedRecency
@@ -50,6 +50,8 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
         filter: { _id: new ObjectId(client._id) },
         update: {
           $set: {
+            idUltimaCompra: lastSale?._id.toString(),
+            dataUltimaCompra: lastSale?.dataVenda,
             analiseRFM: {
               notas: { recencia: recencyScore, frequencia: frequencyScore },
               titulo: label,
@@ -71,6 +73,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 }
 
 type TSaleResult = {
+  _id: ObjectId
   valor: TSale['valor']
   dataVenda: TSale['dataVenda']
   idCliente: TSale['idCliente']
@@ -80,11 +83,11 @@ const calculateRecency = (clientId: string, sales: TSaleResult[]) => {
   const lastSale = clientSales.sort((a, b) => {
     return new Date(b.dataVenda).getTime() - new Date(a.dataVenda).getTime()
   })[0]
-  if (!lastSale) return null
+  if (!lastSale) return { recency: null, lastSale: null }
   const lastSaleDate = new Date(lastSale.dataVenda)
 
   const recency = dayjs().diff(dayjs(lastSaleDate), 'days')
-  return recency
+  return { recency, lastSale }
 }
 const calculateFrequency = (clientId: string, sales: TSaleResult[]) => {
   return sales.filter((sale) => sale.idCliente === clientId).length

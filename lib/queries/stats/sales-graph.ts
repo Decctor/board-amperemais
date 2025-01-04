@@ -13,10 +13,10 @@ async function fetchSalesGraph(filters: TSalesGraphFilters) {
   }
 }
 
-export function useSalesGraph({ period, group, total, saleNatures, sellers, clientRFMTitles, productGroups, excludedSalesIds }: TSalesGraphFilters) {
+export function useSalesGraph(filters: TSalesGraphFilters) {
   return useQuery({
-    queryKey: ['sales-graph', period, group, total, saleNatures, sellers, clientRFMTitles, productGroups, excludedSalesIds],
-    queryFn: async () => await fetchSalesGraph({ period, group, total, saleNatures, sellers, clientRFMTitles, productGroups, excludedSalesIds }),
+    queryKey: ['sales-graph', filters],
+    queryFn: async () => await fetchSalesGraph(filters),
     refetchOnWindowFocus: false,
   })
 }

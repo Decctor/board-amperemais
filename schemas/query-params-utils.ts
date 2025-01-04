@@ -15,25 +15,8 @@ export const PeriodQueryParamSchema = z.object({
     .datetime({ message: 'Tipo inválido para parâmetro de período.' }),
 })
 
-export const SalesGraphFilterSchema = z.object({
-  period: z.object({
-    after: z
-      .string({
-        required_error: 'Parâmetros de período não fornecidos ou inválidos.',
-        invalid_type_error: 'Parâmetros de período não fornecidos ou inválidos.',
-      })
-      .datetime({ message: 'Tipo inválido para parâmetro de período.' }),
-    before: z
-      .string({
-        required_error: 'Parâmetros de período não fornecidos ou inválidos.',
-        invalid_type_error: 'Parâmetros de período não fornecidos ou inválidos.',
-      })
-      .datetime({ message: 'Tipo inválido para parâmetro de período.' }),
-  }),
-  group: z.enum(['DIA', 'MÊS', 'BIMESTRE', 'TRIMESTRE', 'SEMESTRE', 'ANO'], {
-    required_error: 'Agrupamento de período não informado.',
-    invalid_type_error: 'Tipo não válido para o agrupamento de período.',
-  }),
+export const SalesStatsGeneralQueryParamsSchema = z.object({
+  period: PeriodQueryParamSchema,
   total: z.object({
     min: z.number({ invalid_type_error: 'Tipo não válido para valor mínimo da venda.' }).optional().nullable(),
     max: z.number({ invalid_type_error: 'Tipo não válido para valor máximo da venda.' }).optional().nullable(),
@@ -50,6 +33,14 @@ export const SalesGraphFilterSchema = z.object({
   ),
   productGroups: z.array(z.string({ required_error: 'Grupo de produto não informado.', invalid_type_error: 'Tipo não válido para o grupo de produto.' })),
   excludedSalesIds: z.array(z.string({ required_error: 'ID da venda não informado.', invalid_type_error: 'Tipo não válido para o ID da venda.' })),
+})
+export type TSaleStatsGeneralQueryParams = z.infer<typeof SalesStatsGeneralQueryParamsSchema>
+
+export const SalesGraphFilterSchema = SalesStatsGeneralQueryParamsSchema.extend({
+  group: z.enum(['DIA', 'MÊS', 'BIMESTRE', 'TRIMESTRE', 'SEMESTRE', 'ANO'], {
+    required_error: 'Agrupamento de período não informado.',
+    invalid_type_error: 'Tipo não válido para o agrupamento de período.',
+  }),
 })
 export type TSalesGraphFilters = z.infer<typeof SalesGraphFilterSchema>
 
