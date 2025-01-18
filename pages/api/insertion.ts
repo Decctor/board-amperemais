@@ -16,6 +16,38 @@ const handleInsertion: NextApiHandler<any> = async (request, response) => {
 
   // const db = await connectToDatabase()
   // const salesCollection = db.collection('sales')
+  // const productsCollection = db.collection('products')
+
+  // const salesItems = await salesCollection
+  //   .aggregate([
+  //     {
+  //       $unwind: {
+  //         path: '$itens',
+  //         includeArrayIndex: 'string',
+  //         preserveNullAndEmptyArrays: false,
+  //       },
+  //     },
+  //     {
+  //       $group: {
+  //         _id: {
+  //           codigo: '$itens.codigo',
+  //           descricao: '$itens.descricao',
+  //           unidade: '$itens.unidade',
+  //           grupo: '$itens.grupo',
+  //         },
+  //       },
+  //     },
+  //   ])
+  //   .toArray()
+
+  // const products = salesItems.map((item) => ({
+  //   codigo: item._id.codigo,
+  //   nome: item._id.descricao,
+  //   unidade: item._id.unidade,
+  //   categoria: item._id.grupo,
+  // }))
+  // const insertManyProducts = await productsCollection.insertMany(products)
+
   // const salesItemsCollection = db.collection('sales-items')
   // const clientsCollection: Collection<TClient> = db.collection('clients')
 
