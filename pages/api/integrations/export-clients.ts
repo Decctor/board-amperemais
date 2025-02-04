@@ -6,7 +6,7 @@ import { generateId } from 'lucia'
 import { NextApiHandler } from 'next'
 
 const handleExportClientsRoute: NextApiHandler<any> = async (req, res) => {
-  console.log('CHECK')
+  console.log('CHECK 2')
   const db = await connectToDatabase()
   const clientsCollection = db.collection<TClient>('clients')
 
