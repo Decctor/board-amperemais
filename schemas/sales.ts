@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SaleNatureEnum } from './enums'
 
 const SaleItemSchema = z.object({
   codigo: z.string({}),
@@ -35,7 +36,7 @@ export const SaleSchema = z.object({
   dataVenda: z.string({}),
   modelo: z.enum(['DV', '55', '65', '3A', '02']),
   movimento: z.enum(['RECEITAS']),
-  natureza: z.enum(['SN08', 'SN03', 'SN11', 'SN20', 'SN04', 'SN09', 'SN02', 'COND', 'SN99', 'SN01', 'SN05']),
+  natureza: SaleNatureEnum,
   parceiro: z.string({}),
   serie: z.string(),
   situacao: z.enum(['00', '04', '02', '05']),
@@ -48,7 +49,7 @@ export const SaleSchema = z.object({
 })
 
 export const SalesQueryFilters = z.object({
-  saleNature: z.array(z.enum(['SN08', 'SN03', 'SN11', 'SN20', 'SN04', 'SN09', 'SN02', 'COND', 'SN99', 'SN01', 'SN05'])),
+  saleNature: z.array(SaleNatureEnum),
   total: z.object({
     min: z.number().optional().nullable(),
     max: z.number().optional().nullable(),

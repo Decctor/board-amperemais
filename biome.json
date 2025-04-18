@@ -1,0 +1,30 @@
+{
+	"linter": {
+		"rules": {
+			"suspicious": {
+				"noExplicitAny": "warn",
+				"noMisleadingCharacterClass": "warn"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "warn"
+			},
+			"style": {
+				"useTemplate": "warn",
+				"noParameterAssign": "warn",
+				"noNonNullAssertion": "warn"
+			},
+			"performance": {
+				"noDelete": "warn"
+			},
+			"security": {
+				"noGlobalEval": "warn"
+			}
+		}
+	},
+	"formatter": {
+		"indentStyle": "tab",
+		"indentWidth": 1,
+		"lineWidth": 150,
+		"lineEnding": "lf"
+	}
+}

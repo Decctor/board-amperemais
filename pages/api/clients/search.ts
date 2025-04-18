@@ -2,16 +2,17 @@ import { apiHandler } from '@/lib/api'
 import {
   ClientSearchQueryParams,
   ClientSimplifiedProjection,
-  TClient,
-  TClientDTO,
-  TClientSearchQueryParams,
-  TClientSimplifiedWithSalesDTO,
+  type TClient,
+  type TClientDTO,
+  type TClientSearchQueryParams,
+  type TClientSimplifiedDTO,
+  type TClientSimplifiedWithSalesDTO,
 } from '@/schemas/clients'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
-import { Collection, Filter, ObjectId } from 'mongodb'
-import { NextApiHandler } from 'next'
+import { type Collection, type Filter, ObjectId } from 'mongodb'
+import type { NextApiHandler } from 'next'
 
-export type TClientsBySearch = { clients: TClientSimplifiedWithSalesDTO[]; clientsMatched: number; totalPages: number }
+export type TClientsBySearch = { clients: TClientSimplifiedDTO[]; clientsMatched: number; totalPages: number }
 const getClientsBySearchRoute: NextApiHandler<{ data: TClientsBySearch }> = async (req, res) => {
   const PAGE_SIZE = 100
 
@@ -23,10 +24,17 @@ const getClientsBySearchRoute: NextApiHandler<{ data: TClientsBySearch }> = asyn
   const skip = PAGE_SIZE * (Number(filters.page) - 1)
   const limit = PAGE_SIZE
 
-  const { clients, clientsMatched } = await getClients({ collection, filters, skip, limit })
-  const totalPages = Math.round(clientsMatched / PAGE_SIZE)
+  const { clients: firstFiltersClients, clientsMatched: firstFiltersClientsMatched } = await getClients({ collection, filters, skip, limit })
 
-  return res.status(200).json({ data: { clients, clientsMatched, totalPages } })
+  // If no filters are applied, return the first filters clients
+  if (filters.rfmTitles.length === 0 && filters.period.after === null && filters.period.before === null) {
+    const totalPages = Math.round(firstFiltersClientsMatched / PAGE_SIZE)
+
+    return res.status(200).json({ data: { clients: firstFiltersClients, clientsMatched: firstFiltersClientsMatched, totalPages } })
+  }
+
+
+  return res.status(200).json({ data: { clients: firstFiltersClients, clientsMatched: firstFiltersClientsMatched, totalPages } })
 }
 
 export default apiHandler({ POST: getClientsBySearchRoute })
@@ -49,31 +57,17 @@ async function getClients({ collection, filters, skip, limit }: GetClientsParams
   const orQuery = orQueries.length > 0 ? { $or: orQueries } : {}
   const query = { _id: { $ne: new ObjectId('66ef0e4f9f7840d7584fb768') }, ...orQuery, ...acquisitionChannelsQuery, ...rfmTitlesQuery }
 
-  const addFields = { idAsString: { $toString: '$_id' } }
-  const salesLookup = {
-    from: 'sales',
-    localField: 'idAsString',
-    foreignField: 'idCliente',
-    as: 'vendas',
-  }
-  const projection = {
-    ...ClientSimplifiedProjection,
-    'vendas.valor': 1,
-    'vendas.dataVenda': 1,
-  }
-
   const clientsMatched = await collection.countDocuments({ ...query })
+
   const clients = (await collection
     .aggregate([
       { $match: query },
       { $sort: { dataUltimaCompra: -1 } },
-      { $addFields: addFields },
-      { $lookup: salesLookup },
-      { $project: projection },
+      { $project: ClientSimplifiedProjection },
       { $skip: skip },
       { $limit: limit },
     ])
-    .toArray()) as TClientSimplifiedWithSalesDTO[]
+    .toArray()) as TClientSimplifiedDTO[]
 
   return { clients, clientsMatched }
 }

@@ -1,13 +1,12 @@
 import { apiHandler } from '@/lib/api'
-import { TSale } from '@/schemas/sales'
 import connectToDatabase from '@/services/mongodb/main-db-connection'
 import dayjs from 'dayjs'
-import { Collection, Filter, ObjectId } from 'mongodb'
-import { NextApiHandler } from 'next'
+import { type Collection, Filter, ObjectId } from 'mongodb'
+import type { NextApiHandler } from 'next'
 import dayjsCustomFormatter from 'dayjs/plugin/customParseFormat'
-import { TClient } from '@/schemas/clients'
-import { TSaleItem } from '@/schemas/sales-items'
-import { TRFMConfig } from '@/utils/rfm'
+import type { TClient } from '@/schemas/clients'
+import type { TSale } from '@/schemas/sales'
+import type { TRFMConfig } from '@/utils/rfm'
 
 const intervalStart = dayjs().subtract(12, 'month').startOf('day').toISOString()
 const intervalEnd = dayjs().endOf('day').toISOString()
@@ -19,23 +18,30 @@ const updateManualRoute: NextApiHandler<any> = async (req, res) => {
   const salesCollection: Collection<TSale> = db.collection('sales')
   const utilsCollection: Collection<TRFMConfig> = db.collection('utils')
 
-  const allSales = await salesCollection.find({}, { projection: { dataVenda: 1, idCliente: 1 } }).toArray()
+  const allSales = await salesCollection.find({}).toArray()
 
   const allClients = await clientsCollection.find({}).toArray()
 
   const clientsBulkwrite = allClients.map((client) => {
-    const orderedSales = allSales
-      .filter((s) => s.idCliente == client._id.toString())
-      .sort((a, b) => new Date(b.dataVenda).getTime() - new Date(a.dataVenda).getTime())
-    const lastSale = orderedSales[0]
-    const firstSale = orderedSales[orderedSales.length - 1]
-
+    const orderedSales: TClient['compras'] = allSales
+      .filter((s) => s.idCliente === client._id.toString())
+      .sort((a, b) => new Date(a.dataVenda).getTime() - new Date(b.dataVenda).getTime()).map(
+        (s) => ({
+          id: s._id.toString(),
+          data: s.dataVenda,
+          natureza: s.natureza,
+          valor: s.valor,
+          vendedor: s.vendedor,
+          custoTotal: s.custoTotal,
+          chave: s.chave,
+        })
+      )
     return {
       updateOne: {
         filter: { _id: new ObjectId(client._id) },
         update: {
           $set: {
-            idPrimeiraCompra: firstSale?._id.toString(),
+            compras: orderedSales,
           },
         },
       },
