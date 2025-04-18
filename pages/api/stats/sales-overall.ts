@@ -6,10 +6,10 @@ import type { TSaleGoal } from "@/schemas/sale-goals";
 import type { TSale } from "@/schemas/sales";
 import type { TSaleItem } from "@/schemas/sales-items";
 import { db } from "@/services/drizzle";
-import { clients, sales } from "@/services/drizzle/schema";
+import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import connectToDatabase from "@/services/mongodb/main-db-connection";
 import dayjs from "dayjs";
-import { and, gte, inArray, lte, notInArray } from "drizzle-orm";
+import { and, eq, exists, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
 import type { Collection } from "mongodb";
 import type { NextApiHandler } from "next";
 
@@ -111,9 +111,31 @@ async function getSales({ filters }: GetSalesParams) {
 		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
 
 		if (filters.clientRFMTitles.length > 0)
-			inArray(sales.clienteId, db.select({ id: clients.id }).from(clients).where(inArray(clients.analiseRFMTitulo, filters.clientRFMTitles)));
-
+			exists(
+				db
+					.select({ id: clients.id })
+					.from(clients)
+					.where(and(eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles))),
+			);
 		// How to apply filter for product groups present in sale ???
+
+		// if (filters.productGroups.length > 0) {
+		// 	conditions.push(
+		// 		exists(
+		// 			db
+		// 				.select({ id: saleItems.id })
+		// 				.from(saleItems)
+		// 				.innerJoin(products, eq(saleItems.produtoId, products.id))
+		// 				.where(
+		// 					and(
+		// 						// Aqui está a correção - correlacionando com a tabela externa
+		// 						sql`${saleItems.vendaId} = ${sales.id}`,
+		// 						inArray(products.grupo, filters.productGroups),
+		// 					),
+		// 				),
+		// 		),
+		// 	);
+		// }
 
 		if (filters.excludedSalesIds) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
 

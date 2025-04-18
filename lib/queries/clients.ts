@@ -3,7 +3,7 @@ import axios from "axios";
 import { useState } from "react";
 import { formatWithoutDiacritics } from "../formatting";
 import type { TClientDTO, TClientSearchQueryParams } from "@/schemas/clients";
-import type { TClientsBySearch } from "@/pages/api/clients/search";
+import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
 
 async function fetchClients() {
 	try {
@@ -22,9 +22,7 @@ export function useClients() {
 	});
 	function matchSearch(item: TClientDTO) {
 		if (filters.search.trim().length === 0) return true;
-		return formatWithoutDiacritics(item.nome, true).includes(
-			formatWithoutDiacritics(filters.search, true),
-		);
+		return formatWithoutDiacritics(item.nome, true).includes(formatWithoutDiacritics(filters.search, true));
 	}
 	function handleModelData(data: TClientDTO[]) {
 		return data.filter((d) => matchSearch(d));
@@ -44,21 +42,24 @@ async function fetchClientsBySearch(params: TClientSearchQueryParams) {
 	try {
 		const { data } = await axios.post("/api/clients/search", params);
 
-		return data.data as TClientsBySearch;
+		return data.data as TGetClientsBySearchOutput;
 	} catch (error) {
 		console.log("Error running fetchClientsBySearch", error);
 		throw error;
 	}
 }
 
-export function useClientsBySearch() {
+type UseClientsBySearchParams = {
+	initialParams: Partial<TClientSearchQueryParams>;
+};
+export function useClientsBySearch({ initialParams }: UseClientsBySearchParams) {
 	const [queryParams, setQueryParams] = useState<TClientSearchQueryParams>({
-		page: 1,
-		name: "",
-		phone: "",
-		acquisitionChannels: [],
-		rfmTitles: [],
-		period: { after: null, before: null },
+		page: initialParams?.page || 1,
+		name: initialParams?.name || "",
+		phone: initialParams?.phone || "",
+		acquisitionChannels: initialParams?.acquisitionChannels || [],
+		rfmTitles: initialParams?.rfmTitles || [],
+		period: { after: initialParams?.period?.after, before: initialParams?.period?.before },
 	});
 
 	function updateQueryParams(newParams: Partial<TClientSearchQueryParams>) {
