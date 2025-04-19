@@ -222,11 +222,7 @@ function ClientCard({ client, period }: ClientCardProps) {
 		const rfm = RFMLabels.find((x) => x.text === rfmLabel);
 		return rfm?.backgroundCollor || "bg-gray-400";
 	}
-	function getSalesStatsInPeriod(sales: TGetClientsBySearchOutput["clients"][number]["compras"]) {
-		const totalValue = sales.reduce((acc, sale) => acc + sale.valorTotal, 0);
-		return { purchases: sales.length, purchasesTotal: totalValue };
-	}
-	const salesStats = getSalesStatsInPeriod(client.compras);
+
 	return (
 		<div className="flex w-full flex-col gap-1 rounded border border-primary bg-[#fff] p-2 shadow-sm dark:bg-[#121212]">
 			<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
@@ -253,26 +249,37 @@ function ClientCard({ client, period }: ClientCardProps) {
 						<FaPhone width={10} height={10} />
 						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">{client.telefone}</h1>
 					</div>
-					<div className="flex items-center gap-1">
-						<MdEmail width={10} height={10} />
-						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">{client.email}</h1>
-					</div>
-					<div className="flex items-center gap-1">
-						<Megaphone width={15} height={15} />
-						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">{client.canalAquisicao || "N/A"}</h1>
-					</div>
+					{client.email ? (
+						<div className="flex items-center gap-1">
+							<MdEmail width={10} height={10} />
+							<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">{client.email}</h1>
+						</div>
+					) : null}
+					{client.canalAquisicao ? (
+						<div className="flex items-center gap-1">
+							<Megaphone width={15} height={15} />
+							<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">{client.canalAquisicao || "N/A"}</h1>
+						</div>
+					) : null}
 				</div>
 				<div className="flex w-full flex-wrap items-center justify-center gap-2 lg:min-w-fit lg:justify-end">
 					<div className="flex items-center gap-1">
 						<ShoppingCart width={14} height={14} />
-						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">COMPRAS NO PERÍODO</h1>
-						<h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">{salesStats.purchases}</h1>
+						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">Nº DE COMPRAS NO PERÍODO</h1>
+						<h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">{client.metadados.periodoNumeroCompras}</h1>
 					</div>
 					<div className="flex items-center gap-1">
 						<BadgeDollarSign width={14} height={14} />
-						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">VALOR TOTAL DAS COMPRAS</h1>
-						<h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">{formatToMoney(salesStats.purchasesTotal)}</h1>
+						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">TOTAL COMPRO NO PERÍODO</h1>
+						<h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">{formatToMoney(client.metadados.periodoValorCompro)}</h1>
 					</div>
+					{/* <div className="flex items-center gap-1">
+						<BadgeDollarSign width={14} height={14} />
+						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">TÍTULO RFM NO PERÍODO</h1>
+						<h1 className={cn("px-1 py-0.5 rounded-lg text-white text-[0.55rem]", getRFMColor(client.metadados.periodoAnaliseRFMTitulo || ""))}>
+							{client.metadados.periodoAnaliseRFMTitulo}
+						</h1>
+					</div> */}
 				</div>
 			</div>
 		</div>

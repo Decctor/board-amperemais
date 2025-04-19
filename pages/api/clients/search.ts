@@ -3,8 +3,11 @@ import { getUserSession } from "@/lib/auth/session";
 import { ClientSearchQueryParams, type TClientSearchQueryParams } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
+import connectToDatabase from "@/services/mongodb/main-db-connection";
+import { getRFMLabel, type TRFMConfig } from "@/utils/rfm";
 import dayjs from "dayjs";
 import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import type { Collection } from "mongodb";
 import type { NextApiHandler, NextApiRequest } from "next";
 
 // This function encapsulates the core logic for fetching clients with pagination and applying filters.
@@ -53,6 +56,12 @@ type GetClientsParams = {
 // This function is a data access layer function that specifically queries the database
 // for clients, including their purchases, based on the provided filters and pagination.
 async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsParams) {
+	const mongoDb = await connectToDatabase();
+	const utilsCollection: Collection<TRFMConfig> = mongoDb.collection("utils");
+	const rfmConfig = (await utilsCollection.findOne({
+		identificador: "CONFIG_RFM",
+	})) as TRFMConfig;
+
 	// Adjust date filters for database query
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
@@ -86,23 +95,114 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 	// Query the database to fetch the paginated list of clients with their purchases
 	const clientsResult = await db.query.clients.findMany({
 		where: and(...conditions),
-		with: {
-			compras: {
-				where: (field, { gte, lte, and, isNotNull }) =>
-					ajustedAfter && ajustedBefore ? and(gte(field.dataVenda, ajustedAfter), lte(field.dataVenda, ajustedBefore)) : isNotNull(field.dataVenda),
-				columns: {
-					valorTotal: true,
-					dataVenda: true,
-				},
-			},
-		},
 		orderBy: (fields, { asc }) => asc(fields.nome),
 		offset: skip,
 		limit: limit,
 	});
 
+	// Defining the client ids to each we gotta query accumulated results
+	const clientIds = clientsResult.map((client) => client.id);
+
+	const allTimeAccumulatedResults = await db
+		.select({
+			clientId: clients.id,
+			totalPurchases: sql<number>`sum(${sales.valorTotal})`,
+			purchaseCount: sql<number>`count(${sales.id})`,
+			lastPurchaseDate: sql<Date>`max(${sales.dataVenda})`,
+		})
+		.from(clients)
+		.leftJoin(sales, eq(sales.clienteId, clients.id))
+		.where(inArray(clients.id, clientIds))
+		.groupBy(clients.id);
+	const inPeriodAccumulatedResults =
+		ajustedAfter && ajustedBefore
+			? await db
+					.select({
+						clientId: clients.id,
+						totalPurchases: sql<number>`sum(${sales.valorTotal})`,
+						purchaseCount: sql<number>`count(${sales.id})`,
+						lastPurchaseDate: sql<Date>`max(${sales.dataVenda})`,
+					})
+					.from(clients)
+					.leftJoin(sales, and(eq(sales.clienteId, clients.id), gte(sales.dataVenda, ajustedAfter), lte(sales.dataVenda, ajustedBefore)))
+					.where(inArray(clients.id, clientIds))
+					.groupBy(clients.id)
+			: [];
+
+	const allTimeAccumulatedResultsMap = new Map(
+		allTimeAccumulatedResults.map((results) => [
+			results.clientId,
+			{
+				totalPurchases: results.totalPurchases,
+				purchaseCount: results.purchaseCount,
+				lastPurchaseDate: results.lastPurchaseDate,
+			},
+		]),
+	);
+
+	const inPeriodAccumulatedResultsMap = new Map(
+		inPeriodAccumulatedResults.map((results) => [
+			results.clientId,
+			{
+				totalPurchases: results.totalPurchases,
+				purchaseCount: results.purchaseCount,
+				lastPurchaseDate: results.lastPurchaseDate,
+			},
+		]),
+	);
+
 	// Return the fetched clients and the total matched count
-	return { clients: clientsResult, clientsMatched: clientsResultMatchedCount };
+	return {
+		clients: clientsResult.map((client) => {
+			const isPeriodDefined = filters.period.after && filters.period.before;
+			const allTimeAccumulatedClientResults = allTimeAccumulatedResultsMap.get(client.id);
+			const inPeriodAccumulatedClientResults = isPeriodDefined ? inPeriodAccumulatedResultsMap.get(client.id) : allTimeAccumulatedClientResults;
+
+			let rfmTitle = client.analiseRFMTitulo;
+			let rfmRecencyScore = client.analiseRFMNotasRecencia;
+			let rfmFrequencyScore = client.analiseRFMNotasFrequencia;
+			let rfmMonetaryScore = client.analiseRFMNotasMonetario;
+			if (isPeriodDefined) {
+				const calculatedRecency = inPeriodAccumulatedClientResults?.lastPurchaseDate
+					? dayjs().diff(dayjs(inPeriodAccumulatedClientResults.lastPurchaseDate), "days")
+					: Number.POSITIVE_INFINITY;
+				const calculatedFrequency = inPeriodAccumulatedClientResults?.purchaseCount || 0;
+				const calculatedMonetary = inPeriodAccumulatedClientResults?.totalPurchases || 0;
+
+				const configRecency = Object.entries(rfmConfig.recencia).find(
+					([key, value]) => calculatedRecency && calculatedRecency >= value.min && calculatedRecency <= value.max,
+				);
+				rfmRecencyScore = configRecency ? configRecency[0] : "1";
+
+				const configFrequency = Object.entries(rfmConfig.frequencia).find(
+					([key, value]) => calculatedFrequency >= value.min && calculatedFrequency <= value.max,
+				);
+				rfmFrequencyScore = configFrequency ? configFrequency[0] : "1";
+
+				const configMonetary = Object.entries(rfmConfig.monetario || {}).find(
+					([key, value]) => calculatedMonetary >= value.min && calculatedMonetary <= value.max,
+				);
+				rfmMonetaryScore = configMonetary ? configMonetary[0] : "1";
+
+				rfmTitle = getRFMLabel(Number(rfmFrequencyScore), Number(rfmRecencyScore));
+			}
+
+			return {
+				...client,
+				metadados: {
+					periodoNumeroCompras: inPeriodAccumulatedClientResults?.purchaseCount || 0,
+					periodoValorCompro: inPeriodAccumulatedClientResults?.totalPurchases || 0,
+					periodoAnaliseRFMTitulo: rfmTitle,
+					periodoAnaliseRFMNotasRecencia: rfmRecencyScore,
+					periodoAnaliseRFMNotasFrequencia: rfmFrequencyScore,
+					periodoAnaliseRFMNotasMonetario: rfmMonetaryScore,
+					todoPeriodoNumeroCompras: allTimeAccumulatedClientResults?.purchaseCount || 0,
+					todoPeriodoValorCompro: allTimeAccumulatedClientResults?.totalPurchases || 0,
+				},
+			};
+		}),
+		clientsMatched: clientsResultMatchedCount,
+	};
 }
 
 // Export the API handler using your custom apiHandler utility
