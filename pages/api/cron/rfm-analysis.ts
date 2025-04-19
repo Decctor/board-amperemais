@@ -7,8 +7,8 @@ import { type Collection, type Filter, ObjectId } from "mongodb";
 import type { TClient } from "@/schemas/clients";
 import { getRFMLabel, type TRFMConfig } from "@/utils/rfm";
 import { db } from "@/services/drizzle";
-import { clients, type TSaleEntity } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { clients, sales, type TSaleEntity } from "@/services/drizzle/schema";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 
 export const config = {
 	maxDuration: 25,
@@ -21,6 +21,17 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 	// const clientsCollection: Collection<TClient> = db.collection("clients");
 	// const salesCollection: Collection<TSale> = db.collection("sales");
 	const utilsCollection: Collection<TRFMConfig> = mongoDb.collection("utils");
+
+	const accumulatedResultsByClient = await db
+		.select({
+			clientId: clients.id,
+			totalPurchases: sql<number>`sum(${sales.valorTotal})`,
+			purchaseCount: sql<number>`count(${sales.id})`,
+			lastPurchaseDate: sql<Date>`max(${sales.dataVenda})`,
+		})
+		.from(clients)
+		.leftJoin(sales, and(eq(sales.clienteId, clients.id), gte(sales.dataVenda, intervalStart), lte(sales.dataVenda, intervalEnd)))
+		.groupBy(clients.id);
 
 	const allClients = await db.query.clients.findMany({
 		with: {
@@ -41,21 +52,37 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 	return await db.transaction(async (tx) => {
 		let currentClientIndex = 0;
 		const clientListLength = allClients.length;
-		for (const client of allClients) {
+		for (const results of accumulatedResultsByClient) {
 			console.log(`Processando o cliente ${currentClientIndex + 1}/${clientListLength}`);
-			const { recency: calculatedRecency, lastSale } = calculateRecency(client.compras);
-			const calculatedFrequency = calculateFrequency(client.compras) || 0;
+			const calculatedRecency = dayjs().diff(dayjs(results.lastPurchaseDate), "days");
+			const calculatedFrequency = results.purchaseCount;
+			const calculatedMonetary = results.totalPurchases;
 
-			const recency = calculatedRecency === Number.POSITIVE_INFINITY ? null : calculatedRecency;
-			const frequency = calculatedFrequency || 0;
+			const configRecency = Object.entries(rfmConfig.recencia).find(
+				([key, value]) => calculatedRecency && calculatedRecency >= value.min && calculatedRecency <= value.max,
+			);
+			const configFrequency = Object.entries(rfmConfig.frequencia).find(
+				([key, value]) => calculatedFrequency >= value.min && calculatedFrequency <= value.max,
+			);
+			const configMonetary = Object.entries(rfmConfig.monetario).find(
+				([key, value]) => calculatedMonetary >= value.min && calculatedMonetary <= value.max,
+			);
 
-			const configRecency = Object.entries(rfmConfig.recencia).find(([key, value]) => recency && recency >= value.min && recency <= value.max);
 			const recencyScore = configRecency ? Number(configRecency[0]) : 1;
-
-			const configFrequency = Object.entries(rfmConfig.frequencia).find(([key, value]) => frequency >= value.min && frequency <= value.max);
 			const frequencyScore = configFrequency ? Number(configFrequency[0]) : 1;
+			const monetaryScore = configMonetary ? Number(configMonetary[0]) : 1;
 
-			const monetary = calculateMonetaryValue(client.compras);
+			// const calculatedFrequency = calculateFrequency(client.compras) || 0;
+
+			// const recency = calculatedRecency === Number.POSITIVE_INFINITY ? null : calculatedRecency;
+			// const frequency = calculatedFrequency || 0;
+			// const monetary = calculateMonetaryValue(client.compras);
+
+			// const configRecency = Object.entries(rfmConfig.recencia).find(([key, value]) => recency && recency >= value.min && recency <= value.max);
+			// const recencyScore = configRecency ? Number(configRecency[0]) : 1;
+
+			// const configFrequency = Object.entries(rfmConfig.frequencia).find(([key, value]) => frequency >= value.min && frequency <= value.max);
+			// const frequencyScore = configFrequency ? Number(configFrequency[0]) : 1;
 
 			const label = getRFMLabel(frequencyScore, recencyScore);
 
@@ -65,10 +92,10 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 					analiseRFMTitulo: label,
 					analiseRFMNotasFrequencia: frequencyScore.toString(),
 					analiseRFMNotasRecencia: recencyScore.toString(),
-					analiseRFMNotasMonetario: "0",
+					analiseRFMNotasMonetario: monetaryScore.toString(),
 					analiseRFMUltimaAtualizacao: new Date(),
 				})
-				.where(eq(clients.id, client.id));
+				.where(eq(clients.id, results.clientId));
 			currentClientIndex++;
 		}
 		return res.status(200).json("ANÁLISE RFM FEITA COM SUCESSO !");

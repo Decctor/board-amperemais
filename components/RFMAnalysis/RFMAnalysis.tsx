@@ -107,7 +107,7 @@ function ClientsBlock() {
 
 	async function handleExportData() {
 		try {
-			const data = await fetchClientExportation();
+			const data = await fetchClientExportation({ filters: queryParams });
 			getExcelFromJSON(data, `CLIENTES ${dayjs().format("DD-MM-YYYY")}`);
 
 			return toast.success("Dados exportados com sucesso !");

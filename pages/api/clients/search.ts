@@ -1,9 +1,10 @@
 import { apiHandler } from "@/lib/api";
+import { getUserSession } from "@/lib/auth/session";
 import { ClientSearchQueryParams, type TClientSearchQueryParams } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
-import { clients } from "@/services/drizzle/schema";
+import { clients, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, inArray, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { NextApiHandler, NextApiRequest } from "next";
 
 // This function encapsulates the core logic for fetching clients with pagination and applying filters.
@@ -34,6 +35,7 @@ export type TGetClientsBySearchOutput = Awaited<ReturnType<typeof fetchClientsWi
 const handleClientSearchRoute: NextApiHandler<{
 	data: TGetClientsBySearchOutput;
 }> = async (req, res) => {
+	const session = await getUserSession({ request: req });
 	// Call the data preparation function to get the response data
 	const data = await fetchClientsWithPagination(req);
 
@@ -94,7 +96,7 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 				},
 			},
 		},
-		orderBy: (fields, { desc }) => desc(fields.nome),
+		orderBy: (fields, { asc }) => asc(fields.nome),
 		offset: skip,
 		limit: limit,
 	});
