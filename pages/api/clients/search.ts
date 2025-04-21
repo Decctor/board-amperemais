@@ -184,7 +184,11 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 				);
 				rfmMonetaryScore = configMonetary ? configMonetary[0] : "1";
 
-				rfmTitle = getRFMLabel(Number(rfmFrequencyScore), Number(rfmRecencyScore));
+				rfmTitle = getRFMLabel({
+					monetary: Number(rfmMonetaryScore),
+					frequency: Number(rfmFrequencyScore),
+					recency: Number(rfmRecencyScore),
+				});
 			}
 
 			return {

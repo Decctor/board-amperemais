@@ -33,17 +33,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 		.leftJoin(sales, and(eq(sales.clienteId, clients.id), gte(sales.dataVenda, intervalStart), lte(sales.dataVenda, intervalEnd)))
 		.groupBy(clients.id);
 
-	const allClients = await db.query.clients.findMany({
-		with: {
-			compras: {
-				where: (field, { gte, lte, and, isNotNull }) => and(gte(field.dataVenda, intervalStart), lte(field.dataVenda, intervalEnd)),
-				columns: {
-					valorTotal: true,
-					dataVenda: true,
-				},
-			},
-		},
-	});
+	const allClients = await db.query.clients.findMany({});
 
 	const rfmConfig = (await utilsCollection.findOne({
 		identificador: "CONFIG_RFM",
@@ -84,7 +74,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 			// const configFrequency = Object.entries(rfmConfig.frequencia).find(([key, value]) => frequency >= value.min && frequency <= value.max);
 			// const frequencyScore = configFrequency ? Number(configFrequency[0]) : 1;
 
-			const label = getRFMLabel(frequencyScore, recencyScore);
+			const label = getRFMLabel({ monetary: monetaryScore, frequency: frequencyScore, recency: recencyScore });
 
 			await tx
 				.update(clients)

@@ -1,46 +1,29 @@
-import { apiHandler } from '@/lib/api'
-import { TClient } from '@/schemas/clients'
-import { TSale } from '@/schemas/sales'
-import connectToDatabase from '@/services/mongodb/main-db-connection'
-import createHttpError from 'http-errors'
-import { ObjectId } from 'mongodb'
-import { NextApiHandler } from 'next'
+import { apiHandler } from "@/lib/api";
+import { getUserSession } from "@/lib/auth/session";
 
+import { db } from "@/services/drizzle";
+
+import type { NextApiHandler, NextApiRequest } from "next";
+
+const fetchProducts = async (req: NextApiRequest) => {
+	const items = await db.query.products.findMany({});
+	return items;
+};
 type GetResponse = {
-  data: string[]
-}
-const getSaleItemsRoute: NextApiHandler<GetResponse> = async (req, res) => {
-  const db = await connectToDatabase()
-  const collection = db.collection<TSale>('sales')
+	data: string[];
+};
+export type TGetProductsOutput = Awaited<ReturnType<typeof fetchProducts>>;
 
-  const items = await collection
-    .aggregate([
-      {
-        $unwind: {
-          path: '$itens',
-          preserveNullAndEmptyArrays: false,
-        },
-      },
-      {
-        $group: {
-          _id: '$itens.descricao',
-          descricao: { $first: '$itens.descricao' },
-          unidade: { $first: '$itens.unidade' },
-          valorunit: { $first: '$itens.valorunit' },
-          vprod: { $first: '$itens.vprod' },
-          vcusto: { $first: '$itens.vcusto' },
-        },
-      },
-      {
-        $sort: {
-          _id: 1,
-        },
-      },
-    ])
-    .toArray()
+const handleGetProductsRoute: NextApiHandler<{
+	data: TGetProductsOutput;
+}> = async (req, res) => {
+	const session = await getUserSession({ request: req });
 
-  const itemsNames = items.map((item) => item._id)
-  return res.status(200).json({ data: itemsNames })
-}
+	const data = await fetchProducts(req);
 
-export default apiHandler({ GET: getSaleItemsRoute })
+	return res.status(200).json({
+		data: data,
+	});
+};
+
+export default apiHandler({ GET: handleGetProductsRoute });
