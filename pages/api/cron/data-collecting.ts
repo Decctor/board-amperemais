@@ -28,6 +28,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		})
 		.parse(onlineAPIResponse.resultado);
 
+	console.log(OnlineSoftwareSales.length);
 	return await db.transaction(async (tx) => {
 		const existingClients = await tx.query.clients.findMany({
 			columns: {

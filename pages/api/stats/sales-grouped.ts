@@ -18,6 +18,9 @@ type TGroupedSalesStatsReduced = {
 	porVendedor: {
 		[key: string]: { qtde: number; total: number };
 	};
+	porParceiro: {
+		[key: string]: { qtde: number; total: number };
+	};
 };
 
 export type TGroupedSalesStats = {
@@ -32,6 +35,11 @@ export type TGroupedSalesStats = {
 		total: number;
 	}[];
 	porVendedor: {
+		titulo: string;
+		qtde: number;
+		total: number;
+	}[];
+	porParceiro: {
 		titulo: string;
 		qtde: number;
 		total: number;
@@ -72,12 +80,17 @@ const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 			acc.porVendedor[current.vendedor].qtde += 1;
 			acc.porVendedor[current.vendedor].total += totalFiltered;
 
+			// Updating stats by partner
+			acc.porParceiro[current.parceiro] = { qtde: 0, total: 0 };
+			acc.porParceiro[current.parceiro].qtde += 1;
+			acc.porParceiro[current.parceiro].total += totalFiltered;
 			return acc;
 		},
 		{
 			porGrupo: {},
 			porVendedor: {},
 			porItem: {},
+			porParceiro: {},
 		} as TGroupedSalesStatsReduced,
 	);
 
@@ -89,6 +102,9 @@ const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 			.map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
 			.sort((a, b) => b.total - a.total),
 		porVendedor: Object.entries(stats.porVendedor)
+			.map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
+			.sort((a, b) => b.total - a.total),
+		porParceiro: Object.entries(stats.porParceiro)
 			.map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
 			.sort((a, b) => b.total - a.total),
 	};
