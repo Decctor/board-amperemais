@@ -1,5 +1,11 @@
 import { apiHandler } from "@/lib/api";
-import { getDayStringsBetweenDates, getYearStringsBetweenDates } from "@/lib/dates";
+import {
+	getBestNumberOfPointsBetweenDates,
+	getDateBuckets,
+	getDayStringsBetweenDates,
+	getEvenlySpacedDates,
+	getYearStringsBetweenDates,
+} from "@/lib/dates";
 import { SalesGraphFilterSchema, type TSalesGraphFilters } from "@/schemas/query-params-utils";
 
 import { db } from "@/services/drizzle";
@@ -7,7 +13,7 @@ import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import type { TIntervalGrouping } from "@/utils/graphs";
 import dayjs from "dayjs";
 import { and, eq, exists, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
-import type { NextApiHandler } from "next";
+import type { NextApiHandler, NextApiRequest } from "next";
 
 export type TSaleGraph = {
 	chave: string;
@@ -201,4 +207,56 @@ async function getSales({ filters }: GetSalesParams) {
 		console.log("Error getting sales", error);
 		throw error;
 	}
+}
+
+async function getSalesGraph(req: NextApiRequest) {
+	const filters = SalesGraphFilterSchema.parse(req.body);
+
+	const currentPeriodAjusted = {
+		after: new Date(filters.period.after),
+		before: new Date(filters.period.before),
+	};
+	const previousYearPeriodAjusted = {
+		after: dayjs(currentPeriodAjusted.after).subtract(1, "year").toDate(),
+		before: dayjs(currentPeriodAjusted.before).subtract(1, "year").toDate(),
+	};
+	const bestNumberOfPointsForPeriodsDates = getBestNumberOfPointsBetweenDates({
+		startDate: currentPeriodAjusted.after,
+		endDate: currentPeriodAjusted.before,
+	});
+	const currentPeriodDatesStrs = getEvenlySpacedDates({
+		startDate: currentPeriodAjusted.after,
+		endDate: currentPeriodAjusted.before,
+		points: bestNumberOfPointsForPeriodsDates,
+	});
+
+	const currentPeriodDateBuckets = getDateBuckets(currentPeriodDatesStrs);
+
+	const currentPeriodSales = await getSales({
+		filters: {
+			...filters,
+			period: {
+				after: currentPeriodAjusted.after.toISOString(),
+				before: currentPeriodAjusted.before.toISOString(),
+			},
+		},
+	});
+
+	const previousYearPeriodDatesStrs = getEvenlySpacedDates({
+		startDate: previousYearPeriodAjusted.after,
+		endDate: previousYearPeriodAjusted.before,
+		points: bestNumberOfPointsForPeriodsDates,
+	});
+
+	const previousYearPeriodDateBuckets = getDateBuckets(previousYearPeriodDatesStrs);
+
+	const previousYearPeriodSales = await getSales({
+		filters: {
+			...filters,
+			period: {
+				after: previousYearPeriodAjusted.after.toISOString(),
+				before: previousYearPeriodAjusted.before.toISOString(),
+			},
+		},
+	});
 }

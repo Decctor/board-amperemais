@@ -6,7 +6,7 @@ import { clients, sales } from "@/services/drizzle/schema";
 import connectToDatabase from "@/services/mongodb/main-db-connection";
 import { getRFMLabel, type TRFMConfig } from "@/utils/rfm";
 import dayjs from "dayjs";
-import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
 import type { Collection } from "mongodb";
 import type { NextApiHandler, NextApiRequest } from "next";
 
@@ -67,34 +67,40 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
 
 	// Build dynamic WHERE conditions based on filters
-	const conditions = [];
+	const clientQueryConditions = [];
 	if (filters.name.trim().length > 0) {
-		conditions.push(
+		clientQueryConditions.push(
 			sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${filters.name}) OR ${clients.nome} ILIKE '%' || ${filters.name} || '%')`,
 		);
 	}
 	if (filters.phone.trim().length > 0) {
-		conditions.push(
+		clientQueryConditions.push(
 			sql`(to_tsvector('portuguese', ${clients.telefone}) @@ plainto_tsquery('portuguese', ${filters.phone}) OR ${clients.telefone} ILIKE '%' || ${filters.phone} || '%')`,
 		);
 	}
 	if (filters.acquisitionChannels.length > 0) {
-		conditions.push(inArray(clients.canalAquisicao, filters.acquisitionChannels));
+		clientQueryConditions.push(inArray(clients.canalAquisicao, filters.acquisitionChannels));
 	}
 	if (filters.rfmTitles.length > 0) {
-		conditions.push(inArray(clients.analiseRFMTitulo, filters.rfmTitles));
+		clientQueryConditions.push(inArray(clients.analiseRFMTitulo, filters.rfmTitles));
 	}
+
+	const purchasesQueryConditions = [];
+	if (filters.total.min) purchasesQueryConditions.push(gte(sales.valorTotal, filters.total.min));
+	if (filters.total.max) purchasesQueryConditions.push(lte(sales.valorTotal, filters.total.max));
+	if (filters.saleNatures.length > 0) purchasesQueryConditions.push(inArray(sales.natureza, filters.saleNatures));
+	if (filters.excludedSalesIds.length > 0) purchasesQueryConditions.push(notInArray(sales.id, filters.excludedSalesIds));
 
 	// Query the database to get the total count of matched clients (for pagination)
 	const clientsResultMatched = await db
 		.select({ count: count(clients.id) })
 		.from(clients)
-		.where(and(...conditions));
+		.where(and(...clientQueryConditions));
 	const clientsResultMatchedCount = clientsResultMatched[0]?.count || 0;
 
 	// Query the database to fetch the paginated list of clients with their purchases
 	const clientsResult = await db.query.clients.findMany({
-		where: and(...conditions),
+		where: and(...clientQueryConditions),
 		orderBy: (fields, { asc }) => asc(fields.nome),
 		offset: skip,
 		limit: limit,
@@ -112,7 +118,7 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 		})
 		.from(clients)
 		.leftJoin(sales, eq(sales.clienteId, clients.id))
-		.where(inArray(clients.id, clientIds))
+		.where(and(inArray(clients.id, clientIds), ...purchasesQueryConditions))
 		.groupBy(clients.id);
 	const inPeriodAccumulatedResults =
 		ajustedAfter && ajustedBefore
@@ -124,7 +130,10 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 						lastPurchaseDate: sql<Date>`max(${sales.dataVenda})`,
 					})
 					.from(clients)
-					.leftJoin(sales, and(eq(sales.clienteId, clients.id), gte(sales.dataVenda, ajustedAfter), lte(sales.dataVenda, ajustedBefore)))
+					.leftJoin(
+						sales,
+						and(eq(sales.clienteId, clients.id), gte(sales.dataVenda, ajustedAfter), lte(sales.dataVenda, ajustedBefore), ...purchasesQueryConditions),
+					)
 					.where(inArray(clients.id, clientIds))
 					.groupBy(clients.id)
 			: [];

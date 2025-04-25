@@ -1,7 +1,7 @@
 import type { TUserSession } from "@/schemas/users";
 import React, { useState } from "react";
 import Header from "../Layouts/Header";
-import { Filter, PencilLine, Phone, Tag } from "lucide-react";
+import { Diamond, Filter, PencilLine, Phone, Tag } from "lucide-react";
 import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 import { useClientsBySearch } from "@/lib/queries/clients";
@@ -146,6 +146,22 @@ function ClientsBlock() {
 						<h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">
 							{queryParams.rfmTitles.length > 0 ? queryParams.rfmTitles.map((title) => title).join(", ") : "N/A"}
 						</h1>
+					</div>
+				) : null}
+				{queryParams.total.min || queryParams.total.max ? (
+					<div className="flex items-center gap-1">
+						<BadgeDollarSign width={12} height={12} />
+						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">VALOR</h1>
+						<h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">
+							{queryParams.total.min ? `MIN: R$ ${queryParams.total.min}` : "N/A"} - {queryParams.total.max ? `MAX: R$ ${queryParams.total.max}` : "N/A"}
+						</h1>
+					</div>
+				) : null}
+				{queryParams.saleNatures.length > 0 ? (
+					<div className="flex items-center gap-1">
+						<Diamond width={12} height={12} />
+						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">NATUREZA DA VENDA</h1>
+						<h1 className="py-0.5 text-center text-[0.6rem] font-bold  text-primary">{queryParams.saleNatures.map((nature) => nature).join(", ")}</h1>
 					</div>
 				) : null}
 				{queryParams.acquisitionChannels.length > 0 ? (

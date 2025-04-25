@@ -59,6 +59,9 @@ export function useClientsBySearch({ initialParams }: UseClientsBySearchParams) 
 		phone: initialParams?.phone || "",
 		acquisitionChannels: initialParams?.acquisitionChannels || [],
 		rfmTitles: initialParams?.rfmTitles || [],
+		total: {},
+		saleNatures: [],
+		excludedSalesIds: [],
 		period: { after: initialParams?.period?.after, before: initialParams?.period?.before },
 	});
 
@@ -68,15 +71,7 @@ export function useClientsBySearch({ initialParams }: UseClientsBySearchParams) 
 
 	return {
 		...useQuery({
-			queryKey: [
-				"clients-by-search",
-				queryParams.page,
-				queryParams.name,
-				queryParams.phone,
-				queryParams.acquisitionChannels,
-				queryParams.rfmTitles,
-				queryParams.period,
-			],
+			queryKey: ["clients-by-search", queryParams],
 			queryFn: () => fetchClientsBySearch(queryParams),
 		}),
 		queryParams,

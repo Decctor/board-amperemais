@@ -34,18 +34,9 @@ export const ClientSchema = z.object({
 		required_error: "Nome do cliente não informado.",
 		invalid_type_error: "Tipo não válido para o nome do cliente.",
 	}),
-	telefone: z
-		.string({ invalid_type_error: "Tipo não válido para telefone." })
-		.optional()
-		.nullable(),
-	email: z
-		.string({ invalid_type_error: "Tipo não válido para email." })
-		.optional()
-		.nullable(),
-	canalAquisicao: z
-		.string({ invalid_type_error: "Tipo não válido para canal de aquisição." })
-		.optional()
-		.nullable(),
+	telefone: z.string({ invalid_type_error: "Tipo não válido para telefone." }).optional().nullable(),
+	email: z.string({ invalid_type_error: "Tipo não válido para email." }).optional().nullable(),
+	canalAquisicao: z.string({ invalid_type_error: "Tipo não válido para canal de aquisição." }).optional().nullable(),
 	primeiraCompraData: z
 		.date({
 			invalid_type_error: "Tipo não válido para data da primeira compra.",
@@ -115,14 +106,7 @@ export type TClient = z.infer<typeof ClientSchema>;
 export type TClientDTO = TClient & { _id: string };
 export type TClientSimplified = Pick<
 	TClient,
-	| "nome"
-	| "telefone"
-	| "email"
-	| "canalAquisicao"
-	| "dataPrimeiraCompra"
-	| "dataUltimaCompra"
-	| "analiseRFM"
-	| "analisePeriodo"
+	"nome" | "telefone" | "email" | "canalAquisicao" | "dataPrimeiraCompra" | "dataUltimaCompra" | "analiseRFM" | "analisePeriodo"
 > & { compras: Pick<TClient["compras"][number], "valor" | "data">[] };
 export type TClientSimplifiedDTO = TClientSimplified & { _id: string };
 
@@ -156,6 +140,17 @@ export const ClientSearchQueryParams = z.object({
 			invalid_type_error: "Tipo não válido para filtro por título RFM.",
 		}),
 	),
+	total: z.object({
+		min: z.number({ invalid_type_error: "Tipo não válido para valor mínimo da venda." }).optional().nullable(),
+		max: z.number({ invalid_type_error: "Tipo não válido para valor máximo da venda." }).optional().nullable(),
+	}),
+	saleNatures: z.array(
+		z.enum(["SN08", "SN03", "SN11", "SN20", "SN04", "SN09", "SN02", "COND", "SN99", "SN01", "SN05"], {
+			required_error: "Natureza de venda não informado.",
+			invalid_type_error: "Tipo não válido para natureza de venda.",
+		}),
+	),
+	excludedSalesIds: z.array(z.string({ required_error: "ID da venda não informado.", invalid_type_error: "Tipo não válido para o ID da venda." })),
 	period: z.object({
 		after: z
 			.string({
