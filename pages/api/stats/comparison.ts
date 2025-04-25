@@ -194,7 +194,7 @@ async function fetchStatsComparison(req: NextApiRequest) {
 	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
 	if (filters.excludedSalesIds.length > 0) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
 
-	const bestNumberOfPointsForFirstPeriodDates = getBestNumberOfPointsBetweenDates({
+	const { points: bestNumberOfPointsForFirstPeriodDates } = getBestNumberOfPointsBetweenDates({
 		startDate: firstPeriodAjusted.after,
 		endDate: firstPeriodAjusted.before,
 	});
@@ -206,7 +206,7 @@ async function fetchStatsComparison(req: NextApiRequest) {
 
 	const firstPeriodDateBuckets = getDateBuckets(firstPeriodDatesStrs);
 
-	const bestNumberOfPointsForSecondPeriodDates = getBestNumberOfPointsBetweenDates({
+	const { points: bestNumberOfPointsForSecondPeriodDates } = getBestNumberOfPointsBetweenDates({
 		startDate: secondPeriodAjusted.after,
 		endDate: secondPeriodAjusted.before,
 	});

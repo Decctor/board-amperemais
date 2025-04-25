@@ -224,49 +224,79 @@ export function getBestNumberOfPointsBetweenDates({
 }: {
 	startDate: Date;
 	endDate: Date;
-}): number {
+}): {
+	groupingFormat: string;
+	points: number;
+} {
 	const metadata = getDatePeriodMetadata({ startDate, endDate });
 
 	// Casos específicos para períodos comuns
 
 	// Caso: Aproximadamente 1 dia (20-28 horas)
 	if (metadata.hours >= 20 && metadata.hours <= 28) {
-		return 24; // Um ponto por hora
+		return {
+			groupingFormat: "HH:mm",
+			points: 24,
+		}; // Um ponto por hora
 	}
 
 	// Caso: Aproximadamente 1 mês (28-31 dias)
 	if (metadata.days >= 28 && metadata.days <= 31) {
-		return metadata.days; // Um ponto por dia
+		return {
+			groupingFormat: "DD/MM",
+			points: metadata.days,
+		}; // Um ponto por dia
 	}
 
 	// Caso: Aproximadamente 1 ano
 	if (metadata.days >= 360 && metadata.days <= 366) {
-		return metadata.days; // Um ponto por dia do ano
+		return {
+			groupingFormat: "DD/MM",
+			points: metadata.days,
+		}; // Um ponto por dia do ano
 	}
 
 	// Para outros casos, usar uma lógica adaptativa
 	if (metadata.days < 1) {
 		// Menos de um dia: dividir por horas
-		return Math.max(12, metadata.hours);
+		return {
+			groupingFormat: "HH:mm",
+			points: Math.max(12, metadata.hours),
+		};
 	}
 	if (metadata.days < 7) {
 		// Menos de uma semana: 4 pontos por dia
-		return metadata.days * 4;
+		return {
+			groupingFormat: "DD/MM HH:mm",
+			points: metadata.days * 4,
+		};
 	}
 	if (metadata.days < 30) {
 		// Menos de um mês: 1 ponto por dia
-		return metadata.days;
+		return {
+			groupingFormat: "DD/MM",
+			points: metadata.days,
+		};
 	}
 	if (metadata.days < 90) {
 		// Menos de 3 meses: 1 ponto a cada 2 dias
-		return Math.ceil(metadata.days / 2);
+		return {
+			groupingFormat: "DD/MM",
+			points: Math.ceil(metadata.days / 2),
+		};
 	}
 	if (metadata.days < 365) {
 		// Menos de um ano: 1 ponto a cada semana
-		return Math.ceil(metadata.days / 7);
+		return {
+			groupingFormat: "DD/MM",
+			points: Math.ceil(metadata.days / 7),
+		};
 	}
 	// Mais de um ano: 1 ponto a cada mês
-	return Math.max(metadata.months, 12);
+	return {
+		groupingFormat: "MM/YYYY",
+		points: Math.max(metadata.months, 12),
+	};
 }
 
 export function getDateBuckets(dates: Date[]) {
