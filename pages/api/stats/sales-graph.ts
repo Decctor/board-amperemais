@@ -55,12 +55,10 @@ async function fetchSalesGraph(req: NextApiRequest) {
 		after: new Date(filters.period.after),
 		before: new Date(filters.period.before),
 	};
-	console.log("currentPeriodAjusted", currentPeriodAjusted);
 	const previousYearPeriodAjusted = {
 		after: dayjs(currentPeriodAjusted.after).subtract(1, "year").toDate(),
 		before: dayjs(currentPeriodAjusted.before).subtract(1, "year").toDate(),
 	};
-	console.log("previousYearPeriodAjusted", previousYearPeriodAjusted);
 	const { points: bestNumberOfPointsForPeriodsDates, groupingFormat } = getBestNumberOfPointsBetweenDates({
 		startDate: currentPeriodAjusted.after,
 		endDate: currentPeriodAjusted.before,
@@ -119,7 +117,6 @@ async function fetchSalesGraph(req: NextApiRequest) {
 		if (!bucket) return acc;
 		// updating daily statistics
 		const key = dayjs(bucket.key).format(groupingFormat);
-		console.log("CURRENT", key);
 		if (!acc[key]) acc[key] = { ATUAL: { qtde: 0, total: 0 }, ANTERIOR: { qtde: 0, total: 0 } };
 
 		acc[key].ATUAL.qtde += Number(current.quantidade);
@@ -136,7 +133,6 @@ async function fetchSalesGraph(req: NextApiRequest) {
 
 		// updating daily statistics
 		const key = dayjs(bucket.key).format(groupingFormat);
-		console.log("PREVIOUS", key);
 
 		if (!acc[key]) acc[key] = { ATUAL: { qtde: 0, total: 0 }, ANTERIOR: { qtde: 0, total: 0 } };
 

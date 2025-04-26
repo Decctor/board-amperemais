@@ -97,6 +97,10 @@ async function getSales({ filters }: GetSalesParams) {
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
 
+	console.log("GETTING SALES", {
+		ajustedAfter: ajustedAfter?.toISOString(),
+		ajustedBefore: ajustedBefore?.toISOString(),
+	});
 	try {
 		const conditions = [];
 

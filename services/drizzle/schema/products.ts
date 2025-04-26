@@ -10,7 +10,7 @@ export const products = newTable(
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
 		descricao: text("descricao").notNull(),
-		codigo: text("codigo").notNull().unique(),
+		codigo: text("codigo").notNull(),
 		unidade: text("unidade").notNull(),
 		ncm: text("ncm").notNull(),
 		tipo: text("tipo").notNull(),
