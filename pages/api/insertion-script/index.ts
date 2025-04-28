@@ -1,5 +1,5 @@
 import type { NextApiHandler } from "next";
-import ResultsJSON from "../../../resultados-att.json";
+// import ResultsJSON from "../../../resultados-att.json";
 import { apiHandler } from "@/lib/api";
 import { formatToPhone } from "@/lib/formatting";
 import { db } from "@/services/drizzle";
@@ -18,7 +18,8 @@ import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
 dayjs.extend(dayjsCustomFormatter);
 
-const Results = ResultsJSON as any[];
+// const Results = ResultsJSON as any[];
+const Results = [] as any[];
 
 // 3 - This function handles the insertion of sale items into the database
 const handleSaleItemsInsertion: NextApiHandler<any> = async (req, res) => {
