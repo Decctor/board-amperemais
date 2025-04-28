@@ -1,37 +1,86 @@
-import { NextApiRequest } from 'next'
-import { SaleSimplifiedProjection, SalesSimplifiedSearchQueryParams, TSale, TSaleSimplified, TSaleSimplifiedDTO } from '@/schemas/sales'
-import { NextApiHandler } from 'next'
-import { Collection, Filter } from 'mongodb'
-import connectToDatabase from '@/services/mongodb/main-db-connection'
-import { apiHandler } from '@/lib/api'
+import type { NextApiRequest } from "next";
+import { SalesSimplifiedSearchQueryParams } from "@/schemas/sales";
+import type { NextApiHandler } from "next";
 
-export type TSalesSimplifiedSearchResult = {
-  sales: TSaleSimplifiedDTO[]
-  salesMatched: number
-  totalPages: number
+import { apiHandler } from "@/lib/api";
+import { and, count, eq, exists, sql } from "drizzle-orm";
+import { db } from "@/services/drizzle";
+import { clients, sales } from "@/services/drizzle/schema";
+import { getUserSession } from "@/lib/auth/session";
+
+async function fetchSalesSimplified(req: NextApiRequest) {
+	const PAGE_SIZE = 50;
+	const { search, page } = SalesSimplifiedSearchQueryParams.parse(req.body);
+	const conditions = [];
+	if (search.trim().length > 0)
+		conditions.push(
+			exists(
+				db
+					.select({ id: clients.id })
+					.from(clients)
+					.innerJoin(sales, eq(sales.clienteId, clients.id))
+					.where(
+						sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${search}) OR ${clients.nome} ILIKE '%' || ${search} || '%')`,
+					),
+			),
+		);
+	const salesResultMatched = await db
+		.select({ count: count(sales.id) })
+		.from(sales)
+		.where(and(...conditions));
+	const salesMatchedCount = salesResultMatched[0].count as number;
+
+	const skip = PAGE_SIZE * (Number(page) - 1);
+	const limit = PAGE_SIZE;
+
+	const salesResult = await db.query.sales.findMany({
+		where: and(...conditions),
+		columns: {
+			id: true,
+			valorTotal: true,
+		},
+		with: {
+			cliente: {
+				columns: {
+					id: true,
+					nome: true,
+				},
+			},
+		},
+		orderBy: (fields, { desc }) => desc(fields.dataVenda),
+		limit: PAGE_SIZE,
+		offset: skip,
+	});
+
+	const totalPages = Math.ceil(salesMatchedCount / PAGE_SIZE);
+
+	return { sales: salesResult, salesMatched: salesMatchedCount, totalPages };
 }
-type GetResponse = {
-  data: TSalesSimplifiedSearchResult
-}
-const getSalesSimplifiedRoute: NextApiHandler<GetResponse> = async (req, res) => {
-  const PAGE_SIZE = 50
-  const { search, page } = SalesSimplifiedSearchQueryParams.parse(req.body)
-  const db = await connectToDatabase()
-  const collection: Collection<TSale> = db.collection('sales')
+export type TSalesSimplifiedSearchResult = Awaited<ReturnType<typeof fetchSalesSimplified>>;
 
-  const orSearchQuery = search.length > 0 ? [{ cliente: search }, { cliente: { $regex: search, $options: 'i' } }] : []
+const getSalesSimplifiedRoute: NextApiHandler<{
+	data: TSalesSimplifiedSearchResult;
+}> = async (req, res) => {
+	const session = await getUserSession({ request: req });
 
-  const query: Filter<TSale> = orSearchQuery.length > 0 ? { $or: [...orSearchQuery] } : {}
+	const result = await fetchSalesSimplified(req);
 
-  const skip = (page - 1) * PAGE_SIZE
-  const limit = PAGE_SIZE
+	return res.status(200).json({
+		data: result,
+	});
+	// const orSearchQuery = search.length > 0 ? [{ cliente: search }, { cliente: { $regex: search, $options: "i" } }] : [];
 
-  const salesMatched = await collection.countDocuments(query)
-  const totalPages = Math.ceil(salesMatched / PAGE_SIZE)
+	// const query: Filter<TSale> = orSearchQuery.length > 0 ? { $or: [...orSearchQuery] } : {};
 
-  const salesResult = await collection.find(query, { skip, limit, projection: SaleSimplifiedProjection }).toArray()
+	// const skip = (page - 1) * PAGE_SIZE;
+	// const limit = PAGE_SIZE;
 
-  return res.status(200).json({ data: { sales: salesResult as any[], salesMatched, totalPages } })
-}
+	// const salesMatched = await collection.countDocuments(query);
+	// const totalPages = Math.ceil(salesMatched / PAGE_SIZE);
 
-export default apiHandler({ POST: getSalesSimplifiedRoute })
+	// const salesResult = await collection.find(query, { skip, limit, projection: SaleSimplifiedProjection }).toArray();
+
+	// return res.status(200).json({ data: { sales: salesResult as any[], salesMatched, totalPages } });
+};
+
+export default apiHandler({ POST: getSalesSimplifiedRoute });

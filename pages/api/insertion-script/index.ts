@@ -284,7 +284,7 @@ const handleProductsAndClientsInsertion: NextApiHandler<any> = async (req, res) 
 // If necessary, this resets the database by deleting all sales and sale items
 const handleReset: NextApiHandler<any> = async (req, res) => {
 	await db.delete(saleItems);
-	await db.delete(sales);
+	// await db.delete(sales);
 	// await db.delete(clients);
 	// await db.delete(products);
 

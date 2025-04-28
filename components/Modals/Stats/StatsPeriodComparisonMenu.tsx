@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import { VscDiffAdded } from "react-icons/vsc";
 import { BsCart, BsFileEarmarkText, BsTicketPerforated } from "react-icons/bs";
-import { ArrowDownNarrowWide, BadgeDollarSign, Box, ShoppingBag, ShoppingCart, UserRound } from "lucide-react";
+import { ArrowDownNarrowWide, BadgeDollarSign, Box, ChevronDown, ChevronUp, ShoppingBag, ShoppingCart, UserRound } from "lucide-react";
 import {
 	formatDateAsLocale,
 	formatDateForInput,
@@ -32,7 +32,13 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, XAxis, YA
 import type { TStatsComparisonOutput } from "@/pages/api/stats/comparison";
 import { VariableSizeList } from "react-window";
 import { cn } from "@/lib/utils";
-
+import { AnimatePresence, motion } from "framer-motion";
+import { SlideMotionVariants } from "@/lib/animations";
+import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
+import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
+import type { TSale } from "@/schemas/sales";
+import NumberInput from "@/components/Inputs/NumberInput";
 type StatsPeriodComparisonMenuProps = {
 	closeMenu: () => void;
 };
@@ -86,7 +92,9 @@ export default StatsPeriodComparisonMenu;
 
 function StatsPeriodComparisonMenuData() {
 	const { data: stats, filters, updateFilters } = useStatsComparison({ initialFilters: {} });
+	const { data: filterOptions } = useSaleQueryFilterOptions();
 
+	const [showAdditionalFiltersMenu, setShowAdditionalFiltersMenu] = useState(false);
 	const firstPeriodChartConfig = {
 		titulo: {
 			label: "Data",
@@ -115,24 +123,7 @@ function StatsPeriodComparisonMenuData() {
 			color: "#fead41",
 		},
 	};
-	const sellersChartConfig = {
-		titulo: {
-			label: "Vendedor",
-		},
-		"primeiroPeriodo.totalVendido": {
-			label: "Valor Vendido",
-			color: "#15599a",
-		},
-	};
-	const productsChartConfig = {
-		titulo: {
-			label: "Produto",
-		},
-		"primeiroPeriodo.totalVendido": {
-			label: "Valor Vendido",
-			color: "#15599a",
-		},
-	};
+
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center flex-col lg:flex-row gap-2">
@@ -140,6 +131,8 @@ function StatsPeriodComparisonMenuData() {
 					<div className="w-full lg:w-1/2">
 						<DateInput
 							label="INÍCIO DO PRIMEIRO PERÍODO"
+							labelClassName="text-[0.6rem]"
+							holderClassName="text-xs p-2 min-h-[34px]"
 							value={formatDateForInput(filters.firstPeriod.after)}
 							handleChange={(value) => {
 								updateFilters({
@@ -154,6 +147,8 @@ function StatsPeriodComparisonMenuData() {
 					<div className="w-full lg:w-1/2">
 						<DateInput
 							label="FIM DO PRIMEIRO PERÍODO"
+							labelClassName="text-[0.6rem]"
+							holderClassName="text-xs p-2 min-h-[34px]"
 							value={formatDateForInput(filters.firstPeriod.before)}
 							handleChange={(value) => {
 								updateFilters({
@@ -170,6 +165,8 @@ function StatsPeriodComparisonMenuData() {
 					<div className="w-full lg:w-1/2">
 						<DateInput
 							label="INÍCIO DO SEGUNDO PERÍODO"
+							labelClassName="text-[0.6rem]"
+							holderClassName="text-xs p-2 min-h-[34px]"
 							value={formatDateForInput(filters.secondPeriod.after)}
 							handleChange={(value) => {
 								updateFilters({
@@ -184,6 +181,8 @@ function StatsPeriodComparisonMenuData() {
 					<div className="w-full lg:w-1/2">
 						<DateInput
 							label="FIM DO SEGUNDO PERÍODO"
+							labelClassName="text-[0.6rem]"
+							holderClassName="text-xs p-2 min-h-[34px]"
 							value={formatDateForInput(filters.secondPeriod.before)}
 							handleChange={(value) => {
 								updateFilters({
@@ -197,6 +196,98 @@ function StatsPeriodComparisonMenuData() {
 					</div>
 				</div>
 			</div>
+			<div className="w-full flex items-center">
+				<Button onClick={() => setShowAdditionalFiltersMenu((prev) => !prev)} variant="ghost" size="xs" className="flex gap-2">
+					{!showAdditionalFiltersMenu ? <ChevronDown width={14} height={14} /> : <ChevronUp width={14} height={14} />}
+					MOSTRAR FILTROS ADICIONAIS
+				</Button>
+			</div>
+			<AnimatePresence>
+				{showAdditionalFiltersMenu ? (
+					<>
+						<motion.div
+							key={"additional-info"}
+							variants={SlideMotionVariants}
+							initial="initial"
+							animate="animate"
+							exit="exit"
+							className="flex w-full flex-col gap-2 "
+						>
+							<MultipleSelectInput
+								label="VENDEDORES"
+								labelClassName="text-[0.6rem]"
+								holderClassName="text-xs p-2 min-h-[34px]"
+								selected={filters.sellers}
+								options={filterOptions?.sellers.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+								handleChange={(value) =>
+									updateFilters({
+										sellers: value as string[],
+									})
+								}
+								selectedItemLabel="VENDEDOR"
+								onReset={() => updateFilters({ sellers: [] })}
+								width="100%"
+							/>
+							<MultipleSalesSelectInput
+								label="VENDAS EXCLUÍDAS"
+								labelClassName="text-[0.6rem]"
+								holderClassName="text-xs p-2 min-h-[34px]"
+								selected={filters.excludedSalesIds}
+								handleChange={(value) =>
+									updateFilters({
+										excludedSalesIds: value as string[],
+									})
+								}
+								selectedItemLabel="VENDAS EXCLUÍDAS"
+								onReset={() => updateFilters({ excludedSalesIds: [] })}
+								width="100%"
+							/>
+							<MultipleSelectInput
+								label="NATUREZA DA VENDA"
+								labelClassName="text-[0.6rem]"
+								holderClassName="text-xs p-2 min-h-[34px]"
+								selected={filters.saleNatures}
+								options={filterOptions?.saleNatures.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+								handleChange={(value) =>
+									updateFilters({
+										saleNatures: value as TSale["natureza"][],
+									})
+								}
+								selectedItemLabel="NATUREZA DA VENDA"
+								onReset={() => updateFilters({ saleNatures: [] })}
+								width="100%"
+							/>
+							<div className="flex w-full flex-col gap-2">
+								<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO POR INTERVALO DE QUANTIDADE</h1>
+								<div className="flex w-full flex-col items-center gap-2 lg:flex-row">
+									<div className="w-full lg:w-1/2">
+										<NumberInput
+											label="VALOR > QUE"
+											labelClassName="text-[0.6rem]"
+											holderClassName="text-xs p-2 min-h-[34px]"
+											value={filters.total.min || null}
+											handleChange={(value) => updateFilters({ total: { ...filters.total, min: value } })}
+											placeholder="Preencha aqui o valor para o filtro de mais quantidade que..."
+											width="100%"
+										/>
+									</div>
+									<div className="w-full lg:w-1/2">
+										<NumberInput
+											label="VALOR < QUE"
+											labelClassName="text-[0.6rem]"
+											holderClassName="text-xs p-2 min-h-[34px]"
+											value={filters.total.max || null}
+											handleChange={(value) => updateFilters({ total: { ...filters.total, max: value } })}
+											placeholder="Preencha aqui o valor para o filtro de menos quantidade que..."
+											width="100%"
+										/>
+									</div>
+								</div>
+							</div>
+						</motion.div>
+					</>
+				) : null}
+			</AnimatePresence>
 			{/** GENERAL STATS */}
 			<div className="w-full flex flex-col gap-4">
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">

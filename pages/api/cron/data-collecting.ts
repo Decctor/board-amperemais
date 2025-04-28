@@ -23,13 +23,19 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			dtinicio: currentDateFormatted,
 			dtfim: currentDateFormatted,
 		});
-
+		await utilsCollection.insertOne({
+			identificador: "online-importation",
+			date: currentDateFormatted,
+			content: JSON.stringify(onlineAPIResponse),
+		});
 		const OnlineSoftwareSales = z
 			.array(OnlineSoftwareSaleImportationSchema, {
 				required_error: "Payload da Online não é uma lista.",
 				invalid_type_error: "Tipo não permitido para o payload.",
 			})
 			.parse(onlineAPIResponse.resultado);
+
+		console.log(`${OnlineSoftwareSales.length} vendas encontradas.`);
 		return await db.transaction(async (tx) => {
 			const existingClients = await tx.query.clients.findMany({
 				columns: {
@@ -159,7 +165,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			erro: JSON.stringify(error, Object.getOwnPropertyNames(error)),
 			descricao: `Tentativa de importação de vendas do Online Software ${currentDateFormatted}.`,
 		});
-		console.log("Error", error);
+		return res.status(500).json("Erro ao importar vendas do Online Software.");
 	}
 };
 

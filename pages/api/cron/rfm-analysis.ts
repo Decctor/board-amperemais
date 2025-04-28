@@ -40,10 +40,10 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 	})) as TRFMConfig;
 
 	return await db.transaction(async (tx) => {
-		let currentClientIndex = 0;
+		// let currentClientIndex = 0;
 		const clientListLength = allClients.length;
 		for (const results of accumulatedResultsByClient) {
-			console.log(`Processando o cliente ${currentClientIndex + 1}/${clientListLength}`);
+			// console.log(`Processando o cliente ${currentClientIndex + 1}/${clientListLength}`);
 			const calculatedRecency = dayjs().diff(dayjs(results.lastPurchaseDate), "days");
 			const calculatedFrequency = results.purchaseCount;
 			const calculatedMonetary = results.totalPurchases;
@@ -86,7 +86,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 					analiseRFMUltimaAtualizacao: new Date(),
 				})
 				.where(eq(clients.id, results.clientId));
-			currentClientIndex++;
+			// currentClientIndex++;
 		}
 		return res.status(200).json("ANÁLISE RFM FEITA COM SUCESSO !");
 	});

@@ -1,70 +1,51 @@
-import { apiHandler } from '@/lib/api'
-import { TClient } from '@/schemas/clients'
-import connectToDatabase from '@/services/mongodb/main-db-connection'
-import axios from 'axios'
-import dayjs from 'dayjs'
-import { Collection, ObjectId } from 'mongodb'
-import { NextApiHandler } from 'next'
-import dayjsCustomFormatter from 'dayjs/plugin/customParseFormat'
-dayjs.extend(dayjsCustomFormatter)
+import { apiHandler } from "@/lib/api";
+import { TClient } from "@/schemas/clients";
+import connectToDatabase from "@/services/mongodb/main-db-connection";
+import axios from "axios";
+import dayjs from "dayjs";
+import { Collection, ObjectId } from "mongodb";
+import type { NextApiHandler } from "next";
+import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
+import { db } from "@/services/drizzle";
+import { and, eq, gte, lte, sum } from "drizzle-orm";
+import { saleItems, sales } from "@/services/drizzle/schema";
+// import OnlineSalesRegistries from "@/sales-till-now.json";
+import { z } from "zod";
+import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
+
+dayjs.extend(dayjsCustomFormatter);
 
 const getExport: NextApiHandler<any> = async (req, res) => {
-  const { data: onlineAPIResponse } = await axios.post('https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php', {
-    token: '0097d9f20753f2e606a36c45693562b2',
-    rotina: 'listarVendas001',
-    dtinicio: '23082024',
-    dtfim: '16092024',
-  })
-  const onlineResults = onlineAPIResponse.resultado
+	// const startOfMonth = dayjs().startOf("month").toDate();
+	// const endOfMonth = dayjs().endOf("month").toDate();
+	// console.log("startOfMonth", startOfMonth);
+	// console.log("endOfMonth", endOfMonth);
+	// const salesResult = await db.query.sales.findMany({
+	// 	where: and(gte(sales.dataVenda, startOfMonth), lte(sales.dataVenda, endOfMonth)),
+	// 	with: {
+	// 		itens: true,
+	// 	},
+	// });
 
-  const db = await connectToDatabase()
-  const salesCollection = db.collection('sales')
-  const salesItemsCollection = db.collection('sales-items')
-  const clientsCollection: Collection<TClient> = db.collection('clients')
+	// const OnlineSales = z.array(OnlineSoftwareSaleImportationSchema).parse(OnlineSalesRegistries);
 
-  const clients = await clientsCollection.find({}, { projection: { nome: 1 } }).toArray()
+	// for (const sale of salesResult) {
+	// 	const equivalentOnlineSale = OnlineSales.find((s) => s.id === sale.idExterno);
+	// 	if (equivalentOnlineSale) {
+	// 		const equivalentOnlineSaleTotal = equivalentOnlineSale.valor ? Number(equivalentOnlineSale.valor) : 0;
+	// 		await db
+	// 			.update(sales)
+	// 			.set({
+	// 				valorTotal: equivalentOnlineSaleTotal,
+	// 			})
+	// 			.where(eq(sales.id, sale.id));
+	// 		if (equivalentOnlineSale.itens.length === 0) {
+	// 			await db.delete(saleItems).where(eq(saleItems.vendaId, sale.id));
+	// 		}
+	// 	}
+	// }
 
-  var salesItems: any[] = []
-  var clientsToInsert: any[] = []
-  const allSales = onlineResults
+	return res.json("OK");
+};
 
-  const allSalesFormatted = allSales.map((sale: any) => {
-    const saleObjectId = new ObjectId()
-    const dateFormatted = dayjs(sale.data, 'DD/MM/YYYY').toISOString()
-    const salesItemsFormatted = sale.itens.map((i: any) => ({ ...i, idVenda: saleObjectId.toString(), dataVenda: dateFormatted }))
-    salesItems = [...salesItems, ...salesItemsFormatted]
-
-    const equivalentClient = clients.find((c) => c.nome == sale.cliente)
-    if (!!equivalentClient) {
-      return { _id: saleObjectId, ...sale, valor: Number(sale.valor), dataVenda: dateFormatted, idCliente: equivalentClient._id.toString(), itens: undefined }
-    } else {
-      const clientObjectId = new ObjectId()
-      clientsToInsert = [...clientsToInsert, { _id: clientObjectId, nome: sale.cliente }]
-      return { _id: saleObjectId, ...sale, valor: Number(sale.valor), dataVenda: dateFormatted, idCliente: clientObjectId.toString(), itens: undefined }
-    }
-  })
-  const allSalesItemsFormatted = salesItems.map((saleItem) => ({
-    ...saleItem,
-    qtde: Number(saleItem.qtde),
-    valorunit: Number(saleItem.valorunit),
-    vprod: Number(saleItem.vprod),
-    vdesc: Number(saleItem.vdesc),
-    vcusto: Number(saleItem.vcusto),
-    baseicms: Number(saleItem.baseicms),
-    percent: Number(saleItem.percent),
-    icms: Number(saleItem.icms),
-    vfrete: Number(saleItem.vfrete),
-    vseg: Number(saleItem.vseg),
-    voutro: Number(saleItem.voutro),
-    vipi: Number(saleItem.vipi),
-    vicmsst: Number(saleItem.vicmsst),
-    vicms_desonera: Number(saleItem.vicms_desonera),
-  }))
-
-  const salesInsertResponse = await salesCollection.insertMany(allSalesFormatted)
-  const salesItemsInsertResponse = await salesItemsCollection.insertMany(allSalesItemsFormatted)
-  const clientsInsertResponse = await clientsCollection.insertMany(clientsToInsert)
-  return res.json('DESATIVADA')
-}
-
-export default apiHandler({ GET: getExport })
+export default apiHandler({ GET: getExport });

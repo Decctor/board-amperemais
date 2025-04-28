@@ -1,4 +1,4 @@
-import { doublePrecision, index, text, varchar } from "drizzle-orm/pg-core";
+import { doublePrecision, index, text, timestamp, varchar, vector } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { relations } from "drizzle-orm";
 import { saleItems } from "./sales";
@@ -28,3 +28,18 @@ export const productsRelations = relations(products, ({ one, many }) => ({
 
 export type TProductEntity = typeof products.$inferSelect;
 export type TNewProductEntity = typeof products.$inferInsert;
+
+export const productEmbeddings = newTable("product_embeddings", {
+	id: varchar("id", { length: 255 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	produtoId: varchar("produto_id", { length: 255 })
+		.references(() => products.id)
+		.notNull(),
+	embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+	dataInsercao: timestamp("data_insercao").notNull().defaultNow(),
+	dataAtualizacao: timestamp("data_atualizacao")
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => new Date()),
+});
