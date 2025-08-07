@@ -1,4 +1,4 @@
-import { formatDecimalPlaces, formatLongString } from "@/lib/formatting";
+import { formatDateAsLocale, formatDecimalPlaces, formatLongString } from "@/lib/formatting";
 import { formatToMoney } from "@/lib/formatting";
 import { useGroupedSalesStats } from "@/lib/queries/stats/grouped";
 import { cn } from "@/lib/utils";
@@ -326,6 +326,9 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 				"CPF-CPNJ DO PARCEIRO": item.titulo,
 				"VALOR VENDIDO": item.total,
 				"Nº DE VENDAS": item.qtde,
+				"ÚLTIMA COMPRA": item.ultimaCompra ? formatDateAsLocale(item.ultimaCompra) : "N/A",
+				"VENDEDOR MAIS FREQUENTE": item.vendedorMaisFrequente,
+				"DATA DE CADASTRO": item.tempoAtividade ? formatDateAsLocale(item.tempoAtividade) : "N/A",
 			}));
 			getExcelFromJSON(exportationJSON, "RESULTADOS_POR_PARCEIRO.xlsx");
 			return toast.success("Dados exportados com sucesso");

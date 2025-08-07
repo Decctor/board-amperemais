@@ -30,6 +30,8 @@ export const sales = newTable(
 		dataVenda: timestamp("data_venda"),
 	},
 	(table) => ({
+		clientIdIdx: index("idx_sales_client_id").on(table.clienteId),
+		parceiroIdx: index("idx_sales_parceiro").on(table.parceiro),
 		dataVendaIdx: index("idx_sales_data_venda").on(table.dataVenda),
 		vendedorIdx: index("idx_sales_vendedor").on(table.vendedor),
 		naturezaIdx: index("idx_sales_natureza").on(table.natureza),
