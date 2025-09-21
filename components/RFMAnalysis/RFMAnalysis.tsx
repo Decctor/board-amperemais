@@ -1,31 +1,31 @@
-import type { TUserSession } from "@/schemas/users";
-import React, { useState } from "react";
-import Header from "../Layouts/Header";
-import { Diamond, Filter, PencilLine, Phone, Tag } from "lucide-react";
-import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
-import { AspectRatio } from "@radix-ui/react-aspect-ratio";
-import { useClientsBySearch } from "@/lib/queries/clients";
-import LoadingComponent from "../Layouts/LoadingComponent";
-import ErrorComponent from "../Layouts/ErrorComponent";
-import { getErrorMessage } from "@/lib/errors";
-import { IoMdPulse } from "react-icons/io";
-import { cn } from "@/lib/utils";
-import { RFMLabels } from "@/utils/rfm";
-import GeneralPaginationComponent from "../Utils/Pagination";
-import { BsCalendar } from "react-icons/bs";
-import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import type { TClientSimplifiedWithSalesDTO } from "@/schemas/clients";
-import { BadgeDollarSign, Megaphone, ShoppingCart } from "lucide-react";
-import { FaDownload, FaPhone } from "react-icons/fa";
-import { MdEmail } from "react-icons/md";
-import RFMAnalysisQueryParamsMenu from "./RFMAnalysisQueryParamsMenu";
 import { getFirstDayOfMonth } from "@/lib/dates";
 import { getLastDayOfMonth } from "@/lib/dates";
-import { fetchClientExportation } from "@/lib/queries/exportations";
+import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
-import dayjs from "dayjs";
-import { toast } from "sonner";
+import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
+import { useClientsBySearch } from "@/lib/queries/clients";
+import { fetchClientExportation } from "@/lib/queries/exportations";
+import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
+import { cn } from "@/lib/utils";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
+import type { TClientSimplifiedWithSalesDTO } from "@/schemas/clients";
+import type { TUserSession } from "@/schemas/users";
+import { RFMLabels } from "@/utils/rfm";
+import { AspectRatio } from "@radix-ui/react-aspect-ratio";
+import dayjs from "dayjs";
+import { Diamond, Filter, PencilLine, Phone, Tag } from "lucide-react";
+import { BadgeDollarSign, Megaphone, ShoppingCart } from "lucide-react";
+import React, { useState } from "react";
+import { BsCalendar } from "react-icons/bs";
+import { FaDownload, FaPhone } from "react-icons/fa";
+import { IoMdPulse } from "react-icons/io";
+import { MdEmail } from "react-icons/md";
+import { toast } from "sonner";
+import ErrorComponent from "../Layouts/ErrorComponent";
+import Header from "../Layouts/Header";
+import LoadingComponent from "../Layouts/LoadingComponent";
+import GeneralPaginationComponent from "../Utils/Pagination";
+import RFMAnalysisQueryParamsMenu from "./RFMAnalysisQueryParamsMenu";
 
 const currentDate = new Date();
 const firstDayOfMonth = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString();
@@ -39,7 +39,7 @@ function RFMAnalysis({ user }: RFMAnalysisProps) {
 	return (
 		<div className="flex h-full flex-col">
 			<Header session={user} />
-			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6">
+			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-background px-6 lg:px-12 py-6">
 				<div className="flex w-full justify-between border-b border-primary pb-2 gap-2">
 					<h1 className="text-2xl font-black text-black">Dashboard - Análise RFM</h1>
 				</div>

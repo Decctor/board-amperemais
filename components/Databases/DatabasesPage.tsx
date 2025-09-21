@@ -1,8 +1,8 @@
+import { cn } from "@/lib/utils";
 import type { TUserSession } from "@/schemas/users";
 import React, { useState } from "react";
-import Header from "../Layouts/Header";
 import ErrorComponent from "../Layouts/ErrorComponent";
-import { cn } from "@/lib/utils";
+import Header from "../Layouts/Header";
 
 import ClientsView from "./ClientsView";
 import ProductsView from "./ProductsView";
@@ -24,7 +24,7 @@ function DatabasesPage({ session }: DatabasesPageProps) {
 	return (
 		<div className="flex h-full flex-col">
 			<Header session={session} />
-			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6 gap-6">
+			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-background px-6 lg:px-12 py-6 gap-6">
 				<div className="w-full flex items-center justify-center gap-4 flex-wrap">
 					<button
 						type="button"

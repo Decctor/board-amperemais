@@ -9,7 +9,7 @@ import { db } from "@/services/drizzle";
 import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import connectToDatabase from "@/services/mongodb/main-db-connection";
 import dayjs from "dayjs";
-import { and, eq, exists, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
+import { and, count, eq, exists, gte, inArray, lte, notInArray, sql, sum } from "drizzle-orm";
 import type { Collection } from "mongodb";
 import type { NextApiHandler } from "next";
 
@@ -21,15 +21,36 @@ type TOverallSalesStatsReduced = {
 };
 
 export type TOverallSalesStats = {
-	faturamentoBruto: number;
-	faturamentoLiquido: number;
 	faturamentoMeta: number;
 	faturamentoMetaPorcentagem: number;
-	qtdeVendas: number;
-	ticketMedio: number;
-	qtdeItensVendidos: number;
-	itensPorVendaMedio: number;
-	valorDiarioVendido: number;
+	faturamentoBruto: {
+		atual: number;
+		anterior: number | undefined;
+	};
+	faturamentoLiquido: {
+		atual: number;
+		anterior: number | undefined;
+	};
+	qtdeVendas: {
+		atual: number;
+		anterior: number | undefined;
+	};
+	ticketMedio: {
+		atual: number;
+		anterior: number | undefined;
+	};
+	qtdeItensVendidos: {
+		atual: number;
+		anterior: number | undefined;
+	};
+	itensPorVendaMedio: {
+		atual: number;
+		anterior: number | undefined;
+	};
+	valorDiarioVendido: {
+		atual: number;
+		anterior: number | undefined;
+	};
 };
 type GetResponse = {
 	data: TOverallSalesStats;
@@ -38,50 +59,51 @@ const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 	const user = await getUserSession({ request: req });
 
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
-
+	console.log("[INFO] [GET_SALES_OVERALL_STATS] Filters payload: ", filters);
 	const db = await connectToDatabase();
 	const goalsCollection = db.collection<TSaleGoal>("goals");
 
-	const sales = await getSales({ filters });
+	// const sales = await getSales({ filters });
 	const overallSaleGoal = await getOverallSaleGoal({
 		collection: goalsCollection,
 		after: filters.period.after,
 		before: filters.period.before,
 	});
 
-	const stats = sales.reduce(
-		(acc: TOverallSalesStatsReduced, current) => {
-			// updating sales quantity stats
-			acc.qtdeVendas += 1;
+	// const stats = sales.reduce(
+	// 	(acc: TOverallSalesStatsReduced, current) => {
+	// 		// updating sales quantity stats
+	// 		acc.qtdeVendas += 1;
 
-			const applicableItems = current.itens.filter((item) =>
-				filters.productGroups.length > 0 ? filters.productGroups.includes(item.produto.grupo) : true,
-			);
-			for (const item of applicableItems) {
-				acc.qtdeItensVendidos += item.quantidade;
-				acc.gastoBruto += item.valorCustoTotal;
-				acc.faturamentoBruto += item.valorVendaTotalLiquido;
-			}
-			return acc;
-		},
-		{
-			faturamentoBruto: 0,
-			gastoBruto: 0,
-			qtdeVendas: 0,
-			qtdeItensVendidos: 0,
-		} as TOverallSalesStatsReduced,
-	);
+	// 		const applicableItems = current.itens.filter((item) =>
+	// 			filters.productGroups.length > 0 ? filters.productGroups.includes(item.produto.grupo) : true,
+	// 		);
+	// 		for (const item of applicableItems) {
+	// 			acc.qtdeItensVendidos += item.quantidade;
+	// 			acc.gastoBruto += item.valorCustoTotal;
+	// 			acc.faturamentoBruto += item.valorVendaTotalLiquido;
+	// 		}
+	// 		return acc;
+	// 	},
+	// 	{
+	// 		faturamentoBruto: 0,
+	// 		gastoBruto: 0,
+	// 		qtdeVendas: 0,
+	// 		qtdeItensVendidos: 0,
+	// 	} as TOverallSalesStatsReduced,
+	// );
 
+	const stats = await getOverallStats(filters);
 	const overallStats: TOverallSalesStats = {
+		faturamentoMetaPorcentagem: (stats.faturamentoBruto.atual / overallSaleGoal) * 100,
 		faturamentoBruto: stats.faturamentoBruto,
-		faturamentoLiquido: stats.faturamentoBruto - stats.gastoBruto,
+		faturamentoLiquido: stats.faturamentoLiquido,
 		faturamentoMeta: overallSaleGoal,
-		faturamentoMetaPorcentagem: (stats.faturamentoBruto / overallSaleGoal) * 100,
 		qtdeVendas: stats.qtdeVendas,
-		ticketMedio: stats.faturamentoBruto / stats.qtdeVendas,
+		ticketMedio: stats.ticketMedio,
 		qtdeItensVendidos: stats.qtdeItensVendidos,
-		itensPorVendaMedio: stats.qtdeItensVendidos / stats.qtdeVendas,
-		valorDiarioVendido: stats.faturamentoBruto / dayjs(filters.period.before).diff(dayjs(filters.period.after), "days"),
+		itensPorVendaMedio: stats.itensPorVendaMedio,
+		valorDiarioVendido: stats.valorDiarioVendido,
 	};
 	return res.status(200).json({ data: overallStats });
 };
@@ -97,10 +119,6 @@ async function getSales({ filters }: GetSalesParams) {
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
 
-	console.log("GETTING SALES", {
-		ajustedAfter: ajustedAfter?.toISOString(),
-		ajustedBefore: ajustedBefore?.toISOString(),
-	});
 	try {
 		const conditions = [];
 
@@ -225,4 +243,169 @@ async function getOverallSaleGoal({ collection, after, before }: GetOverallSaleG
 		console.log("Error getting overall sale goal", error);
 		throw error;
 	}
+}
+
+export async function getOverallStats(filters: TSaleStatsGeneralQueryParams) {
+	const conditions = [];
+
+	if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
+	if (filters.total.max) conditions.push(gte(sales.valorTotal, filters.total.max));
+	if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
+	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
+	if (filters.clientRFMTitles.length > 0)
+		conditions.push(
+			exists(
+				db
+					.select({ id: clients.id })
+					.from(clients)
+					.where(and(eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles))),
+			),
+		);
+	if (filters.excludedSalesIds) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
+
+	const totalSalesStatsResult = await db
+		.select({
+			qtde: count(sales.id),
+			valorTotal: sum(sales.valorTotal),
+			custoTotal: sum(sales.custoTotal),
+		})
+		.from(sales)
+		.where(
+			and(
+				...conditions,
+				filters.period.after ? gte(sales.dataVenda, new Date(filters.period.after)) : undefined,
+				filters.period.before ? lte(sales.dataVenda, new Date(filters.period.before)) : undefined,
+			),
+		);
+
+	const totalSalesStats = totalSalesStatsResult[0];
+
+	const totalSalesQty = totalSalesStats.qtde;
+	const totalSalesValorTotal = totalSalesStats.valorTotal ? Number(totalSalesStats.valorTotal) : 0;
+	const totalSalesCustoTotal = totalSalesStats.custoTotal ? Number(totalSalesStats.custoTotal) : 0;
+
+	const totalSalesItemsStatsResult = await db
+		.select({
+			total: sum(saleItems.quantidade),
+		})
+		.from(saleItems)
+		.where(
+			inArray(
+				saleItems.vendaId,
+				db
+					.select({ id: sales.id })
+					.from(sales)
+					.where(
+						and(
+							...conditions,
+							filters.period.after ? gte(sales.dataVenda, new Date(filters.period.after)) : undefined,
+							filters.period.before ? lte(sales.dataVenda, new Date(filters.period.before)) : undefined,
+						),
+					),
+			),
+		);
+
+	const totalSalesItemsStats = totalSalesItemsStatsResult[0];
+	const totalSalesItemsQty = totalSalesItemsStats.total ? Number(totalSalesItemsStats.total) : 0;
+
+	if (!filters.period.after && !filters.period.before) {
+		return {
+			faturamentoBruto: {
+				atual: totalSalesValorTotal,
+				anterior: undefined,
+			},
+			faturamentoLiquido: {
+				atual: totalSalesValorTotal - totalSalesCustoTotal,
+				anterior: undefined,
+			},
+			qtdeVendas: {
+				atual: totalSalesQty,
+				anterior: undefined,
+			},
+			qtdeItensVendidos: {
+				atual: totalSalesItemsQty,
+				anterior: undefined,
+			},
+			itensPorVendaMedio: {
+				atual: totalSalesItemsQty / totalSalesQty,
+				anterior: undefined,
+			},
+			ticketMedio: {
+				atual: totalSalesValorTotal / totalSalesQty,
+				anterior: undefined,
+			},
+			valorDiarioVendido: {
+				atual: totalSalesValorTotal / dayjs(filters.period.before).diff(dayjs(filters.period.after), "days"),
+				anterior: undefined,
+			},
+		};
+	}
+
+	const dateDiff = dayjs(filters.period.before).diff(dayjs(filters.period.after), "days");
+	const previousPeriodAfter = dayjs(filters.period.after).subtract(dateDiff, "days").toDate();
+	const previousPeriodBefore = dayjs(filters.period.before).subtract(dateDiff, "days").toDate();
+
+	const previousTotalSalesStatsResult = await db
+		.select({
+			qtde: count(sales.id),
+			valorTotal: sum(sales.valorTotal),
+			custoTotal: sum(sales.custoTotal),
+		})
+		.from(sales)
+		.where(and(...conditions, gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore)));
+
+	const previousTotalSalesStats = previousTotalSalesStatsResult[0];
+
+	const previousTotalSalesQty = previousTotalSalesStats.qtde;
+	const previousTotalSalesValorTotal = previousTotalSalesStats.valorTotal ? Number(previousTotalSalesStats.valorTotal) : 0;
+	const previousTotalSalesCustoTotal = previousTotalSalesStats.custoTotal ? Number(previousTotalSalesStats.custoTotal) : 0;
+
+	const previousTotalSalesItemsStatsResult = await db
+		.select({
+			total: sum(saleItems.quantidade),
+		})
+		.from(saleItems)
+		.where(
+			inArray(
+				saleItems.vendaId,
+				db
+					.select({ id: sales.id })
+					.from(sales)
+					.where(and(...conditions, gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore))),
+			),
+		);
+
+	const previousTotalSalesItemsStats = previousTotalSalesItemsStatsResult[0];
+	const previousTotalSalesItemsQty = previousTotalSalesItemsStats.total ? Number(previousTotalSalesItemsStats.total) : 0;
+
+	return {
+		faturamentoBruto: {
+			atual: totalSalesValorTotal,
+			anterior: previousTotalSalesValorTotal,
+		},
+		faturamentoLiquido: {
+			atual: totalSalesValorTotal - totalSalesCustoTotal,
+			anterior: previousTotalSalesValorTotal - previousTotalSalesCustoTotal,
+		},
+		qtdeVendas: {
+			atual: totalSalesQty,
+			anterior: previousTotalSalesQty,
+		},
+		qtdeItensVendidos: {
+			atual: totalSalesItemsQty,
+			anterior: previousTotalSalesItemsQty,
+		},
+		itensPorVendaMedio: {
+			atual: totalSalesItemsQty / totalSalesQty,
+			anterior: previousTotalSalesItemsQty / previousTotalSalesQty,
+		},
+		ticketMedio: {
+			atual: totalSalesValorTotal / totalSalesQty,
+			anterior: previousTotalSalesValorTotal / previousTotalSalesQty,
+		},
+		valorDiarioVendido: {
+			atual: totalSalesValorTotal / dateDiff,
+			anterior: previousTotalSalesValorTotal / dateDiff,
+		},
+	};
 }

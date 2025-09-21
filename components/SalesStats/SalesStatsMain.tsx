@@ -1,24 +1,24 @@
 import { getLastDayOfMonth } from "@/lib/dates";
-import type { TUserSession } from "@/schemas/users";
-import { useState } from "react";
-import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { getFirstDayOfMonth } from "@/lib/dates";
-import Header from "../Layouts/Header";
-import OverallStatsBlock from "./Blocks/OverallStatsBlock";
-import GroupedStatsBlock from "./Blocks/GroupedStatsBlock";
-import { Filter, Tag, ShoppingCart, Diamond, BadgeDollarSign, GitCompare, Cpu } from "lucide-react";
-import { cn } from "@/lib/utils";
-import SalesQueryParamsMenu from "./SalesQueryParamsMenu";
-import SalesGraphBlock from "./Blocks/SalesGraphBlock";
 import { formatDateAsLocale } from "@/lib/formatting";
+import { cn } from "@/lib/utils";
+import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
+import type { TUserSession } from "@/schemas/users";
+import dayjs from "dayjs";
+import { BadgeDollarSign, Cpu, Diamond, Filter, GitCompare, ShoppingCart, Tag } from "lucide-react";
+import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { FaUserTie } from "react-icons/fa";
+import Header from "../Layouts/Header";
 import StatsPeriodComparisonMenu from "../Modals/Stats/StatsPeriodComparisonMenu";
 import { Button } from "../ui/button";
+import GroupedStatsBlock from "./Blocks/GroupedStatsBlock";
+import OverallStatsBlock from "./Blocks/OverallStatsBlock";
+import SalesGraphBlock from "./Blocks/SalesGraphBlock";
+import SalesQueryParamsMenu from "./SalesQueryParamsMenu";
 
-const currentDate = new Date();
-const firstDayOfMonth = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString();
-const lastDayOfMonth = getLastDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()).toISOString();
+const firstDayOfMonth = dayjs().startOf("month").toISOString();
+const currentDay = dayjs().endOf("day").toISOString();
 
 type TSalesStatsMainProps = {
 	user: TUserSession;
@@ -32,7 +32,7 @@ export default function SalesStatsMain({ user }: TSalesStatsMainProps) {
 	const [generalQueryParams, setGeneralQueryParams] = useState<TSaleStatsGeneralQueryParams>({
 		period: {
 			after: firstDayOfMonth,
-			before: lastDayOfMonth,
+			before: currentDay,
 		},
 		total: {},
 		saleNatures: [],
@@ -47,9 +47,9 @@ export default function SalesStatsMain({ user }: TSalesStatsMainProps) {
 	return (
 		<div className="flex h-full flex-col">
 			<Header session={user} />
-			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6">
+			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-background px-6 lg:px-12 py-6">
 				<div className="flex w-full flex-col border-b border-primary pb-2 gap-2">
-					<h1 className="text-base text-center lg:text-start lg:text-2xl font-black text-black">Dashboard - Resultados Comerciais</h1>
+					<h1 className="text-base text-center lg:text-start lg:text-2xl font-black text-primary">Dashboard - Resultados Comerciais</h1>
 					<div className="w-full flex items-center justify-center lg:justify-end px-2 flex-wrap-reverse lg:flex-wrap gap-2">
 						{generalQueryParams.total.min || generalQueryParams.total.max ? (
 							<div className="flex items-center gap-1">
@@ -109,7 +109,7 @@ export default function SalesStatsMain({ user }: TSalesStatsMainProps) {
 						<button
 							type="button"
 							onClick={() => setFilterMenuIsOpen((prev) => !prev)}
-							className={cn("flex items-center gap-1 rounded-lg px-2 py-1 w-fit text-black duration-300 ease-in-out", {
+							className={cn("flex items-center gap-1 rounded-lg px-2 py-1 w-fit text-primary duration-300 ease-in-out", {
 								"bg-gray-300  hover:bg-gray-200": filterMenuIsOpen,
 								"bg-blue-300  hover:bg-blue-400": !filterMenuIsOpen,
 							})}

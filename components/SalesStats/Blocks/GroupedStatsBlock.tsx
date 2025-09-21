@@ -10,13 +10,16 @@ import { BsCart } from "react-icons/bs";
 import { FaDownload, FaLayerGroup } from "react-icons/fa";
 import { useDebounce } from "use-debounce";
 
+import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Bar, BarChart, LabelList, Pie, PieChart, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getErrorMessage } from "@/lib/errors";
+import { getExcelFromJSON } from "@/lib/excel-utils";
+import { BadgeDollarSign, CirclePlus, Download } from "lucide-react";
 import { FaRankingStar } from "react-icons/fa6";
 import { VariableSizeList as List, VariableSizeList } from "react-window";
-import { getExcelFromJSON } from "@/lib/excel-utils";
+import { Bar, BarChart, LabelList, Pie, PieChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/errors";
 
 type GroupedStatsBlockProps = {
 	generalQueryParams: TSaleStatsGeneralQueryParams;
@@ -106,42 +109,47 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 	);
 
 	return (
-		<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
-			<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">PARTICIPAÇÃO POR ITEM</h1>
-				<div className="flex items-center gap-1">
-					<button type="button" className="text-white hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData(data)}>
-						<FaDownload size={10} />
-					</button>
-					<button
-						type="button"
-						onClick={() => setType("total")}
-						className={cn(
-							"px-2 py-0.5 text-[0.6rem] font-medium border border-white rounded",
-							type === "total" ? "bg-white text-black" : "bg-transparent text-white",
-						)}
-					>
-						VALOR
-					</button>
-					<button
-						type="button"
-						onClick={() => setType("qtde")}
-						className={cn(
-							"px-2 py-0.5 text-[0.6rem] font-medium border border-white rounded",
-							type === "qtde" ? "bg-white text-black" : "bg-transparent text-white",
-						)}
-					>
-						QUANTIDADE
-					</button>
-					<BsCart size={12} />
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+			<div className="flex items-center justify-between">
+				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR ITEM</h1>
+				<div className="flex items-center gap-2">
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+									<Download className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Baixar</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Valor Vendido</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Quantidade de Vendas</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			</div>
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px]">
 				<ProductsList height={330} width={"100%"} list={dataSorted} />
 			</div>
-			{/* {dataSorted.map((d, index) => (
-          <ProductRow key={`${type}-${index}`} index={index} />
-        ))} */}
 		</div>
 	);
 }
@@ -172,34 +180,42 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 		.map((p, index) => ({ ...p, fill: Collors[index] || "#000" }));
 	const projectTypesChartConfig = { titulo: { label: "GRUPO" } };
 	return (
-		<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
-			<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">PARTICIPAÇÃO POR GRUPO</h1>
-				<div className="flex items-center gap-1">
-					<button type="button" className="text-white hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData(data)}>
-						<FaDownload size={10} />
-					</button>
-					<button
-						type="button"
-						onClick={() => setType("total")}
-						className={cn(
-							"px-2 py-0.5 text-[0.6rem] font-medium border border-white rounded",
-							type === "total" ? "bg-white text-black" : "bg-transparent text-white",
-						)}
-					>
-						VALOR
-					</button>
-					<button
-						type="button"
-						onClick={() => setType("qtde")}
-						className={cn(
-							"px-2 py-0.5 text-[0.6rem] font-medium border border-white rounded",
-							type === "qtde" ? "bg-white text-black" : "bg-transparent text-white",
-						)}
-					>
-						QUANTIDADE
-					</button>
-					<FaLayerGroup size={12} />
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+			<div className="flex items-center justify-between">
+				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR GRUPO</h1>
+				<div className="flex items-center gap-2">
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+									<Download className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Baixar</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Valor Vendido</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Quantidade de Vendas</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			</div>
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px]">
@@ -254,34 +270,42 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 		},
 	} satisfies ChartConfig;
 	return (
-		<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
-			<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
-				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RANKING DE VENDEDORES</h1>
-				<div className="flex items-center gap-1">
-					<button type="button" className="text-black hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData(data)}>
-						<FaDownload size={10} />
-					</button>
-					<button
-						type="button"
-						onClick={() => setType("total")}
-						className={cn(
-							"px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded",
-							type === "total" ? "bg-black text-white" : "bg-transparent text-black",
-						)}
-					>
-						VALOR
-					</button>
-					<button
-						type="button"
-						onClick={() => setType("qtde")}
-						className={cn(
-							"px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded",
-							type === "qtde" ? "bg-black text-white" : "bg-transparent text-black",
-						)}
-					>
-						QUANTIDADE
-					</button>
-					<FaRankingStar size={12} />
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+			<div className="flex items-center justify-between">
+				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE VENDEDORES</h1>
+				<div className="flex items-center gap-2">
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+									<Download className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Baixar</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Valor Vendido</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Quantidade de Vendas</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			</div>
 
@@ -348,34 +372,42 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 		},
 	} satisfies ChartConfig;
 	return (
-		<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
-			<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
-				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RANKING DE PARCEIROS</h1>
-				<div className="flex items-center gap-1">
-					<button type="button" className="text-black hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData(data)}>
-						<FaDownload size={10} />
-					</button>
-					<button
-						type="button"
-						onClick={() => setType("total")}
-						className={cn(
-							"px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded",
-							type === "total" ? "bg-black text-white" : "bg-transparent text-black",
-						)}
-					>
-						VALOR
-					</button>
-					<button
-						type="button"
-						onClick={() => setType("qtde")}
-						className={cn(
-							"px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded",
-							type === "qtde" ? "bg-black text-white" : "bg-transparent text-black",
-						)}
-					>
-						QUANTIDADE
-					</button>
-					<FaRankingStar size={12} />
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+			<div className="flex items-center justify-between">
+				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE PARCEIROS</h1>
+				<div className="flex items-center gap-2">
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+									<Download className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Baixar</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Valor Vendido</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Quantidade de Vendas</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			</div>
 

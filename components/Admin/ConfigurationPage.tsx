@@ -1,20 +1,18 @@
+import { cn } from "@/lib/utils";
 import type { TUserSession } from "@/schemas/users";
 import React, { useState } from "react";
-import Header from "../Layouts/Header";
 import ErrorComponent from "../Layouts/ErrorComponent";
-import { cn } from "@/lib/utils";
-import UsersView from "./UsersView";
-import SaleGoalsView from "./SaleGoalsView";
+import Header from "../Layouts/Header";
 import MarketingControlView from "./MarketingControlsView";
+import SaleGoalsView from "./SaleGoalsView";
 import SettingsView from "./SettingsView";
+import UsersView from "./UsersView";
 
 type ConfigurationPageProps = {
 	session: TUserSession;
 };
 function ConfigurationPage({ session }: ConfigurationPageProps) {
-	const [view, setView] = useState<
-		"users" | "goals" | "marketing-controls" | "settings"
-	>("users");
+	const [view, setView] = useState<"users" | "goals" | "marketing-controls" | "settings">("users");
 
 	if (session.visualizacao !== "GERAL")
 		return (
@@ -27,16 +25,14 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
 	return (
 		<div className="flex h-full flex-col">
 			<Header session={session} />
-			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-[#f8f9fa] p-6">
+			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-background px-6 lg:px-12 py-6">
 				<div className="w-full flex items-center justify-center gap-4 flex-wrap">
 					<button
 						type="button"
 						onClick={() => setView("users")}
 						className={cn(
 							"px-2 py-1 rounded-lg bg-transparent font-bold tracking-tight duration-300 ease-in-out",
-							view === "users"
-								? "bg-[#fead41] text-[#15599a]"
-								: "hover:bg-gray-100",
+							view === "users" ? "bg-[#fead41] text-[#15599a]" : "hover:bg-gray-100",
 						)}
 					>
 						Painel de Usuários
@@ -46,9 +42,7 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
 						onClick={() => setView("goals")}
 						className={cn(
 							"px-2 py-1 rounded-lg bg-transparent font-bold tracking-tight duration-300 ease-in-out",
-							view === "goals"
-								? "bg-[#fead41] text-[#15599a]"
-								: "hover:bg-gray-100",
+							view === "goals" ? "bg-[#fead41] text-[#15599a]" : "hover:bg-gray-100",
 						)}
 					>
 						Painel de Metas
@@ -58,9 +52,7 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
 						onClick={() => setView("marketing-controls")}
 						className={cn(
 							"px-2 py-1 rounded-lg bg-transparent font-bold tracking-tight duration-300 ease-in-out",
-							view === "marketing-controls"
-								? "bg-[#fead41] text-[#15599a]"
-								: "hover:bg-gray-100",
+							view === "marketing-controls" ? "bg-[#fead41] text-[#15599a]" : "hover:bg-gray-100",
 						)}
 					>
 						Painel de Marketing
@@ -70,9 +62,7 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
 						onClick={() => setView("settings")}
 						className={cn(
 							"px-2 py-1 rounded-lg bg-transparent font-bold tracking-tight duration-300 ease-in-out",
-							view === "settings"
-								? "bg-[#fead41] text-[#15599a]"
-								: "hover:bg-gray-100",
+							view === "settings" ? "bg-[#fead41] text-[#15599a]" : "hover:bg-gray-100",
 						)}
 					>
 						Configurações
@@ -80,9 +70,7 @@ function ConfigurationPage({ session }: ConfigurationPageProps) {
 				</div>
 				{view === "users" ? <UsersView session={session} /> : null}
 				{view === "goals" ? <SaleGoalsView session={session} /> : null}
-				{view === "marketing-controls" ? (
-					<MarketingControlView session={session} />
-				) : null}
+				{view === "marketing-controls" ? <MarketingControlView session={session} /> : null}
 				{view === "settings" ? <SettingsView /> : null}
 			</div>
 		</div>

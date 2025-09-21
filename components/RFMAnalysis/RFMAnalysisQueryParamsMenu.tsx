@@ -1,18 +1,18 @@
-import { formatDateInputChange } from "@/lib/formatting";
-import { formatDateForInput } from "@/lib/formatting";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { formatDateOnInputChange } from "@/lib/formatting";
+import { formatDateForInputValue } from "@/lib/formatting";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import type { TClientSearchQueryParams } from "@/schemas/clients";
 import { TUserSession } from "@/schemas/users";
-import React, { useState } from "react";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import MultipleSelectInput from "../Inputs/MultipleSelectInput";
-import MultipleSalesSelectInput from "../Inputs/SelectMultipleSalesInput";
 import { RFMLabels } from "@/utils/rfm";
-import TextInput from "../Inputs/TextInput";
 import { CustomersAcquisitionChannels } from "@/utils/select-options";
+import React, { useState } from "react";
 import DateInput from "../Inputs/DateInput";
-import { Button } from "../ui/button";
-import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
+import MultipleSelectInput from "../Inputs/MultipleSelectInput";
 import NumberInput from "../Inputs/NumberInput";
+import MultipleSalesSelectInput from "../Inputs/SelectMultipleSalesInput";
+import TextInput from "../Inputs/TextInput";
+import { Button } from "../ui/button";
 
 type RFMAnalysisQueryParamsMenuProps = {
 	queryParams: TClientSearchQueryParams;
@@ -132,17 +132,17 @@ function RFMAnalysisQueryParamsMenu({ queryParams, updateQueryParams, closeMenu 
 							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO POR PERÍODO</h1>
 							<DateInput
 								label="DEPOIS DE"
-								value={formatDateForInput(queryParamsHolder.period.after)}
+								value={formatDateForInputValue(queryParamsHolder.period.after)}
 								handleChange={(value) =>
-									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, after: formatDateInputChange(value, "string") as string } }))
+									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, after: formatDateOnInputChange(value, "string") as string } }))
 								}
 								width="100%"
 							/>
 							<DateInput
 								label="ANTES DE"
-								value={formatDateForInput(queryParamsHolder.period.before)}
+								value={formatDateForInputValue(queryParamsHolder.period.before)}
 								handleChange={(value) =>
-									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, before: formatDateInputChange(value, "string") as string } }))
+									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, before: formatDateOnInputChange(value, "string") as string } }))
 								}
 								width="100%"
 							/>

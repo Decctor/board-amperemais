@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 
-import type { TClientSearchQueryParams } from "@/schemas/clients";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { TClientSearchQueryParams } from "@/schemas/clients";
 import TextInput from "../Inputs/TextInput";
 
+import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
 import DateInput from "../Inputs/DateInput";
-import { formatDateForInput, formatDateInputChange } from "@/lib/formatting";
 import { Button } from "../ui/button";
 
 type ClientsDatabaseFilterMenuProps = {
@@ -40,17 +40,17 @@ function ClientsDatabaseFilterMenu({ queryParams, updateQueryParams, closeMenu }
 							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO POR PERÍODO</h1>
 							<DateInput
 								label="DEPOIS DE"
-								value={formatDateForInput(queryParamsHolder.period.after)}
+								value={formatDateForInputValue(queryParamsHolder.period.after)}
 								handleChange={(value) =>
-									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, after: formatDateInputChange(value, "string") as string } }))
+									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, after: formatDateOnInputChange(value, "string") as string } }))
 								}
 								width="100%"
 							/>
 							<DateInput
 								label="ANTES DE"
-								value={formatDateForInput(queryParamsHolder.period.before)}
+								value={formatDateForInputValue(queryParamsHolder.period.before)}
 								handleChange={(value) =>
-									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, before: formatDateInputChange(value, "string") as string } }))
+									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, before: formatDateOnInputChange(value, "string") as string } }))
 								}
 								width="100%"
 							/>

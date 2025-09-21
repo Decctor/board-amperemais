@@ -1,22 +1,22 @@
+import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useOverallSalesStats } from "@/lib/queries/stats/overall";
+import { cn } from "@/lib/utils";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import type { TUserSession } from "@/schemas/users";
+import { Percent, ShoppingBag } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { BsCart } from "react-icons/bs";
-import { FaPercent } from "react-icons/fa";
 import { BsFileEarmarkText, BsTicketPerforated } from "react-icons/bs";
+import { FaPercent } from "react-icons/fa";
 import { VscDiffAdded } from "react-icons/vsc";
 import { useDebounce } from "use-debounce";
-import { cn } from "@/lib/utils";
-import { ShoppingBag } from "lucide-react";
 
 type OverallStatsBlockProps = {
 	user: TUserSession;
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 };
 function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps) {
-	const userViewPermission = user.visualizacao;
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
 
 	const [debouncedQueryParams] = useDebounce(queryParams, 1000);
@@ -27,9 +27,9 @@ function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps)
 	}, [generalQueryParams]);
 	return (
 		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="w-full flex flex-col gap-1 rounded-xl border border-primary shadow-sm  overflow-hidden">
-				<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white ">
-					<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">ACOMPANHAMENTO DE META DO PERÍODO</h1>
+			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+				<div className="flex items-center justify-between">
+					<h1 className="text-xs font-medium tracking-tight uppercase">ACOMPANHAMENTO DE META DO PERÍODO</h1>
 					<VscDiffAdded size={12} />
 				</div>
 				<div className="w-full flex items-center justify-center p-2">
@@ -38,75 +38,91 @@ function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps)
 						goalText={`${overallStats?.faturamentoMeta || "..."}`}
 						barHeigth="25px"
 						valueGoal={overallStats?.faturamentoMeta || 0}
-						valueHit={overallStats?.faturamentoBruto || 0}
+						valueHit={overallStats?.faturamentoBruto.atual || 0}
 						formattedValueGoal={formatToMoney(overallStats?.faturamentoMeta || 0)}
-						formattedValueHit={formatToMoney(overallStats?.faturamentoBruto || 0)}
+						formattedValueHit={formatToMoney(overallStats?.faturamentoBruto.atual || 0)}
 					/>
 				</div>
 			</div>
 
 			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
-				<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Número de Vendas</h1>
-						<VscDiffAdded size={12} />
-					</div>
-					<div className="px-6 py-2 flex w-full flex-col">
-						<div className="text-xl font-bold text-[#15599a]">{overallStats?.qtdeVendas}</div>
-					</div>
-				</div>
-				<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Faturamento</h1>
-						<BsFileEarmarkText size={12} />
-					</div>
-					<div className="flex w-full flex-col py-2 px-6">
-						<div className="text-xl font-bold text-[#15599a]">{formatToMoney(overallStats?.faturamentoBruto || 0)}</div>
-						{userViewPermission === "GERAL" ? (
-							<p className="text-xs text-green-500 font-bold lg:text-[0.7rem]">{formatToMoney(overallStats?.faturamentoLiquido || 0)} líquidos</p>
-						) : null}
-					</div>
-				</div>
-				{userViewPermission === "GERAL" ? (
-					<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
-						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Margem</h1>
-							<FaPercent size={12} />
-						</div>
-						<div className="px-6 py-2 flex w-full flex-col">
-							<div className="text-xl font-bold text-[#15599a]">
-								{formatDecimalPlaces((100 * (overallStats?.faturamentoLiquido || 0)) / (overallStats?.faturamentoBruto || 0))}%
-							</div>
-						</div>
-					</div>
-				) : null}
-				<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Ticket Médio</h1>
-						<BsTicketPerforated size={12} />
-					</div>
-					<div className="px-6 py-2 flex w-full flex-col">
-						<div className="text-xl font-bold text-[#15599a]">{formatToMoney(overallStats?.ticketMedio || 0)}</div>
-					</div>
-				</div>
-				<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Valor Diário Vendido</h1>
-						<BsCart size={12} />
-					</div>
-					<div className="px-6 py-2 flex w-full flex-col">
-						<div className="text-xl font-bold text-[#15599a]">{formatToMoney(overallStats?.valorDiarioVendido || 0)}</div>
-					</div>
-				</div>
-				<div className="flex min-h-[90px] w-full flex-col rounded-xl border border-primary shadow-sm lg:w-1/6 overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Média de Itens por Venda</h1>
-						<ShoppingBag size={10} />
-					</div>
-					<div className="px-6 py-2 flex w-full flex-col">
-						<div className="text-xl font-bold text-[#15599a]">{formatDecimalPlaces(overallStats?.itensPorVendaMedio || 0)}</div>
-					</div>
-				</div>
+				<StatUnitCard
+					title="Número de Vendas"
+					icon={<VscDiffAdded className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.qtdeVendas.atual || 0, format: (n) => formatDecimalPlaces(n) }}
+					previous={
+						overallStats?.qtdeVendas.anterior ? { value: overallStats?.qtdeVendas.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined
+					}
+					className="w-full lg:w-1/4"
+				/>
+				<StatUnitCard
+					title="Faturamento"
+					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.faturamentoBruto.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={
+						overallStats?.faturamentoBruto.anterior ? { value: overallStats.faturamentoBruto.anterior || 0, format: (n) => formatToMoney(n) } : undefined
+					}
+					className="w-full lg:w-1/4"
+				/>
+				<StatUnitCard
+					title="Faturamento Líquido"
+					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.faturamentoLiquido.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={
+						overallStats?.faturamentoLiquido.anterior
+							? { value: overallStats.faturamentoLiquido.anterior || 0, format: (n) => formatToMoney(n) }
+							: undefined
+					}
+					className="w-full lg:w-1/4"
+				/>
+				<StatUnitCard
+					title="Margem"
+					icon={<Percent className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: (100 * (overallStats?.faturamentoLiquido.atual || 0)) / (overallStats?.faturamentoBruto.atual || 0),
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						overallStats?.faturamentoLiquido.anterior && overallStats?.faturamentoBruto.anterior
+							? {
+									value: (100 * (overallStats.faturamentoLiquido.anterior || 0)) / (overallStats.faturamentoBruto.anterior || 0),
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+					className="w-full lg:w-1/4"
+				/>
+			</div>
+			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
+				<StatUnitCard
+					title="Ticket Médio"
+					icon={<BsTicketPerforated className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.ticketMedio.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={overallStats?.ticketMedio.anterior ? { value: overallStats.ticketMedio.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
+					className="w-full lg:w-1/3"
+				/>
+				<StatUnitCard
+					title="Valor Diário Vendido"
+					icon={<BsCart className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.valorDiarioVendido.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={
+						overallStats?.valorDiarioVendido.anterior
+							? { value: overallStats.valorDiarioVendido.anterior || 0, format: (n) => formatToMoney(n) }
+							: undefined
+					}
+					className="w-full lg:w-1/3"
+				/>
+				<StatUnitCard
+					title="Média de Itens por Venda"
+					icon={<ShoppingBag className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.itensPorVendaMedio.atual || 0, format: (n) => formatDecimalPlaces(n) }}
+					previous={
+						overallStats?.itensPorVendaMedio.anterior
+							? { value: overallStats.itensPorVendaMedio.anterior || 0, format: (n) => formatDecimalPlaces(n) }
+							: undefined
+					}
+					className="w-full lg:w-1/3"
+				/>
 			</div>
 		</div>
 	);

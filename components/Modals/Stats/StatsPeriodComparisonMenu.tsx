@@ -1,5 +1,11 @@
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import React, { useState } from "react";
+import DateInput from "@/components/Inputs/DateInput";
+import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
+import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
+import NumberInput from "@/components/Inputs/NumberInput";
+import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
+import { Button } from "@/components/ui/button";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
 	Drawer,
 	DrawerClose,
@@ -10,35 +16,29 @@ import {
 	DrawerTitle,
 	DrawerTrigger,
 } from "@/components/ui/drawer";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useStatsComparison } from "@/lib/queries/stats/comparison";
-import { Button } from "@/components/ui/button";
-import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
-import { VscDiffAdded } from "react-icons/vsc";
-import { BsCart, BsFileEarmarkText, BsTicketPerforated } from "react-icons/bs";
-import { ArrowDownNarrowWide, BadgeDollarSign, Box, ChevronDown, ChevronUp, ShoppingBag, ShoppingCart, UserRound } from "lucide-react";
+import { SlideMotionVariants } from "@/lib/animations";
 import {
 	formatDateAsLocale,
-	formatDateForInput,
-	formatDateInputChange,
+	formatDateForInputValue,
+	formatDateOnInputChange,
 	formatDecimalPlaces,
 	formatLongString,
 	formatToMoney,
 } from "@/lib/formatting";
-import DateInput from "@/components/Inputs/DateInput";
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
-import type { TStatsComparisonOutput } from "@/pages/api/stats/comparison";
-import { VariableSizeList } from "react-window";
-import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
-import { SlideMotionVariants } from "@/lib/animations";
-import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { useStatsComparison } from "@/lib/queries/stats/comparison";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
-import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
+import { cn } from "@/lib/utils";
+import type { TStatsComparisonOutput } from "@/pages/api/stats/comparison";
 import type { TSale } from "@/schemas/sales";
-import NumberInput from "@/components/Inputs/NumberInput";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowDownNarrowWide, BadgeDollarSign, Box, ChevronDown, ChevronUp, ShoppingBag, ShoppingCart, UserRound } from "lucide-react";
+import React, { useState } from "react";
+import { BsCart, BsFileEarmarkText, BsTicketPerforated } from "react-icons/bs";
+import { VscDiffAdded } from "react-icons/vsc";
+import { VariableSizeList } from "react-window";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 type StatsPeriodComparisonMenuProps = {
 	closeMenu: () => void;
 };
@@ -133,12 +133,12 @@ function StatsPeriodComparisonMenuData() {
 							label="INÍCIO DO PRIMEIRO PERÍODO"
 							labelClassName="text-[0.6rem]"
 							holderClassName="text-xs p-2 min-h-[34px]"
-							value={formatDateForInput(filters.firstPeriod.after)}
+							value={formatDateForInputValue(filters.firstPeriod.after)}
 							handleChange={(value) => {
 								updateFilters({
 									firstPeriod: {
 										...filters.firstPeriod,
-										after: formatDateInputChange(value, "string") as string,
+										after: formatDateOnInputChange(value, "string") as string,
 									},
 								});
 							}}
@@ -149,12 +149,12 @@ function StatsPeriodComparisonMenuData() {
 							label="FIM DO PRIMEIRO PERÍODO"
 							labelClassName="text-[0.6rem]"
 							holderClassName="text-xs p-2 min-h-[34px]"
-							value={formatDateForInput(filters.firstPeriod.before)}
+							value={formatDateForInputValue(filters.firstPeriod.before)}
 							handleChange={(value) => {
 								updateFilters({
 									firstPeriod: {
 										...filters.firstPeriod,
-										before: formatDateInputChange(value, "string") as string,
+										before: formatDateOnInputChange(value, "string") as string,
 									},
 								});
 							}}
@@ -167,12 +167,12 @@ function StatsPeriodComparisonMenuData() {
 							label="INÍCIO DO SEGUNDO PERÍODO"
 							labelClassName="text-[0.6rem]"
 							holderClassName="text-xs p-2 min-h-[34px]"
-							value={formatDateForInput(filters.secondPeriod.after)}
+							value={formatDateForInputValue(filters.secondPeriod.after)}
 							handleChange={(value) => {
 								updateFilters({
 									secondPeriod: {
 										...filters.secondPeriod,
-										after: formatDateInputChange(value, "string") as string,
+										after: formatDateOnInputChange(value, "string") as string,
 									},
 								});
 							}}
@@ -183,12 +183,12 @@ function StatsPeriodComparisonMenuData() {
 							label="FIM DO SEGUNDO PERÍODO"
 							labelClassName="text-[0.6rem]"
 							holderClassName="text-xs p-2 min-h-[34px]"
-							value={formatDateForInput(filters.secondPeriod.before)}
+							value={formatDateForInputValue(filters.secondPeriod.before)}
 							handleChange={(value) => {
 								updateFilters({
 									secondPeriod: {
 										...filters.secondPeriod,
-										before: formatDateInputChange(value, "string") as string,
+										before: formatDateOnInputChange(value, "string") as string,
 									},
 								});
 							}}
