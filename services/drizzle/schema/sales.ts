@@ -1,8 +1,9 @@
-import { doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { newTable } from "./common";
-import { clients } from "./clients";
 import { relations } from "drizzle-orm";
+import { doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { clients } from "./clients";
+import { newTable } from "./common";
 import { products } from "./products";
+import { sellers } from "./sellers";
 
 export const sales = newTable(
 	"sales",
@@ -16,7 +17,8 @@ export const sales = newTable(
 		idExterno: text("id_externo").notNull(),
 		valorTotal: doublePrecision("valor_total").notNull(),
 		custoTotal: doublePrecision("custo_total").notNull(),
-		vendedor: text("vendedor").notNull(),
+		vendedorNome: text("vendedor_nome").notNull(),
+		vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id),
 		// Other details
 		parceiro: text("parceiro").notNull(),
 		chave: text("chave").notNull(),
@@ -33,7 +35,7 @@ export const sales = newTable(
 		clientIdIdx: index("idx_sales_client_id").on(table.clienteId),
 		parceiroIdx: index("idx_sales_parceiro").on(table.parceiro),
 		dataVendaIdx: index("idx_sales_data_venda").on(table.dataVenda),
-		vendedorIdx: index("idx_sales_vendedor").on(table.vendedor),
+		vendedorIdx: index("idx_sales_vendedor").on(table.vendedorNome),
 		naturezaIdx: index("idx_sales_natureza").on(table.natureza),
 		valorTotalIdx: index("idx_sales_valor_total").on(table.valorTotal),
 	}),
@@ -45,6 +47,10 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 	cliente: one(clients, {
 		fields: [sales.clienteId],
 		references: [clients.id],
+	}),
+	vendedor: one(sellers, {
+		fields: [sales.vendedorId],
+		references: [sellers.id],
 	}),
 	itens: many(saleItems),
 }));

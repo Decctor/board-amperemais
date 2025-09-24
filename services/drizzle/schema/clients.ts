@@ -1,7 +1,7 @@
+import { relations, sql } from "drizzle-orm";
 import { index, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { sales } from "./sales";
-import { relations, sql } from "drizzle-orm";
 
 export const clients = newTable(
 	"clients",

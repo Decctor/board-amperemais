@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1744993509886,
-      "tag": "0000_watery_betty_brant",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1745002173664,
-      "tag": "0001_spooky_adam_warlock",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1745006991581,
-      "tag": "0002_medical_shard",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1745009086724,
-      "tag": "0003_shocking_meteorite",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1745009898430,
-      "tag": "0004_petite_firebird",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1745635650127,
-      "tag": "0005_pretty_oracle",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1745784647241,
-      "tag": "0006_bored_felicia_hardy",
+      "when": 1758672634040,
+      "tag": "0000_crazy_spyke",
       "breakpoints": true
     }
   ]

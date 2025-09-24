@@ -179,7 +179,7 @@ async function getSalesGrouped({ filters }: GetSalesGroupedParams) {
 
 		if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
 
-		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
+		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 
 		if (filters.clientRFMTitles.length > 0)
 			exists(

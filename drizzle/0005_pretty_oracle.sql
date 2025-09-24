@@ -1,2 +1,0 @@
-ALTER TABLE "ampmais_products" DROP CONSTRAINT "ampmais_products_codigo_unique";--> statement-breakpoint
-CREATE INDEX "idx_clients_nome" ON "ampmais_clients" USING gin (to_tsvector('portuguese', "nome"));

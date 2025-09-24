@@ -1,13 +1,13 @@
+import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
+import { db } from "@/services/drizzle";
+import { clients, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
+import connectToDatabase from "@/services/mongodb/main-db-connection";
 import axios from "axios";
 import dayjs from "dayjs";
-import type { NextApiHandler } from "next";
 import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
-import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
-import { z } from "zod";
-import { db } from "@/services/drizzle";
-import { clients, products, saleItems, sales, type TNewSaleItemEntity } from "@/services/drizzle/schema";
 import createHttpError from "http-errors";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
+import type { NextApiHandler } from "next";
+import { z } from "zod";
 dayjs.extend(dayjsCustomFormatter);
 
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
@@ -49,9 +49,16 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					codigo: true,
 				},
 			});
+			const existingSellers = await tx.query.sellers.findMany({
+				columns: {
+					id: true,
+					nome: true,
+				},
+			});
 
 			const existingClientsMap = new Map(existingClients.map((client) => [client.nome, client.id]));
 			const existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
+			const existingSellersMap = new Map(existingSellers.map((seller) => [seller.nome, seller.id]));
 			for (const OnlineSale of OnlineSoftwareSales) {
 				const equivalentSaleClient = existingClientsMap.get(OnlineSale.cliente);
 
@@ -70,6 +77,17 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					if (!insertedClientResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar cliente.");
 					saleClientId = insertedClientId;
 				}
+				const equivalentSaleSeller = existingSellersMap.get(OnlineSale.vendedor);
+				let saleSellerId = equivalentSaleSeller;
+				if (!saleSellerId) {
+					const insertedSellerResponse = await tx
+						.insert(sellers)
+						.values({ nome: OnlineSale.vendedor || "N/A", identificador: OnlineSale.vendedor || "N/A" })
+						.returning({ id: sellers.id });
+					const insertedSellerId = insertedSellerResponse[0]?.id;
+					if (!insertedSellerResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar vendedor.");
+					saleSellerId = insertedSellerId;
+				}
 
 				const saleTotalCost = OnlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
 				const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
@@ -80,7 +98,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						clienteId: saleClientId,
 						valorTotal: Number(OnlineSale.valor),
 						custoTotal: saleTotalCost,
-						vendedor: OnlineSale.vendedor || "N/A",
+						vendedorNome: OnlineSale.vendedor || "N/A",
+						vendedorId: saleSellerId,
 						parceiro: OnlineSale.parceiro || "N/A",
 						chave: OnlineSale.chave || "N/A",
 						documento: OnlineSale.documento || "N/A",

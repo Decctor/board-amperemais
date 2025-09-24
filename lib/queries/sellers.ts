@@ -1,0 +1,72 @@
+import type { TGetSellersByIdInput, TGetSellersDefaultInput, TGetSellersInput, TGetSellersOutput } from "@/pages/api/sellers";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import { useState } from "react";
+import { useDebounceMemo } from "../hooks/use-debounce";
+
+async function fetchSellers(input: TGetSellersDefaultInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.search) searchParams.set("search", input.search);
+		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
+		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
+		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
+		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
+		const { data } = await axios.get<TGetSellersOutput>(`/api/sellers?${searchParams.toString()}`);
+		const result = data.data.default;
+		if (!result) throw new Error("Vendedores não encontrados.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchSellers", error);
+		throw error;
+	}
+}
+
+export async function fetchSellersById(input: TGetSellersByIdInput) {
+	try {
+		const { data } = await axios.get<TGetSellersOutput>(`/api/sellers?id=${input.id}`);
+		const result = data.data.byId;
+		if (!result) throw new Error("Vendedor não encontrado.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchSellersById", error);
+		throw error;
+	}
+}
+
+export function useSellerById({ id }: { id: string }) {
+	return {
+		...useQuery({
+			queryKey: ["seller-by-id", id],
+			queryFn: () => fetchSellersById({ id }),
+		}),
+		queryKey: ["seller-by-id", id],
+	};
+}
+
+type UseSellersParams = {
+	initialFilters?: Partial<TGetSellersDefaultInput>;
+};
+export function useSellers({ initialFilters }: UseSellersParams) {
+	const [filters, setFilters] = useState<TGetSellersDefaultInput>({
+		search: initialFilters?.search || "",
+		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
+		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
+		orderByField: initialFilters?.orderByField || "nome",
+		orderByDirection: initialFilters?.orderByDirection || "asc",
+	});
+	function updateFilters(newParams: Partial<TGetSellersDefaultInput>) {
+		setFilters((prevFilters) => ({ ...prevFilters, ...newParams }));
+	}
+
+	const debouncedFilters = useDebounceMemo(filters, 500);
+	return {
+		...useQuery({
+			queryKey: ["sellers", debouncedFilters],
+			queryFn: () => fetchSellers(debouncedFilters),
+		}),
+		queryKey: ["sellers", debouncedFilters],
+		filters,
+		updateFilters,
+	};
+}

@@ -18,10 +18,10 @@ const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }
 
 	const groupedSellers = await db
 		.select({
-			seller: sales.vendedor,
+			seller: sales.vendedorNome,
 		})
 		.from(sales)
-		.groupBy(sales.vendedor);
+		.groupBy(sales.vendedorNome);
 
 	const groupedProductGroups = await db
 		.select({

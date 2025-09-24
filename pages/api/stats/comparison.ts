@@ -191,7 +191,7 @@ async function fetchStatsComparison(req: NextApiRequest) {
 	if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
 	if (filters.total.max) conditions.push(lte(sales.valorTotal, filters.total.max));
 	if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
-	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
+	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 	if (filters.excludedSalesIds.length > 0) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
 
 	const { points: bestNumberOfPointsForFirstPeriodDates } = getBestNumberOfPointsBetweenDates({
@@ -224,7 +224,7 @@ async function fetchStatsComparison(req: NextApiRequest) {
 			valorTotal: true,
 			custoTotal: true,
 			dataVenda: true,
-			vendedor: true,
+			vendedorNome: true,
 		},
 		with: {
 			itens: {
@@ -249,7 +249,7 @@ async function fetchStatsComparison(req: NextApiRequest) {
 			valorTotal: true,
 			custoTotal: true,
 			dataVenda: true,
-			vendedor: true,
+			vendedorNome: true,
 		},
 		with: {
 			itens: {
@@ -308,8 +308,8 @@ async function fetchStatsComparison(req: NextApiRequest) {
 				acc.porItem[product.produto.descricao].primeiroPeriodo.totalVendido += product.valorVendaTotalLiquido || 0;
 			}
 			// updating per seller statistics
-			if (!acc.porVendedor[sale.vendedor]) {
-				acc.porVendedor[sale.vendedor] = {
+			if (!acc.porVendedor[sale.vendedorNome]) {
+				acc.porVendedor[sale.vendedorNome] = {
 					primeiroPeriodo: {
 						qtdeVendas: 0,
 						totalVendido: 0,
@@ -320,8 +320,8 @@ async function fetchStatsComparison(req: NextApiRequest) {
 					},
 				};
 			}
-			acc.porVendedor[sale.vendedor].primeiroPeriodo.qtdeVendas += 1;
-			acc.porVendedor[sale.vendedor].primeiroPeriodo.totalVendido += sale.valorTotal || 0;
+			acc.porVendedor[sale.vendedorNome].primeiroPeriodo.qtdeVendas += 1;
+			acc.porVendedor[sale.vendedorNome].primeiroPeriodo.totalVendido += sale.valorTotal || 0;
 			return acc;
 		},
 		{
@@ -403,9 +403,9 @@ async function fetchStatsComparison(req: NextApiRequest) {
 			acc.porItem[product.produto.descricao].segundoPeriodo.qtdeVendas += product.quantidade;
 			acc.porItem[product.produto.descricao].segundoPeriodo.totalVendido += product.valorVendaTotalLiquido || 0;
 		}
-		if (!acc.porVendedor[sale.vendedor]) {
+		if (!acc.porVendedor[sale.vendedorNome]) {
 			// updating per seller statistics
-			acc.porVendedor[sale.vendedor] = {
+			acc.porVendedor[sale.vendedorNome] = {
 				primeiroPeriodo: {
 					qtdeVendas: 0,
 					totalVendido: 0,
@@ -416,8 +416,8 @@ async function fetchStatsComparison(req: NextApiRequest) {
 				},
 			};
 		}
-		acc.porVendedor[sale.vendedor].segundoPeriodo.qtdeVendas += 1;
-		acc.porVendedor[sale.vendedor].segundoPeriodo.totalVendido += sale.valorTotal || 0;
+		acc.porVendedor[sale.vendedorNome].segundoPeriodo.qtdeVendas += 1;
+		acc.porVendedor[sale.vendedorNome].segundoPeriodo.totalVendido += sale.valorTotal || 0;
 		return acc;
 	}, firstPeriodStats);
 

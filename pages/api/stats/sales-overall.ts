@@ -129,7 +129,7 @@ async function getSales({ filters }: GetSalesParams) {
 
 		if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
 
-		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
+		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 
 		if (filters.clientRFMTitles.length > 0)
 			exists(
@@ -251,7 +251,7 @@ export async function getOverallStats(filters: TSaleStatsGeneralQueryParams) {
 	if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
 	if (filters.total.max) conditions.push(gte(sales.valorTotal, filters.total.max));
 	if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
-	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
+	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 	if (filters.clientRFMTitles.length > 0)
 		conditions.push(
 			exists(

@@ -5,7 +5,7 @@ import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } fro
 import { db } from "@/services/drizzle";
 import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, eq, exists, gte, inArray, lte, sql, sum, notInArray, isNotNull, max, min } from "drizzle-orm";
+import { and, count, eq, exists, gte, inArray, isNotNull, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
 import type { NextApiHandler } from "next";
 
 type TGroupedSalesStatsReduced = {
@@ -152,7 +152,7 @@ async function getSales({ filters }: GetSalesParams) {
 
 		if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
 
-		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
+		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 
 		if (filters.clientRFMTitles.length > 0)
 			exists(
@@ -209,7 +209,7 @@ async function getSales({ filters }: GetSalesParams) {
 				},
 			},
 			columns: {
-				vendedor: true,
+				vendedorNome: true,
 				natureza: true,
 				parceiro: true,
 				dataVenda: true,
@@ -236,7 +236,7 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 
 	if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
 
-	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedor, filters.sellers));
+	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 
 	if (filters.clientRFMTitles.length > 0)
 		exists(
@@ -250,24 +250,24 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 
 	const resultsBySeller = await db
 		.select({
-			titulo: sales.vendedor,
+			titulo: sales.vendedorNome,
 			qtde: count(sales.id),
 			total: sum(sales.valorTotal),
 		})
 		.from(sales)
 		.where(and(...conditions))
-		.groupBy(sales.vendedor);
+		.groupBy(sales.vendedorNome);
 
 	// Query para obter contagem de vendas por parceiro e vendedor
 	const salesByPartnerAndSeller = await db
 		.select({
 			parceiro: sales.parceiro,
-			vendedor: sales.vendedor,
+			vendedor: sales.vendedorNome,
 			qtdeVendas: count(sales.id),
 		})
 		.from(sales)
 		.where(and(...conditions, isNotNull(sales.parceiro), notInArray(sales.parceiro, ["", "0", "N/A"])))
-		.groupBy(sales.parceiro, sales.vendedor);
+		.groupBy(sales.parceiro, sales.vendedorNome);
 
 	// Query para obter a primeira venda de cada parceiro (sem filtros de período)
 	const firstSaleByPartner = await db

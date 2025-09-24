@@ -1,21 +1,21 @@
-import type { NextApiHandler } from "next";
 // import ResultsJSON from "../../../resultados-att.json";
 import { apiHandler } from "@/lib/api";
 import { formatToPhone } from "@/lib/formatting";
 import { db } from "@/services/drizzle";
 import {
-	clients,
-	products,
-	saleItems,
-	sales,
 	type TNewClientEntity,
 	type TNewProductEntity,
 	type TNewSaleEntity,
 	type TNewSaleItemEntity,
+	clients,
+	products,
+	saleItems,
+	sales,
 } from "@/services/drizzle/schema";
-import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
 import dayjs from "dayjs";
+import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
 import { eq } from "drizzle-orm";
+import type { NextApiHandler } from "next";
 dayjs.extend(dayjsCustomFormatter);
 
 // const Results = ResultsJSON as any[];
@@ -160,7 +160,7 @@ const handleSalesInsertion: NextApiHandler<any> = async (req, res) => {
 						clienteId: clientId,
 						valorTotal: Number(sale.valor),
 						custoTotal: custoTotal,
-						vendedor: sale.vendedor || "N/A",
+						vendedorNome: sale.vendedor || "N/A",
 						parceiro: sale.parceiro || "N/A",
 						chave: sale.chave || "N/A",
 						documento: sale.documento || "N/A",
