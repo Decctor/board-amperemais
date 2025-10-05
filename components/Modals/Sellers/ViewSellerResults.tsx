@@ -106,18 +106,6 @@ function ViewSellerResultsQuantitative({
 					className="w-full"
 				/>
 			</div>
-
-			<div className="flex w-full flex-col gap-3">
-				<h2 className="text-xs font-medium tracking-tight uppercase">VALOR POR CATEGORIA DE PRODUTO</h2>
-				<div className="w-full flex flex-col gap-1.5">
-					{quantitative.valueByProductCategory.map((row, idx) => (
-						<div key={`${row.category}-${idx}`} className="flex items-center justify-between rounded border bg-card px-3 py-2 text-xs shadow-sm">
-							<span className="font-medium">{row.category || "NÃO CATEGORIZADO"}</span>
-							<span className="font-semibold">{formatToMoney(row.total || 0)}</span>
-						</div>
-					))}
-				</div>
-			</div>
 		</div>
 	);
 }
@@ -177,6 +165,19 @@ function ViewSellerResultsQualitative({ qualitative }: { qualitative: TGetSeller
 							))}
 						</tbody>
 					</table>
+				</div>
+			</div>
+
+			<div className="flex w-full flex-col gap-3">
+				<h2 className="text-xs font-medium tracking-tight uppercase">TOP CATEGORIAS DE PRODUTO</h2>
+				<div className="w-full flex flex-col gap-1.5">
+					{qualitative.byProductCategoryTop10.map((row, idx) => (
+						<div key={`${row.category}-${idx}`} className="flex items-center justify-between rounded border bg-card px-3 py-2 text-xs shadow-sm">
+							<span className="font-medium">{row.category || "NÃO CATEGORIZADO"}</span>
+							<span className="font-semibold">{formatDecimalPlaces(row.quantity)}</span>
+							<span className="font-semibold">{formatToMoney(row.total || 0)}</span>
+						</div>
+					))}
 				</div>
 			</div>
 

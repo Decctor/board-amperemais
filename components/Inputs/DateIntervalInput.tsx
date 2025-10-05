@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Button } from "../ui/button";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "../ui/calendar";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Label } from "../ui/label";
+import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
+import { Button } from "../ui/button";
+import { Calendar } from "../ui/calendar";
+import { Label } from "../ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 type DateIntervalInputProps = {
 	width?: string;
@@ -61,7 +61,7 @@ function DateIntervalInput({
 								format(value.after, "dd/MM/yyyy", { locale: ptBR })
 							)
 						) : (
-							<span>Escolha uma data</span>
+							<span>DEFINA UM PERÍODO</span>
 						)}
 					</Button>
 				</PopoverTrigger>

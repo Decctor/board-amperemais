@@ -98,7 +98,7 @@ export function useSellerStats({ sellerId, initialFilters }: UseSellerStatsParam
 	function updateFilters(newFilters: Partial<Omit<TGetSellerStatsInput, "sellerId">>) {
 		setFilters((prevFilters) => ({ ...prevFilters, ...newFilters }));
 	}
-	const debouncedFilters = useDebounceMemo(filters, 500);
+	const debouncedFilters = useDebounceMemo(filters, 1000);
 	return {
 		...useQuery({
 			queryKey: ["seller-stats", sellerId, debouncedFilters],

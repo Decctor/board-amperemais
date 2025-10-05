@@ -6,6 +6,7 @@ import { TGetSellersOutput, type TGetSellersOutputDefault } from "@/pages/api/se
 import type { TUserSession } from "@/schemas/users";
 import { useQueryClient } from "@tanstack/react-query";
 import { AreaChart, BadgeDollarSign, CirclePlus, Filter, Mail, Pencil, Phone } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import Header from "../Layouts/Header";
@@ -111,10 +112,16 @@ function SellerCard({ seller, handleEditClick, handleViewClick }: SellerCardProp
 							<Pencil className="w-3 min-w-3 h-3 min-h-3" />
 							EDITAR
 						</Button>
-						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleViewClick(seller.id)}>
+						<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+							<Link href={`/time-vendas/vendedor/${seller.id}`}>
+								<AreaChart className="w-3 min-w-3 h-3 min-h-3" />
+								RESULTADOS
+							</Link>
+						</Button>
+						{/* <Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleViewClick(seller.id)}>
 							<AreaChart className="w-3 min-w-3 h-3 min-h-3" />
 							RESULTADOS
-						</Button>
+						</Button> */}
 					</div>
 				</div>
 			</div>

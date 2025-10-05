@@ -3,7 +3,8 @@ import { getUserSession } from "@/lib/auth/session";
 import type { TUserSession } from "@/schemas/users";
 import { db } from "@/services/drizzle";
 import { clients, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
-import { and, count, desc, eq, gte, isNotNull, lte, sql, sum } from "drizzle-orm";
+import dayjs from "dayjs";
+import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, lte, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -81,15 +82,27 @@ async function getSellerStats({ session, input }: GetSellerStatsParams) {
 	const firstSaleDate = firstSaleResult[0]?.data ?? null;
 	const lastSaleDate = lastSaleResult[0]?.data ?? null;
 
+	const daysDiff = dayjs(lastSaleDate).diff(dayjs(firstSaleDate), "days");
+
+	const totalSalesValuePerDay = totalSalesValue / daysDiff;
+
+	const totalSalesItemsResult = await db
+		.select({ total: sum(saleItems.quantidade) })
+		.from(saleItems)
+		.where(inArray(saleItems.vendaId, db.select({ id: sales.id }).from(sales).where(saleWhere)));
+	const totalSalesItems = totalSalesItemsResult[0]?.total ? Number(totalSalesItemsResult[0].total) : 0;
+
+	const avgSalesItemsPerSale = totalSalesItems / salesCount;
 	// Quantitative: value sold by product category
-	const valueByProductCategory = await db
-		.select({ categoria: products.grupo, total: sum(saleItems.valorVendaTotalLiquido) })
+	const byProductGroupRaw = await db
+		.select({ grupo: products.grupo, total: sum(saleItems.valorVendaTotalLiquido), sales: countDistinct(saleItems.vendaId) })
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(products, eq(saleItems.produtoId, products.id))
 		.where(saleWhere)
 		.groupBy(products.grupo)
-		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`));
+		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
+		.limit(10);
 
 	// Qualitative: top clients (top 10)
 	const byClientTop10Raw = await db
@@ -141,50 +154,63 @@ async function getSellerStats({ session, input }: GetSellerStatsParams) {
 		.groupBy(monthExpr)
 		.orderBy(monthExpr);
 
+	const weekDayExpr = sql<number>`extract(dow from ${sales.dataVenda})`;
+	const byWeekDayRaw = await db
+		.select({ semana: weekDayExpr, qtde: count(sales.id), total: sum(sales.valorTotal) })
+		.from(sales)
+		.where(saleWhere)
+		.groupBy(weekDayExpr)
+		.orderBy(weekDayExpr);
+
 	return {
 		data: {
-			seller: {
-				name: seller.nome,
-				phone: seller.telefone,
+			vendedor: {
+				nome: seller.nome,
+				telefone: seller.telefone,
 				email: seller.email,
-				identifier: seller.identificador,
+				identificador: seller.identificador,
 				avatarUrl: seller.avatarUrl,
 			},
-			firstSaleDate,
-			lastSaleDate,
-			quantitative: {
-				totalSalesValue,
-				salesCount,
-				avgTicket,
-				valueByProductCategory: valueByProductCategory.map((row) => ({
-					category: row.categoria ?? null,
+			dataPrimeiraVenda: firstSaleDate,
+			dataUltimaVenda: lastSaleDate,
+			faturamentoBrutoTotal: totalSalesValue,
+			faturamentoBrutoPorDia: totalSalesValuePerDay,
+			qtdeVendas: salesCount,
+			qtdeItensVendidos: totalSalesItems,
+			qtdeItensPorVendaMedio: avgSalesItemsPerSale,
+			ticketMedio: avgTicket,
+			resultadosAgrupados: {
+				grupo: byProductGroupRaw.map((row) => ({
+					grupo: row.grupo ?? null,
+					quantidade: row.sales ? Number(row.sales) : 0,
 					total: row.total ? Number(row.total) : 0,
 				})),
-				firstSaleDate,
-				lastSaleDate,
-			},
-			qualitative: {
-				byClientTop10: byClientTop10Raw.map((row) => ({
-					clientId: row.clienteId,
-					clientName: row.clienteNome ?? null,
-					quantity: Number(row.qtde ?? 0),
+				cliente: byClientTop10Raw.map((row) => ({
+					clienteId: row.clienteId,
+					clienteNome: row.clienteNome ?? null,
+					quantidade: Number(row.qtde ?? 0),
 					total: row.total ? Number(row.total) : 0,
 				})),
-				byProductTop10: byProductTop10Raw.map((row) => ({
-					productId: row.produtoId,
-					productDescription: row.produtoDescricao ?? "",
-					productGroup: row.produtoGrupo ?? null,
-					quantity: row.qtde ? Number(row.qtde) : 0,
+				produto: byProductTop10Raw.map((row) => ({
+					produtoId: row.produtoId,
+					produtoDescricao: row.produtoDescricao ?? "",
+					produtoGrupo: row.produtoGrupo ?? null,
+					quantidade: row.qtde ? Number(row.qtde) : 0,
 					total: row.total ? Number(row.total) : 0,
 				})),
-				byDayOfMonth: byDayOfMonthRaw.map((row) => ({
-					day: Number(row.dia),
-					quantity: Number(row.qtde ?? 0),
+				dia: byDayOfMonthRaw.map((row) => ({
+					dia: Number(row.dia),
+					quantidade: Number(row.qtde ?? 0),
 					total: row.total ? Number(row.total) : 0,
 				})),
-				byMonth: byMonthRaw.map((row) => ({
-					month: Number(row.mes),
-					quantity: Number(row.qtde ?? 0),
+				mes: byMonthRaw.map((row) => ({
+					mes: Number(row.mes),
+					quantidade: Number(row.qtde ?? 0),
+					total: row.total ? Number(row.total) : 0,
+				})),
+				diaSemana: byWeekDayRaw.map((row) => ({
+					diaSemana: Number(row.semana),
+					quantidade: Number(row.qtde ?? 0),
 					total: row.total ? Number(row.total) : 0,
 				})),
 			},
