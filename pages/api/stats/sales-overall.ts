@@ -201,41 +201,51 @@ type GetOverallSaleGoalProps = {
 	before: string;
 };
 async function getOverallSaleGoal({ collection, after, before }: GetOverallSaleGoalProps) {
-	const ajustedAfter = after;
-	const ajustedBefore = dayjs(before).endOf("day").toISOString();
+	const ajustedAfter = dayjs(after).toDate();
+	const ajustedBefore = dayjs(before).endOf("day").toDate();
 	try {
-		const goals = await collection
-			.find({
-				$or: [{ inicio: { $lte: ajustedAfter } }, { fim: { $gte: ajustedBefore } }],
-			})
-			.toArray();
+		const goals = await db.query.goals.findMany({
+			where: (fields, { and, or, gte, lte }) =>
+				or(
+					and(gte(fields.dataInicio, ajustedAfter), lte(fields.dataInicio, ajustedBefore)),
+					and(gte(fields.dataFim, ajustedAfter), lte(fields.dataFim, ajustedBefore)),
+				),
+		});
+
+		console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goals: ", goals);
 		const applicableSaleGoal = goals.reduce((acc, current) => {
-			const monthsGoalReduced = Object.values(current.meses).reduce((acc, monthCurrent) => {
-				const afterDatetime = new Date(after).getTime();
-				const beforeDatetime = new Date(before).getTime();
+			const afterDatetime = new Date(after).getTime();
+			const beforeDatetime = new Date(before).getTime();
 
-				const monthStartDatetime = new Date(monthCurrent.inicio).getTime();
-				const monthEndDatetime = new Date(monthCurrent.fim).getTime();
+			const monthStartDatetime = new Date(current.dataInicio).getTime();
+			const monthEndDatetime = new Date(current.dataFim).getTime();
 
-				if (
-					(afterDatetime < monthStartDatetime && beforeDatetime < monthStartDatetime) ||
-					(afterDatetime > monthEndDatetime && beforeDatetime > monthEndDatetime)
-				)
-					return acc;
+			const days = Math.abs(dayjs(current.dataFim).diff(dayjs(current.dataInicio), "days")) + 1;
+
+			if (
+				(afterDatetime < monthStartDatetime && beforeDatetime < monthStartDatetime) ||
+				(afterDatetime > monthEndDatetime && beforeDatetime > monthEndDatetime)
+			) {
+				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal not applicable: ", { current });
+				return acc;
+			}
+			if (afterDatetime <= monthStartDatetime && beforeDatetime >= monthEndDatetime) {
 				// Caso o período de filtro da query compreenda o mês inteiro
-				if (afterDatetime <= monthStartDatetime && beforeDatetime >= monthEndDatetime) {
-					return acc + monthCurrent.vendas;
-				}
-				if (beforeDatetime > monthEndDatetime) {
-					const applicableDays = dayjs(monthCurrent.fim).diff(dayjs(after), "days");
+				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for all period: ", { current });
+				return acc + current.objetivoValor;
+			}
+			if (beforeDatetime > monthEndDatetime) {
+				const applicableDays = dayjs(current.dataFim).diff(dayjs(after), "days");
 
-					return acc + (monthCurrent.vendas * applicableDays) / monthCurrent.dias;
-				}
-				const applicableDays = dayjs(before).diff(dayjs(monthCurrent.inicio), "days");
+				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for partial period: ", { current, applicableDays, days });
+				return acc + (current.objetivoValor * applicableDays) / days;
+			}
 
-				return acc + (monthCurrent.vendas * applicableDays) / monthCurrent.dias;
-			}, 0);
-			return acc + monthsGoalReduced;
+			const applicableDays = dayjs(before).diff(dayjs(current.dataInicio), "days") + 1;
+
+			console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for partial period: ", { current, applicableDays, days });
+
+			return acc + (current.objetivoValor * applicableDays) / days;
 		}, 0);
 
 		return applicableSaleGoal;

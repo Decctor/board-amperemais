@@ -7,10 +7,10 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
-		"db:push": "dotenv drizzle-kit push",
-		"db:generate": "dotenv drizzle-kit generate:pg",
-		"db:migrate": "dotenv drizzle-kit migrate:pg",
-		"db:studio": "dotenv drizzle-kit studio"
+		"db:push": "drizzle-kit push",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
 		"@biomejs/biome": "^1.9.4",
