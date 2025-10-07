@@ -2,9 +2,9 @@ import { apiHandler } from "@/lib/api";
 import { getUserSession } from "@/lib/auth/session";
 import type { TUserSession } from "@/schemas/users";
 import { db } from "@/services/drizzle";
-import { clients, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
+import { clients, goals, goalsSellers, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, lte, sql, sum } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, lte, or, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -65,6 +65,11 @@ async function getSellerStats({ session, input }: GetSellerStatsParams) {
 		periodBeforeDate ? lte(sales.dataVenda, periodBeforeDate) : undefined,
 	);
 
+	const sellerSaleGoal = await getSellerSaleGoal({
+		sellerId: input.sellerId,
+		periodAfter: input.periodAfter ?? null,
+		periodBefore: input.periodBefore ?? null,
+	});
 	// Quantitative: total sold, sales count
 	const totalStatsResult = await db
 		.select({ qtde: count(sales.id), total: sum(sales.valorTotal) })
@@ -173,6 +178,8 @@ async function getSellerStats({ session, input }: GetSellerStatsParams) {
 			},
 			dataPrimeiraVenda: firstSaleDate,
 			dataUltimaVenda: lastSaleDate,
+			faturamentoMeta: sellerSaleGoal,
+			faturamentoMetaPorcentagem: (totalSalesValue / sellerSaleGoal) * 100,
 			faturamentoBrutoTotal: totalSalesValue,
 			faturamentoBrutoPorDia: totalSalesValuePerDay,
 			qtdeVendas: salesCount,
@@ -230,3 +237,77 @@ const getSellerStatsHandler: NextApiHandler<TGetSellerStatsOutput> = async (req,
 };
 
 export default apiHandler({ GET: getSellerStatsHandler });
+
+async function getSellerSaleGoal({
+	sellerId,
+	periodAfter,
+	periodBefore,
+}: { sellerId: string; periodAfter: string | null; periodBefore: string | null }) {
+	if (!periodAfter || !periodBefore) return 0;
+
+	const ajustedAfter = new Date(periodAfter);
+	const ajustedBefore = new Date(periodBefore);
+
+	const sellerGoalsResult = await db.query.goalsSellers.findMany({
+		where: and(
+			eq(goalsSellers.vendedorId, sellerId),
+			inArray(
+				goalsSellers.metaId,
+				db
+					.select({ id: goals.id })
+					.from(goals)
+					.where(
+						or(
+							and(gte(goals.dataInicio, ajustedAfter), lte(goals.dataInicio, ajustedBefore)),
+							and(gte(goals.dataFim, ajustedAfter), lte(goals.dataFim, ajustedBefore)),
+						),
+					),
+			),
+		),
+		with: {
+			meta: {
+				columns: {
+					dataInicio: true,
+					dataFim: true,
+				},
+			},
+		},
+	});
+
+	const totalSellerGoal = sellerGoalsResult.reduce((acc, goal) => {
+		const afterDatetime = new Date(periodAfter).getTime();
+		const beforeDatetime = new Date(periodBefore).getTime();
+
+		const monthStartDatetime = new Date(goal.meta.dataInicio).getTime();
+		const monthEndDatetime = new Date(goal.meta.dataFim).getTime();
+
+		const days = Math.abs(dayjs(goal.meta.dataFim).diff(dayjs(goal.meta.dataInicio), "days")) + 1;
+
+		if (
+			(afterDatetime < monthStartDatetime && beforeDatetime < monthStartDatetime) ||
+			(afterDatetime > monthEndDatetime && beforeDatetime > monthEndDatetime)
+		) {
+			console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal not applicable: ", { goal });
+			return acc;
+		}
+		if (afterDatetime <= monthStartDatetime && beforeDatetime >= monthEndDatetime) {
+			// Caso o período de filtro da query compreenda o mês inteiro
+			console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for all period: ", { goal });
+			return acc + goal.objetivoValor;
+		}
+		if (beforeDatetime > monthEndDatetime) {
+			const applicableDays = dayjs(goal.meta.dataFim).diff(dayjs(periodAfter), "days");
+
+			console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for partial period: ", { goal, applicableDays, days });
+			return acc + (goal.objetivoValor * applicableDays) / days;
+		}
+
+		const applicableDays = dayjs(periodBefore).diff(dayjs(goal.meta.dataInicio), "days") + 1;
+
+		console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for partial period: ", { goal, applicableDays, days });
+
+		return acc + (goal.objetivoValor * applicableDays) / days;
+	}, 0);
+
+	return totalSellerGoal;
+}

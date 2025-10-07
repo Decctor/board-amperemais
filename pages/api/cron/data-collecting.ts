@@ -11,7 +11,8 @@ import { z } from "zod";
 dayjs.extend(dayjsCustomFormatter);
 
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
-	const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
+	// const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
+	const currentDateFormatted = "05102025";
 	console.log("DATE BEING USED", dayjs().format("DD/MM/YYYY HH:mm"), dayjs().subtract(5, "hour").format("DD/MM/YYYY HH:mm"), currentDateFormatted);
 	const mongoDb = await connectToDatabase();
 	const utilsCollection = mongoDb.collection("utils");
@@ -23,6 +24,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			dtinicio: currentDateFormatted,
 			dtfim: currentDateFormatted,
 		});
+		console.log("[INFO] [DATA_COLLECTING] Online API Response", onlineAPIResponse);
 		await utilsCollection.insertOne({
 			identificador: "online-importation",
 			date: currentDateFormatted,
@@ -179,6 +181,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			return res.status(201).json("EXECUTADO COM SUCESSO");
 		});
 	} catch (error) {
+		console.error("[ERROR] Running into error for the data collecting cron", error);
 		await utilsCollection.insertOne({
 			identificador: "error",
 			erro: JSON.stringify(error, Object.getOwnPropertyNames(error)),

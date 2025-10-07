@@ -1,8 +1,11 @@
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { useSellerStats } from "@/lib/queries/sellers";
+import { cn } from "@/lib/utils";
+import { isValidNumber } from "@/lib/validation";
 import type { TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
 import type { TUserSession } from "@/schemas/users";
+import dayjs from "dayjs";
 import {
 	BadgeDollarSign,
 	Calendar,
@@ -10,6 +13,7 @@ import {
 	CirclePlus,
 	Code,
 	DollarSign,
+	GoalIcon,
 	ListOrdered,
 	Mail,
 	Pencil,
@@ -46,7 +50,10 @@ export default function SalesTeamBySellerMain({ id, session }: SalesTeamBySeller
 		error,
 		filters,
 		updateFilters,
-	} = useSellerStats({ sellerId: id, initialFilters: { periodAfter: null, periodBefore: null } });
+	} = useSellerStats({
+		sellerId: id,
+		initialFilters: { periodAfter: dayjs().startOf("month").toISOString(), periodBefore: dayjs().endOf("month").toISOString() },
+	});
 
 	console.log("SalesTeamBySellerMain - Stats", stats);
 	if (isLoading) return <LoadingComponent />;
@@ -102,6 +109,15 @@ export default function SalesTeamBySellerMain({ id, session }: SalesTeamBySeller
 								</div>
 							</div>
 						</div>
+						<GoalTrackingBar
+							valueGoal={stats.faturamentoMeta}
+							valueHit={stats.faturamentoBrutoTotal}
+							formattedValueGoal={stats.faturamentoMeta.toLocaleString("pt-br", { maximumFractionDigits: 2 })}
+							formattedValueHit={stats.faturamentoBrutoTotal.toLocaleString("pt-br", { maximumFractionDigits: 2 })}
+							goalText="Faturamento Meta"
+							barHeigth="25px"
+							barBgColor="bg-gradient-to-r from-yellow-200 to-amber-400"
+						/>
 						<div className="w-full flex flex-col gap-2">
 							<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
 								<StatUnitCard
@@ -173,6 +189,12 @@ function GroupedByMonthDay({ data }: { data: TGetSellerStatsOutput["data"]["resu
 	const maxValue = Math.max(...data.map((item) => item.total), 0);
 	const minValue = Math.min(...data.map((item) => item.total), 0);
 	const range = maxValue - minValue;
+
+	const bestDayIndex = data.length > 0 ? data.reduce((max, item) => (item.total > max.total ? item : max), data[0]).dia : null;
+	const worstDayIndex = data.length > 0 ? data.reduce((min, item) => (item.total < min.total ? item : min), data[0]).dia : null;
+
+	console.log("[INFO] [GROUPED_BY_MONTH_DAY] Best day index: ", bestDayIndex);
+	console.log("[INFO] [GROUPED_BY_MONTH_DAY] Worst day index: ", worstDayIndex);
 
 	function getDayResult(index: number) {
 		return data.find((item) => item.dia === index + 1);
@@ -248,6 +270,18 @@ function GroupedByMonthDay({ data }: { data: TGetSellerStatsOutput["data"]["resu
 						<Calendar className="w-4 h-4 min-w-4 min-h-4" />
 					</div>
 				</div>
+				<div className="w-full flex flex-col gap-1">
+					{isValidNumber(bestDayIndex) ? (
+						<div className="w-fit text-center self-center px-4 py-1 bg-green-100 text-green-600 text-xs rounded-lg font-medium">
+							O melhor dia para vender foi {bestDayIndex}
+						</div>
+					) : null}
+					{isValidNumber(worstDayIndex) ? (
+						<div className="w-fit text-center self-center px-4 py-1 bg-red-100 text-red-600 text-xs rounded-lg font-medium">
+							O pior dia para vender foi {worstDayIndex}
+						</div>
+					) : null}
+				</div>
 				<div className="grid grid-cols-7 gap-2 w-full">
 					{Array.from({ length: 31 }).map((_, index) => (
 						<DayCard key={index.toString()} index={index} />
@@ -277,6 +311,12 @@ function GroupedByMonth({ data }: { data: TGetSellerStatsOutput["data"]["resulta
 	const maxValue = Math.max(...data.map((item) => item.total), 0);
 	const minValue = Math.min(...data.map((item) => item.total), 0);
 	const range = maxValue - minValue;
+
+	const bestMonthIndex = data.length > 0 ? data.reduce((max, item) => (item.total > max.total ? item : max), data[0]).mes : null;
+	const worstMonthIndex = data.length > 0 ? data.reduce((min, item) => (item.total < min.total ? item : min), data[0]).mes : null;
+
+	console.log("[INFO] [GROUPED_BY_MONTH] Best month index: ", bestMonthIndex);
+	console.log("[INFO] [GROUPED_BY_MONTH] Worst month index: ", worstMonthIndex);
 
 	function getMonthResult(index: number) {
 		return data.find((item) => item.mes === index + 1);
@@ -352,6 +392,19 @@ function GroupedByMonth({ data }: { data: TGetSellerStatsOutput["data"]["resulta
 						<Calendar className="w-4 h-4 min-w-4 min-h-4" />
 					</div>
 				</div>
+				<div className="w-full flex flex-col gap-1">
+					{isValidNumber(bestMonthIndex) ? (
+						<div className="w-fit text-center self-center px-4 py-1 bg-green-100 text-green-600 text-xs rounded-lg font-medium">
+							O melhor mês para vender foi {MONTH_MAP[bestMonthIndex as keyof typeof MONTH_MAP]}
+						</div>
+					) : null}
+
+					{isValidNumber(worstMonthIndex) ? (
+						<div className="w-fit text-center self-center px-4 py-1 bg-red-100 text-red-600 text-xs rounded-lg font-medium">
+							O pior mês para vender foi {MONTH_MAP[worstMonthIndex as keyof typeof MONTH_MAP]}
+						</div>
+					) : null}
+				</div>
 				<div className="grid grid-cols-3 grid-rows-4 gap-2 w-full">
 					{Array.from({ length: 12 }).map((_, index) => (
 						<MonthCard key={index.toString()} index={index} />
@@ -363,13 +416,13 @@ function GroupedByMonth({ data }: { data: TGetSellerStatsOutput["data"]["resulta
 }
 function GroupedByWeekDay({ data }: { data: TGetSellerStatsOutput["data"]["resultadosAgrupados"]["diaSemana"] }) {
 	const WEEKDAY_MAP = {
+		0: "Domingo",
 		1: "Segunda",
 		2: "Terça",
 		3: "Quarta",
 		4: "Quinta",
 		5: "Sexta",
 		6: "Sábado",
-		7: "Domingo",
 	};
 
 	// Calculate color intensity based on performance ranking
@@ -377,8 +430,11 @@ function GroupedByWeekDay({ data }: { data: TGetSellerStatsOutput["data"]["resul
 	const minValue = Math.min(...data.map((item) => item.total), 0);
 	const range = maxValue - minValue;
 
+	const bestDayIndex = data.length > 0 ? data.reduce((max, item) => (item.total > max.total ? item : max), data[0]).diaSemana : null;
+	const worstDayIndex = data.length > 0 ? data.reduce((min, item) => (item.total < min.total ? item : min), data[0]).diaSemana : null;
+
 	function getWeekDayResult(index: number) {
-		return data.find((item) => item.diaSemana === index + 1);
+		return data.find((item) => item.diaSemana === index);
 	}
 
 	function getColorIntensity(value: number): number {
@@ -402,13 +458,13 @@ function GroupedByWeekDay({ data }: { data: TGetSellerStatsOutput["data"]["resul
 						className="flex flex-col items-center justify-center p-3 rounded-md border border-primary/20 w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 					>
-						<h1 className="text-xs font-bold tracking-tight uppercase">{WEEKDAY_MAP[(index + 1) as keyof typeof WEEKDAY_MAP]}</h1>
+						<h1 className="text-xs font-bold tracking-tight uppercase">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h1>
 					</div>
 				</TooltipTrigger>
 				{result ? (
 					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
-							<h3 className="text-sm font-semibold mb-1">{WEEKDAY_MAP[(index + 1) as keyof typeof WEEKDAY_MAP]}</h3>
+							<h3 className="text-sm font-semibold mb-1">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h3>
 							<div className="flex items-center justify-between gap-4">
 								<div className="flex items-center gap-1">
 									<CirclePlus className="w-5 h-5 min-w-5 min-h-5" />
@@ -434,7 +490,7 @@ function GroupedByWeekDay({ data }: { data: TGetSellerStatsOutput["data"]["resul
 				) : (
 					<TooltipContent className="bg-primary text-primary-foreground p-3">
 						<div className="flex flex-col gap-1">
-							<h3 className="text-sm font-semibold">{WEEKDAY_MAP[(index + 1) as keyof typeof WEEKDAY_MAP]}</h3>
+							<h3 className="text-sm font-semibold">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h3>
 							<span className="text-xs">SEM DADOS</span>
 						</div>
 					</TooltipContent>
@@ -450,6 +506,18 @@ function GroupedByWeekDay({ data }: { data: TGetSellerStatsOutput["data"]["resul
 					<div className="flex items-center gap-2">
 						<Calendar className="w-4 h-4 min-w-4 min-h-4" />
 					</div>
+				</div>
+				<div className="w-full flex flex-col gap-1">
+					{isValidNumber(bestDayIndex) ? (
+						<div className="w-fit text-center self-center px-4 py-1 bg-green-100 text-green-600 text-xs rounded-lg font-medium">
+							O melhor dia da semana para vender foi {WEEKDAY_MAP[bestDayIndex as keyof typeof WEEKDAY_MAP]}
+						</div>
+					) : null}
+					{isValidNumber(worstDayIndex) ? (
+						<div className="w-fit text-center self-center px-4 py-1 bg-red-100 text-red-600 text-xs rounded-lg font-medium">
+							O pior dia da semana para vender foi {WEEKDAY_MAP[worstDayIndex as keyof typeof WEEKDAY_MAP]}
+						</div>
+					) : null}
 				</div>
 				<div className="grid grid-cols-1 gap-2 w-full">
 					{Array.from({ length: 7 }).map((_, index) => (
@@ -662,5 +730,75 @@ function GroupedByProductGroup({ data }: { data: TGetSellerStatsOutput["data"]["
 				</div>
 			</div>
 		</TooltipProvider>
+	);
+}
+
+type GoalTrackingBarProps = {
+	valueGoal?: number;
+	valueHit: number;
+	formattedValueGoal?: string;
+	formattedValueHit?: string;
+	goalText: string;
+	barHeigth: string;
+	barBgColor: string;
+};
+function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedValueHit, goalText, barHeigth, barBgColor }: GoalTrackingBarProps) {
+	function getPercentage({ goal, hit }: { goal: number | undefined; hit: number | undefined }) {
+		if (!hit || hit === 0) return "0%";
+		if (!goal && hit) return "100%";
+		if (goal && !hit) return "0%";
+		if (goal && hit) {
+			const percentage = ((hit / goal) * 100).toFixed(2);
+			return `${percentage}%`;
+		}
+		// return `${(Math.random() * 100).toFixed(2)}%`
+	}
+	function getWidth({ goal, hit }: { goal: number | undefined; hit: number | undefined }) {
+		if (!hit || hit === 0) return "0%";
+		if (!goal && hit) return "100%";
+		if (goal && !hit) return "0%";
+		if (goal && hit) {
+			let percentage: number | string = (hit / goal) * 100;
+			percentage = percentage > 100 ? 100 : percentage.toFixed(2);
+			return `${percentage}%`;
+		}
+		// return `${(Math.random() * 100).toFixed(2)}%`
+	}
+
+	return (
+		<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className="flex items-center justify-between">
+				<h1 className="text-xs font-medium tracking-tight uppercase">{goalText}</h1>
+				<div className="flex items-center gap-2">
+					<GoalIcon className="w-4 h-4 min-w-4 min-h-4" />
+				</div>
+			</div>
+			<div className="flex w-full items-center gap-1">
+				<div className="flex grow gap-2">
+					<div className="grow">
+						<div
+							style={{
+								width: getWidth({ goal: valueGoal, hit: valueHit }),
+								height: barHeigth,
+							}}
+							className={cn("flex items-center justify-center rounded-sm text-xs text-white shadow-sm", barBgColor)}
+						/>
+					</div>
+				</div>
+				<div className="flex min-w-[70px] flex-col items-end justify-end lg:min-w-[100px]">
+					<p className="text-xs font-medium uppercase tracking-tight lg:text-sm">{getPercentage({ goal: valueGoal, hit: valueHit })}</p>
+					<p className="text-[0.5rem] italic text-gray-500 lg:text-[0.65rem]">
+						<strong>{formattedValueHit || valueHit?.toLocaleString("pt-br", { maximumFractionDigits: 2 }) || 0}</strong> de{" "}
+						<strong>
+							{formattedValueGoal ||
+								valueGoal?.toLocaleString("pt-br", {
+									maximumFractionDigits: 2,
+								}) ||
+								0}
+						</strong>{" "}
+					</p>
+				</div>
+			</div>
+		</div>
 	);
 }
