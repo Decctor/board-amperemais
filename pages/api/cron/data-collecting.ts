@@ -11,8 +11,7 @@ import { z } from "zod";
 dayjs.extend(dayjsCustomFormatter);
 
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
-	// const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
-	const currentDateFormatted = "05102025";
+	const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
 	console.log("DATE BEING USED", dayjs().format("DD/MM/YYYY HH:mm"), dayjs().subtract(5, "hour").format("DD/MM/YYYY HH:mm"), currentDateFormatted);
 	const mongoDb = await connectToDatabase();
 	const utilsCollection = mongoDb.collection("utils");
