@@ -1,58 +1,96 @@
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import { internalMutation, mutation } from "../_generated/server";
 
-export const createChat = mutation({
+export const getChatByClientAppId = mutation({
 	args: {
-		agenteId: v.optional(v.id("users")),
-		clienteId: v.id("clients"),
-		canal: v.literal("WHATSAPP"),
+		cliente: v.object({
+			idApp: v.string(),
+			nome: v.string(),
+			cpfCnpj: v.optional(v.string()),
+			email: v.optional(v.string()),
+			telefone: v.string(),
+			avatar_url: v.optional(v.string()),
+		}),
+		whatsappPhoneNumberId: v.string(),
 	},
 	handler: async (ctx, args) => {
-		// Verifica se já existe um chat entre este agente e cliente
-		const existingChat = await ctx.db
-			.query("chats")
-			.withIndex("by_cliente_id", (q) => q.eq("clienteId", args.clienteId))
-			.filter((q) => q.eq(q.field("agenteId"), args.agenteId))
+		let clientId: Id<"clients"> | null = null;
+		const client = await ctx.db
+			.query("clients")
+			.filter((q) => q.eq(q.field("idApp"), args.cliente.idApp))
 			.first();
-
-		if (existingChat) {
-			return existingChat._id;
+		if (!client) {
+			// If client is not yet registered, we need to register it
+			const insertClientResponse = await ctx.db.insert("clients", {
+				...args.cliente,
+			});
+			clientId = insertClientResponse;
+		} else {
+			clientId = client._id;
 		}
 
-		const chatId = await ctx.db.insert("chats", {
-			agenteId: args.agenteId,
-			clienteId: args.clienteId,
-			canal: args.canal,
-			nMensagensNaoLidasUsuario: 0,
-			nMensagensNaoLidasCliente: 0,
-		});
+		if (!clientId) {
+			throw new Error("Cliente não encontrado.");
+		}
 
-		return chatId;
+		let chatId: Id<"chats"> | null = null;
+		const chat = await ctx.db
+			.query("chats")
+			.filter((q) => q.eq(q.field("clienteId"), clientId))
+			.first();
+		if (!chat) {
+			// If chat is not yet registered, we need to register it
+			const insertChatResponse = await ctx.db.insert("chats", {
+				clienteId: clientId,
+				mensagensNaoLidas: 0,
+				status: "EXPIRADA",
+				whatsappTelefoneId: args.whatsappPhoneNumberId,
+			});
+			chatId = insertChatResponse;
+		}
+		if (!chatId) {
+			throw new Error("Chat não encontrado.");
+		}
+		return {
+			chatId: chatId,
+			clientId: clientId,
+		};
 	},
 });
 
-export const assignChatToAgent = mutation({
-	args: {
-		chatId: v.id("chats"),
-		agenteId: v.id("users"),
-	},
-	handler: async (ctx, args) => {
-		await ctx.db.patch(args.chatId, {
-			agenteId: args.agenteId,
-		});
-		return args.chatId;
-	},
-});
+const TWENTY_FOUR_HOURS_IN_MS = 24 * 60 * 60 * 1000;
 
-export const updateChatUnreadCount = mutation({
-	args: {
-		chatId: v.id("chats"),
-		nMensagensNaoLidasUsuario: v.optional(v.number()),
-		nMensagensNaoLidasCliente: v.optional(v.number()),
-	},
+export const updateExpiredChats = internalMutation({
+	args: {},
 	handler: async (ctx, args) => {
-		const { chatId, ...updates } = args;
-		await ctx.db.patch(chatId, updates);
-		return chatId;
+		const now = Date.now();
+		const expirationThreshold = now - TWENTY_FOUR_HOURS_IN_MS;
+
+		// Get all chats that are currently ABERTA
+		const openChats = await ctx.db
+			.query("chats")
+			.filter((q) => q.eq(q.field("status"), "ABERTA"))
+			.collect();
+
+		let expiredCount = 0;
+
+		for (const chat of openChats) {
+			// If the last client interaction was more than 24h ago, expire the chat
+			if (chat.ultimaInteracaoClienteData && chat.ultimaInteracaoClienteData < expirationThreshold) {
+				await ctx.db.patch(chat._id, {
+					status: "EXPIRADA",
+				});
+				expiredCount++;
+				console.log("[INFO][CHATS] Expired chat:", chat._id);
+			}
+		}
+
+		console.log(`[INFO][CHATS] Checked ${openChats.length} chats, expired ${expiredCount}`);
+
+		return {
+			checked: openChats.length,
+			expired: expiredCount,
+		};
 	},
 });
