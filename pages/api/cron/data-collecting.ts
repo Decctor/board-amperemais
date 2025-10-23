@@ -61,10 +61,13 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			const existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
 			const existingSellersMap = new Map(existingSellers.map((seller) => [seller.nome, seller.id]));
 			for (const OnlineSale of OnlineSoftwareSales) {
+				// First, we check for an existing client with the same name (in this case, our primary key for the integration)
 				const equivalentSaleClient = existingClientsMap.get(OnlineSale.cliente);
-
+				// Initalize the saleClientId holder with the existing client (if any)
 				let saleClientId = equivalentSaleClient;
 				if (!saleClientId) {
+					console.log(`[INFO] [DATA_COLLECTING] [CLIENT] Creating new client for ${OnlineSale.cliente}`);
+					// If no existing client is found, we create a new one
 					const insertedClientResponse = await tx
 						.insert(clients)
 						.values({
@@ -76,22 +79,34 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						});
 					const insertedClientId = insertedClientResponse[0]?.id;
 					if (!insertedClientResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar cliente.");
+					// Define the saleClientId with the newly created client id
 					saleClientId = insertedClientId;
+					// Add the new client to the existing clients map
+					existingClientsMap.set(OnlineSale.cliente, insertedClientId);
 				}
+
+				// Then, we check for an existing seller with the same name (in this case, our primary key for the integration)
 				const equivalentSaleSeller = existingSellersMap.get(OnlineSale.vendedor);
+				// Initalize the saleSellerId holder with the existing seller (if any)
 				let saleSellerId = equivalentSaleSeller;
 				if (!saleSellerId) {
+					// If no existing seller is found, we create a new one
 					const insertedSellerResponse = await tx
 						.insert(sellers)
 						.values({ nome: OnlineSale.vendedor || "N/A", identificador: OnlineSale.vendedor || "N/A" })
 						.returning({ id: sellers.id });
 					const insertedSellerId = insertedSellerResponse[0]?.id;
 					if (!insertedSellerResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar vendedor.");
+					// Define the saleSellerId with the newly created seller id
 					saleSellerId = insertedSellerId;
+					// Add the new seller to the existing sellers map
+					existingSellersMap.set(OnlineSale.vendedor, insertedSellerId);
 				}
 
+				// Now, we extract the data to compose the sale entity
 				const saleTotalCost = OnlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
 				const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
+				// Insert the sale entity into the database
 				const insertedSaleResponse = await tx
 					.insert(sales)
 					.values({
@@ -118,11 +133,14 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 				const insertedSaleId = insertedSaleResponse[0]?.id;
 				if (!insertedSaleResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar venda.");
 
+				// Now, we iterate over the items to insert the sale items entities into the database
 				for (const item of OnlineSale.itens) {
+					// First, we check for an existing product with the same code (in this case, our primary key for the integration)
+					// Initalize the productId holder with the existing product (if any)
 					const equivalentProduct = existingProductsMap.get(item.codigo);
-					if (item.codigo === "RL6K200GB") console.log("ITEM", item.codigo, item.descricao, item.qtde, item.valorunit, item.vcusto, equivalentProduct);
 					let productId = equivalentProduct;
 					if (!productId) {
+						// If no existing product is found, we create a new one
 						const insertedProductResponse = await tx
 							.insert(products)
 							.values({
@@ -138,8 +156,13 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							});
 						const insertedProductId = insertedProductResponse[0]?.id;
 						if (!insertedProductResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar produto.");
+						// Define the productId with the newly created product id
 						productId = insertedProductId;
+						// Add the new product to the existing products map
+						existingProductsMap.set(item.codigo, insertedProductId);
 					}
+
+					// Now, we extract the data to compose the sale item entity
 					const quantidade = Number(item.qtde);
 					const valorVendaUnitario = Number(item.valorunit);
 					const valorVendaTotalBruto = valorVendaUnitario * quantidade;
@@ -147,6 +170,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					const valorVendaTotalLiquido = valorVendaTotalBruto - valorTotalDesconto;
 					const valorCustoTotal = Number(item.vcusto);
 
+					// Insert the sale item entity into the database
 					await tx.insert(saleItems).values({
 						vendaId: insertedSaleId,
 						clienteId: saleClientId,
@@ -177,6 +201,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					});
 				}
 			}
+			// Return a success response
 			return res.status(201).json("EXECUTADO COM SUCESSO");
 		});
 	} catch (error) {
