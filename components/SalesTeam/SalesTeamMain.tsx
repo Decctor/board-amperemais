@@ -113,7 +113,7 @@ function SellerCard({ seller, handleEditClick, handleViewClick }: SellerCardProp
 							EDITAR
 						</Button>
 						<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-							<Link href={`/time-vendas/vendedor/${seller.id}`}>
+							<Link href={`/time-vendas/vendedor/id/${seller.id}`}>
 								<AreaChart className="w-3 min-w-3 h-3 min-h-3" />
 								RESULTADOS
 							</Link>

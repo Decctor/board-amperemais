@@ -6,7 +6,6 @@ import { useConvexQuery } from "@/convex/utils";
 import ChatsHub from "./ChatsHub";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import { getErrorMessage } from "@/lib/errors";
-import dayjs from "dayjs";
 
 type ChatsMainProps = {
 	user: TUserSession;
@@ -14,8 +13,6 @@ type ChatsMainProps = {
 
 export default function ChatsMain({ user }: ChatsMainProps) {
 	const { data: whatsappConnection, isPending, isError, isSuccess, error } = useConvexQuery(api.queries.connections.getWhatsappConnection);
-	console.log(dayjs().add(1, "year").toDate().getTime());
-	console.log(user);
 	return (
 		<div className="flex h-full flex-col">
 			<Header session={user} />

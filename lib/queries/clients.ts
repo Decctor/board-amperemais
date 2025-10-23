@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatWithoutDiacritics } from "../formatting";
 import type { TClientDTO, TClientSearchQueryParams } from "@/schemas/clients";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
+import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats";
 
 async function fetchClients() {
 	try {
@@ -76,5 +77,37 @@ export function useClientsBySearch({ initialParams }: UseClientsBySearchParams) 
 		}),
 		queryParams,
 		updateQueryParams,
+	};
+}
+
+async function fetchClientStatsById(input: TGetClientStatsInput) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("clientId", input.clientId);
+	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter);
+	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore);
+	const { data } = await axios.get<TGetClientStatsOutput>(`/api/clients/stats?${searchParams.toString()}`);
+	return data.data;
+}
+
+type UseClientStatsByIdParams = {
+	clientId: string;
+	initialFilters: Partial<Omit<TGetClientStatsInput, "clientId">>;
+};
+export function useClientStatsById({ clientId, initialFilters }: UseClientStatsByIdParams) {
+	const [filters, setFilters] = useState<Omit<TGetClientStatsInput, "clientId">>({
+		periodAfter: initialFilters?.periodAfter || null,
+		periodBefore: initialFilters?.periodBefore || null,
+	});
+	function updateFilters(newFilters: Partial<Omit<TGetClientStatsInput, "clientId">>) {
+		setFilters((prevFilters) => ({ ...prevFilters, ...newFilters }));
+	}
+	return {
+		...useQuery({
+			queryKey: ["client-stats-by-id", clientId, filters],
+			queryFn: () => fetchClientStatsById({ clientId, ...filters }),
+		}),
+		queryKey: ["client-stats-by-id", clientId, filters],
+		filters,
+		updateFilters,
 	};
 }

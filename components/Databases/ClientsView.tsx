@@ -1,19 +1,16 @@
-import { useClients, useClientsBySearch } from "@/lib/queries/clients";
+import { useClientsBySearch } from "@/lib/queries/clients";
 import type { TUserSession } from "@/schemas/users";
 import React, { useState } from "react";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import { getErrorMessage } from "@/lib/errors";
-import type { TClientDTO } from "@/schemas/clients";
-import { IoMdPulse } from "react-icons/io";
-import TextInput from "../Inputs/TextInput";
 import { Button } from "../ui/button";
-import { ListFilter } from "lucide-react";
+import { Info, ListFilter } from "lucide-react";
 import GeneralPaginationComponent from "../Utils/Pagination";
 import ClientsDatabaseFilterMenu from "../Clients/DatabaseFilterMenu";
 import NewClient from "../Modals/Clients/NewClient";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
-
+import Link from "next/link";
 type ClientsViewProps = {
 	session: TUserSession;
 };
@@ -92,6 +89,12 @@ function ClientCard({ client }: ClientCardProps) {
 				<div className="flex items-center gap-2">
 					<h1 className="text-[0.6rem] font-bold tracking-tight lg:text-sm">{client.nome}</h1>
 				</div>
+				<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+					<Link href={`/clientes/id/${client.id}`}>
+						<Info className="w-3 min-w-3 h-3 min-h-3" />
+						DETALHES
+					</Link>
+				</Button>
 			</div>
 		</div>
 	);
