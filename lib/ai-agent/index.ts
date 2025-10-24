@@ -144,7 +144,9 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 			console.log("[AI_AGENT] Result Steps:", result.steps);
 			// Get the last step which should have the final response
 			const lastStep = result.steps[result.steps.length - 1];
+			console.log("[AI_AGENT] Last Step:", lastStep);
 
+			console.log("[AI_AGENT] Last Step Content:", lastStep.content);
 			if (lastStep.content && Array.isArray(lastStep.content)) {
 				// Extract text blocks from content
 				for (const block of lastStep.content) {
