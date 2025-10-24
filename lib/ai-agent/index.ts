@@ -57,7 +57,7 @@ export type AIResponse = {
 };
 
 export const agent = new Agent({
-	model: openai("gpt-4o"),
+	model: openai("gpt-5"),
 	system: ENHANCED_SYSTEM_PROMPT,
 	tools: agentTools,
 });
