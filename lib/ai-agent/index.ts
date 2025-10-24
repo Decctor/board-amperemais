@@ -1,6 +1,6 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { createOpenAI } from "@ai-sdk/openai";
-import { Experimental_Agent as Agent, Output } from "ai";
+import { Experimental_Agent as Agent, Output, stepCountIs } from "ai";
 import { ENHANCED_SYSTEM_PROMPT, detectEscalationNeeded } from "./prompts";
 import { agentTools } from "./tools";
 import z from "zod";
@@ -68,6 +68,7 @@ export const agent = new Agent({
 			escalateReason: z.string().describe("O motivo para escalar o atendimento para um atendente humano."),
 		}),
 	}),
+	stopWhen: stepCountIs(20),
 });
 
 export async function getAgentResponse({ details }: { details: TDetails }): Promise<AIResponse> {
