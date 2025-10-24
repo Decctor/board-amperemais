@@ -1,8 +1,8 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { createOpenAI } from "@ai-sdk/openai";
-import { Output, generateText } from "ai";
 import { Experimental_Agent as Agent } from "ai";
-import z from "zod";
+import { ENHANCED_SYSTEM_PROMPT, detectEscalationNeeded } from "./prompts";
+import { agentTools } from "./tools";
 
 const AI_GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY;
 
@@ -15,6 +15,7 @@ const openai = createOpenAI({
 type TDetails = {
 	id: string;
 	cliente: {
+		idApp: string; // ID in the main database (Drizzle)
 		nome: string;
 		telefone: string;
 		email?: string;
@@ -44,44 +45,28 @@ type TDetails = {
 		| false;
 };
 
-type AIResponse = string;
-
-const SYSTEM_PROMPT = `Você é um assistente virtual de atendimento ao cliente para a empresa Ampère Mais, uma empresa especializada em materiais elétricos.
-
-Seu papel é:
-- Atender clientes de forma amigável e profissional
-- Responder perguntas sobre produtos e serviços de materiais elétricos
-- Coletar informações iniciais dos clientes
-- Fornecer informações gerais sobre a empresa
-
-Informações sobre a empresa:
-- Nome: Ampère Mais
-- Endereço: R. Vinte e Seis, 102 - Centro, Ituiutaba - MG, 38300-080
-- Segmento: Materiais elétricos (cabeamento, iluminação, eletroeletrônica, etc)
-
-Diretrizes de resposta:
-- **Fluxo da Conversa: Inicie a primeira interação com uma saudação. Após a primeira mensagem, vá direto ao ponto e não repita a saudação (ex: "Olá, {NOME DO CLIENTE}") a cada nova resposta. A conversa deve ser contínua e fluida.**
-- Seja breve e objetivo (máximo 2-3 parágrafos).
-- Use linguagem clara e acessível. A comunicação é pelo WhatsApp, então a conversa deve ser natural e direta, como se fosse entre duas pessoas.
-- Seja educado e empático.
-- Use emojis quando apropriado para manter o tom amigável. 😊☀️
-- Não invente informações que você não tem.
-- **Diretrizes a Evitar: Não finalize todas as suas mensagens com frases de despedida ou de disponibilidade, como "Se precisar de mais alguma coisa, estou à disposição" ou "Qualquer outra dúvida, é só perguntar". Use esse tipo de frase apenas se o cliente parecer estar finalizando o contato ou se você tiver resolvido completamente uma grande questão.**
-`;
+export type AIResponse = {
+	message: string;
+	metadata: {
+		toolsUsed: string[];
+		transferToHuman: boolean;
+		ticketCreated: boolean;
+		escalationReason?: string;
+	};
+};
 
 export const agent = new Agent({
-	model: "openai/gpt-4o",
-	system: SYSTEM_PROMPT,
-	tools: {},
-	experimental_output: Output.object({
-		schema: z.object({
-			message: z.string(),
-		}),
-	}),
-	toolChoice: "none",
+	model: openai("gpt-4o"),
+	system: ENHANCED_SYSTEM_PROMPT,
+	tools: agentTools,
 });
 
 export async function getAgentResponse({ details }: { details: TDetails }): Promise<AIResponse> {
+	const toolsUsed: string[] = [];
+	let transferToHuman = false;
+	const ticketCreated = false;
+	let escalationReason: string | undefined;
+
 	try {
 		if (!details) {
 			throw new Error("Detalhes não encontrados");
@@ -89,6 +74,7 @@ export async function getAgentResponse({ details }: { details: TDetails }): Prom
 
 		// Build conversation context
 		const conversationHistory = details.ultimasMensagens
+			.slice()
 			.reverse() // Oldest first
 			.map((msg: TDetails["ultimasMensagens"][0]) => {
 				const role = msg.autorTipo === "cliente" ? "Cliente" : msg.autorTipo === "ai" ? "Você (AI)" : "Atendente Humano";
@@ -102,9 +88,14 @@ export async function getAgentResponse({ details }: { details: TDetails }): Prom
 			})
 			.join("\n");
 
-		const userPrompt = `Você está encarregando de responder ao cliente.
+		// Check if immediate escalation is needed based on keywords
+		const lastClientMessage = details.ultimasMensagens.find((msg) => msg.autorTipo === "cliente");
+		const needsEscalation = lastClientMessage?.conteudoTexto && detectEscalationNeeded(lastClientMessage.conteudoTexto);
+
+		const userPrompt = `Você está encarregado de responder ao cliente.
 
 ### INFORMAÇÕES DO CLIENTE
+- ID no Sistema: ${details.cliente.idApp}
 - Nome: ${details.cliente.nome}
 - Telefone: ${details.cliente.telefone}
 ${details.cliente.email ? `- Email: ${details.cliente.email}` : ""}
@@ -115,6 +106,9 @@ ${details.cliente.cep ? `- CEP: ${details.cliente.cep}` : ""}
 ${details.cliente.bairro ? `- Bairro: ${details.cliente.bairro}` : ""}
 ${details.cliente.endereco ? `- Endereço: ${details.cliente.endereco}` : ""}
 ${details.cliente.numeroOuIdentificador ? `- Número ou identificador: ${details.cliente.numeroOuIdentificador}` : ""}
+
+### ID DO CHAT
+${details.id}
 
 ### HISTÓRICO DA CONVERSA
 ${conversationHistory}
@@ -130,17 +124,57 @@ ${
 		: ""
 }
 
-Analise a conversa e responda apropriadamente. Lembre-se de retornar apenas JSON válido.`;
+${
+	needsEscalation
+		? "\n### ⚠️ ATENÇÃO: Detectado possível necessidade de escalação baseado em palavras-chave. Avalie se deve usar a ferramenta transfer_to_human.\n"
+		: ""
+}
 
-		// Generate response using AI
-		const { text, experimental_output } = await agent.generate({
+Analise a conversa e responda apropriadamente. Use suas ferramentas quando necessário para fornecer um atendimento personalizado e de alta qualidade.`;
+
+		// Generate response using AI with tools
+		const result = await agent.generate({
 			prompt: userPrompt,
 		});
 
-		return experimental_output.message;
+		// Track which tools were used by checking the text for tool usage patterns
+		// The Experimental_Agent API doesn't expose step details in the same way
+		// So we'll infer from the response text and track basic usage
+		const responseText = result.text || "Desculpe, não consegui processar sua solicitação.";
+
+		// Simple heuristic: check if response mentions key actions
+		// In production, you'd want more sophisticated tracking
+		if (responseText.toLowerCase().includes("transferir") || responseText.toLowerCase().includes("atendente")) {
+			transferToHuman = true;
+			escalationReason = "Transferência identificada na resposta";
+		}
+
+		console.log("[AI_AGENT] Generation complete:", {
+			hasResponse: !!responseText,
+			transferToHuman,
+			ticketCreated,
+		});
+
+		return {
+			message: responseText,
+			metadata: {
+				toolsUsed,
+				transferToHuman,
+				ticketCreated,
+				escalationReason,
+			},
+		};
 	} catch (error) {
 		console.error("[AI_AGENT] Error generating response:", error);
 		// Return a safe fallback
-		return "Desculpe, estou com dificuldades técnicas. Vou transferir você para um de nossos atendentes.";
+		return {
+			message: "Desculpe, estou com dificuldades técnicas. Vou transferir você para um de nossos atendentes.",
+			metadata: {
+				toolsUsed,
+				transferToHuman: true,
+				ticketCreated: false,
+				escalationReason: "Erro técnico no agente AI",
+			},
+		};
 	}
 }

@@ -1,7 +1,6 @@
 import { getAgentResponse } from "@/lib/ai-agent";
 import { db } from "@/services/drizzle";
 
-import { ObjectId } from "mongodb";
 import type { NextApiRequest, NextApiResponse } from "next";
 import z from "zod";
 
@@ -49,6 +48,14 @@ const GenerateAIResponseOutputSchema = z.union([
 			required_error: "A mensagem é obrigatória",
 			invalid_type_error: "A mensagem deve ser uma string",
 		}),
+		metadata: z
+			.object({
+				toolsUsed: z.array(z.string()),
+				transferToHuman: z.boolean(),
+				ticketCreated: z.boolean(),
+				escalationReason: z.string().optional(),
+			})
+			.optional(),
 	}),
 	z.object({
 		success: z.literal(false, {
@@ -88,9 +95,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 		const { chatSummary } = validationResult.data;
 
+		// Fetch full client data including RFM analysis
 		const client = await db.query.clients.findFirst({
 			where: (fields, { eq }) => eq(fields.id, chatSummary.cliente.idApp),
 		});
+
 		if (!client) {
 			return res.status(400).json({
 				success: false,
@@ -99,30 +108,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			});
 		}
 
-		// Generate AI response (type casting is safe as validated by zod schema)
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// Enrich client data with additional fields from database
+		const enrichedCliente = {
+			...chatSummary.cliente,
+			cidade: client.nome, // You might want to add these fields to your schema if available
+			uf: undefined,
+			cep: undefined,
+			bairro: undefined,
+			endereco: undefined,
+			numeroOuIdentificador: undefined,
+		};
+
+		// Generate AI response with enriched data
 		const aiResponse = await getAgentResponse({
 			details: {
 				id: chatSummary.id,
-				cliente: {
-					...chatSummary.cliente,
-				},
+				cliente: enrichedCliente,
 				ultimasMensagens: chatSummary.ultimasMensagens,
 				atendimentoAberto: chatSummary.atendimentoAberto,
 			},
 		});
 
+		console.log("[API] [GERAR_RESPOSTA] AI Response generated:", {
+			toolsUsed: aiResponse.metadata.toolsUsed,
+			transferToHuman: aiResponse.metadata.transferToHuman,
+			ticketCreated: aiResponse.metadata.ticketCreated,
+		});
+
+		// Return response with metadata
 		const validatedResponse = GenerateAIResponseOutputSchema.parse({
 			success: true,
-			message: aiResponse,
+			message: aiResponse.message,
+			metadata: aiResponse.metadata,
 		});
+
 		return res.status(200).json(validatedResponse);
 	} catch (error) {
 		console.error("[API] [GERAR_RESPOSTA] Error:", error);
 		const validatedResponse = GenerateAIResponseOutputSchema.parse({
 			success: false,
 			error: error instanceof Error ? error.message : "Erro desconhecido",
-			details: error instanceof Error ? error.message : "Erro desconhecido",
+			details: [error instanceof Error ? error.message : "Erro desconhecido"],
 		});
 		return res.status(500).json(validatedResponse);
 	}

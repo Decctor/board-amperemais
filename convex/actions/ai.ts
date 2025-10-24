@@ -7,6 +7,12 @@ type TGenerateAIResponseOutput =
 	| {
 			success: true;
 			message: string;
+			metadata?: {
+				toolsUsed: string[];
+				transferToHuman: boolean;
+				ticketCreated: boolean;
+				escalationReason?: string;
+			};
 	  }
 	| {
 			success: false;
@@ -60,7 +66,12 @@ export const generateAIResponse = internalAction({
 			}
 
 			const result: TGenerateAIResponseOutput = await response.json();
-			console.log("[AI_ACTION] AI response result:", result);
+			console.log("[AI_ACTION] AI response result:", {
+				success: result.success,
+				hasMetadata: result.success ? !!result.metadata : false,
+				toolsUsed: result.success && result.metadata ? result.metadata.toolsUsed : [],
+				transferToHuman: result.success && result.metadata ? result.metadata.transferToHuman : false,
+			});
 
 			if (!result.success) {
 				throw new Error(`Falha na geração da resposta da IA: ${result.error || "Erro desconhecido"}`);
@@ -75,6 +86,58 @@ export const generateAIResponse = internalAction({
 				throw new Error("Chat não encontrado.");
 			}
 
+			// Handle transfer to human if needed
+			if (result.metadata?.transferToHuman) {
+				console.log("[AI_ACTION] Transfer to human requested. Reason:", result.metadata.escalationReason);
+
+				// Create or update service ticket for human handoff
+				const conversationSummary = chatSummary.ultimasMensagens
+					.slice(0, 5)
+					.reverse()
+					.map((msg) => {
+						const role = msg.autorTipo === "cliente" ? "Cliente" : msg.autorTipo === "ai" ? "AI" : "Atendente";
+						return `${role}: ${msg.conteudoTexto || "[mídia]"}`;
+					})
+					.join("\n");
+
+				await ctx.runMutation(internal.mutations.services.transferServiceToHuman, {
+					chatId: args.chatId,
+					clienteId: chat.clienteId,
+					reason: result.metadata.escalationReason || "Solicitação de transferência pelo agente AI",
+					conversationSummary,
+				});
+
+				// Still send the AI message before transferring
+				await ctx.runMutation(internal.mutations.messages.createAIMessage, {
+					chatId: args.chatId,
+					conteudo: {
+						texto: result.message,
+					},
+				});
+
+				return {
+					success: true,
+					transferred: true,
+				};
+			}
+
+			// Handle service ticket creation if needed (without transfer)
+			if (result.metadata?.ticketCreated) {
+				console.log("[AI_ACTION] Service ticket creation requested");
+
+				// Extract ticket description from the AI response or use a default
+				const ticketDescription = result.message.substring(0, 500); // Use first 500 chars of response
+
+				await ctx.runMutation(internal.mutations.services.createServiceFromAI, {
+					chatId: args.chatId,
+					clienteId: chat.clienteId,
+					descricao: ticketDescription,
+				});
+
+				console.log("[AI_ACTION] Service ticket created successfully");
+			}
+
+			// Send AI message
 			await ctx.runMutation(internal.mutations.messages.createAIMessage, {
 				chatId: args.chatId,
 				conteudo: {
