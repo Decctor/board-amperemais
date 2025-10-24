@@ -21,12 +21,14 @@ export const getCustomerPurchaseHistoryTool = tool({
 - Entender preferências de produtos
 - Recomendar produtos baseado em histórico
 Retorna lista de vendas com produtos, valores e datas.`,
-	inputSchema: z.object({
-		clientId: z.string().describe("ID do cliente no banco de dados"),
-		limit: z.number().optional().default(10).describe("Número máximo de compras a retornar (padrão: 10)"),
-		startDate: z.string().optional().describe("Data inicial para filtrar compras (formato ISO: YYYY-MM-DD)"),
-		endDate: z.string().optional().describe("Data final para filtrar compras (formato ISO: YYYY-MM-DD)"),
-	}),
+	inputSchema: z
+		.object({
+			clientId: z.string().describe("ID do cliente no banco de dados"),
+			limit: z.number().optional().default(10).describe("Número máximo de compras a retornar (padrão: 10)"),
+			startDate: z.string().optional().describe("Data inicial para filtrar compras (formato ISO: YYYY-MM-DD)"),
+			endDate: z.string().optional().describe("Data final para filtrar compras (formato ISO: YYYY-MM-DD)"),
+		})
+		.strict(),
 	execute: async ({ clientId, limit, startDate, endDate }) => {
 		const options: {
 			limit?: number;
@@ -50,9 +52,11 @@ export const getCustomerInsightsTool = tool({
 - Identificar produtos e categorias favoritas
 - Personalizar o atendimento baseado no valor do cliente
 SEMPRE use esta ferramenta no início da conversa para entender o perfil do cliente.`,
-	inputSchema: z.object({
-		clientId: z.string().describe("ID do cliente no banco de dados"),
-	}),
+	inputSchema: z
+		.object({
+			clientId: z.string().describe("ID do cliente no banco de dados"),
+		})
+		.strict(),
 	execute: async ({ clientId }) => {
 		const response = await getCustomerPurchaseInsights(clientId);
 		console.log("[INFO] [TOOLS] [GET_CUSTOMER_INSIGHTS] Response:", response);
@@ -66,10 +70,12 @@ export const getCustomerRecentPurchasesTool = tool({
 - Identificar necessidades recorrentes
 - Sugerir reposições de produtos
 Mais rápido que o histórico completo, ideal para contexto rápido.`,
-	inputSchema: z.object({
-		clientId: z.string().describe("ID do cliente no banco de dados"),
-		limit: z.number().optional().default(5).describe("Número de compras recentes a retornar (padrão: 5)"),
-	}),
+	inputSchema: z
+		.object({
+			clientId: z.string().describe("ID do cliente no banco de dados"),
+			limit: z.number().optional().default(5).describe("Número de compras recentes a retornar (padrão: 5)"),
+		})
+		.strict(),
 	execute: async ({ clientId, limit }) => {
 		const response = await getCustomerRecentPurchases(clientId, limit);
 		console.log("[INFO] [TOOLS] [GET_CUSTOMER_RECENT_PURCHASES] Response:", response);
@@ -88,13 +94,30 @@ export const searchProductsTool = tool({
 - Listar opções disponíveis
 - Responder "vocês têm X?"
 Faça busca por palavras-chave (ex: "disjuntor", "fio 2.5mm", "lampada led").`,
-	inputSchema: z.object({
-		query: z.string().min(2).describe("Termo de busca (nome, descrição ou características do produto)"),
-		limit: z.number().optional().default(10).describe("Número máximo de produtos a retornar (padrão: 10)"),
-	}),
+	inputSchema: z
+		.object({
+			query: z.string().min(2).describe("Termo de busca (nome, descrição ou características do produto)"),
+			limit: z.number().optional().default(10).describe("Número máximo de produtos a retornar (padrão: 10)"),
+		})
+		.strict(),
 	execute: async ({ query, limit }) => {
 		const response = await searchProducts(query, limit);
 		console.log("[INFO] [TOOLS] [SEARCH_PRODUCTS] Response:", response);
+		return response;
+	},
+});
+
+export const getAvailableProductGroupsTool = tool({
+	description: `Lista todas as categorias/grupos de produtos disponíveis no catálogo. Use SEMPRE PRIMEIRO quando:
+- Cliente quer ver o catálogo por categoria
+- Cliente pergunta "o que vocês vendem?"
+- Você precisa buscar produtos por grupo
+
+IMPORTANTE: Chame esta ferramenta ANTES de usar get_products_by_group para garantir que você está usando o nome exato do grupo!`,
+	inputSchema: z.object({}).strict(),
+	execute: async () => {
+		const response = await getAvailableProductGroups();
+		console.log("[INFO] [TOOLS] [GET_AVAILABLE_PRODUCT_GROUPS] Response:", response);
 		return response;
 	},
 });
@@ -104,11 +127,15 @@ export const getProductsByGroupTool = tool({
 - Mostrar todos os produtos de uma categoria
 - Explorar o catálogo por tipo
 - Oferecer opções dentro de uma categoria
-Exemplo de grupos: "CABOS E FIOS", "DISJUNTORES", "ILUMINAÇÃO", etc.`,
-	inputSchema: z.object({
-		group: z.string().describe("Nome do grupo/categoria de produtos"),
-		limit: z.number().optional().default(15).describe("Número máximo de produtos a retornar (padrão: 15)"),
-	}),
+
+⚠️ IMPORTANTE: SEMPRE chame get_available_product_groups PRIMEIRO para obter o nome exato do grupo!
+Usar o nome exato é crítico para evitar que nenhum produto seja retornado.`,
+	inputSchema: z
+		.object({
+			group: z.string().describe("Nome do grupo/categoria de produtos (DEVE ser o nome exato retornado por get_available_product_groups)"),
+			limit: z.number().optional().default(15).describe("Número máximo de produtos a retornar (padrão: 15)"),
+		})
+		.strict(),
 	execute: async ({ group, limit }) => {
 		const response = await getProductsByGroup(group, limit);
 		console.log("[INFO] [TOOLS] [GET_PRODUCTS_BY_GROUP] Response:", response);
@@ -121,26 +148,14 @@ export const getProductByCodeTool = tool({
 - Cliente menciona um código de produto
 - Precisa de informações detalhadas de um produto específico
 - Cliente já conhece o código do que quer`,
-	inputSchema: z.object({
-		code: z.string().describe("Código do produto"),
-	}),
+	inputSchema: z
+		.object({
+			code: z.string().describe("Código do produto"),
+		})
+		.strict(),
 	execute: async ({ code }) => {
 		const response = await getProductByCode(code);
 		console.log("[INFO] [TOOLS] [GET_PRODUCT_BY_CODE] Response:", response);
-		return response;
-	},
-});
-
-export const getAvailableProductGroupsTool = tool({
-	description: `Lista todas as categorias/grupos de produtos disponíveis no catálogo. Use para:
-- Mostrar ao cliente as categorias disponíveis
-- Ajudar o cliente a navegar pelo catálogo
-- Quando o cliente perguntar "o que vocês vendem?"`,
-
-	inputSchema: z.object({}),
-	execute: async () => {
-		const response = await getAvailableProductGroups();
-		console.log("[INFO] [TOOLS] [GET_AVAILABLE_PRODUCT_GROUPS] Response:", response);
 		return response;
 	},
 });
@@ -156,11 +171,13 @@ export const createServiceTicketTool = tool({
 - Cliente pede informações que requerem consulta
 - Cliente expressa necessidade que precisa ação da equipe (visita, agendamento, etc)
 SEMPRE crie um ticket para garantir que a solicitação seja acompanhada.`,
-	inputSchema: z.object({
-		chatId: z.string().describe("ID do chat/conversa atual"),
-		clientId: z.string().describe("ID do cliente no banco de dados"),
-		description: z.string().describe("Descrição clara e detalhada do atendimento (inclua contexto importante da conversa)"),
-	}),
+	inputSchema: z
+		.object({
+			chatId: z.string().describe("ID do chat/conversa atual"),
+			clientId: z.string().describe("ID do cliente no banco de dados"),
+			description: z.string().describe("Descrição clara e detalhada do atendimento (inclua contexto importante da conversa)"),
+		})
+		.strict(),
 	execute: async ({ chatId, clientId, description }) => {
 		// Return metadata that will be processed by the Convex action
 		return {
@@ -185,12 +202,14 @@ export const transferToHumanTool = tool({
 - Problema com pedido/entrega
 - Qualquer situação que exija julgamento humano
 NÃO pergunte ao cliente se ele quer transferir - apenas transfira quando apropriado.`,
-	inputSchema: z.object({
-		reason: z.string().describe("Motivo da transferência (para contexto da equipe de atendimento)"),
-		chatId: z.string().describe("ID do chat/conversa atual"),
-		clientId: z.string().describe("ID do cliente"),
-		conversationSummary: z.string().describe("Resumo breve da conversa até o momento (2-3 frases)"),
-	}),
+	inputSchema: z
+		.object({
+			reason: z.string().describe("Motivo da transferência (para contexto da equipe de atendimento)"),
+			chatId: z.string().describe("ID do chat/conversa atual"),
+			clientId: z.string().describe("ID do cliente"),
+			conversationSummary: z.string().describe("Resumo breve da conversa até o momento (2-3 frases)"),
+		})
+		.strict(),
 	execute: async ({ reason, chatId, clientId, conversationSummary }) => {
 		// This will be handled by the agent handler to create a ticket and mark for human
 		return {

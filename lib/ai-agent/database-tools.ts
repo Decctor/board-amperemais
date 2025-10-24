@@ -16,6 +16,7 @@ export async function getCustomerPurchaseHistory(clientId: string, options: GetC
 	const { limit = 20, startDate, endDate } = options;
 
 	try {
+		console.log("[INFO] [DATABASE_TOOLS] [GET_CUSTOMER_PURCHASE_HISTORY] Params:", { clientId, limit, startDate, endDate });
 		const conditions = [eq(sales.clienteId, clientId)];
 
 		if (startDate) {
@@ -73,6 +74,7 @@ export async function getCustomerPurchaseHistory(clientId: string, options: GetC
 
 export async function getCustomerPurchaseInsights(clientId: string) {
 	try {
+		console.log("[INFO] [DATABASE_TOOLS] [GET_CUSTOMER_PURCHASE_INSIGHTS] Client ID:", clientId);
 		// Get client with RFM data
 		const client = await db.query.clients.findFirst({
 			where: eq(clients.id, clientId),
@@ -252,6 +254,7 @@ export async function searchProducts(query: string, limit = 10) {
 
 export async function getProductsByGroup(group: string, limit = 15) {
 	try {
+		console.log("[INFO] [DATABASE_TOOLS] [GET_PRODUCTS_BY_GROUP] Group:", group);
 		const productsByGroup = await db.query.products.findMany({
 			where: eq(products.grupo, group),
 			limit,
@@ -278,6 +281,7 @@ export async function getProductsByGroup(group: string, limit = 15) {
 
 export async function getProductByCode(code: string) {
 	try {
+		console.log("[INFO] [DATABASE_TOOLS] [GET_PRODUCT_BY_CODE] Code:", code);
 		const product = await db.query.products.findFirst({
 			where: eq(products.codigo, code),
 		});
@@ -311,6 +315,7 @@ export async function getProductByCode(code: string) {
 
 export async function getAvailableProductGroups() {
 	try {
+		console.log("[INFO] [DATABASE_TOOLS] [GET_AVAILABLE_PRODUCT_GROUPS]");
 		const groups = await db.selectDistinct({ grupo: products.grupo }).from(products).orderBy(products.grupo);
 
 		return {
