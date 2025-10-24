@@ -142,10 +142,16 @@ ${
 Analise a conversa e responda apropriadamente. Use suas ferramentas quando necessário para fornecer um atendimento personalizado e de alta qualidade.`;
 
 		// Generate response using AI with tools
-		const {experimental_output}  = await agent.generate({
+		const result = await agent.generate({
 			prompt: userPrompt,
 		});
 
+		console.log("[AI_AGENT] Complete result:", result);
+		const experimental_output = result.experimental_output;
+		if (!experimental_output) {
+			console.log("[AI_AGENT] No experimental_output");
+			throw new Error("Não foi possível gerar a resposta da IA");
+		}
 		return {
 			message: experimental_output.message,
 			metadata: {
