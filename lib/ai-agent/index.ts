@@ -137,7 +137,7 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 		const result = await agent.generate({
 			prompt: userPrompt,
 		});
-
+		console.log("[AI_AGENT] Result:", result);
 		// Track which tools were used by checking the text for tool usage patterns
 		// The Experimental_Agent API doesn't expose step details in the same way
 		// So we'll infer from the response text and track basic usage
