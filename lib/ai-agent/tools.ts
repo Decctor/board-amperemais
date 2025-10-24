@@ -21,7 +21,7 @@ export const getCustomerPurchaseHistoryTool = tool({
 - Entender preferências de produtos
 - Recomendar produtos baseado em histórico
 Retorna lista de vendas com produtos, valores e datas.`,
-	parameters: z.object({
+	inputSchema: z.object({
 		clientId: z.string().describe("ID do cliente no banco de dados"),
 		limit: z.number().optional().default(10).describe("Número máximo de compras a retornar (padrão: 10)"),
 		startDate: z.string().optional().describe("Data inicial para filtrar compras (formato ISO: YYYY-MM-DD)"),
@@ -37,7 +37,9 @@ Retorna lista de vendas com produtos, valores e datas.`,
 		if (startDate) options.startDate = new Date(startDate);
 		if (endDate) options.endDate = new Date(endDate);
 
-		return await getCustomerPurchaseHistory(clientId, options);
+		const response = await getCustomerPurchaseHistory(clientId, options);
+		console.log("[INFO] [TOOLS] [GET_CUSTOMER_PURCHASE_HISTORY] Response:", response);
+		return response;
 	},
 });
 
@@ -48,11 +50,13 @@ export const getCustomerInsightsTool = tool({
 - Identificar produtos e categorias favoritas
 - Personalizar o atendimento baseado no valor do cliente
 SEMPRE use esta ferramenta no início da conversa para entender o perfil do cliente.`,
-	parameters: z.object({
+	inputSchema: z.object({
 		clientId: z.string().describe("ID do cliente no banco de dados"),
 	}),
 	execute: async ({ clientId }) => {
-		return await getCustomerPurchaseInsights(clientId);
+		const response = await getCustomerPurchaseInsights(clientId);
+		console.log("[INFO] [TOOLS] [GET_CUSTOMER_INSIGHTS] Response:", response);
+		return response;
 	},
 });
 
@@ -62,12 +66,14 @@ export const getCustomerRecentPurchasesTool = tool({
 - Identificar necessidades recorrentes
 - Sugerir reposições de produtos
 Mais rápido que o histórico completo, ideal para contexto rápido.`,
-	parameters: z.object({
+	inputSchema: z.object({
 		clientId: z.string().describe("ID do cliente no banco de dados"),
 		limit: z.number().optional().default(5).describe("Número de compras recentes a retornar (padrão: 5)"),
 	}),
 	execute: async ({ clientId, limit }) => {
-		return await getCustomerRecentPurchases(clientId, limit);
+		const response = await getCustomerRecentPurchases(clientId, limit);
+		console.log("[INFO] [TOOLS] [GET_CUSTOMER_RECENT_PURCHASES] Response:", response);
+		return response;
 	},
 });
 
@@ -82,12 +88,14 @@ export const searchProductsTool = tool({
 - Listar opções disponíveis
 - Responder "vocês têm X?"
 Faça busca por palavras-chave (ex: "disjuntor", "fio 2.5mm", "lampada led").`,
-	parameters: z.object({
+	inputSchema: z.object({
 		query: z.string().min(2).describe("Termo de busca (nome, descrição ou características do produto)"),
 		limit: z.number().optional().default(10).describe("Número máximo de produtos a retornar (padrão: 10)"),
 	}),
 	execute: async ({ query, limit }) => {
-		return await searchProducts(query, limit);
+		const response = await searchProducts(query, limit);
+		console.log("[INFO] [TOOLS] [SEARCH_PRODUCTS] Response:", response);
+		return response;
 	},
 });
 
@@ -97,12 +105,14 @@ export const getProductsByGroupTool = tool({
 - Explorar o catálogo por tipo
 - Oferecer opções dentro de uma categoria
 Exemplo de grupos: "CABOS E FIOS", "DISJUNTORES", "ILUMINAÇÃO", etc.`,
-	parameters: z.object({
+	inputSchema: z.object({
 		group: z.string().describe("Nome do grupo/categoria de produtos"),
 		limit: z.number().optional().default(15).describe("Número máximo de produtos a retornar (padrão: 15)"),
 	}),
 	execute: async ({ group, limit }) => {
-		return await getProductsByGroup(group, limit);
+		const response = await getProductsByGroup(group, limit);
+		console.log("[INFO] [TOOLS] [GET_PRODUCTS_BY_GROUP] Response:", response);
+		return response;
 	},
 });
 
@@ -111,11 +121,13 @@ export const getProductByCodeTool = tool({
 - Cliente menciona um código de produto
 - Precisa de informações detalhadas de um produto específico
 - Cliente já conhece o código do que quer`,
-	parameters: z.object({
+	inputSchema: z.object({
 		code: z.string().describe("Código do produto"),
 	}),
 	execute: async ({ code }) => {
-		return await getProductByCode(code);
+		const response = await getProductByCode(code);
+		console.log("[INFO] [TOOLS] [GET_PRODUCT_BY_CODE] Response:", response);
+		return response;
 	},
 });
 
@@ -124,9 +136,12 @@ export const getAvailableProductGroupsTool = tool({
 - Mostrar ao cliente as categorias disponíveis
 - Ajudar o cliente a navegar pelo catálogo
 - Quando o cliente perguntar "o que vocês vendem?"`,
-	parameters: z.object({}),
+
+	inputSchema: z.object({}),
 	execute: async () => {
-		return await getAvailableProductGroups();
+		const response = await getAvailableProductGroups();
+		console.log("[INFO] [TOOLS] [GET_AVAILABLE_PRODUCT_GROUPS] Response:", response);
+		return response;
 	},
 });
 
@@ -141,7 +156,7 @@ export const createServiceTicketTool = tool({
 - Cliente pede informações que requerem consulta
 - Cliente expressa necessidade que precisa ação da equipe (visita, agendamento, etc)
 SEMPRE crie um ticket para garantir que a solicitação seja acompanhada.`,
-	parameters: z.object({
+	inputSchema: z.object({
 		chatId: z.string().describe("ID do chat/conversa atual"),
 		clientId: z.string().describe("ID do cliente no banco de dados"),
 		description: z.string().describe("Descrição clara e detalhada do atendimento (inclua contexto importante da conversa)"),
@@ -170,7 +185,7 @@ export const transferToHumanTool = tool({
 - Problema com pedido/entrega
 - Qualquer situação que exija julgamento humano
 NÃO pergunte ao cliente se ele quer transferir - apenas transfira quando apropriado.`,
-	parameters: z.object({
+	inputSchema: z.object({
 		reason: z.string().describe("Motivo da transferência (para contexto da equipe de atendimento)"),
 		chatId: z.string().describe("ID do chat/conversa atual"),
 		clientId: z.string().describe("ID do cliente"),
