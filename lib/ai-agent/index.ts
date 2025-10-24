@@ -1,6 +1,6 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import { createOpenAI } from "@ai-sdk/openai";
-import { Experimental_Agent as Agent } from "ai";
+import { Experimental_Agent as Agent, Output } from "ai";
 import { ENHANCED_SYSTEM_PROMPT, detectEscalationNeeded } from "./prompts";
 import { agentTools } from "./tools";
 
@@ -60,6 +60,13 @@ export const agent = new Agent({
 	model: openai("gpt-5"),
 	system: ENHANCED_SYSTEM_PROMPT,
 	tools: agentTools,
+	experimental_output: Output.object({
+		schema: z.object({
+			message: z.string().describe("A mensagem a ser enviada ao cliente."),
+			escalate: z.boolean().describe("Se deve escalar o atendimento para um atendente humano."),
+			escalateReason: z.string().describe("O motivo para escalar o atendimento para um atendente humano."),
+		}),
+	}),
 });
 
 export async function getAgentResponse({ details }: { details: TDetails }): Promise<AIResponse> {
@@ -134,63 +141,17 @@ ${
 Analise a conversa e responda apropriadamente. Use suas ferramentas quando necessário para fornecer um atendimento personalizado e de alta qualidade.`;
 
 		// Generate response using AI with tools
-		const result = await agent.generate({
+		const {experimental_output}  = await agent.generate({
 			prompt: userPrompt,
 		});
-		// Extract text from the steps
-		let responseText = "";
-
-		if (result.steps && result.steps.length > 0) {
-			console.log("[AI_AGENT] Result Steps:", result.steps);
-			// Get the last step which should have the final response
-			const lastStep = result.steps[result.steps.length - 1];
-			console.log("[AI_AGENT] Last Step:", lastStep);
-
-			console.log("[AI_AGENT] Last Step Content:", lastStep.content);
-			if (lastStep.content && Array.isArray(lastStep.content)) {
-				// Extract text blocks from content
-				for (const block of lastStep.content) {
-					if (block.type === "text" && block.text) {
-						responseText += block.text;
-					}
-				}
-			}
-		}
-
-		if (!responseText && (result as any).resolvedOutput) {
-			// Fallback: try resolvedOutput if available
-			const resolved = (result as any).resolvedOutput;
-			if (typeof resolved === "string") {
-				responseText = resolved;
-			} else if (resolved.message) {
-				responseText = resolved.message;
-			}
-		}
-
-		if (!responseText) {
-			// Final fallback
-			responseText = "Desculpe, não consegui processar sua solicitação.";
-		}
-
-		console.log("[AI_AGENT] Generation complete:", {
-			hasResponse: !!responseText,
-			transferToHuman,
-			ticketCreated,
-			responseTextLength: responseText.length,
-		});
-
-		if (responseText.toLowerCase().includes("transferir") || responseText.toLowerCase().includes("atendente")) {
-			transferToHuman = true;
-			escalationReason = "Transferência identificada na resposta";
-		}
 
 		return {
-			message: responseText,
+			message: experimental_output.message,
 			metadata: {
 				toolsUsed,
-				transferToHuman,
+				transferToHuman: experimental_output.escalate,
 				ticketCreated,
-				escalationReason,
+				escalationReason: experimental_output.escalateReason,
 			},
 		};
 	} catch (error) {
