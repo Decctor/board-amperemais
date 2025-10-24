@@ -141,6 +141,7 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 		let responseText = "";
 
 		if (result.steps && result.steps.length > 0) {
+			console.log("[AI_AGENT] Result Steps:", result.steps);
 			// Get the last step which should have the final response
 			const lastStep = result.steps[result.steps.length - 1];
 
