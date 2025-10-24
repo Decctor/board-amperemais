@@ -19,53 +19,40 @@ export type GenericInitiationParametersInput = z.infer<typeof GenericInitiationP
 
 export const WHATSAPP_TEMPLATES = {
 	GENERIC_INITIATION: {
-		id: "hello_world ",
+		id: "generic_initiation",
 		title: "Inicialização de Conversa",
-		language: "en_US",
+		language: "pt_BR",
 		type: "marketing",
 		getPayload: (input: GenericInitiationParametersInput) => {
 			const { templateKey, toPhoneNumber, clientName } = GenericInitiationParametersInputSchema.parse(input);
 			return {
 				content: `Olá ${clientName}, tudo bem?`,
-				data: { messaging_product: "whatsapp", to: toPhoneNumber, type: "template", template: { name: "hello_world", language: { code: "en_US" } } },
+				data: {
+					messaging_product: "whatsapp",
+					to: formatPhoneAsWhatsappId(toPhoneNumber),
+					type: "template",
+					template: {
+						name: "generic_initiation",
+						language: {
+							code: "pt_BR",
+						},
+						components: [
+							{
+								type: "body",
+								parameters: [
+									{
+										type: "text",
+										parameter_name: "client_name",
+										text: clientName,
+									},
+								],
+							},
+						],
+					},
+				},
 			};
 		},
 	},
-	// GENERIC_INITIATION: {
-	// 	id: "generic_initiation",
-	// 	title: "Inicialização de Conversa",
-	// 	language: "pt_BR",
-	// 	type: "marketing",
-	// 	getPayload: (input: GenericInitiationParametersInput) => {
-	// 		const { templateKey, toPhoneNumber, clientName } = GenericInitiationParametersInputSchema.parse(input);
-	// 		return {
-	// 			content: `Olá ${clientName}, tudo bem?`,
-	// 			data: {
-	// 				messaging_product: "whatsapp",
-	// 				to: formatPhoneAsWhatsappId(toPhoneNumber),
-	// 				type: "template",
-	// 				template: {
-	// 					name: "generic_initiation",
-	// 					language: {
-	// 						code: "pt_BR",
-	// 					},
-	// 					components: [
-	// 						{
-	// 							type: "body",
-	// 							parameters: [
-	// 								{
-	// 									type: "text",
-	// 									parameter_name: "client_name",
-	// 									text: clientName,
-	// 								},
-	// 							],
-	// 						},
-	// 					],
-	// 				},
-	// 			},
-	// 		};
-	// 	},
-	// },
 };
 
 export const TemplateCategoryOptions = [

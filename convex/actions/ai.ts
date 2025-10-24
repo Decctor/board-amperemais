@@ -45,7 +45,7 @@ export const generateAIResponse = internalAction({
 			}
 
 			// Call the Next.js API endpoint with chat summary
-			const response: Response = await fetch(`${NEXT_API_URL}/api/integracao/ai/gerar-resposta`, {
+			const response: Response = await fetch(`${NEXT_API_URL}/api/integrations/ai/generate-response`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",

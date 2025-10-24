@@ -46,6 +46,13 @@ function Header({ session }: HeaderProps) {
 								Time de Vendas
 							</h1>
 						</Link>
+						<Link href="/atendimentos">
+							<h1
+								className={cn("text-sm font-bold text-primary px-2 py-1 rounded-lg", pathname === "/atendimentos" ? "bg-primary text-white" : "text-primary")}
+							>
+								Atendimentos
+							</h1>
+						</Link>
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
@@ -90,6 +97,13 @@ function Header({ session }: HeaderProps) {
 						className={cn("text-xs font-bold text-primary px-2 py-1 rounded-lg", pathname === "/time-vendas" ? "bg-primary text-white" : "text-primary")}
 					>
 						Time de Vendas
+					</h1>
+				</Link>
+				<Link href="/atendimentos">
+					<h1
+						className={cn("text-xs font-bold text-primary px-2 py-1 rounded-lg", pathname === "/atendimentos" ? "bg-primary text-white" : "text-primary")}
+					>
+						Atendimentos
 					</h1>
 				</Link>
 			</div>
