@@ -4,12 +4,13 @@ import { Experimental_Agent as Agent } from "ai";
 import { ENHANCED_SYSTEM_PROMPT, detectEscalationNeeded } from "./prompts";
 import { agentTools } from "./tools";
 
-const AI_GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY;
+// const AI_GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY;
+const AI_GATEWAY_KEY = process.env.OPEN_AI_KEY;
 
 // Configure OpenAI with Vercel AI Gateway
 const openai = createOpenAI({
 	apiKey: AI_GATEWAY_KEY,
-	baseURL: "https://gateway.ai.cloudflare.com/v1/YOUR_ACCOUNT_ID/YOUR_GATEWAY_ID/openai", // Update with your gateway URL
+	// baseURL: "https://gateway.ai.cloudflare.com/v1/YOUR_ACCOUNT_ID/YOUR_GATEWAY_ID/openai", // Update with your gateway URL
 });
 
 type TDetails = {
