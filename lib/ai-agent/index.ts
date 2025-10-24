@@ -137,24 +137,49 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 		const result = await agent.generate({
 			prompt: userPrompt,
 		});
-		console.log("[AI_AGENT] Result:", result);
-		// Track which tools were used by checking the text for tool usage patterns
-		// The Experimental_Agent API doesn't expose step details in the same way
-		// So we'll infer from the response text and track basic usage
-		const responseText = result.text || "Desculpe, não consegui processar sua solicitação.";
+		// Extract text from the steps
+		let responseText = "";
 
-		// Simple heuristic: check if response mentions key actions
-		// In production, you'd want more sophisticated tracking
-		if (responseText.toLowerCase().includes("transferir") || responseText.toLowerCase().includes("atendente")) {
-			transferToHuman = true;
-			escalationReason = "Transferência identificada na resposta";
+		if (result.steps && result.steps.length > 0) {
+			// Get the last step which should have the final response
+			const lastStep = result.steps[result.steps.length - 1];
+
+			if (lastStep.content && Array.isArray(lastStep.content)) {
+				// Extract text blocks from content
+				for (const block of lastStep.content) {
+					if (block.type === "text" && block.text) {
+						responseText += block.text;
+					}
+				}
+			}
+		}
+
+		if (!responseText && (result as any).resolvedOutput) {
+			// Fallback: try resolvedOutput if available
+			const resolved = (result as any).resolvedOutput;
+			if (typeof resolved === "string") {
+				responseText = resolved;
+			} else if (resolved.message) {
+				responseText = resolved.message;
+			}
+		}
+
+		if (!responseText) {
+			// Final fallback
+			responseText = "Desculpe, não consegui processar sua solicitação.";
 		}
 
 		console.log("[AI_AGENT] Generation complete:", {
 			hasResponse: !!responseText,
 			transferToHuman,
 			ticketCreated,
+			responseTextLength: responseText.length,
 		});
+
+		if (responseText.toLowerCase().includes("transferir") || responseText.toLowerCase().includes("atendente")) {
+			transferToHuman = true;
+			escalationReason = "Transferência identificada na resposta";
+		}
 
 		return {
 			message: responseText,
