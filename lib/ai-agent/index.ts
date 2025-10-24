@@ -3,6 +3,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { Experimental_Agent as Agent, Output } from "ai";
 import { ENHANCED_SYSTEM_PROMPT, detectEscalationNeeded } from "./prompts";
 import { agentTools } from "./tools";
+import z from "zod";
 
 // const AI_GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY;
 const AI_GATEWAY_KEY = process.env.OPEN_AI_KEY;
