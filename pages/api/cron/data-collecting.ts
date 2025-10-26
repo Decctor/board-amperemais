@@ -1,3 +1,4 @@
+import { formatPhoneAsBase } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { db } from "@/services/drizzle";
 import { clients, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
@@ -72,7 +73,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						.insert(clients)
 						.values({
 							nome: OnlineSale.cliente,
-							telefone: OnlineSale.clientefone || OnlineSale.clientecelular,
+							telefone: OnlineSale.clientefone || OnlineSale.clientecelular || "",
+							telefoneBase: formatPhoneAsBase(OnlineSale.clientefone || OnlineSale.clientecelular || ""),
 						})
 						.returning({
 							id: clients.id,
