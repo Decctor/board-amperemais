@@ -35,7 +35,7 @@ import MediaMessageDisplay from "./MediaMessageDisplay";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import type { TUserSession } from "@/schemas/users";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import { formatDateAsLocale, formatNameAsInitials } from "@/lib/formatting";
+import { formatDateAsLocale, formatNameAsInitials, formatPhoneAsBase } from "@/lib/formatting";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import { toast } from "sonner";
 
@@ -392,9 +392,17 @@ function ChatHubContent({
 											idApp: chat.cliente?.idApp,
 											nome: chat.cliente?.nome,
 											telefone: formatPhoneAsWhatsappId(chat.cliente?.telefone),
+											telefoneBase: chat.cliente?.telefoneBase,
 											avatar_url: chat.cliente?.avatar_url,
 											email: chat.cliente?.email,
 											cpfCnpj: chat.cliente?.cpfCnpj,
+											localizacaoCep: chat.cliente?.localizacaoCep,
+											localizacaoEstado: chat.cliente?.localizacaoEstado,
+											localizacaoCidade: chat.cliente?.localizacaoCidade,
+											localizacaoBairro: chat.cliente?.localizacaoBairro,
+											localizacaoLogradouro: chat.cliente?.localizacaoLogradouro,
+											localizacaoNumero: chat.cliente?.localizacaoNumero,
+											localizacaoComplemento: chat.cliente?.localizacaoComplemento,
 										},
 										whatsappPhoneNumberId: whatsappPhoneNumberId,
 									});
@@ -420,9 +428,17 @@ function ChatHubContent({
 												idApp: chat.cliente?.idApp,
 												nome: chat.cliente?.nome,
 												telefone: formatPhoneAsWhatsappId(chat.cliente?.telefone),
+												telefoneBase: chat.cliente?.telefoneBase,
 												avatar_url: chat.cliente?.avatar_url,
 												email: chat.cliente?.email,
 												cpfCnpj: chat.cliente?.cpfCnpj,
+												localizacaoCep: chat.cliente?.localizacaoCep,
+												localizacaoEstado: chat.cliente?.localizacaoEstado,
+												localizacaoCidade: chat.cliente?.localizacaoCidade,
+												localizacaoBairro: chat.cliente?.localizacaoBairro,
+												localizacaoLogradouro: chat.cliente?.localizacaoLogradouro,
+												localizacaoNumero: chat.cliente?.localizacaoNumero,
+												localizacaoComplemento: chat.cliente?.localizacaoComplemento,
 											},
 											whatsappPhoneNumberId: whatsappPhoneNumberId,
 										});
@@ -451,9 +467,17 @@ function ChatHubContent({
 											idApp: chat.cliente?.idApp,
 											nome: chat.cliente?.nome,
 											telefone: formatPhoneAsWhatsappId(chat.cliente.telefone),
+											telefoneBase: chat.cliente?.telefoneBase,
 											avatar_url: chat.cliente?.avatar_url,
 											email: chat.cliente?.email,
 											cpfCnpj: chat.cliente?.cpfCnpj,
+											localizacaoCep: chat.cliente?.localizacaoCep,
+											localizacaoEstado: chat.cliente?.localizacaoEstado,
+											localizacaoCidade: chat.cliente?.localizacaoCidade,
+											localizacaoBairro: chat.cliente?.localizacaoBairro,
+											localizacaoLogradouro: chat.cliente?.localizacaoLogradouro,
+											localizacaoNumero: chat.cliente?.localizacaoNumero,
+											localizacaoComplemento: chat.cliente?.localizacaoComplemento,
 										},
 										whatsappPhoneNumberId: whatsappPhoneNumberId,
 									});

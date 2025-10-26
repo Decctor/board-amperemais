@@ -100,7 +100,7 @@ export const transferServiceToHuman = internalMutation({
 		// Check if there's already an open service for this chat
 		const existingService = await ctx.db
 			.query("services")
-			.filter((q) => q.eq(q.field("chatId"), args.chatId) && q.eq(q.field("status"), "PENDENTE"))
+			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.eq(q.field("status"), "PENDENTE")))
 			.first();
 
 		if (existingService) {
