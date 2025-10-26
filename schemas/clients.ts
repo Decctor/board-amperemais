@@ -2,40 +2,25 @@ import { z } from "zod";
 import type { TSale } from "./sales";
 import { SaleNatureEnum } from "./enums";
 
-const ClientSimplifiedPurchaseSchema = z.object({
-	id: z.string({
-		required_error: "ID da compra não informado.",
-		invalid_type_error: "Tipo não válido para o ID da compra.",
-	}),
-	chave: z.string({
-		required_error: "Chave da compra não informada.",
-		invalid_type_error: "Tipo não válido para a chave da compra.",
-	}),
-	valor: z.number({
-		required_error: "Valor da compra não informado.",
-		invalid_type_error: "Tipo não válido para o valor da compra.",
-	}),
-	custoTotal: z.number({
-		required_error: "Custo da compra não informado.",
-		invalid_type_error: "Tipo não válido para o custo da compra.",
-	}),
-	data: z.string({
-		required_error: "Data da compra não informada.",
-		invalid_type_error: "Tipo não válido para a data da compra.",
-	}),
-	natureza: SaleNatureEnum,
-	vendedor: z.string({
-		required_error: "Vendedor não informado.",
-		invalid_type_error: "Tipo não válido para o vendedor.",
-	}),
-});
 export const ClientSchema = z.object({
 	nome: z.string({
 		required_error: "Nome do cliente não informado.",
 		invalid_type_error: "Tipo não válido para o nome do cliente.",
 	}),
+	cpfCnpj: z.string({ invalid_type_error: "Tipo não válido para CPF/CNPJ." }).optional().nullable(),
+	// Communication
 	telefone: z.string({ invalid_type_error: "Tipo não válido para telefone." }).optional().nullable(),
-	email: z.string({ invalid_type_error: "Tipo não válido para email." }).optional().nullable(),
+	telefoneBase: z.string({ invalid_type_error: "Tipo não válido para telefone base." }),
+	email: z.string({ invalid_type_error: "Tipo não válido para email." }),
+	// Location
+	localizacaoCep: z.string({ invalid_type_error: "Tipo não válido para CEP." }).optional().nullable(),
+	localizacaoEstado: z.string({ invalid_type_error: "Tipo não válido para estado." }).optional().nullable(),
+	localizacaoCidade: z.string({ invalid_type_error: "Tipo não válido para cidade." }).optional().nullable(),
+	localizacaoBairro: z.string({ invalid_type_error: "Tipo não válido para bairro." }).optional().nullable(),
+	localizacaoLogradouro: z.string({ invalid_type_error: "Tipo não válido para logradouro." }).optional().nullable(),
+	localizacaoNumero: z.string({ invalid_type_error: "Tipo não válido para número." }).optional().nullable(),
+	localizacaoComplemento: z.string({ invalid_type_error: "Tipo não válido para complemento." }).optional().nullable(),
+	// Others
 	canalAquisicao: z.string({ invalid_type_error: "Tipo não válido para canal de aquisição." }).optional().nullable(),
 	primeiraCompraData: z
 		.date({
@@ -106,8 +91,18 @@ export type TClient = z.infer<typeof ClientSchema>;
 export type TClientDTO = TClient & { _id: string };
 export type TClientSimplified = Pick<
 	TClient,
-	"nome" | "telefone" | "email" | "canalAquisicao" | "dataPrimeiraCompra" | "dataUltimaCompra" | "analiseRFM" | "analisePeriodo"
-> & { compras: Pick<TClient["compras"][number], "valor" | "data">[] };
+	| "nome"
+	| "telefone"
+	| "email"
+	| "canalAquisicao"
+	| "primeiraCompraData"
+	| "ultimaCompraData"
+	| "analiseRFMTitulo"
+	| "analiseRFMNotasRecencia"
+	| "analiseRFMNotasFrequencia"
+	| "analiseRFMNotasMonetario"
+	| "analiseRFMUltimaAtualizacao"
+>;
 export type TClientSimplifiedDTO = TClientSimplified & { _id: string };
 
 export type TClientSimplifiedWithSales = TClientSimplified & {

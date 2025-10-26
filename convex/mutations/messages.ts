@@ -9,8 +9,16 @@ export const createMessage = mutation({
 			idApp: v.string(),
 			nome: v.string(),
 			cpfCnpj: v.optional(v.string()),
-			email: v.optional(v.string()),
 			telefone: v.string(),
+			telefoneBase: v.string(),
+			email: v.optional(v.string()),
+			localizacaoCep: v.optional(v.string()),
+			localizacaoEstado: v.optional(v.string()),
+			localizacaoCidade: v.optional(v.string()),
+			localizacaoBairro: v.optional(v.string()),
+			localizacaoLogradouro: v.optional(v.string()),
+			localizacaoNumero: v.optional(v.string()),
+			localizacaoComplemento: v.optional(v.string()),
 			avatar_url: v.optional(v.string()),
 		}),
 		autor: v.object({
@@ -414,8 +422,11 @@ export const markMessagesAsRead = mutation({
 export const createAIMessage = internalMutation({
 	args: {
 		chatId: v.id("chats"),
-		conteudo: v.object({
-			texto: v.optional(v.string()),
+		contentText: v.string(),
+		serviceDescription: v.string(),
+		serviceEscalation: v.object({
+			applicable: v.boolean(),
+			reason: v.optional(v.string()),
 		}),
 	},
 	handler: async (ctx, args) => {
@@ -439,8 +450,39 @@ export const createAIMessage = internalMutation({
 			.filter((q) => q.eq(q.field("chatId"), args.chatId))
 			.filter((q) => q.eq(q.field("status"), "PENDENTE"))
 			.first();
-		if (service) {
+		if (!service) {
+			let serviceResponsible: Id<"users"> | "ai" | undefined = "ai";
+			if (args.serviceEscalation.applicable) {
+				// Here we are getting the first user that can be found.
+				// In the future, we should get the "default" transferable user
+				const user = await ctx.db.query("users").first();
+				serviceResponsible = user?._id;
+			}
+			const insertServiceResponse = await ctx.db.insert("services", {
+				chatId: args.chatId,
+				clienteId: chat.clienteId,
+				descricao: args.serviceDescription,
+				status: "PENDENTE",
+				responsavel: serviceResponsible,
+				dataInicio: Date.now(),
+			});
+			serviceId = insertServiceResponse;
+		} else {
 			serviceId = service._id;
+			// Patching the existing service
+
+			let serviceResponsible: Id<"users"> | "ai" | undefined = service.responsavel;
+
+			if (args.serviceEscalation.applicable) {
+				// Here we are getting the first user that can be found.
+				// In the future, we should get the "default" transferable user
+				const user = await ctx.db.query("users").first();
+				serviceResponsible = user?._id;
+			}
+			await ctx.db.patch(service._id, {
+				descricao: args.serviceDescription,
+				responsavel: serviceResponsible,
+			});
 		}
 
 		// Create the AI message
@@ -448,7 +490,7 @@ export const createAIMessage = internalMutation({
 			chatId: args.chatId,
 			autorTipo: "ai",
 			autorId: "ai-agent", // Special identifier for AI
-			conteudoTexto: args.conteudo.texto,
+			conteudoTexto: args.contentText,
 			status: "ENVIADO",
 			whatsappStatus: "PENDENTE",
 			servicoId: serviceId,
@@ -459,7 +501,7 @@ export const createAIMessage = internalMutation({
 		await ctx.db.patch(args.chatId, {
 			ultimaMensagemId: messageId,
 			ultimaMensagemData: Date.now(),
-			ultimaMensagemConteudoTexto: args.conteudo.texto,
+			ultimaMensagemConteudoTexto: args.contentText,
 			ultimaMensagemConteudoTipo: "TEXTO",
 		});
 
@@ -467,7 +509,7 @@ export const createAIMessage = internalMutation({
 		await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappMessage, {
 			messageId: messageId,
 			phoneNumber: client.telefone,
-			content: args.conteudo.texto || "",
+			content: args.contentText,
 			fromPhoneNumberId: chat.whatsappTelefoneId,
 		});
 

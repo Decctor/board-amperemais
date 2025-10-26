@@ -122,6 +122,30 @@ export function formatLongString(str: string, size: number) {
 	return str.length > size ? str.substring(0, size) + "\u2026" : str;
 }
 
+export function formatStringAsOnlyDigits(s: string) {
+	return s.replace(/[^0-9]/g, "");
+}
+
+// Retorna sempre a "base" comparável: DDD (2) + últimos 8 dígitos
+export function formatPhoneAsBase(phone: string) {
+	let d = formatStringAsOnlyDigits(phone);
+
+	// Remove country code (55) if present
+	if (d.startsWith("55") && d.length > 12) {
+		d = d.slice(2);
+	}
+
+	if (d.length < 10) return ""; // inválido
+	// Se 11 dígitos e tiver '9' logo após o DDD, remove esse '9'
+	if (d.length === 11 && d[2] === "9") {
+		return d.slice(0, 2) + d.slice(3); // remove o 3º dígito
+	}
+	// Se 10 dígitos (fixo/antigo), já é a base
+	if (d.length === 10) return d;
+	// Outros comprimentos: tente usar DDD + últimos 8
+	return d.slice(0, 2) + d.slice(-8);
+}
+
 export function formatToPhone(value: string): string {
 	if (!value) return "";
 	value = value.replace(/\D/g, "");

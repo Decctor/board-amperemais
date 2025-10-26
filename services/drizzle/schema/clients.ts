@@ -10,8 +10,20 @@ export const clients = newTable(
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
 		nome: text("nome").notNull(),
-		telefone: text("telefone"),
+		// cpfCnpj: text("cpf_cnpj"),
+		// Communication
+		telefone: text("telefone").notNull().default(""),
+		telefoneBase: text("telefone_base").notNull().default(""),
 		email: text("email"),
+		// Location
+		localizacaoCep: text("localizacao_cep"),
+		localizacaoEstado: text("localizacao_estado"),
+		localizacaoCidade: text("localizacao_cidade"),
+		localizacaoBairro: text("localizacao_bairro"),
+		localizacaoLogradouro: text("localizacao_logradouro"),
+		localizacaoNumero: text("localizacao_numero"),
+		localizacaoComplemento: text("localizacao_complemento"),
+		// Others
 		canalAquisicao: text("canal_aquisicao"),
 		primeiraCompraData: timestamp("primeira_compra_data"),
 		primeiraCompraId: varchar("primeira_compra_id"),

@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import { formatPhoneAsBase } from "@/lib/formatting";
 import {
 	isMessageEvent,
 	isStatusUpdate,
@@ -179,7 +180,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 					const incomingMessage = parseWebhookIncomingMessage(body);
 
 					let clientId: string | null = null;
-					const existingClient = await db.query.clients.findFirst({ where: eq(clients.telefone, incomingMessage?.fromPhoneNumber as string) });
+					const existingClient = await db.query.clients.findFirst({
+						where: eq(clients.telefoneBase, formatPhoneAsBase(incomingMessage?.fromPhoneNumber as string)),
+					});
 					if (existingClient) {
 						console.log("[INFO] [WHATSAPP_WEBHOOK] Client already exists:", existingClient);
 						clientId = existingClient.id;
@@ -190,6 +193,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 							.values({
 								nome: incomingMessage?.profileName as string,
 								telefone: incomingMessage?.fromPhoneNumber as string,
+								telefoneBase: formatPhoneAsBase(incomingMessage?.fromPhoneNumber as string),
 							})
 							.returning({
 								id: clients.id,
@@ -233,6 +237,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 								idApp: clientId,
 								nome: incomingMessage.profileName,
 								telefone: incomingMessage.fromPhoneNumber,
+								telefoneBase: formatPhoneAsBase(incomingMessage.fromPhoneNumber as string),
 							},
 							autor: {
 								idApp: clientId,

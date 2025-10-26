@@ -20,14 +20,15 @@ type TDetails = {
 		idApp: string; // ID in the main database (Drizzle)
 		nome: string;
 		telefone: string;
-		email?: string;
+		email?: string | null;
 		cpfCnpj?: string;
-		cidade?: string;
-		uf?: string;
-		cep?: string;
-		bairro?: string;
-		endereco?: string;
-		numeroOuIdentificador?: string;
+		localizacaoCep?: string;
+		localizacaoEstado?: string;
+		localizacaoCidade?: string;
+		localizacaoBairro?: string;
+		localizacaoLogradouro?: string;
+		localizacaoNumero?: string;
+		localizacaoComplemento?: string;
 	};
 	ultimasMensagens: Array<{
 		id: string;
@@ -38,22 +39,22 @@ type TDetails = {
 		dataEnvio: number;
 		atendimentoId?: string;
 	}>;
-	atendimentoAberto:
-		| {
-				id: string;
-				descricao: string;
-				status: "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDO";
-		  }
-		| false;
+	atendimentoAberto: {
+		id: string;
+		descricao: string;
+		status: "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDO";
+	} | null;
 };
 
 export type AIResponse = {
 	message: string;
 	metadata: {
 		toolsUsed: string[];
-		transferToHuman: boolean;
-		ticketCreated: boolean;
-		escalationReason?: string;
+		serviceDescription: string;
+		escalation: {
+			applicable: boolean;
+			reason?: string;
+		};
 	};
 };
 
@@ -66,6 +67,7 @@ export const agent = new Agent({
 			message: z.string().describe("A mensagem a ser enviada ao cliente."),
 			escalate: z.boolean().describe("Se deve escalar o atendimento para um atendente humano."),
 			escalateReason: z.string().describe("O motivo para escalar o atendimento para um atendente humano."),
+			serviceDescription: z.string().describe("A descrição atualizada do atendimento (novo ou em andamento)."),
 		}),
 	}),
 	stopWhen: stepCountIs(20),
@@ -108,12 +110,13 @@ export async function getAgentResponse({ details }: { details: TDetails }): Prom
 - Telefone: ${details.cliente.telefone}
 ${details.cliente.email ? `- Email: ${details.cliente.email}` : ""}
 ${details.cliente.cpfCnpj ? `- CPF/CNPJ: ${details.cliente.cpfCnpj}` : ""}
-${details.cliente.cidade ? `- Cidade: ${details.cliente.cidade}` : ""}
-${details.cliente.uf ? `- UF: ${details.cliente.uf}` : ""}
-${details.cliente.cep ? `- CEP: ${details.cliente.cep}` : ""}
-${details.cliente.bairro ? `- Bairro: ${details.cliente.bairro}` : ""}
-${details.cliente.endereco ? `- Endereço: ${details.cliente.endereco}` : ""}
-${details.cliente.numeroOuIdentificador ? `- Número ou identificador: ${details.cliente.numeroOuIdentificador}` : ""}
+${details.cliente.localizacaoCep ? `- CEP: ${details.cliente.localizacaoCep}` : ""}
+${details.cliente.localizacaoEstado ? `- Estado: ${details.cliente.localizacaoEstado}` : ""}
+${details.cliente.localizacaoCidade ? `- Cidade: ${details.cliente.localizacaoCidade}` : ""}
+${details.cliente.localizacaoBairro ? `- Bairro: ${details.cliente.localizacaoBairro}` : ""}
+${details.cliente.localizacaoLogradouro ? `- Logradouro: ${details.cliente.localizacaoLogradouro}` : ""}
+${details.cliente.localizacaoNumero ? `- Número: ${details.cliente.localizacaoNumero}` : ""}
+${details.cliente.localizacaoComplemento ? `- Complemento: ${details.cliente.localizacaoComplemento}` : ""}
 
 ### ID DO CHAT
 ${details.id}
@@ -155,9 +158,11 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 			message: experimental_output.message,
 			metadata: {
 				toolsUsed,
-				transferToHuman: experimental_output.escalate,
-				ticketCreated,
-				escalationReason: experimental_output.escalateReason,
+				serviceDescription: experimental_output.serviceDescription,
+				escalation: {
+					applicable: experimental_output.escalate,
+					reason: experimental_output.escalateReason,
+				},
 			},
 		};
 	} catch (error) {
@@ -167,9 +172,11 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 			message: "Desculpe, estou com dificuldades técnicas. Vou transferir você para um de nossos atendentes.",
 			metadata: {
 				toolsUsed,
-				transferToHuman: true,
-				ticketCreated: false,
-				escalationReason: "Erro técnico no agente AI",
+				serviceDescription: "Erro técnico no agente AI",
+				escalation: {
+					applicable: true,
+					reason: "Erro técnico no agente AI",
+				},
 			},
 		};
 	}

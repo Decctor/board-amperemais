@@ -1,38 +1,18 @@
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+
 import { getAgentResponse } from "@/lib/ai-agent";
 import { db } from "@/services/drizzle";
+import { ConvexHttpClient } from "convex/browser";
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import z from "zod";
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 const GenerateAIResponseInputSchema = z.object({
-	chatSummary: z.object({
-		id: z.string(),
-		cliente: z.object({
-			idApp: z.string(),
-			nome: z.string(),
-			telefone: z.string(),
-			email: z.string().optional(),
-			cpfCnpj: z.string().optional(),
-		}),
-		ultimasMensagens: z.array(
-			z.object({
-				id: z.string(),
-				autorTipo: z.union([z.literal("cliente"), z.literal("usuario"), z.literal("ai")]),
-				conteudoTipo: z.union([z.literal("IMAGEM"), z.literal("DOCUMENTO"), z.literal("VIDEO"), z.literal("AUDIO")]).optional(),
-				conteudoTexto: z.string().optional(),
-				conteudoMidiaUrl: z.string().optional(),
-				dataEnvio: z.number(),
-				atendimentoId: z.string().optional(),
-			}),
-		),
-		atendimentoAberto: z.union([
-			z.object({
-				id: z.string(),
-				descricao: z.string(),
-				status: z.union([z.literal("PENDENTE"), z.literal("EM_ANDAMENTO"), z.literal("CONCLUIDO")]),
-			}),
-			z.literal(false),
-		]),
+	chatId: z.string({
+		required_error: "O ID do chat é obrigatório",
+		invalid_type_error: "O ID do chat deve ser uma string",
 	}),
 });
 
@@ -51,9 +31,11 @@ const GenerateAIResponseOutputSchema = z.union([
 		metadata: z
 			.object({
 				toolsUsed: z.array(z.string()),
-				transferToHuman: z.boolean(),
-				ticketCreated: z.boolean(),
-				escalationReason: z.string().optional(),
+				serviceDescription: z.string(),
+				escalation: z.object({
+					applicable: z.boolean(),
+					reason: z.string().optional(),
+				}),
 			})
 			.optional(),
 	}),
@@ -82,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	}
 
 	try {
-		// Validate input
+		// First, we validate the input
 		const validationResult = GenerateAIResponseInputSchema.safeParse(req.body);
 
 		if (!validationResult.success) {
@@ -93,31 +75,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			});
 		}
 
-		const { chatSummary } = validationResult.data;
+		const { chatId } = validationResult.data;
 
-		// Fetch full client data including RFM analysis
-		const client = await db.query.clients.findFirst({
-			where: (fields, { eq }) => eq(fields.id, chatSummary.cliente.idApp),
+		// Second, we intialize the Convex Client and get the chat summary
+		const convex = new ConvexHttpClient(CONVEX_URL as string);
+		const chatSummary = await convex.query(api.queries.chat.getChatSummary, {
+			chatId: chatId as Id<"chats">,
 		});
 
-		if (!client) {
-			return res.status(400).json({
-				success: false,
-				error: "Cliente não encontrado",
-				details: ["Cliente não encontrado"],
-			});
-		}
-
 		// Enrich client data with additional fields from database
-		const enrichedCliente = {
-			...chatSummary.cliente,
-			cidade: undefined, // You might want to add these fields to your schema if available
-			uf: undefined,
-			cep: undefined,
-			bairro: undefined,
-			endereco: undefined,
-			numeroOuIdentificador: undefined,
-		};
+
 		console.log("[INFO] [GENERATE_AI_RESPONSE] Calling AI Agent with:", {
 			chatId: chatSummary.id,
 			clientId: chatSummary.cliente.idApp,
@@ -129,7 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		const aiResponse = await getAgentResponse({
 			details: {
 				id: chatSummary.id,
-				cliente: enrichedCliente,
+				cliente: chatSummary.cliente,
 				ultimasMensagens: chatSummary.ultimasMensagens,
 				atendimentoAberto: chatSummary.atendimentoAberto,
 			},
@@ -137,8 +104,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 		console.log("[API] [GERAR_RESPOSTA] AI Response generated:", {
 			toolsUsed: aiResponse.metadata.toolsUsed,
-			transferToHuman: aiResponse.metadata.transferToHuman,
-			ticketCreated: aiResponse.metadata.ticketCreated,
+			serviceDescription: aiResponse.metadata.serviceDescription,
+			escalation: aiResponse.metadata.escalation,
 		});
 
 		// Return response with metadata

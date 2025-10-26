@@ -23,12 +23,23 @@ export default defineSchema({
 		idApp: v.string(),
 	}),
 	clients: defineTable({
+		idApp: v.string(),
 		nome: v.string(),
 		cpfCnpj: v.optional(v.string()),
-		email: v.optional(v.string()),
+		// Communication
 		telefone: v.string(),
+		telefoneBase: v.string(),
+		email: v.optional(v.string()),
+		// Location
+		localizacaoCep: v.optional(v.string()),
+		localizacaoEstado: v.optional(v.string()),
+		localizacaoCidade: v.optional(v.string()),
+		localizacaoBairro: v.optional(v.string()),
+		localizacaoLogradouro: v.optional(v.string()),
+		localizacaoNumero: v.optional(v.string()),
+		localizacaoComplemento: v.optional(v.string()),
+		// Others
 		avatar_url: v.optional(v.string()),
-		idApp: v.string(),
 	}),
 	chats: defineTable({
 		clienteId: v.id("clients"),

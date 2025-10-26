@@ -137,7 +137,7 @@ export const getChatMessages = query({
 	},
 });
 
-export const getChatSummary = internalQuery({
+export const getChatSummary = query({
 	args: {
 		chatId: v.id("chats"),
 	},
@@ -165,9 +165,19 @@ export const getChatSummary = internalQuery({
 			cliente: {
 				idApp: chatClient.idApp,
 				nome: chatClient.nome,
-				telefone: chatClient.telefone,
-				email: chatClient.email,
 				cpfCnpj: chatClient.cpfCnpj,
+				// Communication
+				telefone: chatClient.telefone,
+				telefoneBase: chatClient.telefoneBase,
+				email: chatClient.email,
+				// Location
+				localizacaoCep: chatClient.localizacaoCep,
+				localizacaoEstado: chatClient.localizacaoEstado,
+				localizacaoCidade: chatClient.localizacaoCidade,
+				localizacaoBairro: chatClient.localizacaoBairro,
+				localizacaoLogradouro: chatClient.localizacaoLogradouro,
+				localizacaoNumero: chatClient.localizacaoNumero,
+				localizacaoComplemento: chatClient.localizacaoComplemento,
 			},
 			ultimasMensagens: chatLastOneHundredMessages.map((m) => ({
 				id: m._id,
@@ -184,7 +194,7 @@ export const getChatSummary = internalQuery({
 						descricao: chatOpenService.descricao,
 						status: chatOpenService.status,
 					}
-				: false,
+				: null,
 		};
 	},
 });
