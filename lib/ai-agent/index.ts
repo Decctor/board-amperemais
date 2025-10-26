@@ -73,9 +73,7 @@ export const agent = new Agent({
 
 export async function getAgentResponse({ details }: { details: TDetails }): Promise<AIResponse> {
 	const toolsUsed: string[] = [];
-	let transferToHuman = false;
 	const ticketCreated = false;
-	let escalationReason: string | undefined;
 
 	try {
 		if (!details) {

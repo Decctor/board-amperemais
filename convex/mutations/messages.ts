@@ -116,7 +116,7 @@ export const createMessage = mutation({
 			.filter((q) => q.eq(q.field("status"), "PENDENTE"))
 			.first();
 		if (!service) {
-			// If no service was found, we only create one if the autor is a user
+			// If no service was found, we only create one
 			const insertServiceResponse = await ctx.db.insert("services", {
 				chatId: chatId,
 				clienteId: clientId,
@@ -129,7 +129,7 @@ export const createMessage = mutation({
 		} else {
 			// If service is already registered, we get the its id
 			serviceId = service._id;
-			// If the is a service and the author of the message is a user, we update the service responsible
+			// If there is a service and the author of the message is a user, we update the service responsible
 			if (args.autor.tipo === "usuario") {
 				await ctx.db.patch(serviceId, {
 					responsavel: authorId as Id<"users">,
@@ -174,7 +174,7 @@ export const createMessage = mutation({
 				status: "ABERTA" as const,
 			});
 		} else {
-			// If message is from user, we update the chat with the base data
+			// If message is from user, we update the chat with the base data only
 			await ctx.db.patch(chatId, baseUpdateData);
 		}
 

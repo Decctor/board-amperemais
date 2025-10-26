@@ -111,13 +111,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		// Enrich client data with additional fields from database
 		const enrichedCliente = {
 			...chatSummary.cliente,
-			cidade: client.nome, // You might want to add these fields to your schema if available
+			cidade: undefined, // You might want to add these fields to your schema if available
 			uf: undefined,
 			cep: undefined,
 			bairro: undefined,
 			endereco: undefined,
 			numeroOuIdentificador: undefined,
 		};
+		console.log("[INFO] [GENERATE_AI_RESPONSE] Calling AI Agent with:", {
+			chatId: chatSummary.id,
+			clientId: chatSummary.cliente.idApp,
+			lastMessages: chatSummary.ultimasMensagens,
+			openService: chatSummary.atendimentoAberto,
+		});
 
 		// Generate AI response with enriched data
 		const aiResponse = await getAgentResponse({
