@@ -1,13 +1,11 @@
 import { formatDateAsLocale, formatDecimalPlaces, formatLongString } from "@/lib/formatting";
 import { formatToMoney } from "@/lib/formatting";
 import { useGroupedSalesStats } from "@/lib/queries/stats/grouped";
-import { cn } from "@/lib/utils";
 import type { TGroupedSalesStats } from "@/pages/api/stats/sales-grouped";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import type { TUserSession } from "@/schemas/users";
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BsCart } from "react-icons/bs";
-import { FaDownload, FaLayerGroup } from "react-icons/fa";
 import { useDebounce } from "use-debounce";
 
 import { Button } from "@/components/ui/button";
@@ -88,7 +86,7 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 			width={width}
 			itemCount={list ? list.length : 0}
 			itemSize={(index) => 30} // Adjust the item height as needed
-			className="overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300"
+			className="overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
 		>
 			{({ index, style }) => (
 				<div style={style} key={`${type}-${index}`} className="w-full flex items-center justify-between gap-2 px-2">
@@ -173,11 +171,15 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 		}
 	}
 	const Collors = ["#15599a", "#fead41", "#ff595e", "#8ac926", "#6a4c93", "#5adbff"];
-	const total = data.reduce((acc, current) => (type === "total" ? acc + current.total : acc + current.qtde), 0);
-	const graphData = data
-		.filter((d) => d.qtde > 100)
-		.sort((a, b) => b.qtde - a.qtde)
-		.map((p, index) => ({ ...p, fill: Collors[index] || "#000" }));
+	const total = useMemo(() => data.reduce((acc, current) => (type === "total" ? acc + current.total : acc + current.qtde), 0), [data, type]);
+	const graphData = useMemo(
+		() =>
+			data
+				.filter((d) => d.qtde > 100)
+				.sort((a, b) => b.qtde - a.qtde)
+				.map((p, index) => ({ ...p, fill: Collors[index] || "#000" })),
+		[data, type],
+	);
 	const projectTypesChartConfig = { titulo: { label: "GRUPO" } };
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
@@ -219,7 +221,7 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 				</div>
 			</div>
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px]">
-				<ChartContainer config={projectTypesChartConfig} className="h-full">
+				<ChartContainer config={projectTypesChartConfig} className="h-[250px] w-[250px]">
 					<PieChart>
 						<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
 						<Pie
@@ -228,12 +230,15 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 							nameKey="titulo"
 							label={(x) => {
 								console.log("PIE", x);
-								return `${formatDecimalPlaces((100 * x.value) / total)}%`;
+								return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
 							}}
 							innerRadius={60}
 							strokeWidth={2}
 						/>
-						<ChartLegend content={<ChartLegendContent color="#000" />} className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center" />
+						<ChartLegend
+							content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
+							className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+						/>
 					</PieChart>
 				</ChartContainer>
 			</div>
@@ -243,6 +248,9 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 
 function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"] }) {
 	const [type, setType] = useState<"qtde" | "total">("total");
+
+	console.log("ResultsBySellerGraph data", data);
+	const dataSorted = useMemo(() => [...data].sort((a, b) => (type === "total" ? b.total - a.total : b.qtde - a.qtde)), [data, type]);
 
 	async function handleExportData(data: TGroupedSalesStats["porVendedor"] | undefined) {
 		try {
@@ -310,15 +318,15 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 			</div>
 
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] :max-h-[450px]">
-				<ResponsiveContainer className={"w-full h-full"}>
-					<ChartContainer config={chartConfig} className="w-full h-full">
+				<div className="flex max-h-[400px] min-h-[400px] w-full items-center justify-center lg:max-h-[350px] lg:min-h-[350px]">
+					<ChartContainer config={chartConfig} className="aspect-auto h-[350px] w-full lg:h-[250px]">
 						<BarChart
 							margin={{
 								left: 40,
 								right: 25,
 							}}
 							accessibilityLayer
-							data={data.sort((a, b) => (type === "total" ? b.total - a.total : b.qtde - a.qtde))}
+							data={dataSorted}
 							layout="vertical"
 						>
 							<XAxis type="number" dataKey={type} hide />
@@ -335,7 +343,7 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 							</Bar>
 						</BarChart>
 					</ChartContainer>
-				</ResponsiveContainer>
+				</div>
 			</div>
 		</div>
 	);
@@ -361,6 +369,7 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 			return toast.error(msg);
 		}
 	}
+	const dataSorted = useMemo(() => [...data].sort((a, b) => (type === "total" ? b.total - a.total : b.qtde - a.qtde)), [data, type]);
 	const chartConfig = {
 		total: {
 			label: "Valor Vendido",
@@ -412,15 +421,15 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 			</div>
 
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] :max-h-[450px]">
-				<ResponsiveContainer className={"w-full h-full"}>
-					<ChartContainer config={chartConfig} className="w-full h-full">
+				<div className="flex max-h-[400px] min-h-[400px] w-full items-center justify-center lg:max-h-[350px] lg:min-h-[350px]">
+					<ChartContainer config={chartConfig} className="aspect-auto h-[350px] w-full lg:h-[250px]">
 						<BarChart
 							margin={{
 								left: 40,
 								right: 25,
 							}}
 							accessibilityLayer
-							data={data.sort((a, b) => (type === "total" ? b.total - a.total : b.qtde - a.qtde))}
+							data={dataSorted}
 							layout="vertical"
 						>
 							<XAxis type="number" dataKey={type} hide />
@@ -437,7 +446,7 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 							</Bar>
 						</BarChart>
 					</ChartContainer>
-				</ResponsiveContainer>
+				</div>
 			</div>
 		</div>
 	);

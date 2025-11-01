@@ -8,21 +8,18 @@ import { fetchClientExportation } from "@/lib/queries/exportations";
 import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
 import { cn } from "@/lib/utils";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
-import type { TClientSimplifiedWithSalesDTO } from "@/schemas/clients";
 import type { TUserSession } from "@/schemas/users";
 import { RFMLabels } from "@/utils/rfm";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 import dayjs from "dayjs";
 import { Diamond, Filter, PencilLine, Phone, Tag } from "lucide-react";
 import { BadgeDollarSign, Megaphone, ShoppingCart } from "lucide-react";
-import React, { useState } from "react";
+import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { FaDownload, FaPhone } from "react-icons/fa";
-import { IoMdPulse } from "react-icons/io";
 import { MdEmail } from "react-icons/md";
 import { toast } from "sonner";
 import ErrorComponent from "../Layouts/ErrorComponent";
-import Header from "../Layouts/Header";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import GeneralPaginationComponent from "../Utils/Pagination";
 import RFMAnalysisQueryParamsMenu from "./RFMAnalysisQueryParamsMenu";
@@ -37,44 +34,35 @@ type RFMAnalysisProps = {
 function RFMAnalysis({ user }: RFMAnalysisProps) {
 	const { data: rfmStats } = useRFMLabelledStats();
 	return (
-		<div className="flex h-full flex-col">
-			<Header session={user} />
-			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-background px-6 lg:px-12 py-6">
-				<div className="flex w-full justify-between border-b border-primary pb-2 gap-2">
-					<h1 className="text-2xl font-black text-black">Dashboard - Análise RFM</h1>
+		<div className="w-full flex flex-col grow gap-2 py-2">
+			<ClientsBlock />
+			<div className="w-full lg:w-1/2 flex flex-col rounded border border-primary shadow-sm self-center">
+				<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
+					<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">MATRIZ RFM</h1>
 				</div>
-				<div className="w-full flex flex-col grow gap-2 py-2">
-					<ClientsBlock />
-
-					<div className="w-full lg:w-1/2 flex flex-col rounded border border-primary shadow-sm self-center">
-						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41]">
-							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">MATRIZ RFM</h1>
-						</div>
-						<p className="text-center px-6 mb-2 mt-4 text-xs font-medium italic text-primary/80">
-							Os números representam uma análise de matriz RFM nos últimos 12 meses. Os dados são atualizados diariamente.
-						</p>
-						<AspectRatio ratio={10 / 10}>
-							<div className="grid grid-cols-5 grid-rows-5 w-full h-full p-1 lg:p-4">
-								{rfmStats?.map((item, index) => (
-									<div
-										key={`${item.rfmLabel}-${index}`}
-										className={`${item.backgroundCollor} flex flex-col gap-2 items-center justify-center p-2 text-white font-bold text-center`}
-										style={{ gridArea: item.gridArea }}
-									>
-										{item.rfmLabel !== "PERDIDOS (extensão)" ? <h1 className="text-[0.4rem] lg:text-base">{item.rfmLabel}</h1> : ""}
-										{item.rfmLabel !== "PERDIDOS (extensão)" ? (
-											<div className="bg-black h-5 w-5 min-h-5 min-w-5 lg:h-16 lg:w-16 lg:min-h-16 lg:min-w-16 p-2 rounded-full flex items-center justify-center">
-												<h1 className="text-[0.4rem] lg:text-sm font-bold text-white">{item.clientsQty}</h1>
-											</div>
-										) : (
-											""
-										)}
+				<p className="text-center px-6 mb-2 mt-4 text-xs font-medium italic text-primary/80">
+					Os números representam uma análise de matriz RFM nos últimos 12 meses. Os dados são atualizados diariamente.
+				</p>
+				<AspectRatio ratio={10 / 10}>
+					<div className="grid grid-cols-5 grid-rows-5 w-full h-full p-1 lg:p-4">
+						{rfmStats?.map((item, index) => (
+							<div
+								key={`${item.rfmLabel}-${index}`}
+								className={`${item.backgroundCollor} flex flex-col gap-2 items-center justify-center p-2 text-primary-foreground font-bold text-center`}
+								style={{ gridArea: item.gridArea }}
+							>
+								{item.rfmLabel !== "PERDIDOS (extensão)" ? <h1 className="text-[0.4rem] lg:text-base">{item.rfmLabel}</h1> : ""}
+								{item.rfmLabel !== "PERDIDOS (extensão)" ? (
+									<div className="bg-primary h-5 w-5 min-h-5 min-w-5 lg:h-16 lg:w-16 lg:min-h-16 lg:min-w-16 p-2 rounded-full flex items-center justify-center">
+										<h1 className="text-[0.4rem] lg:text-sm font-bold text-primary-foreground">{item.clientsQty}</h1>
 									</div>
-								))}
+								) : (
+									""
+								)}
 							</div>
-						</AspectRatio>
+						))}
 					</div>
-				</div>
+				</AspectRatio>
 			</div>
 		</div>
 	);
@@ -122,7 +110,7 @@ function ClientsBlock() {
 				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">CLIENTES</h1>
 			</div>
 			<div className="w-full flex items-center justify-center lg:justify-end px-2 flex-wrap-reverse lg:flex-wrap gap-2">
-				<button type="button" className="text-black hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData()}>
+				<button type="button" className="text-primary hover:text-cyan-500 p-1 rounded-full" onClick={() => handleExportData()}>
 					<FaDownload size={10} />
 				</button>
 				{queryParams.name ? (
@@ -185,7 +173,7 @@ function ClientsBlock() {
 				<button
 					type="button"
 					onClick={() => setFilterMenuIsOpen((prev) => !prev)}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 w-fit text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 w-fit text-primary duration-300 ease-in-out", {
 						"bg-gray-300  hover:bg-gray-200": filterMenuIsOpen,
 						"bg-blue-300  hover:bg-blue-400": !filterMenuIsOpen,
 					})}
@@ -194,7 +182,7 @@ function ClientsBlock() {
 					<h1 className="text-xs font-medium tracking-tight">{!filterMenuIsOpen ? "ABRIR MENU DE FILTROS" : "FECHAR MENU DE FILTROS"}</h1>
 				</button>
 			</div>
-			<div className="px-6 py-2 flex w-full flex-col gap-2 overflow-y-auto overscroll-y-auto max-h-[750px] scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300">
+			<div className="px-6 py-2 flex w-full flex-col gap-2 overflow-y-auto overscroll-y-auto max-h-[750px] scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 				<GeneralPaginationComponent
 					activePage={queryParams.page}
 					queryLoading={isLoading}

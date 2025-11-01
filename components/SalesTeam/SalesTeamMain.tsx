@@ -29,29 +29,27 @@ export default function SalesTeamMain({ user }: SalesTeamMainProps) {
 
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
+
 	return (
-		<div className="flex h-full flex-col">
-			<Header session={user} />
-			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-background px-6 lg:px-12 py-6 gap-6">
-				<div className="flex w-full items-center justify-between border-b border-primary pb-2 gap-2">
-					<h1 className="text-base text-center lg:text-start lg:text-2xl font-black text-primary">Dashboard - Time de Vendas</h1>
-					<Button variant={"ghost"} onClick={() => setFilterMenuIsOpen(true)} className="flex gap-1.5">
-						<Filter className="w-4 min-w-4 h-4 min-h-4" />
-					</Button>
-				</div>
-				<SalesTeamFilterShowcase queryParams={filters} updateQueryParams={updateFilters} />
-				{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando vendedores...</p> : null}
-				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-				{isSuccess ? (
-					<div className="w-full flex flex-col gap-1.5">
-						{sellers.length > 0 ? (
-							sellers.map((seller) => <SellerCard key={seller.id} seller={seller} handleEditClick={setEditSellerId} handleViewClick={setViewSellerId} />)
-						) : (
-							<p className="w-full flex items-center justify-center">Nenhum vendedor encontrado</p>
-						)}
-					</div>
-				) : null}
+		<>
+			<div className="flex w-full items-center justify-between border-b border-primary pb-2 gap-2">
+				<h1 className="text-base text-center lg:text-start lg:text-2xl font-black text-primary">Dashboard - Time de Vendas</h1>
+				<Button variant={"ghost"} onClick={() => setFilterMenuIsOpen(true)} className="flex gap-1.5">
+					<Filter className="w-4 min-w-4 h-4 min-h-4" />
+				</Button>
 			</div>
+			<SalesTeamFilterShowcase queryParams={filters} updateQueryParams={updateFilters} />
+			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando vendedores...</p> : null}
+			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+			{isSuccess ? (
+				<div className="w-full flex flex-col gap-1.5">
+					{sellers.length > 0 ? (
+						sellers.map((seller) => <SellerCard key={seller.id} seller={seller} handleEditClick={setEditSellerId} handleViewClick={setViewSellerId} />)
+					) : (
+						<p className="w-full flex items-center justify-center">Nenhum vendedor encontrado</p>
+					)}
+				</div>
+			) : null}
 			{viewSellerId ? <ViewSellerResults sellerId={viewSellerId} session={user} closeModal={() => setViewSellerId(null)} /> : null}
 			{editSellerId ? (
 				<EditSeller
@@ -64,7 +62,7 @@ export default function SalesTeamMain({ user }: SalesTeamMainProps) {
 			{filterMenuIsOpen ? (
 				<SalesTeamFilterMenu queryParams={filters} updateQueryParams={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
-		</div>
+		</>
 	);
 }
 
@@ -113,7 +111,7 @@ function SellerCard({ seller, handleEditClick, handleViewClick }: SellerCardProp
 							EDITAR
 						</Button>
 						<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-							<Link href={`/time-vendas/vendedor/id/${seller.id}`}>
+							<Link href={`/dashboard/team/sellers/id/${seller.id}`}>
 								<AreaChart className="w-3 min-w-3 h-3 min-h-3" />
 								RESULTADOS
 							</Link>

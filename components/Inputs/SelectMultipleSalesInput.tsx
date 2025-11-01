@@ -173,7 +173,7 @@ function MultipleSalesSelectInput<T>({
 					<div
 						className={`absolute ${
 							dropdownDirection === "down" ? "top-[75px]" : "bottom-[75px]"
-						} scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 z-[100] flex h-[250px] max-h-[250px] w-full flex-col self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-[#fff] p-2 py-1 shadow-sm dark:bg-[#121212]`}
+						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-[100] flex h-[250px] max-h-[250px] w-full flex-col self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-[#fff] p-2 py-1 shadow-sm dark:bg-[#121212]`}
 					>
 						<button
 							type="button"
@@ -294,7 +294,7 @@ function MultipleSalesSelectInput<T>({
 						{!selectedIds ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
 					</button>
 					<div className="my-2 h-[1px] w-full bg-gray-200" />
-					<div className="scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 flex h-[200px] min-h-[200px] flex-col gap-2 overflow-y-auto overscroll-y-auto lg:h-[350px] lg:max-h-[350px]">
+					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex h-[200px] min-h-[200px] flex-col gap-2 overflow-y-auto overscroll-y-auto lg:h-[350px] lg:max-h-[350px]">
 						{isLoading ? <p className="w-full text-center text-xs tracking-tight text-primary/80">Carregando...</p> : null}
 						{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 						{isSuccess ? (

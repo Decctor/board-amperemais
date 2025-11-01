@@ -1,3 +1,4 @@
+"use client";
 import { getLastDayOfMonth } from "@/lib/dates";
 import { getFirstDayOfMonth } from "@/lib/dates";
 import { formatDateAsLocale } from "@/lib/formatting";
@@ -9,7 +10,7 @@ import { BadgeDollarSign, Cpu, Diamond, Filter, GitCompare, ShoppingCart, Tag } 
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { FaUserTie } from "react-icons/fa";
-import Header from "../Layouts/Header";
+import HeaderApp from "../Layouts/HeaderApp";
 import StatsPeriodComparisonMenu from "../Modals/Stats/StatsPeriodComparisonMenu";
 import { Button } from "../ui/button";
 import GroupedStatsBlock from "./Blocks/GroupedStatsBlock";
@@ -46,7 +47,7 @@ export default function SalesStatsMain({ user }: TSalesStatsMainProps) {
 	}
 	return (
 		<div className="flex h-full flex-col">
-			<Header session={user} />
+			<HeaderApp session={user} />
 			<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-background px-6 lg:px-12 py-6">
 				<div className="flex w-full flex-col border-b border-primary pb-2 gap-2">
 					<h1 className="text-base text-center lg:text-start lg:text-2xl font-black text-primary">Dashboard - Resultados Comerciais</h1>

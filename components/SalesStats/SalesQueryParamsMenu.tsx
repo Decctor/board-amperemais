@@ -33,7 +33,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 						<SheetTitle>FILTRAR RESULTADOS COMERCIAIS</SheetTitle>
 						<SheetDescription>Escolha aqui parâmetros para filtrar os resultados comerciais.</SheetDescription>
 					</SheetHeader>
-					<div className="flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2 scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300">
+					<div className="flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 						<div className="flex w-full flex-col gap-2">
 							<MultipleSelectInput
 								label="VENDEDOR"

@@ -128,7 +128,7 @@ function FilterMenu({ params, updateParams, closeMenu }: FilterMenuProps) {
 						<SheetTitle>FILTRAR FORMULÁRIOS DE SAÍDA</SheetTitle>
 						<SheetDescription>Escolha aqui parâmetros para filtrar os formulários de saída de estoque.</SheetDescription>
 					</SheetHeader>
-					<div className="scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2">
+					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2">
 						<div className="flex w-full flex-col gap-2">
 							<TextInput
 								label="PESQUISA POR DESCRIÇÃO"

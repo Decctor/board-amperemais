@@ -206,7 +206,7 @@ function MatrixRFMAnalysis({ session, sellerOptions, saleNatureOptions }: Matrix
 							/>
 						</div>
 
-						<div className="px-1 lg:px-6 py-2 flex flex-col max-h-[500px] lg:max-h-[750px] w-full gap-2 grow scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 overflow-y-auto overscroll-y-auto">
+						<div className="px-1 lg:px-6 py-2 flex flex-col max-h-[500px] lg:max-h-[750px] w-full gap-2 grow scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 overflow-y-auto overscroll-y-auto">
 							{data?.map((client) => (
 								<div key={client.clientId} className="border border-primary flex flex-col px-3 py-2 rounded w-full">
 									<div className="w-full flex items-center justify-between gap-2">

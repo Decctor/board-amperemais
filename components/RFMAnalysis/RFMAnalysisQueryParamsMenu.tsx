@@ -31,7 +31,7 @@ function RFMAnalysisQueryParamsMenu({ queryParams, updateQueryParams, closeMenu 
 						<SheetTitle>FILTRAR CLIENTES</SheetTitle>
 						<SheetDescription>Escolha aqui parâmetros para filtrar os clientes.</SheetDescription>
 					</SheetHeader>
-					<div className="flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2 scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300">
+					<div className="flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 						<div className="flex w-full flex-col gap-2">
 							<TextInput
 								label="NOME"

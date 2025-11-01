@@ -35,13 +35,7 @@ function ClientsView({ session }: ClientsViewProps) {
 	const clientsMatched = clientsResult?.clientsMatched || 0;
 	const totalPages = clientsResult?.totalPages;
 	return (
-		<div className="flex h-full grow flex-col">
-			<div className="flex w-full flex-col items-start lg:items-center justify-between border-b border-gray-200 pb-2 lg:flex-row">
-				<div className="flex flex-col">
-					<h1 className="text-lg font-bold">Controle de Clientes</h1>
-					<p className="text-sm text-[#71717A]">Gerencie os clientes.</p>
-				</div>
-			</div>
+		<div className="flex h-full grow flex-col p-6">
 			<div className="flex w-full flex-col gap-2 py-2">
 				<div className="w-full flex items-center justify-end gap-2">
 					<Button onClick={() => setFilterMenuIsOpen(true)} className="flex items-center gap-2">
@@ -90,7 +84,7 @@ function ClientCard({ client }: ClientCardProps) {
 					<h1 className="text-[0.6rem] font-bold tracking-tight lg:text-sm">{client.nome}</h1>
 				</div>
 				<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-					<Link href={`/clientes/id/${client.id}`}>
+					<Link href={`/dashboard/commercial/clients/id/${client.id}`}>
 						<Info className="w-3 min-w-3 h-3 min-h-3" />
 						DETALHES
 					</Link>

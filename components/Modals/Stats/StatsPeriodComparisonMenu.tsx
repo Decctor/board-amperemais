@@ -1,3 +1,4 @@
+"use client";
 import DateInput from "@/components/Inputs/DateInput";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
@@ -468,8 +469,6 @@ function StatsPeriodComparisonMenuData() {
 									stroke={firstPeriodChartConfig.totalVendido.color}
 									stackId="a"
 								/>
-
-								<ChartLegend content={<ChartLegendContent />} />
 							</ComposedChart>
 						</ChartContainer>
 					</div>
@@ -788,7 +787,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 					<h1 className="text-[0.65rem] font-medium tracking-tight">ORDEM CRESCENTE DE VALOR</h1>
 				</button>
 			</div>
-			<div className="w-full min-h-[700px] lg:min-h-[600px] max-h-[700px] lg:max-h-[600px] flex flex-col gap-1 px-2 py-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300">
+			<div className="w-full min-h-[700px] lg:min-h-[600px] max-h-[700px] lg:max-h-[600px] flex flex-col gap-1 px-2 py-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 				{bySellersResult.sort(sortingFunction).map((seller, index) => (
 					<SellerCard key={seller.titulo} index={index} seller={seller} />
 				))}
@@ -995,7 +994,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 					<h1 className="text-[0.65rem] font-medium tracking-tight">ORDEM CRESCENTE DE VALOR</h1>
 				</button>
 			</div>
-			<div className="w-full min-h-[700px] lg:min-h-[600px] max-h-[700px] lg:max-h-[600px] flex flex-col gap-1 px-2 py-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300">
+			<div className="w-full min-h-[700px] lg:min-h-[600px] max-h-[700px] lg:max-h-[600px] flex flex-col gap-1 px-2 py-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 				{byProductsResult.sort(sortingFunction).map((product, index) => (
 					<ProductCard key={product.titulo} index={index} product={product} />
 				))}
