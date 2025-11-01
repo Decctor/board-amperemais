@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="pt-BR" suppressHydrationWarning>
-			<body className={cn(`min-h-screen min-w-screen bg-background overflow-x-hidden antialiased ${raleway.variable}`)}>
+			<body className={cn(`min-h-screen min-w-screen bg-background text-primary overflow-x-hidden antialiased ${raleway.variable}`)}>
 				<ProvidersWrapper>
 					{children}
 					<Toaster />

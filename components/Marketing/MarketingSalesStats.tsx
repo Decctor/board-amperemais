@@ -124,7 +124,7 @@ function MarketingSalesStats() {
 							key={`${control.controle}-${index}`}
 							className="flex min-h-[90px] w-full lg:w-[500px] flex-col rounded-xl border border-primary shadow-sm overflow-hidden"
 						>
-							<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41] text-black">
+							<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41] text-primary">
 								<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">{control.controle}</h1>
 								<BsMegaphoneFill size={12} />
 							</div>
@@ -143,8 +143,8 @@ function MarketingSalesStats() {
 								</div>
 							</div>
 							<div className="flex items-center gap-2 justify-center bg-[#fead41] w-full p-3">
-								<h1 className="text-xs font-black tracking-tight text-black">{formatToMoney(control.valorInvestido)}</h1>
-								<p className="text-[0.7rem] font-normal text-black">INVESTIDOS</p>
+								<h1 className="text-xs font-black tracking-tight text-primary">{formatToMoney(control.valorInvestido)}</h1>
+								<p className="text-[0.7rem] font-normal text-primary">INVESTIDOS</p>
 							</div>
 						</div>
 					))}

@@ -1,23 +1,15 @@
-import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { useGoals } from "@/lib/queries/goals";
-import { useUsers } from "@/lib/queries/users";
 import type { TGetGoalsOutputDefault } from "@/pages/api/goals";
-import type { TSaleGoalDTO } from "@/schemas/sale-goals";
-import { TUser, TUserDTO, type TUserSession } from "@/schemas/users";
-import { getMonthLabel } from "@/utils/constants";
+import type { TUserSession } from "@/schemas/users";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import React, { useState } from "react";
-import { FaEye, FaUserTie } from "react-icons/fa";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import ControlGoal from "../Modals/Goals/ControlGoal";
 import NewGoal from "../Modals/Goals/NewGoal";
-import EditSaleGoal from "../Modals/SaleGoal/EditSaleGoal";
-import NewSaleGoal from "../Modals/SaleGoal/NewSaleGoal";
-import EditUser from "../Modals/Users/EditUser";
-import NewUser from "../Modals/Users/NewUser";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+
 import { Button } from "../ui/button";
 
 type SaleGoalsViewProps = {
@@ -33,11 +25,7 @@ function SaleGoalsView({ session }: SaleGoalsViewProps) {
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
 		<div className="flex h-full grow flex-col">
-			<div className="flex w-full flex-col items-center justify-between border-b border-primary/20 pb-2 lg:flex-row">
-				<div className="flex flex-col">
-					<h1 className="text-lg font-bold">Controle de metas</h1>
-					<p className="text-sm text-muted-foreground">Gerencie, adicione e edite os metas</p>
-				</div>
+			<div className="flex w-full flex-col items-center justify-end border-b border-primary/20 pb-2 lg:flex-row">
 				<Button onClick={() => setNewSaleGoalModalIsOpen(true)}>NOVA META</Button>
 			</div>
 			<div className="flex w-full flex-col gap-2 py-2">

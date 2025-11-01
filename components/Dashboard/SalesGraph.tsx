@@ -63,7 +63,7 @@ function SalesGraph({ period, total, sellers, saleNatures, clientRFMTitles, prod
 						onClick={() => setType("total")}
 						className={cn(
 							"px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded",
-							type == "total" ? "bg-black text-white" : "bg-transparent text-black",
+							type == "total" ? "bg-black text-white" : "bg-transparent text-primary",
 						)}
 					>
 						VALOR
@@ -72,7 +72,7 @@ function SalesGraph({ period, total, sellers, saleNatures, clientRFMTitles, prod
 						onClick={() => setType("qtde")}
 						className={cn(
 							"px-2 py-0.5 text-[0.6rem] font-medium border border-black rounded",
-							type == "qtde" ? "bg-black text-white" : "bg-transparent text-black",
+							type == "qtde" ? "bg-black text-white" : "bg-transparent text-primary",
 						)}
 					>
 						QUANTIDADE

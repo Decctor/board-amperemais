@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 function FullScreenWrapper({ children }: PropsWithChildren) {
 	return (
-		<div className={cn("flex min-h-[100vh] w-screen max-w-full flex-col bg-background xl:min-h-[100vh]", inter.className)}>
+		<div className={cn("flex min-h-[100vh] w-screen max-w-full flex-col xl:min-h-[100vh]", inter.className)}>
 			<div className="flex min-h-[100%] grow">
 				<div className="flex w-full grow flex-col">{children}</div>
 			</div>

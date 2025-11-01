@@ -6,7 +6,7 @@ import { ThemeProvider } from "./ThemeProvider";
 
 export default function ProvidersWrapper({ children }: { children: React.ReactNode }) {
 	return (
-		<ThemeProvider>
+		<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
 			<TanstackProvider>
 				<ConvexClientProvider>
 					<FullScreenWrapper>{children}</FullScreenWrapper>

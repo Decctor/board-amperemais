@@ -64,7 +64,7 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								<button
 									type="button"
 									onClick={() => setQueryParamsHolder((prev) => ({ ...prev, orderByDirection: "asc" }))}
-									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 										"bg-primary/50  text-primary-foreground hover:bg-primary/40": queryParamsHolder.orderByDirection === "asc",
 										"bg-transparent text-primary hover:bg-primary/20": queryParamsHolder.orderByDirection !== "asc",
 									})}
@@ -75,7 +75,7 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								<button
 									type="button"
 									onClick={() => setQueryParamsHolder((prev) => ({ ...prev, orderByDirection: "desc" }))}
-									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 										"bg-primary/50  text-primary-foreground hover:bg-primary/40": queryParamsHolder.orderByDirection === "desc",
 										"bg-transparent text-primary hover:bg-primary/20": queryParamsHolder.orderByDirection !== "desc",
 									})}

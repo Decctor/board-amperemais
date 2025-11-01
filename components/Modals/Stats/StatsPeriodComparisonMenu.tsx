@@ -745,7 +745,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("desc-qtdeVendas")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "desc-qtdeVendas",
 						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "desc-qtdeVendas",
 					})}
@@ -756,7 +756,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("asc-qtdeVendas")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "asc-qtdeVendas",
 						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "asc-qtdeVendas",
 					})}
@@ -767,7 +767,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("desc-totalVendido")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "desc-totalVendido",
 						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "desc-totalVendido",
 					})}
@@ -778,7 +778,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("asc-totalVendido")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "asc-totalVendido",
 						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "asc-totalVendido",
 					})}
@@ -952,7 +952,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("desc-qtdeVendas")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "desc-qtdeVendas",
 						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "desc-qtdeVendas",
 					})}
@@ -963,7 +963,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("asc-qtdeVendas")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "asc-qtdeVendas",
 						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "asc-qtdeVendas",
 					})}
@@ -974,7 +974,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("desc-totalVendido")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "desc-totalVendido",
 						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "desc-totalVendido",
 					})}
@@ -985,7 +985,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("asc-totalVendido")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-black duration-300 ease-in-out", {
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
 						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "asc-totalVendido",
 						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "asc-totalVendido",
 					})}
