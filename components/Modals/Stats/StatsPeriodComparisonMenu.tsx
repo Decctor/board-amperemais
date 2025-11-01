@@ -55,10 +55,8 @@ function StatsPeriodComparisonMenu({ closeMenu }: StatsPeriodComparisonMenuProps
 					<DialogTitle>{TITLE}</DialogTitle>
 					<DialogDescription>{DESCRIPTION}</DialogDescription>
 				</DialogHeader>
-				<div className="flex-1 overflow-hidden px-4">
-					<ScrollArea className="h-full">
-						<StatsPeriodComparisonMenuData />
-					</ScrollArea>
+				<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-2">
+					<StatsPeriodComparisonMenuData />
 				</div>
 				<DialogFooter>
 					<DialogClose asChild>
@@ -74,10 +72,8 @@ function StatsPeriodComparisonMenu({ closeMenu }: StatsPeriodComparisonMenuProps
 					<DrawerTitle>{TITLE}</DrawerTitle>
 					<DrawerDescription>{DESCRIPTION}</DrawerDescription>
 				</DrawerHeader>
-				<div className="flex-1 overflow-hidden px-4">
-					<ScrollArea className="h-full">
-						<StatsPeriodComparisonMenuData />
-					</ScrollArea>
+				<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-2">
+					<StatsPeriodComparisonMenuData />
 				</div>
 				<DrawerFooter className="pt-2">
 					<DrawerClose asChild>
@@ -548,7 +544,7 @@ function StatsPeriodComparisonMenuData() {
 									stackId="a"
 								/>
 
-								<ChartLegend content={<ChartLegendContent />} />
+								<ChartLegend content={<ChartLegendContent payload={{}} />} />
 							</ComposedChart>
 						</ChartContainer>
 					</div>
@@ -557,30 +553,6 @@ function StatsPeriodComparisonMenuData() {
 			<div className="w-full flex flex-col  gap-4 items-center">
 				<ResultsBySeller bySellersResult={stats?.porVendedor || []} />
 				<ResultsByProduct byProductsResult={stats?.porItem || []} />
-				{/* <div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41] text-white">
-						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RESULTADO POR PRODUTO</h1>
-						<Box className="w-4 h-4 min-w-4 min-h-4" />
-					</div>
-					<div className="w-full min-h-[400px] lg:min-h-[350px] max-h-[400px] lg:max-h-[350px] flex items-center justify-center">
-						<ChartContainer config={productsChartConfig} className="aspect-auto h-[350px] lg:h-[250px] w-full">
-							<BarChart
-								data={stats?.porItem || []}
-								margin={{
-									top: 0,
-									right: 15,
-									left: 15,
-									bottom: 0,
-								}}
-							>
-								<XAxis type="number" dataKey="primeiroPeriodo.totalVendido" hide />
-								<YAxis dataKey="titulo" type="category" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(value) => value.slice(0, 3)} />
-								<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-								<Bar dataKey="primeiroPeriodo.totalVendido" fill={productsChartConfig["primeiroPeriodo.totalVendido"].color} radius={5} />
-							</BarChart>
-						</ChartContainer>
-					</div>
-				</div> */}
 			</div>
 		</div>
 	);
@@ -623,7 +595,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 		return (
 			<div
 				key={seller.titulo}
-				className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-sm rounded-lg hover:bg-gray-50 transition-colors"
+				className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-sm rounded-lg hover:bg-primary/10 transition-colors"
 			>
 				{/* Left side - Title and Ranking */}
 				<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
@@ -660,12 +632,12 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 					<div className="flex flex-col gap-1 w-1/2">
 						<div className="flex items-center gap-1 mb-1">
 							<ShoppingCart className="w-4 h-4" />
-							<span className="text-[0.65rem] font-medium text-gray-600">VENDAS</span>
+							<span className="text-[0.65rem] font-medium text-primary/80">VENDAS</span>
 						</div>
 						<div className="flex flex-col gap-1 w-full">
 							{/* First Period */}
 							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-gray-100">
+								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
 										className="h-full bg-[#15599a] rounded-full"
 										style={{
@@ -677,7 +649,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 							</div>
 							{/* Second Period */}
 							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-gray-100">
+								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
 										className="h-full bg-[#fead41] rounded-full"
 										style={{
@@ -701,12 +673,12 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 					<div className="flex flex-col gap-1 w-1/2">
 						<div className="flex items-center gap-1 mb-1">
 							<BadgeDollarSign className="w-4 h-4" />
-							<span className="text-[0.65rem] font-medium text-gray-600">VALOR</span>
+							<span className="text-[0.65rem] font-medium text-primary/80">VALOR</span>
 						</div>
 						<div className="flex flex-col gap-1 w-full">
 							{/* First Period */}
 							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-gray-100">
+								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
 										className="h-full bg-[#15599a] rounded-full"
 										style={{
@@ -718,7 +690,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 							</div>
 							{/* Second Period */}
 							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-gray-100">
+								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
 										className="h-full bg-[#fead41] rounded-full"
 										style={{
@@ -831,7 +803,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 		}
 		const { salesHintDirection, salesHintText, totalHintDirection, totalHintText } = getHints(product);
 		return (
-			<div className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-sm rounded-lg hover:bg-gray-50 transition-colors">
+			<div className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-sm rounded-lg hover:bg-primary/10 transition-colors">
 				{/* Left side - Title and Ranking */}
 				<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
 					<div className="flex items-center gap-2">
@@ -867,12 +839,12 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 					<div className="flex flex-col gap-1 w-1/2">
 						<div className="flex items-center gap-1 mb-1">
 							<ShoppingCart className="w-4 h-4" />
-							<span className="text-[0.65rem] font-medium text-gray-600">VENDAS</span>
+							<span className="text-[0.65rem] font-medium text-primary/80">VENDAS</span>
 						</div>
 						<div className="flex flex-col gap-1 w-full">
 							{/* First Period */}
 							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-gray-100">
+								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
 										className="h-full bg-[#15599a] rounded-full"
 										style={{
@@ -884,7 +856,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 							</div>
 							{/* Second Period */}
 							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-gray-100">
+								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
 										className="h-full bg-[#fead41] rounded-full"
 										style={{
@@ -908,12 +880,12 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 					<div className="flex flex-col gap-1 w-1/2">
 						<div className="flex items-center gap-1 mb-1">
 							<BadgeDollarSign className="w-4 h-4" />
-							<span className="text-[0.65rem] font-medium text-gray-600">VALOR</span>
+							<span className="text-[0.65rem] font-medium text-primary/80">VALOR</span>
 						</div>
 						<div className="flex flex-col gap-1 w-full">
 							{/* First Period */}
 							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-gray-100">
+								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
 										className="h-full bg-[#15599a] rounded-full"
 										style={{
@@ -925,7 +897,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 							</div>
 							{/* Second Period */}
 							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-gray-100">
+								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
 										className="h-full bg-[#fead41] rounded-full"
 										style={{

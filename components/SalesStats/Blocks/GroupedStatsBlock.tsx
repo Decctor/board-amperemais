@@ -145,7 +145,7 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 					</TooltipProvider>
 				</div>
 			</div>
-			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px]">
+			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
 				<ProductsList height={330} width={"100%"} list={dataSorted} />
 			</div>
 		</div>
@@ -220,7 +220,7 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 					</TooltipProvider>
 				</div>
 			</div>
-			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px]">
+			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
 				<ChartContainer config={projectTypesChartConfig} className="h-[250px] w-[250px]">
 					<PieChart>
 						<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />

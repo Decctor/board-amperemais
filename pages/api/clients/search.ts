@@ -13,7 +13,7 @@ import type { NextApiHandler, NextApiRequest } from "next";
 // This function encapsulates the core logic for fetching clients with pagination and applying filters.
 // It's a "service-like" function that prepares the data structure for the API response.
 const fetchClientsWithPagination = async (req: NextApiRequest) => {
-	const PAGE_SIZE = 100;
+	const PAGE_SIZE = 30;
 
 	// Parse and validate the request body using Zod schema
 	const filters = ClientSearchQueryParams.parse(req.body);

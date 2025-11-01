@@ -59,7 +59,7 @@ function ChatsHub({ session, userHasMessageSendingPermission, whatsappConnection
 	const showingChatList = !selectedChatId || isDesktop;
 
 	return (
-		<div className="w-full max-h-[calc(100vh-200px)] grow flex flex-col items-center justify-center rounded-lg shadow-lg border border-primary/20 overflow-hidden">
+		<div className="w-full max-h-[calc(100vh-100px)] grow flex flex-col items-center justify-center rounded-lg shadow-lg border border-primary/20 overflow-hidden">
 			{/* Layout Desktop - duas colunas lado a lado */}
 			{isDesktop ? (
 				<div className="w-full h-full flex">
