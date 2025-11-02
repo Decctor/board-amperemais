@@ -80,7 +80,7 @@ function DropdownSelect<T extends {}>({
 
 	return (
 		<div ref={ref} className={`relative flex  items-center ${width ? `w-full lg:w-[${width}]` : "w-full lg:w-[400px]"}`}>
-			<div className="flex min-h-[46.6px] w-full grow items-center justify-between rounded-md border border-gray-200 bg-[#fff] p-2 shadow-sm">
+			<div className="flex min-h-[46.6px] w-full grow items-center justify-between rounded-md border border-gray-200 bg-white p-2 shadow-xs">
 				{selectMenuIsOpen ? (
 					<input
 						type="text"
@@ -88,7 +88,7 @@ function DropdownSelect<T extends {}>({
 						value={searchFilter}
 						onChange={(e) => handleFilter(e.target.value)}
 						placeholder="Filtre o item desejado..."
-						className="h-full w-full text-sm italic outline-none"
+						className="h-full w-full text-sm italic outline-hidden"
 					/>
 				) : (
 					<p
@@ -117,7 +117,7 @@ function DropdownSelect<T extends {}>({
 				)}
 			</div>
 			{selectMenuIsOpen ? (
-				<div className="absolute top-[55px] z-[100] flex h-[250px] w-full flex-col self-center rounded-md border border-gray-200 bg-[#fff] p-2 shadow-sm">
+				<div className="absolute top-[55px] z-100 flex h-[250px] w-full flex-col self-center rounded-md border border-gray-200 bg-white p-2 shadow-xs">
 					<h1 className="w-full border-b border-[#15599a] pb-1 text-center font-medium italic">{categoryName}</h1>
 					<div className="overscroll-y my-2 flex w-full grow flex-col gap-1 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 						<div

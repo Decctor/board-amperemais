@@ -125,7 +125,7 @@ function MediaMessageDisplay({ storageId, mediaUrl, mediaType, fileName, fileSiz
 	// Document display with download functionality
 	return (
 		<div className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg max-w-xs">
-			<div className="flex-shrink-0">
+			<div className="shrink-0">
 				{mediaType === "IMAGEM" ? <FileImage className="w-8 h-8 text-blue-600" /> : <FileText className="w-8 h-8 text-green-600" />}
 			</div>
 			<div className="flex-1 min-w-0">
@@ -136,7 +136,7 @@ function MediaMessageDisplay({ storageId, mediaUrl, mediaType, fileName, fileSiz
 					{mimeType && <span>{mimeType.split("/")[1]?.toUpperCase()}</span>}
 				</div>
 			</div>
-			<Button variant="ghost" size="sm" onClick={handleDownload} disabled={!fileUrl} className="flex-shrink-0">
+			<Button variant="ghost" size="sm" onClick={handleDownload} disabled={!fileUrl} className="shrink-0">
 				<Download className="w-4 h-4" />
 			</Button>
 		</div>

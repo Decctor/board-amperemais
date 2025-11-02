@@ -74,7 +74,7 @@ type SellerCardProps = {
 };
 function SellersPageSellerCard({ seller, handleEditClick, handleViewClick }: SellerCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs")}>
+		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between flex-col md:flex-row gap-3">
 				<div className="flex items-center gap-3">
 					<Avatar className="w-6 h-6 min-w-6 min-h-6">

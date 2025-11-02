@@ -58,7 +58,7 @@ type GoalsPageGoalCardProps = {
 };
 function GoalsPageGoalCard({ goal, handleClick }: GoalsPageGoalCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs")}>
+		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between gap-2">
 				<h1 className="text-xs font-bold tracking-tight lg:text-sm">
 					META DE {formatDateAsLocale(goal.dataInicio)} À {formatDateAsLocale(goal.dataFim)}

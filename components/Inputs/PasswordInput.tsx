@@ -41,7 +41,7 @@ function PasswordInput({
         readOnly={!editable}
         type="password"
         placeholder={placeholder}
-        className="w-full rounded-md border border-gray-200 p-3 text-sm shadow-sm outline-none placeholder:italic"
+        className="w-full rounded-md border border-gray-200 p-3 text-sm shadow-xs outline-hidden placeholder:italic"
       />
     </div>
   );

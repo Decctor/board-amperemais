@@ -236,7 +236,7 @@ function ChatHubList({ selectedPhoneNumber, selectedChatId, handleSelectChat }: 
 					<div className="flex items-center justify-between w-full min-w-0">
 						<h3 className="font-semibold truncate">{chat.cliente?.nome || "Cliente desconhecido"}</h3>
 						{chat.ultimaMensagemData && (
-							<span className="text-xs text-primary/60 ml-2 flex-shrink-0">
+							<span className="text-xs text-primary/60 ml-2 shrink-0">
 								{new Date(chat.ultimaMensagemData).toLocaleTimeString("pt-BR", {
 									hour: "2-digit",
 									minute: "2-digit",
@@ -254,7 +254,7 @@ function ChatHubList({ selectedPhoneNumber, selectedChatId, handleSelectChat }: 
 							</div>
 						)}
 						{(chat.mensagensNaoLidas || 0) > 0 && (
-							<span className="ml-2 bg-green-500 text-white text-xs font-bold rounded-full px-2 py-1 flex-shrink-0">{chat.mensagensNaoLidas}</span>
+							<span className="ml-2 bg-green-500 text-white text-xs font-bold rounded-full px-2 py-1 shrink-0">{chat.mensagensNaoLidas}</span>
 						)}
 					</div>
 				</div>
@@ -357,11 +357,11 @@ function ChatHubContent({
 			{/* Footer - Input de Mensagem */}
 			{userHasMessageSendingPermission ? (
 				<div className="flex items-center justify-center w-full p-3">
-					<div className="flex flex-col gap-2 px-4 py-2 bg-card border-t border-primary/10 shadow-sm w-[98%] self-center rounded-full">
+					<div className="flex flex-col gap-2 px-4 py-2 bg-card border-t border-primary/10 shadow-xs w-[98%] self-center rounded-full">
 						{/* Alert quando conversa expirada */}
 						{isConversationExpired && (
 							<div className="flex items-center gap-2 px-3 py-1 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg w-[90%] self-center">
-								<AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+								<AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500 shrink-0" />
 								<p className="text-xs text-amber-800 dark:text-amber-200">Janela de 24h expirada. Envie um template aprovado para reiniciar a conversa.</p>
 							</div>
 						)}
@@ -446,7 +446,7 @@ function ChatHubContent({
 									}
 								}}
 								placeholder={isConversationExpired ? "Envie um template para continuar..." : "Digite uma mensagem..."}
-								className={cn("flex-1 px-4 py-2 rounded-lg resize-none text-sm transition-colors focus:outline-none align-top")}
+								className={cn("flex-1 px-4 py-2 rounded-lg resize-none text-sm transition-colors focus:outline-hidden align-top")}
 								rows={1}
 								style={{ maxHeight: "120px" }}
 								disabled={isConversationExpired}
@@ -513,7 +513,7 @@ function ChatHubContent({
 												disabled={isSendingTemplate}
 											>
 												<div className="flex items-start gap-2 w-full">
-													<FileText className="w-4 h-4 mt-0.5 text-green-600 flex-shrink-0" />
+													<FileText className="w-4 h-4 mt-0.5 text-green-600 shrink-0" />
 													<div className="flex-1 min-w-0 text-left">
 														<p className="font-medium text-sm">{template.title}</p>
 														<p className="text-xs text-muted-foreground mt-0.5">
@@ -692,7 +692,7 @@ function ChatHubContentMessages({ chatMessages }: ChatHubContentMessagesProps) {
 											/>
 										</div>
 									) : (
-										<p className="text-sm break-words whitespace-pre-wrap">{message.conteudoTexto}</p>
+										<p className="text-sm wrap-break-word whitespace-pre-wrap">{message.conteudoTexto}</p>
 									)}
 
 									{/* Timestamp e status - apenas na última mensagem do grupo */}

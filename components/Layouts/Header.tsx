@@ -16,7 +16,7 @@ function Header({ session }: HeaderProps) {
 	const pathname = router.pathname;
 	console.log(pathname);
 	return (
-		<div className="border-b border-gray-300 shadow-sm rounded-bl rounded-br w-full flex flex-col gap-2 p-3">
+		<div className="border-b border-gray-300 shadow-xs rounded-bl rounded-br w-full flex flex-col gap-2 p-3">
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<Link href="/">

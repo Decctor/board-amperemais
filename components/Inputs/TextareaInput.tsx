@@ -9,7 +9,7 @@ type TextareaInputProps = {
 };
 function TextareaInput({ label, value, placeholder, editable = true, handleChange }: TextareaInputProps) {
   return (
-    <div className="flex w-full flex-col rounded-md border border-primary/20 shadow-sm">
+    <div className="flex w-full flex-col rounded-md border border-primary/20 shadow-xs">
       <h1 className="font w-full rounded-tl-md rounded-tr-md bg-primary p-1 text-center text-xs font-bold text-primary-foreground">{label}</h1>
       <textarea
         disabled={!editable}
@@ -18,7 +18,7 @@ function TextareaInput({ label, value, placeholder, editable = true, handleChang
         onChange={(e) => {
           handleChange(e.target.value);
         }}
-        className="min-h-[80px] w-full  resize-none rounded-bl-md rounded-br-md bg-[#fff] p-3 text-center text-xs font-medium text-primary outline-none dark:bg-[#121212] lg:min-h-[65px]"
+        className="min-h-[80px] w-full  resize-none rounded-bl-md rounded-br-md bg-white p-3 text-center text-xs font-medium text-primary outline-hidden dark:bg-[#121212] lg:min-h-[65px]"
       />
     </div>
   );

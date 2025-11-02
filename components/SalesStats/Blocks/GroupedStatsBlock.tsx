@@ -107,7 +107,7 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 	);
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR ITEM</h1>
 				<div className="flex items-center gap-2">
@@ -182,7 +182,7 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 	);
 	const projectTypesChartConfig = { titulo: { label: "GRUPO" } };
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR GRUPO</h1>
 				<div className="flex items-center gap-2">
@@ -237,7 +237,7 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 						/>
 						<ChartLegend
 							content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
-							className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+							className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
 						/>
 					</PieChart>
 				</ChartContainer>
@@ -278,7 +278,7 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 		},
 	} satisfies ChartConfig;
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE VENDEDORES</h1>
 				<div className="flex items-center gap-2">
@@ -381,7 +381,7 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 		},
 	} satisfies ChartConfig;
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE PARCEIROS</h1>
 				<div className="flex items-center gap-2">

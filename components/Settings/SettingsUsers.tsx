@@ -63,7 +63,7 @@ type UserCardProps = {
 };
 function UserCard({ user, handleClick }: UserCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-xs h-full")}>
+		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full")}>
 			<div className="flex items-center justify-center">
 				<div className="relative w-20 h-20 lg:h-20 lg:w-20 lg:min-h-20 lg:min-w-20 overflow-hidden rounded-lg">
 					{user.avatar ? (

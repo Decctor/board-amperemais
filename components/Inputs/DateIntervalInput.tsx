@@ -46,7 +46,7 @@ function DateIntervalInput({
 						disabled={!editable}
 						variant={"outline"}
 						className={cn(
-							"w-full rounded-md border border-primary/20 p-3 text-sm shadow-sm outline-none duration-500 ease-in-out text-left justify-start font-normal",
+							"w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out text-left justify-start font-normal",
 							!value.after && !value.before && "text-muted-foreground",
 							holderClassName,
 						)}

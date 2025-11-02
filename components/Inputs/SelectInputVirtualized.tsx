@@ -140,7 +140,7 @@ function SelectInputVirtualized<T>({
 				<div
 					className={`flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border duration-500 ease-in-out ${
 						selectMenuIsOpen ? "border-primary" : "border-primary/20"
-					} bg-[#fff] p-3 text-sm shadow-sm dark:bg-[#121212]`}
+					} bg-white p-3 text-sm shadow-xs dark:bg-[#121212]`}
 				>
 					{selectMenuIsOpen ? (
 						<input
@@ -149,7 +149,7 @@ function SelectInputVirtualized<T>({
 							value={searchFilter}
 							onChange={(e) => handleFilter(e.target.value)}
 							placeholder="Filtre o item desejado..."
-							className="h-full w-full text-sm italic outline-none"
+							className="h-full w-full text-sm italic outline-hidden"
 						/>
 					) : (
 						<p
@@ -182,7 +182,7 @@ function SelectInputVirtualized<T>({
 					<div
 						className={`absolute ${
 							dropdownDirection === "down" ? "top-[75px]" : "bottom-[75px]"
-						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-[100] flex h-[250px] max-h-[250px] w-full flex-col self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-[#fff] p-2 py-1 shadow-sm dark:bg-[#121212]`}
+						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-100 flex h-[250px] max-h-[250px] w-full flex-col self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-white p-2 py-1 shadow-xs dark:bg-[#121212]`}
 					>
 						<div
 							onClick={() => resetState()}
@@ -191,7 +191,7 @@ function SelectInputVirtualized<T>({
 							<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
 							{!selectedId ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
 						</div>
-						<div className="my-2 h-[1px] w-full bg-gray-200"></div>
+						<div className="my-2 h-px w-full bg-gray-200"></div>
 						<div className="flex w-full flex-col gap-y-1">
 							{items ? (
 								<List height={180} width={"100%"} list={items} />
@@ -216,7 +216,7 @@ function SelectInputVirtualized<T>({
 				<div
 					className={`flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border duration-500 ease-in-out ${
 						selectMenuIsOpen ? "border-primary" : "border-primary/20"
-					} bg-[#fff] p-3 text-sm shadow-sm dark:bg-[#121212]`}
+					} bg-white p-3 text-sm shadow-xs dark:bg-[#121212]`}
 				>
 					<p
 						onClick={() => {
@@ -241,7 +241,7 @@ function SelectInputVirtualized<T>({
 						value={searchFilter}
 						onChange={(e) => handleFilter(e.target.value)}
 						placeholder="Filtre o item desejado..."
-						className="w-full text-sm italic outline-none p-2 bg-transparent"
+						className="w-full text-sm italic outline-hidden p-2 bg-transparent"
 					/>
 					<div
 						onClick={() => resetState()}
@@ -250,7 +250,7 @@ function SelectInputVirtualized<T>({
 						<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
 						{!selectedId ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
 					</div>
-					<div className="my-2 h-[1px] w-full bg-gray-200"></div>
+					<div className="my-2 h-px w-full bg-gray-200"></div>
 					<div className="h-[200px] min-h-[200px] lg:h-[350px] lg:max-h-[350px] flex flex-col gap-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 						{items ? (
 							<List height={180} width={"100%"} list={items} />

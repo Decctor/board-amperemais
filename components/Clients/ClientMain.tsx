@@ -214,7 +214,7 @@ function GroupedByMonthDay({ data }: { data: TGetClientStatsOutput["data"]["resu
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR DIA DO MÊS</h1>
 					<div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ function GroupedByMonth({ data }: { data: TGetClientStatsOutput["data"]["resulta
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR MÊS</h1>
 					<div className="flex items-center gap-2">
@@ -451,7 +451,7 @@ function GroupedByWeekDay({ data }: { data: TGetClientStatsOutput["data"]["resul
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR DIA DA SEMANA</h1>
 					<div className="flex items-center gap-2">
@@ -511,7 +511,7 @@ function GroupedByProduct({ data }: { data: TGetClientStatsOutput["data"]["resul
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 PRODUTOS</h1>
 					<div className="flex items-center gap-2">
@@ -579,7 +579,7 @@ function GroupedBySeller({ data }: { data: TGetClientStatsOutput["data"]["result
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 VENDEDORES</h1>
 					<div className="flex items-center gap-2">
@@ -647,7 +647,7 @@ function GroupedByProductGroup({ data }: { data: TGetClientStatsOutput["data"]["
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 GRUPOS DE PRODUTO</h1>
 					<div className="flex items-center gap-2">

@@ -27,14 +27,14 @@ function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps)
 	}, [generalQueryParams]);
 	return (
 		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-xs">
+			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">ACOMPANHAMENTO DE META DO PERÍODO</h1>
 					<VscDiffAdded size={12} />
 				</div>
 				<div className="w-full flex items-center justify-center p-2">
 					<GoalTrackingBar
-						barBgColor="bg-gradient-to-r from-yellow-200 to-amber-400"
+						barBgColor="bg-linear-to-r from-yellow-200 to-amber-400"
 						goalText={`${overallStats?.faturamentoMeta || "..."}`}
 						barHeigth="25px"
 						valueGoal={overallStats?.faturamentoMeta || 0}
@@ -171,7 +171,7 @@ function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedVal
 							width: getWidth({ goal: valueGoal, hit: valueHit }),
 							height: barHeigth,
 						}}
-						className={cn("flex items-center justify-center rounded-sm text-xs text-white shadow-sm", barBgColor)}
+						className={cn("flex items-center justify-center rounded-sm text-xs text-white shadow-xs", barBgColor)}
 					/>
 				</div>
 			</div>

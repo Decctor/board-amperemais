@@ -39,7 +39,7 @@ function FileInput({ label, value, mode = "default", handleChange, multiple = fa
         <div className="relative mt-2 flex w-full items-center justify-center">
           <label
             htmlFor="dropzone-file"
-            className={`flex min-h-[58px] w-full cursor-pointer flex-col items-center justify-center rounded-md border border-gray-200  bg-[#fff] p-3 hover:border-blue-300 hover:bg-blue-100`}
+            className={`flex min-h-[58px] w-full cursor-pointer flex-col items-center justify-center rounded-md border border-gray-200  bg-white p-3 hover:border-blue-300 hover:bg-blue-100`}
           >
             <div className="flex w-full items-center gap-2">
               {value ? (

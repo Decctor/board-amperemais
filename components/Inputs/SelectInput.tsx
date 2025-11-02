@@ -127,7 +127,7 @@ function SelectInput<T>({
 				) : null}
 				<div
 					className={cn(
-						"flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border bg-[#fff] p-3 text-sm shadow-sm duration-500 ease-in-out dark:bg-[#121212]",
+						"flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border bg-white p-3 text-sm shadow-xs duration-500 ease-in-out dark:bg-[#121212]",
 						selectMenuIsOpen ? "border-primary" : "border-primary/20",
 						holderClassName,
 					)}
@@ -138,7 +138,7 @@ function SelectInput<T>({
 							value={searchFilter}
 							onChange={(e) => handleFilter(e.target.value)}
 							placeholder="Filtre o item desejado..."
-							className="h-full w-full text-sm italic outline-none"
+							className="h-full w-full text-sm italic outline-hidden"
 						/>
 					) : (
 						<p
@@ -173,7 +173,7 @@ function SelectInput<T>({
 					<div
 						className={`absolute ${
 							dropdownDirection === "down" ? "top-[75px]" : "bottom-[75px]"
-						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-[100] flex h-[250px] max-h-[250px] w-full flex-col gap-1 self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-[#fff] p-2 py-1 shadow-sm dark:bg-[#121212]`}
+						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-100 flex h-[250px] max-h-[250px] w-full flex-col gap-1 self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-white p-2 py-1 shadow-xs dark:bg-[#121212]`}
 					>
 						<div
 							onClick={() => resetState()}
@@ -182,7 +182,7 @@ function SelectInput<T>({
 							<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
 							{!selectedId ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
 						</div>
-						<div className="my-2 h-[1px] w-full bg-gray-200"></div>
+						<div className="my-2 h-px w-full bg-gray-200"></div>
 						{items ? (
 							items.map((item, index) => (
 								<div
@@ -213,7 +213,7 @@ function SelectInput<T>({
 				) : null}
 				<div
 					className={cn(
-						"flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border bg-[#fff] p-3 text-sm shadow-sm duration-500 ease-in-out dark:bg-[#121212]",
+						"flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border bg-white p-3 text-sm shadow-xs duration-500 ease-in-out dark:bg-[#121212]",
 						selectMenuIsOpen ? "border-primary" : "border-primary/20",
 						holderClassName,
 					)}
@@ -243,7 +243,7 @@ function SelectInput<T>({
 						value={searchFilter}
 						onChange={(e) => handleFilter(e.target.value)}
 						placeholder="Filtre o item desejado..."
-						className="w-full text-sm italic outline-none p-2 bg-transparent"
+						className="w-full text-sm italic outline-hidden p-2 bg-transparent"
 					/>
 					<div
 						onClick={() => resetState()}
@@ -252,7 +252,7 @@ function SelectInput<T>({
 						<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
 						{!selectedId ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
 					</div>
-					<div className="my-2 h-[1px] w-full bg-gray-200"></div>
+					<div className="my-2 h-px w-full bg-gray-200"></div>
 					<div className="h-[200px] min-h-[200px] lg:h-[350px] lg:max-h-[350px] flex flex-col gap-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 						{items ? (
 							items.map((item, index) => (

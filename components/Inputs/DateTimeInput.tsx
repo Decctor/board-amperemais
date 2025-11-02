@@ -34,7 +34,7 @@ function DateTimeInput({
         id={inputIdentifier}
         onReset={() => handleChange(undefined)}
         type="datetime-local"
-        className="w-full rounded-md border border-primary/20 p-3 text-sm shadow-sm outline-none duration-500 ease-in-out placeholder:italic focus:border-primary"
+        className="w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-primary"
       />
     </div>
   );

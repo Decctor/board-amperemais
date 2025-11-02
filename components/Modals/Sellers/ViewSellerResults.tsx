@@ -120,7 +120,7 @@ function ViewSellerResultsQualitative({ qualitative }: { qualitative: TGetSeller
 
 			<div className="flex w-full flex-col gap-2">
 				<h2 className="text-xs font-medium tracking-tight uppercase">TOP CLIENTES</h2>
-				<div className="overflow-hidden rounded border bg-card shadow-sm">
+				<div className="overflow-hidden rounded border bg-card shadow-xs">
 					<table className="w-full text-xs">
 						<thead>
 							<tr className="bg-muted/40 text-left">
@@ -144,7 +144,7 @@ function ViewSellerResultsQualitative({ qualitative }: { qualitative: TGetSeller
 
 			<div className="flex w-full flex-col gap-2">
 				<h2 className="text-xs font-medium tracking-tight uppercase">TOP PRODUTOS</h2>
-				<div className="overflow-hidden rounded border bg-card shadow-sm">
+				<div className="overflow-hidden rounded border bg-card shadow-xs">
 					<table className="w-full text-xs">
 						<thead>
 							<tr className="bg-muted/40 text-left">
@@ -172,7 +172,7 @@ function ViewSellerResultsQualitative({ qualitative }: { qualitative: TGetSeller
 				<h2 className="text-xs font-medium tracking-tight uppercase">TOP CATEGORIAS DE PRODUTO</h2>
 				<div className="w-full flex flex-col gap-1.5">
 					{qualitative.byProductCategoryTop10.map((row, idx) => (
-						<div key={`${row.category}-${idx}`} className="flex items-center justify-between rounded border bg-card px-3 py-2 text-xs shadow-sm">
+						<div key={`${row.category}-${idx}`} className="flex items-center justify-between rounded border bg-card px-3 py-2 text-xs shadow-xs">
 							<span className="font-medium">{row.category || "NÃO CATEGORIZADO"}</span>
 							<span className="font-semibold">{formatDecimalPlaces(row.quantity)}</span>
 							<span className="font-semibold">{formatToMoney(row.total || 0)}</span>
@@ -183,7 +183,7 @@ function ViewSellerResultsQualitative({ qualitative }: { qualitative: TGetSeller
 
 			<div className="flex w-full flex-col gap-2">
 				<h2 className="text-xs font-medium tracking-tight uppercase">POR DIA DO MÊS</h2>
-				<div className="overflow-hidden rounded border bg-card shadow-sm">
+				<div className="overflow-hidden rounded border bg-card shadow-xs">
 					<table className="w-full text-xs">
 						<thead>
 							<tr className="bg-muted/40 text-left">
@@ -207,7 +207,7 @@ function ViewSellerResultsQualitative({ qualitative }: { qualitative: TGetSeller
 
 			<div className="flex w-full flex-col gap-2">
 				<h2 className="text-xs font-medium tracking-tight uppercase">POR MÊS</h2>
-				<div className="overflow-hidden rounded border bg-card shadow-sm">
+				<div className="overflow-hidden rounded border bg-card shadow-xs">
 					<table className="w-full text-xs">
 						<thead>
 							<tr className="bg-muted/40 text-left">

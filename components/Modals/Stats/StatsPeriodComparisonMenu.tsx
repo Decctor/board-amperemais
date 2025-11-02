@@ -288,7 +288,7 @@ function StatsPeriodComparisonMenuData() {
 			{/** GENERAL STATS */}
 			<div className="w-full flex flex-col gap-4">
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
 							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">FATURAMENTO BRUTO</h1>
 							<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />
@@ -304,7 +304,7 @@ function StatsPeriodComparisonMenuData() {
 							</div>
 						</div>
 					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
 							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">FATURAMENTO LÍQUIDO</h1>
 							<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />
@@ -322,7 +322,7 @@ function StatsPeriodComparisonMenuData() {
 					</div>
 				</div>
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
 							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Número de Vendas</h1>
 							<VscDiffAdded className="w-4 h-4 min-w-4 min-h-4" />
@@ -338,7 +338,7 @@ function StatsPeriodComparisonMenuData() {
 							</div>
 						</div>
 					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
 							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">TICKET MÉDIO</h1>
 							<BsTicketPerforated className="w-4 h-4 min-w-4 min-h-4" />
@@ -356,7 +356,7 @@ function StatsPeriodComparisonMenuData() {
 					</div>
 				</div>
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
 							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">VALOR DIÁRIO</h1>
 							<BsCart className="w-4 h-4 min-w-4 min-h-4" />
@@ -372,7 +372,7 @@ function StatsPeriodComparisonMenuData() {
 							</div>
 						</div>
 					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
 							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">MÉDIA DE ITENS POR VENDA</h1>
 							<ShoppingBag className="w-4 h-4 min-w-4 min-h-4" />
@@ -391,7 +391,7 @@ function StatsPeriodComparisonMenuData() {
 				</div>
 			</div>
 			<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
 						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS DO PRIMEIRO PERÍODO</h1>
 						<BsCart className="w-4 h-4 min-w-4 min-h-4" />
@@ -469,7 +469,7 @@ function StatsPeriodComparisonMenuData() {
 						</ChartContainer>
 					</div>
 				</div>
-				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41] text-white">
 						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS DO SEGUNDO PERÍODO</h1>
 						<BsCart className="w-4 h-4 min-w-4 min-h-4" />
@@ -595,7 +595,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 		return (
 			<div
 				key={seller.titulo}
-				className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-sm rounded-lg hover:bg-primary/10 transition-colors"
+				className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-xs rounded-lg hover:bg-primary/10 transition-colors"
 			>
 				{/* Left side - Title and Ranking */}
 				<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
@@ -708,7 +708,7 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 	}
 
 	return (
-		<div className="flex w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+		<div className="flex w-full flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 			<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
 				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RESULTADO POR VENDEDORES</h1>
 				<UserRound className="w-4 h-4 min-w-4 min-h-4" />
@@ -803,7 +803,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 		}
 		const { salesHintDirection, salesHintText, totalHintDirection, totalHintText } = getHints(product);
 		return (
-			<div className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-sm rounded-lg hover:bg-primary/10 transition-colors">
+			<div className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-xs rounded-lg hover:bg-primary/10 transition-colors">
 				{/* Left side - Title and Ranking */}
 				<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
 					<div className="flex items-center gap-2">
@@ -915,7 +915,7 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 	}
 
 	return (
-		<div className="flex w-full flex-col rounded-xl border border-primary shadow-sm overflow-hidden">
+		<div className="flex w-full flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
 			<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
 				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RESULTADO POR PRODUTOS</h1>
 				<Box className="w-4 h-4 min-w-4 min-h-4" />

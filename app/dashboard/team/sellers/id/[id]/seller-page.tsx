@@ -95,7 +95,7 @@ export default function SellerPage({ user, id }: SellerPageProps) {
 						formattedValueHit={stats.faturamentoBrutoTotal.toLocaleString("pt-br", { maximumFractionDigits: 2 })}
 						goalText="Faturamento Meta"
 						barHeigth="25px"
-						barBgColor="bg-gradient-to-r from-yellow-200 to-amber-400"
+						barBgColor="bg-linear-to-r from-yellow-200 to-amber-400"
 					/>
 					<div className="w-full flex flex-col gap-2">
 						<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
@@ -241,7 +241,7 @@ function GroupedByMonthDay({ data }: { data: TGetSellerStatsOutput["data"]["resu
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR DIA DO MÊS</h1>
 					<div className="flex items-center gap-2">
@@ -363,7 +363,7 @@ function GroupedByMonth({ data }: { data: TGetSellerStatsOutput["data"]["resulta
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR MÊS</h1>
 					<div className="flex items-center gap-2">
@@ -478,7 +478,7 @@ function GroupedByWeekDay({ data }: { data: TGetSellerStatsOutput["data"]["resul
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR DIA DA SEMANA</h1>
 					<div className="flex items-center gap-2">
@@ -538,7 +538,7 @@ function GroupedByProduct({ data }: { data: TGetSellerStatsOutput["data"]["resul
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 PRODUTOS</h1>
 					<div className="flex items-center gap-2">
@@ -606,7 +606,7 @@ function GroupedByClient({ data }: { data: TGetSellerStatsOutput["data"]["result
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 CLIENTES</h1>
 					<div className="flex items-center gap-2">
@@ -674,7 +674,7 @@ function GroupedByProductGroup({ data }: { data: TGetSellerStatsOutput["data"]["
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 GRUPOS DE PRODUTO</h1>
 					<div className="flex items-center gap-2">
@@ -744,7 +744,7 @@ function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedVal
 	}
 
 	return (
-		<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs h-full"}>
+		<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">{goalText}</h1>
 				<div className="flex items-center gap-2">
@@ -759,7 +759,7 @@ function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedVal
 								width: getWidth({ goal: valueGoal, hit: valueHit }),
 								height: barHeigth,
 							}}
-							className={cn("flex items-center justify-center rounded-sm text-xs text-white shadow-sm", barBgColor)}
+							className={cn("flex items-center justify-center rounded-sm text-xs text-white shadow-xs", barBgColor)}
 						/>
 					</div>
 				</div>
