@@ -96,7 +96,7 @@ export function getPeriodDateParamsByReferenceDate({ reference, type = "month", 
 	return { start: start.toDate(), end: end.toDate() };
 }
 
-export function getDateFromString(value: any) {
+export function getDateFromString(value: string) {
 	if (!value) return undefined;
 	if (Number.isNaN(new Date(value).getMilliseconds())) return undefined;
 	return new Date(value);

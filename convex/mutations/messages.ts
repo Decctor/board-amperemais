@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, mutation } from "../_generated/server";
+import { workflow } from "../workflows";
 
 export const createMessage = mutation({
 	args: {
@@ -118,10 +119,11 @@ export const createMessage = mutation({
 
 		// ## THIRD, DEFINING SERVICE DATA
 		let serviceId: Id<"services"> | null = null;
+		let responsibleId: Id<"users"> | "ai" | undefined = undefined;
+
 		const service = await ctx.db
 			.query("services")
-			.filter((q) => q.eq(q.field("chatId"), chatId))
-			.filter((q) => q.eq(q.field("status"), "PENDENTE"))
+			.filter((q) => q.and(q.eq(q.field("chatId"), chatId), q.eq(q.field("status"), "PENDENTE")))
 			.first();
 		if (!service) {
 			// If no service was found, we only create one
@@ -134,14 +136,18 @@ export const createMessage = mutation({
 				dataInicio: Date.now(),
 			});
 			serviceId = insertServiceResponse;
+			responsibleId = args.autor.tipo === "usuario" ? (authorId as Id<"users">) : "ai";
 		} else {
 			// If service is already registered, we get the its id
 			serviceId = service._id;
-			// If there is a service and the author of the message is a user, we update the service responsible
 			if (args.autor.tipo === "usuario") {
+				// If there is a service and the author of the message is a user, we update the service responsible
 				await ctx.db.patch(serviceId, {
 					responsavel: authorId as Id<"users">,
 				});
+				responsibleId = authorId as Id<"users">;
+			} else {
+				responsibleId = service.responsavel;
 			}
 		}
 
@@ -224,11 +230,26 @@ export const createMessage = mutation({
 				throw new Error("Conversa expirada. Por favor, envie um template para continuar.");
 			}
 		}
-		if (args.autor.tipo === "cliente") {
-			// We schedule the AI response generation
-			await ctx.scheduler.runAfter(3000, internal.actions.ai.generateAIResponse, {
+
+		// # AI WORKFLOW
+		// Start AI processing workflow for both media and response generation
+		const sendAIResponse = args.autor.tipo === "cliente" && responsibleId === "ai";
+		const hasMedia = Boolean(args.conteudo.midiaStorageId && args.conteudo.midiaTipo);
+
+		if (hasMedia || sendAIResponse) {
+			await workflow.start(ctx, internal.workflows.aiProcessing.aiMessageProcessingWorkflow, {
+				messageId: insertMessageResponse,
 				chatId: chatId,
-				scheduleAt: new Date().toISOString(),
+				media:
+					hasMedia && args.conteudo.midiaStorageId && args.conteudo.midiaTipo
+						? {
+								storageId: args.conteudo.midiaStorageId,
+								mediaType: args.conteudo.midiaTipo,
+								mimeType: args.conteudo.midiaMimeType,
+								filename: args.conteudo.midiaFileName,
+							}
+						: undefined,
+				sendAIResponse: sendAIResponse,
 			});
 		}
 		return {
@@ -520,6 +541,36 @@ export const createAIMessage = internalMutation({
 				messageId,
 			},
 			message: "Mensagem de IA criada com sucesso.",
+		};
+	},
+});
+
+export const updateMessageMediaProcessing = internalMutation({
+	args: {
+		messageId: v.id("messages"),
+		conteudoMidiaTextoProcessado: v.optional(v.string()),
+		conteudoMidiaTextoProcessadoResumo: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		console.log("[INFO] [MESSAGES] [UPDATE_MEDIA_PROCESSING] Updating message:", args.messageId);
+
+		// Get message to verify it exists
+		const message = await ctx.db.get(args.messageId);
+		if (!message) {
+			throw new Error("Mensagem não encontrada.");
+		}
+
+		// Update message with AI-processed content
+		await ctx.db.patch(args.messageId, {
+			conteudoMidiaTextoProcessado: args.conteudoMidiaTextoProcessado,
+			conteudoMidiaTextoProcessadoResumo: args.conteudoMidiaTextoProcessadoResumo,
+		});
+
+		console.log("[INFO] [MESSAGES] [UPDATE_MEDIA_PROCESSING] Message updated successfully:", args.messageId);
+
+		return {
+			success: true,
+			message: "Conteúdo de mídia processado com sucesso.",
 		};
 	},
 });

@@ -67,6 +67,8 @@ export default defineSchema({
 		conteudoMidiaMimeType: v.optional(v.string()),
 		conteudoMidiaFileName: v.optional(v.string()),
 		conteudoMidiaFileSize: v.optional(v.number()),
+		conteudoMidiaTextoProcessado: v.optional(v.string()), // Complete AI-processed textual representation of media content
+		conteudoMidiaTextoProcessadoResumo: v.optional(v.string()), // Summary of AI-processed media content
 		conteudoMidiaWhatsappId: v.optional(v.string()), // WhatsApp media ID for incoming files
 		status: v.union(v.literal("ENVIADO"), v.literal("RECEBIDO"), v.literal("LIDO")),
 		whatsappMessageId: v.optional(v.string()),
