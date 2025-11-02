@@ -1,13 +1,13 @@
 import "@/styles/globals.css";
-import { Raleway } from "next/font/google";
+import ProvidersWrapper from "@/components/Providers/Wrapper";
 import { cn } from "@/lib/utils";
 import type { Metadata, Viewport } from "next";
-import ProvidersWrapper from "@/components/Providers/Wrapper";
+import { Raleway } from "next/font/google";
 import { Toaster } from "sonner";
 
 const raleway = Raleway({
+	subsets: ["latin"],
 	variable: "--font-raleway",
-	subsets: ["cyrillic", "cyrillic-ext"],
 });
 export const metadata: Metadata = {
 	title: {
@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="pt-BR" suppressHydrationWarning>
-			<body className={cn(`min-h-screen min-w-screen bg-background text-primary overflow-x-hidden antialiased ${raleway.variable}`)}>
+			<body className={cn(`min-h-screen min-w-screen bg-background text-primary overflow-x-hidden antialiased font-raleway ${raleway.variable}`)}>
 				<ProvidersWrapper>
 					{children}
 					<Toaster />
