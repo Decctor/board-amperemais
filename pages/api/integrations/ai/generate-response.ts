@@ -88,8 +88,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		console.log("[INFO] [GENERATE_AI_RESPONSE] Calling AI Agent with:", {
 			chatId: chatSummary.id,
 			clientId: chatSummary.cliente.idApp,
-			lastMessages: chatSummary.ultimasMensagens,
-			openService: chatSummary.atendimentoAberto,
 		});
 
 		// Generate AI response with enriched data

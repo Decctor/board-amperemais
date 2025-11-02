@@ -98,6 +98,7 @@ export async function getAgentResponse({ details }: { details: TDetails }): Prom
 			})
 			.join("\n");
 
+		console.log("[AI_AGENT] Conversation history:", conversationHistory);
 		// Check if immediate escalation is needed based on keywords
 		const lastClientMessage = details.ultimasMensagens.find((msg) => msg.autorTipo === "cliente");
 		const needsEscalation = lastClientMessage?.conteudoTexto && detectEscalationNeeded(lastClientMessage.conteudoTexto);
