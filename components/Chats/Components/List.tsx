@@ -134,7 +134,10 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 	}
 
 	return (
-		<ScrollArea ref={scrollRef} className={cn("flex-1 w-full", className)}>
+		<div
+			ref={scrollRef}
+			className={cn("w-full flex flex-col scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 overflow-y-auto", className)}
+		>
 			<div className="flex flex-col gap-2 p-3">
 				{allChats.map((chat) => (
 					<ChatItem key={chat._id} chat={chat} isSelected={selectedChatId === chat._id} onSelect={() => handleSelectChat(chat._id)} />
@@ -154,7 +157,7 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 					</Button>
 				)}
 			</div>
-		</ScrollArea>
+		</div>
 	);
 }
 
@@ -172,7 +175,7 @@ function ChatItem({ chat, isSelected, onSelect }: ChatItemProps) {
 			variant="ghost"
 			className={cn(
 				"w-full h-auto p-3 flex items-start gap-3 hover:bg-primary/10 transition-all duration-200",
-				"rounded-lg relative overflow-hidden group",
+				"rounded-lg relative group",
 				isSelected && "bg-primary/10 shadow-sm",
 			)}
 			onClick={onSelect}
@@ -189,7 +192,7 @@ function ChatItem({ chat, isSelected, onSelect }: ChatItemProps) {
 			</Avatar>
 
 			{/* Content */}
-			<div className="flex-1 min-w-0 flex flex-col gap-1">
+			<div className="grow flex flex-col min-w-0 gap-1">
 				{/* Header: Name and Time */}
 				<div className="flex items-center justify-between gap-2 w-full">
 					<h3 className={cn("font-semibold text-sm truncate text-left", hasUnread && "text-primary")}>{chat.cliente?.nome || "Cliente desconhecido"}</h3>
