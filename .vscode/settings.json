@@ -1,0 +1,19 @@
+{
+	"typescript.tsdk": "node_modules\\typescript\\lib",
+	"editor.defaultFormatter": "biomejs.biome",
+	"notebook.defaultFormatter": "biomejs.biome",
+	"editor.formatOnSave": true,
+	"editor.formatOnPaste": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.biome": "explicit",
+		"source.organizeImports.biome": "explicit"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"typescript.experimental.useTsgo": false,
+	"typescript.tsserver.maxTsServerMemory": 4096
+}

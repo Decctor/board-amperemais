@@ -1,34 +1,36 @@
+import type { TGetUsersOutputDefault } from "@/app/api/users/route";
+import { getErrorMessage } from "@/lib/errors";
+import { formatDateAsLocale, formatDateBirthdayAsLocale, formatNameAsInitials } from "@/lib/formatting";
 import { useUsers } from "@/lib/queries/users";
-import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import type { TUserDTO, TUserSession } from "@/schemas/users";
-import { Filter, Pencil, Phone, Mail, Plus, UserRound, UsersRound } from "lucide-react";
-import { useState } from "react";
-import LoadingComponent from "../Layouts/LoadingComponent";
-import ErrorComponent from "../Layouts/ErrorComponent";
-import { getErrorMessage } from "@/lib/errors";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { formatNameAsInitials } from "@/lib/formatting";
+import { useQueryClient } from "@tanstack/react-query";
+import { Cake, Filter, Mail, Pencil, Phone, Plus, UserRound, UsersRound } from "lucide-react";
 import Image from "next/image";
+import { useState } from "react";
+import ErrorComponent from "../Layouts/ErrorComponent";
+import LoadingComponent from "../Layouts/LoadingComponent";
 import EditUser from "../Modals/Users/EditUser";
 import NewUser from "../Modals/Users/NewUser";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Button } from "../ui/button";
 
 type SettingsUsersProps = {
 	user: TUserSession;
 };
 export default function SettingsUsers({ user }: SettingsUsersProps) {
-	const { data: users, isLoading, isError, isSuccess, error } = useUsers();
+	const queryClient = useQueryClient();
+	const { data: users, queryKey, isLoading, isError, isSuccess, error } = useUsers({ initialFilters: { search: "" } });
 	const [newUserModalIsOpen, setNewUserModalIsOpen] = useState(false);
 	const [editUserModalId, setEditUserModalId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
+
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 	return (
 		<div className={cn("flex w-full flex-col gap-3")}>
 			<div className="flex items-center justify-end gap-2">
 				<div className="flex items-center gap-2">
-					{/* <Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setFilterMenuIsOpen(true)}>
-						<Filter className="w-4 h-4 min-w-4 min-h-4" />
-						FILTROS
-					</Button> */}
 					<Button size="sm" className="flex items-center gap-2" onClick={() => setNewUserModalIsOpen(true)}>
 						<Plus className="w-4 h-4 min-w-4 min-h-4" />
 						NOVO USUÁRIO
@@ -40,14 +42,23 @@ export default function SettingsUsers({ user }: SettingsUsersProps) {
 				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 				{isSuccess ? users.map((user, index: number) => <UserCard key={user._id} user={user} handleClick={setEditUserModalId} />) : null}
 			</div>
-			{newUserModalIsOpen ? <NewUser session={user} closeModal={() => setNewUserModalIsOpen(false)} /> : null}
-			{editUserModalId ? <EditUser session={user} closeModal={() => setEditUserModalId(null)} userId={editUserModalId} /> : null}
+			{newUserModalIsOpen ? (
+				<NewUser session={user} closeModal={() => setNewUserModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
+			) : null}
+			{editUserModalId ? (
+				<EditUser
+					session={user}
+					closeModal={() => setEditUserModalId(null)}
+					userId={editUserModalId}
+					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+				/>
+			) : null}
 		</div>
 	);
 }
 
 type UserCardProps = {
-	user: TUserDTO;
+	user: TGetUsersOutputDefault[number];
 	handleClick: (id: string) => void;
 };
 function UserCard({ user, handleClick }: UserCardProps) {
@@ -66,10 +77,20 @@ function UserCard({ user, handleClick }: UserCardProps) {
 			</div>
 			<div className="flex h-full grow flex-col gap-1.5">
 				<h1 className="text-xs font-bold tracking-tight lg:text-sm">{user.nome}</h1>
-				<div className="w-full flex flex-items-center gap-1.5 grow">
+				<div className="w-full flex flex-items-center gap-1.5 grow flex-wrap">
+					<div className="flex items-center gap-1">
+						<Phone className="w-4 h-4 min-w-4 min-h-4" />
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{user.telefone ?? "TELEFONE NÃO INFORMADO"}</h1>
+					</div>
 					<div className="flex items-center gap-1">
 						<Mail className="w-4 h-4 min-w-4 min-h-4" />
 						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{user.email ?? "EMAIL NÃO INFORMADO"}</h1>
+					</div>
+					<div className="flex items-center gap-1">
+						<Cake className="w-4 h-4 min-w-4 min-h-4" />
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">
+							{formatDateBirthdayAsLocale(user.dataNascimento, true) ?? "DATA DE NASCIMENTO NÃO INFORMADA"}
+						</h1>
 					</div>
 				</div>
 				<div className="w-full flex items-center justify-end">

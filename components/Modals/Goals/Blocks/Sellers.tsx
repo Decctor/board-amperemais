@@ -1,10 +1,10 @@
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import type { TUseGoalsState } from "@/hooks/use-goal-state";
 import { getErrorMessage } from "@/lib/errors";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { useSellers } from "@/lib/queries/sellers";
-import type { TUseGoalsState } from "@/lib/states/goals";
 import type { TGetSellersOutputDefault } from "@/pages/api/sellers";
 import { UsersRound } from "lucide-react";
 import { memo, useCallback } from "react";

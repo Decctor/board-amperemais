@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { getAgeFromBirthdayDate } from "./dates";
 
 export function formatDateTime(value: any) {
 	if (!value) return undefined;
@@ -10,6 +11,11 @@ export function formatDateAsLocale(date?: string | Date | null, showHours = fals
 	if (!date) return null;
 	if (showHours) return dayjs(date).format("DD/MM/YYYY HH:mm");
 	return dayjs(date).add(3, "hour").format("DD/MM/YYYY");
+}
+export function formatDateBirthdayAsLocale(date?: string | Date | null, showAge = false) {
+	if (!date) return null;
+	if (showAge) return `${formatDateAsLocale(date)} (${getAgeFromBirthdayDate(date)} anos)`;
+	return formatDateAsLocale(date);
 }
 
 export function formatDateForInputValue(value: Date | string | null | undefined, type: "default" | "datetime" = "default"): string | undefined {
@@ -153,14 +159,21 @@ export function formatToPhone(value: string): string {
 	value = value.replace(/(\d)(\d{4})$/, "$1-$2");
 	return value;
 }
+
+export function formatToCPF(value: string): string {
+	return value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/g, "$1.$2.$3-$4");
+}
+export function formatToCNPJ(value: string): string {
+	return value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/g, "$1.$2.$3/$4-$5");
+}
 export function formatToCPForCNPJ(value: string): string {
 	const cnpjCpf = value.replace(/\D/g, "");
 
 	if (cnpjCpf.length === 11) {
-		return cnpjCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/g, "$1.$2.$3-$4");
+		return formatToCPF(cnpjCpf);
 	}
 
-	return cnpjCpf.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/g, "$1.$2.$3/$4-$5");
+	return formatToCNPJ(cnpjCpf);
 }
 export function formatToCEP(value: string): string {
 	return value

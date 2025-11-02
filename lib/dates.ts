@@ -1,6 +1,10 @@
 import dayjs from "dayjs";
 import { formatDecimalPlaces } from "./formatting";
 
+export function getAgeFromBirthdayDate(date: string | Date) {
+	const age = dayjs().diff(date, "years");
+	return age;
+}
 export function getMonthPeriodsStrings({ initialYear, endYear }: { initialYear: number; endYear: number }) {
 	let iteratingYear = initialYear;
 
