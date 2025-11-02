@@ -23,7 +23,7 @@ async function fetchSellers(input: TGetSellersDefaultInput) {
 	}
 }
 
-export async function fetchSellersById(input: TGetSellersByIdInput) {
+async function fetchSellersById(input: TGetSellersByIdInput) {
 	try {
 		const { data } = await axios.get<TGetSellersOutput>(`/api/sellers?id=${input.id}`);
 		const result = data.data.byId;

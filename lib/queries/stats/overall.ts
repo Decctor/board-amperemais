@@ -3,7 +3,7 @@ import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils"
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-export async function fetchOverallSalesStats(filters: TSaleStatsGeneralQueryParams) {
+async function fetchOverallSalesStats(filters: TSaleStatsGeneralQueryParams) {
 	try {
 		const { data } = await axios.post("/api/stats/sales-overall", filters);
 		return data.data as TOverallSalesStats;

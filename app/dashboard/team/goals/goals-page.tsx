@@ -1,5 +1,4 @@
 "use client";
-import SaleGoalsView from "@/components/Admin/SaleGoalsView";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlGoal from "@/components/Modals/Goals/ControlGoal";

@@ -185,9 +185,5 @@ export const OnlineSoftwareSaleImportationSchema = z.object({
 	}),
 });
 
-export type TOnlineSoftwareSalesImportation = z.infer<
-	typeof OnlineSoftwareSaleImportationSchema
->;
-export type TOnlineSoftwareSaleItemImportation = z.infer<
-	typeof OnlineSoftwareSaleItemSchema
->;
+type TOnlineSoftwareSalesImportation = z.infer<typeof OnlineSoftwareSaleImportationSchema>;
+type TOnlineSoftwareSaleItemImportation = z.infer<typeof OnlineSoftwareSaleItemSchema>;

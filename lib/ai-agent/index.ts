@@ -46,7 +46,7 @@ type TDetails = {
 	} | null;
 };
 
-export type AIResponse = {
+type AIResponse = {
 	message: string;
 	metadata: {
 		toolsUsed: string[];

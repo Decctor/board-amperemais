@@ -39,7 +39,7 @@ export function mapWhatsAppStatusToAppStatus(whatsappStatus: WhatsAppMessageStat
 			};
 	}
 }
-export type ParsedStatusUpdate = {
+type ParsedStatusUpdate = {
 	whatsappMessageId: string;
 	status: WhatsAppMessageStatus;
 	timestamp: number;
@@ -70,7 +70,7 @@ export function parseStatusUpdate(statusPayload: unknown): ParsedStatusUpdate | 
 	}
 }
 
-export type ParsedIncomingMessage = {
+type ParsedIncomingMessage = {
 	whatsappPhoneNumberId: string;
 	whatsappMessageId: string;
 	fromPhoneNumber: string;
@@ -239,7 +239,7 @@ export function mapWhatsAppTemplateQualityToAppQuality(whatsappQuality: string):
 	}
 }
 
-export type ParsedTemplateStatusUpdate = {
+type ParsedTemplateStatusUpdate = {
 	event: string;
 	messageTemplateId: string;
 	messageTemplateName: string;
@@ -249,7 +249,7 @@ export type ParsedTemplateStatusUpdate = {
 	timestamp: number;
 };
 
-export type ParsedTemplateQualityUpdate = {
+type ParsedTemplateQualityUpdate = {
 	event: string;
 	messageTemplateId: string;
 	messageTemplateName: string;

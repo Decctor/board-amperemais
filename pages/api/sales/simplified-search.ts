@@ -68,19 +68,6 @@ const getSalesSimplifiedRoute: NextApiHandler<{
 	return res.status(200).json({
 		data: result,
 	});
-	// const orSearchQuery = search.length > 0 ? [{ cliente: search }, { cliente: { $regex: search, $options: "i" } }] : [];
-
-	// const query: Filter<TSale> = orSearchQuery.length > 0 ? { $or: [...orSearchQuery] } : {};
-
-	// const skip = (page - 1) * PAGE_SIZE;
-	// const limit = PAGE_SIZE;
-
-	// const salesMatched = await collection.countDocuments(query);
-	// const totalPages = Math.ceil(salesMatched / PAGE_SIZE);
-
-	// const salesResult = await collection.find(query, { skip, limit, projection: SaleSimplifiedProjection }).toArray();
-
-	// return res.status(200).json({ data: { sales: salesResult as any[], salesMatched, totalPages } });
 };
 
 export default apiHandler({ POST: getSalesSimplifiedRoute });

@@ -1,5 +1,4 @@
 "use client";
-import SettingsMain from "@/components/Admin/SettingsMain";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
 import { Button } from "@/components/ui/button";

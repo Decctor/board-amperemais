@@ -126,4 +126,4 @@ export const SalesMarketingStatsFiltersSchema = z.object({
 			.datetime({ message: "Tipo inválido para parâmetro de período." }),
 	}),
 });
-export type TSalesMarketingStatsFilters = z.infer<typeof SalesMarketingStatsFiltersSchema>;
+type TSalesMarketingStatsFilters = z.infer<typeof SalesMarketingStatsFiltersSchema>;

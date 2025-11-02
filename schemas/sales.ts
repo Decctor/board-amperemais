@@ -66,5 +66,3 @@ export const SalesSimplifiedSearchQueryParams = z.object({
 export type TSalesSimplifiedSearchQueryParams = z.infer<typeof SalesSimplifiedSearchQueryParams>;
 
 export type TSale = z.infer<typeof SaleSchema>;
-
-export const SaleSimplifiedProjection = { id: 1, cliente: 1, valor: 1 };

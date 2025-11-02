@@ -6,7 +6,7 @@ import { and, desc, eq, gte, ilike, lte, sql } from "drizzle-orm";
 // Customer Purchase History Tools
 // ============================================================================
 
-export interface GetCustomerPurchaseHistoryOptions {
+interface GetCustomerPurchaseHistoryOptions {
 	limit?: number;
 	startDate?: Date;
 	endDate?: Date;

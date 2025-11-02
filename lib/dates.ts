@@ -109,19 +109,6 @@ export function getTimeFormattedTextFromHours(hours: number) {
 	return `${formatDecimalPlaces(hours)} ${hours > 2 ? "HORAS" : "HORA"}`;
 }
 
-export function getFirstDayOfMonth(year: number, month: number) {
-	return new Date(year, month, 1);
-}
-export function getLastDayOfMonth(year: number, month: number) {
-	return new Date(year, month + 1, 0);
-}
-export function getFirstDayOfYear(date: string) {
-	return dayjs(date).startOf("year").toDate();
-}
-export function getLastDayOfYear(date: string) {
-	return dayjs(date).endOf("year").toDate();
-}
-
 export function getMetadataFromHoursAmount(hours: number, reference: "months" | "days" | "hours") {
 	if (reference === "months") {
 		const totalDays = Math.floor(hours / 24);
