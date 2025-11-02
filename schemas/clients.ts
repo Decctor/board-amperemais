@@ -75,7 +75,7 @@ export const ClientSchema = z.object({
 	}),
 });
 
-export const ClientSimplifiedProjection = {
+const ClientSimplifiedProjection = {
 	nome: 1,
 	telefone: 1,
 	email: 1,
@@ -89,28 +89,7 @@ export const ClientSimplifiedProjection = {
 };
 export type TClient = z.infer<typeof ClientSchema>;
 export type TClientDTO = TClient & { _id: string };
-export type TClientSimplified = Pick<
-	TClient,
-	| "nome"
-	| "telefone"
-	| "email"
-	| "canalAquisicao"
-	| "primeiraCompraData"
-	| "ultimaCompraData"
-	| "analiseRFMTitulo"
-	| "analiseRFMNotasRecencia"
-	| "analiseRFMNotasFrequencia"
-	| "analiseRFMNotasMonetario"
-	| "analiseRFMUltimaAtualizacao"
->;
-export type TClientSimplifiedDTO = TClientSimplified & { _id: string };
 
-export type TClientSimplifiedWithSales = TClientSimplified & {
-	vendas: Pick<TSale, "valor" | "dataVenda">[];
-};
-export type TClientSimplifiedWithSalesDTO = TClientSimplifiedWithSales & {
-	_id: string;
-};
 export const ClientSearchQueryParams = z.object({
 	page: z
 		.number({

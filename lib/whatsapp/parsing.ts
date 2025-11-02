@@ -260,7 +260,7 @@ export type ParsedTemplateQualityUpdate = {
 	timestamp: number;
 };
 
-export type ParsedTemplateCategoryUpdate = {
+type ParsedTemplateCategoryUpdate = {
 	event: string;
 	messageTemplateId: string;
 	messageTemplateName: string;

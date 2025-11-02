@@ -15,7 +15,7 @@ const GenericInitiationParametersInputSchema = DefaultTemplatePayloadSchema.exte
 		invalid_type_error: "Tipo não válido para nome do cliente.",
 	}),
 });
-export type GenericInitiationParametersInput = z.infer<typeof GenericInitiationParametersInputSchema>;
+type GenericInitiationParametersInput = z.infer<typeof GenericInitiationParametersInputSchema>;
 
 export const WHATSAPP_TEMPLATES = {
 	GENERIC_INITIATION: {

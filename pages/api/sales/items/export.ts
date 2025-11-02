@@ -1,8 +1,8 @@
 import connectToDatabase from "@/services/mongodb/main-db-connection";
 import { TGetProductsBySearchInput } from "./search";
-import { TSaleItem, TSaleItemSimplifiedDTO } from "@/schemas/sales-items";
+import type { TSaleItem, TSaleItemSimplifiedDTO } from "@/schemas/sales-items";
 import { apiHandler } from "@/lib/api";
-import { NextApiHandler } from "next";
+import type { NextApiHandler } from "next";
 
 export type TItemsExport = {
 	DESCRICAO: string;

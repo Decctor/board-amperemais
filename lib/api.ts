@@ -1,13 +1,11 @@
 import createHttpError from "http-errors";
 
-import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
+import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
-import { Method } from "axios";
+import type { Method } from "axios";
 import { ZodError } from "zod";
 
-import { NextRequest, NextResponse } from "next/server";
-
-export interface ErrorResponse {
+interface ErrorResponse {
 	error: {
 		message: string;
 		err?: any;
@@ -88,26 +86,22 @@ type ApiMethodHandlers = {
 //     throw new createHttpError.InternalServerError("Sessão não encontrada.");
 // }
 // Criando o handler de erros
-export function errorHandler(err: unknown, res: NextApiResponse<ErrorResponse>) {
+function errorHandler(err: unknown, res: NextApiResponse<ErrorResponse>) {
 	console.log("ERROR", err);
 	if (createHttpError.isHttpError(err) && err.expose) {
 		// Lidar com os erros lançados pelo módulo http-errors
 		return res.status(err.statusCode).json({ error: { message: err.message } });
-	} else if (err instanceof ZodError) {
+	}
+	if (err instanceof ZodError) {
 		// Lidar com erros vindo de uma validação Zod
 		return res.status(400).json({ error: { message: err.errors[0].message } });
-	} else {
-		// Erro de servidor padrão 500
-		return res.status(500).json({
-			error: { message: "Oops, algo deu errado!", err: err },
-			status: createHttpError.isHttpError(err) ? err.statusCode : 500,
-		});
 	}
+	// Erro de servidor padrão 500
+	return res.status(500).json({
+		error: { message: "Oops, algo deu errado!", err: err },
+		status: createHttpError.isHttpError(err) ? err.statusCode : 500,
+	});
 }
-
-export type UnwrapNextResponse<T> = T extends NextApiResponse<infer U> ? U : never;
-// Adicione este tipo auxiliar
-export type InferApiResponse<T> = T extends (...args: any[]) => Promise<NextApiResponse<infer U>> ? U : never;
 
 export function apiHandler(handler: ApiMethodHandlers) {
 	return async (req: NextApiRequest, res: NextApiResponse) => {

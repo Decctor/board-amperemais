@@ -68,7 +68,7 @@ function GoalsPageGoalCard({ goal, handleClick }: GoalsPageGoalCardProps) {
 			</div>
 			<div className="flex w-full items-center justify-end">
 				<Button variant="ghost" onClick={() => handleClick(goal.id)} className="flex items-center gap-1">
-					<Pencil width={10} height={10} />
+					<Pencil className="w-4 h-4 min-w-4 min-h-4" />
 					<p>EDITAR</p>
 				</Button>
 			</div>

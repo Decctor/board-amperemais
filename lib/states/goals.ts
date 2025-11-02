@@ -28,7 +28,7 @@ const GoalsStateSchema = z.object({
 		}),
 	),
 });
-export type TGoalsState = z.infer<typeof GoalsStateSchema>;
+type TGoalsState = z.infer<typeof GoalsStateSchema>;
 
 type TUseGoalsStateProps = {
 	initialState?: Partial<TGoalsState>;

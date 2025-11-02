@@ -212,12 +212,12 @@ function SegmentsPageClientCard({ client, period }: SegmentsPageClientCardProps)
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
 					<div className="flex items-center gap-1">
-						<Phone width={10} height={10} />
+						<Phone className="w-4 h-4 min-w-4 min-h-4" />
 						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.telefone}</h1>
 					</div>
 					{client.email ? (
 						<div className="flex items-center gap-1">
-							<Mail width={10} height={10} />
+							<Mail className="w-4 h-4 min-w-4 min-h-4" />
 							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.email}</h1>
 						</div>
 					) : null}
@@ -235,12 +235,12 @@ function SegmentsPageClientCard({ client, period }: SegmentsPageClientCardProps)
 			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
 				<div className="flex w-full flex-wrap items-center justify-center gap-2 lg:grow lg:justify-start">
 					<div className="flex items-center gap-1">
-						<BsCalendar width={10} height={10} />
+						<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />
 						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">ÚLTIMA COMPRA</h1>
 						<h1 className="py-0.5 text-center text-[0.65rem] font-bold  text-primary">{formatDateAsLocale(client.ultimaCompraData) || "N/A"}</h1>
 					</div>
 					<div className="flex items-center gap-1">
-						<BsCalendar width={10} height={10} />
+						<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />
 						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">PRIMEIRA COMPRA</h1>
 						<h1 className="py-0.5 text-center text-[0.65rem] font-bold  text-primary">{formatDateAsLocale(client.primeiraCompraData) || "N/A"}</h1>
 					</div>

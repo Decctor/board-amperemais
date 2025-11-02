@@ -78,12 +78,12 @@ function ClientPageCard({ client }: ClientCardProps) {
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
 					<div className="flex items-center gap-1">
-						<Phone width={10} height={10} />
+						<Phone className="w-4 h-4 min-w-4 min-h-4" />
 						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.telefone}</h1>
 					</div>
 					{client.email ? (
 						<div className="flex items-center gap-1">
-							<Mail width={10} height={10} />
+							<Mail className="w-4 h-4 min-w-4 min-h-4" />
 							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.email}</h1>
 						</div>
 					) : null}

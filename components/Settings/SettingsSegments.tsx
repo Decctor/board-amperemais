@@ -1,33 +1,22 @@
+import { cn } from "@/lib/utils";
+import type { TUserSession } from "@/schemas/users";
+import { LoadingButton } from "../loading-button";
+import NumberInput from "../Inputs/NumberInput";
+import { useEffect, useState } from "react";
+import { updateRFMConfig } from "@/lib/mutations/configs";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useRFMConfigQuery } from "@/lib/queries/configs";
-import React, { useEffect, useState } from "react";
+import type { TRFMConfig } from "@/utils/rfm";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import ErrorComponent from "../Layouts/ErrorComponent";
-import NumberInput from "../Inputs/NumberInput";
-import type { TRFMConfig } from "@/utils/rfm";
-import { Button } from "../ui/button";
-import { useMutation } from "@tanstack/react-query";
-import { updateRFMConfig } from "@/lib/mutations/configs";
-import { LoadingButton } from "../loading-button";
-import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errors";
 
-function SettingsView() {
-	return (
-		<div className="flex h-full grow flex-col">
-			<div className="flex w-full flex-col items-center justify-between border-b border-gray-200 pb-2 lg:flex-row">
-				<div className="flex flex-col">
-					<h1 className="text-lg font-bold">Controle de Configurações</h1>
-					<p className="text-sm text-[#71717A]">Gerencie as configurações da plataforma.</p>
-				</div>
-			</div>
-			<RFMConfigBlock />
-		</div>
-	);
-}
-
-export default SettingsView;
-
-function RFMConfigBlock() {
-	const { data, isLoading, isError, isSuccess } = useRFMConfigQuery();
+type SettingsSegmentsProps = {
+	user: TUserSession;
+};
+export default function SettingsSegments({ user }: SettingsSegmentsProps) {
+	const { data, isLoading, isError, isSuccess, error } = useRFMConfigQuery();
 	const [infoHolder, setInfoHolder] = useState<TRFMConfig>({
 		identificador: "CONFIG_RFM",
 		recencia: {
@@ -64,19 +53,16 @@ function RFMConfigBlock() {
 		},
 	});
 	return (
-		<div className="flex w-full flex-col gap-3 rounded border border-primary bg-[#fff] p-2 shadow-sm dark:bg-[#121212]">
-			<div className="flex items-center gap-2">
-				<h1 className="text-sm font-bold leading-none tracking-tight">CONFIGURAÇÃO RFM</h1>
-			</div>
+		<div className={cn("flex w-full flex-col gap-3")}>
 			<div className="w-full flex flex-col gap-2">
-				<div className="w-full flex items-center gap-2 bg-primary text-primary-foreground rounded">
+				<div className="w-full flex items-center gap-2">
 					<h1 className="w-1/4 text-center">NOTA</h1>
 					<h1 className="w-1/4 text-center">FREQUÊNCIA</h1>
 					<h1 className="w-1/4 text-center">RECÊNCIA</h1>
 					<h1 className="w-1/4 text-center">MONETÁRIO</h1>
 				</div>
 				{isLoading ? <LoadingComponent /> : null}
-				{isError ? <ErrorComponent /> : null}
+				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 				{isSuccess ? (
 					<div className="w-full flex flex-col gap-2">
 						<div className="w-full flex items-center gap-2">

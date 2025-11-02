@@ -16,7 +16,7 @@ import {
 import type { TSidebarConfigItem, TSidebarItem } from "./AppSidebar";
 import Link from "next/link";
 
-export function AppSidebarContentGroup({
+function AppSidebarContentGroup({
 	group,
 }: {
 	group: TSidebarConfigItem;
