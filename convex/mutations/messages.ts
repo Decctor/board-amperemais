@@ -263,31 +263,78 @@ export const createMessage = mutation({
 
 export const createTemplateMessage = mutation({
 	args: {
-		chatId: v.id("chats"),
-		userAppId: v.string(),
+		cliente: v.object({
+			idApp: v.string(),
+			nome: v.string(),
+			cpfCnpj: v.optional(v.string()),
+			email: v.optional(v.string()),
+			telefone: v.string(),
+			telefoneBase: v.string(),
+			avatar_url: v.optional(v.string()),
+		}),
+		autor: v.object({
+			idApp: v.string(),
+			tipo: v.literal("usuario"),
+		}),
+		whatsappPhoneNumberId: v.string(),
 		templateId: v.string(),
 		templatePayloadData: v.any(),
 		templatePayloadContent: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const { chatId, templateId, templatePayloadData, templatePayloadContent, userAppId } = args;
-		console.log("[SEND_TEMPLATE_MESSAGE] Sending template message:", args);
-		// Get chat and user
-		const chat = await ctx.db.get(chatId);
-		if (!chat) throw new Error("Chat não encontrado.");
+		const { cliente, autor, whatsappPhoneNumberId, templateId, templatePayloadData, templatePayloadContent } = args;
 
 		const user = await ctx.db
 			.query("users")
-			.filter((q) => q.eq(q.field("idApp"), userAppId))
+			.filter((q) => q.eq(q.field("idApp"), args.autor.idApp))
 			.first();
-		if (!user) throw new Error("Usuário não encontrado.");
+		if (!user) {
+			throw new Error("Usuário não encontrado.");
+		}
+		const authorId = user._id;
 
-		const client = await ctx.db.get(chat.clienteId);
-		if (!client) throw new Error("Cliente não encontrado.");
+		let clientId: Id<"clients"> | null = null;
+		const client = await ctx.db
+			.query("clients")
+			.filter((q) => q.eq(q.field("idApp"), args.cliente.idApp))
+			.first();
+		if (!client) {
+			// If client is not yet registered, we need to register it
+			const insertClientResponse = await ctx.db.insert("clients", {
+				...args.cliente,
+				telefoneBase: args.cliente.telefoneBase,
+			});
+			clientId = insertClientResponse;
+		} else {
+			clientId = client._id;
+		}
+		if (!clientId) {
+			// If clientId was not defined by any means, we need to throw an error
+			throw new Error("Cliente não encontrado.");
+		}
+		// ## SECOND, DEFINING CHAT DATA
+		let chatId: Id<"chats"> | null = null;
+		const chat = await ctx.db
+			.query("chats")
+			.filter((q) => q.and(q.eq(q.field("whatsappTelefoneId"), whatsappPhoneNumberId), q.eq(q.field("clienteId"), clientId)))
+			.first();
+		if (!chat) {
+			// If chat is not yet registered, we need to register it
+			const insertChatResponse = await ctx.db.insert("chats", {
+				clienteId: clientId,
+				mensagensNaoLidas: 0,
+				status: "ABERTA",
+				whatsappTelefoneId: args.whatsappPhoneNumberId,
+			});
+			chatId = insertChatResponse;
+		} else {
+			// If chat is already registered, we get the its id
+			chatId = chat._id;
+		}
 
 		// Insert message record
 		const messageId = await ctx.db.insert("messages", {
-			chatId: args.chatId,
+			chatId: chatId,
 			autorTipo: "usuario",
 			autorId: user._id,
 			conteudoTexto: templatePayloadContent,
@@ -297,7 +344,7 @@ export const createTemplateMessage = mutation({
 		});
 
 		// Update chat
-		await ctx.db.patch(args.chatId, {
+		await ctx.db.patch(chatId, {
 			ultimaMensagemId: messageId,
 			ultimaMensagemData: Date.now(),
 			ultimaMensagemConteudoTexto: templatePayloadContent,
@@ -308,9 +355,9 @@ export const createTemplateMessage = mutation({
 		// Schedule template send via action
 		await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappTemplate, {
 			messageId: messageId,
-			phoneNumber: client.telefone,
-			templatePayload: args.templatePayloadData,
-			fromPhoneNumberId: chat.whatsappTelefoneId,
+			phoneNumber: cliente.telefone,
+			templatePayload: templatePayloadData,
+			fromPhoneNumberId: whatsappPhoneNumberId,
 		});
 
 		return {

@@ -2,11 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { getFileTypeTitle } from "@/lib/files-storage";
 import { useMutation } from "convex/react";
 import { Download, FileImage, FileText, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { AudioPlayer } from "./MeidaMessageDisplayAudioPlayer";
 
 type MediaMessageDisplayProps = {
 	storageId?: string;
@@ -17,9 +19,20 @@ type MediaMessageDisplayProps = {
 	mimeType?: string;
 	caption?: string;
 	onImageLoad?: () => void;
+	variant?: "sent" | "received";
 };
 
-function MediaMessageDisplay({ storageId, mediaUrl, mediaType, fileName, fileSize, mimeType, caption, onImageLoad }: MediaMessageDisplayProps) {
+function MediaMessageDisplay({
+	storageId,
+	mediaUrl,
+	mediaType,
+	fileName,
+	fileSize,
+	mimeType,
+	caption,
+	onImageLoad,
+	variant = "received",
+}: MediaMessageDisplayProps) {
 	const [fileUrl, setFileUrl] = useState<string | null>(mediaUrl || null);
 	const [isLoading, setIsLoading] = useState(false);
 	const getFileUrl = useMutation(api.mutations.files.getFileUrl);
@@ -85,38 +98,50 @@ function MediaMessageDisplay({ storageId, mediaUrl, mediaType, fileName, fileSiz
 	// Image display with thumbnail and click-to-expand
 	if (mediaType === "IMAGEM" && fileUrl) {
 		return (
-			<div className="max-w-xs">
-				<Dialog>
-					<DialogTrigger asChild>
-						<div className="cursor-pointer group relative">
-							<img
-								src={fileUrl}
-								alt={fileName || "Imagem"}
-								className="rounded-lg max-w-full h-auto group-hover:opacity-90 transition-opacity"
-								style={{ maxHeight: "200px" }}
-							/>
+			<Dialog>
+				<DialogTrigger asChild>
+					<div className="flex flex-col gap-1">
+						<div className="cursor-pointer group relative w-64 max-w-64 h-64 max-h-64">
+							<Image src={fileUrl} alt={fileName || "Imagem"} fill className="rounded-lg group-hover:opacity-90 transition-opacity" />
 							<div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded-lg">
 								<ImageIcon className="w-8 h-8 text-white" />
 							</div>
 						</div>
-					</DialogTrigger>
-					<DialogContent className="max-w-4xl max-h-[90vh] p-0">
-						<div className="relative">
-							<Image src={fileUrl} alt={fileName || "Imagem"} className="w-full h-auto max-h-[80vh] object-contain" onLoad={onImageLoad} />
-							<div className="absolute top-4 right-4">
-								<Button variant="secondary" size="sm" onClick={handleDownload} className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white">
-									<Download className="w-4 h-4 mr-2" />
-									Baixar
-								</Button>
-							</div>
+						{caption && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{caption}</p>}
+					</div>
+				</DialogTrigger>
+				<DialogContent className="max-h-[90%]">
+					<div className="flex flex-1 relative">
+						<Image
+							src={fileUrl}
+							alt={fileName || "Imagem"}
+							width={300}
+							height={300}
+							className="w-full h-auto max-h-[80vh] object-contain"
+							onLoad={onImageLoad}
+						/>
+						<div className="absolute top-4 right-4">
+							<Button variant="secondary" size="sm" onClick={handleDownload} className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white">
+								<Download className="w-4 h-4 mr-2" />
+								Baixar
+							</Button>
 						</div>
-						{caption && (
-							<div className="p-4 border-t">
-								<p className="text-sm text-gray-600 dark:text-gray-400">{caption}</p>
-							</div>
-						)}
-					</DialogContent>
-				</Dialog>
+					</div>
+					{caption && (
+						<div className="p-4 border-t">
+							<p className="text-sm text-primary-foreground">{caption}</p>
+						</div>
+					)}
+				</DialogContent>
+			</Dialog>
+		);
+	}
+
+	// Audio display with custom player
+	if (mediaType === "AUDIO" && fileUrl) {
+		return (
+			<div className="flex flex-col gap-2">
+				<AudioPlayer audioUrl={fileUrl} variant={variant} showDownload={false} />
 				{caption && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{caption}</p>}
 			</div>
 		);
@@ -124,19 +149,19 @@ function MediaMessageDisplay({ storageId, mediaUrl, mediaType, fileName, fileSiz
 
 	// Document display with download functionality
 	return (
-		<div className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg max-w-xs">
+		<div className="flex items-center gap-3 p-3 bg-primary rounded-lg max-w-xs">
 			<div className="shrink-0">
-				{mediaType === "IMAGEM" ? <FileImage className="w-8 h-8 text-blue-600" /> : <FileText className="w-8 h-8 text-green-600" />}
+				{mediaType === "IMAGEM" ? <FileImage className="w-6 h-6 text-blue-600" /> : <FileText className="w-6 h-6 text-green-600" />}
 			</div>
 			<div className="flex-1 min-w-0">
-				<p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{fileName || "Documento"}</p>
-				<div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+				<p className="text-sm font-medium text-primary-foreground truncate">{fileName || "Documento"}</p>
+				<div className="flex items-center gap-2 text-xs text-primary-foreground/80">
 					{fileSize && <span>{formatFileSize(fileSize)}</span>}
 					{mimeType && fileSize && <span>•</span>}
-					{mimeType && <span>{mimeType.split("/")[1]?.toUpperCase()}</span>}
+					{mimeType && <span>{getFileTypeTitle(mimeType)}</span>}
 				</div>
 			</div>
-			<Button variant="ghost" size="sm" onClick={handleDownload} disabled={!fileUrl} className="shrink-0">
+			<Button variant="ghost" size="fit" onClick={handleDownload} disabled={!fileUrl} className="flex-shrink-0 p-2 rounded-full text-primary-foreground">
 				<Download className="w-4 h-4" />
 			</Button>
 		</div>

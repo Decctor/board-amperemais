@@ -174,15 +174,15 @@ export async function handleDownload({ fileName, fileUrl }: { fileName: string; 
 	}
 }
 
-function getFileTypeTitle(type: string) {
+export function getFileTypeTitle(type: string) {
 	return FileTypes[type]?.title || "NÃO DEFINIDO";
 }
 
-function getTitleFileType(title: string) {
+export function getTitleFileType(title: string) {
 	const equivalent = Object.entries(FileTypes).find(([key, value]) => title === value.title);
 	return equivalent ? equivalent[0] : "";
 }
 
-function isFileFormatImage(format: string) {
+export function isFileFormatImage(format: string) {
 	return ["IMAGEM (.PNG)", "IMAGEM(.JPEG)", "IMAGEM(.TIFF)", "IMAGEM(.JPG)"].includes(format);
 }
