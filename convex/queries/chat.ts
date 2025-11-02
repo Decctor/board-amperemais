@@ -358,7 +358,7 @@ export const getChatSummary = query({
 				id: m._id,
 				autorTipo: m.autorTipo,
 				conteudoTipo: m.conteudoMidiaTipo,
-				conteudoTexto: m.conteudoTexto,
+				conteudoTexto: m.conteudoTexto || `[${m.conteudoMidiaTipo}]: ${m.conteudoMidiaTextoProcessadoResumo}`,
 				conteudoMidiaUrl: m.conteudoMidiaUrl,
 				dataEnvio: m.dataEnvio,
 				atendimentoId: m.servicoId,
