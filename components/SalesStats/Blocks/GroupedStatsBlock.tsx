@@ -145,7 +145,7 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 					</TooltipProvider>
 				</div>
 			</div>
-			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
+			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 				<ProductsList height={330} width={"100%"} list={dataSorted} />
 			</div>
 		</div>
@@ -318,7 +318,7 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 			</div>
 
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] :max-h-[450px]">
-				<div className="flex max-h-[400px] min-h-[400px] w-full items-center justify-center lg:max-h-[350px] lg:min-h-[350px]">
+				<div className="flex max-h-[400px] min-h-[400px] w-full items-center justify-center lg:max-h-[350px] lg:min-h-[350px] overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 					<ChartContainer config={chartConfig} className="aspect-auto h-[350px] w-full lg:h-[250px]">
 						<BarChart
 							margin={{

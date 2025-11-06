@@ -148,7 +148,7 @@ export function AudioPlayer({ audioUrl, className, variant = "received", onDownl
 	const waveformUnplayed = variant === "sent" ? "bg-green-600/30" : "bg-primary/20";
 
 	return (
-		<div className={cn("flex items-center gap-2 p-3 rounded-2xl backdrop-blur-sm min-w-[280px] max-w-[320px]", bgStyles, className)}>
+		<div className={cn("flex items-center gap-2 p-3 rounded-2xl backdrop-blur-sm min-w-[200px] max-w-[320px]", bgStyles, className)}>
 			{/* Audio Element */}
 			<audio ref={audioRef} src={audioUrl} preload="metadata">
 				<track kind="captions" />
@@ -161,7 +161,7 @@ export function AudioPlayer({ audioUrl, className, variant = "received", onDownl
 				onClick={togglePlay}
 				disabled={isLoading}
 				className={cn(
-					"h-10 w-10 rounded-full flex-shrink-0 transition-all duration-200",
+					"h-8 w-8 lg:h-10 lg:w-10 rounded-full shrink-0 transition-all duration-200",
 					buttonStyles,
 					"hover:scale-105 active:scale-95",
 					isPlaying && "ring-2 ring-white/30",
@@ -170,9 +170,9 @@ export function AudioPlayer({ audioUrl, className, variant = "received", onDownl
 				{isLoading ? (
 					<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
 				) : isPlaying ? (
-					<Pause className="w-5 h-5 fill-current" />
+					<Pause className="w-4 h-4 lg:w-5 lg:h-5 fill-current" />
 				) : (
-					<Play className="w-5 h-5 fill-current ml-0.5" />
+					<Play className="w-4 h-4 lg:w-5 lg:h-5 fill-current ml-0.5" />
 				)}
 			</Button>
 
@@ -185,6 +185,7 @@ export function AudioPlayer({ audioUrl, className, variant = "received", onDownl
 					onMouseDown={handleMouseDown}
 					onMouseUp={handleMouseUp}
 					onMouseLeave={handleMouseUp}
+					onKeyDown={() => {}}
 				>
 					{/* Background Track */}
 					<div className="absolute inset-0 flex items-center">

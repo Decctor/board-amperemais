@@ -8,7 +8,7 @@ import { Download, FileImage, FileText, Image as ImageIcon } from "lucide-react"
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AudioPlayer } from "./MeidaMessageDisplayAudioPlayer";
+import { AudioPlayer } from "./MediaMessageDisplayAudioPlayer";
 
 type MediaMessageDisplayProps = {
 	storageId?: string;

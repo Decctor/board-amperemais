@@ -3,6 +3,7 @@
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatNameAsInitials } from "@/lib/formatting";
@@ -70,7 +71,7 @@ function ContentHeader({ chat, onBack, className }: ContentHeaderProps) {
 			<div className="flex items-center gap-3 px-4 py-3">
 				{/* Back button (mobile) */}
 				{onBack && (
-					<Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 rounded-full hover:bg-primary/10 transition-colors flex-shrink-0">
+					<Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 rounded-full hover:bg-primary/10 transition-colors shrink-0">
 						<ArrowLeft className="w-5 h-5" />
 					</Button>
 				)}
@@ -78,7 +79,7 @@ function ContentHeader({ chat, onBack, className }: ContentHeaderProps) {
 				{/* Avatar */}
 				<Avatar className="w-10 h-10 min-w-10 min-h-10 ring-2 ring-primary/10">
 					<AvatarImage src={chat.cliente?.avatar_url} alt={chat.cliente?.nome ?? ""} />
-					<AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+					<AvatarFallback className="bg-linear-to-br from-primary/20 to-primary/10 text-primary font-semibold">
 						{formatNameAsInitials(chat.cliente?.nome ?? "?")}
 					</AvatarFallback>
 				</Avatar>
@@ -90,7 +91,7 @@ function ContentHeader({ chat, onBack, className }: ContentHeaderProps) {
 				</div>
 
 				{/* Status indicator */}
-				<div className="flex-shrink-0">
+				<div className="shrink-0">
 					<div
 						className={cn(
 							"px-3 py-1 rounded-full text-xs font-medium",
@@ -114,7 +115,7 @@ type ServiceBannerProps = {
 
 function ServiceBanner({ service }: ServiceBannerProps) {
 	return (
-		<div className="bg-gradient-to-b from-primary/90 to-primary  text-primary-foreground px-4 py-2.5">
+		<div className="bg-linear-to-b from-primary/90 to-primary  text-primary-foreground px-4 py-2.5">
 			<div className="flex items-center justify-between gap-3 flex-wrap">
 				{/* Service info */}
 				<div className="flex-1 min-w-0">
@@ -132,7 +133,16 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 							</span>
 						)}
 					</div>
-					<p className="text-sm font-medium truncate">{service.descricao}</p>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<p className="text-sm font-medium truncate">{service.descricao}</p>
+							</TooltipTrigger>
+							<TooltipContent className="max-w-[300px] ">
+								<p className="text-xs font-medium wrap-break-word whitespace-pre-wrap text-justify">{service.descricao}</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 
 				{/* Responsible */}
