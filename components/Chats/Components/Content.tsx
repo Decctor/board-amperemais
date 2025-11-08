@@ -118,17 +118,7 @@ type ServiceBannerProps = {
 
 function ServiceBanner({ service }: ServiceBannerProps) {
 	const { session } = useChatHub();
-	const [transferDialogOpen, setTransferDialogOpen] = useState(false);
-	const [transferType, setTransferType] = useState<"to-me" | "to-other" | "to-ai">("to-me");
-
-	// Check if current user is the responsible
-	const isCurrentUserResponsible =
-		service.responsavel && service.responsavel !== "ai" && "idApp" in service.responsavel && service.responsavel.idApp === session?._id;
-
-	const handleTransferClick = (type: "to-me" | "to-other" | "to-ai") => {
-		setTransferType(type);
-		setTransferDialogOpen(true);
-	};
+	const [isDialogOpen, setIsDialogOpen] = useState(false);
 
 	return (
 		<>
@@ -178,52 +168,28 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 							<div className="px-2.5 py-1 bg-primary-foreground/20  rounded-full text-xs font-medium backdrop-blur-sm">Sem responsável</div>
 						)}
 
-						{/* Transfer Menu */}
+						{/* Transfer Button */}
 						{service.responsavel && (
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-primary-foreground/30 text-primary-foreground shrink-0">
-										<Users className="w-4 h-4" />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" className="w-56">
-									{!isCurrentUserResponsible && service.responsavel !== "ai" && (
-										<DropdownMenuItem onClick={() => handleTransferClick("to-me")}>
-											<UserRound className="w-4 h-4 mr-2" />
-											Transferir para mim
-										</DropdownMenuItem>
-									)}
-									{service.responsavel !== "ai" && (
-										<DropdownMenuItem onClick={() => handleTransferClick("to-ai")}>
-											<Bot className="w-4 h-4 mr-2" />
-											Transferir para IA
-										</DropdownMenuItem>
-									)}
-									{service.responsavel === "ai" && (
-										<DropdownMenuItem onClick={() => handleTransferClick("to-me")}>
-											<UserRound className="w-4 h-4 mr-2" />
-											Transferir para mim
-										</DropdownMenuItem>
-									)}
-									<DropdownMenuItem onClick={() => handleTransferClick("to-other")}>
-										<Users className="w-4 h-4 mr-2" />
-										Transferir para outro usuário
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => setIsDialogOpen(true)}
+								className="h-7 w-7 rounded-full hover:bg-primary-foreground/30 text-primary-foreground shrink-0"
+							>
+								<Users className="w-4 h-4" />
+							</Button>
 						)}
 					</div>
 				</div>
 			</div>
 
 			{/* Transfer Dialog */}
-			{session && transferDialogOpen && transferType !== null && (
+			{session && isDialogOpen && (
 				<ServiceTransferDialog
-					closeMenu={() => setTransferDialogOpen(false)}
+					closeMenu={() => setIsDialogOpen(false)}
 					serviceId={service._id}
 					currentResponsible={service.responsavel}
 					currentUserIdApp={session._id}
-					transferType={transferType}
 				/>
 			)}
 		</>
