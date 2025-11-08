@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, mutation } from "../_generated/server";
 
 export const createService = internalMutation({
@@ -134,6 +134,60 @@ export const transferServiceToHuman = internalMutation({
 			success: true,
 			serviceId,
 			updated: false,
+		};
+	},
+});
+
+export const transferServiceToUser = mutation({
+	args: {
+		serviceId: v.id("services"),
+		userIdApp: v.optional(v.string()), // MongoDB user ID string, if undefined/null, transfer to AI
+	},
+	handler: async (ctx, args) => {
+		console.log("[INFO] [SERVICES] [TRANSFER_SERVICE_TO_USER] Transferring service:", args.serviceId, "to user:", args.userIdApp || "ai");
+
+		// Get the service
+		const service = await ctx.db.get(args.serviceId);
+		if (!service) {
+			throw new Error("Serviço não encontrado.");
+		}
+
+		// Validate service is in PENDENTE status
+		if (service.status !== "PENDENTE") {
+			throw new Error("Apenas serviços pendentes podem ser transferidos.");
+		}
+
+		let newResponsible: Id<"users"> | "ai" | undefined;
+
+		if (args.userIdApp) {
+			// Find Convex user by idApp (MongoDB _id)
+			const user = await ctx.db
+				.query("users")
+				.filter((q) => q.eq(q.field("idApp"), args.userIdApp))
+				.first();
+
+			if (!user) {
+				throw new Error("Usuário não encontrado no sistema.");
+			}
+
+			newResponsible = user._id;
+		} else {
+			// Transfer to AI
+			newResponsible = "ai";
+		}
+
+		// Update service responsible
+		await ctx.db.patch(args.serviceId, {
+			responsavel: newResponsible,
+		});
+
+		console.log("[INFO] [SERVICES] [TRANSFER_SERVICE_TO_USER] Service transferred successfully");
+
+		return {
+			success: true,
+			serviceId: args.serviceId,
+			responsavel: newResponsible,
+			message: "Responsabilidade transferida com sucesso.",
 		};
 	},
 });

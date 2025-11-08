@@ -151,7 +151,7 @@ export const getChat = query({
 			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.eq(q.field("status"), "PENDENTE")))
 			.first();
 
-		let chatOpenServiceResponsible: { nome: string; avatar_url: string | null } | "ai" | null = null;
+		let chatOpenServiceResponsible: { nome: string; avatar_url: string | null; idApp: string } | "ai" | null = null;
 		if (chatOpenService) {
 			if (chatOpenService.responsavel && chatOpenService.responsavel === "ai") {
 				chatOpenServiceResponsible = "ai";
@@ -162,6 +162,7 @@ export const getChat = query({
 					chatOpenServiceResponsible = {
 						nome: user.nome,
 						avatar_url: user.avatar_url ?? null,
+						idApp: user.idApp,
 					};
 				}
 			}

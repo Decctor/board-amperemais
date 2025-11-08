@@ -3,14 +3,17 @@
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import { useQuery } from "convex/react";
-import { ArrowLeft, Bot, MessageCircle, UserRound } from "lucide-react";
+import { ArrowLeft, Bot, MessageCircle, UserRound, Users } from "lucide-react";
 import type { ReactNode } from "react";
+import { useState } from "react";
+import { ServiceTransferDialog } from "./ServiceTransferDialog";
 import { useChatHub } from "./context";
 
 export type ChatHubContentProps = {
@@ -114,54 +117,115 @@ type ServiceBannerProps = {
 };
 
 function ServiceBanner({ service }: ServiceBannerProps) {
+	const { session } = useChatHub();
+	const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+	const [transferType, setTransferType] = useState<"to-me" | "to-other" | "to-ai">("to-me");
+
+	// Check if current user is the responsible
+	const isCurrentUserResponsible =
+		service.responsavel && service.responsavel !== "ai" && "idApp" in service.responsavel && service.responsavel.idApp === session?._id;
+
+	const handleTransferClick = (type: "to-me" | "to-other" | "to-ai") => {
+		setTransferType(type);
+		setTransferDialogOpen(true);
+	};
+
 	return (
-		<div className="bg-linear-to-b from-primary/90 to-primary  text-primary-foreground px-4 py-2.5">
-			<div className="flex items-center justify-between gap-3 flex-wrap">
-				{/* Service info */}
-				<div className="flex-1 min-w-0">
-					<div className="flex items-center gap-2 mb-1">
-						<span className="text-xs font-bold tracking-wide">ATENDIMENTO EM ANDAMENTO</span>
-						{service.dataInicio && (
-							<span className="text-xs opacity-90">
-								desde{" "}
-								{new Date(service.dataInicio).toLocaleString("pt-BR", {
-									day: "2-digit",
-									month: "2-digit",
-									hour: "2-digit",
-									minute: "2-digit",
-								})}
-							</span>
+		<>
+			<div className="bg-linear-to-b from-primary/90 to-primary  text-primary-foreground px-4 py-2.5">
+				<div className="flex items-center justify-between gap-3 flex-wrap">
+					{/* Service info */}
+					<div className="flex-1 min-w-0">
+						<div className="flex items-center gap-2 mb-1">
+							<span className="text-xs font-bold tracking-wide">ATENDIMENTO EM ANDAMENTO</span>
+							{service.dataInicio && (
+								<span className="text-xs opacity-90">
+									desde{" "}
+									{new Date(service.dataInicio).toLocaleString("pt-BR", {
+										day: "2-digit",
+										month: "2-digit",
+										hour: "2-digit",
+										minute: "2-digit",
+									})}
+								</span>
+							)}
+						</div>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<p className="text-sm font-medium truncate">{service.descricao}</p>
+								</TooltipTrigger>
+								<TooltipContent className="max-w-[300px] ">
+									<p className="text-xs font-medium wrap-break-word whitespace-pre-wrap text-justify">{service.descricao}</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</div>
+
+					{/* Responsible and Transfer Button */}
+					<div className="flex items-center gap-2">
+						{service.responsavel === "ai" ? (
+							<div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary-foreground/20 rounded-full text-xs font-medium backdrop-blur-sm">
+								<Bot className="w-4 h-4" />
+								<span>IA</span>
+							</div>
+						) : service.responsavel ? (
+							<div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary-foreground/20 rounded-full text-xs font-medium backdrop-blur-sm">
+								<UserRound className="w-4 h-4" />
+								<span className="truncate max-w-[120px]">{service.responsavel.nome}</span>
+							</div>
+						) : (
+							<div className="px-2.5 py-1 bg-primary-foreground/20  rounded-full text-xs font-medium backdrop-blur-sm">Sem responsável</div>
+						)}
+
+						{/* Transfer Menu */}
+						{service.responsavel && (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-primary-foreground/30 text-primary-foreground shrink-0">
+										<Users className="w-4 h-4" />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end" className="w-56">
+									{!isCurrentUserResponsible && service.responsavel !== "ai" && (
+										<DropdownMenuItem onClick={() => handleTransferClick("to-me")}>
+											<UserRound className="w-4 h-4 mr-2" />
+											Transferir para mim
+										</DropdownMenuItem>
+									)}
+									{service.responsavel !== "ai" && (
+										<DropdownMenuItem onClick={() => handleTransferClick("to-ai")}>
+											<Bot className="w-4 h-4 mr-2" />
+											Transferir para IA
+										</DropdownMenuItem>
+									)}
+									{service.responsavel === "ai" && (
+										<DropdownMenuItem onClick={() => handleTransferClick("to-me")}>
+											<UserRound className="w-4 h-4 mr-2" />
+											Transferir para mim
+										</DropdownMenuItem>
+									)}
+									<DropdownMenuItem onClick={() => handleTransferClick("to-other")}>
+										<Users className="w-4 h-4 mr-2" />
+										Transferir para outro usuário
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
 						)}
 					</div>
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<p className="text-sm font-medium truncate">{service.descricao}</p>
-							</TooltipTrigger>
-							<TooltipContent className="max-w-[300px] ">
-								<p className="text-xs font-medium wrap-break-word whitespace-pre-wrap text-justify">{service.descricao}</p>
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-				</div>
-
-				{/* Responsible */}
-				<div className="flex items-center gap-2">
-					{service.responsavel === "ai" ? (
-						<div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary-foreground/20 rounded-full text-xs font-medium backdrop-blur-sm">
-							<Bot className="w-4 h-4" />
-							<span>IA</span>
-						</div>
-					) : service.responsavel ? (
-						<div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary-foreground/20 rounded-full text-xs font-medium backdrop-blur-sm">
-							<UserRound className="w-4 h-4" />
-							<span className="truncate max-w-[120px]">{service.responsavel.nome}</span>
-						</div>
-					) : (
-						<div className="px-2.5 py-1 bg-primary-foreground/20  rounded-full text-xs font-medium backdrop-blur-sm">Sem responsável</div>
-					)}
 				</div>
 			</div>
-		</div>
+
+			{/* Transfer Dialog */}
+			{session && transferDialogOpen && transferType !== null && (
+				<ServiceTransferDialog
+					closeMenu={() => setTransferDialogOpen(false)}
+					serviceId={service._id}
+					currentResponsible={service.responsavel}
+					currentUserIdApp={session._id}
+					transferType={transferType}
+				/>
+			)}
+		</>
 	);
 }
