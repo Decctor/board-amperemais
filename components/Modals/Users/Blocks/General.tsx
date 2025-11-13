@@ -17,7 +17,7 @@ export default function UsersGeneralBlock({ infoHolder, updateInfoHolder, avatar
 	return (
 		<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex items-center lg:items-start flex-col lg:flex-row gap-2">
-				<UsersGeneralBlockAvatar imageUrl={infoHolder.avatar} imageHolder={avatarHolder} updateImageHolder={updateAvatarHolder} />
+				<UsersGeneralBlockAvatar imageUrl={infoHolder.avatarUrl} imageHolder={avatarHolder} updateImageHolder={updateAvatarHolder} />
 				<div className="h-full w-full lg:grow flex flex-col items-center gap-2">
 					<TextInput
 						label="NOME (*)"
@@ -26,18 +26,11 @@ export default function UsersGeneralBlock({ infoHolder, updateInfoHolder, avatar
 						handleChange={(value) => updateInfoHolder({ nome: value })}
 						width="100%"
 					/>
-					<TextInput
-						label="CPF"
-						value={infoHolder.cpf ?? ""}
-						placeholder="Preencha aqui o CPF do usuário."
-						handleChange={(value) => updateInfoHolder({ cpf: formatToCPF(value) })}
-						width="100%"
-					/>
 					<DateInput
 						label={"DATA DE NASCIMENTO"}
 						editable={true}
 						value={infoHolder.dataNascimento ? formatDateForInputValue(infoHolder.dataNascimento) : undefined}
-						handleChange={(value) => updateInfoHolder({ dataNascimento: formatDateOnInputChange(value, "string") as string })}
+						handleChange={(value) => updateInfoHolder({ dataNascimento: formatDateOnInputChange(value, "date") })}
 						width={"100%"}
 					/>
 				</div>
@@ -72,7 +65,7 @@ function UsersGeneralBlockAvatar({
 	imageHolder,
 	updateImageHolder,
 }: {
-	imageUrl: TUseUserState["state"]["user"]["avatar"];
+	imageUrl: TUseUserState["state"]["user"]["avatarUrl"];
 	imageHolder: TUseUserState["state"]["avatarHolder"];
 	updateImageHolder: TUseUserState["updateAvatarHolder"];
 }) {
@@ -104,7 +97,7 @@ function UsersGeneralBlockAvatarPreview({
 	imageUrl,
 	imageHolder,
 }: {
-	imageUrl: TUseUserState["state"]["user"]["avatar"];
+	imageUrl: TUseUserState["state"]["user"]["avatarUrl"];
 	imageHolder: TUseUserState["state"]["avatarHolder"];
 }) {
 	if (imageHolder.previewUrl) {

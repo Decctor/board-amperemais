@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import connectToDatabase from "@/services/mongodb/main-db-connection";
 import type { TRFMConfig } from "@/utils/rfm";
 import createHttpError from "http-errors";
@@ -9,7 +9,8 @@ type GetResponse = {
 	data: TRFMConfig;
 };
 const getRFMConfigRoute: NextApiHandler<GetResponse> = async (req, res) => {
-	const session = getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const db = await connectToDatabase();
 	const utilsCollection = db.collection<TRFMConfig>("utils");
@@ -27,7 +28,8 @@ type PutResponse = {
 };
 
 const updateRFMConfigRoute: NextApiHandler<PutResponse> = async (req, res) => {
-	const session = getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const db = await connectToDatabase();
 	const utilsCollection = db.collection<TRFMConfig>("utils");
@@ -46,10 +48,7 @@ const updateRFMConfigRoute: NextApiHandler<PutResponse> = async (req, res) => {
 		},
 	);
 
-	if (!updateResponse.acknowledged)
-		throw createHttpError.InternalServerError(
-			"Oops, houve um erro desconhecido ao atualizar configuração.",
-		);
+	if (!updateResponse.acknowledged) throw createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar configuração.");
 
 	return res.status(200).json({
 		data: "Atualização feita com sucesso !",

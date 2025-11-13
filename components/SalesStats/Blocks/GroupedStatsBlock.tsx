@@ -3,7 +3,6 @@ import { formatToMoney } from "@/lib/formatting";
 import { useGroupedSalesStats } from "@/lib/queries/stats/grouped";
 import type { TGroupedSalesStats } from "@/pages/api/stats/sales-grouped";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
-import type { TUserSession } from "@/schemas/users";
 import { useEffect, useMemo, useState } from "react";
 import { BsCart } from "react-icons/bs";
 import { useDebounce } from "use-debounce";
@@ -11,6 +10,7 @@ import { useDebounce } from "use-debounce";
 import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { BadgeDollarSign, CirclePlus, Download } from "lucide-react";
@@ -18,13 +18,11 @@ import { FaRankingStar } from "react-icons/fa6";
 import { VariableSizeList as List, VariableSizeList } from "react-window";
 import { Bar, BarChart, LabelList, Pie, PieChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
-
 type GroupedStatsBlockProps = {
 	generalQueryParams: TSaleStatsGeneralQueryParams;
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 function GroupedStatsBlock({ generalQueryParams, user }: GroupedStatsBlockProps) {
-	const userViewPermission = user.visualizacao;
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
 
 	const [debouncedQueryParams] = useDebounce(queryParams, 1000);

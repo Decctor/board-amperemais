@@ -1,30 +1,31 @@
 import { apiHandler } from "@/lib/api";
 import { appApiHandler } from "@/lib/app-api";
-import { getRouteUserSession } from "@/lib/auth/app-session";
-import { getUserSession } from "@/lib/auth/session";
-import { type TUser, type TUserSession, UserSchema } from "@/schemas/users";
+import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { NewUserSchema, type TUser, type TUserSession, UserSchema } from "@/schemas/users";
+import { db } from "@/services/drizzle";
+import { users } from "@/services/drizzle/schema";
 import connectToDatabase from "@/services/mongodb/main-db-connection";
+import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type Filter, ObjectId } from "mongodb";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 const CreateUserInputSchema = z.object({
-	user: UserSchema.omit({ dataInsercao: true }),
+	user: NewUserSchema.omit({ dataInsercao: true }),
 });
 export type TCreateUserInput = z.infer<typeof CreateUserInputSchema>;
 
-async function createUser({ input, session }: { input: TCreateUserInput; session: TUserSession }) {
-	const sessionUserHasPermission = session.visualizacao === "GERAL";
+async function createUser({ input, session }: { input: TCreateUserInput; session: TAuthUserSession["user"] }) {
+	const sessionUserHasPermission = session.permissoes.usuarios.criar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
-	const db = await connectToDatabase();
-	const usersCollection = db.collection<TUser>("users");
-
-	const insertedUserResponse = await usersCollection.insertOne({ ...input.user, dataInsercao: new Date().toISOString() });
-
-	if (!insertedUserResponse.acknowledged) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar usuário.");
-	const insertedUserId = insertedUserResponse.insertedId.toString();
+	const insertedUser = await db.insert(users).values(input.user).returning({
+		id: users.id,
+	});
+	const insertedUserId = insertedUser[0]?.id;
+	if (!insertedUserId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar usuário.");
 
 	return {
 		data: {
@@ -36,13 +37,15 @@ async function createUser({ input, session }: { input: TCreateUserInput; session
 export type TCreateUserOutput = Awaited<ReturnType<typeof createUser>>;
 
 async function createUserRoute(request: NextRequest) {
-	const session = await getRouteUserSession();
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	if (!session.user.permissoes.usuarios.criar) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
 	const payload = await request.json();
 
 	const input = CreateUserInputSchema.parse(payload);
 
-	const result = await createUser({ input, session });
+	const result = await createUser({ input, session: session.user });
 
 	return NextResponse.json(result);
 }
@@ -69,47 +72,40 @@ const GetUsersInputSchema = z.object({
 });
 export type TGetUsersInput = z.infer<typeof GetUsersInputSchema>;
 
-async function getUsers({ input, session }: { input: TGetUsersInput; session: TUserSession }) {
+async function getUsers({ input, session }: { input: TGetUsersInput; session: TAuthUserSession["user"] }) {
+	const sessionUserHasPermission = session.permissoes.usuarios.visualizar;
+	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
+
 	console.log("[INFO] [GET USERS] Input:", input);
-	const db = await connectToDatabase();
-	const usersCollection = db.collection<TUser>("users");
+
 	if ("id" in input && input.id) {
-		if (typeof input.id !== "string" || !ObjectId.isValid(input.id)) throw new createHttpError.BadRequest("ID inválido.");
-		const user = await usersCollection.findOne({ _id: new ObjectId(input.id) });
+		const id = input.id;
+		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
+		const user = await db.query.users.findFirst({ where: (fields, { eq }) => eq(fields.id, id) });
 		if (!user) throw new createHttpError.NotFound("Usuário não encontrado.");
 		return {
 			data: {
-				byId: { ...user, _id: user._id.toString() },
+				byId: user,
 				default: null,
 			},
 			message: "Usuário encontrado com sucesso.",
 		};
 	}
 
-	const searchQuery: Filter<TUser> =
-		input.search && input.search.trim().length > 0
-			? {
-					$or: [{ nome: { $regex: input.search, $options: "i" } }, { telefone: { $regex: input.search, $options: "i" } }],
-				}
-			: {};
+	const conditions = [];
+	if (input.search)
+		conditions.push(
+			sql`(to_tsvector('portuguese', ${users.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${users.nome} ILIKE '%' || ${input.search} || '%')`,
+		);
 
-	const users = await usersCollection.find(searchQuery).toArray();
+	const usersResult = await db.query.users.findMany({
+		where: and(...conditions),
+		orderBy: (fields, { asc }) => asc(fields.nome),
+	});
 	return {
 		data: {
 			byId: null,
-			default: users.map((u) => ({
-				_id: u._id.toString(),
-				nome: u.nome,
-				cpf: u.cpf,
-				dataNascimento: u.dataNascimento,
-				telefone: u.telefone,
-				email: u.email,
-				usuario: u.usuario,
-				visualizacao: u.visualizacao,
-				vendedor: u.vendedor,
-				dataInsercao: u.dataInsercao,
-				avatar: u.avatar,
-			})),
+			default: usersResult,
 		},
 		message: "Usuários encontrados com sucesso.",
 	};
@@ -119,7 +115,8 @@ export type TGetUsersOutputDefault = Exclude<TGetUsersOutput["data"]["default"],
 export type TGetUsersOutputById = Exclude<TGetUsersOutput["data"]["byId"], null>;
 
 async function getUsersRoute(request: NextRequest) {
-	const session = await getRouteUserSession();
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const searchParams = request.nextUrl.searchParams;
 	console.log("[INFO] [GET USERS] Search params:", searchParams);
 	const input = GetUsersInputSchema.parse({
@@ -127,7 +124,7 @@ async function getUsersRoute(request: NextRequest) {
 		search: searchParams.get("search") ?? undefined,
 	});
 
-	const result = await getUsers({ input, session });
+	const result = await getUsers({ input, session: session.user });
 
 	return NextResponse.json(result);
 }
@@ -141,24 +138,22 @@ const UpdateUserInputSchema = z.object({
 		required_error: "ID do usuário não informado.",
 		invalid_type_error: "Tipo inválido para ID do usuário.",
 	}),
-	user: UserSchema.omit({ dataInsercao: true }),
+	user: NewUserSchema.omit({ dataInsercao: true }),
 });
 export type TUpdateUserInput = z.infer<typeof UpdateUserInputSchema>;
 
-async function updateUser({ input, session }: { input: TUpdateUserInput; session: TUserSession }) {
-	const sessionUserHasPermission = session.visualizacao === "GERAL";
+async function updateUser({ input, session }: { input: TUpdateUserInput; session: TAuthUserSession["user"] }) {
+	const sessionUserHasPermission = session.permissoes.usuarios.editar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
-	const db = await connectToDatabase();
-	const usersCollection = db.collection<TUser>("users");
-
-	const updatedUserResponse = await usersCollection.updateOne({ _id: new ObjectId(input.id) }, { $set: input.user });
-	if (!updatedUserResponse.acknowledged) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar usuário.");
-	if (updatedUserResponse.matchedCount === 0) throw new createHttpError.NotFound("Usuário não encontrado.");
-
+	const updatedUser = await db.update(users).set(input.user).where(eq(users.id, input.id)).returning({
+		id: users.id,
+	});
+	const updatedUserId = updatedUser[0]?.id;
+	if (!updatedUserId) throw new createHttpError.NotFound("Usuário não encontrado.");
 	return {
 		data: {
-			updatedId: input.id,
+			updatedId: updatedUserId,
 		},
 		message: "Usuário atualizado com sucesso.",
 	};
@@ -167,12 +162,13 @@ export type TUpdateUserOutput = Awaited<ReturnType<typeof updateUser>>;
 export type TUpdateUserOutputUpdatedId = Exclude<TUpdateUserOutput["data"]["updatedId"], null>;
 
 async function updateUserRoute(request: NextRequest) {
-	const session = await getRouteUserSession();
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const payload = await request.json();
 	const input = UpdateUserInputSchema.parse(payload);
 
-	const result = await updateUser({ input, session });
+	const result = await updateUser({ input, session: session.user });
 
 	return NextResponse.json(result);
 }

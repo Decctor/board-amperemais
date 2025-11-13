@@ -1,13 +1,14 @@
+import { apiHandler } from "@/lib/api";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import type { TUserSession } from "@/schemas/users";
 import { db } from "@/services/drizzle";
-import { and, count, desc, countDistinct, eq, gte, isNotNull, lte, sql, sum } from "drizzle-orm";
-import { z } from "zod";
-import createHttpError from "http-errors";
 import { clients, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { getUserSession } from "@/lib/auth/session";
+import { and, count, countDistinct, desc, eq, gte, isNotNull, lte, sql, sum } from "drizzle-orm";
+import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
-import { apiHandler } from "@/lib/api";
+import { z } from "zod";
 
 const GetClientStatsInputSchema = z.object({
 	clientId: z.string({
@@ -32,11 +33,11 @@ const GetClientStatsInputSchema = z.object({
 export type TGetClientStatsInput = z.infer<typeof GetClientStatsInputSchema>;
 
 type GetClientStatsParams = {
-	session: TUserSession;
+	user: TAuthUserSession["user"];
 	input: TGetClientStatsInput;
 };
 
-async function getClientStats({ session, input }: GetClientStatsParams) {
+async function getClientStats({ user, input }: GetClientStatsParams) {
 	const client = await db.query.clients.findFirst({
 		where: eq(clients.id, input.clientId),
 	});
@@ -201,13 +202,14 @@ async function getClientStats({ session, input }: GetClientStatsParams) {
 export type TGetClientStatsOutput = Awaited<ReturnType<typeof getClientStats>>;
 
 const getClientStatsHandler: NextApiHandler<TGetClientStatsOutput> = async (req, res) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = GetClientStatsInputSchema.parse({
 		clientId: req.query.clientId as string,
 		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
 	});
-	const data = await getClientStats({ session, input });
+	const data = await getClientStats({ user: sessionUser.user, input });
 	return res.status(200).json(data);
 };
 

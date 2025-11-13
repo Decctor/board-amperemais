@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TClient } from "@/schemas/clients";
 import { SalesRFMFiltersSchema, type TSalesGraphFilters } from "@/schemas/query-params-utils";
 import type { TSale } from "@/schemas/sales";
@@ -26,9 +26,8 @@ const intervalStart = dayjs().subtract(12, "month").startOf("day").toISOString()
 const intervalEnd = dayjs().endOf("day").toISOString();
 
 const getSalesRFM: NextApiHandler<{ data: TRFMResult }> = async (req, res) => {
-	const session = await getUserSession({ request: req });
-	const userSeller = session.vendedor;
-	const userViewPermission = session.visualizacao;
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const { period, total, saleNatures, sellers } = SalesRFMFiltersSchema.parse(req.body);
 
 	// Validating view permission

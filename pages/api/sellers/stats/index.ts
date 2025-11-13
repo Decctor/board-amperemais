@@ -1,6 +1,6 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
-import type { TUserSession } from "@/schemas/users";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { clients, goals, goalsSellers, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -45,11 +45,11 @@ export type TGetSellerStatsInput = z.infer<typeof GetSellerStatsInputSchema>;
 // 4. Quantidade e valor de vendas agrupado por mês
 
 type GetSellerStatsParams = {
-	session: TUserSession;
+	user: TAuthUserSession["user"];
 	input: TGetSellerStatsInput;
 };
 
-async function getSellerStats({ session, input }: GetSellerStatsParams) {
+async function getSellerStats({ user, input }: GetSellerStatsParams) {
 	const seller = await db.query.sellers.findFirst({
 		where: eq(sellers.id, input.sellerId),
 	});
@@ -226,13 +226,14 @@ async function getSellerStats({ session, input }: GetSellerStatsParams) {
 }
 export type TGetSellerStatsOutput = Awaited<ReturnType<typeof getSellerStats>>;
 const getSellerStatsHandler: NextApiHandler<TGetSellerStatsOutput> = async (req, res) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = GetSellerStatsInputSchema.parse({
 		sellerId: req.query.sellerId as string,
 		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
 	});
-	const data = await getSellerStats({ session, input });
+	const data = await getSellerStats({ user: sessionUser.user, input });
 	return res.status(200).json(data);
 };
 

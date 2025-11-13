@@ -1,9 +1,10 @@
 import UnauthenticatedPage from "@/components/Utils/UnauthenticatedPage";
-import { getUserSession } from "@/lib/auth/app-session";
+import { getCurrentSession } from "@/lib/authentication/session";
+import { redirect } from "next/navigation";
 import SegmentsPage from "./segments-page";
 
 export default async function Segments() {
-	const user = await getUserSession();
-	if (!user) return <UnauthenticatedPage />;
-	return <SegmentsPage user={user} />;
+	const sessionUser = await getCurrentSession();
+	if (!sessionUser) redirect("/auth/signin");
+	return <SegmentsPage user={sessionUser.user} />;
 }

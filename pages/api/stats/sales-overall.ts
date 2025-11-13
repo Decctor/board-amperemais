@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TClient } from "@/schemas/clients";
 import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import type { TSaleGoal } from "@/schemas/sale-goals";
@@ -10,6 +10,7 @@ import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import connectToDatabase from "@/services/mongodb/main-db-connection";
 import dayjs from "dayjs";
 import { and, count, eq, exists, gte, inArray, lte, notInArray, sql, sum } from "drizzle-orm";
+import createHttpError from "http-errors";
 import type { Collection } from "mongodb";
 import type { NextApiHandler } from "next";
 
@@ -56,7 +57,8 @@ type GetResponse = {
 	data: TOverallSalesStats;
 };
 const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) => {
-	const user = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
 	console.log("[INFO] [GET_SALES_OVERALL_STATS] Filters payload: ", filters);

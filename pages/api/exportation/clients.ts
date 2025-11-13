@@ -1,13 +1,14 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { ClientSearchQueryParams, type TClient } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
 import connectToDatabase from "@/services/mongodb/main-db-connection";
-import { getRFMLabel, type TRFMConfig } from "@/utils/rfm";
+import { type TRFMConfig, getRFMLabel } from "@/utils/rfm";
 import dayjs from "dayjs";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import createHttpError from "http-errors";
 import type { Collection } from "mongodb";
 import type { NextApiHandler, NextApiRequest } from "next";
 import type { z } from "zod";
@@ -167,7 +168,8 @@ export type TGetClientsExportationOutput = Awaited<ReturnType<typeof fetchClient
 const handleClientsExportation: NextApiHandler<{
 	data: TGetClientsExportationOutput;
 }> = async (req, res) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const data = await fetchClientExportation(req);
 
 	return res.status(200).json({ data });

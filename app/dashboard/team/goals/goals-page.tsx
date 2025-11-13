@@ -4,18 +4,18 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlGoal from "@/components/Modals/Goals/ControlGoal";
 import NewGoal from "@/components/Modals/Goals/NewGoal";
 import { Button } from "@/components/ui/button";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { useGoals } from "@/lib/queries/goals";
 import { cn } from "@/lib/utils";
 import type { TGetGoalsOutputDefault } from "@/pages/api/goals";
-import type { TUserSession } from "@/schemas/users";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 
 type GoalsPageProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 export default function GoalsPage({ user }: GoalsPageProps) {
 	const queryClient = useQueryClient();
@@ -38,12 +38,12 @@ export default function GoalsPage({ user }: GoalsPageProps) {
 				goals.map((goal, index: number) => <GoalsPageGoalCard key={goal.id} goal={goal} handleClick={(id) => setEditGoalModal({ id, isOpen: true })} />)}
 
 			{newGoalModalIsOpen ? (
-				<NewGoal session={user} closeModal={() => setNewGoalModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
+				<NewGoal user={user} closeModal={() => setNewGoalModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 			{editGoalModal.id && editGoalModal.isOpen ? (
 				<ControlGoal
 					goalId={editGoalModal.id}
-					session={user}
+					user={user}
 					closeModal={() => setEditGoalModal({ id: null, isOpen: false })}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>

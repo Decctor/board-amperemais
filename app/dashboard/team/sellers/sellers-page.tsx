@@ -6,19 +6,19 @@ import SalesTeamFilterMenu from "@/components/SalesTeam/SalesTeamFilterMenu";
 import SalesTeamFilterShowcase from "@/components/SalesTeam/SalesTeamFilterShowcase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { useSellers } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
 import type { TGetSellersOutputDefault } from "@/pages/api/sellers";
-import type { TUserSession } from "@/schemas/users";
 import { useQueryClient } from "@tanstack/react-query";
 import { AreaChart, BadgeDollarSign, CirclePlus, ListFilter, Mail, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 type SellersPageProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 export default function SellersPage({ user }: SellersPageProps) {
 	const queryClient = useQueryClient();
@@ -51,11 +51,10 @@ export default function SellersPage({ user }: SellersPageProps) {
 					)}
 				</div>
 			) : null}
-			{viewSellerId ? <ViewSellerResults sellerId={viewSellerId} session={user} closeModal={() => setViewSellerId(null)} /> : null}
 			{editSellerId ? (
 				<EditSeller
 					sellerId={editSellerId}
-					sessionUser={user}
+					user={user}
 					closeModal={() => setEditSellerId(null)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>

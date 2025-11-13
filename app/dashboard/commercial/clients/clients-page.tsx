@@ -2,19 +2,19 @@
 import ClientsDatabaseFilterMenu from "@/components/Clients/DatabaseFilterMenu";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import { Button } from "@/components/ui/button";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
+import { Button } from "@/components/ui/button";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { useClientsBySearch } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
-import type { TUserSession } from "@/schemas/users";
-import { Info, ListFilter, Phone, Mail, Megaphone } from "lucide-react";
+import { Info, ListFilter, Mail, Megaphone, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 type ClientsPageProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 export default function ClientsPage({ user }: ClientsPageProps) {
 	const [newMainEntityModalIsOpen, setNewMainEntityModalIsOpen] = useState<boolean>(false);

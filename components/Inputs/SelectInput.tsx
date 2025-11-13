@@ -1,10 +1,10 @@
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import React, { useEffect, useRef, useState } from "react";
 
+import { cn } from "@/lib/utils";
 import { HiCheck } from "react-icons/hi";
 import { IoMdArrowDropdown, IoMdArrowDropup } from "react-icons/io";
 import { Drawer, DrawerContent } from "../ui/drawer";
-import { cn } from "@/lib/utils";
 
 type SelectOption<T> = {
 	id: string | number;
@@ -42,8 +42,9 @@ function SelectInput<T>({
 		if (options && value) {
 			const filteredOption = options?.find((option) => option.value === value);
 			if (filteredOption) return filteredOption.id;
-			else return null;
-		} else return null;
+			return null;
+		}
+		return null;
 	}
 
 	const ref = useRef<any>(null);
@@ -66,13 +67,12 @@ function SelectInput<T>({
 		setSearchFilter(value);
 		if (!items || !options) return;
 		if (value.trim().length > 0) {
-			let filteredItems = options.filter((item) => item.label.toUpperCase().includes(value.toUpperCase()));
+			const filteredItems = options.filter((item) => item.label.toUpperCase().includes(value.toUpperCase()));
 			setItems(filteredItems);
 			return;
-		} else {
-			setItems(options);
-			return;
 		}
+		setItems(options);
+		return;
 	}
 
 	function resetState() {
@@ -175,24 +175,26 @@ function SelectInput<T>({
 							dropdownDirection === "down" ? "top-[75px]" : "bottom-[75px]"
 						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-100 flex h-[250px] max-h-[250px] w-full flex-col gap-1 self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-white p-2 py-1 shadow-xs dark:bg-[#121212]`}
 					>
-						<div
+						<button
+							type="button"
 							onClick={() => resetState()}
 							className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedId ? "bg-primary/20" : ""}`}
 						>
 							<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
 							{!selectedId ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-						</div>
-						<div className="my-2 h-px w-full bg-gray-200"></div>
+						</button>
+						<div className="my-2 h-px w-full bg-gray-200" />
 						{items ? (
 							items.map((item, index) => (
-								<div
+								<button
+									type="button"
 									onClick={() => handleSelect(item.id, item.value)}
 									key={item.id ? item.id : index}
-									className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${selectedId == item.id ? "bg-primary/20" : ""}`}
+									className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${selectedId === item.id ? "bg-primary/20" : ""}`}
 								>
 									<p className="grow text-sm font-medium text-primary">{item.label}</p>
-									{selectedId == item.id ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-								</div>
+									{selectedId === item.id ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
+								</button>
 							))
 						) : (
 							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
@@ -239,31 +241,32 @@ function SelectInput<T>({
 				<DrawerContent className="p-2 gap-2">
 					<input
 						type="text"
-						autoFocus={true}
 						value={searchFilter}
 						onChange={(e) => handleFilter(e.target.value)}
 						placeholder="Filtre o item desejado..."
 						className="w-full text-sm italic outline-hidden p-2 bg-transparent"
 					/>
-					<div
+					<button
+						type="button"
 						onClick={() => resetState()}
 						className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedId ? "bg-primary/20" : ""}`}
 					>
 						<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
 						{!selectedId ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-					</div>
-					<div className="my-2 h-px w-full bg-gray-200"></div>
+					</button>
+					<div className="my-2 h-px w-full bg-gray-200" />
 					<div className="h-[200px] min-h-[200px] lg:h-[350px] lg:max-h-[350px] flex flex-col gap-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 						{items ? (
 							items.map((item, index) => (
-								<div
+								<button
+									type="button"
 									onClick={() => handleSelect(item.id, item.value)}
 									key={item.id ? item.id : index}
-									className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${selectedId == item.id ? "bg-primary/20" : ""}`}
+									className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${selectedId === item.id ? "bg-primary/20" : ""}`}
 								>
 									<p className="grow text-sm font-medium text-primary">{item.label}</p>
-									{selectedId == item.id ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-								</div>
+									{selectedId === item.id ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
+								</button>
 							))
 						) : (
 							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>

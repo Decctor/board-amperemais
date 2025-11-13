@@ -1,8 +1,9 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { db } from "@/services/drizzle";
 import { products } from "@/services/drizzle/schema";
 import { and, count, sql } from "drizzle-orm";
+import createHttpError from "http-errors";
 import type { NextApiHandler, NextApiRequest } from "next";
 import { z } from "zod";
 
@@ -67,7 +68,8 @@ export type TGetProductsBySearchOutput = Awaited<ReturnType<typeof fetchProducts
 const handleProductsBySearchRoute: NextApiHandler<{
 	data: TGetProductsBySearchOutput;
 }> = async (req, res) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const data = await fetchProductsBySearch(req);
 	return res.status(200).json({
 		data: data,

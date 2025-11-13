@@ -1,25 +1,26 @@
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getErrorMessage } from "@/lib/errors";
+import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { useClientStatsById } from "@/lib/queries/clients";
+import { isValidNumber } from "@/lib/validation";
+import type { TGetClientStatsOutput } from "@/pages/api/clients/stats";
 import type { TUserSession } from "@/schemas/users";
 import dayjs from "dayjs";
-import Header from "../Layouts/Header";
-import DateIntervalInput from "../Inputs/DateIntervalInput";
-import { useClientStatsById } from "@/lib/queries/clients";
 import { BadgeDollarSign, Calendar, CirclePlus, Mail, Phone, ShoppingBag, UserRound } from "lucide-react";
-import LoadingComponent from "../Layouts/LoadingComponent";
-import { getErrorMessage } from "@/lib/errors";
-import ErrorComponent from "../Layouts/ErrorComponent";
-import StatUnitCard from "../Stats/StatUnitCard";
-import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { BsCart, BsTicketPerforated } from "react-icons/bs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
-import type { TGetClientStatsOutput } from "@/pages/api/clients/stats";
 import { useState } from "react";
-import { isValidNumber } from "@/lib/validation";
+import { BsCart, BsTicketPerforated } from "react-icons/bs";
+import DateIntervalInput from "../Inputs/DateIntervalInput";
+import ErrorComponent from "../Layouts/ErrorComponent";
+import Header from "../Layouts/Header";
+import LoadingComponent from "../Layouts/LoadingComponent";
+import StatUnitCard from "../Stats/StatUnitCard";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 type ClientMainProps = {
 	id: string;
-	session: TUserSession;
+	user: TAuthUserSession["user"];
 };
-export default function ClientMain({ id, session }: ClientMainProps) {
+export default function ClientMain({ id, user }: ClientMainProps) {
 	const {
 		data: stats,
 		isLoading,

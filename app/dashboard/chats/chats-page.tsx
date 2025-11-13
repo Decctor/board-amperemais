@@ -1,9 +1,9 @@
 "use client";
 import ChatsMain from "@/components/Chats/ChatsMain";
-import type { TUserSession } from "@/schemas/users";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 
 type ChatsPageProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 export default function ChatsPage({ user }: ChatsPageProps) {
 	return (

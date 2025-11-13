@@ -1,17 +1,17 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { updateSeller as updateSellerMutation } from "@/lib/mutations/sellers";
 import { useSellerById } from "@/lib/queries/sellers";
 import type { TSeller, TSellerState } from "@/schemas/sellers";
-import type { TUserSession } from "@/schemas/users";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { GeneralBlock } from "./Blocks/General";
 type EditSellerProps = {
 	sellerId: string;
-	sessionUser: TUserSession;
+	user: TAuthUserSession["user"];
 	callbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -20,7 +20,7 @@ type EditSellerProps = {
 	};
 	closeModal: () => void;
 };
-export default function EditSeller({ sellerId, sessionUser, callbacks, closeModal }: EditSellerProps) {
+export default function EditSeller({ sellerId, user, callbacks, closeModal }: EditSellerProps) {
 	const queryClient = useQueryClient();
 	const { data: seller, queryKey, isLoading, isError, isSuccess, error } = useSellerById({ id: sellerId });
 	const [infoHolder, setInfoHolder] = useState<TSellerState>({

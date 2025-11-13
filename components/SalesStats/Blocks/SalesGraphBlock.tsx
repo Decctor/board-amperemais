@@ -1,6 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatToMoney } from "@/lib/formatting";
@@ -8,7 +9,6 @@ import { useSalesGraph } from "@/lib/queries/stats/sales-graph";
 import { cn } from "@/lib/utils";
 import type { TSalesGraphOutput } from "@/pages/api/stats/sales-graph";
 import type { TSaleStatsGeneralQueryParams, TSalesGraphFilters } from "@/schemas/query-params-utils";
-import type { TUserSession } from "@/schemas/users";
 import { BadgeDollarSign, CirclePlus, Download } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { BsFillFileBarGraphFill } from "react-icons/bs";
@@ -19,11 +19,10 @@ import { useDebounce } from "use-debounce";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "../../ui/chart";
 
 type SalesGraphBlockProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 };
 function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
-	const userViewPermission = user.visualizacao;
 	const [graphMetric, setGraphMetric] = useState<"total" | "qtde">("total");
 	const [queryParams, setQueryParams] = useState<TSalesGraphFilters>({
 		...generalQueryParams,

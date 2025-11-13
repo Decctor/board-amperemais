@@ -1,12 +1,13 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { ClientSearchQueryParams, type TClientSearchQueryParams } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
 import connectToDatabase from "@/services/mongodb/main-db-connection";
-import { getRFMLabel, type TRFMConfig } from "@/utils/rfm";
+import { type TRFMConfig, getRFMLabel } from "@/utils/rfm";
 import dayjs from "dayjs";
 import { and, count, eq, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
+import createHttpError from "http-errors";
 import type { Collection } from "mongodb";
 import type { NextApiHandler, NextApiRequest } from "next";
 
@@ -38,7 +39,8 @@ export type TGetClientsBySearchOutput = Awaited<ReturnType<typeof fetchClientsWi
 const handleClientSearchRoute: NextApiHandler<{
 	data: TGetClientsBySearchOutput;
 }> = async (req, res) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	// Call the data preparation function to get the response data
 	const data = await fetchClientsWithPagination(req);
 

@@ -1,10 +1,10 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { type TUseUserState, useUserState } from "@/hooks/use-user-state";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { updateUser as updateUserMutation } from "@/lib/mutations/users";
 import { useUserById } from "@/lib/queries/users";
-import type { TUserSession } from "@/schemas/users";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import UsersGeneralBlock from "./Blocks/General";
 import UsersSellerBlock from "./Blocks/Seller";
 type EditUserProps = {
 	userId: string;
-	session: TUserSession;
+	session: TAuthUserSession["user"];
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -28,12 +28,12 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 	const { data: user, queryKey, isLoading, isError, isSuccess, error } = useUserById(userId);
 
 	async function handleUpdateUserMutation(state: TUseUserState["state"]) {
-		let userAvatarUrl = state.user.avatar;
+		let userAvatarUrl = state.user.avatarUrl;
 		if (state.avatarHolder.file) {
 			const { url, format, size } = await uploadFile({ file: state.avatarHolder.file, fileName: state.user.nome, prefix: "avatars" });
 			userAvatarUrl = url;
 		}
-		return await updateUserMutation({ id: userId, user: { ...state.user, avatar: userAvatarUrl } });
+		return await updateUserMutation({ id: userId, user: { ...state.user, avatarUrl: userAvatarUrl } });
 	}
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["create-user"],
@@ -61,6 +61,8 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 	useEffect(() => {
 		if (user) redefineState({ user: user, avatarHolder: { file: null, previewUrl: null } });
 	}, [user, redefineState]);
+
+	console.log("[INFO] [EDIT USER] State:", state);
 	return (
 		<ResponsiveMenu
 			menuTitle="EDITAR USUÁRIO"

@@ -1,11 +1,12 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 
 import { db } from "@/services/drizzle";
 import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, count, eq, exists, gte, inArray, isNotNull, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
+import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 
 type TGroupedSalesStatsReduced = {
@@ -53,7 +54,8 @@ type GetResponse = {
 	data: TGroupedSalesStats;
 };
 const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) => {
-	const user = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
 
 	const stats = await getSalesGroupedStats({ filters });

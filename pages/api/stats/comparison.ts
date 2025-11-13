@@ -1,10 +1,11 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { getBestNumberOfPointsBetweenDates, getDateBuckets, getDayStringsBetweenDates, getEvenlySpacedDates } from "@/lib/dates";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, gte, inArray, lte, notInArray } from "drizzle-orm";
+import createHttpError from "http-errors";
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -498,7 +499,8 @@ async function fetchStatsComparison(req: NextApiRequest) {
 const handleGetStatsComparison: NextApiHandler<{
 	data: TStatsComparisonOutput;
 }> = async (req: NextApiRequest, res: NextApiResponse) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const statsComparisonResult = await fetchStatsComparison(req);
 
 	return res.status(200).json({

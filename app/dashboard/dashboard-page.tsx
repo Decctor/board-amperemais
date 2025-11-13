@@ -5,6 +5,7 @@ import OverallStatsBlock from "@/components/SalesStats/Blocks/OverallStatsBlock"
 import SalesGraphBlock from "@/components/SalesStats/Blocks/SalesGraphBlock";
 import SalesQueryParamsMenu from "@/components/SalesStats/SalesQueryParamsMenu";
 import { Button } from "@/components/ui/button";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDateAsLocale } from "@/lib/formatting";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import type { TUserSession } from "@/schemas/users";
@@ -15,10 +16,10 @@ import { useMemo, useState } from "react";
 const initialPeriodStart = dayjs().startOf("month").toISOString();
 const initialPeriodEnd = dayjs().endOf("day").toISOString();
 type DashboardPageProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 export function DashboardPage({ user }: DashboardPageProps) {
-	const initialSellers = user.visualizacao === "GERAL" ? [] : [user.vendedor];
+	const initialSellers = user.permissoes.resultados.escopo ? user.permissoes.resultados.escopo : [];
 
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const [comparisonMenuIsOpen, setComparisonMenuIsOpen] = useState(false);

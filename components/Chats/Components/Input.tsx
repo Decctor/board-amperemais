@@ -22,7 +22,7 @@ export type ChatHubInputProps = {
 };
 
 export function Input({ className, placeholder = "Digite uma mensagem...", maxRows = 4, onMessageSent }: ChatHubInputProps) {
-	const { selectedChatId, selectedPhoneNumber, session, userHasMessageSendingPermission } = useChatHub();
+	const { selectedChatId, selectedPhoneNumber, user, userHasMessageSendingPermission } = useChatHub();
 
 	const chat = useQuery(api.queries.chat.getChat, selectedChatId ? { chatId: selectedChatId } : "skip");
 
@@ -39,11 +39,11 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 
 	// Mark messages as read when viewing chat
 	useEffect(() => {
-		if (selectedChatId && session._id) {
+		if (selectedChatId && user.id) {
 			const timer = setTimeout(() => {
 				markMessagesAsRead({
 					chatId: selectedChatId,
-					userId: session._id,
+					userId: user.id,
 				}).catch((error) => {
 					console.error("Erro ao marcar mensagens como lidas:", error);
 				});
@@ -51,7 +51,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 
 			return () => clearTimeout(timer);
 		}
-	}, [selectedChatId, session._id, markMessagesAsRead]);
+	}, [selectedChatId, user.id, markMessagesAsRead]);
 
 	// Auto-resize textarea
 	useEffect(() => {
@@ -71,7 +71,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 			await handleSendMessage({
 				autor: {
 					tipo: "usuario",
-					idApp: session._id,
+					idApp: user.id,
 				},
 				conteudo: {
 					texto: messageText,
@@ -114,7 +114,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 			await handleSendMessage({
 				autor: {
 					tipo: "usuario",
-					idApp: session._id,
+					idApp: user.id,
 				},
 				conteudo: {
 					texto: undefined,
@@ -173,7 +173,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 				},
 				autor: {
 					tipo: "usuario",
-					idApp: session._id,
+					idApp: user.id,
 				},
 				whatsappPhoneNumberId: selectedPhoneNumber,
 				templateId: template.id,

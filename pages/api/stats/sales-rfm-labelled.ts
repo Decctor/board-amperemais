@@ -1,9 +1,9 @@
 import type { NextApiHandler } from "next";
 
-import { getUserSession } from "@/lib/auth/session";
-
 import { apiHandler } from "@/lib/api";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { db } from "@/services/drizzle";
+import createHttpError from "http-errors";
 
 export type TRFMLabelledStats = {
 	rfmLabel: string;
@@ -15,8 +15,8 @@ type GetResponse = {
 	data: TRFMLabelledStats;
 };
 const getSalesRFMLabelledRoute: NextApiHandler<GetResponse> = async (req, res) => {
-	const session = await getUserSession({ request: req });
-	const userSeller = session.vendedor;
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const allClients = await db.query.clients.findMany({
 		columns: {

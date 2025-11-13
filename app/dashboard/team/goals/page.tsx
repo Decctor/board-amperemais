@@ -1,9 +1,10 @@
 import UnauthenticatedPage from "@/components/Utils/UnauthenticatedPage";
-import { getUserSession } from "@/lib/auth/app-session";
+import { getCurrentSession } from "@/lib/authentication/session";
+import { redirect } from "next/navigation";
 import GoalsPage from "./goals-page";
 
 export default async function Goals() {
-	const user = await getUserSession();
-	if (!user) return <UnauthenticatedPage />;
-	return <GoalsPage user={user} />;
+	const sessionUser = await getCurrentSession();
+	if (!sessionUser) redirect("/auth/signin");
+	return <GoalsPage user={sessionUser.user} />;
 }

@@ -1,14 +1,14 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
-import type { TUserSession } from "@/schemas/users";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import * as ChatHub from "./Components/index";
 
-type ChatsHubComposableProps = {
-	session: TUserSession;
+type ChatsHubProps = {
+	user: TAuthUserSession["user"];
 	userHasMessageSendingPermission: boolean;
 	whatsappConnection: typeof api.queries.connections.getWhatsappConnection._returnType;
 };
@@ -28,9 +28,9 @@ type ChatsHubComposableProps = {
  * - 🎯 Type-safe with TypeScript
  * - 🧩 Composable architecture
  */
-export default function ChatsHubComposable({ session, userHasMessageSendingPermission, whatsappConnection }: ChatsHubComposableProps) {
+export default function ChatsHub({ user, userHasMessageSendingPermission, whatsappConnection }: ChatsHubProps) {
 	return (
-		<ChatHub.Root session={session} userHasMessageSendingPermission={userHasMessageSendingPermission} whatsappConnection={whatsappConnection}>
+		<ChatHub.Root user={user} userHasMessageSendingPermission={userHasMessageSendingPermission} whatsappConnection={whatsappConnection}>
 			<ChatHubContent />
 		</ChatHub.Root>
 	);

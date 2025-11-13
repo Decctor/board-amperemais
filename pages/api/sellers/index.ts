@@ -1,7 +1,7 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { SellerSchema } from "@/schemas/sellers";
-import type { TUserSession } from "@/schemas/users";
 import { db } from "@/services/drizzle";
 import { sales, sellers } from "@/services/drizzle/schema";
 import { and, count, eq, gte, lte, sql, sum } from "drizzle-orm";
@@ -53,9 +53,9 @@ const GetSellersInputSchema = z.union([GetSellersByIdInputSchema, GetSellersDefa
 export type TGetSellersInput = z.infer<typeof GetSellersInputSchema>;
 type GetSellersParams = {
 	input: TGetSellersInput;
-	session: TUserSession;
+	user: TAuthUserSession["user"];
 };
-async function getSellers({ input, session }: GetSellersParams) {
+async function getSellers({ input, user }: GetSellersParams) {
 	console.log("[INFO] [GET SELLERS] Input:", input);
 	if ("id" in input) {
 		console.log("[INFO] [GET SELLERS] Getting seller by id:", input.id);
@@ -149,7 +149,8 @@ export type TGetSellersOutput = Awaited<ReturnType<typeof getSellers>>;
 export type TGetSellersOutputDefault = Exclude<TGetSellersOutput["data"]["default"], undefined>;
 export type TGetSellersOutputById = Exclude<TGetSellersOutput["data"]["byId"], undefined>;
 const getSellersHandler: NextApiHandler<TGetSellersOutput> = async (req, res) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	console.log("[INFO] [GET SELLERS] Query params:", req.query);
 	const input = GetSellersInputSchema.parse({
@@ -160,7 +161,7 @@ const getSellersHandler: NextApiHandler<TGetSellersOutput> = async (req, res) =>
 		orderByField: req.query.orderByField as string | undefined,
 		orderByDirection: req.query.orderByDirection as string | undefined,
 	});
-	const data = await getSellers({ input, session });
+	const data = await getSellers({ input, user: sessionUser.user });
 	return res.status(200).json(data);
 };
 
@@ -176,9 +177,9 @@ export type TUpdateSellerInput = z.infer<typeof UpdateSellerInputSchema>;
 
 type UpdateSellerParams = {
 	input: TUpdateSellerInput;
-	session: TUserSession;
+	user: TAuthUserSession["user"];
 };
-async function updateSeller({ input, session }: UpdateSellerParams) {
+async function updateSeller({ input, user }: UpdateSellerParams) {
 	const seller = await db.update(sellers).set(input.seller).where(eq(sellers.id, input.sellerId));
 	return {
 		data: {
@@ -190,9 +191,10 @@ async function updateSeller({ input, session }: UpdateSellerParams) {
 export type TUpdateSellerOutput = Awaited<ReturnType<typeof updateSeller>>;
 
 const updateSellerHandler: NextApiHandler<TUpdateSellerOutput> = async (req, res) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = UpdateSellerInputSchema.parse(req.body);
-	const data = await updateSeller({ input, session });
+	const data = await updateSeller({ input, user: sessionUser.user });
 	return res.status(200).json(data);
 };
 

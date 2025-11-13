@@ -1,13 +1,14 @@
 "use client";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
+import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
-import type { TUserSession } from "@/schemas/users";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { Grid3x3, UsersRound } from "lucide-react";
 import { useState } from "react";
 
 type SettingsPageProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 export default function SettingsPage({ user }: SettingsPageProps) {
 	const [settingsView, setSettingsView] = useState<"users" | "segments">("users");
@@ -33,7 +34,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
 					SEGMENTAÇÕES
 				</Button>
 			</div>
-			{settingsView === "users" ? <SettingsUsers user={user} /> : null}
+			{settingsView === "users" ? user.permissoes.usuarios.visualizar ? <SettingsUsers user={user} /> : <UnauthorizedPage /> : null}
 			{settingsView === "segments" ? <SettingsSegments user={user} /> : null}
 		</div>
 	);

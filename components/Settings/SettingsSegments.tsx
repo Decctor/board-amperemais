@@ -1,19 +1,19 @@
-import { cn } from "@/lib/utils";
-import type { TUserSession } from "@/schemas/users";
-import { LoadingButton } from "../loading-button";
-import NumberInput from "../Inputs/NumberInput";
-import { useEffect, useState } from "react";
-import { updateRFMConfig } from "@/lib/mutations/configs";
-import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { useRFMConfigQuery } from "@/lib/queries/configs";
-import type { TRFMConfig } from "@/utils/rfm";
-import LoadingComponent from "../Layouts/LoadingComponent";
-import ErrorComponent from "../Layouts/ErrorComponent";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { updateRFMConfig } from "@/lib/mutations/configs";
+import { useRFMConfigQuery } from "@/lib/queries/configs";
+import { cn } from "@/lib/utils";
+import type { TRFMConfig } from "@/utils/rfm";
+import { useMutation } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import NumberInput from "../Inputs/NumberInput";
+import ErrorComponent from "../Layouts/ErrorComponent";
+import LoadingComponent from "../Layouts/LoadingComponent";
+import { LoadingButton } from "../loading-button";
 
 type SettingsSegmentsProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 export default function SettingsSegments({ user }: SettingsSegmentsProps) {
 	const { data, isLoading, isError, isSuccess, error } = useRFMConfigQuery();

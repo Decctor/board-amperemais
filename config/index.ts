@@ -1,3 +1,5 @@
+export const SESSION_COOKIE_NAME = "syncrono-session";
+
 export const AppRoutes = [
 	{
 		path: "/dashboard",

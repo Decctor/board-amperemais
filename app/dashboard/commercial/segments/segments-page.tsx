@@ -3,8 +3,9 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import RFMAnalysisQueryParamsMenu from "@/components/RFMAnalysis/RFMAnalysisQueryParamsMenu";
-import { Button } from "@/components/ui/button";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
+import { Button } from "@/components/ui/button";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
@@ -14,7 +15,6 @@ import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
 import { cn } from "@/lib/utils";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
 import type { TClientSearchQueryParams } from "@/schemas/clients";
-import type { TUserSession } from "@/schemas/users";
 import { RFMLabels } from "@/utils/rfm";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 import dayjs from "dayjs";
@@ -26,7 +26,7 @@ import { toast } from "sonner";
 const initialPeriodStart = dayjs().startOf("month").toISOString();
 const initialPeriodEnd = dayjs().endOf("day").toISOString();
 type SegmentsPageProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 export default function SegmentsPage({ user }: SegmentsPageProps) {
 	return (

@@ -1,10 +1,10 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDateOnInputChange } from "@/lib/formatting";
 import { formatDateForInputValue } from "@/lib/formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import type { TSale } from "@/schemas/sales";
-import type { TUserSession } from "@/schemas/users";
 import { RFMLabels } from "@/utils/rfm";
 import React, { useState } from "react";
 import DateInput from "../Inputs/DateInput";
@@ -14,17 +14,16 @@ import MultipleSalesSelectInput from "../Inputs/SelectMultipleSalesInput";
 import { Button } from "../ui/button";
 
 type SalesQueryParamsMenuProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 	queryParams: TSaleStatsGeneralQueryParams;
 	updateQueryParams: (newParams: Partial<TSaleStatsGeneralQueryParams>) => void;
 	closeMenu: () => void;
 };
 function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu }: SalesQueryParamsMenuProps) {
-	const userViewPermission = user.visualizacao;
 	const [queryParamsHolder, setQueryParamsHolder] = useState<TSaleStatsGeneralQueryParams>(queryParams);
 	const { data: filterOptions } = useSaleQueryFilterOptions();
 
-	const selectableSellers = userViewPermission === "GERAL" ? filterOptions?.sellers || [] : [user.vendedor];
+	const selectableSellers = user.permissoes.resultados.escopo ? user.permissoes.resultados.escopo : [];
 	return (
 		<Sheet open onOpenChange={closeMenu}>
 			<SheetContent>

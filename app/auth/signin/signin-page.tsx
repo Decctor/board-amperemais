@@ -1,37 +1,15 @@
 "use client";
-import { LoadingButton } from "@/components/loading-button";
+import { SubmitButton } from "@/components/submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
-import { getErrorMessage } from "@/lib/errors";
-import { useMutation } from "@tanstack/react-query";
-import axios from "axios";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
+import { login } from "@/lib/authentication/actions";
+import type { TLogin } from "@/lib/authentication/types";
+import { useActionState, useState } from "react";
 
 function SignInPage() {
-	const router = useRouter();
-	const [credentials, setCredentials] = useState({
-		username: "",
-		password: "",
-	});
-	async function login() {
-		const { data } = await axios.post("/api/auth/login", credentials);
-		if (data.success) await router.push("/dashboard");
-		toast.success("Login efetuado com sucesso");
-		return;
-	}
-
-	const { mutate, isPending } = useMutation({
-		mutationKey: ["login"],
-		mutationFn: login,
-		onError(error, variables, context) {
-			const msg = getErrorMessage(error);
-			toast.error(msg, { position: "top-center" });
-		},
-	});
+	const [actionResult, actionMethod] = useActionState(login, {});
 
 	return (
 		<div className="grid min-h-screen place-items-center p-4">
@@ -41,42 +19,30 @@ function SignInPage() {
 					<CardDescription>Acesse ao Dashboard validando sua conta</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<form
-						onSubmit={(e) => {
-							e.preventDefault();
-							mutate();
-						}}
-						className="grid gap-4"
-					>
+					<form action={actionMethod} className="grid gap-4">
 						<div className="space-y-2">
 							<Label htmlFor="username">Usuário</Label>
-							<Input
-								value={credentials.username}
-								onChange={(e) => setCredentials((prev) => ({ ...prev, username: e.target.value }))}
-								id="username"
-								placeholder="meuusuario@"
-								autoComplete="email"
-								name="username"
-								type="text"
-							/>
+							<Input id="username" placeholder="meuusuario@" autoComplete="email" name="username" type="text" />
 						</div>
 
 						<div className="space-y-2">
 							<Label htmlFor="password">Senha</Label>
-							<PasswordInput
-								value={credentials.password}
-								onChange={(e) => setCredentials((prev) => ({ ...prev, password: e.target.value }))}
-								id="password"
-								name="password"
-								required
-								autoComplete="current-password"
-								placeholder="********"
-							/>
+							<PasswordInput id="password" name="password" required autoComplete="current-password" placeholder="********" />
 						</div>
-
-						<LoadingButton loading={isPending} className="w-full" aria-label="submit-btn">
+						{actionResult?.fieldError ? (
+							<ul className="list-disc space-y-1 rounded-lg border bg-destructive/10 p-2 text-[0.8rem] font-medium text-destructive">
+								{Object.values(actionResult.fieldError).map((err) => (
+									<li className="ml-4" key={err}>
+										{err}
+									</li>
+								))}
+							</ul>
+						) : actionResult?.formError ? (
+							<p className="rounded-lg border bg-destructive/10 p-2 text-[0.8rem] font-medium text-destructive">{actionResult?.formError}</p>
+						) : null}
+						<SubmitButton className="w-full" aria-label="submit-btn">
 							Acessar
-						</LoadingButton>
+						</SubmitButton>
 					</form>
 				</CardContent>
 			</Card>

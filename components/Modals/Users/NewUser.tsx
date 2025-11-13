@@ -3,12 +3,12 @@ import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { LoadingButton } from "@/components/loading-button";
 import { type TUseUserState, useUserState } from "@/hooks/use-user-state";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { useMutationWithFeedback } from "@/lib/mutations/common";
 import { createUser } from "@/lib/mutations/users";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
-import type { TUser, TUserSession } from "@/schemas/users";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
@@ -18,7 +18,7 @@ import UsersCredentialsBlock from "./Blocks/Credentials";
 import UsersGeneralBlock from "./Blocks/General";
 import UsersSellerBlock from "./Blocks/Seller";
 type NewUserProps = {
-	session: TUserSession;
+	session: TAuthUserSession["user"];
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -31,14 +31,14 @@ function NewUser({ session, closeModal, callbacks }: NewUserProps) {
 	const { state, updateUser, updateAvatarHolder, resetState } = useUserState();
 
 	async function handleCreateUser(state: TUseUserState["state"]) {
-		let userAvatarUrl = state.user.avatar;
+		let userAvatarUrl = state.user.avatarUrl;
 
 		if (state.avatarHolder.file) {
 			const { url, format, size } = await uploadFile({ file: state.avatarHolder.file, fileName: state.user.nome, prefix: "avatars" });
 			userAvatarUrl = url;
 		}
 
-		return await createUser({ user: { ...state.user, avatar: userAvatarUrl } });
+		return await createUser({ user: { ...state.user, avatarUrl: userAvatarUrl } });
 	}
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["create-user"],
@@ -73,6 +73,7 @@ function NewUser({ session, closeModal, callbacks }: NewUserProps) {
 			stateIsLoading={false}
 			stateError={null}
 			closeMenu={closeModal}
+			dialogVariant="md"
 		>
 			<UsersGeneralBlock
 				infoHolder={state.user}

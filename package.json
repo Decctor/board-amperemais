@@ -19,6 +19,8 @@
 		"@biomejs/biome": "^1.9.4",
 		"@convex-dev/workflow": "^0.2.7",
 		"@lucia-auth/adapter-mongodb": "^1.0.3",
+		"@oslojs/crypto": "^1.0.1",
+		"@oslojs/encoding": "^1.1.0",
 		"@radix-ui/react-aspect-ratio": "^1.1.1",
 		"@radix-ui/react-avatar": "^1.1.0",
 		"@radix-ui/react-collapsible": "^1.1.12",

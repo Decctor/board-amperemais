@@ -1,14 +1,14 @@
 "use client";
 import { api } from "@/convex/_generated/api";
-import type { TUserSession } from "@/schemas/users";
-import LoadingComponent from "../Layouts/LoadingComponent";
 import { useConvexQuery } from "@/convex/utils";
-import ChatsHub from "./ChatsHub";
-import ErrorComponent from "../Layouts/ErrorComponent";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import ErrorComponent from "../Layouts/ErrorComponent";
+import LoadingComponent from "../Layouts/LoadingComponent";
+import ChatsHub from "./ChatsHub";
 
 type ChatsMainProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 };
 
 export default function ChatsMain({ user }: ChatsMainProps) {
@@ -16,6 +16,6 @@ export default function ChatsMain({ user }: ChatsMainProps) {
 	if (isPending) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
 	if (isSuccess && !!whatsappConnection)
-		return <ChatsHub session={user} userHasMessageSendingPermission={true} whatsappConnection={whatsappConnection} />;
+		return <ChatsHub user={user} userHasMessageSendingPermission={true} whatsappConnection={whatsappConnection} />;
 	return <></>;
 }

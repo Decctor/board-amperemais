@@ -1,19 +1,19 @@
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatNameAsInitials, formatToDateTime, formatToMoney } from "@/lib/formatting";
 import { useSellerStats } from "@/lib/queries/sellers";
 import type { TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
-import type { TUserSession } from "@/schemas/users";
 import { CalendarDays, ChartArea, DollarSign, ListOrdered, Mail, Phone, ShoppingCart, User } from "lucide-react";
 
 type ViewSellerResultsProps = {
 	sellerId: string;
-	session: TUserSession;
+	user: TAuthUserSession;
 	closeModal: () => void;
 };
 
-function ViewSellerResults({ sellerId, session, closeModal }: ViewSellerResultsProps) {
+function ViewSellerResults({ sellerId, user, closeModal }: ViewSellerResultsProps) {
 	const {
 		data: stats,
 		isLoading,
@@ -31,9 +31,13 @@ function ViewSellerResults({ sellerId, session, closeModal }: ViewSellerResultsP
 		>
 			{isSuccess ? (
 				<>
-					<ViewSellerResultsHeader seller={stats.seller} />
-					<ViewSellerResultsQuantitative quantitative={stats.quantitative} firstSaleDate={stats.firstSaleDate} lastSaleDate={stats.lastSaleDate} />
-					<ViewSellerResultsQualitative qualitative={stats.qualitative} />
+					<ViewSellerResultsHeader seller={stats.vendedor} />
+					<ViewSellerResultsQuantitative
+						quantitative={stats.resultadosAgrupados.quantitativo}
+						firstSaleDate={stats.dataPrimeiraVenda}
+						lastSaleDate={stats.dataUltimaVenda}
+					/>
+					<ViewSellerResultsQualitative qualitative={stats.resultadosAgrupados.qualitativo} />
 				</>
 			) : null}
 		</ResponsiveMenuViewOnly>

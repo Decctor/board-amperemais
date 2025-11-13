@@ -15,6 +15,13 @@
       "when": 1761498855897,
       "tag": "0001_empty_steve_rogers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1762819861145,
+      "tag": "0002_narrow_black_knight",
+      "breakpoints": true
     }
   ]
 }

@@ -2,14 +2,14 @@
 
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { TUserSession } from "@/schemas/users";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { createContext, useContext } from "react";
 
 export type ChatHubContextValue = {
 	// State
 	selectedChatId: Id<"chats"> | null;
 	selectedPhoneNumber: string | null;
-	session: TUserSession;
+	user: TAuthUserSession["user"];
 	isDesktop: boolean;
 	userHasMessageSendingPermission: boolean;
 	whatsappConnection: typeof api.queries.connections.getWhatsappConnection._returnType;

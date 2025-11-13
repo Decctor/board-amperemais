@@ -1,8 +1,8 @@
 import { apiHandler } from "@/lib/api";
-import { getUserSession } from "@/lib/auth/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { GoalSchema, GoalSellerSchema } from "@/schemas/goals";
-import type { TUserSession } from "@/schemas/users";
 import { db } from "@/services/drizzle";
 import { goals, goalsSellers } from "@/services/drizzle/schema/goals";
 import { eq } from "drizzle-orm";
@@ -31,7 +31,7 @@ const GetGoalsInputSchema = z.object({
 });
 export type TGetGoalsByIdInput = Pick<TGetGoalsInput, "id">;
 export type TGetGoalsInput = z.infer<typeof GetGoalsInputSchema>;
-async function getGoals({ input, session }: { input: TGetGoalsInput; session: TUserSession }) {
+async function getGoals({ input, user }: { input: TGetGoalsInput; user: TAuthUserSession["user"] }) {
 	const { id } = input;
 
 	if (id) {
@@ -89,11 +89,11 @@ export type TGetGoalsOutput = Awaited<ReturnType<typeof getGoals>>;
 export type TGetGoalsOutputById = Exclude<TGetGoalsOutput["data"]["byId"], undefined>;
 export type TGetGoalsOutputDefault = Exclude<TGetGoalsOutput["data"]["default"], undefined>;
 const getGoalsHandler: NextApiHandler<TGetGoalsOutput> = async (req, res) => {
-	const session = await getUserSession({ request: req });
-	if (session.visualizacao !== "GERAL") throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const input = GetGoalsInputSchema.parse(req.query);
-	const goals = await getGoals({ input, session });
+	const goals = await getGoals({ input, user: sessionUser.user });
 	return res.status(200).json(goals);
 };
 
@@ -103,7 +103,7 @@ const CreateGoalInputSchema = z.object({
 });
 export type TCreateGoalInput = z.infer<typeof CreateGoalInputSchema>;
 
-async function createGoal({ input, session }: { input: TCreateGoalInput; session: TUserSession }) {
+async function createGoal({ input, user }: { input: TCreateGoalInput; user: TAuthUserSession["user"] }) {
 	const { goal: payloadGoal, goalSellers: payloadGoalSellers } = input;
 
 	return await db.transaction(async (tx) => {
@@ -133,11 +133,11 @@ async function createGoal({ input, session }: { input: TCreateGoalInput; session
 export type TCreateGoalOutput = Awaited<ReturnType<typeof createGoal>>;
 export type TCreateGoalOutputInsertedId = Exclude<TCreateGoalOutput["data"]["insertedId"], undefined>;
 const createGoalHandler: NextApiHandler<TCreateGoalOutput> = async (req, res) => {
-	const session = await getUserSession({ request: req });
-	if (session.visualizacao !== "GERAL") throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const input = CreateGoalInputSchema.parse(req.body);
-	const goal = await createGoal({ input, session });
+	const goal = await createGoal({ input, user: sessionUser.user });
 	return res.status(200).json(goal);
 };
 
@@ -166,7 +166,7 @@ const UpdateGoalInputSchema = z.object({
 });
 export type TUpdateGoalInput = z.infer<typeof UpdateGoalInputSchema>;
 
-async function updateGoal({ input, session }: { input: TUpdateGoalInput; session: TUserSession }) {
+async function updateGoal({ input, user }: { input: TUpdateGoalInput; user: TAuthUserSession["user"] }) {
 	const { goalId, goal: payloadGoal, goalSellers: payloadGoalSellers } = input;
 
 	return await db.transaction(async (tx) => {
@@ -193,10 +193,10 @@ async function updateGoal({ input, session }: { input: TUpdateGoalInput; session
 }
 export type TUpdateGoalOutput = Awaited<ReturnType<typeof updateGoal>>;
 const updateGoalHandler: NextApiHandler<TUpdateGoalOutput> = async (req, res) => {
-	const session = await getUserSession({ request: req });
-	if (session.visualizacao !== "GERAL") throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = UpdateGoalInputSchema.parse(req.body);
-	const goal = await updateGoal({ input, session });
+	const goal = await updateGoal({ input, user: sessionUser.user });
 	return res.status(200).json(goal);
 };
 
@@ -208,7 +208,7 @@ const DeleteGoalInputSchema = z.object({
 });
 export type TDeleteGoalInput = z.infer<typeof DeleteGoalInputSchema>;
 
-async function deleteGoal({ input, session }: { input: TDeleteGoalInput; session: TUserSession }) {
+async function deleteGoal({ input, user }: { input: TDeleteGoalInput; user: TAuthUserSession["user"] }) {
 	const { goalId } = input;
 
 	return await db.transaction(async (tx) => {
@@ -224,10 +224,10 @@ async function deleteGoal({ input, session }: { input: TDeleteGoalInput; session
 export type TDeleteGoalOutput = Awaited<ReturnType<typeof deleteGoal>>;
 export type TDeleteGoalOutputDeletedId = Exclude<TDeleteGoalOutput["data"]["deletedId"], undefined>;
 const deleteGoalHandler: NextApiHandler<TDeleteGoalOutput> = async (req, res) => {
-	const session = await getUserSession({ request: req });
-	if (session.visualizacao !== "GERAL") throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = DeleteGoalInputSchema.parse(req.query);
-	const goal = await deleteGoal({ input, session });
+	const goal = await deleteGoal({ input, user: sessionUser.user });
 	return res.status(200).json(goal);
 };
 

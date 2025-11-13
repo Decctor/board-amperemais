@@ -1,7 +1,8 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import type { TUserSession } from "@/schemas/users";
 import { Goal, Grid3X3, Home, Megaphone, MessageCircle, Tag, UserRound, Users, UsersRound } from "lucide-react";
 import AppSidebarContentGroup from "./AppSidebarContentGroup";
-import type { TUserSession } from "@/schemas/users";
 import AppSidebarFooter from "./AppSidebarFooter";
 import AppSidebarHeader from "./AppSidebarHeader";
 
@@ -80,7 +81,7 @@ export const SidebarConfig: TSidebarConfigItem[] = [
 		],
 	},
 ];
-export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user: TUserSession }) {
+export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user: TAuthUserSession["user"] }) {
 	return (
 		<Sidebar variant="inset" collapsible="icon" {...props}>
 			<SidebarHeader>

@@ -1,9 +1,9 @@
 import StatUnitCard from "@/components/Stats/StatUnitCard";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useOverallSalesStats } from "@/lib/queries/stats/overall";
 import { cn } from "@/lib/utils";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
-import type { TUserSession } from "@/schemas/users";
 import { Percent, ShoppingBag } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { BsCart } from "react-icons/bs";
@@ -13,7 +13,7 @@ import { VscDiffAdded } from "react-icons/vsc";
 import { useDebounce } from "use-debounce";
 
 type OverallStatsBlockProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 };
 function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps) {

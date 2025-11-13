@@ -1,9 +1,9 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { useGoalsState } from "@/hooks/use-goal-state";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { updateGoal as updateGoalMutation } from "@/lib/mutations/goals";
 import { useGoalById } from "@/lib/queries/goals";
-import type { TUserSession } from "@/schemas/users";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ import GoalSellers from "./Blocks/Sellers";
 
 type ControlGoalProps = {
 	goalId: string;
-	session: TUserSession;
+	user: TAuthUserSession["user"];
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -21,7 +21,7 @@ type ControlGoalProps = {
 		onSettled?: () => void;
 	};
 };
-export default function ControlGoal({ goalId, session, closeModal, callbacks }: ControlGoalProps) {
+export default function ControlGoal({ goalId, user, closeModal, callbacks }: ControlGoalProps) {
 	const queryClient = useQueryClient();
 
 	const { data: goal, queryKey, isLoading, isError, isSuccess, error } = useGoalById({ id: goalId });

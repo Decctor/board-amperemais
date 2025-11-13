@@ -1,12 +1,13 @@
-import type { NextApiRequest } from "next";
 import { SalesSimplifiedSearchQueryParams } from "@/schemas/sales";
+import type { NextApiRequest } from "next";
 import type { NextApiHandler } from "next";
 
 import { apiHandler } from "@/lib/api";
-import { and, count, eq, exists, sql } from "drizzle-orm";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
-import { getUserSession } from "@/lib/auth/session";
+import { and, count, eq, exists, sql } from "drizzle-orm";
+import createHttpError from "http-errors";
 
 async function fetchSalesSimplified(req: NextApiRequest) {
 	const PAGE_SIZE = 50;
@@ -61,7 +62,8 @@ export type TSalesSimplifiedSearchResult = Awaited<ReturnType<typeof fetchSalesS
 const getSalesSimplifiedRoute: NextApiHandler<{
 	data: TSalesSimplifiedSearchResult;
 }> = async (req, res) => {
-	const session = await getUserSession({ request: req });
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const result = await fetchSalesSimplified(req);
 

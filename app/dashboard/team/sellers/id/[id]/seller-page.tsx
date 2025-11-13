@@ -1,15 +1,4 @@
 "use client";
-import { getErrorMessage } from "@/lib/errors";
-import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
-import { useSellerStats } from "@/lib/queries/sellers";
-import { cn } from "@/lib/utils";
-import { isValidNumber } from "@/lib/validation";
-import type { TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
-import type { TUserSession } from "@/schemas/users";
-import dayjs from "dayjs";
-import { BadgeDollarSign, Calendar, CirclePlus, Code, GoalIcon, Mail, Pencil, Phone, ShoppingBag, UserRound } from "lucide-react";
-import { useState } from "react";
-import { BsCart, BsTicketPerforated } from "react-icons/bs";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
@@ -18,9 +7,20 @@ import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getErrorMessage } from "@/lib/errors";
+import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { useSellerStats } from "@/lib/queries/sellers";
+import { cn } from "@/lib/utils";
+import { isValidNumber } from "@/lib/validation";
+import type { TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
+import dayjs from "dayjs";
+import { BadgeDollarSign, Calendar, CirclePlus, Code, GoalIcon, Mail, Pencil, Phone, ShoppingBag, UserRound } from "lucide-react";
+import { useState } from "react";
+import { BsCart, BsTicketPerforated } from "react-icons/bs";
 
 type SellerPageProps = {
-	user: TUserSession;
+	user: TAuthUserSession["user"];
 	id: string;
 };
 export default function SellerPage({ user, id }: SellerPageProps) {
@@ -155,7 +155,7 @@ export default function SellerPage({ user, id }: SellerPageProps) {
 							<GroupedByProductGroup data={stats.resultadosAgrupados.grupo} />
 						</div>
 					</div>
-					{editSellerMenuIsOpen ? <EditSeller sellerId={id} sessionUser={user} closeModal={() => setEditSellerMenuIsOpen(false)} /> : null}
+					{editSellerMenuIsOpen ? <EditSeller sellerId={id} user={user} closeModal={() => setEditSellerMenuIsOpen(false)} /> : null}
 				</>
 			) : null}
 		</div>
