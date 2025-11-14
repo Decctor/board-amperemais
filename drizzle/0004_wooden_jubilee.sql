@@ -1,0 +1,1 @@
+ALTER TABLE "ampmais_utils" ADD COLUMN "id" varchar(255) PRIMARY KEY NOT NULL;

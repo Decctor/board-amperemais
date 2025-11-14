@@ -22,6 +22,20 @@
       "when": 1762819861145,
       "tag": "0002_narrow_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1763078894550,
+      "tag": "0003_handy_meteorite",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1763079372405,
+      "tag": "0004_wooden_jubilee",
+      "breakpoints": true
     }
   ]
 }

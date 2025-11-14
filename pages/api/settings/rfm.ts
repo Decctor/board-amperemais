@@ -1,7 +1,9 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
+import { db } from "@/services/drizzle";
+import { utils } from "@/services/drizzle/schema";
 import type { TRFMConfig } from "@/utils/rfm";
+import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 
@@ -12,12 +14,9 @@ const getRFMConfigRoute: NextApiHandler<GetResponse> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const db = await connectToDatabase();
-	const utilsCollection = db.collection<TRFMConfig>("utils");
-
-	const rfmConfig = (await utilsCollection.findOne({
-		identificador: "CONFIG_RFM",
-	})) as TRFMConfig;
+	const rfmConfig = await db.query.utils.findFirst({
+		where: eq(utils.identificador, "CONFIG_RFM"),
+	});
 
 	return res.status(200).json({ data: rfmConfig });
 };
@@ -31,24 +30,20 @@ const updateRFMConfigRoute: NextApiHandler<PutResponse> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const db = await connectToDatabase();
-	const utilsCollection = db.collection<TRFMConfig>("utils");
-
 	const payload = req.body;
 
 	// @ts-ignore
 	delete payload._id;
 
-	const updateResponse = await utilsCollection.updateOne(
-		{ identificador: "CONFIG_RFM" },
-		{
-			$set: {
-				...payload,
-			},
-		},
-	);
+	const updateResponse = await db
+		.update(utils)
+		.set({
+			identificador: "CONFIG_RFM",
+			valor: payload,
+		})
+		.where(eq(utils.identificador, "CONFIG_RFM"));
 
-	if (!updateResponse.acknowledged) throw createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar configuração.");
+	if (updateResponse.length === 0) throw createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar configuração.");
 
 	return res.status(200).json({
 		data: "Atualização feita com sucesso !",

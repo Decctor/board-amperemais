@@ -1,17 +1,15 @@
 import { apiHandler } from "@/lib/api";
-import { TClient } from "@/schemas/clients";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
+
+import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
+import { db } from "@/services/drizzle";
+import { saleItems, sales } from "@/services/drizzle/schema";
 import axios from "axios";
 import dayjs from "dayjs";
-import { Collection, ObjectId } from "mongodb";
-import type { NextApiHandler } from "next";
 import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
-import { db } from "@/services/drizzle";
 import { and, eq, gte, lte, sum } from "drizzle-orm";
-import { saleItems, sales } from "@/services/drizzle/schema";
+import type { NextApiHandler } from "next";
 // import OnlineSalesRegistries from "@/sales-till-now.json";
 import { z } from "zod";
-import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 
 dayjs.extend(dayjsCustomFormatter);
 

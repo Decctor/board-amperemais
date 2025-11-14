@@ -1,9 +1,8 @@
 import type { TSale } from "@/schemas/sales";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
-import createHttpError from "http-errors";
-import type { Collection } from "mongodb";
+import { db } from "@/services/drizzle";
+import { sales } from "@/services/drizzle/schema";
+import { and, eq, gte, lte } from "drizzle-orm";
 import type { NextApiHandler } from "next";
-import { z } from "zod";
 
 type GetResponse = {
 	data: TSale | TSale[];
@@ -11,13 +10,16 @@ type GetResponse = {
 
 const getSalesRoute: NextApiHandler<GetResponse> = async (req, res) => {
 	const { id, after, before } = req.query;
-	const db = await connectToDatabase();
-	const collection: Collection<TSale> = db.collection("sales");
 
-	if (id) {
-		throw new createHttpError.BadRequest("Requisição inválida.");
-	}
+	const conditions = [];
+	if (id && typeof id === "string") conditions.push(eq(sales.id, id));
+	if (after && typeof after === "string") conditions.push(gte(sales.dataVenda, new Date(after)));
+	if (before && typeof before === "string") conditions.push(lte(sales.dataVenda, new Date(before)));
+	const salesResult = await db.query.sales.findMany({
+		where: and(...conditions),
+	});
 
-	if (!after || typeof after !== "string" || !before || typeof before === "string")
-		throw new createHttpError.BadRequest("Parâmetros de período não fornecidos ou inválidos");
+	return {
+		data: salesResult,
+	};
 };

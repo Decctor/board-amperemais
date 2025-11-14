@@ -18,7 +18,7 @@ type ServiceTransferDialogProps = {
 	closeMenu: () => void;
 	serviceId: Id<"services">;
 	currentResponsible: "ai" | { nome: string; avatar_url: string | null; idApp: string } | null;
-	currentUserIdApp: string; // MongoDB user ID
+	currentUserIdApp: string;
 };
 
 export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible, currentUserIdApp }: ServiceTransferDialogProps) {

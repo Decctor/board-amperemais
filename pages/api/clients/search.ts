@@ -2,13 +2,11 @@ import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { ClientSearchQueryParams, type TClientSearchQueryParams } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
-import { clients, sales } from "@/services/drizzle/schema";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
+import { clients, sales, utils } from "@/services/drizzle/schema";
 import { type TRFMConfig, getRFMLabel } from "@/utils/rfm";
 import dayjs from "dayjs";
 import { and, count, eq, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
-import type { Collection } from "mongodb";
 import type { NextApiHandler, NextApiRequest } from "next";
 
 // This function encapsulates the core logic for fetching clients with pagination and applying filters.
@@ -58,11 +56,10 @@ type GetClientsParams = {
 // This function is a data access layer function that specifically queries the database
 // for clients, including their purchases, based on the provided filters and pagination.
 async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsParams) {
-	const mongoDb = await connectToDatabase();
-	const utilsCollection: Collection<TRFMConfig> = mongoDb.collection("utils");
-	const rfmConfig = (await utilsCollection.findOne({
-		identificador: "CONFIG_RFM",
-	})) as TRFMConfig;
+	const rfmConfig = await db.query.utils.findFirst({
+		where: eq(utils.identificador, "CONFIG_RFM"),
+	});
+	if (!rfmConfig) throw new createHttpError.InternalServerError("Configuração RFM não encontrada.");
 
 	// Adjust date filters for database query
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
@@ -180,19 +177,24 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 				const calculatedFrequency = inPeriodAccumulatedClientResults?.purchaseCount || 0;
 				const calculatedMonetary = inPeriodAccumulatedClientResults?.totalPurchases || 0;
 
-				const configRecency = Object.entries(rfmConfig.recencia).find(
-					([key, value]) => calculatedRecency && calculatedRecency >= value.min && calculatedRecency <= value.max,
-				);
+				const configRecency =
+					rfmConfig && rfmConfig.valor.identificador === "CONFIG_RFM"
+						? Object.entries(rfmConfig.valor.recencia).find(
+								([key, value]) => calculatedRecency && calculatedRecency >= value.min && calculatedRecency <= value.max,
+							)
+						: null;
 				rfmRecencyScore = configRecency ? configRecency[0] : "1";
 
-				const configFrequency = Object.entries(rfmConfig.frequencia).find(
-					([key, value]) => calculatedFrequency >= value.min && calculatedFrequency <= value.max,
-				);
+				const configFrequency =
+					rfmConfig && rfmConfig.valor.identificador === "CONFIG_RFM"
+						? Object.entries(rfmConfig.valor.frequencia).find(([key, value]) => calculatedFrequency >= value.min && calculatedFrequency <= value.max)
+						: null;
 				rfmFrequencyScore = configFrequency ? configFrequency[0] : "1";
 
-				const configMonetary = Object.entries(rfmConfig.monetario || {}).find(
-					([key, value]) => calculatedMonetary >= value.min && calculatedMonetary <= value.max,
-				);
+				const configMonetary =
+					rfmConfig && rfmConfig.valor.identificador === "CONFIG_RFM"
+						? Object.entries(rfmConfig.valor.monetario).find(([key, value]) => calculatedMonetary >= value.min && calculatedMonetary <= value.max)
+						: null;
 				rfmMonetaryScore = configMonetary ? configMonetary[0] : "1";
 
 				rfmTitle = getRFMLabel({

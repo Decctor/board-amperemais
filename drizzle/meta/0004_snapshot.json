@@ -1,0 +1,1058 @@
+{
+  "id": "5c40002b-c2b0-4c6d-8e03-d31c0f6d8cc5",
+  "prevId": "ea75e8e9-f70a-4c02-b0ec-5bc70d962f38",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.ampmais_auth_sessions": {
+      "name": "ampmais_auth_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "usuario_agente": {
+          "name": "usuario_agente",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario_dispositivo": {
+          "name": "usuario_dispositivo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario_navegador": {
+          "name": "usuario_navegador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario_endereco_ip": {
+          "name": "usuario_endereco_ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_expiracao": {
+          "name": "data_expiracao",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ampmais_auth_sessions_usuario_id_ampmais_users_id_fk": {
+          "name": "ampmais_auth_sessions_usuario_id_ampmais_users_id_fk",
+          "tableFrom": "ampmais_auth_sessions",
+          "tableTo": "ampmais_users",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_clients": {
+      "name": "ampmais_clients",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "telefone": {
+          "name": "telefone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "telefone_base": {
+          "name": "telefone_base",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "localizacao_cep": {
+          "name": "localizacao_cep",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "localizacao_estado": {
+          "name": "localizacao_estado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "localizacao_cidade": {
+          "name": "localizacao_cidade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "localizacao_bairro": {
+          "name": "localizacao_bairro",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "localizacao_logradouro": {
+          "name": "localizacao_logradouro",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "localizacao_numero": {
+          "name": "localizacao_numero",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "localizacao_complemento": {
+          "name": "localizacao_complemento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "canal_aquisicao": {
+          "name": "canal_aquisicao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primeira_compra_data": {
+          "name": "primeira_compra_data",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primeira_compra_id": {
+          "name": "primeira_compra_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ultima_compra_data": {
+          "name": "ultima_compra_data",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ultima_compra_id": {
+          "name": "ultima_compra_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "analise_rfm_titulo": {
+          "name": "analise_rfm_titulo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "analise_rfm_notas_recencia": {
+          "name": "analise_rfm_notas_recencia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "analise_rfm_notas_frequencia": {
+          "name": "analise_rfm_notas_frequencia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "analise_rfm_notas_monetario": {
+          "name": "analise_rfm_notas_monetario",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "analise_rfm_ultima_atualizacao": {
+          "name": "analise_rfm_ultima_atualizacao",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_insercao": {
+          "name": "data_insercao",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_clients_nome": {
+          "name": "idx_clients_nome",
+          "columns": [
+            {
+              "expression": "to_tsvector('portuguese', \"nome\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "idx_clients_rfm_titulo": {
+          "name": "idx_clients_rfm_titulo",
+          "columns": [
+            {
+              "expression": "analise_rfm_titulo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_goals": {
+      "name": "ampmais_goals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "data_inicio": {
+          "name": "data_inicio",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_fim": {
+          "name": "data_fim",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "objetivo_valor": {
+          "name": "objetivo_valor",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_insercao": {
+          "name": "data_insercao",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_goals_sellers": {
+      "name": "ampmais_goals_sellers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "goal_id": {
+          "name": "goal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendedor_id": {
+          "name": "vendedor_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "objetivo_valor": {
+          "name": "objetivo_valor",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ampmais_goals_sellers_goal_id_ampmais_goals_id_fk": {
+          "name": "ampmais_goals_sellers_goal_id_ampmais_goals_id_fk",
+          "tableFrom": "ampmais_goals_sellers",
+          "tableTo": "ampmais_goals",
+          "columnsFrom": [
+            "goal_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ampmais_goals_sellers_vendedor_id_ampmais_sellers_id_fk": {
+          "name": "ampmais_goals_sellers_vendedor_id_ampmais_sellers_id_fk",
+          "tableFrom": "ampmais_goals_sellers",
+          "tableTo": "ampmais_sellers",
+          "columnsFrom": [
+            "vendedor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_users": {
+      "name": "ampmais_users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "telefone": {
+          "name": "telefone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario": {
+          "name": "usuario",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "senha": {
+          "name": "senha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permissoes": {
+          "name": "permissoes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_nascimento": {
+          "name": "data_nascimento",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vendedor_id": {
+          "name": "vendedor_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_insercao": {
+          "name": "data_insercao",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ampmais_users_vendedor_id_ampmais_sellers_id_fk": {
+          "name": "ampmais_users_vendedor_id_ampmais_sellers_id_fk",
+          "tableFrom": "ampmais_users",
+          "tableTo": "ampmais_sellers",
+          "columnsFrom": [
+            "vendedor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_products": {
+      "name": "ampmais_products",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "codigo": {
+          "name": "codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unidade": {
+          "name": "unidade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ncm": {
+          "name": "ncm",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "grupo": {
+          "name": "grupo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_products_grupo": {
+          "name": "idx_products_grupo",
+          "columns": [
+            {
+              "expression": "grupo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_sale_items": {
+      "name": "ampmais_sale_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "venda_id": {
+          "name": "venda_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cliente_id": {
+          "name": "cliente_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "produto_id": {
+          "name": "produto_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantidade": {
+          "name": "quantidade",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_unitario": {
+          "name": "valor_unitario",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_custo_unitario": {
+          "name": "valor_custo_unitario",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_venda_total_bruto": {
+          "name": "valor_venda_total_bruto",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_total_desconto": {
+          "name": "valor_total_desconto",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_venda_total_liquido": {
+          "name": "valor_venda_total_liquido",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_custo_total": {
+          "name": "valor_custo_total",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadados": {
+          "name": "metadados",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_sale_items_venda_id": {
+          "name": "idx_sale_items_venda_id",
+          "columns": [
+            {
+              "expression": "venda_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sale_items_produto_id": {
+          "name": "idx_sale_items_produto_id",
+          "columns": [
+            {
+              "expression": "produto_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sale_items_cliente_id": {
+          "name": "idx_sale_items_cliente_id",
+          "columns": [
+            {
+              "expression": "cliente_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sale_items_valores": {
+          "name": "idx_sale_items_valores",
+          "columns": [
+            {
+              "expression": "valor_venda_total_liquido",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "valor_custo_total",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ampmais_sale_items_venda_id_ampmais_sales_id_fk": {
+          "name": "ampmais_sale_items_venda_id_ampmais_sales_id_fk",
+          "tableFrom": "ampmais_sale_items",
+          "tableTo": "ampmais_sales",
+          "columnsFrom": [
+            "venda_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ampmais_sale_items_cliente_id_ampmais_clients_id_fk": {
+          "name": "ampmais_sale_items_cliente_id_ampmais_clients_id_fk",
+          "tableFrom": "ampmais_sale_items",
+          "tableTo": "ampmais_clients",
+          "columnsFrom": [
+            "cliente_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ampmais_sale_items_produto_id_ampmais_products_id_fk": {
+          "name": "ampmais_sale_items_produto_id_ampmais_products_id_fk",
+          "tableFrom": "ampmais_sale_items",
+          "tableTo": "ampmais_products",
+          "columnsFrom": [
+            "produto_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_sales": {
+      "name": "ampmais_sales",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cliente_id": {
+          "name": "cliente_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_externo": {
+          "name": "id_externo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_total": {
+          "name": "valor_total",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "custo_total": {
+          "name": "custo_total",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendedor_nome": {
+          "name": "vendedor_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendedor_id": {
+          "name": "vendedor_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parceiro": {
+          "name": "parceiro",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chave": {
+          "name": "chave",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "documento": {
+          "name": "documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modelo": {
+          "name": "modelo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "movimento": {
+          "name": "movimento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "natureza": {
+          "name": "natureza",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "serie": {
+          "name": "serie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "situacao": {
+          "name": "situacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_venda": {
+          "name": "data_venda",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_sales_client_id": {
+          "name": "idx_sales_client_id",
+          "columns": [
+            {
+              "expression": "cliente_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sales_parceiro": {
+          "name": "idx_sales_parceiro",
+          "columns": [
+            {
+              "expression": "parceiro",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sales_data_venda": {
+          "name": "idx_sales_data_venda",
+          "columns": [
+            {
+              "expression": "data_venda",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sales_vendedor": {
+          "name": "idx_sales_vendedor",
+          "columns": [
+            {
+              "expression": "vendedor_nome",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sales_natureza": {
+          "name": "idx_sales_natureza",
+          "columns": [
+            {
+              "expression": "natureza",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sales_valor_total": {
+          "name": "idx_sales_valor_total",
+          "columns": [
+            {
+              "expression": "valor_total",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ampmais_sales_cliente_id_ampmais_clients_id_fk": {
+          "name": "ampmais_sales_cliente_id_ampmais_clients_id_fk",
+          "tableFrom": "ampmais_sales",
+          "tableTo": "ampmais_clients",
+          "columnsFrom": [
+            "cliente_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ampmais_sales_vendedor_id_ampmais_sellers_id_fk": {
+          "name": "ampmais_sales_vendedor_id_ampmais_sellers_id_fk",
+          "tableFrom": "ampmais_sales",
+          "tableTo": "ampmais_sellers",
+          "columnsFrom": [
+            "vendedor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_sellers": {
+      "name": "ampmais_sellers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "identificador": {
+          "name": "identificador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "telefone": {
+          "name": "telefone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_insercao": {
+          "name": "data_insercao",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ampmais_utils": {
+      "name": "ampmais_utils",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "identificador": {
+          "name": "identificador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

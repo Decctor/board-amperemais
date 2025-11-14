@@ -1,14 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
 import type { TSale } from "@/schemas/sales";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
 import dayjs from "dayjs";
-import { type Collection, type Filter, ObjectId } from "mongodb";
+import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { TClient } from "@/schemas/clients";
-import { getRFMLabel, type TRFMConfig } from "@/utils/rfm";
 import { db } from "@/services/drizzle";
-import { clients, sales, type TSaleEntity } from "@/services/drizzle/schema";
+import { type TSaleEntity, clients, sales, utils } from "@/services/drizzle/schema";
+import { type TRFMConfig, getRFMLabel } from "@/utils/rfm";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
+import createHttpError from "http-errors";
 
 export const config = {
 	maxDuration: 25,
@@ -17,11 +15,6 @@ const intervalStart = dayjs().subtract(12, "month").startOf("day").toDate();
 const intervalEnd = dayjs().endOf("day").toDate();
 
 export default async function handleRFMAnalysis(req: NextApiRequest, res: NextApiResponse) {
-	const mongoDb = await connectToDatabase();
-	// const clientsCollection: Collection<TClient> = db.collection("clients");
-	// const salesCollection: Collection<TSale> = db.collection("sales");
-	const utilsCollection: Collection<TRFMConfig> = mongoDb.collection("utils");
-
 	const accumulatedResultsByClient = await db
 		.select({
 			clientId: clients.id,
@@ -35,9 +28,12 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 
 	const allClients = await db.query.clients.findMany({});
 
-	const rfmConfig = (await utilsCollection.findOne({
-		identificador: "CONFIG_RFM",
-	})) as TRFMConfig;
+	const utilsRFMReturn = await db.query.utils.findFirst({
+		where: eq(utils.identificador, "CONFIG_RFM"),
+	});
+
+	const rfmConfig = utilsRFMReturn?.valor.identificador === "CONFIG_RFM" ? utilsRFMReturn.valor : null;
+	if (!rfmConfig) throw new createHttpError.InternalServerError("Configuração RFM não encontrada.");
 
 	return await db.transaction(async (tx) => {
 		// let currentClientIndex = 0;

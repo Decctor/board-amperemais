@@ -2,13 +2,11 @@ import { apiHandler } from "@/lib/api";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { NewUserSchema, type TUser, type TUserSession, UserSchema } from "@/schemas/users";
+import { NewUserSchema } from "@/schemas/users";
 import { db } from "@/services/drizzle";
 import { users } from "@/services/drizzle/schema";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
-import { type Filter, ObjectId } from "mongodb";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 

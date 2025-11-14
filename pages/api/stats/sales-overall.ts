@@ -1,17 +1,11 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
-import type { TClient } from "@/schemas/clients";
 import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
-import type { TSaleGoal } from "@/schemas/sale-goals";
-import type { TSale } from "@/schemas/sales";
-import type { TSaleItem } from "@/schemas/sales-items";
 import { db } from "@/services/drizzle";
-import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
+import { clients, saleItems, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, count, eq, exists, gte, inArray, lte, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
-import type { Collection } from "mongodb";
 import type { NextApiHandler } from "next";
 
 type TOverallSalesStatsReduced = {
@@ -62,12 +56,9 @@ const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
 	console.log("[INFO] [GET_SALES_OVERALL_STATS] Filters payload: ", filters);
-	const db = await connectToDatabase();
-	const goalsCollection = db.collection<TSaleGoal>("goals");
 
 	// const sales = await getSales({ filters });
 	const overallSaleGoal = await getOverallSaleGoal({
-		collection: goalsCollection,
 		after: filters.period.after,
 		before: filters.period.before,
 	});
@@ -198,11 +189,10 @@ async function getSales({ filters }: GetSalesParams) {
 }
 
 type GetOverallSaleGoalProps = {
-	collection: Collection<TSaleGoal>;
 	after: string;
 	before: string;
 };
-async function getOverallSaleGoal({ collection, after, before }: GetOverallSaleGoalProps) {
+async function getOverallSaleGoal({ after, before }: GetOverallSaleGoalProps) {
 	const ajustedAfter = dayjs(after).toDate();
 	const ajustedBefore = dayjs(before).endOf("day").toDate();
 	try {

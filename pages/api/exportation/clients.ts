@@ -3,13 +3,11 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { ClientSearchQueryParams, type TClient } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
-import { clients, sales } from "@/services/drizzle/schema";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
+import { clients, sales, utils } from "@/services/drizzle/schema";
 import { type TRFMConfig, getRFMLabel } from "@/utils/rfm";
 import dayjs from "dayjs";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
-import type { Collection } from "mongodb";
 import type { NextApiHandler, NextApiRequest } from "next";
 import type { z } from "zod";
 
@@ -19,11 +17,10 @@ async function fetchClientExportation(req: NextApiRequest) {
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
 
-	const mongoDb = await connectToDatabase();
-	const utilsCollection: Collection<TRFMConfig> = mongoDb.collection("utils");
-	const rfmConfig = (await utilsCollection.findOne({
-		identificador: "CONFIG_RFM",
-	})) as TRFMConfig;
+	const utilsRFMReturn = await db.query.utils.findFirst({
+		where: eq(utils.identificador, "CONFIG_RFM"),
+	});
+	const rfmConfig = utilsRFMReturn?.valor.identificador === "CONFIG_RFM" ? utilsRFMReturn.valor : null;
 
 	// Build dynamic WHERE conditions based on filters
 	const conditions = [];
@@ -114,19 +111,19 @@ async function fetchClientExportation(req: NextApiRequest) {
 			const calculatedFrequency = inPeriodAccumulatedClientResults?.purchaseCount || 0;
 			const calculatedMonetary = inPeriodAccumulatedClientResults?.totalPurchases || 0;
 
-			const configRecency = Object.entries(rfmConfig.recencia).find(
-				([key, value]) => calculatedRecency && calculatedRecency >= value.min && calculatedRecency <= value.max,
-			);
+			const configRecency = rfmConfig
+				? Object.entries(rfmConfig.recencia).find(([key, value]) => calculatedRecency && calculatedRecency >= value.min && calculatedRecency <= value.max)
+				: null;
 			rfmRecencyScore = configRecency ? configRecency[0] : "1";
 
-			const configFrequency = Object.entries(rfmConfig.frequencia).find(
-				([key, value]) => calculatedFrequency >= value.min && calculatedFrequency <= value.max,
-			);
+			const configFrequency = rfmConfig
+				? Object.entries(rfmConfig.frequencia).find(([key, value]) => calculatedFrequency >= value.min && calculatedFrequency <= value.max)
+				: null;
 			rfmFrequencyScore = configFrequency ? configFrequency[0] : "1";
 
-			const configMonetary = Object.entries(rfmConfig.monetario || {}).find(
-				([key, value]) => calculatedMonetary >= value.min && calculatedMonetary <= value.max,
-			);
+			const configMonetary = rfmConfig
+				? Object.entries(rfmConfig.monetario).find(([key, value]) => calculatedMonetary >= value.min && calculatedMonetary <= value.max)
+				: null;
 			rfmMonetaryScore = configMonetary ? configMonetary[0] : "1";
 
 			rfmTitle = getRFMLabel({

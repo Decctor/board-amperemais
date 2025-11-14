@@ -1,8 +1,7 @@
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { db } from "@/services/drizzle";
-import { clients, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
-import connectToDatabase from "@/services/mongodb/main-db-connection";
+import { clients, products, saleItems, sales, sellers, utils } from "@/services/drizzle/schema";
 import axios from "axios";
 import dayjs from "dayjs";
 import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
@@ -14,8 +13,7 @@ dayjs.extend(dayjsCustomFormatter);
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
 	const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
 	console.log("DATE BEING USED", dayjs().format("DD/MM/YYYY HH:mm"), dayjs().subtract(5, "hour").format("DD/MM/YYYY HH:mm"), currentDateFormatted);
-	const mongoDb = await connectToDatabase();
-	const utilsCollection = mongoDb.collection("utils");
+
 	try {
 		// Fetching data from the online software API
 		const { data: onlineAPIResponse } = await axios.post("https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php", {
@@ -25,11 +23,19 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			dtfim: currentDateFormatted,
 		});
 		console.log("[INFO] [DATA_COLLECTING] Online API Response", onlineAPIResponse);
-		await utilsCollection.insertOne({
-			identificador: "online-importation",
-			date: currentDateFormatted,
-			content: JSON.stringify(onlineAPIResponse),
-		});
+		await db
+			.insert(utils)
+			.values({
+				identificador: "ONLINE_IMPORTATION",
+				valor: {
+					identificador: "ONLINE_IMPORTATION",
+					dados: {
+						data: currentDateFormatted,
+						conteudo: onlineAPIResponse,
+					},
+				},
+			})
+			.returning({ id: utils.id });
 		const OnlineSoftwareSales = z
 			.array(OnlineSoftwareSaleImportationSchema, {
 				required_error: "Payload da Online não é uma lista.",
@@ -208,10 +214,16 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		});
 	} catch (error) {
 		console.error("[ERROR] Running into error for the data collecting cron", error);
-		await utilsCollection.insertOne({
-			identificador: "error",
-			erro: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-			descricao: `Tentativa de importação de vendas do Online Software ${currentDateFormatted}.`,
+		await db.insert(utils).values({
+			identificador: "ONLINE_IMPORTATION",
+			valor: {
+				identificador: "ONLINE_IMPORTATION",
+				dados: {
+					data: currentDateFormatted,
+					erro: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+					descricao: `Tentativa de importação de vendas do Online Software ${currentDateFormatted}.`,
+				},
+			},
 		});
 		return res.status(500).json("Erro ao importar vendas do Online Software.");
 	}

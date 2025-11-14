@@ -141,7 +141,7 @@ export const transferServiceToHuman = internalMutation({
 export const transferServiceToUser = mutation({
 	args: {
 		serviceId: v.id("services"),
-		userIdApp: v.optional(v.string()), // MongoDB user ID string, if undefined/null, transfer to AI
+		userIdApp: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		console.log("[INFO] [SERVICES] [TRANSFER_SERVICE_TO_USER] Transferring service:", args.serviceId, "to user:", args.userIdApp || "ai");
@@ -160,7 +160,6 @@ export const transferServiceToUser = mutation({
 		let newResponsible: Id<"users"> | "ai" | undefined;
 
 		if (args.userIdApp) {
-			// Find Convex user by idApp (MongoDB _id)
 			const user = await ctx.db
 				.query("users")
 				.filter((q) => q.eq(q.field("idApp"), args.userIdApp))

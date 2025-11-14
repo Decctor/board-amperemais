@@ -29,7 +29,6 @@ const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }
 		})
 		.from(products)
 		.groupBy(products.grupo);
-	// const db = await connectToDatabase();
 	// const salesCollection: Collection<TSale> = db.collection("sales");
 
 	// const saleNaturesResult = await salesCollection.aggregate([{ $group: { _id: "$natureza" } }]).toArray();
