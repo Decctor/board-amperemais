@@ -23,7 +23,11 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 	const [queryParamsHolder, setQueryParamsHolder] = useState<TSaleStatsGeneralQueryParams>(queryParams);
 	const { data: filterOptions } = useSaleQueryFilterOptions();
 
-	const selectableSellers = user.permissoes.resultados.escopo ? user.permissoes.resultados.escopo : [];
+	const selectableSellersIds = user.permissoes.resultados.escopo ? user.permissoes.resultados.escopo : null;
+
+	const selectableSellers = selectableSellersIds
+		? filterOptions?.sellers.filter((s) => selectableSellersIds.includes(s))
+		: filterOptions?.sellers || [];
 	return (
 		<Sheet open onOpenChange={closeMenu}>
 			<SheetContent>
@@ -37,7 +41,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 							<MultipleSelectInput
 								label="VENDEDOR"
 								selected={queryParamsHolder.sellers}
-								options={selectableSellers.map((s, index) => ({ id: index + 1, label: s, value: s }))}
+								options={selectableSellers?.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({
 										...prev,

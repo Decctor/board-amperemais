@@ -11,9 +11,11 @@ import { useGoals } from "@/lib/queries/goals";
 import { cn } from "@/lib/utils";
 import type { TGetGoalsOutputDefault } from "@/pages/api/goals";
 import { useQueryClient } from "@tanstack/react-query";
+import dayjs from "dayjs";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 
+const currentDate = dayjs();
 type GoalsPageProps = {
 	user: TAuthUserSession["user"];
 };
@@ -57,13 +59,23 @@ type GoalsPageGoalCardProps = {
 	handleClick: (id: string) => void;
 };
 function GoalsPageGoalCard({ goal, handleClick }: GoalsPageGoalCardProps) {
+	const isGoalActive = dayjs(goal.dataInicio).isBefore(currentDate) && dayjs(goal.dataFim).isAfter(currentDate);
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between gap-2">
 				<h1 className="text-xs font-bold tracking-tight lg:text-sm">
 					META DE {formatDateAsLocale(goal.dataInicio)} À {formatDateAsLocale(goal.dataFim)}
 				</h1>
-				<h3 className="text-xs font-bold tracking-tight lg:text-sm">{formatToMoney(goal.objetivoValor)}</h3>
+				<div className="flex items-center gap-1">
+					{isGoalActive ? (
+						<div className="px-2 py-1 flex items-center gap-1 rounded-lg bg-blue-600 texy-white">
+							<h3 className="text-xs font-medium tracking-tight lg:text-sm text-primary">META ATIVA</h3>
+						</div>
+					) : null}
+					<div className="px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10">
+						<h3 className="text-xs font-medium tracking-tight lg:text-sm">{formatToMoney(goal.objetivoValor)}</h3>
+					</div>
+				</div>
 			</div>
 			<div className="flex w-full items-center justify-end">
 				<Button variant="ghost" onClick={() => handleClick(goal.id)} className="flex items-center gap-1">

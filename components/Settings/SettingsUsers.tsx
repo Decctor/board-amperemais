@@ -24,22 +24,30 @@ export default function SettingsUsers({ user }: SettingsUsersProps) {
 	const [editUserModalId, setEditUserModalId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 
+	const sessionUserHasCreatePermission = user.permissoes.usuarios.criar;
+	const sessionUserHasEditPermission = user.permissoes.usuarios.editar;
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 	return (
 		<div className={cn("flex w-full flex-col gap-3")}>
 			<div className="flex items-center justify-end gap-2">
 				<div className="flex items-center gap-2">
-					<Button size="sm" className="flex items-center gap-2" onClick={() => setNewUserModalIsOpen(true)}>
-						<Plus className="w-4 h-4 min-w-4 min-h-4" />
-						NOVO USUÁRIO
-					</Button>
+					{sessionUserHasCreatePermission ? (
+						<Button size="sm" className="flex items-center gap-2" onClick={() => setNewUserModalIsOpen(true)}>
+							<Plus className="w-4 h-4 min-w-4 min-h-4" />
+							NOVO USUÁRIO
+						</Button>
+					) : null}
 				</div>
 			</div>
 			<div className="w-full flex flex-col gap-1.5">
 				{isLoading ? <LoadingComponent /> : null}
 				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-				{isSuccess ? users.map((user, index: number) => <UserCard key={user.id} user={user} handleClick={setEditUserModalId} />) : null}
+				{isSuccess
+					? users.map((user, index: number) => (
+							<UserCard key={user.id} user={user} handleClick={setEditUserModalId} userHasEditPermission={sessionUserHasEditPermission} />
+						))
+					: null}
 			</div>
 			{newUserModalIsOpen ? (
 				<NewUser session={user} closeModal={() => setNewUserModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
@@ -59,8 +67,9 @@ export default function SettingsUsers({ user }: SettingsUsersProps) {
 type UserCardProps = {
 	user: TGetUsersOutputDefault[number];
 	handleClick: (id: string) => void;
+	userHasEditPermission: boolean;
 };
-function UserCard({ user, handleClick }: UserCardProps) {
+function UserCard({ user, handleClick, userHasEditPermission }: UserCardProps) {
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full")}>
 			<div className="flex items-center justify-center">
@@ -93,10 +102,12 @@ function UserCard({ user, handleClick }: UserCardProps) {
 					</div>
 				</div>
 				<div className="w-full flex items-center justify-end">
-					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleClick(user.id)}>
-						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
-						EDITAR
-					</Button>
+					{userHasEditPermission ? (
+						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleClick(user.id)}>
+							<Pencil className="w-3 min-w-3 h-3 min-h-3" />
+							EDITAR
+						</Button>
+					) : null}
 				</div>
 			</div>
 		</div>

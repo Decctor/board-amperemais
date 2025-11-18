@@ -52,7 +52,13 @@ export function DashboardPage({ user }: DashboardPageProps) {
 					FILTROS
 				</Button>
 			</div>
-			<DashboardPageFiltersShowcase queryParams={generalQueryParams} updateQueryParams={updateGeneralQueryParams} />
+			<DashboardPageFiltersShowcase
+				defaultQueryParams={{
+					sellers: initialSellers,
+				}}
+				queryParams={generalQueryParams}
+				updateQueryParams={updateGeneralQueryParams}
+			/>
 			<OverallStatsBlock generalQueryParams={generalQueryParams} user={user} />
 			<SalesGraphBlock generalQueryParams={generalQueryParams} user={user} />
 			<GroupedStatsBlock generalQueryParams={generalQueryParams} user={user} />
@@ -70,10 +76,11 @@ export function DashboardPage({ user }: DashboardPageProps) {
 }
 
 type DashboardPageFiltersShowcaseProps = {
+	defaultQueryParams: Partial<TSaleStatsGeneralQueryParams>;
 	queryParams: TSaleStatsGeneralQueryParams;
 	updateQueryParams: (params: Partial<TSaleStatsGeneralQueryParams>) => void;
 };
-function DashboardPageFiltersShowcase({ queryParams, updateQueryParams }: DashboardPageFiltersShowcaseProps) {
+function DashboardPageFiltersShowcase({ defaultQueryParams, queryParams, updateQueryParams }: DashboardPageFiltersShowcaseProps) {
 	const { data: users } = useUsers({ initialFilters: {} });
 	function FilterTag({ label, value, onRemove }: { label: string; value: string; onRemove?: () => void }) {
 		return (
@@ -90,6 +97,14 @@ function DashboardPageFiltersShowcase({ queryParams, updateQueryParams }: Dashbo
 		);
 	}
 
+	const enabledRemovals = {
+		total: defaultQueryParams.total !== queryParams.total,
+		saleNatures: defaultQueryParams.saleNatures !== queryParams.saleNatures,
+		clientRFMTitles: defaultQueryParams.clientRFMTitles !== queryParams.clientRFMTitles,
+		productGroups: defaultQueryParams.productGroups !== queryParams.productGroups,
+		excludedSalesIds: defaultQueryParams.excludedSalesIds !== queryParams.excludedSalesIds,
+		sellers: defaultQueryParams.sellers !== queryParams.sellers,
+	};
 	return (
 		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
 			{queryParams.period.after && queryParams.period.before ? (
@@ -99,42 +114,44 @@ function DashboardPageFiltersShowcase({ queryParams, updateQueryParams }: Dashbo
 				<FilterTag
 					label="VALOR"
 					value={`${queryParams.total.min ? `MIN: R$ ${queryParams.total.min}` : "N/A"} - ${queryParams.total.max ? `MAX: R$ ${queryParams.total.max}` : "N/A"}`}
-					onRemove={() => updateQueryParams({ total: { min: null, max: null } })}
+					onRemove={enabledRemovals.total ? () => updateQueryParams({ total: defaultQueryParams.total || { min: null, max: null } }) : undefined}
 				/>
 			) : null}
 			{queryParams.saleNatures.length > 0 ? (
 				<FilterTag
 					label="NATUREZA DA VENDA"
 					value={queryParams.saleNatures.map((nature) => nature).join(", ")}
-					onRemove={() => updateQueryParams({ saleNatures: [] })}
+					onRemove={enabledRemovals.saleNatures ? () => updateQueryParams({ saleNatures: defaultQueryParams.saleNatures || [] }) : undefined}
 				/>
 			) : null}
 			{queryParams.clientRFMTitles.length > 0 ? (
 				<FilterTag
 					label="CATEGORIA DE CLIENTES"
 					value={queryParams.clientRFMTitles.map((title) => title).join(", ")}
-					onRemove={() => updateQueryParams({ clientRFMTitles: [] })}
+					onRemove={enabledRemovals.clientRFMTitles ? () => updateQueryParams({ clientRFMTitles: defaultQueryParams.clientRFMTitles || [] }) : undefined}
 				/>
 			) : null}
 			{queryParams.productGroups.length > 0 ? (
 				<FilterTag
 					label="GRUPO DE PRODUTOS"
 					value={queryParams.productGroups.map((group) => group).join(", ")}
-					onRemove={() => updateQueryParams({ productGroups: [] })}
+					onRemove={enabledRemovals.productGroups ? () => updateQueryParams({ productGroups: defaultQueryParams.productGroups || [] }) : undefined}
 				/>
 			) : null}
 			{queryParams.excludedSalesIds.length > 0 ? (
 				<FilterTag
 					label="VENDAS EXCLUÍDAS"
 					value={queryParams.excludedSalesIds.map((id) => id).join(", ")}
-					onRemove={() => updateQueryParams({ excludedSalesIds: [] })}
+					onRemove={
+						enabledRemovals.excludedSalesIds ? () => updateQueryParams({ excludedSalesIds: defaultQueryParams.excludedSalesIds || [] }) : undefined
+					}
 				/>
 			) : null}
 			{queryParams.sellers.length > 0 ? (
 				<FilterTag
 					label="VENDEDORES"
 					value={queryParams.sellers.map((seller) => users?.find((user) => user.id === seller)?.nome || seller).join(", ")}
-					onRemove={() => updateQueryParams({ sellers: [] })}
+					onRemove={enabledRemovals.sellers ? () => updateQueryParams({ sellers: defaultQueryParams.sellers || [] }) : undefined}
 				/>
 			) : null}
 		</div>

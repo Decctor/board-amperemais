@@ -23,7 +23,6 @@ type SellersPageProps = {
 export default function SellersPage({ user }: SellersPageProps) {
 	const queryClient = useQueryClient();
 	const [editSellerId, setEditSellerId] = useState<string | null>(null);
-	const [viewSellerId, setViewSellerId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const { data: sellers, queryKey, isLoading, isError, isSuccess, error, filters, updateFilters } = useSellers({});
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
@@ -44,7 +43,17 @@ export default function SellersPage({ user }: SellersPageProps) {
 				<div className="w-full flex flex-col gap-1.5">
 					{sellers.length > 0 ? (
 						sellers.map((seller) => (
-							<SellersPageSellerCard key={seller.id} seller={seller} handleEditClick={setEditSellerId} handleViewClick={setViewSellerId} />
+							<SellersPageSellerCard
+								key={seller.id}
+								seller={seller}
+								handleEditClick={setEditSellerId}
+								userHasEditPermission={
+									user.permissoes.resultados.visualizar && (!user.permissoes.resultados.escopo || user.permissoes.resultados.escopo?.includes(seller.id))
+								}
+								userHasViewPermission={
+									user.permissoes.resultados.visualizar && (!user.permissoes.resultados.escopo || user.permissoes.resultados.escopo?.includes(seller.id))
+								}
+							/>
 						))
 					) : (
 						<p className="w-full flex items-center justify-center">Nenhum vendedor encontrado</p>
@@ -69,9 +78,10 @@ export default function SellersPage({ user }: SellersPageProps) {
 type SellerCardProps = {
 	seller: TGetSellersOutputDefault[number];
 	handleEditClick: (sellerId: string) => void;
-	handleViewClick: (sellerId: string) => void;
+	userHasViewPermission: boolean;
+	userHasEditPermission: boolean;
 };
-function SellersPageSellerCard({ seller, handleEditClick, handleViewClick }: SellerCardProps) {
+function SellersPageSellerCard({ seller, handleEditClick, userHasViewPermission, userHasEditPermission }: SellerCardProps) {
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between flex-col md:flex-row gap-3">
@@ -106,20 +116,20 @@ function SellersPageSellerCard({ seller, handleEditClick, handleViewClick }: Sel
 						</div>
 					</div>
 					<div className="flex items-center gap-3">
-						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleEditClick(seller.id)}>
-							<Pencil className="w-3 min-w-3 h-3 min-h-3" />
-							EDITAR
-						</Button>
-						<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-							<Link href={`/dashboard/team/sellers/id/${seller.id}`}>
-								<AreaChart className="w-3 min-w-3 h-3 min-h-3" />
-								RESULTADOS
-							</Link>
-						</Button>
-						{/* <Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleViewClick(seller.id)}>
-							<AreaChart className="w-3 min-w-3 h-3 min-h-3" />
-							RESULTADOS
-						</Button> */}
+						{userHasEditPermission ? (
+							<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleEditClick(seller.id)}>
+								<Pencil className="w-3 min-w-3 h-3 min-h-3" />
+								EDITAR
+							</Button>
+						) : null}
+						{userHasViewPermission ? (
+							<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+								<Link href={`/dashboard/team/sellers/id/${seller.id}`}>
+									<AreaChart className="w-3 min-w-3 h-3 min-h-3" />
+									RESULTADOS
+								</Link>
+							</Button>
+						) : null}
 					</div>
 				</div>
 			</div>

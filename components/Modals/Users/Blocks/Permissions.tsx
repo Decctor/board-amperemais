@@ -17,6 +17,7 @@ export default function UsersPermissionsBlock({ userId, infoHolder, updateUserPe
 			<ResultsPermissions userId={userId} infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
 			<GoalsPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
 			<UsersPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
+			<ChatServicesPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
 		</ResponsiveMenuSection>
 	);
 }
