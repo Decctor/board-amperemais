@@ -7,6 +7,7 @@ import SalesQueryParamsMenu from "@/components/SalesStats/SalesQueryParamsMenu";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDateAsLocale } from "@/lib/formatting";
+import { useUsers } from "@/lib/queries/users";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import type { TUserSession } from "@/schemas/users";
 import dayjs from "dayjs";
@@ -73,6 +74,7 @@ type DashboardPageFiltersShowcaseProps = {
 	updateQueryParams: (params: Partial<TSaleStatsGeneralQueryParams>) => void;
 };
 function DashboardPageFiltersShowcase({ queryParams, updateQueryParams }: DashboardPageFiltersShowcaseProps) {
+	const { data: users } = useUsers({ initialFilters: {} });
 	function FilterTag({ label, value, onRemove }: { label: string; value: string; onRemove?: () => void }) {
 		return (
 			<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
@@ -131,7 +133,7 @@ function DashboardPageFiltersShowcase({ queryParams, updateQueryParams }: Dashbo
 			{queryParams.sellers.length > 0 ? (
 				<FilterTag
 					label="VENDEDORES"
-					value={queryParams.sellers.map((seller) => seller).join(", ")}
+					value={queryParams.sellers.map((seller) => users?.find((user) => user.id === seller)?.nome || seller).join(", ")}
 					onRemove={() => updateQueryParams({ sellers: [] })}
 				/>
 			) : null}

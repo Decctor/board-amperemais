@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import UsersCredentialsBlock from "./Blocks/Credentials";
 import UsersGeneralBlock from "./Blocks/General";
+import UsersPermissionsBlock from "./Blocks/Permissions";
 import UsersSellerBlock from "./Blocks/Seller";
 type EditUserProps = {
 	userId: string;
@@ -24,7 +25,7 @@ type EditUserProps = {
 };
 function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 	const queryClient = useQueryClient();
-	const { state, updateUser, updateAvatarHolder, redefineState } = useUserState();
+	const { state, updateUser, updateAvatarHolder, updateUserPermissions, redefineState } = useUserState();
 	const { data: user, queryKey, isLoading, isError, isSuccess, error } = useUserById(userId);
 
 	async function handleUpdateUserMutation(state: TUseUserState["state"]) {
@@ -84,6 +85,7 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 			/>
 			<UsersCredentialsBlock infoHolder={state.user} updateInfoHolder={updateUser} />
 			<UsersSellerBlock infoHolder={state.user} updateInfoHolder={updateUser} />
+			<UsersPermissionsBlock userId={userId} infoHolder={state.user} updateUserPermissions={updateUserPermissions} />
 		</ResponsiveMenu>
 	);
 }

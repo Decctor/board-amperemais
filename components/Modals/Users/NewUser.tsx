@@ -16,6 +16,7 @@ import { VscChromeClose } from "react-icons/vsc";
 import { toast } from "sonner";
 import UsersCredentialsBlock from "./Blocks/Credentials";
 import UsersGeneralBlock from "./Blocks/General";
+import UsersPermissionsBlock from "./Blocks/Permissions";
 import UsersSellerBlock from "./Blocks/Seller";
 type NewUserProps = {
 	session: TAuthUserSession["user"];
@@ -28,7 +29,7 @@ type NewUserProps = {
 	};
 };
 function NewUser({ session, closeModal, callbacks }: NewUserProps) {
-	const { state, updateUser, updateAvatarHolder, resetState } = useUserState();
+	const { state, updateUser, updateAvatarHolder, updateUserPermissions, resetState } = useUserState();
 
 	async function handleCreateUser(state: TUseUserState["state"]) {
 		let userAvatarUrl = state.user.avatarUrl;
@@ -83,6 +84,7 @@ function NewUser({ session, closeModal, callbacks }: NewUserProps) {
 			/>
 			<UsersCredentialsBlock infoHolder={state.user} updateInfoHolder={updateUser} />
 			<UsersSellerBlock infoHolder={state.user} updateInfoHolder={updateUser} />
+			<UsersPermissionsBlock infoHolder={state.user} updateUserPermissions={updateUserPermissions} />
 		</ResponsiveMenu>
 	);
 }
