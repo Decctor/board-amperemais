@@ -48,6 +48,21 @@ export type TGroupedSalesStats = {
 		vendedorMaisFrequente: string | null;
 		tempoAtividade: Date | null;
 	}[];
+	porDiaDoMes: {
+		dia: number;
+		qtde: number;
+		total: number;
+	}[];
+	porMes: {
+		mes: number;
+		qtde: number;
+		total: number;
+	}[];
+	porDiaDaSemana: {
+		diaSemana: number;
+		qtde: number;
+		total: number;
+	}[];
 };
 
 type GetResponse = {
@@ -73,6 +88,9 @@ const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 				vendedorMaisFrequente: item.vendedorMaisFrequente,
 				tempoAtividade: item.tempoAtividade,
 			})),
+			porDiaDoMes: stats.porDiaDoMes.map((item) => ({ dia: item.dia, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
+			porMes: stats.porMes.map((item) => ({ mes: item.mes, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
+			porDiaDaSemana: stats.porDiaDaSemana.map((item) => ({ diaSemana: item.diaSemana, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
 		},
 	});
 
@@ -343,10 +361,46 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 		.innerJoin(products, eq(saleItems.produtoId, products.id))
 		.groupBy(products.grupo);
 
+	// Grouping by day of the month
+	const resultsByDayOfMonth = await db
+		.select({
+			dia: sql<number>`EXTRACT(DAY FROM ${sales.dataVenda})`,
+			qtde: count(sales.id),
+			total: sum(sales.valorTotal),
+		})
+		.from(sales)
+		.where(and(...conditions))
+		.groupBy(sql`EXTRACT(DAY FROM ${sales.dataVenda})`);
+
+	// Grouping by month
+	const resultsByMonth = await db
+		.select({
+			mes: sql<number>`EXTRACT(MONTH FROM ${sales.dataVenda})`,
+			qtde: count(sales.id),
+			total: sum(sales.valorTotal),
+		})
+		.from(sales)
+		.where(and(...conditions))
+		.groupBy(sql`EXTRACT(MONTH FROM ${sales.dataVenda})`);
+
+	// Grouping by day of the week (0 = Sunday, 6 = Saturday)
+	const resultsByDayOfWeek = await db
+		.select({
+			diaSemana: sql<number>`EXTRACT(DOW FROM ${sales.dataVenda})`,
+			qtde: count(sales.id),
+			total: sum(sales.valorTotal),
+		})
+		.from(sales)
+		.where(and(...conditions))
+		.groupBy(sql`EXTRACT(DOW FROM ${sales.dataVenda})`);
+
 	return {
 		porItem: resultsByItem,
 		porGrupo: resultsByItemGroup,
 		porVendedor: resultsBySeller,
 		porParceiro: enrichedResultsByPartner,
+		porDiaDoMes: resultsByDayOfMonth,
+		porMes: resultsByMonth,
+		porDiaDaSemana: resultsByDayOfWeek,
 	};
 }
