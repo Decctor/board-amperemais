@@ -1,7 +1,7 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import type { TUserSession } from "@/schemas/users";
-import { Goal, Grid3X3, Handshake, Home, Megaphone, MessageCircle, Tag, UserRound, Users, UsersRound } from "lucide-react";
+import { Goal, Grid3X3, Handshake, Home, Megaphone, MessageCircle, Package, Tag, UserRound, Users, UsersRound } from "lucide-react";
 import AppSidebarContentGroup from "./AppSidebarContentGroup";
 import AppSidebarFooter from "./AppSidebarFooter";
 import AppSidebarHeader from "./AppSidebarHeader";
@@ -48,6 +48,12 @@ export const SidebarConfig: TSidebarConfigItem[] = [
 				title: "Parceiros",
 				url: "/dashboard/commercial/partners",
 				icon: <Handshake className="w-4 h-4" />,
+				items: null,
+			},
+			{
+				title: "Produtos",
+				url: "/dashboard/commercial/products",
+				icon: <Package className="w-4 h-4" />,
 				items: null,
 			},
 			{

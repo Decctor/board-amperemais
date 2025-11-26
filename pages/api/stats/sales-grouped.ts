@@ -26,6 +26,7 @@ type TGroupedSalesStatsReduced = {
 
 export type TGroupedSalesStats = {
 	porItem: {
+		id: string;
 		titulo: string;
 		qtde: number;
 		total: number;
@@ -88,7 +89,7 @@ const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 
 	return res.status(200).json({
 		data: {
-			porItem: stats.porItem.map((item) => ({ titulo: item.titulo, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
+			porItem: stats.porItem.map((item) => ({ id: item.id, titulo: item.titulo, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
 			porGrupo: stats.porGrupo.map((item) => ({ titulo: item.titulo, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
 			porVendedor: stats.porVendedor.map((item) => ({
 				vendedor: {
@@ -309,6 +310,7 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 	});
 	const resultsByItem = await db
 		.select({
+			id: products.id,
 			titulo: products.descricao,
 			qtde: count(saleItems.id),
 			total: sum(saleItems.valorVendaTotalLiquido),
@@ -323,7 +325,7 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 			),
 		)
 		.innerJoin(products, eq(saleItems.produtoId, products.id))
-		.groupBy(products.descricao);
+		.groupBy(products.id, products.descricao);
 
 	const resultsByItemGroup = await db
 		.select({
