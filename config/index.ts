@@ -14,6 +14,10 @@ export const AppRoutes = [
 		title: "Clientes",
 	},
 	{
+		path: "/dashboard/commercial/partners",
+		title: "Parceiros",
+	},
+	{
 		path: "/dashboard/commercial/campaigns",
 		title: "Campanhas",
 	},

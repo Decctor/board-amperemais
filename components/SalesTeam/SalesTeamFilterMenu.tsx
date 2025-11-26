@@ -44,8 +44,8 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 			<SheetContent>
 				<div className="flex h-full w-full flex-col">
 					<SheetHeader>
-						<SheetTitle>FILTRAR CLIENTES</SheetTitle>
-						<SheetDescription>Escolha aqui parâmetros para filtrar o banco de clientes.</SheetDescription>
+						<SheetTitle>FILTRAR VENDEDORES</SheetTitle>
+						<SheetDescription>Escolha aqui parâmetros para filtrar o banco de vendedores.</SheetDescription>
 					</SheetHeader>
 
 					<div className="flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
@@ -53,7 +53,7 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 							<TextInput
 								label="NOME DO VENDEDOR"
 								value={queryParamsHolder.search ?? ""}
-								placeholder={"Preenha aqui o nome do cliente para filtro."}
+								placeholder={"Preenha aqui o nome do vendedor para filtro."}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, search: value }))}
 								width={"100%"}
 							/>
