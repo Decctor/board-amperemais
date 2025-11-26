@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 
 import { db } from "@/services/drizzle";
-import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
+import { clients, partners, products, saleItems, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, count, eq, exists, gte, inArray, isNotNull, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -36,12 +36,23 @@ export type TGroupedSalesStats = {
 		total: number;
 	}[];
 	porVendedor: {
-		titulo: string;
+		vendedor: {
+			id: string;
+			identificador: string;
+			nome: string;
+			avatarUrl: string | null;
+		};
 		qtde: number;
 		total: number;
 	}[];
 	porParceiro: {
-		titulo: string;
+		parceiro: {
+			id: string;
+			identificador: string;
+			nome: string;
+			avatarUrl: string | null;
+			cpfCnpj: string | null;
+		};
 		qtde: number;
 		total: number;
 		ultimaCompra: Date | null;
@@ -79,9 +90,28 @@ const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 		data: {
 			porItem: stats.porItem.map((item) => ({ titulo: item.titulo, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
 			porGrupo: stats.porGrupo.map((item) => ({ titulo: item.titulo, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
-			porVendedor: stats.porVendedor.map((item) => ({ titulo: item.titulo, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
+			porVendedor: stats.porVendedor.map((item) => ({
+				vendedor: {
+					id: item.vendedorId as string,
+					identificador: item.nome as string,
+					nome: item.nome ?? "",
+					avatarUrl: item.avatarUrl ?? null,
+				},
+				nome: item.nome,
+				avatarUrl: item.avatarUrl ?? null,
+				qtde: item.qtde,
+				total: item.total ? Number(item.total) : 0,
+			})),
 			porParceiro: stats.porParceiro.map((item) => ({
-				titulo: item.titulo,
+				parceiro: {
+					id: item.parceiroId as string,
+					identificador: item.identificador as string,
+					nome: item.nome ?? "",
+					avatarUrl: item.avatarUrl ?? null,
+					cpfCnpj: item.cpfCnpj ?? null,
+				},
+				nome: item.nome,
+				avatarUrl: item.avatarUrl ?? null,
 				qtde: item.qtde,
 				total: item.total ? Number(item.total) : 0,
 				ultimaCompra: item.ultimaCompra,
@@ -159,89 +189,6 @@ export default apiHandler({ POST: getSalesGroupedStatsRoute });
 type GetSalesParams = {
 	filters: TSaleStatsGeneralQueryParams;
 };
-async function getSales({ filters }: GetSalesParams) {
-	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
-	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
-	try {
-		const conditions = [];
-
-		if (ajustedAfter) conditions.push(gte(sales.dataVenda, ajustedAfter));
-		if (ajustedBefore) conditions.push(lte(sales.dataVenda, ajustedBefore));
-		if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
-		if (filters.total.max) conditions.push(gte(sales.valorTotal, filters.total.max));
-
-		if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
-
-		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
-
-		if (filters.clientRFMTitles.length > 0)
-			exists(
-				db
-					.select({ id: clients.id })
-					.from(clients)
-					.where(and(eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles))),
-			);
-
-		// How to apply filter for product groups present in sale ???
-
-		// if (filters.productGroups.length > 0) {
-		// 	conditions.push(
-		// 		exists(
-		// 			db
-		// 				.select({ id: saleItems.id })
-		// 				.from(saleItems)
-		// 				.innerJoin(products, eq(saleItems.produtoId, products.id))
-		// 				.where(
-		// 					and(
-		// 						// Aqui está a correção - correlacionando com a tabela externa
-		// 						sql`${saleItems.vendaId} = ${sales.id}`,
-		// 						inArray(products.grupo, filters.productGroups),
-		// 					),
-		// 				),
-		// 		),
-		// 	);
-		// }
-		if (filters.excludedSalesIds) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
-
-		const salesResult = await db.query.sales.findMany({
-			where: and(...conditions),
-			with: {
-				cliente: {
-					columns: {
-						nome: true,
-						analiseRFMTitulo: true,
-					},
-				},
-				itens: {
-					columns: {
-						quantidade: true,
-						valorVendaTotalLiquido: true,
-						valorCustoTotal: true,
-					},
-					with: {
-						produto: {
-							columns: {
-								descricao: true,
-								grupo: true,
-							},
-						},
-					},
-				},
-			},
-			columns: {
-				vendedorNome: true,
-				natureza: true,
-				parceiro: true,
-				dataVenda: true,
-			},
-		});
-
-		return salesResult;
-	} catch (error) {
-		console.log("Error getting sales", error);
-		throw error;
-	}
-}
 
 async function getSalesGroupedStats({ filters }: GetSalesParams) {
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
@@ -268,63 +215,98 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 
 	if (filters.excludedSalesIds) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
 
+	const sellersResult = await db.query.sellers.findMany({
+		columns: {
+			id: true,
+			identificador: true,
+			nome: true,
+			avatarUrl: true,
+		},
+	});
+	const sellersMap = new Map(sellersResult.map((seller) => [seller.id, seller]));
+	const partnersResult = await db.query.partners.findMany({
+		columns: {
+			id: true,
+			identificador: true,
+			nome: true,
+			avatarUrl: true,
+			cpfCnpj: true,
+		},
+	});
+	const partnersMap = new Map(partnersResult.map((partner) => [partner.id, partner]));
+
 	const resultsBySeller = await db
 		.select({
-			titulo: sales.vendedorNome,
+			vendedorId: sales.vendedorId,
 			qtde: count(sales.id),
 			total: sum(sales.valorTotal),
 		})
 		.from(sales)
 		.where(and(...conditions))
-		.groupBy(sales.vendedorNome);
+		.groupBy(sales.vendedorId);
 
 	// Query para obter contagem de vendas por parceiro e vendedor
 	const salesByPartnerAndSeller = await db
 		.select({
-			parceiro: sales.parceiro,
-			vendedor: sales.vendedorNome,
+			parceiroId: sales.parceiroId,
+			vendedorId: sales.vendedorId,
 			qtdeVendas: count(sales.id),
 		})
 		.from(sales)
 		.where(and(...conditions, isNotNull(sales.parceiro), notInArray(sales.parceiro, ["", "0", "N/A"])))
-		.groupBy(sales.parceiro, sales.vendedorNome);
+		.groupBy(sales.parceiroId, sales.vendedorId);
 
 	// Query para obter a primeira venda de cada parceiro (sem filtros de período)
 	const firstSaleByPartner = await db
 		.select({
-			parceiro: sales.parceiro,
+			parceiroId: sales.parceiroId,
 			primeiraVenda: min(sales.dataVenda),
 		})
 		.from(sales)
 		.where(and(isNotNull(sales.parceiro), notInArray(sales.parceiro, ["", "0", "N/A"])))
-		.groupBy(sales.parceiro);
+		.groupBy(sales.parceiroId);
 
 	const resultsByPartner = await db
 		.select({
-			titulo: sales.parceiro,
+			parceiroId: sales.parceiroId,
 			qtde: count(sales.id),
 			total: sum(sales.valorTotal),
 			ultimaCompra: max(sales.dataVenda),
 		})
 		.from(sales)
-		.where(and(...conditions, isNotNull(sales.parceiro), notInArray(sales.parceiro, ["", "0", "N/A"])))
-		.groupBy(sales.parceiro);
+		.innerJoin(partners, eq(sales.parceiroId, partners.id))
+		.where(and(...conditions, isNotNull(sales.parceiroId)))
+		.groupBy(sales.parceiroId);
 
 	// Enriquecendo os resultados com vendedor mais frequente e tempo de atividade
 	const enrichedResultsByPartner = resultsByPartner.map((partner) => {
+		const partnerInfo = partnersMap.get(partner.parceiroId as string);
 		// Encontra o vendedor com mais vendas para este parceiro
-		const mostFrequentSeller = salesByPartnerAndSeller.filter((v) => v.parceiro === partner.titulo).sort((a, b) => b.qtdeVendas - a.qtdeVendas);
+		const mostFrequentSeller = salesByPartnerAndSeller.filter((v) => v.parceiroId === partner.parceiroId).sort((a, b) => b.qtdeVendas - a.qtdeVendas);
 
 		// Encontra a primeira venda deste parceiro
-		const firstSale = firstSaleByPartner.find((p) => p.parceiro === partner.titulo);
+		const firstSale = firstSaleByPartner.find((p) => p.parceiroId === partner.parceiroId);
 
 		return {
 			...partner,
-			vendedorMaisFrequente: mostFrequentSeller[0]?.vendedor || null,
+			nome: partnerInfo?.nome || null,
+			identificador: partnerInfo?.identificador as string,
+			cpfCnpj: partnerInfo?.cpfCnpj as string,
+			avatarUrl: partnerInfo?.avatarUrl || null,
+			vendedorMaisFrequente: mostFrequentSeller[0]?.vendedorId ? (sellersMap.get(mostFrequentSeller[0].vendedorId)?.nome ?? null) : null,
 			tempoAtividade: firstSale?.primeiraVenda || null,
 		};
 	});
 
+	const enrichedResultsBySeller = resultsBySeller.map((seller) => {
+		const sellerInfo = sellersMap.get(seller.vendedorId as string);
+		return {
+			...seller,
+			nome: sellerInfo?.nome || null,
+			identificador: sellerInfo?.identificador as string,
+			avatarUrl: sellerInfo?.avatarUrl || null,
+		};
+	});
 	const resultsByItem = await db
 		.select({
 			titulo: products.descricao,
@@ -397,7 +379,7 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 	return {
 		porItem: resultsByItem,
 		porGrupo: resultsByItemGroup,
-		porVendedor: resultsBySeller,
+		porVendedor: enrichedResultsBySeller,
 		porParceiro: enrichedResultsByPartner,
 		porDiaDoMes: resultsByDayOfMonth,
 		porMes: resultsByMonth,

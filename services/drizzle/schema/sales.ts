@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { newTable } from "./common";
+import { partners } from "./partners";
 import { products } from "./products";
 import { sellers } from "./sellers";
 
@@ -19,8 +20,10 @@ export const sales = newTable(
 		custoTotal: doublePrecision("custo_total").notNull(),
 		vendedorNome: text("vendedor_nome").notNull(),
 		vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id),
-		// Other details
+		// Partner
 		parceiro: text("parceiro").notNull(),
+		parceiroId: varchar("parceiro_id", { length: 255 }).references(() => partners.id),
+		// Other details
 		chave: text("chave").notNull(),
 		documento: text("documento").notNull(),
 		modelo: text("modelo").notNull(),
@@ -51,6 +54,10 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 	vendedor: one(sellers, {
 		fields: [sales.vendedorId],
 		references: [sellers.id],
+	}),
+	parceiro: one(partners, {
+		fields: [sales.parceiroId],
+		references: [partners.id],
 	}),
 	itens: many(saleItems),
 }));

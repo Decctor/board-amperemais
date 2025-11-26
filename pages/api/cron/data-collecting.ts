@@ -1,7 +1,7 @@
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { db } from "@/services/drizzle";
-import { clients, products, saleItems, sales, sellers, utils } from "@/services/drizzle/schema";
+import { clients, partners, products, saleItems, sales, sellers, utils } from "@/services/drizzle/schema";
 import axios from "axios";
 import dayjs from "dayjs";
 import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
@@ -63,10 +63,16 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					nome: true,
 				},
 			});
-
+			const existingPartners = await tx.query.partners.findMany({
+				columns: {
+					id: true,
+					identificador: true,
+				},
+			});
 			const existingClientsMap = new Map(existingClients.map((client) => [client.nome, client.id]));
 			const existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
 			const existingSellersMap = new Map(existingSellers.map((seller) => [seller.nome, seller.id]));
+			const existingPartnersMap = new Map(existingPartners.map((partner) => [partner.identificador, partner.id]));
 			for (const OnlineSale of OnlineSoftwareSales) {
 				// First, we check for an existing client with the same name (in this case, our primary key for the integration)
 				const equivalentSaleClient = existingClientsMap.get(OnlineSale.cliente);
@@ -111,6 +117,24 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					existingSellersMap.set(OnlineSale.vendedor, insertedSellerId);
 				}
 
+				// Then, we check for an existing partner with the same identificador (in this case, our primary key for the integration)
+				const equivalentSalePartner =
+					OnlineSale.parceiro && OnlineSale.parceiro !== "N/A" && OnlineSale.parceiro !== "0" ? existingPartnersMap.get(OnlineSale.parceiro) : null;
+				let salePartnerId = equivalentSalePartner;
+				if (!salePartnerId) {
+					// If no existing partner is found, we create a new one
+					const insertedPartnerResponse = await tx
+						.insert(partners)
+						.values({ nome: "NÃO DEFINIDO", identificador: OnlineSale.parceiro || "N/A" })
+						.returning({ id: partners.id });
+					const insertedPartnerId = insertedPartnerResponse[0]?.id;
+					if (!insertedPartnerResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar parceiro.");
+					// Define the salePartnerId with the newly created partner id
+					salePartnerId = insertedPartnerId;
+					// Add the new partner to the existing partners map
+					existingPartnersMap.set(OnlineSale.parceiro || "N/A", insertedPartnerId);
+				}
+
 				// Now, we extract the data to compose the sale entity
 				const saleTotalCost = OnlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
 				const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
@@ -125,6 +149,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						vendedorNome: OnlineSale.vendedor || "N/A",
 						vendedorId: saleSellerId,
 						parceiro: OnlineSale.parceiro || "N/A",
+						parceiroId: salePartnerId,
 						chave: OnlineSale.chave || "N/A",
 						documento: OnlineSale.documento || "N/A",
 						modelo: OnlineSale.modelo || "N/A",

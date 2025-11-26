@@ -1,4 +1,4 @@
-import { formatDateAsLocale, formatDecimalPlaces, formatLongString } from "@/lib/formatting";
+import { formatDateAsLocale, formatDecimalPlaces, formatLongString, formatNameAsInitials } from "@/lib/formatting";
 import { formatToMoney } from "@/lib/formatting";
 import { useGroupedSalesStats } from "@/lib/queries/stats/grouped";
 import type { TGroupedSalesStats } from "@/pages/api/stats/sales-grouped";
@@ -7,8 +7,12 @@ import { useEffect, useMemo, useState } from "react";
 import { BsCart } from "react-icons/bs";
 import { useDebounce } from "use-debounce";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -261,11 +265,16 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 	console.log("ResultsBySellerGraph data", data);
 	const dataSorted = useMemo(() => [...data].sort((a, b) => (type === "total" ? b.total - a.total : b.qtde - a.qtde)), [data, type]);
 
+	const maxValue = useMemo(() => {
+		if (data.length === 0) return 0;
+		return Math.max(...data.map((item) => (type === "total" ? item.total : item.qtde)));
+	}, [data, type]);
+
 	async function handleExportData(data: TGroupedSalesStats["porVendedor"] | undefined) {
 		try {
 			if (!data) throw new Error("Não há dados para exportar");
 			const exportationJSON = data.map((item) => ({
-				"NOME DO VENDEDOR": item.titulo,
+				"NOME DO VENDEDOR": item.vendedor.nome,
 				"VALOR VENDIDO": item.total,
 				"Nº DE VENDAS": item.qtde,
 			}));
@@ -276,16 +285,7 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 			return toast.error(msg);
 		}
 	}
-	const chartConfig = {
-		total: {
-			label: "Valor Vendido",
-			color: "#fead41",
-		},
-		qtde: {
-			label: "Qtde Vendas",
-			color: "#fead41",
-		},
-	} satisfies ChartConfig;
+
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
@@ -326,34 +326,71 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 				</div>
 			</div>
 
-			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] :max-h-[450px]">
-				<div className="flex max-h-[400px] min-h-[400px] w-full items-center justify-center lg:max-h-[350px] lg:min-h-[350px] overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
-					<ChartContainer config={chartConfig} className="aspect-auto h-[350px] w-full lg:h-[250px]">
-						<BarChart
-							margin={{
-								left: 40,
-								right: 25,
-							}}
-							accessibilityLayer
-							data={dataSorted}
-							layout="vertical"
-						>
-							<XAxis type="number" dataKey={type} hide />
-							<YAxis dataKey="titulo" type="category" tickLine={false} tickMargin={0} axisLine={false} tickFormatter={(value) => value.slice(0, 36)} />
-							<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-							<Bar dataKey={type} fill="#15599a" radius={5}>
-								<LabelList
-									dataKey={type}
-									position="right"
-									offset={8}
-									className="fill-foreground text-[0.5rem]"
-									formatter={(value: any) => (type === "total" ? formatToMoney(value) : value)}
-								/>
-							</Bar>
-						</BarChart>
-					</ChartContainer>
+			<ScrollArea className="h-[450px] w-full pr-4">
+				<div className="flex flex-col gap-4 py-2">
+					{dataSorted.map((item, index) => {
+						const value = type === "total" ? item.total : item.qtde;
+						const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+						console.log("VENDEDOR: ", item.vendedor);
+						return (
+							<div key={item.vendedor.id} className="flex items-center gap-4 w-full group">
+								<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
+									<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
+									<HoverCard>
+										<HoverCardTrigger asChild>
+											<div className="flex items-center gap-2 cursor-pointer">
+												<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-primary transition-colors">
+													<AvatarImage src={item.vendedor.avatarUrl || undefined} alt={item.vendedor.nome} />
+													<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
+												</Avatar>
+												<div className="flex flex-col">
+													<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.vendedor.nome}>
+														{item.vendedor.nome}
+													</span>
+													<span className="text-[0.6rem] text-muted-foreground">ID: {item.vendedor.identificador}</span>
+												</div>
+											</div>
+										</HoverCardTrigger>
+										<HoverCardContent className="flex flex-col w-80">
+											<div className="w-full flex items-center gap-2">
+												<Avatar className="h-12 w-12 min-h-12 min-w-12">
+													<AvatarImage src={item.vendedor.avatarUrl || undefined} />
+													<AvatarFallback>{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
+												</Avatar>
+												<h2 className="text-sm font-semibold">{item.vendedor.nome}</h2>
+											</div>
+											<div className="w-full flex flex-col gap-1">
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
+													<p className="text-xs font-medium">{item.vendedor.identificador}</p>
+												</div>
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
+													<p className="text-xs font-medium">{item.qtde}</p>
+												</div>
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
+													<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
+												</div>
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
+													<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
+												</div>
+											</div>
+										</HoverCardContent>
+									</HoverCard>
+								</div>
+
+								<div className="flex-1 flex flex-col justify-center h-full">
+									<Progress value={percentage} className="h-2 w-full" />
+								</div>
+
+								<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
+							</div>
+						);
+					})}
 				</div>
-			</div>
+			</ScrollArea>
 		</div>
 	);
 }
@@ -364,7 +401,7 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 		try {
 			if (!data) throw new Error("Não há dados para exportar");
 			const exportationJSON = data.map((item) => ({
-				"CPF-CPNJ DO PARCEIRO": item.titulo,
+				"CPF-CPNJ DO PARCEIRO": item.parceiro.identificador,
 				"VALOR VENDIDO": item.total,
 				"Nº DE VENDAS": item.qtde,
 				"ÚLTIMA COMPRA": item.ultimaCompra ? formatDateAsLocale(item.ultimaCompra) : "N/A",
@@ -379,16 +416,12 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 		}
 	}
 	const dataSorted = useMemo(() => [...data].sort((a, b) => (type === "total" ? b.total - a.total : b.qtde - a.qtde)), [data, type]);
-	const chartConfig = {
-		total: {
-			label: "Valor Vendido",
-			color: "#fead41",
-		},
-		qtde: {
-			label: "Qtde Vendas",
-			color: "#fead41",
-		},
-	} satisfies ChartConfig;
+
+	const maxValue = useMemo(() => {
+		if (data.length === 0) return 0;
+		return Math.max(...data.map((item) => (type === "total" ? item.total : item.qtde)));
+	}, [data, type]);
+
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
@@ -429,34 +462,75 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 				</div>
 			</div>
 
-			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[450px] :max-h-[450px]">
-				<div className="flex max-h-[400px] min-h-[400px] w-full items-center justify-center lg:max-h-[350px] lg:min-h-[350px]">
-					<ChartContainer config={chartConfig} className="aspect-auto h-[350px] w-full lg:h-[250px]">
-						<BarChart
-							margin={{
-								left: 40,
-								right: 25,
-							}}
-							accessibilityLayer
-							data={dataSorted}
-							layout="vertical"
-						>
-							<XAxis type="number" dataKey={type} hide />
-							<YAxis dataKey="titulo" type="category" tickLine={false} tickMargin={0} axisLine={false} tickFormatter={(value) => value.slice(0, 36)} />
-							<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-							<Bar dataKey={type} fill="#15599a" radius={5}>
-								<LabelList
-									dataKey={type}
-									position="right"
-									offset={8}
-									className="fill-foreground text-[0.5rem]"
-									formatter={(value: any) => (type === "total" ? formatToMoney(value) : value)}
-								/>
-							</Bar>
-						</BarChart>
-					</ChartContainer>
+			<ScrollArea className="h-[450px] w-full pr-4">
+				<div className="flex flex-col gap-4 py-2">
+					{dataSorted.map((item, index) => {
+						const value = type === "total" ? item.total : item.qtde;
+						const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+
+						return (
+							<div key={item.parceiro.id} className="flex items-center gap-4 w-full group">
+								<div className="flex items-center gap-3 w-fit min-w-fit lg:w-[250px] lg:min-w-[250px]">
+									<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
+									<HoverCard>
+										<HoverCardTrigger asChild>
+											<div className="flex items-center gap-2 cursor-pointer">
+												<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-primary transition-colors">
+													<AvatarImage src={item.parceiro.avatarUrl || undefined} alt={item.parceiro.nome} />
+													<AvatarFallback className="font-bold text-primary">{item.parceiro.nome.substring(0, 2).toUpperCase()}</AvatarFallback>
+												</Avatar>
+												<div className="flex flex-col">
+													<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.parceiro.nome}>
+														{item.parceiro.nome}
+													</span>
+													<span className="text-[0.6rem] text-muted-foreground">ID: {item.parceiro.identificador}</span>
+												</div>
+											</div>
+										</HoverCardTrigger>
+										<HoverCardContent className="flex flex-col w-80">
+											<div className="w-full flex items-center gap-2">
+												<Avatar className="h-12 w-12 min-h-12 min-w-12">
+													<AvatarImage src={item.parceiro.avatarUrl || undefined} />
+													<AvatarFallback>{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
+												</Avatar>
+												<h2 className="text-sm font-semibold">{item.parceiro.nome}</h2>
+											</div>
+											<div className="w-full flex flex-col gap-1">
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
+													<p className="text-xs font-medium">{item.parceiro.identificador}</p>
+												</div>
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">CPF/CNPJ</p>
+													<p className="text-xs font-medium">{item.parceiro.cpfCnpj}</p>
+												</div>
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
+													<p className="text-xs font-medium">{item.qtde}</p>
+												</div>
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
+													<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
+												</div>
+												<div className="w-full flex items-center gap-2 justify-between">
+													<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
+													<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
+												</div>
+											</div>
+										</HoverCardContent>
+									</HoverCard>
+								</div>
+
+								<div className="hidden lg:flex-1 flex flex-col justify-center h-full">
+									<Progress value={percentage} className="h-2 w-full" />
+								</div>
+
+								<div className="w-fit lg:w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
+							</div>
+						);
+					})}
 				</div>
-			</div>
+			</ScrollArea>
 		</div>
 	);
 }

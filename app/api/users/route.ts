@@ -1,3 +1,4 @@
+import { api } from "@/convex/_generated/api";
 import { apiHandler } from "@/lib/api";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
@@ -5,6 +6,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { NewUserSchema } from "@/schemas/users";
 import { db } from "@/services/drizzle";
 import { users } from "@/services/drizzle/schema";
+import { fetchMutation } from "convex/nextjs";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -25,6 +27,16 @@ async function createUser({ input, session }: { input: TCreateUserInput; session
 	const insertedUserId = insertedUser[0]?.id;
 	if (!insertedUserId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar usuário.");
 
+	// Creating user in Convex
+
+	await fetchMutation(api.mutations.users.createUser, {
+		user: {
+			nome: input.user.nome,
+			email: input.user.email,
+			avatar_url: input.user.avatarUrl ?? undefined,
+			idApp: insertedUserId,
+		},
+	});
 	return {
 		data: {
 			insertedId: insertedUserId,

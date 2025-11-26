@@ -16,6 +16,7 @@ import type * as mutations_connections from "../mutations/connections.js";
 import type * as mutations_files from "../mutations/files.js";
 import type * as mutations_messages from "../mutations/messages.js";
 import type * as mutations_services from "../mutations/services.js";
+import type * as mutations_users from "../mutations/users.js";
 import type * as queries_chat from "../queries/chat.js";
 import type * as queries_connections from "../queries/connections.js";
 import type * as queries_users from "../queries/users.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   "mutations/files": typeof mutations_files;
   "mutations/messages": typeof mutations_messages;
   "mutations/services": typeof mutations_services;
+  "mutations/users": typeof mutations_users;
   "queries/chat": typeof queries_chat;
   "queries/connections": typeof queries_connections;
   "queries/users": typeof queries_users;
