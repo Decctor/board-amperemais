@@ -6,15 +6,18 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Button } from "@/components/ui/button";
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { usePartners } from "@/lib/queries/partners";
-import { useProductStats } from "@/lib/queries/products";
+import { useProductGraph, useProductStats } from "@/lib/queries/products";
 import { useSellers } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
 import { isValidNumber } from "@/lib/validation";
+import type { TGetProductGraphOutput } from "@/pages/api/products/graph";
 import type { TGetProductStatsOutput } from "@/pages/api/products/stats";
 import dayjs from "dayjs";
 import {
@@ -23,6 +26,7 @@ import {
 	ChartBar,
 	CirclePlus,
 	Code,
+	Download,
 	Package,
 	Percent,
 	ShoppingBag,
@@ -32,6 +36,8 @@ import {
 	Users,
 } from "lucide-react";
 import { useState } from "react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
 
 type ProductPageProps = {
 	user: TAuthUserSession["user"];
@@ -176,7 +182,22 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 								className="w-full lg:w-1/4"
 							/>
 						</div>
+						<DiscountAnalysis
+							descontoTotal={stats.descontoTotal}
+							percentualDescontoMedio={stats.percentualDescontoMedio}
+							faturamentoBruto={stats.faturamentoBrutoTotal}
+						/>
 					</div>
+
+					{/* Product Graph */}
+					<ProductGraphBlock
+						productId={id}
+						periodAfter={filters.periodAfter}
+						periodBefore={filters.periodBefore}
+						sellerId={filters.sellerId ?? null}
+						partnerId={filters.partnerId ?? null}
+						saleNatures={filters.saleNatures ?? null}
+					/>
 
 					{/* Seasonality Analysis */}
 					<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
@@ -206,18 +227,11 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 
 					{/* Advanced Analysis */}
 					<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
-						<div className="w-full lg:w-1/3">
+						<div className="w-full lg:w-1/2">
 							<GroupedByRelatedProducts data={stats.resultadosAgrupados.produtosRelacionados} />
 						</div>
-						<div className="w-full lg:w-1/3">
+						<div className="w-full lg:w-1/2">
 							<MarginAnalysis data={stats.analiseMargem} />
-						</div>
-						<div className="w-full lg:w-1/3">
-							<DiscountAnalysis
-								descontoTotal={stats.descontoTotal}
-								percentualDescontoMedio={stats.percentualDescontoMedio}
-								faturamentoBruto={stats.faturamentoBrutoTotal}
-							/>
 						</div>
 					</div>
 				</>
@@ -248,7 +262,7 @@ function GroupedByMonthDay({ data }: { data: TGetProductStatsOutput["data"]["res
 	function DayCard({ index }: { index: number }) {
 		const result = getDayResult(index);
 		const intensity = result ? getColorIntensity(result.total) : 0;
-		const bgColor = result ? `rgba(34, 197, 94, ${intensity})` : "transparent";
+		const bgColor = result ? `rgba(254, 173, 0, ${intensity})` : "transparent";
 		const avgValue = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
@@ -359,7 +373,7 @@ function GroupedByMonth({ data }: { data: TGetProductStatsOutput["data"]["result
 	function MonthCard({ index }: { index: number }) {
 		const result = getMonthResult(index);
 		const intensity = result ? getColorIntensity(result.total) : 0;
-		const bgColor = result ? `rgba(34, 197, 94, ${intensity})` : "transparent";
+		const bgColor = result ? `rgba(254, 173, 0, ${intensity})` : "transparent";
 		const avgValue = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
@@ -465,7 +479,7 @@ function GroupedByWeekDay({ data }: { data: TGetProductStatsOutput["data"]["resu
 	function WeekDayCard({ index }: { index: number }) {
 		const result = getWeekDayResult(index);
 		const intensity = result ? getColorIntensity(result.total) : 0;
-		const bgColor = result ? `rgba(34, 197, 94, ${intensity})` : "transparent";
+		const bgColor = result ? `rgba(254, 173, 0, ${intensity})` : "transparent";
 		const avgValue = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
@@ -939,23 +953,246 @@ function DiscountAnalysis({
 				<Percent className="w-4 h-4 min-w-4 min-h-4" />
 			</div>
 			<div className="w-full flex flex-col gap-4">
-				<div className="flex flex-col gap-2">
-					<h3 className="text-sm font-bold tracking-tight">Total em Descontos</h3>
-					<p className="text-2xl font-bold text-primary">{formatToMoney(descontoTotal)}</p>
+				<div className="w-full flex items-center gap-4 flex-wrap">
+					<div className="flex items-end gap-1">
+						<p className="text-2xl font-bold text-[#15599a] dark:text-[#fead61]">{formatToMoney(descontoTotal)}</p>
+						<span className="text-[0.65rem] font-medium tracking-tight">TOTAL EM DESCONTOS</span>
+					</div>
+					<div className="flex items-end gap-1">
+						<p className="text-2xl font-bold text-[#15599a] dark:text-[#fead61]">{formatDecimalPlaces(percentualDescontoMedio)}%</p>
+						<span className="text-[0.65rem] font-medium tracking-tight">PERCENTUAL MÉDIO</span>
+					</div>
 				</div>
-				<div className="flex flex-col gap-2">
-					<h3 className="text-sm font-bold tracking-tight">Percentual Médio</h3>
-					<p className="text-2xl font-bold text-primary">{formatDecimalPlaces(percentualDescontoMedio)}%</p>
+				<p
+					className={cn(
+						"text-sm text-center px-2 py-1 rounded-lg bg-primary/10 text-primary w-fit self-center",
+						percentualDescontoMedio > 15 && "text-yellow-800 bg-yellow-100",
+					)}
+				>
+					De <strong className="text-primary">{formatToMoney(faturamentoBruto)}</strong> potenciais, {formatToMoney(descontoTotal)} foram descontados
+				</p>
+			</div>
+		</div>
+	);
+}
+
+// Product Graph Component
+function ProductGraphBlock({
+	productId,
+	periodAfter,
+	periodBefore,
+	sellerId,
+	partnerId,
+	saleNatures,
+}: {
+	productId: string;
+	periodAfter: string | null | undefined;
+	periodBefore: string | null | undefined;
+	sellerId: string | null;
+	partnerId: string | null;
+	saleNatures: string[] | null;
+}) {
+	console.log("[INFO] [PRODUCT GRAPH BLOCK] Input:", { productId, periodAfter, periodBefore, sellerId, partnerId, saleNatures });
+	const [graphMetric, setGraphMetric] = useState<"quantidade" | "valorLiquido" | "margemPercentual" | "ticketMedio">("valorLiquido");
+
+	const { data: productGraph, isLoading: productGraphLoading } = useProductGraph({
+		productId,
+		periodAfter: periodAfter,
+		periodBefore: periodBefore,
+		sellerId,
+		partnerId,
+		saleNatures,
+	});
+
+	async function handleExportData(data: TGetProductGraphOutput["data"] | undefined) {
+		try {
+			if (!data) throw new Error("Não há dados para exportar");
+			const exportationJSON = data.map((item) => ({
+				PERÍODO: item.titulo,
+				QUANTIDADE: item.quantidade,
+				"VALOR LÍQUIDO": item.valorLiquido,
+				"MARGEM (R$)": item.margem,
+				"MARGEM (%)": item.margemPercentual,
+				"TICKET MÉDIO": item.ticketMedio,
+			}));
+			getExcelFromJSON(exportationJSON, "PRODUTO_EVOLUÇÃO.xlsx");
+			return toast.success("Dados exportados com sucesso");
+		} catch (error) {
+			const msg = getErrorMessage(error);
+			return toast.error(msg);
+		}
+	}
+
+	const CHART_LABEL: Record<"quantidade" | "valorLiquido" | "margemPercentual" | "ticketMedio", string> = {
+		quantidade: "QUANTIDADE VENDIDA",
+		valorLiquido: "VALOR VENDIDO",
+		margemPercentual: "MARGEM (%)",
+		ticketMedio: "TICKET MÉDIO",
+	};
+	const chartConfig = {
+		titulo: {
+			label: "DATA",
+		},
+		quantidade: {
+			label: "Quantidade Vendida",
+			color: "#fead41",
+		},
+		valorLiquido: {
+			label: "Valor Líquido",
+			color: "#fead41",
+		},
+		margemPercentual: {
+			label: "Margem %",
+			color: "#22c55e",
+		},
+		ticketMedio: {
+			label: "Ticket Médio",
+			color: "#15599a",
+		},
+	} satisfies ChartConfig;
+
+	return (
+		<div className="w-full flex flex-col gap-2 py-2">
+			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+				<div className="flex items-center justify-between">
+					<h1 className="text-xs font-medium tracking-tight uppercase">{CHART_LABEL[graphMetric]}</h1>
+					<div className="flex items-center gap-2">
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(productGraph)}>
+										<Download className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Baixar</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant={graphMetric === "valorLiquido" ? "default" : "ghost"}
+										size="fit"
+										className="rounded-lg p-2"
+										onClick={() => setGraphMetric("valorLiquido")}
+									>
+										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Valor Líquido</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant={graphMetric === "quantidade" ? "default" : "ghost"}
+										size="fit"
+										className="rounded-lg p-2"
+										onClick={() => setGraphMetric("quantidade")}
+									>
+										<ShoppingBag className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Quantidade</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant={graphMetric === "margemPercentual" ? "default" : "ghost"}
+										size="fit"
+										className="rounded-lg p-2"
+										onClick={() => setGraphMetric("margemPercentual")}
+									>
+										<Percent className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Margem %</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant={graphMetric === "ticketMedio" ? "default" : "ghost"}
+										size="fit"
+										className="rounded-lg p-2"
+										onClick={() => setGraphMetric("ticketMedio")}
+									>
+										<ChartBar className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Ticket Médio</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</div>
 				</div>
-				<div className="flex flex-col gap-2">
-					<h3 className="text-sm font-bold tracking-tight">Impacto no Faturamento</h3>
-					<p className="text-sm text-primary/80">
-						De <strong>{formatToMoney(faturamentoBruto)}</strong> potenciais, {formatToMoney(descontoTotal)} foram descontados
-					</p>
+				<div className="flex w-full items-center gap-4">
+					<div className="flex max-h-[400px] min-h-[400px] w-full items-center justify-center lg:max-h-[350px] lg:min-h-[350px]">
+						<ChartContainer className="aspect-auto h-[350px] w-full lg:h-[250px]" config={chartConfig}>
+							<ComposedChart
+								accessibilityLayer
+								data={productGraph || []}
+								margin={{
+									top: 15,
+									right: 15,
+									left: 15,
+									bottom: 15,
+								}}
+							>
+								<CartesianGrid vertical={false} />
+								<XAxis dataKey="titulo" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(value) => value.slice(0, 12)} />
+
+								<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+
+								<defs>
+									<linearGradient id="fillProductMetric" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="5%" stopColor={chartConfig[graphMetric].color} stopOpacity={0.8} />
+										<stop offset="95%" stopColor={chartConfig[graphMetric].color} stopOpacity={0.1} />
+									</linearGradient>
+								</defs>
+
+								{graphMetric === "quantidade" || graphMetric === "valorLiquido" || graphMetric === "ticketMedio" ? (
+									<>
+										<YAxis
+											yAxisId="left"
+											orientation="left"
+											tickFormatter={(value) => (graphMetric === "quantidade" ? formatDecimalPlaces(value) : formatToMoney(value))}
+											stroke={chartConfig[graphMetric].color}
+										/>
+										<Area
+											yAxisId="left"
+											dataKey={graphMetric}
+											type="monotone"
+											fill="url(#fillProductMetric)"
+											fillOpacity={0.4}
+											stroke={chartConfig[graphMetric].color}
+											name={chartConfig[graphMetric].label}
+										/>
+									</>
+								) : null}
+
+								{graphMetric === "margemPercentual" ? (
+									<>
+										<YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} stroke={chartConfig[graphMetric].color} />
+										<Bar
+											yAxisId="right"
+											dataKey={graphMetric}
+											fill={chartConfig[graphMetric].color}
+											name={chartConfig[graphMetric].label}
+											radius={[4, 4, 0, 0]}
+											barSize={20}
+										/>
+									</>
+								) : null}
+							</ComposedChart>
+						</ChartContainer>
+					</div>
 				</div>
-				{percentualDescontoMedio > 15 ? (
-					<div className="w-full px-3 py-2 bg-yellow-100 text-yellow-800 text-xs rounded-lg">⚠️ Percentual de desconto acima da média (15%)</div>
-				) : null}
 			</div>
 		</div>
 	);

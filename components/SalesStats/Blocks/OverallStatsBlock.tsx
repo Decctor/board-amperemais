@@ -38,9 +38,9 @@ function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps)
 						goalText={`${overallStats?.faturamentoMeta || "..."}`}
 						barHeigth="25px"
 						valueGoal={overallStats?.faturamentoMeta || 0}
-						valueHit={overallStats?.faturamentoBruto.atual || 0}
+						valueHit={overallStats?.faturamento.atual || 0}
 						formattedValueGoal={formatToMoney(overallStats?.faturamentoMeta || 0)}
-						formattedValueHit={formatToMoney(overallStats?.faturamentoBruto.atual || 0)}
+						formattedValueHit={formatToMoney(overallStats?.faturamento.atual || 0)}
 					/>
 				</div>
 			</div>
@@ -58,34 +58,28 @@ function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps)
 				<StatUnitCard
 					title="Faturamento"
 					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: overallStats?.faturamentoBruto.atual || 0, format: (n) => formatToMoney(n) }}
-					previous={
-						overallStats?.faturamentoBruto.anterior ? { value: overallStats.faturamentoBruto.anterior || 0, format: (n) => formatToMoney(n) } : undefined
-					}
+					current={{ value: overallStats?.faturamento.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={overallStats?.faturamento.anterior ? { value: overallStats.faturamento.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
 					className="w-full lg:w-1/4"
 				/>
 				<StatUnitCard
-					title="Faturamento Líquido"
+					title="Margem Bruta"
 					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: overallStats?.faturamentoLiquido.atual || 0, format: (n) => formatToMoney(n) }}
-					previous={
-						overallStats?.faturamentoLiquido.anterior
-							? { value: overallStats.faturamentoLiquido.anterior || 0, format: (n) => formatToMoney(n) }
-							: undefined
-					}
+					current={{ value: overallStats?.margemBruta.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={overallStats?.margemBruta.anterior ? { value: overallStats.margemBruta.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
 					className="w-full lg:w-1/4"
 				/>
 				<StatUnitCard
 					title="Margem"
 					icon={<Percent className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{
-						value: (100 * (overallStats?.faturamentoLiquido.atual || 0)) / (overallStats?.faturamentoBruto.atual || 0),
+						value: (100 * (overallStats?.margemBruta.atual || 0)) / (overallStats?.faturamento.atual || 0),
 						format: (n) => formatDecimalPlaces(n),
 					}}
 					previous={
-						overallStats?.faturamentoLiquido.anterior && overallStats?.faturamentoBruto.anterior
+						overallStats?.margemBruta.anterior && overallStats?.faturamento.anterior
 							? {
-									value: (100 * (overallStats.faturamentoLiquido.anterior || 0)) / (overallStats.faturamentoBruto.anterior || 0),
+									value: (100 * (overallStats.margemBruta.anterior || 0)) / (overallStats.faturamento.anterior || 0),
 									format: (n) => formatDecimalPlaces(n),
 								}
 							: undefined

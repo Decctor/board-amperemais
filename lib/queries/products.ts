@@ -1,4 +1,5 @@
 import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsInput, TGetProductsOutput } from "@/pages/api/products";
+import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/pages/api/products/graph";
 import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/pages/api/products/stats";
 import type { TProductStatsQueryParams } from "@/schemas/products";
 import { useQuery } from "@tanstack/react-query";
@@ -117,4 +118,30 @@ export function useProductStats({ productId, initialFilters }: UseProductStatsPa
 		filters,
 		updateFilters,
 	};
+}
+
+async function fetchProductGraph(input: TGetProductGraphInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productId", input.productId);
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter);
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore);
+		if (input.sellerId) searchParams.set("sellerId", input.sellerId);
+		if (input.partnerId) searchParams.set("partnerId", input.partnerId);
+		if (input.saleNatures && input.saleNatures.length > 0) {
+			searchParams.set("saleNatures", JSON.stringify(input.saleNatures));
+		}
+		const { data } = await axios.get<TGetProductGraphOutput>(`/api/products/graph?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchProductGraph", error);
+		throw error;
+	}
+}
+
+export function useProductGraph(input: TGetProductGraphInput) {
+	return useQuery({
+		queryKey: ["product-graph", input],
+		queryFn: () => fetchProductGraph(input),
+	});
 }

@@ -18,11 +18,11 @@ type TOverallSalesStatsReduced = {
 export type TOverallSalesStats = {
 	faturamentoMeta: number;
 	faturamentoMetaPorcentagem: number;
-	faturamentoBruto: {
+	faturamento: {
 		atual: number;
 		anterior: number | undefined;
 	};
-	faturamentoLiquido: {
+	margemBruta: {
 		atual: number;
 		anterior: number | undefined;
 	};
@@ -88,9 +88,9 @@ const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 
 	const stats = await getOverallStats(filters);
 	const overallStats: TOverallSalesStats = {
-		faturamentoMetaPorcentagem: (stats.faturamentoBruto.atual / overallSaleGoal) * 100,
-		faturamentoBruto: stats.faturamentoBruto,
-		faturamentoLiquido: stats.faturamentoLiquido,
+		faturamentoMetaPorcentagem: (stats.faturamento.atual / overallSaleGoal) * 100,
+		faturamento: stats.faturamento,
+		margemBruta: stats.margemBruta,
 		faturamentoMeta: overallSaleGoal,
 		qtdeVendas: stats.qtdeVendas,
 		ticketMedio: stats.ticketMedio,
@@ -312,11 +312,11 @@ export async function getOverallStats(filters: TSaleStatsGeneralQueryParams) {
 
 	if (!filters.period.after && !filters.period.before) {
 		return {
-			faturamentoBruto: {
+			faturamento: {
 				atual: totalSalesValorTotal,
 				anterior: undefined,
 			},
-			faturamentoLiquido: {
+			margemBruta: {
 				atual: totalSalesValorTotal - totalSalesCustoTotal,
 				anterior: undefined,
 			},
@@ -381,11 +381,11 @@ export async function getOverallStats(filters: TSaleStatsGeneralQueryParams) {
 	const previousTotalSalesItemsQty = previousTotalSalesItemsStats.total ? Number(previousTotalSalesItemsStats.total) : 0;
 
 	return {
-		faturamentoBruto: {
+		faturamento: {
 			atual: totalSalesValorTotal,
 			anterior: previousTotalSalesValorTotal,
 		},
-		faturamentoLiquido: {
+		margemBruta: {
 			atual: totalSalesValorTotal - totalSalesCustoTotal,
 			anterior: previousTotalSalesValorTotal - previousTotalSalesCustoTotal,
 		},
