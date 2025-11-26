@@ -8,7 +8,6 @@ import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { useMutationWithFeedback } from "@/lib/mutations/common";
 import { createUser } from "@/lib/mutations/users";
-import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";

@@ -26,7 +26,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 	const selectableSellersIds = user.permissoes.resultados.escopo ? user.permissoes.resultados.escopo : null;
 
 	const selectableSellers = selectableSellersIds
-		? filterOptions?.sellers.filter((s) => selectableSellersIds.includes(s))
+		? filterOptions?.sellers.filter((s) => selectableSellersIds.includes(s.id))
 		: filterOptions?.sellers || [];
 	return (
 		<Sheet open onOpenChange={closeMenu}>
@@ -41,7 +41,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 							<MultipleSelectInput
 								label="VENDEDOR"
 								selected={queryParamsHolder.sellers}
-								options={selectableSellers?.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+								options={selectableSellers || []}
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({
 										...prev,
@@ -55,7 +55,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 							<MultipleSelectInput
 								label="GRUPO DE PRODUTOS"
 								selected={queryParamsHolder.productGroups}
-								options={filterOptions?.productsGroups.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+								options={filterOptions?.productsGroups || []}
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({
 										...prev,
@@ -96,7 +96,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 							<MultipleSelectInput
 								label="NATUREZA DA VENDA"
 								selected={queryParamsHolder.saleNatures}
-								options={filterOptions?.saleNatures.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+								options={filterOptions?.saleNatures || []}
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({
 										...prev,

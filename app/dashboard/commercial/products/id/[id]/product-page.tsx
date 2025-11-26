@@ -7,6 +7,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -15,6 +16,7 @@ import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { usePartners } from "@/lib/queries/partners";
 import { useProductGraph, useProductStats } from "@/lib/queries/products";
 import { useSellers } from "@/lib/queries/sellers";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
 import { isValidNumber } from "@/lib/validation";
 import type { TGetProductGraphOutput } from "@/pages/api/products/graph";
@@ -47,6 +49,8 @@ type ProductPageProps = {
 const SALE_NATURES = ["VENDA", "DEVOLUÇÃO", "BONIFICAÇÃO", "OUTROS"];
 
 export default function ProductPage({ user, id }: ProductPageProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+
 	const {
 		data: stats,
 		isLoading,
@@ -66,13 +70,47 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 		},
 	});
 
-	const { data: sellers } = useSellers({ initialFilters: {} });
-	const { data: partners } = usePartners({ initialParams: {} });
-
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end gap-2">
-				<div className="flex items-center gap-2">
+			<div className="w-full flex items-center justify-end flex-col lg:flex-row gap-2">
+				<div className="w-full lg:w-[250px]">
+					<MultipleSelectInput
+						label="NATUREZAS DA VENDA"
+						selected={filters.saleNatures ?? []}
+						showLabel={false}
+						options={filterOptions?.saleNatures ?? []}
+						handleChange={(value) => updateFilters({ saleNatures: value as string[] | null })}
+						selectedItemLabel="NATUREZAS NÃO DEFINIDAS"
+						onReset={() => updateFilters({ saleNatures: null })}
+						width="100%"
+					/>
+				</div>
+
+				<div className="w-full lg:w-[250px]">
+					<SelectInput
+						label="VENDEDOR"
+						value={filters.sellerId ?? null}
+						showLabel={false}
+						options={filterOptions?.sellers ?? []}
+						handleChange={(value) => updateFilters({ sellerId: value as string | null })}
+						selectedItemLabel="VENDEDOR NÃO DEFINIDO"
+						onReset={() => updateFilters({ sellerId: null })}
+						width="100%"
+					/>
+				</div>
+				<div className="w-full lg:w-[250px]">
+					<SelectInput
+						label="PARCEIRO"
+						value={filters.partnerId ?? null}
+						showLabel={false}
+						options={filterOptions?.partners ?? []}
+						handleChange={(value) => updateFilters({ partnerId: value as string | null })}
+						selectedItemLabel="PARCEIRO NÃO DEFINIDO"
+						onReset={() => updateFilters({ partnerId: null })}
+						width="100%"
+					/>
+				</div>
+				<div className="w-full lg:w-[250px]">
 					<DateIntervalInput
 						label="Período"
 						showLabel={false}

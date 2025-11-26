@@ -4,9 +4,26 @@ import { products, sales } from "@/services/drizzle/schema";
 import type { NextApiHandler } from "next";
 
 export type TSaleQueryFilterOptions = {
-	saleNatures: string[];
-	sellers: string[];
-	productsGroups: string[];
+	saleNatures: {
+		id: string;
+		label: string;
+		value: string;
+	}[];
+	sellers: {
+		id: string;
+		label: string;
+		value: string;
+	}[];
+	partners: {
+		id: string;
+		label: string;
+		value: string;
+	}[];
+	productsGroups: {
+		id: string;
+		label: string;
+		value: string;
+	}[];
 };
 const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }> = async (req, res) => {
 	const groupedSaleNatures = await db
@@ -16,13 +33,23 @@ const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }
 		.from(sales)
 		.groupBy(sales.natureza);
 
-	const groupedSellers = await db
-		.select({
-			seller: sales.vendedorNome,
-		})
-		.from(sales)
-		.groupBy(sales.vendedorNome);
+	const groupedSellers = await db.query.sellers.findMany({
+		columns: {
+			id: true,
+			identificador: true,
+			nome: true,
+			avatarUrl: true,
+		},
+	});
 
+	const groupedPartners = await db.query.partners.findMany({
+		columns: {
+			id: true,
+			identificador: true,
+			nome: true,
+			avatarUrl: true,
+		},
+	});
 	const groupedProductGroups = await db
 		.select({
 			group: products.grupo,
@@ -42,9 +69,26 @@ const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }
 	// const productsGroups = productsGroupsResult.map((current) => current._id);
 	return res.status(200).json({
 		data: {
-			saleNatures: groupedSaleNatures.map((s) => s.saleNature),
-			sellers: groupedSellers.map((s) => s.seller),
-			productsGroups: groupedProductGroups.map((p) => p.group),
+			saleNatures: groupedSaleNatures.map((s) => ({
+				id: s.saleNature,
+				label: s.saleNature,
+				value: s.saleNature,
+			})),
+			sellers: groupedSellers.map((s) => ({
+				id: s.id,
+				label: s.nome,
+				value: s.identificador,
+			})),
+			partners: groupedPartners.map((p) => ({
+				id: p.id,
+				label: p.identificador,
+				value: p.identificador,
+			})),
+			productsGroups: groupedProductGroups.map((p) => ({
+				id: p.group,
+				label: p.group,
+				value: p.group,
+			})),
 		},
 	});
 };

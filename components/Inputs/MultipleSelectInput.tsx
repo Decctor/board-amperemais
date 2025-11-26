@@ -1,9 +1,9 @@
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 import React, { useEffect, useRef, useState } from "react";
 import { HiCheck } from "react-icons/hi";
 import { IoMdArrowDropdown, IoMdArrowDropup } from "react-icons/io";
 import { Drawer, DrawerContent } from "../ui/drawer";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import { cn } from "@/lib/utils";
 
 type SelectOption<T> = {
 	id: string | number;
@@ -43,8 +43,10 @@ function MultipleSelectInput<T>({
 			if (filteredOptions) {
 				const arrOfIds = filteredOptions.map((option) => option.id);
 				return arrOfIds;
-			} else return null;
-		} else return null;
+			}
+			return null;
+		}
+		return null;
 	}
 
 	const ref = useRef<any>(null);
@@ -59,14 +61,14 @@ function MultipleSelectInput<T>({
 
 	const inputIdentifier = label.toLowerCase().replace(" ", "_");
 	function handleSelect(id: string | number, item: T) {
-		var itemsSelected;
-		var ids = selectedIds ? [...selectedIds] : [];
+		let itemsSelected;
+		const ids = selectedIds ? [...selectedIds] : [];
 		if (!ids?.includes(id)) {
 			ids.push(id);
 			itemsSelected = options?.filter((option) => ids?.includes(option.id));
 			itemsSelected = itemsSelected?.map((item) => item.value);
 		} else {
-			let index = ids.indexOf(id);
+			const index = ids.indexOf(id);
 			ids.splice(index, 1);
 			itemsSelected = options?.filter((option) => ids?.includes(option.id));
 			itemsSelected = itemsSelected?.map((item) => item.value);
@@ -78,13 +80,10 @@ function MultipleSelectInput<T>({
 		setSearchFilter(value);
 		if (!items) return;
 		if (value.trim().length > 0 && options) {
-			let filteredItems = options.filter((item) => item.label.toUpperCase().includes(value.toUpperCase()));
-			setItems(filteredItems);
-			return;
-		} else {
-			setItems(options);
-			return;
+			const filteredItems = options.filter((item) => item.label.toUpperCase().includes(value.toUpperCase()));
+			return setItems(filteredItems);
 		}
+		return setItems(options);
 	}
 	function resetState() {
 		onReset();
@@ -150,18 +149,19 @@ function MultipleSelectInput<T>({
 							className="h-full w-full text-sm italic outline-hidden"
 						/>
 					) : (
-						<p
+						<button
+							type="button"
 							onClick={() => {
 								if (editable) setSelectMenuIsOpen((prev) => !prev);
 							}}
-							className="grow cursor-pointer text-primary"
+							className="grow cursor-pointer text-primary "
 						>
 							{selectedIds && selectedIds.length > 0 && options
 								? options.filter((item) => selectedIds.includes(item.id)).length > 1
 									? "MÚLTIPLAS SELEÇÕES"
 									: options.filter((item) => selectedIds.includes(item.id))[0]?.label
-								: "NÃO DEFINIDO"}
-						</p>
+								: selectedItemLabel}
+						</button>
 					)}
 					{selectMenuIsOpen ? (
 						<IoMdArrowDropup
@@ -185,17 +185,19 @@ function MultipleSelectInput<T>({
 							dropdownDirection === "down" ? "top-[75px]" : "bottom-[75px]"
 						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-100 flex h-[250px] max-h-[250px] w-full flex-col self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-white p-2 py-1 shadow-xs dark:bg-[#121212]`}
 					>
-						<div
+						<button
+							type="button"
 							onClick={() => resetState()}
 							className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedIds ? "bg-primary/20" : ""}`}
 						>
 							<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
 							{!selectedIds ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-						</div>
-						<div className="my-2 h-px w-full bg-gray-200"></div>
+						</button>
+						<div className="my-2 h-px w-full bg-primary/20" />
 						{items ? (
 							items.map((item, index) => (
-								<div
+								<button
+									type="button"
 									onClick={() => {
 										if (editable) handleSelect(item.id, item.value);
 									}}
@@ -206,7 +208,7 @@ function MultipleSelectInput<T>({
 								>
 									<p className="grow text-sm font-medium text-primary">{item.label}</p>
 									{selectedIds?.includes(item.id) ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-								</div>
+								</button>
 							))
 						) : (
 							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
@@ -233,7 +235,8 @@ function MultipleSelectInput<T>({
 						holderClassName,
 					)}
 				>
-					<p
+					<button
+						type="button"
 						onClick={() => {
 							if (editable) setSelectMenuIsOpen((prev) => !prev);
 						}}
@@ -244,7 +247,7 @@ function MultipleSelectInput<T>({
 								? "MÚLTIPLAS SELEÇÕES"
 								: options.filter((item) => selectedIds.includes(item.id))[0]?.label
 							: "NÃO DEFINIDO"}
-					</p>
+					</button>
 					<IoMdArrowDropdown
 						style={{ cursor: "pointer" }}
 						onClick={() => {
@@ -271,18 +274,20 @@ function MultipleSelectInput<T>({
 						placeholder="Filtre o item desejado..."
 						className="w-full bg-transparent p-2 text-sm italic outline-hidden"
 					/>
-					<div
+					<button
+						type="button"
 						onClick={() => resetState()}
 						className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedIds ? "bg-primary/20" : ""}`}
 					>
 						<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
 						{!selectedIds ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-					</div>
-					<div className="my-2 h-px w-full bg-gray-200"></div>
+					</button>
+					<div className="my-2 h-px w-full bg-primary/20" />
 					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex h-[200px] min-h-[200px] flex-col gap-2 overflow-y-auto overscroll-y-auto lg:h-[350px] lg:max-h-[350px]">
 						{items ? (
 							items.map((item, index) => (
-								<div
+								<button
+									type="button"
 									onClick={() => {
 										if (editable) handleSelect(item.id, item.value);
 									}}
@@ -293,7 +298,7 @@ function MultipleSelectInput<T>({
 								>
 									<p className="grow text-sm font-medium text-primary">{item.label}</p>
 									{selectedIds?.includes(item.id) ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-								</div>
+								</button>
 							))
 						) : (
 							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>

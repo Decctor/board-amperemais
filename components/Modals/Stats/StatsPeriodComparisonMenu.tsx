@@ -215,7 +215,7 @@ function StatsPeriodComparisonMenuData() {
 								labelClassName="text-[0.6rem]"
 								holderClassName="text-xs p-2 min-h-[34px]"
 								selected={filters.sellers}
-								options={filterOptions?.sellers.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+								options={filterOptions?.sellers || []}
 								handleChange={(value) =>
 									updateFilters({
 										sellers: value as string[],
@@ -244,7 +244,7 @@ function StatsPeriodComparisonMenuData() {
 								labelClassName="text-[0.6rem]"
 								holderClassName="text-xs p-2 min-h-[34px]"
 								selected={filters.saleNatures}
-								options={filterOptions?.saleNatures.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+								options={filterOptions?.saleNatures || []}
 								handleChange={(value) =>
 									updateFilters({
 										saleNatures: value as TSale["natureza"][],

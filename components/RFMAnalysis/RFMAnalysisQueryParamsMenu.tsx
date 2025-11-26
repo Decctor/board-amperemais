@@ -94,7 +94,7 @@ function RFMAnalysisQueryParamsMenu({ queryParams, updateQueryParams, closeMenu 
 						<MultipleSelectInput
 							label="NATUREZA DA VENDA"
 							selected={queryParamsHolder.saleNatures}
-							options={filterOptions?.saleNatures.map((s, index) => ({ id: index + 1, label: s, value: s })) || []}
+							options={filterOptions?.saleNatures || []}
 							handleChange={(value) =>
 								setQueryParamsHolder((prev) => ({
 									...prev,

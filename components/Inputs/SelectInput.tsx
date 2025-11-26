@@ -29,7 +29,7 @@ function SelectInput<T>({
 	width,
 	label,
 	labelClassName = "text-sm tracking-tight text-primary/80 font-medium text-start",
-	holderClassName = "text-sm p-2 min-h-[34px]",
+	holderClassName,
 	showLabel = true,
 	value,
 	editable = true,

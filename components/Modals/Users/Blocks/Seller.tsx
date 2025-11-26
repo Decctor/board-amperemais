@@ -2,7 +2,6 @@ import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import type { TUseUserState } from "@/hooks/use-user-state";
 import { useSellers } from "@/lib/queries/sellers";
-import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { UsersRound } from "lucide-react";
 
 type UsersSellerBlockProps = {
