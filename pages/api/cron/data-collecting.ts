@@ -11,7 +11,7 @@ import { z } from "zod";
 dayjs.extend(dayjsCustomFormatter);
 
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
-	const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
+	const currentDateFormatted = "26112025"; // dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
 	console.log("DATE BEING USED", dayjs().format("DD/MM/YYYY HH:mm"), dayjs().subtract(5, "hour").format("DD/MM/YYYY HH:mm"), currentDateFormatted);
 
 	try {
@@ -118,10 +118,10 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 				}
 
 				// Then, we check for an existing partner with the same identificador (in this case, our primary key for the integration)
-				const equivalentSalePartner =
-					OnlineSale.parceiro && OnlineSale.parceiro !== "N/A" && OnlineSale.parceiro !== "0" ? existingPartnersMap.get(OnlineSale.parceiro) : null;
+				const isValidPartner = OnlineSale.parceiro && OnlineSale.parceiro !== "N/A" && OnlineSale.parceiro !== "0";
+				const equivalentSalePartner = isValidPartner ? existingPartnersMap.get(OnlineSale.parceiro as string) : null;
 				let salePartnerId = equivalentSalePartner;
-				if (!salePartnerId) {
+				if (!salePartnerId && isValidPartner) {
 					// If no existing partner is found, we create a new one
 					const insertedPartnerResponse = await tx
 						.insert(partners)
