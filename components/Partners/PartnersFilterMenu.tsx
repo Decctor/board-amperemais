@@ -1,10 +1,10 @@
 import type { TGetPartnersInput } from "@/app/api/partners/route";
 import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
-import { cn } from "@/lib/utils";
-import { ArrowDownNarrowWide } from "lucide-react";
-import { ArrowUpNarrowWide } from "lucide-react";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { useState } from "react";
 import DateInput from "../Inputs/DateInput";
+import MultipleSelectInput from "../Inputs/MultipleSelectInput";
+import NumberInput from "../Inputs/NumberInput";
 import TextInput from "../Inputs/TextInput";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../ui/sheet";
@@ -16,6 +16,7 @@ type PartnersFilterMenuProps = {
 };
 function PartnersFilterMenu({ queryParams, updateQueryParams, closeMenu }: PartnersFilterMenuProps) {
 	const [queryParamsHolder, setQueryParamsHolder] = useState<TGetPartnersInput>(queryParams);
+	const { data: filterOptions } = useSaleQueryFilterOptions();
 
 	const SORTING_FIELDS = [
 		{
@@ -73,6 +74,35 @@ function PartnersFilterMenu({ queryParams, updateQueryParams, closeMenu }: Partn
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({ ...prev, statsPeriodBefore: formatDateOnInputChange(value, "date", "end") as Date }))
 								}
+								width="100%"
+							/>
+						</div>
+						<div className="flex w-full flex-col gap-2">
+							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO DAS ESTASTÍCAS POR TOTAIS DE COMPRAS</h1>
+							<NumberInput
+								label="VALOR > QUE"
+								placeholder="Preencha aqui o valor para o filtro de mais compras que..."
+								value={queryParamsHolder.statsTotalMin ?? null}
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMin: value }))}
+								width="100%"
+							/>
+							<NumberInput
+								label="VALOR < QUE"
+								placeholder="Preencha aqui o valor para o filtro de menos compras que..."
+								value={queryParamsHolder.statsTotalMax ?? null}
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMax: value }))}
+								width="100%"
+							/>
+						</div>
+						<div className="flex w-full flex-col gap-2">
+							<h1 className="w-full text-xs tracking-tight text-primary">OUTROS FILTROS DAS ESTASTÍCAS</h1>
+							<MultipleSelectInput
+								label="NATUREZA DA VENDA"
+								selected={queryParamsHolder.statsSaleNatures ?? []}
+								options={filterOptions?.saleNatures || []}
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
+								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
+								selectedItemLabel="NENHUMA DEFINIDA"
 								width="100%"
 							/>
 						</div>

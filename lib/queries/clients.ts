@@ -1,41 +1,64 @@
+import type { TGetClientsInput, TGetClientsOutput } from "@/pages/api/clients";
+import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
+import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats";
+import type { TClientDTO, TClientSearchQueryParams } from "@/schemas/clients";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
 import { formatWithoutDiacritics } from "../formatting";
-import type { TClientDTO, TClientSearchQueryParams } from "@/schemas/clients";
-import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
-import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats";
+import { useDebounceMemo } from "../hooks/use-debounce";
 
-async function fetchClients() {
+async function fetchClients(input: TGetClientsInput) {
 	try {
-		const { data } = await axios.get("/api/clients");
+		const searchParams = new URLSearchParams();
+		if (input.search) searchParams.set("search", input.search);
+		if (input.acquisitionChannels.length > 0) searchParams.set("acquisitionChannels", input.acquisitionChannels.join(","));
+		if (input.segmentationTitles.length > 0) searchParams.set("segmentationTitles", input.segmentationTitles.join(","));
+		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
+		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
+		if (input.statsSaleNatures.length > 0) searchParams.set("statsSaleNatures", input.statsSaleNatures.join(","));
+		if (input.statsExcludedSalesIds.length > 0) searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
+		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
+		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
+		if (input.page) searchParams.set("page", input.page.toString());
+		const { data } = await axios.get<TGetClientsOutput>(`/api/clients?${searchParams.toString()}`);
 
-		return data.data as TClientDTO[];
+		if (!data.data.default) throw new Error("Clientes não encontrados.");
+		return data.data.default;
 	} catch (error) {
 		console.log("Error running fetchClients", error);
 		throw error;
 	}
 }
 
-export function useClients() {
-	const [filters, setFilters] = useState({
-		search: "",
+type UseClientsParams = {
+	initialFilters: Partial<TGetClientsInput>;
+};
+export function useClients({ initialFilters }: UseClientsParams) {
+	const [filters, setFilters] = useState<TGetClientsInput>({
+		search: initialFilters?.search || "",
+		acquisitionChannels: initialFilters?.acquisitionChannels || [],
+		segmentationTitles: initialFilters?.segmentationTitles || [],
+		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
+		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
+		statsSaleNatures: initialFilters?.statsSaleNatures || [],
+		statsExcludedSalesIds: initialFilters?.statsExcludedSalesIds || [],
+		statsTotalMin: initialFilters?.statsTotalMin || null,
+		statsTotalMax: initialFilters?.statsTotalMax || null,
+		page: initialFilters?.page || 1,
 	});
-	function matchSearch(item: TClientDTO) {
-		if (filters.search.trim().length === 0) return true;
-		return formatWithoutDiacritics(item.nome, true).includes(formatWithoutDiacritics(filters.search, true));
+	function updateFilters(newFilters: Partial<TGetClientsInput>) {
+		setFilters((prevFilters) => ({ ...prevFilters, ...newFilters }));
 	}
-	function handleModelData(data: TClientDTO[]) {
-		return data.filter((d) => matchSearch(d));
-	}
+	const debouncedFilters = useDebounceMemo(filters, 1000);
 	return {
 		...useQuery({
-			queryKey: ["clients"],
-			queryFn: fetchClients,
-			select: (data) => handleModelData(data),
+			queryKey: ["clients", debouncedFilters],
+			queryFn: async () => await fetchClients(debouncedFilters),
 		}),
+		queryKey: ["clients", debouncedFilters],
 		filters,
-		setFilters,
+		updateFilters,
 	};
 }
 

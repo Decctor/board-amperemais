@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { useClientsBySearch } from "@/lib/queries/clients";
+import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
+import { useClients, useClientsBySearch } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
+import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
-import { Info, ListFilter, Mail, Megaphone, Phone } from "lucide-react";
+import { BadgeDollarSign, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { BsCalendar } from "react-icons/bs";
 
 type ClientsPageProps = {
 	user: TAuthUserSession["user"];
@@ -23,14 +26,15 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
 	const {
 		data: clientsResult,
+		queryKey,
 		isLoading,
 		isError,
 		isSuccess,
 		error,
-		queryParams,
-		updateQueryParams,
-	} = useClientsBySearch({
-		initialParams: {},
+		filters,
+		updateFilters,
+	} = useClients({
+		initialFilters: {},
 	});
 
 	const clients = clientsResult?.clients;
@@ -41,9 +45,9 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 				<Input
-					value={queryParams.name ?? ""}
+					value={filters.search ?? ""}
 					placeholder="Pesquisar cliente..."
-					onChange={(e) => updateQueryParams({ name: e.target.value })}
+					onChange={(e) => updateFilters({ search: e.target.value })}
 					className="grow rounded-xl"
 				/>
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
@@ -52,13 +56,14 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 				</Button>
 			</div>
 			<GeneralPaginationComponent
-				activePage={queryParams.page}
+				activePage={filters.page}
 				queryLoading={isLoading}
-				selectPage={(page) => updateQueryParams({ page })}
+				selectPage={(page) => updateFilters({ page })}
 				totalPages={totalPages || 0}
 				itemsMatchedText={clientsMatched > 0 ? `${clientsMatched} clientes encontrados.` : `${clientsMatched} cliente encontrado.`}
 				itemsShowingText={clientsShowing > 0 ? `Mostrando ${clientsShowing} clientes.` : `Mostrando ${clientsShowing} cliente.`}
 			/>
+			<ClientPageFilterShowcase queryParams={filters} updateQueryParams={updateFilters} />
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && clients ? (
@@ -69,14 +74,14 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 				)
 			) : null}
 			{filterMenuIsOpen ? (
-				<ClientsDatabaseFilterMenu queryParams={queryParams} updateQueryParams={updateQueryParams} closeMenu={() => setFilterMenuIsOpen(false)} />
+				<ClientsDatabaseFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
 		</div>
 	);
 }
 
 type ClientCardProps = {
-	client: TGetClientsBySearchOutput["clients"][number];
+	client: TGetClientsOutputDefault["clients"][number];
 };
 function ClientPageCard({ client }: ClientCardProps) {
 	return (
@@ -101,6 +106,28 @@ function ClientPageCard({ client }: ClientCardProps) {
 						</div>
 					) : null}
 				</div>
+				<div className="flex items-center gap-3 flex-col md:flex-row gap-y-1">
+					<div className="flex items-center gap-3">
+						<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+							<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+							<p className="text-xs font-bold tracking-tight uppercase">{client.estatisticas.comprasQtdeTotal}</p>
+						</div>
+						<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+							<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+							<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(client.estatisticas.comprasValorTotal)}</p>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div className="w-full flex items-center justify-center lg:justify-end gap-2 flex-wrap">
+				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
+					<p className="text-xs font-medium tracking-tight uppercase">PRIMEIRA VENDA: {formatDateAsLocale(client.estatisticas.primeiraCompraData)}</p>
+				</div>
+				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
+					<p className="text-xs font-medium tracking-tight uppercase">ÚLTIMA VENDA: {formatDateAsLocale(client.estatisticas.ultimaCompraData)}</p>
+				</div>
 				<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
 					<Link href={`/dashboard/commercial/clients/id/${client.id}`}>
 						<Info className="w-3 min-w-3 h-3 min-h-3" />
@@ -108,6 +135,75 @@ function ClientPageCard({ client }: ClientCardProps) {
 					</Link>
 				</Button>
 			</div>
+		</div>
+	);
+}
+
+type ClientPageFilterShowcaseProps = {
+	queryParams: TGetClientsInput;
+	updateQueryParams: (params: Partial<TGetClientsInput>) => void;
+};
+function ClientPageFilterShowcase({ queryParams, updateQueryParams }: ClientPageFilterShowcaseProps) {
+	const FilterTag = ({
+		label,
+		value,
+		onRemove,
+	}: {
+		label: string;
+		value: string;
+		onRemove?: () => void;
+	}) => (
+		<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
+			<p className="text-primary/80">
+				{label}: <strong>{value}</strong>
+			</p>
+			{onRemove && (
+				<button type="button" onClick={onRemove} className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1">
+					<X size={12} />
+				</button>
+			)}
+		</div>
+	);
+	return (
+		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+			{queryParams.search && queryParams.search.trim().length > 0 && (
+				<FilterTag label="PESQUISA" value={queryParams.search} onRemove={() => updateQueryParams({ search: "" })} />
+			)}
+			{queryParams.statsPeriodAfter && queryParams.statsPeriodBefore && (
+				<FilterTag
+					label="PERÍODO DAS ESTASTÍCAS"
+					value={`${formatDateAsLocale(queryParams.statsPeriodAfter)} a ${formatDateAsLocale(queryParams.statsPeriodBefore)}`}
+					onRemove={() => updateQueryParams({ statsPeriodAfter: null, statsPeriodBefore: null })}
+				/>
+			)}
+			{queryParams.statsSaleNatures.length > 0 ? (
+				<FilterTag
+					label="NATUREZAS DAS VENDAS"
+					value={queryParams.statsSaleNatures.map((nature) => nature).join(", ")}
+					onRemove={() => updateQueryParams({ statsSaleNatures: [] })}
+				/>
+			) : null}
+			{queryParams.acquisitionChannels.length > 0 ? (
+				<FilterTag
+					label="CANAIS DE AQUISIÇÃO"
+					value={queryParams.acquisitionChannels.map((channel) => channel).join(", ")}
+					onRemove={() => updateQueryParams({ acquisitionChannels: [] })}
+				/>
+			) : null}
+			{queryParams.segmentationTitles.length > 0 ? (
+				<FilterTag
+					label="TÍTULOS DE SEGMENTAÇÃO"
+					value={queryParams.segmentationTitles.map((title) => title).join(", ")}
+					onRemove={() => updateQueryParams({ segmentationTitles: [] })}
+				/>
+			) : null}
+			{queryParams.statsTotalMin || queryParams.statsTotalMax ? (
+				<FilterTag
+					label="VALOR"
+					value={`${queryParams.statsTotalMin ? `> R$ ${queryParams.statsTotalMin}` : ""}${queryParams.statsTotalMin && queryParams.statsTotalMax ? " & " : ""}${queryParams.statsTotalMax ? `< R$ ${queryParams.statsTotalMax}` : ""}`}
+					onRemove={() => updateQueryParams({ statsTotalMin: null, statsTotalMax: null })}
+				/>
+			) : null}
 		</div>
 	);
 }

@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { PartnerSchema } from "@/schemas/partners";
 import { db } from "@/services/drizzle";
 import { partners, sales } from "@/services/drizzle/schema";
-import { and, count, eq, gte, inArray, lte, max, min, or, sql, sum } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lte, max, min, notInArray, or, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -45,6 +45,11 @@ const GetPartnersInputSchema = z.object({
 	// By ID params
 	id: z.string({ invalid_type_error: "Tipo não válido para ID do parceiro." }).optional().nullable(),
 	// General params
+	page: z
+		.string({ invalid_type_error: "Tipo não válido para páginação." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : 1)),
 	search: z.string({ invalid_type_error: "Tipo não válido para busca." }).optional().nullable(),
 	statsPeriodAfter: z
 		.string({ invalid_type_error: "Tipo não válido para data de inserção do parceiro." })
@@ -56,6 +61,34 @@ const GetPartnersInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
+	statsSaleNatures: z
+		.string({
+			invalid_type_error: "Tipo não válido para natureza de venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((v) => (v ? v.split(",") : [])),
+	statsExcludedSalesIds: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((v) => (v ? v.split(",") : [])),
+	statsTotalMin: z
+		.string({
+			invalid_type_error: "Tipo não válido para valor mínimo da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
+	statsTotalMax: z
+		.string({
+			invalid_type_error: "Tipo não válido para valor máximo da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
 });
 
 export type TGetPartnersInput = z.infer<typeof GetPartnersInputSchema>;
@@ -74,9 +107,9 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 		};
 	}
 
-	const conditions = [];
+	const partnerConditions = [];
 	if (input.search) {
-		conditions.push(
+		partnerConditions.push(
 			or(
 				sql`(to_tsvector('portuguese', ${partners.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${partners.nome} ILIKE '%' || ${input.search} || '%')`,
 				sql`(to_tsvector('portuguese', ${partners.identificador}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${partners.identificador} ILIKE '%' || ${input.search} || '%')`,
@@ -87,33 +120,64 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 		);
 	}
 
-	const partnersResult = await db.query.partners.findMany({
-		where: and(...conditions),
-	});
-	const partnerIds = partnersResult.map((partner) => partner.id);
+	const statsConditions = [];
+	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
+	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
+	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
+	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 
-	const statsByPartner = await db
+	const havingConditions = [];
+	if (input.statsTotalMin) havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
+	if (input.statsTotalMax) havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+
+	const PAGE_SIZE = 25;
+	const skip = PAGE_SIZE * (input.page - 1);
+
+	const matchedSubquery = db
 		.select({
 			partnerId: partners.id,
-			partnerName: partners.nome,
-			totalSalesValue: sum(sales.valorTotal),
-			totalSalesQty: count(sales.id),
-			firstSaleDate: min(sales.dataVenda), // ← Adicione isto
-			lastSaleDate: max(sales.dataVenda), // ← Adicione isto
 		})
 		.from(partners)
 		.leftJoin(sales, eq(partners.id, sales.parceiroId))
-		.where(
-			and(
-				input.statsPeriodAfter ? gte(sales.dataVenda, input.statsPeriodAfter) : undefined,
-				input.statsPeriodBefore ? lte(sales.dataVenda, input.statsPeriodBefore) : undefined,
-				inArray(partners.id, partnerIds),
-			),
-		)
+		.where(and(...partnerConditions, ...statsConditions))
 		.groupBy(partners.id);
 
+	if (havingConditions.length > 0) {
+		matchedSubquery.having(and(...havingConditions));
+	}
+	const statsByPartnerMatchedCountResult = await db.select({ count: count() }).from(matchedSubquery.as("sq"));
+	const statsByPartnerMatchedCount = statsByPartnerMatchedCountResult[0]?.count ?? 0;
+
+	console.log("CONDITIONS:", {
+		partnerConditions: partnerConditions.length,
+		statsConditions: statsConditions.length,
+		havingConditions: havingConditions.length,
+	});
+	const statsByPartnerResult = await db
+		.select({
+			partnerId: partners.id,
+			totalSalesValue: sum(sales.valorTotal),
+			totalSalesQty: count(sales.id),
+			firstSaleDate: min(sales.dataVenda),
+			lastSaleDate: max(sales.dataVenda),
+		})
+		.from(partners)
+		.leftJoin(sales, eq(partners.id, sales.parceiroId))
+		.where(and(...partnerConditions, ...statsConditions))
+		.having(and(...havingConditions))
+		.groupBy(partners.id)
+		.orderBy(sql`${partners.nome} asc`)
+		.offset(skip)
+		.limit(PAGE_SIZE);
+
+	const partnerIds = statsByPartnerResult.map((partner) => partner.partnerId);
+	const partnersResult = await db.query.partners.findMany({
+		where: inArray(partners.id, partnerIds),
+	});
+
 	const partnersWithStats = partnersResult.map((partner) => {
-		const stats = statsByPartner.find((s) => s.partnerId === partner.id);
+		const stats = statsByPartnerResult.find((s) => s.partnerId === partner.id);
+
 		return {
 			...partner,
 			estatisticas: {
@@ -124,10 +188,13 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 			},
 		};
 	});
-
 	return {
 		data: {
-			default: partnersWithStats,
+			default: {
+				partners: partnersWithStats,
+				partnersMatched: statsByPartnerMatchedCount,
+				totalPages: Math.ceil(statsByPartnerMatchedCount / PAGE_SIZE),
+			},
 			byId: undefined,
 		},
 	};
@@ -143,9 +210,14 @@ const getPartnersRoute = async (request: NextRequest) => {
 	const searchParams = await request.nextUrl.searchParams;
 	const input = GetPartnersInputSchema.parse({
 		search: searchParams.get("search") ?? undefined,
+		page: searchParams.get("page") ?? undefined,
 		id: searchParams.get("id") ?? undefined,
 		statsPeriodAfter: searchParams.get("statsPeriodAfter") ?? undefined,
 		statsPeriodBefore: searchParams.get("statsPeriodBefore") ?? undefined,
+		statsSaleNatures: searchParams.get("statsSaleNatures") ?? undefined,
+		statsExcludedSalesIds: searchParams.get("statsExcludedSalesIds") ?? undefined,
+		statsTotalMin: searchParams.get("statsTotalMin") ?? undefined,
+		statsTotalMax: searchParams.get("statsTotalMax") ?? undefined,
 	});
 	const result = await getPartners({ input, session: session.user });
 	return NextResponse.json(result);

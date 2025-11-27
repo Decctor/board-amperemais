@@ -3,6 +3,7 @@ import type { TGetPartnersInput, TGetPartnersOutputDefault } from "@/app/api/par
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import EditPartner from "@/components/Modals/Partners/EditPartner";
 import PartnersFilterMenu from "@/components/Partners/PartnersFilterMenu";
+import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +27,30 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 	const queryClient = useQueryClient();
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
 	const [editPartnerModalId, setEditPartnerModalId] = useState<string | null>(null);
-	const { data, queryKey, isLoading, isError, isSuccess, error, queryParams, updateQueryParams } = usePartners({
-		initialParams: { search: "", statsPeriodAfter: null, statsPeriodBefore: null },
+	const {
+		data: partnersResult,
+		queryKey,
+		isLoading,
+		isError,
+		isSuccess,
+		error,
+		queryParams,
+		updateQueryParams,
+	} = usePartners({
+		initialParams: {
+			search: "",
+			statsPeriodAfter: null,
+			statsPeriodBefore: null,
+			statsSaleNatures: [],
+			statsExcludedSalesIds: [],
+			statsTotalMin: null,
+			statsTotalMax: null,
+		},
 	});
+	const partners = partnersResult?.partners;
+	const partnersShowing = partners ? partners.length : 0;
+	const partnersMatched = partnersResult?.partnersMatched || 0;
+	const totalPages = partnersResult?.totalPages;
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
@@ -45,13 +67,21 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 					FILTROS
 				</Button>
 			</div>
+			<GeneralPaginationComponent
+				activePage={queryParams.page}
+				queryLoading={isLoading}
+				selectPage={(page) => updateQueryParams({ page })}
+				totalPages={totalPages || 0}
+				itemsMatchedText={partnersMatched > 0 ? `${partnersMatched} parceiros encontrados.` : `${partnersMatched} parceiro encontrado.`}
+				itemsShowingText={partnersShowing > 0 ? `Mostrando ${partnersShowing} parceiros.` : `Mostrando ${partnersShowing} parceiro.`}
+			/>
 			<PartnersPageFilterShowcase queryParams={queryParams} updateQueryParams={updateQueryParams} />
 			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando parceiros...</p> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess ? (
 				<div className="w-full flex flex-col gap-1.5">
-					{data.length > 0 ? (
-						data.map((partner) => <PartnersPagePartnerCard key={partner.id} partner={partner} handleEditClick={setEditPartnerModalId} />)
+					{partners && partners.length > 0 ? (
+						partners.map((partner) => <PartnersPagePartnerCard key={partner.id} partner={partner} handleEditClick={setEditPartnerModalId} />)
 					) : (
 						<p className="w-full flex items-center justify-center">Nenhum parceiro encontrado</p>
 					)}
@@ -111,6 +141,20 @@ function PartnersPageFilterShowcase({ queryParams, updateQueryParams }: Partners
 					onRemove={() => updateQueryParams({ statsPeriodAfter: null, statsPeriodBefore: null })}
 				/>
 			)}
+			{queryParams.statsSaleNatures && queryParams.statsSaleNatures.length > 0 && (
+				<FilterTag
+					label="NATUREZAS DAS VENDAS"
+					value={queryParams.statsSaleNatures.join(", ")}
+					onRemove={() => updateQueryParams({ statsSaleNatures: [] })}
+				/>
+			)}
+			{queryParams.statsTotalMin || queryParams.statsTotalMax ? (
+				<FilterTag
+					label="VALOR"
+					value={`${queryParams.statsTotalMin ? `> ${formatToMoney(queryParams.statsTotalMin)}` : ""}${queryParams.statsTotalMin && queryParams.statsTotalMax ? " & " : ""}${queryParams.statsTotalMax ? `< ${formatToMoney(queryParams.statsTotalMax)}` : ""}`}
+					onRemove={() => updateQueryParams({ statsTotalMin: null, statsTotalMax: null })}
+				/>
+			) : null}
 		</div>
 	);
 }
@@ -118,7 +162,7 @@ function PartnersPageFilterShowcase({ queryParams, updateQueryParams }: Partners
 function PartnersPagePartnerCard({
 	partner,
 	handleEditClick,
-}: { partner: TGetPartnersOutputDefault[number]; handleEditClick: (id: string) => void }) {
+}: { partner: TGetPartnersOutputDefault["partners"][number]; handleEditClick: (id: string) => void }) {
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between flex-col md:flex-row gap-3">

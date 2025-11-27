@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { ClientSchema } from "@/schemas/clients";
@@ -192,19 +192,26 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	});
 	return {
 		data: {
-			clients: clientsWithStats,
-			clientsMatched: statsByClientMatchedCount,
-			totalPages: Math.ceil(statsByClientMatchedCount / PAGE_SIZE),
+			byId: undefined,
+			default: {
+				clients: clientsWithStats,
+				clientsMatched: statsByClientMatchedCount,
+				totalPages: Math.ceil(statsByClientMatchedCount / PAGE_SIZE),
+			},
 		},
 	};
 }
+export type TGetClientsOutput = Awaited<ReturnType<typeof getClients>>;
+export type TGetClientsOutputDefault = Exclude<TGetClientsOutput["data"]["default"], null>;
+export type TGetClientsOutputById = Exclude<TGetClientsOutput["data"]["byId"], null>;
 
 const getClientsRoute: NextApiHandler<any> = async (req, res) => {
-	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	// if (!session.user.permissoes.parceiros.criar) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 	const input = GetClientsInputSchema.parse(req.query);
-	const result = await getClients({ input, session: session.user });
+	const result = await getClients({ input, session: sessionUser.user });
 	return res.status(200).json(result);
 };
 
