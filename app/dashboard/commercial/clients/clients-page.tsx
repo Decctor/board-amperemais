@@ -4,6 +4,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { useClientsBySearch } from "@/lib/queries/clients";
@@ -38,7 +39,13 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 	const totalPages = clientsResult?.totalPages;
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end gap-2">
+			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
+				<Input
+					value={queryParams.name ?? ""}
+					placeholder="Pesquisar cliente..."
+					onChange={(e) => updateQueryParams({ name: e.target.value })}
+					className="grow rounded-xl"
+				/>
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
 					FILTROS
