@@ -1,6 +1,7 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { ProductSchema } from "@/schemas/products";
 import { db } from "@/services/drizzle";
 import { products, saleItems, sales } from "@/services/drizzle/schema";
 import { and, count, eq, inArray, sql, sum } from "drizzle-orm";
@@ -190,4 +191,37 @@ const getProductsHandler: NextApiHandler<TGetProductsOutput> = async (req, res) 
 	return res.status(200).json(data);
 };
 
-export default apiHandler({ GET: getProductsHandler });
+const UpdateProductInputSchema = z.object({
+	productId: z.string({
+		required_error: "ID do produto não informado.",
+		invalid_type_error: "Tipo inválido para ID do produto.",
+	}),
+	product: ProductSchema.partial(),
+});
+export type TUpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
+
+async function updateProduct({ user, input }: { user: TAuthUserSession["user"]; input: TUpdateProductInput }) {
+	const product = await db.query.products.findFirst({
+		where: eq(products.id, input.productId),
+	});
+	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
+	const updatedProduct = await db.update(products).set(input.product).where(eq(products.id, input.productId)).returning({ updatedId: products.id });
+	const updatedProductId = updatedProduct[0]?.updatedId;
+	if (!updatedProductId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar produto.");
+	return {
+		data: {
+			updatedId: updatedProductId,
+		},
+		message: "Produto atualizado com sucesso.",
+	};
+}
+export type TUpdateProductOutput = Awaited<ReturnType<typeof updateProduct>>;
+const updateProductHandler: NextApiHandler<TUpdateProductOutput> = async (req, res) => {
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	const input = UpdateProductInputSchema.parse(req.body);
+	const data = await updateProduct({ user: sessionUser.user, input });
+	return res.status(200).json(data);
+};
+
+export default apiHandler({ GET: getProductsHandler, PUT: updateProductHandler });

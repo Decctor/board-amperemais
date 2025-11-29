@@ -1,6 +1,7 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { ProductSchema } from "@/schemas/products";
 import { db } from "@/services/drizzle";
 import { clients, partners, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
 import dayjs from "dayjs";

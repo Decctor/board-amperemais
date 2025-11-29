@@ -114,7 +114,7 @@ function sanitizeFileName(fileName: string): string {
 			.replace(/^$/, "arquivo")
 	);
 }
-type TSupabaseUploadPrefix = "sistema-igreen" | "avatars";
+type TSupabaseUploadPrefix = "syncrono" | "avatars";
 type UploadFileParams = {
 	file: File;
 	prefix?: TSupabaseUploadPrefix;
@@ -122,7 +122,7 @@ type UploadFileParams = {
 	vinculationId?: string;
 };
 
-export async function uploadFile({ file, fileName, vinculationId, prefix = "sistema-igreen" }: UploadFileParams) {
+export async function uploadFile({ file, fileName, vinculationId, prefix = "syncrono" }: UploadFileParams) {
 	try {
 		if (!file) throw new Error("Arquivo não fornecido.");
 

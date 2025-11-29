@@ -1,5 +1,6 @@
 import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsInput, TGetProductsOutput } from "@/pages/api/products";
 import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/pages/api/products/graph";
+import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/pages/api/products/search";
 import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/pages/api/products/stats";
 import type { TProductStatsQueryParams } from "@/schemas/products";
 import { useQuery } from "@tanstack/react-query";
@@ -144,4 +145,35 @@ export function useProductGraph(input: TGetProductGraphInput) {
 		queryKey: ["product-graph", input],
 		queryFn: () => fetchProductGraph(input),
 	});
+}
+
+async function fetchProductsBySearch(input: TGetProductsBySearchInput) {
+	const urlParams = new URLSearchParams();
+	urlParams.set("search", input.search);
+	urlParams.set("page", input.page.toString());
+	const { data } = await axios.get<TGetProductsBySearchOutput>(`/api/products/search?${urlParams.toString()}`);
+	return data.data;
+}
+
+type UseProductsBySearchParams = {
+	initialParams?: Partial<TGetProductsBySearchInput>;
+};
+export function useProductsBySearch({ initialParams }: UseProductsBySearchParams) {
+	const [params, setParams] = useState<TGetProductsBySearchInput>({
+		search: initialParams?.search || "",
+		page: initialParams?.page || 1,
+	});
+	function updateParams(newParams: Partial<TGetProductsBySearchInput>) {
+		setParams((prevParams) => ({ ...prevParams, ...newParams }));
+	}
+	const debouncedParams = useDebounceMemo(params, 1000);
+	return {
+		...useQuery({
+			queryKey: ["products-by-search", debouncedParams],
+			queryFn: () => fetchProductsBySearch(debouncedParams),
+		}),
+		queryKey: ["products-by-search", debouncedParams],
+		params,
+		updateParams,
+	};
 }

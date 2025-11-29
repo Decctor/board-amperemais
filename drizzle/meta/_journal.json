@@ -36,6 +36,13 @@
       "when": 1763079372405,
       "tag": "0004_wooden_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1764441548694,
+      "tag": "0005_wandering_spitfire",
+      "breakpoints": true
     }
   ]
 }
