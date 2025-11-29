@@ -82,3 +82,235 @@ export const TemplateButtonTypeOptions = [
 	{ id: "url", nome: "URL", value: "url", label: "URL" },
 	{ id: "phone_number", nome: "Número de Telefone", value: "phone_number", label: "NÚMERO DE TELEFONE" },
 ];
+
+// Report Templates
+const DailyReportParametersInputSchema = DefaultTemplatePayloadSchema.extend({
+	templateKey: z.enum(["DAILY_REPORT"]),
+	reportDate: z.string(),
+	faturamento: z.string(),
+	meta: z.string(),
+	percentualMeta: z.string(),
+	topVendedor1: z.string(),
+	topVendedor2: z.string(),
+	topVendedor3: z.string(),
+	comparacao: z.string(),
+});
+type DailyReportParametersInput = z.infer<typeof DailyReportParametersInputSchema>;
+
+const WeeklyReportParametersInputSchema = DefaultTemplatePayloadSchema.extend({
+	templateKey: z.enum(["WEEKLY_REPORT"]),
+	periodo: z.string(),
+	faturamento: z.string(),
+	meta: z.string(),
+	percentualMeta: z.string(),
+	topVendedores: z.string(),
+	topProdutos: z.string(),
+	comparacao: z.string(),
+});
+type WeeklyReportParametersInput = z.infer<typeof WeeklyReportParametersInputSchema>;
+
+const MonthlyReportParametersInputSchema = DefaultTemplatePayloadSchema.extend({
+	templateKey: z.enum(["MONTHLY_REPORT"]),
+	periodo: z.string(),
+	faturamento: z.string(),
+	meta: z.string(),
+	percentualMeta: z.string(),
+	detalhes: z.string(),
+	topVendedores: z.string(),
+	topProdutos: z.string(),
+	topParceiros: z.string(),
+	comparacao: z.string(),
+});
+type MonthlyReportParametersInput = z.infer<typeof MonthlyReportParametersInputSchema>;
+
+export const WHATSAPP_REPORT_TEMPLATES = {
+	DAILY_REPORT: {
+		id: "daily_report",
+		title: "Relatório Diário de Vendas",
+		language: "pt_BR",
+		type: "utility",
+		getPayload: (input: DailyReportParametersInput) => {
+			const { templateKey, toPhoneNumber, reportDate, faturamento, meta, percentualMeta, topVendedor1, topVendedor2, topVendedor3, comparacao } =
+				DailyReportParametersInputSchema.parse(input);
+			return {
+				content: `Relatório Diário - ${reportDate}`,
+				data: {
+					messaging_product: "whatsapp",
+					to: formatPhoneAsWhatsappId(toPhoneNumber),
+					type: "template",
+					template: {
+						name: "daily_report",
+						language: {
+							code: "pt_BR",
+						},
+						components: [
+							{
+								type: "body",
+								parameters: [
+									{
+										type: "text",
+										text: reportDate,
+									},
+									{
+										type: "text",
+										text: faturamento,
+									},
+									{
+										type: "text",
+										text: meta,
+									},
+									{
+										type: "text",
+										text: percentualMeta,
+									},
+									{
+										type: "text",
+										text: topVendedor1,
+									},
+									{
+										type: "text",
+										text: topVendedor2,
+									},
+									{
+										type: "text",
+										text: topVendedor3,
+									},
+									{
+										type: "text",
+										text: comparacao,
+									},
+								],
+							},
+						],
+					},
+				},
+			};
+		},
+	},
+	WEEKLY_REPORT: {
+		id: "weekly_report",
+		title: "Relatório Semanal de Vendas",
+		language: "pt_BR",
+		type: "utility",
+		getPayload: (input: WeeklyReportParametersInput) => {
+			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, topVendedores, topProdutos, comparacao } =
+				WeeklyReportParametersInputSchema.parse(input);
+			return {
+				content: `Relatório Semanal - ${periodo}`,
+				data: {
+					messaging_product: "whatsapp",
+					to: formatPhoneAsWhatsappId(toPhoneNumber),
+					type: "template",
+					template: {
+						name: "weekly_report",
+						language: {
+							code: "pt_BR",
+						},
+						components: [
+							{
+								type: "body",
+								parameters: [
+									{
+										type: "text",
+										text: periodo,
+									},
+									{
+										type: "text",
+										text: faturamento,
+									},
+									{
+										type: "text",
+										text: meta,
+									},
+									{
+										type: "text",
+										text: percentualMeta,
+									},
+									{
+										type: "text",
+										text: topVendedores,
+									},
+									{
+										type: "text",
+										text: topProdutos,
+									},
+									{
+										type: "text",
+										text: comparacao,
+									},
+								],
+							},
+						],
+					},
+				},
+			};
+		},
+	},
+	MONTHLY_REPORT: {
+		id: "monthly_report",
+		title: "Relatório Mensal de Vendas",
+		language: "pt_BR",
+		type: "utility",
+		getPayload: (input: MonthlyReportParametersInput) => {
+			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, detalhes, topVendedores, topProdutos, topParceiros, comparacao } =
+				MonthlyReportParametersInputSchema.parse(input);
+			return {
+				content: `Relatório Mensal - ${periodo}`,
+				data: {
+					messaging_product: "whatsapp",
+					to: formatPhoneAsWhatsappId(toPhoneNumber),
+					type: "template",
+					template: {
+						name: "monthly_report",
+						language: {
+							code: "pt_BR",
+						},
+						components: [
+							{
+								type: "body",
+								parameters: [
+									{
+										type: "text",
+										text: periodo,
+									},
+									{
+										type: "text",
+										text: faturamento,
+									},
+									{
+										type: "text",
+										text: meta,
+									},
+									{
+										type: "text",
+										text: percentualMeta,
+									},
+									{
+										type: "text",
+										text: detalhes,
+									},
+									{
+										type: "text",
+										text: topVendedores,
+									},
+									{
+										type: "text",
+										text: topProdutos,
+									},
+									{
+										type: "text",
+										text: topParceiros,
+									},
+									{
+										type: "text",
+										text: comparacao,
+									},
+								],
+							},
+						],
+					},
+				},
+			};
+		},
+	},
+};

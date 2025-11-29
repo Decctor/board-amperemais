@@ -9,6 +9,12 @@ async function fetchPartners(input: TGetPartnersInput) {
 	if (input.search) searchParams.set("search", input.search);
 	if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
 	if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
+	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) searchParams.set("statsSaleNatures", input.statsSaleNatures.join(","));
+	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0)
+		searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
+	if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
+	if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
+	if (input.page) searchParams.set("page", input.page.toString());
 	const { data } = await axios.get<TGetPartnersOutput>(`/api/partners?${searchParams.toString()}`);
 	const result = data.data.default;
 	if (!result) throw new Error("Parceiros não encontrados.");
@@ -20,9 +26,14 @@ type UsePartnersParams = {
 };
 export function usePartners({ initialParams }: UsePartnersParams) {
 	const [queryParams, setQueryParams] = useState<TGetPartnersInput>({
+		page: initialParams.page || 1,
 		search: initialParams.search || "",
 		statsPeriodAfter: initialParams.statsPeriodAfter || null,
 		statsPeriodBefore: initialParams.statsPeriodBefore || null,
+		statsSaleNatures: initialParams.statsSaleNatures || [],
+		statsExcludedSalesIds: initialParams.statsExcludedSalesIds || [],
+		statsTotalMin: initialParams.statsTotalMin || null,
+		statsTotalMax: initialParams.statsTotalMax || null,
 	});
 
 	function updateQueryParams(newParams: Partial<TGetPartnersInput>) {
