@@ -7,7 +7,8 @@ import { useUsers } from "@/lib/queries/users";
 import { useUtilsByIdentifier } from "@/lib/queries/utils";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Cake, Calendar, Filter, Mail, Pencil, Phone, Plus, Trophy, UserRound, UsersRound } from "lucide-react";
+import { Cake, Calendar, Filter, Info, Mail, Pencil, Phone, Plus, Trophy, UserRound, UsersRound } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
@@ -99,6 +100,12 @@ function SalesPromoCampaignCard({ salesPromoCampaign, handleClick }: SalesPromoC
 					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleClick(salesPromoCampaign.id)}>
 						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
 						EDITAR
+					</Button>
+					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+						<Link href={`/dashboard/utils/sales-campaign-result/${salesPromoCampaign.id}`}>
+							<Info className="w-3 min-w-3 h-3 min-h-3" />
+							DETALHES
+						</Link>
 					</Button>
 				</div>
 			</div>
