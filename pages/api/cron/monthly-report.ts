@@ -22,7 +22,7 @@ const REPORT_RECIPIENTS = [
 	// "5511999999999", // Exemplo: adicione os números aqui
 ];
 
-const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
+const WHATSAPP_PHONE_NUMBER_ID = "893793573806565";
 
 const monthlyReportHandler: NextApiHandler = async (req, res) => {
 	try {
@@ -130,15 +130,15 @@ const monthlyReportHandler: NextApiHandler = async (req, res) => {
 					comparacao,
 				});
 
-				// const result = await sendTemplateWhatsappMessage({
-				// 	fromPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
-				// 	templatePayload: templatePayload.data,
-				// });
+				const result = await sendTemplateWhatsappMessage({
+					fromPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
+					templatePayload: templatePayload.data,
+				});
 
 				results.push({
 					recipient,
 					status: "success",
-					messageId: "1234567890", // result.whatsappMessageId,
+					messageId: result.whatsappMessageId,
 				});
 
 				console.log(`[INFO] [MONTHLY_REPORT] Successfully sent report to ${recipient}`);

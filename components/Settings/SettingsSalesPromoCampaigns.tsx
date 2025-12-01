@@ -102,7 +102,19 @@ function SalesPromoCampaignCard({ salesPromoCampaign, handleClick }: SalesPromoC
 						EDITAR
 					</Button>
 					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-						<Link href={`/dashboard/utils/sales-campaign-result/${salesPromoCampaign.id}`}>
+						<Link href={`/dashboard/utils/sales-campaign/${salesPromoCampaign.id}/tags?tagType=PROMO-A4`}>
+							<Info className="w-3 min-w-3 h-3 min-h-3" />
+							ETIQUETAS PROMO-A4
+						</Link>
+					</Button>
+					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+						<Link href={`/dashboard/utils/sales-campaign/${salesPromoCampaign.id}/tags?tagType=PROMO-GRID-1/16`}>
+							<Info className="w-3 min-w-3 h-3 min-h-3" />
+							ETIQUETAS GRID
+						</Link>
+					</Button>
+					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+						<Link href={`/dashboard/utils/sales-campaign/${salesPromoCampaign.id}/result`}>
 							<Info className="w-3 min-w-3 h-3 min-h-3" />
 							DETALHES
 						</Link>

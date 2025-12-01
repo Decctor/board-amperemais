@@ -16,7 +16,7 @@ const REPORT_RECIPIENTS = [
 	// "5511999999999", // Exemplo: adicione os números aqui
 ];
 
-const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
+const WHATSAPP_PHONE_NUMBER_ID = "893793573806565";
 
 const dailyReportHandler: NextApiHandler = async (req, res) => {
 	try {
