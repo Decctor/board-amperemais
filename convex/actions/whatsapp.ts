@@ -72,20 +72,32 @@ export const sendWhatsappMediaMessage = internalAction({
 			// Convert blob to buffer
 			const fileBuffer = Buffer.from(await fileBlob?.arrayBuffer());
 
+			// Use the mimeType from args (metadata) as it's the correct one
+			// The blob.type from Convex storage may not be preserved correctly
+			const actualMimeType = args.mimeType || fileBlob.type || "application/octet-stream";
+
 			// Determine WhatsApp media type
 			let whatsappMediaType: "image" | "document" | "audio" = "document";
-			if (args.mediaType === "IMAGEM" || args.mimeType?.startsWith("image/")) {
+			if (args.mediaType === "IMAGEM" || actualMimeType.startsWith("image/")) {
 				whatsappMediaType = "image";
-			} else if (args.mediaType === "AUDIO" || args.mimeType?.startsWith("audio/")) {
+			} else if (args.mediaType === "AUDIO" || actualMimeType.startsWith("audio/")) {
 				whatsappMediaType = "audio";
 			}
 
-			console.log("[WHATSAPP_ACTION] Uploading media to WhatsApp:", { mediaType: whatsappMediaType, mimeType: args.mimeType, filename: args.filename });
+			console.log("[WHATSAPP_ACTION] Processing media message:", {
+				mediaType: whatsappMediaType,
+				providedMimeType: args.mimeType,
+				blobMimeType: fileBlob.type,
+				actualMimeType: actualMimeType,
+				filename: args.filename,
+				fileSize: fileBuffer.length,
+				messageId: args.messageId,
+			});
 			// Upload media to WhatsApp
 			const uploadResponse = await uploadMediaToWhatsapp({
 				fromPhoneNumberId: args.fromPhoneNumberId,
 				fileBuffer,
-				mimeType: args.mimeType || "application/octet-stream",
+				mimeType: actualMimeType,
 				filename: args.filename || "arquivo",
 			});
 
@@ -97,6 +109,13 @@ export const sendWhatsappMediaMessage = internalAction({
 				mediaType: whatsappMediaType,
 				caption: args.caption,
 				filename: args.filename,
+			});
+
+			console.log("[WHATSAPP_ACTION] Media message sent successfully:", {
+				messageId: args.messageId,
+				whatsappMessageId: sendResponse.whatsappMessageId,
+				mediaId: uploadResponse.mediaId,
+				mediaType: whatsappMediaType,
 			});
 
 			// Update message with WhatsApp message ID

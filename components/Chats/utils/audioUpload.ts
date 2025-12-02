@@ -100,6 +100,11 @@ export async function uploadAudioToConvex({
 		fileType: "audio";
 	}) => Promise<void>;
 }): Promise<{ storageId: string; filename: string }> {
+	console.log("[AudioUpload] Starting upload process:", {
+		originalMimeType: audioBlob.type,
+		originalSize: audioBlob.size,
+	});
+
 	// Validate file size
 	const sizeValidation = validateAudioSize(audioBlob);
 	if (!sizeValidation.isValid) {
@@ -113,7 +118,7 @@ export async function uploadAudioToConvex({
 		throw new Error(errorMsg);
 	}
 
-	// Convert blob to file
+	// Convert blob to file with the actual MIME type
 	const audioFile = blobToAudioFile(audioBlob);
 
 	console.log("[AudioUpload] Uploading audio:", {

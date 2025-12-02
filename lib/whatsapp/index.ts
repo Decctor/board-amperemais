@@ -261,10 +261,14 @@ export async function uploadMediaToWhatsapp({
 		const fileBlob = new Blob([arrayBuffer], { type: mimeType });
 
 		// Append file with filename as third parameter
+		// Note: The MIME type is set in the Blob itself, not as a separate field
 		formData.append("file", fileBlob, filename);
-		formData.append("type", mimeType);
 
-		console.log("[INFO] [WHATSAPP_MEDIA_UPLOAD] Form data:", formData);
+		console.log("[INFO] [WHATSAPP_MEDIA_UPLOAD] Uploading file:", {
+			filename,
+			mimeType,
+			fileSize: fileBlob.size,
+		});
 
 		// Use fetch instead of axios for better FormData handling in this environment
 		const response = await fetch(GRAPH_MEDIA_API_URL, {
@@ -289,6 +293,11 @@ export async function uploadMediaToWhatsapp({
 			throw new createHttpError.InternalServerError("WhatsApp media ID não retornado.");
 		}
 
+		console.log("[INFO] [WHATSAPP_MEDIA_UPLOAD] Successfully uploaded media to WhatsApp:", {
+			mediaId,
+			mimeType,
+			filename,
+		});
 		return {
 			mediaId,
 			message: "Mídia enviada para WhatsApp com sucesso!",

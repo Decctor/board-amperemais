@@ -51,32 +51,32 @@ export function useAudioRecorder(): AudioRecorderResult {
 
 	/**
 	 * Get the best supported audio MIME type for recording
-	 * Prioritizes WhatsApp-compatible formats
+	 * Prioritizes OGG/Opus for maximum WhatsApp compatibility
 	 */
 	const getSupportedMimeType = useCallback((): { mimeType: string; isWhatsAppCompatible: boolean } => {
-		// WhatsApp accepts: audio/aac, audio/mp4, audio/mpeg, audio/amr, audio/ogg, audio/opus
-		const whatsappCompatibleTypes = [
-			"audio/ogg;codecs=opus", // Firefox - WhatsApp compatible
-			"audio/ogg", // Fallback for ogg
-			"audio/mp4", // Safari, iOS - WhatsApp compatible
-			"audio/mpeg", // WhatsApp compatible
-			"audio/aac", // WhatsApp compatible
+		// Prioritize OGG with Opus codec - this is WhatsApp's native format
+		// and has the best compatibility
+		const preferredTypes = [
+			"audio/ogg;codecs=opus", // Firefox, Chrome - Best for WhatsApp
+			"audio/ogg", // Fallback for ogg without codec specification
+			"audio/webm;codecs=opus", // Chrome fallback - will be converted to OGG
+			"audio/webm", // Generic WebM - will be converted to OGG
 		];
 
-		// Try WhatsApp-compatible formats first
-		for (const type of whatsappCompatibleTypes) {
+		// Try preferred formats
+		for (const type of preferredTypes) {
 			if (MediaRecorder.isTypeSupported(type)) {
-				console.log("[AudioRecorder] Using WhatsApp-compatible MIME type:", type);
-				return { mimeType: type, isWhatsAppCompatible: true };
+				const isOgg = type.includes("ogg");
+				console.log("[AudioRecorder] Using MIME type:", type, isOgg ? "(native WhatsApp format)" : "(will convert to OGG)");
+				return { mimeType: type, isWhatsAppCompatible: isOgg };
 			}
 		}
 
-		// Fallback to WebM (not WhatsApp compatible, but widely supported)
-		const fallbackTypes = ["audio/webm;codecs=opus", "audio/webm"];
-
-		for (const type of fallbackTypes) {
+		// Last resort fallback
+		const lastResortTypes = ["audio/mp4", "audio/mpeg", "audio/aac"];
+		for (const type of lastResortTypes) {
 			if (MediaRecorder.isTypeSupported(type)) {
-				console.warn("[AudioRecorder] Using non-WhatsApp-compatible format:", type);
+				console.warn("[AudioRecorder] Using fallback format (will convert to OGG):", type);
 				return { mimeType: type, isWhatsAppCompatible: false };
 			}
 		}
