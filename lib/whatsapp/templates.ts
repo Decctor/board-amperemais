@@ -86,14 +86,20 @@ export const TemplateButtonTypeOptions = [
 // Report Templates
 const DailyReportParametersInputSchema = DefaultTemplatePayloadSchema.extend({
 	templateKey: z.enum(["DAILY_REPORT"]),
-	reportDate: z.string(),
+	periodo: z.string(),
 	faturamento: z.string(),
 	meta: z.string(),
 	percentualMeta: z.string(),
+	comparacao: z.string(),
 	topVendedor1: z.string(),
 	topVendedor2: z.string(),
 	topVendedor3: z.string(),
-	comparacao: z.string(),
+	topParceiro1: z.string(),
+	topParceiro2: z.string(),
+	topParceiro3: z.string(),
+	topProduto1: z.string(),
+	topProduto2: z.string(),
+	topProduto3: z.string(),
 });
 type DailyReportParametersInput = z.infer<typeof DailyReportParametersInputSchema>;
 
@@ -103,9 +109,16 @@ const WeeklyReportParametersInputSchema = DefaultTemplatePayloadSchema.extend({
 	faturamento: z.string(),
 	meta: z.string(),
 	percentualMeta: z.string(),
-	topVendedores: z.string(),
-	topProdutos: z.string(),
 	comparacao: z.string(),
+	topVendedor1: z.string(),
+	topVendedor2: z.string(),
+	topVendedor3: z.string(),
+	topParceiro1: z.string(),
+	topParceiro2: z.string(),
+	topParceiro3: z.string(),
+	topProduto1: z.string(),
+	topProduto2: z.string(),
+	topProduto3: z.string(),
 });
 type WeeklyReportParametersInput = z.infer<typeof WeeklyReportParametersInputSchema>;
 
@@ -115,11 +128,16 @@ const MonthlyReportParametersInputSchema = DefaultTemplatePayloadSchema.extend({
 	faturamento: z.string(),
 	meta: z.string(),
 	percentualMeta: z.string(),
-	detalhes: z.string(),
-	topVendedores: z.string(),
-	topProdutos: z.string(),
-	topParceiros: z.string(),
 	comparacao: z.string(),
+	topVendedor1: z.string(),
+	topVendedor2: z.string(),
+	topVendedor3: z.string(),
+	topParceiro1: z.string(),
+	topParceiro2: z.string(),
+	topParceiro3: z.string(),
+	topProduto1: z.string(),
+	topProduto2: z.string(),
+	topProduto3: z.string(),
 });
 type MonthlyReportParametersInput = z.infer<typeof MonthlyReportParametersInputSchema>;
 
@@ -130,10 +148,10 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 		language: "pt_BR",
 		type: "utility",
 		getPayload: (input: DailyReportParametersInput) => {
-			const { templateKey, toPhoneNumber, reportDate, faturamento, meta, percentualMeta, topVendedor1, topVendedor2, topVendedor3, comparacao } =
+			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, comparacao, topVendedor1, topVendedor2, topVendedor3, topParceiro1, topParceiro2, topParceiro3, topProduto1, topProduto2, topProduto3 } =
 				DailyReportParametersInputSchema.parse(input);
 			return {
-				content: `Relatório Diário - ${reportDate}`,
+				content: `Relatório Diário de Vendas - ${periodo}`,
 				data: {
 					messaging_product: "whatsapp",
 					to: formatPhoneAsWhatsappId(toPhoneNumber),
@@ -149,7 +167,7 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 								parameters: [
 									{
 										type: "text",
-										text: reportDate,
+										text: periodo,
 									},
 									{
 										type: "text",
@@ -165,6 +183,10 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 									},
 									{
 										type: "text",
+										text: comparacao,
+									},
+									{
+										type: "text",
 										text: topVendedor1,
 									},
 									{
@@ -177,7 +199,27 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 									},
 									{
 										type: "text",
-										text: comparacao,
+										text: topParceiro1,
+									},
+									{
+										type: "text",
+										text: topParceiro2,
+									},
+									{
+										type: "text",
+										text: topParceiro3,
+									},
+									{
+										type: "text",
+										text: topProduto1,
+									},
+									{
+										type: "text",
+										text: topProduto2,
+									},
+									{
+										type: "text",
+										text: topProduto3,
 									},
 								],
 							},
@@ -193,10 +235,10 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 		language: "pt_BR",
 		type: "utility",
 		getPayload: (input: WeeklyReportParametersInput) => {
-			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, topVendedores, topProdutos, comparacao } =
+			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, comparacao, topVendedor1, topVendedor2, topVendedor3, topParceiro1, topParceiro2, topParceiro3, topProduto1, topProduto2, topProduto3 } =
 				WeeklyReportParametersInputSchema.parse(input);
 			return {
-				content: `Relatório Semanal - ${periodo}`,
+				content: `Relatório Semanal de Vendas - ${periodo}`,
 				data: {
 					messaging_product: "whatsapp",
 					to: formatPhoneAsWhatsappId(toPhoneNumber),
@@ -228,15 +270,43 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 									},
 									{
 										type: "text",
-										text: topVendedores,
-									},
-									{
-										type: "text",
-										text: topProdutos,
-									},
-									{
-										type: "text",
 										text: comparacao,
+									},
+									{
+										type: "text",
+										text: topVendedor1,
+									},
+									{
+										type: "text",
+										text: topVendedor2,
+									},
+									{
+										type: "text",
+										text: topVendedor3,
+									},
+									{
+										type: "text",
+										text: topParceiro1,
+									},
+									{
+										type: "text",
+										text: topParceiro2,
+									},
+									{
+										type: "text",
+										text: topParceiro3,
+									},
+									{
+										type: "text",
+										text: topProduto1,
+									},
+									{
+										type: "text",
+										text: topProduto2,
+									},
+									{
+										type: "text",
+										text: topProduto3,
 									},
 								],
 							},
@@ -252,10 +322,10 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 		language: "pt_BR",
 		type: "utility",
 		getPayload: (input: MonthlyReportParametersInput) => {
-			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, detalhes, topVendedores, topProdutos, topParceiros, comparacao } =
+			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, comparacao, topVendedor1, topVendedor2, topVendedor3, topParceiro1, topParceiro2, topParceiro3, topProduto1, topProduto2, topProduto3 } =
 				MonthlyReportParametersInputSchema.parse(input);
 			return {
-				content: `Relatório Mensal - ${periodo}`,
+				content: `Relatório Mensal de Vendas - ${periodo}`,
 				data: {
 					messaging_product: "whatsapp",
 					to: formatPhoneAsWhatsappId(toPhoneNumber),
@@ -287,23 +357,43 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 									},
 									{
 										type: "text",
-										text: detalhes,
-									},
-									{
-										type: "text",
-										text: topVendedores,
-									},
-									{
-										type: "text",
-										text: topProdutos,
-									},
-									{
-										type: "text",
-										text: topParceiros,
-									},
-									{
-										type: "text",
 										text: comparacao,
+									},
+									{
+										type: "text",
+										text: topVendedor1,
+									},
+									{
+										type: "text",
+										text: topVendedor2,
+									},
+									{
+										type: "text",
+										text: topVendedor3,
+									},
+									{
+										type: "text",
+										text: topParceiro1,
+									},
+									{
+										type: "text",
+										text: topParceiro2,
+									},
+									{
+										type: "text",
+										text: topParceiro3,
+									},
+									{
+										type: "text",
+										text: topProduto1,
+									},
+									{
+										type: "text",
+										text: topProduto2,
+									},
+									{
+										type: "text",
+										text: topProduto3,
 									},
 								],
 							},

@@ -1,4 +1,4 @@
-import { getOverallSalesStats, getSellerRankings } from "@/lib/reports/data-fetchers";
+import { getOverallSalesStats, getPartnerRankings, getProductRankings, getSellerRankings } from "@/lib/reports/data-fetchers";
 import { formatComparisonWithEmoji, formatCurrency, formatDate, formatPercentage } from "@/lib/reports/formatters";
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import { WHATSAPP_REPORT_TEMPLATES } from "@/lib/whatsapp/templates";
@@ -49,32 +49,41 @@ const dailyReportHandler: NextApiHandler = async (req, res) => {
 			before: periodBefore,
 		});
 
-		// Fetch sales stats
-		const stats = await getOverallSalesStats({ after: periodAfter, before: periodBefore });
+	// Fetch sales stats
+	const stats = await getOverallSalesStats({ after: periodAfter, before: periodBefore });
 
-		// Fetch top sellers
-		const topSellers = await getSellerRankings({ after: periodAfter, before: periodBefore }, 3);
+	// Fetch top sellers, partners, and products
+	const topSellers = await getSellerRankings({ after: periodAfter, before: periodBefore }, 3);
+	const topPartners = await getPartnerRankings({ after: periodAfter, before: periodBefore }, 3);
+	const topProducts = await getProductRankings({ after: periodAfter, before: periodBefore }, 3);
 
-		// Format data for template
-		const reportDate = formatDate(periodAfter);
-		const faturamento = formatCurrency(stats.faturamento.atual);
-		const meta = formatCurrency(stats.faturamentoMeta);
-		const percentualMeta = formatPercentage(stats.faturamentoMetaPorcentagem);
+	// Format data for template
+	const periodo = formatDate(periodAfter);
+	const faturamento = formatCurrency(stats.faturamento.atual);
+	const meta = formatCurrency(stats.faturamentoMeta);
+	const percentualMeta = formatPercentage(stats.faturamentoMetaPorcentagem);
 
-		const topVendedor1 = topSellers[0] ? `${topSellers[0].vendedorNome}: ${formatCurrency(topSellers[0].faturamento)}` : "Nenhuma venda registrada";
-		const topVendedor2 = topSellers[1] ? `${topSellers[1].vendedorNome}: ${formatCurrency(topSellers[1].faturamento)}` : "-";
-		const topVendedor3 = topSellers[2] ? `${topSellers[2].vendedorNome}: ${formatCurrency(topSellers[2].faturamento)}` : "-";
+	const topVendedor1 = topSellers[0] ? `1. ${topSellers[0].vendedorNome}: ${formatCurrency(topSellers[0].faturamento)}` : "1. Nenhuma venda registrada";
+	const topVendedor2 = topSellers[1] ? `2. ${topSellers[1].vendedorNome}: ${formatCurrency(topSellers[1].faturamento)}` : "2. -";
+	const topVendedor3 = topSellers[2] ? `3. ${topSellers[2].vendedorNome}: ${formatCurrency(topSellers[2].faturamento)}` : "3. -";
 
-		const comparacao = formatComparisonWithEmoji(stats.faturamento.atual, stats.faturamento.anterior);
+	const topParceiro1 = topPartners[0] ? `1. ${topPartners[0].parceiroNome}: ${formatCurrency(topPartners[0].faturamento)}` : "1. Nenhum parceiro registrado";
+	const topParceiro2 = topPartners[1] ? `2. ${topPartners[1].parceiroNome}: ${formatCurrency(topPartners[1].faturamento)}` : "2. -";
+	const topParceiro3 = topPartners[2] ? `3. ${topPartners[2].parceiroNome}: ${formatCurrency(topPartners[2].faturamento)}` : "3. -";
 
-		console.log("[INFO] [DAILY_REPORT] Report data prepared:", {
-			reportDate,
-			faturamento,
-			meta,
-			percentualMeta,
-			topVendedor1,
-			comparacao,
-		});
+	const topProduto1 = topProducts[0] ? `1. ${topProducts[0].produtoDescricao}: ${formatCurrency(topProducts[0].faturamento)}` : "1. Nenhum produto vendido";
+	const topProduto2 = topProducts[1] ? `2. ${topProducts[1].produtoDescricao}: ${formatCurrency(topProducts[1].faturamento)}` : "2. -";
+	const topProduto3 = topProducts[2] ? `3. ${topProducts[2].produtoDescricao}: ${formatCurrency(topProducts[2].faturamento)}` : "3. -";
+
+	const comparacao = formatComparisonWithEmoji(stats.faturamento.atual, stats.faturamento.anterior);
+
+	console.log("[INFO] [DAILY_REPORT] Report data prepared:", {
+		periodo,
+		faturamento,
+		meta,
+		percentualMeta,
+		comparacao,
+	});
 
 		// Send to all recipients
 		const results = [];
@@ -85,14 +94,20 @@ const dailyReportHandler: NextApiHandler = async (req, res) => {
 				const templatePayload = WHATSAPP_REPORT_TEMPLATES.DAILY_REPORT.getPayload({
 					templateKey: "DAILY_REPORT",
 					toPhoneNumber: recipient,
-					reportDate,
+					periodo,
 					faturamento,
 					meta,
 					percentualMeta,
+					comparacao,
 					topVendedor1,
 					topVendedor2,
 					topVendedor3,
-					comparacao,
+					topParceiro1,
+					topParceiro2,
+					topParceiro3,
+					topProduto1,
+					topProduto2,
+					topProduto3,
 				});
 
 				// const result = await sendTemplateWhatsappMessage({
@@ -127,7 +142,7 @@ const dailyReportHandler: NextApiHandler = async (req, res) => {
 
 		return res.status(200).json({
 			message: "Daily report completed",
-			date: reportDate,
+			date: periodo,
 			sent: successCount,
 			total: REPORT_RECIPIENTS.length,
 			results,

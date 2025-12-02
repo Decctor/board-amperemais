@@ -57,34 +57,36 @@ const weeklyReportHandler: NextApiHandler = async (req, res) => {
 			before: periodBefore,
 		});
 
-		// Fetch sales stats
-		const stats = await getOverallSalesStats({ after: periodAfter, before: periodBefore });
+	// Fetch sales stats
+	const stats = await getOverallSalesStats({ after: periodAfter, before: periodBefore });
 
-		// Fetch top sellers
-		const topSellers = await getSellerRankings({ after: periodAfter, before: periodBefore }, 5);
+	// Fetch top sellers, partners, and products
+	const topSellers = await getSellerRankings({ after: periodAfter, before: periodBefore }, 3);
+	const topPartners = await getPartnerRankings({ after: periodAfter, before: periodBefore }, 3);
+	const topProducts = await getProductRankings({ after: periodAfter, before: periodBefore }, 3);
 
-		// Fetch top products
-		const topProducts = await getProductRankings({ after: periodAfter, before: periodBefore }, 5);
+	// Format data for template
+	const periodo = formatDateRange(periodAfter, periodBefore);
+	const faturamento = formatCurrency(stats.faturamento.atual);
+	const meta = formatCurrency(stats.faturamentoMeta);
+	const percentualMeta = formatPercentage(stats.faturamentoMetaPorcentagem);
 
-		// Format data for template
-		const periodo = formatDateRange(periodAfter, periodBefore);
-		const faturamento = formatCurrency(stats.faturamento.atual);
-		const meta = formatCurrency(stats.faturamentoMeta);
-		const percentualMeta = formatPercentage(stats.faturamentoMetaPorcentagem);
+	// Format top sellers list
+	const topVendedor1 = topSellers[0] ? `1. ${truncateText(topSellers[0].vendedorNome, 20)}: ${formatCurrency(topSellers[0].faturamento)}` : "1. Nenhuma venda registrada";
+	const topVendedor2 = topSellers[1] ? `2. ${truncateText(topSellers[1].vendedorNome, 20)}: ${formatCurrency(topSellers[1].faturamento)}` : "2. -";
+	const topVendedor3 = topSellers[2] ? `3. ${truncateText(topSellers[2].vendedorNome, 20)}: ${formatCurrency(topSellers[2].faturamento)}` : "3. -";
 
-		// Format top sellers list
-		const topVendedoresLines = topSellers
-			.map((seller, index) => `${index + 1}. ${truncateText(seller.vendedorNome, 20)}: ${formatCurrency(seller.faturamento)}`)
-			.join("\n");
-		const topVendedores = topVendedoresLines || "Nenhuma venda registrada";
+	// Format top partners list
+	const topParceiro1 = topPartners[0] ? `1. ${truncateText(topPartners[0].parceiroNome, 20)}: ${formatCurrency(topPartners[0].faturamento)}` : "1. Nenhum parceiro registrado";
+	const topParceiro2 = topPartners[1] ? `2. ${truncateText(topPartners[1].parceiroNome, 20)}: ${formatCurrency(topPartners[1].faturamento)}` : "2. -";
+	const topParceiro3 = topPartners[2] ? `3. ${truncateText(topPartners[2].parceiroNome, 20)}: ${formatCurrency(topPartners[2].faturamento)}` : "3. -";
 
-		// Format top products list
-		const topProdutosLines = topProducts
-			.map((product, index) => `${index + 1}. ${truncateText(product.produtoDescricao, 20)}: ${formatCurrency(product.faturamento)}`)
-			.join("\n");
-		const topProdutos = topProdutosLines || "Nenhum produto vendido";
+	// Format top products list
+	const topProduto1 = topProducts[0] ? `1. ${truncateText(topProducts[0].produtoDescricao, 20)}: ${formatCurrency(topProducts[0].faturamento)}` : "1. Nenhum produto vendido";
+	const topProduto2 = topProducts[1] ? `2. ${truncateText(topProducts[1].produtoDescricao, 20)}: ${formatCurrency(topProducts[1].faturamento)}` : "2. -";
+	const topProduto3 = topProducts[2] ? `3. ${truncateText(topProducts[2].produtoDescricao, 20)}: ${formatCurrency(topProducts[2].faturamento)}` : "3. -";
 
-		const comparacao = formatComparisonWithEmoji(stats.faturamento.atual, stats.faturamento.anterior);
+	const comparacao = formatComparisonWithEmoji(stats.faturamento.atual, stats.faturamento.anterior);
 
 		console.log("[INFO] [WEEKLY_REPORT] Report data prepared:", {
 			periodo,
@@ -100,27 +102,34 @@ const weeklyReportHandler: NextApiHandler = async (req, res) => {
 			try {
 				console.log(`[INFO] [WEEKLY_REPORT] Sending report to ${recipient}`);
 
-				const templatePayload = WHATSAPP_REPORT_TEMPLATES.WEEKLY_REPORT.getPayload({
-					templateKey: "WEEKLY_REPORT",
-					toPhoneNumber: recipient,
-					periodo,
-					faturamento,
-					meta,
-					percentualMeta,
-					topVendedores,
-					topProdutos,
-					comparacao,
-				});
+			const templatePayload = WHATSAPP_REPORT_TEMPLATES.WEEKLY_REPORT.getPayload({
+				templateKey: "WEEKLY_REPORT",
+				toPhoneNumber: recipient,
+				periodo,
+				faturamento,
+				meta,
+				percentualMeta,
+				comparacao,
+				topVendedor1,
+				topVendedor2,
+				topVendedor3,
+				topParceiro1,
+				topParceiro2,
+				topParceiro3,
+				topProduto1,
+				topProduto2,
+				topProduto3,
+			});
 
-				// const result = await sendTemplateWhatsappMessage({
-				// 	fromPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
-				// 	templatePayload: templatePayload.data,
-				// });
+				const result = await sendTemplateWhatsappMessage({
+					fromPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
+					templatePayload: templatePayload.data,
+				});
 
 				results.push({
 					recipient,
 					status: "success",
-					messageId: "1234567890", // result.whatsappMessageId,
+					messageId: result.whatsappMessageId,
 				});
 
 				console.log(`[INFO] [WEEKLY_REPORT] Successfully sent report to ${recipient}`);
