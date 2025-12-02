@@ -106,6 +106,15 @@ const UtilsSalesPromoCampaignSchema = z.object({
 						required_error: "Valor promocional não informado.",
 						invalid_type_error: "Tipo não válido para o valor promocional.",
 					}),
+					anuncioData: z
+						.string({ required_error: "Data de anúncio não informada.", invalid_type_error: "Tipo não válido para a data de anúncio." })
+						.optional(),
+					anuncioValorPromocional: z
+						.number({
+							required_error: "Valor promocional de anúncio não informado.",
+							invalid_type_error: "Tipo não válido para o valor promocional de anúncio.",
+						})
+						.optional(),
 					etiqueta: z.enum(["PROMO-A4", "PROMO-GRID-1/16"]),
 				}),
 			),

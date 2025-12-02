@@ -7,14 +7,14 @@ import { useUsers } from "@/lib/queries/users";
 import { useUtilsByIdentifier } from "@/lib/queries/utils";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Cake, Calendar, Filter, Info, Mail, Pencil, Phone, Plus, Trophy, UserRound, UsersRound } from "lucide-react";
+import { Cake, Calendar, Filter, Info, Mail, Megaphone, Pencil, Phone, Plus, Trophy, UserRound, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
+import ControlSalesPromoCampaign from "../Modals/Utils/SalesPromoCampaign/ControlSalesPromoCampaign";
 import NewSalesPromoCampaign from "../Modals/Utils/SalesPromoCampaign/NewSalesPromoCampaign";
 import { Button } from "../ui/button";
-import ControlSalesPromoCampaign from "../Modals/Utils/SalesPromoCampaign/ControlSalesPromoCampaign";
 
 type SettingsSalesPromoCampaignsProps = {
 	user: TAuthUserSession["user"];
@@ -55,15 +55,13 @@ export default function SettingsSalesPromoCampaigns({ user }: SettingsSalesPromo
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
 			) : null}
-			{
-				editSalesPromoCampaignModalId ? (
-					<ControlSalesPromoCampaign
-						salesPromoCampaignId={editSalesPromoCampaignModalId}
-						closeModal={() => setEditSalesPromoCampaignModalId(null)}
-						callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-					/>
-				) : null
-			}
+			{editSalesPromoCampaignModalId ? (
+				<ControlSalesPromoCampaign
+					salesPromoCampaignId={editSalesPromoCampaignModalId}
+					closeModal={() => setEditSalesPromoCampaignModalId(null)}
+					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+				/>
+			) : null}
 		</div>
 	);
 }
@@ -113,14 +111,20 @@ function SalesPromoCampaignCard({ salesPromoCampaign, handleClick }: SalesPromoC
 					</Button>
 					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
 						<Link href={`/sales-campaign/${salesPromoCampaign.id}/tags?tagType=PROMO-A4`}>
-							<Info className="w-3 min-w-3 h-3 min-h-3" />
-							ETIQUETAS PROMO-A4
+							<Megaphone className="w-3 min-w-3 h-3 min-h-3" />
+							ETIQUETAS FULL
 						</Link>
 					</Button>
 					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
 						<Link href={`/sales-campaign/${salesPromoCampaign.id}/tags?tagType=PROMO-GRID-1/16`}>
-							<Info className="w-3 min-w-3 h-3 min-h-3" />
+							<Megaphone className="w-3 min-w-3 h-3 min-h-3" />
 							ETIQUETAS GRID
+						</Link>
+					</Button>
+					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+						<Link href={`/sales-campaign/${salesPromoCampaign.id}/conditions`}>
+							<Megaphone className="w-3 min-w-3 h-3 min-h-3" />
+							CONDIÇÕES ESPECIAIS
 						</Link>
 					</Button>
 					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
