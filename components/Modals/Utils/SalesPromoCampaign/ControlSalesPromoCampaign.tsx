@@ -1,16 +1,17 @@
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
-import { createUtil } from "@/lib/mutations/utils";
 import type { TUtilsSalesPromoCampaignConfig } from "@/schemas/utils";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import SalesPromoCampaignItemsBlock from "./Blocks/Items";
 import SalesPromoCampaignStatsBlock from "./Blocks/Stats";
-
-type NewSalesPromoCampaignProps = {
+import { useUtilsById } from "@/lib/queries/utils";
+import { updateUtil  as updateUtilMutation} from "@/lib/mutations/utils";
+type ControlSalesPromoCampaignProps = {
+    salesPromoCampaignId: string;
 	callbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -19,7 +20,9 @@ type NewSalesPromoCampaignProps = {
 	};
 	closeModal: () => void;
 };
-export default function NewSalesPromoCampaign({ callbacks, closeModal }: NewSalesPromoCampaignProps) {
+export default function ControlSalesPromoCampaign({ salesPromoCampaignId, callbacks, closeModal }: ControlSalesPromoCampaignProps) {
+    const queryClient = useQueryClient();
+    const { data: salesPromoCampaign, queryKey, isLoading, isError, isSuccess, error } = useUtilsById({ id: salesPromoCampaignId });
 	const [infoHolder, setInfoHolder] = useState<TUtilsSalesPromoCampaignConfig>({
 		identificador: "SALES_PROMO_CAMPAIGN",
 		valor: {
@@ -69,10 +72,11 @@ export default function NewSalesPromoCampaign({ callbacks, closeModal }: NewSale
 		}));
 	}, []);
 
-	const { mutate: handleCreateSalesPromoCampaignMutation, isPending } = useMutation({
-		mutationKey: ["create-sales-promo-campaign"],
-		mutationFn: createUtil,
+	const { mutate: handleUpdateSalesPromoCampaignMutation, isPending } = useMutation({
+		mutationKey: ["update-sales-promo-campaign"],
+		mutationFn: updateUtilMutation,
 		onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey });
 			if (callbacks?.onMutate) callbacks.onMutate();
 			return;
 		},
@@ -80,25 +84,37 @@ export default function NewSalesPromoCampaign({ callbacks, closeModal }: NewSale
 			if (callbacks?.onSuccess) callbacks.onSuccess();
 			return toast.success(data.message);
 		},
-		onSettled: async () => {
-			if (callbacks?.onSettled) callbacks.onSettled();
-			return;
-		},
+        onSettled: async () => {
+            await queryClient.invalidateQueries({ queryKey });
+            if (callbacks?.onSettled) callbacks.onSettled();
+        },
 		onError: async (error) => {
 			if (callbacks?.onError) callbacks.onError();
 			return toast.error(getErrorMessage(error));
 		},
 	});
+    useEffect(() => {
+        if (salesPromoCampaign) {
+            if(salesPromoCampaign.valor.identificador !== "SALES_PROMO_CAMPAIGN") return;
+            setInfoHolder({
+                identificador: "SALES_PROMO_CAMPAIGN",
+                valor: {
+                    identificador: "SALES_PROMO_CAMPAIGN",
+                    dados: salesPromoCampaign.valor.dados,
+                },
+            });
+        }
+    }, [salesPromoCampaign, setInfoHolder]);
 	return (
 		<ResponsiveMenu
-			menuTitle="NOVA CAMPANHA DE PROMOÇÃO DE VENDAS"
-			menuDescription="Preencha os campos abaixo para criar uma nova campanha de promoção de vendas"
-			menuActionButtonText="CRIAR CAMPANHA"
+			menuTitle="EDITAR CAMPANHA DE PROMOÇÃO DE VENDAS"
+			menuDescription="Preencha os campos abaixo para atualizar a campanha de promoção de vendas"
+			menuActionButtonText="ATUALIZAR CAMPANHA"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => handleCreateSalesPromoCampaignMutation({ util: infoHolder })}
+			actionFunction={() => handleUpdateSalesPromoCampaignMutation({ utilId: salesPromoCampaignId, util: infoHolder })}
 			actionIsLoading={isPending}
-			stateIsLoading={false}
-			stateError={null}
+			stateIsLoading={isLoading}
+			stateError={error ? getErrorMessage(error) : null}
 			closeMenu={closeModal}
 		>
 			<TextInput

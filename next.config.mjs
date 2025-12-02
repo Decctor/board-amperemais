@@ -31,6 +31,10 @@ const nextConfig = {
 				hostname: "wawrqfehfafrrnfsycgs.supabase.co",
 			},
 			{
+				protocol: "https",
+				hostname: "brave-warbler-898.convex.cloud",
+			},
+			{
 				protocol: "http",
 				hostname: "localhost",
 			},

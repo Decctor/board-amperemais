@@ -117,7 +117,7 @@ type ServiceBannerProps = {
 };
 
 function ServiceBanner({ service }: ServiceBannerProps) {
-	const { session } = useChatHub();
+	const { user } = useChatHub();
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 
 	return (
@@ -184,12 +184,12 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 			</div>
 
 			{/* Transfer Dialog */}
-			{session && isDialogOpen && (
+			{user && isDialogOpen && (
 				<ServiceTransferDialog
 					closeMenu={() => setIsDialogOpen(false)}
 					serviceId={service._id}
 					currentResponsible={service.responsavel}
-					currentUserIdApp={session._id}
+					currentUserIdApp={user.id}
 				/>
 			)}
 		</>

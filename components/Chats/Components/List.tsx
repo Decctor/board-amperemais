@@ -11,7 +11,7 @@ import { formatNameAsInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import dayjs from "dayjs";
-import { ImageIcon, Loader2, MessageCircle } from "lucide-react";
+import { AudioWaveformIcon, FileIcon, ImageIcon, Loader2, MessageCircle, VideoIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebounce, useLoadMoreChats } from "../Hooks/usePaginatedChats";
 import { useChatHub } from "./context";
@@ -179,6 +179,27 @@ function ChatItem({ chat, isSelected, onSelect }: ChatItemProps) {
 		if (isSameYear) return dayjs(date).format("DD/MM HH:mm");
 		return dayjs(date).format("DD/MM/YYYY HH:mm");
 	}
+	function getMediaMessageFormattedValue(mediaType: "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO") {
+		if (mediaType === "IMAGEM") return {
+			icon: <ImageIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+			value: "IMAGEM"
+		} 
+		 if (mediaType === "VIDEO") return {
+			icon: <VideoIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+			value: "VÍDEO",
+		} 
+		if (mediaType === "AUDIO") return {
+			icon: <AudioWaveformIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+			value: "ÁUDIO",
+		}
+
+		return {
+			icon: <FileIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+			value: "DOCUMENTO",
+		}
+	}
+
+	const mediaMessageFormattedValue = getMediaMessageFormattedValue(chat.ultimaMensagemConteudoTipo);	
 	const lastMessageDate = getFormattedLastMessageDate(chat.ultimaMensagemData);
 	return (
 		<Button
@@ -220,9 +241,9 @@ function ChatItem({ chat, isSelected, onSelect }: ChatItemProps) {
 							</p>
 						) : (
 							<>
-								<ImageIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+								{mediaMessageFormattedValue.icon}
 								<p className={cn("text-xs truncate", hasUnread ? "text-primary/80 font-medium" : "text-primary/60")}>
-									{chat.ultimaMensagemConteudoTipo === "IMAGEM" ? "Imagem" : "Documento"}
+									{mediaMessageFormattedValue.value}
 								</p>
 							</>
 						)}

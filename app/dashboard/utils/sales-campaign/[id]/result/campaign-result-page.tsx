@@ -67,18 +67,18 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 				<div className="grid grid-cols-1 gap-3">
 					{campaignStats.productsPerformance.length > 0 ? (
 						campaignStats.productsPerformance.map((product) => (
-							<div key={product.produtoId} className={cn("bg-secondary/30 flex w-full flex-col gap-3 rounded-lg border border-primary/10 px-4 py-3")}>
+							<div key={product.produtoId} className={cn("flex w-full flex-col gap-3 rounded-lg border border-primary/20 px-4 py-3 hover:bg-primary/5 transition-colors duration-300")}>
 								<div className="w-full flex items-center justify-between gap-2 flex-wrap">
 									<div className="flex items-center gap-2 flex-wrap">
 										<h3 className="text-sm font-bold tracking-tight">{product.produtoNome}</h3>
 									</div>
 									<div className="flex items-center gap-2 flex-wrap">
-										<Badge variant="outline" className="text-xs">
-											Base: {formatToMoney(product.valorBase)}
-										</Badge>
-										<Badge variant="default" className="text-xs bg-green-600">
-											Promo: {formatToMoney(product.valorPromocional)}
-										</Badge>
+										<div  className="flex items-center gap-1.5 px-2 py-1 line-through text-primary text-xs">
+											DE: {formatToMoney(product.valorBase)}
+										</div>
+										<div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-green-100 text-green-600 text-xs font-bold">
+											POR: {formatToMoney(product.valorPromocional)}
+										</div>
 									</div>
 								</div>
 								<div className="w-full flex items-center gap-3 flex-wrap">
@@ -110,7 +110,7 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 					<div className="flex flex-col gap-2">
 						{campaignStats.rankingVendedores.length > 0 ? (
 							campaignStats.rankingVendedores.map((seller) => (
-								<div key={seller.vendedorId || seller.vendedorNome} className="w-full flex items-center justify-between gap-2">
+								<div key={seller.vendedorId || seller.vendedorNome} className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg">
 									<div className="flex items-center gap-2 flex-1 min-w-0">
 										<div
 											className={cn(
@@ -149,7 +149,7 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 					<div className="flex flex-col gap-2">
 						{campaignStats.rankingParceiros.length > 0 ? (
 							campaignStats.rankingParceiros.map((partner) => (
-								<div key={partner.parceiroId || partner.parceiroNome} className="w-full flex items-center justify-between gap-2">
+								<div key={partner.parceiroId || partner.parceiroNome} className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg">
 									<div className="flex items-center gap-2 flex-1 min-w-0">
 										<div
 											className={cn(
@@ -188,7 +188,7 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 					<div className="flex flex-col gap-2">
 						{campaignStats.rankingProdutos.length > 0 ? (
 							campaignStats.rankingProdutos.map((product) => (
-								<div key={product.produtoId} className="w-full flex items-center justify-between gap-2">
+								<div key={product.produtoId} className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg">
 									<div className="flex items-center gap-2 flex-1 min-w-0">
 										<div
 											className={cn(

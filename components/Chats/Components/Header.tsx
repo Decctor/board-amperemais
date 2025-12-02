@@ -52,15 +52,15 @@ export function Header({
 					{/* Phone Number Selector */}
 					{showPhoneSelector && phoneNumbers.length > 0 && (
 						<Select value={selectedPhoneNumber ?? undefined} onValueChange={(value) => setSelectedPhoneNumber(value)}>
-							<SelectTrigger className="w-[180px] h-9">
-								<SelectValue placeholder="Selecione o número" />
+							<SelectTrigger className="w-[180px] h-10">
+								<SelectValue placeholder="Selecione o número" className="text-xs" />
 							</SelectTrigger>
 							<SelectContent>
 								{phoneNumbers.map((phone) => (
 									<SelectItem key={phone.numero} value={phone.whatsappTelefoneId}>
 										<div className="flex flex-col items-start">
-											<span className="font-medium">{phone.nome}</span>
-											<span className="text-xs text-muted-foreground">{phone.numero}</span>
+											<span className="text-xs font-medium">{phone.nome}</span>
+											{/* <span className="text-[0.65rem] text-muted-foreground">{phone.numero}</span> */}
 										</div>
 									</SelectItem>
 								))}
