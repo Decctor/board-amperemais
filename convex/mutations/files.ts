@@ -14,7 +14,7 @@ export const saveFileMetadata = mutation({
 		filename: v.string(),
 		mimeType: v.string(),
 		fileSize: v.number(),
-		fileType: v.union(v.literal("image"), v.literal("document")),
+		fileType: v.union(v.literal("image"), v.literal("document"), v.literal("audio")),
 	},
 	handler: async (ctx, args) => {
 		// For now, we just return the storage ID

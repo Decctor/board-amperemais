@@ -73,11 +73,14 @@ export const sendWhatsappMediaMessage = internalAction({
 			const fileBuffer = Buffer.from(await fileBlob?.arrayBuffer());
 
 			// Determine WhatsApp media type
-			let whatsappMediaType: "image" | "document" = "document";
+			let whatsappMediaType: "image" | "document" | "audio" = "document";
 			if (args.mediaType === "IMAGEM" || args.mimeType?.startsWith("image/")) {
 				whatsappMediaType = "image";
+			} else if (args.mediaType === "AUDIO" || args.mimeType?.startsWith("audio/")) {
+				whatsappMediaType = "audio";
 			}
 
+			console.log("[WHATSAPP_ACTION] Uploading media to WhatsApp:", { mediaType: whatsappMediaType, mimeType: args.mimeType, filename: args.filename });
 			// Upload media to WhatsApp
 			const uploadResponse = await uploadMediaToWhatsapp({
 				fromPhoneNumberId: args.fromPhoneNumberId,

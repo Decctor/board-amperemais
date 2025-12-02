@@ -151,7 +151,7 @@ type SendMediaWhatsappMessageParams = {
 	fromPhoneNumberId: string;
 	toPhoneNumber: string;
 	mediaId: string;
-	mediaType: "image" | "document";
+	mediaType: "image" | "document" | "audio";
 	caption?: string;
 	filename?: string;
 };
@@ -254,16 +254,37 @@ export async function uploadMediaToWhatsapp({
 		const { GRAPH_MEDIA_API_URL } = getMetaGraphAPIUrl(fromPhoneNumberId);
 		const formData = new FormData();
 		formData.append("messaging_product", "whatsapp");
-		formData.append("file", new Blob([fileBuffer as unknown as ArrayBuffer], { type: mimeType }), filename);
+
+		// Create a proper Blob with the correct MIME type
+		// Convert Buffer to ArrayBuffer, then to Blob to ensure proper MIME type handling
+		const arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer;
+		const fileBlob = new Blob([arrayBuffer], { type: mimeType });
+
+		// Append file with filename as third parameter
+		formData.append("file", fileBlob, filename);
 		formData.append("type", mimeType);
 
-		const response = await axios.post(GRAPH_MEDIA_API_URL, formData, {
+		console.log("[INFO] [WHATSAPP_MEDIA_UPLOAD] Form data:", formData);
+
+		// Use fetch instead of axios for better FormData handling in this environment
+		const response = await fetch(GRAPH_MEDIA_API_URL, {
+			method: "POST",
 			headers: {
 				Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+				// Do NOT set Content-Type header manually - fetch will set it with boundary
 			},
+			body: formData,
 		});
 
-		const mediaId = response.data.id;
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => ({}));
+			console.error("[ERROR] [WHATSAPP_MEDIA_UPLOAD_ERROR_RESPONSE]", errorData);
+			throw new Error(`WhatsApp API error: ${response.status} ${response.statusText}`);
+		}
+
+		const responseData = await response.json();
+		const mediaId = responseData.id;
+
 		if (!mediaId) {
 			throw new createHttpError.InternalServerError("WhatsApp media ID não retornado.");
 		}
