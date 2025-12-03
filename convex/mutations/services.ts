@@ -1,4 +1,6 @@
 import { v } from "convex/values";
+import { WHATSAPP_REPORT_TEMPLATES } from "../../lib/whatsapp/templates";
+import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, mutation } from "../_generated/server";
 
@@ -87,7 +89,7 @@ export const createServiceFromAI = internalMutation({
 	},
 });
 
-export const transferServiceToHuman = internalMutation({
+export const transferServiceToHuman = mutation({
 	args: {
 		chatId: v.id("chats"),
 		clienteId: v.id("clients"),
@@ -104,12 +106,36 @@ export const transferServiceToHuman = internalMutation({
 			.first();
 
 		if (existingService) {
+			const users = await ctx.db.query("users").collect();
+
+			const randomUser = users[Math.floor(Math.random() * users.length)];
 			// Update existing service to remove AI as responsible and add context
 			await ctx.db.patch(existingService._id, {
 				descricao: `${existingService.descricao}\n\n[TRANSFERÊNCIA AI]\nMotivo: ${args.reason}\nResumo: ${args.conversationSummary}`,
-				responsavel: undefined, // Remove AI, waiting for human assignment
+				responsavel: randomUser._id, // Remove AI, waiting for human assignment
 			});
 
+			if (randomUser.telefone) {
+				const client = await ctx.db.get(existingService.clienteId);
+				if (!client) {
+					throw new Error("Cliente não encontrado.");
+				}
+				const chat = await ctx.db.get(existingService.chatId);
+				if (!chat) {
+					throw new Error("Chat não encontrado.");
+				}
+				await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappNotification, {
+					notificationPayload: WHATSAPP_REPORT_TEMPLATES.SERVICE_TRANSFER_NOTIFICATIONS.getPayload({
+						templateKey: "SERVICE_TRANSFER_NOTIFICATIONS",
+						clientName: client.nome,
+						clientePhoneNumber: client.telefone,
+						toPhoneNumber: randomUser.telefone,
+						serviceDescription: existingService.descricao,
+					}),
+					phoneNumber: randomUser.telefone,
+					fromPhoneNumberId: chat.whatsappTelefoneId,
+				});
+			}
 			console.log("[INFO] [SERVICES] [TRANSFER_TO_HUMAN] Updated existing service:", existingService._id);
 
 			return {

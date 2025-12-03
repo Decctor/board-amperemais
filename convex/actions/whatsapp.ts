@@ -177,6 +177,22 @@ export const sendWhatsappTemplate = internalAction({
 	},
 });
 
+export const sendWhatsappNotification = internalAction({
+	args: {
+		fromPhoneNumberId: v.string(),
+		phoneNumber: v.string(),
+		notificationPayload: v.any(),
+	},
+	handler: async (ctx, args) => {
+		console.log("[WHATSAPP_ACTION] Sending notification message:", args.phoneNumber);
+		const response = await sendTemplateWhatsappMessage({
+			fromPhoneNumberId: args.fromPhoneNumberId,
+			templatePayload: args.notificationPayload,
+		});
+
+		return { success: true, whatsappMessageId: response.whatsappMessageId };
+	},
+});
 export const downloadAndStoreWhatsappMedia = action({
 	args: {
 		mediaId: v.string(),

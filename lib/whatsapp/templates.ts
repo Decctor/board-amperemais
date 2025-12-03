@@ -141,6 +141,14 @@ const MonthlyReportParametersInputSchema = DefaultTemplatePayloadSchema.extend({
 });
 type MonthlyReportParametersInput = z.infer<typeof MonthlyReportParametersInputSchema>;
 
+const ServiceTransferNotificationsParametersInputSchema = DefaultTemplatePayloadSchema.extend({
+	templateKey: z.enum(["SERVICE_TRANSFER_NOTIFICATIONS"]),
+	clientName: z.string(),
+	clientePhoneNumber: z.string(),
+	serviceDescription: z.string(),
+})
+type ServiceTransferNotificationsParametersInput = z.infer<typeof ServiceTransferNotificationsParametersInputSchema>;
+
 export const WHATSAPP_REPORT_TEMPLATES = {
 	DAILY_REPORT: {
 		id: "daily_report",
@@ -402,5 +410,57 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 				},
 			};
 		},
+	},
+	SERVICE_TRANSFER_NOTIFICATIONS: {
+		id: "service_transfer_notifications",
+		title: "Notificação de Transferência de Serviço",
+		language: "pt_BR",
+		type: "utility",
+		getPayload: (input: ServiceTransferNotificationsParametersInput) => {
+			const { templateKey, toPhoneNumber, clientName, clientePhoneNumber, serviceDescription } = ServiceTransferNotificationsParametersInputSchema.parse(input);
+		
+		
+			return  {
+				content: `
+Você recebeu uma nova transferência para ${clientName}, de telefone ${clientePhoneNumber}.
+Detalhes:
+${serviceDescription}.
+Disponível para atendimento imediato.Um atendimento foi transferido para você ${serviceDescription}`,
+				data: {
+					messaging_product: "whatsapp",
+					to: formatPhoneAsWhatsappId(toPhoneNumber),
+					type: "template",
+					template: {
+						name: "generic_initiation",
+						language: {
+							code: "pt_BR",
+						},
+						components: [
+							{
+								type: "body",
+								parameters: [
+									{
+										type: "text",
+										parameter_name: "cliente_nome",
+										text: clientName,
+									},
+									{
+										type: "text",
+										parameter_name: "cliente_telefone",
+										text: clientePhoneNumber,
+									},
+									{
+										type: "text",
+										parameter_name: "atendimento_detalhes",
+										text: serviceDescription,
+									},
+								],
+							},
+						],
+					},
+				},
+			};
+		},
+		
 	},
 };

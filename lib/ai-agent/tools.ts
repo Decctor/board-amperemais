@@ -1,4 +1,7 @@
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { tool } from "ai";
+import { fetchMutation } from "convex/nextjs";
 import z from "zod";
 import {
 	getAvailableProductGroups,
@@ -212,6 +215,13 @@ NÃO pergunte ao cliente se ele quer transferir - apenas transfira quando apropr
 		.strict(),
 	execute: async ({ reason, chatId, clientId, conversationSummary }) => {
 		// This will be handled by the agent handler to create a ticket and mark for human
+
+		await fetchMutation(api.mutations.services.transferServiceToHuman, {
+			chatId: chatId as Id<"chats">,
+			clienteId: clientId as Id<"clients">,
+			reason,
+			conversationSummary,
+		});
 		return {
 			success: true,
 			action: "transfer_to_human",

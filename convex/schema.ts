@@ -20,6 +20,7 @@ export default defineSchema({
 		nome: v.string(),
 		email: v.string(),
 		avatar_url: v.optional(v.string()),
+		telefone: v.optional(v.string()),
 		idApp: v.string(),
 	}),
 	clients: defineTable({

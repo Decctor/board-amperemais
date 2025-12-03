@@ -132,11 +132,11 @@ export const createMessage = mutation({
 				clienteId: clientId,
 				descricao: "NÃO ESPECIFICADO",
 				status: "PENDENTE",
-				responsavel: args.autor.tipo === "usuario" ? (authorId as Id<"users">) : undefined, // Initializing the service with the correct responsible (AI if author is a client, user if author is a user)
+				responsavel: args.autor.tipo === "usuario" ? (authorId as Id<"users">) : "ai", // Initializing the service with the correct responsible (AI if author is a client, user if author is a user)
 				dataInicio: Date.now(),
 			});
 			serviceId = insertServiceResponse;
-			responsibleId = args.autor.tipo === "usuario" ? (authorId as Id<"users">) : undefined;
+			responsibleId = args.autor.tipo === "usuario" ? (authorId as Id<"users">) : "ai";
 		} else {
 			// If service is already registered, we get the its id
 			serviceId = service._id;
