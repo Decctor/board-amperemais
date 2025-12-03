@@ -13,7 +13,13 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		const searchParams = new URLSearchParams();
 		if (input.page) searchParams.set("page", input.page.toString());
 		if (input.search) searchParams.set("search", input.search);
-		if (input.grupo) searchParams.set("grupo", input.grupo);
+		if (input.groups) searchParams.set("groups", input.groups.join(","));
+		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
+		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
+		if (input.statsSaleNatures) searchParams.set("statsSaleNatures", input.statsSaleNatures.join(","));
+		if (input.statsExcludedSalesIds) searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
+		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
+		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
 		const { data } = await axios.get<TGetProductsOutput>(`/api/products?${searchParams.toString()}`);
@@ -55,7 +61,13 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 	const [filters, setFilters] = useState<TGetProductsDefaultInput>({
 		page: initialFilters?.page || 1,
 		search: initialFilters?.search || "",
-		grupo: initialFilters?.grupo || null,
+		groups: initialFilters?.groups || [],
+		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
+		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
+		statsSaleNatures: initialFilters?.statsSaleNatures || [],
+		statsExcludedSalesIds: initialFilters?.statsExcludedSalesIds || [],
+		statsTotalMin: initialFilters?.statsTotalMin || null,
+		statsTotalMax: initialFilters?.statsTotalMax || null,
 		orderByField: initialFilters?.orderByField || "descricao",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
 	});

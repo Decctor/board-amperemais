@@ -1,3 +1,4 @@
+import DateInput from "@/components/Inputs/DateInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
@@ -5,7 +6,7 @@ import ProductVinculation from "@/components/Modals/Products/ProductVinculation"
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
-import { formatToMoney } from "@/lib/formatting";
+import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange, formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import { isValidNumber } from "@/lib/validation";
 import type { TUtilsSalesPromoCampaignConfig } from "@/schemas/utils";
@@ -41,15 +42,26 @@ export default function SalesPromoCampaignItemsBlock({ items, addItem, updateIte
 			</div>
 			<div className="w-full flex flex-col gap-1.5">
 				{items.length > 0 ? (
-					items.map((item, index) => <ItemCard key={item.produtoId} item={item} handleRemoveClick={() => deleteItem(index)} handleEditClick={() => setEditCompositionItemIndex(index)} />)
+					items.map((item, index) => (
+						<ItemCard
+							key={item.produtoId}
+							item={item}
+							handleRemoveClick={() => deleteItem(index)}
+							handleEditClick={() => setEditCompositionItemIndex(index)}
+						/>
+					))
 				) : (
 					<p className="w-full text-center text-sm italic text-primary">Nenhum item adicionado.</p>
 				)}
 			</div>
 			{newCompositionItemMenuIsOpen && <NewItemMenu addItem={addItem} closeMenu={() => setNewCompositionItemMenuIsOpen(false)} />}
-				{
-					editingItem ? <EditItemMenu initialItem={editingItem} updateItem={(changes) => updateItem(editCompositionItemIndex!, changes)} closeMenu={() => setEditCompositionItemIndex(null)} /> : null
-				}
+			{editingItem ? (
+				<EditItemMenu
+					initialItem={editingItem}
+					updateItem={(changes) => updateItem(editCompositionItemIndex!, changes)}
+					closeMenu={() => setEditCompositionItemIndex(null)}
+				/>
+			) : null}
 		</ResponsiveMenuSection>
 	);
 }
@@ -66,23 +78,27 @@ function ItemCard({ item, handleRemoveClick, handleEditClick }: ItemCardProps) {
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{item.produtoNome}</h1>
 				</div>
-				
 			</div>
 			<div className="flex items-center gap-2 self-center">
-					<p className="line-through text-xs text-primary/80">DE {formatToMoney(item.valorBase)}</p>
-					<p className="text-xs font-medium">{formatToMoney(item.valorPromocional)}</p>
-				</div>
+				<p className="line-through text-xs text-primary/80">DE {formatToMoney(item.valorBase)}</p>
+				<p className="text-xs font-medium">{formatToMoney(item.valorPromocional)}</p>
+			</div>
+			{item.anuncioData && item.anuncioValorPromocional ? (
+				<p className="w-fit self-center text-xs px-2 py-1 bg-green-100 text-green-600 rounded-lg text-center">
+					Condição especial de {formatToMoney(item.anuncioValorPromocional)} na data {formatDateAsLocale(item.anuncioData)}
+				</p>
+			) : null}
 			<div className="w-full flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<p className="text-xs text-primary/80">ETIQUETA: {item.etiqueta}</p>
 				</div>
 				<div className="flex items-center gap-2">
-				<Button variant="ghost" className="flex items-center gap-1.5 p-2 rounded-full hover:bg-destructive/10" size="fit" onClick={handleRemoveClick}>
-					<Trash2 className="w-3 min-w-3 h-3 min-h-3" />
-				</Button>
-				<Button variant="ghost" className="flex items-center gap-1.5 p-2 rounded-full hover:bg-primary/10" size="fit" onClick={handleEditClick}>
-					<Pencil className="w-3 min-w-3 h-3 min-h-3" />
-				</Button>
+					<Button variant="ghost" className="flex items-center gap-1.5 p-2 rounded-full hover:bg-destructive/10" size="fit" onClick={handleRemoveClick}>
+						<Trash2 className="w-3 min-w-3 h-3 min-h-3" />
+					</Button>
+					<Button variant="ghost" className="flex items-center gap-1.5 p-2 rounded-full hover:bg-primary/10" size="fit" onClick={handleEditClick}>
+						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
+					</Button>
 				</div>
 			</div>
 		</div>
@@ -169,6 +185,22 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 				handleChange={(value) => setItemHolder((prev) => ({ ...prev, etiqueta: value }))}
 				onReset={() => setItemHolder((prev) => ({ ...prev, etiqueta: "PROMO-A4" }))}
 			/>
+			<div className="w-full flex flex-col gap-1">
+				<p className="w-full text-sm font-medium">CONDIÇÕES ESPECIAIS</p>
+				<DateInput
+					label="DATA DA CONDIÇÃO ESPECIAL"
+					value={formatDateForInputValue(itemHolder.anuncioData)}
+					handleChange={(value) => setItemHolder({ ...itemHolder, anuncioData: formatDateOnInputChange(value, "string") ?? undefined })}
+					width="100%"
+				/>
+				<NumberInput
+					label="VALOR PROMOCIONAL DE ANÚNCIO"
+					value={itemHolder.anuncioValorPromocional ?? null}
+					placeholder="Digite o valor promocional da condição especial..."
+					handleChange={(value) => setItemHolder({ ...itemHolder, anuncioValorPromocional: value })}
+					width="100%"
+				/>
+			</div>
 			{productSearchMenuIsOpen && (
 				<ProductVinculation
 					handleSelection={(product) => {
@@ -181,7 +213,6 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 		</ResponsiveMenu>
 	);
 }
-
 
 type EditItemMenuProps = {
 	initialItem: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number];
@@ -258,6 +289,22 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 				handleChange={(value) => setItemHolder((prev) => ({ ...prev, etiqueta: value }))}
 				onReset={() => setItemHolder((prev) => ({ ...prev, etiqueta: "PROMO-A4" }))}
 			/>
+			<div className="w-full flex flex-col gap-1">
+				<p className="w-full text-sm font-medium">CONDIÇÕES ESPECIAIS</p>
+				<DateInput
+					label="DATA DA CONDIÇÃO ESPECIAL"
+					value={formatDateForInputValue(itemHolder.anuncioData)}
+					handleChange={(value) => setItemHolder({ ...itemHolder, anuncioData: formatDateOnInputChange(value, "string") ?? undefined })}
+					width="100%"
+				/>
+				<NumberInput
+					label="VALOR PROMOCIONAL DE ANÚNCIO"
+					value={itemHolder.anuncioValorPromocional ?? null}
+					placeholder="Digite o valor promocional da condição especial..."
+					handleChange={(value) => setItemHolder({ ...itemHolder, anuncioValorPromocional: value })}
+					width="100%"
+				/>
+			</div>
 			{productSearchMenuIsOpen && (
 				<ProductVinculation
 					handleSelection={(product) => {

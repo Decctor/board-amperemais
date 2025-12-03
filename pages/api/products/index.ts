@@ -3,8 +3,8 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { ProductSchema } from "@/schemas/products";
 import { db } from "@/services/drizzle";
-import { products, saleItems, sales } from "@/services/drizzle/schema";
-import { and, count, eq, inArray, sql, sum } from "drizzle-orm";
+import { partners, products, saleItems, sales } from "@/services/drizzle/schema";
+import { and, asc, count, desc, eq, gte, inArray, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -24,13 +24,52 @@ const GetProductsDefaultInputSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	grupo: z
+	groups: z
 		.string({
-			required_error: "Grupo não informado.",
+			required_error: "Grupos não informados.",
 			invalid_type_error: "Tipo inválido para grupo.",
 		})
 		.optional()
-		.nullable(),
+		.nullable()
+		.transform((val) => (val ? val.split(",") : [])),
+	statsPeriodBefore: z
+		.string({ invalid_type_error: "Tipo não válido para data de venda antes da data." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	statsPeriodAfter: z
+		.string({ invalid_type_error: "Tipo não válido para data de venda após a data." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	statsSaleNatures: z
+		.string({
+			invalid_type_error: "Tipo não válido para natureza de venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((v) => (v ? v.split(",") : [])),
+	statsExcludedSalesIds: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((v) => (v ? v.split(",") : [])),
+	statsTotalMin: z
+		.string({
+			invalid_type_error: "Tipo não válido para valor mínimo da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
+	statsTotalMax: z
+		.string({
+			invalid_type_error: "Tipo não válido para valor máximo da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
 	orderByField: z.enum(["descricao", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal"]).optional().nullable(),
 	orderByDirection: z.enum(["asc", "desc"]).optional().nullable(),
 });
@@ -78,92 +117,134 @@ async function getProducts({ input, user }: GetProductsParams) {
 			sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`,
 		);
 	}
-	if (input.grupo) {
-		productQueryConditions.push(eq(products.grupo, input.grupo));
+	if (input.groups.length > 0) {
+		productQueryConditions.push(inArray(products.grupo, input.groups));
 	}
 
-	const PAGE_SIZE = 50;
+	const statsConditions = [];
+	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
+	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
+	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
+	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
+	if (input.statsTotalMin) statsConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
+	if (input.statsTotalMax) statsConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+
+	const havingConditions = [];
+	if (input.statsTotalMin) havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
+	if (input.statsTotalMax) havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+
+	let orderByClause = asc(products.descricao);
+	const direction = input.orderByDirection === "desc" ? desc : asc;
+	switch (input.orderByField) {
+		case "descricao":
+			orderByClause = direction(products.descricao);
+			break;
+		case "codigo":
+			orderByClause = direction(products.codigo);
+			break;
+		case "grupo":
+			orderByClause = direction(products.grupo);
+			break;
+		case "vendasValorTotal":
+			orderByClause = direction(sql`COALESCE(sum(${saleItems.valorVendaTotalLiquido}), 0)`);
+			break;
+		case "vendasQtdeTotal":
+			orderByClause = direction(count(sales.id));
+			break;
+		default:
+			orderByClause = asc(products.descricao);
+			break;
+	}
+
+	const PAGE_SIZE = 25;
 	const skip = PAGE_SIZE * (input.page - 1);
-	const limit = PAGE_SIZE;
 
-	const productsMatched = await db
-		.select({ count: count(products.id) })
-		.from(products)
-		.where(and(...productQueryConditions));
-	const productsMatchedCount = productsMatched[0]?.count || 0;
-	const totalPages = Math.ceil(productsMatchedCount / PAGE_SIZE);
-
-	const productsResult = await db.query.products.findMany({
-		where: and(...productQueryConditions),
-		offset: skip,
-		limit: limit,
-	});
-
-	const productIds = productsResult.map((product) => product.id);
-	// Get stats by product (total sales value and quantity)
-	const statsByProduct = await db
+	const matchedSubquery = db
 		.select({
 			productId: products.id,
-			totalSalesValue: sum(saleItems.valorVendaTotalLiquido),
-			totalSalesQty: count(saleItems.id),
 		})
 		.from(products)
 		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
 		.leftJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(inArray(products.id, productIds))
+		.where(and(...productQueryConditions, ...statsConditions))
 		.groupBy(products.id);
 
-	const productsWithStats = productsResult
-		.map((product) => {
-			const stats = statsByProduct.find((s) => s.productId === product.id);
+	if (havingConditions.length > 0) {
+		matchedSubquery.having(and(...havingConditions));
+	}
+	const statsByProductMatchedCountResult = await db.select({ count: count() }).from(matchedSubquery.as("sq"));
+	const statsByProductMatchedCount = statsByProductMatchedCountResult[0]?.count ?? 0;
+
+	// Crie um fragmento SQL reutilizável para o valor total (trata NULL como 0)
+	const totalSalesSql = sql`COALESCE(sum(${saleItems.valorVendaTotalLiquido}), 0)`;
+
+	const statsByProductResult = await db
+		.select({
+			productId: products.id,
+			totalSalesValue: sum(saleItems.valorVendaTotalLiquido),
+			totalSalesQty: count(sales.id),
+			firstSaleDate: min(sales.dataVenda),
+			lastSaleDate: max(sales.dataVenda),
+			// Calcula o acumulado ordenado por valor decrescente
+			accumulatedSales: sql<number>`sum(${totalSalesSql}) OVER (ORDER BY ${totalSalesSql} DESC)`,
+			// Calcula o total geral do conjunto filtrado
+			totalSalesGlobal: sql<number>`sum(${totalSalesSql}) OVER ()`,
+		})
+		.from(products)
+		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
+		.leftJoin(sales, eq(saleItems.vendaId, sales.id))
+		.where(and(...productQueryConditions, ...statsConditions))
+		.having(and(...havingConditions))
+		.groupBy(products.id)
+		.orderBy(orderByClause)
+		.offset(skip)
+		.limit(PAGE_SIZE);
+
+	const productIds = statsByProductResult.map((product) => product.productId);
+	const productsResult = await db.query.products.findMany({
+		where: inArray(products.id, productIds),
+	});
+
+	const productsMap = new Map(productsResult.map((p) => [p.id, p]));
+	const productsWithStats = statsByProductResult
+		.map((stats) => {
+			const product = productsMap.get(stats.productId);
+			if (!product) return null;
+
+			// Lógica da Curva ABC
+			const totalSales = stats.totalSalesValue ? Number(stats.totalSalesValue) : 0;
+			const accumulated = Number(stats.accumulatedSales);
+			const globalTotal = Number(stats.totalSalesGlobal);
+
+			let curvaABC = "C";
+			if (globalTotal > 0) {
+				// Descobre onde este item "começa" na curva acumulada
+				// Se o item anterior terminou em 79%, e este vai até 82%, ele ainda entra como A (crossover)
+				const prevAccumulated = accumulated - totalSales;
+				const prevPercentage = prevAccumulated / globalTotal;
+
+				if (prevPercentage < 0.8) curvaABC = "A";
+				else if (prevPercentage < 0.95) curvaABC = "B";
+			}
+
 			return {
 				...product,
 				estatisticas: {
-					vendasValorTotal: stats?.totalSalesValue ? Number(stats.totalSalesValue) : 0,
+					vendasValorTotal: totalSales,
 					vendasQtdeTotal: stats?.totalSalesQty ? Number(stats.totalSalesQty) : 0,
+					dataPrimeiraVenda: stats?.firstSaleDate ? stats.firstSaleDate : null,
+					dataUltimaVenda: stats?.lastSaleDate ? stats.lastSaleDate : null,
+					curvaABC: curvaABC, // Novo campo
 				},
 			};
 		})
-		.sort((a, b) => {
-			if (input.orderByField === "descricao") {
-				if (input.orderByDirection === "asc") {
-					return a.descricao.localeCompare(b.descricao);
-				}
-				return b.descricao.localeCompare(a.descricao);
-			}
-			if (input.orderByField === "codigo") {
-				if (input.orderByDirection === "asc") {
-					return a.codigo.localeCompare(b.codigo);
-				}
-				return b.codigo.localeCompare(a.codigo);
-			}
-			if (input.orderByField === "grupo") {
-				if (input.orderByDirection === "asc") {
-					return a.grupo.localeCompare(b.grupo);
-				}
-				return b.grupo.localeCompare(a.grupo);
-			}
-			if (input.orderByField === "vendasValorTotal") {
-				if (input.orderByDirection === "asc") {
-					return a.estatisticas.vendasValorTotal - b.estatisticas.vendasValorTotal;
-				}
-				return b.estatisticas.vendasValorTotal - a.estatisticas.vendasValorTotal;
-			}
-			if (input.orderByField === "vendasQtdeTotal") {
-				if (input.orderByDirection === "asc") {
-					return a.estatisticas.vendasQtdeTotal - b.estatisticas.vendasQtdeTotal;
-				}
-				return b.estatisticas.vendasQtdeTotal - a.estatisticas.vendasQtdeTotal;
-			}
-			return 0;
-		});
-
+		.filter((item): item is NonNullable<typeof item> => item !== null);
 	return {
 		data: {
 			default: {
 				products: productsWithStats,
-				productsMatched: productsMatchedCount,
-				totalPages: totalPages,
+				productsMatched: statsByProductMatchedCount,
+				totalPages: Math.ceil(statsByProductMatchedCount / PAGE_SIZE),
 			},
 			byId: undefined,
 		},
@@ -183,7 +264,13 @@ const getProductsHandler: NextApiHandler<TGetProductsOutput> = async (req, res) 
 		page: req.query.page as string | undefined,
 		id: req.query.id as string | undefined,
 		search: req.query.search as string | undefined,
-		grupo: req.query.grupo as string | undefined,
+		groups: req.query.groups as string | undefined,
+		statsPeriodAfter: req.query.statsPeriodAfter as string | undefined,
+		statsPeriodBefore: req.query.statsPeriodBefore as string | undefined,
+		statsSaleNatures: req.query.statsSaleNatures as string | undefined,
+		statsExcludedSalesIds: req.query.statsExcludedSalesIds as string | undefined,
+		statsTotalMin: req.query.statsTotalMin as string | undefined,
+		statsTotalMax: req.query.statsTotalMax as string | undefined,
 		orderByField: req.query.orderByField as string | undefined,
 		orderByDirection: req.query.orderByDirection as string | undefined,
 	});
