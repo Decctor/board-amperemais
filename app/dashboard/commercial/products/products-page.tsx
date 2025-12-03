@@ -4,15 +4,16 @@ import TextInput from "@/components/Inputs/TextInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlProduct from "@/components/Modals/Products/ControlProduct";
+import ProductsFilterMenu from "@/components/Products/ProductsFilterMenu";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useProducts } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
-import type { TGetProductsOutputDefault } from "@/pages/api/products";
+import type { TGetProductsDefaultInput, TGetProductsOutputDefault } from "@/pages/api/products";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	BadgeDollarSign,
@@ -27,6 +28,8 @@ import {
 	Search,
 	ShoppingBag,
 	ShoppingCart,
+	Star,
+	X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -52,7 +55,12 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 	} = useProducts({
 		initialFilters: {
 			search: "",
-			grupo: null,
+			groups: [],
+			statsPeriodBefore: null,
+			statsSaleNatures: [],
+			statsExcludedSalesIds: [],
+			statsTotalMin: null,
+			statsTotalMax: null,
 			orderByField: "descricao",
 			orderByDirection: "asc",
 		},
@@ -87,6 +95,7 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 				itemsMatchedText={productsMatched > 0 ? `${productsMatched} produtos encontrados.` : `${productsMatched} produto encontrado.`}
 				itemsShowingText={productsShowing > 0 ? `Mostrando ${productsShowing} produtos.` : `Mostrando ${productsShowing} produto.`}
 			/>
+			<ProductsFiltersShowcase filters={filters} updateFilters={updateFilters} />
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && products ? (
@@ -105,6 +114,9 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 					closeModal={() => setEditProductModalId(null)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
+			) : null}
+			{filterMenuIsOpen ? (
+				<ProductsFilterMenu queryParams={filters} updateQueryParams={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
 		</div>
 	);
@@ -125,7 +137,7 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 				</div>
 			</div>
 			<div className=" flex flex-col grow gap-1">
-				<div className="w-full flex items-center justify-between gap-2">
+				<div className="w-full flex items-center flex-col md:flex-row justify-between gap-2">
 					<div className="flex items-center gap-2 flex-wrap">
 						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.descricao}</h1>
 						<div className="flex items-center gap-1">
@@ -139,7 +151,6 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 							</div>
 						) : null}
 					</div>
-
 					<div className="flex items-center gap-3 flex-col md:flex-row gap-y-1">
 						<div className="flex items-center gap-3">
 							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
@@ -149,6 +160,16 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
 								<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
 								<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(product.estatisticas.vendasValorTotal)}</p>
+							</div>
+							<div
+								className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary", {
+									"bg-green-500 dark:bg-green-600 text-white": product.estatisticas.curvaABC === "A",
+									"bg-yellow-500 dark:bg-yellow-600 text-white": product.estatisticas.curvaABC === "B",
+									"bg-red-500 dark:bg-red-600 text-white": product.estatisticas.curvaABC === "C",
+								})}
+							>
+								<Star className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-bold tracking-tight uppercase">{product.estatisticas.curvaABC}</p>
 							</div>
 						</div>
 					</div>
@@ -166,6 +187,80 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 					</Button>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+type ProductsFiltersShowcaseProps = {
+	filters: TGetProductsDefaultInput;
+	updateFilters: (filters: Partial<TGetProductsDefaultInput>) => void;
+};
+function ProductsFiltersShowcase({ filters, updateFilters }: ProductsFiltersShowcaseProps) {
+	const ORDERING_FIELDS_MAP = {
+		descricao: "DESCRIÇÃO",
+		codigo: "CÓDIGO",
+		grupo: "GRUPO",
+		vendasValorTotal: "VALOR TOTAL DE VENDAS",
+		vendasQtdeTotal: "QUANTIDADE TOTAL DE VENDAS",
+	};
+	const ORDERING_DIRECTION_MAP = {
+		asc: "CRESCENTE",
+		desc: "DECRESCENTE",
+	};
+	const FilterTag = ({
+		label,
+		value,
+		onRemove,
+	}: {
+		label: string;
+		value: string;
+		onRemove?: () => void;
+	}) => (
+		<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
+			<p className="text-primary/80">
+				{label}: <strong>{value}</strong>
+			</p>
+			{onRemove && (
+				<button type="button" onClick={onRemove} className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1">
+					<X size={12} />
+				</button>
+			)}
+		</div>
+	);
+	return (
+		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+			{filters.search && filters.search.trim().length > 0 && (
+				<FilterTag label="PESQUISA" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
+			)}
+			{filters.groups.length > 0 && <FilterTag label="GRUPOS" value={filters.groups.join(", ")} onRemove={() => updateFilters({ groups: [] })} />}
+			{filters.statsTotalMin || filters.statsTotalMax ? (
+				<FilterTag
+					label="ESTATÍSTICAS - VALOR"
+					value={`${filters.statsTotalMin ? `> ${formatToMoney(filters.statsTotalMin)}` : ""}${filters.statsTotalMin && filters.statsTotalMax ? " & " : ""}${filters.statsTotalMax ? `< ${formatToMoney(filters.statsTotalMax)}` : ""}`}
+					onRemove={() => updateFilters({ statsTotalMin: null, statsTotalMax: null })}
+				/>
+			) : null}
+			{filters.statsPeriodAfter && filters.statsPeriodBefore && (
+				<FilterTag
+					label="ESTATÍSTICAS - PERÍODO"
+					value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
+					onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
+				/>
+			)}
+			{filters.statsSaleNatures.length > 0 && (
+				<FilterTag
+					label="ESTATÍSTICAS - NATUREZAS DAS VENDAS"
+					value={filters.statsSaleNatures.join(", ")}
+					onRemove={() => updateFilters({ statsSaleNatures: [] })}
+				/>
+			)}
+			{filters.orderByField && filters.orderByDirection && (
+				<FilterTag
+					label="ORDENAÇÃO"
+					value={`${ORDERING_FIELDS_MAP[filters.orderByField]} - ${ORDERING_DIRECTION_MAP[filters.orderByDirection]}`}
+					onRemove={() => updateFilters({ orderByField: null, orderByDirection: null })}
+				/>
+			)}
 		</div>
 	);
 }
