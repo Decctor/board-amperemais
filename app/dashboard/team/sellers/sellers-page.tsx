@@ -4,6 +4,7 @@ import EditSeller from "@/components/Modals/Sellers/EditSeller";
 import ViewSellerResults from "@/components/Modals/Sellers/ViewSellerResults";
 import SalesTeamFilterMenu from "@/components/SalesTeam/SalesTeamFilterMenu";
 import SalesTeamFilterShowcase from "@/components/SalesTeam/SalesTeamFilterShowcase";
+import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
@@ -24,10 +25,14 @@ export default function SellersPage({ user }: SellersPageProps) {
 	const queryClient = useQueryClient();
 	const [editSellerId, setEditSellerId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
-	const { data: sellers, queryKey, isLoading, isError, isSuccess, error, filters, updateFilters } = useSellers({});
+	const { data: sellersResult, queryKey, isLoading, isError, isSuccess, error, filters, updateFilters } = useSellers({});
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 
+	const sellers = sellersResult?.sellers;
+	const sellersShowing = sellers ? sellers.length : 0;
+	const sellersMatched = sellersResult?.sellersMatched || 0;
+	const totalPages = sellersResult?.totalPages;
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end gap-2">
@@ -36,10 +41,18 @@ export default function SellersPage({ user }: SellersPageProps) {
 					FILTROS
 				</Button>
 			</div>
+			<GeneralPaginationComponent
+				activePage={filters.page}
+				queryLoading={isLoading}
+				selectPage={(page) => updateFilters({ page })}
+				totalPages={totalPages || 0}
+				itemsMatchedText={sellersMatched > 0 ? `${sellersMatched} vendedores encontrados.` : `${sellersMatched} vendedor encontrado.`}
+				itemsShowingText={sellersShowing > 0 ? `Mostrando ${sellersShowing} vendedores.` : `Mostrando ${sellersShowing} vendedor.`}
+			/>
 			<SalesTeamFilterShowcase queryParams={filters} updateQueryParams={updateFilters} />
 			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando vendedores...</p> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{isSuccess ? (
+			{isSuccess && sellers ? (
 				<div className="w-full flex flex-col gap-1.5">
 					{sellers.length > 0 ? (
 						sellers.map((seller) => (
@@ -76,7 +89,7 @@ export default function SellersPage({ user }: SellersPageProps) {
 }
 
 type SellerCardProps = {
-	seller: TGetSellersOutputDefault[number];
+	seller: TGetSellersOutputDefault["sellers"][number];
 	handleEditClick: (sellerId: string) => void;
 	userHasViewPermission: boolean;
 	userHasEditPermission: boolean;

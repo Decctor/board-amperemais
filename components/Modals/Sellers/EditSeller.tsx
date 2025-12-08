@@ -25,6 +25,7 @@ export default function EditSeller({ sellerId, user, callbacks, closeModal }: Ed
 	const { data: seller, queryKey, isLoading, isError, isSuccess, error } = useSellerById({ id: sellerId });
 	const [infoHolder, setInfoHolder] = useState<TSellerState>({
 		seller: {
+			ativo: true,
 			nome: "",
 			identificador: "",
 			telefone: "",

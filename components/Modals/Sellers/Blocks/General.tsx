@@ -1,3 +1,4 @@
+import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import TextInput from "@/components/Inputs/TextInput";
 import { formatToPhone } from "@/lib/formatting";
 import type { TSellerState } from "@/schemas/sellers";
@@ -24,6 +25,9 @@ export function GeneralBlock({ seller, updateSeller, avatarHolder, updateAvatar 
 						<Code className="h-4 min-h-4 w-4 min-w-4" />
 						<h1 className="w-fit text-start font-medium text-xs tracking-tight">{seller.identificador}</h1>
 					</div>
+				</div>
+				<div className="w-full flex items-center justify-center">
+					<CheckboxInput labelTrue="ATIVO" labelFalse="ATIVO" checked={seller.ativo} handleChange={(value) => updateSeller({ ativo: value })} />
 				</div>
 				<ImageContent imageUrl={seller.avatarUrl} imageHolder={avatarHolder} updateImageHolder={updateAvatar} />
 				<TextInput

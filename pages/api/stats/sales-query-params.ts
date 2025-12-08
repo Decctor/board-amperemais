@@ -1,6 +1,7 @@
 import { apiHandler } from "@/lib/api";
 import { db } from "@/services/drizzle";
-import { products, sales } from "@/services/drizzle/schema";
+import { products, sales, sellers } from "@/services/drizzle/schema";
+import { eq } from "drizzle-orm";
 import type { NextApiHandler } from "next";
 
 export type TSaleQueryFilterOptions = {
@@ -34,6 +35,7 @@ const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }
 		.groupBy(sales.natureza);
 
 	const groupedSellers = await db.query.sellers.findMany({
+		where: eq(sellers.ativo, true),
 		columns: {
 			id: true,
 			identificador: true,

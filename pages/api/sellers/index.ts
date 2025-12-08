@@ -4,12 +4,19 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { SellerSchema } from "@/schemas/sellers";
 import { db } from "@/services/drizzle";
 import { sales, sellers } from "@/services/drizzle/schema";
-import { and, count, eq, gte, lte, sql, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
 
 const GetSellersDefaultInputSchema = z.object({
+	page: z
+		.string({
+			required_error: "Página não informada.",
+			invalid_type_error: "Tipo inválido para página.",
+		})
+		.default("1")
+		.transform((val) => Number(val)),
 	search: z
 		.string({
 			required_error: "Busca não informada.",
@@ -17,6 +24,14 @@ const GetSellersDefaultInputSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	sellersIds: z
+		.string({
+			required_error: "IDs dos vendedores não informados.",
+			invalid_type_error: "Tipo inválido para IDs dos vendedores.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",") : [])),
 	orderByField: z.enum(["nome", "dataInsercao", "vendasValorTotal", "vendasQtdeTotal"]).optional().nullable(),
 	orderByDirection: z.enum(["asc", "desc"]).optional().nullable(),
 	statsPeriodAfter: z
@@ -37,6 +52,36 @@ const GetSellersDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
+	statsSaleNatures: z
+		.string({
+			required_error: "Naturezas de venda não informadas.",
+			invalid_type_error: "Tipo inválido para naturezas de venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",") : [])),
+
+	statsExcludedSalesIds: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((v) => (v ? v.split(",") : [])),
+	statsTotalMin: z
+		.string({
+			invalid_type_error: "Tipo não válido para valor mínimo da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
+	statsTotalMax: z
+		.string({
+			invalid_type_error: "Tipo não válido para valor máximo da venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
 });
 export type TGetSellersDefaultInput = z.infer<typeof GetSellersDefaultInputSchema>;
 const GetSellersByIdInputSchema = z.object({
@@ -77,70 +122,97 @@ async function getSellers({ input, user }: GetSellersParams) {
 		sellerQueryConditions.push(
 			sql`(to_tsvector('portuguese', ${sellers.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${sellers.nome} ILIKE '%' || ${input.search} || '%')`,
 		);
+	if (input.sellersIds && input.sellersIds.length > 0) sellerQueryConditions.push(inArray(sellers.id, input.sellersIds));
+
+	const statsConditions = [];
+	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
+	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
+	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
+	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
+
+	const havingConditions = [];
+	if (input.statsTotalMin) havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
+	if (input.statsTotalMax) havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+
+	let orderByClause = asc(sellers.nome);
+	const direction = input.orderByDirection === "desc" ? desc : asc;
+	switch (input.orderByField) {
+		case "nome":
+			orderByClause = direction(sellers.nome);
+			break;
+		case "dataInsercao":
+			orderByClause = direction(sellers.dataInsercao);
+			break;
+		case "vendasValorTotal":
+			orderByClause = direction(sql<number>`sum(${sales.valorTotal})`);
+			break;
+		case "vendasQtdeTotal":
+			orderByClause = direction(count(sales.id));
+			break;
+		default:
+			orderByClause = asc(sellers.nome);
+			break;
+	}
+
+	const PAGE_SIZE = 25;
+	const skip = PAGE_SIZE * (input.page - 1);
+
+	const matchedSubquery = db
+		.select({
+			sellerId: sellers.id,
+		})
+		.from(sellers)
+		.leftJoin(sales, eq(sellers.id, sales.vendedorId))
+		.where(and(...sellerQueryConditions, ...statsConditions))
+		.groupBy(sellers.id);
+
+	if (havingConditions.length > 0) {
+		matchedSubquery.having(and(...havingConditions));
+	}
+	const statsBySellerMatchedCountResult = await db.select({ count: count() }).from(matchedSubquery.as("sq"));
+	const statsBySellerMatchedCount = statsBySellerMatchedCountResult[0]?.count ?? 0;
 
 	const statsBySeller = await db
 		.select({
 			sellerId: sellers.id,
-			sellerName: sellers.nome,
 			totalSalesValue: sum(sales.valorTotal),
 			totalSalesQty: count(sales.id),
+			firstSaleDate: min(sales.dataVenda),
+			lastSaleDate: max(sales.dataVenda),
 		})
 		.from(sellers)
 		.leftJoin(sales, eq(sellers.id, sales.vendedorId))
-		.where(
-			and(
-				input.statsPeriodAfter ? gte(sales.dataVenda, input.statsPeriodAfter) : undefined,
-				input.statsPeriodBefore ? lte(sales.dataVenda, input.statsPeriodBefore) : undefined,
-			),
-		)
-		.groupBy(sellers.id);
+		.where(and(...sellerQueryConditions, ...statsConditions))
+		.having(and(...havingConditions))
+		.groupBy(sellers.id)
+		.orderBy(orderByClause)
+		.offset(skip)
+		.limit(PAGE_SIZE);
 
+	const sellerIds = statsBySeller.map((seller) => seller.sellerId);
 	const sellersResult = await db.query.sellers.findMany({
-		where: and(...sellerQueryConditions),
+		where: inArray(sellers.id, sellerIds),
 	});
 
-	const sellersWithStats = sellersResult
-		.map((seller) => {
-			const stats = statsBySeller.find((s) => s.sellerId === seller.id);
-			return {
-				...seller,
-				estatisticas: {
-					vendasValorTotal: stats?.totalSalesValue ? Number(stats.totalSalesValue) : 0,
-					vendasQtdeTotal: stats?.totalSalesQty ? Number(stats.totalSalesQty) : 0,
-				},
-			};
-		})
-		.sort((a, b) => {
-			if (input.orderByField === "nome") {
-				if (input.orderByDirection === "asc") {
-					return a.nome.localeCompare(b.nome);
-				}
-				return b.nome.localeCompare(a.nome);
-			}
-			if (input.orderByField === "dataInsercao") {
-				if (input.orderByDirection === "asc") {
-					return a.dataInsercao.getTime() - b.dataInsercao.getTime();
-				}
-				return b.dataInsercao.getTime() - a.dataInsercao.getTime();
-			}
-			if (input.orderByField === "vendasValorTotal") {
-				if (input.orderByDirection === "asc") {
-					return a.estatisticas.vendasValorTotal - b.estatisticas.vendasValorTotal;
-				}
-				return b.estatisticas.vendasValorTotal - a.estatisticas.vendasValorTotal;
-			}
-			if (input.orderByField === "vendasQtdeTotal") {
-				if (input.orderByDirection === "asc") {
-					return a.estatisticas.vendasQtdeTotal - b.estatisticas.vendasQtdeTotal;
-				}
-				return b.estatisticas.vendasQtdeTotal - a.estatisticas.vendasQtdeTotal;
-			}
-			return 0;
-		});
-
+	const sellersWithStats = sellersResult.map((seller) => {
+		const stats = statsBySeller.find((s) => s.sellerId === seller.id);
+		return {
+			...seller,
+			estatisticas: {
+				vendasValorTotal: stats?.totalSalesValue ? Number(stats.totalSalesValue) : 0,
+				vendasQtdeTotal: stats?.totalSalesQty ? Number(stats.totalSalesQty) : 0,
+				dataPrimeiraVenda: stats?.firstSaleDate ? stats.firstSaleDate : null,
+				dataUltimaVenda: stats?.lastSaleDate ? stats.lastSaleDate : null,
+			},
+		};
+	});
 	return {
 		data: {
-			default: sellersWithStats,
+			default: {
+				sellers: sellersWithStats,
+				sellersMatched: statsBySellerMatchedCount,
+				totalPages: Math.ceil(statsBySellerMatchedCount / PAGE_SIZE),
+			},
 			byId: undefined,
 		},
 	};

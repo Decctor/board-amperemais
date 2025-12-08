@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 export const SellerSchema = z.object({
+	ativo: z
+		.boolean({ required_error: "Ativo do vendedor não informado.", invalid_type_error: "Tipo não válido para o ativo do vendedor." })
+		.default(true),
 	nome: z.string({ required_error: "Nome do vendedor não informado.", invalid_type_error: "Tipo não válido para o nome do vendedor." }),
 	identificador: z.string({
 		required_error: "Identificador do vendedor não informado.",

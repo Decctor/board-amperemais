@@ -22,6 +22,7 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
+		if (input.statsSellerIds) searchParams.set("statsSellerIds", input.statsSellerIds.join(","));
 		const { data } = await axios.get<TGetProductsOutput>(`/api/products?${searchParams.toString()}`);
 		const result = data.data.default;
 		if (!result) throw new Error("Produtos não encontrados.");
@@ -62,6 +63,7 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		page: initialFilters?.page || 1,
 		search: initialFilters?.search || "",
 		groups: initialFilters?.groups || [],
+		statsSellerIds: initialFilters?.statsSellerIds || [],
 		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
 		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
 		statsSaleNatures: initialFilters?.statsSaleNatures || [],

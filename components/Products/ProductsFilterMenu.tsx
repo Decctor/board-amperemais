@@ -82,6 +82,15 @@ function ProductsFilterMenu({ queryParams, updateQueryParams, closeMenu }: Produ
 								selectedItemLabel="NENHUM DEFINIDO"
 								width="100%"
 							/>
+							<MultipleSelectInput
+								label="VENDEDORES"
+								selected={queryParamsHolder.statsSellerIds ?? []}
+								options={filterOptions?.sellers || []}
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSellerIds: value as string[] }))}
+								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSellerIds: [] }))}
+								selectedItemLabel="NENHUM DEFINIDO"
+								width="100%"
+							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
 							<h1 className="w-full text-xs tracking-tight text-primary">ORDENAÇÃO</h1>

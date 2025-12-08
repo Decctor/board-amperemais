@@ -1,10 +1,14 @@
 import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
 import type { TGetSellersDefaultInput } from "@/pages/api/sellers";
 import { ArrowDownNarrowWide } from "lucide-react";
 import { ArrowUpNarrowWide } from "lucide-react";
 import { useState } from "react";
 import DateInput from "../Inputs/DateInput";
+import MultipleSelectInput from "../Inputs/MultipleSelectInput";
+import NumberInput from "../Inputs/NumberInput";
+import MultipleSalesSelectInput from "../Inputs/SelectMultipleSalesInput";
 import TextInput from "../Inputs/TextInput";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../ui/sheet";
@@ -17,6 +21,7 @@ type SalesTeamFilterMenuProps = {
 function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: SalesTeamFilterMenuProps) {
 	const [queryParamsHolder, setQueryParamsHolder] = useState<TGetSellersDefaultInput>(queryParams);
 
+	const { data: filterOptions } = useSaleQueryFilterOptions();
 	const SORTING_FIELDS = [
 		{
 			id: 1,
@@ -56,6 +61,37 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								placeholder={"Preenha aqui o nome do vendedor para filtro."}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, search: value }))}
 								width={"100%"}
+							/>
+							<MultipleSelectInput
+								label="VENDEDORES"
+								selected={queryParamsHolder.sellersIds ?? []}
+								options={filterOptions?.sellers || []}
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: value as string[] }))}
+								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: [] }))}
+								selectedItemLabel="NENHUM DEFINIDO"
+								width="100%"
+							/>
+							<MultipleSelectInput
+								label="NATUREZAS DE VENDA"
+								selected={queryParamsHolder.statsSaleNatures ?? []}
+								options={filterOptions?.saleNatures || []}
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
+								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
+								selectedItemLabel="NENHUM DEFINIDO"
+								width="100%"
+							/>
+							<MultipleSalesSelectInput
+								label="VENDAS EXCLUÍDAS"
+								selected={queryParamsHolder.statsExcludedSalesIds}
+								handleChange={(value) =>
+									setQueryParamsHolder((prev) => ({
+										...prev,
+										statsExcludedSalesIds: value as string[],
+									}))
+								}
+								selectedItemLabel="VENDAS EXCLUÍDAS"
+								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsExcludedSalesIds: [] }))}
+								width="100%"
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
@@ -102,6 +138,29 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 									<h1>{option.label}</h1>
 								</button>
 							))}
+						</div>
+						<div className="flex w-full flex-col gap-2">
+							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO DAS ESTATISTICAS POR VALOR TOTAL DE VENDAS</h1>
+							<div className="flex w-full flex-col items-center gap-2 lg:flex-row">
+								<div className="w-full lg:w-1/2">
+									<NumberInput
+										label="VALOR > QUE"
+										value={queryParamsHolder.statsTotalMin || null}
+										handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMin: value }))}
+										placeholder="Preencha aqui o valor para o filtro de mais quantidade que..."
+										width="100%"
+									/>
+								</div>
+								<div className="w-full lg:w-1/2">
+									<NumberInput
+										label="VALOR < QUE"
+										value={queryParamsHolder.statsTotalMax || null}
+										handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMax: value }))}
+										placeholder="Preencha aqui o valor para o filtro de menos quantidade que..."
+										width="100%"
+									/>
+								</div>
+							</div>
 						</div>
 						<div className="flex w-full flex-col gap-2">
 							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO POR PERÍODO DAS ESTASTÍCAS</h1>

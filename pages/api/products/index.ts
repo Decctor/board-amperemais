@@ -42,6 +42,14 @@ const GetProductsDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
+	statsSellerIds: z
+		.string({
+			required_error: "IDs dos vendedores não informados.",
+			invalid_type_error: "Tipo inválido para IDs dos vendedores.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",") : [])),
 	statsSaleNatures: z
 		.string({
 			invalid_type_error: "Tipo não válido para natureza de venda.",
@@ -126,9 +134,7 @@ async function getProducts({ input, user }: GetProductsParams) {
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
 	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
-	if (input.statsTotalMin) statsConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
-	if (input.statsTotalMax) statsConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
-
+	if (input.statsSellerIds && input.statsSellerIds.length > 0) statsConditions.push(inArray(sales.vendedorId, input.statsSellerIds));
 	const havingConditions = [];
 	if (input.statsTotalMin) havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
 	if (input.statsTotalMax) havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));

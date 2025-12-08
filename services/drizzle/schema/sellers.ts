@@ -1,10 +1,11 @@
-import { text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 
 export const sellers = newTable("sellers", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	ativo: boolean("ativo").notNull().default(true),
 	nome: text("nome").notNull(),
 	identificador: text("identificador").notNull(),
 	telefone: text("telefone"),

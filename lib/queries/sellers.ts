@@ -9,10 +9,16 @@ async function fetchSellers(input: TGetSellersDefaultInput) {
 	try {
 		const searchParams = new URLSearchParams();
 		if (input.search) searchParams.set("search", input.search);
+		if (input.sellersIds) searchParams.set("sellersIds", input.sellersIds.join(","));
+		if (input.statsSaleNatures) searchParams.set("statsSaleNatures", input.statsSaleNatures.join(","));
+		if (input.statsExcludedSalesIds) searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
+		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
+		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
 		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
 		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
+		if (input.page) searchParams.set("page", input.page.toString());
 		const { data } = await axios.get<TGetSellersOutput>(`/api/sellers?${searchParams.toString()}`);
 		const result = data.data.default;
 		if (!result) throw new Error("Vendedores não encontrados.");
@@ -50,6 +56,12 @@ type UseSellersParams = {
 };
 export function useSellers({ initialFilters }: UseSellersParams) {
 	const [filters, setFilters] = useState<TGetSellersDefaultInput>({
+		page: initialFilters?.page || 1,
+		sellersIds: initialFilters?.sellersIds || [],
+		statsSaleNatures: initialFilters?.statsSaleNatures || [],
+		statsExcludedSalesIds: initialFilters?.statsExcludedSalesIds || [],
+		statsTotalMin: initialFilters?.statsTotalMin || null,
+		statsTotalMax: initialFilters?.statsTotalMax || null,
 		search: initialFilters?.search || "",
 		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
 		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
