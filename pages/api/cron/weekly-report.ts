@@ -18,8 +18,8 @@ export const config = {
 // CONFIGURE AQUI OS NÚMEROS QUE RECEBERÃO OS RELATÓRIOS
 // Formato: ["5511999999999", "5511888888888"]
 const REPORT_RECIPIENTS = [
-	// "5534996626855",
-	"5534999480791",
+	"5534996626855",
+	// "5534999480791",
 	// "5511999999999", // Exemplo: adicione os números aqui
 ];
 

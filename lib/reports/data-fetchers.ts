@@ -50,7 +50,7 @@ export async function getOverallSalesStats({ after, before }: PeriodParams): Pro
 			custoTotal: sum(sales.custoTotal),
 		})
 		.from(sales)
-		.where(and(gte(sales.dataVenda, after), lte(sales.dataVenda, before)));
+		.where(and(eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before)));
 	console.log("TOTAL SALES STATS RESULT:", totalSalesStatsResult);
 	const totalSalesStats = totalSalesStatsResult[0];
 	const totalSalesQty = totalSalesStats.qtde;
@@ -68,7 +68,7 @@ export async function getOverallSalesStats({ after, before }: PeriodParams): Pro
 				db
 					.select({ id: sales.id })
 					.from(sales)
-					.where(and(gte(sales.dataVenda, after), lte(sales.dataVenda, before))),
+					.where(and(eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before))),
 			),
 		);
 
@@ -87,7 +87,7 @@ export async function getOverallSalesStats({ after, before }: PeriodParams): Pro
 			custoTotal: sum(sales.custoTotal),
 		})
 		.from(sales)
-		.where(and(gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore)));
+		.where(and(eq(sales.natureza, "SN01"), gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore)));
 
 	const previousTotalSalesStats = previousTotalSalesStatsResult[0];
 	const previousTotalSalesQty = previousTotalSalesStats.qtde;
@@ -105,7 +105,7 @@ export async function getOverallSalesStats({ after, before }: PeriodParams): Pro
 				db
 					.select({ id: sales.id })
 					.from(sales)
-					.where(and(gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore))),
+					.where(and(eq(sales.natureza, "SN01"), gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore))),
 			),
 		);
 
@@ -202,7 +202,7 @@ export type SellerRankingItem = {
 
 export async function getSellerRankings({ after, before }: PeriodParams, limit = 10): Promise<SellerRankingItem[]> {
 	const saleWhereConditions = [isNotNull(sales.dataVenda)] as const;
-	const saleWhere = and(...saleWhereConditions, gte(sales.dataVenda, after), lte(sales.dataVenda, before));
+	const saleWhere = and(...saleWhereConditions, eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before));
 
 	const sellersResult = await db.query.sellers.findMany({
 		columns: {
@@ -318,7 +318,7 @@ export type PartnerRankingItem = {
 
 export async function getPartnerRankings({ after, before }: PeriodParams, limit = 10): Promise<PartnerRankingItem[]> {
 	const saleWhereConditions = [isNotNull(sales.dataVenda), isNotNull(sales.parceiroId)] as const;
-	const saleWhere = and(...saleWhereConditions, gte(sales.dataVenda, after), lte(sales.dataVenda, before));
+	const saleWhere = and(...saleWhereConditions, eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before));
 
 	const partnersResult = await db.query.partners.findMany({
 		columns: {
@@ -363,7 +363,7 @@ export type ProductRankingItem = {
 };
 
 export async function getProductRankings({ after, before }: PeriodParams, limit = 10): Promise<ProductRankingItem[]> {
-	const saleWhere = and(isNotNull(sales.dataVenda), gte(sales.dataVenda, after), lte(sales.dataVenda, before));
+	const saleWhere = and(isNotNull(sales.dataVenda), eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before));
 
 	const resultsByProduct = await db
 		.select({
@@ -397,7 +397,7 @@ export type ProductGroupRankingItem = {
 };
 
 export async function getProductGroupRankings({ after, before }: PeriodParams, limit = 10): Promise<ProductGroupRankingItem[]> {
-	const saleWhere = and(isNotNull(sales.dataVenda), gte(sales.dataVenda, after), lte(sales.dataVenda, before));
+	const saleWhere = and(isNotNull(sales.dataVenda), eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before));
 
 	const resultsByGroup = await db
 		.select({
