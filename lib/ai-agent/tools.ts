@@ -197,14 +197,46 @@ SEMPRE crie um ticket para garantir que a solicitação seja acompanhada.`,
 });
 
 export const transferToHumanTool = tool({
-	description: `Transfere o atendimento para um atendente humano. Use IMEDIATAMENTE quando:
-- Cliente solicita falar com uma pessoa
-- Detecta reclamação ou insatisfação
-- Negociação de preços/descontos
-- Questão técnica complexa ou de segurança
-- Problema com pedido/entrega
-- Qualquer situação que exija julgamento humano
-NÃO pergunte ao cliente se ele quer transferir - apenas transfira quando apropriado.`,
+	description: `⚠️ FERRAMENTA CRÍTICA - Transfere o atendimento para um atendente humano.
+
+🔴 CHAME ESTA FERRAMENTA IMEDIATAMENTE quando o cliente mencionar:
+
+PREÇOS E VENDAS (sempre transferir):
+- "preço", "quanto custa", "valor", "cotação"
+- "comprar", "fechar pedido", "finalizar", "confirmar orçamento"
+- "desconto", "promoção", "negociar"
+- "orçamento" ou "proposta"
+
+PAGAMENTO E FINANCEIRO (sempre transferir):
+- "pagamento", "parcelamento", "financiamento"
+- "crédito", "forma de pagamento", "prazo"
+- "boleto", "pix", "cartão"
+
+PEDIDOS GRANDES (sempre transferir):
+- "volume", "atacado", "lote", "quantidade grande"
+- Pedidos acima de 50 unidades
+
+LOGÍSTICA (sempre transferir):
+- "entrega", "prazo de entrega", "frete"
+- "envio", "logística"
+- Agendamento de entregas
+
+TÉCNICO COMPLEXO (transferir se complexo):
+- Cálculos de dimensionamento elétrico
+- Especificações técnicas muito detalhadas
+- Questões de segurança (NR10, NBR)
+
+PROBLEMAS E RECLAMAÇÕES (sempre transferir):
+- Reclamações sobre produtos/serviços
+- Problemas com entregas ou pedidos
+- Devoluções, trocas, garantias
+- Insatisfação detectada
+
+SOLICITAÇÃO DIRETA (sempre transferir):
+- Cliente pede "falar com atendente/pessoa/humano"
+- Cliente pede "gerente" ou "supervisor"
+
+⚠️ IMPORTANTE: NÃO pergunte ao cliente se ele quer transferir - APENAS TRANSFIRA imediatamente e informe de forma gentil.`,
 	inputSchema: z
 		.object({
 			reason: z.string().describe("Motivo da transferência (para contexto da equipe de atendimento)"),
@@ -215,10 +247,15 @@ NÃO pergunte ao cliente se ele quer transferir - apenas transfira quando apropr
 		.strict(),
 	execute: async ({ reason, chatId, clientId, conversationSummary }) => {
 		// This will be handled by the agent handler to create a ticket and mark for human
-
+		console.log("[INFO] [TOOLS] [TRANSFER_TO_HUMAN] Transferring service to human", {
+			reason,
+			chatId,
+			clientId,
+			conversationSummary,
+		});
 		await fetchMutation(api.mutations.services.transferServiceToHuman, {
 			chatId: chatId as Id<"chats">,
-			clienteId: clientId as Id<"clients">,
+			clienteIdApp: clientId,
 			reason,
 			conversationSummary,
 		});

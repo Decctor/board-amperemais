@@ -148,7 +148,7 @@ export const getChat = query({
 
 		const chatOpenService = await ctx.db
 			.query("services")
-			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.eq(q.field("status"), "PENDENTE")))
+			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.or(q.eq(q.field("status"), "PENDENTE"), q.eq(q.field("status"), "EM_ANDAMENTO"))))
 			.first();
 
 		let chatOpenServiceResponsible: { nome: string; avatar_url: string | null; idApp: string } | "ai" | null = null;
@@ -332,7 +332,7 @@ export const getChatSummary = query({
 
 		const chatOpenService = await ctx.db
 			.query("services")
-			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.eq(q.field("status"), "PENDENTE")))
+			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.or(q.eq(q.field("status"), "PENDENTE"), q.eq(q.field("status"), "EM_ANDAMENTO"))))
 			.first();
 
 		return {

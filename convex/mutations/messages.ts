@@ -123,7 +123,7 @@ export const createMessage = mutation({
 
 		const service = await ctx.db
 			.query("services")
-			.filter((q) => q.and(q.eq(q.field("chatId"), chatId), q.eq(q.field("status"), "PENDENTE")))
+			.filter((q) => q.and(q.eq(q.field("chatId"), chatId), q.or(q.eq(q.field("status"), "PENDENTE"), q.eq(q.field("status"), "EM_ANDAMENTO"))))
 			.first();
 		if (!service) {
 			// If no service was found, we only create one
@@ -516,7 +516,7 @@ export const createAIMessage = internalMutation({
 		const service = await ctx.db
 			.query("services")
 			.filter((q) => q.eq(q.field("chatId"), args.chatId))
-			.filter((q) => q.eq(q.field("status"), "PENDENTE"))
+			.filter((q) => q.or(q.eq(q.field("status"), "PENDENTE"), q.eq(q.field("status"), "EM_ANDAMENTO")))
 			.first();
 		if (!service) {
 			let serviceResponsible: Id<"users"> | "ai" | undefined = "ai";

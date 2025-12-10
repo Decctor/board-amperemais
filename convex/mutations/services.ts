@@ -92,7 +92,7 @@ export const createServiceFromAI = internalMutation({
 export const transferServiceToHuman = mutation({
 	args: {
 		chatId: v.id("chats"),
-		clienteId: v.id("clients"),
+		clienteIdApp: v.string(),
 		reason: v.string(),
 		conversationSummary: v.string(),
 	},
@@ -102,7 +102,7 @@ export const transferServiceToHuman = mutation({
 		// Check if there's already an open service for this chat
 		const existingService = await ctx.db
 			.query("services")
-			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.eq(q.field("status"), "PENDENTE")))
+			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.or(q.eq(q.field("status"), "PENDENTE"), q.eq(q.field("status"), "EM_ANDAMENTO"))))
 			.first();
 
 		if (existingService) {
@@ -150,10 +150,17 @@ export const transferServiceToHuman = mutation({
 			};
 		}
 
+		const client = await ctx.db
+			.query("clients")
+			.filter((q) => q.eq(q.field("idApp"), args.clienteIdApp))
+			.first();
+		if (!client) {
+			throw new Error("Cliente não encontrado.");
+		}
 		// Create new service for human
 		const serviceId = await ctx.db.insert("services", {
 			chatId: args.chatId,
-			clienteId: args.clienteId,
+			clienteId: client._id,
 			descricao: `[TRANSFERÊNCIA AI]\nMotivo: ${args.reason}\n\nResumo da Conversa:\n${args.conversationSummary}`,
 			status: "PENDENTE",
 			dataInicio: Date.now(),

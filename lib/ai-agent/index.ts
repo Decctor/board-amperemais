@@ -51,10 +51,6 @@ type AIResponse = {
 	metadata: {
 		toolsUsed: string[];
 		serviceDescription: string;
-		escalation: {
-			applicable: boolean;
-			reason?: string;
-		};
 	};
 };
 
@@ -64,10 +60,10 @@ export const agent = new Agent({
 	tools: agentTools,
 	experimental_output: Output.object({
 		schema: z.object({
-			message: z.string().describe("A mensagem a ser enviada ao cliente."),
-			escalate: z.boolean().describe("Se deve escalar o atendimento para um atendente humano."),
-			escalateReason: z.string().describe("O motivo para escalar o atendimento para um atendente humano."),
-			serviceDescription: z.string().describe("A descrição atualizada do atendimento (novo ou em andamento)."),
+			message: z
+				.string()
+				.describe("Mensagem CONCISA para WhatsApp. MÁXIMO 3-5 frases curtas. Seja DIRETO e OBJETIVO. Use apenas 1 emoji (máximo). Não repita saudações."),
+			serviceDescription: z.string().describe("Descrição atualizada do atendimento para uso interno (pode ser detalhado)."),
 		}),
 	}),
 	stopWhen: stepCountIs(20),
@@ -99,9 +95,23 @@ export async function getAgentResponse({ details }: { details: TDetails }): Prom
 			.join("\n");
 
 		console.log("[AI_AGENT] Conversation history:", conversationHistory);
+
 		// Check if immediate escalation is needed based on keywords
 		const lastClientMessage = details.ultimasMensagens.find((msg) => msg.autorTipo === "cliente");
-		const needsEscalation = lastClientMessage?.conteudoTexto && detectEscalationNeeded(lastClientMessage.conteudoTexto);
+		const lastMessageText = lastClientMessage?.conteudoTexto || "";
+
+		// Pre-check: Auto-transfer for obvious cases to save API calls and ensure reliability
+		const shouldAutoTransfer = detectEscalationNeeded(lastMessageText);
+		if (shouldAutoTransfer && lastMessageText) {
+			console.log("[AI_AGENT] Auto-transfer triggered by keywords:", lastMessageText);
+			return {
+				message: "Vou transferir você para nossa equipe que pode ajudar melhor com isso! 😊",
+				metadata: {
+					toolsUsed: ["auto_transfer_precheck"],
+					serviceDescription: `Transferência automática detectada. Última mensagem: ${lastMessageText}`,
+				},
+			};
+		}
 
 		const userPrompt = `Você está encarregado de responder ao cliente.
 
@@ -136,11 +146,6 @@ ${
 		: ""
 }
 
-${
-	needsEscalation
-		? "\n### ⚠️ ATENÇÃO: Detectado possível necessidade de escalação baseado em palavras-chave. Avalie se deve usar a ferramenta transfer_to_human.\n"
-		: ""
-}
 
 Analise a conversa e responda apropriadamente. Use suas ferramentas quando necessário para fornecer um atendimento personalizado e de alta qualidade.`;
 
@@ -160,10 +165,6 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 			metadata: {
 				toolsUsed,
 				serviceDescription: experimental_output.serviceDescription,
-				escalation: {
-					applicable: experimental_output.escalate,
-					reason: experimental_output.escalateReason,
-				},
 			},
 		};
 	} catch (error) {
@@ -174,10 +175,6 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 			metadata: {
 				toolsUsed,
 				serviceDescription: "Erro técnico no agente AI",
-				escalation: {
-					applicable: true,
-					reason: "Erro técnico no agente AI",
-				},
 			},
 		};
 	}
