@@ -146,7 +146,7 @@ const ServiceTransferNotificationsParametersInputSchema = DefaultTemplatePayload
 	clientName: z.string(),
 	clientePhoneNumber: z.string(),
 	serviceDescription: z.string(),
-})
+});
 type ServiceTransferNotificationsParametersInput = z.infer<typeof ServiceTransferNotificationsParametersInputSchema>;
 
 export const WHATSAPP_REPORT_TEMPLATES = {
@@ -156,8 +156,24 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 		language: "pt_BR",
 		type: "utility",
 		getPayload: (input: DailyReportParametersInput) => {
-			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, comparacao, topVendedor1, topVendedor2, topVendedor3, topParceiro1, topParceiro2, topParceiro3, topProduto1, topProduto2, topProduto3 } =
-				DailyReportParametersInputSchema.parse(input);
+			const {
+				templateKey,
+				toPhoneNumber,
+				periodo,
+				faturamento,
+				meta,
+				percentualMeta,
+				comparacao,
+				topVendedor1,
+				topVendedor2,
+				topVendedor3,
+				topParceiro1,
+				topParceiro2,
+				topParceiro3,
+				topProduto1,
+				topProduto2,
+				topProduto3,
+			} = DailyReportParametersInputSchema.parse(input);
 			return {
 				content: `Relatório Diário de Vendas - ${periodo}`,
 				data: {
@@ -243,8 +259,24 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 		language: "pt_BR",
 		type: "utility",
 		getPayload: (input: WeeklyReportParametersInput) => {
-			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, comparacao, topVendedor1, topVendedor2, topVendedor3, topParceiro1, topParceiro2, topParceiro3, topProduto1, topProduto2, topProduto3 } =
-				WeeklyReportParametersInputSchema.parse(input);
+			const {
+				templateKey,
+				toPhoneNumber,
+				periodo,
+				faturamento,
+				meta,
+				percentualMeta,
+				comparacao,
+				topVendedor1,
+				topVendedor2,
+				topVendedor3,
+				topParceiro1,
+				topParceiro2,
+				topParceiro3,
+				topProduto1,
+				topProduto2,
+				topProduto3,
+			} = WeeklyReportParametersInputSchema.parse(input);
 			return {
 				content: `Relatório Semanal de Vendas - ${periodo}`,
 				data: {
@@ -330,8 +362,24 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 		language: "pt_BR",
 		type: "utility",
 		getPayload: (input: MonthlyReportParametersInput) => {
-			const { templateKey, toPhoneNumber, periodo, faturamento, meta, percentualMeta, comparacao, topVendedor1, topVendedor2, topVendedor3, topParceiro1, topParceiro2, topParceiro3, topProduto1, topProduto2, topProduto3 } =
-				MonthlyReportParametersInputSchema.parse(input);
+			const {
+				templateKey,
+				toPhoneNumber,
+				periodo,
+				faturamento,
+				meta,
+				percentualMeta,
+				comparacao,
+				topVendedor1,
+				topVendedor2,
+				topVendedor3,
+				topParceiro1,
+				topParceiro2,
+				topParceiro3,
+				topProduto1,
+				topProduto2,
+				topProduto3,
+			} = MonthlyReportParametersInputSchema.parse(input);
 			return {
 				content: `Relatório Mensal de Vendas - ${periodo}`,
 				data: {
@@ -417,10 +465,10 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 		language: "pt_BR",
 		type: "utility",
 		getPayload: (input: ServiceTransferNotificationsParametersInput) => {
-			const { templateKey, toPhoneNumber, clientName, clientePhoneNumber, serviceDescription } = ServiceTransferNotificationsParametersInputSchema.parse(input);
-		
-		
-			return  {
+			const { templateKey, toPhoneNumber, clientName, clientePhoneNumber, serviceDescription } =
+				ServiceTransferNotificationsParametersInputSchema.parse(input);
+
+			return {
 				content: `
 Você recebeu uma nova transferência para ${clientName}, de telefone ${clientePhoneNumber}.
 Detalhes:
@@ -431,7 +479,7 @@ Disponível para atendimento imediato.Um atendimento foi transferido para você 
 					to: formatPhoneAsWhatsappId(toPhoneNumber),
 					type: "template",
 					template: {
-						name: "generic_initiation",
+						name: "service_transfer_notification",
 						language: {
 							code: "pt_BR",
 						},
@@ -461,6 +509,5 @@ Disponível para atendimento imediato.Um atendimento foi transferido para você 
 				},
 			};
 		},
-		
 	},
 };
