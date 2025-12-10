@@ -96,23 +96,6 @@ export async function getAgentResponse({ details }: { details: TDetails }): Prom
 
 		console.log("[AI_AGENT] Conversation history:", conversationHistory);
 
-		// Check if immediate escalation is needed based on keywords
-		const lastClientMessage = details.ultimasMensagens.find((msg) => msg.autorTipo === "cliente");
-		const lastMessageText = lastClientMessage?.conteudoTexto || "";
-
-		// Pre-check: Auto-transfer for obvious cases to save API calls and ensure reliability
-		const shouldAutoTransfer = detectEscalationNeeded(lastMessageText);
-		if (shouldAutoTransfer && lastMessageText) {
-			console.log("[AI_AGENT] Auto-transfer triggered by keywords:", lastMessageText);
-			return {
-				message: "Vou transferir você para nossa equipe que pode ajudar melhor com isso! 😊",
-				metadata: {
-					toolsUsed: ["auto_transfer_precheck"],
-					serviceDescription: `Transferência automática detectada. Última mensagem: ${lastMessageText}`,
-				},
-			};
-		}
-
 		const userPrompt = `Você está encarregado de responder ao cliente.
 
 ### INFORMAÇÕES DO CLIENTE
