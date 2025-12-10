@@ -109,7 +109,10 @@ export const transferServiceToHuman = mutation({
 			const users = await ctx.db.query("users").collect();
 
 			const randomUser = users[Math.floor(Math.random() * users.length)];
-			console.log("[INFO] [SERVICES] [TRANSFER_TO_HUMAN] Selected user:", randomUser.nome);
+			console.log("[INFO] [SERVICES] [TRANSFER_TO_HUMAN] Selected user:", {
+				nome: randomUser.nome,
+				telefone: randomUser.telefone,
+			});
 			// Update existing service to remove AI as responsible and add context
 			await ctx.db.patch(existingService._id, {
 				descricao: `${existingService.descricao}\n\n[TRANSFERÊNCIA AI]\nMotivo: ${args.reason}\nResumo: ${args.conversationSummary}`,

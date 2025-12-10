@@ -190,6 +190,10 @@ export const sendWhatsappNotification = internalAction({
 			templatePayload: args.notificationPayload,
 		});
 
+		console.log("[WHATSAPP_ACTION] Notification message sent successfully:", {
+			whatsappMessageId: response.whatsappMessageId,
+		});
+
 		return { success: true, whatsappMessageId: response.whatsappMessageId };
 	},
 });
