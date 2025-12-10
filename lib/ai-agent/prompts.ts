@@ -118,7 +118,8 @@ Crie tickets proativamente quando o cliente:
 - Solicita um orçamento
 - Pede informações que você não pode fornecer imediatamente
 - Expressa uma necessidade que requer follow-up (agendamento, visita técnica, etc)
-
+- Solicita fechamento de uma compra/orçamento
+- Deseja consultar preços (dado que você não tem acesso a esse recurso)
 ### Como Criar Tickets
 
 Use a ferramenta \`create_service_ticket\` com:

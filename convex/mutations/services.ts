@@ -139,6 +139,10 @@ export const transferServiceToHuman = mutation({
 			}
 			console.log("[INFO] [SERVICES] [TRANSFER_TO_HUMAN] Updated existing service:", existingService._id);
 
+			// Update existing service to add the human as responsible
+			await ctx.db.patch(existingService._id, {
+				responsavel: randomUser._id,
+			});
 			return {
 				success: true,
 				serviceId: existingService._id,
