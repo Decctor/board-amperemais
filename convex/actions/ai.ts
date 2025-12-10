@@ -43,7 +43,7 @@ export const generateAIResponse = internalAction({
 				throw new Error("Chat não encontrado.");
 			}
 
-			const lastMessageDate = chat.ultimaMensagemData ? new Date(chat.ultimaMensagemData) : null;
+			const lastMessageDate = chat.ultimaInteracaoClienteData ? new Date(chat.ultimaInteracaoClienteData) : null;
 			const scheduleAtDate = args.scheduleAt ? new Date(args.scheduleAt) : null;
 			console.log("[AI_ACTION] Dates state:", {
 				lastMessageDate,

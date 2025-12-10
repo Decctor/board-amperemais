@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "./index";
+
 export const aiMessageProcessingWorkflow = workflow.define({
 	args: {
 		messageId: v.id("messages"),
@@ -70,7 +71,7 @@ export const aiMessageProcessingWorkflow = workflow.define({
 				},
 				{
 					name: "generate-ai-response",
-					runAfter: 3000, // 3 second delay
+					runAfter: 5000, // 5 second delay
 					retry: false, // Don't retry AI response generation
 				},
 			);
