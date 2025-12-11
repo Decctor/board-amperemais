@@ -9,10 +9,11 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import { useQuery } from "convex/react";
-import { ArrowLeft, Bot, MessageCircle, UserRound, Users } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { ArrowLeft, Bot, Check, MessageCircle, UserRound, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { ServiceConclusionDialog } from "./ServiceConclusionDialog";
 import { ServiceTransferDialog } from "./ServiceTransferDialog";
 import { useChatHub } from "./context";
 
@@ -118,7 +119,8 @@ type ServiceBannerProps = {
 
 function ServiceBanner({ service }: ServiceBannerProps) {
 	const { user } = useChatHub();
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const [transferDialogIsOpen, setTransferDialogIsOpen] = useState(false);
+	const [conclusionDialogIsOpen, setConclusionDialogIsOpen] = useState(false);
 
 	return (
 		<>
@@ -173,24 +175,37 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 							<Button
 								variant="ghost"
 								size="icon"
-								onClick={() => setIsDialogOpen(true)}
+								onClick={() => setTransferDialogIsOpen(true)}
 								className="h-7 w-7 rounded-full hover:bg-primary-foreground/30 text-primary-foreground shrink-0"
 							>
 								<Users className="w-4 h-4" />
 							</Button>
 						)}
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => setConclusionDialogIsOpen(true)}
+							className="h-7 w-7 rounded-full hover:bg-primary-foreground/30 text-primary-foreground shrink-0"
+						>
+							<Check className="w-4 h-4" />
+						</Button>
 					</div>
 				</div>
 			</div>
 
 			{/* Transfer Dialog */}
-			{user && isDialogOpen && (
+			{user && transferDialogIsOpen && (
 				<ServiceTransferDialog
-					closeMenu={() => setIsDialogOpen(false)}
+					closeMenu={() => setTransferDialogIsOpen(false)}
 					serviceId={service._id}
 					currentResponsible={service.responsavel}
 					currentUserIdApp={user.id}
 				/>
+			)}
+
+			{/* Conclusion Dialog */}
+			{user && conclusionDialogIsOpen && (
+				<ServiceConclusionDialog closeMenu={() => setConclusionDialogIsOpen(false)} serviceId={service._id} currentDescription={service.descricao} />
 			)}
 		</>
 	);

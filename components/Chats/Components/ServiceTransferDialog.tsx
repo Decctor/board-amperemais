@@ -97,10 +97,10 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 
 	return (
 		<ResponsiveMenu
-			menuTitle="Transferir responsabilidade"
+			menuTitle="TRANSFERIR RESPONSABILIDADE"
 			menuDescription="Confirme a transferência da responsabilidade do atendimento."
-			menuActionButtonText="Transferir"
-			menuCancelButtonText="Cancelar"
+			menuActionButtonText="TRANSFERIR"
+			menuCancelButtonText="CANCELAR"
 			actionFunction={handleTransfer}
 			actionIsLoading={isTransferring}
 			stateIsLoading={false}

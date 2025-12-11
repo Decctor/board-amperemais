@@ -1,27 +1,30 @@
 import React from "react";
 
 type TextareaInputProps = {
-  label: string;
-  value: string;
-  placeholder: string;
-  editable?: boolean;
-  handleChange: (value: string) => void;
+	label: string;
+	value: string;
+	placeholder: string;
+	editable?: boolean;
+	handleChange: (value: string) => void;
 };
 function TextareaInput({ label, value, placeholder, editable = true, handleChange }: TextareaInputProps) {
-  return (
-    <div className="flex w-full flex-col rounded-md border border-primary/20 shadow-xs">
-      <h1 className="font w-full rounded-tl-md rounded-tr-md bg-primary p-1 text-center text-xs font-bold text-primary-foreground">{label}</h1>
-      <textarea
-        disabled={!editable}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => {
-          handleChange(e.target.value);
-        }}
-        className="min-h-[80px] w-full  resize-none rounded-bl-md rounded-br-md bg-white p-3 text-center text-xs font-medium text-primary outline-hidden dark:bg-[#121212] lg:min-h-[65px]"
-      />
-    </div>
-  );
+	const inputIdentifier = label.toLowerCase().replace(" ", "_");
+	return (
+		<div className="flex w-full flex-col gap-1">
+			<label htmlFor={inputIdentifier} className="text-sm tracking-tight text-primary/80 font-medium">
+				{label}
+			</label>
+			<textarea
+				disabled={!editable}
+				placeholder={placeholder}
+				value={value}
+				onChange={(e) => {
+					handleChange(e.target.value);
+				}}
+				className="w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-primary min-h-[80px] field-sizing-content resize-none"
+			/>
+		</div>
+	);
 }
 
 export default TextareaInput;

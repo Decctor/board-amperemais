@@ -51,6 +51,7 @@ type AIResponse = {
 	metadata: {
 		toolsUsed: string[];
 		serviceDescription: string;
+		tokensUsed: number;
 	};
 };
 
@@ -148,6 +149,7 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 			metadata: {
 				toolsUsed,
 				serviceDescription: experimental_output.serviceDescription,
+				tokensUsed: result.usage.totalTokens ?? 0,
 			},
 		};
 	} catch (error) {
@@ -158,6 +160,7 @@ Analise a conversa e responda apropriadamente. Use suas ferramentas quando neces
 			metadata: {
 				toolsUsed,
 				serviceDescription: "Erro técnico no agente AI",
+				tokensUsed: 0,
 			},
 		};
 	}

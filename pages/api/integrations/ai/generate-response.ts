@@ -32,6 +32,7 @@ const GenerateAIResponseOutputSchema = z.union([
 			.object({
 				toolsUsed: z.array(z.string()),
 				serviceDescription: z.string(),
+				tokensUsed: z.number(),
 			})
 			.optional(),
 	}),
@@ -96,9 +97,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			},
 		});
 
-		console.log("[API] [GERAR_RESPOSTA] AI Response generated:", {
+		console.log("[API] [GERAR_RESPOSTA] AI Response metadata:", {
 			toolsUsed: aiResponse.metadata.toolsUsed,
 			serviceDescription: aiResponse.metadata.serviceDescription,
+			tokensUsed: aiResponse.metadata.tokensUsed,
 		});
 
 		// Return response with metadata

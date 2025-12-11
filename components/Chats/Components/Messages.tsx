@@ -109,7 +109,7 @@ export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 			role="log"
 			aria-live="polite"
 		>
-			<StickToBottom.Content className="p-4 space-y-1">
+			<StickToBottom.Content className="p-4 space-y-1 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
 				{/* Load Older Messages Button */}
 				{nextCursor && initialResult?.hasMore && (
 					<div className="flex items-center justify-center mb-4">

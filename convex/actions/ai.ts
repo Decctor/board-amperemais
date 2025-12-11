@@ -16,6 +16,7 @@ type TGenerateAIResponseOutput =
 					applicable: boolean;
 					reason?: string;
 				};
+				tokensUsed: number;
 			};
 	  }
 	| {
@@ -79,6 +80,7 @@ export const generateAIResponse = internalAction({
 				toolsUsed: result.success && result.metadata ? result.metadata.toolsUsed : [],
 				serviceDescription: result.success && result.metadata ? result.metadata.serviceDescription : "",
 				escalation: result.success && result.metadata ? result.metadata.escalation : { applicable: false, reason: undefined },
+				tokensUsed: result.success && result.metadata ? result.metadata.tokensUsed : 0,
 			});
 
 			if (!result.success) {
