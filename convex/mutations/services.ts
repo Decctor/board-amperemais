@@ -128,6 +128,7 @@ export const transferServiceToHuman = mutation({
 				if (!chat) {
 					throw new Error("Chat não encontrado.");
 				}
+				console.log("[INFO] [SERVICES] [TRANSFER_TO_HUMAN] Scheduling WhatsApp notification to user:", randomUser.telefone);
 				await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappNotification, {
 					notificationPayload: WHATSAPP_REPORT_TEMPLATES.SERVICE_TRANSFER_NOTIFICATIONS.getPayload({
 						templateKey: "SERVICE_TRANSFER_NOTIFICATIONS",
@@ -135,7 +136,7 @@ export const transferServiceToHuman = mutation({
 						clientePhoneNumber: client.telefone,
 						toPhoneNumber: randomUser.telefone,
 						serviceDescription: existingService.descricao,
-					}),
+					}).data,
 					phoneNumber: randomUser.telefone,
 					fromPhoneNumberId: chat.whatsappTelefoneId,
 				});
