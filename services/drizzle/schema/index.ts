@@ -8,3 +8,6 @@ export * from "./sellers";
 export * from "./goals";
 export * from "./utils";
 export * from "./partners";
+export * from "./enums";
+export * from "./campaigns";
+export * from "./interactions";

@@ -2,8 +2,8 @@ import DateInput from "@/components/Inputs/DateInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
-import type { TUseGoalsState } from "@/hooks/use-goal-state";
 import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
+import type { TUseGoalsState } from "@/state-hooks/use-goal-state";
 import { LayoutGrid } from "lucide-react";
 
 type GoalGeneralProps = {

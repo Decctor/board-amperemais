@@ -1,9 +1,9 @@
 import DateInput from "@/components/Inputs/DateInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import type { TUseUserState } from "@/hooks/use-user-state";
 import { formatDateForInputValue, formatDateOnInputChange, formatToCPF, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import type { TUser } from "@/schemas/users";
+import type { TUseUserState } from "@/state-hooks/use-user-state";
 import { ImageIcon, LayoutGrid } from "lucide-react";
 import Image from "next/image";
 

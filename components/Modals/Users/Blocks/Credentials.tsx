@@ -1,6 +1,6 @@
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import type { TUseUserState } from "@/hooks/use-user-state";
+import type { TUseUserState } from "@/state-hooks/use-user-state";
 import { Shield } from "lucide-react";
 
 type UsersCredentialsBlockProps = {

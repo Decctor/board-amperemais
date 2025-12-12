@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users } from ".";
 import { campaignTriggerTypeEnum, interactionsCronJobTimeBlocksEnum, timeDurationUnitsEnum } from "./enums";
 
@@ -7,6 +7,7 @@ export const campaigns = newTable("campaigns", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	ativo: boolean("ativo").notNull().default(true),
 	titulo: text("titulo").notNull(),
 	descricao: text("descricao"),
 	gatilhoTipo: campaignTriggerTypeEnum("gatilho_tipo").notNull(),
@@ -14,11 +15,11 @@ export const campaigns = newTable("campaigns", {
 	gatilhoTempoPermanenciaMedida: timeDurationUnitsEnum("gatilho_tempo_permanencia_medida"),
 	gatilhoTempoPermanenciaValor: integer("gatilho_tempo_permanencia_valor"),
 
-	execucaoAgendadaMedida: timeDurationUnitsEnum("execucao_agendada_medida"),
-	execucaoAgendadaValor: integer("execucao_agendada_valor"),
+	execucaoAgendadaMedida: timeDurationUnitsEnum("execucao_agendada_medida").notNull().default("DIAS"),
+	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
 	execucaoAgendadaBloco: interactionsCronJobTimeBlocksEnum("execucao_agendada_bloco").notNull(),
 	// Whatsapp specific
-	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }),
+	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }).notNull(),
 	autorId: varchar("autor_id", { length: 255 })
 		.references(() => users.id)
 		.notNull(),

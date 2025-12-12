@@ -1,8 +1,8 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
-import { useGoalsState } from "@/hooks/use-goal-state";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { createGoal } from "@/lib/mutations/goals";
+import { useGoalsState } from "@/state-hooks/use-goal-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import GoalGeneral from "./Blocks/General";

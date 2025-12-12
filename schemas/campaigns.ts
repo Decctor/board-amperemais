@@ -2,6 +2,12 @@ import z from "zod";
 import { CampaignTriggerTypeEnum, InteractionsCronJobTimeBlocksEnum, TimeDurationUnitsEnum } from "./enums";
 
 export const CampaignSchema = z.object({
+	ativo: z
+		.boolean({
+			required_error: "Ativo da campanha não informado.",
+			invalid_type_error: "Tipo não válido para o ativo da campanha.",
+		})
+		.default(true),
 	titulo: z.string({
 		required_error: "Título da campanha não informado.",
 		invalid_type_error: "Tipo não válido para o título da campanha.",
@@ -16,11 +22,14 @@ export const CampaignSchema = z.object({
 	gatilhoTipo: CampaignTriggerTypeEnum,
 
 	// Specific for "PERMANÊNCIA-SEGMENTAÇÃO"
-	gatilhoTempoPermanenciaMedida: TimeDurationUnitsEnum,
-	gatilhoTempoPermanenciaValor: z.number({
-		required_error: "Valor da permanência não informado.",
-		invalid_type_error: "Tipo não válido para o valor da permanência.",
-	}),
+	gatilhoTempoPermanenciaMedida: TimeDurationUnitsEnum.optional().nullable(),
+	gatilhoTempoPermanenciaValor: z
+		.number({
+			required_error: "Valor da permanência não informado.",
+			invalid_type_error: "Tipo não válido para o valor da permanência.",
+		})
+		.optional()
+		.nullable(),
 
 	execucaoAgendadaMedida: TimeDurationUnitsEnum,
 	execucaoAgendadaValor: z.number({

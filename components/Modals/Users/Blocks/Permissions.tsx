@@ -1,8 +1,8 @@
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import type { TUseUserState } from "@/hooks/use-user-state";
 import { useUsers } from "@/lib/queries/users";
+import type { TUseUserState } from "@/state-hooks/use-user-state";
 import { Shield } from "lucide-react";
 import PermissionsScope from "./Utils/PermissionsScope";
 

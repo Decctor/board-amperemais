@@ -1,10 +1,10 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
-import { type TUseUserState, useUserState } from "@/hooks/use-user-state";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { updateUser as updateUserMutation } from "@/lib/mutations/users";
 import { useUserById } from "@/lib/queries/users";
+import { type TUseUserState, useUserState } from "@/state-hooks/use-user-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";

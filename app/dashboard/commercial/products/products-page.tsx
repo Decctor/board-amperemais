@@ -154,11 +154,11 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 					<div className="flex items-center gap-3 flex-col md:flex-row gap-y-1">
 						<div className="flex items-center gap-3">
 							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-								<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+								<CirclePlus className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-xs font-bold tracking-tight uppercase">{product.estatisticas.vendasQtdeTotal}</p>
 							</div>
 							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-								<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+								<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(product.estatisticas.vendasValorTotal)}</p>
 							</div>
 							<div
@@ -168,7 +168,7 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 									"bg-red-500 dark:bg-red-600 text-white": product.estatisticas.curvaABC === "C",
 								})}
 							>
-								<Star className="w-3 min-w-3 h-3 min-h-3" />
+								<Star className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-xs font-bold tracking-tight uppercase">{product.estatisticas.curvaABC}</p>
 							</div>
 						</div>
