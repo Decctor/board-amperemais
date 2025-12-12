@@ -56,9 +56,9 @@ export const WHATSAPP_TEMPLATES = {
 };
 
 export const TemplateCategoryOptions = [
-	{ id: "authentication", nome: "AUTENTICAÇÃO", value: "authentication", label: "AUTENTICAÇÃO" },
-	{ id: "marketing", nome: "MARKETING", value: "marketing", label: "MARKETING" },
-	{ id: "utility", nome: "UTILIDADE", value: "utility", label: "UTILIDADE" },
+	{ id: "AUTENTICAÇÃO", nome: "AUTENTICAÇÃO", value: "AUTENTICAÇÃO", label: "AUTENTICAÇÃO" },
+	{ id: "MARKETING", nome: "MARKETING", value: "MARKETING", label: "MARKETING" },
+	{ id: "UTILIDADE", nome: "UTILIDADE", value: "UTILIDADE", label: "UTILIDADE" },
 ];
 export const TemplateLanguageOptions = [
 	{ id: "pt_BR", nome: "PORTUGUÊS (BRASIL)", value: "pt_BR", label: "PORTUGUÊS (BRASIL)" },
@@ -66,8 +66,8 @@ export const TemplateLanguageOptions = [
 	{ id: "es_ES", nome: "ESPANHOL", value: "es_ES", label: "ESPANHOL" },
 ];
 export const TemplateParameterFormatOptions = [
-	{ id: "positional", nome: "POSICIONAL ({{1}}, {{2}})", value: "positional", label: "POSICIONAL ({{1}}, {{2}})" },
-	{ id: "named", nome: "NOMEADO ({{cliente_nome}})", value: "named", label: "NOMEADO ({{cliente_nome}})" },
+	{ id: "POSICIONAL", nome: "POSICIONAL ({{1}}, {{2}})", value: "POSICIONAL", label: "POSICIONAL ({{1}}, {{2}})" },
+	{ id: "NOMEADO", nome: "NOMEADO ({{cliente_nome}})", value: "NOMEADO", label: "NOMEADO ({{cliente_nome}})" },
 ];
 
 export const TemplateHeaderTypeOptions = [

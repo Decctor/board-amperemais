@@ -1,4 +1,5 @@
 import z from "zod";
+import { WhatsappTemplateCategoryEnum, WhatsappTemplateParametersTypeEnum, WhatsappTemplateQualityEnum, WhatsappTemplateStatusEnum } from "./enums";
 
 export const WhatsappTemplateHeaderSchema = z.object({
 	tipo: z.enum(["text", "image", "video", "document"], {
@@ -85,45 +86,18 @@ export const WhatsappTemplateSchema = z.object({
 			message: "Nome do template deve conter apenas letras minúsculas, números e underscores.",
 		})
 		.max(512, { message: "Nome do template deve ter no máximo 512 caracteres." }),
-	categoria: z.enum(["authentication", "marketing", "utility"], {
-		required_error: "Categoria não informada.",
-		invalid_type_error: "Tipo inválido para categoria.",
-	}),
-	idioma: z
-		.string({
-			required_error: "Idioma não informado.",
-			invalid_type_error: "Tipo inválido para idioma.",
-		})
-		.default("pt_BR"),
-	formatoParametros: z
-		.enum(["named", "positional"], {
-			invalid_type_error: "Tipo inválido para formato de parâmetros.",
-		})
-		.default("positional"),
+	categoria: WhatsappTemplateCategoryEnum,
+	parametrosTipo: WhatsappTemplateParametersTypeEnum,
 	componentes: WhatsappTemplateComponentsSchema,
-	status: z
-		.enum(["RASCUNHO", "PENDENTE", "APROVADO", "REJEITADO", "PAUSADO", "DESABILITADO"], {
-			invalid_type_error: "Tipo inválido para status.",
-		})
-		.default("RASCUNHO"),
+	status: WhatsappTemplateStatusEnum,
 	whatsappTemplateId: z
 		.string({
 			invalid_type_error: "Tipo inválido para ID do template no WhatsApp.",
 		})
 		.optional()
 		.nullable(),
-	qualidade: z
-		.enum(["PENDENTE", "ALTA", "MEDIA", "BAIXA"], {
-			invalid_type_error: "Tipo inválido para qualidade.",
-		})
-		.optional()
-		.nullable(),
-	motivoRejeicao: z
-		.string({
-			invalid_type_error: "Tipo inválido para motivo de rejeição.",
-		})
-		.optional()
-		.nullable(),
+	qualidade: WhatsappTemplateQualityEnum,
+	rejeicao: z.string().optional().nullable(),
 	autorId: z.string({
 		required_error: "ID do autor não informado.",
 		invalid_type_error: "Tipo inválido para ID do autor.",
@@ -132,7 +106,8 @@ export const WhatsappTemplateSchema = z.object({
 		.string({
 			invalid_type_error: "Tipo inválido para data de inserção.",
 		})
-		.datetime({ message: "Formato inválido para data de inserção." }),
+		.datetime({ message: "Formato inválido para data de inserção." })
+		.transform((val) => new Date(val)),
 });
 
 export type TWhatsappTemplate = z.infer<typeof WhatsappTemplateSchema>;
@@ -142,3 +117,8 @@ export type TWhatsappTemplateFooter = z.infer<typeof WhatsappTemplateFooterSchem
 export type TWhatsappTemplateButton = z.infer<typeof WhatsappTemplateButtonSchema>;
 export type TWhatsappTemplateComponents = z.infer<typeof WhatsappTemplateComponentsSchema>;
 export type TWhatsappTemplateBodyParameter = z.infer<typeof WhatsappTemplateBodyParameterSchema>;
+
+export const WhatsappTemplateStateSchema = z.object({
+	whatsappTemplate: WhatsappTemplateSchema.omit({ autorId: true, dataInsercao: true }),
+});
+export type TWhatsappTemplateState = z.infer<typeof WhatsappTemplateStateSchema>;

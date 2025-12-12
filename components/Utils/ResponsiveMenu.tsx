@@ -17,6 +17,7 @@ const responsiveMenuVariants = cva("flex flex-col", {
 			sm: "max-h-[90%]",
 			md: "h-[70%] min-h-[70%] max-h-[70%] lg:max-h-[70%] w-[60%] min-w-[60%] max-w-[60%] lg:max-w-[60%]",
 			lg: "h-[90%] min-h-[90%] max-h-[90%] lg:max-h-[90%] w-[80%] min-w-[80%] max-w-[80%] lg:max-w-[80%]",
+			xl: "h-[95%] min-h-[95%] max-h-[95%] lg:max-h-[95%] w-[95%] min-w-[95%] max-w-[95%] lg:max-w-[95%]",
 		},
 	},
 	defaultVariants: {
@@ -31,6 +32,7 @@ const drawerVariants = cva("flex flex-col", {
 			sm: "flex flex-col h-fit max-h-[70vh]",
 			md: "flex flex-col h-fit max-h-[80vh]",
 			lg: "flex flex-col h-fit max-h-[90vh]",
+			xl: "flex flex-col h-fit max-h-[95vh]",
 		},
 	},
 	defaultVariants: {
@@ -54,8 +56,8 @@ type ResponsiveMenuProps = PropsWithChildren & {
 	stateIsLoading: boolean;
 	stateError?: string | null;
 	closeMenu: () => void;
-	dialogVariant?: "fit" | "sm" | "md" | "lg";
-	drawerVariant?: "fit" | "sm" | "md" | "lg";
+	dialogVariant?: "fit" | "sm" | "md" | "lg" | "xl";
+	drawerVariant?: "fit" | "sm" | "md" | "lg" | "xl";
 };
 function ResponsiveMenu({
 	children,
