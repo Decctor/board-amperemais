@@ -1,0 +1,42 @@
+import { relations } from "drizzle-orm";
+import { jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { campaigns } from "./campaigns";
+import { clients } from "./clients";
+import { newTable } from "./common";
+import { interactionTypeEnum, interactionsCronJobTimeBlocksEnum } from "./enums";
+import { users } from "./users";
+
+export const interactions = newTable("interactions", {
+	id: varchar("id", { length: 255 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	clienteId: varchar("cliente_id", { length: 255 })
+		.references(() => clients.id)
+		.notNull(),
+	campanhaId: varchar("campanha_id", { length: 255 }).references(() => campaigns.id),
+	titulo: text("titulo").notNull(),
+	descricao: text("descricao"),
+	tipo: interactionTypeEnum("tipo").notNull(),
+	autorId: varchar("autor_id", { length: 255 }).references(() => users.id),
+
+	// Scheduling specific
+	agendamentoDataReferencia: text("agendamento_data_referencia"), // ISO 8601 format YYYY-MM-DDTHH:MM:SSZ
+	agendamentoBlocoReferencia: interactionsCronJobTimeBlocksEnum("agendamento_bloco_referencia"),
+	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	dataExecucao: timestamp("data_execucao"),
+	metadados: jsonb("metadados"),
+});
+export const interactionRelations = relations(interactions, ({ one }) => ({
+	cliente: one(clients, {
+		fields: [interactions.clienteId],
+		references: [clients.id],
+	}),
+	campanha: one(campaigns, {
+		fields: [interactions.campanhaId],
+		references: [campaigns.id],
+	}),
+	autor: one(users, {
+		fields: [interactions.autorId],
+		references: [users.id],
+	}),
+}));
