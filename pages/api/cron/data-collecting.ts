@@ -1,7 +1,8 @@
+import { getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { db } from "@/services/drizzle";
-import { clients, partners, products, saleItems, sales, sellers, utils } from "@/services/drizzle/schema";
+import { clients, interactions, partners, products, saleItems, sales, sellers, utils } from "@/services/drizzle/schema";
 import axios from "axios";
 import dayjs from "dayjs";
 import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
@@ -14,6 +15,18 @@ dayjs.extend(dayjsCustomFormatter);
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
 	const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
 	console.log("DATE BEING USED", dayjs().format("DD/MM/YYYY HH:mm"), dayjs().subtract(5, "hour").format("DD/MM/YYYY HH:mm"), currentDateFormatted);
+
+	const campaigns = await db.query.campaigns.findMany({
+		where: (fields, { and, or, eq }) =>
+			and(eq(fields.ativo, true), or(eq(fields.gatilhoTipo, "NOVA-COMPRA"), eq(fields.gatilhoTipo, "PRIMEIRA-COMPRA"))),
+		with: {
+			segmentacoes: true,
+		},
+	});
+	const campaignsForNewPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "NOVA-COMPRA");
+	const campaignsForFirstPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "PRIMEIRA-COMPRA");
+	console.log(`${campaignsForNewPurchase.length} campanhas de nova compra encontradas.`);
+	console.log(`${campaignsForFirstPurchase.length} campanhas de primeira compra encontradas.`);
 
 	try {
 		// Fetching data from the online software API
@@ -59,6 +72,9 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 				columns: {
 					id: true,
 					nome: true,
+					primeiraCompraData: true,
+					ultimaCompraData: true,
+					analiseRFMTitulo: true,
 				},
 			});
 			const existingProducts = await tx.query.products.findMany({
@@ -81,15 +97,24 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			});
 
 			const existingSalesMap = new Map(existingSales.map((sale) => [sale.idExterno, sale]));
-			const existingClientsMap = new Map(existingClients.map((client) => [client.nome, client.id]));
+			const existingClientsMap = new Map(
+				existingClients.map((client) => [
+					client.nome,
+					{ id: client.id, firstPurchaseDate: client.primeiraCompraData, lastPurchaseDate: client.ultimaCompraData, rfmTitle: client.analiseRFMTitulo },
+				]),
+			);
 			const existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
 			const existingSellersMap = new Map(existingSellers.map((seller) => [seller.nome, seller.id]));
 			const existingPartnersMap = new Map(existingPartners.map((partner) => [partner.identificador, partner.id]));
 			for (const OnlineSale of OnlineSoftwareSales) {
+				let isNewClient = false;
+				let isNewSale = false;
+
+				const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
 				// First, we check for an existing client with the same name (in this case, our primary key for the integration)
 				const equivalentSaleClient = existingClientsMap.get(OnlineSale.cliente);
 				// Initalize the saleClientId holder with the existing client (if any)
-				let saleClientId = equivalentSaleClient;
+				let saleClientId = equivalentSaleClient?.id;
 				if (!saleClientId) {
 					console.log(`[INFO] [DATA_COLLECTING] [CLIENT] Creating new client for ${OnlineSale.cliente}`);
 					// If no existing client is found, we create a new one
@@ -99,6 +124,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							nome: OnlineSale.cliente,
 							telefone: OnlineSale.clientefone || OnlineSale.clientecelular || "",
 							telefoneBase: formatPhoneAsBase(OnlineSale.clientefone || OnlineSale.clientecelular || ""),
+							primeiraCompraData: saleDate,
 						})
 						.returning({
 							id: clients.id,
@@ -107,8 +133,32 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					if (!insertedClientResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar cliente.");
 					// Define the saleClientId with the newly created client id
 					saleClientId = insertedClientId;
+					isNewClient = true;
 					// Add the new client to the existing clients map
-					existingClientsMap.set(OnlineSale.cliente, insertedClientId);
+					existingClientsMap.set(OnlineSale.cliente, { id: insertedClientId, firstPurchaseDate: null, lastPurchaseDate: null, rfmTitle: "RECENTES" });
+
+					// Checking for applicable campaigns for new purchase
+					const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) => campaign.segmentacoes.some((s) => s.segmentacao === "RECENTES"));
+					if (applicableCampaigns.length > 0) {
+						console.log(`${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`);
+						for (const campaign of applicableCampaigns) {
+							// For the applicable campaigns, we will iterate over them and schedule the interactions
+							const interactionScheduleDate = getPostponedDateFromReferenceDate({
+								date: dayjs().toDate(),
+								unit: campaign.execucaoAgendadaMedida,
+								value: campaign.execucaoAgendadaValor,
+							});
+							await tx.insert(interactions).values({
+								clienteId: insertedClientId,
+								campanhaId: campaign.id,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: "Cliente realizou sua primeira compra.",
+								agendamentoDataReferencia: interactionScheduleDate.toISOString(),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							});
+						}
+					}
 				}
 
 				// Then, we check for an existing seller with the same name (in this case, our primary key for the integration)
@@ -147,12 +197,13 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					existingPartnersMap.set(OnlineSale.parceiro || "N/A", insertedPartnerId);
 				}
 
+				let saleId = null;
 				const existingSale = existingSalesMap.get(OnlineSale.id);
 				if (!existingSale) {
+					isNewSale = true; // MARCA COMO NOVA VENDA
 					console.log(`[INFO] [DATA_COLLECTING] [SALE] Creating new sale ${OnlineSale.id} with ${OnlineSale.itens.length} items...`);
 					// Now, we extract the data to compose the sale entity
 					const saleTotalCost = OnlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
-					const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
 					// Insert the sale entity into the database
 					const insertedSaleResponse = await tx
 						.insert(sales)
@@ -248,7 +299,10 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							},
 						});
 					}
+					// Defining the saleId
+					saleId = insertedSaleId;
 				} else {
+					isNewSale = false; // É APENAS ATUALIZAÇÃO
 					console.log(`[INFO] [DATA_COLLECTING] [SALE] Updating sale ${OnlineSale.id} with ${OnlineSale.itens.length} items...`);
 					// Handle sales updates
 					const saleTotalCost = OnlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
@@ -346,7 +400,43 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							},
 						});
 					}
+					// Defining the saleId
+					saleId = existingSale.id;
 				}
+
+				// Checking for applicable campaigns for new purchase
+				if (isNewSale && !isNewClient) {
+					const applicableCampaigns = campaignsForNewPurchase.filter((campaign) =>
+						campaign.segmentacoes.some((s) => s.segmentacao === existingClientsMap.get(OnlineSale.cliente)?.rfmTitle),
+					);
+					if (applicableCampaigns.length > 0) {
+						console.log(`${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`);
+						for (const campaign of applicableCampaigns) {
+							const interactionScheduleDate = getPostponedDateFromReferenceDate({
+								date: dayjs().toDate(),
+								unit: campaign.execucaoAgendadaMedida,
+								value: campaign.execucaoAgendadaValor,
+							});
+							await tx.insert(interactions).values({
+								clienteId: saleClientId,
+								campanhaId: campaign.id,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: `Cliente se enquadrou no parâmetro de nova compra ${existingClientsMap.get(OnlineSale.cliente)?.rfmTitle}.`,
+								agendamentoDataReferencia: interactionScheduleDate.toISOString(),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							});
+						}
+					}
+				}
+
+				await tx
+					.update(clients)
+					.set({
+						ultimaCompraData: saleDate,
+						ultimaCompraId: saleId,
+					})
+					.where(eq(clients.id, saleClientId));
 			}
 			// Return a success response
 			return res.status(201).json("EXECUTADO COM SUCESSO");
