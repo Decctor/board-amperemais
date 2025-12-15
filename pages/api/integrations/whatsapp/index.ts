@@ -13,6 +13,7 @@ import {
 } from "@/lib/whatsapp/parsing";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema";
+import { whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
 
 import { ConvexHttpClient } from "convex/browser";
 import { eq } from "drizzle-orm";
@@ -64,8 +65,107 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			const convex = new ConvexHttpClient(CONVEX_URL);
 
 			try {
-				// Check if this is a status update
+				if (isTemplateEvent(body)) {
+					// Parse template status update
+					const statusUpdate = parseTemplateStatusUpdate(body);
+					if (statusUpdate?.status) {
+						console.log("[WHATSAPP_WEBHOOK] Template status update:", {
+							id: statusUpdate.messageTemplateId,
+							name: statusUpdate.messageTemplateName,
+							status: statusUpdate.status,
+							reason: statusUpdate.reason,
+						});
+
+						const updateResult = await db
+							.update(whatsappTemplates)
+							.set({
+								status: statusUpdate.status,
+								...(statusUpdate.reason && { rejeicao: statusUpdate.reason }),
+							})
+							.where(eq(whatsappTemplates.whatsappTemplateId, statusUpdate.messageTemplateId))
+							.returning({
+								id: whatsappTemplates.id,
+							});
+
+						if (updateResult.length > 0) {
+							console.log(`[WHATSAPP_WEBHOOK] Template status updated: ${statusUpdate.messageTemplateName} -> ${statusUpdate.status}`);
+						} else {
+							console.warn(`[WHATSAPP_WEBHOOK] Template not found in database: ${statusUpdate.messageTemplateName} (${statusUpdate.messageTemplateId})`);
+						}
+					}
+
+					// Parse template quality update
+					const qualityUpdate = parseTemplateQualityUpdate(body);
+					if (qualityUpdate?.quality) {
+						console.log("[WHATSAPP_WEBHOOK] Template quality update:", {
+							id: qualityUpdate.messageTemplateId,
+							name: qualityUpdate.messageTemplateName,
+							quality: qualityUpdate.quality,
+							previousQuality: qualityUpdate.previousQuality,
+							currentLimit: qualityUpdate.currentLimit,
+						});
+
+						const updateResult = await db
+							.update(whatsappTemplates)
+							.set({
+								qualidade: qualityUpdate.quality,
+							})
+							.where(eq(whatsappTemplates.whatsappTemplateId, qualityUpdate.messageTemplateId))
+							.returning({
+								id: whatsappTemplates.id,
+							});
+
+						if (updateResult.length > 0) {
+							console.log(`[WHATSAPP_WEBHOOK] Template quality updated: ${qualityUpdate.messageTemplateName} -> ${qualityUpdate.quality}`);
+						} else {
+							console.warn(`[WHATSAPP_WEBHOOK] Template not found in database: ${qualityUpdate.messageTemplateName} (${qualityUpdate.messageTemplateId})`);
+						}
+					}
+
+					// Parse template category update
+					const categoryUpdate = parseTemplateCategoryUpdate(body);
+					if (categoryUpdate?.category) {
+						console.log("[WHATSAPP_WEBHOOK] Template category update:", {
+							id: categoryUpdate.messageTemplateId,
+							name: categoryUpdate.messageTemplateName,
+							category: categoryUpdate.category,
+							previousCategory: categoryUpdate.previousCategory,
+						});
+
+						// Validate category is one of the allowed values
+						const validCategories = ["authentication", "marketing", "utility"];
+						const normalizedCategory = categoryUpdate.category.toLowerCase();
+
+						const CATEGORY_MAP: Record<string, "AUTENTICAÇÃO" | "MARKETING" | "UTILIDADE"> = {
+							authentication: "AUTENTICAÇÃO",
+							marketing: "MARKETING",
+							utility: "UTILIDADE",
+						};
+						if (validCategories.includes(normalizedCategory)) {
+							const updateResult = await db
+								.update(whatsappTemplates)
+								.set({
+									categoria: CATEGORY_MAP[normalizedCategory as keyof typeof CATEGORY_MAP],
+								})
+								.where(eq(whatsappTemplates.whatsappTemplateId, categoryUpdate.messageTemplateId))
+								.returning({
+									id: whatsappTemplates.id,
+								});
+
+							if (updateResult.length > 0) {
+								console.log(`[WHATSAPP_WEBHOOK] Template category updated: ${categoryUpdate.messageTemplateName} -> ${normalizedCategory}`);
+							} else {
+								console.warn(
+									`[WHATSAPP_WEBHOOK] Template not found in database: ${categoryUpdate.messageTemplateName} (${categoryUpdate.messageTemplateId})`,
+								);
+							}
+						} else {
+							console.warn(`[WHATSAPP_WEBHOOK] Invalid category received: ${categoryUpdate.category}`);
+						}
+					}
+				}
 				if (isStatusUpdate(body)) {
+					// Check if this is a status update
 					const statusUpdate = parseStatusUpdate(body);
 					if (statusUpdate) {
 						const { status, whatsappStatus } = mapWhatsAppStatusToAppStatus(statusUpdate.status);

@@ -11,3 +11,4 @@ export * from "./partners";
 export * from "./enums";
 export * from "./campaigns";
 export * from "./interactions";
+export * from "./whatsapp-templates";

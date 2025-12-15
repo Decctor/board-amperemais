@@ -43,7 +43,7 @@ export function convertHtmlToWhatsappText(html: string): string {
 	text = text.replace(/<li>(.*?)<\/li>/g, "• $1\n");
 
 	// Handle variable tags - keep them as is
-	text = text.replace(/<span[^>]*data-type="variable"[^>]*data-label="([^"]*)"[^>]*>.*?<\/span>/g, (match, label) => {
+	text = text.replace(/<span[^>]+data-(?:label|id)="([^"]+)"[^>]*>.*?<\/span>/g, (match, label) => {
 		// Extract the variable placeholder from the data-label or use a generic one
 		const variableMatch = match.match(/{{(\d+|[a-z_]+)}}/);
 		return variableMatch ? variableMatch[0] : `{{${label}}}`;
@@ -145,7 +145,7 @@ export function convertToWhatsappApiPayload(template: Omit<TWhatsappTemplate, "_
 	};
 
 	if (template.componentes.corpo.parametros.length > 0) {
-		if (template.formatoParametros === "named") {
+		if (template.parametrosTipo === "NOMEADO") {
 			bodyComponent.example = {
 				body_text_named_params: template.componentes.corpo.parametros.map((param) => ({
 					param_name: param.nome,
@@ -209,14 +209,14 @@ export function convertToWhatsappApiPayload(template: Omit<TWhatsappTemplate, "_
 	return {
 		name: template.nome,
 		category: template.categoria.toUpperCase(),
-		language: template.idioma,
-		parameter_format: template.formatoParametros,
+		language: "pt_BR",
+		parameter_format: template.parametrosTipo === "NOMEADO" ? "NAMED" : "POSITIONAL",
 		components,
 	};
 }
 
 type CreateWhatsappTemplateParams = {
-	template: Omit<TWhatsappTemplate, "_id" | "autor" | "dataInsercao" | "status" | "whatsappTemplateId" | "qualidade">;
+	template: Omit<TWhatsappTemplate, "_id" | "autor" | "dataInsercao" | "status" | "whatsappTemplateId">;
 };
 
 type CreateWhatsappTemplateResponse = {
@@ -245,7 +245,7 @@ export async function createWhatsappTemplate({ template }: CreateWhatsappTemplat
 
 		const payload = convertToWhatsappApiPayload(template);
 
-		console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Creating template:", template.nome, payload);
+		console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Creating template:", template.nome, JSON.stringify(payload, null, 2));
 
 		const response = await axios.post(`${GRAPH_API_BASE_URL}/${WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates`, payload, {
 			headers: {

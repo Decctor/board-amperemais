@@ -2,17 +2,18 @@
 import SettingsSalesPromoCampaigns from "@/components/Settings/SettingsSalesPromoCampaigns";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
+import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTemplates";
 import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { Grid3x3, Trophy, UsersRound } from "lucide-react";
+import { Grid3x3, MessageCircleIcon, Trophy, UsersRound } from "lucide-react";
 import { useState } from "react";
 
 type SettingsPageProps = {
 	user: TAuthUserSession["user"];
 };
 export default function SettingsPage({ user }: SettingsPageProps) {
-	const [settingsView, setSettingsView] = useState<"users" | "segments" | "sales-promo-campaigns">("users");
+	const [settingsView, setSettingsView] = useState<"users" | "whatsapp-templates" | "segments" | "sales-promo-campaigns">("users");
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-start gap-2">
@@ -24,6 +25,15 @@ export default function SettingsPage({ user }: SettingsPageProps) {
 				>
 					<UsersRound className="w-4 h-4 min-w-4 min-h-4" />
 					USUÁRIOS
+				</Button>
+				<Button
+					variant={settingsView === "whatsapp-templates" ? "secondary" : "ghost"}
+					className="flex items-center gap-2"
+					size="sm"
+					onClick={() => setSettingsView("whatsapp-templates")}
+				>
+					<MessageCircleIcon className="w-4 h-4 min-w-4 min-h-4" />
+					TEMPLATES WHATSAPP
 				</Button>
 				<Button
 					variant={settingsView === "segments" ? "secondary" : "ghost"}
@@ -45,6 +55,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
 				</Button>
 			</div>
 			{settingsView === "users" ? user.permissoes.usuarios.visualizar ? <SettingsUsers user={user} /> : <UnauthorizedPage /> : null}
+			{settingsView === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} /> : null}
 			{settingsView === "segments" ? <SettingsSegments user={user} /> : null}
 			{settingsView === "sales-promo-campaigns" ? <SettingsSalesPromoCampaigns user={user} /> : null}
 		</div>

@@ -1,8 +1,10 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { createWhatsappTemplate } from "@/lib/mutations/whatsapp-templates";
 import { useWhatsappTemplateState } from "@/state-hooks/use-whatsapp-template-state";
 import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import TemplateBodyEditor from "./Blocks/TemplateBodyEditor";
 import TemplateButtonsConfig from "./Blocks/TemplateButtonsConfig";
 import TemplateFooterConfig from "./Blocks/TemplateFooterConfig";
@@ -26,14 +28,45 @@ function NewWhatsappTemplate({ user, closeMenu, callbacks }: NewWhatsappTemplate
 		initialState: {},
 	});
 
+	const { mutate: handleCreateWhatsappTemplateMutation, isPending } = useMutation({
+		mutationKey: ["create-whatsapp-template"],
+		mutationFn: createWhatsappTemplate,
+		onMutate: async () => {
+			if (callbacks?.onMutate) callbacks.onMutate();
+			return;
+		},
+		onSuccess: async (data) => {
+			if (callbacks?.onSuccess) callbacks.onSuccess();
+			return toast.success(data.message);
+		},
+		onError: async (error) => {
+			if (callbacks?.onError) callbacks.onError();
+			return toast.error(getErrorMessage(error));
+		},
+		onSettled: async () => {
+			if (callbacks?.onSettled) callbacks.onSettled();
+			return;
+		},
+	});
 	return (
 		<ResponsiveMenu
 			menuTitle="NOVO TEMPLATE WHATSAPP"
 			menuDescription="Crie um novo template de mensagem para WhatsApp Business."
 			menuActionButtonText="CRIAR TEMPLATE"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => {}}
-			actionIsLoading={false}
+			actionFunction={() =>
+				handleCreateWhatsappTemplateMutation({
+					template: {
+						nome: state.whatsappTemplate.nome,
+						categoria: state.whatsappTemplate.categoria,
+						parametrosTipo: state.whatsappTemplate.parametrosTipo,
+						componentes: state.whatsappTemplate.componentes,
+						autorId: user.id,
+						dataInsercao: new Date(),
+					},
+				})
+			}
+			actionIsLoading={isPending}
 			stateIsLoading={false}
 			closeMenu={closeMenu}
 			dialogVariant="xl"
