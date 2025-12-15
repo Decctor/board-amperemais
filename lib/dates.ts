@@ -1,4 +1,5 @@
-import dayjs from "dayjs";
+import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
+import dayjs, { type ManipulateType } from "dayjs";
 import { formatDecimalPlaces } from "./formatting";
 
 export function getAgeFromBirthdayDate(date: string | Date) {
@@ -305,4 +306,30 @@ export function getDateBuckets(dates: Date[]) {
 	});
 
 	return buckets;
+}
+
+export const DASTJS_TIME_DURATION_UNITS_MAP: Record<TTimeDurationUnitsEnum, ManipulateType> = {
+	DIAS: "day",
+	SEMANAS: "week",
+	MESES: "month",
+	ANOS: "year",
+};
+export function getPostponedDateFromReferenceDate({ date, unit, value }: { date: Date; unit: TTimeDurationUnitsEnum; value: number }) {
+	const dayjsDate = dayjs(date);
+
+	const timeDurationUnit = DASTJS_TIME_DURATION_UNITS_MAP[unit];
+	if (!timeDurationUnit) return date;
+	return dayjsDate.add(value, timeDurationUnit).toDate();
+}
+export function getPeriodAmountFromReferenceUnit({
+	start,
+	end,
+	unit,
+	absolute = false,
+}: { start: Date; end: Date; unit: TTimeDurationUnitsEnum; absolute?: boolean }) {
+	const timeDurationUnit = DASTJS_TIME_DURATION_UNITS_MAP[unit];
+	if (!timeDurationUnit) return 0;
+	const diff = dayjs(end).diff(dayjs(start), timeDurationUnit);
+	if (absolute) return Math.abs(diff);
+	return diff;
 }

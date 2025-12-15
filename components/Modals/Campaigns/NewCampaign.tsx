@@ -5,6 +5,7 @@ import { createCampaign } from "@/lib/mutations/campaigns";
 import { useCampaignState } from "@/state-hooks/use-campaign-state";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import CampaignsActionBlock from "./Blocks/Action";
 import CampaignsExecutionBlock from "./Blocks/Execution";
 import CampaignsGeneralBlock from "./Blocks/General";
 import CampaignsTriggerBlock from "./Blocks/Trigger";
@@ -63,6 +64,7 @@ export default function NewCampaign({ user, closeModal, callbacks }: NewCampaign
 			/>
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsExecutionBlock campaign={state.campaign} updateCampaign={updateCampaign} campaignSegmentations={state.segmentations} />
+			<CampaignsActionBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 		</ResponsiveMenu>
 	);
 }

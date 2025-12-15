@@ -29,11 +29,13 @@ export const clients = newTable(
 		primeiraCompraId: varchar("primeira_compra_id"),
 		ultimaCompraData: timestamp("ultima_compra_data"),
 		ultimaCompraId: varchar("ultima_compra_id"),
+		// RFM
 		analiseRFMTitulo: text("analise_rfm_titulo"),
 		analiseRFMNotasRecencia: text("analise_rfm_notas_recencia"),
 		analiseRFMNotasFrequencia: text("analise_rfm_notas_frequencia"),
 		analiseRFMNotasMonetario: text("analise_rfm_notas_monetario"),
 		analiseRFMUltimaAtualizacao: timestamp("analise_rfm_ultima_atualizacao"),
+		analiseRFMUltimaAlteracao: timestamp("analise_rfm_ultima_alteracao"),
 		dataInsercao: timestamp("data_insercao").defaultNow(),
 	},
 	(table) => ({

@@ -8,6 +8,7 @@ import { useCampaignState } from "@/state-hooks/use-campaign-state";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import CampaignsActionBlock from "./Blocks/Action";
 import CampaignsExecutionBlock from "./Blocks/Execution";
 import CampaignsGeneralBlock from "./Blocks/General";
 import CampaignsTriggerBlock from "./Blocks/Trigger";
@@ -50,7 +51,7 @@ export default function ControlCampaign({ campaignId, user, closeModal, callback
 	});
 	useEffect(() => {
 		if (campaign) redefineState({ campaign: campaign, segmentations: campaign.segmentacoes });
-	}, [campaign]);
+	}, [campaign, redefineState]);
 	return (
 		<ResponsiveMenu
 			menuTitle="EDITAR CAMPANHA"
@@ -72,6 +73,7 @@ export default function ControlCampaign({ campaignId, user, closeModal, callback
 			/>
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsExecutionBlock campaign={state.campaign} updateCampaign={updateCampaign} campaignSegmentations={state.segmentations} />
+			<CampaignsActionBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 		</ResponsiveMenu>
 	);
 }
