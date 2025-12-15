@@ -28,7 +28,6 @@ export const useWhatsappTemplateState = ({ initialState }: UseWhatsappTemplateSt
 		whatsappTemplate: initialState?.whatsappTemplate || {
 			nome: "",
 			categoria: "MARKETING",
-			parametrosTipo: "NOMEADO",
 			componentes: {
 				cabecalho: null,
 				corpo: {
@@ -143,7 +142,6 @@ export const useWhatsappTemplateState = ({ initialState }: UseWhatsappTemplateSt
 			whatsappTemplate: {
 				nome: "",
 				categoria: "UTILIDADE",
-				parametrosTipo: "POSICIONAL",
 				componentes: {
 					cabecalho: null,
 					corpo: {

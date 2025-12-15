@@ -27,6 +27,10 @@ export const WhatsappTemplateBodyParameterSchema = z.object({
 		required_error: "Exemplo do parâmetro não informado.",
 		invalid_type_error: "Tipo inválido para exemplo do parâmetro.",
 	}),
+	identificador: z.string({
+		required_error: "Identificador do parâmetro não informado.",
+		invalid_type_error: "Tipo inválido para identificador do parâmetro.",
+	}),
 });
 
 export const WhatsappTemplateBodySchema = z.object({
@@ -87,7 +91,6 @@ export const WhatsappTemplateSchema = z.object({
 		})
 		.max(512, { message: "Nome do template deve ter no máximo 512 caracteres." }),
 	categoria: WhatsappTemplateCategoryEnum,
-	parametrosTipo: WhatsappTemplateParametersTypeEnum,
 	componentes: WhatsappTemplateComponentsSchema,
 	status: WhatsappTemplateStatusEnum,
 	whatsappTemplateId: z

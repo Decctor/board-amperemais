@@ -6,6 +6,12 @@ const WHATSAPP_BUSINESS_ACCOUNT_ID = process.env.META_WHATSAPP_BUSINESS_ACCOUNT_
 const WHATSAPP_AUTH_TOKEN = process.env.META_ACCESS_TOKEN;
 const GRAPH_API_BASE_URL = "https://graph.facebook.com/v23.0";
 
+export const WHATSAPP_CATEGORY_MAP: Record<TWhatsappTemplate["categoria"], "authentication" | "marketing" | "utility"> = {
+	AUTENTICAÇÃO: "authentication",
+	MARKETING: "marketing",
+	UTILIDADE: "utility",
+};
+
 /**
  * Converts rich HTML content from Tiptap to WhatsApp-compatible plain text with formatting
  */
@@ -138,26 +144,29 @@ export function convertToWhatsappApiPayload(template: Omit<TWhatsappTemplate, "_
 	}
 
 	// Add body component
-	const bodyText = convertHtmlToWhatsappText(template.componentes.corpo.conteudo);
+	let bodyText = convertHtmlToWhatsappText(template.componentes.corpo.conteudo);
+
+	// Replace any identificador-based variables with their numeric positions
+	// This handles mention nodes that were inserted via autocomplete
+	if (template.componentes.corpo.parametros.length > 0) {
+		for (const param of template.componentes.corpo.parametros) {
+			// Replace {{identificador}} with {{numero}}
+			const identificadorPlaceholder = `{{${param.identificador}}}`;
+			const numericPlaceholder = `{{${param.nome}}}`;
+			bodyText = bodyText.replace(new RegExp(identificadorPlaceholder.replace(/[{}]/g, "\\$&"), "g"), numericPlaceholder);
+		}
+	}
+
 	const bodyComponent: Record<string, unknown> = {
-		type: "BODY",
+		type: "body",
 		text: bodyText,
 	};
 
 	if (template.componentes.corpo.parametros.length > 0) {
-		if (template.parametrosTipo === "NOMEADO") {
-			bodyComponent.example = {
-				body_text_named_params: template.componentes.corpo.parametros.map((param) => ({
-					param_name: param.nome,
-					example: param.exemplo,
-				})),
-			};
-		} else {
-			// positional
-			bodyComponent.example = {
-				body_text: [template.componentes.corpo.parametros.map((param) => param.exemplo)],
-			};
-		}
+		// positional
+		bodyComponent.example = {
+			body_text: [template.componentes.corpo.parametros.map((param) => param.exemplo)],
+		};
 	}
 
 	components.push(bodyComponent);
@@ -208,9 +217,9 @@ export function convertToWhatsappApiPayload(template: Omit<TWhatsappTemplate, "_
 
 	return {
 		name: template.nome,
-		category: template.categoria.toUpperCase(),
+		category: WHATSAPP_CATEGORY_MAP[template.categoria],
 		language: "pt_BR",
-		parameter_format: template.parametrosTipo === "NOMEADO" ? "NAMED" : "POSITIONAL",
+		parameter_format: "positional",
 		components,
 	};
 }

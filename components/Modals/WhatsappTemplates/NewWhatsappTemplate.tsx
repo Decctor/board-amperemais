@@ -59,7 +59,6 @@ function NewWhatsappTemplate({ user, closeMenu, callbacks }: NewWhatsappTemplate
 					template: {
 						nome: state.whatsappTemplate.nome,
 						categoria: state.whatsappTemplate.categoria,
-						parametrosTipo: state.whatsappTemplate.parametrosTipo,
 						componentes: state.whatsappTemplate.componentes,
 						autorId: user.id,
 						dataInsercao: new Date(),
@@ -92,7 +91,6 @@ function NewWhatsappTemplate({ user, closeMenu, callbacks }: NewWhatsappTemplate
 								},
 							})
 						}
-						parametrosTipo={state.whatsappTemplate.parametrosTipo}
 						parametros={state.whatsappTemplate.componentes.corpo.parametros}
 						onParametrosChange={updateBodyParameters}
 					/>

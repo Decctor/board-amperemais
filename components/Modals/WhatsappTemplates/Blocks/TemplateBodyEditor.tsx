@@ -4,21 +4,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { WhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import type { TWhatsappTemplateBodyParameter } from "@/schemas/whatsapp-templates";
 import Mention from "@tiptap/extension-mention";
-import { type Editor, EditorContent, type JSONContent, useEditor } from "@tiptap/react";
+import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { FileText, List, ListOrdered } from "lucide-react";
 import { useEffect, useState } from "react";
 import suggestion from "./suggestion";
-
 type TemplateBodyEditorProps = {
 	content: string;
 	contentChangeCallback: (content: string) => void;
-	parametrosTipo: "NOMEADO" | "POSICIONAL";
 	parametros: TWhatsappTemplateBodyParameter[];
 	onParametrosChange: (parametros: TWhatsappTemplateBodyParameter[]) => void;
 };
 
-function TemplateBodyEditor({ content, contentChangeCallback, parametrosTipo, parametros, onParametrosChange }: TemplateBodyEditorProps) {
+function TemplateBodyEditor({ content, contentChangeCallback, parametros, onParametrosChange }: TemplateBodyEditorProps) {
 	const [charCount, setCharCount] = useState(0);
 
 	const editor = useEditor({
@@ -33,7 +31,10 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametrosTipo, pa
 					char: "{",
 				},
 				renderLabel({ node }) {
-					return `{{${node.attrs.id}}}`;
+					// For mention nodes, we'll display them with their identifier
+					// The extraction logic will assign them numeric positions
+					const label = WhatsappTemplateVariables.find((v) => v.value === node.attrs.id)?.label;
+					return `{{${label?.toUpperCase()}}}`;
 				},
 			}),
 		],
@@ -50,42 +51,57 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametrosTipo, pa
 		},
 	});
 
-	// Extract variables from HTML content
+	// Extract variables from HTML content in the order they appear
 	const extractVariablesFromContent = (editor: Editor) => {
-		const foundVariables = new Set<string>();
-
-		// 1. Traverse JSON to find Mention nodes
-		const traverse = (node: JSONContent) => {
-			if (node.type === "mention" && node.attrs?.id) {
-				foundVariables.add(node.attrs.id);
-			}
-			if (node.content) {
-				node.content.forEach(traverse);
-			}
-		};
-		traverse(editor.getJSON());
-
-		// 2. Regex on text content for positional or plain text variables
 		const text = editor.getText();
-		const variableRegex = /\{\{(\d+|[a-z_]+)\}\}/g;
+
+		// Extract ALL variables (anything between {{ and }}) in order of appearance
+		const variableRegex = /\{\{([^}]+)\}\}/g;
+		const foundVariables: string[] = []; // Array to maintain order
+		const seenVariables = new Set<string>(); // Set to track unique variables
+
 		const matches = text.matchAll(variableRegex);
 		for (const match of matches) {
-			foundVariables.add(match[1]);
-		}
-
-		// Update parameters based on found variables
-		const newParametros: TWhatsappTemplateBodyParameter[] = [];
-		for (const varName of foundVariables) {
-			const existing = parametros.find((p) => p.nome === varName);
-			if (existing) {
-				newParametros.push(existing);
-			} else {
-				newParametros.push({
-					nome: varName,
-					exemplo: "",
-				});
+			const variableId = match[1].trim();
+			if (variableId && !seenVariables.has(variableId)) {
+				const identifier = WhatsappTemplateVariables.find((v) => v.label.toUpperCase() === variableId.toUpperCase())?.value;
+				if (!identifier) continue;
+				foundVariables.push(identifier);
+				seenVariables.add(variableId);
 			}
 		}
+
+		console.log("EXTRACTING VARIABLES FROM CONTENT...", {
+			text: text,
+			foundVariables: foundVariables,
+		});
+
+		// Build the new parameters list based on order of appearance
+		const newParametros: TWhatsappTemplateBodyParameter[] = [];
+
+		foundVariables.forEach((variableId, index) => {
+			const positionNumber = (index + 1).toString(); // 1, 2, 3, etc.
+
+			// Check if we already have a parameter with this identificador
+			const existingByIdentifier = parametros.find((p) => p.identificador === variableId);
+
+			if (existingByIdentifier) {
+				// Reuse existing parameter but update its position number
+				newParametros.push({
+					...existingByIdentifier,
+					nome: positionNumber, // Update position based on order
+				});
+			} else {
+				// Create new parameter
+				newParametros.push({
+					nome: positionNumber,
+					exemplo: "",
+					identificador: variableId,
+				});
+			}
+		});
+
+		console.log("NEW PARAMETROS:", newParametros);
 
 		// Only update if there are changes
 		if (JSON.stringify(newParametros) !== JSON.stringify(parametros)) {
@@ -99,29 +115,14 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametrosTipo, pa
 		}
 	}, [content, editor]);
 
-	const insertPositionalVariable = () => {
+	const insertNamedVariable = (variableValue: string, variableLabel: string) => {
 		if (!editor) return;
-		// Find next positional number
-		const existingNumbers = parametros
-			.map((p) => Number.parseInt(p.nome))
-			.filter((n) => !Number.isNaN(n))
-			.sort((a, b) => a - b);
-		const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-		const variableName = nextNumber.toString();
-		editor.chain().focus().insertContent(`{{${variableName}}}`).run();
-	};
 
-	const insertNamedVariable = (variableValue: string) => {
-		if (!editor) return;
-		editor
-			.chain()
-			.focus()
-			.insertContent({
-				type: "mention",
-				attrs: { id: variableValue, label: variableValue },
-			})
-			.insertContent(" ")
-			.run();
+		// Insert the identificador placeholder in the editor (e.g., {{clientName}})
+		editor.chain().focus().insertContent(`{{${variableValue}}}`).insertContent(" ").run();
+
+		// The extractVariablesFromContent will be called automatically by onUpdate
+		// and will assign the correct positional number based on order of appearance
 	};
 
 	if (!editor) return null;
@@ -185,29 +186,23 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametrosTipo, pa
 
 				<div className="h-6 w-px bg-gray-300" />
 
-				{parametrosTipo === "POSICIONAL" ? (
-					<Button type="button" size="sm" variant="secondary" onClick={insertPositionalVariable}>
-						+ VARIÁVEL
-					</Button>
-				) : (
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button type="button" size="sm" variant="secondary">
-								+ VARIÁVEL
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
-							{WhatsappTemplateVariables.map((variable) => (
-								<DropdownMenuItem key={variable.id} onClick={() => insertNamedVariable(variable.value)}>
-									<div className="flex flex-col">
-										<span className="font-medium">{variable.label}</span>
-										<span className="text-xs text-muted-foreground">{`{{${variable.value}}}`}</span>
-									</div>
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
-				)}
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button type="button" size="sm" variant="secondary">
+							+ VARIÁVEL
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+						{WhatsappTemplateVariables.map((variable) => (
+							<DropdownMenuItem key={variable.id} onClick={() => insertNamedVariable(variable.value, variable.label)}>
+								<div className="flex flex-col">
+									<span className="font-medium">{variable.label}</span>
+									<span className="text-xs text-muted-foreground">{`{{${variable.value}}}`}</span>
+								</div>
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuContent>
+				</DropdownMenu>
 
 				<div className="ml-auto flex items-center gap-2">
 					<span className={`text-sm font-medium ${isOverLimit ? "text-red-500" : "text-primary/60"}`}>
@@ -219,24 +214,34 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametrosTipo, pa
 			<EditorContent editor={editor} className="prose max-w-none p-6 min-h-[200px]" suppressHydrationWarning />
 
 			{parametros.length > 0 && (
-				<div className="border-t border-primary/10 p-3 space-y-2">
-					<h4 className="text-sm font-semibold">Exemplos de Variáveis</h4>
-					{parametros.map((param, index) => (
-						<div key={index.toString()} className="flex items-center gap-2">
-							<span className="text-xs font-mono bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">{`{{${param.nome}}}`}</span>
-							<input
-								type="text"
-								value={param.exemplo}
-								onChange={(e) => {
-									const newParametros = [...parametros];
-									newParametros[index] = { ...param, exemplo: e.target.value };
-									onParametrosChange(newParametros);
-								}}
-								placeholder="Valor de exemplo"
-								className="flex-1 px-2 py-1 text-sm border rounded"
-							/>
-						</div>
-					))}
+				<div className="border-t border-primary/10 p-3 space-y-3">
+					<h4 className="text-sm font-semibold">Variáveis e Exemplos</h4>
+					{parametros.map((param, index) => {
+						// Find the variable label from WhatsappTemplateVariables
+						const variableInfo = WhatsappTemplateVariables.find((v) => v.value === param.identificador);
+						const displayLabel = variableInfo?.label || param.identificador || "Variável sem identificador";
+
+						return (
+							<div key={index.toString()} className="space-y-1">
+								<div className="flex items-center gap-2">
+									<span className="text-xs font-mono bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">{`{{${param.nome}}}`}</span>
+									<span className="text-xs text-muted-foreground">→</span>
+									<span className="text-xs font-medium">{displayLabel}</span>
+								</div>
+								<input
+									type="text"
+									value={param.exemplo}
+									onChange={(e) => {
+										const newParametros = [...parametros];
+										newParametros[index] = { ...param, exemplo: e.target.value };
+										onParametrosChange(newParametros);
+									}}
+									placeholder="Valor de exemplo"
+									className="w-full px-2 py-1 text-sm border rounded"
+								/>
+							</div>
+						);
+					})}
 				</div>
 			)}
 

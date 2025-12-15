@@ -2,7 +2,7 @@ import type { TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
 import { relations } from "drizzle-orm";
 import { jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users } from ".";
-import { whatsappTemplateCategoryEnum, whatsappTemplateParametersTypeEnum, whatsappTemplateQualityEnum, whatsappTemplateStatusEnum } from "./enums";
+import { whatsappTemplateCategoryEnum, whatsappTemplateQualityEnum, whatsappTemplateStatusEnum } from "./enums";
 
 export const whatsappTemplates = newTable("whatsapp_templates", {
 	id: varchar("id", { length: 255 })
@@ -11,7 +11,6 @@ export const whatsappTemplates = newTable("whatsapp_templates", {
 	status: whatsappTemplateStatusEnum("status").notNull(),
 	nome: text("nome").notNull(),
 	categoria: whatsappTemplateCategoryEnum("categoria").notNull(),
-	parametrosTipo: whatsappTemplateParametersTypeEnum("parametros_tipo").notNull(),
 	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }),
 	qualidade: whatsappTemplateQualityEnum("qualidade").notNull(),
 	rejeicao: text("rejeicao"),
