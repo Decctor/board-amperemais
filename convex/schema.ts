@@ -82,7 +82,7 @@ export default defineSchema({
 		conteudoMidiaTextoProcessado: v.optional(v.string()), // Complete AI-processed textual representation of media content
 		conteudoMidiaTextoProcessadoResumo: v.optional(v.string()), // Summary of AI-processed media content
 		conteudoMidiaWhatsappId: v.optional(v.string()), // WhatsApp media ID for incoming files
-		status: v.union(v.literal("ENVIADO"), v.literal("RECEBIDO"), v.literal("LIDO")),
+		status: v.union(v.literal("CANCELADO"), v.literal("ENVIADO"), v.literal("RECEBIDO"), v.literal("LIDO")),
 		whatsappMessageId: v.optional(v.string()),
 		whatsappStatus: v.optional(v.union(v.literal("PENDENTE"), v.literal("ENVIADO"), v.literal("ENTREGUE"), v.literal("FALHOU"))),
 		servicoId: v.optional(v.id("services")),

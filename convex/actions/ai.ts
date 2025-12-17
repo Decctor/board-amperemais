@@ -37,20 +37,20 @@ export const generateAIResponse = internalAction({
 			console.log("[AI_ACTION] Generating AI response for chat", args.chatId);
 
 			// Get chat summary
-			const chat = await ctx.runQuery(internal.queries.chat.getChatInternal, {
+			const preAIResponseChat = await ctx.runQuery(internal.queries.chat.getChatInternal, {
 				chatId: args.chatId,
 			});
-			if (!chat) {
+			if (!preAIResponseChat) {
 				throw new Error("Chat não encontrado.");
 			}
 
-			const lastMessageDate = chat.ultimaInteracaoClienteData ? new Date(chat.ultimaInteracaoClienteData) : null;
+			const preAIResponseLastMessageDate = preAIResponseChat.ultimaInteracaoClienteData ? new Date(preAIResponseChat.ultimaInteracaoClienteData) : null;
 			const scheduleAtDate = args.scheduleAt ? new Date(args.scheduleAt) : null;
 			console.log("[AI_ACTION] Dates state:", {
-				lastMessageDate,
+				preAIResponseLastMessageDate,
 				scheduleAtDate,
 			});
-			if (lastMessageDate && scheduleAtDate && lastMessageDate > scheduleAtDate) {
+			if (preAIResponseLastMessageDate && scheduleAtDate && preAIResponseLastMessageDate > scheduleAtDate) {
 				console.log("[AI_ACTION] New messages arrived after schedule, skipping...");
 				return {
 					success: true,
@@ -87,6 +87,20 @@ export const generateAIResponse = internalAction({
 				throw new Error(`Falha na geração da resposta da IA: ${result.error || "Erro desconhecido"}`);
 			}
 
+			// Checking if any message came while awaiting the AI response
+			const postAIResponseChat = await ctx.runQuery(internal.queries.chat.getChatInternal, {
+				chatId: args.chatId,
+			});
+			const postAIResponseLastMessageDate = postAIResponseChat.ultimaInteracaoClienteData
+				? new Date(postAIResponseChat.ultimaInteracaoClienteData)
+				: null;
+			if (postAIResponseLastMessageDate && scheduleAtDate && postAIResponseLastMessageDate > scheduleAtDate) {
+				console.log("[AI_ACTION] New messages arrived after schedule, skipping...");
+				return {
+					success: true,
+					transferred: false,
+				};
+			}
 			// Send AI message
 			await ctx.runMutation(internal.mutations.messages.createAIMessage, {
 				chatId: args.chatId,
