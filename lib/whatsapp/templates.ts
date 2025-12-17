@@ -1,5 +1,5 @@
-import type { TWhatsappTemplate } from "@/schemas/whatsapp-templates";
 import z from "zod";
+import type { TWhatsappTemplate } from "../../schemas/whatsapp-templates";
 import type { TWhatsappTemplateVariables } from "./template-variables";
 import { formatPhoneAsWhatsappId } from "./utils";
 
@@ -514,6 +514,58 @@ Disponível para atendimento imediato.Um atendimento foi transferido para você 
 	},
 };
 
+/**
+ * Converts Tiptap HTML content to plain text and replaces variable mentions with actual values
+ * @param tiptapContent - HTML content from Tiptap editor with mention spans
+ * @param variables - Map of variable identifiers to their actual values
+ * @returns Plain text with variables replaced
+ */
+function parseTiptapContentAndReplaceVariables(tiptapContent: string, variables: Record<keyof TWhatsappTemplateVariables, string>): string {
+	let text = tiptapContent;
+
+	// Replace mention spans with their actual variable values
+	// Pattern: <span data-type="mention" data-id="variableId" ...>{{DISPLAY_TEXT}}</span>
+	text = text.replace(/<span[^>]*data-type=["']mention["'][^>]*data-id=["']([^"']+)["'][^>]*>.*?<\/span>/gi, (match, dataId) => {
+		// dataId should match keys in TWhatsappTemplateVariables
+		const variableValue = variables[dataId as keyof TWhatsappTemplateVariables];
+		return variableValue !== undefined && variableValue !== null ? variableValue : match;
+	});
+
+	// Also handle data-label attribute in case data-id is not present
+	text = text.replace(/<span[^>]*data-type=["']mention["'][^>]*data-label=["']([^"']+)["'][^>]*>.*?<\/span>/gi, (match, dataLabel) => {
+		const variableValue = variables[dataLabel as keyof TWhatsappTemplateVariables];
+		return variableValue !== undefined && variableValue !== null ? variableValue : match;
+	});
+
+	// Convert paragraph tags to line breaks (each <p> is a line)
+	text = text.replace(/<\/p>\s*<p[^>]*>/gi, "\n");
+	text = text.replace(/<p[^>]*>/gi, "");
+	text = text.replace(/<\/p>/gi, "");
+
+	// Convert <br> tags to line breaks
+	text = text.replace(/<br\s*\/?>/gi, "\n");
+
+	// Remove any remaining HTML tags (like <strong>, <em>, etc.)
+	text = text.replace(/<[^>]+>/g, "");
+
+	// Decode HTML entities
+	text = text
+		.replace(/&nbsp;/g, " ")
+		.replace(/&amp;/g, "&")
+		.replace(/&lt;/g, "<")
+		.replace(/&gt;/g, ">")
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'");
+
+	// Clean up extra whitespace but preserve intentional line breaks
+	text = text.replace(/[ \t]+/g, " "); // Replace multiple spaces/tabs with single space
+	text = text.replace(/\n\s+/g, "\n"); // Remove spaces at the beginning of lines
+	text = text.replace(/\s+\n/g, "\n"); // Remove spaces at the end of lines
+	text = text.trim();
+
+	return text;
+}
+
 type getWhatsappTemplatePayloadParams = {
 	toPhoneNumber: string;
 	template: {
@@ -532,7 +584,7 @@ export function getWhatsappTemplatePayload({ toPhoneNumber, template, variables 
 			parameters: template.components.corpo.parametros.map((param) => ({
 				type: "text",
 				parameter_name: param.nome,
-				text: variables[param.nome as keyof TWhatsappTemplateVariables] ?? "",
+				text: variables[param.identificador as keyof TWhatsappTemplateVariables] ?? "",
 			})),
 		});
 	}
@@ -552,8 +604,11 @@ export function getWhatsappTemplatePayload({ toPhoneNumber, template, variables 
 		});
 	}
 
+	// Parse Tiptap content and replace variables
+	const formattedContent = parseTiptapContentAndReplaceVariables(template.content, variables);
+
 	return {
-		content: template.content,
+		content: formattedContent,
 		data: {
 			messaging_product: "whatsapp",
 			to: formatPhoneAsWhatsappId(toPhoneNumber),

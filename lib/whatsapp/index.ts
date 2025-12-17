@@ -120,7 +120,7 @@ export async function sendTemplateWhatsappMessage({
 		}
 
 		const { GRAPH_MESSAGES_API_URL } = getMetaGraphAPIUrl(fromPhoneNumberId);
-		console.log("[INFO] [WHATSAPP_TEMPLATE_SEND] Sending template:", templatePayload);
+		console.log("[INFO] [WHATSAPP_TEMPLATE_SEND] Sending template:", JSON.stringify(templatePayload, null, 2));
 		const response = await axios.post(GRAPH_MESSAGES_API_URL, templatePayload, {
 			headers: {
 				Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,

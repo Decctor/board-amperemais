@@ -1,5 +1,5 @@
-import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import dayjs, { type ManipulateType } from "dayjs";
+import type { TTimeDurationUnitsEnum } from "../schemas/enums";
 import { formatDecimalPlaces } from "./formatting";
 
 export function getAgeFromBirthdayDate(date: string | Date) {

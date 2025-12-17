@@ -353,13 +353,13 @@ export const createTemplateMessage = mutation({
 		});
 
 		// Schedule template send via action
-		await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappTemplate, {
+		const sendWhatsappTemplateResponse = await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappTemplate, {
 			messageId: messageId,
 			phoneNumber: cliente.telefone,
 			templatePayload: templatePayloadData,
 			fromPhoneNumberId: whatsappPhoneNumberId,
 		});
-
+		console.log("[INFO] [MESSAGES] [CREATE_TEMPLATE_MESSAGE] Template send scheduled:", sendWhatsappTemplateResponse);
 		return {
 			data: {
 				messageId,

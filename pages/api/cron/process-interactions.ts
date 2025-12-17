@@ -1,9 +1,12 @@
 import { api, internal } from "@/convex/_generated/api";
 import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
+import type { TInteractionState } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
+import { interactions } from "@/services/drizzle/schema";
 import { fetchMutation } from "convex/nextjs";
 import dayjs from "dayjs";
+import { eq } from "drizzle-orm";
 import type { NextApiHandler } from "next";
 
 const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
@@ -51,7 +54,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 			currentTimeBlock,
 		});
 
-		const interactions = await db.query.interactions.findMany({
+		const interactionsResult = await db.query.interactions.findMany({
 			where: (fields, { and, eq, isNull, isNotNull }) =>
 				and(eq(fields.agendamentoDataReferencia, currentDateAsISO8601), isNotNull(fields.campanhaId), isNull(fields.dataExecucao)),
 			with: {
@@ -73,7 +76,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 			},
 		});
 
-		const interactionsCampaignsIds = interactions.map((interaction) => interaction.campanhaId).filter((id) => id !== null);
+		const interactionsCampaignsIds = interactionsResult.map((interaction) => interaction.campanhaId).filter((id) => id !== null);
 		const campaigns = await db.query.campaigns.findMany({
 			where: (fields, { inArray }) => inArray(fields.id, interactionsCampaignsIds),
 			columns: {
@@ -84,9 +87,9 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 			},
 		});
 
-		for (const [index, interaction] of interactions.entries()) {
+		for (const [index, interaction] of interactionsResult.entries()) {
 			if ((index + 1) % 10 === 0) {
-				console.log(`[INFO] [PROCESS_INTERACTIONS] Processing interaction ${index + 1} of ${interactions.length}`);
+				console.log(`[INFO] [PROCESS_INTERACTIONS] Processing interaction ${index + 1} of ${interactionsResult.length}`);
 			}
 			const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
 			if (!campaign) continue;
@@ -111,8 +114,8 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 				variables: whatsappTemplateVariablesValuesMap,
 				toPhoneNumber: interaction.cliente.telefone,
 			});
-
-			await fetchMutation(api.mutations.messages.createTemplateMessage, {
+			console.log("[INFO] [PROCESS_INTERACTIONS] Creating template message:", JSON.stringify(payload, null, 2));
+			const createTemplateMessageResponse = await fetchMutation(api.mutations.messages.createTemplateMessage, {
 				autor: {
 					idApp: interaction.campanha?.autorId as string,
 					tipo: "usuario",
@@ -122,13 +125,20 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					nome: interaction.cliente.nome,
 					telefone: interaction.cliente.telefone,
 					telefoneBase: interaction.cliente.telefone,
-					email: interaction.cliente.email as string,
+					email: interaction.cliente.email ?? "",
 				},
 				whatsappPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
 				templateId: whatsappTemplate.id,
 				templatePayloadData: payload.data,
 				templatePayloadContent: payload.content,
 			});
+
+			await db
+				.update(interactions)
+				.set({
+					dataExecucao: new Date(),
+				})
+				.where(eq(interactions.id, interaction.id));
 		}
 		console.log("[INFO] [PROCESS_INTERACTIONS] Interactions processed successfully");
 
