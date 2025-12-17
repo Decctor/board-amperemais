@@ -41,16 +41,6 @@ export default function TemplateGeneral({ template, updateTemplate, whatsappTemp
 					/>
 				</div>
 			</div>
-
-			<SelectInput
-				label="FORMATO DE PARÂMETROS"
-				value={template.parametrosTipo}
-				options={TemplateParameterFormatOptions}
-				selectedItemLabel="label"
-				onReset={() => updateTemplate({ parametrosTipo: "NOMEADO" })}
-				handleChange={(value) => updateTemplate({ parametrosTipo: value as "NOMEADO" | "POSICIONAL" })}
-				width="100%"
-			/>
 		</ResponsiveMenuSection>
 	);
 }

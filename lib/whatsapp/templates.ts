@@ -1,4 +1,6 @@
+import type { TWhatsappTemplate } from "@/schemas/whatsapp-templates";
 import z from "zod";
+import type { TWhatsappTemplateVariables } from "./template-variables";
 import { formatPhoneAsWhatsappId } from "./utils";
 
 const DefaultTemplatePayloadSchema = z.object({
@@ -511,3 +513,58 @@ Disponível para atendimento imediato.Um atendimento foi transferido para você 
 		},
 	},
 };
+
+type getWhatsappTemplatePayloadParams = {
+	toPhoneNumber: string;
+	template: {
+		name: string;
+		content: string;
+		components: TWhatsappTemplate["componentes"];
+	};
+	variables: Record<keyof TWhatsappTemplateVariables, string>;
+};
+export function getWhatsappTemplatePayload({ toPhoneNumber, template, variables }: getWhatsappTemplatePayloadParams) {
+	const components = [];
+
+	if (template.components.corpo.parametros.length > 0) {
+		components.push({
+			type: "body",
+			parameters: template.components.corpo.parametros.map((param) => ({
+				type: "text",
+				parameter_name: param.nome,
+				text: variables[param.nome as keyof TWhatsappTemplateVariables] ?? "",
+			})),
+		});
+	}
+	if (template.components.rodape) {
+		components.push({
+			type: "footer",
+			text: template.components.rodape.conteudo,
+		});
+	}
+	if (template.components.botoes) {
+		components.push({
+			type: "buttons",
+			buttons: template.components.botoes.map((button) => ({
+				type: "button",
+				text: button.texto,
+			})),
+		});
+	}
+
+	return {
+		content: template.content,
+		data: {
+			messaging_product: "whatsapp",
+			to: formatPhoneAsWhatsappId(toPhoneNumber),
+			type: "template",
+			template: {
+				name: template.name,
+				language: {
+					code: "pt_BR",
+				},
+				components,
+			},
+		},
+	};
+}

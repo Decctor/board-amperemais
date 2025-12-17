@@ -103,7 +103,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 						titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 						tipo: "ENVIO-MENSAGEM",
 						descricao: `Cliente se enquadrou no parâmetro de entrada na classificação RFM ${newRFMLabel}.`,
-						agendamentoDataReferencia: interactionScheduleDate.toISOString(),
+						agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 						agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 					});
 				}
@@ -151,7 +151,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 						titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 						tipo: "ENVIO-MENSAGEM",
 						descricao: `Cliente se enquadrou no parâmetro de permanência na classificação RFM ${newRFMLabel}.`,
-						agendamentoDataReferencia: interactionScheduleDate.toISOString(),
+						agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 						agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 					});
 				}

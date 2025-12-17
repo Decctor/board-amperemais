@@ -154,8 +154,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 								tipo: "ENVIO-MENSAGEM",
 								descricao: "Cliente realizou sua primeira compra.",
-								agendamentoDataReferencia: interactionScheduleDate.toISOString(),
-								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 							});
 						}
 					}
@@ -423,7 +422,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 								tipo: "ENVIO-MENSAGEM",
 								descricao: `Cliente se enquadrou no parâmetro de nova compra ${existingClientsMap.get(OnlineSale.cliente)?.rfmTitle}.`,
-								agendamentoDataReferencia: interactionScheduleDate.toISOString(),
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 							});
 						}

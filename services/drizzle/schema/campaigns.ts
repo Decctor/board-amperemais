@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm";
 import { boolean, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { newTable, users } from ".";
+import { newTable, users, whatsappTemplates } from ".";
 import { campaignTriggerTypeEnum, interactionsCronJobTimeBlocksEnum, timeDurationUnitsEnum } from "./enums";
 
 export const campaigns = newTable("campaigns", {
@@ -19,7 +19,9 @@ export const campaigns = newTable("campaigns", {
 	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
 	execucaoAgendadaBloco: interactionsCronJobTimeBlocksEnum("execucao_agendada_bloco").notNull(),
 	// Whatsapp specific
-	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }).notNull(),
+	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 })
+		.references(() => whatsappTemplates.id)
+		.notNull(),
 	autorId: varchar("autor_id", { length: 255 })
 		.references(() => users.id)
 		.notNull(),
@@ -27,6 +29,10 @@ export const campaigns = newTable("campaigns", {
 });
 export const campaignRelations = relations(campaigns, ({ many, one }) => ({
 	segmentacoes: many(campaignSegmentations),
+	whatsappTemplate: one(whatsappTemplates, {
+		fields: [campaigns.whatsappTemplateId],
+		references: [whatsappTemplates.id],
+	}),
 	autor: one(users, {
 		fields: [campaigns.autorId],
 		references: [users.id],
