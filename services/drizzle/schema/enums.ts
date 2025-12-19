@@ -32,3 +32,9 @@ export const whatsappTemplateStatusEnum = pgEnum("whatsapp_template_status", [
 	"DESABILITADO",
 ]);
 export const whatsappTemplateQualityEnum = pgEnum("whatsapp_template_quality", ["PENDENTE", "ALTA", "MEDIA", "BAIXA"]);
+
+export const cashbackProgramAccumulationTypeEnum = pgEnum("cashback_program_accumulation_type", ["FIXO", "PERCENTUAL"]);
+
+export const cashbackProgramTransactionTypeEnum = pgEnum("cashback_program_transaction_type", ["ACÚMULO", "RESGATE", "EXPIRAÇÃO"]);
+
+export const cashbackProgramTransactionStatusEnum = pgEnum("cashback_program_transaction_status", ["ATIVO", "CONSUMIDO", "EXPIRADO"]);

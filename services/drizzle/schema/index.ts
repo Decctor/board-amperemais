@@ -12,3 +12,4 @@ export * from "./enums";
 export * from "./campaigns";
 export * from "./interactions";
 export * from "./whatsapp-templates";
+export * from "./cashback-programs";
