@@ -125,6 +125,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							telefone: OnlineSale.clientefone || OnlineSale.clientecelular || "",
 							telefoneBase: formatPhoneAsBase(OnlineSale.clientefone || OnlineSale.clientecelular || ""),
 							primeiraCompraData: saleDate,
+							ultimaCompraData: saleDate,
 						})
 						.returning({
 							id: clients.id,
@@ -135,10 +136,17 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					saleClientId = insertedClientId;
 					isNewClient = true;
 					// Add the new client to the existing clients map
-					existingClientsMap.set(OnlineSale.cliente, { id: insertedClientId, firstPurchaseDate: null, lastPurchaseDate: null, rfmTitle: "RECENTES" });
+					existingClientsMap.set(OnlineSale.cliente, {
+						id: insertedClientId,
+						firstPurchaseDate: saleDate,
+						lastPurchaseDate: saleDate,
+						rfmTitle: "CLIENTES RECENTES",
+					});
 
 					// Checking for applicable campaigns for new purchase
-					const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) => campaign.segmentacoes.some((s) => s.segmentacao === "RECENTES"));
+					const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) =>
+						campaign.segmentacoes.some((s) => s.segmentacao === "CLIENTES RECENTES"),
+					);
 					if (applicableCampaigns.length > 0) {
 						console.log(`${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`);
 						for (const campaign of applicableCampaigns) {
