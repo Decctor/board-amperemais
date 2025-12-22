@@ -1,4 +1,9 @@
-import type { TCampaignTriggerTypeEnum, TInteractionsCronJobTimeBlocksEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
+import type {
+	TCampaignTriggerTypeEnum,
+	TCashbackProgramAccumulationTypeEnum,
+	TInteractionsCronJobTimeBlocksEnum,
+	TTimeDurationUnitsEnum,
+} from "@/schemas/enums";
 
 export const CustomersAcquisitionChannels = [
 	{ id: 1, label: "ANUNCIO GOOGLE", value: "ANUNCIO GOOGLE" },
@@ -35,4 +40,9 @@ export const InteractionsCronJobTimeBlocksOptions: { id: number; label: string; 
 	{ id: 6, label: "15:00", value: "15:00" },
 	{ id: 7, label: "18:00", value: "18:00" },
 	{ id: 8, label: "21:00", value: "21:00" },
+];
+
+export const CashbackProgramAccumulationTypeOptions: { id: number; label: string; value: TCashbackProgramAccumulationTypeEnum }[] = [
+	{ id: 1, label: "FIXO", value: "FIXO" },
+	{ id: 2, label: "PERCENTUAL", value: "PERCENTUAL" },
 ];

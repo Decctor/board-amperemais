@@ -30,7 +30,7 @@ export const CashbackProgramSchema = z.object({
 			invalid_type_error: "Tipo não válido para o valor mínimo de acumulação do programa de cashback.",
 		})
 		.default(0),
-	saldoRegraValidadeValor: z
+	expiracaoRegraValidadeValor: z
 		.number({
 			required_error: "Valor de validade do saldo do programa de cashback não informado.",
 			invalid_type_error: "Tipo não válido para o valor de validade do saldo do programa de cashback.",

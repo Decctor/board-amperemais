@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { index, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { cashbackProgramBalances } from "./cashback-programs";
 import { newTable } from "./common";
 import { sales } from "./sales";
 
@@ -46,6 +47,10 @@ export const clients = newTable(
 );
 export const clientsRelations = relations(clients, ({ one, many }) => ({
 	compras: many(sales),
+	saldo: one(cashbackProgramBalances, {
+		fields: [clients.id],
+		references: [cashbackProgramBalances.clienteId],
+	}),
 }));
 export type TClientEntity = typeof clients.$inferSelect;
 export type TNewClientEntity = typeof clients.$inferInsert;

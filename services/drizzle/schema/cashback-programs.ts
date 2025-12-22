@@ -1,14 +1,10 @@
 import { relations } from "drizzle-orm";
 import { doublePrecision, timestamp } from "drizzle-orm/pg-core";
 import { boolean, text, varchar } from "drizzle-orm/pg-core";
-import {
-	cashbackProgramAccumulationTypeEnum,
-	cashbackProgramTransactionStatusEnum,
-	cashbackProgramTransactionTypeEnum,
-	clients,
-	newTable,
-	sales,
-} from ".";
+import { clients } from "./clients";
+import { newTable } from "./common";
+import { cashbackProgramAccumulationTypeEnum, cashbackProgramTransactionStatusEnum, cashbackProgramTransactionTypeEnum } from "./enums";
+import { sales } from "./sales";
 
 export const cashbackPrograms = newTable("cashback_programs", {
 	id: varchar("id", { length: 255 })
@@ -17,10 +13,10 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	ativo: boolean("ativo").notNull().default(true),
 	titulo: text("titulo").notNull(),
 	descricao: text("descricao"),
-	acumuloTipo: cashbackProgramAccumulationTypeEnum("acumulo_tipo").notNull().default("FIXO"),
+	acumuloTipo: cashbackProgramAccumulationTypeEnum().notNull().default("FIXO"),
 	acumuloValor: doublePrecision("acumulo_valor").notNull().default(0),
 	acumuloRegraValorMinimo: doublePrecision("acumulo_regra_valor_minimo").notNull().default(0),
-	saldoRegraValidadeValor: doublePrecision("saldo_regra_validade_valor").notNull().default(0),
+	expiracaoRegraValidadeValor: doublePrecision("expiracao_regra_validade_valor").notNull().default(0),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
 });

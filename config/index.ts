@@ -22,6 +22,10 @@ export const AppRoutes = [
 		title: "Campanhas",
 	},
 	{
+		path: "/dashboard/commercial/cashback-programs",
+		title: "Programas de Cashback",
+	},
+	{
 		path: "/dashboard/team/sellers",
 		title: "Vendedores",
 	},
