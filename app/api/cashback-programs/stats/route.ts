@@ -3,9 +3,9 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { PeriodQueryParamSchema } from "@/schemas/query-params-utils";
 import { db } from "@/services/drizzle";
-import { cashbackProgramTransactions } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, cashbackProgramTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq, gte, lte, sum } from "drizzle-orm";
+import { and, countDistinct, eq, gte, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -16,6 +16,14 @@ const CashbackProgramStatsInputSchema = z.object({
 export type TCashbackProgramStatsInput = z.infer<typeof CashbackProgramStatsInputSchema>;
 
 type TCashbackProgramStats = {
+	totalParticipants: {
+		atual: number;
+		anterior: number | undefined;
+	};
+	totalNewParticipants: {
+		atual: number;
+		anterior: number | undefined;
+	};
 	totalCashbackGenerated: {
 		atual: number;
 		anterior: number | undefined;
@@ -53,7 +61,7 @@ async function getCashbackProgramStats({
 	const ajustedBefore = dayjs(input.period.before).endOf("day").toDate();
 
 	// Calculate current period stats
-	const [generatedResult, rescuedResult, expiredResult] = await Promise.all([
+	const [generatedResult, rescuedResult, expiredResult, participantsResult, newParticipantsResult] = await Promise.all([
 		// Total cashback generated (ACÚMULO)
 		db
 			.select({ total: sum(cashbackProgramTransactions.valor) })
@@ -87,6 +95,16 @@ async function getCashbackProgramStats({
 					lte(cashbackProgramTransactions.dataInsercao, ajustedBefore),
 				),
 			),
+		// Total participants
+		db
+			.select({ total: countDistinct(cashbackProgramBalances.clienteId) })
+			.from(cashbackProgramBalances)
+			.where(and(lte(cashbackProgramBalances.dataInsercao, ajustedBefore))),
+		// Total new participants
+		db
+			.select({ total: countDistinct(cashbackProgramBalances.clienteId) })
+			.from(cashbackProgramBalances)
+			.where(and(gte(cashbackProgramBalances.dataInsercao, ajustedAfter), lte(cashbackProgramBalances.dataInsercao, ajustedBefore))),
 	]);
 
 	// Total expiring cashback (within 30 days and ATIVO)
@@ -100,7 +118,8 @@ async function getCashbackProgramStats({
 	const currentRescued = rescuedResult[0]?.total ? Number(rescuedResult[0].total) : 0;
 	const currentExpired = expiredResult[0]?.total ? Number(expiredResult[0].total) : 0;
 	const currentExpiring = expiringResult[0]?.total ? Number(expiringResult[0].total) : 0;
-
+	const currentParticipants = participantsResult[0]?.total ? Number(participantsResult[0].total) : 0;
+	const currentNewParticipants = newParticipantsResult[0]?.total ? Number(newParticipantsResult[0].total) : 0;
 	const currentRedemptionRate = currentGenerated > 0 ? (currentRescued / currentGenerated) * 100 : 0;
 
 	// Calculate previous period stats
@@ -108,7 +127,7 @@ async function getCashbackProgramStats({
 	const previousPeriodAfter = dayjs(input.period.after).subtract(dateDiff, "days").toDate();
 	const previousPeriodBefore = dayjs(input.period.before).subtract(dateDiff, "days").endOf("day").toDate();
 
-	const [prevGeneratedResult, prevRescuedResult, prevExpiredResult] = await Promise.all([
+	const [prevGeneratedResult, prevRescuedResult, prevExpiredResult, prevParticipantsResult, prevNewParticipantsResult] = await Promise.all([
 		// Previous total cashback generated
 		db
 			.select({ total: sum(cashbackProgramTransactions.valor) })
@@ -142,15 +161,34 @@ async function getCashbackProgramStats({
 					lte(cashbackProgramTransactions.dataInsercao, previousPeriodBefore),
 				),
 			),
+		// Previous total participants
+		db
+			.select({ total: countDistinct(cashbackProgramBalances.clienteId) })
+			.from(cashbackProgramBalances)
+			.where(and(lte(cashbackProgramBalances.dataInsercao, previousPeriodBefore))),
+		// Previous total new participants
+		db
+			.select({ total: countDistinct(cashbackProgramBalances.clienteId) })
+			.from(cashbackProgramBalances)
+			.where(and(gte(cashbackProgramBalances.dataInsercao, previousPeriodAfter), lte(cashbackProgramBalances.dataInsercao, previousPeriodBefore))),
 	]);
 
 	const previousGenerated = prevGeneratedResult[0]?.total ? Number(prevGeneratedResult[0].total) : 0;
 	const previousRescued = prevRescuedResult[0]?.total ? Number(prevRescuedResult[0].total) : 0;
 	const previousExpired = prevExpiredResult[0]?.total ? Number(prevExpiredResult[0].total) : 0;
 	const previousRedemptionRate = previousGenerated > 0 ? (previousRescued / previousGenerated) * 100 : 0;
-
+	const previousParticipants = prevParticipantsResult[0]?.total ? Number(prevParticipantsResult[0].total) : 0;
+	const previousNewParticipants = prevNewParticipantsResult[0]?.total ? Number(prevNewParticipantsResult[0].total) : 0;
 	return {
 		data: {
+			totalParticipants: {
+				atual: currentParticipants,
+				anterior: previousParticipants,
+			},
+			totalNewParticipants: {
+				atual: currentNewParticipants,
+				anterior: previousNewParticipants,
+			},
 			totalCashbackGenerated: {
 				atual: currentGenerated,
 				anterior: previousGenerated,

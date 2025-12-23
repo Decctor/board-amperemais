@@ -1,5 +1,6 @@
 import type { TTopCashbackClientsInput, TTopCashbackClientsOutput } from "@/app/api/cashback-programs/clients/top/route";
 import type { TGetCashbackProgramOutput } from "@/app/api/cashback-programs/route";
+import type { TCashbackProgramsGraphInput, TCashbackProgramsGraphOutput } from "@/app/api/cashback-programs/stats/graph/route";
 import type { TCashbackProgramStatsInput, TCashbackProgramStatsOutput } from "@/app/api/cashback-programs/stats/route";
 import type { TCashbackProgramTransactionsInput, TCashbackProgramTransactionsOutput } from "@/app/api/cashback-programs/transactions/route";
 import { useQuery } from "@tanstack/react-query";
@@ -83,5 +84,24 @@ export function useTopCashbackClients(params: TTopCashbackClientsInput) {
 			queryFn: () => fetchTopCashbackClients(params),
 		}),
 		queryKey: ["cashback-program-top-clients", params],
+	};
+}
+
+async function fetchCashbackProgramsGraph(params: TCashbackProgramsGraphInput) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("graphType", params.graphType);
+	if (params.periodAfter) searchParams.set("periodAfter", params.periodAfter.toISOString());
+	if (params.periodBefore) searchParams.set("periodBefore", params.periodBefore.toISOString());
+	const { data } = await axios.get<TCashbackProgramsGraphOutput>(`/api/cashback-programs/stats/graph?${searchParams.toString()}`);
+	return data.data;
+}
+
+export function useCashbackProgramsGraph(params: TCashbackProgramsGraphInput) {
+	return {
+		...useQuery({
+			queryKey: ["cashback-programs-graph", params],
+			queryFn: () => fetchCashbackProgramsGraph(params),
+		}),
+		queryKey: ["cashback-programs-graph", params],
 	};
 }
