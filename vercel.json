@@ -7,6 +7,22 @@
 		{
 			"path": "/api/cron/rfm-analysis",
 			"schedule": "0 5 * * *"
+		},
+		{
+			"path": "/api/cron/daily-report",
+			"schedule": "0 6 * * *"
+		},
+		{
+			"path": "/api/cron/weekly-report",
+			"schedule": "0 6 * * 0"
+		},
+		{
+			"path": "/api/cron/monthly-report",
+			"schedule": "0 6 1 * *"
+		},
+		{
+			"path": "/api/cron/process-interactions",
+			"schedule": "0 */3 * * *"
 		}
 	]
 }
