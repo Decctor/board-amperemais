@@ -47,10 +47,7 @@ export const clients = newTable(
 );
 export const clientsRelations = relations(clients, ({ one, many }) => ({
 	compras: many(sales),
-	saldo: one(cashbackProgramBalances, {
-		fields: [clients.id],
-		references: [cashbackProgramBalances.clienteId],
-	}),
+	saldos: many(cashbackProgramBalances),
 }));
 export type TClientEntity = typeof clients.$inferSelect;
 export type TNewClientEntity = typeof clients.$inferInsert;

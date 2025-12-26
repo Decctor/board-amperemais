@@ -2,7 +2,7 @@
 	"crons": [
 		{
 			"path": "/api/cron/data-collecting",
-			"schedule": "0 23 * * *"
+			"schedule": "*/5 * * * *"
 		},
 		{
 			"path": "/api/cron/rfm-analysis",

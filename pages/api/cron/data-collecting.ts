@@ -2,11 +2,22 @@ import { getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { db } from "@/services/drizzle";
-import { clients, interactions, partners, products, saleItems, sales, sellers, utils } from "@/services/drizzle/schema";
+import {
+	cashbackProgramBalances,
+	cashbackProgramTransactions,
+	clients,
+	interactions,
+	partners,
+	products,
+	saleItems,
+	sales,
+	sellers,
+	utils,
+} from "@/services/drizzle/schema";
 import axios from "axios";
 import dayjs from "dayjs";
 import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -61,6 +72,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		const OnlineSoftwareSalesIds = OnlineSoftwareSales.map((sale) => sale.id);
 
 		return await db.transaction(async (tx) => {
+			const cashbackProgram = await tx.query.cashbackPrograms.findFirst({});
+
 			const existingSales = await tx.query.sales.findMany({
 				where: (fields, { inArray }) => inArray(fields.idExterno, OnlineSoftwareSalesIds),
 				with: {
@@ -95,22 +108,43 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					identificador: true,
 				},
 			});
+			const existingCashbackProgramBalances = cashbackProgram
+				? await tx.query.cashbackProgramBalances.findMany({
+						where: (fields, { eq }) => eq(fields.programaId, cashbackProgram.id),
+						columns: {
+							programaId: true,
+							clienteId: true,
+							saldoValorDisponivel: true,
+							saldoValorAcumuladoTotal: true,
+						},
+					})
+				: [];
 
 			const existingSalesMap = new Map(existingSales.map((sale) => [sale.idExterno, sale]));
 			const existingClientsMap = new Map(
 				existingClients.map((client) => [
 					client.nome,
-					{ id: client.id, firstPurchaseDate: client.primeiraCompraData, lastPurchaseDate: client.ultimaCompraData, rfmTitle: client.analiseRFMTitulo },
+					{
+						id: client.id,
+						firstPurchaseDate: client.primeiraCompraData,
+						lastPurchaseDate: client.ultimaCompraData,
+						rfmTitle: client.analiseRFMTitulo,
+					},
 				]),
 			);
 			const existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
 			const existingSellersMap = new Map(existingSellers.map((seller) => [seller.nome, seller.id]));
 			const existingPartnersMap = new Map(existingPartners.map((partner) => [partner.identificador, partner.id]));
+			const existingCashbackProgramBalancesMap = new Map(existingCashbackProgramBalances.map((balance) => [balance.clienteId, balance]));
+
+			let createdSalesCount = 0;
+			let updatedSalesCount = 0;
 			for (const OnlineSale of OnlineSoftwareSales) {
 				let isNewClient = false;
 				let isNewSale = false;
 
 				const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
+				const isValidSale = OnlineSale.natureza === "SN01";
 				// First, we check for an existing client with the same name (in this case, our primary key for the integration)
 				const equivalentSaleClient = existingClientsMap.get(OnlineSale.cliente);
 				// Initalize the saleClientId holder with the existing client (if any)
@@ -124,8 +158,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							nome: OnlineSale.cliente,
 							telefone: OnlineSale.clientefone || OnlineSale.clientecelular || "",
 							telefoneBase: formatPhoneAsBase(OnlineSale.clientefone || OnlineSale.clientecelular || ""),
-							primeiraCompraData: saleDate,
-							ultimaCompraData: saleDate,
+							primeiraCompraData: isValidSale ? saleDate : null,
+							ultimaCompraData: isValidSale ? saleDate : null,
 						})
 						.returning({
 							id: clients.id,
@@ -138,8 +172,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					// Add the new client to the existing clients map
 					existingClientsMap.set(OnlineSale.cliente, {
 						id: insertedClientId,
-						firstPurchaseDate: saleDate,
-						lastPurchaseDate: saleDate,
+						firstPurchaseDate: isValidSale ? saleDate : null,
+						lastPurchaseDate: isValidSale ? saleDate : null,
 						rfmTitle: "CLIENTES RECENTES",
 					});
 
@@ -147,7 +181,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) =>
 						campaign.segmentacoes.some((s) => s.segmentacao === "CLIENTES RECENTES"),
 					);
-					if (applicableCampaigns.length > 0) {
+					if (applicableCampaigns.length > 0 && isValidSale) {
 						console.log(`${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`);
 						for (const campaign of applicableCampaigns) {
 							// For the applicable campaigns, we will iterate over them and schedule the interactions
@@ -165,6 +199,22 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 							});
 						}
+					}
+
+					if (cashbackProgram) {
+						// If there is a cashback program, we need to create a new balance for the client
+						await tx.insert(cashbackProgramBalances).values({
+							clienteId: insertedClientId,
+							programaId: cashbackProgram.id,
+							saldoValorDisponivel: 0,
+							saldoValorAcumuladoTotal: 0,
+						});
+						existingCashbackProgramBalancesMap.set(insertedClientId, {
+							clienteId: insertedClientId,
+							programaId: cashbackProgram.id,
+							saldoValorDisponivel: 0,
+							saldoValorAcumuladoTotal: 0,
+						});
 					}
 				}
 
@@ -308,6 +358,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					}
 					// Defining the saleId
 					saleId = insertedSaleId;
+					createdSalesCount++;
 				} else {
 					isNewSale = false; // É APENAS ATUALIZAÇÃO
 					console.log(`[INFO] [DATA_COLLECTING] [SALE] Updating sale ${OnlineSale.id} with ${OnlineSale.itens.length} items...`);
@@ -409,10 +460,11 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					}
 					// Defining the saleId
 					saleId = existingSale.id;
+					updatedSalesCount++;
 				}
 
 				// Checking for applicable campaigns for new purchase
-				if (isNewSale && !isNewClient) {
+				if (isNewSale && !isNewClient && isValidSale) {
 					const applicableCampaigns = campaignsForNewPurchase.filter((campaign) =>
 						campaign.segmentacoes.some((s) => s.segmentacao === existingClientsMap.get(OnlineSale.cliente)?.rfmTitle),
 					);
@@ -436,14 +488,71 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						}
 					}
 				}
+				// Checking for applicable cashback program balance updates
+				if (cashbackProgram && isValidSale && isNewSale) {
+					const clientCashbackProgramBalance = existingCashbackProgramBalancesMap.get(saleClientId);
 
-				await tx
-					.update(clients)
-					.set({
-						ultimaCompraData: saleDate,
-						ultimaCompraId: saleId,
-					})
-					.where(eq(clients.id, saleClientId));
+					if (clientCashbackProgramBalance) {
+						const saleValue = Number(OnlineSale.valor);
+						const previousOverallAvailableBalance = clientCashbackProgramBalance.saldoValorDisponivel;
+						const previousOverallAccumulatedBalance = clientCashbackProgramBalance.saldoValorAcumuladoTotal;
+
+						let accumulatedBalance = 0;
+						if (cashbackProgram.acumuloTipo === "FIXO") {
+							if (saleValue >= cashbackProgram.acumuloRegraValorMinimo) {
+								accumulatedBalance = cashbackProgram.acumuloValor;
+							}
+						} else if (cashbackProgram.acumuloTipo === "PERCENTUAL") {
+							if (saleValue >= cashbackProgram.acumuloRegraValorMinimo) {
+								accumulatedBalance = (saleValue * cashbackProgram.acumuloValor) / 100;
+							}
+						}
+
+						const newOverallAvailableBalance = previousOverallAvailableBalance + accumulatedBalance;
+						const newOverallAccumulatedBalance = previousOverallAccumulatedBalance + accumulatedBalance;
+
+						if (accumulatedBalance > 0) {
+							await tx
+								.update(cashbackProgramBalances)
+								.set({
+									saldoValorDisponivel: newOverallAvailableBalance,
+									saldoValorAcumuladoTotal: newOverallAccumulatedBalance,
+								})
+								.where(and(eq(cashbackProgramBalances.clienteId, saleClientId), eq(cashbackProgramBalances.programaId, cashbackProgram.id)));
+
+							await tx.insert(cashbackProgramTransactions).values({
+								clienteId: saleClientId,
+								vendaId: saleId,
+								programaId: cashbackProgram.id,
+								tipo: "ACÚMULO",
+								valor: accumulatedBalance,
+								valorRestante: accumulatedBalance,
+								saldoValorAnterior: previousOverallAvailableBalance,
+								saldoValorPosterior: newOverallAvailableBalance,
+								expiracaoData: dayjs().add(cashbackProgram.expiracaoRegraValidadeValor, "day").toDate(),
+								dataInsercao: saleDate,
+								status: "ATIVO",
+							});
+
+							// Update the map for subsequent iterations
+							existingCashbackProgramBalancesMap.set(saleClientId, {
+								clienteId: saleClientId,
+								programaId: cashbackProgram.id,
+								saldoValorDisponivel: newOverallAvailableBalance,
+								saldoValorAcumuladoTotal: newOverallAccumulatedBalance,
+							});
+						}
+					}
+				}
+				if (isValidSale) {
+					await tx
+						.update(clients)
+						.set({
+							ultimaCompraData: saleDate,
+							ultimaCompraId: saleId,
+						})
+						.where(eq(clients.id, saleClientId));
+				}
 			}
 			// Return a success response
 			return res.status(201).json("EXECUTADO COM SUCESSO");
