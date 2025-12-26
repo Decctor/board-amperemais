@@ -91,5 +91,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	};
 
 	await saveCredentialsToDB(whatsappConnection);
-	return res.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/configuracoes?mode=whatsapp-connection`);
+	return res.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?view=meta-oauth`);	
 }
