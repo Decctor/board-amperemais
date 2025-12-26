@@ -110,11 +110,6 @@ function WhatsappTemplateCard({ whatsappTemplate }: WhatsappTemplateCardProps) {
 						<Diamond className="w-4 h-4 min-w-4 min-h-4" />
 						<p className="text-xs font-medium text-primary/80">{whatsappTemplate.categoria}</p>
 					</div>
-
-					<div className="flex items-center gap-1">
-						<Variable className="w-4 h-4 min-w-4 min-h-4" />
-						<p className="text-xs font-medium text-primary/80">{whatsappTemplate.parametrosTipo}</p>
-					</div>
 					<div className="flex items-center gap-1">
 						<CircleGauge className="w-4 h-4 min-w-4 min-h-4" />
 						<p className="text-xs font-medium text-primary/80">{whatsappTemplate.qualidade}</p>
