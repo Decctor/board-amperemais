@@ -348,6 +348,7 @@ export const createTemplateMessage = mutation({
 			ultimaMensagemId: messageId,
 			ultimaMensagemData: Date.now(),
 			ultimaMensagemConteudoTexto: templatePayloadContent,
+			ultimaMensagemConteudoTipo: "TEXTO",
 			status: "ABERTA", // Reopen conversation after template
 			ultimaInteracaoClienteData: Date.now(), // Reset 24h timer
 		});
