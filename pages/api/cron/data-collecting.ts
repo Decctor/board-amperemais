@@ -554,6 +554,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						.where(eq(clients.id, saleClientId));
 				}
 			}
+
+			console.log(`[INFO] [DATA_COLLECTING] [SALES] Created ${createdSalesCount} sales and updated ${updatedSalesCount} sales.`);
 			// Return a success response
 			return res.status(201).json("EXECUTADO COM SUCESSO");
 		});
