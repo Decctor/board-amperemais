@@ -43,7 +43,7 @@ export type TSalesGraphOutput = {
 	};
 	meta: number;
 }[];
-async function fetchSalesGraph(req: NextApiRequest) {
+async function fetchSalesGraph(req: NextApiRequest, organizacaoId: string) {
 	const filters = SalesGraphFilterSchema.parse(req.body);
 
 	const currentPeriodAjusted = {
@@ -74,11 +74,13 @@ async function fetchSalesGraph(req: NextApiRequest) {
 				before: currentPeriodAjusted.before.toISOString(),
 			},
 		},
+		organizacaoId,
 	});
 
 	const salesGoal = await getSalesGoal({
 		after: currentPeriodAjusted.after.toISOString(),
 		before: currentPeriodAjusted.before.toISOString(),
+		organizacaoId,
 	});
 
 	const previousYearPeriodDatesStrs = getEvenlySpacedDates({
@@ -97,6 +99,7 @@ async function fetchSalesGraph(req: NextApiRequest) {
 				before: previousYearPeriodAjusted.before.toISOString(),
 			},
 		},
+		organizacaoId,
 	});
 
 	const initialSalesReduced: TSalesGraphReduced = Object.fromEntries(
@@ -150,7 +153,11 @@ const handleGetStatsComparisonRoute: NextApiHandler<{
 }> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const salesGraph = await fetchSalesGraph(req);
+
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const salesGraph = await fetchSalesGraph(req, userOrgId);
 
 	return res.status(200).json({
 		data: salesGraph,
@@ -161,12 +168,13 @@ export default apiHandler({ POST: handleGetStatsComparisonRoute });
 
 type GetSalesGroupedParams = {
 	filters: TSalesGraphFilters;
+	organizacaoId: string;
 };
-async function getSalesGrouped({ filters }: GetSalesGroupedParams) {
+async function getSalesGrouped({ filters, organizacaoId }: GetSalesGroupedParams) {
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
 	try {
-		const conditions = [];
+		const conditions = [eq(sales.organizacaoId, organizacaoId)];
 		if (ajustedAfter) conditions.push(gte(sales.dataVenda, ajustedAfter));
 		if (ajustedBefore) conditions.push(lte(sales.dataVenda, ajustedBefore));
 		if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
@@ -177,11 +185,15 @@ async function getSalesGrouped({ filters }: GetSalesGroupedParams) {
 		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 
 		if (filters.clientRFMTitles.length > 0)
-			exists(
-				db
-					.select({ id: clients.id })
-					.from(clients)
-					.where(and(eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles))),
+			conditions.push(
+				exists(
+					db
+						.select({ id: clients.id })
+						.from(clients)
+						.where(
+							and(eq(clients.organizacaoId, organizacaoId), eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles)),
+						),
+				),
 			);
 		// How to apply filter for product groups present in sale ???
 
@@ -225,16 +237,20 @@ async function getSalesGrouped({ filters }: GetSalesGroupedParams) {
 type GetSalesGoalProps = {
 	after: string;
 	before: string;
+	organizacaoId: string;
 };
-async function getSalesGoal({ after, before }: GetSalesGoalProps) {
+async function getSalesGoal({ after, before, organizacaoId }: GetSalesGoalProps) {
 	const ajustedAfter = after;
 	const ajustedBefore = dayjs(before).endOf("day").toISOString();
 	try {
 		const goals = await db.query.goals.findMany({
-			where: (fields, { and, or, gte, lte }) =>
-				or(
-					and(gte(fields.dataInicio, new Date(ajustedAfter)), lte(fields.dataInicio, new Date(ajustedBefore))),
-					and(gte(fields.dataFim, new Date(ajustedAfter)), lte(fields.dataFim, new Date(ajustedBefore))),
+			where: (fields, { and, or, gte, lte, eq }) =>
+				and(
+					eq(fields.organizacaoId, organizacaoId),
+					or(
+						and(gte(fields.dataInicio, new Date(ajustedAfter)), lte(fields.dataInicio, new Date(ajustedBefore))),
+						and(gte(fields.dataFim, new Date(ajustedAfter)), lte(fields.dataFim, new Date(ajustedBefore))),
+					),
 				),
 		});
 

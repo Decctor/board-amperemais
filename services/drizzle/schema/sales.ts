@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { newTable } from "./common";
+import { organizations } from "./organizations";
 import { partners } from "./partners";
 import { products } from "./products";
 import { sellers } from "./sellers";
@@ -12,6 +13,7 @@ export const sales = newTable(
 		id: varchar("id", { length: 255 })
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 		clienteId: varchar("cliente_id", { length: 255 })
 			.references(() => clients.id)
 			.notNull(),
@@ -68,6 +70,7 @@ export const saleItems = newTable(
 		id: varchar("id", { length: 255 })
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 		vendaId: varchar("venda_id", { length: 255 })
 			.references(() => sales.id, { onDelete: "cascade" })
 			.notNull(),

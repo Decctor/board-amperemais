@@ -50,15 +50,18 @@ type GetSellerStatsParams = {
 };
 
 async function getSellerStats({ user, input }: GetSellerStatsParams) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const seller = await db.query.sellers.findFirst({
-		where: eq(sellers.id, input.sellerId),
+		where: and(eq(sellers.id, input.sellerId), eq(sellers.organizacaoId, userOrgId)),
 	});
 	if (!seller) throw new createHttpError.NotFound("Vendedor não encontrado.");
 
 	const periodAfterDate = input.periodAfter ? new Date(input.periodAfter) : undefined;
 	const periodBeforeDate = input.periodBefore ? new Date(input.periodBefore) : undefined;
 
-	const saleWhereConditions = [eq(sales.vendedorId, input.sellerId), isNotNull(sales.dataVenda)] as const;
+	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.vendedorId, input.sellerId), isNotNull(sales.dataVenda)] as const;
 	const saleWhere = and(
 		...saleWhereConditions,
 		periodAfterDate ? gte(sales.dataVenda, periodAfterDate) : undefined,
@@ -69,6 +72,7 @@ async function getSellerStats({ user, input }: GetSellerStatsParams) {
 		sellerId: input.sellerId,
 		periodAfter: input.periodAfter ?? null,
 		periodBefore: input.periodBefore ?? null,
+		organizacaoId: userOrgId,
 	});
 	// Quantitative: total sold, sales count
 	const totalStatsResult = await db
@@ -94,7 +98,12 @@ async function getSellerStats({ user, input }: GetSellerStatsParams) {
 	const totalSalesItemsResult = await db
 		.select({ total: sum(saleItems.quantidade) })
 		.from(saleItems)
-		.where(inArray(saleItems.vendaId, db.select({ id: sales.id }).from(sales).where(saleWhere)));
+		.where(
+			and(
+				eq(saleItems.organizacaoId, userOrgId),
+				inArray(saleItems.vendaId, db.select({ id: sales.id }).from(sales).where(saleWhere)),
+			),
+		);
 	const totalSalesItems = totalSalesItemsResult[0]?.total ? Number(totalSalesItemsResult[0].total) : 0;
 
 	const avgSalesItemsPerSale = totalSalesItems / salesCount;
@@ -104,7 +113,7 @@ async function getSellerStats({ user, input }: GetSellerStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(products, eq(saleItems.produtoId, products.id))
-		.where(saleWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), saleWhere))
 		.groupBy(products.grupo)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(10);
@@ -119,7 +128,7 @@ async function getSellerStats({ user, input }: GetSellerStatsParams) {
 		})
 		.from(sales)
 		.leftJoin(clients, eq(sales.clienteId, clients.id))
-		.where(saleWhere)
+		.where(and(eq(clients.organizacaoId, userOrgId), saleWhere))
 		.groupBy(sales.clienteId, clients.nome)
 		.orderBy(desc(sql`sum(${sales.valorTotal})`))
 		.limit(10);
@@ -136,7 +145,7 @@ async function getSellerStats({ user, input }: GetSellerStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(products, eq(saleItems.produtoId, products.id))
-		.where(saleWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), saleWhere))
 		.groupBy(saleItems.produtoId, products.descricao, products.grupo)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(10);
@@ -243,7 +252,8 @@ async function getSellerSaleGoal({
 	sellerId,
 	periodAfter,
 	periodBefore,
-}: { sellerId: string; periodAfter: string | null; periodBefore: string | null }) {
+	organizacaoId,
+}: { sellerId: string; periodAfter: string | null; periodBefore: string | null; organizacaoId: string }) {
 	if (!periodAfter || !periodBefore) return 0;
 
 	const ajustedAfter = new Date(periodAfter);
@@ -258,9 +268,12 @@ async function getSellerSaleGoal({
 					.select({ id: goals.id })
 					.from(goals)
 					.where(
-						or(
-							and(gte(goals.dataInicio, ajustedAfter), lte(goals.dataInicio, ajustedBefore)),
-							and(gte(goals.dataFim, ajustedAfter), lte(goals.dataFim, ajustedBefore)),
+						and(
+							eq(goals.organizacaoId, organizacaoId),
+							or(
+								and(gte(goals.dataInicio, ajustedAfter), lte(goals.dataInicio, ajustedBefore)),
+								and(gte(goals.dataFim, ajustedAfter), lte(goals.dataFim, ajustedBefore)),
+							),
 						),
 					),
 			),

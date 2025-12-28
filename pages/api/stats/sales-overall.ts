@@ -54,6 +54,9 @@ const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
 	console.log("[INFO] [GET_SALES_OVERALL_STATS] Filters payload: ", filters);
 
@@ -61,6 +64,7 @@ const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 	const overallSaleGoal = await getOverallSaleGoal({
 		after: filters.period.after,
 		before: filters.period.before,
+		organizacaoId: userOrgId,
 	});
 
 	// const stats = sales.reduce(
@@ -86,7 +90,7 @@ const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 	// 	} as TOverallSalesStatsReduced,
 	// );
 
-	const stats = await getOverallStats(filters);
+	const stats = await getOverallStats(filters, userOrgId);
 	const overallStats: TOverallSalesStats = {
 		faturamentoMetaPorcentagem: (stats.faturamento.atual / overallSaleGoal) * 100,
 		faturamento: stats.faturamento,
@@ -191,16 +195,20 @@ async function getSales({ filters }: GetSalesParams) {
 type GetOverallSaleGoalProps = {
 	after: string;
 	before: string;
+	organizacaoId: string;
 };
-async function getOverallSaleGoal({ after, before }: GetOverallSaleGoalProps) {
+async function getOverallSaleGoal({ after, before, organizacaoId }: GetOverallSaleGoalProps) {
 	const ajustedAfter = dayjs(after).toDate();
 	const ajustedBefore = dayjs(before).endOf("day").toDate();
 	try {
 		const goals = await db.query.goals.findMany({
-			where: (fields, { and, or, gte, lte }) =>
-				or(
-					and(gte(fields.dataInicio, ajustedAfter), lte(fields.dataInicio, ajustedBefore)),
-					and(gte(fields.dataFim, ajustedAfter), lte(fields.dataFim, ajustedBefore)),
+			where: (fields, { and, or, gte, lte, eq }) =>
+				and(
+					eq(fields.organizacaoId, organizacaoId),
+					or(
+						and(gte(fields.dataInicio, ajustedAfter), lte(fields.dataInicio, ajustedBefore)),
+						and(gte(fields.dataFim, ajustedAfter), lte(fields.dataFim, ajustedBefore)),
+					),
 				),
 		});
 
@@ -247,8 +255,8 @@ async function getOverallSaleGoal({ after, before }: GetOverallSaleGoalProps) {
 	}
 }
 
-export async function getOverallStats(filters: TSaleStatsGeneralQueryParams) {
-	const conditions = [];
+export async function getOverallStats(filters: TSaleStatsGeneralQueryParams, organizacaoId: string) {
+	const conditions = [eq(sales.organizacaoId, organizacaoId)];
 
 	if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
 	if (filters.total.max) conditions.push(gte(sales.valorTotal, filters.total.max));
@@ -260,7 +268,9 @@ export async function getOverallStats(filters: TSaleStatsGeneralQueryParams) {
 				db
 					.select({ id: clients.id })
 					.from(clients)
-					.where(and(eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles))),
+					.where(
+						and(eq(clients.organizacaoId, organizacaoId), eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles)),
+					),
 			),
 		);
 	if (filters.excludedSalesIds) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
@@ -292,18 +302,21 @@ export async function getOverallStats(filters: TSaleStatsGeneralQueryParams) {
 		})
 		.from(saleItems)
 		.where(
-			inArray(
-				saleItems.vendaId,
-				db
-					.select({ id: sales.id })
-					.from(sales)
-					.where(
-						and(
-							...conditions,
-							filters.period.after ? gte(sales.dataVenda, new Date(filters.period.after)) : undefined,
-							filters.period.before ? lte(sales.dataVenda, new Date(filters.period.before)) : undefined,
+			and(
+				eq(saleItems.organizacaoId, organizacaoId),
+				inArray(
+					saleItems.vendaId,
+					db
+						.select({ id: sales.id })
+						.from(sales)
+						.where(
+							and(
+								...conditions,
+								filters.period.after ? gte(sales.dataVenda, new Date(filters.period.after)) : undefined,
+								filters.period.before ? lte(sales.dataVenda, new Date(filters.period.before)) : undefined,
+							),
 						),
-					),
+				),
 			),
 		);
 
@@ -368,12 +381,15 @@ export async function getOverallStats(filters: TSaleStatsGeneralQueryParams) {
 		})
 		.from(saleItems)
 		.where(
-			inArray(
-				saleItems.vendaId,
-				db
-					.select({ id: sales.id })
-					.from(sales)
-					.where(and(...conditions, gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore))),
+			and(
+				eq(saleItems.organizacaoId, organizacaoId),
+				inArray(
+					saleItems.vendaId,
+					db
+						.select({ id: sales.id })
+						.from(sales)
+						.where(and(...conditions, gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore))),
+				),
 			),
 		);
 

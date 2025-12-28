@@ -5,7 +5,7 @@ import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { GoalSchema, GoalSellerSchema } from "@/schemas/goals";
 import { db } from "@/services/drizzle";
 import { goals, goalsSellers } from "@/services/drizzle/schema/goals";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -32,13 +32,16 @@ const GetGoalsInputSchema = z.object({
 export type TGetGoalsByIdInput = Pick<TGetGoalsInput, "id">;
 export type TGetGoalsInput = z.infer<typeof GetGoalsInputSchema>;
 async function getGoals({ input, user }: { input: TGetGoalsInput; user: TAuthUserSession["user"] }) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const { id } = input;
 
 	if (id) {
 		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
 
 		const goal = await db.query.goals.findFirst({
-			where: (fields, { eq }) => eq(fields.id, id),
+			where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
 			with: {
 				vendedores: {
 					with: {
@@ -63,6 +66,7 @@ async function getGoals({ input, user }: { input: TGetGoalsInput; user: TAuthUse
 	}
 
 	const goals = await db.query.goals.findMany({
+		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
 		with: {
 			vendedores: {
 				with: {
@@ -104,12 +108,18 @@ const CreateGoalInputSchema = z.object({
 export type TCreateGoalInput = z.infer<typeof CreateGoalInputSchema>;
 
 async function createGoal({ input, user }: { input: TCreateGoalInput; user: TAuthUserSession["user"] }) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const { goal: payloadGoal, goalSellers: payloadGoalSellers } = input;
 
 	return await db.transaction(async (tx) => {
-		const insertedGoalResponse = await tx.insert(goals).values(payloadGoal).returning({
-			id: goals.id,
-		});
+		const insertedGoalResponse = await tx
+			.insert(goals)
+			.values({ ...payloadGoal, organizacaoId: userOrgId })
+			.returning({
+				id: goals.id,
+			});
 		const insertedGoal = insertedGoalResponse[0];
 		if (!insertedGoal) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar meta.");
 		const insertedGoalId = insertedGoal.id;
@@ -118,6 +128,7 @@ async function createGoal({ input, user }: { input: TCreateGoalInput; user: TAut
 				payloadGoalSellers.map((goalSeller) => ({
 					...goalSeller,
 					metaId: insertedGoalId,
+					organizacaoId: userOrgId,
 				})),
 			);
 		}
@@ -167,14 +178,21 @@ const UpdateGoalInputSchema = z.object({
 export type TUpdateGoalInput = z.infer<typeof UpdateGoalInputSchema>;
 
 async function updateGoal({ input, user }: { input: TUpdateGoalInput; user: TAuthUserSession["user"] }) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const { goalId, goal: payloadGoal, goalSellers: payloadGoalSellers } = input;
 
 	return await db.transaction(async (tx) => {
-		const updatedGoalResponse = await tx.update(goals).set(payloadGoal).where(eq(goals.id, goalId)).returning({
-			id: goals.id,
-		});
+		const updatedGoalResponse = await tx
+			.update(goals)
+			.set({ ...payloadGoal, organizacaoId: userOrgId })
+			.where(and(eq(goals.id, goalId), eq(goals.organizacaoId, userOrgId)))
+			.returning({
+				id: goals.id,
+			});
 		const updatedGoal = updatedGoalResponse[0];
-		if (!updatedGoal) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar meta.");
+		if (!updatedGoal) throw new createHttpError.NotFound("Meta não encontrada.");
 		const updatedGoalId = updatedGoal.id;
 		await handleSimpleChildRowsProcessing({
 			trx: tx,
@@ -182,6 +200,7 @@ async function updateGoal({ input, user }: { input: TUpdateGoalInput; user: TAut
 			entities: payloadGoalSellers,
 			fatherEntityKey: "metaId",
 			fatherEntityId: updatedGoalId,
+			organizacaoId: userOrgId,
 		});
 		return {
 			data: {
@@ -209,11 +228,20 @@ const DeleteGoalInputSchema = z.object({
 export type TDeleteGoalInput = z.infer<typeof DeleteGoalInputSchema>;
 
 async function deleteGoal({ input, user }: { input: TDeleteGoalInput; user: TAuthUserSession["user"] }) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const { goalId } = input;
 
 	return await db.transaction(async (tx) => {
+		// Verificar se a meta pertence à organização antes de deletar
+		const goal = await tx.query.goals.findFirst({
+			where: and(eq(goals.id, goalId), eq(goals.organizacaoId, userOrgId)),
+		});
+		if (!goal) throw new createHttpError.NotFound("Meta não encontrada.");
+
 		await tx.delete(goalsSellers).where(eq(goalsSellers.metaId, goalId));
-		await tx.delete(goals).where(eq(goals.id, goalId));
+		await tx.delete(goals).where(and(eq(goals.id, goalId), eq(goals.organizacaoId, userOrgId)));
 		return {
 			data: {
 				deletedId: goalId,

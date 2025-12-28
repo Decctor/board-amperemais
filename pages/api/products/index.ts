@@ -102,12 +102,15 @@ type GetProductsParams = {
 };
 
 async function getProducts({ input, user }: GetProductsParams) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	console.log("[INFO] [GET PRODUCTS] Input:", input);
 
 	if ("id" in input) {
 		console.log("[INFO] [GET PRODUCTS] Getting product by id:", input.id);
 		const product = await db.query.products.findFirst({
-			where: (fields, { eq }) => eq(fields.id, input.id),
+			where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, userOrgId)),
 		});
 		if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
 
@@ -119,7 +122,7 @@ async function getProducts({ input, user }: GetProductsParams) {
 		};
 	}
 
-	const productQueryConditions = [];
+	const productQueryConditions = [eq(products.organizacaoId, userOrgId)];
 	if (input.search) {
 		productQueryConditions.push(
 			sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`,
@@ -129,7 +132,7 @@ async function getProducts({ input, user }: GetProductsParams) {
 		productQueryConditions.push(inArray(products.grupo, input.groups));
 	}
 
-	const statsConditions = [];
+	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
 	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
 	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
@@ -172,7 +175,7 @@ async function getProducts({ input, user }: GetProductsParams) {
 		.from(products)
 		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
 		.leftJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(and(...productQueryConditions, ...statsConditions))
+		.where(and(eq(saleItems.organizacaoId, userOrgId), ...productQueryConditions, ...statsConditions))
 		.groupBy(products.id);
 
 	if (havingConditions.length > 0) {
@@ -199,7 +202,7 @@ async function getProducts({ input, user }: GetProductsParams) {
 		.from(products)
 		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
 		.leftJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(and(...productQueryConditions, ...statsConditions))
+		.where(and(eq(saleItems.organizacaoId, userOrgId), ...productQueryConditions, ...statsConditions))
 		.having(and(...havingConditions))
 		.groupBy(products.id)
 		.orderBy(orderByClause)
@@ -208,7 +211,7 @@ async function getProducts({ input, user }: GetProductsParams) {
 
 	const productIds = statsByProductResult.map((product) => product.productId);
 	const productsResult = await db.query.products.findMany({
-		where: inArray(products.id, productIds),
+		where: and(eq(products.organizacaoId, userOrgId), inArray(products.id, productIds)),
 	});
 
 	const productsMap = new Map(productsResult.map((p) => [p.id, p]));
@@ -294,11 +297,18 @@ const UpdateProductInputSchema = z.object({
 export type TUpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
 
 async function updateProduct({ user, input }: { user: TAuthUserSession["user"]; input: TUpdateProductInput }) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const product = await db.query.products.findFirst({
-		where: eq(products.id, input.productId),
+		where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
 	});
 	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
-	const updatedProduct = await db.update(products).set(input.product).where(eq(products.id, input.productId)).returning({ updatedId: products.id });
+	const updatedProduct = await db
+		.update(products)
+		.set({ ...input.product, organizacaoId: userOrgId })
+		.where(and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)))
+		.returning({ updatedId: products.id });
 	const updatedProductId = updatedProduct[0]?.updatedId;
 	if (!updatedProductId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar produto.");
 	return {

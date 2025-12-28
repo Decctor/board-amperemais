@@ -12,7 +12,7 @@ import type { NextApiHandler, NextApiRequest } from "next";
 import type { z } from "zod";
 
 export type TGetClientsExportationInput = z.infer<typeof ClientSearchQueryParams>;
-async function fetchClientExportation(req: NextApiRequest) {
+async function fetchClientExportation(req: NextApiRequest, userOrgId: string) {
 	const filters = ClientSearchQueryParams.parse(req.body);
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
@@ -23,7 +23,7 @@ async function fetchClientExportation(req: NextApiRequest) {
 	const rfmConfig = utilsRFMReturn?.valor.identificador === "CONFIG_RFM" ? utilsRFMReturn.valor : null;
 
 	// Build dynamic WHERE conditions based on filters
-	const conditions = [];
+	const conditions = [eq(clients.organizacaoId, userOrgId)];
 	if (filters.name.trim().length > 0) {
 		conditions.push(
 			sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${filters.name}) OR ${clients.nome} ILIKE '%' || ${filters.name} || '%')`,
@@ -50,7 +50,8 @@ async function fetchClientExportation(req: NextApiRequest) {
 			lastPurchaseDate: sql<Date>`max(${sales.dataVenda})`,
 		})
 		.from(clients)
-		.leftJoin(sales, eq(sales.clienteId, clients.id))
+		.leftJoin(sales, and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, userOrgId)))
+		.where(eq(clients.organizacaoId, userOrgId))
 		.groupBy(clients.id);
 
 	// Getting the accumulated results grouped by client for the period (if estabilished)
@@ -64,7 +65,16 @@ async function fetchClientExportation(req: NextApiRequest) {
 						lastPurchaseDate: sql<Date>`max(${sales.dataVenda})`,
 					})
 					.from(clients)
-					.leftJoin(sales, and(eq(sales.clienteId, clients.id), gte(sales.dataVenda, ajustedAfter), lte(sales.dataVenda, ajustedBefore)))
+					.leftJoin(
+						sales,
+						and(
+							eq(sales.clienteId, clients.id),
+							eq(sales.organizacaoId, userOrgId),
+							gte(sales.dataVenda, ajustedAfter),
+							lte(sales.dataVenda, ajustedBefore),
+						),
+					)
+					.where(eq(clients.organizacaoId, userOrgId))
 					.groupBy(clients.id)
 			: [];
 
@@ -167,7 +177,11 @@ const handleClientsExportation: NextApiHandler<{
 }> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const data = await fetchClientExportation(req);
+
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const data = await fetchClientExportation(req, userOrgId);
 
 	return res.status(200).json({ data });
 };

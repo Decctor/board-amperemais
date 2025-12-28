@@ -11,7 +11,7 @@ import type { NextApiHandler, NextApiRequest } from "next";
 
 // This function encapsulates the core logic for fetching clients with pagination and applying filters.
 // It's a "service-like" function that prepares the data structure for the API response.
-const fetchClientsWithPagination = async (req: NextApiRequest) => {
+const fetchClientsWithPagination = async (req: NextApiRequest, userOrgId: string) => {
 	const PAGE_SIZE = 30;
 
 	// Parse and validate the request body using Zod schema
@@ -21,7 +21,7 @@ const fetchClientsWithPagination = async (req: NextApiRequest) => {
 	const limit = PAGE_SIZE;
 
 	// Call the data access function to get the raw client data from the database
-	const { clients, clientsMatched } = await fetchClientsWithPurchases({ filters, skip, limit });
+	const { clients, clientsMatched } = await fetchClientsWithPurchases({ filters, skip, limit, userOrgId });
 
 	const totalPages = Math.ceil(clientsMatched / PAGE_SIZE);
 
@@ -39,8 +39,12 @@ const handleClientSearchRoute: NextApiHandler<{
 }> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	// Call the data preparation function to get the response data
-	const data = await fetchClientsWithPagination(req);
+	const data = await fetchClientsWithPagination(req, userOrgId);
 
 	// Wrap the data in the desired structure and send the JSON response
 	return res.status(200).json({ data });
@@ -51,11 +55,12 @@ type GetClientsParams = {
 	filters: TClientSearchQueryParams;
 	skip: number;
 	limit: number;
+	userOrgId: string;
 };
 
 // This function is a data access layer function that specifically queries the database
 // for clients, including their purchases, based on the provided filters and pagination.
-async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsParams) {
+async function fetchClientsWithPurchases({ filters, skip, limit, userOrgId }: GetClientsParams) {
 	const rfmConfig = await db.query.utils.findFirst({
 		where: eq(utils.identificador, "CONFIG_RFM"),
 	});
@@ -66,7 +71,7 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
 
 	// Build dynamic WHERE conditions based on filters
-	const clientQueryConditions = [];
+	const clientQueryConditions = [eq(clients.organizacaoId, userOrgId)];
 	if (filters.name.trim().length > 0) {
 		clientQueryConditions.push(
 			sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${filters.name}) OR ${clients.nome} ILIKE '%' || ${filters.name} || '%')`,
@@ -84,7 +89,7 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 		clientQueryConditions.push(inArray(clients.analiseRFMTitulo, filters.rfmTitles));
 	}
 
-	const purchasesQueryConditions = [];
+	const purchasesQueryConditions = [eq(sales.organizacaoId, userOrgId)];
 	if (filters.total.min) purchasesQueryConditions.push(gte(sales.valorTotal, filters.total.min));
 	if (filters.total.max) purchasesQueryConditions.push(lte(sales.valorTotal, filters.total.max));
 	if (filters.saleNatures.length > 0) purchasesQueryConditions.push(inArray(sales.natureza, filters.saleNatures));
@@ -116,8 +121,8 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 			lastPurchaseDate: sql<Date>`max(${sales.dataVenda})`,
 		})
 		.from(clients)
-		.leftJoin(sales, eq(sales.clienteId, clients.id))
-		.where(and(inArray(clients.id, clientIds), ...purchasesQueryConditions))
+		.leftJoin(sales, and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, userOrgId)))
+		.where(and(eq(clients.organizacaoId, userOrgId), inArray(clients.id, clientIds), ...purchasesQueryConditions))
 		.groupBy(clients.id);
 	const inPeriodAccumulatedResults =
 		ajustedAfter && ajustedBefore
@@ -131,9 +136,15 @@ async function fetchClientsWithPurchases({ filters, skip, limit }: GetClientsPar
 					.from(clients)
 					.leftJoin(
 						sales,
-						and(eq(sales.clienteId, clients.id), gte(sales.dataVenda, ajustedAfter), lte(sales.dataVenda, ajustedBefore), ...purchasesQueryConditions),
+						and(
+							eq(sales.clienteId, clients.id),
+							eq(sales.organizacaoId, userOrgId),
+							gte(sales.dataVenda, ajustedAfter),
+							lte(sales.dataVenda, ajustedBefore),
+							...purchasesQueryConditions,
+						),
 					)
-					.where(inArray(clients.id, clientIds))
+					.where(and(eq(clients.organizacaoId, userOrgId), inArray(clients.id, clientIds)))
 					.groupBy(clients.id)
 			: [];
 

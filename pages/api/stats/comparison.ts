@@ -4,7 +4,7 @@ import { getBestNumberOfPointsBetweenDates, getDateBuckets, getDayStringsBetween
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, gte, inArray, lte, notInArray } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, notInArray } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -174,7 +174,7 @@ export type TStatsComparisonOutput = {
 		};
 	}[];
 };
-async function fetchStatsComparison(req: NextApiRequest) {
+async function fetchStatsComparison(req: NextApiRequest, organizacaoId: string) {
 	const filters = StatsComparisonInputSchema.parse(req.body);
 
 	const firstPeriodAjusted = {
@@ -187,7 +187,7 @@ async function fetchStatsComparison(req: NextApiRequest) {
 		before: new Date(filters.secondPeriod.before),
 	};
 
-	const conditions = [];
+	const conditions = [eq(sales.organizacaoId, organizacaoId)];
 
 	if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
 	if (filters.total.max) conditions.push(lte(sales.valorTotal, filters.total.max));
@@ -219,7 +219,7 @@ async function fetchStatsComparison(req: NextApiRequest) {
 	const secondPeriodDateBuckets = getDateBuckets(secondPeriodDatesStrs);
 
 	const firstPeriodSales = await db.query.sales.findMany({
-		where: and(gte(sales.dataVenda, firstPeriodAjusted.after), lte(sales.dataVenda, firstPeriodAjusted.before), ...conditions),
+		where: and(...conditions, gte(sales.dataVenda, firstPeriodAjusted.after), lte(sales.dataVenda, firstPeriodAjusted.before)),
 		columns: {
 			id: true,
 			valorTotal: true,
@@ -244,7 +244,7 @@ async function fetchStatsComparison(req: NextApiRequest) {
 		},
 	});
 	const secondPeriodSales = await db.query.sales.findMany({
-		where: and(gte(sales.dataVenda, secondPeriodAjusted.after), lte(sales.dataVenda, secondPeriodAjusted.before), ...conditions),
+		where: and(...conditions, gte(sales.dataVenda, secondPeriodAjusted.after), lte(sales.dataVenda, secondPeriodAjusted.before)),
 		columns: {
 			id: true,
 			valorTotal: true,
@@ -501,7 +501,11 @@ const handleGetStatsComparison: NextApiHandler<{
 }> = async (req: NextApiRequest, res: NextApiResponse) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const statsComparisonResult = await fetchStatsComparison(req);
+
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const statsComparisonResult = await fetchStatsComparison(req, userOrgId);
 
 	return res.status(200).json({
 		data: statsComparisonResult,

@@ -9,19 +9,22 @@ import { clients, sales } from "@/services/drizzle/schema";
 import { and, count, eq, exists, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 
-async function fetchSalesSimplified(req: NextApiRequest) {
+async function fetchSalesSimplified(req: NextApiRequest, userOrgId: string) {
 	const PAGE_SIZE = 50;
 	const { search, page } = SalesSimplifiedSearchQueryParams.parse(req.body);
-	const conditions = [];
+	const conditions = [eq(sales.organizacaoId, userOrgId)];
 	if (search.trim().length > 0)
 		conditions.push(
 			exists(
 				db
 					.select({ id: clients.id })
 					.from(clients)
-					.innerJoin(sales, eq(sales.clienteId, clients.id))
+					.innerJoin(sales, and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, userOrgId)))
 					.where(
-						sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${search}) OR ${clients.nome} ILIKE '%' || ${search} || '%')`,
+						and(
+							eq(clients.organizacaoId, userOrgId),
+							sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${search}) OR ${clients.nome} ILIKE '%' || ${search} || '%')`,
+						),
 					),
 			),
 		);
@@ -65,7 +68,10 @@ const getSalesSimplifiedRoute: NextApiHandler<{
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const result = await fetchSalesSimplified(req);
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const result = await fetchSalesSimplified(req, userOrgId);
 
 	return res.status(200).json({
 		data: result,

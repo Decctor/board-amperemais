@@ -75,6 +75,7 @@ export async function validateSession(token: string) {
 			id: session.usuarioId,
 			nome: user.nome,
 			telefone: user.telefone,
+			organizacaoId: user.organizacaoId,
 			avatarUrl: user.avatarUrl,
 			email: user.email,
 			permissoes: user.permissoes,

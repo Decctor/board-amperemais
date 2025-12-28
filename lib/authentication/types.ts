@@ -17,6 +17,7 @@ export type TAuthUserSession = {
 		avatarUrl: TUserEntity["avatarUrl"];
 		permissoes: TUserEntity["permissoes"];
 		vendedorId: TUserEntity["vendedorId"];
+		organizacaoId: TUserEntity["organizacaoId"];
 	};
 };
 

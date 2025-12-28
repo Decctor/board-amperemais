@@ -5,7 +5,7 @@ import { PeriodQueryParamSchema } from "@/schemas/query-params-utils";
 import { db } from "@/services/drizzle";
 import { cashbackProgramTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, desc, gte, lte } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -52,7 +52,10 @@ async function getCashbackProgramTransactions({
 	input: TCashbackProgramTransactionsInput;
 	session: TAuthUserSession["user"];
 }): Promise<GetResponse> {
-	const conditions = [];
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const conditions = [eq(cashbackProgramTransactions.organizacaoId, userOrgId)];
 
 	// Apply period filter if provided
 	if (input.period) {
@@ -66,7 +69,7 @@ async function getCashbackProgramTransactions({
 	const totalCountResult = await db
 		.select({ count: count() })
 		.from(cashbackProgramTransactions)
-		.where(conditions.length > 0 ? and(...conditions) : undefined);
+		.where(and(...conditions));
 
 	const total = totalCountResult[0]?.count || 0;
 	const totalPages = Math.ceil(total / input.limit);
@@ -74,7 +77,7 @@ async function getCashbackProgramTransactions({
 	// Get paginated transactions
 	const offset = (input.page - 1) * input.limit;
 	const transactions = await db.query.cashbackProgramTransactions.findMany({
-		where: conditions.length > 0 ? and(...conditions) : undefined,
+		where: and(...conditions),
 		orderBy: [desc(cashbackProgramTransactions.dataInsercao)],
 		limit: input.limit,
 		offset: offset,

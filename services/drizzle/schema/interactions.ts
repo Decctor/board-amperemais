@@ -4,12 +4,14 @@ import { campaigns } from "./campaigns";
 import { clients } from "./clients";
 import { newTable } from "./common";
 import { interactionTypeEnum, interactionsCronJobTimeBlocksEnum } from "./enums";
+import { organizations } from "./organizations";
 import { users } from "./users";
 
 export const interactions = newTable("interactions", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	clienteId: varchar("cliente_id", { length: 255 })
 		.references(() => clients.id)
 		.notNull(),

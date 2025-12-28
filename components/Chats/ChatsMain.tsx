@@ -12,7 +12,13 @@ type ChatsMainProps = {
 };
 
 export default function ChatsMain({ user }: ChatsMainProps) {
-	const { data: whatsappConnection, isPending, isError, isSuccess, error } = useConvexQuery(api.queries.connections.getWhatsappConnection);
+	const {
+		data: whatsappConnection,
+		isPending,
+		isError,
+		isSuccess,
+		error,
+	} = useConvexQuery(api.queries.connections.getWhatsappConnection, user.organizacaoId ? { organizacaoId: user.organizacaoId } : "skip");
 	if (isPending) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
 	if (isSuccess && !!whatsappConnection)

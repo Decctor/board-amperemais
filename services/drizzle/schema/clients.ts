@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import { index, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { cashbackProgramBalances } from "./cashback-programs";
 import { newTable } from "./common";
+import { organizations } from "./organizations";
 import { sales } from "./sales";
 
 export const clients = newTable(
@@ -10,6 +11,7 @@ export const clients = newTable(
 		id: varchar("id", { length: 255 })
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 		nome: text("nome").notNull(),
 		// cpfCnpj: text("cpf_cnpj"),
 		// Communication

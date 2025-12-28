@@ -18,7 +18,11 @@ const getSalesRFMLabelledRoute: NextApiHandler<GetResponse> = async (req, res) =
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const allClients = await db.query.clients.findMany({
+		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
 		columns: {
 			analiseRFMTitulo: true,
 		},

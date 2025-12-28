@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { doublePrecision, index, text, timestamp, varchar, vector } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
+import { organizations } from "./organizations";
 import { saleItems } from "./sales";
 
 export const products = newTable(
@@ -9,6 +10,7 @@ export const products = newTable(
 		id: varchar("id", { length: 255 })
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 		descricao: text("descricao").notNull(),
 		imagemCapaUrl: text("imagem_capa_url"),
 		codigo: text("codigo").notNull(),

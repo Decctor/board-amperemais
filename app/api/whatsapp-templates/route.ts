@@ -16,9 +16,11 @@ const CreateWhatsappTemplateInputSchema = z.object({
 export type TCreateWhatsappTemplateInput = z.infer<typeof CreateWhatsappTemplateInputSchema>;
 
 async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsappTemplateInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const insertedWhatsappTemplate = await db
 		.insert(whatsappTemplates)
-		.values({ ...input.template, status: "RASCUNHO", qualidade: "PENDENTE" })
+		.values({ ...input.template, status: "RASCUNHO", qualidade: "PENDENTE", organizacaoId: userOrgId })
 		.returning({ id: whatsappTemplates.id });
 
 	const createdWhatsappTemplateResponse = await createWhatsappTemplateInMeta({ template: { ...input.template, qualidade: "PENDENTE" } });
@@ -29,7 +31,7 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 	await db
 		.update(whatsappTemplates)
 		.set({ whatsappTemplateId: createdWhatsappTemplateResponse.whatsappTemplateId })
-		.where(eq(whatsappTemplates.id, insertedWhatsappTemplateId));
+		.where(and(eq(whatsappTemplates.id, insertedWhatsappTemplateId), eq(whatsappTemplates.organizacaoId, userOrgId)));
 
 	return {
 		data: {
@@ -67,10 +69,14 @@ const GetWhatsappTemplatesInputSchema = z.object({
 export type TGetWhatsappTemplatesInput = z.infer<typeof GetWhatsappTemplatesInputSchema>;
 
 async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTemplatesInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	if ("id" in input && input.id) {
 		const id = input.id;
 		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
-		const whatsappTemplate = await db.query.whatsappTemplates.findFirst({ where: (fields, { eq }) => eq(fields.id, id) });
+		const whatsappTemplate = await db.query.whatsappTemplates.findFirst({
+			where: (fields, { eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
+		});
 		if (!whatsappTemplate) throw new createHttpError.NotFound("Template não encontrado.");
 		return {
 			data: {
@@ -94,18 +100,17 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 	const matchedWhatsappTemplatesResult = await db
 		.select({ count: count() })
 		.from(whatsappTemplates)
-		.where(and(...conditions));
+		.where(and(...conditions, eq(whatsappTemplates.organizacaoId, userOrgId)));
 	const matchedWhatsappTemplatesCount = matchedWhatsappTemplatesResult[0]?.count ?? 0;
 
 	const totalPages = Math.ceil(matchedWhatsappTemplatesCount / PAGE_SIZE);
 
 	const whatsappTemplatesResult = await db.query.whatsappTemplates.findMany({
-		where: and(...conditions),
+		where: and(...conditions, eq(whatsappTemplates.organizacaoId, userOrgId)),
 		columns: {
 			id: true,
 			nome: true,
 			categoria: true,
-			parametrosTipo: true,
 			whatsappTemplateId: true,
 			qualidade: true,
 			rejeicao: true,

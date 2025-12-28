@@ -3,10 +3,10 @@ import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variabl
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import type { TInteractionState } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
-import { interactions } from "@/services/drizzle/schema";
+import { interactions, organizations } from "@/services/drizzle/schema";
 import { fetchMutation } from "convex/nextjs";
 import dayjs from "dayjs";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { NextApiHandler } from "next";
 
 const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
@@ -54,93 +54,117 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 			currentTimeBlock,
 		});
 
-		const interactionsResult = await db.query.interactions.findMany({
-			where: (fields, { and, eq, isNull, isNotNull }) =>
-				and(eq(fields.agendamentoDataReferencia, currentDateAsISO8601), isNotNull(fields.campanhaId), isNull(fields.dataExecucao)),
-			with: {
-				cliente: {
+		// Buscar todas as organizacoes
+		const organizationsList = await db.query.organizations.findMany({
+			columns: { id: true },
+		});
+
+		console.log(`[INFO] [PROCESS_INTERACTIONS] Processing ${organizationsList.length} organizations`);
+
+		for (const organization of organizationsList) {
+			try {
+				console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Processing interactions`);
+
+				const interactionsResult = await db.query.interactions.findMany({
+					where: (fields, { and, eq, isNull, isNotNull }) =>
+						and(
+							eq(fields.organizacaoId, organization.id),
+							eq(fields.agendamentoDataReferencia, currentDateAsISO8601),
+							isNotNull(fields.campanhaId),
+							isNull(fields.dataExecucao),
+						),
+					with: {
+						cliente: {
+							columns: {
+								id: true,
+								nome: true,
+								telefone: true,
+								telefoneBase: true,
+								email: true,
+								analiseRFMTitulo: true,
+							},
+						},
+						campanha: {
+							columns: {
+								autorId: true,
+							},
+						},
+					},
+				});
+
+				const interactionsCampaignsIds = interactionsResult.map((interaction) => interaction.campanhaId).filter((id) => id !== null);
+				const campaigns = await db.query.campaigns.findMany({
+					where: (fields, { and, inArray }) => and(eq(fields.organizacaoId, organization.id), inArray(fields.id, interactionsCampaignsIds)),
 					columns: {
 						id: true,
-						nome: true,
-						telefone: true,
-						telefoneBase: true,
-						email: true,
-						analiseRFMTitulo: true,
 					},
-				},
-				campanha: {
-					columns: {
-						autorId: true,
+					with: {
+						whatsappTemplate: true,
 					},
-				},
-			},
-		});
+				});
 
-		const interactionsCampaignsIds = interactionsResult.map((interaction) => interaction.campanhaId).filter((id) => id !== null);
-		const campaigns = await db.query.campaigns.findMany({
-			where: (fields, { inArray }) => inArray(fields.id, interactionsCampaignsIds),
-			columns: {
-				id: true,
-			},
-			with: {
-				whatsappTemplate: true,
-			},
-		});
+				for (const [index, interaction] of interactionsResult.entries()) {
+					if ((index + 1) % 10 === 0) {
+						console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Processing interaction ${index + 1} of ${interactionsResult.length}`);
+					}
+					const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
+					if (!campaign) continue;
+					const whatsappTemplate = campaign.whatsappTemplate;
+					if (!whatsappTemplate) continue;
+					const whatsappTemplateVariablesValuesMap: Record<keyof TWhatsappTemplateVariables, string> = {
+						clientEmail: interaction.cliente.email ?? "",
+						clientName: interaction.cliente.nome,
+						clientPhoneNumber: interaction.cliente.telefone,
+						clientSegmentation: interaction.cliente.analiseRFMTitulo ?? "",
+						clientFavoriteProduct: "",
+						clientFavoriteProductGroup: "",
+						clientSuggestedProduct: "",
+					};
 
-		for (const [index, interaction] of interactionsResult.entries()) {
-			if ((index + 1) % 10 === 0) {
-				console.log(`[INFO] [PROCESS_INTERACTIONS] Processing interaction ${index + 1} of ${interactionsResult.length}`);
+					const payload = getWhatsappTemplatePayload({
+						template: {
+							name: whatsappTemplate.nome,
+							content: whatsappTemplate.componentes.corpo.conteudo,
+							components: whatsappTemplate.componentes,
+						},
+						variables: whatsappTemplateVariablesValuesMap,
+						toPhoneNumber: interaction.cliente.telefone,
+					});
+					console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Creating template message:`, JSON.stringify(payload, null, 2));
+					const createTemplateMessageResponse = await fetchMutation(api.mutations.messages.createTemplateMessage, {
+						autor: {
+							idApp: interaction.campanha?.autorId as string,
+							tipo: "usuario",
+						},
+						cliente: {
+							idApp: interaction.cliente.id,
+							nome: interaction.cliente.nome,
+							telefone: interaction.cliente.telefone,
+							telefoneBase: interaction.cliente.telefone,
+							email: interaction.cliente.email ?? "",
+						},
+						whatsappPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
+						templateId: whatsappTemplate.id,
+						templatePayloadData: payload.data,
+						templatePayloadContent: payload.content,
+					});
+
+					await db
+						.update(interactions)
+						.set({
+							dataExecucao: new Date(),
+						})
+						.where(and(eq(interactions.id, interaction.id), eq(interactions.organizacaoId, organization.id)));
+				}
+
+				console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Interactions processed successfully`);
+			} catch (error) {
+				console.error(`[ORG: ${organization.id}] [ERROR] [PROCESS_INTERACTIONS] Error processing interactions:`, error);
+				// Continuar para proxima organizacao mesmo com erro
 			}
-			const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
-			if (!campaign) continue;
-			const whatsappTemplate = campaign.whatsappTemplate;
-			if (!whatsappTemplate) continue;
-			const whatsappTemplateVariablesValuesMap: Record<keyof TWhatsappTemplateVariables, string> = {
-				clientEmail: interaction.cliente.email ?? "",
-				clientName: interaction.cliente.nome,
-				clientPhoneNumber: interaction.cliente.telefone,
-				clientSegmentation: interaction.cliente.analiseRFMTitulo ?? "",
-				clientFavoriteProduct: "",
-				clientFavoriteProductGroup: "",
-				clientSuggestedProduct: "",
-			};
-
-			const payload = getWhatsappTemplatePayload({
-				template: {
-					name: whatsappTemplate.nome,
-					content: whatsappTemplate.componentes.corpo.conteudo,
-					components: whatsappTemplate.componentes,
-				},
-				variables: whatsappTemplateVariablesValuesMap,
-				toPhoneNumber: interaction.cliente.telefone,
-			});
-			console.log("[INFO] [PROCESS_INTERACTIONS] Creating template message:", JSON.stringify(payload, null, 2));
-			const createTemplateMessageResponse = await fetchMutation(api.mutations.messages.createTemplateMessage, {
-				autor: {
-					idApp: interaction.campanha?.autorId as string,
-					tipo: "usuario",
-				},
-				cliente: {
-					idApp: interaction.cliente.id,
-					nome: interaction.cliente.nome,
-					telefone: interaction.cliente.telefone,
-					telefoneBase: interaction.cliente.telefone,
-					email: interaction.cliente.email ?? "",
-				},
-				whatsappPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
-				templateId: whatsappTemplate.id,
-				templatePayloadData: payload.data,
-				templatePayloadContent: payload.content,
-			});
-
-			await db
-				.update(interactions)
-				.set({
-					dataExecucao: new Date(),
-				})
-				.where(eq(interactions.id, interaction.id));
 		}
-		console.log("[INFO] [PROCESS_INTERACTIONS] Interactions processed successfully");
+
+		console.log("[INFO] [PROCESS_INTERACTIONS] All organizations processed");
 
 		return res.status(200).json({
 			message: "Interactions processed successfully",

@@ -4,12 +4,14 @@ import { boolean, text, varchar } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { newTable } from "./common";
 import { cashbackProgramAccumulationTypeEnum, cashbackProgramTransactionStatusEnum, cashbackProgramTransactionTypeEnum } from "./enums";
+import { organizations } from "./organizations";
 import { sales } from "./sales";
 
 export const cashbackPrograms = newTable("cashback_programs", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	ativo: boolean("ativo").notNull().default(true),
 	titulo: text("titulo").notNull(),
 	descricao: text("descricao"),
@@ -29,6 +31,7 @@ export const cashbackProgramBalances = newTable("cashback_program_balances", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	clienteId: varchar("cliente_id", { length: 255 })
 		.references(() => clients.id)
 		.notNull(),
@@ -56,6 +59,7 @@ export const cashbackProgramTransactions = newTable("cashback_program_transactio
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	clienteId: varchar("cliente_id", { length: 255 })
 		.references(() => clients.id)
 		.notNull(),

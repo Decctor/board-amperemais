@@ -38,10 +38,14 @@ async function getTopCashbackClients({
 	input: TTopCashbackClientsInput;
 	session: TAuthUserSession["user"];
 }): Promise<GetResponse> {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const orderByColumn =
 		input.sortBy === "cumulative" ? cashbackProgramBalances.saldoValorAcumuladoTotal : cashbackProgramBalances.saldoValorResgatadoTotal;
 
 	const balances = await db.query.cashbackProgramBalances.findMany({
+		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
 		orderBy: [desc(orderByColumn)],
 		limit: input.limit,
 		with: {

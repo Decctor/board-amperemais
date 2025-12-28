@@ -4,13 +4,18 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CashbackProgramSchema } from "@/schemas/cashback-programs";
 import { db } from "@/services/drizzle";
 import { cashbackPrograms } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 async function getCashbackPrograms({ session }: { session: TAuthUserSession["user"] }) {
-	const cashbackProgram = await db.query.cashbackPrograms.findFirst({});
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const cashbackProgram = await db.query.cashbackPrograms.findFirst({
+		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
+	});
 
 	return {
 		data: cashbackProgram ?? null,
@@ -34,7 +39,12 @@ const CreateCashbackProgramInputSchema = z.object({
 export type TCreateCashbackProgramInput = z.infer<typeof CreateCashbackProgramInputSchema>;
 
 async function createCashbackProgram({ input, session }: { input: TCreateCashbackProgramInput; session: TAuthUserSession["user"] }) {
-	const insertedCashbackProgram = await db.insert(cashbackPrograms).values(input.cashbackProgram).returning({ id: cashbackPrograms.id });
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const insertedCashbackProgram = await db
+		.insert(cashbackPrograms)
+		.values({ ...input.cashbackProgram, organizacaoId: userOrgId })
+		.returning({ id: cashbackPrograms.id });
 	const insertedCashbackProgramId = insertedCashbackProgram[0]?.id;
 	if (!insertedCashbackProgramId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar programa de cashback.");
 	return {
@@ -68,10 +78,12 @@ const UpdateCashbackProgramInputSchema = z.object({
 export type TUpdateCashbackProgramInput = z.infer<typeof UpdateCashbackProgramInputSchema>;
 
 async function updateCashbackProgram({ input, session }: { input: TUpdateCashbackProgramInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const updatedCashbackProgram = await db
 		.update(cashbackPrograms)
-		.set(input.cashbackProgram)
-		.where(eq(cashbackPrograms.id, input.cashbackProgramId))
+		.set({ ...input.cashbackProgram, organizacaoId: userOrgId })
+		.where(and(eq(cashbackPrograms.id, input.cashbackProgramId), eq(cashbackPrograms.organizacaoId, userOrgId)))
 		.returning({ id: cashbackPrograms.id });
 	const updatedCashbackProgramId = updatedCashbackProgram[0]?.id;
 	if (!updatedCashbackProgramId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar programa de cashback.");

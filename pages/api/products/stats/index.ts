@@ -53,8 +53,11 @@ type GetProductStatsParams = {
 };
 
 async function getProductStats({ user, input }: GetProductStatsParams) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const product = await db.query.products.findFirst({
-		where: eq(products.id, input.productId),
+		where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
 	});
 	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
 
@@ -62,8 +65,8 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 	const periodBeforeDate = input.periodBefore ? new Date(input.periodBefore) : undefined;
 
 	// Build where conditions for saleItems and sales
-	const saleItemWhereConditions = [eq(saleItems.produtoId, input.productId)] as const;
-	const saleWhereConditions = [isNotNull(sales.dataVenda)] as const;
+	const saleItemWhereConditions = [eq(saleItems.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)] as const;
+	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda)] as const;
 
 	const saleWhere = and(
 		...saleWhereConditions,
@@ -88,7 +91,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		})
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere);
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere));
 
 	const totalStats = totalStatsResult[0];
 	const quantidadeTotal = totalStats?.quantidadeTotal ? Number(totalStats.quantidadeTotal) : 0;
@@ -131,7 +134,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		.select({ count: countDistinct(saleItems.clienteId) })
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere);
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere));
 	const clientesUnicos = Number(uniqueClientsResult[0]?.count ?? 0);
 
 	// Seasonality: by day of month
@@ -144,7 +147,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		})
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(dayExpr)
 		.orderBy(dayExpr);
 
@@ -158,7 +161,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		})
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(monthExpr)
 		.orderBy(monthExpr);
 
@@ -172,7 +175,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		})
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(weekDayExpr)
 		.orderBy(weekDayExpr);
 
@@ -187,7 +190,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(clients, eq(saleItems.clienteId, clients.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(clients.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(saleItems.clienteId, clients.nome)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(10);
@@ -203,7 +206,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(sellers, eq(sales.vendedorId, sellers.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(sellers.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(sales.vendedorId, sellers.nome)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(10);
@@ -219,7 +222,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(partners, eq(sales.parceiroId, partners.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(partners.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(sales.parceiroId, partners.nome)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(10);
@@ -241,12 +244,12 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 				.select({ vendaId: saleItems.vendaId })
 				.from(saleItems)
 				.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-				.where(saleItemWhere)
+				.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere))
 				.as("vendas_com_produto"),
 			sql`${saleItems.vendaId} = vendas_com_produto.venda_id`,
 		)
 		.leftJoin(products, eq(saleItems.produtoId, products.id))
-		.where(ne(saleItems.produtoId, input.productId))
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), ne(saleItems.produtoId, input.productId)))
 		.groupBy(saleItems.produtoId, products.descricao, products.codigo, products.grupo)
 		.orderBy(desc(sql`count(${saleItems.id})`))
 		.limit(10);
@@ -262,7 +265,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(sellers, eq(sales.vendedorId, sellers.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(sellers.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(sales.vendedorId, sellers.nome)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido}) - sum(${saleItems.valorCustoTotal})`))
 		.limit(10);
@@ -278,7 +281,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(clients, eq(saleItems.clienteId, clients.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(clients.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(saleItems.clienteId, clients.nome)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido}) - sum(${saleItems.valorCustoTotal})`))
 		.limit(10);
@@ -294,7 +297,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(partners, eq(sales.parceiroId, partners.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(partners.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(sales.parceiroId, partners.nome)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido}) - sum(${saleItems.valorCustoTotal})`))
 		.limit(10);
@@ -308,7 +311,7 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		})
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(monthExpr)
 		.orderBy(monthExpr);
 

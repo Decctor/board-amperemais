@@ -1,7 +1,9 @@
 import { apiHandler } from "@/lib/api";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { db } from "@/services/drizzle";
-import { products, sales, sellers } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { partners, products, sales, sellers } from "@/services/drizzle/schema";
+import { and, eq } from "drizzle-orm";
+import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 
 export type TSaleQueryFilterOptions = {
@@ -27,15 +29,22 @@ export type TSaleQueryFilterOptions = {
 	}[];
 };
 const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }> = async (req, res) => {
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const groupedSaleNatures = await db
 		.select({
 			saleNature: sales.natureza,
 		})
 		.from(sales)
+		.where(eq(sales.organizacaoId, userOrgId))
 		.groupBy(sales.natureza);
 
 	const groupedSellers = await db.query.sellers.findMany({
-		where: eq(sellers.ativo, true),
+		where: and(eq(sellers.organizacaoId, userOrgId), eq(sellers.ativo, true)),
 		columns: {
 			id: true,
 			identificador: true,
@@ -45,6 +54,7 @@ const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }
 	});
 
 	const groupedPartners = await db.query.partners.findMany({
+		where: eq(partners.organizacaoId, userOrgId),
 		columns: {
 			id: true,
 			identificador: true,
@@ -57,6 +67,7 @@ const getSaleQueryFiltersRoute: NextApiHandler<{ data: TSaleQueryFilterOptions }
 			group: products.grupo,
 		})
 		.from(products)
+		.where(eq(products.organizacaoId, userOrgId))
 		.groupBy(products.grupo);
 	// const salesCollection: Collection<TSale> = db.collection("sales");
 

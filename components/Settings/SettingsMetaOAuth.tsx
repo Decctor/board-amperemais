@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { useConvexQuery } from "@/convex/utils";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { useMutation } from "convex/react";
 import { BadgeCheck, Calendar, Code, Key, Phone } from "lucide-react";
@@ -8,8 +9,17 @@ import ErrorComponent from "../Layouts/ErrorComponent";
 import { LoadingButton } from "../loading-button";
 import { Badge } from "../ui/badge";
 
-export default function SettingsMetaOAuth() {
-	const { data: whatsappConnection, isPending, isError, isSuccess } = useConvexQuery(api.queries.connections.getWhatsappConnection);
+type SettingsMetaOAuthProps = {
+	user: TAuthUserSession["user"];
+};
+
+export default function SettingsMetaOAuth({ user }: SettingsMetaOAuthProps) {
+	const {
+		data: whatsappConnection,
+		isPending,
+		isError,
+		isSuccess,
+	} = useConvexQuery(api.queries.connections.getWhatsappConnection, user.organizacaoId ? { organizacaoId: user.organizacaoId } : "skip");
 
 	return (
 		<div className="flex h-full grow flex-col">

@@ -38,3 +38,5 @@ export const cashbackProgramAccumulationTypeEnum = pgEnum("cashback_program_accu
 export const cashbackProgramTransactionTypeEnum = pgEnum("cashback_program_transaction_type", ["ACÚMULO", "RESGATE", "EXPIRAÇÃO"]);
 
 export const cashbackProgramTransactionStatusEnum = pgEnum("cashback_program_transaction_status", ["ATIVO", "CONSUMIDO", "EXPIRADO"]);
+
+export const organizationIntegrationTypeEnum = pgEnum("organization_integration_type", ["ONLINE-SOFTWARE"]);

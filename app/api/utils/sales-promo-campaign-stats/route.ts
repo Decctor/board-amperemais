@@ -66,6 +66,9 @@ async function getCampaignStats({
 	input,
 	session,
 }: { input: TGetCampaignStatsInput; session: TAuthUserSession["user"] }): Promise<TCampaignStatsOutput> {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	// Fetch campaign from utils table
 	const campaign = await db.query.utils.findFirst({
 		where: (fields, { eq }) => eq(fields.id, input.campaignId),
@@ -111,7 +114,7 @@ async function getCampaignStats({
 			valor: sum(sales.valorTotal),
 		})
 		.from(sales)
-		.where(and(gte(sales.dataVenda, periodStart), lte(sales.dataVenda, periodEnd)));
+		.where(and(eq(sales.organizacaoId, userOrgId), gte(sales.dataVenda, periodStart), lte(sales.dataVenda, periodEnd)));
 
 	const totalSales = {
 		quantidade: totalSalesResult[0]?.quantidade || 0,
@@ -128,7 +131,15 @@ async function getCampaignStats({
 				})
 				.from(saleItems)
 				.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-				.where(and(eq(saleItems.produtoId, item.produtoId), gte(sales.dataVenda, periodStart), lte(sales.dataVenda, periodEnd)));
+				.where(
+					and(
+						eq(sales.organizacaoId, userOrgId),
+						eq(saleItems.organizacaoId, userOrgId),
+						eq(saleItems.produtoId, item.produtoId),
+						gte(sales.dataVenda, periodStart),
+						lte(sales.dataVenda, periodEnd),
+					),
+				);
 
 			return {
 				produtoId: item.produtoId,
@@ -149,7 +160,7 @@ async function getCampaignStats({
 			vendasValor: sql<number>`COALESCE(SUM(${sales.valorTotal}), 0)`,
 		})
 		.from(sales)
-		.where(and(gte(sales.dataVenda, periodStart), lte(sales.dataVenda, periodEnd)))
+		.where(and(eq(sales.organizacaoId, userOrgId), gte(sales.dataVenda, periodStart), lte(sales.dataVenda, periodEnd)))
 		.groupBy(sales.vendedorId)
 		.orderBy(desc(sql`COALESCE(SUM(${sales.valorTotal}), 0)`))
 		.limit(5);
@@ -159,7 +170,7 @@ async function getCampaignStats({
 	const sellersResult =
 		sellerIds.length > 0
 			? await db.query.sellers.findMany({
-					where: inArray(sellers.id, sellerIds),
+					where: and(eq(sellers.organizacaoId, userOrgId), inArray(sellers.id, sellerIds)),
 				})
 			: [];
 
@@ -183,7 +194,7 @@ async function getCampaignStats({
 			vendasValor: sql<number>`COALESCE(SUM(${sales.valorTotal}), 0)`,
 		})
 		.from(sales)
-		.where(and(gte(sales.dataVenda, periodStart), lte(sales.dataVenda, periodEnd)))
+		.where(and(eq(sales.organizacaoId, userOrgId), gte(sales.dataVenda, periodStart), lte(sales.dataVenda, periodEnd)))
 		.groupBy(sales.parceiroId)
 		.orderBy(desc(sql`COALESCE(SUM(${sales.valorTotal}), 0)`))
 		.limit(5);
@@ -193,7 +204,7 @@ async function getCampaignStats({
 	const partnersResult =
 		partnerIds.length > 0
 			? await db.query.partners.findMany({
-					where: inArray(partners.id, partnerIds),
+					where: and(eq(partners.organizacaoId, userOrgId), inArray(partners.id, partnerIds)),
 				})
 			: [];
 
@@ -220,7 +231,15 @@ async function getCampaignStats({
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.innerJoin(products, eq(saleItems.produtoId, products.id))
-		.where(and(gte(sales.dataVenda, periodStart), lte(sales.dataVenda, periodEnd)))
+		.where(
+			and(
+				eq(sales.organizacaoId, userOrgId),
+				eq(saleItems.organizacaoId, userOrgId),
+				eq(products.organizacaoId, userOrgId),
+				gte(sales.dataVenda, periodStart),
+				lte(sales.dataVenda, periodEnd),
+			),
+		)
 		.groupBy(saleItems.produtoId, products.descricao)
 		.orderBy(desc(sql`COALESCE(SUM(${saleItems.valorVendaTotalLiquido}), 0)`))
 		.limit(5);

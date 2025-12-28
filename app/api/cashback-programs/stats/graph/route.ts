@@ -44,18 +44,22 @@ async function getCashbackProgramsGraph({
 	input: TCashbackProgramsGraphInput;
 	sessionUser: TAuthUserSession["user"];
 }) {
+	const userOrgId = sessionUser.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const period = {
 		after: input.periodAfter,
 		before: input.periodBefore,
 	};
 
-	console.log("[INFO] [GET CASHBACK PROGRAMS GRAPH] Period:", period);
+	console.log(`[ORG: ${userOrgId}] [INFO] [GET CASHBACK PROGRAMS GRAPH] Period:`, period);
 	if (!period.after) {
 		const firstCashbackProgramAssociation = await db
 			.select({
 				date: cashbackProgramBalances.dataInsercao,
 			})
 			.from(cashbackProgramBalances)
+			.where(eq(cashbackProgramBalances.organizacaoId, userOrgId))
 			.orderBy(asc(cashbackProgramBalances.dataInsercao))
 			.limit(1);
 		period.after = firstCashbackProgramAssociation[0]?.date ?? undefined;
@@ -86,7 +90,7 @@ async function getCashbackProgramsGraph({
 				total: countDistinct(cashbackProgramBalances.clienteId),
 			})
 			.from(cashbackProgramBalances)
-			.where(lte(cashbackProgramBalances.dataInsercao, period.after));
+			.where(and(eq(cashbackProgramBalances.organizacaoId, userOrgId), lte(cashbackProgramBalances.dataInsercao, period.after)));
 
 		const initialTotal = Number(participantsBeforePeriod[0]?.total || 0);
 
@@ -96,7 +100,13 @@ async function getCashbackProgramsGraph({
 				total: countDistinct(cashbackProgramBalances.clienteId),
 			})
 			.from(cashbackProgramBalances)
-			.where(and(gte(cashbackProgramBalances.dataInsercao, period.after), lte(cashbackProgramBalances.dataInsercao, period.before)))
+			.where(
+				and(
+					eq(cashbackProgramBalances.organizacaoId, userOrgId),
+					gte(cashbackProgramBalances.dataInsercao, period.after),
+					lte(cashbackProgramBalances.dataInsercao, period.before),
+				),
+			)
 			.orderBy(sql`date_trunc('day', ${cashbackProgramBalances.dataInsercao})`)
 			.groupBy(sql`date_trunc('day', ${cashbackProgramBalances.dataInsercao})`);
 
@@ -138,7 +148,13 @@ async function getCashbackProgramsGraph({
 				total: sum(cashbackProgramTransactions.valor),
 			})
 			.from(cashbackProgramTransactions)
-			.where(and(eq(cashbackProgramTransactions.tipo, "ACÚMULO"), lte(cashbackProgramTransactions.dataInsercao, period.after)));
+			.where(
+				and(
+					eq(cashbackProgramTransactions.organizacaoId, userOrgId),
+					eq(cashbackProgramTransactions.tipo, "ACÚMULO"),
+					lte(cashbackProgramTransactions.dataInsercao, period.after),
+				),
+			);
 
 		const initialTotal = Number(cashbackGeneratedBeforePeriod[0]?.total || 0);
 
@@ -150,6 +166,7 @@ async function getCashbackProgramsGraph({
 			.from(cashbackProgramTransactions)
 			.where(
 				and(
+					eq(cashbackProgramTransactions.organizacaoId, userOrgId),
 					eq(cashbackProgramTransactions.tipo, "ACÚMULO"),
 					gte(cashbackProgramTransactions.dataInsercao, period.after),
 					lte(cashbackProgramTransactions.dataInsercao, period.before),
@@ -196,7 +213,13 @@ async function getCashbackProgramsGraph({
 				total: sum(cashbackProgramTransactions.valor),
 			})
 			.from(cashbackProgramTransactions)
-			.where(and(eq(cashbackProgramTransactions.tipo, "RESGATE"), lte(cashbackProgramTransactions.dataInsercao, period.after)));
+			.where(
+				and(
+					eq(cashbackProgramTransactions.organizacaoId, userOrgId),
+					eq(cashbackProgramTransactions.tipo, "RESGATE"),
+					lte(cashbackProgramTransactions.dataInsercao, period.after),
+				),
+			);
 
 		const initialTotal = Number(cashbackRescuedBeforePeriod[0]?.total || 0);
 
@@ -208,6 +231,7 @@ async function getCashbackProgramsGraph({
 			.from(cashbackProgramTransactions)
 			.where(
 				and(
+					eq(cashbackProgramTransactions.organizacaoId, userOrgId),
 					eq(cashbackProgramTransactions.tipo, "RESGATE"),
 					gte(cashbackProgramTransactions.dataInsercao, period.after),
 					lte(cashbackProgramTransactions.dataInsercao, period.before),

@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { FacebookOAuth } from "@/lib/authentication/oauth";
+import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 
 import { ConvexHttpClient } from "convex/browser";
 import dayjs from "dayjs";
@@ -7,6 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 type TWhatsappIntegrationData = {
 	tipo: "WHATSAPP";
+	organizacaoId: string;
 	token: string;
 	dataExpiracao: string;
 	metaAutorAppId: string;
@@ -20,6 +22,7 @@ async function saveCredentialsToDB(whatsappConnection: TWhatsappIntegrationData)
 	const convex = new ConvexHttpClient(CONVEX_URL);
 	// LÓGICA DO SEU BANCO DE DADOS AQUI
 	await convex.mutation(api.mutations.connections.syncWhatsappConnection, {
+		organizacaoId: whatsappConnection.organizacaoId,
 		token: whatsappConnection.token,
 		dataExpiracao: new Date(whatsappConnection.dataExpiracao).getTime(),
 		metaAutorAppId: whatsappConnection.metaAutorAppId,
@@ -30,6 +33,15 @@ async function saveCredentialsToDB(whatsappConnection: TWhatsappIntegrationData)
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+	// Get user session to determine organization
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) {
+		return res.status(401).json({ error: "Você precisa estar autenticado para conectar o WhatsApp." });
+	}
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) {
+		return res.status(400).json({ error: "Você precisa estar vinculado a uma organização para conectar o WhatsApp." });
+	}
 	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Query Params:", req.query);
 	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Body:", req.body);
 	const { code, state } = req.query;
@@ -83,6 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 	const whatsappConnection: TWhatsappIntegrationData = {
 		tipo: "WHATSAPP",
+		organizacaoId: userOrgId,
 		token: accessToken ?? "",
 		dataExpiracao: accessTokenExpiresAt?.toISOString() ?? dayjs().add(1, "month").toISOString(),
 		metaAutorAppId: debugData.data?.user_id,
@@ -91,5 +104,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	};
 
 	await saveCredentialsToDB(whatsappConnection);
-	return res.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?view=meta-oauth`);	
+	return res.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?view=meta-oauth`);
 }

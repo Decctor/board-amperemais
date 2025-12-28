@@ -101,11 +101,14 @@ type GetSellersParams = {
 	user: TAuthUserSession["user"];
 };
 async function getSellers({ input, user }: GetSellersParams) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	console.log("[INFO] [GET SELLERS] Input:", input);
 	if ("id" in input) {
 		console.log("[INFO] [GET SELLERS] Getting seller by id:", input.id);
 		const seller = await db.query.sellers.findFirst({
-			where: (fields, { eq }) => eq(fields.id, input.id),
+			where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, userOrgId)),
 		});
 		if (!seller) throw new createHttpError.NotFound("Vendedor não encontrado.");
 
@@ -117,14 +120,14 @@ async function getSellers({ input, user }: GetSellersParams) {
 		};
 	}
 
-	const sellerQueryConditions = [];
+	const sellerQueryConditions = [eq(sellers.organizacaoId, userOrgId)];
 	if (input.search)
 		sellerQueryConditions.push(
 			sql`(to_tsvector('portuguese', ${sellers.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${sellers.nome} ILIKE '%' || ${input.search} || '%')`,
 		);
 	if (input.sellersIds && input.sellersIds.length > 0) sellerQueryConditions.push(inArray(sellers.id, input.sellersIds));
 
-	const statsConditions = [];
+	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
 	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
 	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
@@ -191,7 +194,7 @@ async function getSellers({ input, user }: GetSellersParams) {
 
 	const sellerIds = statsBySeller.map((seller) => seller.sellerId);
 	const sellersResult = await db.query.sellers.findMany({
-		where: inArray(sellers.id, sellerIds),
+		where: and(eq(sellers.organizacaoId, userOrgId), inArray(sellers.id, sellerIds)),
 	});
 
 	const sellersWithStats = sellersResult.map((seller) => {
@@ -252,10 +255,19 @@ type UpdateSellerParams = {
 	user: TAuthUserSession["user"];
 };
 async function updateSeller({ input, user }: UpdateSellerParams) {
-	const seller = await db.update(sellers).set(input.seller).where(eq(sellers.id, input.sellerId));
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const updatedSeller = await db
+		.update(sellers)
+		.set({ ...input.seller, organizacaoId: userOrgId })
+		.where(and(eq(sellers.id, input.sellerId), eq(sellers.organizacaoId, userOrgId)))
+		.returning({ id: sellers.id });
+	const updatedSellerId = updatedSeller[0]?.id;
+	if (!updatedSellerId) throw new createHttpError.NotFound("Vendedor não encontrado.");
 	return {
 		data: {
-			updatedId: input.sellerId,
+			updatedId: updatedSellerId,
 		},
 		message: "Vendedor atualizado com sucesso.",
 	};

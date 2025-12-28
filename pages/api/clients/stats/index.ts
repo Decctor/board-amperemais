@@ -38,15 +38,18 @@ type GetClientStatsParams = {
 };
 
 async function getClientStats({ user, input }: GetClientStatsParams) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const client = await db.query.clients.findFirst({
-		where: eq(clients.id, input.clientId),
+		where: and(eq(clients.id, input.clientId), eq(clients.organizacaoId, userOrgId)),
 	});
 	if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
 
 	const periodAfterDate = input.periodAfter ? new Date(input.periodAfter) : undefined;
 	const periodBeforeDate = input.periodBefore ? new Date(input.periodBefore) : undefined;
 
-	const saleWhereConditions = [eq(sales.clienteId, input.clientId), isNotNull(sales.dataVenda)] as const;
+	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.clienteId, input.clientId), isNotNull(sales.dataVenda)] as const;
 	const saleWhere = and(
 		...saleWhereConditions,
 		periodAfterDate ? gte(sales.dataVenda, periodAfterDate) : undefined,
@@ -88,7 +91,7 @@ async function getClientStats({ user, input }: GetClientStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(products, eq(saleItems.produtoId, products.id))
-		.where(saleWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), saleWhere))
 		.groupBy(products.grupo)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(10);
@@ -102,7 +105,7 @@ async function getClientStats({ user, input }: GetClientStatsParams) {
 		})
 		.from(sales)
 		.leftJoin(sellers, eq(sales.vendedorId, sellers.id))
-		.where(saleWhere)
+		.where(and(eq(sellers.organizacaoId, userOrgId), saleWhere))
 		.groupBy(sales.vendedorId, sellers.nome)
 		.orderBy(desc(sql`sum(${sales.valorTotal})`))
 		.limit(10);
@@ -118,7 +121,7 @@ async function getClientStats({ user, input }: GetClientStatsParams) {
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(products, eq(saleItems.produtoId, products.id))
-		.where(saleWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), saleWhere))
 		.groupBy(saleItems.produtoId, products.descricao, products.grupo)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(10);

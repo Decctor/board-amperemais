@@ -18,12 +18,20 @@ const CreateUserInputSchema = z.object({
 export type TCreateUserInput = z.infer<typeof CreateUserInputSchema>;
 
 async function createUser({ input, session }: { input: TCreateUserInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const sessionUserHasPermission = session.permissoes.usuarios.criar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
-	const insertedUser = await db.insert(users).values(input.user).returning({
-		id: users.id,
-	});
+	const insertedUser = await db
+		.insert(users)
+		.values({
+			...input.user,
+			organizacaoId: userOrgId,
+		})
+		.returning({
+			id: users.id,
+		});
 	const insertedUserId = insertedUser[0]?.id;
 	if (!insertedUserId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar usuário.");
 
@@ -83,6 +91,8 @@ const GetUsersInputSchema = z.object({
 export type TGetUsersInput = z.infer<typeof GetUsersInputSchema>;
 
 async function getUsers({ input, session }: { input: TGetUsersInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const sessionUserHasPermission = session.permissoes.usuarios.visualizar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
@@ -91,7 +101,9 @@ async function getUsers({ input, session }: { input: TGetUsersInput; session: TA
 	if ("id" in input && input.id) {
 		const id = input.id;
 		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
-		const user = await db.query.users.findFirst({ where: (fields, { eq }) => eq(fields.id, id) });
+		const user = await db.query.users.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
+		});
 		if (!user) throw new createHttpError.NotFound("Usuário não encontrado.");
 		return {
 			data: {
@@ -109,7 +121,7 @@ async function getUsers({ input, session }: { input: TGetUsersInput; session: TA
 		);
 
 	const usersResult = await db.query.users.findMany({
-		where: and(...conditions),
+		where: and(...conditions, eq(users.organizacaoId, userOrgId)),
 		orderBy: (fields, { asc }) => asc(fields.nome),
 	});
 	return {
@@ -153,12 +165,21 @@ const UpdateUserInputSchema = z.object({
 export type TUpdateUserInput = z.infer<typeof UpdateUserInputSchema>;
 
 async function updateUser({ input, session }: { input: TUpdateUserInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const sessionUserHasPermission = session.permissoes.usuarios.editar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
-	const updatedUser = await db.update(users).set(input.user).where(eq(users.id, input.id)).returning({
-		id: users.id,
-	});
+	const updatedUser = await db
+		.update(users)
+		.set({
+			...input.user,
+			organizacaoId: userOrgId,
+		})
+		.where(and(eq(users.id, input.id), eq(users.organizacaoId, userOrgId)))
+		.returning({
+			id: users.id,
+		});
 	const updatedUserId = updatedUser[0]?.id;
 	if (!updatedUserId) throw new createHttpError.NotFound("Usuário não encontrado.");
 	return {

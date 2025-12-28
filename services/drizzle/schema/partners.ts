@@ -1,12 +1,14 @@
 import { relations } from "drizzle-orm";
 import { text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
+import { organizations } from "./organizations";
 import { sales } from "./sales";
 
 export const partners = newTable("partners", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	identificador: text("identificador").notNull(),
 	nome: text("nome").notNull(),
 	avatarUrl: text("avatar_url"),

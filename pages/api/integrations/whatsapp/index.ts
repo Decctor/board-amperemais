@@ -76,6 +76,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 							reason: statusUpdate.reason,
 						});
 
+						// Note: WhatsApp webhook updates templates by whatsappTemplateId which is unique across organizations
+						// The update will affect the template regardless of organization, which is correct behavior
 						const updateResult = await db
 							.update(whatsappTemplates)
 							.set({
@@ -184,27 +186,68 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 					console.log("[INFO] [WHATSAPP_WEBHOOK] Handling incoming message:", body);
 					const incomingMessage = parseWebhookIncomingMessage(body);
 
+					if (!incomingMessage) {
+						console.error("[WHATSAPP_WEBHOOK] Failed to parse incoming message");
+						return res.status(200).json({ success: true });
+					}
+
+					// Determine organization from whatsappPhoneNumberId
+					let organizacaoId: string | null = null;
+					try {
+						const whatsappConnection = await convex.query(api.queries.connections.getWhatsappConnectionByPhoneNumberId, {
+							whatsappPhoneNumberId: incomingMessage.whatsappPhoneNumberId,
+						});
+
+						if (whatsappConnection) {
+							organizacaoId = whatsappConnection.organizacaoId;
+							console.log("[INFO] [WHATSAPP_WEBHOOK] Found organization:", organizacaoId);
+						} else {
+							console.warn("[WHATSAPP_WEBHOOK] No WhatsApp connection found for phone number ID:", incomingMessage.whatsappPhoneNumberId);
+							return res.status(200).json({ success: true });
+						}
+					} catch (error) {
+						console.error("[WHATSAPP_WEBHOOK] Error querying WhatsApp connection:", error);
+						return res.status(200).json({ success: true });
+					}
+
+					// Now search for client within the organization
 					let clientId: string | null = null;
 					const existingClient = await db.query.clients.findFirst({
-						where: eq(clients.telefoneBase, formatPhoneAsBase(incomingMessage?.fromPhoneNumber as string)),
+						where: (fields, { and, eq }) =>
+							and(eq(fields.telefoneBase, formatPhoneAsBase(incomingMessage.fromPhoneNumber as string)), eq(fields.organizacaoId, organizacaoId)),
 					});
+
 					if (existingClient) {
 						console.log("[INFO] [WHATSAPP_WEBHOOK] Client already exists:", existingClient);
 						clientId = existingClient.id;
 					} else {
-						console.log("[INFO] [WHATSAPP_WEBHOOK] Client does not exist, inserting new client:", incomingMessage?.fromPhoneNumber);
-						const insertClientResponse = await db
-							.insert(clients)
-							.values({
-								nome: incomingMessage?.profileName as string,
-								telefone: incomingMessage?.fromPhoneNumber as string,
-								telefoneBase: formatPhoneAsBase(incomingMessage?.fromPhoneNumber as string),
-							})
-							.returning({
-								id: clients.id,
-							});
-						clientId = insertClientResponse[0]?.id;
+						console.log("[INFO] [WHATSAPP_WEBHOOK] Client does not exist, creating new client:", incomingMessage.fromPhoneNumber);
+						try {
+							const insertedClient = await db
+								.insert(clients)
+								.values({
+									organizacaoId: organizacaoId,
+									nome: incomingMessage.profileName,
+									telefone: incomingMessage.fromPhoneNumber,
+									telefoneBase: formatPhoneAsBase(incomingMessage.fromPhoneNumber as string),
+									canalAquisicao: "WHATSAPP",
+								})
+								.returning({ id: clients.id });
+
+							clientId = insertedClient[0]?.id ?? null;
+							console.log("[INFO] [WHATSAPP_WEBHOOK] New client created:", clientId);
+						} catch (error) {
+							console.error("[WHATSAPP_WEBHOOK] Error creating client:", error);
+							// Continue without client - message will be handled but not linked to a client in the app
+						}
 					}
+
+					// Skip message processing if we couldn't determine client and organization
+					if (!incomingMessage || !clientId) {
+						console.warn("[WHATSAPP_WEBHOOK] Cannot process message without client ID");
+						return res.status(200).json({ success: true });
+					}
+
 					if (incomingMessage) {
 						let mediaStorageData = null;
 

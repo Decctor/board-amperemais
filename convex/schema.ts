@@ -3,6 +3,7 @@ import { v } from "convex/values";
 
 export default defineSchema({
 	whatsappConnections: defineTable({
+		organizacaoId: v.optional(v.string()),
 		token: v.string(),
 		dataExpiracao: v.number(),
 		metaAutorAppId: v.string(),
@@ -15,7 +16,7 @@ export default defineSchema({
 				numero: v.string(),
 			}),
 		),
-	}),
+	}).index("by_organizacaoId", ["organizacaoId"]),
 	users: defineTable({
 		nome: v.string(),
 		email: v.string(),

@@ -3,6 +3,7 @@ import { mutation } from "../_generated/server";
 
 export const syncWhatsappConnection = mutation({
 	args: {
+		organizacaoId: v.string(),
 		token: v.string(),
 		dataExpiracao: v.number(),
 		metaAutorAppId: v.string(),
@@ -17,7 +18,10 @@ export const syncWhatsappConnection = mutation({
 		),
 	},
 	handler: async (ctx, args) => {
-		const whatsappConnection = await ctx.db.query("whatsappConnections").first();
+		const whatsappConnection = await ctx.db
+			.query("whatsappConnections")
+			.withIndex("by_organizacaoId", (q) => q.eq("organizacaoId", args.organizacaoId))
+			.first();
 		if (whatsappConnection) {
 			await ctx.db.patch(whatsappConnection._id, {
 				token: args.token,
@@ -31,6 +35,7 @@ export const syncWhatsappConnection = mutation({
 			};
 		}
 		const insertedWhatsappConnectionId = await ctx.db.insert("whatsappConnections", {
+			organizacaoId: args.organizacaoId,
 			token: args.token,
 			dataExpiracao: args.dataExpiracao,
 			metaAutorAppId: args.metaAutorAppId,

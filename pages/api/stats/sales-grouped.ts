@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 
 import { db } from "@/services/drizzle";
-import { clients, partners, products, saleItems, sales } from "@/services/drizzle/schema";
+import { clients, partners, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, count, eq, exists, gte, inArray, isNotNull, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -83,9 +83,13 @@ type GetResponse = {
 const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
 
-	const stats = await getSalesGroupedStats({ filters });
+	const stats = await getSalesGroupedStats({ filters, organizacaoId: userOrgId });
 
 	return res.status(200).json({
 		data: {
@@ -189,13 +193,14 @@ export default apiHandler({ POST: getSalesGroupedStatsRoute });
 
 type GetSalesParams = {
 	filters: TSaleStatsGeneralQueryParams;
+	organizacaoId: string;
 };
 
-async function getSalesGroupedStats({ filters }: GetSalesParams) {
+async function getSalesGroupedStats({ filters, organizacaoId }: GetSalesParams) {
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
 
-	const conditions = [];
+	const conditions = [eq(sales.organizacaoId, organizacaoId)];
 
 	if (ajustedAfter) conditions.push(gte(sales.dataVenda, ajustedAfter));
 	if (ajustedBefore) conditions.push(lte(sales.dataVenda, ajustedBefore));
@@ -207,16 +212,21 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 
 	if (filters.clientRFMTitles.length > 0)
-		exists(
-			db
-				.select({ id: clients.id })
-				.from(clients)
-				.where(and(eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles))),
+		conditions.push(
+			exists(
+				db
+					.select({ id: clients.id })
+					.from(clients)
+					.where(
+						and(eq(clients.organizacaoId, organizacaoId), eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles)),
+					),
+			),
 		);
 
 	if (filters.excludedSalesIds) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
 
 	const sellersResult = await db.query.sellers.findMany({
+		where: eq(sellers.organizacaoId, organizacaoId),
 		columns: {
 			id: true,
 			identificador: true,
@@ -226,6 +236,7 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 	});
 	const sellersMap = new Map(sellersResult.map((seller) => [seller.id, seller]));
 	const partnersResult = await db.query.partners.findMany({
+		where: eq(partners.organizacaoId, organizacaoId),
 		columns: {
 			id: true,
 			identificador: true,
@@ -264,7 +275,7 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 			primeiraVenda: min(sales.dataVenda),
 		})
 		.from(sales)
-		.where(and(isNotNull(sales.parceiro), notInArray(sales.parceiro, ["", "0", "N/A"])))
+		.where(and(eq(sales.organizacaoId, organizacaoId), isNotNull(sales.parceiro), notInArray(sales.parceiro, ["", "0", "N/A"])))
 		.groupBy(sales.parceiroId);
 
 	const resultsByPartner = await db
@@ -317,11 +328,14 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 		})
 		.from(saleItems)
 		.where(
-			exists(
-				db
-					.select({ id: sales.id })
-					.from(sales)
-					.where(and(eq(sales.id, saleItems.vendaId), ...conditions)),
+			and(
+				eq(saleItems.organizacaoId, organizacaoId),
+				exists(
+					db
+						.select({ id: sales.id })
+						.from(sales)
+						.where(and(eq(sales.id, saleItems.vendaId), ...conditions)),
+				),
 			),
 		)
 		.innerJoin(products, eq(saleItems.produtoId, products.id))
@@ -335,11 +349,14 @@ async function getSalesGroupedStats({ filters }: GetSalesParams) {
 		})
 		.from(saleItems)
 		.where(
-			exists(
-				db
-					.select({ id: sales.id })
-					.from(sales)
-					.where(and(eq(sales.id, saleItems.vendaId), ...conditions)),
+			and(
+				eq(saleItems.organizacaoId, organizacaoId),
+				exists(
+					db
+						.select({ id: sales.id })
+						.from(sales)
+						.where(and(eq(sales.id, saleItems.vendaId), ...conditions)),
+				),
 			),
 		)
 		.innerJoin(products, eq(saleItems.produtoId, products.id))

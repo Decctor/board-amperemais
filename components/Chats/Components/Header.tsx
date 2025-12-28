@@ -27,17 +27,18 @@ export function Header({
 	showSearch = false,
 	searchQuery = "",
 	onSearchChange,
-	onNewChat
+	onNewChat,
 }: ChatHubHeaderProps) {
-	const { selectedPhoneNumber, setSelectedPhoneNumber } = useChatHub();
-	const { data: whatsappConnections } = useConvexQuery(api.queries.connections.getWhatsappConnection);
+	const { selectedPhoneNumber, setSelectedPhoneNumber, user } = useChatHub();
+	const { data: whatsappConnections } = useConvexQuery(
+		api.queries.connections.getWhatsappConnection,
+		user.organizacaoId ? { organizacaoId: user.organizacaoId } : "skip",
+	);
 
 	const phoneNumbers = whatsappConnections?.telefones ?? [];
 
 	return (
-		<div
-			className={cn("w-full flex flex-col gap-3 px-4 py-3", "border-b border-primary/20 bg-card/50 backdrop-blur-sm", className)}
-		>
+		<div className={cn("w-full flex flex-col gap-3 px-4 py-3", "border-b border-primary/20 bg-card/50 backdrop-blur-sm", className)}>
 			<div className="w-full flex items-center justify-between gap-3">
 				{/* Left section - Icon/Title */}
 				<div className="flex items-center gap-2">

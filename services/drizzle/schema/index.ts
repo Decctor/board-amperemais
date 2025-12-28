@@ -13,3 +13,4 @@ export * from "./campaigns";
 export * from "./interactions";
 export * from "./whatsapp-templates";
 export * from "./cashback-programs";
+export * from "./organizations";

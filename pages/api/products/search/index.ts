@@ -2,7 +2,7 @@ import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { db } from "@/services/drizzle";
 import { products } from "@/services/drizzle/schema";
-import { and, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { count } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
@@ -22,13 +22,13 @@ const GetProductsBySearchInputSchema = z.object({
 });
 export type TGetProductsBySearchInput = z.infer<typeof GetProductsBySearchInputSchema>;
 
-async function getProductsBySearch({ input }: { input: TGetProductsBySearchInput }) {
+async function getProductsBySearch({ input, userOrgId }: { input: TGetProductsBySearchInput; userOrgId: string }) {
 	const PAGE_SIZE = 25;
 
 	const skip = PAGE_SIZE * (input.page - 1);
 	const limit = PAGE_SIZE;
 
-	const conditions = [];
+	const conditions = [eq(products.organizacaoId, userOrgId)];
 
 	if (input.search.length > 0) {
 		conditions.push(sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
@@ -61,8 +61,12 @@ export type TGetProductsBySearchOutput = Awaited<ReturnType<typeof getProductsBy
 const getProductsBySearchHandler: NextApiHandler<TGetProductsBySearchOutput> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const input = GetProductsBySearchInputSchema.parse(req.query);
-	const data = await getProductsBySearch({ input });
+	const data = await getProductsBySearch({ input, userOrgId });
 	return res.status(200).json(data);
 };
 

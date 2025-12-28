@@ -15,7 +15,13 @@ const CreatePartnerInputSchema = z.object({
 export type TCreatePartnerInput = z.infer<typeof CreatePartnerInputSchema>;
 
 async function createPartner({ input, session }: { input: TCreatePartnerInput; session: TAuthUserSession["user"] }) {
-	const insertedPartner = await db.insert(partners).values(input.partner).returning({ id: partners.id });
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const insertedPartner = await db
+		.insert(partners)
+		.values({ ...input.partner, organizacaoId: userOrgId })
+		.returning({ id: partners.id });
 	const insertedPartnerId = insertedPartner[0]?.id;
 	if (!insertedPartnerId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar parceiro.");
 	return {
@@ -94,10 +100,15 @@ const GetPartnersInputSchema = z.object({
 export type TGetPartnersInput = z.infer<typeof GetPartnersInputSchema>;
 
 async function getPartners({ input, session }: { input: TGetPartnersInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	if ("id" in input && input.id) {
 		const sellerId = input.id;
 		if (!sellerId) throw new createHttpError.BadRequest("ID do parceiro não informado.");
-		const partner = await db.query.partners.findFirst({ where: (fields, { eq }) => eq(fields.id, sellerId) });
+		const partner = await db.query.partners.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, sellerId), eq(fields.organizacaoId, userOrgId)),
+		});
 		if (!partner) throw new createHttpError.NotFound("Parceiro não encontrado.");
 		return {
 			data: {
@@ -139,7 +150,7 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 		})
 		.from(partners)
 		.leftJoin(sales, eq(partners.id, sales.parceiroId))
-		.where(and(...partnerConditions, ...statsConditions))
+		.where(and(eq(partners.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), ...partnerConditions, ...statsConditions))
 		.groupBy(partners.id);
 
 	if (havingConditions.length > 0) {
@@ -163,7 +174,7 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 		})
 		.from(partners)
 		.leftJoin(sales, eq(partners.id, sales.parceiroId))
-		.where(and(...partnerConditions, ...statsConditions))
+		.where(and(eq(partners.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), ...partnerConditions, ...statsConditions))
 		.having(and(...havingConditions))
 		.groupBy(partners.id)
 		.orderBy(sql`${partners.nome} asc`)
@@ -172,7 +183,7 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 
 	const partnerIds = statsByPartnerResult.map((partner) => partner.partnerId);
 	const partnersResult = await db.query.partners.findMany({
-		where: inArray(partners.id, partnerIds),
+		where: and(eq(partners.organizacaoId, userOrgId), inArray(partners.id, partnerIds)),
 	});
 
 	const partnersWithStats = partnersResult.map((partner) => {
@@ -237,10 +248,19 @@ type UpdatePartnerParams = {
 	session: TAuthUserSession["user"];
 };
 async function updatePartner({ input, session }: UpdatePartnerParams) {
-	const partner = await db.update(partners).set(input.partner).where(eq(partners.id, input.partnerId));
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const updatedPartner = await db
+		.update(partners)
+		.set({ ...input.partner, organizacaoId: userOrgId })
+		.where(and(eq(partners.id, input.partnerId), eq(partners.organizacaoId, userOrgId)))
+		.returning({ id: partners.id });
+	const updatedPartnerId = updatedPartner[0]?.id;
+	if (!updatedPartnerId) throw new createHttpError.NotFound("Parceiro não encontrado.");
 	return {
 		data: {
-			updatedId: input.partnerId,
+			updatedId: updatedPartnerId,
 		},
 		message: "Parceiro atualizado com sucesso.",
 	};

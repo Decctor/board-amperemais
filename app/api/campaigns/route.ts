@@ -17,6 +17,8 @@ const CreateCampaignInputSchema = z.object({
 export type TCreateCampaignInput = z.infer<typeof CreateCampaignInputSchema>;
 
 async function createCampaign({ input, session }: { input: TCreateCampaignInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	// Doing some validations before starting the process
 	if (
 		input.campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO" &&
@@ -27,12 +29,14 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 
 	const insertedCampaignResponse = await db
 		.insert(campaigns)
-		.values({ ...input.campaign, autorId: session.id })
+		.values({ ...input.campaign, organizacaoId: userOrgId, autorId: session.id })
 		.returning({ id: campaigns.id });
 
 	const insertedCampaignId = insertedCampaignResponse[0]?.id;
 	if (!insertedCampaignId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar campanha.");
-	await db.insert(campaignSegmentations).values(input.segmentations.map((segmentation) => ({ ...segmentation, campanhaId: insertedCampaignId })));
+	await db
+		.insert(campaignSegmentations)
+		.values(input.segmentations.map((segmentation) => ({ ...segmentation, campanhaId: insertedCampaignId, organizacaoId: userOrgId })));
 
 	return {
 		data: {
@@ -85,12 +89,15 @@ const GetCampaignsInputSchema = z.object({
 export type TGetCampaignsInput = z.infer<typeof GetCampaignsInputSchema>;
 
 async function getCampaigns({ input, session }: { input: TGetCampaignsInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	if ("id" in input && input.id) {
 		const campaignId = input.id;
 		if (!campaignId) throw new createHttpError.BadRequest("ID da campanha não informado.");
 
 		const campaign = await db.query.campaigns.findFirst({
-			where: (fields, { eq }) => eq(fields.id, campaignId),
+			where: (fields, { and, eq }) => and(eq(fields.id, campaignId), eq(fields.organizacaoId, userOrgId)),
 			with: {
 				segmentacoes: true,
 			},
@@ -106,14 +113,15 @@ async function getCampaigns({ input, session }: { input: TGetCampaignsInput; ses
 		};
 	}
 
-	const conditions = [];
+	const conditions = [eq(campaigns.organizacaoId, userOrgId)];
 	if (input.search && input.search.trim().length > 0) {
-		conditions.push(
-			or(
-				sql`(to_tsvector('portuguese', ${campaigns.titulo}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${campaigns.titulo} ILIKE '%' || ${input.search} || '%')`,
-				sql`(to_tsvector('portuguese', ${campaigns.descricao}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${campaigns.descricao} ILIKE '%' || ${input.search} || '%')`,
-			),
+		const searchCondition = or(
+			sql`(to_tsvector('portuguese', ${campaigns.titulo}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${campaigns.titulo} ILIKE '%' || ${input.search} || '%')`,
+			sql`(to_tsvector('portuguese', ${campaigns.descricao}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${campaigns.descricao} ILIKE '%' || ${input.search} || '%')`,
 		);
+		if (searchCondition) {
+			conditions.push(searchCondition);
+		}
 	}
 	if (input.activeOnly && input.activeOnly) {
 		conditions.push(eq(campaigns.ativo, true));
@@ -181,6 +189,8 @@ const UpdateCampaignInputSchema = z.object({
 export type TUpdateCampaignInput = z.infer<typeof UpdateCampaignInputSchema>;
 
 async function updateCampaign({ input, session }: { input: TUpdateCampaignInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const campaignId = input.campaignId;
 
 	return await db.transaction(async (trx) => {
@@ -189,7 +199,11 @@ async function updateCampaign({ input, session }: { input: TUpdateCampaignInput;
 			campaign: input.campaign,
 			segmentations: input.segmentations,
 		});
-		const updatedCampaignResponse = await trx.update(campaigns).set(input.campaign).where(eq(campaigns.id, campaignId)).returning({ id: campaigns.id });
+		const updatedCampaignResponse = await trx
+			.update(campaigns)
+			.set({ ...input.campaign, organizacaoId: userOrgId })
+			.where(and(eq(campaigns.id, campaignId), eq(campaigns.organizacaoId, userOrgId)))
+			.returning({ id: campaigns.id });
 
 		const updatedCampaignId = updatedCampaignResponse[0]?.id;
 		if (!updatedCampaignId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar campanha.");
@@ -201,6 +215,7 @@ async function updateCampaign({ input, session }: { input: TUpdateCampaignInput;
 			entities: input.segmentations,
 			fatherEntityKey: "campanhaId",
 			fatherEntityId: updatedCampaignId,
+			organizacaoId: userOrgId,
 		});
 
 		return {

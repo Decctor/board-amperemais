@@ -8,6 +8,8 @@ import {
 import { formatComparisonWithEmoji, formatCurrency, formatNumber, formatPercentage, truncateText } from "@/lib/reports/formatters";
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import { WHATSAPP_REPORT_TEMPLATES } from "@/lib/whatsapp/templates";
+import { db } from "@/services/drizzle";
+import { organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import type { NextApiHandler } from "next";
 
@@ -45,111 +47,145 @@ const monthlyReportHandler: NextApiHandler = async (req, res) => {
 			return res.status(200).json({ message: "No recipients configured", sent: 0 });
 		}
 
-		// Get data for last month (full month)
-		const lastMonth = dayjs().subtract(1, "month");
-		const periodAfter = lastMonth.startOf("month").toDate();
-		const periodBefore = lastMonth.endOf("month").toDate();
-
-		console.log("[INFO] [MONTHLY_REPORT] Fetching data for period:", {
-			after: periodAfter,
-			before: periodBefore,
+		// Buscar todas as organizacoes
+		const organizationsList = await db.query.organizations.findMany({
+			columns: { id: true },
 		});
 
-		// Fetch sales stats
-		const stats = await getOverallSalesStats({ after: periodAfter, before: periodBefore });
+		console.log(`[INFO] [MONTHLY_REPORT] Processing ${organizationsList.length} organizations`);
 
-	// Fetch top sellers, partners, and products
-	const topSellers = await getSellerRankings({ after: periodAfter, before: periodBefore }, 3);
-	const topPartners = await getPartnerRankings({ after: periodAfter, before: periodBefore }, 3);
-	const topProducts = await getProductRankings({ after: periodAfter, before: periodBefore }, 3);
+		const allResults = [];
 
-	// Format data for template
-	const periodo = dayjs(periodAfter).format("MMMM/YYYY").toUpperCase();
-	const faturamento = formatCurrency(stats.faturamento.atual);
-	const meta = formatCurrency(stats.faturamentoMeta);
-	const percentualMeta = formatPercentage(stats.faturamentoMetaPorcentagem);
-
-	// Format top sellers list
-	const topVendedor1 = topSellers[0] ? `1. ${truncateText(topSellers[0].vendedorNome, 20)}: ${formatCurrency(topSellers[0].faturamento)}` : "1. Nenhuma venda registrada";
-	const topVendedor2 = topSellers[1] ? `2. ${truncateText(topSellers[1].vendedorNome, 20)}: ${formatCurrency(topSellers[1].faturamento)}` : "2. -";
-	const topVendedor3 = topSellers[2] ? `3. ${truncateText(topSellers[2].vendedorNome, 20)}: ${formatCurrency(topSellers[2].faturamento)}` : "3. -";
-
-	// Format top partners list
-	const topParceiro1 = topPartners[0] ? `1. ${truncateText(topPartners[0].parceiroNome, 20)}: ${formatCurrency(topPartners[0].faturamento)}` : "1. Nenhum parceiro registrado";
-	const topParceiro2 = topPartners[1] ? `2. ${truncateText(topPartners[1].parceiroNome, 20)}: ${formatCurrency(topPartners[1].faturamento)}` : "2. -";
-	const topParceiro3 = topPartners[2] ? `3. ${truncateText(topPartners[2].parceiroNome, 20)}: ${formatCurrency(topPartners[2].faturamento)}` : "3. -";
-
-	// Format top products list
-	const topProduto1 = topProducts[0] ? `1. ${truncateText(topProducts[0].produtoDescricao, 20)}: ${formatCurrency(topProducts[0].faturamento)}` : "1. Nenhum produto vendido";
-	const topProduto2 = topProducts[1] ? `2. ${truncateText(topProducts[1].produtoDescricao, 20)}: ${formatCurrency(topProducts[1].faturamento)}` : "2. -";
-	const topProduto3 = topProducts[2] ? `3. ${truncateText(topProducts[2].produtoDescricao, 20)}: ${formatCurrency(topProducts[2].faturamento)}` : "3. -";
-
-	const comparacao = formatComparisonWithEmoji(stats.faturamento.atual, stats.faturamento.anterior);
-
-		console.log("[INFO] [MONTHLY_REPORT] Report data prepared:", {
-			periodo,
-			faturamento,
-			meta,
-			percentualMeta,
-			comparacao,
-		});
-
-		// Send to all recipients
-		const results = [];
-		for (const recipient of REPORT_RECIPIENTS) {
+		for (const organization of organizationsList) {
 			try {
-				console.log(`[INFO] [MONTHLY_REPORT] Sending report to ${recipient}`);
+				console.log(`[ORG: ${organization.id}] [INFO] [MONTHLY_REPORT] Generating report`);
 
-			const templatePayload = WHATSAPP_REPORT_TEMPLATES.MONTHLY_REPORT.getPayload({
-				templateKey: "MONTHLY_REPORT",
-				toPhoneNumber: recipient,
-				periodo,
-				faturamento,
-				meta,
-				percentualMeta,
-				comparacao,
-				topVendedor1,
-				topVendedor2,
-				topVendedor3,
-				topParceiro1,
-				topParceiro2,
-				topParceiro3,
-				topProduto1,
-				topProduto2,
-				topProduto3,
-			});
+				// Get data for last month (full month)
+				const lastMonth = dayjs().subtract(1, "month");
+				const periodAfter = lastMonth.startOf("month").toDate();
+				const periodBefore = lastMonth.endOf("month").toDate();
 
-				const result = await sendTemplateWhatsappMessage({
-					fromPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
-					templatePayload: templatePayload.data,
+				console.log(`[ORG: ${organization.id}] [INFO] [MONTHLY_REPORT] Fetching data for period:`, {
+					after: periodAfter,
+					before: periodBefore,
 				});
 
-				results.push({
-					recipient,
-					status: "success",
-					messageId: result.whatsappMessageId,
+				// Fetch sales stats
+				const stats = await getOverallSalesStats({ after: periodAfter, before: periodBefore, organizacaoId: organization.id });
+
+				// Fetch top sellers, partners, and products
+				const topSellers = await getSellerRankings({ after: periodAfter, before: periodBefore, organizacaoId: organization.id }, 3);
+				const topPartners = await getPartnerRankings({ after: periodAfter, before: periodBefore, organizacaoId: organization.id }, 3);
+				const topProducts = await getProductRankings({ after: periodAfter, before: periodBefore, organizacaoId: organization.id }, 3);
+
+				// Format data for template
+				const periodo = dayjs(periodAfter).format("MMMM/YYYY").toUpperCase();
+				const faturamento = formatCurrency(stats.faturamento.atual);
+				const meta = formatCurrency(stats.faturamentoMeta);
+				const percentualMeta = formatPercentage(stats.faturamentoMetaPorcentagem);
+
+				// Format top sellers list
+				const topVendedor1 = topSellers[0]
+					? `1. ${truncateText(topSellers[0].vendedorNome, 20)}: ${formatCurrency(topSellers[0].faturamento)}`
+					: "1. Nenhuma venda registrada";
+				const topVendedor2 = topSellers[1] ? `2. ${truncateText(topSellers[1].vendedorNome, 20)}: ${formatCurrency(topSellers[1].faturamento)}` : "2. -";
+				const topVendedor3 = topSellers[2] ? `3. ${truncateText(topSellers[2].vendedorNome, 20)}: ${formatCurrency(topSellers[2].faturamento)}` : "3. -";
+
+				// Format top partners list
+				const topParceiro1 = topPartners[0]
+					? `1. ${truncateText(topPartners[0].parceiroNome, 20)}: ${formatCurrency(topPartners[0].faturamento)}`
+					: "1. Nenhum parceiro registrado";
+				const topParceiro2 = topPartners[1]
+					? `2. ${truncateText(topPartners[1].parceiroNome, 20)}: ${formatCurrency(topPartners[1].faturamento)}`
+					: "2. -";
+				const topParceiro3 = topPartners[2]
+					? `3. ${truncateText(topPartners[2].parceiroNome, 20)}: ${formatCurrency(topPartners[2].faturamento)}`
+					: "3. -";
+
+				// Format top products list
+				const topProduto1 = topProducts[0]
+					? `1. ${truncateText(topProducts[0].produtoDescricao, 20)}: ${formatCurrency(topProducts[0].faturamento)}`
+					: "1. Nenhum produto vendido";
+				const topProduto2 = topProducts[1]
+					? `2. ${truncateText(topProducts[1].produtoDescricao, 20)}: ${formatCurrency(topProducts[1].faturamento)}`
+					: "2. -";
+				const topProduto3 = topProducts[2]
+					? `3. ${truncateText(topProducts[2].produtoDescricao, 20)}: ${formatCurrency(topProducts[2].faturamento)}`
+					: "3. -";
+
+				const comparacao = formatComparisonWithEmoji(stats.faturamento.atual, stats.faturamento.anterior);
+
+				console.log(`[ORG: ${organization.id}] [INFO] [MONTHLY_REPORT] Report data prepared:`, {
+					periodo,
+					faturamento,
+					meta,
+					percentualMeta,
+					comparacao,
 				});
 
-				console.log(`[INFO] [MONTHLY_REPORT] Successfully sent report to ${recipient}`);
+				// Send to all recipients
+				for (const recipient of REPORT_RECIPIENTS) {
+					try {
+						console.log(`[ORG: ${organization.id}] [INFO] [MONTHLY_REPORT] Sending report to ${recipient}`);
+
+						const templatePayload = WHATSAPP_REPORT_TEMPLATES.MONTHLY_REPORT.getPayload({
+							templateKey: "MONTHLY_REPORT",
+							toPhoneNumber: recipient,
+							periodo,
+							faturamento,
+							meta,
+							percentualMeta,
+							comparacao,
+							topVendedor1,
+							topVendedor2,
+							topVendedor3,
+							topParceiro1,
+							topParceiro2,
+							topParceiro3,
+							topProduto1,
+							topProduto2,
+							topProduto3,
+						});
+
+						const result = await sendTemplateWhatsappMessage({
+							fromPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
+							templatePayload: templatePayload.data,
+						});
+
+						allResults.push({
+							organizationId: organization.id,
+							recipient,
+							status: "success",
+							messageId: result.whatsappMessageId,
+						});
+
+						console.log(`[ORG: ${organization.id}] [INFO] [MONTHLY_REPORT] Successfully sent report to ${recipient}`);
+					} catch (error) {
+						console.error(`[ORG: ${organization.id}] [ERROR] [MONTHLY_REPORT] Failed to send report to ${recipient}:`, error);
+						allResults.push({
+							organizationId: organization.id,
+							recipient,
+							status: "error",
+							error: error instanceof Error ? error.message : "Unknown error",
+						});
+					}
+				}
+
+				console.log(`[ORG: ${organization.id}] [INFO] [MONTHLY_REPORT] Report completed`);
 			} catch (error) {
-				console.error(`[ERROR] [MONTHLY_REPORT] Failed to send report to ${recipient}:`, error);
-				results.push({
-					recipient,
-					status: "error",
-					error: error instanceof Error ? error.message : "Unknown error",
-				});
+				console.error(`[ORG: ${organization.id}] [ERROR] [MONTHLY_REPORT] Error generating report:`, error);
+				// Continuar para proxima organizacao mesmo com erro
 			}
 		}
 
-		const successCount = results.filter((r) => r.status === "success").length;
-		console.log(`[INFO] [MONTHLY_REPORT] Report sent to ${successCount}/${REPORT_RECIPIENTS.length} recipients`);
+		const successCount = allResults.filter((r) => r.status === "success").length;
+		console.log(`[INFO] [MONTHLY_REPORT] Reports sent: ${successCount}/${allResults.length} total`);
 
 		return res.status(200).json({
 			message: "Monthly report completed",
-			period: periodo,
 			sent: successCount,
-			total: REPORT_RECIPIENTS.length,
-			results,
+			total: allResults.length,
+			results: allResults,
 		});
 	} catch (error) {
 		console.error("[ERROR] [MONTHLY_REPORT] Fatal error:", error);

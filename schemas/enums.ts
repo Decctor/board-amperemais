@@ -24,3 +24,5 @@ export const CashbackProgramTransactionTypeEnum = z.enum(["ACÚMULO", "RESGATE",
 export type TCashbackProgramTransactionTypeEnum = z.infer<typeof CashbackProgramTransactionTypeEnum>;
 export const CashbackProgramTransactionStatusEnum = z.enum(["ATIVO", "CONSUMIDO", "EXPIRADO"]);
 export type TCashbackProgramTransactionStatusEnum = z.infer<typeof CashbackProgramTransactionStatusEnum>;
+export const OrganizationIntegrationTypeEnum = z.enum(["ONLINE-SOFTWARE"]);
+export type TOrganizationIntegrationTypeEnum = z.infer<typeof OrganizationIntegrationTypeEnum>;

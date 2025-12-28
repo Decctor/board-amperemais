@@ -91,12 +91,15 @@ const GetClientsInputSchema = z.object({
 export type TGetClientsInput = z.infer<typeof GetClientsInputSchema>;
 
 async function getClients({ input, session }: { input: TGetClientsInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	if ("id" in input) {
 		const clientId = input.id;
 		if (!clientId) throw new createHttpError.BadRequest("ID do cliente não informado.");
 
 		const client = await db.query.clients.findFirst({
-			where: (fields, { eq }) => eq(fields.id, clientId),
+			where: (fields, { and, eq }) => and(eq(fields.id, clientId), eq(fields.organizacaoId, userOrgId)),
 		});
 		if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
 		return {
@@ -109,17 +112,18 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	}
 
 	// First, we start fetching clients with their purchases...
-	const clientConditions = [];
+	const clientConditions = [eq(clients.organizacaoId, userOrgId)];
 
 	if (input.search && input.search.trim().length > 0) {
-		clientConditions.push(
-			or(
-				sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.nome} ILIKE '%' || ${input.search} || '%')`,
-				sql`(to_tsvector('portuguese', ${clients.email}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.email} ILIKE '%' || ${input.search} || '%')`,
-				sql`(to_tsvector('portuguese', ${clients.telefone}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.telefone} ILIKE '%' || ${input.search} || '%')`,
-				sql`(to_tsvector('portuguese', ${clients.telefoneBase}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.telefoneBase} ILIKE '%' || ${input.search} || '%')`,
-			),
+		const searchCondition = or(
+			sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.nome} ILIKE '%' || ${input.search} || '%')`,
+			sql`(to_tsvector('portuguese', ${clients.email}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.email} ILIKE '%' || ${input.search} || '%')`,
+			sql`(to_tsvector('portuguese', ${clients.telefone}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.telefone} ILIKE '%' || ${input.search} || '%')`,
+			sql`(to_tsvector('portuguese', ${clients.telefoneBase}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.telefoneBase} ILIKE '%' || ${input.search} || '%')`,
 		);
+		if (searchCondition) {
+			clientConditions.push(searchCondition);
+		}
 	}
 	if (input.acquisitionChannels && input.acquisitionChannels.length > 0) {
 		clientConditions.push(inArray(clients.canalAquisicao, input.acquisitionChannels));
@@ -127,7 +131,7 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	if (input.segmentationTitles && input.segmentationTitles.length > 0) {
 		clientConditions.push(inArray(clients.analiseRFMTitulo, input.segmentationTitles));
 	}
-	const statsConditions = [];
+	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
 	if (input.statsPeriodAfter) statsConditions.push(gte(clients.dataInsercao, input.statsPeriodAfter));
 	if (input.statsPeriodBefore) statsConditions.push(lte(clients.dataInsercao, input.statsPeriodBefore));
 	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
@@ -175,7 +179,7 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 
 	const clientIds = statsByClientResult.map((client) => client.clientId);
 	const clientsResult = await db.query.clients.findMany({
-		where: inArray(clients.id, clientIds),
+		where: and(eq(clients.organizacaoId, userOrgId), inArray(clients.id, clientIds)),
 	});
 
 	const clientsWithStats = clientsResult.map((client) => {
@@ -221,11 +225,22 @@ type PostResponse = {
 };
 
 const createClientRoute: NextApiHandler<PostResponse> = async (req, res) => {
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	const client = ClientSchema.parse(req.body);
 
 	const insertResponse = await db
 		.insert(clients)
-		.values({ ...client, telefone: client.telefone ?? "", telefoneBase: formatPhoneAsBase(client.telefone ?? "") })
+		.values({
+			...client,
+			organizacaoId: userOrgId,
+			telefone: client.telefone ?? "",
+			telefoneBase: formatPhoneAsBase(client.telefone ?? ""),
+		})
 		.returning({ id: clients.id });
 	const insertedId = insertResponse[0]?.id;
 	if (!insertedId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar cliente.");

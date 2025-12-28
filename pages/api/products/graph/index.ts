@@ -71,10 +71,13 @@ export type TGetProductGraphOutput = {
 };
 
 async function fetchProductGraph(input: TGetProductGraphInput, user: TAuthUserSession["user"]) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	console.log("[INFO] [FETCH PRODUCT GRAPH] Input:", input);
 	// Verify product exists
 	const product = await db.query.products.findFirst({
-		where: eq(products.id, input.productId),
+		where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
 	});
 	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
 
@@ -88,7 +91,7 @@ async function fetchProductGraph(input: TGetProductGraphInput, user: TAuthUserSe
 			.select({ data: sales.dataVenda })
 			.from(saleItems)
 			.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-			.where(eq(saleItems.produtoId, input.productId))
+			.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)))
 			.orderBy(asc(sales.dataVenda))
 			.limit(1);
 		currentPeriodAdjusted.after = firstProductSale[0]?.data ?? undefined;
@@ -112,8 +115,8 @@ async function fetchProductGraph(input: TGetProductGraphInput, user: TAuthUserSe
 	const currentPeriodDateBuckets = getDateBuckets(currentPeriodDatesStrs);
 
 	// Build where conditions
-	const saleItemWhereConditions = [eq(saleItems.produtoId, input.productId)];
-	const saleWhereConditions = [isNotNull(sales.dataVenda)];
+	const saleItemWhereConditions = [eq(saleItems.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)];
+	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda)];
 
 	const saleWhere = and(
 		...saleWhereConditions,
@@ -137,7 +140,7 @@ async function fetchProductGraph(input: TGetProductGraphInput, user: TAuthUserSe
 		})
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere))
 		.groupBy(sql`date_trunc('day', ${sales.dataVenda})`)
 		.orderBy(sql`date_trunc('day', ${sales.dataVenda})`);
 

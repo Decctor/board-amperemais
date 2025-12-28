@@ -3,11 +3,13 @@ import { relations } from "drizzle-orm";
 import { jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users } from ".";
 import { whatsappTemplateCategoryEnum, whatsappTemplateQualityEnum, whatsappTemplateStatusEnum } from "./enums";
+import { organizations } from "./organizations";
 
 export const whatsappTemplates = newTable("whatsapp_templates", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	status: whatsappTemplateStatusEnum("status").notNull(),
 	nome: text("nome").notNull(),
 	categoria: whatsappTemplateCategoryEnum("categoria").notNull(),
