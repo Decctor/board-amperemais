@@ -71,7 +71,7 @@ export default defineSchema({
 	messages: defineTable({
 		chatId: v.id("chats"),
 		autorTipo: v.union(v.literal("cliente"), v.literal("usuario"), v.literal("ai")),
-		autorId: v.union(v.id("clients"), v.id("users"), v.string()),
+		autorId: v.optional(v.union(v.id("clients"), v.id("users"), v.string())), // Optional for echo messages from phone app
 		conteudoTexto: v.optional(v.string()),
 		// Media content fields
 		conteudoMidiaUrl: v.optional(v.string()),
@@ -88,6 +88,7 @@ export default defineSchema({
 		whatsappStatus: v.optional(v.union(v.literal("PENDENTE"), v.literal("ENVIADO"), v.literal("ENTREGUE"), v.literal("FALHOU"))),
 		servicoId: v.optional(v.id("services")),
 		dataEnvio: v.number(),
+		isEcho: v.optional(v.boolean()), // True for messages sent from the WhatsApp Business phone app (Coexistence)
 	})
 		.index("by_chat_id", ["chatId"])
 		.index("by_chat_and_date", ["chatId", "dataEnvio"])
@@ -98,7 +99,7 @@ export default defineSchema({
 		clienteId: v.id("clients"),
 		descricao: v.string(),
 		status: v.union(v.literal("PENDENTE"), v.literal("EM_ANDAMENTO"), v.literal("CONCLUIDO")),
-		responsavel: v.optional(v.union(v.id("users"), v.literal("ai"))),
+		responsavel: v.optional(v.union(v.id("users"), v.literal("ai"), v.literal("phone"))), // "phone" for WhatsApp Coexistence
 		dataInicio: v.number(),
 		dataFim: v.optional(v.number()),
 	})

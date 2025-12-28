@@ -96,7 +96,7 @@ export const createMessage = mutation({
 		let chatId: Id<"chats"> | null = null;
 		const chat = await ctx.db
 			.query("chats")
-			.filter((q) => q.eq(q.field("clienteId"), clientId))
+			.filter((q) => q.and(q.eq(q.field("clienteId"), clientId), q.eq(q.field("whatsappTelefoneId"), args.whatsappPhoneNumberId)))
 			.first();
 		if (!chat) {
 			// If chat is not yet registered, we need to register it
@@ -119,7 +119,7 @@ export const createMessage = mutation({
 
 		// ## THIRD, DEFINING SERVICE DATA
 		let serviceId: Id<"services"> | null = null;
-		let responsibleId: Id<"users"> | "ai" | undefined = undefined;
+		let responsibleId: Id<"users"> | "ai" | "phone" | undefined = undefined;
 
 		const service = await ctx.db
 			.query("services")
@@ -540,7 +540,7 @@ export const createAIMessage = internalMutation({
 			serviceId = service._id;
 			// Patching the existing service
 
-			let serviceResponsible: Id<"users"> | "ai" | undefined = service.responsavel;
+			let serviceResponsible: Id<"users"> | "ai" | "phone" | undefined = service.responsavel;
 
 			if (args.serviceEscalation.applicable) {
 				// Here we are getting the first user that can be found.
@@ -619,6 +619,148 @@ export const updateMessageMediaProcessing = internalMutation({
 		return {
 			success: true,
 			message: "Conteúdo de mídia processado com sucesso.",
+		};
+	},
+});
+
+/**
+ * Create a message echo from WhatsApp Coexistence
+ * This mutation handles messages sent from the WhatsApp Business phone app
+ * that are echoed to our webhook (smb_message_echoes)
+ */
+export const createEchoMessage = mutation({
+	args: {
+		cliente: v.object({
+			idApp: v.string(),
+			nome: v.string(),
+			telefone: v.string(),
+			telefoneBase: v.string(),
+		}),
+		conteudo: v.object({
+			texto: v.optional(v.string()),
+			midiaTipo: v.optional(v.union(v.literal("IMAGEM"), v.literal("VIDEO"), v.literal("AUDIO"), v.literal("DOCUMENTO"))),
+			midiaStorageId: v.optional(v.id("_storage")),
+			midiaMimeType: v.optional(v.string()),
+			midiaFileName: v.optional(v.string()),
+			midiaFileSize: v.optional(v.number()),
+			midiaWhatsappId: v.optional(v.string()),
+		}),
+		whatsappPhoneNumberId: v.string(),
+		whatsappMessageId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		console.log("[INFO] [CREATE_ECHO_MESSAGE] Creating echo message with args:", args);
+
+		// ## FIRST, GET OR CREATE CLIENT
+		let clientId: Id<"clients"> | null = null;
+		const client = await ctx.db
+			.query("clients")
+			.filter((q) => q.eq(q.field("idApp"), args.cliente.idApp))
+			.first();
+
+		if (!client) {
+			// If client is not yet registered, create it
+			const insertClientResponse = await ctx.db.insert("clients", {
+				...args.cliente,
+			});
+			clientId = insertClientResponse;
+		} else {
+			clientId = client._id;
+		}
+
+		if (!clientId) {
+			throw new Error("Cliente não encontrado.");
+		}
+
+		// ## SECOND, GET OR CREATE CHAT
+		let chatId: Id<"chats"> | null = null;
+		const chat = await ctx.db
+			.query("chats")
+			.filter((q) => q.and(q.eq(q.field("clienteId"), clientId), q.eq(q.field("whatsappTelefoneId"), args.whatsappPhoneNumberId)))
+			.first();
+
+		if (!chat) {
+			// If chat doesn't exist, create it
+			const insertChatResponse = await ctx.db.insert("chats", {
+				clienteId: clientId,
+				mensagensNaoLidas: 0,
+				status: "ABERTA",
+				whatsappTelefoneId: args.whatsappPhoneNumberId,
+			});
+			chatId = insertChatResponse;
+		} else {
+			chatId = chat._id;
+		}
+
+		if (!chatId) {
+			throw new Error("Chat não encontrado.");
+		}
+
+		// ## THIRD, GET OR CREATE SERVICE
+		let serviceId: Id<"services"> | null = null;
+		const service = await ctx.db
+			.query("services")
+			.filter((q) => q.and(q.eq(q.field("chatId"), chatId), q.or(q.eq(q.field("status"), "PENDENTE"), q.eq(q.field("status"), "EM_ANDAMENTO"))))
+			.first();
+
+		if (!service) {
+			// Create a new service - since this is from the phone app, mark it as phone-handled
+			const insertServiceResponse = await ctx.db.insert("services", {
+				chatId: chatId,
+				clienteId: clientId,
+				descricao: "NÃO ESPECIFICADO",
+				status: "EM_ANDAMENTO",
+				responsavel: "phone", // Special marker for phone app messages
+				dataInicio: Date.now(),
+			});
+			serviceId = insertServiceResponse;
+		} else {
+			serviceId = service._id;
+			// Update service to indicate phone is handling
+			if (service.responsavel === "ai") {
+				await ctx.db.patch(serviceId, {
+					responsavel: "phone",
+				});
+			}
+		}
+
+		// ## FOURTH, INSERT MESSAGE
+		// Echo messages are outgoing messages from the business, so autor is "phone" (system)
+		const insertMessageResponse = await ctx.db.insert("messages", {
+			chatId: chatId,
+			autorTipo: "usuario", // It's from the business side
+			// autorId is not set because it came from the phone app, not a specific user in the system
+			conteudoTexto: args.conteudo.texto,
+			conteudoMidiaTipo: args.conteudo.midiaTipo,
+			conteudoMidiaStorageId: args.conteudo.midiaStorageId,
+			conteudoMidiaMimeType: args.conteudo.midiaMimeType,
+			conteudoMidiaFileName: args.conteudo.midiaFileName,
+			conteudoMidiaFileSize: args.conteudo.midiaFileSize,
+			conteudoMidiaWhatsappId: args.conteudo.midiaWhatsappId,
+			status: "ENVIADO", // Already sent via phone
+			whatsappStatus: "ENVIADO", // Already sent
+			whatsappMessageId: args.whatsappMessageId,
+			servicoId: serviceId ?? undefined,
+			dataEnvio: Date.now(),
+			isEcho: true, // Mark as echo message from phone app
+		});
+
+		// ## FIFTH, UPDATE CHAT
+		await ctx.db.patch(chatId, {
+			ultimaMensagemId: insertMessageResponse,
+			ultimaMensagemData: Date.now(),
+			ultimaMensagemConteudoTexto: args.conteudo.texto,
+			ultimaMensagemConteudoTipo: args.conteudo.midiaTipo ?? ("TEXTO" as const),
+			status: "ABERTA",
+		});
+
+		console.log("[INFO] [CREATE_ECHO_MESSAGE] Echo message created:", insertMessageResponse);
+
+		return {
+			data: {
+				insertedId: insertMessageResponse,
+			},
+			message: "Mensagem echo criada com sucesso.",
 		};
 	},
 });

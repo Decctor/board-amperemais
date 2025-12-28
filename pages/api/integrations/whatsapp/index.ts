@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import {
+	isMessageEchoEvent,
 	isMessageEvent,
 	isStatusUpdate,
 	isTemplateEvent,
@@ -10,6 +11,7 @@ import {
 	parseTemplateQualityUpdate,
 	parseTemplateStatusUpdate,
 	parseWebhookIncomingMessage,
+	parseWebhookMessageEcho,
 } from "@/lib/whatsapp/parsing";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema";
@@ -199,7 +201,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 						});
 
 						if (whatsappConnection) {
-							organizacaoId = whatsappConnection.organizacaoId;
+							organizacaoId = whatsappConnection.organizacaoId as string;
 							console.log("[INFO] [WHATSAPP_WEBHOOK] Found organization:", organizacaoId);
 						} else {
 							console.warn("[WHATSAPP_WEBHOOK] No WhatsApp connection found for phone number ID:", incomingMessage.whatsappPhoneNumberId);
@@ -306,6 +308,126 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 						console.log("[WHATSAPP_WEBHOOK] Message created from:", incomingMessage.fromPhoneNumber, "Type:", incomingMessage.messageType);
 					}
+				}
+				// Handle SMB Message Echoes (WhatsApp Coexistence)
+				// These are messages sent from the WhatsApp Business phone app
+				else if (isMessageEchoEvent(body)) {
+					console.log("[INFO] [WHATSAPP_WEBHOOK] Handling message echo (Coexistence):", body);
+					const messageEcho = parseWebhookMessageEcho(body);
+
+					if (!messageEcho) {
+						console.error("[WHATSAPP_WEBHOOK] Failed to parse message echo");
+						return res.status(200).json({ success: true });
+					}
+
+					// Determine organization from whatsappPhoneNumberId
+					let organizacaoId: string | null = null;
+					try {
+						const whatsappConnection = await convex.query(api.queries.connections.getWhatsappConnectionByPhoneNumberId, {
+							whatsappPhoneNumberId: messageEcho.whatsappPhoneNumberId,
+						});
+
+						if (whatsappConnection) {
+							organizacaoId = whatsappConnection.organizacaoId as string;
+							console.log("[INFO] [WHATSAPP_WEBHOOK] [ECHO] Found organization:", organizacaoId);
+						} else {
+							console.warn("[WHATSAPP_WEBHOOK] [ECHO] No WhatsApp connection found for phone number ID:", messageEcho.whatsappPhoneNumberId);
+							return res.status(200).json({ success: true });
+						}
+					} catch (error) {
+						console.error("[WHATSAPP_WEBHOOK] [ECHO] Error querying WhatsApp connection:", error);
+						return res.status(200).json({ success: true });
+					}
+
+					// Search for the client (recipient) within the organization
+					let clientId: string | null = null;
+					const existingClient = await db.query.clients.findFirst({
+						where: (fields, { and, eq }) =>
+							and(eq(fields.telefoneBase, formatPhoneAsBase(messageEcho.toPhoneNumber as string)), eq(fields.organizacaoId, organizacaoId)),
+					});
+
+					if (existingClient) {
+						console.log("[INFO] [WHATSAPP_WEBHOOK] [ECHO] Client already exists:", existingClient);
+						clientId = existingClient.id;
+					} else {
+						console.log("[INFO] [WHATSAPP_WEBHOOK] [ECHO] Client does not exist, creating new client:", messageEcho.toPhoneNumber);
+						try {
+							const insertedClient = await db
+								.insert(clients)
+								.values({
+									organizacaoId: organizacaoId,
+									nome: messageEcho.toPhoneNumber, // Use phone number as name since we don't have profile info for echoes
+									telefone: messageEcho.toPhoneNumber,
+									telefoneBase: formatPhoneAsBase(messageEcho.toPhoneNumber as string),
+									canalAquisicao: "WHATSAPP",
+								})
+								.returning({ id: clients.id });
+
+							clientId = insertedClient[0]?.id ?? null;
+							console.log("[INFO] [WHATSAPP_WEBHOOK] [ECHO] New client created:", clientId);
+						} catch (error) {
+							console.error("[WHATSAPP_WEBHOOK] [ECHO] Error creating client:", error);
+						}
+					}
+
+					// Skip message processing if we couldn't determine client
+					if (!clientId) {
+						console.warn("[WHATSAPP_WEBHOOK] [ECHO] Cannot process message echo without client ID");
+						return res.status(200).json({ success: true });
+					}
+
+					let mediaStorageData = null;
+
+					// Handle media messages
+					if (messageEcho.mediaId && messageEcho.mimeType) {
+						try {
+							// Download and store media
+							mediaStorageData = await convex.action(api.actions.whatsapp.downloadAndStoreWhatsappMedia, {
+								mediaId: messageEcho.mediaId,
+								mimeType: messageEcho.mimeType,
+								filename: messageEcho.filename,
+							});
+							console.log("[WHATSAPP_WEBHOOK] [ECHO] Media downloaded and stored:", mediaStorageData.storageId);
+						} catch (error) {
+							console.error("[WHATSAPP_WEBHOOK] [ECHO] Error downloading media:", error);
+						}
+					}
+
+					// Determine media type
+					let midiaTipo: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" | undefined;
+					if (messageEcho.messageType === "image") {
+						midiaTipo = "IMAGEM";
+					} else if (messageEcho.messageType === "document") {
+						midiaTipo = "DOCUMENTO";
+					} else if (messageEcho.messageType === "video") {
+						midiaTipo = "VIDEO";
+					} else if (messageEcho.messageType === "audio") {
+						midiaTipo = "AUDIO";
+					}
+
+					// Create message in Convex as a message FROM the business (echo)
+					// The author should be "usuario" type to indicate it came from the business side
+					await convex.mutation(api.mutations.messages.createEchoMessage, {
+						cliente: {
+							idApp: clientId,
+							nome: existingClient?.nome || messageEcho.toPhoneNumber,
+							telefone: messageEcho.toPhoneNumber,
+							telefoneBase: formatPhoneAsBase(messageEcho.toPhoneNumber as string),
+						},
+						conteudo: {
+							texto: messageEcho.textContent || messageEcho.caption,
+							midiaTipo,
+							midiaStorageId: mediaStorageData?.storageId,
+							midiaMimeType: mediaStorageData?.mimeType,
+							midiaFileName: mediaStorageData?.filename,
+							midiaFileSize: mediaStorageData?.fileSize,
+							midiaWhatsappId: messageEcho.mediaId,
+						},
+						whatsappMessageId: messageEcho.whatsappMessageId,
+						whatsappPhoneNumberId: messageEcho.whatsappPhoneNumberId,
+					});
+
+					console.log("[WHATSAPP_WEBHOOK] [ECHO] Message echo created to:", messageEcho.toPhoneNumber, "Type:", messageEcho.messageType);
 				}
 
 				// Always return 200 OK to acknowledge receipt (must be within 20 seconds)

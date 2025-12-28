@@ -420,3 +420,118 @@ export function parseTemplateCategoryUpdate(webhookPayload: unknown): ParsedTemp
 		return null;
 	}
 }
+
+// SMB Message Echoes (WhatsApp Coexistence)
+// These are messages sent from the WhatsApp Business phone app that are echoed to the webhook
+type ParsedMessageEcho = {
+	whatsappPhoneNumberId: string;
+	whatsappMessageId: string;
+	fromPhoneNumber: string; // Business phone number (sender)
+	toPhoneNumber: string; // Client phone number (recipient)
+	messageType: "text" | "image" | "video" | "audio" | "document";
+	textContent?: string;
+	mediaId?: string;
+	mimeType?: string;
+	filename?: string;
+	caption?: string;
+	timestamp: number;
+};
+
+export function isMessageEchoEvent(webhookPayload: unknown): boolean {
+	try {
+		const payload = webhookPayload as Record<string, unknown>;
+		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
+		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
+		const field = change?.field as string | undefined;
+
+		return field === "smb_message_echoes";
+	} catch (error) {
+		return false;
+	}
+}
+
+export function parseWebhookMessageEcho(webhookPayload: unknown): ParsedMessageEcho | null {
+	try {
+		const payload = webhookPayload as Record<string, unknown>;
+		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
+		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
+		const value = change?.value as Record<string, unknown> | undefined;
+		const field = change?.field as string | undefined;
+
+		if (field !== "smb_message_echoes") {
+			return null;
+		}
+
+		// Check if this is a message echo event
+		const messageEchoes = value?.message_echoes as unknown[] | undefined;
+		if (!messageEchoes || !Array.isArray(messageEchoes) || messageEchoes.length === 0) {
+			return null;
+		}
+
+		const metadata = value?.metadata as Record<string, unknown> | undefined;
+		const whatsappPhoneNumberId = metadata?.phone_number_id as string;
+		const message = messageEchoes[0] as Record<string, unknown>;
+		const messageType = message.type as string;
+
+		let textContent: string | undefined;
+		let mediaId: string | undefined;
+		let mimeType: string | undefined;
+		let filename: string | undefined;
+		let caption: string | undefined;
+
+		// Handle different message types
+		switch (messageType) {
+			case "text": {
+				const textObj = message.text as Record<string, unknown> | undefined;
+				textContent = textObj?.body as string | undefined;
+				break;
+			}
+
+			case "image": {
+				const imageObj = message.image as Record<string, unknown> | undefined;
+				mediaId = imageObj?.id as string | undefined;
+				mimeType = imageObj?.mime_type as string | undefined;
+				caption = imageObj?.caption as string | undefined;
+				break;
+			}
+
+			case "document": {
+				const documentObj = message.document as Record<string, unknown> | undefined;
+				mediaId = documentObj?.id as string | undefined;
+				mimeType = documentObj?.mime_type as string | undefined;
+				filename = documentObj?.filename as string | undefined;
+				caption = documentObj?.caption as string | undefined;
+				break;
+			}
+
+			case "audio":
+			case "video": {
+				const mediaObj = message[messageType] as Record<string, unknown> | undefined;
+				mediaId = mediaObj?.id as string | undefined;
+				mimeType = mediaObj?.mime_type as string | undefined;
+				break;
+			}
+
+			default:
+				console.log("[WHATSAPP_WEBHOOK] Unsupported message echo type received:", messageType);
+				return null;
+		}
+
+		return {
+			whatsappPhoneNumberId: whatsappPhoneNumberId || "",
+			whatsappMessageId: message.id as string,
+			fromPhoneNumber: formatWhatsappIdAsPhone(message.from as string),
+			toPhoneNumber: formatWhatsappIdAsPhone(message.to as string),
+			messageType: messageType as "text" | "image" | "video" | "audio" | "document",
+			textContent,
+			mediaId,
+			mimeType,
+			filename,
+			caption,
+			timestamp: message.timestamp ? Number.parseInt(message.timestamp as string) * 1000 : Date.now(),
+		};
+	} catch (error) {
+		console.error("[WHATSAPP_MESSAGE_ECHO_PARSE_ERROR]", error);
+		return null;
+	}
+}
