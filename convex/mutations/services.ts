@@ -99,6 +99,24 @@ export const transferServiceToHuman = mutation({
 	handler: async (ctx, args) => {
 		console.log("[INFO] [SERVICES] [TRANSFER_TO_HUMAN] Transferring service to human for chat:", args.chatId, "Reason:", args.reason);
 
+		const chat = await ctx.db.get(args.chatId);
+		if (!chat) {
+			throw new Error("Chat não encontrado.");
+		}
+
+		let whatsappToken: string | undefined = undefined;
+
+		const whatsappConnections = await ctx.db.query("whatsappConnections").collect();
+		const whatsappConnection = whatsappConnections.find((connection) =>
+			connection.telefones.find((phone) => phone.whatsappTelefoneId === chat.whatsappTelefoneId),
+		);
+		if (!whatsappConnection) {
+			throw new Error("WhatsApp connection não encontrado.");
+		}
+		whatsappToken = whatsappConnection.token;
+		if (!whatsappToken) {
+			throw new Error("WhatsApp token não encontrado.");
+		}
 		// Check if there's already an open service for this chat
 		const existingService = await ctx.db
 			.query("services")
@@ -130,6 +148,7 @@ export const transferServiceToHuman = mutation({
 				}
 				console.log("[INFO] [SERVICES] [TRANSFER_TO_HUMAN] Scheduling WhatsApp notification to user:", randomUser.telefone);
 				await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappNotification, {
+					whatsappToken: whatsappToken,
 					notificationPayload: WHATSAPP_REPORT_TEMPLATES.SERVICE_TRANSFER_NOTIFICATIONS.getPayload({
 						templateKey: "SERVICE_TRANSFER_NOTIFICATIONS",
 						clientName: client.nome,

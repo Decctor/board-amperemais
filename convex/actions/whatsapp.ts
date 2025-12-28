@@ -16,14 +16,21 @@ export const sendWhatsappMessage = internalAction({
 		messageId: v.id("messages"),
 		phoneNumber: v.string(),
 		content: v.string(),
+		whatsappToken: v.string(),
 	},
 	handler: async (ctx, args) => {
 		try {
-			console.log("[WHATSAPP_ACTION] Sending text message:", args.messageId);
+			console.log("[WHATSAPP_ACTION] Sending Whatsapp message:", {
+				from: args.fromPhoneNumberId,
+				to: args.phoneNumber,
+				content: args.content,
+				messageId: args.messageId,
+			});
 			const response = await sendBasicWhatsappMessage({
 				fromPhoneNumberId: args.fromPhoneNumberId,
 				toPhoneNumber: args.phoneNumber,
 				content: args.content,
+				whatsappToken: args.whatsappToken,
 			});
 
 			// Update message with WhatsApp message ID
@@ -58,6 +65,7 @@ export const sendWhatsappMediaMessage = internalAction({
 		mimeType: v.optional(v.string()),
 		filename: v.optional(v.string()),
 		caption: v.optional(v.string()),
+		whatsappToken: v.string(),
 	},
 	handler: async (ctx, args) => {
 		try {
@@ -109,6 +117,7 @@ export const sendWhatsappMediaMessage = internalAction({
 				mediaType: whatsappMediaType,
 				caption: args.caption,
 				filename: args.filename,
+				whatsappToken: args.whatsappToken,
 			});
 
 			console.log("[WHATSAPP_ACTION] Media message sent successfully:", {
@@ -146,6 +155,7 @@ export const sendWhatsappTemplate = internalAction({
 		messageId: v.id("messages"),
 		phoneNumber: v.string(),
 		templatePayload: v.any(),
+		whatsappToken: v.string(),
 	},
 	handler: async (ctx, args) => {
 		try {
@@ -153,6 +163,7 @@ export const sendWhatsappTemplate = internalAction({
 			const response = await sendTemplateWhatsappMessage({
 				fromPhoneNumberId: args.fromPhoneNumberId,
 				templatePayload: args.templatePayload,
+				whatsappToken: args.whatsappToken,
 			});
 
 			// Update message with WhatsApp message ID
@@ -182,12 +193,14 @@ export const sendWhatsappNotification = internalAction({
 		fromPhoneNumberId: v.string(),
 		phoneNumber: v.string(),
 		notificationPayload: v.any(),
+		whatsappToken: v.string(),
 	},
 	handler: async (ctx, args) => {
 		console.log("[WHATSAPP_ACTION] Sending notification message:", args.phoneNumber);
 		const response = await sendTemplateWhatsappMessage({
 			fromPhoneNumberId: args.fromPhoneNumberId,
 			templatePayload: args.notificationPayload,
+			whatsappToken: args.whatsappToken,
 		});
 
 		console.log("[WHATSAPP_ACTION] Notification message sent successfully:", {

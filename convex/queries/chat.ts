@@ -151,12 +151,12 @@ export const getChat = query({
 			.filter((q) => q.and(q.eq(q.field("chatId"), args.chatId), q.or(q.eq(q.field("status"), "PENDENTE"), q.eq(q.field("status"), "EM_ANDAMENTO"))))
 			.first();
 
-		let chatOpenServiceResponsible: { nome: string; avatar_url: string | null; idApp: string } | "ai" | null = null;
+		let chatOpenServiceResponsible: { nome: string; avatar_url: string | null; idApp: string } | "ai" | "phone" | null = null;
 		if (chatOpenService) {
 			if (chatOpenService.responsavel && chatOpenService.responsavel === "ai") {
 				chatOpenServiceResponsible = "ai";
 			}
-			if (chatOpenService.responsavel && chatOpenService.responsavel !== "ai") {
+			if (chatOpenService.responsavel && chatOpenService.responsavel !== "ai" && chatOpenService.responsavel !== "phone") {
 				const user = await ctx.db.get(chatOpenService.responsavel as Id<"users">);
 				if (user) {
 					chatOpenServiceResponsible = {
@@ -250,7 +250,8 @@ export const getChatMessages = query({
 		for (const message of pageMessages) {
 			if (message.autorTipo === "cliente") {
 				clientIds.add(message.autorId as Id<"clients">);
-			} else if (message.autorTipo === "usuario") {
+			}
+			if (message.autorTipo === "usuario" && message.autorId) {
 				userIds.add(message.autorId as Id<"users">);
 			}
 		}
@@ -276,11 +277,18 @@ export const getChatMessages = query({
 					};
 				}
 			} else if (message.autorTipo === "usuario") {
-				const user = userMap.get(message.autorId as Id<"users">);
-				if (user) {
+				if (message.autorId) {
+					const user = userMap.get(message.autorId as Id<"users">);
+					if (user) {
+						messageAuthor = {
+							nome: user.nome,
+							avatar_url: user.avatar_url ?? null,
+						};
+					}
+				} else {
 					messageAuthor = {
-						nome: user.nome,
-						avatar_url: user.avatar_url ?? null,
+						nome: "TELEFONE",
+						avatar_url: null,
 					};
 				}
 			} else if (message.autorTipo === "ai") {

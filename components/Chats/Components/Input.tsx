@@ -26,7 +26,7 @@ export type ChatHubInputProps = {
 };
 
 export function Input({ className, placeholder = "Digite uma mensagem...", maxRows = 4, onMessageSent }: ChatHubInputProps) {
-	const { selectedChatId, selectedPhoneNumber, user, userHasMessageSendingPermission } = useChatHub();
+	const { whatsappConnection, selectedChatId, selectedPhoneNumber, user, userHasMessageSendingPermission } = useChatHub();
 
 	const chat = useQuery(api.queries.chat.getChat, selectedChatId ? { chatId: selectedChatId } : "skip");
 
@@ -96,6 +96,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 					telefoneBase: chat.cliente?.telefoneBase,
 				},
 				whatsappPhoneNumberId: selectedPhoneNumber,
+				whatsappToken: whatsappConnection?.token as string,
 			});
 
 			setMessageText("");
@@ -149,6 +150,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 					telefoneBase: chat.cliente?.telefoneBase,
 				},
 				whatsappPhoneNumberId: selectedPhoneNumber,
+				whatsappToken: whatsappConnection?.token as string,
 			});
 
 			onMessageSent?.();
@@ -195,6 +197,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 				templateId: template.id,
 				templatePayloadData: payload.data,
 				templatePayloadContent: payload.content,
+				whatsappToken: whatsappConnection?.token as string,
 			});
 
 			toast.success("Template enviado com sucesso!");

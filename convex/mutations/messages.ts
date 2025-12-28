@@ -36,6 +36,7 @@ export const createMessage = mutation({
 			midiaFileSize: v.optional(v.number()),
 			midiaWhatsappId: v.optional(v.string()),
 		}),
+		whatsappToken: v.string(),
 		whatsappPhoneNumberId: v.string(),
 		whatsappMessageId: v.optional(v.string()),
 	},
@@ -213,6 +214,7 @@ export const createMessage = mutation({
 						filename: args.conteudo.midiaFileName,
 						caption: args.conteudo.texto,
 						fromPhoneNumberId: args.whatsappPhoneNumberId,
+						whatsappToken: args.whatsappToken,
 					});
 				} else if (args.conteudo.texto) {
 					// Send text message
@@ -221,6 +223,7 @@ export const createMessage = mutation({
 						phoneNumber: args.cliente.telefone,
 						content: args.conteudo.texto,
 						fromPhoneNumberId: args.whatsappPhoneNumberId,
+						whatsappToken: args.whatsappToken,
 					});
 				}
 			} else {
@@ -280,9 +283,10 @@ export const createTemplateMessage = mutation({
 		templateId: v.string(),
 		templatePayloadData: v.any(),
 		templatePayloadContent: v.string(),
+		whatsappToken: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const { cliente, autor, whatsappPhoneNumberId, templateId, templatePayloadData, templatePayloadContent } = args;
+		const { cliente, autor, whatsappPhoneNumberId, templateId, templatePayloadData, templatePayloadContent, whatsappToken } = args;
 
 		const user = await ctx.db
 			.query("users")
@@ -359,6 +363,7 @@ export const createTemplateMessage = mutation({
 			phoneNumber: cliente.telefone,
 			templatePayload: templatePayloadData,
 			fromPhoneNumberId: whatsappPhoneNumberId,
+			whatsappToken: whatsappToken,
 		});
 		console.log("[INFO] [MESSAGES] [CREATE_TEMPLATE_MESSAGE] Template send scheduled:", sendWhatsappTemplateResponse);
 		return {
@@ -507,6 +512,15 @@ export const createAIMessage = internalMutation({
 			throw new Error("Chat não encontrado.");
 		}
 
+		let whatsappToken: string | undefined = undefined;
+		const whatsappConnections = await ctx.db.query("whatsappConnections").collect();
+		const whatsappConnection = whatsappConnections.find((connection) =>
+			connection.telefones.find((phone) => phone.whatsappTelefoneId === chat.whatsappTelefoneId),
+		);
+		if (!whatsappConnection) {
+			throw new Error("WhatsApp connection não encontrado.");
+		}
+		whatsappToken = whatsappConnection.token;
 		const client = await ctx.db.get(chat.clienteId);
 		if (!client) {
 			throw new Error("Cliente não encontrado.");
@@ -580,6 +594,7 @@ export const createAIMessage = internalMutation({
 			phoneNumber: client.telefone,
 			content: args.contentText,
 			fromPhoneNumberId: chat.whatsappTelefoneId,
+			whatsappToken: whatsappToken,
 		});
 
 		console.log("[INFO] [MESSAGES] [CREATE_AI_MESSAGE] AI message created:", messageId);

@@ -14,6 +14,7 @@ type SendBasicWhatsappMessageParams = {
 	fromPhoneNumberId: string;
 	toPhoneNumber: string;
 	content: string;
+	whatsappToken: string;
 };
 
 type SendBasicWhatsappMessageResponse = {
@@ -30,10 +31,11 @@ export async function sendBasicWhatsappMessage({
 	fromPhoneNumberId,
 	toPhoneNumber,
 	content,
+	whatsappToken,
 }: SendBasicWhatsappMessageParams): Promise<SendBasicWhatsappMessageResponse> {
 	try {
 		console.log("[INFO] [WHATSAPP_BASIC_SEND] Sending message:", toPhoneNumber, content);
-		if (!WHATSAPP_AUTH_TOKEN) {
+		if (!whatsappToken) {
 			throw new createHttpError.InternalServerError("WhatsApp auth token não configurado.");
 		}
 		const { GRAPH_MESSAGES_API_URL } = getMetaGraphAPIUrl(fromPhoneNumberId);
@@ -52,7 +54,7 @@ export async function sendBasicWhatsappMessage({
 			},
 			{
 				headers: {
-					Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+					Authorization: `Bearer ${whatsappToken}`,
 					"Content-Type": "application/json",
 				},
 			},
@@ -98,6 +100,7 @@ type SendTemplateWhatsappMessageParams = {
 			}>;
 		};
 	};
+	whatsappToken: string;
 };
 
 type SendTemplateWhatsappMessageResponse = {
@@ -113,9 +116,10 @@ type SendTemplateWhatsappMessageResponse = {
 export async function sendTemplateWhatsappMessage({
 	fromPhoneNumberId,
 	templatePayload,
+	whatsappToken,
 }: SendTemplateWhatsappMessageParams): Promise<SendTemplateWhatsappMessageResponse> {
 	try {
-		if (!WHATSAPP_AUTH_TOKEN) {
+		if (!whatsappToken) {
 			throw new createHttpError.InternalServerError("WhatsApp auth token não configurado.");
 		}
 
@@ -123,7 +127,7 @@ export async function sendTemplateWhatsappMessage({
 		console.log("[INFO] [WHATSAPP_TEMPLATE_SEND] Sending template:", JSON.stringify(templatePayload, null, 2));
 		const response = await axios.post(GRAPH_MESSAGES_API_URL, templatePayload, {
 			headers: {
-				Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+				Authorization: `Bearer ${whatsappToken}`,
 				"Content-Type": "application/json",
 			},
 		});
@@ -154,6 +158,7 @@ type SendMediaWhatsappMessageParams = {
 	mediaType: "image" | "document" | "audio";
 	caption?: string;
 	filename?: string;
+	whatsappToken: string;
 };
 
 type SendMediaWhatsappMessageResponse = {
@@ -173,10 +178,11 @@ export async function sendMediaWhatsappMessage({
 	mediaType,
 	caption,
 	filename,
+	whatsappToken,
 }: SendMediaWhatsappMessageParams): Promise<SendMediaWhatsappMessageResponse> {
 	try {
 		console.log("[INFO] [WHATSAPP_MEDIA_SEND] Sending media message:", toPhoneNumber, mediaType, mediaId);
-		if (!WHATSAPP_AUTH_TOKEN) {
+		if (!whatsappToken) {
 			throw new createHttpError.InternalServerError("WhatsApp auth token não configurado.");
 		}
 
@@ -203,7 +209,7 @@ export async function sendMediaWhatsappMessage({
 
 		const response = await axios.post(GRAPH_MESSAGES_API_URL, payload, {
 			headers: {
-				Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+				Authorization: `Bearer ${whatsappToken}`,
 				"Content-Type": "application/json",
 			},
 		});
