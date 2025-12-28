@@ -77,6 +77,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		await Promise.all(
 			whatsappMessagingTargeIds.map(async (targetId: string) => {
 				const whatsappBusinessAccountId = targetId;
+
+				try {
+					const subscribeUrl = `https://graph.facebook.com/v19.0/${whatsappBusinessAccountId}/subscribed_apps`;
+					const subscribeResponse = await fetch(subscribeUrl, {
+						method: "POST",
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+						},
+					});
+					const subscribeResult = await subscribeResponse.json();
+
+					if (subscribeResult.success) {
+						console.log(`[SUCCESS] App inscrito com sucesso no WABA: ${whatsappBusinessAccountId}`);
+					} else {
+						console.error("[ERROR] Falha ao inscrever app no WABA:", subscribeResult);
+					}
+				} catch (error) {
+					console.error(`[ERROR] Erro na requisição de subscribed_apps para ${whatsappBusinessAccountId}:`, error);
+				}
+
 				const phoneNumbersUrl = `https://graph.facebook.com/v19.0/${whatsappBusinessAccountId}/phone_numbers?access_token=${accessToken}`;
 				const phoneNumbersResponse = await fetch(phoneNumbersUrl);
 				const phoneNumbersDataResult = await phoneNumbersResponse.json();
