@@ -58,6 +58,12 @@ export const generateAIResponse = internalAction({
 				};
 			}
 
+			const endpointUrl = `${NEXT_API_URL}/api/integrations/ai/generate-response`;
+			console.log("[AI_ACTION] Calling Next.js API endpoint with chat summary:", {
+				chatId: args.chatId,
+				endpointUrl,
+			});
+
 			// Call the Next.js API endpoint with chat summary
 			const response: Response = await fetch(`${NEXT_API_URL}/api/integrations/ai/generate-response`, {
 				method: "POST",

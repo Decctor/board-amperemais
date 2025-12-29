@@ -61,6 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	}
 
 	try {
+		console.log("[INFO] [GENERATE_AI_RESPONSE] Request received with body:", req.body);
 		// First, we validate the input
 		const validationResult = GenerateAIResponseInputSchema.safeParse(req.body);
 
