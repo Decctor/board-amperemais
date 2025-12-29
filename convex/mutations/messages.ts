@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { formatPhoneAsWhatsappId } from "../../lib/whatsapp/utils";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, mutation } from "../_generated/server";
@@ -512,6 +513,12 @@ export const createAIMessage = internalMutation({
 			throw new Error("Chat não encontrado.");
 		}
 
+		// Check if conversation is still open (24-hour window)
+		if (chat.status !== "ABERTA") {
+			console.log("[WARN] [MESSAGES] [CREATE_AI_MESSAGE] Chat expired, cannot send AI message:", args.chatId);
+			throw new Error("Conversa expirada. Não é possível enviar mensagem de IA fora da janela de 24h.");
+		}
+
 		let whatsappToken: string | undefined = undefined;
 		const whatsappConnections = await ctx.db.query("whatsappConnections").collect();
 		const whatsappConnection = whatsappConnections.find((connection) =>
@@ -589,9 +596,10 @@ export const createAIMessage = internalMutation({
 		});
 
 		// Schedule WhatsApp message send
+		// Note: Use telefoneBase (E.164 format) instead of telefone (display format)
 		await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappMessage, {
 			messageId: messageId,
-			phoneNumber: client.telefone,
+			phoneNumber: client.telefoneBase,
 			content: args.contentText,
 			fromPhoneNumberId: chat.whatsappTelefoneId,
 			whatsappToken: whatsappToken,
@@ -643,6 +651,92 @@ export const updateMessageMediaProcessing = internalMutation({
  * This mutation handles messages sent from the WhatsApp Business phone app
  * that are echoed to our webhook (smb_message_echoes)
  */
+export const retryMessage = mutation({
+	args: {
+		messageId: v.id("messages"),
+	},
+	handler: async (ctx, args) => {
+		console.log("[INFO] [MESSAGES] [RETRY_MESSAGE] Retrying message:", args.messageId);
+
+		// Get the message
+		const message = await ctx.db.get(args.messageId);
+		if (!message) {
+			throw new Error("Mensagem não encontrada.");
+		}
+
+		// Only retry failed messages
+		if (message.whatsappStatus !== "FALHOU") {
+			throw new Error("Apenas mensagens com falha podem ser reenviadas.");
+		}
+
+		// Get the chat to get whatsapp phone ID
+		const chat = await ctx.db.get(message.chatId);
+		if (!chat) {
+			throw new Error("Chat não encontrado.");
+		}
+
+		// Get client to get phone number
+		const client = await ctx.db.get(chat.clienteId);
+		if (!client) {
+			throw new Error("Cliente não encontrado.");
+		}
+
+		// Get whatsapp token from connection
+		const whatsappConnections = await ctx.db.query("whatsappConnections").collect();
+		const whatsappConnection = whatsappConnections.find((connection) =>
+			connection.telefones.find((phone) => phone.whatsappTelefoneId === chat.whatsappTelefoneId),
+		);
+		if (!whatsappConnection) {
+			throw new Error("Conexão WhatsApp não encontrada.");
+		}
+
+		// Check conversation status
+		if (chat.status !== "ABERTA") {
+			throw new Error("Conversa expirada. Por favor, envie um template para continuar.");
+		}
+
+		// Update message status to pending
+		await ctx.db.patch(args.messageId, {
+			whatsappStatus: "PENDENTE",
+		});
+
+		// Schedule the appropriate send action
+		// Note: Using formatted phone number (E.164 format) instead of original phone number (display format)
+		if (message.conteudoMidiaStorageId && message.conteudoMidiaTipo) {
+			// Retry media message
+			await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappMediaMessage, {
+				messageId: args.messageId,
+				phoneNumber: formatPhoneAsWhatsappId(client.telefone),
+				storageId: message.conteudoMidiaStorageId,
+				mediaType: message.conteudoMidiaTipo,
+				mimeType: message.conteudoMidiaMimeType,
+				filename: message.conteudoMidiaFileName,
+				caption: message.conteudoTexto,
+				fromPhoneNumberId: chat.whatsappTelefoneId,
+				whatsappToken: whatsappConnection.token,
+			});
+		} else if (message.conteudoTexto) {
+			// Retry text message
+			await ctx.scheduler.runAfter(500, internal.actions.whatsapp.sendWhatsappMessage, {
+				messageId: args.messageId,
+				phoneNumber: formatPhoneAsWhatsappId(client.telefone),
+				content: message.conteudoTexto,
+				fromPhoneNumberId: chat.whatsappTelefoneId,
+				whatsappToken: whatsappConnection.token,
+			});
+		} else {
+			throw new Error("Mensagem não possui conteúdo para reenviar.");
+		}
+
+		console.log("[INFO] [MESSAGES] [RETRY_MESSAGE] Message retry scheduled:", args.messageId);
+
+		return {
+			success: true,
+			message: "Mensagem agendada para reenvio.",
+		};
+	},
+});
+
 export const createEchoMessage = mutation({
 	args: {
 		cliente: v.object({

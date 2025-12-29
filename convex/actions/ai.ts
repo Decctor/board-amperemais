@@ -46,9 +46,13 @@ export const generateAIResponse = internalAction({
 
 			const preAIResponseLastMessageDate = preAIResponseChat.ultimaInteracaoClienteData ? new Date(preAIResponseChat.ultimaInteracaoClienteData) : null;
 			const scheduleAtDate = args.scheduleAt ? new Date(args.scheduleAt) : null;
+			const endpointUrl = `${NEXT_API_URL}/api/integrations/ai/generate-response`;
+
 			console.log("[AI_ACTION] Dates state:", {
 				preAIResponseLastMessageDate,
 				scheduleAtDate,
+				endpointUrl,
+				method: "POST",
 			});
 			if (preAIResponseLastMessageDate && scheduleAtDate && preAIResponseLastMessageDate > scheduleAtDate) {
 				console.log("[AI_ACTION] New messages arrived after schedule, skipping...");
@@ -58,7 +62,6 @@ export const generateAIResponse = internalAction({
 				};
 			}
 
-			const endpointUrl = `${NEXT_API_URL}/api/integrations/ai/generate-response`;
 			console.log("[AI_ACTION] Calling Next.js API endpoint with chat summary:", {
 				chatId: args.chatId,
 				endpointUrl,

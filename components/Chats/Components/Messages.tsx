@@ -1,10 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { useQuery } from "convex/react";
-import { AlertCircle, ArrowDown, Check, CheckCheck, Clock, Loader2 } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { AlertCircle, ArrowDown, Check, CheckCheck, Clock, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { useLoadOlderMessages } from "../Hooks/usePaginatedChats";
@@ -206,7 +208,7 @@ function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAs
 								minute: "2-digit",
 							})}
 						</time>
-						{isUser && <MessageStatusIcon status={message.whatsappStatus} />}
+						{isUser && <MessageStatusIcon status={message.whatsappStatus} messageId={message._id} />}
 					</div>
 				)}
 			</div>
@@ -216,9 +218,26 @@ function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAs
 
 type MessageStatusIconProps = {
 	status?: string | null;
+	messageId: Id<"messages">;
 };
 
-function MessageStatusIcon({ status }: MessageStatusIconProps) {
+function MessageStatusIcon({ status, messageId }: MessageStatusIconProps) {
+	const [isRetrying, setIsRetrying] = useState(false);
+	const [isOpen, setIsOpen] = useState(false);
+	const retryMessage = useMutation(api.mutations.messages.retryMessage);
+
+	const handleRetry = useCallback(async () => {
+		setIsRetrying(true);
+		try {
+			await retryMessage({ messageId });
+			setIsOpen(false);
+		} catch (error) {
+			console.error("Erro ao reenviar mensagem:", error);
+		} finally {
+			setIsRetrying(false);
+		}
+	}, [retryMessage, messageId]);
+
 	switch (status) {
 		case "PENDENTE":
 			return <Clock className="w-3.5 h-3.5 animate-pulse" aria-label="Pendente" />;
@@ -228,7 +247,34 @@ function MessageStatusIcon({ status }: MessageStatusIconProps) {
 		case "LIDO":
 			return <CheckCheck className="w-3.5 h-3.5" aria-label="Entregue" />;
 		case "FALHOU":
-			return <AlertCircle className="w-3.5 h-3.5 text-red-300" aria-label="Falhou" />;
+			return (
+				<Popover open={isOpen} onOpenChange={setIsOpen}>
+					<PopoverTrigger asChild>
+						<button
+							type="button"
+							className="inline-flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+							aria-label="Falhou - clique para reenviar"
+						>
+							<AlertCircle className="w-3.5 h-3.5 text-red-300" />
+						</button>
+					</PopoverTrigger>
+					<PopoverContent side="top" align="end" className="w-auto p-2" sideOffset={8}>
+						<Button size="sm" variant="destructive" onClick={handleRetry} disabled={isRetrying} className="gap-2">
+							{isRetrying ? (
+								<>
+									<Loader2 className="w-3.5 h-3.5 animate-spin" />
+									Reenviando...
+								</>
+							) : (
+								<>
+									<RefreshCw className="w-3.5 h-3.5" />
+									Reenviar mensagem
+								</>
+							)}
+						</Button>
+					</PopoverContent>
+				</Popover>
+			);
 		default:
 			return null;
 	}
