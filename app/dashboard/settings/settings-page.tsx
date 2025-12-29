@@ -7,7 +7,8 @@ import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTem
 import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { Grid3x3, Key, MessageCircleIcon, Trophy, UsersRound } from "lucide-react";
+import { copyToClipboard } from "@/lib/utils";
+import { Grid3x3, Key, MessageCircleIcon, Presentation, Trophy, UsersRound } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 type SettingsPageProps = {
@@ -17,6 +18,18 @@ export default function SettingsPage({ user }: SettingsPageProps) {
 	const [view, setView] = useQueryState("view", parseAsStringEnum(["users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns"]));
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
+			<div className="w-full flex items-center justify-end">
+				<Button
+					variant="ghost"
+					className="flex items-center gap-2"
+					size="sm"
+					onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${user.organizacaoId}`)}
+				>
+					<Presentation className="w-4 h-4 min-w-4 min-h-4" />
+					PONTO DE INTERAÇÃO
+				</Button>
+			</div>
+
 			<div className="w-full flex items-center justify-start gap-2">
 				<Button
 					variant={!view || view === "users" ? "secondary" : "ghost"}

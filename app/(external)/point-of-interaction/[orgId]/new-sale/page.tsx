@@ -1,0 +1,30 @@
+import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import { db } from "@/services/drizzle";
+import NewSaleContent from "./new-sale-page";
+
+export default async function NewSalePage({
+	params,
+	searchParams,
+}: { params: Promise<{ orgId: string }>; searchParams: Promise<{ clientId?: string }> }) {
+	const { orgId } = await params;
+	const { clientId } = await searchParams;
+	if (!orgId) {
+		return <ErrorComponent msg="Oops, parâmetro inválido." />;
+	}
+
+	const org = await db.query.organizations.findFirst({
+		where: (fields, { eq }) => eq(fields.id, orgId),
+		columns: {
+			id: true,
+			cnpj: true,
+			nome: true,
+			logoUrl: true,
+			telefone: true,
+		},
+	});
+	if (!org) {
+		return <ErrorComponent msg="Organização não encontrada" />;
+	}
+
+	return <NewSaleContent org={org} clientId={clientId} />;
+}

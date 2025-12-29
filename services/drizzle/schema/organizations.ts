@@ -23,3 +23,5 @@ export const organizations = newTable("organizations", {
 	integracaoDataUltimaSincronizacao: timestamp("integracao_data_ultima_sincronizacao"),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
+export type TOrganizationEntity = typeof organizations.$inferSelect;
+export type TNewOrganizationEntity = typeof organizations.$inferInsert;

@@ -1,4 +1,5 @@
 import type { TGetClientsInput, TGetClientsOutput } from "@/pages/api/clients";
+import type { TClientByLookupInput, TClientByLookupOutput } from "@/pages/api/clients/lookup";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
 import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats";
 import type { TClientDTO, TClientSearchQueryParams } from "@/schemas/clients";
@@ -132,5 +133,49 @@ export function useClientStatsById({ clientId, initialFilters }: UseClientStatsB
 		queryKey: ["client-stats-by-id", clientId, filters],
 		filters,
 		updateFilters,
+	};
+}
+
+export async function fetchClientByLookup(input: TClientByLookupInput) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("orgId", input.orgId);
+	searchParams.set("phone", input.phone);
+	if (input.clientId) searchParams.set("clientId", input.clientId);
+	const { data } = await axios.get<TClientByLookupOutput>(`/api/clients/lookup?${searchParams.toString()}`);
+	return data.data;
+}
+
+type UseClientByLookupParams = {
+	initialParams: Partial<TClientByLookupInput>;
+};
+export function useClientByLookup({ initialParams }: UseClientByLookupParams) {
+	const [params, setParams] = useState<TClientByLookupInput>({
+		orgId: initialParams?.orgId || "",
+		phone: initialParams?.phone || "",
+		clientId: initialParams?.clientId || null,
+	});
+
+	function updateParams(newParams: Partial<TClientByLookupInput>) {
+		setParams((prevParams) => ({ ...prevParams, ...newParams }));
+	}
+	const debouncedInput = useDebounceMemo(
+		{
+			orgId: params.orgId,
+			phone: params.phone,
+			clientId: params.clientId,
+		},
+		1000,
+	);
+	console.log("[INFO] Running useClientByLookup with input:", debouncedInput);
+	return {
+		...useQuery({
+			queryKey: ["client-by-lookup", debouncedInput],
+			queryFn: () => fetchClientByLookup(debouncedInput),
+			enabled: !!(params.clientId || params.phone.length === 15),
+		}),
+
+		queryKey: ["client-by-lookup", debouncedInput],
+		params,
+		updateParams,
 	};
 }

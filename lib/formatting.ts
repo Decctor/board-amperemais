@@ -181,3 +181,40 @@ export function formatToCEP(value: string): string {
 		.replace(/(\d{5})(\d)/, "$1-$2")
 		.replace(/(-\d{3})\d+?$/, "$1");
 }
+
+export function formatLocation({
+	location,
+	includeUf,
+	includeCity,
+	includeCEP,
+}: {
+	location: {
+		cep?: string | null;
+		uf: string;
+		cidade: string;
+		bairro?: string | null;
+		endereco?: string | null;
+		numeroOuIdentificador?: string | null;
+		complemento?: string | null;
+		latitude?: string | null;
+		longitude?: string | null;
+		// distancia: z.number().optional().nullable(),
+	};
+	includeUf?: boolean;
+	includeCity?: boolean;
+	includeCEP?: boolean;
+}) {
+	let addressStr = "";
+	if (includeCity && location.cidade) addressStr = addressStr + `${location.cidade}`;
+	if (includeUf && location.uf) addressStr = location.endereco ? addressStr + ` (${location.uf}), ` : addressStr + ` (${location.uf})`;
+	if (!location.endereco && !includeUf && !includeCity) return "";
+	if (location.endereco) addressStr = addressStr + location.endereco;
+	if (location.numeroOuIdentificador) addressStr = addressStr + `, Nº ${location.numeroOuIdentificador}`;
+	if (location.bairro) addressStr = addressStr + `, ${location.bairro}`;
+	if (location.latitude) addressStr = addressStr + `, LAT ${location.latitude}`;
+	if (location.longitude) addressStr = addressStr + `, LONG ${location.longitude}`;
+	if (includeCEP && location.cep) addressStr = addressStr + `, CEP:${location.cep}`;
+
+	addressStr += ".";
+	return addressStr.toUpperCase();
+}
