@@ -195,6 +195,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 					// Determine organization from whatsappPhoneNumberId
 					let organizacaoId: string | null = null;
+					let whatsappToken: string | null = null;
 					try {
 						const whatsappConnection = await convex.query(api.queries.connections.getWhatsappConnectionByPhoneNumberId, {
 							whatsappPhoneNumberId: incomingMessage.whatsappPhoneNumberId,
@@ -202,6 +203,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 						if (whatsappConnection) {
 							organizacaoId = whatsappConnection.organizacaoId as string;
+							whatsappToken = whatsappConnection.token as string;
 							console.log("[INFO] [WHATSAPP_WEBHOOK] Found organization:", organizacaoId);
 						} else {
 							console.warn("[WHATSAPP_WEBHOOK] No WhatsApp connection found for phone number ID:", incomingMessage.whatsappPhoneNumberId);
@@ -304,6 +306,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 							},
 							whatsappMessageId: incomingMessage.whatsappMessageId,
 							whatsappPhoneNumberId: incomingMessage.whatsappPhoneNumberId,
+							whatsappToken: whatsappToken as string,
 						});
 
 						console.log("[WHATSAPP_WEBHOOK] Message created from:", incomingMessage.fromPhoneNumber, "Type:", incomingMessage.messageType);
