@@ -1,62 +1,211 @@
+import { appApiHandler } from "@/lib/app-api";
+import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { ChatMessageSchema } from "@/schemas/chats";
+import { getChatMediaUrl, uploadChatMedia } from "@/lib/files-storage/chat-media";
 import { db } from "@/services/drizzle";
-import { chatMessages, chatServices, chats } from "@/services/drizzle/schema";
-import { supabaseClient } from "@/services/supabase";
-import { th } from "date-fns/locale";
-import { eq, sql } from "drizzle-orm";
+import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
+import { and, desc, eq, lt, or } from "drizzle-orm";
 import createHttpError from "http-errors";
-import z from "zod";
+import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
-const CreateMessageAppNaturalInputSchema = z.object({
-	type: z.enum(["APP-NATURAL"]),
-	message: ChatMessageSchema.omit({ organizacaoId: true, servicoId: true, whatsappTemplateId: true }),
+// ============= GET - Get paginated messages for a chat =============
+
+const getMessagesQuerySchema = z.object({
+	chatId: z.string(),
+	cursor: z.string().optional(),
+	limit: z.coerce.number().min(1).max(100).default(50),
 });
 
-const CreateMessageAppTemplateInputSchema = z.object({
-	type: z.enum(["APP-TEMPLATE"]),
-	message: ChatMessageSchema.omit({ organizacaoId: true }).pick({
-		chatId: true,
-		whatsappMessageId: true,
-	}),
-});
+export type TGetMessagesInput = z.infer<typeof getMessagesQuerySchema>;
 
-const CreateMessageInputSchema = z.discriminatedUnion("type", [CreateMessageAppNaturalInputSchema, CreateMessageAppTemplateInputSchema]);
-export type TCreateMessageInputSchema = z.infer<typeof CreateMessageInputSchema>;
+async function getMessages({ session, input }: { session: TAuthUserSession["user"]; input: TGetMessagesInput }) {
+	const { chatId, cursor, limit } = input;
+	const organizacaoId = session.organizacaoId;
 
-async function createMessage({ input, session }: { input: TCreateMessageInputSchema; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	if (!organizacaoId) {
+		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
+	}
 
+	// Verify chat belongs to organization
 	const chat = await db.query.chats.findFirst({
-		where: (fields, { eq, and }) => and(eq(fields.organizacaoId, userOrgId), eq(fields.id, input.message.chatId)),
+		where: (fields, { and, eq }) => and(eq(fields.id, chatId), eq(fields.organizacaoId, organizacaoId)),
+	});
+
+	if (!chat) {
+		throw new createHttpError.NotFound("Chat não encontrado.");
+	}
+
+	// Parse cursor (format: "timestamp_id")
+	let cursorTimestamp: Date | null = null;
+	let cursorId: string | null = null;
+	if (cursor) {
+		const [timestampStr, id] = cursor.split("_");
+		cursorTimestamp = new Date(Number.parseInt(timestampStr, 10));
+		cursorId = id;
+	}
+
+	// Build query for messages (reverse chronological order)
+	const messages = await db.query.chatMessages.findMany({
+		where: (fields, { and, eq, lt, or }) =>
+			and(
+				eq(fields.chatId, chatId),
+				cursorTimestamp && cursorId
+					? or(lt(fields.dataEnvio, cursorTimestamp), and(eq(fields.dataEnvio, cursorTimestamp), lt(fields.id, cursorId)))
+					: undefined,
+			),
+		orderBy: (fields, { desc }) => [desc(fields.dataEnvio), desc(fields.id)],
+		limit: limit + 1,
 		with: {
-			whatsappConexao: {
+			autorUsuario: {
 				columns: {
-					token: true,
+					id: true,
+					nome: true,
+					avatarUrl: true,
+				},
+			},
+			autorCliente: {
+				columns: {
+					id: true,
+					nome: true,
 				},
 			},
 		},
 	});
-	if (!chat) throw new createHttpError.NotFound("Chat não encontrado.");
 
-	const service = await db.query.chatServices.findFirst({
-		where: (fields, { eq, and, or }) =>
-			and(
-				eq(fields.organizacaoId, userOrgId),
-				eq(fields.chatId, input.message.chatId),
-				or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO")),
-			),
+	// Check if there are more results
+	const hasMore = messages.length > limit;
+	const pageMessages = hasMore ? messages.slice(0, limit) : messages;
+
+	// Enrich messages with author data
+	const enrichedMessages = pageMessages.map((message) => {
+		let autor: { nome: string; avatarUrl?: string | null } | null = null;
+
+		switch (message.autorTipo) {
+			case "CLIENTE":
+				autor = message.autorCliente ? { nome: message.autorCliente.nome } : null;
+				break;
+			case "USUÁRIO":
+				autor = message.autorUsuario ? { nome: message.autorUsuario.nome, avatarUrl: message.autorUsuario.avatarUrl } : null;
+				break;
+			case "AI":
+				autor = { nome: "Assistente IA" };
+				break;
+			case "BUSINESS-APP":
+				autor = { nome: "Telefone" };
+				break;
+		}
+
+		// Get public URL for media if exists
+		const mediaUrl = message.conteudoMidiaStorageId ? getChatMediaUrl(message.conteudoMidiaStorageId) : message.conteudoMidiaUrl;
+
+		return {
+			...message,
+			autor,
+			conteudoMidiaUrl: mediaUrl,
+		};
 	});
 
-	let serviceId: string | null = service?.id ?? null;
-	if (!service) {
-		// If no service is found, we need to create a new service
-		const newService = await db
+	// Reverse to show oldest first (for display)
+	enrichedMessages.reverse();
+
+	// Create next cursor from the oldest message (before reversing)
+	let nextCursor: string | null = null;
+	if (hasMore && pageMessages.length > 0) {
+		const oldestMessage = pageMessages[pageMessages.length - 1];
+		nextCursor = `${oldestMessage.dataEnvio.getTime()}_${oldestMessage.id}`;
+	}
+
+	return {
+		data: {
+			items: enrichedMessages,
+			hasMore,
+			nextCursor,
+		},
+		message: "Mensagens carregadas com sucesso.",
+	};
+}
+
+export type TGetMessagesOutput = Awaited<ReturnType<typeof getMessages>>;
+
+async function getMessagesRoute(req: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado.");
+
+	const searchParams = req.nextUrl.searchParams;
+	const input = getMessagesQuerySchema.parse({
+		chatId: searchParams.get("chatId"),
+		cursor: searchParams.get("cursor") || undefined,
+		limit: searchParams.get("limit") || 50,
+	});
+
+	const result = await getMessages({ session: session.user, input });
+	return NextResponse.json(result, { status: 200 });
+}
+
+// ============= POST - Create a new message =============
+
+const createMessageBodySchema = z.object({
+	chatId: z.string(),
+	conteudoTexto: z.string().optional(),
+	conteudoMidiaTipo: z.enum(["TEXTO", "IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO"]).default("TEXTO"),
+	conteudoMidiaBase64: z.string().optional(),
+	conteudoMidiaMimeType: z.string().optional(),
+	conteudoMidiaArquivoNome: z.string().optional(),
+});
+
+export type TCreateMessageInput = z.infer<typeof createMessageBodySchema>;
+
+async function createMessage({ session, input }: { session: TAuthUserSession["user"]; input: TCreateMessageInput }) {
+	const organizacaoId = session.organizacaoId;
+
+	if (!organizacaoId) {
+		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
+	}
+
+	// Get chat with connection info
+	const chat = await db.query.chats.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.id, input.chatId), eq(fields.organizacaoId, organizacaoId)),
+		with: {
+			whatsappConexao: {
+				columns: {
+					id: true,
+					token: true,
+				},
+			},
+			cliente: true,
+		},
+	});
+
+	if (!chat) {
+		throw new createHttpError.NotFound("Chat não encontrado.");
+	}
+
+	// Get or create service
+	let serviceId: string | null = null;
+	const existingService = await db.query.chatServices.findFirst({
+		where: (fields, { and, eq, or }) => and(eq(fields.chatId, input.chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
+	});
+
+	if (existingService) {
+		serviceId = existingService.id;
+		// Update responsible to current user
+		if (existingService.responsavelTipo !== "USUÁRIO" || existingService.responsavelUsuarioId !== session.id) {
+			await db
+				.update(chatServices)
+				.set({
+					responsavelTipo: "USUÁRIO",
+					responsavelUsuarioId: session.id,
+				})
+				.where(eq(chatServices.id, serviceId));
+		}
+	} else {
+		// Create new service
+		const [newService] = await db
 			.insert(chatServices)
 			.values({
-				organizacaoId: userOrgId,
-				chatId: input.message.chatId,
+				organizacaoId,
+				chatId: input.chatId,
 				clienteId: chat.clienteId,
 				responsavelTipo: "USUÁRIO",
 				responsavelUsuarioId: session.id,
@@ -64,65 +213,104 @@ async function createMessage({ input, session }: { input: TCreateMessageInputSch
 				status: "PENDENTE",
 			})
 			.returning({ id: chatServices.id });
-
-		const newServiceId = newService[0]?.id;
-		if (!newServiceId) throw new createHttpError.InternalServerError("Erro ao criar serviço.");
-		serviceId = newServiceId;
-	} else {
-		serviceId = service.id;
+		serviceId = newService.id;
 	}
 
-	if (input.type === "APP-NATURAL") {
-		const insertMessageResponse = await db
-			.insert(chatMessages)
-			.values({
-				organizacaoId: userOrgId,
-				chatId: input.message.chatId,
-				autorTipo: "USUÁRIO",
-				autorUsuarioId: session.id,
-				conteudoTexto: input.message.conteudoTexto,
-				conteudoMidiaUrl: input.message.conteudoMidiaUrl,
-				conteudoMidiaTipo: input.message.conteudoMidiaTipo,
-			})
-			.returning({
-				id: chatMessages.id,
-			});
+	// Handle media upload if present
+	let mediaStorageId: string | null = null;
+	let mediaUrl: string | null = null;
+	let mediaFileSize: number | null = null;
 
-		const insertedMessageId = insertMessageResponse[0]?.id;
-		if (!insertedMessageId) throw new createHttpError.InternalServerError("Erro ao criar mensagem.");
+	if (input.conteudoMidiaBase64 && input.conteudoMidiaMimeType) {
+		// Decode base64 and upload to Supabase Storage
+		const fileBuffer = Buffer.from(input.conteudoMidiaBase64, "base64");
+		const uploadResult = await uploadChatMedia({
+			file: fileBuffer,
+			organizacaoId,
+			chatId: input.chatId,
+			mimeType: input.conteudoMidiaMimeType,
+			filename: input.conteudoMidiaArquivoNome || "arquivo",
+		});
 
-		const chatChanges = {
-			ultimaMensagemId: insertedMessageId,
-			ultimaMensagemData: new Date(),
-			ultimaMensagemConteudoTexto: input.message.conteudoTexto,
-			ultimaMensagemConteudoTipo: input.message.conteudoMidiaTipo,
-		};
-		if (input.message.autorTipo === "CLIENTE") {
-			await db
-				.update(chats)
-				.set({
-					...chatChanges,
-					mensagensNaoLidas: chat.mensagensNaoLidas + 1,
-					ultimaInteracaoClienteData: new Date(),
-					status: "ABERTA",
-				})
-				.where(eq(chats.id, input.message.chatId));
-		} else {
-			await db
-				.update(chats)
-				.set({
-					...chatChanges,
-				})
-				.where(eq(chats.id, input.message.chatId));
-		}
-
-		if (input.message.conteudoMidiaTipo !== "TEXTO") {
-			if (!input.message.conteudoMidiaStorageId) throw new createHttpError.InternalServerError("Arquivo não encontrado.");
-			const file = await supabaseClient.storage.from("files").download(input.message.conteudoMidiaStorageId);
-			if (!file.data) throw new createHttpError.InternalServerError("Arquivo não encontrado.");
-			const fileBuffer = await file.data.arrayBuffer();
-			const fileBlob = new Blob([fileBuffer], { type: input.message.conteudoMidiaMimeType as string });
-			const fileUrl = URL.createObjectURL(fileBlob);
-		}
+		mediaStorageId = uploadResult.storageId;
+		mediaUrl = uploadResult.publicUrl;
+		mediaFileSize = uploadResult.fileSize;
 	}
+
+	// Insert message
+	const [insertedMessage] = await db
+		.insert(chatMessages)
+		.values({
+			organizacaoId,
+			chatId: input.chatId,
+			autorTipo: "USUÁRIO",
+			autorUsuarioId: session.id,
+			conteudoTexto: input.conteudoTexto || "",
+			conteudoMidiaTipo: input.conteudoMidiaTipo,
+			conteudoMidiaUrl: mediaUrl,
+			conteudoMidiaStorageId: mediaStorageId,
+			conteudoMidiaMimeType: input.conteudoMidiaMimeType,
+			conteudoMidiaArquivoNome: input.conteudoMidiaArquivoNome,
+			conteudoMidiaArquivoTamanho: mediaFileSize,
+			servicoId: serviceId,
+			status: "ENVIADO",
+			whatsappMessageStatus: "PENDENTE",
+		})
+		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+
+	// Update chat with last message info
+	await db
+		.update(chats)
+		.set({
+			ultimaMensagemId: insertedMessage.id,
+			ultimaMensagemData: insertedMessage.dataEnvio,
+			ultimaMensagemConteudoTexto: input.conteudoTexto,
+			ultimaMensagemConteudoTipo: input.conteudoMidiaTipo,
+		})
+		.where(eq(chats.id, input.chatId));
+
+	return {
+		data: {
+			messageId: insertedMessage.id,
+			chatId: input.chatId,
+			requiresWhatsappSend: true,
+			chat: {
+				status: chat.status,
+				whatsappToken: chat.whatsappConexao?.token,
+				whatsappPhoneNumberId: chat.whatsappTelefoneId,
+				clienteTelefone: chat.cliente?.telefone,
+			},
+			media: mediaStorageId
+				? {
+						storageId: mediaStorageId,
+						mimeType: input.conteudoMidiaMimeType,
+						filename: input.conteudoMidiaArquivoNome,
+					}
+				: null,
+		},
+		message: "Mensagem criada com sucesso.",
+	};
 }
+
+export type TCreateMessageOutput = Awaited<ReturnType<typeof createMessage>>;
+
+async function createMessageRoute(req: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado.");
+
+	const body = await req.json();
+	const input = createMessageBodySchema.parse(body);
+
+	const result = await createMessage({ session: session.user, input });
+	return NextResponse.json(result, { status: 201 });
+}
+
+// ============= Export handlers =============
+
+export const GET = appApiHandler({
+	GET: getMessagesRoute,
+});
+
+export const POST = appApiHandler({
+	POST: createMessageRoute,
+});

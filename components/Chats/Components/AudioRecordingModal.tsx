@@ -54,10 +54,7 @@ export function AudioRecordingModal({
 		<Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
 			<DialogOverlay className="bg-black/60 backdrop-blur-sm" />
 			<DialogContent
-				className={cn(
-					"max-w-md w-[90vw] p-0 overflow-hidden border-none shadow-2xl",
-					"bg-gradient-to-br from-background via-background to-primary/5",
-				)}
+				className={cn("max-w-md w-[90vw] p-0 overflow-hidden border-none shadow-2xl", "bg-linear-to-br from-background via-background to-primary/5")}
 				onInteractOutside={(e) => e.preventDefault()}
 				onEscapeKeyDown={onCancel}
 			>
@@ -86,18 +83,12 @@ export function AudioRecordingModal({
 								<div
 									className={cn(
 										"w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300",
-										isRecording
-											? "bg-red-500 shadow-lg shadow-red-500/50"
-											: "bg-green-500 shadow-lg shadow-green-500/50",
+										isRecording ? "bg-red-500 shadow-lg shadow-red-500/50" : "bg-green-500 shadow-lg shadow-green-500/50",
 									)}
 								>
-									{isRecording ? (
-										<Mic className="w-12 h-12 text-white" />
-									) : (
-										<Check className="w-12 h-12 text-white" />
-									)}
+									{isRecording ? <Mic className="w-12 h-12 text-white" /> : <Check className="w-12 h-12 text-white" />}
 								</div>
-								
+
 								{/* Pulse rings for recording state */}
 								{isRecording && (
 									<>
@@ -109,13 +100,9 @@ export function AudioRecordingModal({
 
 							{/* Status Text */}
 							<div className="text-center">
-								<h3 className="text-xl font-semibold mb-1">
-									{isRecording ? "Gravando áudio..." : "Gravação concluída"}
-								</h3>
+								<h3 className="text-xl font-semibold mb-1">{isRecording ? "Gravando áudio..." : "Gravação concluída"}</h3>
 								<p className="text-sm text-muted-foreground">
-									{isRecording
-										? "Clique em parar quando terminar"
-										: "Envie o áudio ou cancele para gravar novamente"}
+									{isRecording ? "Clique em parar quando terminar" : "Envie o áudio ou cancele para gravar novamente"}
 								</p>
 							</div>
 
@@ -148,15 +135,13 @@ export function AudioRecordingModal({
 										// Dynamic height based on audio level
 										const height = Math.max(8, level); // Minimum 8% height
 										const barIndex = index;
-										
+
 										return (
 											<div
 												key={barIndex}
 												className={cn(
 													"flex-1 rounded-full transition-all duration-100",
-													isRecording
-														? "bg-gradient-to-t from-red-500 to-red-400"
-														: "bg-gradient-to-t from-green-500 to-green-400",
+													isRecording ? "bg-gradient-to-t from-red-500 to-red-400" : "bg-gradient-to-t from-green-500 to-green-400",
 												)}
 												style={{
 													height: `${height}%`,
@@ -193,12 +178,7 @@ export function AudioRecordingModal({
 										onClick={onStopRecording}
 										variant="default"
 										size="lg"
-										className={cn(
-											"flex-1 gap-2",
-											"bg-red-500 hover:bg-red-600 text-white",
-											"shadow-lg shadow-red-500/30",
-											"transition-all duration-200",
-										)}
+										className={cn("flex-1 gap-2", "bg-red-500 hover:bg-red-600 text-white", "shadow-lg shadow-red-500/30", "transition-all duration-200")}
 									>
 										<div className="w-3 h-3 bg-white rounded-sm" />
 										Parar
@@ -208,12 +188,7 @@ export function AudioRecordingModal({
 										onClick={onSend}
 										variant="default"
 										size="lg"
-										className={cn(
-											"flex-1 gap-2",
-											"bg-green-500 hover:bg-green-600 text-white",
-											"shadow-lg shadow-green-500/30",
-											"transition-all duration-200",
-										)}
+										className={cn("flex-1 gap-2", "bg-green-500 hover:bg-green-600 text-white", "shadow-lg shadow-green-500/30", "transition-all duration-200")}
 									>
 										<Check className="w-5 h-5" />
 										Enviar
@@ -227,4 +202,3 @@ export function AudioRecordingModal({
 		</Dialog>
 	);
 }
-

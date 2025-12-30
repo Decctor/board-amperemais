@@ -2,24 +2,20 @@
 
 import TextareaInput from "@/components/Inputs/TextareaInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useUpdateService } from "@/lib/mutations/chats";
 import { useState } from "react";
 import { toast } from "sonner";
 
 type ServiceConclusionDialogProps = {
 	closeMenu: () => void;
-	serviceId: Id<"services">;
+	serviceId: string;
 	currentDescription: string;
 };
 
 export function ServiceConclusionDialog({ closeMenu, serviceId, currentDescription }: ServiceConclusionDialogProps) {
 	const [serviceDescription, setServiceDescription] = useState(currentDescription);
-	const [isConclusioning, setIsConclusioning] = useState(false);
 
-	const users = useQuery(api.queries.users.getUsers);
-	const updateService = useMutation(api.mutations.services.updateService);
+	const updateServiceMutation = useUpdateService();
 
 	const handleConclusion = async (newDescription: string) => {
 		if (!newDescription || newDescription.trim().length <= 3) {
@@ -27,16 +23,17 @@ export function ServiceConclusionDialog({ closeMenu, serviceId, currentDescripti
 			return;
 		}
 
-		setIsConclusioning(true);
 		try {
-			await updateService({ serviceId, service: { descricao: newDescription, status: "CONCLUIDO", dataFim: Date.now() } });
+			await updateServiceMutation.mutateAsync({
+				serviceId,
+				descricao: newDescription,
+				status: "CONCLUIDO",
+			});
 
 			toast.success("Atendimento concluído com sucesso");
 			closeMenu();
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Erro ao concluir atendimento");
-		} finally {
-			setIsConclusioning(false);
+			// Error is already handled by the mutation hook
 		}
 	};
 
@@ -47,7 +44,7 @@ export function ServiceConclusionDialog({ closeMenu, serviceId, currentDescripti
 			menuActionButtonText="CONCLUIR"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={() => handleConclusion(serviceDescription)}
-			actionIsLoading={isConclusioning}
+			actionIsLoading={updateServiceMutation.isPending}
 			stateIsLoading={false}
 			stateError={null}
 			closeMenu={() => closeMenu()}

@@ -4,11 +4,10 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { formatNameAsInitials } from "@/lib/formatting";
+import { useTransferService } from "@/lib/mutations/chats";
+import { useUsers } from "@/lib/queries/users";
 import { cn } from "@/lib/utils";
-import { useMutation, useQuery } from "convex/react";
 import { Bot, UserRound, Users } from "lucide-react";
 import { useState } from "react";
 import type React from "react";
@@ -16,7 +15,7 @@ import { toast } from "sonner";
 
 type ServiceTransferDialogProps = {
 	closeMenu: () => void;
-	serviceId: Id<"services">;
+	serviceId: string;
 	currentResponsible: "ai" | { nome: string; avatar_url: string | null; idApp: string } | null;
 	currentUserIdApp: string;
 };
@@ -24,10 +23,9 @@ type ServiceTransferDialogProps = {
 export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible, currentUserIdApp }: ServiceTransferDialogProps) {
 	const [transferType, setTransferType] = useState<"to-me" | "to-other" | "to-ai" | null>(null);
 	const [selectedUserIdApp, setSelectedUserIdApp] = useState<string | null>(null);
-	const [isTransferring, setIsTransferring] = useState(false);
 
-	const users = useQuery(api.queries.users.getUsers);
-	const transferService = useMutation(api.mutations.services.transferServiceToUser);
+	const { data: users } = useUsers({});
+	const transferServiceMutation = useTransferService();
 
 	// Determine available transfer options based on current responsible
 	const isCurrentUserResponsible =
@@ -74,13 +72,21 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 			return;
 		}
 
-		setIsTransferring(true);
 		try {
-			const userIdApp = transferType === "to-me" ? currentUserIdApp : transferType === "to-ai" ? undefined : selectedUserIdApp || undefined;
+			let userId: string | undefined = undefined;
 
-			await transferService({
+			if (transferType === "to-me") {
+				// Use current user ID directly
+				userId = currentUserIdApp;
+			} else if (transferType === "to-other" && selectedUserIdApp) {
+				// Use selected user ID directly
+				userId = selectedUserIdApp;
+			}
+			// If transferType === "to-ai", userId remains undefined
+
+			await transferServiceMutation.mutateAsync({
 				serviceId,
-				userIdApp,
+				userId,
 			});
 
 			toast.success("Responsabilidade transferida com sucesso");
@@ -88,10 +94,8 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 			setSelectedUserIdApp(null);
 			setTransferType(null);
 		} catch (error) {
+			// Error is already handled by the mutation hook
 			console.error("Error transferring service:", error);
-			toast.error(error instanceof Error ? error.message : "Erro ao transferir responsabilidade");
-		} finally {
-			setIsTransferring(false);
 		}
 	};
 
@@ -102,7 +106,7 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 			menuActionButtonText="TRANSFERIR"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={handleTransfer}
-			actionIsLoading={isTransferring}
+			actionIsLoading={transferServiceMutation.isPending}
 			stateIsLoading={false}
 			stateError={null}
 			closeMenu={() => closeMenu()}
@@ -180,10 +184,10 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 									</SelectTrigger>
 									<SelectContent>
 										{users?.map((user) => (
-											<SelectItem key={user._id} value={user.idApp}>
+											<SelectItem key={user.id} value={user.id}>
 												<div className="flex items-center gap-2">
 													<Avatar className="w-5 h-5">
-														<AvatarImage src={user.avatar_url} />
+														<AvatarImage src={user.avatarUrl || undefined} />
 														<AvatarFallback className="text-xs">{formatNameAsInitials(user.nome)}</AvatarFallback>
 													</Avatar>
 													<span>{user.nome}</span>

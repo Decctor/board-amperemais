@@ -2,14 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
+import { useChatMessagesRealtime } from "@/lib/hooks/use-supabase-realtime";
+import { useRetryMessage } from "@/lib/mutations/chats";
+import { useChatMessages } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import { useMutation, useQuery } from "convex/react";
 import { AlertCircle, ArrowDown, Check, CheckCheck, Clock, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
-import { useLoadOlderMessages } from "../Hooks/usePaginatedChats";
 import MediaMessageDisplay from "../MediaMessageDisplay";
 import { useChatHub } from "./context";
 
@@ -18,59 +17,44 @@ export type ChatHubMessagesProps = {
 	emptyState?: React.ReactNode;
 };
 
+type MessageType = {
+	id: string;
+	autorTipo: "CLIENTE" | "USUÁRIO" | "AI" | "BUSINESS-APP";
+	conteudoTexto: string | null;
+	conteudoMidiaTipo: "TEXTO" | "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO";
+	conteudoMidiaUrl: string | null;
+	conteudoMidiaStorageId: string | null;
+	conteudoMidiaMimeType: string | null;
+	conteudoMidiaArquivoNome: string | null;
+	conteudoMidiaArquivoTamanho: number | null;
+	whatsappMessageStatus: "PENDENTE" | "ENVIADO" | "ENTREGUE" | "FALHOU";
+	dataEnvio: Date;
+	chatId: string;
+	autor: { nome: string; avatarUrl?: string | null } | null;
+};
+
 export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 	const { selectedChatId } = useChatHub();
-	const [allMessages, setAllMessages] = useState<any[]>([]);
-	const [nextCursor, setNextCursor] = useState<string | null>(null);
-	const [isLoadingOlder, setIsLoadingOlder] = useState(false);
 	const previousChatId = useRef(selectedChatId);
 
-	// Initial load (most recent messages)
-	const initialResult = useQuery(
-		api.queries.chat.getChatMessages,
-		selectedChatId
-			? {
-					chatId: selectedChatId,
-					paginationOpts: {
-						cursor: null,
-						numItems: 30,
-					},
-				}
-			: "skip",
-	);
+	// Use TanStack Query for messages
+	const { messages, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage } = useChatMessages(selectedChatId);
 
-	// Load older messages
-	const olderMessagesResult = useLoadOlderMessages(selectedChatId ? (selectedChatId as string) : null, isLoadingOlder ? nextCursor : null);
+	// Subscribe to realtime updates
+	useChatMessagesRealtime({
+		chatId: selectedChatId,
+		enabled: !!selectedChatId,
+	});
 
 	// Reset when chat changes
 	useEffect(() => {
 		if (selectedChatId !== previousChatId.current) {
 			previousChatId.current = selectedChatId;
-			setAllMessages([]);
-			setNextCursor(null);
-			setIsLoadingOlder(false);
 		}
 	}, [selectedChatId]);
 
-	// Update messages when initial result loads
-	useEffect(() => {
-		if (initialResult && selectedChatId === previousChatId.current) {
-			setAllMessages(initialResult.items);
-			setNextCursor(initialResult.nextCursor);
-		}
-	}, [initialResult, selectedChatId]);
-
-	// Prepend older messages when loading more
-	useEffect(() => {
-		if (olderMessagesResult && isLoadingOlder) {
-			setAllMessages((prev) => [...olderMessagesResult.items, ...prev]);
-			setNextCursor(olderMessagesResult.nextCursor);
-			setIsLoadingOlder(false);
-		}
-	}, [olderMessagesResult, isLoadingOlder]);
-
 	// Initial loading state
-	if (!initialResult) {
+	if (isPending) {
 		return (
 			<div className={cn("flex-1 flex items-center justify-center bg-background/50", className)}>
 				<div className="flex flex-col items-center gap-2">
@@ -81,8 +65,20 @@ export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 		);
 	}
 
+	// Error state
+	if (isError) {
+		return (
+			<div className={cn("flex-1 flex items-center justify-center bg-background/50", className)}>
+				<div className="flex flex-col items-center gap-2">
+					<AlertCircle className="w-8 h-8 text-red-500/40" />
+					<div className="text-sm text-red-500/60">Erro ao carregar mensagens</div>
+				</div>
+			</div>
+		);
+	}
+
 	// Empty state
-	if (allMessages.length === 0) {
+	if (messages.length === 0) {
 		return (
 			<div className={cn("flex-1 flex items-center justify-center bg-background/50", className)}>
 				{emptyState || (
@@ -113,10 +109,10 @@ export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 		>
 			<StickToBottom.Content className="p-4 space-y-1 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
 				{/* Load Older Messages Button */}
-				{nextCursor && initialResult?.hasMore && (
+				{hasNextPage && (
 					<div className="flex items-center justify-center mb-4">
-						<Button variant="outline" size="sm" onClick={() => setIsLoadingOlder(true)} disabled={isLoadingOlder} className="shadow-sm">
-							{isLoadingOlder ? (
+						<Button variant="outline" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage} className="shadow-sm">
+							{isFetchingNextPage ? (
 								<>
 									<Loader2 className="w-4 h-4 animate-spin mr-2" />
 									Carregando...
@@ -128,18 +124,18 @@ export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 					</div>
 				)}
 
-				{allMessages.map((message, index) => {
-					const previousMessage = index > 0 ? allMessages[index - 1] : null;
-					const nextMessage = index < allMessages.length - 1 ? allMessages[index + 1] : null;
+				{messages.map((message, index) => {
+					const previousMessage = index > 0 ? messages[index - 1] : null;
+					const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
 
-					const isUser = message.autorTipo === "usuario" || message.autorTipo === "ai";
+					const isUser = message.autorTipo === "USUÁRIO" || message.autorTipo === "AI" || message.autorTipo === "BUSINESS-APP";
 					const isSameAuthorAsPrevious = previousMessage?.autorTipo === message.autorTipo;
 					const isSameAuthorAsNext = nextMessage?.autorTipo === message.autorTipo;
 
 					return (
 						<MessageBubble
-							key={message._id}
-							message={message}
+							key={message.id}
+							message={message as MessageType}
 							isUser={isUser}
 							isSameAuthorAsPrevious={isSameAuthorAsPrevious}
 							isSameAuthorAsNext={isSameAuthorAsNext}
@@ -153,7 +149,7 @@ export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 }
 
 type MessageBubbleProps = {
-	message: any;
+	message: MessageType;
 	isUser: boolean;
 	isSameAuthorAsPrevious: boolean;
 	isSameAuthorAsNext: boolean;
@@ -178,20 +174,20 @@ function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAs
 					"max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-2.5",
 					"shadow-sm transition-all duration-200 hover:shadow-md",
 					roundedClasses,
-					isUser ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white" : "bg-card border border-primary/10 text-primary",
+					isUser ? "bg-linear-to-br from-blue-500 to-blue-600 text-white" : "bg-card border border-primary/10 text-primary",
 				)}
 			>
 				{/* Message Content */}
-				{message.conteudoMidiaTipo ? (
+				{message.conteudoMidiaTipo && message.conteudoMidiaTipo !== "TEXTO" ? (
 					<div className="space-y-2">
 						<MediaMessageDisplay
-							storageId={message.conteudoMidiaStorageId}
-							mediaUrl={message.conteudoMidiaUrl}
+							storageId={message.conteudoMidiaStorageId ?? undefined}
+							mediaUrl={message.conteudoMidiaUrl ?? undefined}
 							mediaType={message.conteudoMidiaTipo}
-							fileName={message.conteudoMidiaFileName}
-							fileSize={message.conteudoMidiaFileSize}
-							mimeType={message.conteudoMidiaMimeType}
-							caption={message.conteudoTexto}
+							fileName={message.conteudoMidiaArquivoNome ?? undefined}
+							fileSize={message.conteudoMidiaArquivoTamanho ?? undefined}
+							mimeType={message.conteudoMidiaMimeType ?? undefined}
+							caption={message.conteudoTexto ?? undefined}
 							variant={isUser ? "sent" : "received"}
 						/>
 					</div>
@@ -208,7 +204,7 @@ function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAs
 								minute: "2-digit",
 							})}
 						</time>
-						{isUser && <MessageStatusIcon status={message.whatsappStatus} messageId={message._id} />}
+						{isUser && <MessageStatusIcon status={message.whatsappMessageStatus} messageId={message.id} chatId={message.chatId} />}
 					</div>
 				)}
 			</div>
@@ -218,25 +214,22 @@ function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAs
 
 type MessageStatusIconProps = {
 	status?: string | null;
-	messageId: Id<"messages">;
+	messageId: string;
+	chatId: string;
 };
 
-function MessageStatusIcon({ status, messageId }: MessageStatusIconProps) {
-	const [isRetrying, setIsRetrying] = useState(false);
+function MessageStatusIcon({ status, messageId, chatId }: MessageStatusIconProps) {
 	const [isOpen, setIsOpen] = useState(false);
-	const retryMessage = useMutation(api.mutations.messages.retryMessage);
+	const retryMessageMutation = useRetryMessage();
 
 	const handleRetry = useCallback(async () => {
-		setIsRetrying(true);
 		try {
-			await retryMessage({ messageId });
+			await retryMessageMutation.mutateAsync({ messageId, chatId });
 			setIsOpen(false);
 		} catch (error) {
 			console.error("Erro ao reenviar mensagem:", error);
-		} finally {
-			setIsRetrying(false);
 		}
-	}, [retryMessage, messageId]);
+	}, [retryMessageMutation, messageId, chatId]);
 
 	switch (status) {
 		case "PENDENTE":
@@ -259,8 +252,8 @@ function MessageStatusIcon({ status, messageId }: MessageStatusIconProps) {
 						</button>
 					</PopoverTrigger>
 					<PopoverContent side="top" align="end" className="w-auto p-2" sideOffset={8}>
-						<Button size="sm" variant="destructive" onClick={handleRetry} disabled={isRetrying} className="gap-2">
-							{isRetrying ? (
+						<Button size="sm" variant="destructive" onClick={handleRetry} disabled={retryMessageMutation.isPending} className="gap-2">
+							{retryMessageMutation.isPending ? (
 								<>
 									<Loader2 className="w-3.5 h-3.5 animate-spin" />
 									Reenviando...

@@ -161,7 +161,7 @@ function MediaMessageDisplay({
 					{mimeType && <span>{getFileTypeTitle(mimeType)}</span>}
 				</div>
 			</div>
-			<Button variant="ghost" size="fit" onClick={handleDownload} disabled={!fileUrl} className="flex-shrink-0 p-2 rounded-full text-primary-foreground">
+			<Button variant="ghost" size="fit" onClick={handleDownload} disabled={!fileUrl} className="shrink-0 p-2 rounded-full text-primary-foreground">
 				<Download className="w-4 h-4" />
 			</Button>
 		</div>

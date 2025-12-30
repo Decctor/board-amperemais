@@ -3,17 +3,14 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { formatNameAsInitials } from "@/lib/formatting";
+import { useChatsRealtime } from "@/lib/hooks/use-supabase-realtime";
+import { useChats } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import { useQuery } from "convex/react";
 import dayjs from "dayjs";
 import { AudioWaveformIcon, FileIcon, ImageIcon, Loader2, MessageCircle, VideoIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useDebounce, useLoadMoreChats } from "../Hooks/usePaginatedChats";
+import { useCallback, useEffect, useRef } from "react";
 import { useChatHub } from "./context";
 
 export type ChatHubListProps = {
@@ -21,74 +18,51 @@ export type ChatHubListProps = {
 	onChatSelect?: (chatId: string) => void;
 	searchQuery?: string;
 };
-type TChats = NonNullable<ReturnType<typeof useQuery<typeof api.queries.chat.getChats>>>;
+
+type ChatItem = {
+	id: string;
+	mensagensNaoLidas: number;
+	ultimaMensagemData: Date;
+	ultimaMensagemConteudoTipo: "TEXTO" | "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO";
+	ultimaMensagemConteudoTexto: string | null;
+	cliente: {
+		id: string;
+		nome: string;
+		avatarUrl?: string | null;
+	} | null;
+};
+
 export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListProps) {
 	const { selectedPhoneNumber, selectedChatId, setSelectedChatId } = useChatHub();
-	const debouncedSearchQuery = useDebounce(searchQuery, 300);
 	const scrollRef = useRef<HTMLDivElement>(null);
-	const [allChats, setAllChats] = useState<TChats["items"]>([]);
-	const [nextCursor, setNextCursor] = useState<string | null>(null);
-	const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-	// Initial load
-	const initialResult = useQuery(
-		api.queries.chat.getChats,
-		selectedPhoneNumber
-			? {
-					whatsappPhoneNumberId: selectedPhoneNumber,
-					paginationOpts: {
-						cursor: null,
-						numItems: 20,
-					},
-					searchQuery: debouncedSearchQuery || undefined,
-				}
-			: "skip",
-	);
+	// Use TanStack Query for chats
+	const { chats, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage } = useChats({
+		whatsappPhoneId: selectedPhoneNumber,
+		initialSearch: searchQuery,
+	});
 
-	// Load more chats
-	const moreChatsResult = useLoadMoreChats(selectedPhoneNumber, isLoadingMore ? nextCursor : null, debouncedSearchQuery);
-
-	// Reset when search changes or phone number changes
-	useEffect(() => {
-		setAllChats([]);
-		setNextCursor(null);
-		setIsLoadingMore(false);
-	}, [debouncedSearchQuery, selectedPhoneNumber]);
-
-	// Update chats when initial result loads
-	useEffect(() => {
-		if (initialResult) {
-			setAllChats(initialResult.items);
-			setNextCursor(initialResult.nextCursor);
-		}
-	}, [initialResult]);
-
-	// Append more chats when loading more
-	useEffect(() => {
-		if (moreChatsResult && isLoadingMore) {
-			setAllChats((prev) => [...prev, ...moreChatsResult.items]);
-			setNextCursor(moreChatsResult.nextCursor);
-			setIsLoadingMore(false);
-		}
-	}, [moreChatsResult, isLoadingMore]);
+	// Subscribe to realtime updates
+	useChatsRealtime({
+		whatsappPhoneId: selectedPhoneNumber,
+		enabled: !!selectedPhoneNumber,
+	});
 
 	// Infinite scroll handler
 	const handleScroll = useCallback(() => {
-		if (!scrollRef.current || isLoadingMore || !nextCursor) return;
+		if (!scrollRef.current || isFetchingNextPage || !hasNextPage) return;
 
-		const container = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
-		if (!container) return;
-
+		const container = scrollRef.current;
 		const { scrollTop, scrollHeight, clientHeight } = container;
 		const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
 
-		if (isNearBottom && initialResult?.hasMore) {
-			setIsLoadingMore(true);
+		if (isNearBottom) {
+			fetchNextPage();
 		}
-	}, [isLoadingMore, nextCursor, initialResult?.hasMore]);
+	}, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
 	useEffect(() => {
-		const container = scrollRef.current?.querySelector("[data-radix-scroll-area-viewport]");
+		const container = scrollRef.current;
 		if (container) {
 			container.addEventListener("scroll", handleScroll);
 			return () => container.removeEventListener("scroll", handleScroll);
@@ -96,7 +70,7 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 	}, [handleScroll]);
 
 	const handleSelectChat = (chatId: string) => {
-		setSelectedChatId(chatId as Id<"chats">);
+		setSelectedChatId(chatId);
 		onChatSelect?.(chatId);
 	};
 
@@ -111,7 +85,7 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 	}
 
 	// Initial loading
-	if (!initialResult) {
+	if (isPending) {
 		return (
 			<div className={cn("flex flex-col gap-3 p-3", className)}>
 				{Array.from({ length: 5 }).map((_, i) => (
@@ -121,15 +95,23 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 		);
 	}
 
+	// Error state
+	if (isError) {
+		return (
+			<div className={cn("flex flex-col items-center justify-center p-8 text-center", className)}>
+				<MessageCircle className="w-12 h-12 text-red-500/20 mb-3" />
+				<p className="text-sm text-red-500/60 font-medium">Erro ao carregar chats</p>
+			</div>
+		);
+	}
+
 	// No chats found
-	if (allChats.length === 0) {
+	if (chats.length === 0) {
 		return (
 			<div className={cn("flex flex-col items-center justify-center p-8 text-center", className)}>
 				<MessageCircle className="w-12 h-12 text-primary/20 mb-3" />
-				<p className="text-sm text-primary/60 font-medium">{debouncedSearchQuery ? "Nenhum chat encontrado" : "Nenhum chat ainda"}</p>
-				<p className="text-xs text-primary/40 mt-1">
-					{debouncedSearchQuery ? "Tente outro termo de busca" : "Inicie uma nova conversa clicando no botão +"}
-				</p>
+				<p className="text-sm text-primary/60 font-medium">{searchQuery ? "Nenhum chat encontrado" : "Nenhum chat ainda"}</p>
+				<p className="text-xs text-primary/40 mt-1">{searchQuery ? "Tente outro termo de busca" : "Inicie uma nova conversa clicando no botão +"}</p>
 			</div>
 		);
 	}
@@ -140,20 +122,20 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 			className={cn("w-full flex flex-col scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 overflow-y-auto", className)}
 		>
 			<div className="flex flex-col gap-2 p-3">
-				{allChats.map((chat) => (
-					<ChatItem key={chat._id} chat={chat} isSelected={selectedChatId === chat._id} onSelect={() => handleSelectChat(chat._id)} />
+				{chats.map((chat) => (
+					<ChatListItem key={chat.id} chat={chat as ChatItem} isSelected={selectedChatId === chat.id} onSelect={() => handleSelectChat(chat.id)} />
 				))}
 
 				{/* Loading More Indicator */}
-				{isLoadingMore && (
+				{isFetchingNextPage && (
 					<div className="flex items-center justify-center py-4">
 						<Loader2 className="w-5 h-5 animate-spin text-primary/60" />
 					</div>
 				)}
 
 				{/* Load More Button (alternative to infinite scroll) */}
-				{!isLoadingMore && nextCursor && initialResult?.hasMore && (
-					<Button variant="ghost" onClick={() => setIsLoadingMore(true)} className="w-full mt-2 text-primary/60 hover:text-primary hover:bg-primary/5">
+				{!isFetchingNextPage && hasNextPage && (
+					<Button variant="ghost" onClick={() => fetchNextPage()} className="w-full mt-2 text-primary/60 hover:text-primary hover:bg-primary/5">
 						Carregar mais conversas
 					</Button>
 				)}
@@ -162,16 +144,16 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 	);
 }
 
-type ChatItemProps = {
-	chat: TChats["items"][number];
+type ChatListItemProps = {
+	chat: ChatItem;
 	isSelected: boolean;
 	onSelect: () => void;
 };
 
-function ChatItem({ chat, isSelected, onSelect }: ChatItemProps) {
+function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) {
 	const hasUnread = (chat.mensagensNaoLidas || 0) > 0;
 
-	function getFormattedLastMessageDate(date: string) {
+	function getFormattedLastMessageDate(date: Date) {
 		if (!date) return "";
 		const isSameDay = dayjs(date).isSame(dayjs(), "day");
 		if (isSameDay) return dayjs(date).format("HH:mm");
@@ -179,28 +161,33 @@ function ChatItem({ chat, isSelected, onSelect }: ChatItemProps) {
 		if (isSameYear) return dayjs(date).format("DD/MM HH:mm");
 		return dayjs(date).format("DD/MM/YYYY HH:mm");
 	}
+
 	function getMediaMessageFormattedValue(mediaType: "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO") {
-		if (mediaType === "IMAGEM") return {
-			icon: <ImageIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
-			value: "IMAGEM"
-		} 
-		 if (mediaType === "VIDEO") return {
-			icon: <VideoIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
-			value: "VÍDEO",
-		} 
-		if (mediaType === "AUDIO") return {
-			icon: <AudioWaveformIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
-			value: "ÁUDIO",
-		}
+		if (mediaType === "IMAGEM")
+			return {
+				icon: <ImageIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+				value: "IMAGEM",
+			};
+		if (mediaType === "VIDEO")
+			return {
+				icon: <VideoIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+				value: "VÍDEO",
+			};
+		if (mediaType === "AUDIO")
+			return {
+				icon: <AudioWaveformIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+				value: "ÁUDIO",
+			};
 
 		return {
 			icon: <FileIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
 			value: "DOCUMENTO",
-		}
+		};
 	}
 
-	const mediaMessageFormattedValue = getMediaMessageFormattedValue(chat.ultimaMensagemConteudoTipo);	
+	const mediaMessageFormattedValue = getMediaMessageFormattedValue(chat.ultimaMensagemConteudoTipo as "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO");
 	const lastMessageDate = getFormattedLastMessageDate(chat.ultimaMensagemData);
+
 	return (
 		<Button
 			variant="ghost"
@@ -216,7 +203,7 @@ function ChatItem({ chat, isSelected, onSelect }: ChatItemProps) {
 
 			{/* Avatar */}
 			<Avatar className="w-12 h-12 min-w-12 min-h-12 ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
-				<AvatarImage src={chat.cliente?.avatar_url} alt={chat.cliente?.nome ?? ""} />
+				<AvatarImage src={chat.cliente?.avatarUrl ?? undefined} alt={chat.cliente?.nome ?? ""} />
 				<AvatarFallback className="bg-linear-to-br from-primary/20 to-primary/10 text-primary font-semibold">
 					{formatNameAsInitials(chat.cliente?.nome ?? "?")}
 				</AvatarFallback>
@@ -242,9 +229,7 @@ function ChatItem({ chat, isSelected, onSelect }: ChatItemProps) {
 						) : (
 							<>
 								{mediaMessageFormattedValue.icon}
-								<p className={cn("text-xs truncate", hasUnread ? "text-primary/80 font-medium" : "text-primary/60")}>
-									{mediaMessageFormattedValue.value}
-								</p>
+								<p className={cn("text-xs truncate", hasUnread ? "text-primary/80 font-medium" : "text-primary/60")}>{mediaMessageFormattedValue.value}</p>
 							</>
 						)}
 					</div>
