@@ -39,7 +39,7 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 	// Use TanStack Query for chats
 	const { chats, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage } = useChats({
 		whatsappPhoneId: selectedPhoneNumber,
-		initialSearch: searchQuery,
+		search: searchQuery,
 	});
 
 	// Subscribe to realtime updates

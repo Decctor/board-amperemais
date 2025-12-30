@@ -38,14 +38,13 @@ async function fetchChatMessages(input: TGetMessagesInput) {
 
 type UseChatsParams = {
 	whatsappPhoneId: string | null;
-	initialSearch?: string;
+	search?: string;
 };
 
 /**
  * Hook to fetch and manage chats list with pagination and search
  */
-export function useChats({ whatsappPhoneId, initialSearch = "" }: UseChatsParams) {
-	const [search, setSearch] = useState(initialSearch);
+export function useChats({ whatsappPhoneId, search = "" }: UseChatsParams) {
 	const debouncedSearch = useDebounceMemo({ search }, 300);
 
 	const query = useInfiniteQuery({
@@ -68,8 +67,6 @@ export function useChats({ whatsappPhoneId, initialSearch = "" }: UseChatsParams
 	return {
 		...query,
 		chats,
-		search,
-		setSearch,
 		queryKey: ["chats", whatsappPhoneId, debouncedSearch],
 	};
 }
