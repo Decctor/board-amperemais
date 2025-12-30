@@ -40,3 +40,17 @@ export const cashbackProgramTransactionTypeEnum = pgEnum("cashback_program_trans
 export const cashbackProgramTransactionStatusEnum = pgEnum("cashback_program_transaction_status", ["ATIVO", "CONSUMIDO", "EXPIRADO"]);
 
 export const organizationIntegrationTypeEnum = pgEnum("organization_integration_type", ["ONLINE-SOFTWARE"]);
+
+export const chatStatusEnum = pgEnum("chat_status", ["ABERTA", "FECHADA"]);
+
+export const chatMessageContentTypeEnum = pgEnum("chat_message_content_type", ["TEXTO", "IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO"]);
+
+export const chatServiceStatusEnum = pgEnum("chat_service_status", ["PENDENTE", "EM_ANDAMENTO", "CONCLUIDO"]);
+
+export const chatServiceResponsibleTypeEnum = pgEnum("chat_service_responsible_type", ["USUÁRIO", "AI", "BUSINESS-APP", "CLIENTE"]);
+
+export const chatMessageAuthorTypeEnum = pgEnum("chat_message_author_type", ["CLIENTE", "USUÁRIO", "AI", "BUSINESS-APP"]);
+
+export const chatMessageStatusEnum = pgEnum("chat_message_status", ["CANCELADO", "ENVIADO", "RECEBIDO", "LIDO"]);
+
+export const chatMessageWhatsappStatusEnum = pgEnum("chat_message_whatsapp_status", ["PENDENTE", "ENVIADO", "ENTREGUE", "FALHOU"]);
