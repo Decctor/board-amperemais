@@ -4,12 +4,14 @@ import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import type { TInteractionState } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { interactions, organizations } from "@/services/drizzle/schema";
+import { ConvexHttpClient } from "convex/browser";
 import { fetchMutation } from "convex/nextjs";
 import dayjs from "dayjs";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { NextApiHandler } from "next";
 
 const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 /**
  * Gets the most recent time block that has passed (or current if exact match)
@@ -47,6 +49,8 @@ const WHATSAPP_PHONE_NUMBER_ID = "893793573806565";
 
 const processInteractionsHandler: NextApiHandler = async (req, res) => {
 	try {
+		const convex = new ConvexHttpClient(CONVEX_URL as string);
+
 		const currentDateAsISO8601 = dayjs().format("YYYY-MM-DD");
 		const currentTimeBlock = getCurrentTimeBlock();
 		console.log("[INFO] [PROCESS_INTERACTIONS] Starting interactions processing", {
@@ -87,6 +91,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 						campanha: {
 							columns: {
 								autorId: true,
+								whatsappTelefoneId: true,
 							},
 						},
 					},
@@ -108,7 +113,13 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 						console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Processing interaction ${index + 1} of ${interactionsResult.length}`);
 					}
 					const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
-					if (!campaign) continue;
+					if (!campaign || !interaction.campanha?.whatsappTelefoneId) continue;
+
+					const whatsappConnection = await convex.query(api.queries.connections.getWhatsappConnectionByPhoneNumberId, {
+						whatsappPhoneNumberId: interaction.campanha.whatsappTelefoneId,
+					});
+					if (!whatsappConnection) continue;
+
 					const whatsappTemplate = campaign.whatsappTemplate;
 					if (!whatsappTemplate) continue;
 					const whatsappTemplateVariablesValuesMap: Record<keyof TWhatsappTemplateVariables, string> = {
@@ -143,7 +154,8 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 							telefoneBase: interaction.cliente.telefone,
 							email: interaction.cliente.email ?? "",
 						},
-						whatsappPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
+						whatsappPhoneNumberId: interaction.campanha.whatsappTelefoneId,
+						whatsappToken: whatsappConnection.token,
 						templateId: whatsappTemplate.id,
 						templatePayloadData: payload.data,
 						templatePayloadContent: payload.content,

@@ -5,7 +5,7 @@ import { createWhatsappTemplate as createWhatsappTemplateInMeta } from "@/lib/wh
 import { WhatsappTemplateSchema } from "@/schemas/whatsapp-templates";
 import { db } from "@/services/drizzle";
 import { whatsappTemplates } from "@/services/drizzle/schema";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, isNull, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -75,7 +75,7 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 		const id = input.id;
 		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
 		const whatsappTemplate = await db.query.whatsappTemplates.findFirst({
-			where: (fields, { eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
+			where: (fields, { eq, or, isNull }) => and(eq(fields.id, id), or(eq(fields.organizacaoId, userOrgId), isNull(fields.organizacaoId))),
 		});
 		if (!whatsappTemplate) throw new createHttpError.NotFound("Template não encontrado.");
 		return {
@@ -100,13 +100,13 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 	const matchedWhatsappTemplatesResult = await db
 		.select({ count: count() })
 		.from(whatsappTemplates)
-		.where(and(...conditions, eq(whatsappTemplates.organizacaoId, userOrgId)));
+		.where(and(...conditions, or(eq(whatsappTemplates.organizacaoId, userOrgId), isNull(whatsappTemplates.organizacaoId))));
 	const matchedWhatsappTemplatesCount = matchedWhatsappTemplatesResult[0]?.count ?? 0;
 
 	const totalPages = Math.ceil(matchedWhatsappTemplatesCount / PAGE_SIZE);
 
 	const whatsappTemplatesResult = await db.query.whatsappTemplates.findMany({
-		where: and(...conditions, eq(whatsappTemplates.organizacaoId, userOrgId)),
+		where: and(...conditions, or(eq(whatsappTemplates.organizacaoId, userOrgId), isNull(whatsappTemplates.organizacaoId))),
 		columns: {
 			id: true,
 			nome: true,

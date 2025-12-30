@@ -21,6 +21,7 @@ export const campaigns = newTable("campaigns", {
 	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
 	execucaoAgendadaBloco: interactionsCronJobTimeBlocksEnum("execucao_agendada_bloco").notNull(),
 	// Whatsapp specific
+	whatsappTelefoneId: varchar("whatsapp_telefone_id", { length: 255 }),
 	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 })
 		.references(() => whatsappTemplates.id)
 		.notNull(),

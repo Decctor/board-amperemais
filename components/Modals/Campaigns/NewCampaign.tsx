@@ -64,7 +64,7 @@ export default function NewCampaign({ user, closeModal, callbacks }: NewCampaign
 			/>
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsExecutionBlock campaign={state.campaign} updateCampaign={updateCampaign} campaignSegmentations={state.segmentations} />
-			<CampaignsActionBlock campaign={state.campaign} updateCampaign={updateCampaign} />
+			<CampaignsActionBlock organizationId={user.organizacaoId as string} campaign={state.campaign} updateCampaign={updateCampaign} />
 		</ResponsiveMenu>
 	);
 }
