@@ -1,8 +1,9 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { getChatMediaUrl } from "@/lib/files-storage/chat-media";
+import { SUPABASE_STORAGE_CHAT_MEDIA_BUCKET, getChatMediaUrl } from "@/lib/files-storage/chat-media";
 import { sendBasicWhatsappMessage, sendMediaWhatsappMessage, sendTemplateWhatsappMessage, uploadMediaToWhatsapp } from "@/lib/whatsapp";
+import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats } from "@/services/drizzle/schema/chats";
 import { supabaseClient } from "@/services/supabase";
@@ -102,15 +103,25 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 
 			const response = await sendBasicWhatsappMessage({
 				fromPhoneNumberId,
-				toPhoneNumber: clientPhone,
+				toPhoneNumber: formatPhoneAsWhatsappId(clientPhone),
 				content: message.conteudoTexto,
 				whatsappToken,
 			});
 
 			whatsappMessageId = response.whatsappMessageId;
 		} else if (input.type === "media") {
+			if (!message.conteudoMidiaStorageId) {
+				throw new createHttpError.BadRequest("Mensagem não possui storage ID do arquivo.");
+			}
+
+			console.log("[SEND_WHATSAPP] Downloading file from Supabase Storage:", {
+				mediaUrl: message.conteudoMidiaUrl,
+				mediaStorageId: message.conteudoMidiaStorageId,
+			});
 			// Download file from Supabase Storage
-			const { data: fileData, error: downloadError } = await supabaseClient.storage.from("chat-media").download(input.storageId);
+			const { data: fileData, error: downloadError } = await supabaseClient.storage
+				.from(SUPABASE_STORAGE_CHAT_MEDIA_BUCKET)
+				.download(message.conteudoMidiaStorageId);
 
 			if (downloadError || !fileData) {
 				throw new createHttpError.InternalServerError("Erro ao baixar arquivo do storage.");
@@ -137,7 +148,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 			// Send media message
 			const response = await sendMediaWhatsappMessage({
 				fromPhoneNumberId,
-				toPhoneNumber: clientPhone,
+				toPhoneNumber: formatPhoneAsWhatsappId(clientPhone),
 				mediaId: uploadResponse.mediaId,
 				mediaType: whatsappMediaType,
 				caption: input.caption,

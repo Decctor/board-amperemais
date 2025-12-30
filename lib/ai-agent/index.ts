@@ -1,4 +1,5 @@
 import type { Id } from "@/convex/_generated/dataModel";
+import type { TChatMessageEntity } from "@/services/drizzle/schema";
 import { createOpenAI } from "@ai-sdk/openai";
 import { Experimental_Agent as Agent, Output, stepCountIs } from "ai";
 import z from "zod";
@@ -14,7 +15,7 @@ const openai = createOpenAI({
 	// baseURL: "https://gateway.ai.cloudflare.com/v1/YOUR_ACCOUNT_ID/YOUR_GATEWAY_ID/openai", // Update with your gateway URL
 });
 
-type TDetails = {
+export type TChatDetailsForAgentResponse = {
 	id: string;
 	cliente: {
 		idApp: string; // ID in the main database (Drizzle)
@@ -32,11 +33,11 @@ type TDetails = {
 	};
 	ultimasMensagens: Array<{
 		id: string;
-		autorTipo: "cliente" | "usuario" | "ai";
-		conteudoTipo?: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO";
+		autorTipo: TChatMessageEntity["autorTipo"];
+		conteudoTipo?: TChatMessageEntity["conteudoMidiaTipo"];
 		conteudoTexto?: string;
 		conteudoMidiaUrl?: string;
-		dataEnvio: number;
+		dataEnvio: TChatMessageEntity["dataEnvio"];
 		atendimentoId?: string;
 	}>;
 	atendimentoAberto: {
@@ -70,7 +71,7 @@ export const agent = new Agent({
 	stopWhen: stepCountIs(20),
 });
 
-export async function getAgentResponse({ details }: { details: TDetails }): Promise<AIResponse> {
+export async function getAgentResponse({ details }: { details: TChatDetailsForAgentResponse }): Promise<AIResponse> {
 	const toolsUsed: string[] = [];
 	const ticketCreated = false;
 
@@ -83,8 +84,8 @@ export async function getAgentResponse({ details }: { details: TDetails }): Prom
 		const conversationHistory = details.ultimasMensagens
 			.slice()
 			.reverse() // Oldest first
-			.map((msg: TDetails["ultimasMensagens"][0]) => {
-				const role = msg.autorTipo === "cliente" ? "Cliente" : msg.autorTipo === "ai" ? "Você (AI)" : "Atendente Humano";
+			.map((msg: TChatDetailsForAgentResponse["ultimasMensagens"][0]) => {
+				const role = msg.autorTipo === "CLIENTE" ? "Cliente" : msg.autorTipo === "AI" ? "Você (AI)" : "Atendente Humano";
 				let content = msg.conteudoTexto || "";
 
 				if (msg.conteudoTipo && !content) {

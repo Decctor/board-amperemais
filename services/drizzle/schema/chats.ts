@@ -161,3 +161,5 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
 		references: [chatServices.id],
 	}),
 }));
+export type TChatMessageEntity = typeof chatMessages.$inferSelect;
+export type TNewChatMessageEntity = typeof chatMessages.$inferInsert;

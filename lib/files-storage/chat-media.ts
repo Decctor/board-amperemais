@@ -1,6 +1,6 @@
 import { supabaseClient } from "@/services/supabase";
 
-const CHAT_MEDIA_BUCKET = "files";
+export const SUPABASE_STORAGE_CHAT_MEDIA_BUCKET = "files";
 
 type ChatMediaType = "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO";
 
@@ -40,7 +40,7 @@ function generateStoragePath(organizacaoId: string, chatId: string, filename: st
 		.replace(/[\u0300-\u036f]/g, "")
 		.replace(/[^a-zA-Z0-9._-]/g, "_")
 		.toLowerCase();
-	return `${organizacaoId}/${chatId}/${timestamp}_${sanitizedFilename}`;
+	return `/public/${organizacaoId}/${chatId}/${timestamp}_${sanitizedFilename}`;
 }
 
 /**
@@ -58,9 +58,8 @@ export async function uploadChatMedia({
 	// Convert Buffer to Blob if needed
 	const fileBlob = file instanceof Buffer ? new Blob([file], { type: mimeType }) : file;
 
-	const { data, error } = await supabaseClient.storage.from(CHAT_MEDIA_BUCKET).upload(storagePath, fileBlob, {
+	const { data, error } = await supabaseClient.storage.from(SUPABASE_STORAGE_CHAT_MEDIA_BUCKET).upload(storagePath, fileBlob, {
 		contentType: mimeType,
-		upsert: false,
 	});
 
 	if (error) {
@@ -70,7 +69,7 @@ export async function uploadChatMedia({
 
 	const {
 		data: { publicUrl },
-	} = supabaseClient.storage.from(CHAT_MEDIA_BUCKET).getPublicUrl(storagePath);
+	} = supabaseClient.storage.from(SUPABASE_STORAGE_CHAT_MEDIA_BUCKET).getPublicUrl(storagePath);
 
 	const fileSize = file instanceof Buffer ? file.length : file.size;
 
@@ -89,7 +88,7 @@ export async function uploadChatMedia({
 export function getChatMediaUrl(storageId: string): string {
 	const {
 		data: { publicUrl },
-	} = supabaseClient.storage.from(CHAT_MEDIA_BUCKET).getPublicUrl(storageId);
+	} = supabaseClient.storage.from(SUPABASE_STORAGE_CHAT_MEDIA_BUCKET).getPublicUrl(storageId);
 	return publicUrl;
 }
 
@@ -97,7 +96,7 @@ export function getChatMediaUrl(storageId: string): string {
  * Get signed URL for a stored media file (for private buckets)
  */
 export async function getChatMediaSignedUrl(storageId: string, expiresIn = 3600): Promise<string> {
-	const { data, error } = await supabaseClient.storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(storageId, expiresIn);
+	const { data, error } = await supabaseClient.storage.from(SUPABASE_STORAGE_CHAT_MEDIA_BUCKET).createSignedUrl(storageId, expiresIn);
 
 	if (error) {
 		console.error("[CHAT_MEDIA] Signed URL error:", error);
@@ -173,7 +172,7 @@ export async function downloadAndStoreWhatsappMedia({
  * Delete media from Supabase Storage
  */
 export async function deleteChatMedia(storageId: string): Promise<void> {
-	const { error } = await supabaseClient.storage.from(CHAT_MEDIA_BUCKET).remove([storageId]);
+	const { error } = await supabaseClient.storage.from(SUPABASE_STORAGE_CHAT_MEDIA_BUCKET).remove([storageId]);
 
 	if (error) {
 		console.error("[CHAT_MEDIA] Delete error:", error);

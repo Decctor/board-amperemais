@@ -1,3 +1,5 @@
+import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai-agent";
+import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai-media-processing";
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import {
@@ -13,10 +15,12 @@ import {
 	parseWebhookIncomingMessage,
 	parseWebhookMessageEcho,
 } from "@/lib/whatsapp/parsing";
+import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
 import { db } from "@/services/drizzle";
 import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
 import { whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
+import { supabaseClient } from "@/services/supabase";
 import { eq } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -284,7 +288,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 				organizacaoId,
 				chatId,
 				clienteId: clientId,
-				responsavelTipo: "AI",
+				responsavelTipo: "AI", // Initializing services as AI-handled
 				descricao: "NÃO ESPECIFICADO",
 				status: "PENDENTE",
 			})
@@ -329,7 +333,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		.values({
 			organizacaoId,
 			chatId,
-			autorTipo: "CLIENTE",
+			autorTipo: "CLIENTE", // messages coming from Webhook are from clients
 			autorClienteId: clientId,
 			conteudoTexto: incomingMessage.textContent || incomingMessage.caption || "",
 			conteudoMidiaTipo: midiaTipo,
@@ -363,14 +367,24 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 
 	console.log("[WHATSAPP_WEBHOOK] Message created from:", incomingMessage.fromPhoneNumber);
 
-	// Schedule AI response if responsible is AI
-	if (serviceResponsibleType === "AI") {
-		waitUntil(scheduleAIResponse(chatId, organizacaoId, aiScheduleTime));
-	}
+	const requiresAiProcessing = serviceResponsibleType === "AI" || (mediaData && midiaTipo !== "TEXTO");
 
-	// Process media with AI if present
-	if (mediaData && midiaTipo !== "TEXTO") {
-		waitUntil(processMediaWithAI(insertedMessage.id, mediaData, midiaTipo));
+	if (requiresAiProcessing) {
+		waitUntil(
+			handleAIProcessing({
+				chatId,
+				organizationId: organizacaoId,
+				aiMessageResponse: requiresAiProcessing ? { scheduleAt: aiScheduleTime } : null,
+				aiMessageMedia: mediaData
+					? {
+							messageId: insertedMessage.id,
+							storageId: mediaData.storageId,
+							mimeType: mediaData.mimeType,
+							mediaType: midiaTipo as "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO",
+						}
+					: null,
+			}),
+		);
 	}
 }
 
@@ -547,10 +561,34 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 	console.log("[WHATSAPP_WEBHOOK] [ECHO] Message echo created to:", messageEcho.toPhoneNumber);
 }
 
+type THandleAIProcessingParams = {
+	chatId: string;
+	organizationId: string;
+	aiMessageResponse: {
+		scheduleAt: Date;
+	} | null;
+	aiMessageMedia: {
+		messageId: string;
+		storageId: string;
+		mimeType: string;
+		mediaType: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO";
+	} | null;
+};
+
+async function handleAIProcessing({ chatId, organizationId, aiMessageResponse, aiMessageMedia }: THandleAIProcessingParams): Promise<void> {
+	if (!aiMessageResponse && !aiMessageMedia) return;
+
+	if (aiMessageResponse) {
+		await handleAIMessageResponse(chatId, organizationId, aiMessageResponse.scheduleAt);
+	}
+	if (aiMessageMedia) {
+		await handleAIMediaProcessing(aiMessageMedia.messageId, aiMessageMedia.storageId, aiMessageMedia.mimeType, aiMessageMedia.mediaType);
+	}
+}
 /**
  * Schedule AI response with delay and verification
  */
-async function scheduleAIResponse(chatId: string, organizacaoId: string, scheduledAt: Date): Promise<void> {
+async function handleAIMessageResponse(chatId: string, organizacaoId: string, scheduledAt: Date) {
 	// Wait for the delay
 	const delayMs = scheduledAt.getTime() - Date.now();
 	if (delayMs > 0) {
@@ -560,6 +598,9 @@ async function scheduleAIResponse(chatId: string, organizacaoId: string, schedul
 	// Check if new messages arrived after scheduling
 	const chat = await db.query.chats.findFirst({
 		where: (fields, { eq }) => eq(fields.id, chatId),
+		with: {
+			cliente: true,
+		},
 	});
 
 	if (!chat) {
@@ -583,27 +624,53 @@ async function scheduleAIResponse(chatId: string, organizacaoId: string, schedul
 		return;
 	}
 
-	// Generate and send AI response
-	try {
-		const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-		const response = await fetch(`${APP_URL}/api/integrations/ai/generate-response`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ chatId }),
-		});
+	// Get last 100 messages
+	const messages = await db.query.chatMessages.findMany({
+		where: (fields, { eq }) => eq(fields.chatId, chatId),
+		orderBy: (fields, { desc }) => [desc(fields.dataEnvio)],
+		limit: 100,
+	});
 
-		if (!response.ok) {
-			throw new Error(`AI response generation failed: ${response.status}`);
-		}
+	const chatSummary: TChatDetailsForAgentResponse = {
+		id: chat.id,
+		cliente: {
+			idApp: chat.cliente?.id || "",
+			nome: chat.cliente?.nome || "",
+			cpfCnpj: "",
+			telefone: chat.cliente?.telefone || "",
+			email: chat.cliente?.email,
+			localizacaoCep: chat.cliente?.localizacaoCep ?? undefined,
+			localizacaoEstado: chat.cliente?.localizacaoEstado ?? undefined,
+			localizacaoCidade: chat.cliente?.localizacaoCidade ?? undefined,
+			localizacaoBairro: chat.cliente?.localizacaoBairro ?? undefined,
+			localizacaoLogradouro: chat.cliente?.localizacaoLogradouro ?? undefined,
+			localizacaoNumero: chat.cliente?.localizacaoNumero ?? undefined,
+			localizacaoComplemento: chat.cliente?.localizacaoComplemento ?? undefined,
+		},
+		ultimasMensagens: messages.map((m) => ({
+			id: m.id,
+			autorTipo: m.autorTipo,
+			conteudoTipo: m.conteudoMidiaTipo,
+			conteudoTexto: m.conteudoTexto || `[${m.conteudoMidiaTipo}]: ${m.conteudoMidiaTextoProcessadoResumo || ""}`,
+			conteudoMidiaUrl: m.conteudoMidiaUrl ?? undefined,
+			dataEnvio: m.dataEnvio,
+			atendimentoId: m.servicoId ?? undefined,
+		})),
+		atendimentoAberto: service
+			? {
+					id: service.id,
+					descricao: service.descricao,
+					status: service.status,
+				}
+			: null,
+	};
 
-		const result = await response.json();
-		if (result.success && result.message) {
-			// Create AI message in database
-			await createAIMessage(chatId, organizacaoId, result.message, result.metadata);
-		}
-	} catch (error) {
-		console.error("[AI_RESPONSE] Error generating response:", error);
-	}
+	const aiResponse = await getAgentResponse({
+		details: chatSummary,
+	});
+	await createAIMessage(chatId, organizacaoId, aiResponse.message, aiResponse.metadata);
+
+	return { success: true, content: aiResponse.message };
 }
 
 /**
@@ -677,7 +744,7 @@ async function createAIMessage(
 			const { sendBasicWhatsappMessage } = await import("@/lib/whatsapp");
 			const response = await sendBasicWhatsappMessage({
 				fromPhoneNumberId: chat.whatsappTelefoneId,
-				toPhoneNumber: chat.cliente.telefone,
+				toPhoneNumber: formatPhoneAsWhatsappId(chat.cliente.telefone),
 				content,
 				whatsappToken: chat.whatsappConexao.token,
 			});
@@ -701,41 +768,68 @@ async function createAIMessage(
 /**
  * Process media with AI (transcription, image analysis, etc.)
  */
-async function processMediaWithAI(
+async function handleAIMediaProcessing(
 	messageId: string,
-	mediaData: { storageId: string; mimeType: string },
+	storageId: string,
+	mimeType: string,
 	mediaType: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO",
-): Promise<void> {
+) {
 	try {
-		const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-		const response = await fetch(`${APP_URL}/api/integrations/ai/process-media`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				messageId,
-				storageId: mediaData.storageId,
-				mimeType: mediaData.mimeType,
-				mediaType,
-			}),
-		});
+		// Download file from Supabase Storage
+		const { data: fileData, error: downloadError } = await supabaseClient.storage.from("files").download(storageId);
 
-		if (!response.ok) {
-			throw new Error(`Media processing failed: ${response.status}`);
+		if (downloadError || !fileData) {
+			console.error("[PROCESS_MEDIA] Download error:", downloadError);
+			throw new Error("Erro ao baixar arquivo do storage");
+		}
+		const fileBuffer = Buffer.from(await fileData.arrayBuffer());
+		let processedText = "";
+		let summary = "";
+
+		switch (mediaType) {
+			case "AUDIO": {
+				const result = await handleAIAudioProcessing(fileBuffer, mimeType);
+				processedText = result.transcription;
+				summary = result.summary;
+				break;
+			}
+			case "IMAGEM": {
+				const result = await handleAIImageProcessing(fileBuffer, mimeType);
+				processedText = result.description;
+				summary = result.summary;
+				break;
+			}
+			case "VIDEO": {
+				const result = await handleAIVideoProcessing(fileBuffer, mimeType);
+				processedText = result.analysis;
+				summary = result.summary;
+				break;
+			}
+			case "DOCUMENTO": {
+				const result = await handleAIDocumentProcessing(fileBuffer, mimeType);
+				processedText = result.extraction;
+				summary = result.summary;
+				break;
+			}
 		}
 
-		const result = await response.json();
-		if (result.success) {
-			await db
-				.update(chatMessages)
-				.set({
-					conteudoMidiaTextoProcessado: result.processedText,
-					conteudoMidiaTextoProcessadoResumo: result.summary,
-				})
-				.where(eq(chatMessages.id, messageId));
+		await db
+			.update(chatMessages)
+			.set({
+				conteudoMidiaTextoProcessado: processedText,
+				conteudoMidiaTextoProcessadoResumo: summary,
+			})
+			.where(eq(chatMessages.id, messageId));
 
-			console.log("[MEDIA_PROCESSING] Completed for message:", messageId);
-		}
+		console.log("[MEDIA_PROCESSING] Completed for message:", messageId);
+
+		return {
+			sucess: true,
+			processedText,
+			summary,
+		};
 	} catch (error) {
 		console.error("[MEDIA_PROCESSING] Error:", error);
+		throw error;
 	}
 }

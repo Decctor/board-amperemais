@@ -3,7 +3,7 @@
 import { supabaseClient } from "@/services/supabase";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 type RealtimeEvent = "INSERT" | "UPDATE" | "DELETE" | "*";
 
@@ -57,9 +57,20 @@ export function useSupabaseRealtime<T extends Record<string, unknown>>({
 	const queryClient = useQueryClient();
 	const channelRef = useRef<ReturnType<typeof supabaseClient.channel> | null>(null);
 
-	const handleChange = useCallback(
-		(payload: RealtimePostgresChangesPayload<T>) => {
-			console.log("[REALTIME] Change received:", payload.eventType, table);
+	// Use refs to store the latest callbacks and queries to avoid recreating the subscription
+	const handlersRef = useRef({ onInsert, onUpdate, onDelete, invalidateQueries, queryClient });
+
+	// Update refs when callbacks change
+	useEffect(() => {
+		handlersRef.current = { onInsert, onUpdate, onDelete, invalidateQueries, queryClient };
+	}, [onInsert, onUpdate, onDelete, invalidateQueries, queryClient]);
+
+	// Create a stable handleChange function that doesn't change between renders
+	const handleChangeRef = useRef<((payload: RealtimePostgresChangesPayload<T>) => void) | null>(null);
+
+	if (!handleChangeRef.current) {
+		handleChangeRef.current = (payload: RealtimePostgresChangesPayload<T>) => {
+			const { onInsert, onUpdate, onDelete, invalidateQueries, queryClient } = handlersRef.current;
 
 			// Call specific handlers
 			switch (payload.eventType) {
@@ -80,25 +91,35 @@ export function useSupabaseRealtime<T extends Record<string, unknown>>({
 					queryClient.invalidateQueries({ queryKey });
 				}
 			}
-		},
-		[onInsert, onUpdate, onDelete, invalidateQueries, queryClient, table],
-	);
+		};
+	}
+
+	// Memoize filter values to create stable dependencies
+	// Use primitive values for comparison to avoid unnecessary recalculations
+	const filterColumn = filter?.column;
+	const filterValue = filter?.value;
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	const channelName = useMemo(() => (filter ? `${table}_${filter.column}_${filter.value}` : table), [table, filterColumn, filterValue]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	const filterString = useMemo(() => (filter ? `${filter.column}=eq.${filter.value}` : undefined), [filterColumn, filterValue]);
 
 	useEffect(() => {
 		if (!enabled) {
+			// Cleanup if disabled
+			if (channelRef.current) {
+				supabaseClient.removeChannel(channelRef.current);
+				channelRef.current = null;
+			}
 			return;
 		}
 
-		// Create channel name based on table and filter
-		const channelName = filter ? `${table}_${filter.column}_${filter.value}` : table;
-
-		console.log("[REALTIME] Subscribing to:", channelName);
-
-		// Build the filter string for Supabase
-		const filterString = filter ? `${filter.column}=eq.${filter.value}` : undefined;
-
 		// Create subscription
-		const channel = supabaseClient.channel(channelName).on<T>(
+		if (!handleChangeRef.current) {
+			return;
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const channel = (supabaseClient.channel(channelName).on as any)(
 			"postgres_changes",
 			{
 				event,
@@ -106,24 +127,27 @@ export function useSupabaseRealtime<T extends Record<string, unknown>>({
 				table,
 				filter: filterString,
 			},
-			handleChange,
+			handleChangeRef.current,
 		);
 
-		channel.subscribe((status) => {
-			console.log("[REALTIME] Subscription status:", status, channelName);
+		channel.subscribe((status: string) => {
+			// Only log errors or important status changes
+			if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+				console.log("[REALTIME] Subscription status:", status, channelName);
+			}
 		});
 
 		channelRef.current = channel;
 
 		// Cleanup
 		return () => {
-			console.log("[REALTIME] Unsubscribing from:", channelName);
 			if (channelRef.current) {
 				supabaseClient.removeChannel(channelRef.current);
 				channelRef.current = null;
 			}
 		};
-	}, [table, schema, event, filter?.column, filter?.value, enabled, handleChange]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [table, schema, event, filterColumn, filterValue, enabled, channelName, filterString]);
 
 	return {
 		unsubscribe: () => {
@@ -145,11 +169,15 @@ export function useChatsRealtime({
 	whatsappPhoneId: string | null;
 	enabled?: boolean;
 }) {
+	// Memoize filter and invalidateQueries to prevent unnecessary re-subscriptions
+	const filter = useMemo(() => (whatsappPhoneId ? { column: "whatsapp_telefone_id", value: whatsappPhoneId } : undefined), [whatsappPhoneId]);
+	const invalidateQueries = useMemo(() => [["chats"]], []);
+
 	return useSupabaseRealtime({
 		table: "chats",
-		filter: whatsappPhoneId ? { column: "whatsapp_telefone_id", value: whatsappPhoneId } : undefined,
+		filter,
 		enabled: enabled && !!whatsappPhoneId,
-		invalidateQueries: [["chats"]],
+		invalidateQueries,
 	});
 }
 
@@ -165,11 +193,15 @@ export function useChatMessagesRealtime({
 	enabled?: boolean;
 	onNewMessage?: (message: Record<string, unknown>) => void;
 }) {
+	// Memoize filter and invalidateQueries to prevent unnecessary re-subscriptions
+	const filter = useMemo(() => (chatId ? { column: "chat_id", value: chatId } : undefined), [chatId]);
+	const invalidateQueries = useMemo(() => [["chat-messages", chatId ?? ""]], [chatId]);
+
 	return useSupabaseRealtime({
 		table: "chat_messages",
-		filter: chatId ? { column: "chat_id", value: chatId } : undefined,
+		filter,
 		enabled: enabled && !!chatId,
-		invalidateQueries: [["chat-messages", chatId ?? ""]],
+		invalidateQueries,
 		onInsert: onNewMessage,
 	});
 }
