@@ -84,10 +84,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 		if (body.object === "whatsapp_business_account") {
 			// Return 200 immediately to acknowledge receipt (WhatsApp requires < 20s)
-			res.status(200).json({ success: true });
+			// res.status(200).json({ success: true });
 
-			// Process webhook asynchronously using waitUntil
-			waitUntil(processWebhookAsync(body));
+			// // Process webhook asynchronously using waitUntil
+			// waitUntil(processWebhookAsync(body));
+			await processWebhookAsync(body);
 			return;
 		}
 
