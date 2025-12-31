@@ -53,7 +53,8 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 
 			return () => clearTimeout(timer);
 		}
-	}, [selectedChatId, user.id, markMessagesAsReadMutation]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [selectedChatId, user.id]);
 
 	// Auto-resize textarea
 	useEffect(() => {

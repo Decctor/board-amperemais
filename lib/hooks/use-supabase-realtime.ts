@@ -72,21 +72,33 @@ export function useSupabaseRealtime<T extends Record<string, unknown>>({
 		handleChangeRef.current = (payload: RealtimePostgresChangesPayload<T>) => {
 			const { onInsert, onUpdate, onDelete, invalidateQueries, queryClient } = handlersRef.current;
 
+			// DEBUG: Log incoming events
+			console.log("[REALTIME] Event received:", {
+				eventType: payload.eventType,
+				table: payload.table,
+				new: payload.new,
+				old: payload.old,
+			});
+
 			// Call specific handlers
 			switch (payload.eventType) {
 				case "INSERT":
+					console.log("[REALTIME] Calling onInsert handler");
 					onInsert?.(payload.new as T);
 					break;
 				case "UPDATE":
+					console.log("[REALTIME] Calling onUpdate handler");
 					onUpdate?.({ old: payload.old as T, new: payload.new as T });
 					break;
 				case "DELETE":
+					console.log("[REALTIME] Calling onDelete handler");
 					onDelete?.(payload.old as T);
 					break;
 			}
 
 			// Invalidate queries
 			if (invalidateQueries) {
+				console.log("[REALTIME] Invalidating queries:", invalidateQueries);
 				for (const queryKey of invalidateQueries) {
 					queryClient.invalidateQueries({ queryKey });
 				}
@@ -174,7 +186,7 @@ export function useChatsRealtime({
 	const invalidateQueries = useMemo(() => [["chats"]], []);
 
 	return useSupabaseRealtime({
-		table: "chats",
+		table: "ampmais_chats",
 		filter,
 		enabled: enabled && !!whatsappPhoneId,
 		invalidateQueries,
@@ -198,7 +210,7 @@ export function useChatMessagesRealtime({
 	const invalidateQueries = useMemo(() => [["chat-messages", chatId ?? ""]], [chatId]);
 
 	return useSupabaseRealtime({
-		table: "chat_messages",
+		table: "ampmais_chat_messages",
 		filter,
 		enabled: enabled && !!chatId,
 		invalidateQueries,

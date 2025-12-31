@@ -40,10 +40,8 @@ export default function ChatsHub({ user, userHasMessageSendingPermission, whatsa
  * Inner component that has access to ChatHub context
  */
 function ChatHubContent({ whatsappConnection }: { whatsappConnection: TGetWhatsappConnectionOutput["data"] }) {
-	const { selectedPhoneNumber, setSelectedChatId } = ChatHub.useChatHub();
 	const [newChatMenuIsOpen, setNewChatMenuIsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
-	const createChatMutation = useCreateChat();
 
 	const handleNewChat = () => {
 		setNewChatMenuIsOpen(true);

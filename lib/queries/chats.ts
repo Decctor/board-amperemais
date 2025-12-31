@@ -45,7 +45,7 @@ type UseChatsParams = {
  * Hook to fetch and manage chats list with pagination and search
  */
 export function useChats({ whatsappPhoneId, search = "" }: UseChatsParams) {
-	const debouncedSearch = useDebounceMemo({ search }, 300);
+	const debouncedSearch = useDebounceMemo({ search }, 1000);
 
 	const query = useInfiniteQuery({
 		queryKey: ["chats", whatsappPhoneId, debouncedSearch],
@@ -64,6 +64,7 @@ export function useChats({ whatsappPhoneId, search = "" }: UseChatsParams) {
 	// Flatten pages into single array
 	const chats = query.data?.pages.flatMap((page) => page.items) ?? [];
 
+	console.log("[TESTING] [useChats] Rerendering...")
 	return {
 		...query,
 		chats,

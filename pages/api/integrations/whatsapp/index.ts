@@ -189,6 +189,7 @@ async function handleStatusUpdate(body: WebhookBody): Promise<void> {
  */
 async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 	const incomingMessage = parseWebhookIncomingMessage(body);
+	console.log("[WHATSAPP_WEBHOOK] Incoming message:", incomingMessage);
 	if (!incomingMessage) {
 		console.error("[WHATSAPP_WEBHOOK] Failed to parse incoming message");
 		return;
