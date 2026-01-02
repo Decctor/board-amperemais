@@ -66,6 +66,15 @@ export function getFixedDate(date: string, type: "start" | "end") {
 
 	return dayjs(date).startOf("day").subtract(3, "hour").toDate();
 }
+export function getDateFromExcelSerialDate({ value }: { value: number }) {
+	// Excel epoch: January 1, 1900
+	// JavaScript epoch: January 1, 1970
+	// Days between: 25569 (accounting for Excel's 1900 leap year bug)
+	const millisecondsPerDay = 86400000;
+	const excelEpochOffset = 25569;
+	const jsDate = new Date((value - excelEpochOffset) * millisecondsPerDay);
+	return dayjs(jsDate).add(3, "hour").toDate();
+}
 
 type GetPeriodDateParamsByReferenceDateParams = {
 	reference: string | Date;

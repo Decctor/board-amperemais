@@ -30,47 +30,54 @@ export default function SettingsPage({ user }: SettingsPageProps) {
 				</Button>
 			</div>
 
-			<div className="w-full flex items-center justify-start gap-2">
-				<Button
-					variant={!view || view === "users" ? "secondary" : "ghost"}
-					className="flex items-center gap-2"
-					size="sm"
-					onClick={() => setView("users")}
-				>
-					<UsersRound className="w-4 h-4 min-w-4 min-h-4" />
-					USUÁRIOS
-				</Button>
-				<Button
-					variant={view === "meta-oauth" ? "secondary" : "ghost"}
-					className="flex items-center gap-2"
-					size="sm"
-					onClick={() => setView("meta-oauth")}
-				>
-					<Key className="w-4 h-4 min-w-4 min-h-4" />
-					CONEXÃO META
-				</Button>
-				<Button
-					variant={view === "whatsapp-templates" ? "secondary" : "ghost"}
-					className="flex items-center gap-2"
-					size="sm"
-					onClick={() => setView("whatsapp-templates")}
-				>
-					<MessageCircleIcon className="w-4 h-4 min-w-4 min-h-4" />
-					TEMPLATES WHATSAPP
-				</Button>
-				<Button variant={view === "segments" ? "secondary" : "ghost"} className="flex items-center gap-2" size="sm" onClick={() => setView("segments")}>
-					<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
-					SEGMENTAÇÕES
-				</Button>
-				<Button
-					variant={view === "sales-promo-campaigns" ? "secondary" : "ghost"}
-					className="flex items-center gap-2"
-					size="sm"
-					onClick={() => setView("sales-promo-campaigns")}
-				>
-					<Trophy className="w-4 h-4 min-w-4 min-h-4" />
-					CAMPANHAS DE PROMOÇÃO DE VENDAS
-				</Button>
+			<div className="w-full overflow-x-auto overflow-y-hidden scroll-smooth">
+				<div className="flex items-center justify-start gap-2 min-w-max">
+					<Button
+						variant={!view || view === "users" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("users")}
+					>
+						<UsersRound className="w-4 h-4 min-w-4 min-h-4" />
+						USUÁRIOS
+					</Button>
+					<Button
+						variant={view === "meta-oauth" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("meta-oauth")}
+					>
+						<Key className="w-4 h-4 min-w-4 min-h-4" />
+						CONEXÃO META
+					</Button>
+					<Button
+						variant={view === "whatsapp-templates" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("whatsapp-templates")}
+					>
+						<MessageCircleIcon className="w-4 h-4 min-w-4 min-h-4" />
+						TEMPLATES WHATSAPP
+					</Button>
+					<Button
+						variant={view === "segments" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("segments")}
+					>
+						<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
+						SEGMENTAÇÕES
+					</Button>
+					<Button
+						variant={view === "sales-promo-campaigns" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("sales-promo-campaigns")}
+					>
+						<Trophy className="w-4 h-4 min-w-4 min-h-4" />
+						CAMPANHAS DE PROMOÇÃO DE VENDAS
+					</Button>
+				</div>
 			</div>
 			{!view || view === "users" ? user.permissoes.usuarios.visualizar ? <SettingsUsers user={user} /> : <UnauthorizedPage /> : null}
 			{view === "meta-oauth" ? <SettingsMetaOAuth user={user} /> : null}

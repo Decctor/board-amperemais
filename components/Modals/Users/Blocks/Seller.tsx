@@ -11,11 +11,12 @@ type UsersSellerBlockProps = {
 
 export default function UsersSellerBlock({ infoHolder, updateInfoHolder }: UsersSellerBlockProps) {
 	const { data: sellers } = useSellers({ initialFilters: { search: "" } });
+	const sellersOptions = sellers?.sellers.map((seller) => ({ id: seller.id, label: seller.nome, value: seller.id })) || [];
 	return (
 		<ResponsiveMenuSection title="VENDEDOR" icon={<UsersRound className="h-4 min-h-4 w-4 min-w-4" />}>
 			<SelectInput
 				value={infoHolder.vendedorId}
-				options={sellers?.map((seller) => ({ id: seller.id, label: seller.nome, value: seller.id })) || []}
+				options={sellersOptions}
 				label="VENDEDOR VINCULADO"
 				selectedItemLabel="NÃO DEFINIDO"
 				onReset={() => updateInfoHolder({ vendedorId: "" })}
