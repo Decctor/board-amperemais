@@ -1,219 +1,276 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import type { TUserSession } from "@/schemas/users";
 import { db } from "@/services/drizzle";
-import { clients, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
-import dayjs from "dayjs";
-import { and, count, countDistinct, desc, eq, gte, isNotNull, lte, sql, sum } from "drizzle-orm";
+import { clients, sales } from "@/services/drizzle/schema";
+import { and, count, desc, eq, gte, inArray, lt, lte, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
-import { z } from "zod";
+import z from "zod";
 
-const GetClientStatsInputSchema = z.object({
-	clientId: z.string({
-		required_error: "ID do cliente não informado.",
-		invalid_type_error: "Tipo inválido para ID do cliente.",
-	}),
+const GetClientsStatsInputSchema = z.object({
 	periodAfter: z
 		.string({
 			required_error: "Período não informado.",
 			invalid_type_error: "Tipo inválido para período.",
 		})
+		.datetime({ message: "Tipo inválido para período." })
 		.optional()
-		.nullable(),
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 	periodBefore: z
 		.string({
 			required_error: "Período não informado.",
 			invalid_type_error: "Tipo inválido para período.",
 		})
+		.datetime({ message: "Tipo inválido para período." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	saleNatures: z
+		.array(
+			z.string({
+				invalid_type_error: "Tipo inválido para natureza de venda.",
+			}),
+		)
 		.optional()
 		.nullable(),
+	excludedSalesIds: z
+		.array(
+			z.string({
+				invalid_type_error: "Tipo inválido para ID da venda.",
+			}),
+		)
+		.optional()
+		.nullable(),
+	totalMin: z
+		.number({
+			invalid_type_error: "Tipo inválido para valor mínimo da venda.",
+		})
+		.optional()
+		.nullable(),
+	totalMax: z
+		.number({
+			invalid_type_error: "Tipo inválido para valor máximo da venda.",
+		})
+		.optional()
+		.nullable(),
+	rankingBy: z.enum(["purchases-total-qty", "purchases-total-value"]).optional().nullable(),
 });
-export type TGetClientStatsInput = z.infer<typeof GetClientStatsInputSchema>;
 
-type GetClientStatsParams = {
-	user: TAuthUserSession["user"];
-	input: TGetClientStatsInput;
-};
+export type TGetClientsStatsInput = z.infer<typeof GetClientsStatsInputSchema>;
 
-async function getClientStats({ user, input }: GetClientStatsParams) {
-	const userOrgId = user.organizacaoId;
+async function getClientsStats({ input, session }: { input: TGetClientsStatsInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const client = await db.query.clients.findFirst({
-		where: and(eq(clients.id, input.clientId), eq(clients.organizacaoId, userOrgId)),
+	console.log("[INFO] [GET CLIENTS STATS] Starting:", {
+		userOrg: userOrgId,
+		input,
 	});
-	if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
+	const conditions = [eq(sales.organizacaoId, userOrgId)];
 
-	const periodAfterDate = input.periodAfter ? new Date(input.periodAfter) : undefined;
-	const periodBeforeDate = input.periodBefore ? new Date(input.periodBefore) : undefined;
+	if (input.periodAfter) conditions.push(gte(sales.dataVenda, input.periodAfter));
+	if (input.periodBefore) conditions.push(lte(sales.dataVenda, input.periodBefore));
+	if (input.saleNatures && input.saleNatures.length > 0) conditions.push(inArray(sales.natureza, input.saleNatures));
+	if (input.excludedSalesIds && input.excludedSalesIds.length > 0) conditions.push(notInArray(sales.id, input.excludedSalesIds));
+	if (input.totalMin) conditions.push(gte(sales.valorTotal, input.totalMin));
+	if (input.totalMax) conditions.push(lte(sales.valorTotal, input.totalMax));
 
-	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.clienteId, input.clientId), isNotNull(sales.dataVenda)] as const;
-	const saleWhere = and(
-		...saleWhereConditions,
-		periodAfterDate ? gte(sales.dataVenda, periodAfterDate) : undefined,
-		periodBeforeDate ? lte(sales.dataVenda, periodBeforeDate) : undefined,
-	);
-
-	const totalPuchasesResult = await db
-		.select({ qtde: count(sales.id), total: sum(sales.valorTotal) })
-		.from(sales)
-		.where(saleWhere);
-	const totalPurchaseResultStats = totalPuchasesResult[0];
-
-	const totalPurchasesCount = totalPurchaseResultStats?.qtde ?? 0;
-	const totalPurchasesValue = totalPurchaseResultStats?.total ? Number(totalPurchaseResultStats.total) : 0;
-	const avgPurchaseValue = totalPurchasesCount > 0 ? totalPurchasesValue / totalPurchasesCount : 0;
-
-	const firstPurchaseResult = await db.select({ data: sales.dataVenda }).from(sales).where(saleWhere).orderBy(sql`${sales.dataVenda} asc`).limit(1);
-	const lastPurchaseResult = await db.select({ data: sales.dataVenda }).from(sales).where(saleWhere).orderBy(sql`${sales.dataVenda} desc`).limit(1);
-
-	const firstPurchaseDate = firstPurchaseResult[0]?.data ?? null;
-	const lastPurchaseDate = lastPurchaseResult[0]?.data ?? null;
-
-	const periodDiffMap = {
-		days: dayjs(lastPurchaseDate).diff(dayjs(firstPurchaseDate), "days"),
-		weeks: dayjs(lastPurchaseDate).diff(dayjs(firstPurchaseDate), "weeks"),
-		months: dayjs(lastPurchaseDate).diff(dayjs(firstPurchaseDate), "months"),
-		years: dayjs(lastPurchaseDate).diff(dayjs(firstPurchaseDate), "years"),
-	};
-
-	const totalPurchasesValuePeriodGroupMap = {
-		dia: periodDiffMap.days > 1 ? totalPurchasesValue / periodDiffMap.days : undefined,
-		semana: periodDiffMap.weeks > 1 ? totalPurchasesValue / periodDiffMap.weeks : undefined,
-		mes: periodDiffMap.months > 1 ? totalPurchasesValue / periodDiffMap.months : undefined,
-		ano: periodDiffMap.years > 1 ? totalPurchasesValue / periodDiffMap.years : undefined,
-	};
-
-	const byProductGroupRaw = await db
-		.select({ grupo: products.grupo, total: sum(saleItems.valorVendaTotalLiquido), sales: countDistinct(saleItems.vendaId) })
-		.from(saleItems)
-		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.leftJoin(products, eq(saleItems.produtoId, products.id))
-		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), saleWhere))
-		.groupBy(products.grupo)
-		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
-		.limit(10);
-
-	const bySellerTop10Raw = await db
+	const [clientsTotalResult] = await db
 		.select({
-			vendedorId: sales.vendedorId,
-			vendedorNome: sellers.nome,
-			qtde: count(sales.id),
-			total: sum(sales.valorTotal),
+			count: count(),
+		})
+		.from(clients)
+		.where(and(eq(clients.organizacaoId, userOrgId), input.periodBefore ? lte(clients.dataInsercao, input.periodBefore) : undefined));
+
+	const clientsTotal = clientsTotalResult?.count ?? 0;
+
+	const [newClientsTotalResult] = await db
+		.select({
+			count: count(),
+		})
+		.from(clients)
+		.where(
+			and(
+				eq(clients.organizacaoId, userOrgId),
+				input.periodAfter ? gte(clients.dataInsercao, input.periodAfter) : undefined,
+				input.periodBefore ? lte(clients.dataInsercao, input.periodBefore) : undefined,
+			),
+		);
+	const newClientsTotal = newClientsTotalResult?.count ?? 0;
+
+	// FIX: Usar lt ao invés de lte
+	const [recurringClientsTotalResult] = await db
+		.select({
+			count: count(),
+		})
+		.from(clients)
+		.where(
+			and(
+				eq(clients.organizacaoId, userOrgId),
+				// Cliente deve ter sido inserido ANTES do período começar
+				input.periodAfter ? lt(clients.dataInsercao, input.periodAfter) : undefined,
+				// Cliente deve ter feito compras no período filtrado
+				inArray(
+					clients.id,
+					db
+						.select({
+							id: sales.clienteId,
+						})
+						.from(sales)
+						.where(and(...conditions))
+						.groupBy(sales.clienteId),
+				),
+			),
+		);
+	const recurringClientsTotal = recurringClientsTotalResult?.count ?? 0;
+
+	const [newClientsRevenueResult] = await db
+		.select({
+			revenue: sum(sales.valorTotal),
 		})
 		.from(sales)
-		.leftJoin(sellers, eq(sales.vendedorId, sellers.id))
-		.where(and(eq(sellers.organizacaoId, userOrgId), saleWhere))
-		.groupBy(sales.vendedorId, sellers.nome)
-		.orderBy(desc(sql`sum(${sales.valorTotal})`))
-		.limit(10);
+		.innerJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...conditions,
+				// Cliente foi inserido no período filtrado
+				input.periodAfter ? gte(clients.dataInsercao, input.periodAfter) : undefined,
+				input.periodBefore ? lte(clients.dataInsercao, input.periodBefore) : undefined,
+			),
+		);
+	const newClientsRevenue = newClientsRevenueResult?.revenue ? Number(newClientsRevenueResult.revenue) : 0;
 
-	const byProductTop10Raw = await db
+	// Faturamento de clientes recorrentes
+	const [recurringClientsRevenueResult] = await db
 		.select({
-			produtoId: saleItems.produtoId,
-			produtoDescricao: products.descricao,
-			produtoGrupo: products.grupo,
-			qtde: sum(saleItems.quantidade),
-			total: sum(saleItems.valorVendaTotalLiquido),
+			revenue: sum(sales.valorTotal),
 		})
-		.from(saleItems)
-		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.leftJoin(products, eq(saleItems.produtoId, products.id))
-		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), saleWhere))
-		.groupBy(saleItems.produtoId, products.descricao, products.grupo)
-		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
-		.limit(10);
-
-	const dayExpr = sql<number>`extract(day from ${sales.dataVenda})`;
-	const byDayOfMonthRaw = await db
-		.select({ dia: dayExpr, qtde: count(sales.id), total: sum(sales.valorTotal) })
 		.from(sales)
-		.where(saleWhere)
-		.groupBy(dayExpr)
-		.orderBy(dayExpr);
+		.innerJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...conditions,
+				// Cliente foi inserido ANTES do período começar
+				input.periodAfter ? lt(clients.dataInsercao, input.periodAfter) : undefined,
+			),
+		);
+	const recurringClientsRevenue = recurringClientsRevenueResult?.revenue ? Number(recurringClientsRevenueResult.revenue) : 0;
 
-	const monthExpr = sql<number>`extract(month from ${sales.dataVenda})`;
-	const byMonthRaw = await db
-		.select({ mes: monthExpr, qtde: count(sales.id), total: sum(sales.valorTotal) })
+	// Ciclo médio de compra (tempo médio entre última e penúltima compra)
+	const purchaseCycleResult = await db
+		.select({
+			clienteId: sales.clienteId,
+			dataVenda: sales.dataVenda,
+		})
 		.from(sales)
-		.where(saleWhere)
-		.groupBy(monthExpr)
-		.orderBy(monthExpr);
+		.where(and(...conditions))
+		.orderBy(sales.clienteId, desc(sales.dataVenda));
 
-	const weekDayExpr = sql<number>`extract(dow from ${sales.dataVenda})`;
-	const byWeekDayRaw = await db
-		.select({ semana: weekDayExpr, qtde: count(sales.id), total: sum(sales.valorTotal) })
-		.from(sales)
-		.where(saleWhere)
-		.groupBy(weekDayExpr)
-		.orderBy(weekDayExpr);
+	// Agrupar vendas por cliente e calcular diferença entre última e penúltima
+	const clientPurchaseCycles: number[] = [];
+	const clientPurchasesMap = new Map<string, Date[]>();
+
+	// Agrupar vendas por cliente
+	for (const sale of purchaseCycleResult) {
+		if (!sale.clienteId || !sale.dataVenda) continue;
+
+		if (!clientPurchasesMap.has(sale.clienteId)) {
+			clientPurchasesMap.set(sale.clienteId, []);
+		}
+		clientPurchasesMap.get(sale.clienteId)!.push(sale.dataVenda);
+	}
+
+	// Calcular ciclo para cada cliente (apenas clientes com 2+ compras)
+	for (const [_, dates] of clientPurchasesMap) {
+		if (dates.length >= 2) {
+			// Ordenar datas (mais recente primeiro, já vem assim da query)
+			const lastPurchase = dates[0];
+			const secondLastPurchase = dates[1];
+
+			// Calcular diferença em dias
+			const diffInMs = lastPurchase.getTime() - secondLastPurchase.getTime();
+			const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+
+			clientPurchaseCycles.push(diffInDays);
+		}
+	}
+
+	// Calcular média
+	const averagePurchaseCycle =
+		clientPurchaseCycles.length > 0 ? clientPurchaseCycles.reduce((acc, val) => acc + val, 0) / clientPurchaseCycles.length : null;
+
+	let ranking: { clienteId: string; valor: number }[] = [];
+	if (input.rankingBy === "purchases-total-qty") {
+		ranking = (
+			await db
+				.select({
+					clienteId: sales.clienteId,
+					valor: count(sales.id),
+				})
+				.from(sales)
+				.where(and(...conditions))
+				.groupBy(sales.clienteId)
+				.orderBy(desc(sql<number>`count(${sales.id})`))
+				.limit(10)
+		).map((item) => ({
+			clienteId: item.clienteId,
+			valor: item.valor ? Number(item.valor) : 0,
+		}));
+	}
+	if (input.rankingBy === "purchases-total-value") {
+		ranking = (
+			await db
+				.select({
+					clienteId: sales.clienteId,
+					valor: sum(sales.valorTotal),
+				})
+				.from(sales)
+				.where(and(...conditions))
+				.groupBy(sales.clienteId)
+				.orderBy(desc(sql<number>`sum(${sales.valorTotal})`))
+				.limit(10)
+		).map((item) => ({
+			clienteId: item.clienteId,
+			valor: item.valor ? Number(item.valor) : 0,
+		}));
+	}
 
 	return {
 		data: {
-			cliente: {
-				nome: client.nome,
-				telefone: client.telefone,
-				email: client.email,
+			clientesTotais: {
+				atual: clientsTotal,
 			},
-			dataPrimeiraCompra: firstPurchaseDate,
-			dataUltimaCompra: lastPurchaseDate,
-
-			valorComproTotal: totalPurchasesValue,
-			valorComproGrupoPeriodo: totalPurchasesValuePeriodGroupMap,
-			qtdeCompras: totalPurchasesCount,
-			ticketMedio: avgPurchaseValue,
-			resultadosAgrupados: {
-				grupo: byProductGroupRaw.map((row) => ({
-					grupo: row.grupo ?? null,
-					quantidade: row.sales ? Number(row.sales) : 0,
-					total: row.total ? Number(row.total) : 0,
-				})),
-				vendedor: bySellerTop10Raw.map((row) => ({
-					vendedorId: row.vendedorId,
-					vendedorNome: row.vendedorNome ?? null,
-					quantidade: Number(row.qtde ?? 0),
-					total: row.total ? Number(row.total) : 0,
-				})),
-				produto: byProductTop10Raw.map((row) => ({
-					produtoId: row.produtoId,
-					produtoDescricao: row.produtoDescricao ?? "",
-					produtoGrupo: row.produtoGrupo ?? null,
-					quantidade: row.qtde ? Number(row.qtde) : 0,
-					total: row.total ? Number(row.total) : 0,
-				})),
-				dia: byDayOfMonthRaw.map((row) => ({
-					dia: Number(row.dia),
-					quantidade: Number(row.qtde ?? 0),
-					total: row.total ? Number(row.total) : 0,
-				})),
-				mes: byMonthRaw.map((row) => ({
-					mes: Number(row.mes),
-					quantidade: Number(row.qtde ?? 0),
-					total: row.total ? Number(row.total) : 0,
-				})),
-				diaSemana: byWeekDayRaw.map((row) => ({
-					diaSemana: Number(row.semana),
-					quantidade: Number(row.qtde ?? 0),
-					total: row.total ? Number(row.total) : 0,
-				})),
+			clientesNovos: {
+				atual: newClientsTotal,
 			},
+			clientesRecorrentes: {
+				atual: recurringClientsTotal,
+			},
+			faturamentoNovosClientes: {
+				atual: newClientsRevenue,
+			},
+			faturamentoClientesRecorrentes: {
+				atual: recurringClientsRevenue,
+			},
+			cicloMedioCompra: {
+				atual: averagePurchaseCycle,
+			},
+			ranking,
 		},
 	};
 }
-export type TGetClientStatsOutput = Awaited<ReturnType<typeof getClientStats>>;
+export type TGetClientsStatsOutput = Awaited<ReturnType<typeof getClientsStats>>;
 
-const getClientStatsHandler: NextApiHandler<TGetClientStatsOutput> = async (req, res) => {
+const getClientsStatsRoute: NextApiHandler<TGetClientsStatsOutput> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const input = GetClientStatsInputSchema.parse({
-		clientId: req.query.clientId as string,
-		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
-		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
-	});
-	const data = await getClientStats({ user: sessionUser.user, input });
+	const input = GetClientsStatsInputSchema.parse(req.query);
+	const data = await getClientsStats({ input, session: sessionUser.user });
 	return res.status(200).json(data);
 };
 
-export default apiHandler({ GET: getClientStatsHandler });
+export default apiHandler({
+	GET: getClientsStatsRoute,
+});
