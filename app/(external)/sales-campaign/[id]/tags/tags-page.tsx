@@ -82,7 +82,7 @@ function PromoTag({
 							</div>
 						</div>
 						{/* Nome do produto */}
-						<h3 className="text-center text-[0.8rem] font-black text-black leading-tight line-clamp-2">{item.produtoNome}</h3>
+						<h3 className="text-center text-[0.8rem] font-black text-black leading-tight line-clamp-2">{item.titulo}</h3>
 					</div>
 				</div>
 				{/* Footer azul */}
@@ -120,7 +120,7 @@ function PromoTag({
 						</div>
 					</div>
 					{/* Nome do produto */}
-					<h3 className="text-center text-[2.5rem] font-black text-black leading-tight">{item.produtoNome}</h3>
+					<h3 className="text-center text-[2.5rem] font-black text-black leading-tight">{item.titulo}</h3>
 				</div>
 			</div>
 			{/* Footer azul */}
@@ -142,7 +142,7 @@ function TagPromoA4({ items, campaign }: { items: CampaignItem[]; campaign: TUti
 		<>
 			{items.map((item, index) => (
 				<div
-					key={`${item.produtoId}-${index}`}
+					key={`${item.titulo}-${index}`}
 					className="w-[210mm] h-[297mm] mx-auto bg-white shadow-lg page-break-after"
 					style={{ pageBreakAfter: "always" }}
 				>
@@ -170,7 +170,7 @@ function TagPromoGrid({ items, campaign }: { items: CampaignItem[]; campaign: TU
 	const pages: Array<{ items: CampaignItem[]; pageKey: string }> = [];
 	for (let i = 0; i < items.length; i += 16) {
 		const pageItems = items.slice(i, i + 16);
-		const pageKey = pageItems.map((item) => item.produtoId).join("-");
+		const pageKey = pageItems.map((item) => item.titulo).join("-");
 		pages.push({ items: pageItems, pageKey });
 	}
 
@@ -185,7 +185,7 @@ function TagPromoGrid({ items, campaign }: { items: CampaignItem[]; campaign: TU
 						{pageItems.map((item, itemIndex) => {
 							const globalIndex = pageIndex * 16 + itemIndex;
 							return (
-								<div key={`${item.produtoId}-${globalIndex}`} className="w-full h-full">
+								<div key={`${item.titulo}-${globalIndex}`} className="w-full h-full">
 									<PromoTag item={item} campaign={campaign} className="w-full h-full" isCompact />
 								</div>
 							);
