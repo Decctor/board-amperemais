@@ -37,7 +37,7 @@ export default function SalesCampaignConditionsPage({
 	return (
 		<div className="w-full flex flex-col gap-2 items-center h-full bg-background">
 			{campaignProductsMatchingCondition.map((item, index) => (
-				<SalesCampaignConditionItem key={item.produtoId} item={item} campaignItems={campaignItems} />
+				<SalesCampaignConditionItem key={`${item.titulo}-${index}`} item={item} campaignItems={campaignItems} />
 			))}
 		</div>
 	);
@@ -88,16 +88,22 @@ function SalesCampaignConditionItem({
 			});
 
 			const link = document.createElement("a");
-			link.download = `${item.produtoNome}.png`;
+			link.download = `${item.titulo}.png`;
 			link.href = dataUrl;
 			link.click();
 		} catch (err) {
 			console.error(err);
 			toast.error(getErrorMessage(err));
 		}
-	}, [item.produtoNome]);
+	}, [item.titulo]);
 
-	const campaignItem = campaignItems.find((campaignItem) => campaignItem.id === item.produtoId);
+	const campaignImages = item.produtos
+		.map((p) => {
+			const coverImageUrl = campaignItems.find((c) => c.id === p.id)?.imagemCapaUrl;
+			if (!coverImageUrl) return null;
+			return coverImageUrl;
+		})
+		.filter((i) => !!i) as string[];
 	const conditionValue = item.anuncioValorPromocional ?? item.valorPromocional;
 	const discountPercent = Math.round(((item.valorBase - conditionValue) / item.valorBase) * 100);
 
@@ -117,12 +123,12 @@ function SalesCampaignConditionItem({
 							</div>
 
 							{/* IF YOU UNCOMMENT THE DYNAMIC IMAGE LATER, USE THIS FORMAT: */}
-							{campaignItem?.imagemCapaUrl ? (
+							{campaignImages.length > 0 ? (
 								<div className="w-full flex items-center justify-center">
 									<div className="relative w-32 h-32">
 										<img
-											src={campaignItem?.imagemCapaUrl}
-											alt={item.produtoNome}
+											src={campaignImages[0]}
+											alt={item.titulo}
 											className="w-full h-full object-contain"
 											// 'crossOrigin' is crucial for external images to work with canvas
 											crossOrigin="anonymous"
@@ -141,7 +147,7 @@ function SalesCampaignConditionItem({
 									<span className="text-lg font-black leading-none">,{(conditionValue % 1).toFixed(2).split(".")[1]}</span>
 								</div>
 							</div>
-							<h3 className="text-center text-[0.8rem] font-black text-black leading-tight line-clamp-2">{item.produtoNome}</h3>
+							<h3 className="text-center text-[0.8rem] font-black text-black leading-tight line-clamp-2">{item.titulo}</h3>
 						</div>
 					</div>
 

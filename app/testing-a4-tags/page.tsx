@@ -223,10 +223,20 @@ function A4PromoTag({ item }: { item: TagItem }) {
 							<div className="flex flex-col items-center">
 								{isInstallment ? (
 									// Installment Layout
-									<div className="flex flex-col items-center">
-										<p className="text-[2rem] font-black text-[#085D9E] mb-[-10px]">POR APENAS</p>
-										<span className="text-[7rem] font-black text-[#085D9E] leading-none tracking-tighter text-center">{item.promoPrice.replace(/ /g, "")}</span>
-									</div>
+									(() => {
+										const match = item.promoPrice.match(/(\d+x)\s*(.+)/i);
+										const prefix = match ? match[1] : "";
+										const value = match ? match[2] : item.promoPrice;
+										return (
+											<div className="flex flex-col items-center">
+												<p className="text-[2rem] font-black text-[#085D9E] mb-[-10px]">POR APENAS</p>
+												<div className="flex items-baseline justify-center gap-4">
+													<span className="text-[4rem] font-black text-[#085D9E] leading-none tracking-tighter">{prefix}</span>
+													<span className="text-[7rem] font-black text-[#085D9E] leading-none tracking-tighter text-center">{value.replace(/ /g, "")}</span>
+												</div>
+											</div>
+										);
+									})()
 								) : (
 									// Standard Price Layout
 									<div className="flex flex-col items-center">
