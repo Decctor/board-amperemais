@@ -70,7 +70,7 @@ function ProductsFilterMenu({ queryParams, updateQueryParams, closeMenu }: Produ
 								options={filterOptions?.productsGroups || []}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, groups: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, groups: [] }))}
-								selectedItemLabel="NENHUM DEFINIDO"
+								resetOptionLabel="NENHUM DEFINIDO"
 								width="100%"
 							/>
 							<MultipleSelectInput
@@ -79,7 +79,7 @@ function ProductsFilterMenu({ queryParams, updateQueryParams, closeMenu }: Produ
 								options={filterOptions?.saleNatures || []}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
-								selectedItemLabel="NENHUM DEFINIDO"
+								resetOptionLabel="NENHUM DEFINIDO"
 								width="100%"
 							/>
 							<MultipleSelectInput
@@ -88,7 +88,7 @@ function ProductsFilterMenu({ queryParams, updateQueryParams, closeMenu }: Produ
 								options={filterOptions?.sellers || []}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSellerIds: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSellerIds: [] }))}
-								selectedItemLabel="NENHUM DEFINIDO"
+								resetOptionLabel="NENHUM DEFINIDO"
 								width="100%"
 							/>
 						</div>

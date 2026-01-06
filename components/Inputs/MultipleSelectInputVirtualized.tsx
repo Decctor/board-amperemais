@@ -1,274 +1,297 @@
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import React, { useEffect, useRef, useState } from "react";
-import { HiCheck } from "react-icons/hi";
-import { IoMdArrowDropdown, IoMdArrowDropup } from "react-icons/io";
-import { VariableSizeList } from "react-window";
-import { Drawer, DrawerContent } from "../ui/drawer";
-
-type SelectOption<T> = {
+import { cn } from "@/lib/utils";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
+import { Button } from "../ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
+import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
+import { Label } from "../ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+type SelectOption = {
 	id: string | number;
-	value: any;
+	value: string;
 	label: string;
+	startContent?: ReactNode;
 };
-type SelectInputProps<T> = {
+type SelectInputProps = {
 	width?: string;
 	label: string;
 	labelClassName?: string;
+	holderClassName?: string;
 	showLabel?: boolean;
 	selected: (string | number)[] | null;
-	selectedItemLabel: string;
-	options: SelectOption<T>[] | null;
-	handleChange: (value: T[]) => void;
+	resetOptionLabel: string;
+	optionsStartContent?: ReactNode;
+	options: SelectOption[] | null;
+	handleChange: (value: string[]) => void;
 	onReset: () => void;
+	itemHeight?: number;
+	maxHeight?: number;
 };
 
-function MultipleSelectInputVirtualized<T>({
+function MultipleSelectInputVirtualized({
 	width,
 	label,
-	labelClassName = "text-sm tracking-tight text-primary/80 font-medium text-start",
+	labelClassName,
+	holderClassName,
 	showLabel = true,
 	selected,
 	options,
-	selectedItemLabel,
+	optionsStartContent,
+	resetOptionLabel,
 	handleChange,
 	onReset,
-}: SelectInputProps<T>) {
-	function getValueID(selected: (string | number)[] | null) {
-		if (options && selected) {
-			const filteredOptions = options?.filter((option) => selected.includes(option.value));
-			if (filteredOptions) {
-				const arrOfIds = filteredOptions.map((option) => option.id);
-				return arrOfIds;
-			} else return null;
-		} else return null;
-	}
-
-	const ref = useRef<any>(null);
-	const [items, setItems] = useState<SelectOption<T>[] | null>(options);
+	itemHeight = 40,
+	maxHeight = 300,
+}: SelectInputProps) {
+	const inputIdentifier = label.toLowerCase().replaceAll(" ", "_");
 	const isDesktop = useMediaQuery("(min-width: 768px)");
-	const [selectMenuIsOpen, setSelectMenuIsOpen] = useState<boolean>(false);
-	const [selectedIds, setSelectedIds] = useState<(string | number)[] | null>(getValueID(selected));
+	const [isOpen, setIsOpen] = useState<boolean>(false);
+	const [searchValue, setSearchValue] = useState<string>("");
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const dialogContainer = (triggerRef.current?.closest("[data-dialog-container]") as HTMLElement) || null;
 
-	const [searchFilter, setSearchFilter] = useState<string>("");
-	const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
-
-	const inputIdentifier = label.toLowerCase().replace(" ", "_");
-	function handleSelect(id: string | number, item: T) {
-		var itemsSelected;
-		var ids = selectedIds ? [...selectedIds] : [];
-		if (!ids?.includes(id)) {
-			ids.push(id);
-			itemsSelected = options?.filter((option) => ids?.includes(option.id));
-			itemsSelected = itemsSelected?.map((item) => item.value);
-		} else {
-			let index = ids.indexOf(id);
-			ids.splice(index, 1);
-			itemsSelected = options?.filter((option) => ids?.includes(option.id));
-			itemsSelected = itemsSelected?.map((item) => item.value);
-		}
-		handleChange(itemsSelected as T[]);
-		setSelectedIds(ids);
-	}
-	function handleFilter(value: string) {
-		setSearchFilter(value);
-		if (!items) return;
-		if (value.trim().length > 0 && options) {
-			let filteredItems = options.filter((item) => item.label.toUpperCase().includes(value.toUpperCase()));
-			setItems(filteredItems);
-			return;
-		} else {
-			setItems(options);
-			return;
-		}
-	}
-	function resetState() {
-		onReset();
-		setSelectedIds(null);
-		setSelectMenuIsOpen(false);
-	}
-	function onClickOutside() {
-		setSearchFilter("");
-		setSelectMenuIsOpen(false);
-	}
-
-	const List = ({ height, width, list }: { height: number | string; width: number | string; list: SelectOption<T>[] }) => (
-		<VariableSizeList
-			height={height}
-			width={width}
-			itemCount={list ? list.length : 0}
-			itemSize={(index) => 30} // Adjust the item height as needed
-		>
-			{({ index, style }) => (
-				<div
-					style={style}
-					onClick={() => handleSelect(list[index] ? list[index].id : 0, list[index]?.value)}
-					className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${
-						selectedIds?.includes(list[index] ? list[index].id : 0) ? "bg-primary/20" : ""
-					}`}
-				>
-					<p className="grow text-sm font-medium text-primary">{list[index]?.label}</p>
-					{selectedIds?.includes(list[index] ? list[index].id : 0) ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-				</div>
-			)}
-		</VariableSizeList>
-	);
-
-	useEffect(() => {
-		// setSelectedIds(getValueID(selected));
-		setItems(options);
-	}, [options, selected]);
-	useEffect(() => {
-		const handleClickOutside = (event: any) => {
-			if (ref.current && !ref.current.contains(event.target) && isDesktop) {
-				onClickOutside();
-			}
-		};
-		document.addEventListener("click", (e) => handleClickOutside(e), true);
-		return () => {
-			document.removeEventListener("click", (e) => handleClickOutside(e), true);
-		};
-	}, [onClickOutside]);
-	useEffect(() => {
-		if (selectMenuIsOpen && ref.current) {
-			const rect = ref.current.getBoundingClientRect();
-			const spaceBelow = window.innerHeight - rect.bottom;
-			const spaceAbove = rect.top;
-
-			if (spaceBelow < 250 && spaceAbove > spaceBelow) {
-				setDropdownDirection("up");
-			} else {
-				setDropdownDirection("down");
-			}
-		}
-	}, [selectMenuIsOpen]);
-
-	if (isDesktop)
-		return (
-			<div ref={ref} className={`relative flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
-				{showLabel ? (
-					<label htmlFor={inputIdentifier} className={labelClassName}>
-						{label}
-					</label>
-				) : null}
-
-				<div
-					className={`flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border duration-500 ease-in-out ${
-						selectMenuIsOpen ? "border-primary" : "border-primary/20"
-					} bg-white p-3 text-sm shadow-xs dark:bg-[#121212]`}
-				>
-					{selectMenuIsOpen ? (
-						<input
-							type="text"
-							autoFocus
-							value={searchFilter}
-							onChange={(e) => handleFilter(e.target.value)}
-							placeholder="Filtre o item desejado..."
-							className="h-full w-full text-sm italic outline-hidden"
-						/>
-					) : (
-						<p onClick={() => setSelectMenuIsOpen((prev) => !prev)} className="grow cursor-pointer text-primary">
-							{selectedIds && selectedIds.length > 0 && options
-								? options.filter((item) => selectedIds.includes(item.id)).length > 1
-									? "MÚLTIPLAS SELEÇÕES"
-									: options.filter((item) => selectedIds.includes(item.id))[0]?.label
-								: "NÃO DEFINIDO"}
-						</p>
-					)}
-					{selectMenuIsOpen ? (
-						<IoMdArrowDropup style={{ cursor: "pointer" }} onClick={() => setSelectMenuIsOpen((prev) => !prev)} />
-					) : (
-						<IoMdArrowDropdown style={{ cursor: "pointer" }} onClick={() => setSelectMenuIsOpen((prev) => !prev)} />
-					)}
-				</div>
-				{selectMenuIsOpen ? (
-					<div
-						className={`absolute ${
-							dropdownDirection === "down" ? "top-[75px]" : "bottom-[75px]"
-						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-100 flex h-[250px] max-h-[250px] w-full flex-col self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-white p-2 py-1 shadow-xs dark:bg-[#121212]`}
-					>
-						<div
-							onClick={() => resetState()}
-							className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedIds ? "bg-primary/20" : ""}`}
-						>
-							<p className="grow font-medium text-primary">{selectedItemLabel}</p>
-							{!selectedIds ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-						</div>
-						<div className="my-2 h-px w-full bg-gray-200"></div>
-						<div className="flex w-full flex-col gap-y-1">
-							{items ? (
-								<List height={180} width={"100%"} list={items} />
-							) : (
-								<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
-							)}
-						</div>
-					</div>
-				) : (
-					false
-				)}
-			</div>
+	// Filter options based on search
+	const filteredOptions = useMemo(() => {
+		if (!searchValue) return options ?? [];
+		return (options ?? []).filter(
+			(option) => option.label.toLowerCase().includes(searchValue.toLowerCase()) || option.value.toLowerCase().includes(searchValue.toLowerCase()),
 		);
-	return (
-		<Drawer open={selectMenuIsOpen} onOpenChange={setSelectMenuIsOpen}>
-			<div ref={ref} className={`relative flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
-				{showLabel ? (
-					<label htmlFor={inputIdentifier} className={labelClassName}>
-						{label}
-					</label>
-				) : null}
+	}, [options, searchValue]);
 
-				<div
-					className={`flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border duration-500 ease-in-out ${
-						selectMenuIsOpen ? "border-primary" : "border-primary/20"
-					} bg-white p-3 text-sm shadow-xs dark:bg-[#121212]`}
-				>
-					<p onClick={() => setSelectMenuIsOpen((prev) => !prev)} className="grow cursor-pointer text-primary">
-						{selectedIds && selectedIds.length > 0 && options
-							? options.filter((item) => selectedIds.includes(item.id)).length > 1
-								? "MÚLTIPLAS SELEÇÕES"
-								: options.filter((item) => selectedIds.includes(item.id))[0]?.label
-							: "NÃO DEFINIDO"}
-					</p>
-					<IoMdArrowDropdown style={{ cursor: "pointer" }} onClick={() => setSelectMenuIsOpen((prev) => !prev)} />
-				</div>
-				<DrawerContent className="gap-2 p-2">
-					<p className="w-full text-center text-xs tracking-tight text-primary/80">
-						{selectedIds && selectedIds.length > 0 && options
-							? options.filter((item) => selectedIds.includes(item.id)).length > 3
-								? "Múltiplas opções selecionadas."
-								: `Selecionando: ${options
-										.filter((item) => selectedIds.includes(item.id))
-										.map((o) => o.label)
-										.join(",")}.`
-							: "Nenhuma opção selecionada."}
-					</p>
-					<input
-						type="text"
-						autoFocus={true}
-						value={searchFilter}
-						onChange={(e) => handleFilter(e.target.value)}
-						placeholder="Filtre o item desejado..."
-						className="w-full bg-transparent p-2 text-sm italic outline-hidden"
-					/>
+	const selectedOptions = options?.filter((o) => (selected ? selected.includes(o.value) : false)) ?? [];
 
-					<div
-						onClick={() => resetState()}
-						className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedIds ? "bg-primary/20" : ""}`}
+	return isDesktop ? (
+		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
+			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+				{label}
+			</Label>
+			<Popover open={isOpen} onOpenChange={setIsOpen}>
+				<PopoverTrigger asChild>
+					<Button
+						ref={triggerRef}
+						type="button"
+						variant="outline"
+						aria-haspopup="listbox"
+						aria-expanded={isOpen}
+						className="w-full justify-between truncate border border-primary/20"
 					>
-						<p className="grow font-medium text-primary">{selectedItemLabel}</p>
-						{!selectedIds ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-					</div>
-					<div className="my-2 h-px w-full bg-gray-200"></div>
-					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex h-[200px] min-h-[200px] flex-col gap-2 overflow-y-auto overscroll-y-auto lg:h-[350px] lg:max-h-[350px]">
-						{items ? (
-							<List height={180} width={"100%"} list={items} />
-						) : (
-							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
-						)}
+						<SelectedOptions selectedOptions={selectedOptions} placeholderText={resetOptionLabel} />
+						<ChevronsUpDown className="opacity-50" />
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent container={dialogContainer} className="p-0 w-[var(--radix-popover-trigger-width)]">
+					<VirtualizedOptionsList
+						value={selected?.map((p) => p.toString()) ?? null}
+						selectedOptions={selectedOptions}
+						placeholderText={resetOptionLabel}
+						resetOptionText={resetOptionLabel}
+						handleChange={handleChange}
+						handleReset={onReset}
+						options={filteredOptions ?? []}
+						optionsStartContent={optionsStartContent}
+						closeMenu={() => setIsOpen(false)}
+						searchValue={searchValue}
+						setSearchValue={setSearchValue}
+						itemHeight={itemHeight}
+						maxHeight={maxHeight}
+					/>
+				</PopoverContent>
+			</Popover>
+		</div>
+	) : (
+		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
+			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+				{label}
+			</Label>
+			<Drawer open={isOpen} onOpenChange={setIsOpen}>
+				<DrawerTrigger asChild>
+					<Button
+						type="button"
+						variant="outline"
+						aria-haspopup="listbox"
+						aria-expanded={isOpen}
+						className="w-full justify-between truncate border border-primary/20"
+					>
+						<SelectedOptions selectedOptions={selectedOptions} placeholderText={resetOptionLabel} />
+						<ChevronsUpDown className="opacity-50" />
+					</Button>
+				</DrawerTrigger>
+				<DrawerContent>
+					<div className="mt-4 border-t">
+						<VirtualizedOptionsList
+							value={selected?.map((p) => p.toString()) ?? null}
+							selectedOptions={selectedOptions}
+							placeholderText={resetOptionLabel}
+							resetOptionText={resetOptionLabel}
+							handleChange={handleChange}
+							handleReset={onReset}
+							options={filteredOptions}
+							optionsStartContent={optionsStartContent}
+							closeMenu={() => setIsOpen(false)}
+							searchValue={searchValue}
+							setSearchValue={setSearchValue}
+							itemHeight={itemHeight}
+							maxHeight={maxHeight}
+						/>
 					</div>
 				</DrawerContent>
-			</div>
-		</Drawer>
+			</Drawer>
+		</div>
 	);
 }
 
 export default MultipleSelectInputVirtualized;
+
+type VirtualizedOptionsListProps = {
+	value: string[] | null;
+	selectedOptions: SelectOption[];
+	placeholderText: string;
+	resetOptionText: string;
+	handleChange: (value: string[]) => void;
+	handleReset: () => void;
+	options: SelectOption[];
+	optionsStartContent?: ReactNode;
+	closeMenu: () => void;
+	searchValue: string;
+	setSearchValue: (value: string) => void;
+	itemHeight: number;
+	maxHeight: number;
+};
+
+function VirtualizedOptionsList({
+	value,
+	selectedOptions,
+	placeholderText,
+	resetOptionText,
+	handleChange,
+	handleReset,
+	options,
+	optionsStartContent,
+	closeMenu,
+	searchValue,
+	setSearchValue,
+	itemHeight,
+	maxHeight,
+}: VirtualizedOptionsListProps) {
+	const parentRef = useRef<HTMLDivElement>(null);
+
+	// Create virtualized items array
+	const virtualizedItems = useMemo(() => {
+		const items = [
+			{ type: "reset" as const, id: "reset", label: resetOptionText, value: null },
+			...options.map((option) => ({ type: "option" as const, ...option })),
+		];
+		return items;
+	}, [options, resetOptionText]);
+
+	const virtualizer = useVirtualizer({
+		count: virtualizedItems.length,
+		getScrollElement: () => parentRef.current,
+		estimateSize: () => itemHeight,
+		overscan: 5,
+	});
+
+	const virtualItems = virtualizer.getVirtualItems();
+	const selectedOptionsValues = selectedOptions.map((v) => v.value);
+
+	return (
+		<Command loop>
+			<CommandInput placeholder={placeholderText} className="h-9 w-full" value={searchValue} onValueChange={setSearchValue} />
+			<CommandList className="w-full">
+				{options.length === 0 && searchValue ? (
+					<CommandEmpty className="w-full p-3">Nenhuma opção encontrada.</CommandEmpty>
+				) : (
+					<CommandGroup
+						ref={parentRef}
+						className="w-full overflow-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
+						style={{
+							height: Math.min(maxHeight, virtualizedItems.length * itemHeight),
+						}}
+					>
+						<div
+							style={{
+								height: virtualizer.getTotalSize(),
+								width: "100%",
+								position: "relative",
+							}}
+						>
+							{virtualItems.map((virtualItem) => {
+								const item = virtualizedItems[virtualItem.index];
+								if (!item) return null;
+								return (
+									<div
+										key={virtualItem.key}
+										style={{
+											position: "absolute",
+											top: 0,
+											left: 0,
+											width: "100%",
+											height: `${virtualItem.size}px`,
+											transform: `translateY(${virtualItem.start}px)`,
+										}}
+									>
+										{item.type === "reset" ? (
+											<>
+												<CommandItem
+													value={undefined}
+													onSelect={() => {
+														handleReset();
+														closeMenu();
+													}}
+												>
+													{resetOptionText}
+													<Check className={cn("ml-auto", value === null ? "opacity-100" : "opacity-0")} />
+												</CommandItem>
+												{virtualItem.index === 0 && <CommandSeparator className="my-1" />}
+											</>
+										) : (
+											<CommandItem
+												key={item.id}
+												value={item.value}
+												onSelect={(currentValue) => {
+													if (selectedOptionsValues.includes(currentValue)) {
+														handleChange(selectedOptionsValues.filter((s) => s !== currentValue));
+													} else {
+														handleChange([...selectedOptionsValues, currentValue]);
+													}
+												}}
+												className="h-full"
+											>
+												{item.startContent ? item.startContent : optionsStartContent ? optionsStartContent : undefined}
+												{item.label}
+												<Check className={cn("ml-auto", selectedOptionsValues.includes(item.value) ? "opacity-100" : "opacity-0")} />
+											</CommandItem>
+										)}
+									</div>
+								);
+							})}
+						</div>
+					</CommandGroup>
+				)}
+			</CommandList>
+		</Command>
+	);
+}
+
+type SelectedOptionsProps = {
+	selectedOptions: SelectOption[];
+	placeholderText: string;
+};
+
+function SelectedOptions({ selectedOptions, placeholderText }: SelectedOptionsProps) {
+	if (selectedOptions.length === 0) return <span className="flex items-center gap-1 truncate">{placeholderText}</span>;
+
+	return (
+		<span className="flex items-center gap-1 overflow-hidden truncate">
+			{selectedOptions.map((option, index, arr) => (
+				<span key={option.id} className="flex items-center gap-1">
+					{option.startContent ?? null}
+					{option.label}
+					{index + 1 !== arr.length ? ", " : null}
+				</span>
+			))}
+		</span>
+	);
+}

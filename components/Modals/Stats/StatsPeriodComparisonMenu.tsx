@@ -221,7 +221,7 @@ function StatsPeriodComparisonMenuData() {
 										sellers: value as string[],
 									})
 								}
-								selectedItemLabel="VENDEDOR"
+								resetOptionLabel="VENDEDOR"
 								onReset={() => updateFilters({ sellers: [] })}
 								width="100%"
 							/>
@@ -235,7 +235,7 @@ function StatsPeriodComparisonMenuData() {
 										excludedSalesIds: value as string[],
 									})
 								}
-								selectedItemLabel="VENDAS EXCLUÍDAS"
+								resetOptionLabel="VENDAS EXCLUÍDAS"
 								onReset={() => updateFilters({ excludedSalesIds: [] })}
 								width="100%"
 							/>
@@ -250,7 +250,7 @@ function StatsPeriodComparisonMenuData() {
 										saleNatures: value as TSale["natureza"][],
 									})
 								}
-								selectedItemLabel="NATUREZA DA VENDA"
+								resetOptionLabel="NATUREZA DA VENDA"
 								onReset={() => updateFilters({ saleNatures: [] })}
 								width="100%"
 							/>

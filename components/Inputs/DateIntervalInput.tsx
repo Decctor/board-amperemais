@@ -1,54 +1,32 @@
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
-import { useState } from "react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Calendar } from "../ui/calendar";
 import { Label } from "../ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 type DateIntervalInputProps = {
-	width?: string;
 	label: string;
 	labelClassName?: string;
-	holderClassName?: string;
-	showLabel?: boolean;
+	className?: string;
 	value: { after?: Date; before?: Date };
-	editable?: boolean;
 	handleChange: (value: { after?: Date; before?: Date }) => void;
 };
-
-function DateIntervalInput({
-	width,
-	label,
-	labelClassName,
-	holderClassName,
-	showLabel = true,
-	value,
-	editable = true,
-	handleChange,
-}: DateIntervalInputProps) {
-	const inputIdentifier = label.toLowerCase().replace(" ", "_");
-	const [open, setOpen] = useState(false);
-
+function DateIntervalInput({ label, labelClassName, className, value, handleChange }: DateIntervalInputProps) {
 	return (
-		<div className={`flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
-			{showLabel ? (
-				<label htmlFor={inputIdentifier} className={cn("text-sm tracking-tight text-primary/80 font-medium", labelClassName)}>
-					{label}
-				</label>
-			) : null}
-			<Popover open={open} onOpenChange={setOpen}>
+		<div className={cn("flex flex-col gap-1")}>
+			<Label className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>{label}</Label>
+			<Popover>
 				<PopoverTrigger asChild>
 					<Button
-						id={inputIdentifier}
-						disabled={!editable}
+						id="date"
 						variant={"outline"}
 						className={cn(
-							"w-full min-h-[46.6px] rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out text-left justify-start font-normal",
+							"w-full justify-start rounded-md border border-primary/20 bg-[#fff] text-left text-sm font-normal shadow-xs outline-hidden ease-in-out focus:border-primary dark:bg-[#121212]",
 							!value.after && !value.before && "text-muted-foreground",
-							holderClassName,
+							className,
 						)}
 					>
 						<CalendarIcon className="mr-2 h-4 w-4" />
@@ -61,7 +39,7 @@ function DateIntervalInput({
 								format(value.after, "dd/MM/yyyy", { locale: ptBR })
 							)
 						) : (
-							<span>DEFINA UM PERÍODO</span>
+							<span>Escolha uma data</span>
 						)}
 					</Button>
 				</PopoverTrigger>
@@ -69,16 +47,14 @@ function DateIntervalInput({
 					<Calendar
 						initialFocus
 						mode="range"
+						locale={ptBR}
 						defaultMonth={value?.after}
 						selected={{ from: value.after, to: value.before }}
-						onSelect={(value) => {
-							handleChange({ after: value?.from, before: value?.to });
-							if (value?.from && value?.to) {
-								setOpen(false);
-							}
-						}}
+						onSelect={(value) => handleChange({ after: value?.from, before: value?.to })}
 						numberOfMonths={2}
-						locale={ptBR}
+						classNames={{
+							weekdays: "flex items-center gap-1.5",
+						}}
 					/>
 				</PopoverContent>
 			</Popover>

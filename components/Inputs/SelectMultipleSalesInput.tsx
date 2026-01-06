@@ -1,16 +1,16 @@
+import { getErrorMessage } from "@/lib/errors";
+import { formatToMoney } from "@/lib/formatting";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { useSalesSimplifiedSearch } from "@/lib/queries/sales";
+import { cn } from "@/lib/utils";
+import type { TSalesSimplifiedSearchResult } from "@/pages/api/sales/simplified-search";
+import { BadgeDollarSign } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { HiCheck } from "react-icons/hi";
 import { IoMdArrowDropdown, IoMdArrowDropup } from "react-icons/io";
-import { Drawer, DrawerContent } from "../ui/drawer";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import { useSalesSimplifiedSearch } from "@/lib/queries/sales";
-import type { TSalesSimplifiedSearchResult } from "@/pages/api/sales/simplified-search";
 import ErrorComponent from "../Layouts/ErrorComponent";
-import { getErrorMessage } from "@/lib/errors";
-import { BadgeDollarSign } from "lucide-react";
-import { formatToMoney } from "@/lib/formatting";
 import GeneralPaginationComponent from "../Utils/Pagination";
-import { cn } from "@/lib/utils";
+import { Drawer, DrawerContent } from "../ui/drawer";
 
 type SelectInputProps<T> = {
 	width?: string;
@@ -20,7 +20,7 @@ type SelectInputProps<T> = {
 	showLabel?: boolean;
 	selected: (string | number)[] | null;
 	editable?: boolean;
-	selectedItemLabel: string;
+	resetOptionLabel: string;
 	handleChange: (value: T[]) => void;
 	onReset: () => void;
 };
@@ -33,7 +33,7 @@ function MultipleSalesSelectInput<T>({
 	showLabel = true,
 	selected,
 	editable = true,
-	selectedItemLabel,
+	resetOptionLabel,
 	handleChange,
 	onReset,
 }: SelectInputProps<T>) {
@@ -180,7 +180,7 @@ function MultipleSalesSelectInput<T>({
 							onClick={() => resetState()}
 							className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedIds ? "bg-primary/20" : ""}`}
 						>
-							<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
+							<p className="grow text-sm font-medium text-primary">{resetOptionLabel}</p>
 							{!selectedIds ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
 						</button>
 						<div className="my-2 h-px w-full bg-gray-200" />
@@ -290,7 +290,7 @@ function MultipleSalesSelectInput<T>({
 						onClick={() => resetState()}
 						className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedIds ? "bg-primary/20" : ""}`}
 					>
-						<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
+						<p className="grow text-sm font-medium text-primary">{resetOptionLabel}</p>
 						{!selectedIds ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
 					</button>
 					<div className="my-2 h-px w-full bg-gray-200" />

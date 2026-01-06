@@ -68,7 +68,7 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								options={filterOptions?.sellers || []}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: [] }))}
-								selectedItemLabel="NENHUM DEFINIDO"
+								resetOptionLabel="NENHUM DEFINIDO"
 								width="100%"
 							/>
 							<MultipleSelectInput
@@ -77,7 +77,7 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								options={filterOptions?.saleNatures || []}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
-								selectedItemLabel="NENHUM DEFINIDO"
+								resetOptionLabel="NENHUM DEFINIDO"
 								width="100%"
 							/>
 							<MultipleSalesSelectInput
@@ -89,7 +89,7 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 										statsExcludedSalesIds: value as string[],
 									}))
 								}
-								selectedItemLabel="VENDAS EXCLUÍDAS"
+								resetOptionLabel="VENDAS EXCLUÍDAS"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsExcludedSalesIds: [] }))}
 								width="100%"
 							/>

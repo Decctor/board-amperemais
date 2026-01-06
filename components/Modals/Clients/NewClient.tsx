@@ -1,18 +1,18 @@
 import React, { useState } from "react";
 
-import { TUserSession } from "@/schemas/users";
+import type { TUserSession } from "@/schemas/users";
 
-import * as Dialog from "@radix-ui/react-dialog";
-import { VscChromeClose } from "react-icons/vsc";
-import TextInput from "@/components/Inputs/TextInput";
-import { TClient } from "@/schemas/clients";
-import { formatToPhone } from "@/lib/formatting";
 import SelectInput from "@/components/Inputs/SelectInput";
-import { CustomersAcquisitionChannels } from "@/utils/select-options";
+import TextInput from "@/components/Inputs/TextInput";
 import { LoadingButton } from "@/components/loading-button";
-import { useMutationWithFeedback } from "@/lib/mutations/common";
-import { useQueryClient } from "@tanstack/react-query";
+import { formatToPhone } from "@/lib/formatting";
 import { createClient } from "@/lib/mutations/clients";
+import { useMutationWithFeedback } from "@/lib/mutations/common";
+import type { TClient } from "@/schemas/clients";
+import { CustomersAcquisitionChannels } from "@/utils/select-options";
+import * as Dialog from "@radix-ui/react-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { VscChromeClose } from "react-icons/vsc";
 
 type NewClientProps = {
 	session: TUserSession;
@@ -85,7 +85,7 @@ function NewClient({ session, closeModal }: NewClientProps) {
 							options={CustomersAcquisitionChannels}
 							handleChange={(value) => setInfoHolder((prev) => ({ ...prev, canalAquisicao: value }))}
 							onReset={() => setInfoHolder((prev) => ({ ...prev, canalAquisicao: null }))}
-							selectedItemLabel="NÃO DEFINIDO"
+							resetOptionLabel="NÃO DEFINIDO"
 							width="100%"
 						/>
 					</div>

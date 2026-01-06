@@ -23,7 +23,7 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 				<SelectInput
 					label="TELEFONE DO WHATSAPP"
 					value={campaign.whatsappTelefoneId}
-					selectedItemLabel="SELECIONE O TELEFONE"
+					resetOptionLabel="SELECIONE O TELEFONE"
 					options={whatsappConnectionPhones}
 					handleChange={(value) => updateCampaign({ whatsappTelefoneId: value })}
 					onReset={() => updateCampaign({ whatsappTelefoneId: "" })}
@@ -32,7 +32,7 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 				<SelectInput
 					label="TEMPLATE DO WHATSAPP"
 					value={campaign.whatsappTemplateId}
-					selectedItemLabel="SELECIONE O TEMPLATE"
+					resetOptionLabel="SELECIONE O TEMPLATE"
 					options={whatsappTemplates.map((template) => ({ id: template.id, label: template.nome, value: template.id }))}
 					handleChange={(value) => updateCampaign({ whatsappTemplateId: value })}
 					onReset={() => updateCampaign({ whatsappTemplateId: "" })}

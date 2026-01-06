@@ -22,7 +22,7 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 						<SelectInput
 							label="MEDIDA"
 							value={campaign.execucaoAgendadaMedida}
-							selectedItemLabel="SELECIONE A MEDIDA"
+							resetOptionLabel="SELECIONE A MEDIDA"
 							options={TimeDurationUnitsOptions}
 							handleChange={(value) => updateCampaign({ execucaoAgendadaMedida: value })}
 							onReset={() => updateCampaign({ execucaoAgendadaMedida: "DIAS" })}
@@ -45,7 +45,7 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 				<SelectInput
 					label="BLOCO DE HORÁRIO"
 					value={campaign.execucaoAgendadaBloco}
-					selectedItemLabel="SELECIONE O BLOCO DE HORÁRIO"
+					resetOptionLabel="SELECIONE O BLOCO DE HORÁRIO"
 					options={InteractionsCronJobTimeBlocksOptions}
 					handleChange={(value) => updateCampaign({ execucaoAgendadaBloco: value })}
 					onReset={() => updateCampaign({ execucaoAgendadaBloco: "06:00" })}

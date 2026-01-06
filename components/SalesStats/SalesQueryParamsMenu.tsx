@@ -48,7 +48,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 										sellers: value as string[],
 									}))
 								}
-								selectedItemLabel="VENDEDOR"
+								resetOptionLabel="VENDEDOR"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, sellers: [] }))}
 								width="100%"
 							/>
@@ -62,7 +62,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 										productGroups: value as string[],
 									}))
 								}
-								selectedItemLabel="GRUPO DE PRODUTOS"
+								resetOptionLabel="GRUPO DE PRODUTOS"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, productGroups: [] }))}
 								width="100%"
 							/>
@@ -76,7 +76,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 										clientRFMTitles: value as string[],
 									}))
 								}
-								selectedItemLabel="CATEGORIA DE CLIENTES"
+								resetOptionLabel="CATEGORIA DE CLIENTES"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, clientRFMTitles: [] }))}
 								width="100%"
 							/>
@@ -89,7 +89,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 										excludedSalesIds: value as string[],
 									}))
 								}
-								selectedItemLabel="VENDAS EXCLUÍDAS"
+								resetOptionLabel="VENDAS EXCLUÍDAS"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, excludedSalesIds: [] }))}
 								width="100%"
 							/>
@@ -103,7 +103,7 @@ function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu 
 										saleNatures: value as TSale["natureza"][],
 									}))
 								}
-								selectedItemLabel="NATUREZA DA VENDA"
+								resetOptionLabel="NATUREZA DA VENDA"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, saleNatures: [] }))}
 								width="100%"
 							/>

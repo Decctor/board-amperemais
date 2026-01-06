@@ -17,7 +17,7 @@ export default function CashbackProgramsAccumulationBlock({ cashbackProgram, upd
 					<SelectInput
 						value={cashbackProgram.acumuloTipo}
 						label="TIPO DE ACUMULAÇÃO"
-						selectedItemLabel="NÃO DEFINIDO"
+						resetOptionLabel="NÃO DEFINIDO"
 						handleChange={(value) => updateCashbackProgram({ acumuloTipo: value })}
 						options={CashbackProgramAccumulationTypeOptions}
 						onReset={() => updateCashbackProgram({ acumuloTipo: "FIXO" })}

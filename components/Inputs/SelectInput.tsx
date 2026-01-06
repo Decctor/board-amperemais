@@ -1,281 +1,201 @@
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import React, { useEffect, useRef, useState } from "react";
-
 import { cn } from "@/lib/utils";
-import { HiCheck } from "react-icons/hi";
-import { IoMdArrowDropdown, IoMdArrowDropup } from "react-icons/io";
-import { Drawer, DrawerContent } from "../ui/drawer";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { Button } from "../ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
+import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
+import { Label } from "../ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
-type SelectOption<T> = {
+type SelectOption = {
 	id: string | number;
-	value: any;
+	value: string;
 	label: string;
+	startContent?: ReactNode;
 };
-type SelectInputProps<T> = {
+type SelectInputProps = {
 	width?: string;
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
 	showLabel?: boolean;
-	value: T | null;
+	value: string | null | undefined;
 	editable?: boolean;
-	selectedItemLabel: string;
-	options: SelectOption<T>[] | null;
-	handleChange: (value: T) => void;
+	resetOptionLabel: string;
+	optionsStartContent?: ReactNode;
+	options: SelectOption[] | null;
+	handleChange: (value: string) => void;
 	onReset: () => void;
+	required?: boolean;
 };
 
-function SelectInput<T>({
+function SelectInput({
 	width,
 	label,
-	labelClassName = "text-sm tracking-tight text-primary/80 font-medium text-start",
+	labelClassName,
 	holderClassName,
 	showLabel = true,
 	value,
 	editable = true,
 	options,
-	selectedItemLabel,
+	resetOptionLabel,
+	optionsStartContent,
 	handleChange,
 	onReset,
-}: SelectInputProps<T>) {
-	function getValueID(value: T | null) {
-		if (options && value) {
-			const filteredOption = options?.find((option) => option.value === value);
-			if (filteredOption) return filteredOption.id;
-			return null;
-		}
-		return null;
-	}
-
-	const ref = useRef<any>(null);
-	const [items, setItems] = useState<SelectOption<T>[] | null>(options);
+	required = false,
+}: SelectInputProps) {
+	const inputIdentifier = label.toLowerCase().replaceAll(" ", "_");
 	const isDesktop = useMediaQuery("(min-width: 768px)");
-	const [selectMenuIsOpen, setSelectMenuIsOpen] = useState<boolean>(false);
-	const [selectedId, setSelectedId] = useState<number | string | null>(getValueID(value));
-	const [searchFilter, setSearchFilter] = useState<string>("");
-	const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
-
-	const inputIdentifier = label.toLowerCase().replace(" ", "_");
-
-	function handleSelect(id: string | number, item: T) {
-		handleChange(item);
-		setSelectedId(id);
-		setSelectMenuIsOpen(false);
-	}
-
-	function handleFilter(value: string) {
-		setSearchFilter(value);
-		if (!items || !options) return;
-		if (value.trim().length > 0) {
-			const filteredItems = options.filter((item) => item.label.toUpperCase().includes(value.toUpperCase()));
-			setItems(filteredItems);
-			return;
-		}
-		setItems(options);
-		return;
-	}
-
-	function resetState() {
-		onReset();
-		setSelectedId(null);
-		setSelectMenuIsOpen(false);
-	}
-
-	function onClickOutside() {
-		setSearchFilter("");
-		setSelectMenuIsOpen(false);
-	}
-
-	useEffect(() => {
-		setSelectedId(getValueID(value));
-		setItems(options);
-	}, [options, value]);
-
-	useEffect(() => {
-		const handleClickOutside = (event: any) => {
-			if (ref.current && !ref.current.contains(event.target) && isDesktop) {
-				onClickOutside();
-			}
-		};
-		document.addEventListener("click", handleClickOutside, true);
-		return () => {
-			document.removeEventListener("click", handleClickOutside, true);
-		};
-	}, [onClickOutside]);
-
-	useEffect(() => {
-		if (selectMenuIsOpen && ref.current) {
-			const rect = ref.current.getBoundingClientRect();
-			const spaceBelow = window.innerHeight - rect.bottom;
-			const spaceAbove = rect.top;
-
-			if (spaceBelow < 250 && spaceAbove > spaceBelow) {
-				setDropdownDirection("up");
-			} else {
-				setDropdownDirection("down");
-			}
-		}
-	}, [selectMenuIsOpen]);
-
-	if (isDesktop)
-		return (
-			<div ref={ref} className={`relative flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
-				{showLabel ? (
-					<label htmlFor={inputIdentifier} className={cn("text-sm tracking-tight text-primary/80 font-medium text-start", labelClassName)}>
-						{label}
-					</label>
-				) : null}
-				<div
-					className={cn(
-						"flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border bg-white p-3 text-sm shadow-xs duration-500 ease-in-out dark:bg-[#121212]",
-						selectMenuIsOpen ? "border-primary" : "border-primary/20",
-						holderClassName,
-					)}
-				>
-					{selectMenuIsOpen ? (
-						<input
-							type="text"
-							value={searchFilter}
-							onChange={(e) => handleFilter(e.target.value)}
-							placeholder="Filtre o item desejado..."
-							className="h-full w-full text-sm italic outline-hidden"
-						/>
-					) : (
-						<p
-							onClick={() => {
-								if (editable) setSelectMenuIsOpen((prev) => !prev);
-							}}
-							onKeyDown={() => {
-								if (editable) setSelectMenuIsOpen((prev) => !prev);
-							}}
-							className="grow cursor-pointer text-primary"
-						>
-							{selectedId && options ? options.filter((item) => item.id === selectedId)[0]?.label : selectedItemLabel}
-						</p>
-					)}
-					{selectMenuIsOpen ? (
-						<IoMdArrowDropup
-							style={{ cursor: "pointer" }}
-							onClick={() => {
-								if (editable) setSelectMenuIsOpen((prev) => !prev);
-							}}
-						/>
-					) : (
-						<IoMdArrowDropdown
-							style={{ cursor: "pointer" }}
-							onClick={() => {
-								if (editable) setSelectMenuIsOpen((prev) => !prev);
-							}}
-						/>
-					)}
-				</div>
-				{selectMenuIsOpen ? (
-					<div
-						className={`absolute ${
-							dropdownDirection === "down" ? "top-[75px]" : "bottom-[75px]"
-						} scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 z-100 flex h-[250px] max-h-[250px] w-full flex-col gap-1 self-center overflow-y-auto overscroll-y-auto rounded-md border border-primary/20 bg-white p-2 py-1 shadow-xs dark:bg-[#121212]`}
-					>
-						<button
-							type="button"
-							onClick={() => resetState()}
-							className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedId ? "bg-primary/20" : ""}`}
-						>
-							<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
-							{!selectedId ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-						</button>
-						<div className="my-2 h-px w-full bg-gray-200" />
-						{items ? (
-							items.map((item, index) => (
-								<button
-									type="button"
-									onClick={() => handleSelect(item.id, item.value)}
-									key={item.id ? item.id : index}
-									className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${selectedId === item.id ? "bg-primary/20" : ""}`}
-								>
-									<p className="grow text-sm font-medium text-primary">{item.label}</p>
-									{selectedId === item.id ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-								</button>
-							))
-						) : (
-							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
-						)}
-					</div>
-				) : (
-					false
-				)}
-			</div>
-		);
-	return (
-		<Drawer open={selectMenuIsOpen} onOpenChange={setSelectMenuIsOpen}>
-			<div ref={ref} className={`relative flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
-				{showLabel ? (
-					<label htmlFor={inputIdentifier} className={cn("text-sm tracking-tight text-primary/80 font-medium", labelClassName)}>
-						{label}
-					</label>
-				) : null}
-				<div
-					className={cn(
-						"flex h-full min-h-[46.6px] w-full items-center justify-between rounded-md border bg-white p-3 text-sm shadow-xs duration-500 ease-in-out dark:bg-[#121212]",
-						selectMenuIsOpen ? "border-primary" : "border-primary/20",
-						holderClassName,
-					)}
-				>
-					<p
-						onClick={() => {
-							if (editable) setSelectMenuIsOpen((prev) => !prev);
-						}}
-						onKeyDown={() => {
-							if (editable) setSelectMenuIsOpen((prev) => !prev);
-						}}
-						className="grow cursor-pointer text-primary"
-					>
-						{selectedId && options ? options.filter((item) => item.id === selectedId)[0]?.label : selectedItemLabel}
-					</p>
-					<IoMdArrowDropdown
-						style={{ cursor: "pointer" }}
-						onClick={() => {
-							if (editable) setSelectMenuIsOpen((prev) => !prev);
-						}}
-					/>
-				</div>
-				<DrawerContent className="p-2 gap-2">
-					<input
-						type="text"
-						value={searchFilter}
-						onChange={(e) => handleFilter(e.target.value)}
-						placeholder="Filtre o item desejado..."
-						className="w-full text-sm italic outline-hidden p-2 bg-transparent"
-					/>
-					<button
+	const [isOpen, setIsOpen] = useState<boolean>(false);
+	return isDesktop ? (
+		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
+			{showLabel && (
+				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+					{label}
+				</Label>
+			)}
+			<Popover open={isOpen} onOpenChange={setIsOpen}>
+				<PopoverTrigger asChild>
+					<Button
 						type="button"
-						onClick={() => resetState()}
-						className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${!selectedId ? "bg-primary/20" : ""}`}
+						disabled={!editable}
+						variant="outline"
+						aria-haspopup="listbox"
+						aria-expanded={isOpen}
+						className="w-full justify-between truncate border border-primary/20"
 					>
-						<p className="grow text-sm font-medium text-primary">{selectedItemLabel}</p>
-						{!selectedId ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-					</button>
-					<div className="my-2 h-px w-full bg-gray-200" />
-					<div className="h-[200px] min-h-[200px] lg:h-[350px] lg:max-h-[350px] flex flex-col gap-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
-						{items ? (
-							items.map((item, index) => (
-								<button
-									type="button"
-									onClick={() => handleSelect(item.id, item.value)}
-									key={item.id ? item.id : index}
-									className={`flex w-full cursor-pointer items-center rounded p-1 px-2 hover:bg-primary/20 ${selectedId === item.id ? "bg-primary/20" : ""}`}
-								>
-									<p className="grow text-sm font-medium text-primary">{item.label}</p>
-									{selectedId === item.id ? <HiCheck style={{ color: "#fead61", fontSize: "20px" }} /> : null}
-								</button>
-							))
-						) : (
-							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
-						)}
+						<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
+						<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
+					<OptionsList
+						value={value}
+						placeholderText={resetOptionLabel}
+						resetOptionText={resetOptionLabel}
+						handleChange={handleChange}
+						handleReset={onReset}
+						options={options ?? []}
+						optionsStartContent={optionsStartContent}
+						closeMenu={() => setIsOpen(false)}
+					/>
+				</PopoverContent>
+			</Popover>
+		</div>
+	) : (
+		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
+			{showLabel && (
+				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+					{label}
+				</Label>
+			)}
+			<Drawer open={isOpen} onOpenChange={setIsOpen}>
+				<DrawerTrigger asChild>
+					<Button
+						type="button"
+						disabled={!editable}
+						variant="outline"
+						aria-haspopup="listbox"
+						aria-expanded={isOpen}
+						className="w-full justify-between border border-primary/20"
+					>
+						<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
+						<ChevronsUpDown className="w-3 h-3 min-w-3 min-h-3" />
+					</Button>
+				</DrawerTrigger>
+				<DrawerContent>
+					<div className="mt-4 border-t">
+						<OptionsList
+							value={value}
+							placeholderText={resetOptionLabel}
+							resetOptionText={resetOptionLabel}
+							handleChange={handleChange}
+							handleReset={onReset}
+							options={options ?? []}
+							optionsStartContent={optionsStartContent}
+							closeMenu={() => setIsOpen(false)}
+						/>
 					</div>
 				</DrawerContent>
-			</div>
-		</Drawer>
+			</Drawer>
+		</div>
 	);
 }
 
 export default SelectInput;
+
+type OptionsListProps = {
+	value: string | null | undefined;
+	placeholderText: string;
+	resetOptionText: string;
+	handleChange: (value: string) => void;
+	handleReset: () => void;
+	options: SelectOption[];
+	optionsStartContent?: ReactNode;
+	closeMenu: () => void;
+};
+function OptionsList({
+	value,
+	placeholderText,
+	resetOptionText,
+	handleChange,
+	handleReset,
+	options,
+	optionsStartContent,
+	closeMenu,
+}: OptionsListProps) {
+	return (
+		<Command className="w-full" loop>
+			<CommandInput placeholder={placeholderText} className="h-9 w-full" />
+			<CommandList className="w-full">
+				<CommandEmpty className="w-full p-3">Nenhuma opção encontrada.</CommandEmpty>
+				<CommandGroup className="w-full">
+					<CommandItem
+						value={undefined}
+						onSelect={() => {
+							handleReset();
+							closeMenu();
+						}}
+					>
+						{resetOptionText}
+						<Check className={cn("ml-auto", value === null ? "opacity-100" : "opacity-0")} />
+					</CommandItem>
+					<CommandSeparator className="my-1" />
+					{options.map((option) => (
+						<CommandItem
+							key={option.id}
+							value={option.value}
+							onSelect={(currentValue) => {
+								if (currentValue === value) handleReset();
+								else handleChange(currentValue);
+								closeMenu();
+							}}
+						>
+							{option.startContent ? option.startContent : optionsStartContent ? optionsStartContent : undefined}
+							{option.label}
+							<Check className={cn("ml-auto", value === option.value ? "opacity-100" : "opacity-0")} />
+						</CommandItem>
+					))}
+				</CommandGroup>
+			</CommandList>
+		</Command>
+	);
+}
+
+type SelectedOptionProps = {
+	value: string | null | undefined;
+	placeholderText: string;
+	options: SelectOption[];
+};
+function SelectedOption({ value, placeholderText, options }: SelectedOptionProps) {
+	const selectedOption = options.find((o) => o.value === value);
+
+	if (!selectedOption) return <span className="flex items-center gap-1 truncate">{placeholderText}</span>;
+	return (
+		<span className="flex items-center gap-1 overflow-hidden truncate">
+			{selectedOption.startContent ?? null}
+			{selectedOption.label}
+		</span>
+	);
+}

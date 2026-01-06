@@ -102,7 +102,7 @@ function PartnersFilterMenu({ queryParams, updateQueryParams, closeMenu }: Partn
 								options={filterOptions?.saleNatures || []}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
-								selectedItemLabel="NENHUMA DEFINIDA"
+								resetOptionLabel="NENHUMA DEFINIDA"
 								width="100%"
 							/>
 						</div>

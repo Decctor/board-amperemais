@@ -18,7 +18,7 @@ export default function UsersSellerBlock({ infoHolder, updateInfoHolder }: Users
 				value={infoHolder.vendedorId}
 				options={sellersOptions}
 				label="VENDEDOR VINCULADO"
-				selectedItemLabel="NÃO DEFINIDO"
+				resetOptionLabel="NÃO DEFINIDO"
 				onReset={() => updateInfoHolder({ vendedorId: "" })}
 				handleChange={(value) => updateInfoHolder({ vendedorId: value })}
 				width="100%"

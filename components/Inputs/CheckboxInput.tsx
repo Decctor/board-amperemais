@@ -1,5 +1,8 @@
+import { cn } from "@/lib/utils";
 import React from "react";
-import { BsCheck } from "react-icons/bs";
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/label";
+
 type CheckboxInputProps = {
 	checked: boolean;
 	labelTrue: string;
@@ -13,35 +16,20 @@ type CheckboxInputProps = {
 function CheckboxInput({
 	labelTrue,
 	labelFalse,
-	labelClassName = "cursor-pointer font-medium leading-none text-xs w-fit",
+	labelClassName = "",
 	checked,
 	handleChange,
 	editable = true,
 	justify = "justify-center",
 	padding = "0.75rem",
 }: CheckboxInputProps) {
+	const inputIdentifier = (checked ? labelTrue : labelFalse).toLowerCase().replaceAll(" ", "_");
 	return (
 		<div className={`flex w-full items-center ${justify} gap-2 ${padding ? `p-[${padding}]` : "p-3"}`}>
-			<button
-				type="button"
-				className={`flex h-[16px] min-h-[16px] w-[16px] min-w-[16px] items-center justify-center rounded-full border border-primary text-primary ${
-					editable ? "cursor-pointer" : ""
-				}`}
-				onClick={() => {
-					if (editable) handleChange(!checked);
-				}}
-			>
-				{checked ? <BsCheck /> : null}
-			</button>
-			<button
-				type="button"
-				onClick={() => {
-					if (editable) handleChange(!checked);
-				}}
-				className={labelClassName}
-			>
+			<Checkbox id={inputIdentifier} checked={checked} onCheckedChange={(e) => editable && handleChange(e === true)} />
+			<Label htmlFor={inputIdentifier} className={cn("text-xs font-medium leading-none text-start", labelClassName)}>
 				{checked ? labelTrue : labelFalse}
-			</button>
+			</Label>
 		</div>
 	);
 }

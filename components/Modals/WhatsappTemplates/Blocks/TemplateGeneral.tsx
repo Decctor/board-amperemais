@@ -34,7 +34,7 @@ export default function TemplateGeneral({ template, updateTemplate, whatsappTemp
 						label="CATEGORIA"
 						value={template.categoria}
 						options={TemplateCategoryOptions}
-						selectedItemLabel="label"
+						resetOptionLabel="label"
 						onReset={() => updateTemplate({ categoria: "AUTENTICAÇÃO" })}
 						handleChange={(value) => updateTemplate({ categoria: value as "AUTENTICAÇÃO" | "MARKETING" | "UTILIDADE" })}
 						width="100%"

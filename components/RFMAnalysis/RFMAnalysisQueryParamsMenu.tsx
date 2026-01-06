@@ -58,7 +58,7 @@ function RFMAnalysisQueryParamsMenu({ queryParams, updateQueryParams, closeMenu 
 										acquisitionChannels: value as string[],
 									}))
 								}
-								selectedItemLabel="CANAL DE AQUISIÇÃO"
+								resetOptionLabel="CANAL DE AQUISIÇÃO"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, acquisitionChannels: [] }))}
 								width="100%"
 							/>
@@ -72,7 +72,7 @@ function RFMAnalysisQueryParamsMenu({ queryParams, updateQueryParams, closeMenu 
 										rfmTitles: value as string[],
 									}))
 								}
-								selectedItemLabel="CATEGORIA DE CLIENTES"
+								resetOptionLabel="CATEGORIA DE CLIENTES"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, rfmTitles: [] }))}
 								width="100%"
 							/>
@@ -87,7 +87,7 @@ function RFMAnalysisQueryParamsMenu({ queryParams, updateQueryParams, closeMenu 
 									excludedSalesIds: value as string[],
 								}))
 							}
-							selectedItemLabel="VENDAS EXCLUÍDAS"
+							resetOptionLabel="VENDAS EXCLUÍDAS"
 							onReset={() => setQueryParamsHolder((prev) => ({ ...prev, excludedSalesIds: [] }))}
 							width="100%"
 						/>
@@ -101,7 +101,7 @@ function RFMAnalysisQueryParamsMenu({ queryParams, updateQueryParams, closeMenu 
 									saleNatures: value as TClientSearchQueryParams["saleNatures"],
 								}))
 							}
-							selectedItemLabel="NATUREZA DA VENDA"
+							resetOptionLabel="NATUREZA DA VENDA"
 							onReset={() => setQueryParamsHolder((prev) => ({ ...prev, saleNatures: [] }))}
 							width="100%"
 						/>

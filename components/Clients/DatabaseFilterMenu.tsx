@@ -83,7 +83,7 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 								options={filterOptions?.saleNatures || []}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
-								selectedItemLabel="NENHUMA DEFINIDA"
+								resetOptionLabel="NENHUMA DEFINIDA"
 								width="100%"
 							/>
 							<MultipleSelectInput
@@ -92,7 +92,7 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 								options={CustomersAcquisitionChannels}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, acquisitionChannels: value as string[] }))}
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, acquisitionChannels: [] }))}
-								selectedItemLabel="NENHUM DEFINIDO"
+								resetOptionLabel="NENHUM DEFINIDO"
 								width="100%"
 							/>
 							<MultipleSelectInput
@@ -101,7 +101,7 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 								options={RFMLabels.map((s, index) => ({ id: index + 1, label: s.text, value: s.text })) || []}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, segmentationTitles: value as string[] }))}
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, segmentationTitles: [] }))}
-								selectedItemLabel="NENHUM DEFINIDO"
+								resetOptionLabel="NENHUM DEFINIDO"
 								width="100%"
 							/>
 						</div>

@@ -1,23 +1,31 @@
+import { cn } from "@/lib/utils";
 import React from "react";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+
 type TextInputProps = {
 	width?: string;
 	label: string;
 	labelClassName?: string;
+	holderClassName?: string;
 	showLabel?: boolean;
 	value: string;
 	placeholder: string;
 	editable?: boolean;
+	required?: boolean;
 	handleChange: (value: string) => void;
 	handleOnBlur?: () => void;
 };
 function TextInput({
 	width,
 	label,
-	labelClassName = "text-sm tracking-tight text-primary/80 font-medium",
+	labelClassName,
+	holderClassName,
 	showLabel = true,
 	value,
 	placeholder,
 	editable = true,
+	required = false,
 	handleChange,
 	handleOnBlur,
 }: TextInputProps) {
@@ -25,12 +33,13 @@ function TextInput({
 	return (
 		<div className={`flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
 			{showLabel ? (
-				<label htmlFor={inputIdentifier} className={labelClassName}>
+				<Label htmlFor={inputIdentifier} className={cn("text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
 					{label}
-				</label>
+					{required ? <span className="text-red-500">*</span> : null}
+				</Label>
 			) : null}
 
-			<input
+			<Input
 				value={value}
 				onChange={(e) => handleChange(e.target.value)}
 				id={inputIdentifier}
@@ -41,7 +50,10 @@ function TextInput({
 				readOnly={!editable}
 				type="text"
 				placeholder={placeholder}
-				className="w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-primary"
+				className={cn(
+					"w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-primary",
+					holderClassName,
+				)}
 			/>
 		</div>
 	);

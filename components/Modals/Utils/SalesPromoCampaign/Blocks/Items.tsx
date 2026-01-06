@@ -338,7 +338,7 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 			<SelectInput
 				label="ETIQUETA"
 				value={itemHolder.etiqueta}
-				selectedItemLabel="Selecione a etiqueta do item"
+				resetOptionLabel="Selecione a etiqueta do item"
 				options={[
 					{
 						id: "PROMO-A4",
@@ -483,7 +483,7 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 			<SelectInput
 				label="ETIQUETA"
 				value={itemHolder.etiqueta}
-				selectedItemLabel="Selecione a etiqueta do item"
+				resetOptionLabel="Selecione a etiqueta do item"
 				options={[
 					{
 						id: "PROMO-A4",

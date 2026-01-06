@@ -16,7 +16,7 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 			<SelectInput
 				label="TIPO DE GATILHO"
 				value={campaign.gatilhoTipo}
-				selectedItemLabel="SELECIONE O TIPO"
+				resetOptionLabel="SELECIONE O TIPO"
 				options={CampaignTriggerTypeOptions}
 				handleChange={(value) => updateCampaign({ gatilhoTipo: value })}
 				onReset={() => updateCampaign({ gatilhoTipo: "NOVA-COMPRA" })}
@@ -28,7 +28,7 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 						<SelectInput
 							label="TEMPO DE PERMANÊNCIA (MEDIDA)"
 							value={campaign.gatilhoTempoPermanenciaMedida}
-							selectedItemLabel="SELECIONE A MEDIDA"
+							resetOptionLabel="SELECIONE A MEDIDA"
 							options={TimeDurationUnitsOptions}
 							handleChange={(value) => updateCampaign({ gatilhoTempoPermanenciaMedida: value })}
 							onReset={() => updateCampaign({ gatilhoTempoPermanenciaMedida: null })}

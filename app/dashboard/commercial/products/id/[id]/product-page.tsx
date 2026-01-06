@@ -80,7 +80,7 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 						showLabel={false}
 						options={filterOptions?.saleNatures ?? []}
 						handleChange={(value) => updateFilters({ saleNatures: value as string[] | null })}
-						selectedItemLabel="NATUREZAS NÃO DEFINIDAS"
+						resetOptionLabel="NATUREZAS NÃO DEFINIDAS"
 						onReset={() => updateFilters({ saleNatures: null })}
 						width="100%"
 					/>
@@ -93,7 +93,7 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 						showLabel={false}
 						options={filterOptions?.sellers ?? []}
 						handleChange={(value) => updateFilters({ sellerId: value as string | null })}
-						selectedItemLabel="VENDEDOR NÃO DEFINIDO"
+						resetOptionLabel="VENDEDOR NÃO DEFINIDO"
 						onReset={() => updateFilters({ sellerId: null })}
 						width="100%"
 					/>
@@ -105,7 +105,7 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 						showLabel={false}
 						options={filterOptions?.partners ?? []}
 						handleChange={(value) => updateFilters({ partnerId: value as string | null })}
-						selectedItemLabel="PARCEIRO NÃO DEFINIDO"
+						resetOptionLabel="PARCEIRO NÃO DEFINIDO"
 						onReset={() => updateFilters({ partnerId: null })}
 						width="100%"
 					/>
