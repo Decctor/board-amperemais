@@ -2,18 +2,17 @@
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
+import { uploadChatMedia } from "@/lib/files-storage/chat-media";
+import { useCreateMessage, useCreateTemplateMessage, useMarkMessagesAsRead } from "@/lib/mutations/chats";
+import { useChat } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp/templates";
 import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
-import { useMutation, useQuery } from "convex/react";
 import { AlertTriangle, FileText, Loader2, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileUploadComponent from "../FileUploadComponent";
 import { useAudioRecorder } from "../Hooks/useAudioRecorder";
-import { uploadAudioToConvex } from "../utils/audioUpload";
 import { AudioRecordingModal } from "./AudioRecordingModal";
 import { MicrophoneButton } from "./MicrophoneButton";
 import { useChatHub } from "./context";
@@ -28,20 +27,18 @@ export type ChatHubInputProps = {
 export function Input({ className, placeholder = "Digite uma mensagem...", maxRows = 4, onMessageSent }: ChatHubInputProps) {
 	const { whatsappConnection, selectedChatId, selectedPhoneNumber, user, userHasMessageSendingPermission } = useChatHub();
 
-	const chat = useQuery(api.queries.chat.getChat, selectedChatId ? { chatId: selectedChatId } : "skip");
+	const { data: chat } = useChat(selectedChatId);
 
 	const [messageText, setMessageText] = useState("");
 	const [isSending, setIsSending] = useState(false);
 	const [showTemplateSelector, setShowTemplateSelector] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-	const handleSendMessage = useMutation(api.mutations.messages.createMessage);
-	const handleSendTemplate = useMutation(api.mutations.messages.createTemplateMessage);
-	const markMessagesAsRead = useMutation(api.mutations.messages.markMessagesAsRead);
-	const generateUploadUrl = useMutation(api.mutations.files.generateUploadUrl);
-	const saveFileMetadata = useMutation(api.mutations.files.saveFileMetadata);
+	const createMessageMutation = useCreateMessage();
+	const createTemplateMutation = useCreateTemplateMessage();
+	const markMessagesAsReadMutation = useMarkMessagesAsRead();
 
-	const isConversationExpired = chat?.status === "EXPIRADA";
+	const isConversationExpired = chat?.status === "FECHADA";
 
 	// Audio recording
 	const audioRecorder = useAudioRecorder();
@@ -51,58 +48,37 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 	useEffect(() => {
 		if (selectedChatId && user.id) {
 			const timer = setTimeout(() => {
-				markMessagesAsRead({
-					chatId: selectedChatId,
-					userId: user.id,
-				}).catch((error) => {
-					console.error("Erro ao marcar mensagens como lidas:", error);
-				});
+				markMessagesAsReadMutation.mutate({ chatId: selectedChatId });
 			}, 500);
 
 			return () => clearTimeout(timer);
 		}
-	}, [selectedChatId, user.id, markMessagesAsRead]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [selectedChatId, user.id]);
 
 	// Auto-resize textarea
 	useEffect(() => {
 		if (textareaRef.current) {
 			textareaRef.current.style.height = "auto";
 			const scrollHeight = textareaRef.current.scrollHeight;
-			const maxHeight = maxRows * 24; // Approximate line height
+			const maxHeight = maxRows * 24;
 			textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
 		}
 	}, [messageText, maxRows]);
 
 	const sendTextMessage = async () => {
-		if (!messageText.trim() || !chat || !selectedPhoneNumber || isSending) return;
+		if (!messageText.trim() || !chat || !selectedChatId || isSending) return;
 
 		setIsSending(true);
 		try {
-			await handleSendMessage({
-				autor: {
-					tipo: "usuario",
-					idApp: user.id,
-				},
-				conteudo: {
-					texto: messageText,
-				},
-				cliente: {
-					idApp: chat.cliente?.idApp,
-					nome: chat.cliente?.nome,
-					telefone: formatPhoneAsWhatsappId(chat.cliente?.telefone),
-					avatar_url: chat.cliente?.avatar_url,
-					email: chat.cliente?.email,
-					cpfCnpj: chat.cliente?.cpfCnpj,
-					telefoneBase: chat.cliente?.telefoneBase,
-				},
-				whatsappPhoneNumberId: selectedPhoneNumber,
-				whatsappToken: whatsappConnection?.token as string,
+			await createMessageMutation.mutateAsync({
+				chatId: selectedChatId,
+				conteudoTexto: messageText,
+				conteudoMidiaTipo: "TEXTO",
 			});
 
 			setMessageText("");
 			onMessageSent?.();
-
-			// Focus back on textarea
 			textareaRef.current?.focus();
 		} catch (error) {
 			console.error("Error sending message:", error);
@@ -113,44 +89,32 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 	};
 
 	const sendMediaMessage = async (file: File, fileName: string, storageId: string, mediaType?: "IMAGEM" | "DOCUMENTO" | "AUDIO") => {
-		if (!chat || !selectedPhoneNumber || isSending) return;
+		if (!chat || !selectedChatId || isSending) return;
 
 		setIsSending(true);
 		try {
-			let midiaTipo: "IMAGEM" | "DOCUMENTO" | "AUDIO" = mediaType || "DOCUMENTO";
+			let midiaTipo: "IMAGEM" | "DOCUMENTO" | "AUDIO" | "VIDEO" = mediaType || "DOCUMENTO";
 
 			if (!mediaType) {
 				if (file.type.startsWith("image/")) {
 					midiaTipo = "IMAGEM";
 				} else if (file.type.startsWith("audio/")) {
 					midiaTipo = "AUDIO";
+				} else if (file.type.startsWith("video/")) {
+					midiaTipo = "VIDEO";
 				}
 			}
 
-			await handleSendMessage({
-				autor: {
-					tipo: "usuario",
-					idApp: user.id,
-				},
-				conteudo: {
-					texto: undefined,
-					midiaTipo,
-					midiaStorageId: storageId as Id<"_storage">,
-					midiaMimeType: file.type,
-					midiaFileName: fileName,
-					midiaFileSize: file.size,
-				},
-				cliente: {
-					idApp: chat.cliente?.idApp,
-					nome: chat.cliente?.nome,
-					telefone: formatPhoneAsWhatsappId(chat.cliente?.telefone),
-					avatar_url: chat.cliente?.avatar_url,
-					email: chat.cliente?.email,
-					cpfCnpj: chat.cliente?.cpfCnpj,
-					telefoneBase: chat.cliente?.telefoneBase,
-				},
-				whatsappPhoneNumberId: selectedPhoneNumber,
-				whatsappToken: whatsappConnection?.token as string,
+			// Convert file to base64
+			const arrayBuffer = await file.arrayBuffer();
+			const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+			await createMessageMutation.mutateAsync({
+				chatId: selectedChatId,
+				conteudoMidiaTipo: midiaTipo,
+				conteudoMidiaBase64: base64,
+				conteudoMidiaMimeType: file.type,
+				conteudoMidiaArquivoNome: fileName,
 			});
 
 			onMessageSent?.();
@@ -179,25 +143,10 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 				clientName: chat.cliente?.nome ?? "Cliente",
 			});
 
-			await handleSendTemplate({
-				cliente: {
-					idApp: chat.cliente?.idApp,
-					nome: chat.cliente?.nome,
-					telefone: formatPhoneAsWhatsappId(chat.cliente.telefone),
-					avatar_url: chat.cliente?.avatar_url,
-					email: chat.cliente?.email,
-					cpfCnpj: chat.cliente?.cpfCnpj,
-					telefoneBase: chat.cliente?.telefoneBase,
-				},
-				autor: {
-					tipo: "usuario",
-					idApp: user.id,
-				},
-				whatsappPhoneNumberId: selectedPhoneNumber,
-				templateId: template.id,
-				templatePayloadData: payload.data,
-				templatePayloadContent: payload.content,
-				whatsappToken: whatsappConnection?.token as string,
+			await createTemplateMutation.mutateAsync({
+				chatId: selectedChatId,
+				templatePayload: payload.data,
+				templateContent: payload.content,
 			});
 
 			toast.success("Template enviado com sucesso!");
@@ -234,31 +183,35 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 	};
 
 	const handleSendAudio = async () => {
-		if (!audioRecorder.audioBlob || !chat || !selectedPhoneNumber) {
+		if (!audioRecorder.audioBlob || !chat || !selectedChatId) {
 			toast.error("Nenhum áudio para enviar");
 			return;
 		}
 
 		setIsSending(true);
 		try {
-			// Upload audio to Convex
-			const { storageId, filename } = await uploadAudioToConvex({
-				audioBlob: audioRecorder.audioBlob,
-				generateUploadUrl,
-				saveFileMetadata,
-			});
-
-			// Convert blob to file for metadata
+			// Convert blob to file
+			const filename = `audio_${Date.now()}.webm`;
 			const audioFile = new File([audioRecorder.audioBlob], filename, {
 				type: audioRecorder.audioBlob.type,
 			});
-			console.log("[AudioUpload] Uploaded audio to Convex:", { storageId, filename, file: audioFile });
-			// Send audio message
-			await sendMediaMessage(audioFile, filename, storageId, "AUDIO");
+
+			// Convert to base64
+			const arrayBuffer = await audioFile.arrayBuffer();
+			const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+			await createMessageMutation.mutateAsync({
+				chatId: selectedChatId,
+				conteudoMidiaTipo: "AUDIO",
+				conteudoMidiaBase64: base64,
+				conteudoMidiaMimeType: audioFile.type,
+				conteudoMidiaArquivoNome: filename,
+			});
 
 			// Close modal and reset recorder
 			setIsRecordingModalOpen(false);
 			audioRecorder.resetRecording();
+			toast.success("Áudio enviado com sucesso!");
 		} catch (error) {
 			console.error("Error sending audio:", error);
 			toast.error(error instanceof Error ? error.message : "Erro ao enviar áudio");
@@ -307,9 +260,9 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 									variant="ghost"
 									disabled={isSending}
 									className={cn(
-										"h-10 w-10 rounded-full flex-shrink-0 transition-all duration-200",
+										"h-10 w-10 rounded-full shrink-0 transition-all duration-200",
 										"hover:scale-105 active:scale-95",
-										isConversationExpired && "bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md",
+										isConversationExpired && "bg-linear-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md",
 									)}
 									title="Enviar template"
 								>
@@ -317,53 +270,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent align="end" side="top" className="w-80 p-0 shadow-xl">
-								{/* Template Header */}
-								<div className="flex items-center justify-between p-4 border-b border-primary/10 bg-gradient-to-r from-primary/5 to-transparent">
-									<div className="flex items-center gap-2">
-										<FileText className="w-4 h-4 text-primary" />
-										<h3 className="font-semibold text-sm">Templates WhatsApp</h3>
-									</div>
-									<Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowTemplateSelector(false)}>
-										<X className="w-4 h-4" />
-									</Button>
-								</div>
-
-								{/* Template List */}
-								<div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
-									<div className="p-2 space-y-1">
-										{Object.entries(WHATSAPP_TEMPLATES).map(([key, template]) => (
-											<Button
-												key={key}
-												variant="ghost"
-												className={cn("w-full justify-start h-auto p-3 rounded-lg", "hover:bg-primary/5 transition-colors duration-200")}
-												onClick={() => sendTemplate(key as keyof typeof WHATSAPP_TEMPLATES)}
-												disabled={isSending}
-											>
-												<div className="flex items-start gap-3 w-full">
-													<div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-														<FileText className="w-4 h-4 text-green-600 dark:text-green-500" />
-													</div>
-													<div className="flex-1 min-w-0 text-left">
-														<p className="font-medium text-sm mb-0.5">{template.title}</p>
-														<div className="flex items-center gap-2">
-															<span
-																className={cn(
-																	"text-[10px] px-1.5 py-0.5 rounded font-medium",
-																	template.type === "marketing"
-																		? "bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400"
-																		: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
-																)}
-															>
-																{template.type === "marketing" ? "Marketing" : "Utilitário"}
-															</span>
-															<span className="text-xs text-muted-foreground">{template.language}</span>
-														</div>
-													</div>
-												</div>
-											</Button>
-										))}
-									</div>
-								</div>
+								<TemplateSelectorContent onSelectTemplate={sendTemplate} onClose={() => setShowTemplateSelector(false)} isSending={isSending} />
 							</PopoverContent>
 						</Popover>
 					</div>
@@ -414,8 +321,8 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 								onClick={sendTextMessage}
 								disabled={!messageText.trim() || isConversationExpired || isSending}
 								className={cn(
-									"h-10 w-10 rounded-full flex-shrink-0",
-									"bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
+									"h-10 w-10 rounded-full shrink-0",
+									"bg-linear-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
 									"shadow-md hover:shadow-lg transition-all duration-200",
 									"disabled:opacity-50 disabled:cursor-not-allowed",
 									"hover:scale-105 active:scale-95",
@@ -439,69 +346,79 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 									size="icon"
 									variant="ghost"
 									disabled={isSending}
-									className={cn(
-										"h-10 w-10 rounded-full flex-shrink-0 transition-all duration-200",
-										"hover:scale-105 active:scale-95",
-										isConversationExpired && "bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md",
-									)}
+									className={cn("h-10 w-10 rounded-full shrink-0 transition-all duration-200", "hover:scale-105 active:scale-95")}
 									title="Enviar template"
 								>
 									<FileText className="w-4 h-4" />
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent align="end" side="top" className="w-80 p-0 shadow-xl">
-								{/* Template Header */}
-								<div className="flex items-center justify-between p-4 border-b border-primary/10 bg-gradient-to-r from-primary/5 to-transparent">
-									<div className="flex items-center gap-2">
-										<FileText className="w-4 h-4 text-primary" />
-										<h3 className="font-semibold text-sm">Templates WhatsApp</h3>
-									</div>
-									<Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowTemplateSelector(false)}>
-										<X className="w-4 h-4" />
-									</Button>
-								</div>
-
-								{/* Template List */}
-								<div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
-									<div className="p-2 space-y-1">
-										{Object.entries(WHATSAPP_TEMPLATES).map(([key, template]) => (
-											<Button
-												key={key}
-												variant="ghost"
-												className={cn("w-full justify-start h-auto p-3 rounded-lg", "hover:bg-primary/5 transition-colors duration-200")}
-												onClick={() => sendTemplate(key as keyof typeof WHATSAPP_TEMPLATES)}
-												disabled={isSending}
-											>
-												<div className="flex items-start gap-3 w-full">
-													<div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-														<FileText className="w-4 h-4 text-green-600 dark:text-green-500" />
-													</div>
-													<div className="flex-1 min-w-0 text-left">
-														<p className="font-medium text-sm mb-0.5">{template.title}</p>
-														<div className="flex items-center gap-2">
-															<span
-																className={cn(
-																	"text-[10px] px-1.5 py-0.5 rounded font-medium",
-																	template.type === "marketing"
-																		? "bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400"
-																		: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
-																)}
-															>
-																{template.type === "marketing" ? "Marketing" : "Utilitário"}
-															</span>
-															<span className="text-xs text-muted-foreground">{template.language}</span>
-														</div>
-													</div>
-												</div>
-											</Button>
-										))}
-									</div>
-								</div>
+								<TemplateSelectorContent onSelectTemplate={sendTemplate} onClose={() => setShowTemplateSelector(false)} isSending={isSending} />
 							</PopoverContent>
 						</Popover>
 					</div>
 				)}
 			</div>
 		</div>
+	);
+}
+
+type TemplateSelectorContentProps = {
+	onSelectTemplate: (templateKey: keyof typeof WHATSAPP_TEMPLATES) => void;
+	onClose: () => void;
+	isSending: boolean;
+};
+
+function TemplateSelectorContent({ onSelectTemplate, onClose, isSending }: TemplateSelectorContentProps) {
+	return (
+		<>
+			{/* Template Header */}
+			<div className="flex items-center justify-between p-4 border-b border-primary/10 bg-gradient-to-r from-primary/5 to-transparent">
+				<div className="flex items-center gap-2">
+					<FileText className="w-4 h-4 text-primary" />
+					<h3 className="font-semibold text-sm">Templates WhatsApp</h3>
+				</div>
+				<Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+					<X className="w-4 h-4" />
+				</Button>
+			</div>
+
+			{/* Template List */}
+			<div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
+				<div className="p-2 space-y-1">
+					{Object.entries(WHATSAPP_TEMPLATES).map(([key, template]) => (
+						<Button
+							key={key}
+							variant="ghost"
+							className={cn("w-full justify-start h-auto p-3 rounded-lg", "hover:bg-primary/5 transition-colors duration-200")}
+							onClick={() => onSelectTemplate(key as keyof typeof WHATSAPP_TEMPLATES)}
+							disabled={isSending}
+						>
+							<div className="flex items-start gap-3 w-full">
+								<div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+									<FileText className="w-4 h-4 text-green-600 dark:text-green-500" />
+								</div>
+								<div className="flex-1 min-w-0 text-left">
+									<p className="font-medium text-sm mb-0.5">{template.title}</p>
+									<div className="flex items-center gap-2">
+										<span
+											className={cn(
+												"text-[10px] px-1.5 py-0.5 rounded font-medium",
+												template.type === "marketing"
+													? "bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400"
+													: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
+											)}
+										>
+											{template.type === "marketing" ? "Marketing" : "Utilitário"}
+										</span>
+										<span className="text-xs text-muted-foreground">{template.language}</span>
+									</div>
+								</div>
+							</div>
+						</Button>
+					))}
+				</div>
+			</div>
+		</>
 	);
 }

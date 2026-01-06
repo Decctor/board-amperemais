@@ -1,7 +1,8 @@
 import type { TGetClientsInput, TGetClientsOutput } from "@/pages/api/clients";
 import type { TClientByLookupInput, TClientByLookupOutput } from "@/pages/api/clients/lookup";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
-import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats";
+import type { TGetClientsStatsInput, TGetClientsStatsOutput } from "@/pages/api/clients/stats";
+import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats/by-client";
 import type { TClientDTO, TClientSearchQueryParams } from "@/schemas/clients";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -109,7 +110,7 @@ async function fetchClientStatsById(input: TGetClientStatsInput) {
 	searchParams.set("clientId", input.clientId);
 	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter);
 	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore);
-	const { data } = await axios.get<TGetClientStatsOutput>(`/api/clients/stats?${searchParams.toString()}`);
+	const { data } = await axios.get<TGetClientStatsOutput>(`/api/clients/stats/by-client?${searchParams.toString()}`);
 	return data.data;
 }
 
@@ -177,5 +178,28 @@ export function useClientByLookup({ initialParams }: UseClientByLookupParams) {
 		queryKey: ["client-by-lookup", debouncedInput],
 		params,
 		updateParams,
+	};
+}
+
+async function fetchClientsStats(input: TGetClientsStatsInput) {
+	const searchParams = new URLSearchParams();
+	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+	if (input.saleNatures && input.saleNatures.length > 0) searchParams.set("saleNatures", input.saleNatures.join(","));
+	if (input.excludedSalesIds && input.excludedSalesIds.length > 0) searchParams.set("excludedSalesIds", input.excludedSalesIds.join(","));
+	if (input.totalMin) searchParams.set("totalMin", input.totalMin.toString());
+	if (input.totalMax) searchParams.set("totalMax", input.totalMax.toString());
+	if (input.rankingBy) searchParams.set("rankingBy", input.rankingBy);
+	const { data } = await axios.get<TGetClientsStatsOutput>(`/api/clients/stats?${searchParams.toString()}`);
+	return data.data;
+}
+
+export function useClientsStats(input: TGetClientsStatsInput) {
+	return {
+		...useQuery({
+			queryKey: ["clients-stats", input],
+			queryFn: () => fetchClientsStats(input),
+		}),
+		queryKey: ["clients-stats", input],
 	};
 }

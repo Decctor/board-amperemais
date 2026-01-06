@@ -633,6 +633,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		}
 	}
 
+	console.log("[INFO] [DATA_COLLECTING] Processing Concluded successfully.");
 	return res.status(201).json("EXECUTADO COM SUCESSO");
 };
 

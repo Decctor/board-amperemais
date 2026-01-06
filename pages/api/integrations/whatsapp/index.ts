@@ -1,4 +1,6 @@
-import { api } from "@/convex/_generated/api";
+import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai-agent";
+import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai-media-processing";
+import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import {
 	isMessageEchoEvent,
@@ -13,16 +15,46 @@ import {
 	parseWebhookIncomingMessage,
 	parseWebhookMessageEcho,
 } from "@/lib/whatsapp/parsing";
+import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
 import { db } from "@/services/drizzle";
-import { clients } from "@/services/drizzle/schema";
+import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
+import { clients } from "@/services/drizzle/schema/clients";
 import { whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
-
-import { ConvexHttpClient } from "convex/browser";
+import { supabaseClient } from "@/services/supabase";
 import { eq } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+// Polyfill for waitUntil - in Vercel environment, this keeps the function running
+// In non-Vercel environments, we just fire and forget
+const waitUntil = (promise: Promise<unknown>): void => {
+	promise.catch((error) => console.error("[WAIT_UNTIL] Background task error:", error));
+};
+
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
-const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
+const AI_RESPONSE_DELAY_MS = 5000; // 5 seconds delay before AI response
+
+type WebhookBody = {
+	object: string;
+	entry: Array<{
+		id: string;
+		changes: Array<{
+			value: {
+				messaging_product: string;
+				metadata: {
+					display_phone_number: string;
+					phone_number_id: string;
+				};
+				contacts?: Array<{
+					profile: { name: string };
+					wa_id: string;
+				}>;
+				messages?: Array<unknown>;
+				statuses?: Array<unknown>;
+			};
+			field: string;
+		}>;
+	}>;
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 	// Webhook verification (GET request)
@@ -32,16 +64,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		const token = req.query["hub.verify_token"];
 		const challenge = req.query["hub.challenge"];
 
-		// Check if a token and mode were sent
 		if (mode && token) {
-			// Check the mode and token sent are correct
 			if (mode === "subscribe" && token === VERIFY_TOKEN) {
-				// Respond with 200 OK and challenge token from the request
 				console.log("WEBHOOK_VERIFIED");
 				return res.status(200).send(challenge);
 			}
-
-			// Responds with '403 Forbidden' if verify tokens do not match
 			console.log("WEBHOOK_VERIFICATION_FAILED");
 			return res.status(403).json({ error: "Verification failed" });
 		}
@@ -51,401 +78,760 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 	// Webhook events (POST request)
 	if (req.method === "POST") {
-		const body = req.body;
+		const body = req.body as WebhookBody;
 
-		// Log incoming messages
 		console.log("[INFO] [WHATSAPP_WEBHOOK] [POST] Incoming webhook message:", JSON.stringify(body, null, 2));
 
-		// Check if this is a WhatsApp Business Account event
 		if (body.object === "whatsapp_business_account") {
-			// Initialize Convex client
-			if (!CONVEX_URL) {
-				console.error("[WHATSAPP_WEBHOOK] Convex URL not configured");
-				return res.status(500).json({ error: "Internal server error" });
-			}
+			// Return 200 immediately to acknowledge receipt (WhatsApp requires < 20s)
+			// res.status(200).json({ success: true });
 
-			const convex = new ConvexHttpClient(CONVEX_URL);
-
-			try {
-				if (isTemplateEvent(body)) {
-					// Parse template status update
-					const statusUpdate = parseTemplateStatusUpdate(body);
-					if (statusUpdate?.status) {
-						console.log("[WHATSAPP_WEBHOOK] Template status update:", {
-							id: statusUpdate.messageTemplateId,
-							name: statusUpdate.messageTemplateName,
-							status: statusUpdate.status,
-							reason: statusUpdate.reason,
-						});
-
-						// Note: WhatsApp webhook updates templates by whatsappTemplateId which is unique across organizations
-						// The update will affect the template regardless of organization, which is correct behavior
-						const updateResult = await db
-							.update(whatsappTemplates)
-							.set({
-								status: statusUpdate.status,
-								...(statusUpdate.reason && { rejeicao: statusUpdate.reason }),
-							})
-							.where(eq(whatsappTemplates.whatsappTemplateId, statusUpdate.messageTemplateId))
-							.returning({
-								id: whatsappTemplates.id,
-							});
-
-						if (updateResult.length > 0) {
-							console.log(`[WHATSAPP_WEBHOOK] Template status updated: ${statusUpdate.messageTemplateName} -> ${statusUpdate.status}`);
-						} else {
-							console.warn(`[WHATSAPP_WEBHOOK] Template not found in database: ${statusUpdate.messageTemplateName} (${statusUpdate.messageTemplateId})`);
-						}
-					}
-
-					// Parse template quality update
-					const qualityUpdate = parseTemplateQualityUpdate(body);
-					if (qualityUpdate?.quality) {
-						console.log("[WHATSAPP_WEBHOOK] Template quality update:", {
-							id: qualityUpdate.messageTemplateId,
-							name: qualityUpdate.messageTemplateName,
-							quality: qualityUpdate.quality,
-							previousQuality: qualityUpdate.previousQuality,
-							currentLimit: qualityUpdate.currentLimit,
-						});
-
-						const updateResult = await db
-							.update(whatsappTemplates)
-							.set({
-								qualidade: qualityUpdate.quality,
-							})
-							.where(eq(whatsappTemplates.whatsappTemplateId, qualityUpdate.messageTemplateId))
-							.returning({
-								id: whatsappTemplates.id,
-							});
-
-						if (updateResult.length > 0) {
-							console.log(`[WHATSAPP_WEBHOOK] Template quality updated: ${qualityUpdate.messageTemplateName} -> ${qualityUpdate.quality}`);
-						} else {
-							console.warn(`[WHATSAPP_WEBHOOK] Template not found in database: ${qualityUpdate.messageTemplateName} (${qualityUpdate.messageTemplateId})`);
-						}
-					}
-
-					// Parse template category update
-					const categoryUpdate = parseTemplateCategoryUpdate(body);
-					if (categoryUpdate?.category) {
-						console.log("[WHATSAPP_WEBHOOK] Template category update:", {
-							id: categoryUpdate.messageTemplateId,
-							name: categoryUpdate.messageTemplateName,
-							category: categoryUpdate.category,
-							previousCategory: categoryUpdate.previousCategory,
-						});
-
-						// Validate category is one of the allowed values
-						const validCategories = ["authentication", "marketing", "utility"];
-						const normalizedCategory = categoryUpdate.category.toLowerCase();
-
-						const CATEGORY_MAP: Record<string, "AUTENTICAÇÃO" | "MARKETING" | "UTILIDADE"> = {
-							authentication: "AUTENTICAÇÃO",
-							marketing: "MARKETING",
-							utility: "UTILIDADE",
-						};
-						if (validCategories.includes(normalizedCategory)) {
-							const updateResult = await db
-								.update(whatsappTemplates)
-								.set({
-									categoria: CATEGORY_MAP[normalizedCategory as keyof typeof CATEGORY_MAP],
-								})
-								.where(eq(whatsappTemplates.whatsappTemplateId, categoryUpdate.messageTemplateId))
-								.returning({
-									id: whatsappTemplates.id,
-								});
-
-							if (updateResult.length > 0) {
-								console.log(`[WHATSAPP_WEBHOOK] Template category updated: ${categoryUpdate.messageTemplateName} -> ${normalizedCategory}`);
-							} else {
-								console.warn(
-									`[WHATSAPP_WEBHOOK] Template not found in database: ${categoryUpdate.messageTemplateName} (${categoryUpdate.messageTemplateId})`,
-								);
-							}
-						} else {
-							console.warn(`[WHATSAPP_WEBHOOK] Invalid category received: ${categoryUpdate.category}`);
-						}
-					}
-				}
-				if (isStatusUpdate(body)) {
-					// Check if this is a status update
-					const statusUpdate = parseStatusUpdate(body);
-					if (statusUpdate) {
-						const { status, whatsappStatus } = mapWhatsAppStatusToAppStatus(statusUpdate.status);
-
-						await convex.mutation(api.mutations.messages.updateMessageStatus, {
-							whatsappMessageId: statusUpdate.whatsappMessageId,
-							status,
-							whatsappStatus,
-						});
-
-						console.log("[WHATSAPP_WEBHOOK] Status updated for message:", statusUpdate.whatsappMessageId);
-					}
-				}
-				// Check if this is an incoming message
-				else if (isMessageEvent(body)) {
-					console.log("[INFO] [WHATSAPP_WEBHOOK] Handling incoming message:", body);
-					const incomingMessage = parseWebhookIncomingMessage(body);
-
-					if (!incomingMessage) {
-						console.error("[WHATSAPP_WEBHOOK] Failed to parse incoming message");
-						return res.status(200).json({ success: true });
-					}
-
-					// Determine organization from whatsappPhoneNumberId
-					let organizacaoId: string | null = null;
-					let whatsappToken: string | null = null;
-					try {
-						const whatsappConnection = await convex.query(api.queries.connections.getWhatsappConnectionByPhoneNumberId, {
-							whatsappPhoneNumberId: incomingMessage.whatsappPhoneNumberId,
-						});
-
-						if (whatsappConnection) {
-							organizacaoId = whatsappConnection.organizacaoId as string;
-							whatsappToken = whatsappConnection.token as string;
-							console.log("[INFO] [WHATSAPP_WEBHOOK] Found organization:", organizacaoId);
-						} else {
-							console.warn("[WHATSAPP_WEBHOOK] No WhatsApp connection found for phone number ID:", incomingMessage.whatsappPhoneNumberId);
-							return res.status(200).json({ success: true });
-						}
-					} catch (error) {
-						console.error("[WHATSAPP_WEBHOOK] Error querying WhatsApp connection:", error);
-						return res.status(200).json({ success: true });
-					}
-
-					// Now search for client within the organization
-					let clientId: string | null = null;
-					const existingClient = await db.query.clients.findFirst({
-						where: (fields, { and, eq }) =>
-							and(eq(fields.telefoneBase, formatPhoneAsBase(incomingMessage.fromPhoneNumber as string)), eq(fields.organizacaoId, organizacaoId)),
-					});
-
-					if (existingClient) {
-						console.log("[INFO] [WHATSAPP_WEBHOOK] Client already exists:", existingClient);
-						clientId = existingClient.id;
-					} else {
-						console.log("[INFO] [WHATSAPP_WEBHOOK] Client does not exist, creating new client:", incomingMessage.fromPhoneNumber);
-						try {
-							const insertedClient = await db
-								.insert(clients)
-								.values({
-									organizacaoId: organizacaoId,
-									nome: incomingMessage.profileName,
-									telefone: incomingMessage.fromPhoneNumber,
-									telefoneBase: formatPhoneAsBase(incomingMessage.fromPhoneNumber as string),
-									canalAquisicao: "WHATSAPP",
-								})
-								.returning({ id: clients.id });
-
-							clientId = insertedClient[0]?.id ?? null;
-							console.log("[INFO] [WHATSAPP_WEBHOOK] New client created:", clientId);
-						} catch (error) {
-							console.error("[WHATSAPP_WEBHOOK] Error creating client:", error);
-							// Continue without client - message will be handled but not linked to a client in the app
-						}
-					}
-
-					// Skip message processing if we couldn't determine client and organization
-					if (!incomingMessage || !clientId) {
-						console.warn("[WHATSAPP_WEBHOOK] Cannot process message without client ID");
-						return res.status(200).json({ success: true });
-					}
-
-					if (incomingMessage) {
-						let mediaStorageData = null;
-
-						// Handle media messages
-						if (incomingMessage.mediaId && incomingMessage.mimeType) {
-							try {
-								// Download and store media
-								mediaStorageData = await convex.action(api.actions.whatsapp.downloadAndStoreWhatsappMedia, {
-									mediaId: incomingMessage.mediaId,
-									mimeType: incomingMessage.mimeType,
-									filename: incomingMessage.filename,
-								});
-								console.log("[WHATSAPP_WEBHOOK] Media downloaded and stored:", mediaStorageData.storageId);
-							} catch (error) {
-								console.error("[WHATSAPP_WEBHOOK] Error downloading media:", error);
-								// Continue without media if download fails
-							}
-						}
-
-						// Determine media type
-						let midiaTipo: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" | undefined;
-						if (incomingMessage.messageType === "image") {
-							midiaTipo = "IMAGEM";
-						} else if (incomingMessage.messageType === "document") {
-							midiaTipo = "DOCUMENTO";
-						} else if (incomingMessage.messageType === "video") {
-							midiaTipo = "VIDEO";
-						} else if (incomingMessage.messageType === "audio") {
-							midiaTipo = "AUDIO";
-						}
-
-						// Create message in Convex
-						await convex.mutation(api.mutations.messages.createMessage, {
-							cliente: {
-								idApp: clientId,
-								nome: incomingMessage.profileName,
-								telefone: incomingMessage.fromPhoneNumber,
-								telefoneBase: formatPhoneAsBase(incomingMessage.fromPhoneNumber as string),
-							},
-							autor: {
-								idApp: clientId,
-								tipo: "cliente",
-							},
-							conteudo: {
-								texto: incomingMessage.textContent || incomingMessage.caption,
-								midiaTipo,
-								midiaStorageId: mediaStorageData?.storageId,
-								midiaMimeType: mediaStorageData?.mimeType,
-								midiaFileName: mediaStorageData?.filename,
-								midiaFileSize: mediaStorageData?.fileSize,
-								midiaWhatsappId: incomingMessage.mediaId,
-							},
-							whatsappMessageId: incomingMessage.whatsappMessageId,
-							whatsappPhoneNumberId: incomingMessage.whatsappPhoneNumberId,
-							whatsappToken: whatsappToken as string,
-						});
-
-						console.log("[WHATSAPP_WEBHOOK] Message created from:", incomingMessage.fromPhoneNumber, "Type:", incomingMessage.messageType);
-					}
-				}
-				// Handle SMB Message Echoes (WhatsApp Coexistence)
-				// These are messages sent from the WhatsApp Business phone app
-				else if (isMessageEchoEvent(body)) {
-					console.log("[INFO] [WHATSAPP_WEBHOOK] Handling message echo (Coexistence):", body);
-					const messageEcho = parseWebhookMessageEcho(body);
-
-					if (!messageEcho) {
-						console.error("[WHATSAPP_WEBHOOK] Failed to parse message echo");
-						return res.status(200).json({ success: true });
-					}
-
-					// Determine organization from whatsappPhoneNumberId
-					let organizacaoId: string | null = null;
-					try {
-						const whatsappConnection = await convex.query(api.queries.connections.getWhatsappConnectionByPhoneNumberId, {
-							whatsappPhoneNumberId: messageEcho.whatsappPhoneNumberId,
-						});
-
-						if (whatsappConnection) {
-							organizacaoId = whatsappConnection.organizacaoId as string;
-							console.log("[INFO] [WHATSAPP_WEBHOOK] [ECHO] Found organization:", organizacaoId);
-						} else {
-							console.warn("[WHATSAPP_WEBHOOK] [ECHO] No WhatsApp connection found for phone number ID:", messageEcho.whatsappPhoneNumberId);
-							return res.status(200).json({ success: true });
-						}
-					} catch (error) {
-						console.error("[WHATSAPP_WEBHOOK] [ECHO] Error querying WhatsApp connection:", error);
-						return res.status(200).json({ success: true });
-					}
-
-					// Search for the client (recipient) within the organization
-					let clientId: string | null = null;
-					const existingClient = await db.query.clients.findFirst({
-						where: (fields, { and, eq }) =>
-							and(eq(fields.telefoneBase, formatPhoneAsBase(messageEcho.toPhoneNumber as string)), eq(fields.organizacaoId, organizacaoId)),
-					});
-
-					if (existingClient) {
-						console.log("[INFO] [WHATSAPP_WEBHOOK] [ECHO] Client already exists:", existingClient);
-						clientId = existingClient.id;
-					} else {
-						console.log("[INFO] [WHATSAPP_WEBHOOK] [ECHO] Client does not exist, creating new client:", messageEcho.toPhoneNumber);
-						try {
-							const insertedClient = await db
-								.insert(clients)
-								.values({
-									organizacaoId: organizacaoId,
-									nome: messageEcho.toPhoneNumber, // Use phone number as name since we don't have profile info for echoes
-									telefone: messageEcho.toPhoneNumber,
-									telefoneBase: formatPhoneAsBase(messageEcho.toPhoneNumber as string),
-									canalAquisicao: "WHATSAPP",
-								})
-								.returning({ id: clients.id });
-
-							clientId = insertedClient[0]?.id ?? null;
-							console.log("[INFO] [WHATSAPP_WEBHOOK] [ECHO] New client created:", clientId);
-						} catch (error) {
-							console.error("[WHATSAPP_WEBHOOK] [ECHO] Error creating client:", error);
-						}
-					}
-
-					// Skip message processing if we couldn't determine client
-					if (!clientId) {
-						console.warn("[WHATSAPP_WEBHOOK] [ECHO] Cannot process message echo without client ID");
-						return res.status(200).json({ success: true });
-					}
-
-					let mediaStorageData = null;
-
-					// Handle media messages
-					if (messageEcho.mediaId && messageEcho.mimeType) {
-						try {
-							// Download and store media
-							mediaStorageData = await convex.action(api.actions.whatsapp.downloadAndStoreWhatsappMedia, {
-								mediaId: messageEcho.mediaId,
-								mimeType: messageEcho.mimeType,
-								filename: messageEcho.filename,
-							});
-							console.log("[WHATSAPP_WEBHOOK] [ECHO] Media downloaded and stored:", mediaStorageData.storageId);
-						} catch (error) {
-							console.error("[WHATSAPP_WEBHOOK] [ECHO] Error downloading media:", error);
-						}
-					}
-
-					// Determine media type
-					let midiaTipo: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" | undefined;
-					if (messageEcho.messageType === "image") {
-						midiaTipo = "IMAGEM";
-					} else if (messageEcho.messageType === "document") {
-						midiaTipo = "DOCUMENTO";
-					} else if (messageEcho.messageType === "video") {
-						midiaTipo = "VIDEO";
-					} else if (messageEcho.messageType === "audio") {
-						midiaTipo = "AUDIO";
-					}
-
-					// Create message in Convex as a message FROM the business (echo)
-					// The author should be "usuario" type to indicate it came from the business side
-					await convex.mutation(api.mutations.messages.createEchoMessage, {
-						cliente: {
-							idApp: clientId,
-							nome: existingClient?.nome || messageEcho.toPhoneNumber,
-							telefone: messageEcho.toPhoneNumber,
-							telefoneBase: formatPhoneAsBase(messageEcho.toPhoneNumber as string),
-						},
-						conteudo: {
-							texto: messageEcho.textContent || messageEcho.caption,
-							midiaTipo,
-							midiaStorageId: mediaStorageData?.storageId,
-							midiaMimeType: mediaStorageData?.mimeType,
-							midiaFileName: mediaStorageData?.filename,
-							midiaFileSize: mediaStorageData?.fileSize,
-							midiaWhatsappId: messageEcho.mediaId,
-						},
-						whatsappMessageId: messageEcho.whatsappMessageId,
-						whatsappPhoneNumberId: messageEcho.whatsappPhoneNumberId,
-					});
-
-					console.log("[WHATSAPP_WEBHOOK] [ECHO] Message echo created to:", messageEcho.toPhoneNumber, "Type:", messageEcho.messageType);
-				}
-
-				// Always return 200 OK to acknowledge receipt (must be within 20 seconds)
-				return res.status(200).json({ success: true });
-			} catch (error) {
-				console.error("[WHATSAPP_WEBHOOK] Error processing webhook:", error);
-				// Still return 200 to prevent WhatsApp from retrying
-				return res.status(200).json({ success: true });
-			}
+			// // Process webhook asynchronously using waitUntil
+			// waitUntil(processWebhookAsync(body));
+			await processWebhookAsync(body);
+			return;
 		}
 
-		// Return a '404 Not Found' if event is not from a WhatsApp Business Account
 		return res.status(404).json({ error: "Event not supported" });
 	}
 
-	// Handle other HTTP methods
 	return res.status(405).json({ error: "Method not allowed" });
+}
+
+/**
+ * Process webhook events asynchronously after returning 200 to WhatsApp
+ */
+async function processWebhookAsync(body: WebhookBody): Promise<void> {
+	try {
+		// Handle template events
+		if (isTemplateEvent(body)) {
+			await handleTemplateEvent(body);
+		}
+
+		// Handle status updates
+		if (isStatusUpdate(body)) {
+			await handleStatusUpdate(body);
+		}
+		// Handle incoming messages
+		else if (isMessageEvent(body)) {
+			await handleIncomingMessage(body);
+		}
+		// Handle message echoes (WhatsApp Coexistence)
+		else if (isMessageEchoEvent(body)) {
+			await handleMessageEcho(body);
+		}
+	} catch (error) {
+		console.error("[WHATSAPP_WEBHOOK] Error processing webhook:", error);
+	}
+}
+
+/**
+ * Handle template status/quality/category updates
+ */
+async function handleTemplateEvent(body: WebhookBody): Promise<void> {
+	const statusUpdate = parseTemplateStatusUpdate(body);
+	if (statusUpdate?.status) {
+		console.log("[WHATSAPP_WEBHOOK] Template status update:", statusUpdate);
+		await db
+			.update(whatsappTemplates)
+			.set({
+				status: statusUpdate.status,
+				...(statusUpdate.reason && { rejeicao: statusUpdate.reason }),
+			})
+			.where(eq(whatsappTemplates.whatsappTemplateId, statusUpdate.messageTemplateId));
+	}
+
+	const qualityUpdate = parseTemplateQualityUpdate(body);
+	if (qualityUpdate?.quality) {
+		console.log("[WHATSAPP_WEBHOOK] Template quality update:", qualityUpdate);
+		await db
+			.update(whatsappTemplates)
+			.set({ qualidade: qualityUpdate.quality })
+			.where(eq(whatsappTemplates.whatsappTemplateId, qualityUpdate.messageTemplateId));
+	}
+
+	const categoryUpdate = parseTemplateCategoryUpdate(body);
+	if (categoryUpdate?.category) {
+		console.log("[WHATSAPP_WEBHOOK] Template category update:", categoryUpdate);
+		const CATEGORY_MAP: Record<string, "AUTENTICAÇÃO" | "MARKETING" | "UTILIDADE"> = {
+			authentication: "AUTENTICAÇÃO",
+			marketing: "MARKETING",
+			utility: "UTILIDADE",
+		};
+		const normalizedCategory = categoryUpdate.category.toLowerCase();
+		if (CATEGORY_MAP[normalizedCategory]) {
+			await db
+				.update(whatsappTemplates)
+				.set({ categoria: CATEGORY_MAP[normalizedCategory] })
+				.where(eq(whatsappTemplates.whatsappTemplateId, categoryUpdate.messageTemplateId));
+		}
+	}
+}
+
+/**
+ * Handle message status updates (sent, delivered, read, failed)
+ */
+async function handleStatusUpdate(body: WebhookBody): Promise<void> {
+	const statusUpdate = parseStatusUpdate(body);
+	if (!statusUpdate) return;
+
+	const { status, whatsappStatus } = mapWhatsAppStatusToAppStatus(statusUpdate.status);
+
+	await db
+		.update(chatMessages)
+		.set({ status, whatsappMessageStatus: whatsappStatus })
+		.where(eq(chatMessages.whatsappMessageId, statusUpdate.whatsappMessageId));
+
+	console.log("[WHATSAPP_WEBHOOK] Status updated for message:", statusUpdate.whatsappMessageId);
+}
+
+/**
+ * Handle incoming messages from clients
+ */
+async function handleIncomingMessage(body: WebhookBody): Promise<void> {
+	const incomingMessage = parseWebhookIncomingMessage(body);
+	console.log("[WHATSAPP_WEBHOOK] Incoming message:", incomingMessage);
+	if (!incomingMessage) {
+		console.error("[WHATSAPP_WEBHOOK] Failed to parse incoming message");
+		return;
+	}
+
+	// Find WhatsApp connection by phone number ID
+	const connectionPhone = await db.query.whatsappConnectionPhones.findFirst({
+		where: (fields, { eq }) => eq(fields.whatsappTelefoneId, incomingMessage.whatsappPhoneNumberId),
+		with: {
+			conexao: true,
+		},
+	});
+
+	if (!connectionPhone?.conexao) {
+		console.warn("[WHATSAPP_WEBHOOK] No WhatsApp connection found for:", incomingMessage.whatsappPhoneNumberId);
+		return;
+	}
+
+	const organizacaoId = connectionPhone.conexao.organizacaoId;
+	const whatsappToken = connectionPhone.conexao.token;
+	const whatsappConexaoId = connectionPhone.conexaoId;
+	const whatsappConexaoTelefoneId = connectionPhone.id;
+
+	// Find or create client
+	let clientId: string | null = null;
+	const phoneBase = formatPhoneAsBase(incomingMessage.fromPhoneNumber);
+
+	const existingClient = await db.query.clients.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.telefoneBase, phoneBase), eq(fields.organizacaoId, organizacaoId)),
+	});
+
+	if (existingClient) {
+		clientId = existingClient.id;
+	} else {
+		const [newClient] = await db
+			.insert(clients)
+			.values({
+				organizacaoId,
+				nome: incomingMessage.profileName,
+				telefone: incomingMessage.fromPhoneNumber,
+				telefoneBase: phoneBase,
+				canalAquisicao: "WHATSAPP",
+			})
+			.returning({ id: clients.id });
+		clientId = newClient.id;
+		console.log("[WHATSAPP_WEBHOOK] New client created:", clientId);
+	}
+
+	if (!clientId) {
+		console.warn("[WHATSAPP_WEBHOOK] Cannot process message without client ID");
+		return;
+	}
+
+	// Find or create chat
+	let chatId: string | null = null;
+	const existingChat = await db.query.chats.findFirst({
+		where: (fields, { and, eq }) =>
+			and(eq(fields.organizacaoId, organizacaoId), eq(fields.clienteId, clientId), eq(fields.whatsappTelefoneId, incomingMessage.whatsappPhoneNumberId)),
+	});
+
+	if (existingChat) {
+		chatId = existingChat.id;
+	} else {
+		const [newChat] = await db
+			.insert(chats)
+			.values({
+				organizacaoId,
+				clienteId: clientId,
+				whatsappConexaoId,
+				whatsappConexaoTelefoneId,
+				whatsappTelefoneId: incomingMessage.whatsappPhoneNumberId,
+				mensagensNaoLidas: 0,
+				ultimaMensagemData: new Date(),
+				ultimaMensagemConteudoTipo: "TEXTO",
+				status: "ABERTA",
+			})
+			.returning({ id: chats.id });
+		chatId = newChat.id;
+		console.log("[WHATSAPP_WEBHOOK] New chat created:", chatId);
+	}
+
+	// Find or create service
+	let serviceId: string | null = null;
+	let serviceResponsibleType: "AI" | "USUÁRIO" | "BUSINESS-APP" | "CLIENTE" = "AI";
+
+	const existingService = await db.query.chatServices.findFirst({
+		where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
+	});
+
+	if (existingService) {
+		serviceId = existingService.id;
+		serviceResponsibleType = existingService.responsavelTipo;
+	} else {
+		const [newService] = await db
+			.insert(chatServices)
+			.values({
+				organizacaoId,
+				chatId,
+				clienteId: clientId,
+				responsavelTipo: "AI", // Initializing services as AI-handled
+				descricao: "NÃO ESPECIFICADO",
+				status: "PENDENTE",
+			})
+			.returning({ id: chatServices.id });
+		serviceId = newService.id;
+	}
+
+	// Download and store media if present
+	let mediaData: {
+		storageId: string;
+		publicUrl: string;
+		mimeType: string;
+		fileSize: number;
+	} | null = null;
+
+	if (incomingMessage.mediaId && incomingMessage.mimeType) {
+		try {
+			mediaData = await downloadAndStoreWhatsappMedia({
+				mediaId: incomingMessage.mediaId,
+				mimeType: incomingMessage.mimeType,
+				filename: incomingMessage.filename,
+				organizacaoId,
+				chatId,
+				whatsappToken,
+			});
+			console.log("[WHATSAPP_WEBHOOK] Media stored:", mediaData.storageId);
+		} catch (error) {
+			console.error("[WHATSAPP_WEBHOOK] Error downloading media:", error);
+		}
+	}
+
+	// Determine media type
+	let midiaTipo: "TEXTO" | "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" = "TEXTO";
+	if (incomingMessage.messageType === "image") midiaTipo = "IMAGEM";
+	else if (incomingMessage.messageType === "document") midiaTipo = "DOCUMENTO";
+	else if (incomingMessage.messageType === "video") midiaTipo = "VIDEO";
+	else if (incomingMessage.messageType === "audio") midiaTipo = "AUDIO";
+
+	// Insert message
+	const [insertedMessage] = await db
+		.insert(chatMessages)
+		.values({
+			organizacaoId,
+			chatId,
+			autorTipo: "CLIENTE", // messages coming from Webhook are from clients
+			autorClienteId: clientId,
+			conteudoTexto: incomingMessage.textContent || incomingMessage.caption || "",
+			conteudoMidiaTipo: midiaTipo,
+			conteudoMidiaUrl: mediaData?.publicUrl,
+			conteudoMidiaStorageId: mediaData?.storageId,
+			conteudoMidiaMimeType: mediaData?.mimeType,
+			conteudoMidiaArquivoTamanho: mediaData?.fileSize,
+			conteudoMidiaWhatsappId: incomingMessage.mediaId,
+			status: "RECEBIDO",
+			whatsappMessageId: incomingMessage.whatsappMessageId,
+			whatsappMessageStatus: "ENTREGUE",
+			servicoId: serviceId,
+		})
+		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+
+	// Update chat
+	const aiScheduleTime = new Date(Date.now() + AI_RESPONSE_DELAY_MS);
+	await db
+		.update(chats)
+		.set({
+			ultimaMensagemId: insertedMessage.id,
+			ultimaMensagemData: insertedMessage.dataEnvio,
+			ultimaMensagemConteudoTexto: incomingMessage.textContent || incomingMessage.caption,
+			ultimaMensagemConteudoTipo: midiaTipo,
+			mensagensNaoLidas: existingChat ? existingChat.mensagensNaoLidas + 1 : 1,
+			ultimaInteracaoClienteData: new Date(),
+			aiAgendamentoRespostaData: serviceResponsibleType === "AI" ? aiScheduleTime : null,
+			status: "ABERTA",
+		})
+		.where(eq(chats.id, chatId));
+
+	console.log("[WHATSAPP_WEBHOOK] Message created from:", incomingMessage.fromPhoneNumber);
+
+	const requiresAiProcessing = serviceResponsibleType === "AI" || (mediaData && midiaTipo !== "TEXTO");
+
+	if (requiresAiProcessing) {
+		waitUntil(
+			handleAIProcessing({
+				chatId,
+				organizationId: organizacaoId,
+				aiMessageResponse: requiresAiProcessing ? { scheduleAt: aiScheduleTime } : null,
+				aiMessageMedia: mediaData
+					? {
+							messageId: insertedMessage.id,
+							storageId: mediaData.storageId,
+							mimeType: mediaData.mimeType,
+							mediaType: midiaTipo as "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO",
+						}
+					: null,
+			}),
+		);
+	}
+}
+
+/**
+ * Handle message echoes from WhatsApp Business phone app (Coexistence)
+ */
+async function handleMessageEcho(body: WebhookBody): Promise<void> {
+	const messageEcho = parseWebhookMessageEcho(body);
+	if (!messageEcho) {
+		console.error("[WHATSAPP_WEBHOOK] Failed to parse message echo");
+		return;
+	}
+
+	// Find WhatsApp connection
+	const connectionPhone = await db.query.whatsappConnectionPhones.findFirst({
+		where: (fields, { eq }) => eq(fields.whatsappTelefoneId, messageEcho.whatsappPhoneNumberId),
+		with: {
+			conexao: true,
+		},
+	});
+
+	if (!connectionPhone?.conexao) {
+		console.warn("[WHATSAPP_WEBHOOK] [ECHO] No WhatsApp connection found");
+		return;
+	}
+
+	const organizacaoId = connectionPhone.conexao.organizacaoId;
+	const whatsappToken = connectionPhone.conexao.token;
+	const whatsappConexaoId = connectionPhone.conexaoId;
+	const whatsappConexaoTelefoneId = connectionPhone.id;
+
+	// Find or create client (recipient)
+	const phoneBase = formatPhoneAsBase(messageEcho.toPhoneNumber);
+	let clientId: string | null = null;
+
+	const existingClient = await db.query.clients.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.telefoneBase, phoneBase), eq(fields.organizacaoId, organizacaoId)),
+	});
+
+	if (existingClient) {
+		clientId = existingClient.id;
+	} else {
+		const [newClient] = await db
+			.insert(clients)
+			.values({
+				organizacaoId,
+				nome: messageEcho.toPhoneNumber,
+				telefone: messageEcho.toPhoneNumber,
+				telefoneBase: phoneBase,
+				canalAquisicao: "WHATSAPP",
+			})
+			.returning({ id: clients.id });
+		clientId = newClient.id;
+	}
+
+	if (!clientId) return;
+
+	// Find or create chat
+	let chatId: string | null = null;
+	const existingChat = await db.query.chats.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.clienteId, clientId), eq(fields.whatsappTelefoneId, messageEcho.whatsappPhoneNumberId)),
+	});
+
+	if (existingChat) {
+		chatId = existingChat.id;
+	} else {
+		const [newChat] = await db
+			.insert(chats)
+			.values({
+				organizacaoId,
+				clienteId: clientId,
+				whatsappConexaoId,
+				whatsappConexaoTelefoneId,
+				whatsappTelefoneId: messageEcho.whatsappPhoneNumberId,
+				mensagensNaoLidas: 0,
+				ultimaMensagemData: new Date(),
+				ultimaMensagemConteudoTipo: "TEXTO",
+				status: "ABERTA",
+			})
+			.returning({ id: chats.id });
+		chatId = newChat.id;
+	}
+
+	// Find or create service (mark as BUSINESS-APP handling)
+	let serviceId: string | null = null;
+	const existingService = await db.query.chatServices.findFirst({
+		where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
+	});
+
+	if (existingService) {
+		serviceId = existingService.id;
+		if (existingService.responsavelTipo === "AI") {
+			await db.update(chatServices).set({ responsavelTipo: "BUSINESS-APP" }).where(eq(chatServices.id, serviceId));
+		}
+	} else {
+		const [newService] = await db
+			.insert(chatServices)
+			.values({
+				organizacaoId,
+				chatId,
+				clienteId: clientId,
+				responsavelTipo: "BUSINESS-APP",
+				descricao: "NÃO ESPECIFICADO",
+				status: "EM_ANDAMENTO",
+			})
+			.returning({ id: chatServices.id });
+		serviceId = newService.id;
+	}
+
+	// Download and store media if present
+	let mediaData: {
+		storageId: string;
+		publicUrl: string;
+		mimeType: string;
+		fileSize: number;
+	} | null = null;
+
+	if (messageEcho.mediaId && messageEcho.mimeType) {
+		try {
+			mediaData = await downloadAndStoreWhatsappMedia({
+				mediaId: messageEcho.mediaId,
+				mimeType: messageEcho.mimeType,
+				filename: messageEcho.filename,
+				organizacaoId,
+				chatId,
+				whatsappToken,
+			});
+		} catch (error) {
+			console.error("[WHATSAPP_WEBHOOK] [ECHO] Error downloading media:", error);
+		}
+	}
+
+	// Determine media type
+	let midiaTipo: "TEXTO" | "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" = "TEXTO";
+	if (messageEcho.messageType === "image") midiaTipo = "IMAGEM";
+	else if (messageEcho.messageType === "document") midiaTipo = "DOCUMENTO";
+	else if (messageEcho.messageType === "video") midiaTipo = "VIDEO";
+	else if (messageEcho.messageType === "audio") midiaTipo = "AUDIO";
+
+	// Insert message
+	const [insertedMessage] = await db
+		.insert(chatMessages)
+		.values({
+			organizacaoId,
+			chatId,
+			autorTipo: "BUSINESS-APP",
+			conteudoTexto: messageEcho.textContent || messageEcho.caption || "",
+			conteudoMidiaTipo: midiaTipo,
+			conteudoMidiaUrl: mediaData?.publicUrl,
+			conteudoMidiaStorageId: mediaData?.storageId,
+			conteudoMidiaMimeType: mediaData?.mimeType,
+			conteudoMidiaArquivoTamanho: mediaData?.fileSize,
+			conteudoMidiaWhatsappId: messageEcho.mediaId,
+			status: "ENVIADO",
+			whatsappMessageId: messageEcho.whatsappMessageId,
+			whatsappMessageStatus: "ENVIADO",
+			servicoId: serviceId,
+			isEcho: true,
+		})
+		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+
+	// Update chat
+	await db
+		.update(chats)
+		.set({
+			ultimaMensagemId: insertedMessage.id,
+			ultimaMensagemData: insertedMessage.dataEnvio,
+			ultimaMensagemConteudoTexto: messageEcho.textContent || messageEcho.caption,
+			ultimaMensagemConteudoTipo: midiaTipo,
+			status: "ABERTA",
+		})
+		.where(eq(chats.id, chatId));
+
+	console.log("[WHATSAPP_WEBHOOK] [ECHO] Message echo created to:", messageEcho.toPhoneNumber);
+}
+
+type THandleAIProcessingParams = {
+	chatId: string;
+	organizationId: string;
+	aiMessageResponse: {
+		scheduleAt: Date;
+	} | null;
+	aiMessageMedia: {
+		messageId: string;
+		storageId: string;
+		mimeType: string;
+		mediaType: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO";
+	} | null;
+};
+
+async function handleAIProcessing({ chatId, organizationId, aiMessageResponse, aiMessageMedia }: THandleAIProcessingParams): Promise<void> {
+	if (!aiMessageResponse && !aiMessageMedia) return;
+
+	if (aiMessageResponse) {
+		await handleAIMessageResponse(chatId, organizationId, aiMessageResponse.scheduleAt);
+	}
+	if (aiMessageMedia) {
+		await handleAIMediaProcessing(aiMessageMedia.messageId, aiMessageMedia.storageId, aiMessageMedia.mimeType, aiMessageMedia.mediaType);
+	}
+}
+/**
+ * Schedule AI response with delay and verification
+ */
+async function handleAIMessageResponse(chatId: string, organizacaoId: string, scheduledAt: Date) {
+	// Wait for the delay
+	const delayMs = scheduledAt.getTime() - Date.now();
+	if (delayMs > 0) {
+		await new Promise((resolve) => setTimeout(resolve, delayMs));
+	}
+
+	// Check if new messages arrived after scheduling
+	const chat = await db.query.chats.findFirst({
+		where: (fields, { eq }) => eq(fields.id, chatId),
+		with: {
+			cliente: true,
+		},
+	});
+
+	if (!chat) {
+		console.log("[AI_RESPONSE] Chat not found:", chatId);
+		return;
+	}
+
+	// If the scheduled time doesn't match, a newer message has reset the timer
+	if (chat.aiAgendamentoRespostaData && chat.aiAgendamentoRespostaData.getTime() !== scheduledAt.getTime()) {
+		console.log("[AI_RESPONSE] Skipping - newer message arrived:", chatId);
+		return;
+	}
+
+	// Check if service is still AI-handled
+	const service = await db.query.chatServices.findFirst({
+		where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
+	});
+
+	if (!service || service.responsavelTipo !== "AI") {
+		console.log("[AI_RESPONSE] Skipping - service not AI-handled:", chatId);
+		return;
+	}
+
+	// Get last 100 messages
+	const messages = await db.query.chatMessages.findMany({
+		where: (fields, { eq }) => eq(fields.chatId, chatId),
+		orderBy: (fields, { desc }) => [desc(fields.dataEnvio)],
+		limit: 100,
+	});
+
+	const chatSummary: TChatDetailsForAgentResponse = {
+		id: chat.id,
+		cliente: {
+			idApp: chat.cliente?.id || "",
+			nome: chat.cliente?.nome || "",
+			cpfCnpj: "",
+			telefone: chat.cliente?.telefone || "",
+			email: chat.cliente?.email,
+			localizacaoCep: chat.cliente?.localizacaoCep ?? undefined,
+			localizacaoEstado: chat.cliente?.localizacaoEstado ?? undefined,
+			localizacaoCidade: chat.cliente?.localizacaoCidade ?? undefined,
+			localizacaoBairro: chat.cliente?.localizacaoBairro ?? undefined,
+			localizacaoLogradouro: chat.cliente?.localizacaoLogradouro ?? undefined,
+			localizacaoNumero: chat.cliente?.localizacaoNumero ?? undefined,
+			localizacaoComplemento: chat.cliente?.localizacaoComplemento ?? undefined,
+		},
+		ultimasMensagens: messages.map((m) => ({
+			id: m.id,
+			autorTipo: m.autorTipo,
+			conteudoTipo: m.conteudoMidiaTipo,
+			conteudoTexto: m.conteudoTexto || `[${m.conteudoMidiaTipo}]: ${m.conteudoMidiaTextoProcessadoResumo || ""}`,
+			conteudoMidiaUrl: m.conteudoMidiaUrl ?? undefined,
+			dataEnvio: m.dataEnvio,
+			atendimentoId: m.servicoId ?? undefined,
+		})),
+		atendimentoAberto: service
+			? {
+					id: service.id,
+					descricao: service.descricao,
+					status: service.status,
+				}
+			: null,
+	};
+
+	const aiResponse = await getAgentResponse({
+		details: chatSummary,
+	});
+	await createAIMessage(chatId, organizacaoId, aiResponse.message, aiResponse.metadata);
+
+	return { success: true, content: aiResponse.message };
+}
+
+/**
+ * Create AI message and send via WhatsApp
+ */
+async function createAIMessage(
+	chatId: string,
+	organizacaoId: string,
+	content: string,
+	metadata?: { serviceDescription?: string; escalation?: { applicable: boolean; reason?: string } },
+): Promise<void> {
+	const chat = await db.query.chats.findFirst({
+		where: (fields, { eq }) => eq(fields.id, chatId),
+		with: {
+			cliente: true,
+			whatsappConexao: { columns: { token: true } },
+		},
+	});
+
+	if (!chat || chat.status !== "ABERTA") {
+		console.log("[AI_MESSAGE] Cannot send - chat closed or not found");
+		return;
+	}
+
+	// Get or update service
+	const service = await db.query.chatServices.findFirst({
+		where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
+	});
+
+	const serviceId = service?.id;
+
+	if (service && metadata?.serviceDescription) {
+		await db
+			.update(chatServices)
+			.set({
+				descricao: metadata.serviceDescription,
+				...(metadata.escalation?.applicable && { responsavelTipo: "USUÁRIO" as const }),
+			})
+			.where(eq(chatServices.id, service.id));
+	}
+
+	// Insert AI message
+	const [insertedMessage] = await db
+		.insert(chatMessages)
+		.values({
+			organizacaoId,
+			chatId,
+			autorTipo: "AI",
+			conteudoTexto: content,
+			conteudoMidiaTipo: "TEXTO",
+			status: "ENVIADO",
+			whatsappMessageStatus: "PENDENTE",
+			servicoId: serviceId,
+		})
+		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+
+	// Update chat
+	await db
+		.update(chats)
+		.set({
+			ultimaMensagemId: insertedMessage.id,
+			ultimaMensagemData: insertedMessage.dataEnvio,
+			ultimaMensagemConteudoTexto: content,
+			ultimaMensagemConteudoTipo: "TEXTO",
+		})
+		.where(eq(chats.id, chatId));
+
+	// Send via WhatsApp
+	if (chat.whatsappConexao?.token && chat.cliente?.telefone) {
+		try {
+			const { sendBasicWhatsappMessage } = await import("@/lib/whatsapp");
+			const response = await sendBasicWhatsappMessage({
+				fromPhoneNumberId: chat.whatsappTelefoneId,
+				toPhoneNumber: formatPhoneAsWhatsappId(chat.cliente.telefone),
+				content,
+				whatsappToken: chat.whatsappConexao.token,
+			});
+
+			await db
+				.update(chatMessages)
+				.set({
+					whatsappMessageId: response.whatsappMessageId,
+					whatsappMessageStatus: "ENVIADO",
+				})
+				.where(eq(chatMessages.id, insertedMessage.id));
+
+			console.log("[AI_MESSAGE] Sent successfully:", insertedMessage.id);
+		} catch (error) {
+			console.error("[AI_MESSAGE] Send failed:", error);
+			await db.update(chatMessages).set({ whatsappMessageStatus: "FALHOU" }).where(eq(chatMessages.id, insertedMessage.id));
+		}
+	}
+}
+
+/**
+ * Process media with AI (transcription, image analysis, etc.)
+ */
+async function handleAIMediaProcessing(
+	messageId: string,
+	storageId: string,
+	mimeType: string,
+	mediaType: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO",
+) {
+	try {
+		// Download file from Supabase Storage
+		const { data: fileData, error: downloadError } = await supabaseClient.storage.from("files").download(storageId);
+
+		if (downloadError || !fileData) {
+			console.error("[PROCESS_MEDIA] Download error:", downloadError);
+			throw new Error("Erro ao baixar arquivo do storage");
+		}
+		const fileBuffer = Buffer.from(await fileData.arrayBuffer());
+		let processedText = "";
+		let summary = "";
+
+		switch (mediaType) {
+			case "AUDIO": {
+				const result = await handleAIAudioProcessing(fileBuffer, mimeType);
+				processedText = result.transcription;
+				summary = result.summary;
+				break;
+			}
+			case "IMAGEM": {
+				const result = await handleAIImageProcessing(fileBuffer, mimeType);
+				processedText = result.description;
+				summary = result.summary;
+				break;
+			}
+			case "VIDEO": {
+				const result = await handleAIVideoProcessing(fileBuffer, mimeType);
+				processedText = result.analysis;
+				summary = result.summary;
+				break;
+			}
+			case "DOCUMENTO": {
+				const result = await handleAIDocumentProcessing(fileBuffer, mimeType);
+				processedText = result.extraction;
+				summary = result.summary;
+				break;
+			}
+		}
+
+		await db
+			.update(chatMessages)
+			.set({
+				conteudoMidiaTextoProcessado: processedText,
+				conteudoMidiaTextoProcessadoResumo: summary,
+			})
+			.where(eq(chatMessages.id, messageId));
+
+		console.log("[MEDIA_PROCESSING] Completed for message:", messageId);
+
+		return {
+			sucess: true,
+			processedText,
+			summary,
+		};
+	} catch (error) {
+		console.error("[MEDIA_PROCESSING] Error:", error);
+		throw error;
+	}
 }

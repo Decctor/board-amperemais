@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import { useClients, useClientsBySearch } from "@/lib/queries/clients";
+import { useClients, useClientsBySearch, useClientsStats } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
@@ -43,6 +43,7 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 	const totalPages = clientsResult?.totalPages;
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
+			<ClientsStats overallFilters={filters} />
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 				<Input
 					value={filters.search ?? ""}
@@ -76,6 +77,31 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 			{filterMenuIsOpen ? (
 				<ClientsDatabaseFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
+		</div>
+	);
+}
+
+type ClientsStatsProps = {
+	overallFilters: TGetClientsInput;
+};
+function ClientsStats({ overallFilters }: ClientsStatsProps) {
+	const { data: clientsStats, isLoading: clientsStatsLoading } = useClientsStats({
+		periodAfter: overallFilters.statsPeriodAfter,
+		periodBefore: overallFilters.statsPeriodBefore,
+		saleNatures: overallFilters.statsSaleNatures,
+		excludedSalesIds: overallFilters.statsExcludedSalesIds,
+		totalMin: overallFilters.statsTotalMin,
+		totalMax: overallFilters.statsTotalMax,
+		rankingBy: "purchases-total-qty",
+	});
+
+	console.log(clientsStats);
+
+	return (
+		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<div></div>
+			</div>
 		</div>
 	);
 }

@@ -99,8 +99,18 @@ const UtilsSalesPromoCampaignSchema = z.object({
 			}),
 			itens: z.array(
 				z.object({
-					produtoId: z.string({ required_error: "ID do produto não informado.", invalid_type_error: "Tipo não válido para o ID do produto." }),
-					produtoNome: z.string({ required_error: "Nome do produto não informado.", invalid_type_error: "Tipo não válido para o nome do produto." }),
+					titulo: z.string({ required_error: "Título não informado.", invalid_type_error: "Tipo não válido para o título." }),
+					produtos: z.array(
+						z.object({
+							id: z.string({ required_error: "ID do produto não informado.", invalid_type_error: "Tipo não válido para o ID do produto." }),
+							codigo: z.string({ required_error: "Código do produto não informado.", invalid_type_error: "Tipo não válido para o código do produto." }),
+							nome: z.string({ required_error: "Nome do produto não informado.", invalid_type_error: "Tipo não válido para o nome do produto." }),
+						}),
+					),
+					imagemCapaUrl: z
+						.string({ required_error: "Imagem capa URL não informada.", invalid_type_error: "Tipo não válido para a imagem capa URL." })
+						.optional()
+						.nullable(),
 					valorBase: z.number({ required_error: "Valor base não informado.", invalid_type_error: "Tipo não válido para o valor base." }),
 					valorPromocional: z
 						.number({

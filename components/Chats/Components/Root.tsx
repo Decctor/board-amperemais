@@ -1,7 +1,6 @@
 "use client";
 
-import type { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
+import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
@@ -12,7 +11,7 @@ export type ChatHubRootProps = {
 	children: ReactNode;
 	user: TAuthUserSession["user"];
 	userHasMessageSendingPermission: boolean;
-	whatsappConnection: typeof api.queries.connections.getWhatsappConnection._returnType;
+	whatsappConnection: TGetWhatsappConnectionOutput["data"];
 	className?: string;
 	defaultPhoneNumber?: string;
 };
@@ -20,9 +19,9 @@ export type ChatHubRootProps = {
 export function Root({ children, user, userHasMessageSendingPermission, whatsappConnection, className, defaultPhoneNumber }: ChatHubRootProps) {
 	const isDesktop = useMediaQuery("(min-width: 1024px)");
 
-	const [selectedChatId, setSelectedChatId] = useState<Id<"chats"> | null>(null);
+	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 	const [selectedPhoneNumber, setSelectedPhoneNumber] = useState<string | null>(
-		defaultPhoneNumber ?? whatsappConnection?.telefones[0]?.whatsappTelefoneId ?? null,
+		defaultPhoneNumber ?? whatsappConnection?.telefones?.[0]?.whatsappTelefoneId ?? null,
 	);
 
 	const contextValue = {

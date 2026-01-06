@@ -239,7 +239,7 @@ export function AudioPlayer({ audioUrl, className, variant = "received", onDownl
 				size="sm"
 				onClick={cyclePlaybackRate}
 				className={cn(
-					"h-8 px-2 rounded-full flex-shrink-0 text-xs font-semibold transition-all",
+					"h-8 px-2 rounded-full shrink-0 text-xs font-semibold transition-all",
 					variant === "sent" ? "bg-green-600/30 hover:bg-green-600/40" : "bg-primary-foreground/10 hover:bg-primary-foreground/20",
 					"hover:scale-105",
 					playbackRate !== 1 &&
@@ -256,7 +256,7 @@ export function AudioPlayer({ audioUrl, className, variant = "received", onDownl
 					size="icon"
 					onClick={handleDownload}
 					className={cn(
-						"h-8 w-8 rounded-full flex-shrink-0 transition-all",
+						"h-8 w-8 rounded-full shrink-0 transition-all",
 						variant === "sent" ? "bg-green-600/30 hover:bg-green-600/40" : "bg-primary-foreground/10 hover:bg-primary-foreground/20",
 						"hover:scale-105",
 					)}

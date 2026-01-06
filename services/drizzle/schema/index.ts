@@ -14,5 +14,5 @@ export * from "./interactions";
 export * from "./whatsapp-templates";
 export * from "./cashback-programs";
 export * from "./organizations";
-export * from "./chats";
 export * from "./whatsapp-connections";
+export * from "./chats";

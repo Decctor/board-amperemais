@@ -3,7 +3,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useClientStatsById } from "@/lib/queries/clients";
 import { isValidNumber } from "@/lib/validation";
-import type { TGetClientStatsOutput } from "@/pages/api/clients/stats";
+import type { TGetClientStatsOutput } from "@/pages/api/clients/stats/by-client";
 import type { TUserSession } from "@/schemas/users";
 import dayjs from "dayjs";
 import { BadgeDollarSign, Calendar, CirclePlus, Mail, Phone, ShoppingBag, UserRound } from "lucide-react";

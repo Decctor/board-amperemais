@@ -1,15 +1,13 @@
 "use client";
 
+import type { TGetChatDetailsOutput } from "@/app/api/chats/[chatId]/route";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { formatNameAsInitials } from "@/lib/formatting";
+import { useChat } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Bot, Check, MessageCircle, UserRound, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -41,9 +39,9 @@ export function Content({ children, className, emptyState }: ChatHubContentProps
 		);
 	}
 
-	const chat = useQuery(api.queries.chat.getChat, { chatId: selectedChatId });
+	const { data: chat, isPending } = useChat(selectedChatId);
 
-	if (!chat) {
+	if (isPending || !chat) {
 		return (
 			<div className={cn("flex-1 flex items-center justify-center", className)}>
 				<LoadingComponent />
@@ -63,7 +61,7 @@ export function Content({ children, className, emptyState }: ChatHubContentProps
 }
 
 type ContentHeaderProps = {
-	chat: NonNullable<ReturnType<typeof useQuery<typeof api.queries.chat.getChat>>>;
+	chat: TGetChatDetailsOutput["data"];
 	onBack?: () => void;
 	className?: string;
 };
@@ -82,7 +80,7 @@ function ContentHeader({ chat, onBack, className }: ContentHeaderProps) {
 
 				{/* Avatar */}
 				<Avatar className="w-10 h-10 min-w-10 min-h-10 ring-2 ring-primary/10">
-					<AvatarImage src={chat.cliente?.avatar_url} alt={chat.cliente?.nome ?? ""} />
+					<AvatarImage src={undefined} alt={chat.cliente?.nome ?? ""} />
 					<AvatarFallback className="bg-linear-to-br from-primary/20 to-primary/10 text-primary font-semibold">
 						{formatNameAsInitials(chat.cliente?.nome ?? "?")}
 					</AvatarFallback>
@@ -99,10 +97,10 @@ function ContentHeader({ chat, onBack, className }: ContentHeaderProps) {
 					<div
 						className={cn(
 							"px-3 py-1 rounded-full text-xs font-medium",
-							chat.status === "EXPIRADA" ? "bg-amber-200 text-amber-700" : "bg-green-200 text-green-700",
+							chat.status === "FECHADA" ? "bg-amber-200 text-amber-700" : "bg-green-200 text-green-700",
 						)}
 					>
-						{chat.status === "EXPIRADA" ? "Expirada" : "Ativa"}
+						{chat.status === "FECHADA" ? "Expirada" : "Ativa"}
 					</div>
 				</div>
 			</div>
@@ -114,13 +112,16 @@ function ContentHeader({ chat, onBack, className }: ContentHeaderProps) {
 }
 
 type ServiceBannerProps = {
-	service: NonNullable<NonNullable<ReturnType<typeof useQuery<typeof api.queries.chat.getChat>>>["atendimentoAberto"]>;
+	service: NonNullable<TGetChatDetailsOutput["data"]["atendimentoAberto"]>;
 };
 
 function ServiceBanner({ service }: ServiceBannerProps) {
 	const { user } = useChatHub();
 	const [transferDialogIsOpen, setTransferDialogIsOpen] = useState(false);
 	const [conclusionDialogIsOpen, setConclusionDialogIsOpen] = useState(false);
+
+	const responsavelTipo = service.responsavelTipo;
+	const responsavelUsuario = service.responsavelUsuario;
 
 	return (
 		<>
@@ -156,22 +157,22 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 
 					{/* Responsible and Transfer Button */}
 					<div className="flex items-center gap-2">
-						{service.responsavel === "ai" ? (
+						{responsavelTipo === "AI" ? (
 							<div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary-foreground/20 rounded-full text-xs font-medium backdrop-blur-sm">
 								<Bot className="w-4 h-4" />
 								<span>IA</span>
 							</div>
-						) : service.responsavel ? (
+						) : responsavelUsuario ? (
 							<div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary-foreground/20 rounded-full text-xs font-medium backdrop-blur-sm">
 								<UserRound className="w-4 h-4" />
-								<span className="truncate max-w-[120px]">{service.responsavel.nome}</span>
+								<span className="truncate max-w-[120px]">{responsavelUsuario.nome}</span>
 							</div>
 						) : (
 							<div className="px-2.5 py-1 bg-primary-foreground/20  rounded-full text-xs font-medium backdrop-blur-sm">Sem responsável</div>
 						)}
 
 						{/* Transfer Button */}
-						{service.responsavel && (
+						{responsavelTipo !== "AI" && responsavelUsuario && (
 							<Button
 								variant="ghost"
 								size="icon"
@@ -194,18 +195,28 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 			</div>
 
 			{/* Transfer Dialog */}
-			{user && transferDialogIsOpen && (
+			{user && transferDialogIsOpen && responsavelTipo && (
 				<ServiceTransferDialog
 					closeMenu={() => setTransferDialogIsOpen(false)}
-					serviceId={service._id}
-					currentResponsible={service.responsavel}
+					serviceId={service.id}
+					currentResponsible={
+						responsavelTipo === "AI"
+							? "ai"
+							: responsavelUsuario
+								? {
+										nome: responsavelUsuario.nome ?? "",
+										avatar_url: responsavelUsuario.avatarUrl ?? null,
+										idApp: responsavelUsuario.id,
+									}
+								: null
+					}
 					currentUserIdApp={user.id}
 				/>
 			)}
 
 			{/* Conclusion Dialog */}
 			{user && conclusionDialogIsOpen && (
-				<ServiceConclusionDialog closeMenu={() => setConclusionDialogIsOpen(false)} serviceId={service._id} currentDescription={service.descricao} />
+				<ServiceConclusionDialog closeMenu={() => setConclusionDialogIsOpen(false)} serviceId={service.id} currentDescription={service.descricao} />
 			)}
 		</>
 	);

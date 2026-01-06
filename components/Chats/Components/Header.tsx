@@ -1,5 +1,6 @@
 "use client";
 
+import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +12,7 @@ import type { ReactNode } from "react";
 import { useChatHub } from "./context";
 
 export type ChatHubHeaderProps = {
+	whatsappConnection: TGetWhatsappConnectionOutput["data"];
 	children?: ReactNode;
 	className?: string;
 	showPhoneSelector?: boolean;
@@ -23,6 +25,7 @@ export type ChatHubHeaderProps = {
 export function Header({
 	children,
 	className,
+	whatsappConnection,
 	showPhoneSelector = true,
 	showSearch = false,
 	searchQuery = "",
@@ -30,12 +33,8 @@ export function Header({
 	onNewChat,
 }: ChatHubHeaderProps) {
 	const { selectedPhoneNumber, setSelectedPhoneNumber, user } = useChatHub();
-	const { data: whatsappConnections } = useConvexQuery(
-		api.queries.connections.getWhatsappConnection,
-		user.organizacaoId ? { organizacaoId: user.organizacaoId } : "skip",
-	);
 
-	const phoneNumbers = whatsappConnections?.telefones ?? [];
+	const phoneNumbers = whatsappConnection?.telefones ?? [];
 
 	return (
 		<div className={cn("w-full flex flex-col gap-3 px-4 py-3", "border-b border-primary/20 bg-card/50 backdrop-blur-sm", className)}>

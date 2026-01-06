@@ -166,7 +166,7 @@ export default function SalesPromoCampaignItemsBlock({
 				{items.length > 0 ? (
 					items.map((item, index) => (
 						<ItemCard
-							key={item.produtoId}
+							key={item.titulo}
 							item={item}
 							handleRemoveClick={() => deleteItem(index)}
 							handleEditClick={() => setEditCompositionItemIndex(index)}
@@ -198,7 +198,7 @@ function ItemCard({ item, handleRemoveClick, handleEditClick }: ItemCardProps) {
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-2 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
-					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{item.produtoNome}</h1>
+					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{item.titulo}</h1>
 				</div>
 			</div>
 			<div className="flex items-center gap-2 self-center">
@@ -238,22 +238,38 @@ type NewItemMenuProps = {
 	closeMenu: () => void;
 };
 function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
-	const [productSearchMenuIsOpen, setProductSearchMenuIsOpen] = useState(false);
+	const [newProductMenuIsOpen, setNewProductMenuIsOpen] = useState(false);
 	const [itemHolder, setItemHolder] = useState<TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]>({
-		produtoId: "",
-		produtoNome: "",
+		titulo: "",
+		produtos: [],
 		valorBase: 0,
 		valorPromocional: 0,
 		etiqueta: "PROMO-A4",
 	});
 	function validateAndAddItem(info: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]) {
-		if (!info.produtoId) return toast.error("Produto não informado.");
+		if (info.produtos.length === 0) return toast.error("Selecione ao menos um produto.");
 		if (!info.valorBase) return toast.error("Valor base não informado.");
 		if (!info.valorPromocional) return toast.error("Valor promocional não informado.");
 		if (!info.etiqueta) return toast.error("Etiqueta não informada.");
 		addItem(info);
 		return closeMenu();
 	}
+	function validateAndAddProduct(product: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]["produtos"][number]) {
+		if (!product.id) return toast.error("ID do produto não informado.");
+
+		const isProductAlreadyDefined = itemHolder.produtos.some((item) => item.id === product.id);
+		if (isProductAlreadyDefined) return toast.error("Produto já adicionado.");
+		const newProductsList = [...itemHolder.produtos, product];
+		const newTitle = newProductsList.map((p) => p.nome).join(" + ");
+		setItemHolder((prev) => ({ ...prev, produtos: newProductsList, titulo: newTitle }));
+		setNewProductMenuIsOpen(false);
+	}
+	function removeProductFromList(index: number) {
+		const newProductsList = [...itemHolder.produtos].filter((_, i) => i !== index);
+		const newTitle = newProductsList.map((p) => p.nome).join(" + ");
+		setItemHolder((prev) => ({ ...prev, produtos: newProductsList, titulo: newTitle }));
+	}
+	console.log(itemHolder);
 	return (
 		<ResponsiveMenu
 			menuTitle="NOVO ITEM"
@@ -266,22 +282,39 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 			stateError={null}
 			closeMenu={closeMenu}
 		>
-			{itemHolder.produtoNome ? (
-				<div className="w-fit flex items-center gap-1 self-center px-2 py-1 rounded-lg bg-primary/10">
-					<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />
-					<p className="text-sm font-medium">{itemHolder.produtoNome}</p>
+			{itemHolder.produtos.map((product, index) => (
+				<div key={product.id} className="w-full flex flex-col items-center gap-1 self-center px-2 py-1 rounded-lg bg-primary/10">
+					<div className="w-full flex items-center justify-between">
+						<div className="flex items-center gap-1.5">
+							<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />
+							<p className="text-sm font-medium">ITEM {index + 1}</p>
+						</div>
+						<Button variant={"ghost"} size="fit" className="px-2 py-1" onClick={() => removeProductFromList(index)}>
+							<Trash2 className="w-4 h-4 min-w-4 min-h-4" />
+						</Button>
+					</div>
+					<p className="text-sm font-medium text-center">{product.nome}</p>
 				</div>
-			) : (
+			))}
+
+			<div className="w-full flex items-center justify-end">
 				<Button
-					onClick={() => setProductSearchMenuIsOpen(true)}
+					onClick={() => setNewProductMenuIsOpen(true)}
 					size={"fit"}
 					variant={"ghost"}
 					className="flex items-center gap-1 px-2 py-1 text-xs self-center"
 				>
-					<Search className="w-4 h-4 min-w-4 min-h-4" />
-					PROCURAR PRODUTO
+					<Plus className="w-4 h-4 min-w-4 min-h-4" />
+					ADICIONAR PRODUTO
 				</Button>
-			)}
+			</div>
+
+			<TextInput
+				label="TÍTULO"
+				placeholder="Título do item promocional..."
+				value={itemHolder.titulo}
+				handleChange={(value) => setItemHolder({ ...itemHolder, titulo: value })}
+			/>
 			<NumberInput
 				label="VALOR BASE"
 				value={itemHolder.valorBase}
@@ -337,13 +370,16 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 					width="100%"
 				/>
 			</div>
-			{productSearchMenuIsOpen && (
+			{newProductMenuIsOpen && (
 				<ProductVinculation
 					handleSelection={(product) => {
-						setItemHolder((prev) => ({ ...prev, produtoNome: product.descricao, produtoId: product.id }));
-						setProductSearchMenuIsOpen(false);
+						validateAndAddProduct({
+							id: product.id,
+							codigo: product.codigo,
+							nome: product.descricao,
+						});
 					}}
-					closeModal={() => setProductSearchMenuIsOpen(false)}
+					closeModal={() => setNewProductMenuIsOpen(false)}
 				/>
 			)}
 		</ResponsiveMenu>
@@ -356,14 +392,28 @@ type EditItemMenuProps = {
 	closeMenu: () => void;
 };
 function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps) {
-	const [productSearchMenuIsOpen, setProductSearchMenuIsOpen] = useState(false);
+	const [newProductMenuIsOpen, setNewProductMenuIsOpen] = useState(false);
 	const [itemHolder, setItemHolder] = useState<TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]>(initialItem);
 	function validateAndUpdateItem(info: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]) {
-		if (!info.produtoId) return toast.error("Produto não informado.");
+		if (!info.produtos.length) return toast.error("Selecione ao menos um produto.");
 		if (!info.valorBase) return toast.error("Valor base não informado.");
 		if (!info.etiqueta) return toast.error("Etiqueta não informada.");
 		updateItem(info);
 		return closeMenu();
+	}
+	function validateAndAddProduct(product: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]["produtos"][number]) {
+		if (!product.id) return toast.error("ID do produto não informado.");
+		const isProductAlreadyDefined = itemHolder.produtos.some((item) => item.id === product.id);
+		if (isProductAlreadyDefined) return toast.error("Produto já adicionado.");
+		const newProductsList = [...itemHolder.produtos, product];
+		const newTitle = newProductsList.map((p) => p.nome).join(" + ");
+		setItemHolder((prev) => ({ ...prev, produtos: newProductsList, titulo: newTitle }));
+		setNewProductMenuIsOpen(false);
+	}
+	function removeProductFromList(index: number) {
+		const newProductsList = [...itemHolder.produtos].filter((_, i) => i !== index);
+		const newTitle = newProductsList.map((p) => p.nome).join(" + ");
+		setItemHolder((prev) => ({ ...prev, produtos: newProductsList, titulo: newTitle }));
 	}
 	return (
 		<ResponsiveMenu
@@ -377,22 +427,39 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 			stateError={null}
 			closeMenu={closeMenu}
 		>
-			{itemHolder.produtoNome ? (
-				<div className="w-fit flex items-center gap-1 self-center px-2 py-1 rounded-lg bg-primary/10">
-					<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />
-					<p className="text-sm font-medium">{itemHolder.produtoNome}</p>
+			{itemHolder.produtos.map((product, index) => (
+				<div key={product.id} className="w-full flex flex-col items-center gap-1 self-center px-2 py-1 rounded-lg bg-primary/10">
+					<div className="w-full flex items-center justify-between">
+						<div className="flex items-center gap-1.5">
+							<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />
+							<p className="text-sm font-medium">ITEM {index + 1}</p>
+						</div>
+						<Button variant={"ghost"} size="fit" className="px-2 py-1" onClick={() => removeProductFromList(index)}>
+							<Trash2 className="w-4 h-4 min-w-4 min-h-4" />
+						</Button>
+					</div>
+					<p className="text-sm font-medium text-center">{product.nome}</p>
 				</div>
-			) : (
+			))}
+
+			<div className="w-full flex items-center justify-end">
 				<Button
-					onClick={() => setProductSearchMenuIsOpen(true)}
+					onClick={() => setNewProductMenuIsOpen(true)}
 					size={"fit"}
 					variant={"ghost"}
 					className="flex items-center gap-1 px-2 py-1 text-xs self-center"
 				>
-					<Search className="w-4 h-4 min-w-4 min-h-4" />
-					PROCURAR PRODUTO
+					<Plus className="w-4 h-4 min-w-4 min-h-4" />
+					ADICIONAR PRODUTO
 				</Button>
-			)}
+			</div>
+
+			<TextInput
+				label="TÍTULO"
+				placeholder="Digite o título do item..."
+				value={itemHolder.titulo}
+				handleChange={(value) => setItemHolder({ ...itemHolder, titulo: value })}
+			/>
 			<NumberInput
 				label="VALOR BASE"
 				value={itemHolder.valorBase}
@@ -448,13 +515,17 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 					width="100%"
 				/>
 			</div>
-			{productSearchMenuIsOpen && (
+			{newProductMenuIsOpen && (
 				<ProductVinculation
 					handleSelection={(product) => {
-						setItemHolder((prev) => ({ ...prev, produtoNome: product.descricao, produtoId: product.id }));
-						setProductSearchMenuIsOpen(false);
+						validateAndAddProduct({
+							id: product.id,
+							codigo: product.codigo,
+							nome: product.descricao,
+						});
+						setNewProductMenuIsOpen(false);
 					}}
-					closeModal={() => setProductSearchMenuIsOpen(false)}
+					closeModal={() => setNewProductMenuIsOpen(false)}
 				/>
 			)}
 		</ResponsiveMenu>

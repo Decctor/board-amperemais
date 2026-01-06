@@ -33,7 +33,7 @@ export const SidebarConfig: TSidebarConfigItem[] = [
 		group: "Comercial",
 		items: [
 			{
-				title: "Segmentações",
+				title: "Matriz RFM",
 				url: "/dashboard/commercial/segments",
 				icon: <Grid3X3 className="w-4 h-4" />,
 				items: null,
@@ -42,6 +42,12 @@ export const SidebarConfig: TSidebarConfigItem[] = [
 				title: "Clientes",
 				url: "/dashboard/commercial/clients",
 				icon: <UsersRound className="w-4 h-4" />,
+				items: null,
+			},
+			{
+				title: "Vendedores",
+				url: "/dashboard/team/sellers",
+				icon: <UserRound className="w-4 h-4" />,
 				items: null,
 			},
 			{
@@ -56,8 +62,19 @@ export const SidebarConfig: TSidebarConfigItem[] = [
 				icon: <Package className="w-4 h-4" />,
 				items: null,
 			},
+		],
+	},
+	{
+		group: "Turbine suas Vendas",
+		items: [
 			{
-				title: "Campanhas",
+				title: "Metas",
+				url: "/dashboard/team/goals",
+				icon: <Goal className="w-4 h-4" />,
+				items: null,
+			},
+			{
+				title: "Campanhas de Vendas",
 				url: "/dashboard/commercial/campaigns",
 				icon: <Megaphone className="w-4 h-4" />,
 				items: null,
@@ -70,28 +87,12 @@ export const SidebarConfig: TSidebarConfigItem[] = [
 			},
 		],
 	},
-	{
-		group: "Time",
-		items: [
-			{
-				title: "Vendedores",
-				url: "/dashboard/team/sellers",
-				icon: <UserRound className="w-4 h-4" />,
-				items: null,
-			},
-			{
-				title: "Metas",
-				url: "/dashboard/team/goals",
-				icon: <Goal className="w-4 h-4" />,
-				items: null,
-			},
-		],
-	},
+
 	{
 		group: "Atendimentos",
 		items: [
 			{
-				title: "Conversas",
+				title: "Whatsapp Hub",
 				url: "/dashboard/chats",
 				icon: <MessageCircle className="w-4 h-4" />,
 				items: null,

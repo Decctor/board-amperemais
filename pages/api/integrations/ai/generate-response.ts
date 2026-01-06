@@ -1,13 +1,9 @@
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
-
 import { getAgentResponse } from "@/lib/ai-agent";
 import { db } from "@/services/drizzle";
-import { ConvexHttpClient } from "convex/browser";
-
+import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
+import { desc, eq, or } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 import z from "zod";
-const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 const GenerateAIResponseInputSchema = z.object({
 	chatId: z.string({
@@ -20,82 +16,120 @@ export type GenerateAIResponseInput = z.infer<typeof GenerateAIResponseInputSche
 
 const GenerateAIResponseOutputSchema = z.union([
 	z.object({
-		success: z.literal(true, {
-			required_error: "A flag de sucesso é obrigatória",
-			invalid_type_error: "A flag de sucesso deve ser um booleano",
-		}),
-		message: z.string({
-			required_error: "A mensagem é obrigatória",
-			invalid_type_error: "A mensagem deve ser uma string",
-		}),
+		success: z.literal(true),
+		message: z.string(),
 		metadata: z
 			.object({
 				toolsUsed: z.array(z.string()),
 				serviceDescription: z.string(),
+				escalation: z.object({
+					applicable: z.boolean(),
+					reason: z.string().optional(),
+				}),
 				tokensUsed: z.number(),
 			})
 			.optional(),
 	}),
 	z.object({
-		success: z.literal(false, {
-			required_error: "A flag de sucesso é obrigatória",
-			invalid_type_error: "A flag de sucesso deve ser um booleano",
-		}),
-		error: z.string({
-			required_error: "O erro é obrigatório",
-			invalid_type_error: "O erro deve ser uma string",
-		}),
-		details: z.array(
-			z.string({
-				required_error: "Os detalhes são obrigatórios",
-				invalid_type_error: "Os detalhes devem ser uma array de strings",
-			}),
-		),
+		success: z.literal(false),
+		error: z.string(),
+		details: z.array(z.string()),
 	}),
 ]);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-	// Only allow POST requests
 	if (req.method !== "POST") {
 		return res.status(405).json({ error: "Method not allowed" });
 	}
 
 	try {
 		console.log("[INFO] [GENERATE_AI_RESPONSE] Request received with body:", req.body);
-		// First, we validate the input
-		const validationResult = GenerateAIResponseInputSchema.safeParse(req.body);
 
+		const validationResult = GenerateAIResponseInputSchema.safeParse(req.body);
 		if (!validationResult.success) {
 			return res.status(400).json({
 				success: false,
 				error: "Dados inválidos",
-				details: validationResult.error.errors,
+				details: validationResult.error.errors.map((e) => e.message),
 			});
 		}
 
 		const { chatId } = validationResult.data;
 
-		// Second, we intialize the Convex Client and get the chat summary
-		const convex = new ConvexHttpClient(CONVEX_URL as string);
-		const chatSummary = await convex.query(api.queries.chat.getChatSummary, {
-			chatId: chatId as Id<"chats">,
+		// Get chat with client info
+		const chat = await db.query.chats.findFirst({
+			where: (fields, { eq }) => eq(fields.id, chatId),
+			with: {
+				cliente: true,
+			},
 		});
 
-		// Enrich client data with additional fields from database
+		if (!chat) {
+			return res.status(404).json({
+				success: false,
+				error: "Chat não encontrado",
+				details: ["O chat especificado não existe"],
+			});
+		}
+
+		// Get last 100 messages
+		const messages = await db.query.chatMessages.findMany({
+			where: (fields, { eq }) => eq(fields.chatId, chatId),
+			orderBy: (fields, { desc }) => [desc(fields.dataEnvio)],
+			limit: 100,
+		});
+
+		// Get open service
+		const openService = await db.query.chatServices.findFirst({
+			where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
+		});
+
+		// Format chat summary for AI agent
+		const chatSummary = {
+			id: chat.id,
+			ultimaMensagemData: chat.ultimaMensagemData,
+			cliente: {
+				idApp: chat.cliente?.id || "",
+				nome: chat.cliente?.nome || "",
+				cpfCnpj: chat.cliente?.cpfCnpj,
+				telefone: chat.cliente?.telefone || "",
+				telefoneBase: chat.cliente?.telefoneBase || "",
+				email: chat.cliente?.email,
+				localizacaoCep: chat.cliente?.localizacaoCep,
+				localizacaoEstado: chat.cliente?.localizacaoEstado,
+				localizacaoCidade: chat.cliente?.localizacaoCidade,
+				localizacaoBairro: chat.cliente?.localizacaoBairro,
+				localizacaoLogradouro: chat.cliente?.localizacaoLogradouro,
+				localizacaoNumero: chat.cliente?.localizacaoNumero,
+				localizacaoComplemento: chat.cliente?.localizacaoComplemento,
+			},
+			ultimasMensagens: messages.map((m) => ({
+				id: m.id,
+				autorTipo: m.autorTipo.toLowerCase(),
+				conteudoTipo: m.conteudoMidiaTipo,
+				conteudoTexto: m.conteudoTexto || `[${m.conteudoMidiaTipo}]: ${m.conteudoMidiaTextoProcessadoResumo || ""}`,
+				conteudoMidiaUrl: m.conteudoMidiaUrl,
+				dataEnvio: m.dataEnvio.getTime(),
+				atendimentoId: m.servicoId,
+			})),
+			atendimentoAberto: openService
+				? {
+						id: openService.id,
+						descricao: openService.descricao,
+						status: openService.status,
+					}
+				: null,
+		};
 
 		console.log("[INFO] [GENERATE_AI_RESPONSE] Calling AI Agent with:", {
 			chatId: chatSummary.id,
 			clientId: chatSummary.cliente.idApp,
+			messageCount: chatSummary.ultimasMensagens.length,
 		});
 
-		// Generate AI response with enriched data
+		// Generate AI response
 		const aiResponse = await getAgentResponse({
-			details: {
-				id: chatSummary.id,
-				cliente: chatSummary.cliente,
-				ultimasMensagens: chatSummary.ultimasMensagens,
-				atendimentoAberto: chatSummary.atendimentoAberto,
-			},
+			details: chatSummary,
 		});
 
 		console.log("[API] [GERAR_RESPOSTA] AI Response metadata:", {
@@ -104,11 +138,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			tokensUsed: aiResponse.metadata.tokensUsed,
 		});
 
-		// Return response with metadata
 		const validatedResponse = GenerateAIResponseOutputSchema.parse({
 			success: true,
 			message: aiResponse.message,
-			metadata: aiResponse.metadata,
+			metadata: {
+				...aiResponse.metadata,
+				escalation: { applicable: false },
+			},
 		});
 
 		return res.status(200).json(validatedResponse);
@@ -122,4 +158,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		return res.status(500).json(validatedResponse);
 	}
 }
+
 export type TGenerateAIResponseOutput = z.infer<typeof GenerateAIResponseOutputSchema>;
