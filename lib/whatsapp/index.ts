@@ -2,7 +2,6 @@ import axios from "axios";
 import createHttpError from "http-errors";
 
 const GRAPH_API_BASE_URL = "https://graph.facebook.com/v22.0";
-const WHATSAPP_AUTH_TOKEN = process.env.META_ACCESS_TOKEN;
 
 function getMetaGraphAPIUrl(whatsappPhoneNumberId: string) {
 	return {
@@ -240,6 +239,7 @@ type UploadMediaToWhatsappParams = {
 	fileBuffer: Buffer;
 	mimeType: string;
 	filename: string;
+	whatsappToken: string;
 };
 
 type UploadMediaToWhatsappResponse = {
@@ -252,12 +252,10 @@ export async function uploadMediaToWhatsapp({
 	fileBuffer,
 	mimeType,
 	filename,
+	whatsappToken,
 }: UploadMediaToWhatsappParams): Promise<UploadMediaToWhatsappResponse> {
 	try {
 		console.log("[INFO] [WHATSAPP_MEDIA_UPLOAD] Uploading media:", filename, mimeType);
-		if (!WHATSAPP_AUTH_TOKEN) {
-			throw new createHttpError.InternalServerError("WhatsApp auth token não configurado.");
-		}
 
 		const { GRAPH_MEDIA_API_URL } = getMetaGraphAPIUrl(fromPhoneNumberId);
 		const formData = new FormData();
@@ -282,7 +280,7 @@ export async function uploadMediaToWhatsapp({
 		const response = await fetch(GRAPH_MEDIA_API_URL, {
 			method: "POST",
 			headers: {
-				Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+				Authorization: `Bearer ${whatsappToken}`,
 				// Do NOT set Content-Type header manually - fetch will set it with boundary
 			},
 			body: formData,
@@ -321,6 +319,7 @@ export async function uploadMediaToWhatsapp({
 
 type DownloadMediaFromWhatsappParams = {
 	mediaId: string;
+	whatsappToken: string;
 };
 
 type DownloadMediaFromWhatsappResponse = {
@@ -329,17 +328,17 @@ type DownloadMediaFromWhatsappResponse = {
 	fileSize: number;
 };
 
-export async function downloadMediaFromWhatsapp({ mediaId }: DownloadMediaFromWhatsappParams): Promise<DownloadMediaFromWhatsappResponse> {
+export async function downloadMediaFromWhatsapp({
+	mediaId,
+	whatsappToken,
+}: DownloadMediaFromWhatsappParams): Promise<DownloadMediaFromWhatsappResponse> {
 	try {
 		console.log("[INFO] [WHATSAPP_MEDIA_DOWNLOAD] Downloading media:", mediaId);
-		if (!WHATSAPP_AUTH_TOKEN) {
-			throw new createHttpError.InternalServerError("WhatsApp auth token não configurado.");
-		}
 
 		// First, get the media URL
 		const mediaInfoResponse = await axios.get(`${GRAPH_API_BASE_URL}/${mediaId}`, {
 			headers: {
-				Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+				Authorization: `Bearer ${whatsappToken}`,
 			},
 		});
 
@@ -354,7 +353,7 @@ export async function downloadMediaFromWhatsapp({ mediaId }: DownloadMediaFromWh
 		// Then download the actual file
 		const fileResponse = await axios.get(mediaUrl, {
 			headers: {
-				Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+				Authorization: `Bearer ${whatsappToken}`,
 			},
 			responseType: "arraybuffer",
 		});

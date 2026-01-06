@@ -1,4 +1,4 @@
-import type { Id } from "@/convex/_generated/dataModel";
+import { uploadChatMedia } from "@/lib/files-storage/chat-media";
 
 /**
  * Maximum file size for WhatsApp audio (16MB)
@@ -83,23 +83,17 @@ export function validateAudioFormat(blob: Blob): { isValid: boolean; error?: str
 }
 
 /**
- * Upload audio file to Convex storage
+ * Upload audio file to Supabase storage
  */
-export async function uploadAudioToConvex({
+export async function uploadAudioToSupabase({
 	audioBlob,
-	generateUploadUrl,
-	saveFileMetadata,
+	chatId,
+	organizacaoId,
 }: {
 	audioBlob: Blob;
-	generateUploadUrl: () => Promise<string>;
-	saveFileMetadata: (args: {
-		storageId: Id<"_storage">;
-		filename: string;
-		mimeType: string;
-		fileSize: number;
-		fileType: "audio";
-	}) => Promise<void>;
-}): Promise<{ storageId: string; filename: string }> {
+	chatId: string;
+	organizacaoId: string;
+}): Promise<{ storageId: string; publicUrl: string; filename: string }> {
 	console.log("[AudioUpload] Starting upload process:", {
 		originalMimeType: audioBlob.type,
 		originalSize: audioBlob.size,
@@ -127,33 +121,26 @@ export async function uploadAudioToConvex({
 		filename: audioFile.name,
 	});
 
-	// Generate upload URL
-	const uploadUrl = await generateUploadUrl();
-
-	// Upload file to Convex
-	const result = await fetch(uploadUrl, {
-		method: "POST",
-		headers: { "Content-Type": audioFile.type },
-		body: audioFile,
-	});
-
-	if (!result.ok) {
-		throw new Error("Falha no upload do áudio");
-	}
-
-	const { storageId } = await result.json();
-
-	// Save file metadata
-	await saveFileMetadata({
-		storageId,
-		filename: audioFile.name,
+	// Upload to Supabase Storage
+	const result = await uploadChatMedia({
+		file: audioFile,
+		organizacaoId,
+		chatId,
 		mimeType: audioFile.type,
-		fileSize: audioFile.size,
-		fileType: "audio",
+		filename: audioFile.name,
 	});
 
-	return { storageId, filename: audioFile.name };
+	return {
+		storageId: result.storageId,
+		publicUrl: result.publicUrl,
+		filename: audioFile.name,
+	};
 }
+
+/**
+ * @deprecated Use uploadAudioToSupabase instead. This function is kept for backward compatibility.
+ */
+export const uploadAudioToConvex = uploadAudioToSupabase;
 
 /**
  * Format duration in seconds to MM:SS

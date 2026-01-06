@@ -1,13 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
+import { uploadChatMedia } from "@/lib/files-storage/chat-media";
 import { FileImage, FileText, Paperclip, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 type FileUploadComponentProps = {
-	onFileSelect: ({ file, fileName, storageId }: { file: File; fileName: string; storageId: string }) => void;
+	onFileSelect: ({ file, fileName, storageId, publicUrl }: { file: File; fileName: string; storageId: string; publicUrl: string }) => void;
 	disabled?: boolean;
+	chatId: string;
+	organizacaoId: string;
 };
 
 // WhatsApp file size limits
@@ -28,13 +29,10 @@ const SUPPORTED_DOCUMENT_TYPES = [
 	"text/csv",
 ];
 
-function FileUploadComponent({ onFileSelect, disabled = false }: FileUploadComponentProps) {
+function FileUploadComponent({ onFileSelect, disabled = false, chatId, organizacaoId }: FileUploadComponentProps) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isUploading, setIsUploading] = useState(false);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-	const generateUploadUrl = useMutation(api.mutations.files.generateUploadUrl);
-	const saveFileMetadata = useMutation(api.mutations.files.saveFileMetadata);
 
 	const validateFile = (file: File): { isValid: boolean; error?: string; fileType?: "image" | "document" } => {
 		// Check if it's an image
@@ -76,33 +74,22 @@ function FileUploadComponent({ onFileSelect, disabled = false }: FileUploadCompo
 		setIsUploading(true);
 
 		try {
-			// Generate upload URL
-			const uploadUrl = await generateUploadUrl();
-
-			// Upload file to Convex
-			const result = await fetch(uploadUrl, {
-				method: "POST",
-				headers: { "Content-Type": file.type },
-				body: file,
-			});
-
-			if (!result.ok) {
-				throw new Error("Falha no upload do arquivo");
-			}
-
-			const { storageId } = await result.json();
-
-			// Save file metadata
-			await saveFileMetadata({
-				storageId,
-				filename: file.name,
+			// Upload file to Supabase Storage
+			const result = await uploadChatMedia({
+				file,
+				organizacaoId,
+				chatId,
 				mimeType: file.type,
-				fileSize: file.size,
-				fileType: validation.fileType as "image" | "document",
+				filename: file.name,
 			});
 
-			// Call parent callback
-			onFileSelect({ file, fileName: file.name, storageId });
+			// Call parent callback with both storageId and publicUrl
+			onFileSelect({
+				file,
+				fileName: file.name,
+				storageId: result.storageId,
+				publicUrl: result.publicUrl,
+			});
 
 			toast.success("Arquivo carregado com sucesso!");
 		} catch (error) {

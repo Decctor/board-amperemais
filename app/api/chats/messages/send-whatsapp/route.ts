@@ -135,6 +135,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 				fileBuffer,
 				mimeType: input.mimeType,
 				filename: input.filename || "arquivo",
+				whatsappToken,
 			});
 
 			// Determine WhatsApp media type

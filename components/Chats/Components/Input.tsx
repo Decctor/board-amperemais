@@ -13,8 +13,6 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileUploadComponent from "../FileUploadComponent";
 import { useAudioRecorder } from "../Hooks/useAudioRecorder";
-import { AudioRecordingModal } from "./AudioRecordingModal";
-import { MicrophoneButton } from "./MicrophoneButton";
 import { useChatHub } from "./context";
 
 export type ChatHubInputProps = {
@@ -167,58 +165,58 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 		}
 	};
 
-	// Audio recording handlers
-	const handleStartRecording = async () => {
-		setIsRecordingModalOpen(true);
-		await audioRecorder.startRecording();
-	};
+	// // Audio recording handlers
+	// const handleStartRecording = async () => {
+	// 	setIsRecordingModalOpen(true);
+	// 	await audioRecorder.startRecording();
+	// };
 
-	const handleCancelRecording = () => {
-		audioRecorder.cancelRecording();
-		setIsRecordingModalOpen(false);
-	};
+	// const handleCancelRecording = () => {
+	// 	audioRecorder.cancelRecording();
+	// 	setIsRecordingModalOpen(false);
+	// };
 
-	const handleStopRecording = () => {
-		audioRecorder.stopRecording();
-	};
+	// const handleStopRecording = () => {
+	// 	audioRecorder.stopRecording();
+	// };
 
-	const handleSendAudio = async () => {
-		if (!audioRecorder.audioBlob || !chat || !selectedChatId) {
-			toast.error("Nenhum áudio para enviar");
-			return;
-		}
+	// const handleSendAudio = async () => {
+	// 	if (!audioRecorder.audioBlob || !chat || !selectedChatId) {
+	// 		toast.error("Nenhum áudio para enviar");
+	// 		return;
+	// 	}
 
-		setIsSending(true);
-		try {
-			// Convert blob to file
-			const filename = `audio_${Date.now()}.webm`;
-			const audioFile = new File([audioRecorder.audioBlob], filename, {
-				type: audioRecorder.audioBlob.type,
-			});
+	// 	setIsSending(true);
+	// 	try {
+	// 		// Convert blob to file
+	// 		const filename = `audio_${Date.now()}.webm`;
+	// 		const audioFile = new File([audioRecorder.audioBlob], filename, {
+	// 			type: audioRecorder.audioBlob.type,
+	// 		});
 
-			// Convert to base64
-			const arrayBuffer = await audioFile.arrayBuffer();
-			const base64 = Buffer.from(arrayBuffer).toString("base64");
+	// 		// Convert to base64
+	// 		const arrayBuffer = await audioFile.arrayBuffer();
+	// 		const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-			await createMessageMutation.mutateAsync({
-				chatId: selectedChatId,
-				conteudoMidiaTipo: "AUDIO",
-				conteudoMidiaBase64: base64,
-				conteudoMidiaMimeType: audioFile.type,
-				conteudoMidiaArquivoNome: filename,
-			});
+	// 		await createMessageMutation.mutateAsync({
+	// 			chatId: selectedChatId,
+	// 			conteudoMidiaTipo: "AUDIO",
+	// 			conteudoMidiaBase64: base64,
+	// 			conteudoMidiaMimeType: audioFile.type,
+	// 			conteudoMidiaArquivoNome: filename,
+	// 		});
 
-			// Close modal and reset recorder
-			setIsRecordingModalOpen(false);
-			audioRecorder.resetRecording();
-			toast.success("Áudio enviado com sucesso!");
-		} catch (error) {
-			console.error("Error sending audio:", error);
-			toast.error(error instanceof Error ? error.message : "Erro ao enviar áudio");
-		} finally {
-			setIsSending(false);
-		}
-	};
+	// 		// Close modal and reset recorder
+	// 		setIsRecordingModalOpen(false);
+	// 		audioRecorder.resetRecording();
+	// 		toast.success("Áudio enviado com sucesso!");
+	// 	} catch (error) {
+	// 		console.error("Error sending audio:", error);
+	// 		toast.error(error instanceof Error ? error.message : "Erro ao enviar áudio");
+	// 	} finally {
+	// 		setIsSending(false);
+	// 	}
+	// };
 
 	if (!userHasMessageSendingPermission) {
 		return null;
@@ -230,18 +228,6 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 
 	return (
 		<div className={cn("w-full px-4 py-3 bg-card/80 backdrop-blur-sm border-t border-primary/10", className)}>
-			{/* Audio Recording Modal */}
-			<AudioRecordingModal
-				isOpen={isRecordingModalOpen}
-				recordingState={audioRecorder.recordingState}
-				recordingDuration={audioRecorder.recordingDuration}
-				audioLevels={audioRecorder.audioLevels}
-				error={audioRecorder.error}
-				onCancel={handleCancelRecording}
-				onSend={handleSendAudio}
-				onStopRecording={handleStopRecording}
-			/>
-
 			<div className="flex flex-col gap-2 max-w-5xl mx-auto">
 				{/* Expired Conversation Warning */}
 				{isConversationExpired ? (
@@ -289,6 +275,8 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 								sendMediaMessage(file, fileName, storageId);
 							}}
 							disabled={isConversationExpired || isSending}
+							chatId={selectedChatId || ""}
+							organizacaoId={user.organizacaoId as string}
 						/>
 
 						{/* Text Input */}
@@ -314,29 +302,21 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 						/>
 
 						{/* Send/Microphone Button */}
-						{messageText.trim() ? (
-							<Button
-								type="button"
-								size="icon"
-								onClick={sendTextMessage}
-								disabled={!messageText.trim() || isConversationExpired || isSending}
-								className={cn(
-									"h-10 w-10 rounded-full shrink-0",
-									"bg-linear-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
-									"shadow-md hover:shadow-lg transition-all duration-200",
-									"disabled:opacity-50 disabled:cursor-not-allowed",
-									"hover:scale-105 active:scale-95",
-								)}
-							>
-								{isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-							</Button>
-						) : (
-							<MicrophoneButton
-								onClick={handleStartRecording}
-								disabled={isConversationExpired || isSending}
-								isRecording={audioRecorder.recordingState === "recording"}
-							/>
-						)}
+						<Button
+							type="button"
+							size="icon"
+							onClick={sendTextMessage}
+							disabled={!messageText.trim() || isConversationExpired || isSending}
+							className={cn(
+								"h-10 w-10 rounded-full shrink-0",
+								"bg-linear-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
+								"shadow-md hover:shadow-lg transition-all duration-200",
+								"disabled:opacity-50 disabled:cursor-not-allowed",
+								"hover:scale-105 active:scale-95",
+							)}
+						>
+							{isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+						</Button>
 
 						{/* Template Selector */}
 						<Popover open={showTemplateSelector} onOpenChange={setShowTemplateSelector}>
