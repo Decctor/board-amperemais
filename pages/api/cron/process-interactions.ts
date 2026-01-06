@@ -1,9 +1,10 @@
 import { api, internal } from "@/convex/_generated/api";
+import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
-import type { TInteractionState } from "@/schemas/interactions";
+import type { TInteractionsCronJobTimeBlocksEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { interactions, organizations } from "@/services/drizzle/schema";
+import { chatMessages, interactions, organizations } from "@/services/drizzle/schema";
 import { ConvexHttpClient } from "convex/browser";
 import { fetchMutation } from "convex/nextjs";
 import dayjs from "dayjs";
@@ -11,7 +12,6 @@ import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { NextApiHandler } from "next";
 
 const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
-const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 /**
  * Gets the most recent time block that has passed (or current if exact match)
@@ -45,12 +45,8 @@ function getCurrentTimeBlock(currentTime = dayjs()): (typeof TIME_BLOCKS)[number
 	return closestBlock;
 }
 
-const WHATSAPP_PHONE_NUMBER_ID = "893793573806565";
-
 const processInteractionsHandler: NextApiHandler = async (req, res) => {
 	try {
-		const convex = new ConvexHttpClient(CONVEX_URL as string);
-
 		const currentDateAsISO8601 = dayjs().format("YYYY-MM-DD");
 		const currentTimeBlock = getCurrentTimeBlock();
 		console.log("[INFO] [PROCESS_INTERACTIONS] Starting interactions processing", {
@@ -74,6 +70,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 						and(
 							eq(fields.organizacaoId, organization.id),
 							eq(fields.agendamentoDataReferencia, currentDateAsISO8601),
+							eq(fields.agendamentoBlocoReferencia, currentTimeBlock as TInteractionsCronJobTimeBlocksEnum),
 							isNotNull(fields.campanhaId),
 							isNull(fields.dataExecucao),
 						),
@@ -107,6 +104,13 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 						whatsappTemplate: true,
 					},
 				});
+				const whatsappConnection = await db.query.whatsappConnections.findFirst({
+					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
+					with: {
+						telefones: true,
+					},
+				});
+				if (!whatsappConnection) continue;
 
 				for (const [index, interaction] of interactionsResult.entries()) {
 					if ((index + 1) % 10 === 0) {
@@ -114,11 +118,6 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					}
 					const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
 					if (!campaign || !interaction.campanha?.whatsappTelefoneId) continue;
-
-					const whatsappConnection = await convex.query(api.queries.connections.getWhatsappConnectionByPhoneNumberId, {
-						whatsappPhoneNumberId: interaction.campanha.whatsappTelefoneId,
-					});
-					if (!whatsappConnection) continue;
 
 					const whatsappTemplate = campaign.whatsappTemplate;
 					if (!whatsappTemplate) continue;
@@ -142,31 +141,62 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 						toPhoneNumber: interaction.cliente.telefone,
 					});
 					console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Creating template message:`, JSON.stringify(payload, null, 2));
-					const createTemplateMessageResponse = await fetchMutation(api.mutations.messages.createTemplateMessage, {
-						autor: {
-							idApp: interaction.campanha?.autorId as string,
-							tipo: "usuario",
-						},
-						cliente: {
-							idApp: interaction.cliente.id,
-							nome: interaction.cliente.nome,
-							telefone: interaction.cliente.telefone,
-							telefoneBase: interaction.cliente.telefone,
-							email: interaction.cliente.email ?? "",
-						},
-						whatsappPhoneNumberId: interaction.campanha.whatsappTelefoneId,
-						whatsappToken: whatsappConnection.token,
-						templateId: whatsappTemplate.id,
-						templatePayloadData: payload.data,
-						templatePayloadContent: payload.content,
-					});
 
-					await db
-						.update(interactions)
-						.set({
-							dataExecucao: new Date(),
+					// Inserting message in db
+					const insertedChatMessageResponse = await db
+						.insert(chatMessages)
+						.values({
+							organizacaoId: organization.id,
+							chatId: interaction.id,
+							autorTipo: "USUÁRIO",
+							autorUsuarioId: interaction.campanha.autorId,
+							conteudoTexto: payload.content,
+							conteudoMidiaTipo: "TEXTO",
 						})
-						.where(and(eq(interactions.id, interaction.id), eq(interactions.organizacaoId, organization.id)));
+						.returning({ id: chatMessages.id });
+
+					const insertedChatMessageId = insertedChatMessageResponse[0]?.id;
+
+					if (!insertedChatMessageId) throw new Error("Failed to insert chat message");
+
+					try {
+						const sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
+							fromPhoneNumberId: interaction.campanha.whatsappTelefoneId,
+							templatePayload: payload.data,
+							whatsappToken: whatsappConnection.token,
+						});
+
+						await db
+							.update(chatMessages)
+							.set({
+								whatsappMessageId: sentWhatsappTemplateResponse.whatsappMessageId,
+								whatsappMessageStatus: "ENVIADO",
+							})
+							.where(eq(chatMessages.id, insertedChatMessageId));
+
+						await db
+							.update(interactions)
+							.set({
+								dataExecucao: new Date(),
+							})
+							.where(and(eq(interactions.id, interaction.id), eq(interactions.organizacaoId, organization.id)));
+					} catch (error) {
+						console.error(
+							`[ORG: ${organization.id}] [ERROR] [PROCESS_INTERACTIONS] Failed to send WhatsApp message for interaction ${interaction.id}:`,
+							error,
+						);
+
+						// Mark message as failed
+						await db
+							.update(chatMessages)
+							.set({
+								whatsappMessageStatus: "FALHOU",
+							})
+							.where(eq(chatMessages.id, insertedChatMessageId));
+
+						// Don't mark interaction as executed, so it can be retried
+						// Continue processing other interactions
+					}
 				}
 
 				console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Interactions processed successfully`);

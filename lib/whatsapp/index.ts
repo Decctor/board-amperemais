@@ -92,11 +92,13 @@ type SendTemplateWhatsappMessageParams = {
 			};
 			components: Array<{
 				type: string;
-				parameters: Array<{
-					type: string;
-					parameter_name?: string;
-					text: string;
-				}>;
+				parameters:
+					| Array<{
+							type: string;
+							parameter_name?: string;
+							text: string;
+					  }>
+					| undefined;
 			}>;
 		};
 	};
