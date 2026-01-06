@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			// // Process webhook asynchronously using waitUntil
 			// waitUntil(processWebhookAsync(body));
 			await processWebhookAsync(body);
-			return;
+			return res.status(200).json({ success: true });
 		}
 
 		return res.status(404).json({ error: "Event not supported" });
