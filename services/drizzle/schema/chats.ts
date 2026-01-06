@@ -63,7 +63,8 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
 	mensagens: many(chatMessages),
 	servicos: many(chatServices),
 }));
-
+export type TChatEntity = typeof chats.$inferSelect;
+export type TNewChatEntity = typeof chats.$inferInsert;
 export const chatServices = newTable("chat_services", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
@@ -101,7 +102,8 @@ export const chatServicesRelations = relations(chatServices, ({ one, many }) => 
 		references: [users.id],
 	}),
 }));
-
+export type TChatServiceEntity = typeof chatServices.$inferSelect;
+export type TNewChatServiceEntity = typeof chatServices.$inferInsert;
 export const chatMessages = newTable("chat_messages", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
@@ -112,7 +114,6 @@ export const chatMessages = newTable("chat_messages", {
 	chatId: varchar("chat_id", { length: 255 })
 		.references(() => chats.id)
 		.notNull(),
-
 	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }).references(() => whatsappTemplates.id, {
 		onDelete: "set null",
 	}),

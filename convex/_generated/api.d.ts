@@ -20,6 +20,7 @@ import type * as mutations_users from "../mutations/users.js";
 import type * as queries_chat from "../queries/chat.js";
 import type * as queries_connections from "../queries/connections.js";
 import type * as queries_users from "../queries/users.js";
+import type * as queries_utils from "../queries/utils.js";
 import type * as utils_pagination from "../utils/pagination.js";
 import type * as utils from "../utils.js";
 import type * as workflows_aiProcessing from "../workflows/aiProcessing.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   "queries/chat": typeof queries_chat;
   "queries/connections": typeof queries_connections;
   "queries/users": typeof queries_users;
+  "queries/utils": typeof queries_utils;
   "utils/pagination": typeof utils_pagination;
   utils: typeof utils;
   "workflows/aiProcessing": typeof workflows_aiProcessing;
