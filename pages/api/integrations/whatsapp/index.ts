@@ -106,19 +106,23 @@ async function processWebhookAsync(body: WebhookBody): Promise<void> {
 		// Handle template events
 		if (isTemplateEvent(body)) {
 			await handleTemplateEvent(body);
+			return;
 		}
 
 		// Handle status updates
 		if (isStatusUpdate(body)) {
 			await handleStatusUpdate(body);
+			return;
 		}
 		// Handle incoming messages
-		else if (isMessageEvent(body)) {
+		if (isMessageEvent(body)) {
 			await handleIncomingMessage(body);
+			return;
 		}
 		// Handle message echoes (WhatsApp Coexistence)
-		else if (isMessageEchoEvent(body)) {
+		if (isMessageEchoEvent(body)) {
 			await handleMessageEcho(body);
+			return;
 		}
 	} catch (error) {
 		console.error("[WHATSAPP_WEBHOOK] Error processing webhook:", error);
