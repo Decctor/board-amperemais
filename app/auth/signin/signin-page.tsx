@@ -15,8 +15,8 @@ function SignInPage() {
 		<div className="grid min-h-screen place-items-center p-4">
 			<Card className="w-full max-w-md">
 				<CardHeader className="text-center">
-					<CardTitle>Acesso a Dashboard Ampère+</CardTitle>
-					<CardDescription>Acesse ao Dashboard validando sua conta</CardDescription>
+					<CardTitle>Acesso ao RecompraCRM</CardTitle>
+					<CardDescription>Acesse a plataforma validando sua conta</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form action={actionMethod} className="grid gap-4">

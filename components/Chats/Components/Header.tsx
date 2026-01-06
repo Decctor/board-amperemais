@@ -2,11 +2,20 @@
 
 import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { MessageCircle, Plus, Search, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { Check, ChevronDown, MessageCircle, Plus, Search, X } from "lucide-react";
+import { type ReactNode, useMemo } from "react";
 import { useChatHub } from "./context";
 
 export type ChatHubHeaderProps = {
@@ -31,40 +40,48 @@ export function Header({
 	onNewChat,
 }: ChatHubHeaderProps) {
 	const { selectedPhoneNumber, setSelectedPhoneNumber, user } = useChatHub();
-
 	const phoneNumbers = whatsappConnection?.telefones ?? [];
 
+	const selectedPhoneNumberData = useMemo(
+		() => phoneNumbers.find((phone) => phone.whatsappTelefoneId === selectedPhoneNumber),
+		[phoneNumbers, selectedPhoneNumber],
+	);
 	return (
 		<div className={cn("w-full flex flex-col gap-3 px-4 py-3", "border-b border-primary/20 bg-card/50 backdrop-blur-sm", className)}>
 			<div className="w-full flex items-center justify-between gap-3">
 				{/* Left section - Icon/Title */}
-				<div className="flex items-center gap-2">
-					<MessageCircle className="w-5 h-5 text-primary" />
-					<h2 className="font-semibold text-base hidden sm:block">Conversas</h2>
-				</div>
-
+				{showPhoneSelector && phoneNumbers.length > 0 ? (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" className="flex items-center gap-2">
+								<MessageCircle className="w-4 h-4 min-w-4 min-h-4" />
+								<h1>{selectedPhoneNumberData?.nome ?? "SELECIONE UM NÚMERO"}</h1>
+								<ChevronDown className="w-4 h-4 min-w-4 min-h-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent className="w-64">
+							<DropdownMenuLabel>NÚMEROS</DropdownMenuLabel>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								{phoneNumbers.map((phone) => (
+									<button key={phone.whatsappTelefoneId} type="button" className="w-full" onClick={() => setSelectedPhoneNumber(phone.whatsappTelefoneId)}>
+										<DropdownMenuItem className="flex items-center justify-between">
+											<div className="flex items-center gap-1">
+												<h1>{phone.nome}</h1>
+											</div>
+											{selectedPhoneNumber === phone.whatsappTelefoneId ? <Check size={15} /> : null}
+										</DropdownMenuItem>
+									</button>
+								))}
+							</DropdownMenuGroup>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				) : null}
 				{/* Right section - Actions */}
 				<div className="flex items-center gap-2">
 					{children}
 
 					{/* Phone Number Selector */}
-					{showPhoneSelector && phoneNumbers.length > 0 && (
-						<Select value={selectedPhoneNumber ?? undefined} onValueChange={(value) => setSelectedPhoneNumber(value)}>
-							<SelectTrigger className="w-[180px] h-10">
-								<SelectValue placeholder="Selecione o número" className="text-xs" />
-							</SelectTrigger>
-							<SelectContent>
-								{phoneNumbers.map((phone) => (
-									<SelectItem key={phone.numero} value={phone.whatsappTelefoneId}>
-										<div className="flex flex-col items-start">
-											<span className="text-xs font-medium">{phone.nome}</span>
-											{/* <span className="text-[0.65rem] text-muted-foreground">{phone.numero}</span> */}
-										</div>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					)}
 
 					{/* New Chat Button */}
 					{onNewChat && (

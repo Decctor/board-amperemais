@@ -11,10 +11,10 @@ const raleway = Raleway({
 });
 export const metadata: Metadata = {
 	title: {
-		default: "Board Ampère Mais",
-		template: "Board Ampère Mais",
+		default: "RecompraCRM",
+		template: "RecompraCRM",
 	},
-	description: "Plataforma de gestão.",
+	description: "Plataforma de otimização de vendas.",
 	icons: [{ rel: "icon", url: "/icon.png" }],
 };
 

@@ -172,16 +172,14 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 						)}
 
 						{/* Transfer Button */}
-						{responsavelTipo !== "AI" && responsavelUsuario && (
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => setTransferDialogIsOpen(true)}
-								className="h-7 w-7 rounded-full hover:bg-primary-foreground/30 text-primary-foreground shrink-0"
-							>
-								<Users className="w-4 h-4" />
-							</Button>
-						)}
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => setTransferDialogIsOpen(true)}
+							className="h-7 w-7 rounded-full hover:bg-primary-foreground/30 text-primary-foreground shrink-0"
+						>
+							<Users className="w-4 h-4" />
+						</Button>
 						<Button
 							variant="ghost"
 							size="icon"
@@ -195,7 +193,7 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 			</div>
 
 			{/* Transfer Dialog */}
-			{user && transferDialogIsOpen && responsavelTipo && (
+			{user && transferDialogIsOpen && (
 				<ServiceTransferDialog
 					closeMenu={() => setTransferDialogIsOpen(false)}
 					serviceId={service.id}

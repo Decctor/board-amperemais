@@ -1,6 +1,6 @@
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import LogoIcon from "@/utils/images/logo-icon.png";
 import Image from "next/image";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 export default function AppSidebarHeader() {
 	return (
 		<SidebarMenu>
@@ -10,7 +10,7 @@ export default function AppSidebarHeader() {
 						<Image src={LogoIcon} alt="Logo Ampère Mais" fill />
 					</div>
 					<div className="grid flex-1 text-left text-sm leading-tight">
-						<span className="truncate font-medium">Board Ampère Mais</span>
+						<span className="truncate font-medium">RecompraCRM</span>
 					</div>
 				</div>
 			</SidebarMenuItem>

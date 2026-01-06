@@ -114,7 +114,7 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 			<div className="py-4 space-y-6">
 				{/* Current responsible */}
 				<div className="flex items-center gap-3">
-					<span className="text-sm text-muted-foreground min-w-[80px]">De:</span>
+					<span className="text-sm text-muted-foreground min-w-[80px]">DE:</span>
 					<div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg flex-1">
 						{currentResponsible === "ai" ? (
 							<>
@@ -140,7 +140,7 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 
 				{/* Transfer type selection */}
 				<div className="space-y-3">
-					<span className="text-sm font-medium text-muted-foreground">Selecione para onde transferir:</span>
+					<span className="text-sm font-medium text-muted-foreground">SELECIONE PARA ONDE TRANSFERIR:</span>
 					<div className="flex flex-col gap-2">
 						{availableOptions.map((option) => (
 							<Button
@@ -176,11 +176,11 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 
 						{/* Target responsible */}
 						<div className="flex items-center gap-3">
-							<span className="text-sm text-muted-foreground min-w-[80px]">Para:</span>
+							<span className="text-sm text-muted-foreground min-w-[80px]">PARA:</span>
 							{transferType === "to-other" ? (
 								<Select value={selectedUserIdApp || ""} onValueChange={setSelectedUserIdApp}>
 									<SelectTrigger className="flex-1">
-										<SelectValue placeholder="Selecione um usuário" />
+										<SelectValue placeholder="SELECIONE UM USUÁRIO" />
 									</SelectTrigger>
 									<SelectContent>
 										{users?.map((user) => (
