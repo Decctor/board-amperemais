@@ -22,6 +22,8 @@ export const whatsappConnections = newTable("whatsapp_connections", {
 export const whatsappConnectionsRelations = relations(whatsappConnections, ({ many }) => ({
 	telefones: many(whatsappConnectionPhones),
 }));
+export type TWhatsappConnection = typeof whatsappConnections.$inferSelect;
+export type TNewWhatsappConnection = typeof whatsappConnections.$inferInsert;
 
 export const whatsappConnectionPhones = newTable("whatsapp_connection_phones", {
 	id: varchar("id", { length: 255 })
@@ -41,3 +43,6 @@ export const whatsappConnectionPhonesRelations = relations(whatsappConnectionPho
 		references: [whatsappConnections.id],
 	}),
 }));
+
+export type TWhatsappConnectionPhone = typeof whatsappConnectionPhones.$inferSelect;
+export type TNewWhatsappConnectionPhone = typeof whatsappConnectionPhones.$inferInsert;

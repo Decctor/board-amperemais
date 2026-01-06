@@ -1,8 +1,8 @@
-import { api } from "@/convex/_generated/api";
 import { FacebookOAuth } from "@/lib/authentication/oauth";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
+import { db } from "@/services/drizzle";
+import { type TNewWhatsappConnection, whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema";
 
-import { ConvexHttpClient } from "convex/browser";
 import dayjs from "dayjs";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -15,22 +15,6 @@ type TWhatsappIntegrationData = {
 	metaEscopo: string[];
 	telefones: { nome: string; whatsappBusinessAccountId: string; whatsappTelefoneId: string; numero: string }[];
 };
-const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL as string;
-// Este é um pseudo-código para o banco de dados. Adapte para sua implementação (Prisma, etc.)
-async function saveCredentialsToDB(whatsappConnection: TWhatsappIntegrationData) {
-	console.log("Salvando no DB:", { whatsappConnection });
-	const convex = new ConvexHttpClient(CONVEX_URL);
-	// LÓGICA DO SEU BANCO DE DADOS AQUI
-	await convex.mutation(api.mutations.connections.syncWhatsappConnection, {
-		organizacaoId: whatsappConnection.organizacaoId,
-		token: whatsappConnection.token,
-		dataExpiracao: new Date(whatsappConnection.dataExpiracao).getTime(),
-		metaAutorAppId: whatsappConnection.metaAutorAppId,
-		metaEscopo: whatsappConnection.metaEscopo,
-		telefones: whatsappConnection.telefones,
-	});
-	return true;
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 	// Get user session to determine organization
@@ -113,16 +97,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		)
 	).filter((p) => !!p);
 
-	const whatsappConnection: TWhatsappIntegrationData = {
-		tipo: "WHATSAPP",
-		organizacaoId: userOrgId,
-		token: accessToken ?? "",
-		dataExpiracao: accessTokenExpiresAt?.toISOString() ?? dayjs().add(1, "month").toISOString(),
-		metaAutorAppId: debugData.data?.user_id,
-		metaEscopo: debugData.data?.scopes,
-		telefones: phones,
-	};
+	await db.transaction(async (tx) => {
+		const whatsappConnection: TNewWhatsappConnection = {
+			organizacaoId: userOrgId,
+			token: accessToken ?? "",
+			dataExpiracao: accessTokenExpiresAt ?? dayjs().add(1, "month").toDate(),
+			autorId: sessionUser.user.id,
+			metaEscopo: debugData.data?.scopes.join(","),
+		};
 
-	await saveCredentialsToDB(whatsappConnection);
+		const insertedWhatsappConnection = await tx.insert(whatsappConnections).values(whatsappConnection).returning({ id: whatsappConnections.id });
+		const insertedWhatsappConnectionId = insertedWhatsappConnection[0]?.id;
+		if (!insertedWhatsappConnectionId) throw new Error("Failed to insert whatsapp connection");
+
+		const insertedWhatsappConnectionPhones = await tx
+			.insert(whatsappConnectionPhones)
+			.values(
+				phones.map((phone) => ({
+					conexaoId: insertedWhatsappConnectionId,
+					nome: phone.nome,
+					whatsappBusinessAccountId: phone.whatsappBusinessAccountId,
+					whatsappTelefoneId: phone.whatsappTelefoneId,
+					numero: phone.numero,
+				})),
+			)
+			.returning({ id: whatsappConnectionPhones.id });
+	});
+
 	return res.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?view=meta-oauth`);
 }

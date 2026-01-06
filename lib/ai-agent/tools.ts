@@ -1,7 +1,4 @@
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { tool } from "ai";
-import { fetchMutation } from "convex/nextjs";
 import z from "zod";
 import {
 	getAvailableProductGroups,
@@ -12,6 +9,7 @@ import {
 	getProductsByGroup,
 	searchProducts,
 } from "./database-tools";
+import { transferServiceToHuman } from "./transfer-service-to-human";
 
 // ============================================================================
 // Customer Purchase History Tools
@@ -167,35 +165,6 @@ export const getProductByCodeTool = tool({
 // Service Management Tools
 // ============================================================================
 
-export const createServiceTicketTool = tool({
-	description: `Cria um ticket de atendimento para acompanhamento. Use quando:
-- Cliente relata um problema que precisa follow-up
-- Cliente solicita um orçamento
-- Cliente pede informações que requerem consulta
-- Cliente expressa necessidade que precisa ação da equipe (visita, agendamento, etc)
-SEMPRE crie um ticket para garantir que a solicitação seja acompanhada.`,
-	inputSchema: z
-		.object({
-			chatId: z.string().describe("ID do chat/conversa atual"),
-			clientId: z.string().describe("ID do cliente no banco de dados"),
-			description: z.string().describe("Descrição clara e detalhada do atendimento (inclua contexto importante da conversa)"),
-		})
-		.strict(),
-	execute: async ({ chatId, clientId, description }) => {
-		// Return metadata that will be processed by the Convex action
-		return {
-			success: true,
-			action: "create_ticket",
-			data: {
-				chatId,
-				clientId,
-				description,
-			},
-			message: "Ticket de atendimento será criado. Continue a conversa informando o cliente.",
-		};
-	},
-});
-
 export const transferToHumanTool = tool({
 	description: `⚠️ FERRAMENTA CRÍTICA - Transfere o atendimento para um atendente humano.
 
@@ -253,9 +222,9 @@ SOLICITAÇÃO DIRETA (sempre transferir):
 			clientId,
 			conversationSummary,
 		});
-		await fetchMutation(api.mutations.services.transferServiceToHuman, {
-			chatId: chatId as Id<"chats">,
-			clienteIdApp: clientId,
+		await transferServiceToHuman({
+			chatId,
+			clientId,
 			reason,
 			conversationSummary,
 		});
@@ -281,6 +250,5 @@ export const agentTools = {
 	get_products_by_group: getProductsByGroupTool,
 	get_product_by_code: getProductByCodeTool,
 	get_available_product_groups: getAvailableProductGroupsTool,
-	create_service_ticket: createServiceTicketTool,
 	transfer_to_human: transferToHumanTool,
 };

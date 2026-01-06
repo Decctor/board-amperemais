@@ -1,12 +1,9 @@
-import { api, internal } from "@/convex/_generated/api";
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import type { TInteractionsCronJobTimeBlocksEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { chatMessages, interactions, organizations } from "@/services/drizzle/schema";
-import { ConvexHttpClient } from "convex/browser";
-import { fetchMutation } from "convex/nextjs";
 import dayjs from "dayjs";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { NextApiHandler } from "next";

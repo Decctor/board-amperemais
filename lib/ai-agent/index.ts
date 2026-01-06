@@ -1,4 +1,3 @@
-import type { Id } from "@/convex/_generated/dataModel";
 import type { TChatMessageEntity } from "@/services/drizzle/schema";
 import { createOpenAI } from "@ai-sdk/openai";
 import { Experimental_Agent as Agent, Output, stepCountIs } from "ai";
