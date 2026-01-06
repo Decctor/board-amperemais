@@ -4,8 +4,6 @@ import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connection
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { api } from "@/convex/_generated/api";
-import { useConvexQuery } from "@/convex/utils";
 import { cn } from "@/lib/utils";
 import { MessageCircle, Plus, Search, X } from "lucide-react";
 import type { ReactNode } from "react";

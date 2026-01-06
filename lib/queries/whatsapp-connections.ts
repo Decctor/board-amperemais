@@ -13,8 +13,11 @@ async function fetchWhatsappConnection() {
 }
 
 export function useWhatsappConnection() {
-	return useQuery({
+	return {
+		...useQuery({
+			queryKey: ["whatsapp-connection"],
+			queryFn: fetchWhatsappConnection,
+		}),
 		queryKey: ["whatsapp-connection"],
-		queryFn: fetchWhatsappConnection,
-	});
+	};
 }

@@ -1,9 +1,7 @@
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import { api } from "@/convex/_generated/api";
-import { useConvexQuery } from "@/convex/utils";
+import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
-import { whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
 import { Send } from "lucide-react";
 
@@ -14,9 +12,9 @@ type CampaignsActionBlockProps = {
 };
 export default function CampaignsActionBlock({ organizationId, campaign, updateCampaign }: CampaignsActionBlockProps) {
 	const { data: whatsappTemplatesResult } = useWhatsappTemplates({ initialParams: { page: 1, search: "" } });
-	const { data: whatsappConnectionsResult } = useConvexQuery(api.queries.connections.getWhatsappConnection, { organizacaoId: organizationId });
+	const { data: whatsappConnection } = useWhatsappConnection();
 	const whatsappConnectionPhones =
-		whatsappConnectionsResult?.telefones.map((v) => ({ id: v.whatsappTelefoneId, label: v.numero, value: v.whatsappTelefoneId })) ?? [];
+		whatsappConnection?.telefones.map((v) => ({ id: v.whatsappTelefoneId, label: v.numero, value: v.whatsappTelefoneId })) ?? [];
 	const whatsappTemplates = whatsappTemplatesResult?.whatsappTemplates ?? [];
 	return (
 		<ResponsiveMenuSection title="AÇÃO" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
