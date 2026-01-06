@@ -112,10 +112,13 @@ const UtilsSalesPromoCampaignSchema = z.object({
 						.optional()
 						.nullable(),
 					valorBase: z.number({ required_error: "Valor base não informado.", invalid_type_error: "Tipo não válido para o valor base." }),
-					valorPromocional: z.number({
-						required_error: "Valor promocional não informado.",
-						invalid_type_error: "Tipo não válido para o valor promocional.",
-					}),
+					valorPromocional: z
+						.number({
+							required_error: "Valor promocional não informado.",
+							invalid_type_error: "Tipo não válido para o valor promocional.",
+						})
+						.optional()
+						.nullable(),
 					anuncioData: z
 						.string({ required_error: "Data de anúncio não informada.", invalid_type_error: "Tipo não válido para a data de anúncio." })
 						.optional(),

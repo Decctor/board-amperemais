@@ -1,4 +1,5 @@
 import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsInput, TGetProductsOutput } from "@/pages/api/products";
+import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/pages/api/products/by-codes";
 import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/pages/api/products/graph";
 import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/pages/api/products/search";
 import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/pages/api/products/stats";
@@ -190,4 +191,16 @@ export function useProductsBySearch({ initialParams }: UseProductsBySearchParams
 		params,
 		updateParams,
 	};
+}
+
+export async function fetchProductsByCodes(input: TGetProductsByCodesInput) {
+	try {
+		const urlParams = new URLSearchParams();
+		urlParams.set("codes", input.codes.join(","));
+		const { data } = await axios.get<TGetProductsByCodesOutput>(`/api/products/by-codes?${urlParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchProductsByCodes", error);
+		throw error;
+	}
 }

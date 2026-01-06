@@ -89,7 +89,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 
 			const OnlineSoftwareSalesIds = OnlineSoftwareSales.map((sale) => sale.id);
 
-			return await db.transaction(async (tx) => {
+			await db.transaction(async (tx) => {
 				const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
 					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
 					columns: {

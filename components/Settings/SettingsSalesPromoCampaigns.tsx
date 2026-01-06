@@ -33,7 +33,7 @@ export default function SettingsSalesPromoCampaigns({ user }: SettingsSalesPromo
 				<div className="flex items-center gap-2">
 					<Button size="sm" className="flex items-center gap-2" onClick={() => setNewSalesPromoCampaignModalIsOpen(true)}>
 						<Plus className="w-4 h-4 min-w-4 min-h-4" />
-						NOVA CAMPANHA DE PROMOÇÃO DE VENDAS
+						NOVA CAMPANHA
 					</Button>
 				</div>
 			</div>
@@ -85,26 +85,26 @@ function SalesPromoCampaignCard({ salesPromoCampaign, handleClick }: SalesPromoC
 						</h1>
 					</div>
 					{utilData.dados.rastrearRankingVendedores ? (
-						<div className="flex items-center gap-1">
+						<div className="hidden md:flex items-center gap-1">
 							<Trophy className="w-4 h-4 min-w-4 min-h-4" />
 							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">RANKING DE VENDEDORES</h1>
 						</div>
 					) : null}
 
 					{utilData.dados.rastrearRankingProdutos ? (
-						<div className="flex items-center gap-1">
+						<div className="hidden md:flex items-center gap-1">
 							<Trophy className="w-4 h-4 min-w-4 min-h-4" />
 							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">RANKING DE PRODUTOS</h1>
 						</div>
 					) : null}
 					{utilData.dados.rastrearRankingParceiros ? (
-						<div className="flex items-center gap-1">
+						<div className="hidden md:flex items-center gap-1">
 							<Trophy className="w-4 h-4 min-w-4 min-h-4" />
 							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">RANKING DE PARCEIROS</h1>
 						</div>
 					) : null}
 				</div>
-				<div className="w-full flex items-center justify-end">
+				<div className="w-full flex items-center justify-end flex-col md:flex-row gap-y-1 gap-x-2">
 					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleClick(salesPromoCampaign.id)}>
 						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
 						EDITAR

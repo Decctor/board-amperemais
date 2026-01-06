@@ -1,3 +1,4 @@
+import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import DateInput from "@/components/Inputs/DateInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
@@ -5,30 +6,151 @@ import TextInput from "@/components/Inputs/TextInput";
 import ProductVinculation from "@/components/Modals/Products/ProductVinculation";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { getDateFromExcelSerialDate } from "@/lib/dates";
+import { getJSONFromExcelFile } from "@/lib/excel-utils";
 import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange, formatToMoney } from "@/lib/formatting";
+import { fetchProductsByCodes } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
 import { isValidNumber } from "@/lib/validation";
 import type { TUtilsSalesPromoCampaignConfig } from "@/schemas/utils";
 import { Code, Pencil, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import z from "zod";
 
+const SalesPromoSheetSchema = z.array(
+	z.object({
+		CÓDIGO: z
+			.union([
+				z.string({
+					required_error: "Código não informado.",
+					invalid_type_error: "Tipo não válido para o código.",
+				}),
+				z.number({
+					required_error: "Código não informado.",
+					invalid_type_error: "Tipo não válido para o código.",
+				}),
+			])
+			.transform((val) => (typeof val === "string" ? val : String(val))),
+		"VALOR BASE": z
+			.union([
+				z.number({
+					required_error: "Valor base não informado.",
+					invalid_type_error: "Tipo não válido para o valor base.",
+				}),
+				z.string({
+					required_error: "Valor base não informado.",
+					invalid_type_error: "Tipo não válido para o valor base.",
+				}),
+			])
+			.transform((val) => Number(val)),
+		"VALOR PROMOCIONAL": z
+			.union([z.number(), z.string()])
+			.optional()
+			.nullable()
+			.transform((val) => (val ? Number(val) : undefined)),
+		ETIQUETA: z.enum(["PROMO-A4", "PROMO-GRID-1/16"]),
+		"CONDIÇÃO ESPECIAL - DATA": z
+			.union([
+				z.number({
+					invalid_type_error: "Tipo não válido para a data da condição especial.",
+				}),
+				z.string({
+					invalid_type_error: "Tipo não válido para a data da condição especial.",
+				}),
+			])
+			.transform((val) => {
+				if (typeof val === "number") {
+					// Excel serial date - convert to ISO string
+					return getDateFromExcelSerialDate({ value: val }).toISOString();
+				}
+				// Already a string - return as is (or parse if needed)
+				return val;
+			})
+			.optional(),
+		"CONDIÇÃO ESPECIAL - VALOR": z
+			.union([
+				z.number({
+					required_error: "Valor da condição especial não informado.",
+					invalid_type_error: "Tipo não válido para o valor da condição especial.",
+				}),
+				z.string({
+					required_error: "Valor da condição especial não informado.",
+					invalid_type_error: "Tipo não válido para o valor da condição especial.",
+				}),
+			])
+			.transform((val) => Number(val))
+			.optional(),
+	}),
+);
+type TSalesPromoSheet = z.infer<typeof SalesPromoSheetSchema>;
 type SalesPromoCampaignItemsBlockProps = {
 	items: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"];
 	addItem: (item: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]) => void;
+	addMultipleItems: (items: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"]) => void;
 	updateItem: (index: number, changes: Partial<TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]>) => void;
 	deleteItem: (index: number) => void;
 };
-export default function SalesPromoCampaignItemsBlock({ items, addItem, updateItem, deleteItem }: SalesPromoCampaignItemsBlockProps) {
+export default function SalesPromoCampaignItemsBlock({
+	items,
+	addItem,
+	addMultipleItems,
+	updateItem,
+	deleteItem,
+}: SalesPromoCampaignItemsBlockProps) {
 	const [newCompositionItemMenuIsOpen, setNewCompositionItemMenuIsOpen] = useState(false);
 	const [editCompositionItemIndex, setEditCompositionItemIndex] = useState<number | null>(null);
 
 	const editingItem = isValidNumber(editCompositionItemIndex) ? items[editCompositionItemIndex as number] : null;
+
+	async function handleParseSalesPromoSheet(file: File | undefined) {
+		if (!file) return toast.error("Arquivo não informado.");
+		const rawData = await getJSONFromExcelFile(file);
+		console.log("Raw data", rawData);
+		const data = SalesPromoSheetSchema.parse(rawData);
+		console.log("Parsed data", data);
+		const productCodes = data.map((item) => item.CÓDIGO);
+		const dataProducts = await fetchProductsByCodes({ codes: productCodes });
+
+		const formattedItems: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"] = data
+			.map((item) => {
+				const product = dataProducts.find((product) => product.codigo === item.CÓDIGO);
+				if (!product) return null;
+				return {
+					produtoId: product?.id,
+					produtoNome: product?.descricao,
+					valorBase: item["VALOR BASE"],
+					valorPromocional: item["VALOR PROMOCIONAL"],
+					etiqueta: item.ETIQUETA,
+
+					...(item["CONDIÇÃO ESPECIAL - DATA"] && { anuncioData: item["CONDIÇÃO ESPECIAL - DATA"] }),
+					...(item["CONDIÇÃO ESPECIAL - VALOR"] && { anuncioValorPromocional: item["CONDIÇÃO ESPECIAL - VALOR"] }),
+				};
+			})
+			.filter((item) => item !== null);
+
+		return addMultipleItems(formattedItems);
+	}
 	return (
 		<ResponsiveMenuSection title="ITENS" icon={<ShoppingCart className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex items-center justify-end">
 				<div className="w-full flex items-center justify-end">
+					<Button size="fit" variant="ghost" className="flex items-center gap-1 px-2 py-1 text-xs" asChild>
+						<label htmlFor="sales-promo-sheet-input">
+							<Input
+								type="file"
+								id="sales-promo-sheet-input"
+								accept=".xlsx"
+								onChange={(e) => handleParseSalesPromoSheet(e.target.files?.[0])}
+								className="hidden"
+							/>
+							<Code className="w-4 h-4 min-w-4 min-h-4" />
+							IMPORTAR PLANILHA
+						</label>
+					</Button>
+
 					<Button
 						onClick={() => setNewCompositionItemMenuIsOpen((prev) => !prev)}
 						size="fit"
@@ -80,8 +202,14 @@ function ItemCard({ item, handleRemoveClick, handleEditClick }: ItemCardProps) {
 				</div>
 			</div>
 			<div className="flex items-center gap-2 self-center">
-				<p className="line-through text-xs text-primary/80">DE {formatToMoney(item.valorBase)}</p>
-				<p className="text-xs font-medium">{formatToMoney(item.valorPromocional)}</p>
+				{item.valorPromocional ? (
+					<>
+						<p className="line-through text-xs text-primary/80">DE {formatToMoney(item.valorBase)}</p>
+						<p className="text-xs font-medium">{formatToMoney(item.valorPromocional)}</p>
+					</>
+				) : (
+					<p className="text-xs font-medium">{formatToMoney(item.valorBase)}</p>
+				)}
 			</div>
 			{item.anuncioData && item.anuncioValorPromocional ? (
 				<p className="w-fit self-center text-xs px-2 py-1 bg-green-100 text-green-600 rounded-lg text-center">
@@ -193,12 +321,20 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 				placeholder="Digite o valor base do item"
 				handleChange={(value) => setItemHolder({ ...itemHolder, valorBase: value })}
 			/>
-			<NumberInput
-				label="VALOR PROMOCIONAL"
-				value={itemHolder.valorPromocional}
-				placeholder="Digite o valor promocional do item"
-				handleChange={(value) => setItemHolder({ ...itemHolder, valorPromocional: value })}
+			<CheckboxInput
+				labelTrue="ITEM PROMOCIONAL"
+				labelFalse="ITEM PROMOCIONAL"
+				checked={isValidNumber(itemHolder.valorPromocional)}
+				handleChange={(value) => setItemHolder((prev) => ({ ...prev, valorPromocional: value ? 0 : null }))}
 			/>
+			{isValidNumber(itemHolder.valorPromocional) ? (
+				<NumberInput
+					label="VALOR PROMOCIONAL"
+					value={itemHolder.valorPromocional ?? null}
+					placeholder="Digite o valor promocional do item"
+					handleChange={(value) => setItemHolder({ ...itemHolder, valorPromocional: value })}
+				/>
+			) : null}
 			<SelectInput
 				label="ETIQUETA"
 				value={itemHolder.etiqueta}
@@ -261,7 +397,6 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 	function validateAndUpdateItem(info: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]) {
 		if (!info.produtos.length) return toast.error("Selecione ao menos um produto.");
 		if (!info.valorBase) return toast.error("Valor base não informado.");
-		if (!info.valorPromocional) return toast.error("Valor promocional não informado.");
 		if (!info.etiqueta) return toast.error("Etiqueta não informada.");
 		updateItem(info);
 		return closeMenu();
@@ -331,12 +466,20 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 				placeholder="Digite o valor base do item"
 				handleChange={(value) => setItemHolder({ ...itemHolder, valorBase: value })}
 			/>
-			<NumberInput
-				label="VALOR PROMOCIONAL"
-				value={itemHolder.valorPromocional}
-				placeholder="Digite o valor promocional do item"
-				handleChange={(value) => setItemHolder({ ...itemHolder, valorPromocional: value })}
+			<CheckboxInput
+				labelTrue="ITEM PROMOCIONAL"
+				labelFalse="ITEM PROMOCIONAL"
+				checked={isValidNumber(itemHolder.valorPromocional)}
+				handleChange={(value) => setItemHolder((prev) => ({ ...prev, valorPromocional: value ? 0 : null }))}
 			/>
+			{isValidNumber(itemHolder.valorPromocional) ? (
+				<NumberInput
+					label="VALOR PROMOCIONAL"
+					value={itemHolder.valorPromocional ?? null}
+					placeholder="Digite o valor promocional do item"
+					handleChange={(value) => setItemHolder({ ...itemHolder, valorPromocional: value })}
+				/>
+			) : null}
 			<SelectInput
 				label="ETIQUETA"
 				value={itemHolder.etiqueta}

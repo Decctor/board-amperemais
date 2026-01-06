@@ -1,6 +1,8 @@
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
+import { updateUtil as updateUtilMutation } from "@/lib/mutations/utils";
+import { useUtilsById } from "@/lib/queries/utils";
 import type { TUtilsSalesPromoCampaignConfig } from "@/schemas/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -8,10 +10,8 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import SalesPromoCampaignItemsBlock from "./Blocks/Items";
 import SalesPromoCampaignStatsBlock from "./Blocks/Stats";
-import { useUtilsById } from "@/lib/queries/utils";
-import { updateUtil  as updateUtilMutation} from "@/lib/mutations/utils";
 type ControlSalesPromoCampaignProps = {
-    salesPromoCampaignId: string;
+	salesPromoCampaignId: string;
 	callbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -21,8 +21,8 @@ type ControlSalesPromoCampaignProps = {
 	closeModal: () => void;
 };
 export default function ControlSalesPromoCampaign({ salesPromoCampaignId, callbacks, closeModal }: ControlSalesPromoCampaignProps) {
-    const queryClient = useQueryClient();
-    const { data: salesPromoCampaign, queryKey, isLoading, isError, isSuccess, error } = useUtilsById({ id: salesPromoCampaignId });
+	const queryClient = useQueryClient();
+	const { data: salesPromoCampaign, queryKey, isLoading, isError, isSuccess, error } = useUtilsById({ id: salesPromoCampaignId });
 	const [infoHolder, setInfoHolder] = useState<TUtilsSalesPromoCampaignConfig>({
 		identificador: "SALES_PROMO_CAMPAIGN",
 		valor: {
@@ -56,6 +56,12 @@ export default function ControlSalesPromoCampaign({ salesPromoCampaignId, callba
 			valor: { ...prev.valor, dados: { ...prev.valor.dados, itens: [...prev.valor.dados.itens, item] } },
 		}));
 	}, []);
+	const addMultipleUtilItems = useCallback((items: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number][]) => {
+		setInfoHolder((prev) => ({
+			...prev,
+			valor: { ...prev.valor, dados: { ...prev.valor.dados, itens: [...prev.valor.dados.itens, ...items] } },
+		}));
+	}, []);
 	const updateUtilItem = useCallback((index: number, changes: Partial<TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]>) => {
 		setInfoHolder((prev) => ({
 			...prev,
@@ -76,7 +82,7 @@ export default function ControlSalesPromoCampaign({ salesPromoCampaignId, callba
 		mutationKey: ["update-sales-promo-campaign"],
 		mutationFn: updateUtilMutation,
 		onMutate: async () => {
-            await queryClient.cancelQueries({ queryKey });
+			await queryClient.cancelQueries({ queryKey });
 			if (callbacks?.onMutate) callbacks.onMutate();
 			return;
 		},
@@ -84,27 +90,27 @@ export default function ControlSalesPromoCampaign({ salesPromoCampaignId, callba
 			if (callbacks?.onSuccess) callbacks.onSuccess();
 			return toast.success(data.message);
 		},
-        onSettled: async () => {
-            await queryClient.invalidateQueries({ queryKey });
-            if (callbacks?.onSettled) callbacks.onSettled();
-        },
+		onSettled: async () => {
+			await queryClient.invalidateQueries({ queryKey });
+			if (callbacks?.onSettled) callbacks.onSettled();
+		},
 		onError: async (error) => {
 			if (callbacks?.onError) callbacks.onError();
 			return toast.error(getErrorMessage(error));
 		},
 	});
-    useEffect(() => {
-        if (salesPromoCampaign) {
-            if(salesPromoCampaign.valor.identificador !== "SALES_PROMO_CAMPAIGN") return;
-            setInfoHolder({
-                identificador: "SALES_PROMO_CAMPAIGN",
-                valor: {
-                    identificador: "SALES_PROMO_CAMPAIGN",
-                    dados: salesPromoCampaign.valor.dados,
-                },
-            });
-        }
-    }, [salesPromoCampaign, setInfoHolder]);
+	useEffect(() => {
+		if (salesPromoCampaign) {
+			if (salesPromoCampaign.valor.identificador !== "SALES_PROMO_CAMPAIGN") return;
+			setInfoHolder({
+				identificador: "SALES_PROMO_CAMPAIGN",
+				valor: {
+					identificador: "SALES_PROMO_CAMPAIGN",
+					dados: salesPromoCampaign.valor.dados,
+				},
+			});
+		}
+	}, [salesPromoCampaign, setInfoHolder]);
 	return (
 		<ResponsiveMenu
 			menuTitle="EDITAR CAMPANHA DE PROMOÇÃO DE VENDAS"
@@ -116,6 +122,7 @@ export default function ControlSalesPromoCampaign({ salesPromoCampaignId, callba
 			stateIsLoading={isLoading}
 			stateError={error ? getErrorMessage(error) : null}
 			closeMenu={closeModal}
+			dialogVariant="md"
 		>
 			<TextInput
 				label="TÍTULO"
@@ -124,7 +131,13 @@ export default function ControlSalesPromoCampaign({ salesPromoCampaignId, callba
 				handleChange={(value) => updateUtil({ titulo: value })}
 			/>
 			<SalesPromoCampaignStatsBlock utilData={infoHolder.valor.dados} updateUtilData={updateUtil} />
-			<SalesPromoCampaignItemsBlock items={infoHolder.valor.dados.itens} addItem={addUtilItem} updateItem={updateUtilItem} deleteItem={deleteUtilItem} />
+			<SalesPromoCampaignItemsBlock
+				items={infoHolder.valor.dados.itens}
+				addItem={addUtilItem}
+				addMultipleItems={addMultipleUtilItems}
+				updateItem={updateUtilItem}
+				deleteItem={deleteUtilItem}
+			/>
 		</ResponsiveMenu>
 	);
 }

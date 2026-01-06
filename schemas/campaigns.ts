@@ -38,6 +38,10 @@ export const CampaignSchema = z.object({
 	}),
 	execucaoAgendadaBloco: InteractionsCronJobTimeBlocksEnum,
 	// Whatsapp specific
+	whatsappTelefoneId: z.string({
+		required_error: "ID do telefone do WhatsApp não informado.",
+		invalid_type_error: "Tipo não válido para o ID do telefone do WhatsApp.",
+	}),
 	whatsappTemplateId: z.string({
 		required_error: "ID do template do WhatsApp não informado.",
 		invalid_type_error: "Tipo não válido para o ID do template do WhatsApp.",

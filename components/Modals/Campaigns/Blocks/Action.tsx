@@ -1,20 +1,36 @@
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { api } from "@/convex/_generated/api";
+import { useConvexQuery } from "@/convex/utils";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
+import { whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
 import { Send } from "lucide-react";
 
 type CampaignsActionBlockProps = {
+	organizationId: string;
 	campaign: TUseCampaignState["state"]["campaign"];
 	updateCampaign: TUseCampaignState["updateCampaign"];
 };
-export default function CampaignsActionBlock({ campaign, updateCampaign }: CampaignsActionBlockProps) {
+export default function CampaignsActionBlock({ organizationId, campaign, updateCampaign }: CampaignsActionBlockProps) {
 	const { data: whatsappTemplatesResult } = useWhatsappTemplates({ initialParams: { page: 1, search: "" } });
+	const { data: whatsappConnectionsResult } = useConvexQuery(api.queries.connections.getWhatsappConnection, { organizacaoId: organizationId });
+	const whatsappConnectionPhones =
+		whatsappConnectionsResult?.telefones.map((v) => ({ id: v.whatsappTelefoneId, label: v.numero, value: v.whatsappTelefoneId })) ?? [];
 	const whatsappTemplates = whatsappTemplatesResult?.whatsappTemplates ?? [];
 	return (
 		<ResponsiveMenuSection title="AÇÃO" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex flex-col gap-1">
 				<p className="text-center text-sm tracking-tigh text-muted-foreground">Defina o template do WhatsApp que deve ser enviado.</p>
+				<SelectInput
+					label="TELEFONE DO WHATSAPP"
+					value={campaign.whatsappTelefoneId}
+					selectedItemLabel="SELECIONE O TELEFONE"
+					options={whatsappConnectionPhones}
+					handleChange={(value) => updateCampaign({ whatsappTelefoneId: value })}
+					onReset={() => updateCampaign({ whatsappTelefoneId: "" })}
+					width="100%"
+				/>
 				<SelectInput
 					label="TEMPLATE DO WHATSAPP"
 					value={campaign.whatsappTemplateId}

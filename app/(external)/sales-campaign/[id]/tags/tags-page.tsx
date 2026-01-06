@@ -55,7 +55,7 @@ function PromoTag({
 	className?: string;
 	isCompact?: boolean;
 }) {
-	const discountPercent = Math.round(((item.valorBase - item.valorPromocional) / item.valorBase) * 100);
+	const discountPercent = item.valorPromocional ? Math.round(((item.valorBase - item.valorPromocional) / item.valorBase) * 100) : 0;
 	const startDate = new Date(campaign.periodoEstatistico.inicio).toLocaleDateString("pt-BR");
 	const endDate = new Date(campaign.periodoEstatistico.fim).toLocaleDateString("pt-BR");
 
@@ -63,24 +63,37 @@ function PromoTag({
 		return (
 			<div className={`relative bg-[#085D9E] overflow-hidden flex flex-col ${className}`}>
 				<div className="w-full grow flex flex-col gap-2 bg-[#FFCB00] rounded-bl-2xl rounded-br-2xl p-2">
-					<h1 className="text-center text-[0.7rem] text-[#085D9E] font-black leading-tight">SUPER OFERTAS DA SEMANA</h1>
+					{item.valorPromocional ? <h1 className="text-center text-[0.7rem] text-[#085D9E] font-black leading-tight">SUPER OFERTAS DA SEMANA</h1> : null}
 					<div className="w-full grow bg-white flex flex-col gap-2 justify-end items-center p-2 rounded-lg relative">
-						<div className="absolute top-0 right-0 bg-red-500 text-white flex items-center gap-1 rounded-tr-lg px-2 py-0.5">
-							<span className="text-[0.6rem] font-semibold">{discountPercent}% OFF</span>
-							<BadgePercent className="w-3 h-3 min-w-3 min-h-3" />
-						</div>
-						<div className="flex flex-col gap-0.5 items-center justify-center w-full mt-3">
-							{/* Preço antigo */}
-							<p className="text-[0.5rem] font-semibold text-black/80">
-								DE <span className="line-through">R$ {item.valorBase.toFixed(2).replace(".", ",")}</span>
-							</p>
-							{/* Preço promocional */}
-							<div className="flex items-baseline justify-center">
-								<span className="text-lg font-black leading-none">R$</span>
-								<span className="text-5xl font-black ml-0.5 leading-none">{Math.floor(item.valorPromocional)}</span>
-								<span className="text-lg font-black leading-none">,{(item.valorPromocional % 1).toFixed(2).split(".")[1]}</span>
+						{item.valorPromocional ? (
+							<>
+								<div className="absolute top-0 right-0 bg-red-500 text-white flex items-center gap-1 rounded-tr-lg px-2 py-0.5">
+									<span className="text-[0.6rem] font-semibold">{discountPercent}% OFF</span>
+									<BadgePercent className="w-3 h-3 min-w-3 min-h-3" />
+								</div>
+								<div className="flex flex-col gap-0.5 items-center justify-center w-full mt-3">
+									{/* Preço antigo */}
+									<p className="text-[0.5rem] font-semibold text-black/80">
+										DE <span className="line-through">R$ {item.valorBase.toFixed(2).replace(".", ",")}</span>
+									</p>
+									{/* Preço promocional */}
+									<div className="flex items-baseline justify-center text-black">
+										<span className="text-lg font-black leading-none">R$</span>
+										<span className="text-5xl font-black ml-0.5 leading-none">{Math.floor(item.valorPromocional)}</span>
+										<span className="text-lg font-black leading-none">,{(item.valorPromocional % 1).toFixed(2).split(".")[1]}</span>
+									</div>
+								</div>
+							</>
+						) : (
+							<div className="flex flex-col gap-0.5 items-center justify-center w-full mt-3">
+								<div className="flex items-baseline justify-center text-black">
+									<span className="text-lg font-black leading-none">R$</span>
+									<span className="text-5xl font-black ml-0.5 leading-none">{Math.floor(item.valorBase)}</span>
+									<span className="text-lg font-black leading-none">,{(item.valorBase % 1).toFixed(2).split(".")[1]}</span>
+								</div>
 							</div>
-						</div>
+						)}
+
 						{/* Nome do produto */}
 						<h3 className="text-center text-[0.8rem] font-black text-black leading-tight line-clamp-2">{item.titulo}</h3>
 					</div>
@@ -103,22 +116,34 @@ function PromoTag({
 			<div className="w-full grow flex flex-col gap-16 bg-[#FFCB00] rounded-bl-4xl rounded-br-4xl py-12 px-12">
 				<h1 className="text-center text-[3rem] text-[#085D9E] font-black leading-tight">SUPER OFERTAS DA SEMANA</h1>
 				<div className="w-full grow bg-white flex flex-col gap-10 justify-end items-center px-12 py-16 rounded-xl relative">
-					<div className="absolute top-0 right-0 bg-red-500 text-white flex items-center gap-1.5 rounded-tr-xl px-4 py-2">
-						<span className="text-[2rem] font-semibold">{discountPercent}% OFF</span>
-						<BadgePercent className="w-8 h-8 min-w-8 min-h-8" />
-					</div>
-					<div className="flex flex-col gap-1 items-center justify-center w-full">
-						{/* Preço antigo */}
-						<p className="text-xl font-semibold text-black/80">
-							DE <span className="line-through">R$ {item.valorBase.toFixed(2).replace(".", ",")}</span>
-						</p>
-						{/* Preço promocional */}
-						<div className="flex items-baseline justify-center">
-							<span className="text-[2.5rem] font-black leading-none">R$</span>
-							<span className="text-[7.5rem] font-black ml-0.5 leading-none">{Math.floor(item.valorPromocional)}</span>
-							<span className="text-[2.5rem] font-black leading-none">,{(item.valorPromocional % 1).toFixed(2).split(".")[1]}</span>
-						</div>
-					</div>
+					{item.valorPromocional ? (
+						<>
+							<div className="absolute top-0 right-0 bg-red-500 text-white flex items-center gap-1.5 rounded-tr-xl px-4 py-2">
+								<span className="text-[2rem] font-semibold">{discountPercent}% OFF</span>
+								<BadgePercent className="w-8 h-8 min-w-8 min-h-8" />
+							</div>
+							<div className="flex flex-col gap-1 items-center justify-center w-full">
+								{/* Preço antigo */}
+								<p className="text-xl font-semibold text-black/80">
+									DE <span className="line-through">R$ {item.valorBase.toFixed(2).replace(".", ",")}</span>
+								</p>
+								{/* Preço promocional */}
+								<div className="flex items-baseline justify-center text-black">
+									<span className="text-[2.5rem] font-black leading-none">R$</span>
+									<span className="text-[7.5rem] font-black ml-0.5 leading-none">{Math.floor(item.valorPromocional)}</span>
+									<span className="text-[2.5rem] font-black leading-none">,{(item.valorPromocional % 1).toFixed(2).split(".")[1]}</span>
+								</div>
+							</div>
+						</>
+					) : (
+						<>
+							<div className="flex items-baseline justify-center text-black">
+								<span className="text-[2.5rem] font-black leading-none">R$</span>
+								<span className="text-[7.5rem] font-black ml-0.5 leading-none">{Math.floor(item.valorBase)}</span>
+								<span className="text-[2.5rem] font-black leading-none">,{(item.valorBase % 1).toFixed(2).split(".")[1]}</span>
+							</div>
+						</>
+					)}
 					{/* Nome do produto */}
 					<h3 className="text-center text-[2.5rem] font-black text-black leading-tight">{item.titulo}</h3>
 				</div>

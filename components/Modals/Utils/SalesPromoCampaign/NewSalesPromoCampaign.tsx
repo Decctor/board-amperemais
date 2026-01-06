@@ -53,6 +53,12 @@ export default function NewSalesPromoCampaign({ callbacks, closeModal }: NewSale
 			valor: { ...prev.valor, dados: { ...prev.valor.dados, itens: [...prev.valor.dados.itens, item] } },
 		}));
 	}, []);
+	const addMultipleUtilItems = useCallback((items: TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number][]) => {
+		setInfoHolder((prev) => ({
+			...prev,
+			valor: { ...prev.valor, dados: { ...prev.valor.dados, itens: [...prev.valor.dados.itens, ...items] } },
+		}));
+	}, []);
 	const updateUtilItem = useCallback((index: number, changes: Partial<TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number]>) => {
 		setInfoHolder((prev) => ({
 			...prev,
@@ -108,7 +114,13 @@ export default function NewSalesPromoCampaign({ callbacks, closeModal }: NewSale
 				handleChange={(value) => updateUtil({ titulo: value })}
 			/>
 			<SalesPromoCampaignStatsBlock utilData={infoHolder.valor.dados} updateUtilData={updateUtil} />
-			<SalesPromoCampaignItemsBlock items={infoHolder.valor.dados.itens} addItem={addUtilItem} updateItem={updateUtilItem} deleteItem={deleteUtilItem} />
+			<SalesPromoCampaignItemsBlock
+				items={infoHolder.valor.dados.itens}
+				addItem={addUtilItem}
+				addMultipleItems={addMultipleUtilItems}
+				updateItem={updateUtilItem}
+				deleteItem={deleteUtilItem}
+			/>
 		</ResponsiveMenu>
 	);
 }
