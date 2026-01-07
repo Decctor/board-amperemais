@@ -3,6 +3,7 @@ import type { TGetPartnersInput, TGetPartnersOutputDefault } from "@/app/api/par
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import EditPartner from "@/components/Modals/Partners/EditPartner";
 import PartnersFilterMenu from "@/components/Partners/PartnersFilterMenu";
+import PartnersStats from "@/components/Partners/PartnersStats";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { formatNameAsInitials } from "@/lib/formatting";
 import { usePartners } from "@/lib/queries/partners";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import dayjs from "dayjs";
 import { IdCard, ListFilter, X } from "lucide-react";
 import { AreaChart, BadgeDollarSign, CirclePlus, Mail, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
@@ -39,8 +41,8 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 	} = usePartners({
 		initialParams: {
 			search: "",
-			statsPeriodAfter: null,
-			statsPeriodBefore: null,
+			statsPeriodAfter: dayjs().startOf("month").toDate(),
+			statsPeriodBefore: dayjs().endOf("month").toDate(),
 			statsSaleNatures: [],
 			statsExcludedSalesIds: [],
 			statsTotalMin: null,
@@ -55,6 +57,7 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
+			<PartnersStats overallFilters={queryParams} />
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 				<Input
 					value={queryParams.search ?? ""}

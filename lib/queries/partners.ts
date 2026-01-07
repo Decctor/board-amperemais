@@ -1,4 +1,7 @@
 import type { TGetPartnersInput, TGetPartnersOutput } from "@/app/api/partners/route";
+import type { TGetPartnersGraphInput, TGetPartnersGraphOutput } from "@/app/api/partners/stats/graph/route";
+import type { TGetPartnersOverallStatsInput, TGetPartnersOverallStatsOutput } from "@/app/api/partners/stats/overall/route";
+import type { TGetPartnersRankingInput, TGetPartnersRankingOutput } from "@/app/api/partners/stats/ranking/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
@@ -66,4 +69,75 @@ export function usePartnerById({ id }: { id: string }) {
 		}),
 		queryKey: ["partner-by-id", id],
 	};
+}
+
+// Partners Overall Stats Query
+async function fetchPartnersOverallStats(input: TGetPartnersOverallStatsInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		if (input.comparingPeriodAfter) searchParams.set("comparingPeriodAfter", input.comparingPeriodAfter.toISOString());
+		if (input.comparingPeriodBefore) searchParams.set("comparingPeriodBefore", input.comparingPeriodBefore.toISOString());
+		const { data } = await axios.get<TGetPartnersOverallStatsOutput>(`/api/partners/stats/overall?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchPartnersOverallStats", error);
+		throw error;
+	}
+}
+
+export function usePartnersOverallStats(input: TGetPartnersOverallStatsInput) {
+	return useQuery({
+		queryKey: ["partners-overall-stats", input],
+		queryFn: () => fetchPartnersOverallStats(input),
+	});
+}
+
+// Partners Graph Query
+async function fetchPartnersGraph(input: TGetPartnersGraphInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("graphType", input.graphType);
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		const { data } = await axios.get<TGetPartnersGraphOutput>(`/api/partners/stats/graph?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchPartnersGraph", error);
+		throw error;
+	}
+}
+
+export function usePartnersGraph(input: TGetPartnersGraphInput) {
+	return useQuery({
+		queryKey: ["partners-graph", input],
+		queryFn: () => fetchPartnersGraph(input),
+	});
+}
+
+// Partners Ranking Query
+async function fetchPartnersRanking(input: TGetPartnersRankingInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		if (input.saleNatures && input.saleNatures.length > 0) searchParams.set("saleNatures", input.saleNatures.join(","));
+		if (input.excludedSalesIds && input.excludedSalesIds.length > 0) searchParams.set("excludedSalesIds", input.excludedSalesIds.join(","));
+		if (input.totalMin) searchParams.set("totalMin", input.totalMin.toString());
+		if (input.totalMax) searchParams.set("totalMax", input.totalMax.toString());
+		if (input.rankingBy) searchParams.set("rankingBy", input.rankingBy);
+		const { data } = await axios.get<TGetPartnersRankingOutput>(`/api/partners/stats/ranking?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchPartnersRanking", error);
+		throw error;
+	}
+}
+
+export function usePartnersRanking(input: TGetPartnersRankingInput) {
+	return useQuery({
+		queryKey: ["partners-ranking", input],
+		queryFn: () => fetchPartnersRanking(input),
+	});
 }
