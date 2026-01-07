@@ -5,7 +5,7 @@ import { useSalesSimplifiedSearch } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
 import type { TSalesSimplifiedSearchResult } from "@/pages/api/sales/simplified-search";
 import { BadgeDollarSign, Check, ChevronsUpDown } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import GeneralPaginationComponent from "../Utils/Pagination";
 import { Button } from "../ui/button";
@@ -61,6 +61,8 @@ function MultipleSalesSelectInput<T>({
 
 	const [isOpen, setIsOpen] = useState<boolean>(false);
 	const [selectedIds, setSelectedIds] = useState<(string | number)[] | null>(getValueID({ sales: sales ?? [], selected }));
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const dialogContainer = triggerRef.current?.closest("[data-dialog-container]") as HTMLElement | null;
 
 	const inputIdentifier = label.toLowerCase().replace(" ", "_");
 
@@ -91,6 +93,7 @@ function MultipleSalesSelectInput<T>({
 
 	const renderTrigger = () => (
 		<Button
+			ref={triggerRef}
 			type="button"
 			disabled={!editable}
 			variant="outline"
@@ -186,7 +189,7 @@ function MultipleSalesSelectInput<T>({
 				)}
 				<Popover open={isOpen} onOpenChange={setIsOpen}>
 					<PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
-					<PopoverContent className="w-[350px] p-0" align="start">
+					<PopoverContent container={dialogContainer} className="w-[350px] p-0" align="start">
 						{renderContent()}
 					</PopoverContent>
 				</Popover>

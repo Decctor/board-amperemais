@@ -197,7 +197,7 @@ function VirtualizedOptionsList({
 	const selectedOptionsValues = selectedOptions.map((v) => v.value);
 
 	return (
-		<Command loop>
+		<Command loop shouldFilter={false}>
 			<CommandInput placeholder={placeholderText} className="h-9 w-full" value={searchValue} onValueChange={setSearchValue} />
 			<CommandList className="w-full">
 				{options.length === 0 && searchValue ? (

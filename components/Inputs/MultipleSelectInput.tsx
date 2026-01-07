@@ -167,7 +167,8 @@ function OptionsList({
 					{options.map((option) => (
 						<CommandItem
 							key={option.id}
-							value={option.value}
+							value={String(option.value)}
+							keywords={[option.label]}
 							onSelect={(currentValue) => {
 								if (selectedOptionsValues.includes(currentValue)) handleChange(selectedOptionsValues.filter((s) => s !== currentValue));
 								else handleChange([...selectedOptionsValues, currentValue]);

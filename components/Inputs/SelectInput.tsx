@@ -1,7 +1,7 @@
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import React, { type ReactNode, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
@@ -166,6 +166,7 @@ function OptionsList({
 						<CommandItem
 							key={option.id}
 							value={option.value}
+							keywords={[option.label]}
 							onSelect={(currentValue) => {
 								if (currentValue === value) handleReset();
 								else handleChange(currentValue);

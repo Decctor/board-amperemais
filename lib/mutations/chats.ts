@@ -36,13 +36,13 @@ async function sendWhatsapp(input: TSendWhatsappInput): Promise<TSendWhatsappOut
 	return data;
 }
 
-async function updateService(serviceId: string, input: TUpdateServiceInput): Promise<TUpdateServiceOutput> {
+export async function updateService(serviceId: string, input: TUpdateServiceInput): Promise<TUpdateServiceOutput> {
 	const { data } = await axios.patch<TUpdateServiceOutput>(`/api/chats/services/${serviceId}`, input);
 	return data;
 }
 
-async function transferService(serviceId: string, input: TTransferServiceInput): Promise<TTransferServiceOutput> {
-	const { data } = await axios.patch<TTransferServiceOutput>(`/api/chats/services/${serviceId}/transfer`, input);
+export async function transferService(input: TTransferServiceInput & { serviceId: string }): Promise<TTransferServiceOutput> {
+	const { data } = await axios.patch<TTransferServiceOutput>(`/api/chats/services/${input.serviceId}/transfer`, { userId: input.userId });
 	return data;
 }
 
@@ -282,7 +282,7 @@ export function useTransferService() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: ({ serviceId, ...input }: { serviceId: string } & TTransferServiceInput) => transferService(serviceId, input),
+		mutationFn: (input: TTransferServiceInput & { serviceId: string }) => transferService(input),
 		onSuccess: (data, variables) => {
 			// Invalidate chat queries to refresh service status
 			queryClient.invalidateQueries({ queryKey: ["chat"] });

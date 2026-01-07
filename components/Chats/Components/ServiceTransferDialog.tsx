@@ -1,13 +1,16 @@
 "use client";
 
+import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getErrorMessage } from "@/lib/errors";
 import { formatNameAsInitials } from "@/lib/formatting";
-import { useTransferService } from "@/lib/mutations/chats";
+import { transferService, useTransferService } from "@/lib/mutations/chats";
 import { useUsers } from "@/lib/queries/users";
 import { cn } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
 import { Bot, UserRound, Users } from "lucide-react";
 import { useState } from "react";
 import type React from "react";
@@ -18,9 +21,15 @@ type ServiceTransferDialogProps = {
 	serviceId: string;
 	currentResponsible: "ai" | { nome: string; avatar_url: string | null; idApp: string } | null;
 	currentUserIdApp: string;
+	callbacks?: {
+		onMutate?: () => void;
+		onSuccess?: () => void;
+		onError?: () => void;
+		onSettled?: () => void;
+	};
 };
 
-export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible, currentUserIdApp }: ServiceTransferDialogProps) {
+export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible, currentUserIdApp, callbacks }: ServiceTransferDialogProps) {
 	const [transferType, setTransferType] = useState<"to-me" | "to-other" | "to-ai" | null>(null);
 	const [selectedUserIdApp, setSelectedUserIdApp] = useState<string | null>(null);
 
@@ -36,24 +45,24 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 
 		// If AI is responsible, can transfer to me or other user
 		if (currentResponsible === "ai") {
-			options.push({ value: "to-me", label: "Transferir para mim", icon: <UserRound className="w-4 h-4" /> });
-			options.push({ value: "to-other", label: "Transferir para outro usuário", icon: <Users className="w-4 h-4" /> });
+			options.push({ value: "to-me", label: "PARA MIM", icon: <UserRound className="w-4 h-4" /> });
+			options.push({ value: "to-other", label: "PARA OUTRO USUÁRIO", icon: <Users className="w-4 h-4" /> });
 		}
 		// If user is responsible (and not current user), can transfer to me, AI, or other user
 		else if (currentResponsible && !isCurrentUserResponsible) {
-			options.push({ value: "to-me", label: "Transferir para mim", icon: <UserRound className="w-4 h-4" /> });
-			options.push({ value: "to-ai", label: "Transferir para IA", icon: <Bot className="w-4 h-4" /> });
-			options.push({ value: "to-other", label: "Transferir para outro usuário", icon: <Users className="w-4 h-4" /> });
+			options.push({ value: "to-me", label: "PARA MIM", icon: <UserRound className="w-4 h-4" /> });
+			options.push({ value: "to-ai", label: "PARA IA", icon: <Bot className="w-4 h-4" /> });
+			options.push({ value: "to-other", label: "PARA OUTRO USUÁRIO", icon: <Users className="w-4 h-4" /> });
 		}
 		// If current user is responsible, can transfer to AI or other user
 		else if (isCurrentUserResponsible) {
-			options.push({ value: "to-ai", label: "Transferir para IA", icon: <Bot className="w-4 h-4" /> });
-			options.push({ value: "to-other", label: "Transferir para outro usuário", icon: <Users className="w-4 h-4" /> });
+			options.push({ value: "to-ai", label: "PARA IA", icon: <Bot className="w-4 h-4" /> });
+			options.push({ value: "to-other", label: "PARA OUTRO USUÁRIO", icon: <Users className="w-4 h-4" /> });
 		}
 		// If no responsible, can transfer to me or other user
 		else {
-			options.push({ value: "to-me", label: "Transferir para mim", icon: <UserRound className="w-4 h-4" /> });
-			options.push({ value: "to-other", label: "Transferir para outro usuário", icon: <Users className="w-4 h-4" /> });
+			options.push({ value: "to-me", label: "PARA MIM", icon: <UserRound className="w-4 h-4" /> });
+			options.push({ value: "to-other", label: "PARA OUTRO USUÁRIO", icon: <Users className="w-4 h-4" /> });
 		}
 
 		return options;
@@ -61,43 +70,42 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 
 	const availableOptions = getAvailableTransferTypes();
 
-	const handleTransfer = async () => {
-		if (!transferType) {
-			toast.error("Selecione uma opção de transferência");
-			return;
+	const { mutate: handleTransferChatService, isPending } = useMutation({
+		mutationFn: transferService,
+		mutationKey: ["transfer-service", serviceId],
+		onMutate: () => {
+			if (callbacks?.onMutate) callbacks.onMutate();
+		},
+		onSuccess: (data) => {
+			if (callbacks?.onSuccess) callbacks.onSuccess();
+			toast.success(data.message);
+			return closeMenu();
+		},
+		onError: (error) => {
+			if (callbacks?.onError) callbacks.onError();
+			return toast.error(getErrorMessage(error));
+		},
+		onSettled: () => {
+			if (callbacks?.onSettled) callbacks.onSettled();
+		},
+	});
+	async function handleStartTransfer() {
+		if (!transferType) throw new Error("Selecione uma opção de transferência");
+		if (transferType === "to-other" && !selectedUserIdApp) throw new Error("Selecione um usuário para transferir");
+
+		let userId: string | undefined = undefined;
+
+		if (transferType === "to-me") {
+			// Use current user ID directly
+			userId = currentUserIdApp;
+		} else if (transferType === "to-other" && selectedUserIdApp) {
+			// Use selected user ID directly
+			userId = selectedUserIdApp;
 		}
+		// If transferType === "to-ai", userId remains undefined
 
-		if (transferType === "to-other" && !selectedUserIdApp) {
-			toast.error("Selecione um usuário para transferir");
-			return;
-		}
-
-		try {
-			let userId: string | undefined = undefined;
-
-			if (transferType === "to-me") {
-				// Use current user ID directly
-				userId = currentUserIdApp;
-			} else if (transferType === "to-other" && selectedUserIdApp) {
-				// Use selected user ID directly
-				userId = selectedUserIdApp;
-			}
-			// If transferType === "to-ai", userId remains undefined
-
-			await transferServiceMutation.mutateAsync({
-				serviceId,
-				userId,
-			});
-
-			toast.success("Responsabilidade transferida com sucesso");
-			closeMenu();
-			setSelectedUserIdApp(null);
-			setTransferType(null);
-		} catch (error) {
-			// Error is already handled by the mutation hook
-			console.error("Error transferring service:", error);
-		}
-	};
+		handleTransferChatService({ serviceId, userId });
+	}
 
 	return (
 		<ResponsiveMenu
@@ -105,8 +113,8 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 			menuDescription="Confirme a transferência da responsabilidade do atendimento."
 			menuActionButtonText="TRANSFERIR"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={handleTransfer}
-			actionIsLoading={transferServiceMutation.isPending}
+			actionFunction={handleStartTransfer}
+			actionIsLoading={isPending}
 			stateIsLoading={false}
 			stateError={null}
 			closeMenu={() => closeMenu()}
@@ -141,12 +149,13 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 				{/* Transfer type selection */}
 				<div className="space-y-3">
 					<span className="text-sm font-medium text-muted-foreground">SELECIONE PARA ONDE TRANSFERIR:</span>
-					<div className="flex flex-col gap-2">
+					<div className="w-full flex flex-col gap-2 items-center lg:flex-row flex-wrap">
 						{availableOptions.map((option) => (
 							<Button
 								key={option.value}
-								variant={transferType === option.value ? "default" : "outline"}
-								className={cn("w-full justify-start gap-2 h-auto py-3", transferType === option.value && "bg-primary text-primary-foreground")}
+								size="fit"
+								variant={transferType === option.value ? "default" : "ghost"}
+								className={cn("flex items-center gap-2 px-2 py-1", transferType === option.value && "bg-primary text-primary-foreground")}
 								onClick={() => {
 									setTransferType(option.value);
 									if (option.value !== "to-other") {
@@ -175,27 +184,21 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 						</div>
 
 						{/* Target responsible */}
-						<div className="flex items-center gap-3">
+						<div className="flex items-center gap-3 w-full">
 							<span className="text-sm text-muted-foreground min-w-[80px]">PARA:</span>
 							{transferType === "to-other" ? (
-								<Select value={selectedUserIdApp || ""} onValueChange={setSelectedUserIdApp}>
-									<SelectTrigger className="flex-1">
-										<SelectValue placeholder="SELECIONE UM USUÁRIO" />
-									</SelectTrigger>
-									<SelectContent>
-										{users?.map((user) => (
-											<SelectItem key={user.id} value={user.id}>
-												<div className="flex items-center gap-2">
-													<Avatar className="w-5 h-5">
-														<AvatarImage src={user.avatarUrl || undefined} />
-														<AvatarFallback className="text-xs">{formatNameAsInitials(user.nome)}</AvatarFallback>
-													</Avatar>
-													<span>{user.nome}</span>
-												</div>
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+								<div className="grow">
+									<SelectInput
+										label="SELECIONE UM USUÁRIO"
+										showLabel={false}
+										resetOptionLabel="SELECIONE UM USUÁRIO"
+										value={selectedUserIdApp || ""}
+										options={users?.map((user) => ({ id: user.id, label: user.nome, value: user.id })) || []}
+										handleChange={setSelectedUserIdApp}
+										onReset={() => setSelectedUserIdApp(null)}
+										width="100%"
+									/>
+								</div>
 							) : (
 								<div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg flex-1">
 									{transferType === "to-ai" ? (

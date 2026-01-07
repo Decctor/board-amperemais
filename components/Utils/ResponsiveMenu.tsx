@@ -82,7 +82,7 @@ function ResponsiveMenu({
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	return isDesktop ? (
 		<Dialog onOpenChange={(v) => (v ? null : closeMenu())} open>
-			<DialogContent className={cn(responsiveMenuVariants({ dialogVariant }), dialogContentClassName)}>
+			<DialogContent data-dialog-container className={cn(responsiveMenuVariants({ dialogVariant }), dialogContentClassName)}>
 				<DialogHeader>
 					<DialogTitle>{menuTitle}</DialogTitle>
 					<DialogDescription>{menuDescription}</DialogDescription>
