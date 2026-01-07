@@ -1,8 +1,8 @@
 import type { TGetClientsInput, TGetClientsOutput } from "@/pages/api/clients";
 import type { TClientByLookupInput, TClientByLookupOutput } from "@/pages/api/clients/lookup";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
-import type { TGetClientsStatsInput, TGetClientsStatsOutput } from "@/pages/api/clients/stats";
 import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats/by-client";
+import type { TGetClientsStatsInput, TGetClientsStatsOutput } from "@/pages/api/clients/stats/overall";
 import type { TClientDTO, TClientSearchQueryParams } from "@/schemas/clients";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
