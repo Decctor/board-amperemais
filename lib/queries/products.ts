@@ -3,6 +3,9 @@ import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/page
 import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/pages/api/products/graph";
 import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/pages/api/products/search";
 import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/pages/api/products/stats";
+import type { TGetProductsGraphInput, TGetProductsGraphOutput } from "@/pages/api/products/stats/graph";
+import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } from "@/pages/api/products/stats/overall";
+import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/pages/api/products/stats/ranking";
 import type { TProductStatsQueryParams } from "@/schemas/products";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -203,4 +206,75 @@ export async function fetchProductsByCodes(input: TGetProductsByCodesInput) {
 		console.log("Error running fetchProductsByCodes", error);
 		throw error;
 	}
+}
+
+// Products Overall Stats Query
+async function fetchProductsOverallStats(input: TGetProductsOverallStatsInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		if (input.comparingPeriodAfter) searchParams.set("comparingPeriodAfter", input.comparingPeriodAfter.toISOString());
+		if (input.comparingPeriodBefore) searchParams.set("comparingPeriodBefore", input.comparingPeriodBefore.toISOString());
+		const { data } = await axios.get<TGetProductsOverallStatsOutput>(`/api/products/stats/overall?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchProductsOverallStats", error);
+		throw error;
+	}
+}
+
+export function useProductsOverallStats(input: TGetProductsOverallStatsInput) {
+	return useQuery({
+		queryKey: ["products-overall-stats", input],
+		queryFn: () => fetchProductsOverallStats(input),
+	});
+}
+
+// Products Graph Query
+async function fetchProductsGraph(input: TGetProductsGraphInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("graphType", input.graphType);
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		const { data } = await axios.get<TGetProductsGraphOutput>(`/api/products/stats/graph?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchProductsGraph", error);
+		throw error;
+	}
+}
+
+export function useProductsGraph(input: TGetProductsGraphInput) {
+	return useQuery({
+		queryKey: ["products-graph", input],
+		queryFn: () => fetchProductsGraph(input),
+	});
+}
+
+// Products Ranking Query
+async function fetchProductsRanking(input: TGetProductsRankingInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		if (input.saleNatures && input.saleNatures.length > 0) searchParams.set("saleNatures", input.saleNatures.join(","));
+		if (input.excludedSalesIds && input.excludedSalesIds.length > 0) searchParams.set("excludedSalesIds", input.excludedSalesIds.join(","));
+		if (input.totalMin) searchParams.set("totalMin", input.totalMin.toString());
+		if (input.totalMax) searchParams.set("totalMax", input.totalMax.toString());
+		if (input.rankingBy) searchParams.set("rankingBy", input.rankingBy);
+		const { data } = await axios.get<TGetProductsRankingOutput>(`/api/products/stats/ranking?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchProductsRanking", error);
+		throw error;
+	}
+}
+
+export function useProductsRanking(input: TGetProductsRankingInput) {
+	return useQuery({
+		queryKey: ["products-ranking", input],
+		queryFn: () => fetchProductsRanking(input),
+	});
 }

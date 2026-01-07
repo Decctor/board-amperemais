@@ -5,17 +5,22 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlProduct from "@/components/Modals/Products/ControlProduct";
 import ProductsFilterMenu from "@/components/Products/ProductsFilterMenu";
+import ProductsGraphs from "@/components/Products/ProductsGraphs";
+import ProductsRanking from "@/components/Products/ProductsRanking";
+import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { useProducts } from "@/lib/queries/products";
+import { useProducts, useProductsOverallStats } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
 import type { TGetProductsDefaultInput, TGetProductsOutputDefault } from "@/pages/api/products";
 import { useQueryClient } from "@tanstack/react-query";
+import dayjs from "dayjs";
 import {
+	Activity,
 	BadgeDollarSign,
 	CirclePlus,
 	Code,
@@ -29,6 +34,7 @@ import {
 	ShoppingBag,
 	ShoppingCart,
 	Star,
+	TrendingUp,
 	X,
 } from "lucide-react";
 import Image from "next/image";
@@ -56,7 +62,8 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 		initialFilters: {
 			search: "",
 			groups: [],
-			statsPeriodBefore: null,
+			statsPeriodAfter: dayjs().startOf("month").toDate(),
+			statsPeriodBefore: dayjs().endOf("month").toDate(),
 			statsSaleNatures: [],
 			statsExcludedSalesIds: [],
 			statsTotalMin: null,
@@ -75,6 +82,8 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
+			<ProductsStats overallFilters={filters} />
+
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 				<Input
 					value={filters.search ?? ""}
@@ -118,6 +127,97 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 			{filterMenuIsOpen ? (
 				<ProductsFilterMenu queryParams={filters} updateQueryParams={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
+		</div>
+	);
+}
+
+type ProductsStatsProps = {
+	overallFilters: TGetProductsDefaultInput;
+};
+function ProductsStats({ overallFilters }: ProductsStatsProps) {
+	const { data: productsOverallStats, isLoading: productsOverallStatsLoading } = useProductsOverallStats({
+		periodAfter: overallFilters.statsPeriodAfter,
+		periodBefore: overallFilters.statsPeriodBefore,
+		comparingPeriodAfter: null,
+		comparingPeriodBefore: null,
+	});
+
+	return (
+		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="TOTAL DE PRODUTOS"
+					icon={<Package className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: productsOverallStats?.totalProducts.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						productsOverallStats?.totalProducts.comparison
+							? {
+									value: productsOverallStats?.totalProducts.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="PRODUTOS ATIVOS"
+					icon={<Activity className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: productsOverallStats?.activeProducts.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						productsOverallStats?.activeProducts.comparison
+							? {
+									value: productsOverallStats?.activeProducts.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="FATURAMENTO TOTAL"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: productsOverallStats?.totalRevenue.current || 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						productsOverallStats?.totalRevenue.comparison
+							? {
+									value: productsOverallStats?.totalRevenue.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="MARGEM MÉDIA"
+					icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: productsOverallStats?.averageMargin.current || 0,
+						format: (n) => `${formatDecimalPlaces(n)}%`,
+					}}
+					previous={
+						productsOverallStats?.averageMargin.comparison
+							? {
+									value: productsOverallStats?.averageMargin.comparison || 0,
+									format: (n) => `${formatDecimalPlaces(n)}%`,
+								}
+							: undefined
+					}
+				/>
+			</div>
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3 max-h-[500px]">
+				<div className="w-full lg:w-1/2 h-full">
+					<ProductsGraphs periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
+				</div>
+				<div className="w-full lg:w-1/2 h-full">
+					<ProductsRanking periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
+				</div>
+			</div>
 		</div>
 	);
 }
