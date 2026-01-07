@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatNameAsInitials } from "@/lib/formatting";
 import { useChat } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Bot, Check, MessageCircle, UserRound, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -39,8 +40,12 @@ export function Content({ children, className, emptyState }: ChatHubContentProps
 		);
 	}
 
-	const { data: chat, isPending } = useChat(selectedChatId);
+	const queryClient = useQueryClient();
 
+	const { data: chat, isPending, queryKey } = useChat(selectedChatId);
+
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 	if (isPending || !chat) {
 		return (
 			<div className={cn("flex-1 flex items-center justify-center", className)}>
@@ -52,7 +57,14 @@ export function Content({ children, className, emptyState }: ChatHubContentProps
 	return (
 		<div className={cn("flex-1 flex flex-col w-full h-full overflow-hidden", className)}>
 			{/* Chat Header */}
-			<ContentHeader chat={chat} onBack={isDesktop ? undefined : () => setSelectedChatId(null)} />
+			<ContentHeader
+				chat={chat}
+				onBack={isDesktop ? undefined : () => setSelectedChatId(null)}
+				callbacks={{
+					onMutate: handleOnMutate,
+					onSettled: handleOnSettled,
+				}}
+			/>
 
 			{/* Messages and Input (passed as children) */}
 			{children}
@@ -64,9 +76,13 @@ type ContentHeaderProps = {
 	chat: TGetChatDetailsOutput["data"];
 	onBack?: () => void;
 	className?: string;
+	callbacks?: {
+		onMutate?: () => void;
+		onSettled?: () => void;
+	};
 };
 
-function ContentHeader({ chat, onBack, className }: ContentHeaderProps) {
+function ContentHeader({ chat, onBack, className, callbacks }: ContentHeaderProps) {
 	return (
 		<div className={cn("w-full flex flex-col border-b border-primary/20 bg-card/80 backdrop-blur-sm", className)}>
 			{/* Main header row */}
@@ -106,16 +122,20 @@ function ContentHeader({ chat, onBack, className }: ContentHeaderProps) {
 			</div>
 
 			{/* Service banner (if open) */}
-			{chat.atendimentoAberto && <ServiceBanner service={chat.atendimentoAberto} />}
+			{chat.atendimentoAberto && <ServiceBanner service={chat.atendimentoAberto} callbacks={callbacks} />}
 		</div>
 	);
 }
 
 type ServiceBannerProps = {
 	service: NonNullable<TGetChatDetailsOutput["data"]["atendimentoAberto"]>;
+	callbacks?: {
+		onMutate?: () => void;
+		onSettled?: () => void;
+	};
 };
 
-function ServiceBanner({ service }: ServiceBannerProps) {
+function ServiceBanner({ service, callbacks }: ServiceBannerProps) {
 	const { user } = useChatHub();
 	const [transferDialogIsOpen, setTransferDialogIsOpen] = useState(false);
 	const [conclusionDialogIsOpen, setConclusionDialogIsOpen] = useState(false);
@@ -209,12 +229,18 @@ function ServiceBanner({ service }: ServiceBannerProps) {
 								: null
 					}
 					currentUserIdApp={user.id}
+					callbacks={callbacks}
 				/>
 			)}
 
 			{/* Conclusion Dialog */}
 			{user && conclusionDialogIsOpen && (
-				<ServiceConclusionDialog closeMenu={() => setConclusionDialogIsOpen(false)} serviceId={service.id} currentDescription={service.descricao} />
+				<ServiceConclusionDialog
+					closeMenu={() => setConclusionDialogIsOpen(false)}
+					serviceId={service.id}
+					currentDescription={service.descricao}
+					callbacks={callbacks}
+				/>
 			)}
 		</>
 	);

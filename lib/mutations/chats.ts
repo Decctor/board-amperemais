@@ -36,8 +36,8 @@ async function sendWhatsapp(input: TSendWhatsappInput): Promise<TSendWhatsappOut
 	return data;
 }
 
-export async function updateService(serviceId: string, input: TUpdateServiceInput): Promise<TUpdateServiceOutput> {
-	const { data } = await axios.patch<TUpdateServiceOutput>(`/api/chats/services/${serviceId}`, input);
+export async function updateService(input: TUpdateServiceInput & { serviceId: string }): Promise<TUpdateServiceOutput> {
+	const { data } = await axios.patch<TUpdateServiceOutput>(`/api/chats/services/${input.serviceId}`, { ...input });
 	return data;
 }
 
@@ -263,7 +263,7 @@ export function useUpdateService() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: ({ serviceId, ...input }: { serviceId: string } & TUpdateServiceInput) => updateService(serviceId, input),
+		mutationFn: ({ serviceId, ...input }: { serviceId: string } & TUpdateServiceInput) => updateService({ serviceId, ...input }),
 		onSuccess: (data, variables) => {
 			// Invalidate chat queries to refresh service status
 			queryClient.invalidateQueries({ queryKey: ["chat"] });

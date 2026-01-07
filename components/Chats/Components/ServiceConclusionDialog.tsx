@@ -2,7 +2,9 @@
 
 import TextareaInput from "@/components/Inputs/TextareaInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
-import { useUpdateService } from "@/lib/mutations/chats";
+import { getErrorMessage } from "@/lib/errors";
+import { updateService, useUpdateService } from "@/lib/mutations/chats";
+import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -10,32 +12,48 @@ type ServiceConclusionDialogProps = {
 	closeMenu: () => void;
 	serviceId: string;
 	currentDescription: string;
+	callbacks?: {
+		onMutate?: () => void;
+		onSuccess?: () => void;
+		onError?: () => void;
+		onSettled?: () => void;
+	};
 };
 
-export function ServiceConclusionDialog({ closeMenu, serviceId, currentDescription }: ServiceConclusionDialogProps) {
+export function ServiceConclusionDialog({ closeMenu, serviceId, currentDescription, callbacks }: ServiceConclusionDialogProps) {
 	const [serviceDescription, setServiceDescription] = useState(currentDescription);
 
 	const updateServiceMutation = useUpdateService();
 
-	const handleConclusion = async (newDescription: string) => {
+	const { mutate: handleUpdateService, isPending } = useMutation({
+		mutationFn: updateService,
+		mutationKey: ["update-service", serviceId],
+		onMutate: () => {
+			if (callbacks?.onMutate) callbacks.onMutate();
+		},
+		onSuccess: (data) => {
+			if (callbacks?.onSuccess) callbacks.onSuccess();
+			toast.success(data.message);
+			return closeMenu();
+		},
+		onError: (error) => {
+			if (callbacks?.onError) callbacks.onError();
+			return toast.error(getErrorMessage(error));
+		},
+		onSettled: () => {
+			if (callbacks?.onSettled) callbacks.onSettled();
+		},
+	});
+	async function handleConclusion(newDescription: string) {
 		if (!newDescription || newDescription.trim().length <= 3) {
-			toast.error("Defina um descrição de atendimento válida");
-			return;
+			throw new Error("Defina um descrição de atendimento válida");
 		}
-
-		try {
-			await updateServiceMutation.mutateAsync({
-				serviceId,
-				descricao: newDescription,
-				status: "CONCLUIDO",
-			});
-
-			toast.success("Atendimento concluído com sucesso");
-			closeMenu();
-		} catch (error) {
-			// Error is already handled by the mutation hook
-		}
-	};
+		handleUpdateService({
+			serviceId,
+			descricao: newDescription,
+			status: "CONCLUIDO",
+		});
+	}
 
 	return (
 		<ResponsiveMenu

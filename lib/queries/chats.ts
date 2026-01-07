@@ -64,7 +64,7 @@ export function useChats({ whatsappPhoneId, search = "" }: UseChatsParams) {
 	// Flatten pages into single array
 	const chats = query.data?.pages.flatMap((page) => page.items) ?? [];
 
-	console.log("[TESTING] [useChats] Rerendering...")
+	console.log("[TESTING] [useChats] Rerendering...");
 	return {
 		...query,
 		chats,
@@ -76,11 +76,14 @@ export function useChats({ whatsappPhoneId, search = "" }: UseChatsParams) {
  * Hook to fetch a single chat's details
  */
 export function useChat(chatId: string | null) {
-	return useQuery({
+	return {
+		...useQuery({
+			queryKey: ["chat", chatId],
+			queryFn: () => fetchChatDetails(chatId ?? ""),
+			enabled: !!chatId,
+		}),
 		queryKey: ["chat", chatId],
-		queryFn: () => fetchChatDetails(chatId ?? ""),
-		enabled: !!chatId,
-	});
+	};
 }
 
 /**
