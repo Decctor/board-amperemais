@@ -376,7 +376,13 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 
 	const requiresAiProcessing = serviceResponsibleType === "AI" || (mediaData && midiaTipo !== "TEXTO");
 
+	console.log("[WHATSAPP_WEBHOOK] AI Processing checkings:", {
+		REQUIRES_AI_PROCESSING: requiresAiProcessing,
+		PHONE_NUMBER_ALLOW_AI_SERVICE: allowsAIService,
+		DEFINED_SERVICE_RESPONSIBLE_TYPE: serviceResponsibleType,
+	});
 	if (requiresAiProcessing && allowsAIService) {
+		console.log("[WHATSAPP_WEBHOOK] AI Processing required and allowed. Starting processing...");
 		waitUntil(
 			handleAIProcessing({
 				chatId,
