@@ -1,7 +1,7 @@
 import z from "zod";
 import type { TWhatsappTemplate } from "../../schemas/whatsapp-templates";
 import type { TWhatsappTemplateVariables } from "./template-variables";
-import { formatPhoneAsWhatsappId } from "./utils";
+import { formatPhoneAsWhatsappId, sanitizeTemplateParameter } from "./utils";
 
 const DefaultTemplatePayloadSchema = z.object({
 	toPhoneNumber: z.string({
@@ -45,7 +45,7 @@ export const WHATSAPP_TEMPLATES = {
 									{
 										type: "text",
 										parameter_name: "client_name",
-										text: clientName,
+										text: sanitizeTemplateParameter(clientName),
 									},
 								],
 							},
@@ -193,59 +193,59 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 								parameters: [
 									{
 										type: "text",
-										text: periodo,
+										text: sanitizeTemplateParameter(periodo),
 									},
 									{
 										type: "text",
-										text: faturamento,
+										text: sanitizeTemplateParameter(faturamento),
 									},
 									{
 										type: "text",
-										text: meta,
+										text: sanitizeTemplateParameter(meta),
 									},
 									{
 										type: "text",
-										text: percentualMeta,
+										text: sanitizeTemplateParameter(percentualMeta),
 									},
 									{
 										type: "text",
-										text: comparacao,
+										text: sanitizeTemplateParameter(comparacao),
 									},
 									{
 										type: "text",
-										text: topVendedor1,
+										text: sanitizeTemplateParameter(topVendedor1),
 									},
 									{
 										type: "text",
-										text: topVendedor2,
+										text: sanitizeTemplateParameter(topVendedor2),
 									},
 									{
 										type: "text",
-										text: topVendedor3,
+										text: sanitizeTemplateParameter(topVendedor3),
 									},
 									{
 										type: "text",
-										text: topParceiro1,
+										text: sanitizeTemplateParameter(topParceiro1),
 									},
 									{
 										type: "text",
-										text: topParceiro2,
+										text: sanitizeTemplateParameter(topParceiro2),
 									},
 									{
 										type: "text",
-										text: topParceiro3,
+										text: sanitizeTemplateParameter(topParceiro3),
 									},
 									{
 										type: "text",
-										text: topProduto1,
+										text: sanitizeTemplateParameter(topProduto1),
 									},
 									{
 										type: "text",
-										text: topProduto2,
+										text: sanitizeTemplateParameter(topProduto2),
 									},
 									{
 										type: "text",
-										text: topProduto3,
+										text: sanitizeTemplateParameter(topProduto3),
 									},
 								],
 							},
@@ -296,59 +296,59 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 								parameters: [
 									{
 										type: "text",
-										text: periodo,
+										text: sanitizeTemplateParameter(periodo),
 									},
 									{
 										type: "text",
-										text: faturamento,
+										text: sanitizeTemplateParameter(faturamento),
 									},
 									{
 										type: "text",
-										text: meta,
+										text: sanitizeTemplateParameter(meta),
 									},
 									{
 										type: "text",
-										text: percentualMeta,
+										text: sanitizeTemplateParameter(percentualMeta),
 									},
 									{
 										type: "text",
-										text: comparacao,
+										text: sanitizeTemplateParameter(comparacao),
 									},
 									{
 										type: "text",
-										text: topVendedor1,
+										text: sanitizeTemplateParameter(topVendedor1),
 									},
 									{
 										type: "text",
-										text: topVendedor2,
+										text: sanitizeTemplateParameter(topVendedor2),
 									},
 									{
 										type: "text",
-										text: topVendedor3,
+										text: sanitizeTemplateParameter(topVendedor3),
 									},
 									{
 										type: "text",
-										text: topParceiro1,
+										text: sanitizeTemplateParameter(topParceiro1),
 									},
 									{
 										type: "text",
-										text: topParceiro2,
+										text: sanitizeTemplateParameter(topParceiro2),
 									},
 									{
 										type: "text",
-										text: topParceiro3,
+										text: sanitizeTemplateParameter(topParceiro3),
 									},
 									{
 										type: "text",
-										text: topProduto1,
+										text: sanitizeTemplateParameter(topProduto1),
 									},
 									{
 										type: "text",
-										text: topProduto2,
+										text: sanitizeTemplateParameter(topProduto2),
 									},
 									{
 										type: "text",
-										text: topProduto3,
+										text: sanitizeTemplateParameter(topProduto3),
 									},
 								],
 							},
@@ -399,59 +399,59 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 								parameters: [
 									{
 										type: "text",
-										text: periodo,
+										text: sanitizeTemplateParameter(periodo),
 									},
 									{
 										type: "text",
-										text: faturamento,
+										text: sanitizeTemplateParameter(faturamento),
 									},
 									{
 										type: "text",
-										text: meta,
+										text: sanitizeTemplateParameter(meta),
 									},
 									{
 										type: "text",
-										text: percentualMeta,
+										text: sanitizeTemplateParameter(percentualMeta),
 									},
 									{
 										type: "text",
-										text: comparacao,
+										text: sanitizeTemplateParameter(comparacao),
 									},
 									{
 										type: "text",
-										text: topVendedor1,
+										text: sanitizeTemplateParameter(topVendedor1),
 									},
 									{
 										type: "text",
-										text: topVendedor2,
+										text: sanitizeTemplateParameter(topVendedor2),
 									},
 									{
 										type: "text",
-										text: topVendedor3,
+										text: sanitizeTemplateParameter(topVendedor3),
 									},
 									{
 										type: "text",
-										text: topParceiro1,
+										text: sanitizeTemplateParameter(topParceiro1),
 									},
 									{
 										type: "text",
-										text: topParceiro2,
+										text: sanitizeTemplateParameter(topParceiro2),
 									},
 									{
 										type: "text",
-										text: topParceiro3,
+										text: sanitizeTemplateParameter(topParceiro3),
 									},
 									{
 										type: "text",
-										text: topProduto1,
+										text: sanitizeTemplateParameter(topProduto1),
 									},
 									{
 										type: "text",
-										text: topProduto2,
+										text: sanitizeTemplateParameter(topProduto2),
 									},
 									{
 										type: "text",
-										text: topProduto3,
+										text: sanitizeTemplateParameter(topProduto3),
 									},
 								],
 							},
@@ -492,17 +492,17 @@ Disponível para atendimento imediato.Um atendimento foi transferido para você 
 									{
 										type: "text",
 										parameter_name: "cliente_nome",
-										text: clientName,
+										text: sanitizeTemplateParameter(clientName),
 									},
 									{
 										type: "text",
 										parameter_name: "cliente_telefone",
-										text: clientePhoneNumber,
+										text: sanitizeTemplateParameter(clientePhoneNumber),
 									},
 									{
 										type: "text",
 										parameter_name: "atendimento_detalhes",
-										text: serviceDescription,
+										text: sanitizeTemplateParameter(serviceDescription),
 									},
 								],
 							},
@@ -584,7 +584,7 @@ export function getWhatsappTemplatePayload({ toPhoneNumber, template, variables 
 			parameters: template.components.corpo.parametros.map((param) => ({
 				type: "text",
 				parameter_name: param.nome,
-				text: variables[param.identificador as keyof TWhatsappTemplateVariables] ?? "",
+				text: sanitizeTemplateParameter(variables[param.identificador as keyof TWhatsappTemplateVariables] ?? ""),
 			})),
 		});
 	}
