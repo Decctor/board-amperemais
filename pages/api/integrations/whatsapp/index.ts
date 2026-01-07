@@ -24,12 +24,6 @@ import { supabaseClient } from "@/services/supabase";
 import { eq } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-// Polyfill for waitUntil - in Vercel environment, this keeps the function running
-// In non-Vercel environments, we just fire and forget
-const waitUntil = (promise: Promise<unknown>): void => {
-	promise.catch((error) => console.error("[WAIT_UNTIL] Background task error:", error));
-};
-
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
 const AI_RESPONSE_DELAY_MS = 5000; // 5 seconds delay before AI response
 
@@ -86,8 +80,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			// Return 200 immediately to acknowledge receipt (WhatsApp requires < 20s)
 			// res.status(200).json({ success: true });
 
-			// // Process webhook asynchronously using waitUntil
-			// waitUntil(processWebhookAsync(body));
 			await processWebhookAsync(body);
 			return res.status(200).json({ success: true });
 		}
@@ -383,21 +375,19 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 	});
 	if (requiresAiProcessing && allowsAIService) {
 		console.log("[WHATSAPP_WEBHOOK] AI Processing required and allowed. Starting processing...");
-		waitUntil(
-			handleAIProcessing({
-				chatId,
-				organizationId: organizacaoId,
-				aiMessageResponse: requiresAiProcessing ? { scheduleAt: aiScheduleTime } : null,
-				aiMessageMedia: mediaData
-					? {
-							messageId: insertedMessage.id,
-							storageId: mediaData.storageId,
-							mimeType: mediaData.mimeType,
-							mediaType: midiaTipo as "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO",
-						}
-					: null,
-			}),
-		);
+		await handleAIProcessing({
+			chatId,
+			organizationId: organizacaoId,
+			aiMessageResponse: requiresAiProcessing ? { scheduleAt: aiScheduleTime } : null,
+			aiMessageMedia: mediaData
+				? {
+						messageId: insertedMessage.id,
+						storageId: mediaData.storageId,
+						mimeType: mediaData.mimeType,
+						mediaType: midiaTipo as "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO",
+					}
+				: null,
+		});
 	}
 }
 
@@ -591,11 +581,12 @@ type THandleAIProcessingParams = {
 async function handleAIProcessing({ chatId, organizationId, aiMessageResponse, aiMessageMedia }: THandleAIProcessingParams): Promise<void> {
 	if (!aiMessageResponse && !aiMessageMedia) return;
 
-	if (aiMessageResponse) {
-		await handleAIMessageResponse(chatId, organizationId, aiMessageResponse.scheduleAt);
-	}
 	if (aiMessageMedia) {
 		await handleAIMediaProcessing(aiMessageMedia.messageId, aiMessageMedia.storageId, aiMessageMedia.mimeType, aiMessageMedia.mediaType);
+	}
+
+	if (aiMessageResponse) {
+		await handleAIMessageResponse(chatId, organizationId, aiMessageResponse.scheduleAt);
 	}
 }
 /**
