@@ -4,7 +4,7 @@ import { db } from "@/services/drizzle";
 import { chatServices, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
 import { users } from "@/services/drizzle/schema/users";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 
 type TransferServiceToHumanParams = {
 	chatId: string;
@@ -65,7 +65,7 @@ export async function transferServiceToHuman({
 	if (existingService) {
 		// Get all users from the same organization
 		const allUsers = await db.query.users.findMany({
-			where: eq(users.organizacaoId, chat.organizacaoId),
+			where: and(eq(users.organizacaoId, chat.organizacaoId), sql`${users.permissoes}->'atendimentos'->>'receberTransferencias' = 'true'`),
 			columns: {
 				id: true,
 				nome: true,
@@ -84,6 +84,9 @@ export async function transferServiceToHuman({
 			telefone: randomUser.telefone,
 		});
 
+		if (!randomUser) {
+			throw new Error("Nenhum usuário apto a receber transferências de atendimentos encontrado.");
+		}
 		// Update existing service to add context and assign to user
 		const updatedDescription = `${existingService.descricao}\n\n[TRANSFERÊNCIA AI]\nMotivo: ${reason}\nResumo: ${conversationSummary}`;
 
@@ -152,7 +155,7 @@ export async function transferServiceToHuman({
 
 	// Get all users from the same organization
 	const allUsers = await db.query.users.findMany({
-		where: eq(users.organizacaoId, chat.organizacaoId),
+		where: and(eq(users.organizacaoId, chat.organizacaoId), sql`${users.permissoes}->'atendimentos'->>'receberTransferencias' = 'true'`),
 		columns: {
 			id: true,
 			nome: true,

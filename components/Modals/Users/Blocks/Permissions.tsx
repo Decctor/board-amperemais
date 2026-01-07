@@ -161,6 +161,12 @@ function ChatServicesPermissions({ infoHolder, updateUserPermissions }: ChatServ
 					checked={infoHolder.permissoes.atendimentos.finalizar}
 					handleChange={(value) => updateUserPermissions({ atendimentos: { ...infoHolder.permissoes.atendimentos, finalizar: value } })}
 				/>
+				<CheckboxInput
+					labelTrue="APTO A RECEBER TRANSFERÊNCIAS DE ATENDIMENTOS"
+					labelFalse="APTO A RECEBER TRANSFERÊNCIAS DE ATENDIMENTOS"
+					checked={!!infoHolder.permissoes.atendimentos.receberTransferencias}
+					handleChange={(value) => updateUserPermissions({ atendimentos: { ...infoHolder.permissoes.atendimentos, receberTransferencias: value } })}
+				/>
 			</div>
 		</div>
 	);

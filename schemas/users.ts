@@ -100,6 +100,13 @@ export const NewUserSchema = z.object({
 				required_error: "Permissão de finalização de atendimentos não informada.",
 				invalid_type_error: "Tipo não válido para a permissão de finalização de atendimentos.",
 			}),
+			receberTransferencias: z
+				.boolean({
+					required_error: "Permissão de recebimento de transferências de atendimentos não informada.",
+					invalid_type_error: "Tipo não válido para a permissão de recebimento de transferências de atendimentos.",
+				})
+				.optional()
+				.nullable(),
 		}),
 	}),
 	// Others

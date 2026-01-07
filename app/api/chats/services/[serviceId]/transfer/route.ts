@@ -56,6 +56,9 @@ async function transferService({
 			throw new createHttpError.NotFound("Usuário não encontrado.");
 		}
 
+		if (!user.permissoes.atendimentos.receberTransferencias) {
+			throw new createHttpError.Forbidden("Este usuário não está apto a receber transferências de atendimentos.");
+		}
 		responsavelTipo = "USUÁRIO";
 		responsavelUsuarioId = user.id;
 	} else {
