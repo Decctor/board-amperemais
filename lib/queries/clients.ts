@@ -2,7 +2,9 @@ import type { TGetClientsInput, TGetClientsOutput } from "@/pages/api/clients";
 import type { TClientByLookupInput, TClientByLookupOutput } from "@/pages/api/clients/lookup";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
 import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats/by-client";
-import type { TGetClientsStatsInput, TGetClientsStatsOutput } from "@/pages/api/clients/stats/overall";
+import type { TGetClientsGraphInput, TGetClientsGraphOutput } from "@/pages/api/clients/stats/graph";
+import type { TGetClientsOverallStatsInput, TGetClientsOverallStatsOutput } from "@/pages/api/clients/stats/overall";
+import type { TGetClientsRankingInput, TGetClientsRankingOutput } from "@/pages/api/clients/stats/ranking";
 import type { TClientDTO, TClientSearchQueryParams } from "@/schemas/clients";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -181,7 +183,50 @@ export function useClientByLookup({ initialParams }: UseClientByLookupParams) {
 	};
 }
 
-async function fetchClientsStats(input: TGetClientsStatsInput) {
+async function fetchClientsOverallStats(input: TGetClientsOverallStatsInput) {
+	const searchParams = new URLSearchParams();
+	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+	// if (input.saleNatures && input.saleNatures.length > 0) searchParams.set("saleNatures", input.saleNatures.join(","));
+	// if (input.excludedSalesIds && input.excludedSalesIds.length > 0) searchParams.set("excludedSalesIds", input.excludedSalesIds.join(","));
+	// if (input.totalMin) searchParams.set("totalMin", input.totalMin.toString());
+	// if (input.totalMax) searchParams.set("totalMax", input.totalMax.toString());
+	if (input.comparingPeriodAfter) searchParams.set("comparingPeriodAfter", input.comparingPeriodAfter.toISOString());
+	if (input.comparingPeriodBefore) searchParams.set("comparingPeriodBefore", input.comparingPeriodBefore.toISOString());
+	const { data } = await axios.get<TGetClientsOverallStatsOutput>(`/api/clients/stats/overall?${searchParams.toString()}`);
+	return data.data;
+}
+
+export function useClientsOverallStats(input: TGetClientsOverallStatsInput) {
+	return {
+		...useQuery({
+			queryKey: ["clients-overall-stats", input],
+			queryFn: () => fetchClientsOverallStats(input),
+		}),
+		queryKey: ["clients-overall-stats", input],
+	};
+}
+
+async function fetchClientsGraph(input: TGetClientsGraphInput) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("graphType", input.graphType);
+	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+	const { data } = await axios.get<TGetClientsGraphOutput>(`/api/clients/stats/graph?${searchParams.toString()}`);
+	return data.data;
+}
+
+export function useClientsGraph(input: TGetClientsGraphInput) {
+	return {
+		...useQuery({
+			queryKey: ["clients-graph", input],
+			queryFn: () => fetchClientsGraph(input),
+		}),
+		queryKey: ["clients-graph", input],
+	};
+}
+
+async function fetchClientsRanking(input: TGetClientsRankingInput) {
 	const searchParams = new URLSearchParams();
 	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
 	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
@@ -190,16 +235,16 @@ async function fetchClientsStats(input: TGetClientsStatsInput) {
 	if (input.totalMin) searchParams.set("totalMin", input.totalMin.toString());
 	if (input.totalMax) searchParams.set("totalMax", input.totalMax.toString());
 	if (input.rankingBy) searchParams.set("rankingBy", input.rankingBy);
-	const { data } = await axios.get<TGetClientsStatsOutput>(`/api/clients/stats?${searchParams.toString()}`);
+	const { data } = await axios.get<TGetClientsRankingOutput>(`/api/clients/stats/ranking?${searchParams.toString()}`);
 	return data.data;
 }
 
-export function useClientsStats(input: TGetClientsStatsInput) {
+export function useClientsRanking(input: TGetClientsRankingInput) {
 	return {
 		...useQuery({
-			queryKey: ["clients-stats", input],
-			queryFn: () => fetchClientsStats(input),
+			queryKey: ["clients-ranking", input],
+			queryFn: () => fetchClientsRanking(input),
 		}),
-		queryKey: ["clients-stats", input],
+		queryKey: ["clients-ranking", input],
 	};
 }

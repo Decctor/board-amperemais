@@ -45,34 +45,34 @@ const GetClientsOverallStatsInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	saleNatures: z
-		.array(
-			z.string({
-				invalid_type_error: "Tipo inválido para natureza de venda.",
-			}),
-		)
-		.optional()
-		.nullable(),
-	excludedSalesIds: z
-		.array(
-			z.string({
-				invalid_type_error: "Tipo inválido para ID da venda.",
-			}),
-		)
-		.optional()
-		.nullable(),
-	totalMin: z
-		.number({
-			invalid_type_error: "Tipo inválido para valor mínimo da venda.",
-		})
-		.optional()
-		.nullable(),
-	totalMax: z
-		.number({
-			invalid_type_error: "Tipo inválido para valor máximo da venda.",
-		})
-		.optional()
-		.nullable(),
+	// saleNatures: z
+	// 	.array(
+	// 		z.string({
+	// 			invalid_type_error: "Tipo inválido para natureza de venda.",
+	// 		}),
+	// 	)
+	// 	.optional()
+	// 	.nullable(),
+	// excludedSalesIds: z
+	// 	.array(
+	// 		z.string({
+	// 			invalid_type_error: "Tipo inválido para ID da venda.",
+	// 		}),
+	// 	)
+	// 	.optional()
+	// 	.nullable(),
+	// totalMin: z
+	// 	.number({
+	// 		invalid_type_error: "Tipo inválido para valor mínimo da venda.",
+	// 	})
+	// 	.optional()
+	// 	.nullable(),
+	// totalMax: z
+	// 	.number({
+	// 		invalid_type_error: "Tipo inválido para valor máximo da venda.",
+	// 	})
+	// 	.optional()
+	// 	.nullable(),
 });
 
 export type TGetClientsOverallStatsInput = z.infer<typeof GetClientsOverallStatsInputSchema>;
@@ -91,19 +91,13 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 		userOrg: userOrgId,
 		input,
 	});
+	const { periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore } = input;
 	const saleConditions = [eq(sales.organizacaoId, userOrgId)];
-
-	if (input.periodAfter) saleConditions.push(gte(sales.dataVenda, input.periodAfter));
-	if (input.periodBefore) saleConditions.push(lte(sales.dataVenda, input.periodBefore));
-	if (input.saleNatures && input.saleNatures.length > 0) saleConditions.push(inArray(sales.natureza, input.saleNatures));
-	if (input.excludedSalesIds && input.excludedSalesIds.length > 0) saleConditions.push(notInArray(sales.id, input.excludedSalesIds));
-	if (input.totalMin) saleConditions.push(gte(sales.valorTotal, input.totalMin));
-	if (input.totalMax) saleConditions.push(lte(sales.valorTotal, input.totalMax));
 
 	const totalClientsResult = await db
 		.select({ count: count() })
 		.from(clients)
-		.where(and(eq(clients.organizacaoId, userOrgId), input.periodBefore ? lte(clients.primeiraCompraData, input.periodBefore) : undefined));
+		.where(and(eq(clients.organizacaoId, userOrgId), periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined));
 
 	const totalNewClientsResult = await db
 		.select({ count: count() })
@@ -111,11 +105,10 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 		.where(
 			and(
 				eq(clients.organizacaoId, userOrgId),
-				input.periodAfter ? gte(clients.primeiraCompraData, input.periodAfter) : undefined,
-				input.periodBefore ? lte(clients.primeiraCompraData, input.periodBefore) : undefined,
+				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
+				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
 			),
 		);
-
 	// LTV: média do valor total de vendas por cliente dentro do período / filtros informados
 	const salesByClient = await db
 		.select({
@@ -131,29 +124,103 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 	const ltvAverage = ltvClientsCount > 0 ? ltvTotal / ltvClientsCount : 0;
 
 	// Lifetime médio (em dias) considerando primeira e última compra dos clientes no período
-	const clientsForLifetime = await db
+	const avgLifetimeDaysResult = await db
 		.select({
-			avgLifetimeDays: sql<number>`AVG(DATEDIFF(DAY, ${clients.primeiraCompraData}, ${clients.ultimaCompraData}))`,
+			avgLifetimeDays: sql<number>`AVG(EXTRACT(EPOCH FROM (${clients.ultimaCompraData} - ${clients.primeiraCompraData})) / 86400)`,
 		})
 		.from(clients)
 		.where(
 			and(
 				eq(clients.organizacaoId, userOrgId),
-				input.periodAfter ? gte(clients.primeiraCompraData, input.periodAfter) : undefined,
-				input.periodBefore ? lte(clients.primeiraCompraData, input.periodBefore) : undefined,
+				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
+				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
+			),
+		);
+
+	if (!comparingPeriodAfter && !comparingPeriodBefore) {
+		return {
+			data: {
+				totalClients: {
+					current: totalClientsResult[0]?.count ?? 0,
+					comparison: null,
+				},
+				totalNewClients: {
+					current: totalNewClientsResult[0]?.count ?? 0,
+					comparison: null,
+				},
+				ltv: {
+					current: ltvAverage,
+					comparison: null,
+				},
+				avgLifetime: {
+					current: avgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
+					comparison: null,
+				},
+			},
+		};
+	}
+
+	const comparisonTotalClientsResult = await db
+		.select({ count: count() })
+		.from(clients)
+		.where(and(eq(clients.organizacaoId, userOrgId), periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined));
+
+	const comparisonTotalNewClientsResult = await db
+		.select({ count: count() })
+		.from(clients)
+		.where(
+			and(
+				eq(clients.organizacaoId, userOrgId),
+				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
+				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
+			),
+		);
+	// LTV: média do valor total de vendas por cliente dentro do período / filtros informados
+	const comparisonSalesByClient = await db
+		.select({
+			clienteId: sales.clienteId,
+			totalVendasCliente: sum(sales.valorTotal),
+		})
+		.from(sales)
+		.where(and(...saleConditions))
+		.groupBy(sales.clienteId);
+
+	const comparisonLtvClientsCount = comparisonSalesByClient.length;
+	const comparisonLtvTotal = comparisonSalesByClient.reduce((acc, row) => acc + Number(row.totalVendasCliente ?? 0), 0);
+	const comparisonLtvAverage = comparisonLtvClientsCount > 0 ? comparisonLtvTotal / comparisonLtvClientsCount : 0;
+
+	// Lifetime médio (em dias) considerando primeira e última compra dos clientes no período
+	const comparisonAvgLifetimeDaysResult = await db
+		.select({
+			avgLifetimeDays: sql<number>`AVG(EXTRACT(EPOCH FROM (${clients.ultimaCompraData} - ${clients.primeiraCompraData})) / 86400)`,
+		})
+		.from(clients)
+		.where(
+			and(
+				eq(clients.organizacaoId, userOrgId),
+				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
+				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
 			),
 		);
 
 	return {
 		data: {
-			totalClients: totalClientsResult[0]?.count ?? 0,
-			totalNewClients: totalNewClientsResult[0]?.count ?? 0,
-			ltv: {
-				average: ltvAverage,
-				total: ltvTotal,
-				clientsCount: ltvClientsCount,
+			totalClients: {
+				current: totalClientsResult[0]?.count ?? 0,
+				comparison: comparisonTotalClientsResult[0]?.count ?? 0,
 			},
-			avgLifetimeDays,
+			totalNewClients: {
+				current: totalNewClientsResult[0]?.count ?? 0,
+				comparison: comparisonTotalNewClientsResult[0]?.count ?? 0,
+			},
+			ltv: {
+				current: ltvAverage,
+				comparison: comparisonLtvAverage,
+			},
+			avgLifetime: {
+				current: avgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
+				comparison: comparisonAvgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
+			},
 		},
 	};
 }

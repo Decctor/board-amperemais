@@ -1,18 +1,22 @@
 "use client";
+import ClientsGraphs from "@/components/Clients/ClientsGraphs";
+import ClientsRanking from "@/components/Clients/ClientsRanking";
 import ClientsDatabaseFilterMenu from "@/components/Clients/DatabaseFilterMenu";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import { useClients, useClientsBySearch, useClientsStats } from "@/lib/queries/clients";
+import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { useClients, useClientsBySearch, useClientsOverallStats } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
-import { BadgeDollarSign, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, X } from "lucide-react";
+import dayjs from "dayjs";
+import { BadgeDollarSign, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, UserPlus, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
@@ -34,7 +38,10 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 		filters,
 		updateFilters,
 	} = useClients({
-		initialFilters: {},
+		initialFilters: {
+			statsPeriodAfter: dayjs().startOf("month").toDate(),
+			statsPeriodBefore: dayjs().endOf("month").toDate(),
+		},
 	});
 
 	const clients = clientsResult?.clients;
@@ -44,6 +51,7 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<ClientsStats overallFilters={filters} />
+
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 				<Input
 					value={filters.search ?? ""}
@@ -85,22 +93,90 @@ type ClientsStatsProps = {
 	overallFilters: TGetClientsInput;
 };
 function ClientsStats({ overallFilters }: ClientsStatsProps) {
-	const { data: clientsStats, isLoading: clientsStatsLoading } = useClientsStats({
+	const { data: clientsOverallStats, isLoading: clientsOverallStatsLoading } = useClientsOverallStats({
 		periodAfter: overallFilters.statsPeriodAfter,
 		periodBefore: overallFilters.statsPeriodBefore,
-		saleNatures: overallFilters.statsSaleNatures,
-		excludedSalesIds: overallFilters.statsExcludedSalesIds,
-		totalMin: overallFilters.statsTotalMin,
-		totalMax: overallFilters.statsTotalMax,
-		rankingBy: "purchases-total-qty",
+		comparingPeriodAfter: null,
+		comparingPeriodBefore: null,
 	});
 
-	console.log(clientsStats);
+	console.log(clientsOverallStats);
 
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
-				<div></div>
+				<StatUnitCard
+					title="TOTAL DE CLIENTES"
+					icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.totalClients.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						clientsOverallStats?.totalClients.comparison
+							? {
+									value: clientsOverallStats?.totalClients.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="TOTAL DE CLIENTES NOVOS"
+					icon={<UserPlus className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.totalNewClients.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						clientsOverallStats?.totalNewClients.comparison
+							? {
+									value: clientsOverallStats?.totalNewClients.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="LTV"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.ltv.current || 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						clientsOverallStats?.ltv.comparison
+							? {
+									value: clientsOverallStats?.ltv.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="LIFETIME MÉDIO"
+					icon={<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.avgLifetime.current || 0,
+						format: (n) => `${formatDecimalPlaces(n)} dias`,
+					}}
+					previous={
+						clientsOverallStats?.avgLifetime.comparison
+							? {
+									value: clientsOverallStats?.avgLifetime.comparison || 0,
+									format: (n) => `${formatDecimalPlaces(n)} dias`,
+								}
+							: undefined
+					}
+				/>
+			</div>
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3 max-h-[500px]">
+				<div className="w-full lg:w-1/2 h-full">
+					<ClientsGraphs periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
+				</div>
+				<div className="w-full lg:w-1/2 h-full">
+					<ClientsRanking periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
+				</div>
 			</div>
 		</div>
 	);
