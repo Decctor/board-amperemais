@@ -1,16 +1,16 @@
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
-import { db } from "@/services/drizzle";
-import {
-	type TChatMessageEntity,
-	type TNewChatEntity,
-	type TNewChatMessageEntity,
-	type TNewChatServiceEntity,
-	chatMessages,
-	chatServices,
-	chats,
-} from "@/services/drizzle/schema";
-import { ConvexHttpClient } from "convex/browser";
+// import { api } from "@/convex/_generated/api";
+// import type { Id } from "@/convex/_generated/dataModel";
+// import { db } from "@/services/drizzle";
+// import {
+// 	type TChatMessageEntity,
+// 	type TNewChatEntity,
+// 	type TNewChatMessageEntity,
+// 	type TNewChatServiceEntity,
+// 	chatMessages,
+// 	chatServices,
+// 	chats,
+// } from "@/services/drizzle/schema";
+// import { ConvexHttpClient } from "convex/browser";
 import { NextResponse } from "next/server";
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL as string;
