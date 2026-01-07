@@ -4,6 +4,9 @@ import EditSeller from "@/components/Modals/Sellers/EditSeller";
 import ViewSellerResults from "@/components/Modals/Sellers/ViewSellerResults";
 import SalesTeamFilterMenu from "@/components/SalesTeam/SalesTeamFilterMenu";
 import SalesTeamFilterShowcase from "@/components/SalesTeam/SalesTeamFilterShowcase";
+import SellersGraphs from "@/components/Sellers/SellersGraphs";
+import SellersRanking from "@/components/Sellers/SellersRanking";
+import SellersStats from "@/components/Sellers/SellersStats";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,6 +17,7 @@ import { useSellers } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
 import type { TGetSellersOutputDefault } from "@/pages/api/sellers";
 import { useQueryClient } from "@tanstack/react-query";
+import dayjs from "dayjs";
 import { AreaChart, BadgeDollarSign, CirclePlus, ListFilter, Mail, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -25,7 +29,21 @@ export default function SellersPage({ user }: SellersPageProps) {
 	const queryClient = useQueryClient();
 	const [editSellerId, setEditSellerId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
-	const { data: sellersResult, queryKey, isLoading, isError, isSuccess, error, filters, updateFilters } = useSellers({});
+	const {
+		data: sellersResult,
+		queryKey,
+		isLoading,
+		isError,
+		isSuccess,
+		error,
+		filters,
+		updateFilters,
+	} = useSellers({
+		initialFilters: {
+			statsPeriodAfter: dayjs().startOf("month").toDate(),
+			statsPeriodBefore: dayjs().endOf("month").toDate(),
+		},
+	});
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 
@@ -35,6 +53,7 @@ export default function SellersPage({ user }: SellersPageProps) {
 	const totalPages = sellersResult?.totalPages;
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
+			<SellersStats overallFilters={filters} />
 			<div className="w-full flex items-center justify-end gap-2">
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
@@ -50,6 +69,7 @@ export default function SellersPage({ user }: SellersPageProps) {
 				itemsShowingText={sellersShowing > 0 ? `Mostrando ${sellersShowing} vendedores.` : `Mostrando ${sellersShowing} vendedor.`}
 			/>
 			<SalesTeamFilterShowcase queryParams={filters} updateQueryParams={updateFilters} />
+
 			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando vendedores...</p> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && sellers ? (

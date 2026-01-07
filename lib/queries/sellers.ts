@@ -1,5 +1,8 @@
 import type { TGetSellersByIdInput, TGetSellersDefaultInput, TGetSellersInput, TGetSellersOutput } from "@/pages/api/sellers";
 import type { TGetSellerStatsInput, TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
+import type { TGetSellersGraphInput, TGetSellersGraphOutput } from "@/pages/api/sellers/stats/graph";
+import type { TGetSellersOverallStatsInput, TGetSellersOverallStatsOutput } from "@/pages/api/sellers/stats/overall";
+import type { TGetSellersRankingInput, TGetSellersRankingOutput } from "@/pages/api/sellers/stats/ranking";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
@@ -120,4 +123,75 @@ export function useSellerStats({ sellerId, initialFilters }: UseSellerStatsParam
 		filters,
 		updateFilters,
 	};
+}
+
+// Sellers Overall Stats Query
+async function fetchSellersOverallStats(input: TGetSellersOverallStatsInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		if (input.comparingPeriodAfter) searchParams.set("comparingPeriodAfter", input.comparingPeriodAfter.toISOString());
+		if (input.comparingPeriodBefore) searchParams.set("comparingPeriodBefore", input.comparingPeriodBefore.toISOString());
+		const { data } = await axios.get<TGetSellersOverallStatsOutput>(`/api/sellers/stats/overall?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchSellersOverallStats", error);
+		throw error;
+	}
+}
+
+export function useSellersOverallStats(input: TGetSellersOverallStatsInput) {
+	return useQuery({
+		queryKey: ["sellers-overall-stats", input],
+		queryFn: () => fetchSellersOverallStats(input),
+	});
+}
+
+// Sellers Graph Query
+async function fetchSellersGraph(input: TGetSellersGraphInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("graphType", input.graphType);
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		const { data } = await axios.get<TGetSellersGraphOutput>(`/api/sellers/stats/graph?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchSellersGraph", error);
+		throw error;
+	}
+}
+
+export function useSellersGraph(input: TGetSellersGraphInput) {
+	return useQuery({
+		queryKey: ["sellers-graph", input],
+		queryFn: () => fetchSellersGraph(input),
+	});
+}
+
+// Sellers Ranking Query
+async function fetchSellersRanking(input: TGetSellersRankingInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		if (input.saleNatures && input.saleNatures.length > 0) searchParams.set("saleNatures", input.saleNatures.join(","));
+		if (input.excludedSalesIds && input.excludedSalesIds.length > 0) searchParams.set("excludedSalesIds", input.excludedSalesIds.join(","));
+		if (input.totalMin) searchParams.set("totalMin", input.totalMin.toString());
+		if (input.totalMax) searchParams.set("totalMax", input.totalMax.toString());
+		if (input.rankingBy) searchParams.set("rankingBy", input.rankingBy);
+		const { data } = await axios.get<TGetSellersRankingOutput>(`/api/sellers/stats/ranking?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchSellersRanking", error);
+		throw error;
+	}
+}
+
+export function useSellersRanking(input: TGetSellersRankingInput) {
+	return useQuery({
+		queryKey: ["sellers-ranking", input],
+		queryFn: () => fetchSellersRanking(input),
+	});
 }

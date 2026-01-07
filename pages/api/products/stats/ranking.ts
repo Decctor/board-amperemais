@@ -80,17 +80,6 @@ async function getProductsRanking({ input, session }: { input: TGetProductsRanki
 	if (totalMin) saleConditions.push(gte(sales.valorTotal, totalMin));
 	if (totalMax) saleConditions.push(lte(sales.valorTotal, totalMax));
 
-	// Determine order by field based on ranking criteria
-	let orderByExpression;
-	if (rankingBy === "sales-total-qty") {
-		orderByExpression = desc(sum(saleItems.quantidade));
-	} else if (rankingBy === "sales-total-margin") {
-		orderByExpression = desc(sql`SUM(${saleItems.valorVendaTotalLiquido}) - SUM(${saleItems.valorCustoTotal})`);
-	} else {
-		// default: sales-total-value
-		orderByExpression = desc(sum(saleItems.valorVendaTotalLiquido));
-	}
-
 	// Get top products based on ranking criteria
 	const ranking = await db
 		.select({
@@ -108,28 +97,40 @@ async function getProductsRanking({ input, session }: { input: TGetProductsRanki
 		.innerJoin(products, eq(saleItems.produtoId, products.id))
 		.where(and(...saleConditions, eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId)))
 		.groupBy(saleItems.produtoId, products.descricao, products.codigo, products.grupo, products.imagemCapaUrl)
-		.orderBy(orderByExpression)
 		.limit(10);
 
-	const formattedRanking = ranking.map((item, index) => {
-		const totalRevenue = Number(item.totalRevenue ?? 0);
-		const totalCost = Number(item.totalCost ?? 0);
-		const totalMargin = totalRevenue - totalCost;
-		const marginPercentage = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
+	const formattedRanking = ranking
+		.map((item, index) => {
+			const totalRevenue = Number(item.totalRevenue ?? 0);
+			const totalCost = Number(item.totalCost ?? 0);
+			const totalMargin = totalRevenue - totalCost;
+			const marginPercentage = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
 
-		return {
-			rank: index + 1,
-			produtoId: item.produtoId,
-			descricao: item.produtoDescricao,
-			codigo: item.produtoCodigo,
-			grupo: item.produtoGrupo,
-			imagemCapaUrl: item.produtoImagemCapaUrl,
-			totalQuantity: Number(item.totalQuantity ?? 0),
-			totalRevenue,
-			totalMargin,
-			marginPercentage,
-		};
-	});
+			return {
+				rank: index + 1,
+				produtoId: item.produtoId,
+				descricao: item.produtoDescricao,
+				codigo: item.produtoCodigo,
+				grupo: item.produtoGrupo,
+				imagemCapaUrl: item.produtoImagemCapaUrl,
+				totalQuantity: Number(item.totalQuantity ?? 0),
+				totalRevenue,
+				totalMargin,
+				marginPercentage,
+			};
+		})
+		.sort((a, b) => {
+			if (rankingBy === "sales-total-value") {
+				return b.totalRevenue - a.totalRevenue;
+			}
+			if (rankingBy === "sales-total-qty") {
+				return b.totalQuantity - a.totalQuantity;
+			}
+			if (rankingBy === "sales-total-margin") {
+				return b.totalMargin - a.totalMargin;
+			}
+			return 0;
+		});
 
 	return {
 		data: formattedRanking,
