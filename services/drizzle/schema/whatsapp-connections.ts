@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { users } from "./users";
@@ -36,6 +36,7 @@ export const whatsappConnectionPhones = newTable("whatsapp_connection_phones", {
 	whatsappBusinessAccountId: varchar("whatsapp_business_account_id", { length: 255 }).notNull(),
 	whatsappTelefoneId: varchar("whatsapp_telefone_id", { length: 255 }).notNull(),
 	numero: text("numero").notNull(),
+	permitirAtendimentoIa: boolean("permitir_atendimento_ia").notNull().default(false),
 });
 export const whatsappConnectionPhonesRelations = relations(whatsappConnectionPhones, ({ one }) => ({
 	conexao: one(whatsappConnections, {

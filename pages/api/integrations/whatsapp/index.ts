@@ -217,7 +217,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 	const whatsappToken = connectionPhone.conexao.token;
 	const whatsappConexaoId = connectionPhone.conexaoId;
 	const whatsappConexaoTelefoneId = connectionPhone.id;
-
+	const allowsAIService = connectionPhone.permitirAtendimentoIa;
 	// Find or create client
 	let clientId: string | null = null;
 	const phoneBase = formatPhoneAsBase(incomingMessage.fromPhoneNumber);
@@ -278,7 +278,8 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 
 	// Find or create service
 	let serviceId: string | null = null;
-	let serviceResponsibleType: "AI" | "USUÁRIO" | "BUSINESS-APP" | "CLIENTE" = "AI";
+	// Initializing services as AI-handled if allowed, otherwise as USER-handled
+	let serviceResponsibleType: "AI" | "USUÁRIO" | "BUSINESS-APP" | "CLIENTE" = allowsAIService ? "AI" : "USUÁRIO";
 
 	const existingService = await db.query.chatServices.findFirst({
 		where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
@@ -294,7 +295,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 				organizacaoId,
 				chatId,
 				clienteId: clientId,
-				responsavelTipo: "AI", // Initializing services as AI-handled
+				responsavelTipo: serviceResponsibleType,
 				descricao: "NÃO ESPECIFICADO",
 				status: "PENDENTE",
 			})
@@ -375,7 +376,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 
 	const requiresAiProcessing = serviceResponsibleType === "AI" || (mediaData && midiaTipo !== "TEXTO");
 
-	if (requiresAiProcessing) {
+	if (requiresAiProcessing && allowsAIService) {
 		waitUntil(
 			handleAIProcessing({
 				chatId,
