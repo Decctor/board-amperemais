@@ -1,5 +1,5 @@
 import { getPostponedDateFromReferenceDate } from "@/lib/dates";
-import { formatPhoneAsBase } from "@/lib/formatting";
+import { formatPhoneAsBase, formatToCPForCNPJ } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { db } from "@/services/drizzle";
 import {
@@ -281,7 +281,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						// If no existing partner is found, we create a new one
 						const insertedPartnerResponse = await tx
 							.insert(partners)
-							.values({ organizacaoId: organization.id, nome: "NÃO DEFINIDO", identificador: OnlineSale.parceiro || "N/A" })
+							.values({
+								organizacaoId: organization.id,
+								nome: "NÃO DEFINIDO",
+								identificador: OnlineSale.parceiro || "N/A",
+								cpfCnpj: formatToCPForCNPJ(OnlineSale.parceiro || "N/A"),
+							})
 							.returning({ id: partners.id });
 						const insertedPartnerId = insertedPartnerResponse[0]?.id;
 						if (!insertedPartnerResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar parceiro.");

@@ -32,6 +32,24 @@ export const ProductSchema = z.object({
 		required_error: "Grupo do produto não informado.",
 		invalid_type_error: "Tipo não válido para grupo do produto.",
 	}),
+	quantidade: z
+		.number({
+			invalid_type_error: "Tipo não válido para quantidade do produto.",
+		})
+		.optional()
+		.nullable(),
+	precoVenda: z
+		.number({
+			invalid_type_error: "Tipo não válido para preço de venda do produto.",
+		})
+		.optional()
+		.nullable(),
+	precoCusto: z
+		.number({
+			invalid_type_error: "Tipo não válido para preço de custo do produto.",
+		})
+		.optional()
+		.nullable(),
 });
 export type TProduct = z.infer<typeof ProductSchema>;
 

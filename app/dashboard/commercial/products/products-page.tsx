@@ -21,8 +21,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
 	Activity,
+	AlertCircle,
+	AlertTriangle,
 	BadgeDollarSign,
 	CirclePlus,
+	Clock,
 	Code,
 	Diamond,
 	Info,
@@ -30,6 +33,7 @@ import {
 	Package,
 	Pencil,
 	PencilIcon,
+	RefreshCw,
 	Search,
 	ShoppingBag,
 	ShoppingCart,
@@ -68,6 +72,9 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 			statsExcludedSalesIds: [],
 			statsTotalMin: null,
 			statsTotalMax: null,
+			stockStatus: [],
+			priceMin: null,
+			priceMax: null,
 			orderByField: "descricao",
 			orderByDirection: "asc",
 		},
@@ -210,6 +217,72 @@ function ProductsStats({ overallFilters }: ProductsStatsProps) {
 					}
 				/>
 			</div>
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="GIRO MÉDIO DE ESTOQUE"
+					icon={<RefreshCw className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: productsOverallStats?.averageTurnoverDays.current || 0,
+						format: (n) => `${formatDecimalPlaces(n)} dias`,
+					}}
+					previous={
+						productsOverallStats?.averageTurnoverDays.comparison
+							? {
+									value: productsOverallStats?.averageTurnoverDays.comparison || 0,
+									format: (n) => `${formatDecimalPlaces(n)} dias`,
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="PRODUTOS SEM ESTOQUE"
+					icon={<AlertTriangle className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: productsOverallStats?.stockHealth.current?.outOfStock || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						productsOverallStats?.stockHealth.comparison
+							? {
+									value: productsOverallStats?.stockHealth.comparison?.outOfStock || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="PRODUTOS ESTOQUE BAIXO"
+					icon={<AlertTriangle className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: productsOverallStats?.stockHealth.current?.lowStock || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						productsOverallStats?.stockHealth.comparison
+							? {
+									value: productsOverallStats?.stockHealth.comparison?.lowStock || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="ESTOQUE EM RISCO"
+					icon={<AlertCircle className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: productsOverallStats?.atRiskInventory.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						productsOverallStats?.atRiskInventory.comparison
+							? {
+									value: productsOverallStats?.atRiskInventory.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3 max-h-[500px]">
 				<div className="w-full lg:w-1/2 h-full">
 					<ProductsGraphs periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
@@ -223,6 +296,27 @@ function ProductsStats({ overallFilters }: ProductsStatsProps) {
 }
 
 function ProductCard({ product, handleEditClick }: { product: TGetProductsOutputDefault["products"][number]; handleEditClick: () => void }) {
+	// Calculate stock status
+	const quantidade = product.quantidade ?? 0;
+	const getStockStatus = () => {
+		if (quantidade === 0) return { status: "out", label: "SEM ESTOQUE", color: "bg-red-500 dark:bg-red-600 text-white" };
+		if (quantidade <= 10) return { status: "low", label: `${quantidade} UN`, color: "bg-yellow-500 dark:bg-yellow-600 text-white" };
+		if (quantidade <= 50) return { status: "healthy", label: `${quantidade} UN`, color: "bg-green-500 dark:bg-green-600 text-white" };
+		return { status: "overstocked", label: `${quantidade} UN`, color: "bg-blue-500 dark:bg-blue-600 text-white" };
+	};
+	const stockStatus = getStockStatus();
+
+	// Calculate turnover (days of stock remaining)
+	const calculateTurnover = () => {
+		const qtySold = product.estatisticas.vendasQtdeTotal;
+		if (qtySold === 0 || quantidade === 0) return null;
+		// Assuming stats are for 30 days period (could be calculated from actual period)
+		const avgDailySales = qtySold / 30;
+		const daysOfStock = quantidade / avgDailySales;
+		return Math.round(daysOfStock);
+	};
+	const turnoverDays = calculateTurnover();
+
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-center">
@@ -252,7 +346,24 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 						) : null}
 					</div>
 					<div className="flex items-center gap-3 flex-col md:flex-row gap-y-1">
-						<div className="flex items-center gap-3">
+						<div className="flex items-center gap-3 flex-wrap">
+							{/* Stock Status Badge */}
+							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", stockStatus.color)}>
+								<Package className="w-4 min-w-4 h-4 min-h-4" />
+								<p className="text-xs font-bold tracking-tight uppercase">{stockStatus.label}</p>
+							</div>
+							{/* Turnover Indicator */}
+							{turnoverDays !== null && (
+								<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", {
+									"bg-red-500 dark:bg-red-600 text-white": turnoverDays < 7,
+									"bg-yellow-500 dark:bg-yellow-600 text-white": turnoverDays >= 7 && turnoverDays < 30,
+									"bg-green-500 dark:bg-green-600 text-white": turnoverDays >= 30 && turnoverDays < 90,
+									"bg-blue-500 dark:bg-blue-600 text-white": turnoverDays >= 90,
+								})}>
+									<Clock className="w-4 min-w-4 h-4 min-h-4" />
+									<p className="text-xs font-bold tracking-tight uppercase">{turnoverDays}D</p>
+								</div>
+							)}
 							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
 								<CirclePlus className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-xs font-bold tracking-tight uppercase">{product.estatisticas.vendasQtdeTotal}</p>
@@ -302,10 +413,17 @@ function ProductsFiltersShowcase({ filters, updateFilters }: ProductsFiltersShow
 		grupo: "GRUPO",
 		vendasValorTotal: "VALOR TOTAL DE VENDAS",
 		vendasQtdeTotal: "QUANTIDADE TOTAL DE VENDAS",
+		quantidade: "QUANTIDADE EM ESTOQUE",
 	};
 	const ORDERING_DIRECTION_MAP = {
 		asc: "CRESCENTE",
 		desc: "DECRESCENTE",
+	};
+	const STOCK_STATUS_MAP = {
+		out: "SEM ESTOQUE",
+		low: "ESTOQUE BAIXO",
+		healthy: "ESTOQUE SAUDÁVEL",
+		overstocked: "EXCESSO DE ESTOQUE",
 	};
 	const FilterTag = ({
 		label,
@@ -352,6 +470,20 @@ function ProductsFiltersShowcase({ filters, updateFilters }: ProductsFiltersShow
 					label="ESTATÍSTICAS - NATUREZAS DAS VENDAS"
 					value={filters.statsSaleNatures.join(", ")}
 					onRemove={() => updateFilters({ statsSaleNatures: [] })}
+				/>
+			)}
+			{filters.stockStatus && filters.stockStatus.length > 0 && (
+				<FilterTag
+					label="STATUS DE ESTOQUE"
+					value={filters.stockStatus.map((status: string) => STOCK_STATUS_MAP[status as keyof typeof STOCK_STATUS_MAP] || status).join(", ")}
+					onRemove={() => updateFilters({ stockStatus: [] })}
+				/>
+			)}
+			{(filters.priceMin || filters.priceMax) && (
+				<FilterTag
+					label="FAIXA DE PREÇO"
+					value={`${filters.priceMin ? `≥ ${formatToMoney(filters.priceMin)}` : ""}${filters.priceMin && filters.priceMax ? " & " : ""}${filters.priceMax ? `≤ ${formatToMoney(filters.priceMax)}` : ""}`}
+					onRemove={() => updateFilters({ priceMin: null, priceMax: null })}
 				/>
 			)}
 			{filters.orderByField && filters.orderByDirection && (

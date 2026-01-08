@@ -7,6 +7,7 @@ import { ArrowUpNarrowWide } from "lucide-react";
 import { useState } from "react";
 import DateInput from "../Inputs/DateInput";
 import MultipleSelectInput from "../Inputs/MultipleSelectInput";
+import NumberInput from "../Inputs/NumberInput";
 import TextInput from "../Inputs/TextInput";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../ui/sheet";
@@ -45,6 +46,18 @@ function ProductsFilterMenu({ queryParams, updateQueryParams, closeMenu }: Produ
 			label: "QUANTIDADE TOTAL DE VENDAS",
 			value: "vendasQtdeTotal",
 		},
+		{
+			id: 6,
+			label: "QUANTIDADE EM ESTOQUE",
+			value: "quantidade",
+		},
+	];
+
+	const STOCK_STATUS_OPTIONS = [
+		{ id: "out", label: "SEM ESTOQUE" },
+		{ id: "low", label: "ESTOQUE BAIXO" },
+		{ id: "healthy", label: "ESTOQUE SAUDÁVEL" },
+		{ id: "overstocked", label: "EXCESSO DE ESTOQUE" },
 	];
 	return (
 		<Sheet open onOpenChange={closeMenu}>
@@ -89,6 +102,35 @@ function ProductsFilterMenu({ queryParams, updateQueryParams, closeMenu }: Produ
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSellerIds: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSellerIds: [] }))}
 								resetOptionLabel="NENHUM DEFINIDO"
+								width="100%"
+							/>
+							<MultipleSelectInput
+								label="STATUS DE ESTOQUE"
+								selected={queryParamsHolder.stockStatus ?? []}
+								options={STOCK_STATUS_OPTIONS.map((opt) => ({ id: opt.id, label: opt.label, value: opt.label }))}
+								handleChange={(value) => {
+									const selectedIds = (value as string[]).map((label) => STOCK_STATUS_OPTIONS.find((opt) => opt.label === label)?.id || "").filter(Boolean);
+									setQueryParamsHolder((prev) => ({ ...prev, stockStatus: selectedIds as string[] }));
+								}}
+								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, stockStatus: [] }))}
+								resetOptionLabel="NENHUM DEFINIDO"
+								width="100%"
+							/>
+						</div>
+						<div className="flex w-full flex-col gap-2">
+							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO DE PREÇO</h1>
+							<NumberInput
+								label="PREÇO MÍNIMO"
+								value={queryParamsHolder.priceMin ?? undefined}
+								placeholder="R$ 0,00"
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, priceMin: value }))}
+								width="100%"
+							/>
+							<NumberInput
+								label="PREÇO MÁXIMO"
+								value={queryParamsHolder.priceMax ?? undefined}
+								placeholder="R$ 0,00"
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, priceMax: value }))}
 								width="100%"
 							/>
 						</div>

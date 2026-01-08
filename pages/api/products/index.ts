@@ -78,7 +78,28 @@ const GetProductsDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? Number(val) : null)),
-	orderByField: z.enum(["descricao", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal"]).optional().nullable(),
+	stockStatus: z
+		.string({
+			invalid_type_error: "Tipo não válido para status de estoque.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",") : [])),
+	priceMin: z
+		.string({
+			invalid_type_error: "Tipo não válido para preço mínimo.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
+	priceMax: z
+		.string({
+			invalid_type_error: "Tipo não válido para preço máximo.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
+	orderByField: z.enum(["descricao", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal", "quantidade"]).optional().nullable(),
 	orderByDirection: z.enum(["asc", "desc"]).optional().nullable(),
 });
 export type TGetProductsDefaultInput = z.infer<typeof GetProductsDefaultInputSchema>;
@@ -132,6 +153,33 @@ async function getProducts({ input, user }: GetProductsParams) {
 		productQueryConditions.push(inArray(products.grupo, input.groups));
 	}
 
+	// Stock status filters
+	if (input.stockStatus && input.stockStatus.length > 0) {
+		const stockConditions = [];
+		for (const status of input.stockStatus) {
+			if (status === "out") {
+				stockConditions.push(sql`(${products.quantidade} IS NULL OR ${products.quantidade} = 0)`);
+			} else if (status === "low") {
+				stockConditions.push(sql`(${products.quantidade} > 0 AND ${products.quantidade} <= 10)`);
+			} else if (status === "healthy") {
+				stockConditions.push(sql`(${products.quantidade} > 10 AND ${products.quantidade} <= 50)`);
+			} else if (status === "overstocked") {
+				stockConditions.push(sql`${products.quantidade} > 50`);
+			}
+		}
+		if (stockConditions.length > 0) {
+			productQueryConditions.push(sql`(${sql.join(stockConditions, sql` OR `)})`);
+		}
+	}
+
+	// Price range filters
+	if (input.priceMin) {
+		productQueryConditions.push(gte(products.precoVenda, input.priceMin));
+	}
+	if (input.priceMax) {
+		productQueryConditions.push(lte(products.precoVenda, input.priceMax));
+	}
+
 	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
 	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
@@ -159,6 +207,9 @@ async function getProducts({ input, user }: GetProductsParams) {
 			break;
 		case "vendasQtdeTotal":
 			orderByClause = direction(count(sales.id));
+			break;
+		case "quantidade":
+			orderByClause = direction(sql`COALESCE(${products.quantidade}, 0)`);
 			break;
 		default:
 			orderByClause = asc(products.descricao);
@@ -280,6 +331,9 @@ const getProductsHandler: NextApiHandler<TGetProductsOutput> = async (req, res) 
 		statsExcludedSalesIds: req.query.statsExcludedSalesIds as string | undefined,
 		statsTotalMin: req.query.statsTotalMin as string | undefined,
 		statsTotalMax: req.query.statsTotalMax as string | undefined,
+		stockStatus: req.query.stockStatus as string | undefined,
+		priceMin: req.query.priceMin as string | undefined,
+		priceMax: req.query.priceMax as string | undefined,
 		orderByField: req.query.orderByField as string | undefined,
 		orderByDirection: req.query.orderByDirection as string | undefined,
 	});

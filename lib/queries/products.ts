@@ -24,6 +24,9 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		if (input.statsExcludedSalesIds) searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
 		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
 		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
+		if (input.stockStatus && input.stockStatus.length > 0) searchParams.set("stockStatus", input.stockStatus.join(","));
+		if (input.priceMin) searchParams.set("priceMin", input.priceMin.toString());
+		if (input.priceMax) searchParams.set("priceMax", input.priceMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
 		if (input.statsSellerIds) searchParams.set("statsSellerIds", input.statsSellerIds.join(","));
@@ -74,6 +77,9 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		statsExcludedSalesIds: initialFilters?.statsExcludedSalesIds || [],
 		statsTotalMin: initialFilters?.statsTotalMin || null,
 		statsTotalMax: initialFilters?.statsTotalMax || null,
+		stockStatus: initialFilters?.stockStatus || [],
+		priceMin: initialFilters?.priceMin || null,
+		priceMax: initialFilters?.priceMax || null,
 		orderByField: initialFilters?.orderByField || "descricao",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
 	});

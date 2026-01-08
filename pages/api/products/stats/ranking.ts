@@ -107,7 +107,6 @@ async function getProductsRanking({ input, session }: { input: TGetProductsRanki
 			const marginPercentage = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
 
 			return {
-				rank: index + 1,
 				produtoId: item.produtoId,
 				descricao: item.produtoDescricao,
 				codigo: item.produtoCodigo,
@@ -130,7 +129,11 @@ async function getProductsRanking({ input, session }: { input: TGetProductsRanki
 				return b.totalMargin - a.totalMargin;
 			}
 			return 0;
-		});
+		})
+		.map((item, index) => ({
+			rank: index + 1,
+			...item,
+		}));
 
 	return {
 		data: formattedRanking,

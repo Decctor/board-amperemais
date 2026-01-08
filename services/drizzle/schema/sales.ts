@@ -21,10 +21,10 @@ export const sales = newTable(
 		valorTotal: doublePrecision("valor_total").notNull(),
 		custoTotal: doublePrecision("custo_total").notNull(),
 		vendedorNome: text("vendedor_nome").notNull(),
-		vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id),
+		vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
 		// Partner
 		parceiro: text("parceiro").notNull(),
-		parceiroId: varchar("parceiro_id", { length: 255 }).references(() => partners.id),
+		parceiroId: varchar("parceiro_id", { length: 255 }).references(() => partners.id, { onDelete: "set null" }),
 		// Other details
 		chave: text("chave").notNull(),
 		documento: text("documento").notNull(),

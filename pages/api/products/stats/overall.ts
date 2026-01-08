@@ -89,6 +89,80 @@ async function getProductsOverallStats({ input, session }: { input: TGetProducts
 	const totalMargin = totalRevenue - totalCost;
 	const averageMarginPercentage = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
 
+	// 4. Stock Health Metrics
+	const allProducts = await db
+		.select({
+			quantidade: products.quantidade,
+			precoCusto: products.precoCusto,
+			id: products.id,
+		})
+		.from(products)
+		.where(eq(products.organizacaoId, userOrgId));
+
+	let outOfStock = 0;
+	let lowStock = 0;
+	let healthyStock = 0;
+	let overstocked = 0;
+	let totalInventoryValue = 0;
+
+	for (const product of allProducts) {
+		const qty = product.quantidade ?? 0;
+		if (qty === 0) {
+			outOfStock++;
+		} else if (qty <= 10) {
+			lowStock++;
+		} else if (qty <= 50) {
+			healthyStock++;
+		} else {
+			overstocked++;
+		}
+
+		// Calculate inventory value
+		if (product.quantidade && product.precoCusto) {
+			totalInventoryValue += product.quantidade * product.precoCusto;
+		}
+	}
+
+	// 5. Average Turnover Rate (days to sell current inventory)
+	// Get total quantity sold and calculate average daily sales
+	const daysInPeriod =
+		periodAfter && periodBefore ? Math.max(1, Math.ceil((periodBefore.getTime() - periodAfter.getTime()) / (1000 * 60 * 60 * 24))) : 30;
+
+	const turnoverData = await db
+		.select({
+			productId: saleItems.produtoId,
+			totalQtySold: sum(saleItems.quantidade),
+		})
+		.from(saleItems)
+		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), ...saleConditions))
+		.groupBy(saleItems.produtoId);
+
+	const turnoverMap = new Map(turnoverData.map((d) => [d.productId, Number(d.totalQtySold ?? 0)]));
+
+	let totalTurnoverDays = 0;
+	let productsWithTurnover = 0;
+	let atRiskCount = 0;
+
+	for (const product of allProducts) {
+		const qtySold = turnoverMap.get(product.id) ?? 0;
+		const currentStock = product.quantidade ?? 0;
+
+		if (qtySold > 0 && currentStock > 0) {
+			const avgDailySales = qtySold / daysInPeriod;
+			const daysOfStock = currentStock / avgDailySales;
+			totalTurnoverDays += daysOfStock;
+			productsWithTurnover++;
+		}
+
+		// At-risk inventory: high stock (>20) with very low sales (< 1 per day)
+		if (currentStock > 20 && qtySold / daysInPeriod < 1) {
+			atRiskCount++;
+		}
+	}
+
+	const averageTurnoverDays = productsWithTurnover > 0 ? totalTurnoverDays / productsWithTurnover : 0;
+
 	// If no comparison period, return current stats only
 	if (!comparingPeriodAfter && !comparingPeriodBefore) {
 		return {
@@ -107,6 +181,27 @@ async function getProductsOverallStats({ input, session }: { input: TGetProducts
 				},
 				averageMargin: {
 					current: averageMarginPercentage,
+					comparison: null,
+				},
+				stockHealth: {
+					current: {
+						outOfStock,
+						lowStock,
+						healthyStock,
+						overstocked,
+					},
+					comparison: null,
+				},
+				averageTurnoverDays: {
+					current: averageTurnoverDays,
+					comparison: null,
+				},
+				totalInventoryValue: {
+					current: totalInventoryValue,
+					comparison: null,
+				},
+				atRiskInventory: {
+					current: atRiskCount,
 					comparison: null,
 				},
 			},
@@ -140,6 +235,46 @@ async function getProductsOverallStats({ input, session }: { input: TGetProducts
 	const comparisonTotalMargin = comparisonTotalRevenue - comparisonTotalCost;
 	const comparisonAverageMarginPercentage = comparisonTotalRevenue > 0 ? (comparisonTotalMargin / comparisonTotalRevenue) * 100 : 0;
 
+	// Comparison period inventory metrics
+	const comparisonDaysInPeriod =
+		comparingPeriodAfter && comparingPeriodBefore
+			? Math.max(1, Math.ceil((comparingPeriodBefore.getTime() - comparingPeriodAfter.getTime()) / (1000 * 60 * 60 * 24)))
+			: 30;
+
+	const comparisonTurnoverData = await db
+		.select({
+			productId: saleItems.produtoId,
+			totalQtySold: sum(saleItems.quantidade),
+		})
+		.from(saleItems)
+		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), ...comparisonSaleConditions))
+		.groupBy(saleItems.produtoId);
+
+	const comparisonTurnoverMap = new Map(comparisonTurnoverData.map((d) => [d.productId, Number(d.totalQtySold ?? 0)]));
+
+	let comparisonTotalTurnoverDays = 0;
+	let comparisonProductsWithTurnover = 0;
+	let comparisonAtRiskCount = 0;
+
+	for (const product of allProducts) {
+		const qtySold = comparisonTurnoverMap.get(product.id) ?? 0;
+		const currentStock = product.quantidade ?? 0;
+
+		if (qtySold > 0 && currentStock > 0) {
+			const avgDailySales = qtySold / comparisonDaysInPeriod;
+			const daysOfStock = currentStock / avgDailySales;
+			comparisonTotalTurnoverDays += daysOfStock;
+			comparisonProductsWithTurnover++;
+		}
+
+		if (currentStock > 20 && qtySold / comparisonDaysInPeriod < 1) {
+			comparisonAtRiskCount++;
+		}
+	}
+
+	const comparisonAverageTurnoverDays = comparisonProductsWithTurnover > 0 ? comparisonTotalTurnoverDays / comparisonProductsWithTurnover : 0;
+
 	return {
 		data: {
 			totalProducts: {
@@ -157,6 +292,32 @@ async function getProductsOverallStats({ input, session }: { input: TGetProducts
 			averageMargin: {
 				current: averageMarginPercentage,
 				comparison: comparisonAverageMarginPercentage,
+			},
+			stockHealth: {
+				current: {
+					outOfStock,
+					lowStock,
+					healthyStock,
+					overstocked,
+				},
+				comparison: {
+					outOfStock,
+					lowStock,
+					healthyStock,
+					overstocked,
+				},
+			},
+			averageTurnoverDays: {
+				current: averageTurnoverDays,
+				comparison: comparisonAverageTurnoverDays,
+			},
+			totalInventoryValue: {
+				current: totalInventoryValue,
+				comparison: totalInventoryValue,
+			},
+			atRiskInventory: {
+				current: atRiskCount,
+				comparison: comparisonAtRiskCount,
 			},
 		},
 	};
