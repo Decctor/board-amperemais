@@ -1,24 +1,27 @@
 "use client";
 import type { TGetPartnersInput, TGetPartnersOutputDefault } from "@/app/api/partners/route";
+import type { TGetPartnersOverallStatsInput } from "@/app/api/partners/stats/overall/route";
+import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import EditPartner from "@/components/Modals/Partners/EditPartner";
 import PartnersFilterMenu from "@/components/Partners/PartnersFilterMenu";
-import PartnersStats from "@/components/Partners/PartnersStats";
+import PartnersGraphs from "@/components/Partners/PartnersGraphs";
+import PartnersRanking from "@/components/Partners/PartnersRanking";
+import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import { formatNameAsInitials } from "@/lib/formatting";
-import { usePartners } from "@/lib/queries/partners";
+import { formatDateAsLocale, formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { usePartners, usePartnersOverallStats } from "@/lib/queries/partners";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { IdCard, ListFilter, X } from "lucide-react";
-import { AreaChart, BadgeDollarSign, CirclePlus, Mail, Pencil, Phone } from "lucide-react";
-import Link from "next/link";
+import { Activity, BadgeDollarSign, CirclePlus, IdCard, ListFilter, Mail, Pencil, Phone, Ticket, TrendingUp, Users, X } from "lucide-react";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 
@@ -26,6 +29,33 @@ type PartnersPageProps = {
 	user: TAuthUserSession["user"];
 };
 export default function PartnersPage({ user }: PartnersPageProps) {
+	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
+
+	return (
+		<div className="w-full h-full flex flex-col gap-3">
+			<Tabs value={viewMode} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
+				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
+					<TabsTrigger value="stats" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
+						Estatísticas
+					</TabsTrigger>
+					<TabsTrigger value="database" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<Users className="w-4 h-4 min-w-4 min-h-4" />
+						Banco de Dados
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="stats">
+					<PartnersStatsView />
+				</TabsContent>
+				<TabsContent value="database">
+					<PartnersDatabaseView user={user} />
+				</TabsContent>
+			</Tabs>
+		</div>
+	);
+}
+
+function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 	const queryClient = useQueryClient();
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
 	const [editPartnerModalId, setEditPartnerModalId] = useState<string | null>(null);
@@ -56,8 +86,7 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
-		<div className="w-full h-full flex flex-col gap-3">
-			<PartnersStats overallFilters={queryParams} />
+		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 				<Input
 					value={queryParams.search ?? ""}
@@ -79,7 +108,7 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 				itemsShowingText={partnersShowing > 0 ? `Mostrando ${partnersShowing} parceiros.` : `Mostrando ${partnersShowing} parceiro.`}
 			/>
 			<PartnersPageFilterShowcase queryParams={queryParams} updateQueryParams={updateQueryParams} />
-			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando parceiros...</p> : null}
+			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess ? (
 				<div className="w-full flex flex-col gap-1.5">
@@ -102,6 +131,122 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
 			) : null}
+		</div>
+	);
+}
+
+function PartnersStatsView() {
+	const initialStartDate = dayjs().startOf("month");
+	const initialEndDate = dayjs().endOf("month");
+	const [filters, setFilters] = useState<TGetPartnersOverallStatsInput>({
+		periodAfter: initialStartDate.toDate(),
+		periodBefore: initialEndDate.toDate(),
+		comparingPeriodAfter: initialStartDate.subtract(1, "month").toDate(),
+		comparingPeriodBefore: initialEndDate.subtract(1, "month").toDate(),
+	});
+	const { data: partnersOverallStats, isLoading: partnersOverallStatsLoading } = usePartnersOverallStats({
+		periodAfter: filters.periodAfter ?? null,
+		periodBefore: filters.periodBefore ?? null,
+		comparingPeriodAfter: filters.comparingPeriodAfter ?? null,
+		comparingPeriodBefore: filters.comparingPeriodBefore ?? null,
+	});
+
+	return (
+		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-center justify-end">
+				<DateIntervalInput
+					label="Período"
+					labelClassName="hidden"
+					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+					value={{
+						after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+						before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+					}}
+					handleChange={(value) =>
+						setFilters((prev) => ({
+							...prev,
+							periodAfter: value.after ? new Date(value.after) : null,
+							periodBefore: value.before ? new Date(value.before) : null,
+							comparingPeriodAfter: value.after ? dayjs().subtract(1, "month").toDate() : null,
+							comparingPeriodBefore: value.before ? dayjs().subtract(1, "month").toDate() : null,
+						}))
+					}
+				/>
+			</div>
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="TOTAL DE PARCEIROS"
+					icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: partnersOverallStats?.totalPartners.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						partnersOverallStats?.totalPartners.comparison
+							? {
+									value: partnersOverallStats?.totalPartners.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="PARCEIROS ATIVOS"
+					icon={<Activity className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: partnersOverallStats?.activePartners.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						partnersOverallStats?.activePartners.comparison
+							? {
+									value: partnersOverallStats?.activePartners.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="FATURAMENTO TOTAL"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: partnersOverallStats?.totalRevenue.current || 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						partnersOverallStats?.totalRevenue.comparison
+							? {
+									value: partnersOverallStats?.totalRevenue.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="TICKET MÉDIO GERAL"
+					icon={<Ticket className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: partnersOverallStats?.averageTicket.current || 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						partnersOverallStats?.averageTicket.comparison
+							? {
+									value: partnersOverallStats?.averageTicket.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+				/>
+			</div>
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
+				<div className="w-full lg:w-1/2 h-full min-h-0">
+					<PartnersGraphs periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+				</div>
+				<div className="w-full lg:w-1/2 h-full min-h-0">
+					<PartnersRanking periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+				</div>
+			</div>
 		</div>
 	);
 }

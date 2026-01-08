@@ -21,10 +21,6 @@ export default function ProductsRanking({ periodAfter, periodBefore }: ProductsR
 		rankingBy,
 		periodAfter: periodAfter ?? null,
 		periodBefore: periodBefore ?? null,
-		saleNatures: null,
-		excludedSalesIds: null,
-		totalMin: null,
-		totalMax: null,
 	});
 
 	return (
@@ -92,68 +88,75 @@ export default function ProductsRanking({ periodAfter, periodBefore }: ProductsR
 							<div
 								key={product.produtoId}
 								className={cn(
-									"bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-3 shadow-2xs",
+									"bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs",
 									product.rank === 1 && "border-yellow-500/50 bg-yellow-500/5",
 									product.rank === 2 && "border-gray-400/50 bg-gray-400/5",
 									product.rank === 3 && "border-orange-600/50 bg-orange-600/5",
 								)}
 							>
-								<div className="flex items-center justify-center">
-									<div className="relative h-12 max-h-12 min-h-12 w-12 max-w-12 min-w-12 overflow-hidden rounded-lg">
-										{product.imagemCapaUrl ? (
-											<Image src={product.imagemCapaUrl} alt="Imagem de capa do produto" fill={true} objectFit="cover" />
+								<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+									<div className="flex items-center gap-2 flex-wrap">
+										{product.rank <= 3 ? (
+											<Crown
+												className={cn(
+													"w-5 h-5 min-w-5 min-h-5",
+													product.rank === 1 && "text-yellow-500",
+													product.rank === 2 && "text-gray-400",
+													product.rank === 3 && "text-orange-600",
+												)}
+											/>
 										) : (
-											<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
-												<ShoppingCart className="h-5 w-5" />
+											<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
+												<span className="text-xs font-bold">{product.rank}</span>
 											</div>
 										)}
-									</div>
-								</div>
-								<div className="flex flex-col grow gap-1">
-									<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-										<div className="flex items-center gap-2 flex-wrap">
-											<div className="flex items-center gap-1.5">
-												{product.rank <= 3 ? (
-													<Crown
-														className={cn(
-															"w-5 h-5 min-w-5 min-h-5",
-															product.rank === 1 && "text-yellow-500",
-															product.rank === 2 && "text-gray-400",
-															product.rank === 3 && "text-orange-600",
-														)}
-													/>
-												) : (
-													<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
-														<span className="text-xs font-bold">{product.rank}</span>
-													</div>
-												)}
-												<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.descricao}</h1>
-											</div>
+										<div className="relative h-8 max-h-8 min-h-8 w-8 max-w-8 min-w-8 overflow-hidden rounded-lg hidden lg:block">
+											{product.imagemCapaUrl ? (
+												<Image src={product.imagemCapaUrl} alt="Imagem de capa do produto" fill={true} objectFit="cover" />
+											) : (
+												<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+													<ShoppingCart className="h-4 w-4" />
+												</div>
+											)}
+										</div>
+										<div className="flex items-start flex-col">
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger>
+														<h1 className="text-xs font-bold tracking-tight lg:text-sm truncate max-w-[150px] sm:max-w-[250px] md:max-w-[350px] text-left">
+															{product.descricao}
+														</h1>
+													</TooltipTrigger>
+													<TooltipContent>
+														<p>{product.descricao}</p>
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
 											<div className="flex items-center gap-1">
 												<Code className="w-4 h-4 min-w-4 min-h-4" />
 												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.codigo}</h1>
 											</div>
-											{product.grupo ? (
-												<div className="flex items-center gap-1">
-													<Diamond className="w-4 h-4 min-w-4 min-h-4" />
-													<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.grupo}</h1>
-												</div>
-											) : null}
 										</div>
 									</div>
-									<div className="w-full flex items-center justify-center sm:justify-end gap-2 flex-wrap">
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(product.totalQuantity)}</p>
-										</div>
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(product.totalRevenue)}</p>
-										</div>
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<TrendingUp className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(product.marginPercentage)}%</p>
-										</div>
+									<div className="flex items-center gap-3">
+										{rankingBy === "sales-total-value" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(product.totalRevenue)}</p>
+											</div>
+										) : null}
+										{rankingBy === "sales-total-qty" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(product.totalQuantity)}</p>
+											</div>
+										) : null}
+										{rankingBy === "sales-total-margin" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<TrendingUp className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(product.marginPercentage)}%</p>
+											</div>
+										) : null}
 									</div>
 								</div>
 							</div>

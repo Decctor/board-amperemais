@@ -136,11 +136,13 @@ function ClientsDatabaseView() {
 }
 
 function ClientsStatsView() {
+	const initialStartDate = dayjs().startOf("month");
+	const initialEndDate = dayjs().endOf("month");
 	const [filters, setFilters] = useState<TGetClientsOverallStatsInput>({
-		periodAfter: dayjs().startOf("month").toDate(),
-		periodBefore: dayjs().endOf("month").toDate(),
-		comparingPeriodAfter: null,
-		comparingPeriodBefore: null,
+		periodAfter: initialStartDate.toDate(),
+		periodBefore: initialEndDate.toDate(),
+		comparingPeriodAfter: initialStartDate.subtract(1, "month").toDate(),
+		comparingPeriodBefore: initialEndDate.subtract(1, "month").toDate(),
 	});
 	const { data: clientsOverallStats, isLoading: clientsOverallStatsLoading } = useClientsOverallStats({
 		periodAfter: filters.periodAfter,

@@ -1,4 +1,5 @@
 "use client";
+import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
@@ -11,6 +12,7 @@ import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -18,6 +20,7 @@ import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/fo
 import { useProducts, useProductsOverallStats } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
 import type { TGetProductsDefaultInput, TGetProductsOutputDefault } from "@/pages/api/products";
+import type { TGetProductsOverallStatsInput } from "@/pages/api/products/stats/overall";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
@@ -32,25 +35,51 @@ import {
 	Info,
 	ListFilter,
 	Package,
-	Pencil,
 	PencilIcon,
 	RefreshCw,
-	Search,
 	ShoppingBag,
 	ShoppingCart,
 	Star,
 	TrendingUp,
+	Users,
 	X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 type ProductsPageProps = {
 	user: TAuthUserSession["user"];
 };
 
 export default function ProductsPage({ user }: ProductsPageProps) {
+	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
+
+	return (
+		<div className="w-full h-full flex flex-col gap-3">
+			<Tabs value={viewMode} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
+				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
+					<TabsTrigger value="stats" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
+						Estatísticas
+					</TabsTrigger>
+					<TabsTrigger value="database" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<Users className="w-4 h-4 min-w-4 min-h-4" />
+						Banco de Dados
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="stats">
+					<ProductsStatsView />
+				</TabsContent>
+				<TabsContent value="database">
+					<ProductsDatabaseView user={user} />
+				</TabsContent>
+			</Tabs>
+		</div>
+	);
+}
+
+function ProductsDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 	const queryClient = useQueryClient();
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
 	const [editProductModalId, setEditProductModalId] = useState<string | null>(null);
@@ -88,10 +117,9 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
-	return (
-		<div className="w-full h-full flex flex-col gap-3">
-			<ProductsStats overallFilters={filters} />
 
+	return (
+		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 				<Input
 					value={filters.search ?? ""}
@@ -145,19 +173,45 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 	);
 }
 
-type ProductsStatsProps = {
-	overallFilters: TGetProductsDefaultInput;
-};
-function ProductsStats({ overallFilters }: ProductsStatsProps) {
-	const { data: productsOverallStats, isLoading: productsOverallStatsLoading } = useProductsOverallStats({
-		periodAfter: overallFilters.statsPeriodAfter,
-		periodBefore: overallFilters.statsPeriodBefore,
-		comparingPeriodAfter: null,
+function ProductsStatsView() {
+	const initialStartDate = dayjs().startOf("month");
+	const initialEndDate = dayjs().endOf("month");
+	const [filters, setFilters] = useState<TGetProductsOverallStatsInput>({
+		periodAfter: initialStartDate.toDate(),
+		periodBefore: initialEndDate.toDate(),
+		comparingPeriodAfter: initialStartDate.subtract(1, "month").toDate(),
 		comparingPeriodBefore: null,
+	});
+
+	const { data: productsOverallStats, isLoading: productsOverallStatsLoading } = useProductsOverallStats({
+		periodAfter: filters.periodAfter,
+		periodBefore: filters.periodBefore,
+		comparingPeriodAfter: filters.comparingPeriodAfter,
+		comparingPeriodBefore: filters.comparingPeriodBefore,
 	});
 
 	return (
 		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-center justify-end">
+				<DateIntervalInput
+					label="Período"
+					labelClassName="hidden"
+					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+					value={{
+						after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+						before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+					}}
+					handleChange={(value) =>
+						setFilters((prev) => ({
+							...prev,
+							periodAfter: value.after ? new Date(value.after) : null,
+							periodBefore: value.before ? new Date(value.before) : null,
+							comparingPeriodAfter: value.after ? dayjs().subtract(1, "month").toDate() : null,
+							comparingPeriodBefore: value.before ? dayjs().subtract(1, "month").toDate() : null,
+						}))
+					}
+				/>
+			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
 				<StatUnitCard
 					title="TOTAL DE PRODUTOS"
@@ -290,12 +344,12 @@ function ProductsStats({ overallFilters }: ProductsStatsProps) {
 					}
 				/>
 			</div>
-			<div className="w-full flex items-start flex-col lg:flex-row gap-3 max-h-[500px]">
-				<div className="w-full lg:w-1/2 h-full">
-					<ProductsGraphs periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
+				<div className="w-full lg:w-1/2 h-full min-h-0">
+					<ProductsGraphs periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 				</div>
-				<div className="w-full lg:w-1/2 h-full">
-					<ProductsRanking periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
+				<div className="w-full lg:w-1/2 h-full min-h-0">
+					<ProductsRanking periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 				</div>
 			</div>
 		</div>

@@ -1,8 +1,14 @@
 "use client";
 import type { TGetCashbackProgramOutput } from "@/app/api/cashback-programs/route";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
+import EditCashbackProgram from "@/components/Modals/CashbackPrograms/EditCashbackProgram";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import dayjs from "dayjs";
+import { Calendar, DollarSign, Edit, Pencil, Settings, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import CashbackStatsBlock from "./CashbackStatsBlock";
 import RecentTransactionsBlock from "./RecentTransactionsBlock";
@@ -20,9 +26,7 @@ export default function CashbackProgramsPage({ user, cashbackProgram }: Cashback
 		before: dayjs().endOf("month").toDate(),
 	});
 
-	const handlePeriodChange = (value: { after?: Date; before?: Date }) => {
-		setPeriod(value);
-	};
+	const [editCashbackProgramModalIsOpen, setEditCashbackProgramModalIsOpen] = useState<boolean>(false);
 
 	const periodFormatted = {
 		after: period.after ? period.after.toISOString() : dayjs().startOf("month").toISOString(),
@@ -31,17 +35,69 @@ export default function CashbackProgramsPage({ user, cashbackProgram }: Cashback
 
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			{/* Date Range Picker */}
-			<div className="w-full flex items-center justify-end">
-				<div className="w-fit">
-					<DateIntervalInput label="Período" value={period} handleChange={handlePeriodChange} showLabel={false} width="350px" />
+			{/* Program Info Card */}
+			<div className="w-full flex flex-col gap-3">
+				<div className="flex items-start justify-between">
+					<div className="flex flex-col items-start">
+						<h1 className="text-lg font-bold tracking-tight">{cashbackProgram.titulo}</h1>
+						{cashbackProgram.descricao && <p className="text-sm font-medium tracking-tight">{cashbackProgram.descricao}</p>}
+					</div>
+					<Button variant="ghost" className="flex items-center gap-2" onClick={() => setEditCashbackProgramModalIsOpen(true)}>
+						<Pencil className="w-4 min-w-4 h-4 min-h-4" />
+						EDITAR
+					</Button>
+				</div>
+
+				<div className="w-full flex items-center gap-2 flex-wrap">
+					<div className="flex items-center gap-2">
+						<TrendingUp className="w-4 min-w-4 h-4 min-h-4" />
+						<p className="text-sm font-medium tracking-tight">
+							REGRA DE ACUMULAÇÃO:
+							{cashbackProgram.acumuloTipo === "PERCENTUAL"
+								? `${formatDecimalPlaces(cashbackProgram.acumuloValor)}% do valor da venda`
+								: `${formatToMoney(cashbackProgram.acumuloValor)} fixo por venda`}
+						</p>
+					</div>
+					<div className="flex items-center gap-2">
+						<DollarSign className="w-4 min-w-4 h-4 min-h-4" />
+						<p className="text-sm font-medium tracking-tight">
+							VALOR MÍNIMO P/ ACÚMULO:{" "}
+							{cashbackProgram.acumuloRegraValorMinimo > 0
+								? `Vendas acima de ${formatToMoney(cashbackProgram.acumuloRegraValorMinimo)}`
+								: "Sem valor mínimo"}
+						</p>
+					</div>
+					<div className="flex items-center gap-2">
+						<Calendar className="w-4 min-w-4 h-4 min-h-4" />
+						<p className="text-sm font-medium tracking-tight">
+							VALIDADE DOS CRÉDITOS:{" "}
+							{cashbackProgram.expiracaoRegraValidadeValor > 0
+								? `${cashbackProgram.expiracaoRegraValidadeValor} dias após o acúmulo`
+								: "Sem validade (não expira)"}
+						</p>
+					</div>
 				</div>
 			</div>
-
-			{/* Stats Block */}
+			<div className="w-full flex justify-end">
+				<div className="w-fit">
+					<DateIntervalInput
+						label="Período"
+						labelClassName="hidden"
+						className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+						value={{
+							after: period.after ? new Date(period.after) : undefined,
+							before: period.before ? new Date(period.before) : undefined,
+						}}
+						handleChange={(value) =>
+							setPeriod({
+								after: value.after ? new Date(value.after) : undefined,
+								before: value.before ? new Date(value.before) : undefined,
+							})
+						}
+					/>
+				</div>
+			</div>
 			<CashbackStatsBlock period={periodFormatted} />
-
-			{/* Recent Transactions and Top Clients */}
 			<div className="w-full flex flex-col lg:flex-row gap-3 items-stretch">
 				<div className="w-full lg:w-1/2">
 					<RecentTransactionsBlock period={periodFormatted} />
@@ -50,6 +106,16 @@ export default function CashbackProgramsPage({ user, cashbackProgram }: Cashback
 					<TopClientsBlock />
 				</div>
 			</div>
+			{editCashbackProgramModalIsOpen ? (
+				<EditCashbackProgram
+					user={user}
+					cashbackProgram={cashbackProgram}
+					closeModal={() => setEditCashbackProgramModalIsOpen(false)}
+					callbacks={{
+						onSettled: () => window.location.reload(),
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }

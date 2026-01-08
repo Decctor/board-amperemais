@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { usePartnersRanking } from "@/lib/queries/partners";
 import { cn } from "@/lib/utils";
-import { BadgeDollarSign, CirclePlus, Crown, Ticket, TrendingUp } from "lucide-react";
+import { BadgeDollarSign, CirclePlus, Crown, IdCard, Phone, Ticket, TrendingUp } from "lucide-react";
 import { useState } from "react";
 
 type PartnersRankingProps = {
@@ -21,10 +21,6 @@ export default function PartnersRanking({ periodAfter, periodBefore }: PartnersR
 		rankingBy,
 		periodAfter: periodAfter ?? null,
 		periodBefore: periodBefore ?? null,
-		saleNatures: null,
-		excludedSalesIds: null,
-		totalMin: null,
-		totalMax: null,
 	});
 
 	const RANKING_LABEL_MAP = {
@@ -114,51 +110,67 @@ export default function PartnersRanking({ periodAfter, periodBefore }: PartnersR
 									partner.rank === 3 && "border-orange-600/50 bg-orange-600/5",
 								)}
 							>
-								<div className="flex items-center justify-center">
-									<Avatar className="w-12 h-12 min-w-12 min-h-12">
-										<AvatarImage src={partner.parceiroAvatarUrl ?? undefined} alt={partner.parceiroNome} />
-										<AvatarFallback>{formatNameAsInitials(partner.parceiroNome)}</AvatarFallback>
-									</Avatar>
-								</div>
-								<div className="flex flex-col grow gap-1">
-									<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-										<div className="flex items-center gap-2 flex-wrap">
-											<div className="flex items-center gap-1.5">
-												{partner.rank <= 3 ? (
-													<Crown
-														className={cn(
-															"w-5 h-5 min-w-5 min-h-5",
-															partner.rank === 1 && "text-yellow-500",
-															partner.rank === 2 && "text-gray-400",
-															partner.rank === 3 && "text-orange-600",
-														)}
-													/>
-												) : (
-													<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
-														<span className="text-xs font-bold">{partner.rank}</span>
-													</div>
+								<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+									<div className="flex items-center gap-2 flex-wrap">
+										{partner.rank <= 3 ? (
+											<Crown
+												className={cn(
+													"w-5 h-5 min-w-5 min-h-5",
+													partner.rank === 1 && "text-yellow-500",
+													partner.rank === 2 && "text-gray-400",
+													partner.rank === 3 && "text-orange-600",
 												)}
-												<h1 className="text-xs font-bold tracking-tight lg:text-sm">{partner.parceiroNome}</h1>
+											/>
+										) : (
+											<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
+												<span className="text-xs font-bold">{partner.rank}</span>
+											</div>
+										)}
+										<Avatar className="w-8 h-8 min-w-8 min-h-8 hidden lg:block">
+											<AvatarImage src={partner.parceiroAvatarUrl ?? undefined} alt={partner.parceiroNome} />
+											<AvatarFallback>{formatNameAsInitials(partner.parceiroNome)}</AvatarFallback>
+										</Avatar>
+										<div className="flex items-start flex-col">
+											<h1 className="text-xs font-bold tracking-tight lg:text-sm">{partner.parceiroNome}</h1>
+											<div className="flex items-center gap-1.5">
+												<div className="flex items-center gap-1">
+													<IdCard className="w-4 h-4 min-w-4 min-h-4" />
+													<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{partner.parceiroCpfCnpj}</h1>
+												</div>
+												{partner.parceiroTelefone ? (
+													<div className="flex items-center gap-1">
+														<Phone className="w-4 h-4 min-w-4 min-h-4" />
+														<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{partner.parceiroTelefone}</h1>
+													</div>
+												) : null}
 											</div>
 										</div>
 									</div>
-									<div className="w-full flex items-center justify-center sm:justify-end gap-2 flex-wrap">
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(partner.totalSalesQty)}</p>
-										</div>
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(partner.totalRevenue)}</p>
-										</div>
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<Ticket className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(partner.averageTicket)}</p>
-										</div>
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<TrendingUp className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(partner.marginPercentage)}%</p>
-										</div>
+									<div className="flex items-center gap-3">
+										{rankingBy === "sales-total-value" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(partner.totalRevenue)}</p>
+											</div>
+										) : null}
+										{rankingBy === "sales-total-qty" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(partner.totalSalesQty)}</p>
+											</div>
+										) : null}
+										{rankingBy === "average-ticket" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<Ticket className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(partner.averageTicket)}</p>
+											</div>
+										) : null}
+										{rankingBy === "margin" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<TrendingUp className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(partner.marginPercentage)}%</p>
+											</div>
+										) : null}
 									</div>
 								</div>
 							</div>

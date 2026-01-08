@@ -69,6 +69,8 @@ async function getPartnersRanking({ input, session }: { input: TGetPartnersRanki
 			id: true,
 			nome: true,
 			avatarUrl: true,
+			cpfCnpj: true,
+			telefone: true,
 		},
 	});
 
@@ -89,6 +91,8 @@ async function getPartnersRanking({ input, session }: { input: TGetPartnersRanki
 			parceiroId: partnerId,
 			parceiroNome: partnerInfo?.nome || "N/A",
 			parceiroAvatarUrl: partnerInfo?.avatarUrl || null,
+			parceiroCpfCnpj: partnerInfo?.cpfCnpj || null,
+			parceiroTelefone: partnerInfo?.telefone || null,
 			totalRevenue,
 			totalCost,
 			totalMargin,
@@ -122,6 +126,8 @@ async function getPartnersRanking({ input, session }: { input: TGetPartnersRanki
 		parceiroId: partner.parceiroId,
 		parceiroNome: partner.parceiroNome,
 		parceiroAvatarUrl: partner.parceiroAvatarUrl,
+		parceiroCpfCnpj: partner.parceiroCpfCnpj,
+		parceiroTelefone: partner.parceiroTelefone,
 		totalRevenue: partner.totalRevenue,
 		totalCost: partner.totalCost,
 		totalMargin: partner.totalMargin,

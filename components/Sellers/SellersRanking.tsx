@@ -22,10 +22,6 @@ export default function SellersRanking({ periodAfter, periodBefore }: SellersRan
 		rankingBy,
 		periodAfter: periodAfter ?? null,
 		periodBefore: periodBefore ?? null,
-		saleNatures: null,
-		excludedSalesIds: null,
-		totalMin: null,
-		totalMax: null,
 	});
 
 	const RANKING_LABEL_MAP = {
@@ -120,73 +116,64 @@ export default function SellersRanking({ periodAfter, periodBefore }: SellersRan
 									seller.rank === 3 && "border-orange-600/50 bg-orange-600/5",
 								)}
 							>
-								<div className="flex items-center justify-center">
-									<Avatar className="w-12 h-12 min-w-12 min-h-12">
-										<AvatarImage src={seller.vendedorAvatarUrl ?? undefined} alt={seller.vendedorNome} />
-										<AvatarFallback>{formatNameAsInitials(seller.vendedorNome)}</AvatarFallback>
-									</Avatar>
-								</div>
-								<div className="flex flex-col grow gap-1">
-									<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-										<div className="flex items-center gap-2 flex-wrap">
-											<div className="flex items-center gap-1.5">
-												{seller.rank <= 3 ? (
-													<Crown
-														className={cn(
-															"w-5 h-5 min-w-5 min-h-5",
-															seller.rank === 1 && "text-yellow-500",
-															seller.rank === 2 && "text-gray-400",
-															seller.rank === 3 && "text-orange-600",
-														)}
-													/>
-												) : (
-													<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
-														<span className="text-xs font-bold">{seller.rank}</span>
-													</div>
-												)}
-												<h1 className="text-xs font-bold tracking-tight lg:text-sm">{seller.vendedorNome}</h1>
-											</div>
-										</div>
-									</div>
-									<div className="w-full flex items-center justify-center sm:justify-end gap-2 flex-wrap">
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.totalSalesQty)}</p>
-										</div>
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.totalRevenue)}</p>
-										</div>
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<Ticket className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.averageTicket)}</p>
-										</div>
-									</div>
-									<div className="w-full flex items-center gap-2 mt-1">
-										<div className="flex-1">
-											<Progress
-												value={Math.min(seller.goalAchievementPercentage, 100)}
+								<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+									<div className="flex items-center gap-2 flex-wrap">
+										{seller.rank <= 3 ? (
+											<Crown
 												className={cn(
-													"h-2 [&>div]:transition-all",
-													seller.goalAchievementPercentage >= 100 && "[&>div]:bg-green-500",
-													seller.goalAchievementPercentage >= 75 && seller.goalAchievementPercentage < 100 && "[&>div]:bg-yellow-500",
-													seller.goalAchievementPercentage < 75 && "[&>div]:bg-red-500",
+													"w-5 h-5 min-w-5 min-h-5",
+													seller.rank === 1 && "text-yellow-500",
+													seller.rank === 2 && "text-gray-400",
+													seller.rank === 3 && "text-orange-600",
 												)}
 											/>
+										) : (
+											<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
+												<span className="text-xs font-bold">{seller.rank}</span>
+											</div>
+										)}
+										<Avatar className="w-8 h-8 min-w-8 min-h-8 hidden lg:block">
+											<AvatarImage src={seller.vendedorAvatarUrl ?? undefined} alt={seller.vendedorNome} />
+											<AvatarFallback>{formatNameAsInitials(seller.vendedorNome)}</AvatarFallback>
+										</Avatar>
+										<div className="flex items-start flex-col">
+											<h1 className="text-xs font-bold tracking-tight lg:text-sm">{seller.vendedorNome}</h1>
 										</div>
-										<div
-											className={cn(
-												"flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-bold",
-												seller.goalAchievementPercentage >= 100 && "bg-green-500/20 text-green-700 dark:text-green-400",
-												seller.goalAchievementPercentage >= 75 &&
-													seller.goalAchievementPercentage < 100 &&
-													"bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
-												seller.goalAchievementPercentage < 75 && "bg-red-500/20 text-red-700 dark:text-red-400",
-											)}
-										>
-											<Target className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.goalAchievementPercentage)}%</p>
-										</div>
+									</div>
+									<div className="flex items-center gap-3">
+										{rankingBy === "sales-total-value" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.totalRevenue)}</p>
+											</div>
+										) : null}
+										{rankingBy === "sales-total-qty" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.totalSalesQty)}</p>
+											</div>
+										) : null}
+										{rankingBy === "average-ticket" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<Ticket className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.averageTicket)}</p>
+											</div>
+										) : null}
+										{rankingBy === "goal-achievement" ? (
+											<div
+												className={cn(
+													"flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-bold",
+													seller.goalAchievementPercentage >= 100 && "bg-green-500/20 text-green-700 dark:text-green-400",
+													seller.goalAchievementPercentage >= 75 &&
+														seller.goalAchievementPercentage < 100 &&
+														"bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
+													seller.goalAchievementPercentage < 75 && "bg-red-500/20 text-red-700 dark:text-red-400",
+												)}
+											>
+												<Target className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.goalAchievementPercentage)}%</p>
+											</div>
+										) : null}
 									</div>
 								</div>
 							</div>

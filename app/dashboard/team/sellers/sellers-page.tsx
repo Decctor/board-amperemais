@@ -1,24 +1,28 @@
 "use client";
+import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import EditSeller from "@/components/Modals/Sellers/EditSeller";
-import ViewSellerResults from "@/components/Modals/Sellers/ViewSellerResults";
 import SalesTeamFilterMenu from "@/components/SalesTeam/SalesTeamFilterMenu";
 import SalesTeamFilterShowcase from "@/components/SalesTeam/SalesTeamFilterShowcase";
 import SellersGraphs from "@/components/Sellers/SellersGraphs";
 import SellersRanking from "@/components/Sellers/SellersRanking";
-import SellersStats from "@/components/Sellers/SellersStats";
+import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatNameAsInitials, formatToMoney } from "@/lib/formatting";
-import { useSellers } from "@/lib/queries/sellers";
+import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { useSellers, useSellersOverallStats } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
 import type { TGetSellersOutputDefault } from "@/pages/api/sellers";
+import type { TGetSellersDefaultInput } from "@/pages/api/sellers";
+import type { TGetSellersOverallStatsInput } from "@/pages/api/sellers/stats/overall";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { AreaChart, BadgeDollarSign, CirclePlus, ListFilter, Mail, Pencil, Phone } from "lucide-react";
+import { Activity, AreaChart, BadgeDollarSign, CirclePlus, ListFilter, Mail, Pencil, Phone, Target, Ticket, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -26,6 +30,33 @@ type SellersPageProps = {
 	user: TAuthUserSession["user"];
 };
 export default function SellersPage({ user }: SellersPageProps) {
+	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
+
+	return (
+		<div className="w-full h-full flex flex-col gap-3">
+			<Tabs value={viewMode} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
+				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
+					<TabsTrigger value="stats" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
+						Estatísticas
+					</TabsTrigger>
+					<TabsTrigger value="database" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<Users className="w-4 h-4 min-w-4 min-h-4" />
+						Banco de Dados
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="stats">
+					<SellersStatsView />
+				</TabsContent>
+				<TabsContent value="database">
+					<SellersDatabaseView user={user} />
+				</TabsContent>
+			</Tabs>
+		</div>
+	);
+}
+
+function SellersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 	const queryClient = useQueryClient();
 	const [editSellerId, setEditSellerId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
@@ -52,8 +83,7 @@ export default function SellersPage({ user }: SellersPageProps) {
 	const sellersMatched = sellersResult?.sellersMatched || 0;
 	const totalPages = sellersResult?.totalPages;
 	return (
-		<div className="w-full h-full flex flex-col gap-3">
-			<SellersStats overallFilters={filters} />
+		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end gap-2">
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
@@ -70,7 +100,7 @@ export default function SellersPage({ user }: SellersPageProps) {
 			/>
 			<SalesTeamFilterShowcase queryParams={filters} updateQueryParams={updateFilters} />
 
-			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando vendedores...</p> : null}
+			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && sellers ? (
 				<div className="w-full flex flex-col gap-1.5">
@@ -104,6 +134,138 @@ export default function SellersPage({ user }: SellersPageProps) {
 			{filterMenuIsOpen ? (
 				<SalesTeamFilterMenu queryParams={filters} updateQueryParams={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
+		</div>
+	);
+}
+
+function SellersStatsView() {
+	const initialStartDate = dayjs().startOf("month");
+	const initialEndDate = dayjs().endOf("month");
+	const [filters, setFilters] = useState<TGetSellersOverallStatsInput>({
+		periodAfter: initialStartDate.toDate(),
+		periodBefore: initialEndDate.toDate(),
+		comparingPeriodAfter: initialStartDate.subtract(1, "month").toDate(),
+		comparingPeriodBefore: initialEndDate.subtract(1, "month").toDate(),
+	});
+	const { data: sellersOverallStats, isLoading: sellersOverallStatsLoading } = useSellersOverallStats({
+		periodAfter: filters.periodAfter ?? null,
+		periodBefore: filters.periodBefore ?? null,
+		comparingPeriodAfter: filters.comparingPeriodAfter ?? null,
+		comparingPeriodBefore: filters.comparingPeriodBefore ?? null,
+	});
+
+	return (
+		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-center justify-end">
+				<DateIntervalInput
+					label="Período"
+					labelClassName="hidden"
+					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+					value={{
+						after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+						before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+					}}
+					handleChange={(value) =>
+						setFilters((prev) => ({
+							...prev,
+							periodAfter: value.after ? new Date(value.after) : null,
+							periodBefore: value.before ? new Date(value.before) : null,
+							comparingPeriodAfter: value.after ? dayjs().subtract(1, "month").toDate() : null,
+							comparingPeriodBefore: value.before ? dayjs().subtract(1, "month").toDate() : null,
+						}))
+					}
+				/>
+			</div>
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="TOTAL DE VENDEDORES"
+					icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: sellersOverallStats?.totalSellers.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						sellersOverallStats?.totalSellers.comparison
+							? {
+									value: sellersOverallStats?.totalSellers.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="VENDEDORES ATIVOS"
+					icon={<Activity className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: sellersOverallStats?.activeSellers.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						sellersOverallStats?.activeSellers.comparison
+							? {
+									value: sellersOverallStats?.activeSellers.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="FATURAMENTO TOTAL"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: sellersOverallStats?.totalRevenue.current || 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						sellersOverallStats?.totalRevenue.comparison
+							? {
+									value: sellersOverallStats?.totalRevenue.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="TICKET MÉDIO GERAL"
+					icon={<Ticket className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: sellersOverallStats?.averageTicket.current || 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						sellersOverallStats?.averageTicket.comparison
+							? {
+									value: sellersOverallStats?.averageTicket.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="META VS REALIZADO"
+					icon={<Target className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: sellersOverallStats?.goalAchievement.current || 0,
+						format: (n) => `${formatDecimalPlaces(n)}%`,
+					}}
+					previous={
+						sellersOverallStats?.goalAchievement.comparison
+							? {
+									value: sellersOverallStats?.goalAchievement.comparison || 0,
+									format: (n) => `${formatDecimalPlaces(n)}%`,
+								}
+							: undefined
+					}
+				/>
+			</div>
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
+				<div className="w-full lg:w-1/2 h-full min-h-0">
+					<SellersGraphs periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+				</div>
+				<div className="w-full lg:w-1/2 h-full min-h-0">
+					<SellersRanking periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+				</div>
+			</div>
 		</div>
 	);
 }

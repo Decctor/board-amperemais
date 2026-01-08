@@ -95,7 +95,7 @@ async function getProductsRanking({ input, session }: { input: TGetProductsRanki
 				return b.totalQuantity - a.totalQuantity;
 			}
 			if (rankingBy === "sales-total-margin") {
-				return b.totalMargin - a.totalMargin;
+				return b.marginPercentage - a.marginPercentage;
 			}
 			return 0;
 		})
