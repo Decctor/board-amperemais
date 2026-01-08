@@ -1,7 +1,21 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import type { TUserSession } from "@/schemas/users";
-import { BadgePercent, Goal, Grid3X3, Handshake, Home, Megaphone, MessageCircle, Package, Tag, UserRound, Users, UsersRound } from "lucide-react";
+import {
+	BadgePercent,
+	Goal,
+	Grid3X3,
+	Handshake,
+	Home,
+	Megaphone,
+	MessageCircle,
+	Package,
+	ShoppingCart,
+	Tag,
+	UserRound,
+	Users,
+	UsersRound,
+} from "lucide-react";
 import AppSidebarContentGroup from "./AppSidebarContentGroup";
 import AppSidebarFooter from "./AppSidebarFooter";
 import AppSidebarHeader from "./AppSidebarHeader";
@@ -32,6 +46,12 @@ export const SidebarConfig: TSidebarConfigItem[] = [
 	{
 		group: "Comercial",
 		items: [
+			{
+				title: "Vendas",
+				url: "/dashboard/commercial/sales",
+				icon: <ShoppingCart className="w-4 h-4" />,
+				items: null,
+			},
 			{
 				title: "Matriz RFM",
 				url: "/dashboard/commercial/segments",

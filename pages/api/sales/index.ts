@@ -1,10 +1,11 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import type { TSale } from "@/schemas/sales";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, clients, organizations, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import z from "zod";
@@ -13,26 +14,180 @@ type GetResponse = {
 	data: TSale | TSale[];
 };
 
-const getSalesRoute: NextApiHandler<GetResponse> = async (req, res) => {
+const GetSalesInputSchema = z.object({
+	page: z
+		.string({
+			required_error: "Página não informada.",
+			invalid_type_error: "Tipo inválido para página.",
+		})
+		.default("1")
+		.transform((val) => (val ? Number(val) : 1)),
+	search: z
+		.string({
+			required_error: "Busca não informada.",
+			invalid_type_error: "Tipo inválido para busca.",
+		})
+		.optional()
+		.nullable(),
+	periodAfter: z
+		.string({
+			required_error: "Período não informado.",
+			invalid_type_error: "Tipo inválido para período.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	periodBefore: z
+		.string({
+			required_error: "Período não informado.",
+			invalid_type_error: "Tipo inválido para período.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	sellersIds: z
+		.string({
+			invalid_type_error: "Tipo inválido para ID do vendedor.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",") : [])),
+	partnersIds: z
+		.string({
+			invalid_type_error: "Tipo inválido para ID do parceiro.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",") : null)),
+	saleNatures: z
+		.string({
+			invalid_type_error: "Tipo inválido para natureza de venda.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",") : [])),
+});
+
+export type TGetSalesInput = z.infer<typeof GetSalesInputSchema>;
+
+async function getSales({ input, sessionUser }: { input: TGetSalesInput; sessionUser: TAuthUserSession }) {
+	const PAGE_SIZE = 25;
+	const userOrgId = sessionUser.user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const { page, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures } = input;
+
+	const conditions = [eq(sales.organizacaoId, userOrgId)];
+
+	if (search)
+		conditions.push(
+			inArray(
+				sales.id,
+				db
+					.select({ id: sales.id })
+					.from(sales)
+					.innerJoin(clients, and(eq(sales.clienteId, clients.id), eq(clients.organizacaoId, userOrgId)))
+					.where(
+						sql`to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${search}) OR ${clients.nome} ILIKE '%' || ${search} || '%'`,
+					),
+			),
+		);
+	if (periodAfter) conditions.push(gte(sales.dataVenda, periodAfter));
+	if (periodBefore) conditions.push(lte(sales.dataVenda, periodBefore));
+	if (sellersIds && sellersIds.length > 0) conditions.push(inArray(sales.vendedorId, sellersIds));
+	if (partnersIds && partnersIds.length > 0) conditions.push(inArray(sales.parceiroId, partnersIds));
+	if (saleNatures && saleNatures.length > 0) conditions.push(inArray(sales.natureza, saleNatures));
+
+	const salesMatched = await db
+		.select({ count: count() })
+		.from(sales)
+		.where(and(...conditions));
+	const salesMatchedCount = salesMatched[0]?.count ?? 0;
+
+	const totalPages = Math.ceil(salesMatchedCount / PAGE_SIZE);
+
+	const skip = PAGE_SIZE * (input.page - 1);
+	const limit = PAGE_SIZE;
+
+	const salesResult = await db.query.sales.findMany({
+		where: and(...conditions),
+		with: {
+			cliente: {
+				columns: {
+					id: true,
+					nome: true,
+					telefone: true,
+					localizacaoCep: true,
+					localizacaoEstado: true,
+					localizacaoCidade: true,
+					localizacaoBairro: true,
+					localizacaoLogradouro: true,
+					localizacaoNumero: true,
+					localizacaoComplemento: true,
+					primeiraCompraData: true,
+				},
+			},
+			vendedor: {
+				columns: {
+					id: true,
+					nome: true,
+					avatarUrl: true,
+				},
+			},
+			parceiro: {
+				columns: {
+					id: true,
+					nome: true,
+					avatarUrl: true,
+				},
+			},
+			itens: {
+				columns: {
+					id: true,
+					quantidade: true,
+					valorVendaUnitario: true,
+					valorTotalDesconto: true,
+					valorVendaTotalLiquido: true,
+				},
+				with: {
+					produto: {
+						columns: {
+							id: true,
+							descricao: true,
+						},
+					},
+				},
+			},
+		},
+		orderBy: (fields, { desc }) => desc(fields.dataVenda),
+		offset: skip,
+		limit: limit,
+	});
+
+	return {
+		data: {
+			default: {
+				sales: salesResult,
+				totalPages: totalPages,
+				salesMatched: salesMatchedCount,
+			},
+		},
+		message: "Vendas encontradas com sucesso.",
+	};
+}
+export type TGetSalesOutput = Awaited<ReturnType<typeof getSales>>;
+
+const getSalesRoute: NextApiHandler<TGetSalesOutput> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const userOrgId = sessionUser.user.organizacaoId;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const { id, after, before } = req.query;
+	const input = GetSalesInputSchema.parse(req.query);
 
-	const conditions = [eq(sales.organizacaoId, userOrgId)];
-	if (id && typeof id === "string") conditions.push(eq(sales.id, id));
-	if (after && typeof after === "string") conditions.push(gte(sales.dataVenda, new Date(after)));
-	if (before && typeof before === "string") conditions.push(lte(sales.dataVenda, new Date(before)));
-	const salesResult = await db.query.sales.findMany({
-		where: and(...conditions),
-	});
+	const result = await getSales({ input, sessionUser });
 
-	return res.status(200).json({
-		data: salesResult,
-	});
+	return res.status(200).json(result);
 };
 
 // POST handler for creating sales from point-of-interaction
