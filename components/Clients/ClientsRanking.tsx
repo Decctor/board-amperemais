@@ -20,10 +20,6 @@ export default function ClientsRanking({ periodAfter, periodBefore }: ClientsRan
 		rankingBy,
 		periodAfter: periodAfter ?? null,
 		periodBefore: periodBefore ?? null,
-		saleNatures: null,
-		excludedSalesIds: null,
-		totalMin: null,
-		totalMax: null,
 	});
 
 	return (
@@ -84,43 +80,41 @@ export default function ClientsRanking({ periodAfter, periodBefore }: ClientsRan
 							>
 								<div className="w-full flex items-center justify-between gap-2 flex-wrap">
 									<div className="flex items-center gap-2 flex-wrap">
-										<div className="flex items-center gap-1.5">
-											{client.rank <= 3 ? (
-												<Crown
-													className={cn(
-														"w-5 h-5 min-w-5 min-h-5",
-														client.rank === 1 && "text-yellow-500",
-														client.rank === 2 && "text-gray-400",
-														client.rank === 3 && "text-orange-600",
-													)}
-												/>
-											) : (
-												<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
-													<span className="text-xs font-bold">{client.rank}</span>
-												</div>
-											)}
-											<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
-										</div>
-										<div className="flex items-center gap-1">
-											<Phone className="w-4 h-4 min-w-4 min-h-4" />
-											<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.telefone}</h1>
-										</div>
-										{client.email ? (
-											<div className="flex items-center gap-1">
-												<Mail className="w-4 h-4 min-w-4 min-h-4" />
-												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.email}</h1>
+										{client.rank <= 3 ? (
+											<Crown
+												className={cn(
+													"w-5 h-5 min-w-5 min-h-5",
+													client.rank === 1 && "text-yellow-500",
+													client.rank === 2 && "text-gray-400",
+													client.rank === 3 && "text-orange-600",
+												)}
+											/>
+										) : (
+											<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
+												<span className="text-xs font-bold">{client.rank}</span>
 											</div>
-										) : null}
+										)}
+										<div className="flex items-start flex-col">
+											<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
+											<div className="flex items-center gap-1">
+												<Phone className="w-4 h-4 min-w-4 min-h-4" />
+												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.telefone}</h1>
+											</div>
+										</div>
 									</div>
 									<div className="flex items-center gap-3">
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(client.totalPurchases)}</p>
-										</div>
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-											<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
-											<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(client.totalValue)}</p>
-										</div>
+										{rankingBy === "purchases-total-value" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(client.totalValue)}</p>
+											</div>
+										) : null}
+										{rankingBy === "purchases-total-qty" ? (
+											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(client.totalPurchases)}</p>
+											</div>
+										) : null}
 									</div>
 								</div>
 							</div>

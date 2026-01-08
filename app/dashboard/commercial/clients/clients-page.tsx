@@ -2,12 +2,14 @@
 import ClientsGraphs from "@/components/Clients/ClientsGraphs";
 import ClientsRanking from "@/components/Clients/ClientsRanking";
 import ClientsDatabaseFilterMenu from "@/components/Clients/DatabaseFilterMenu";
+import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
@@ -15,8 +17,9 @@ import { useClients, useClientsBySearch, useClientsOverallStats } from "@/lib/qu
 import { cn } from "@/lib/utils";
 import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
+import type { TGetClientsOverallStatsInput } from "@/pages/api/clients/stats/overall";
 import dayjs from "dayjs";
-import { BadgeDollarSign, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, UserPlus, Users, X } from "lucide-react";
+import { BadgeDollarSign, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
@@ -25,6 +28,7 @@ type ClientsPageProps = {
 	user: TAuthUserSession["user"];
 };
 export default function ClientsPage({ user }: ClientsPageProps) {
+	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
 	const [newMainEntityModalIsOpen, setNewMainEntityModalIsOpen] = useState<boolean>(false);
 	const [editMainEntityModal, setEditMainEntityModal] = useState<{ id: string | null; isOpen: boolean }>({ id: null, isOpen: false });
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
@@ -50,9 +54,51 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 	const totalPages = clientsResult?.totalPages;
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<ClientsStats overallFilters={filters} />
+			<Tabs value={viewMode} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
+				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
+					<TabsTrigger value="stats" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
+						Estatísticas
+					</TabsTrigger>
+					<TabsTrigger value="database" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<Users className="w-4 h-4 min-w-4 min-h-4" />
+						Banco de Dados
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="stats">
+					<ClientsStatsView />
+				</TabsContent>
+				<TabsContent value="database">
+					<ClientsDatabaseView />
+				</TabsContent>
+			</Tabs>
+		</div>
+	);
+}
 
-			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
+function ClientsDatabaseView() {
+	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
+	const {
+		data: clientsResult,
+		isSuccess,
+		isLoading,
+		isError,
+		error,
+		filters,
+		updateFilters,
+	} = useClients({
+		initialFilters: {
+			statsPeriodAfter: dayjs().startOf("month").toDate(),
+			statsPeriodBefore: dayjs().endOf("month").toDate(),
+		},
+	});
+	const clients = clientsResult?.clients;
+	const clientsShowing = clients ? clients.length : 0;
+	const clientsMatched = clientsResult?.clientsMatched || 0;
+	const totalPages = clientsResult?.totalPages;
+	return (
+		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-center gap-2">
 				<Input
 					value={filters.search ?? ""}
 					placeholder="Pesquisar cliente..."
@@ -61,7 +107,7 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 				/>
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
+					<p className="hidden lg:block">FILTROS</p>
 				</Button>
 			</div>
 			<GeneralPaginationComponent
@@ -89,21 +135,43 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 	);
 }
 
-type ClientsStatsProps = {
-	overallFilters: TGetClientsInput;
-};
-function ClientsStats({ overallFilters }: ClientsStatsProps) {
-	const { data: clientsOverallStats, isLoading: clientsOverallStatsLoading } = useClientsOverallStats({
-		periodAfter: overallFilters.statsPeriodAfter,
-		periodBefore: overallFilters.statsPeriodBefore,
+function ClientsStatsView() {
+	const [filters, setFilters] = useState<TGetClientsOverallStatsInput>({
+		periodAfter: dayjs().startOf("month").toDate(),
+		periodBefore: dayjs().endOf("month").toDate(),
 		comparingPeriodAfter: null,
 		comparingPeriodBefore: null,
+	});
+	const { data: clientsOverallStats, isLoading: clientsOverallStatsLoading } = useClientsOverallStats({
+		periodAfter: filters.periodAfter,
+		periodBefore: filters.periodBefore,
+		comparingPeriodAfter: filters.comparingPeriodAfter,
+		comparingPeriodBefore: filters.comparingPeriodBefore,
 	});
 
 	console.log(clientsOverallStats);
 
 	return (
 		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-center justify-end">
+				<DateIntervalInput
+					label="Período"
+					labelClassName="hidden"
+					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+					value={{
+						after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+						before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+					}}
+					handleChange={(value) =>
+						setFilters({
+							periodAfter: value.after ? new Date(value.after) : null,
+							periodBefore: value.before ? new Date(value.before) : null,
+							comparingPeriodAfter: value.after ? dayjs().subtract(1, "month").toDate() : null,
+							comparingPeriodBefore: value.before ? dayjs().toDate() : null,
+						})
+					}
+				/>
+			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
 				<StatUnitCard
 					title="TOTAL DE CLIENTES"
@@ -170,12 +238,12 @@ function ClientsStats({ overallFilters }: ClientsStatsProps) {
 					}
 				/>
 			</div>
-			<div className="w-full flex items-start flex-col lg:flex-row gap-3 max-h-[500px]">
-				<div className="w-full lg:w-1/2 h-full">
-					<ClientsGraphs periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
+				<div className="w-full lg:w-1/2 h-full min-h-0">
+					<ClientsGraphs periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 				</div>
-				<div className="w-full lg:w-1/2 h-full">
-					<ClientsRanking periodAfter={overallFilters.statsPeriodAfter} periodBefore={overallFilters.statsPeriodBefore} />
+				<div className="w-full lg:w-1/2 h-full min-h-0">
+					<ClientsRanking periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 				</div>
 			</div>
 		</div>

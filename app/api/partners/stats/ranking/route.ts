@@ -27,34 +27,6 @@ const GetPartnersRankingInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	saleNatures: z
-		.array(
-			z.string({
-				invalid_type_error: "Tipo inválido para natureza de venda.",
-			}),
-		)
-		.optional()
-		.nullable(),
-	excludedSalesIds: z
-		.array(
-			z.string({
-				invalid_type_error: "Tipo inválido para ID da venda.",
-			}),
-		)
-		.optional()
-		.nullable(),
-	totalMin: z
-		.number({
-			invalid_type_error: "Tipo inválido para valor mínimo da venda.",
-		})
-		.optional()
-		.nullable(),
-	totalMax: z
-		.number({
-			invalid_type_error: "Tipo inválido para valor máximo da venda.",
-		})
-		.optional()
-		.nullable(),
 	rankingBy: z.enum(["sales-total-value", "sales-total-qty", "average-ticket", "margin"]).optional().nullable(),
 });
 
@@ -69,16 +41,12 @@ async function getPartnersRanking({ input, session }: { input: TGetPartnersRanki
 		input,
 	});
 
-	const { periodAfter, periodBefore, saleNatures, excludedSalesIds, totalMin, totalMax, rankingBy } = input;
+	const { periodAfter, periodBefore, rankingBy } = input;
 
 	// Build sale conditions
-	const saleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), isNotNull(sales.parceiroId)];
+	const saleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), isNotNull(sales.parceiroId), eq(sales.natureza, "SN01")];
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
 	if (periodBefore) saleConditions.push(lte(sales.dataVenda, periodBefore));
-	if (saleNatures && saleNatures.length > 0) saleConditions.push(inArray(sales.natureza, saleNatures));
-	if (excludedSalesIds && excludedSalesIds.length > 0) saleConditions.push(notInArray(sales.id, excludedSalesIds));
-	if (totalMin) saleConditions.push(gte(sales.valorTotal, totalMin));
-	if (totalMax) saleConditions.push(lte(sales.valorTotal, totalMax));
 
 	// Get partners with sales and margin data
 	const partnersWithMargin = await db

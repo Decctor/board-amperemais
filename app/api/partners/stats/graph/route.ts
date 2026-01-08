@@ -55,7 +55,7 @@ async function getPartnersGraph({ input, sessionUser }: { input: TGetPartnersGra
 				date: sales.dataVenda,
 			})
 			.from(sales)
-			.where(eq(sales.organizacaoId, userOrgId))
+			.where(and(eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")))
 			.orderBy(sql`${sales.dataVenda} asc`)
 			.limit(1);
 		period.after = firstSale[0]?.date ?? undefined;
@@ -88,7 +88,13 @@ async function getPartnersGraph({ input, sessionUser }: { input: TGetPartnersGra
 			})
 			.from(sales)
 			.where(
-				and(eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), gte(sales.dataVenda, period.after), lte(sales.dataVenda, period.before)),
+				and(
+					eq(sales.organizacaoId, userOrgId),
+					isNotNull(sales.dataVenda),
+					gte(sales.dataVenda, period.after),
+					lte(sales.dataVenda, period.before),
+					eq(sales.natureza, "SN01"),
+				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
 			.groupBy(sql`date_trunc('day', ${sales.dataVenda})`);
@@ -128,7 +134,13 @@ async function getPartnersGraph({ input, sessionUser }: { input: TGetPartnersGra
 			})
 			.from(sales)
 			.where(
-				and(eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), gte(sales.dataVenda, period.after), lte(sales.dataVenda, period.before)),
+				and(
+					eq(sales.organizacaoId, userOrgId),
+					isNotNull(sales.dataVenda),
+					gte(sales.dataVenda, period.after),
+					lte(sales.dataVenda, period.before),
+					eq(sales.natureza, "SN01"),
+				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
 			.groupBy(sql`date_trunc('day', ${sales.dataVenda})`);
@@ -174,6 +186,7 @@ async function getPartnersGraph({ input, sessionUser }: { input: TGetPartnersGra
 					isNotNull(sales.parceiroId),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
+					eq(sales.natureza, "SN01"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
@@ -215,7 +228,13 @@ async function getPartnersGraph({ input, sessionUser }: { input: TGetPartnersGra
 			})
 			.from(sales)
 			.where(
-				and(eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), gte(sales.dataVenda, period.after), lte(sales.dataVenda, period.before)),
+				and(
+					eq(sales.organizacaoId, userOrgId),
+					isNotNull(sales.dataVenda),
+					gte(sales.dataVenda, period.after),
+					lte(sales.dataVenda, period.before),
+					eq(sales.natureza, "SN01"),
+				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
 			.groupBy(sql`date_trunc('day', ${sales.dataVenda})`);

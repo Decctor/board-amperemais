@@ -21,7 +21,7 @@ function GoalSellers({ goalTotalValue, goalSellers, updateGoalSeller, updateMany
 	const goalSellersTotalValue = goalSellers.reduce((acc, goalSeller) => acc + goalSeller.objetivoValor, 0);
 
 	const distributeValueAcrossSellers = useCallback(
-		({ valueToDistribute, sellers }: { valueToDistribute: number; sellers: TGetSellersOutputDefault[number][] }) => {
+		({ valueToDistribute, sellers }: { valueToDistribute: number; sellers: TGetSellersOutputDefault["sellers"][number][] }) => {
 			const sellersQty = sellers?.length ?? 0;
 			const valuePerSeller = valueToDistribute / sellersQty;
 			const updatedGoalSellers =
@@ -48,7 +48,7 @@ function GoalSellers({ goalTotalValue, goalSellers, updateGoalSeller, updateMany
 						size="fit"
 						variant="ghost"
 						className="text-xs px-2 py-0.5"
-						onClick={() => distributeValueAcrossSellers({ valueToDistribute: goalTotalValue - goalSellersTotalValue, sellers: sellers ?? [] })}
+						onClick={() => distributeValueAcrossSellers({ valueToDistribute: goalTotalValue - goalSellersTotalValue, sellers: sellers?.sellers ?? [] })}
 					>
 						DISTRIBUIR VALOR
 					</Button>
@@ -58,7 +58,7 @@ function GoalSellers({ goalTotalValue, goalSellers, updateGoalSeller, updateMany
 			{isError ? <p className="w-full text-center text-sm text-destructive">{getErrorMessage(error)}</p> : null}
 			{isSuccess ? (
 				<div className="w-full flex flex-col gap-2">
-					{sellers.map((seller) => (
+					{sellers.sellers.map((seller) => (
 						<GoalSellerCard
 							key={seller.id}
 							seller={seller}
@@ -75,7 +75,7 @@ function GoalSellers({ goalTotalValue, goalSellers, updateGoalSeller, updateMany
 }
 
 type GoalSellerCardProps = {
-	seller: TGetSellersOutputDefault[number];
+	seller: TGetSellersOutputDefault["sellers"][number];
 	goalSeller: TUseGoalsState["state"]["goalSellers"][number];
 	updateGoalSeller: TUseGoalsState["updateGoalSeller"];
 };

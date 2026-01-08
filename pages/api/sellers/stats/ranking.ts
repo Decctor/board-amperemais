@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { goals, goalsSellers, sales, sellers } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, eq, gte, inArray, isNotNull, lte, notInArray, or, sql, sum } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNotNull, lte, or, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -28,34 +28,6 @@ const GetSellersRankingInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	saleNatures: z
-		.array(
-			z.string({
-				invalid_type_error: "Tipo inválido para natureza de venda.",
-			}),
-		)
-		.optional()
-		.nullable(),
-	excludedSalesIds: z
-		.array(
-			z.string({
-				invalid_type_error: "Tipo inválido para ID da venda.",
-			}),
-		)
-		.optional()
-		.nullable(),
-	totalMin: z
-		.number({
-			invalid_type_error: "Tipo inválido para valor mínimo da venda.",
-		})
-		.optional()
-		.nullable(),
-	totalMax: z
-		.number({
-			invalid_type_error: "Tipo inválido para valor máximo da venda.",
-		})
-		.optional()
-		.nullable(),
 	rankingBy: z.enum(["sales-total-value", "sales-total-qty", "average-ticket", "goal-achievement"]).optional().nullable(),
 });
 
@@ -145,16 +117,12 @@ async function getSellersRanking({ input, session }: { input: TGetSellersRanking
 		input,
 	});
 
-	const { periodAfter, periodBefore, saleNatures, excludedSalesIds, totalMin, totalMax, rankingBy } = input;
+	const { periodAfter, periodBefore, rankingBy } = input;
 
-	// Build sale conditions
-	const saleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), isNotNull(sales.vendedorId)];
+	// Build sale conditions (org and valid sales only (SNO1))
+	const saleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), isNotNull(sales.vendedorId), eq(sales.natureza, "SN01")];
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
 	if (periodBefore) saleConditions.push(lte(sales.dataVenda, periodBefore));
-	if (saleNatures && saleNatures.length > 0) saleConditions.push(inArray(sales.natureza, saleNatures));
-	if (excludedSalesIds && excludedSalesIds.length > 0) saleConditions.push(notInArray(sales.id, excludedSalesIds));
-	if (totalMin) saleConditions.push(gte(sales.valorTotal, totalMin));
-	if (totalMax) saleConditions.push(lte(sales.valorTotal, totalMax));
 
 	// Get sellers with sales in the period
 	const sellersWithSales = await db
@@ -256,10 +224,6 @@ const getSellersRankingRoute: NextApiHandler<TGetSellersRankingOutput> = async (
 	const input = GetSellersRankingInputSchema.parse({
 		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
-		saleNatures: req.query.saleNatures ? (req.query.saleNatures as string).split(",") : null,
-		excludedSalesIds: req.query.excludedSalesIds ? (req.query.excludedSalesIds as string).split(",") : null,
-		totalMin: req.query.totalMin ? Number(req.query.totalMin) : null,
-		totalMax: req.query.totalMax ? Number(req.query.totalMax) : null,
 		rankingBy:
 			(req.query.rankingBy as "sales-total-value" | "sales-total-qty" | "average-ticket" | "goal-achievement" | undefined) ?? "sales-total-value",
 	});

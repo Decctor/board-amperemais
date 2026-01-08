@@ -27,34 +27,6 @@ const GetClientsRankingInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	saleNatures: z
-		.array(
-			z.string({
-				invalid_type_error: "Tipo inválido para natureza de venda.",
-			}),
-		)
-		.optional()
-		.nullable(),
-	excludedSalesIds: z
-		.array(
-			z.string({
-				invalid_type_error: "Tipo inválido para ID da venda.",
-			}),
-		)
-		.optional()
-		.nullable(),
-	totalMin: z
-		.number({
-			invalid_type_error: "Tipo inválido para valor mínimo da venda.",
-		})
-		.optional()
-		.nullable(),
-	totalMax: z
-		.number({
-			invalid_type_error: "Tipo inválido para valor máximo da venda.",
-		})
-		.optional()
-		.nullable(),
 	rankingBy: z.enum(["purchases-total-qty", "purchases-total-value"]).optional().nullable(),
 });
 export type TGetClientsRankingInput = z.infer<typeof GetClientsRankingInputSchema>;
@@ -68,16 +40,12 @@ async function getClientsRanking({ input, session }: { input: TGetClientsRanking
 		input,
 	});
 
-	const { periodAfter, periodBefore, saleNatures, excludedSalesIds, totalMin, totalMax, rankingBy } = input;
+	const { periodAfter, periodBefore, rankingBy } = input;
 
-	// Build sale conditions
-	const saleConditions = [eq(sales.organizacaoId, userOrgId)];
+	// Build sale conditions (org and valid sales only (SNO1))
+	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
 	if (periodBefore) saleConditions.push(lte(sales.dataVenda, periodBefore));
-	if (saleNatures && saleNatures.length > 0) saleConditions.push(inArray(sales.natureza, saleNatures));
-	if (excludedSalesIds && excludedSalesIds.length > 0) saleConditions.push(notInArray(sales.id, excludedSalesIds));
-	if (totalMin) saleConditions.push(gte(sales.valorTotal, totalMin));
-	if (totalMax) saleConditions.push(lte(sales.valorTotal, totalMax));
 
 	// Get top clients based on ranking criteria
 	const ranking = await db
@@ -120,10 +88,6 @@ const getClientsRankingRoute: NextApiHandler<TGetClientsRankingOutput> = async (
 	const input = GetClientsRankingInputSchema.parse({
 		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
-		saleNatures: req.query.saleNatures ? (req.query.saleNatures as string).split(",") : null,
-		excludedSalesIds: req.query.excludedSalesIds ? (req.query.excludedSalesIds as string).split(",") : null,
-		totalMin: req.query.totalMin ? Number(req.query.totalMin) : null,
-		totalMax: req.query.totalMax ? Number(req.query.totalMax) : null,
 		rankingBy: (req.query.rankingBy as "purchases-total-qty" | "purchases-total-value" | undefined) ?? "purchases-total-value",
 	});
 

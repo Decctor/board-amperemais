@@ -64,7 +64,7 @@ async function getProductsOverallStats({ input, session }: { input: TGetProducts
 	const totalProductsResult = await db.select({ count: count() }).from(products).where(eq(products.organizacaoId, userOrgId));
 
 	// 2. Active products (products sold in the period)
-	const saleConditions = [eq(sales.organizacaoId, userOrgId)];
+	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
 	if (periodBefore) saleConditions.push(lte(sales.dataVenda, periodBefore));
 

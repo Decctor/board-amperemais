@@ -1,5 +1,5 @@
 import { getPostponedDateFromReferenceDate } from "@/lib/dates";
-import { formatPhoneAsBase, formatToCPForCNPJ } from "@/lib/formatting";
+import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { db } from "@/services/drizzle";
 import {
@@ -174,7 +174,10 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					let isNewClient = false;
 					let isNewSale = false;
 
-					const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
+					const onlineBaseSaleDate = dayjs(OnlineSale.data, "DD/MM/YYYY");
+					// If the Online sale date is the same as the current date, we use the current date (with time frame component, since cron runs every 5 minutes, we get approximately real time),
+					// Otherwise we use the online sale date + 3 hours (to compensate for lack of time component in Online date field)
+					const saleDate = dayjs().isSame(onlineBaseSaleDate, "day") ? dayjs().toDate() : onlineBaseSaleDate.add(3, "hours").toDate();
 					const isValidSale = OnlineSale.natureza === "SN01";
 					// First, we check for an existing client with the same name (in this case, our primary key for the integration)
 					const equivalentSaleClient = existingClientsMap.get(OnlineSale.cliente);
@@ -188,7 +191,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							.values({
 								nome: OnlineSale.cliente,
 								organizacaoId: organization.id,
-								telefone: OnlineSale.clientefone || OnlineSale.clientecelular || "",
+								telefone: formatToPhone(OnlineSale.clientefone || OnlineSale.clientecelular || ""),
 								telefoneBase: formatPhoneAsBase(OnlineSale.clientefone || OnlineSale.clientecelular || ""),
 								primeiraCompraData: isValidSale ? saleDate : null,
 								ultimaCompraData: isValidSale ? saleDate : null,

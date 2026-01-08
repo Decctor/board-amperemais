@@ -94,6 +94,7 @@ async function getProductsGraph({ input, sessionUser }: { input: TGetProductsGra
 					eq(sales.organizacaoId, userOrgId),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
+					eq(sales.natureza, "SN01"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
@@ -140,6 +141,7 @@ async function getProductsGraph({ input, sessionUser }: { input: TGetProductsGra
 					eq(sales.organizacaoId, userOrgId),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
+					eq(sales.natureza, "SN01"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
@@ -186,6 +188,7 @@ async function getProductsGraph({ input, sessionUser }: { input: TGetProductsGra
 					eq(sales.organizacaoId, userOrgId),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
+					eq(sales.natureza, "SN01"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
@@ -233,6 +236,7 @@ async function getProductsGraph({ input, sessionUser }: { input: TGetProductsGra
 					eq(sales.organizacaoId, userOrgId),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
+					eq(sales.natureza, "SN01"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)

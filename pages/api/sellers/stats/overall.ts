@@ -153,7 +153,7 @@ async function getSellersOverallStats({ input, session }: { input: TGetSellersOv
 	const totalSellersResult = await db.select({ count: count() }).from(sellers).where(eq(sellers.organizacaoId, userOrgId));
 
 	// 2. Active sellers (sellers who made sales in the period)
-	const saleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda)];
+	const saleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), eq(sales.natureza, "SN01")];
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
 	if (periodBefore) saleConditions.push(lte(sales.dataVenda, periodBefore));
 
@@ -212,7 +212,7 @@ async function getSellersOverallStats({ input, session }: { input: TGetSellersOv
 	}
 
 	// Calculate comparison period stats
-	const comparisonSaleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda)];
+	const comparisonSaleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), eq(sales.natureza, "SN01")];
 	if (comparingPeriodAfter) comparisonSaleConditions.push(gte(sales.dataVenda, comparingPeriodAfter));
 	if (comparingPeriodBefore) comparisonSaleConditions.push(lte(sales.dataVenda, comparingPeriodBefore));
 
