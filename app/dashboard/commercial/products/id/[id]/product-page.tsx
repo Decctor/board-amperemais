@@ -1,21 +1,17 @@
 "use client";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
-import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
-import SelectInput from "@/components/Inputs/SelectInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import ProductFilterMenu from "@/components/Products/ProductFilterMenu";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
-import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { usePartners } from "@/lib/queries/partners";
+import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useProductGraph, useProductStats } from "@/lib/queries/products";
-import { useSellers } from "@/lib/queries/sellers";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
 import { isValidNumber } from "@/lib/validation";
@@ -25,10 +21,12 @@ import dayjs from "dayjs";
 import {
 	BadgeDollarSign,
 	Calendar,
+	CalendarRange,
 	ChartBar,
 	CirclePlus,
 	Code,
 	Download,
+	ListFilter,
 	Package,
 	Percent,
 	ShoppingBag,
@@ -36,6 +34,7 @@ import {
 	TrendingUp,
 	UserRound,
 	Users,
+	X,
 } from "lucide-react";
 import { useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
@@ -46,10 +45,8 @@ type ProductPageProps = {
 	id: string;
 };
 
-const SALE_NATURES = ["VENDA", "DEVOLUÇÃO", "BONIFICAÇÃO", "OUTROS"];
-
 export default function ProductPage({ user, id }: ProductPageProps) {
-	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 
 	const {
 		data: stats,
@@ -74,46 +71,10 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end flex-col lg:flex-row gap-2">
 				<div className="w-full lg:w-[250px]">
-					<MultipleSelectInput
-						label="NATUREZAS DA VENDA"
-						selected={filters.saleNatures ?? []}
-						showLabel={false}
-						options={filterOptions?.saleNatures ?? []}
-						handleChange={(value) => updateFilters({ saleNatures: value as string[] | null })}
-						resetOptionLabel="NATUREZAS NÃO DEFINIDAS"
-						onReset={() => updateFilters({ saleNatures: null })}
-						width="100%"
-					/>
-				</div>
-
-				<div className="w-full lg:w-[250px]">
-					<SelectInput
-						label="VENDEDOR"
-						value={filters.sellerId ?? null}
-						showLabel={false}
-						options={filterOptions?.sellers ?? []}
-						handleChange={(value) => updateFilters({ sellerId: value as string | null })}
-						resetOptionLabel="VENDEDOR NÃO DEFINIDO"
-						onReset={() => updateFilters({ sellerId: null })}
-						width="100%"
-					/>
-				</div>
-				<div className="w-full lg:w-[250px]">
-					<SelectInput
-						label="PARCEIRO"
-						value={filters.partnerId ?? null}
-						showLabel={false}
-						options={filterOptions?.partners ?? []}
-						handleChange={(value) => updateFilters({ partnerId: value as string | null })}
-						resetOptionLabel="PARCEIRO NÃO DEFINIDO"
-						onReset={() => updateFilters({ partnerId: null })}
-						width="100%"
-					/>
-				</div>
-				<div className="w-full lg:w-[250px]">
 					<DateIntervalInput
 						label="Período"
-						showLabel={false}
+						labelClassName="hidden"
+						className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
 						value={{
 							after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
 							before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
@@ -121,7 +82,12 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 						handleChange={(value) => updateFilters({ periodAfter: value.after?.toISOString(), periodBefore: value.before?.toISOString() })}
 					/>
 				</div>
+				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
+					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
+					FILTROS
+				</Button>
 			</div>
+			<ProductPageFiltersShowcase filters={filters} updateFilters={updateFilters} />
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && stats ? (
@@ -151,15 +117,41 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
+								<Package className="w-4 min-w-4 h-4 min-h-4" />
+								<p className="text-sm font-medium tracking-tight">
+									<span className="text-primary/60">QUANTIDADE:</span> {stats.produto.quantidade ? formatDecimalPlaces(stats.produto.quantidade) : "N/A"}
+								</p>
+							</div>
+							<div className="flex items-center gap-2">
+								<Package className="w-4 min-w-4 h-4 min-h-4" />
+								<p className="text-sm font-medium tracking-tight">
+									<span className="text-primary/60">PREÇO DE VENDA:</span> {stats.produto.precoVenda ? formatToMoney(stats.produto.precoVenda) : "N/A"}
+								</p>
+							</div>
+							<div className="flex items-center gap-2">
 								<p className="text-sm font-medium tracking-tight">
 									<span className="text-primary/60">NCM:</span> {stats.produto.ncm}
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">TIPO:</span> {stats.produto.tipo}
+									<span className="text-primary/60">PRIMEIRA VENDA:</span> {stats.dataPrimeiraVenda ? formatDateAsLocale(stats.dataPrimeiraVenda) : "N/A"}
 								</p>
 							</div>
+							<div className="flex items-center gap-2">
+								<p className="text-sm font-medium tracking-tight">
+									<span className="text-primary/60">ÚLTIMA VENDA:</span> {stats.dataUltimaVenda ? formatDateAsLocale(stats.dataUltimaVenda) : "N/A"}
+								</p>
+							</div>
+						</div>
+						<div className="flex items-center gap-4 flex-wrap">
+							<div className="flex items-center gap-2">
+								<CalendarRange className="w-4 min-w-4 h-4 min-h-4" />
+								<p className="text-sm font-medium tracking-tight text-primary/60">DESDE O INÍCIO:</p>
+							</div>
+							<p className="text-sm font-medium tracking-tight">{formatToMoney(stats.geral.faturamentoBrutoTotal)} vendidos</p>
+							<p className="text-sm font-medium tracking-tight">{stats.geral.vendasQtdeTotal} vendas únicas</p>
+							<p className="text-sm font-medium tracking-tight">{formatDecimalPlaces(stats.geral.quantidadeTotal)} itens vendidos </p>
 						</div>
 					</div>
 
@@ -175,7 +167,7 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 							<StatUnitCard
 								title="Número de Vendas"
 								icon={<CirclePlus className="w-4 h-4 min-w-4 min-h-4" />}
-								current={{ value: stats.vendasCount || 0, format: (n) => formatDecimalPlaces(n) }}
+								current={{ value: stats.vendasQtdeTotal || 0, format: (n) => formatDecimalPlaces(n) }}
 								className="w-full lg:w-1/4"
 							/>
 							<StatUnitCard
@@ -273,6 +265,17 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 						</div>
 					</div>
 				</>
+			) : null}
+			{filterMenuIsOpen ? (
+				<ProductFilterMenu
+					queryParams={{
+						sellerId: filters.sellerId,
+						partnerId: filters.partnerId,
+						saleNatures: filters.saleNatures,
+					}}
+					updateQueryParams={updateFilters}
+					closeMenu={() => setFilterMenuIsOpen(false)}
+				/>
 			) : null}
 		</div>
 	);
@@ -589,6 +592,70 @@ function GroupedByWeekDay({ data }: { data: TGetProductStatsOutput["data"]["resu
 				</div>
 			</div>
 		</TooltipProvider>
+	);
+}
+
+type ProductPageFiltersShowcaseProps = {
+	filters: {
+		periodAfter?: string | null | undefined;
+		periodBefore?: string | null | undefined;
+		sellerId?: string | null | undefined;
+		partnerId?: string | null | undefined;
+		saleNatures?: string[] | null | undefined;
+	};
+	updateFilters: (filters: Partial<ProductPageFiltersShowcaseProps["filters"]>) => void;
+};
+function ProductPageFiltersShowcase({ filters, updateFilters }: ProductPageFiltersShowcaseProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+
+	const FilterTag = ({
+		label,
+		value,
+		onRemove,
+	}: {
+		label: string;
+		value: string;
+		onRemove?: () => void;
+	}) => (
+		<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
+			<p className="text-primary/80">
+				{label}: <strong>{value}</strong>
+			</p>
+			{onRemove && (
+				<button type="button" onClick={onRemove} className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1">
+					<X size={12} />
+				</button>
+			)}
+		</div>
+	);
+
+	return (
+		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+			{filters.periodAfter && filters.periodBefore && (
+				<FilterTag
+					label="PERÍODO"
+					value={`${formatDateAsLocale(filters.periodAfter)} a ${formatDateAsLocale(filters.periodBefore)}`}
+					onRemove={() => updateFilters({ periodAfter: null, periodBefore: null })}
+				/>
+			)}
+			{filters.saleNatures && filters.saleNatures.length > 0 && (
+				<FilterTag label="NATUREZAS DA VENDA" value={filters.saleNatures.join(", ")} onRemove={() => updateFilters({ saleNatures: null })} />
+			)}
+			{filters.sellerId && (
+				<FilterTag
+					label="VENDEDOR"
+					value={filterOptions?.sellers?.find((s) => s.id === filters.sellerId)?.label || filters.sellerId}
+					onRemove={() => updateFilters({ sellerId: null })}
+				/>
+			)}
+			{filters.partnerId && (
+				<FilterTag
+					label="PARCEIRO"
+					value={filterOptions?.partners?.find((p) => p.id === filters.partnerId)?.label || filters.partnerId}
+					onRemove={() => updateFilters({ partnerId: null })}
+				/>
+			)}
+		</div>
 	);
 }
 

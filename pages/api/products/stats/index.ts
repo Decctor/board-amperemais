@@ -79,6 +79,26 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 
 	const saleItemWhere = and(...saleItemWhereConditions, inArray(saleItems.vendaId, db.select({ id: sales.id }).from(sales).where(saleWhere)));
 
+	const allTimeStatsResult = await db
+		.select({
+			quantidadeTotal: sum(saleItems.quantidade),
+			vendasQtdeTotal: countDistinct(saleItems.vendaId),
+			faturamentoBrutoTotal: sum(saleItems.valorVendaTotalBruto),
+			faturamentoLiquidoTotal: sum(saleItems.valorVendaTotalLiquido),
+		})
+		.from(saleItems)
+		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
+		.where(
+			and(
+				eq(saleItems.organizacaoId, userOrgId),
+				eq(sales.organizacaoId, userOrgId),
+				...saleWhereConditions,
+				eq(saleItems.produtoId, input.productId),
+				input.sellerId ? eq(sales.vendedorId, input.sellerId) : undefined,
+				input.partnerId ? eq(sales.parceiroId, input.partnerId) : undefined,
+				input.saleNatures && input.saleNatures.length > 0 ? inArray(sales.natureza, input.saleNatures) : undefined,
+			),
+		);
 	// Quantitative: Basic metrics
 	const totalStatsResult = await db
 		.select({
@@ -112,14 +132,14 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 		.select({ data: sales.dataVenda })
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)))
 		.orderBy(sql`${sales.dataVenda} asc`)
 		.limit(1);
 	const lastSaleResult = await db
 		.select({ data: sales.dataVenda })
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(saleItemWhere)
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)))
 		.orderBy(sql`${sales.dataVenda} desc`)
 		.limit(1);
 
@@ -325,11 +345,19 @@ async function getProductStats({ user, input }: GetProductStatsParams) {
 				ncm: product.ncm,
 				tipo: product.tipo,
 				grupo: product.grupo,
+				quantidade: product.quantidade,
+				precoVenda: product.precoVenda,
+			},
+			geral: {
+				quantidadeTotal: allTimeStatsResult[0]?.quantidadeTotal ? Number(allTimeStatsResult[0].quantidadeTotal) : 0,
+				vendasQtdeTotal: allTimeStatsResult[0]?.vendasQtdeTotal ? Number(allTimeStatsResult[0].vendasQtdeTotal) : 0,
+				faturamentoBrutoTotal: allTimeStatsResult[0]?.faturamentoBrutoTotal ? Number(allTimeStatsResult[0].faturamentoBrutoTotal) : 0,
+				faturamentoLiquidoTotal: allTimeStatsResult[0]?.faturamentoLiquidoTotal ? Number(allTimeStatsResult[0].faturamentoLiquidoTotal) : 0,
 			},
 			dataPrimeiraVenda: firstSaleDate,
 			dataUltimaVenda: lastSaleDate,
 			quantidadeTotal,
-			vendasCount,
+			vendasQtdeTotal: vendasCount,
 			clientesUnicos,
 			faturamentoBrutoTotal,
 			faturamentoLiquidoTotal,

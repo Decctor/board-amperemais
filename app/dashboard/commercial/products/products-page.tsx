@@ -11,6 +11,7 @@ import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
@@ -117,7 +118,13 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 			{isSuccess && products ? (
 				products.length > 0 ? (
 					products.map((product, index: number) => (
-						<ProductCard key={product.id} product={product} handleEditClick={() => setEditProductModalId(product.id)} />
+						<ProductCard
+							key={product.id}
+							product={product}
+							handleEditClick={() => setEditProductModalId(product.id)}
+							periodAfter={filters.statsPeriodAfter}
+							periodBefore={filters.statsPeriodBefore}
+						/>
 					))
 				) : (
 					<p className="w-full tracking-tight text-center">Nenhum produto encontrado.</p>
@@ -295,7 +302,17 @@ function ProductsStats({ overallFilters }: ProductsStatsProps) {
 	);
 }
 
-function ProductCard({ product, handleEditClick }: { product: TGetProductsOutputDefault["products"][number]; handleEditClick: () => void }) {
+function ProductCard({
+	product,
+	handleEditClick,
+	periodAfter,
+	periodBefore,
+}: {
+	product: TGetProductsOutputDefault["products"][number];
+	handleEditClick: () => void;
+	periodAfter: Date | null;
+	periodBefore: Date | null;
+}) {
 	// Calculate stock status
 	const quantidade = product.quantidade ?? 0;
 	const getStockStatus = () => {
@@ -309,13 +326,31 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 	// Calculate turnover (days of stock remaining)
 	const calculateTurnover = () => {
 		const qtySold = product.estatisticas.vendasQtdeTotal;
-		if (qtySold === 0 || quantidade === 0) return null;
-		// Assuming stats are for 30 days period (could be calculated from actual period)
-		const avgDailySales = qtySold / 30;
+		// If no sales in the period, we can't calculate turnover
+		if (qtySold === 0) return null;
+
+		// If no stock, return 0 days (product has no stock remaining)
+		if (quantidade === 0) return { days: 0, isCapped: false };
+
+		// Calculate days in period dynamically
+		let daysInPeriod = 30; // Fallback to 30 days if period is not available
+		if (periodAfter && periodBefore) {
+			const diff = dayjs(periodBefore).diff(dayjs(periodAfter), "day") + 1; // +1 to include both start and end days
+			if (diff > 0) {
+				daysInPeriod = diff;
+			}
+		}
+
+		const avgDailySales = qtySold / daysInPeriod;
 		const daysOfStock = quantidade / avgDailySales;
-		return Math.round(daysOfStock);
+		const roundedDays = Math.round(daysOfStock);
+
+		// Cap at 365 days to keep display reasonable (anything over a year is problematic anyway)
+		const isCapped = roundedDays > 365;
+		return { days: Math.min(roundedDays, 365), isCapped };
 	};
-	const turnoverDays = calculateTurnover();
+	const turnoverResult = calculateTurnover();
+	const turnoverDays = turnoverResult?.days ?? null;
 
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
@@ -346,43 +381,90 @@ function ProductCard({ product, handleEditClick }: { product: TGetProductsOutput
 						) : null}
 					</div>
 					<div className="flex items-center gap-3 flex-col md:flex-row gap-y-1">
-						<div className="flex items-center gap-3 flex-wrap">
-							{/* Stock Status Badge */}
-							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", stockStatus.color)}>
-								<Package className="w-4 min-w-4 h-4 min-h-4" />
-								<p className="text-xs font-bold tracking-tight uppercase">{stockStatus.label}</p>
+						<TooltipProvider>
+							<div className="flex items-center gap-3 flex-wrap">
+								{/* Stock Status Badge */}
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", stockStatus.color)}>
+											<Package className="w-4 min-w-4 h-4 min-h-4" />
+											<p className="text-xs font-bold tracking-tight uppercase">{stockStatus.label}</p>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Quantidade em estoque atual</p>
+									</TooltipContent>
+								</Tooltip>
+								{/* Turnover Indicator */}
+								{turnoverDays !== null && (
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div
+												className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", {
+													"bg-red-500 dark:bg-red-600 text-white": turnoverDays < 7,
+													"bg-yellow-500 dark:bg-yellow-600 text-white": turnoverDays >= 7 && turnoverDays < 30,
+													"bg-green-500 dark:bg-green-600 text-white": turnoverDays >= 30 && turnoverDays < 90,
+													"bg-blue-500 dark:bg-blue-600 text-white": turnoverDays >= 90 && turnoverDays < 180,
+													"bg-purple-500 dark:bg-purple-600 text-white": turnoverDays >= 180,
+												})}
+											>
+												<Clock className="w-4 min-w-4 h-4 min-h-4" />
+												<p className="text-xs font-bold tracking-tight uppercase">{turnoverResult?.isCapped ? `${turnoverDays}+D` : `${turnoverDays}D`}</p>
+											</div>
+										</TooltipTrigger>
+										<TooltipContent>
+											<p>Dias de estoque restantes no ritmo de vendas atual</p>
+										</TooltipContent>
+									</Tooltip>
+								)}
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+											<CirclePlus className="w-4 min-w-4 h-4 min-h-4" />
+											<p className="text-xs font-bold tracking-tight uppercase">{product.estatisticas.vendasQtdeTotal}</p>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Quantidade total vendida no período</p>
+									</TooltipContent>
+								</Tooltip>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+											<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
+											<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(product.estatisticas.vendasValorTotal)}</p>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Faturamento total no período</p>
+									</TooltipContent>
+								</Tooltip>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div
+											className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary", {
+												"bg-green-500 dark:bg-green-600 text-white": product.estatisticas.curvaABC === "A",
+												"bg-yellow-500 dark:bg-yellow-600 text-white": product.estatisticas.curvaABC === "B",
+												"bg-red-500 dark:bg-red-600 text-white": product.estatisticas.curvaABC === "C",
+											})}
+										>
+											<Star className="w-4 min-w-4 h-4 min-h-4" />
+											<p className="text-xs font-bold tracking-tight uppercase">{product.estatisticas.curvaABC}</p>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>
+											Curva ABC:{" "}
+											{product.estatisticas.curvaABC === "A"
+												? "80% do faturamento"
+												: product.estatisticas.curvaABC === "B"
+													? "15% do faturamento"
+													: "5% do faturamento"}
+										</p>
+									</TooltipContent>
+								</Tooltip>
 							</div>
-							{/* Turnover Indicator */}
-							{turnoverDays !== null && (
-								<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", {
-									"bg-red-500 dark:bg-red-600 text-white": turnoverDays < 7,
-									"bg-yellow-500 dark:bg-yellow-600 text-white": turnoverDays >= 7 && turnoverDays < 30,
-									"bg-green-500 dark:bg-green-600 text-white": turnoverDays >= 30 && turnoverDays < 90,
-									"bg-blue-500 dark:bg-blue-600 text-white": turnoverDays >= 90,
-								})}>
-									<Clock className="w-4 min-w-4 h-4 min-h-4" />
-									<p className="text-xs font-bold tracking-tight uppercase">{turnoverDays}D</p>
-								</div>
-							)}
-							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-								<CirclePlus className="w-4 min-w-4 h-4 min-h-4" />
-								<p className="text-xs font-bold tracking-tight uppercase">{product.estatisticas.vendasQtdeTotal}</p>
-							</div>
-							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-								<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
-								<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(product.estatisticas.vendasValorTotal)}</p>
-							</div>
-							<div
-								className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary", {
-									"bg-green-500 dark:bg-green-600 text-white": product.estatisticas.curvaABC === "A",
-									"bg-yellow-500 dark:bg-yellow-600 text-white": product.estatisticas.curvaABC === "B",
-									"bg-red-500 dark:bg-red-600 text-white": product.estatisticas.curvaABC === "C",
-								})}
-							>
-								<Star className="w-4 min-w-4 h-4 min-h-4" />
-								<p className="text-xs font-bold tracking-tight uppercase">{product.estatisticas.curvaABC}</p>
-							</div>
-						</div>
+						</TooltipProvider>
 					</div>
 				</div>
 				<div className="w-full flex items-center justify-end gap-2 flex-wrap">

@@ -135,6 +135,23 @@ function ProductsFilterMenu({ queryParams, updateQueryParams, closeMenu }: Produ
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
+							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO DE VALOR DE VENDAS (ESTATÍSTICAS)</h1>
+							<NumberInput
+								label="VALOR MÍNIMO"
+								value={queryParamsHolder.statsTotalMin ?? undefined}
+								placeholder="R$ 0,00"
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMin: value }))}
+								width="100%"
+							/>
+							<NumberInput
+								label="VALOR MÁXIMO"
+								value={queryParamsHolder.statsTotalMax ?? undefined}
+								placeholder="R$ 0,00"
+								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMax: value }))}
+								width="100%"
+							/>
+						</div>
+						<div className="flex w-full flex-col gap-2">
 							<h1 className="w-full text-xs tracking-tight text-primary">ORDENAÇÃO</h1>
 							<div className="flex items-center gap-2 justify-center flex-wrap">
 								<button
