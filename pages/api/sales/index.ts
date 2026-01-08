@@ -81,11 +81,10 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	if (search)
 		conditions.push(
 			inArray(
-				sales.id,
+				sales.clienteId,
 				db
-					.select({ id: sales.id })
-					.from(sales)
-					.innerJoin(clients, and(eq(sales.clienteId, clients.id), eq(clients.organizacaoId, userOrgId)))
+					.select({ id: clients.id })
+					.from(clients)
 					.where(
 						sql`to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${search}) OR ${clients.nome} ILIKE '%' || ${search} || '%'`,
 					),
