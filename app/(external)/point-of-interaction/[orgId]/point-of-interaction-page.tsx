@@ -92,8 +92,8 @@ export default function PointOfInteractionContent({
 						<Image src={org.logoUrl} alt={org.nome} fill className="object-contain" />
 					</div>
 				) : (
-					<div className="w-32 h-32 bg-primary/10 rounded-full overflow-hidden flex items-center justify-center mb-4">
-						<Building2 className="w-12 h-12 text-primary" />
+					<div className="w-32 h-32 rounded-full overflow-hidden flex items-center justify-center mb-4" style={{ backgroundColor: '#3964a81a' }}>
+						<Building2 className="w-12 h-12" style={{ color: '#3964a8' }} />
 					</div>
 				)}
 				<h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter">{org.nome}</h1>
@@ -107,7 +107,10 @@ export default function PointOfInteractionContent({
 					<Button
 						onClick={() => router.push(`/point-of-interaction/${org.id}/new-sale`)}
 						variant="default"
-						className="group relative flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-primary text-primary-foreground"
+						className="group relative flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 text-white"
+						style={{ backgroundColor: '#3964a8' }}
+						onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2d4f85'}
+						onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3964a8'}
 					>
 						<div className="bg-white/20 p-6 rounded-3xl group-hover:scale-110 transition-transform">
 							<ShoppingCart className="w-16 h-16 md:w-20 md:h-20" />
@@ -125,10 +128,11 @@ export default function PointOfInteractionContent({
 					<Button
 						onClick={() => setShowProfileMenu(true)}
 						variant="outline"
-						className="group flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-md border-2 border-primary/20 p-8"
+						className="group flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-md border-2 p-8"
+						style={{ borderColor: '#3964a833' }}
 					>
-						<div className="bg-slate-100 p-6 rounded-3xl group-hover:bg-primary/10 transition-colors">
-							<Users className="w-12 h-12 md:w-16 md:h-16 text-primary" />
+						<div className="bg-slate-100 p-6 rounded-3xl transition-colors group-hover:opacity-80" style={{ backgroundColor: '#3964a810' }}>
+							<Users className="w-12 h-12 md:w-16 md:h-16" style={{ color: '#3964a8' }} />
 						</div>
 						<div className="text-center">
 							<h3 className="text-xl md:text-2xl font-bold tracking-tight uppercase">MEU SALDO</h3>
@@ -142,9 +146,10 @@ export default function PointOfInteractionContent({
 					<Button
 						onClick={() => router.push(`/point-of-interaction/${org.id}/clients-ranking`)}
 						variant="ghost"
-						className="flex flex-col items-center justify-center gap-4 h-auto aspect-video rounded-3xl border-2 border-primary/20 p-6"
+						className="flex flex-col items-center justify-center gap-4 h-auto aspect-video rounded-3xl border-2 p-6"
+						style={{ borderColor: '#3964a833' }}
 					>
-						<Trophy className="w-10 h-10" />
+						<Trophy className="w-10 h-10" style={{ color: '#3964a8' }} />
 						<h3 className="text-lg font-bold uppercase">RANKING CLIENTES</h3>
 					</Button>
 
@@ -152,9 +157,10 @@ export default function PointOfInteractionContent({
 					<Button
 						onClick={() => router.push(`/point-of-interaction/${org.id}/sellers-ranking`)}
 						variant="outline"
-						className="flex flex-col items-center justify-center gap-4 h-auto aspect-video rounded-3xl border-2 border-primary/20 p-6"
+						className="flex flex-col items-center justify-center gap-4 h-auto aspect-video rounded-3xl border-2 p-6"
+						style={{ borderColor: '#3964a833' }}
 					>
-						<Trophy className="w-10 h-10" />
+						<Trophy className="w-10 h-10" style={{ color: '#3964a8' }} />
 						<h3 className="text-lg font-bold uppercase">RANKING VENDEDORES</h3>
 					</Button>
 				</div>

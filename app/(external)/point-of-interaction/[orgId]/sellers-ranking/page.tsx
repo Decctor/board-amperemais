@@ -37,7 +37,7 @@ function getRankBgColor(position: number) {
 		case 3:
 			return "bg-gradient-to-r from-amber-700/10 to-amber-800/10 border-amber-700/50 shadow-amber-700/10";
 		default:
-			return "bg-card border-primary/10 hover:border-primary/30 hover:bg-primary/5";
+			return "bg-card hover:opacity-80";
 	}
 }
 
@@ -76,13 +76,13 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header */}
 				<div className="flex items-center gap-4">
-					<Button variant="ghost" size="icon" asChild className="rounded-full hover:bg-primary/10">
+					<Button variant="ghost" size="icon" asChild className="rounded-full" style={{ backgroundColor: '#3964a810' }}>
 						<Link href={`/point-of-interaction/${orgId}`}>
 							<ArrowLeft className="w-6 h-6" />
 						</Link>
 					</Button>
 					<div className="flex items-center gap-3">
-						<div className="p-3 bg-primary rounded-2xl text-primary-foreground shadow-lg shadow-primary/20">
+						<div className="p-3 rounded-2xl text-white shadow-lg" style={{ backgroundColor: '#3964a8', boxShadow: '0 10px 15px -3px #3964a833' }}>
 							<Trophy className="w-6 h-6 md:w-8 md:h-8" />
 						</div>
 						<div>
@@ -96,11 +96,11 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 
 				{/* Empty State */}
 				{rankingWithPosition.length === 0 && (
-					<div className="text-center py-20 bg-card rounded-[2.5rem] border border-primary/10 shadow-sm">
-						<div className="bg-primary/5 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-							<Trophy className="w-10 h-10 text-primary/20" />
+					<div className="text-center py-20 bg-card rounded-[2.5rem] border shadow-sm" style={{ borderColor: '#3964a81a' }}>
+						<div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#3964a80d' }}>
+							<Trophy className="w-10 h-10" style={{ color: '#3964a833' }} />
 						</div>
-						<h3 className="text-xl font-black text-primary uppercase italic">Ranking Vazio</h3>
+						<h3 className="text-xl font-black uppercase italic" style={{ color: '#3964a8' }}>Ranking Vazio</h3>
 						<p className="text-sm font-bold text-muted-foreground mt-2 max-w-xs mx-auto">Nenhuma venda registrada neste mês.</p>
 					</div>
 				)}
@@ -115,6 +115,7 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 									"relative rounded-3xl p-5 md:p-6 shadow-sm border transition-all hover:scale-[1.01] hover:shadow-md",
 									getRankBgColor(seller.posicao),
 								)}
+								style={seller.posicao > 3 ? { borderColor: '#3964a81a' } : undefined}
 							>
 								<div className="flex items-center justify-between gap-4">
 									{/* Left: Position and Icon */}
@@ -123,7 +124,7 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 											{seller.posicao <= 3 ? (
 												<div className="relative">
 													{getRankIcon(seller.posicao)}
-													<span className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[0.6rem] font-black px-2 py-0.5 rounded-full shadow-sm">
+													<span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-white text-[0.6rem] font-black px-2 py-0.5 rounded-full shadow-sm" style={{ backgroundColor: '#3964a8' }}>
 														#{seller.posicao}
 													</span>
 												</div>
@@ -132,7 +133,7 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 											)}
 										</div>
 										<div className="min-w-0 flex-1">
-											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic text-primary">{seller.vendedorNome}</h3>
+											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic" style={{ color: '#3964a8' }}>{seller.vendedorNome}</h3>
 											<p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
 												{seller.numeroVendas} {seller.numeroVendas === 1 ? "venda" : "vendas"}
 											</p>
@@ -144,8 +145,9 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 										<div
 											className={cn(
 												"px-4 py-2 md:px-6 md:py-3 rounded-2xl",
-												seller.posicao <= 3 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-primary/5 text-primary",
+												seller.posicao <= 3 ? "text-white shadow-lg" : "",
 											)}
+											style={seller.posicao <= 3 ? { backgroundColor: '#3964a8', boxShadow: '0 10px 15px -3px #3964a833' } : { backgroundColor: '#3964a80d', color: '#3964a8' }}
 										>
 											<p className="text-lg md:text-2xl font-black">{formatToMoney(seller.totalVendas)}</p>
 										</div>

@@ -112,22 +112,22 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 							<ArrowLeft className="w-5 h-5" />
 						</Button>
 						<div>
-							<h1 className="text-2xl font-black text-primary uppercase italic leading-none">{client.nome}</h1>
+							<h1 className="text-2xl font-black uppercase italic leading-none" style={{ color: '#3964a8' }}>{client.nome}</h1>
 							<p className="text-sm font-bold text-muted-foreground mt-1">{formatToPhone(client.telefone)}</p>
 						</div>
 					</div>
 
 					{/* Badge de Saldo e Ranking em estilo "Pílula" */}
-					<div className="flex items-center bg-primary/5 border-2 border-primary/10 rounded-full px-8 py-3 gap-8 shadow-inner">
-						<div className="flex flex-col items-center border-r-2 border-primary/10 pr-8">
-							<span className="text-[0.65rem] font-black text-primary uppercase tracking-widest">Saldo Disponível</span>
-							<span className="text-2xl font-black text-primary">{formatToMoney(balance.saldoValorDisponivel)}</span>
+					<div className="flex items-center rounded-full px-8 py-3 gap-8 shadow-inner border-2" style={{ backgroundColor: '#3964a80d', borderColor: '#3964a81a' }}>
+						<div className="flex flex-col items-center border-r-2 pr-8" style={{ borderColor: '#3964a81a' }}>
+							<span className="text-[0.65rem] font-black uppercase tracking-widest" style={{ color: '#3964a8' }}>Saldo Disponível</span>
+							<span className="text-2xl font-black" style={{ color: '#3964a8' }}>{formatToMoney(balance.saldoValorDisponivel)}</span>
 						</div>
 						<div className="flex flex-col items-center">
-							<span className="text-[0.65rem] font-black text-primary uppercase tracking-widest">Ranking</span>
+							<span className="text-[0.65rem] font-black uppercase tracking-widest" style={{ color: '#3964a8' }}>Ranking</span>
 							<div className="flex items-center gap-1">
 								<Award className="w-5 h-5 text-amber-500" />
-								<span className="text-2xl font-black text-primary">#{rankingPosition}</span>
+								<span className="text-2xl font-black" style={{ color: '#3964a8' }}>#{rankingPosition}</span>
 							</div>
 						</div>
 					</div>
@@ -136,29 +136,30 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 				{/* 2. BOTÃO CENTRAL: Ação de Nova Compra */}
 				<Button
 					onClick={() => router.push(`/point-of-interaction/${orgId}/new-sale?clientId=${client.id}`)}
-					className="w-full h-24 rounded-3xl shadow-xl shadow-primary/20 group transition-all border-none"
+					className="w-full h-24 rounded-3xl shadow-xl group transition-all border-none"
+					style={{ backgroundColor: '#3964a8', boxShadow: '0 20px 25px -5px #3964a833' }}
 				>
 					<div className="flex items-center gap-4 text-left">
-						<div className="bg-primary-foreground p-3 rounded-2xl group-hover:scale-110 transition-transform">
-							<ShoppingCart className="w-8 h-8 text-primary" />
+						<div className="p-3 rounded-2xl group-hover:scale-110 transition-transform" style={{ backgroundColor: '#ffffff' }}>
+							<ShoppingCart className="w-8 h-8" style={{ color: '#3964a8' }} />
 						</div>
 						<div>
-							<span className="block text-2xl font-black text-primary-foreground italic leading-none uppercase">Nova Compra</span>
+							<span className="block text-2xl font-black text-white italic leading-none uppercase">Nova Compra</span>
 							<span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Registre pontos e acumule cashback</span>
 						</div>
 					</div>
-					<ArrowRight className="ml-auto mr-4 w-8 h-8 text-primary opacity-50 group-hover:translate-x-2 transition-transform" />
+					<ArrowRight className="ml-auto mr-4 w-8 h-8 opacity-50 group-hover:translate-x-2 transition-transform text-white" />
 				</Button>
 
 				{/* 3. GRID INFERIOR: Resgates e Histórico */}
 				<div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
 					{/* Seção de Resgate Rápido (Lado Esquerdo) */}
-					<section className="md:col-span-5 bg-card rounded-[2.5rem] p-8 shadow-sm border border-primary/20">
+					<section className="md:col-span-5 bg-card rounded-[2.5rem] p-8 shadow-sm border" style={{ borderColor: '#3964a833' }}>
 						<div className="flex items-center gap-3 mb-8">
 							<div className="p-2 bg-green-50 rounded-lg text-green-600">
 								<TrendingUp className="w-5 h-5" />
 							</div>
-							<h2 className="text-xl font-black text-primary uppercase italic">Novo Resgate</h2>
+							<h2 className="text-xl font-black uppercase italic" style={{ color: '#3964a8' }}>Novo Resgate</h2>
 						</div>
 
 						<div className="grid grid-cols-1 gap-4">
@@ -171,16 +172,17 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 									className={cn(
 										"h-20 rounded-2xl border-2 font-black text-xl flex justify-between px-6 transition-all",
 										balance.saldoValorDisponivel >= value
-											? "border-primary/20 hover:border-green-500 hover:bg-green-50 text-primary"
-											: "opacity-40 bg-primary/5 italic text-muted-foreground border-transparent cursor-not-allowed",
+											? "hover:border-green-500 hover:bg-green-50"
+											: "opacity-40 italic text-muted-foreground border-transparent cursor-not-allowed",
 									)}
+									style={balance.saldoValorDisponivel >= value ? { borderColor: '#3964a833', color: '#3964a8' } : { backgroundColor: '#3964a80d' }}
 								>
 									<span>RESGATE {value}</span>
 									<span className={balance.saldoValorDisponivel >= value ? "text-green-600" : ""}>{formatToMoney(value)}</span>
 								</Button>
 							))}
 						</div>
-						<div className="mt-8 p-4 bg-primary/5 rounded-2xl border border-primary/20 text-center">
+						<div className="mt-8 p-4 rounded-2xl border text-center" style={{ backgroundColor: '#3964a80d', borderColor: '#3964a833' }}>
 							<p className="text-[0.65rem] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
 								Atenção: Todos os resgates devem ser <br /> validados pelo operador da loja.
 							</p>
@@ -188,13 +190,13 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 					</section>
 
 					{/* Seção de Histórico (Lado Direito) */}
-					<section className="md:col-span-7 bg-card rounded-[2.5rem] p-8 shadow-sm border border-primary/20 h-full flex flex-col">
+					<section className="md:col-span-7 bg-card rounded-[2.5rem] p-8 shadow-sm border h-full flex flex-col" style={{ borderColor: '#3964a833' }}>
 						<div className="flex items-center justify-between mb-8">
 							<div className="flex items-center gap-3">
-								<div className="p-2 bg-primary/5 rounded-lg text-muted-foreground">
+								<div className="p-2 rounded-lg text-muted-foreground" style={{ backgroundColor: '#3964a80d' }}>
 									<History className="w-5 h-5" />
 								</div>
-								<h2 className="text-xl font-black text-primary uppercase italic">Histórico</h2>
+								<h2 className="text-xl font-black uppercase italic" style={{ color: '#3964a8' }}>Histórico</h2>
 							</div>
 						</div>
 
@@ -208,7 +210,8 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 								transactions.map((t) => (
 									<div
 										key={t.id}
-										className="flex items-center justify-between p-5 rounded-2xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
+										className="flex items-center justify-between p-5 rounded-2xl border transition-colors hover:opacity-80"
+										style={{ borderColor: '#3964a833', backgroundColor: '#3964a80d' }}
 									>
 										<div className="flex flex-col">
 											<span className={cn("text-xs font-black uppercase tracking-widest", t.tipo === "ACÚMULO" ? "text-green-600" : "text-red-500")}>
@@ -245,9 +248,9 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 					dialogVariant="sm"
 				>
 					<div className="space-y-6 py-4">
-						<div className="bg-primary/10 rounded-2xl p-6 text-center border-2 border-primary/20 animate-in zoom-in duration-300">
-							<p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Valor a ser resgatado</p>
-							<p className="text-4xl font-black text-primary italic">{formatToMoney(selectedRedemptionValue)}</p>
+						<div className="rounded-2xl p-6 text-center border-2 animate-in zoom-in duration-300" style={{ backgroundColor: '#3964a81a', borderColor: '#3964a833' }}>
+							<p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#3964a8' }}>Valor a ser resgatado</p>
+							<p className="text-4xl font-black italic" style={{ color: '#3964a8' }}>{formatToMoney(selectedRedemptionValue)}</p>
 						</div>
 
 						<div className="space-y-3">
@@ -259,7 +262,10 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 								placeholder="••••"
 								value={operatorPassword}
 								onChange={(e) => setOperatorPassword(e.target.value.replace(/\D/g, ""))}
-								className="h-20 text-4xl text-center tracking-[1.5rem] rounded-2xl border-4 border-primary/20 focus:border-primary transition-all font-black"
+								className="h-20 text-4xl text-center tracking-[1.5rem] rounded-2xl border-4 transition-all font-black"
+								style={{ borderColor: '#3964a833' }}
+								onFocus={(e) => e.target.style.borderColor = '#3964a8'}
+								onBlur={(e) => e.target.style.borderColor = '#3964a833'}
 								autoFocus
 							/>
 						</div>
