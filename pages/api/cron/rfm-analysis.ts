@@ -2,13 +2,13 @@ import type { TSale } from "@/schemas/sales";
 import dayjs, { type ManipulateType } from "dayjs";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
+import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { TimeDurationUnitsEnum } from "@/schemas/enums";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
-import { db } from "@/services/drizzle";
+import { type DBTransaction, db } from "@/services/drizzle";
 import { type TSaleEntity, clients, interactions, organizations, sales, utils } from "@/services/drizzle/schema";
 import { type TRFMConfig, getRFMLabel } from "@/utils/rfm";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gt, gte, lte, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 
 export const config = {
@@ -17,6 +17,58 @@ export const config = {
 
 const intervalStart = dayjs().subtract(12, "month").startOf("day").toDate();
 const intervalEnd = dayjs().endOf("day").toDate();
+
+/**
+ * Helper function to check if a campaign can be scheduled for a client based on frequency rules
+ * @param tx - Database transaction instance
+ * @param clienteId - Client ID
+ * @param campanhaId - Campaign ID
+ * @param permitirRecorrencia - Whether the campaign allows recurrence
+ * @param frequenciaIntervaloValor - Frequency interval value
+ * @param frequenciaIntervaloMedida - Frequency interval unit (DIAS, HORAS, etc.)
+ * @returns true if the campaign can be scheduled, false otherwise
+ */
+async function canScheduleCampaignForClient(
+	tx: DBTransaction,
+	clienteId: string,
+	campanhaId: string,
+	permitirRecorrencia: boolean,
+	frequenciaIntervaloValor: number | null,
+	frequenciaIntervaloMedida: string | null,
+): Promise<boolean> {
+	// Check if campaign allows recurrence
+	if (!permitirRecorrencia) {
+		const previousInteraction = await tx.query.interactions.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId)),
+		});
+		if (previousInteraction) {
+			console.log(`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} does not allow recurrence. Skipping for client ${clienteId}.`);
+			return false;
+		}
+	}
+
+	// Check for time interval (Frequency Cap)
+	if (permitirRecorrencia && frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
+		// Map the enum to dayjs units
+		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
+
+		// Calculate the cutoff date based on the campaign's interval settings
+		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
+
+		const recentInteraction = await tx.query.interactions.findFirst({
+			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
+		});
+
+		if (recentInteraction) {
+			console.log(
+				`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} frequency limit reached for client ${clienteId}. Last interaction was at ${recentInteraction.dataInsercao}.`,
+			);
+			return false;
+		}
+	}
+
+	return true;
+}
 
 export default async function handleRFMAnalysis(req: NextApiRequest, res: NextApiResponse) {
 	// Buscar todas as organizacoes
@@ -116,6 +168,23 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 						if (applicableCampaigns.length > 0)
 							console.log(`${applicableCampaigns.length} campanhas de entrada em segmentação aplicáveis encontradas para o cliente ${results.clientId}.`);
 						for (const campaign of applicableCampaigns) {
+							// Validate campaign frequency before scheduling
+							const canSchedule = await canScheduleCampaignForClient(
+								tx,
+								results.clientId,
+								campaign.id,
+								campaign.permitirRecorrencia,
+								campaign.frequenciaIntervaloValor,
+								campaign.frequenciaIntervaloMedida,
+							);
+
+							if (!canSchedule) {
+								console.log(
+									`[ORG: ${organization.id}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${results.clientId} due to frequency limits.`,
+								);
+								continue;
+							}
+
 							// For the applicable campaigns, we will iterate over them and schedule the interactions
 							const interactionScheduleDate = getPostponedDateFromReferenceDate({
 								date: dayjs().toDate(),
@@ -168,6 +237,24 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 							});
 
 							if (existingInteraction) continue;
+
+							// Validate campaign frequency before scheduling
+							const canSchedule = await canScheduleCampaignForClient(
+								tx,
+								results.clientId,
+								campaign.id,
+								campaign.permitirRecorrencia,
+								campaign.frequenciaIntervaloValor,
+								campaign.frequenciaIntervaloMedida,
+							);
+
+							if (!canSchedule) {
+								console.log(
+									`[ORG: ${organization.id}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${results.clientId} due to frequency limits.`,
+								);
+								continue;
+							}
+
 							// For the applicable campaigns, we will iterate over them and schedule the interactions
 							const interactionScheduleDate = getPostponedDateFromReferenceDate({
 								date: dayjs().toDate(),

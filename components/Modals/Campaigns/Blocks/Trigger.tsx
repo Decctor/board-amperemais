@@ -2,7 +2,7 @@ import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import type { TCampaignState } from "@/schemas/campaigns";
-import { TimeDurationUnitsEnum } from "@/schemas/enums";
+import type { TCampaignTriggerTypeEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { CampaignTriggerTypeOptions, TimeDurationUnitsOptions } from "@/utils/select-options";
 import { SparklesIcon } from "lucide-react";
 
@@ -18,7 +18,7 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 				value={campaign.gatilhoTipo}
 				resetOptionLabel="SELECIONE O TIPO"
 				options={CampaignTriggerTypeOptions}
-				handleChange={(value) => updateCampaign({ gatilhoTipo: value })}
+				handleChange={(value) => updateCampaign({ gatilhoTipo: value as TCampaignTriggerTypeEnum })}
 				onReset={() => updateCampaign({ gatilhoTipo: "NOVA-COMPRA" })}
 				width="100%"
 			/>
@@ -30,7 +30,7 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 							value={campaign.gatilhoTempoPermanenciaMedida}
 							resetOptionLabel="SELECIONE A MEDIDA"
 							options={TimeDurationUnitsOptions}
-							handleChange={(value) => updateCampaign({ gatilhoTempoPermanenciaMedida: value })}
+							handleChange={(value) => updateCampaign({ gatilhoTempoPermanenciaMedida: value as TTimeDurationUnitsEnum })}
 							onReset={() => updateCampaign({ gatilhoTempoPermanenciaMedida: null })}
 							width="100%"
 						/>
@@ -41,6 +41,28 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 							value={campaign.gatilhoTempoPermanenciaValor ?? null}
 							placeholder="Preencha aqui o valor do tempo de permanência..."
 							handleChange={(value) => updateCampaign({ gatilhoTempoPermanenciaValor: value })}
+							width="100%"
+						/>
+					</div>
+				</div>
+			) : null}
+			{campaign.gatilhoTipo === "CASHBACK-ACUMULADO" ? (
+				<div className="w-full flex flex-col gap-2 items-center lg:flex-row">
+					<div className="w-full lg:w-1/2">
+						<NumberInput
+							label="VALOR MÍNIMO DE NOVO CASHBACK ACUMULADO"
+							value={campaign.gatilhoNovoCashbackAcumuladoValorMinimo ?? null}
+							placeholder="Preencha aqui o valor mínimo de total cashback acumulado..."
+							handleChange={(value) => updateCampaign({ gatilhoNovoCashbackAcumuladoValorMinimo: value })}
+							width="100%"
+						/>
+					</div>
+					<div className="w-full lg:w-1/2">
+						<NumberInput
+							label="VALOR MÍNIMO DE TOTAL CASHBACK ACUMULADO"
+							value={campaign.gatilhoTotalCashbackAcumuladoValorMinimo ?? null}
+							placeholder="Preencha aqui o valor mínimo de total cashback acumulado..."
+							handleChange={(value) => updateCampaign({ gatilhoTotalCashbackAcumuladoValorMinimo: value })}
 							width="100%"
 						/>
 					</div>

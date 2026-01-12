@@ -13,15 +13,28 @@ export const campaigns = newTable("campaigns", {
 	titulo: text("titulo").notNull(),
 	descricao: text("descricao"),
 	gatilhoTipo: campaignTriggerTypeEnum("gatilho_tipo").notNull(),
+
 	// specific for "PERMANÊNCIA-SEGMENTAÇÃO"
 	gatilhoTempoPermanenciaMedida: timeDurationUnitsEnum("gatilho_tempo_permanencia_medida"),
 	gatilhoTempoPermanenciaValor: integer("gatilho_tempo_permanencia_valor"),
 
+	// specific for "CASHBACK-ACUMULADO"
+	gatilhoNovoCashbackAcumuladoValorMinimo: integer("gatilho_cashback_acumulado_valor_minimo"), // defines the minimum required of new cashback accumulation for trigger to fire
+	gatilhoTotalCashbackAcumuladoValorMinimo: integer("gatilho_total_cashback_acumulado_valor_minimo"), // defines the minimum required of total cummulated cashback for trigger to fire
+
 	execucaoAgendadaMedida: timeDurationUnitsEnum("execucao_agendada_medida").notNull().default("DIAS"),
 	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
 	execucaoAgendadaBloco: interactionsCronJobTimeBlocksEnum("execucao_agendada_bloco").notNull(),
+
+	// Configs for recurring interactions and intervals
+	permitirRecorrencia: boolean("permitir_recorrencia").notNull().default(true),
+
+	// Minimum time required between interactions of this specific campaign
+	frequenciaIntervaloValor: integer("frequencia_intervalo_valor").default(0),
+	frequenciaIntervaloMedida: timeDurationUnitsEnum("frequencia_intervalo_medida").default("DIAS"),
+
 	// Whatsapp specific
-	whatsappTelefoneId: varchar("whatsapp_telefone_id", { length: 255 }),
+	whatsappTelefoneId: varchar("whatsapp_telefone_id", { length: 255 }).notNull(),
 	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 })
 		.references(() => whatsappTemplates.id)
 		.notNull(),

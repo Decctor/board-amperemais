@@ -30,6 +30,21 @@ export const CampaignSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	// Specific for "CASHBACK-ACUMULADO"
+	gatilhoNovoCashbackAcumuladoValorMinimo: z
+		.number({
+			required_error: "Valor mínimo de novo cashback acumulado não informado.",
+			invalid_type_error: "Tipo não válido para o valor mínimo de novo cashback acumulado.",
+		})
+		.optional()
+		.nullable(),
+	gatilhoTotalCashbackAcumuladoValorMinimo: z
+		.number({
+			required_error: "Valor mínimo de total cashback acumulado não informado.",
+			invalid_type_error: "Tipo não válido para o valor mínimo de total cashback acumulado.",
+		})
+		.optional()
+		.nullable(),
 
 	execucaoAgendadaMedida: TimeDurationUnitsEnum,
 	execucaoAgendadaValor: z.number({
@@ -37,6 +52,25 @@ export const CampaignSchema = z.object({
 		invalid_type_error: "Tipo não válido para o valor da execução agendada.",
 	}),
 	execucaoAgendadaBloco: InteractionsCronJobTimeBlocksEnum,
+
+	// Configs for recurring interactions and intervals
+	permitirRecorrencia: z
+		.boolean({
+			required_error: "Permitir recorrência não informado.",
+			invalid_type_error: "Tipo não válido para permitir recorrência.",
+		})
+		.optional()
+		.nullable()
+		.default(true),
+	frequenciaIntervaloValor: z
+		.number({
+			required_error: "Valor da frequência de intervalo não informado.",
+			invalid_type_error: "Tipo não válido para o valor da frequência de intervalo.",
+		})
+		.optional()
+		.nullable()
+		.default(0),
+	frequenciaIntervaloMedida: TimeDurationUnitsEnum.optional().nullable().default("DIAS"),
 	// Whatsapp specific
 	whatsappTelefoneId: z.string({
 		required_error: "ID do telefone do WhatsApp não informado.",

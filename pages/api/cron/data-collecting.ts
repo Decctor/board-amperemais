@@ -1,7 +1,8 @@
-import { getPostponedDateFromReferenceDate } from "@/lib/dates";
+import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
-import { db } from "@/services/drizzle";
+import { type DBTransaction, db } from "@/services/drizzle";
 import {
 	cashbackProgramBalances,
 	cashbackProgramTransactions,
@@ -17,11 +18,63 @@ import {
 import axios from "axios";
 import dayjs from "dayjs";
 import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
 dayjs.extend(dayjsCustomFormatter);
+
+/**
+ * Helper function to check if a campaign can be scheduled for a client based on frequency rules
+ * @param tx - Database transaction instance
+ * @param clienteId - Client ID
+ * @param campanhaId - Campaign ID
+ * @param permitirRecorrencia - Whether the campaign allows recurrence
+ * @param frequenciaIntervaloValor - Frequency interval value
+ * @param frequenciaIntervaloMedida - Frequency interval unit (DIAS, HORAS, etc.)
+ * @returns true if the campaign can be scheduled, false otherwise
+ */
+async function canScheduleCampaignForClient(
+	tx: DBTransaction,
+	clienteId: string,
+	campanhaId: string,
+	permitirRecorrencia: boolean,
+	frequenciaIntervaloValor: number | null,
+	frequenciaIntervaloMedida: string | null,
+): Promise<boolean> {
+	// Check if campaign allows recurrence
+	if (!permitirRecorrencia) {
+		const previousInteraction = await tx.query.interactions.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId)),
+		});
+		if (previousInteraction) {
+			console.log(`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} does not allow recurrence. Skipping for client ${clienteId}.`);
+			return false;
+		}
+	}
+
+	// Check for time interval (Frequency Cap)
+	if (permitirRecorrencia && frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
+		// Map the enum to dayjs units
+		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
+
+		// Calculate the cutoff date based on the campaign's interval settings
+		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
+
+		const recentInteraction = await tx.query.interactions.findFirst({
+			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
+		});
+
+		if (recentInteraction) {
+			console.log(
+				`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} frequency limit reached for client ${clienteId}. Last interaction was at ${recentInteraction.dataInsercao}.`,
+			);
+			return false;
+		}
+	}
+
+	return true;
+}
 
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
 	const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
@@ -41,7 +94,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 				and(
 					eq(fields.organizacaoId, organization.id),
 					eq(fields.ativo, true),
-					or(eq(fields.gatilhoTipo, "NOVA-COMPRA"), eq(fields.gatilhoTipo, "PRIMEIRA-COMPRA")),
+					or(eq(fields.gatilhoTipo, "NOVA-COMPRA"), eq(fields.gatilhoTipo, "PRIMEIRA-COMPRA"), eq(fields.gatilhoTipo, "CASHBACK-ACUMULADO")),
 				),
 			with: {
 				segmentacoes: true,
@@ -49,8 +102,10 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		});
 		const campaignsForNewPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "NOVA-COMPRA");
 		const campaignsForFirstPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "PRIMEIRA-COMPRA");
+		const campaignsForCashbackAccumulation = campaigns.filter((campaign) => campaign.gatilhoTipo === "CASHBACK-ACUMULADO");
 		console.log(`[ORG: ${organization.id}] ${campaignsForNewPurchase.length} campanhas de nova compra encontradas.`);
 		console.log(`[ORG: ${organization.id}] ${campaignsForFirstPurchase.length} campanhas de primeira compra encontradas.`);
+		console.log(`[ORG: ${organization.id}] ${campaignsForCashbackAccumulation.length} campanhas de cashback acumulado encontradas.`);
 
 		if (organization.integracaoTipo !== "ONLINE-SOFTWARE") {
 			console.log(`[INFO] [DATA_COLLECTING] [ORGANIZATION] Organization ${organization.id} does not have ONLINE-SOFTWARE integration type.`);
@@ -221,6 +276,23 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								`[ORG: ${organization.id}] ${applicableCampaigns.length} campanhas de primeira compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`,
 							);
 							for (const campaign of applicableCampaigns) {
+								// Validate campaign frequency before scheduling
+								const canSchedule = await canScheduleCampaignForClient(
+									tx,
+									insertedClientId,
+									campaign.id,
+									campaign.permitirRecorrencia,
+									campaign.frequenciaIntervaloValor,
+									campaign.frequenciaIntervaloMedida,
+								);
+
+								if (!canSchedule) {
+									console.log(
+										`[ORG: ${organization.id}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${OnlineSale.cliente} due to frequency limits.`,
+									);
+									continue;
+								}
+
 								// For the applicable campaigns, we will iterate over them and schedule the interactions
 								const interactionScheduleDate = getPostponedDateFromReferenceDate({
 									date: dayjs().toDate(),
@@ -528,6 +600,23 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								`[ORG: ${organization.id}] ${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`,
 							);
 							for (const campaign of applicableCampaigns) {
+								// Validate campaign frequency before scheduling
+								const canSchedule = await canScheduleCampaignForClient(
+									tx,
+									saleClientId,
+									campaign.id,
+									campaign.permitirRecorrencia,
+									campaign.frequenciaIntervaloValor,
+									campaign.frequenciaIntervaloMedida,
+								);
+
+								if (!canSchedule) {
+									console.log(
+										`[ORG: ${organization.id}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${OnlineSale.cliente} due to frequency limits.`,
+									);
+									continue;
+								}
+
 								const interactionScheduleDate = getPostponedDateFromReferenceDate({
 									date: dayjs().toDate(),
 									unit: campaign.execucaoAgendadaMedida,
@@ -606,6 +695,73 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									saldoValorDisponivel: newOverallAvailableBalance,
 									saldoValorAcumuladoTotal: newOverallAccumulatedBalance,
 								});
+
+								// Checking for applicable campaigns for cashback accumulation
+								if (campaignsForCashbackAccumulation.length > 0) {
+									const applicableCampaigns = campaignsForCashbackAccumulation.filter((campaign) => {
+										// Check if the new accumulated cashback meets the minimum threshold (if defined)
+										const meetsNewCashbackThreshold =
+											campaign.gatilhoNovoCashbackAcumuladoValorMinimo === null ||
+											campaign.gatilhoNovoCashbackAcumuladoValorMinimo === undefined ||
+											accumulatedBalance >= campaign.gatilhoNovoCashbackAcumuladoValorMinimo;
+
+										// Check if the total accumulated cashback meets the minimum threshold (if defined)
+										const meetsTotalCashbackThreshold =
+											campaign.gatilhoTotalCashbackAcumuladoValorMinimo === null ||
+											campaign.gatilhoTotalCashbackAcumuladoValorMinimo === undefined ||
+											newOverallAccumulatedBalance >= campaign.gatilhoTotalCashbackAcumuladoValorMinimo;
+
+										// Both conditions must be met (if defined)
+										return meetsNewCashbackThreshold && meetsTotalCashbackThreshold;
+									});
+
+									if (applicableCampaigns.length > 0) {
+										console.log(
+											`[ORG: ${organization.id}] ${applicableCampaigns.length} campanhas de cashback acumulado aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`,
+										);
+									}
+
+									for (const campaign of applicableCampaigns) {
+										// Validate campaign frequency before scheduling
+										const canSchedule = await canScheduleCampaignForClient(
+											tx,
+											saleClientId,
+											campaign.id,
+											campaign.permitirRecorrencia,
+											campaign.frequenciaIntervaloValor,
+											campaign.frequenciaIntervaloMedida,
+										);
+
+										if (!canSchedule) {
+											console.log(
+												`[ORG: ${organization.id}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${OnlineSale.cliente} due to frequency limits.`,
+											);
+											continue;
+										}
+
+										const interactionScheduleDate = getPostponedDateFromReferenceDate({
+											date: dayjs().toDate(),
+											unit: campaign.execucaoAgendadaMedida,
+											value: campaign.execucaoAgendadaValor,
+										});
+
+										await tx.insert(interactions).values({
+											clienteId: saleClientId,
+											campanhaId: campaign.id,
+											organizacaoId: organization.id,
+											titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+											tipo: "ENVIO-MENSAGEM",
+											descricao: `Cliente acumulou R$ ${(accumulatedBalance / 100).toFixed(2)} em cashback. Total acumulado: R$ ${(newOverallAccumulatedBalance / 100).toFixed(2)}.`,
+											agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+											agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+											metadados: {
+												cashbackAcumuladoValor: accumulatedBalance,
+												whatsappMensagemId: null,
+												whatsappTemplateId: null,
+											},
+										});
+									}
+								}
 							}
 						}
 					}

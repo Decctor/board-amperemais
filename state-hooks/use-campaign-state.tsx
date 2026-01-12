@@ -12,6 +12,10 @@ export function useCampaignState() {
 			execucaoAgendadaValor: 0,
 			execucaoAgendadaBloco: "06:00",
 			whatsappTemplateId: "",
+			whatsappTelefoneId: "",
+			permitirRecorrencia: true,
+			frequenciaIntervaloValor: 0,
+			frequenciaIntervaloMedida: "DIAS",
 		},
 		segmentations: [],
 	};

@@ -22,6 +22,7 @@ export const CampaignTriggerTypeOptions: { id: number; label: string; value: TCa
 	{ id: 2, label: "PRIMEIRA COMPRA", value: "PRIMEIRA-COMPRA" },
 	{ id: 3, label: "PERMANÊNCIA NA SEGMENTAÇÃO", value: "PERMANÊNCIA-SEGMENTAÇÃO" },
 	{ id: 4, label: "ENTRADA NA SEGMENTAÇÃO", value: "ENTRADA-SEGMENTAÇÃO" },
+	{ id: 5, label: "CASHBACK ACUMULADO", value: "CASHBACK-ACUMULADO" },
 ];
 
 export const TimeDurationUnitsOptions: { id: number; label: string; value: TTimeDurationUnitsEnum }[] = [
