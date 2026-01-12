@@ -256,6 +256,12 @@ function ClientsStatsView() {
 								}
 							: undefined
 					}
+					footer={
+						<div className="flex items-center gap-1">
+							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
+							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromRecurrentClients.percentage || 0)}%</p>
+						</div>
+					}
 				/>
 				<StatUnitCard
 					title="FATURAMENTO POR CLIENTES NOVOS"
@@ -271,6 +277,12 @@ function ClientsStatsView() {
 									format: (n) => formatToMoney(n),
 								}
 							: undefined
+					}
+					footer={
+						<div className="flex items-center gap-1">
+							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
+							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromNewClients.percentage || 0)}%</p>
+						</div>
 					}
 				/>
 			</div>

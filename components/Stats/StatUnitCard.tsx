@@ -11,10 +11,21 @@ type StatUnitCardProps = {
 	icon: React.ReactNode;
 	current: TStat;
 	previous?: TStat;
+	previousLabel?: string;
 	lowerIsBetter?: boolean;
 	className?: string;
+	footer?: React.ReactNode;
 };
-export default function StatUnitCard({ title, icon, current, previous, lowerIsBetter, className }: StatUnitCardProps) {
+export default function StatUnitCard({
+	title,
+	icon,
+	current,
+	previous,
+	previousLabel = "NO MÊS ANTERIOR",
+	lowerIsBetter,
+	className,
+	footer,
+}: StatUnitCardProps) {
 	const showComparison = !!previous;
 	function getChange(current: TStat, previous?: TStat) {
 		if (!previous) return 0;
@@ -49,10 +60,15 @@ export default function StatUnitCard({ title, icon, current, previous, lowerIsBe
 					{icon}
 				</div>
 			</div>
-			<div className="flex w-full flex-col">
+			<div className="flex w-full flex-col gap-1">
 				<div className="text-2xl font-bold text-[#15599a] dark:text-[#fead61]">{current.format(current.value)}</div>
-				{showComparison ? <p className="text-primary/60 text-xs tracking-tight">NO MÊS ANTERIOR: {previous?.format(previous?.value || 0)}</p> : null}
+				{showComparison ? (
+					<p className="text-muted-foreground text-xs tracking-tight">
+						{previousLabel}: {previous?.format(previous?.value || 0)}
+					</p>
+				) : null}
 			</div>
+			{footer ? <div className="w-full">{footer}</div> : null}
 		</div>
 	);
 }
