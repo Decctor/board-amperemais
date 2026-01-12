@@ -60,6 +60,13 @@ export const InteractionSchema = z.object({
 		.optional()
 		.nullable(),
 	metadados: z.object({
+		cashbackAcumuladoValor: z
+			.number({
+				required_error: "Valor de cashback acumulado não informado.",
+				invalid_type_error: "Tipo não válido para o valor de cashback acumulado.",
+			})
+			.optional()
+			.nullable(),
 		whatsappMensagemId: z
 			.string({
 				required_error: "ID da mensagem do WhatsApp não informado.",
