@@ -212,6 +212,8 @@ async function fetchClientsGraph(input: TGetClientsGraphInput) {
 	searchParams.set("graphType", input.graphType);
 	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
 	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+	if (input.comparingPeriodAfter) searchParams.set("comparingPeriodAfter", input.comparingPeriodAfter.toISOString());
+	if (input.comparingPeriodBefore) searchParams.set("comparingPeriodBefore", input.comparingPeriodBefore.toISOString());
 	const { data } = await axios.get<TGetClientsGraphOutput>(`/api/clients/stats/graph?${searchParams.toString()}`);
 	return data.data;
 }
@@ -230,6 +232,8 @@ async function fetchClientsRanking(input: TGetClientsRankingInput) {
 	const searchParams = new URLSearchParams();
 	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
 	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+	if (input.comparingPeriodAfter) searchParams.set("comparingPeriodAfter", input.comparingPeriodAfter.toISOString());
+	if (input.comparingPeriodBefore) searchParams.set("comparingPeriodBefore", input.comparingPeriodBefore.toISOString());
 	if (input.rankingBy) searchParams.set("rankingBy", input.rankingBy);
 	const { data } = await axios.get<TGetClientsRankingOutput>(`/api/clients/stats/ranking?${searchParams.toString()}`);
 	return data.data;

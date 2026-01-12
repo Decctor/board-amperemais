@@ -12,7 +12,7 @@ import { type ChartConfig, ChartContainer, ChartTooltip } from "../ui/chart";
 type CustomGraphTooltipProps = {
 	active?: boolean;
 	payload?: Array<{
-		payload: { label: string; value: number };
+		payload: { label: string; value: number; comparisonLabel?: string; comparisonValue?: number };
 		value: number;
 		color?: string;
 	}>;
@@ -27,11 +27,27 @@ function CustomClientsTooltip({ active, payload, valueFormatter, metricLabel }: 
 
 	return (
 		<div className="bg-background border-border rounded-lg border p-3 shadow-lg">
-			<p className="text-foreground mb-2 text-xs font-semibold">{data.label}</p>
-			<div className="flex items-center gap-2">
-				<div className="h-2 w-2 rounded-full" style={{ backgroundColor: payload[0].color }} />
-				<span className="text-muted-foreground text-xs">{metricLabel}:</span>
-				<span className="text-foreground text-xs font-semibold">{valueFormatter(data.value)}</span>
+			<div className="flex flex-col gap-2">
+				{/* Main period */}
+				<div>
+					<p className="text-foreground text-xs font-semibold mb-1">{data.label}</p>
+					<div className="flex items-center gap-2">
+						<div className="h-2 w-2 rounded-full bg-[#fead41]" />
+						<span className="text-muted-foreground text-xs">{metricLabel}:</span>
+						<span className="text-foreground text-xs font-semibold">{valueFormatter(data.value)}</span>
+					</div>
+				</div>
+				{/* Comparison period (if exists) */}
+				{data.comparisonValue !== undefined && data.comparisonLabel && (
+					<div>
+						<p className="text-muted-foreground text-xs font-semibold mb-1">{data.comparisonLabel}</p>
+						<div className="flex items-center gap-2">
+							<div className="h-2 w-2 rounded-full bg-[#94a3b8]" />
+							<span className="text-muted-foreground text-xs">{metricLabel}:</span>
+							<span className="text-muted-foreground text-xs font-semibold">{valueFormatter(data.comparisonValue)}</span>
+						</div>
+					</div>
+				)}
 			</div>
 		</div>
 	);
@@ -40,21 +56,34 @@ function CustomClientsTooltip({ active, payload, valueFormatter, metricLabel }: 
 type ClientsGraphsProps = {
 	periodAfter: Date | null;
 	periodBefore: Date | null;
+	comparingPeriodAfter?: Date | null;
+	comparingPeriodBefore?: Date | null;
 };
 
-export default function ClientsGraphs({ periodAfter, periodBefore }: ClientsGraphsProps) {
+export default function ClientsGraphs({ periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore }: ClientsGraphsProps) {
 	const [graphType, setGraphType] = useState<TGetClientsGraphInput["graphType"]>("clients-growth");
 
 	const { data: graphData, isLoading: graphLoading } = useClientsGraph({
 		graphType,
 		periodAfter: periodAfter ?? undefined,
 		periodBefore: periodBefore ?? undefined,
+		comparingPeriodAfter: comparingPeriodAfter ?? undefined,
+		comparingPeriodBefore: comparingPeriodBefore ?? undefined,
 	});
 
 	const chartConfig = {
 		value: {
 			label: graphType === "clients-growth" ? "Total de Clientes" : graphType === "new-clients" ? "Novos Clientes" : "Clientes Ativos",
 			color: "#fead41",
+		},
+		comparisonValue: {
+			label:
+				graphType === "clients-growth"
+					? "Total de Clientes (período anterior)"
+					: graphType === "new-clients"
+						? "Novos Clientes (período anterior)"
+						: "Clientes Ativos (período anterior)",
+			color: "#94a3b8",
 		},
 	} satisfies ChartConfig;
 
@@ -148,7 +177,24 @@ export default function ClientsGraphs({ periodAfter, periodBefore }: ClientsGrap
 											<stop offset="5%" stopColor={chartConfig.value.color} stopOpacity={0.8} />
 											<stop offset="95%" stopColor={chartConfig.value.color} stopOpacity={0.1} />
 										</linearGradient>
+										<linearGradient id="fillComparisonValue" x1="0" y1="0" x2="0" y2="1">
+											<stop offset="5%" stopColor={chartConfig.comparisonValue.color} stopOpacity={0.6} />
+											<stop offset="95%" stopColor={chartConfig.comparisonValue.color} stopOpacity={0.1} />
+										</linearGradient>
 									</defs>
+									{/* Comparison area (rendered first = behind) */}
+									{graphData?.[0]?.comparisonValue !== undefined && (
+										<Area
+											dataKey="comparisonValue"
+											type="monotone"
+											fill="url(#fillComparisonValue)"
+											fillOpacity={0.3}
+											stroke={chartConfig.comparisonValue.color}
+											strokeWidth={1.5}
+											strokeDasharray="4 4"
+										/>
+									)}
+									{/* Main area (rendered second = in front) */}
 									<Area dataKey="value" type="monotone" fill="url(#fillClientsValue)" fillOpacity={0.4} stroke={chartConfig.value.color} strokeWidth={2} />
 								</AreaChart>
 							</ChartContainer>

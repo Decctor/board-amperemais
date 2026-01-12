@@ -33,54 +33,51 @@ const GetClientsGraphInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((v) => (v ? dayjs(v).endOf("day").toDate() : undefined)),
+	comparingPeriodAfter: z
+		.string({
+			required_error: "Período de comparação não informado.",
+			invalid_type_error: "Tipo inválido para período de comparação.",
+		})
+		.datetime({ message: "Formato de data inválido." })
+		.optional()
+		.nullable()
+		.transform((v) => (v ? dayjs(v).startOf("day").toDate() : undefined)),
+	comparingPeriodBefore: z
+		.string({
+			required_error: "Período de comparação não informado.",
+			invalid_type_error: "Tipo inválido para período de comparação.",
+		})
+		.datetime({ message: "Formato de data inválido." })
+		.optional()
+		.nullable()
+		.transform((v) => (v ? dayjs(v).endOf("day").toDate() : undefined)),
 });
 
 export type TGetClientsGraphInput = z.infer<typeof GetClientsGraphInputSchema>;
 
-async function getClientsGraph({ input, sessionUser }: { input: TGetClientsGraphInput; sessionUser: TAuthUserSession["user"] }) {
-	const userOrgId = sessionUser.organizacaoId;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-
-	const period = {
-		after: input.periodAfter,
-		before: input.periodBefore,
-	};
-
-	console.log(`[ORG: ${userOrgId}] [INFO] [GET CLIENTS GRAPH] Period:`, period);
-
-	// If no start period, get the first client registration date
-	if (!period.after) {
-		const firstClient = await db
-			.select({
-				date: clients.primeiraCompraData,
-			})
-			.from(clients)
-			.where(eq(clients.organizacaoId, userOrgId))
-			.orderBy(asc(clients.primeiraCompraData))
-			.limit(1);
-		period.after = firstClient[0]?.date ?? undefined;
-		if (!period.after) throw new createHttpError.BadRequest("Não foi possível encontrar o primeiro cliente cadastrado.");
-	}
-
-	if (!period.before) {
-		period.before = new Date();
-	}
-
-	const { points: bestNumberOfPointsForPeriodsDates, groupingFormat } = getBestNumberOfPointsBetweenDates({
-		startDate: period.after,
-		endDate: period.before,
-	});
-
+async function getGraphDataForPeriod({
+	graphType,
+	period,
+	bucketCount,
+	groupingFormat,
+	userOrgId,
+}: {
+	graphType: "new-clients" | "clients-growth" | "active-clients";
+	period: { after: Date; before: Date };
+	bucketCount: number;
+	groupingFormat: string;
+	userOrgId: string;
+}): Promise<Array<{ label: string; value: number }>> {
 	const periodDatesStrs = getEvenlySpacedDates({
 		startDate: period.after,
 		endDate: period.before,
-		points: bestNumberOfPointsForPeriodsDates,
+		points: bucketCount,
 	});
 
 	const periodDateBuckets = getDateBuckets(periodDatesStrs);
 
 	// Graph Type: new-clients (non-cumulative, new clients per period)
-	if (input.graphType === "new-clients") {
+	if (graphType === "new-clients") {
 		const newClients = await db
 			.select({
 				date: sql<string>`date_trunc('day', ${clients.primeiraCompraData})::text`,
@@ -107,18 +104,14 @@ async function getClientsGraph({ input, sessionUser }: { input: TGetClientsGraph
 			return acc;
 		}, initialNewClients);
 
-		const newClientsGraph = Object.entries(newClientsReduced).map(([key, value]) => ({
+		return Object.entries(newClientsReduced).map(([key, value]) => ({
 			label: key,
 			value: value.value,
 		}));
-
-		return {
-			data: newClientsGraph,
-		};
 	}
 
 	// Graph Type: clients-growth (cumulative, total clients over time)
-	if (input.graphType === "clients-growth") {
+	if (graphType === "clients-growth") {
 		// Get total clients BEFORE the period starts
 		const clientsBeforePeriod = await db
 			.select({
@@ -157,21 +150,17 @@ async function getClientsGraph({ input, sessionUser }: { input: TGetClientsGraph
 
 		// Transform into cumulative values
 		let accumulated = initialTotal;
-		const clientsGrowthGraph = Object.entries(clientsGrowthReduced).map(([key, value]) => {
+		return Object.entries(clientsGrowthReduced).map(([key, value]) => {
 			accumulated += value.value;
 			return {
 				label: key,
 				value: accumulated,
 			};
 		});
-
-		return {
-			data: clientsGrowthGraph,
-		};
 	}
 
 	// Graph Type: active-clients (clients who made purchases in the period)
-	if (input.graphType === "active-clients") {
+	if (graphType === "active-clients") {
 		const activeClients = await db
 			.select({
 				date: sql<string>`date_trunc('day', ${sales.dataVenda})::text`,
@@ -200,18 +189,81 @@ async function getClientsGraph({ input, sessionUser }: { input: TGetClientsGraph
 			return acc;
 		}, initialActiveClients);
 
-		const activeClientsGraph = Object.entries(activeClientsReduced).map(([key, value]) => ({
+		return Object.entries(activeClientsReduced).map(([key, value]) => ({
 			label: key,
 			value: value.value,
 		}));
-
-		return {
-			data: activeClientsGraph,
-		};
 	}
 
+	return [];
+}
+
+async function getClientsGraph({ input, sessionUser }: { input: TGetClientsGraphInput; sessionUser: TAuthUserSession["user"] }) {
+	const userOrgId = sessionUser.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const period = {
+		after: input.periodAfter,
+		before: input.periodBefore,
+	};
+
+	console.log(`[ORG: ${userOrgId}] [INFO] [GET CLIENTS GRAPH] Period:`, period);
+
+	// If no start period, get the first client registration date
+	if (!period.after) {
+		const firstClient = await db
+			.select({
+				date: clients.primeiraCompraData,
+			})
+			.from(clients)
+			.where(eq(clients.organizacaoId, userOrgId))
+			.orderBy(asc(clients.primeiraCompraData))
+			.limit(1);
+		period.after = firstClient[0]?.date ?? undefined;
+		if (!period.after) throw new createHttpError.BadRequest("Não foi possível encontrar o primeiro cliente cadastrado.");
+	}
+
+	if (!period.before) {
+		period.before = new Date();
+	}
+
+	// Calculate bucket config from MAIN period
+	const { points: bestNumberOfPointsForPeriodsDates, groupingFormat } = getBestNumberOfPointsBetweenDates({
+		startDate: period.after,
+		endDate: period.before,
+	});
+
+	// Get main period data
+	const mainData = await getGraphDataForPeriod({
+		graphType: input.graphType,
+		period: { after: period.after, before: period.before },
+		bucketCount: bestNumberOfPointsForPeriodsDates,
+		groupingFormat,
+		userOrgId,
+	});
+
+	// If comparison period exists, get comparison data with SAME bucket count
+	let comparisonData: Array<{ label: string; value: number }> | null = null;
+	if (input.comparingPeriodAfter && input.comparingPeriodBefore) {
+		comparisonData = await getGraphDataForPeriod({
+			graphType: input.graphType,
+			period: { after: input.comparingPeriodAfter, before: input.comparingPeriodBefore },
+			bucketCount: bestNumberOfPointsForPeriodsDates, // Force same bucket count!
+			groupingFormat,
+			userOrgId,
+		});
+	}
+
+	// Merge by index
+	const mergedData = mainData.map((item, index) => ({
+		label: item.label,
+		value: item.value,
+		comparisonLabel: comparisonData?.[index]?.label,
+		comparisonValue: comparisonData?.[index]?.value,
+	}));
+
 	return {
-		data: [],
+		data: mergedData,
 	};
 }
 
@@ -225,6 +277,8 @@ const getClientsGraphRoute: NextApiHandler<TGetClientsGraphOutput> = async (req,
 		graphType: req.query.graphType as "new-clients" | "clients-growth" | "active-clients",
 		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
+		comparingPeriodAfter: (req.query.comparingPeriodAfter as string | undefined) ?? null,
+		comparingPeriodBefore: (req.query.comparingPeriodBefore as string | undefined) ?? null,
 	});
 
 	const result = await getClientsGraph({ input, sessionUser: sessionUser.user });

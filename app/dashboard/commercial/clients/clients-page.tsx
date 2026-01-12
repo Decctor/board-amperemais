@@ -242,10 +242,20 @@ function ClientsStatsView() {
 			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
 				<div className="w-full lg:w-1/2 h-full min-h-0">
-					<ClientsGraphs periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+					<ClientsGraphs
+						periodAfter={filters.periodAfter}
+						periodBefore={filters.periodBefore}
+						comparingPeriodAfter={filters.comparingPeriodAfter}
+						comparingPeriodBefore={filters.comparingPeriodBefore}
+					/>
 				</div>
 				<div className="w-full lg:w-1/2 h-full min-h-0">
-					<ClientsRanking periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+					<ClientsRanking
+						periodAfter={filters.periodAfter}
+						periodBefore={filters.periodBefore}
+						comparingPeriodAfter={filters.comparingPeriodAfter}
+						comparingPeriodBefore={filters.comparingPeriodBefore}
+					/>
 				</div>
 			</div>
 		</div>

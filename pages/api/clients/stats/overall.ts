@@ -92,7 +92,7 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 		input,
 	});
 	const { periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore } = input;
-	const saleConditions = [eq(sales.organizacaoId, userOrgId)];
+	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
 
 	const totalClientsResult = await db
 		.select({ count: count() })
@@ -116,7 +116,9 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 			totalVendasCliente: sum(sales.valorTotal),
 		})
 		.from(sales)
-		.where(and(...saleConditions))
+		.where(
+			and(...saleConditions, periodAfter ? gte(sales.dataVenda, periodAfter) : undefined, periodBefore ? lte(sales.dataVenda, periodBefore) : undefined),
+		)
 		.groupBy(sales.clienteId);
 
 	const ltvClientsCount = salesByClient.length;
@@ -163,7 +165,7 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 	const comparisonTotalClientsResult = await db
 		.select({ count: count() })
 		.from(clients)
-		.where(and(eq(clients.organizacaoId, userOrgId), periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined));
+		.where(and(eq(clients.organizacaoId, userOrgId), comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined));
 
 	const comparisonTotalNewClientsResult = await db
 		.select({ count: count() })
@@ -171,8 +173,8 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 		.where(
 			and(
 				eq(clients.organizacaoId, userOrgId),
-				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
-				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
+				comparingPeriodAfter ? gte(clients.primeiraCompraData, comparingPeriodAfter) : undefined,
+				comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined,
 			),
 		);
 	// LTV: média do valor total de vendas por cliente dentro do período / filtros informados
@@ -182,7 +184,13 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 			totalVendasCliente: sum(sales.valorTotal),
 		})
 		.from(sales)
-		.where(and(...saleConditions))
+		.where(
+			and(
+				...saleConditions,
+				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
+				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
+			),
+		)
 		.groupBy(sales.clienteId);
 
 	const comparisonLtvClientsCount = comparisonSalesByClient.length;
@@ -198,8 +206,8 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 		.where(
 			and(
 				eq(clients.organizacaoId, userOrgId),
-				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
-				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
+				comparingPeriodAfter ? gte(clients.primeiraCompraData, comparingPeriodAfter) : undefined,
+				comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined,
 			),
 		);
 

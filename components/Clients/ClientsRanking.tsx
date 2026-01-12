@@ -5,21 +5,25 @@ import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useClientsRanking } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TGetClientsRankingInput } from "@/pages/api/clients/stats/ranking";
-import { BadgeDollarSign, CirclePlus, Crown, Mail, Phone } from "lucide-react";
+import { ArrowDown, ArrowUp, BadgeDollarSign, CirclePlus, Crown, Mail, Minus, Phone } from "lucide-react";
 import { useState } from "react";
 
 type ClientsRankingProps = {
 	periodAfter: Date | null;
 	periodBefore: Date | null;
+	comparingPeriodAfter?: Date | null;
+	comparingPeriodBefore?: Date | null;
 };
 
-export default function ClientsRanking({ periodAfter, periodBefore }: ClientsRankingProps) {
+export default function ClientsRanking({ periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore }: ClientsRankingProps) {
 	const [rankingBy, setRankingBy] = useState<TGetClientsRankingInput["rankingBy"]>("purchases-total-value");
 
 	const { data: rankingData, isLoading: rankingLoading } = useClientsRanking({
 		rankingBy,
 		periodAfter: periodAfter ?? null,
 		periodBefore: periodBefore ?? null,
+		comparingPeriodAfter: comparingPeriodAfter ?? null,
+		comparingPeriodBefore: comparingPeriodBefore ?? null,
 	});
 
 	return (
@@ -78,7 +82,7 @@ export default function ClientsRanking({ periodAfter, periodBefore }: ClientsRan
 									client.rank === 3 && "border-orange-600/50 bg-orange-600/5",
 								)}
 							>
-								<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+								<div className="w-full flex items-start justify-between gap-2 flex-wrap">
 									<div className="flex items-center gap-2 flex-wrap">
 										{client.rank <= 3 ? (
 											<Crown
@@ -94,8 +98,36 @@ export default function ClientsRanking({ periodAfter, periodBefore }: ClientsRan
 												<span className="text-xs font-bold">{client.rank}</span>
 											</div>
 										)}
-										<div className="flex items-start flex-col">
-											<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
+										<div className="flex items-start flex-col gap-1">
+											<div className="flex items-center gap-2">
+												<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
+												{client.rankDelta !== null && client.rankDelta !== 0 && (
+													<div
+														className={cn(
+															"flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold",
+															client.rankDelta > 0 && "bg-green-500/10 text-green-600 dark:text-green-400",
+															client.rankDelta < 0 && "bg-red-500/10 text-red-600 dark:text-red-400",
+														)}
+													>
+														{client.rankDelta > 0 ? (
+															<>
+																<ArrowUp className="w-3 h-3 min-w-3 min-h-3" />
+																<span>+{client.rankDelta}</span>
+															</>
+														) : (
+															<>
+																<ArrowDown className="w-3 h-3 min-w-3 min-h-3" />
+																<span>{client.rankDelta}</span>
+															</>
+														)}
+													</div>
+												)}
+												{client.rankDelta === 0 && (
+													<div className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold bg-gray-500/10 text-gray-600 dark:text-gray-400">
+														<Minus className="w-3 h-3 min-w-3 min-h-3" />
+													</div>
+												)}
+											</div>
 											<div className="flex items-center gap-1">
 												<Phone className="w-4 h-4 min-w-4 min-h-4" />
 												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.telefone}</h1>
@@ -104,15 +136,29 @@ export default function ClientsRanking({ periodAfter, periodBefore }: ClientsRan
 									</div>
 									<div className="flex items-center gap-3">
 										{rankingBy === "purchases-total-value" ? (
-											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-												<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
-												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(client.totalValue)}</p>
+											<div className="flex flex-col items-end gap-1">
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+													<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(client.totalValue)}</p>
+												</div>
+												{client.totalValueComparison !== null && (
+													<p className="text-[0.60rem] text-muted-foreground">
+														Anterior: {formatToMoney(client.totalValueComparison)}
+													</p>
+												)}
 											</div>
 										) : null}
 										{rankingBy === "purchases-total-qty" ? (
-											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-												<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
-												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(client.totalPurchases)}</p>
+											<div className="flex flex-col items-end gap-1">
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+													<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(client.totalPurchases)}</p>
+												</div>
+												{client.totalPurchasesComparison !== null && (
+													<p className="text-[0.60rem] text-muted-foreground">
+														Anterior: {formatDecimalPlaces(client.totalPurchasesComparison)}
+													</p>
+												)}
 											</div>
 										) : null}
 									</div>
