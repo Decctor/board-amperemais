@@ -145,14 +145,15 @@ function MagazineCard({
 	const promoValue = item.valorPromocional;
 
 	// Formatting helper
-	const formatMoney = (val: number) => val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-	const splitMoney = (val: number) => {
+	const formatMoney = (val: number | null | undefined) =>
+		val ? val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0,00";
+	const splitMoney = (val: number | null | undefined) => {
 		const str = formatMoney(val);
 		const [int, dec] = str.split(",");
 		return { int, dec };
 	};
 
-	const promoParts = splitMoney(promoValue);
+	const promoParts = splitMoney(promoValue ?? 0);
 
 	return (
 		<div className="bg-white rounded-[1.2rem] p-2 flex flex-col items-center justify-between shadow-md relative overflow-hidden h-full">

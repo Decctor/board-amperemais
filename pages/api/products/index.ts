@@ -1,9 +1,9 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { ProductSchema } from "@/schemas/products";
+import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
 import { db } from "@/services/drizzle";
-import { partners, products, saleItems, sales } from "@/services/drizzle/schema";
+import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products, saleItems, sales } from "@/services/drizzle/schema";
 import { and, asc, count, desc, eq, gte, inArray, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
@@ -381,4 +381,174 @@ const updateProductHandler: NextApiHandler<TUpdateProductOutput> = async (req, r
 	return res.status(200).json(data);
 };
 
-export default apiHandler({ GET: getProductsHandler, PUT: updateProductHandler });
+// ========== CREATE PRODUCT ==========
+
+const CreateProductAddOnOptionInputSchema = ProductAddOnOptionSchema.omit({ organizacaoId: true, produtoAddOnId: true }).extend({
+	produtoConsumo: z.string().optional().nullable(),
+});
+
+const CreateProductAddOnInputSchema = ProductAddOnSchema.omit({ organizacaoId: true }).extend({
+	opcoes: z.array(CreateProductAddOnOptionInputSchema),
+});
+
+const CreateProductVariantInputSchema = ProductVariantSchema.omit({ organizacaoId: true, produtoId: true }).extend({
+	imagemCapaUrl: z.string().optional().nullable(),
+	addOns: z.array(CreateProductAddOnInputSchema),
+});
+
+const CreateProductInputSchema = z.object({
+	product: ProductSchema.omit({ organizacaoId: true }),
+	productVariants: z.array(CreateProductVariantInputSchema),
+	productAddOns: z.array(CreateProductAddOnInputSchema),
+});
+
+export type TCreateProductInput = z.infer<typeof CreateProductInputSchema>;
+
+async function createProduct({ user, input }: { user: TAuthUserSession["user"]; input: TCreateProductInput }) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	console.log("[INFO] [CREATE PRODUCT] Input:", JSON.stringify(input, null, 2));
+
+	// 1. Create the main product
+	const [createdProduct] = await db
+		.insert(products)
+		.values({
+			organizacaoId: userOrgId,
+			descricao: input.product.descricao,
+			codigo: input.product.codigo,
+			unidade: input.product.unidade,
+			ncm: input.product.ncm,
+			tipo: input.product.tipo,
+			grupo: input.product.grupo,
+			imagemCapaUrl: input.product.imagemCapaUrl,
+			precoVenda: input.product.precoVenda,
+			precoCusto: input.product.precoCusto,
+			quantidade: input.product.quantidade,
+		})
+		.returning({ id: products.id });
+
+	if (!createdProduct?.id) throw new createHttpError.InternalServerError("Erro ao criar o produto.");
+
+	const productId = createdProduct.id;
+
+	// 2. Create product variants (if any)
+	for (const variant of input.productVariants) {
+		const [createdVariant] = await db
+			.insert(productVariants)
+			.values({
+				organizacaoId: userOrgId,
+				produtoId: productId,
+				nome: variant.nome,
+				codigo: variant.codigo,
+				imagemCapaUrl: variant.imagemCapaUrl,
+				precoVenda: variant.precoVenda,
+				precoCusto: variant.precoCusto,
+				quantidade: variant.quantidade,
+				ativo: variant.ativo,
+			})
+			.returning({ id: productVariants.id });
+
+		if (!createdVariant?.id) throw new createHttpError.InternalServerError("Erro ao criar variante do produto.");
+
+		// 2.1 Create variant add-ons (if any)
+		for (const [addOnIndex, addOn] of variant.addOns.entries()) {
+			const [createdAddOn] = await db
+				.insert(productAddOns)
+				.values({
+					organizacaoId: userOrgId,
+					nome: addOn.nome,
+					internoNome: addOn.internoNome,
+					minOpcoes: addOn.minOpcoes,
+					maxOpcoes: addOn.maxOpcoes,
+					ativo: addOn.ativo,
+				})
+				.returning({ id: productAddOns.id });
+
+			if (!createdAddOn?.id) throw new createHttpError.InternalServerError("Erro ao criar grupo de adicionais da variante.");
+
+			// Create options for this add-on
+			for (const option of addOn.opcoes) {
+				await db.insert(productAddOnOptions).values({
+					organizacaoId: userOrgId,
+					produtoAddOnId: createdAddOn.id,
+					nome: option.nome,
+					codigo: option.codigo,
+					precoDelta: option.precoDelta,
+					maxQtdePorItem: option.maxQtdePorItem,
+					ativo: option.ativo,
+					produtoId: option.produtoId,
+					produtoVarianteId: option.produtoVarianteId,
+					quantidadeConsumo: option.quantidadeConsumo,
+				});
+			}
+
+			// 2.2 Create the reference linking product and the variant to the add-on
+			await db.insert(productAddOnReferences).values({
+				produtoId: productId,
+				ordem: addOnIndex,
+				produtoAddOnId: createdAddOn.id,
+				produtoVarianteId: createdVariant.id,
+			});
+		}
+	}
+
+	// 3. Create product add-ons (at product level) and link them
+	for (const [addOnIndex, addOn] of input.productAddOns.entries()) {
+		const [createdAddOn] = await db
+			.insert(productAddOns)
+			.values({
+				organizacaoId: userOrgId,
+				nome: addOn.nome,
+				internoNome: addOn.internoNome,
+				minOpcoes: addOn.minOpcoes,
+				maxOpcoes: addOn.maxOpcoes,
+				ativo: addOn.ativo,
+			})
+			.returning({ id: productAddOns.id });
+
+		if (!createdAddOn?.id) throw new createHttpError.InternalServerError("Erro ao criar grupo de adicionais do produto.");
+
+		// 3.1 Create options for this add-on
+		for (const option of addOn.opcoes) {
+			await db.insert(productAddOnOptions).values({
+				organizacaoId: userOrgId,
+				produtoAddOnId: createdAddOn.id,
+				nome: option.nome,
+				codigo: option.codigo,
+				precoDelta: option.precoDelta,
+				maxQtdePorItem: option.maxQtdePorItem,
+				ativo: option.ativo,
+				produtoId: option.produtoId,
+				produtoVarianteId: option.produtoVarianteId,
+				quantidadeConsumo: option.quantidadeConsumo,
+			});
+		}
+
+		// 3.2 Create the reference linking product to add-on
+		await db.insert(productAddOnReferences).values({
+			produtoId: productId,
+			produtoAddOnId: createdAddOn.id,
+			ordem: addOnIndex,
+		});
+	}
+
+	return {
+		data: {
+			productId: productId,
+		},
+		message: "Produto criado com sucesso.",
+	};
+}
+
+export type TCreateProductOutput = Awaited<ReturnType<typeof createProduct>>;
+
+const createProductHandler: NextApiHandler<TCreateProductOutput> = async (req, res) => {
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	const input = CreateProductInputSchema.parse(req.body);
+	const data = await createProduct({ user: sessionUser.user, input });
+	return res.status(201).json(data);
+};
+
+export default apiHandler({ GET: getProductsHandler, PUT: updateProductHandler, POST: createProductHandler });

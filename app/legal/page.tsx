@@ -1,4 +1,4 @@
-import Logo from "@/utils/svgs/logos/ICON - COLORFUL.svg";
+import Logo from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
 import Image from "next/image";
 import React from "react";
 

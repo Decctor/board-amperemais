@@ -43,6 +43,9 @@ async function getProductsBySearch({ input, userOrgId }: { input: TGetProductsBy
 	const totalPages = Math.ceil(productsMatchedCount / PAGE_SIZE);
 	const productsResult = await db.query.products.findMany({
 		where: and(...conditions),
+		with: {
+			variantes: true,
+		},
 		offset: skip,
 		limit: limit,
 		orderBy: (fields, { desc }) => desc(fields.descricao),

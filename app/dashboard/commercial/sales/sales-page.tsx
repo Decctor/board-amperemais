@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import type { TGetSalesInput, TGetSalesOutput } from "@/pages/api/sales";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { BadgeDollarSign, Calendar, CircleUser, Handshake, ListFilter, Package, Search, Tag, X } from "lucide-react";
+import { BadgeDollarSign, Calendar, CircleUser, Handshake, ListFilter, Package, Plus, Search, Tag, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -68,6 +68,12 @@ export default function SalesPage({ user }: SalesPageProps) {
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
 					FILTROS
+				</Button>
+				<Button className="flex items-center gap-2" size="sm" asChild>
+					<Link href="/dashboard/commercial/sales/new-sale">
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						NOVA VENDA
+					</Link>
 				</Button>
 			</div>
 

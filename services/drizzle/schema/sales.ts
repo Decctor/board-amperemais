@@ -4,7 +4,7 @@ import { clients } from "./clients";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { partners } from "./partners";
-import { products } from "./products";
+import { productAddOnOptions, productVariants, products } from "./products";
 import { sellers } from "./sellers";
 
 export const sales = newTable(
@@ -80,7 +80,9 @@ export const saleItems = newTable(
 		produtoId: varchar("produto_id", { length: 255 })
 			.references(() => products.id)
 			.notNull(),
+		produtoVarianteId: varchar("produto_variante_id", { length: 255 }).references(() => productVariants.id),
 		quantidade: doublePrecision("quantidade").notNull(),
+		// NOTE: This unit price should be the (Variant Price + Sum of Modifiers)
 		valorVendaUnitario: doublePrecision("valor_unitario").notNull(), // valor de venda unitário do produto
 		valorCustoUnitario: doublePrecision("valor_custo_unitario").notNull(), // valor de custo unitário do produto
 		valorVendaTotalBruto: doublePrecision("valor_venda_total_bruto").notNull(), // valor total do produto (sem desconto) (quantidade * valorUnitario)
@@ -96,15 +98,52 @@ export const saleItems = newTable(
 		valoresIdx: index("idx_sale_items_valores").on(table.valorVendaTotalLiquido, table.valorCustoTotal),
 	}),
 );
-export const saleItemsRelations = relations(saleItems, ({ one }) => ({
+export const saleItemsRelations = relations(saleItems, ({ one, many }) => ({
 	produto: one(products, {
 		fields: [saleItems.produtoId],
 		references: [products.id],
+	}),
+	produtoVariante: one(productVariants, {
+		fields: [saleItems.produtoVarianteId],
+		references: [productVariants.id],
 	}),
 	venda: one(sales, {
 		fields: [saleItems.vendaId],
 		references: [sales.id],
 	}),
+	adicionais: many(saleItemModifiers),
 }));
 export type TSaleItemEntity = typeof saleItems.$inferSelect;
 export type TNewSaleItemEntity = typeof saleItems.$inferInsert;
+
+export const saleItemModifiers = newTable("sale_item_modifiers", {
+	id: varchar("id", { length: 255 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+
+	// Links to the specific line item (e.g., The "Burger" on line 3)
+	itemVendaId: varchar("item_venda_id", { length: 255 })
+		.references(() => saleItems.id, { onDelete: "cascade" })
+		.notNull(),
+
+	// Link to the definition (for inventory/reporting: "How much Bacon did we sell?")
+	opcaoId: varchar("opcao_id", { length: 255 }).references(() => productAddOnOptions.id, { onDelete: "set null" }),
+
+	// SNAPSHOT DATA (History preservation)
+	nome: text("nome").notNull(), // "Extra Bacon"
+
+	quantidade: doublePrecision("quantidade").default(1.0).notNull(),
+	valorUnitario: doublePrecision("valor_unitario").notNull(), // Price at moment of sale
+	valorTotal: doublePrecision("valor_total").notNull(), // Qty * UnitPrice
+});
+
+export const saleItemModifiersRelations = relations(saleItemModifiers, ({ one }) => ({
+	itemVenda: one(saleItems, {
+		fields: [saleItemModifiers.itemVendaId],
+		references: [saleItems.id],
+	}),
+	opcao: one(productAddOnOptions, {
+		fields: [saleItemModifiers.opcaoId],
+		references: [productAddOnOptions.id],
+	}),
+}));

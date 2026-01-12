@@ -10,7 +10,7 @@ import type { TGetProductsBySearchOutput } from "@/pages/api/products/search";
 import { Code, Diamond, LinkIcon } from "lucide-react";
 
 type ProductVinculationProps = {
-	handleSelection: (product: TGetProductsBySearchOutput["data"]["products"][number]) => void;
+	handleSelection: (product: TGetProductsBySearchOutput["data"]["products"][number], variant?: { id: string; nome: string }) => void;
 	closeModal: () => void;
 };
 export default function ProductVinculation({ handleSelection, closeModal }: ProductVinculationProps) {
@@ -61,7 +61,9 @@ export default function ProductVinculation({ handleSelection, closeModal }: Prod
 					/>
 					{products ? (
 						products.length > 0 ? (
-							products.map((product) => <ProductVinculationProductCard key={product.id} product={product} handleClick={() => handleSelection(product)} />)
+							products.map((product) => (
+								<ProductVinculationProductCard key={product.id} product={product} handleClick={(variantId) => handleSelection(product, variantId)} />
+							))
 						) : (
 							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
 						)
@@ -75,7 +77,8 @@ export default function ProductVinculation({ handleSelection, closeModal }: Prod
 function ProductVinculationProductCard({
 	product,
 	handleClick,
-}: { product: TGetProductsBySearchOutput["data"]["products"][number]; handleClick: () => void }) {
+}: { product: TGetProductsBySearchOutput["data"]["products"][number]; handleClick: (variant?: { id: string; nome: string }) => void }) {
+	const variants = product.variantes || [];
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between gap-2">
@@ -93,11 +96,32 @@ function ProductVinculationProductCard({
 					) : null}
 				</div>
 			</div>
-			<div className="w-full flex items-center justify-end">
+			{variants.length > 0 ? (
+				<div className="flex flex-col gap-1 pl-4 mt-2 border-l-2 border-primary/10">
+					{variants.map((variant) => (
+						<div key={variant.id} className="flex items-center justify-between gap-2 py-1">
+							<div className="flex flex-col">
+								<h2 className="text-xs font-medium text-muted-foreground">{variant.nome}</h2>
+								<p className="text-[0.65rem] text-muted-foreground/70">{variant.codigo}</p>
+							</div>
+							<Button
+								variant="ghost"
+								className="flex items-center gap-1 h-6 px-2 text-[0.65rem]"
+								size="sm"
+								onClick={() => handleClick({ id: variant.id, nome: variant.nome })}
+							>
+								<LinkIcon className="w-2.5 min-w-2.5 h-2.5 min-h-2.5" />
+								VINCULAR VARIANTE
+							</Button>
+						</div>
+					))}
+				</div>
+			) : null}
+			<div className="w-full flex items-center justify-end mt-2">
 				<div className="flex items-center gap-3">
-					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleClick}>
+					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleClick()}>
 						<LinkIcon className="w-3 min-w-3 h-3 min-h-3" />
-						VINCULAR
+						VINCULAR PRODUTO
 					</Button>
 				</div>
 			</div>

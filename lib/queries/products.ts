@@ -265,10 +265,7 @@ async function fetchProductsRanking(input: TGetProductsRankingInput) {
 		const searchParams = new URLSearchParams();
 		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
 		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
-		if (input.saleNatures && input.saleNatures.length > 0) searchParams.set("saleNatures", input.saleNatures.join(","));
-		if (input.excludedSalesIds && input.excludedSalesIds.length > 0) searchParams.set("excludedSalesIds", input.excludedSalesIds.join(","));
-		if (input.totalMin) searchParams.set("totalMin", input.totalMin.toString());
-		if (input.totalMax) searchParams.set("totalMax", input.totalMax.toString());
+
 		if (input.rankingBy) searchParams.set("rankingBy", input.rankingBy);
 		const { data } = await axios.get<TGetProductsRankingOutput>(`/api/products/stats/ranking?${searchParams.toString()}`);
 		return data.data;

@@ -5,6 +5,7 @@ import TextInput from "@/components/Inputs/TextInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlProduct from "@/components/Modals/Products/ControlProduct";
+import NewProduct from "@/components/Modals/Products/NewProduct";
 import ProductsFilterMenu from "@/components/Products/ProductsFilterMenu";
 import ProductsGraphs from "@/components/Products/ProductsGraphs";
 import ProductsRanking from "@/components/Products/ProductsRanking";
@@ -36,6 +37,7 @@ import {
 	ListFilter,
 	Package,
 	PencilIcon,
+	Plus,
 	RefreshCw,
 	ShoppingBag,
 	ShoppingCart,
@@ -82,6 +84,7 @@ export default function ProductsPage({ user }: ProductsPageProps) {
 function ProductsDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 	const queryClient = useQueryClient();
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
+	const [newProductModalIsOpen, setNewProductModalIsOpen] = useState<boolean>(false);
 	const [editProductModalId, setEditProductModalId] = useState<string | null>(null);
 	const {
 		data: productsResult,
@@ -131,6 +134,10 @@ function ProductsDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
 					FILTROS
 				</Button>
+				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewProductModalIsOpen(true)}>
+					<Plus className="w-4 h-4 min-w-4 min-h-4" />
+					NOVO PRODUTO
+				</Button>
 			</div>
 			<GeneralPaginationComponent
 				activePage={filters.page}
@@ -168,6 +175,9 @@ function ProductsDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 			) : null}
 			{filterMenuIsOpen ? (
 				<ProductsFilterMenu queryParams={filters} updateQueryParams={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
+			) : null}
+			{newProductModalIsOpen ? (
+				<NewProduct user={user} closeModal={() => setNewProductModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 		</div>
 	);

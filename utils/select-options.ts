@@ -46,3 +46,26 @@ export const CashbackProgramAccumulationTypeOptions: { id: number; label: string
 	{ id: 1, label: "FIXO", value: "FIXO" },
 	{ id: 2, label: "PERCENTUAL", value: "PERCENTUAL" },
 ];
+
+export const UnitsOfMeasurementOptions: { id: number; label: string; value: string }[] = [
+	{ id: 1, label: "UN", value: "UN" }, // Unidade
+	{ id: 2, label: "KG", value: "KG" }, // Quilograma
+	{ id: 3, label: "G", value: "G" }, // Grama
+	{ id: 4, label: "MG", value: "MG" }, // Miligrama
+	{ id: 5, label: "L", value: "L" }, // Litro
+	{ id: 6, label: "ML", value: "ML" }, // Mililitro
+	{ id: 7, label: "DZ", value: "DZ" }, // Dúzia
+	{ id: 8, label: "CX", value: "CX" }, // Caixa
+	{ id: 9, label: "PC", value: "PC" }, // Peça
+	{ id: 10, label: "SC", value: "SC" }, // Saco
+	{ id: 11, label: "FARDO", value: "FARDO" }, // Fardo
+	{ id: 12, label: "BANDEJA", value: "BANDEJA" }, // Bandeja
+	{ id: 13, label: "ROLO", value: "ROLO" }, // Rolo
+	{ id: 14, label: "POTE", value: "POTE" }, // Pote
+	{ id: 15, label: "FRASCO", value: "FRASCO" }, // Frasco
+	{ id: 16, label: "GALÃO", value: "GALÃO" }, // Galão
+	{ id: 17, label: "LATA", value: "LATA" }, // Lata
+	{ id: 18, label: "PACOTE", value: "PACOTE" }, // Pacote
+	{ id: 19, label: "BARRA", value: "BARRA" }, // Barra
+	{ id: 20, label: "FATIA", value: "FATIA" }, // Fatia
+];
