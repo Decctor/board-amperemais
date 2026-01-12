@@ -240,6 +240,40 @@ function ClientsStatsView() {
 					}
 				/>
 			</div>
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="FATURAMENTO POR CLIENTES EXISTENTES"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.revenueFromRecurrentClients.current ? Number(clientsOverallStats?.revenueFromRecurrentClients.current) : 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						clientsOverallStats?.revenueFromRecurrentClients.comparison
+							? {
+									value: clientsOverallStats?.revenueFromRecurrentClients.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+				/>
+				<StatUnitCard
+					title="FATURAMENTO POR CLIENTES NOVOS"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.revenueFromNewClients.current ? Number(clientsOverallStats?.revenueFromNewClients.current) : 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						clientsOverallStats?.revenueFromNewClients.comparison
+							? {
+									value: clientsOverallStats?.revenueFromNewClients.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+				/>
+			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
 				<div className="w-full lg:w-1/2 h-full min-h-0">
 					<ClientsGraphs
