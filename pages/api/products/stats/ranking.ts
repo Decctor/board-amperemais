@@ -27,23 +27,40 @@ const GetProductsRankingInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-
+	comparingPeriodAfter: z
+		.string({
+			required_error: "Período de comparação não informado.",
+			invalid_type_error: "Tipo inválido para período de comparação.",
+		})
+		.datetime({ message: "Tipo inválido para período de comparação." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	comparingPeriodBefore: z
+		.string({
+			required_error: "Período de comparação não informado.",
+			invalid_type_error: "Tipo inválido para período de comparação.",
+		})
+		.datetime({ message: "Tipo inválido para período de comparação." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 	rankingBy: z.enum(["sales-total-value", "sales-total-qty", "sales-total-margin"]).optional().nullable(),
 });
 
 export type TGetProductsRankingInput = z.infer<typeof GetProductsRankingInputSchema>;
 
-async function getProductsRanking({ input, session }: { input: TGetProductsRankingInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-
-	console.log("[INFO] [GET PRODUCTS RANKING] Starting:", {
-		userOrg: userOrgId,
-		input,
-	});
-
-	const { periodAfter, periodBefore, rankingBy } = input;
-
+async function fetchRankingForPeriod({
+	periodAfter,
+	periodBefore,
+	rankingBy,
+	userOrgId,
+}: {
+	periodAfter: Date | null;
+	periodBefore: Date | null;
+	rankingBy: "sales-total-value" | "sales-total-qty" | "sales-total-margin" | null | undefined;
+	userOrgId: string;
+}) {
 	// Build sale conditions
 	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
@@ -68,8 +85,8 @@ async function getProductsRanking({ input, session }: { input: TGetProductsRanki
 		.groupBy(saleItems.produtoId, products.descricao, products.codigo, products.grupo, products.imagemCapaUrl)
 		.limit(10);
 
-	const formattedRanking = ranking
-		.map((item, index) => {
+	return ranking
+		.map((item) => {
 			const totalRevenue = Number(item.totalRevenue ?? 0);
 			const totalCost = Number(item.totalCost ?? 0);
 			const totalMargin = totalRevenue - totalCost;
@@ -103,9 +120,83 @@ async function getProductsRanking({ input, session }: { input: TGetProductsRanki
 			rank: index + 1,
 			...item,
 		}));
+}
+
+async function getProductsRanking({ input, session }: { input: TGetProductsRankingInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	console.log("[INFO] [GET PRODUCTS RANKING] Starting:", {
+		userOrg: userOrgId,
+		input,
+	});
+
+	const { periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore, rankingBy } = input;
+
+	// Fetch current period ranking
+	const currentRanking = await fetchRankingForPeriod({
+		periodAfter,
+		periodBefore,
+		rankingBy,
+		userOrgId,
+	});
+
+	// If no comparison period, return current ranking without comparison fields
+	if (!comparingPeriodAfter || !comparingPeriodBefore) {
+		return {
+			data: currentRanking.map((item) => ({
+				...item,
+				rankComparison: null,
+				rankDelta: null,
+				totalQuantityComparison: null,
+				totalRevenueComparison: null,
+				totalMarginComparison: null,
+				marginPercentageComparison: null,
+			})),
+		};
+	}
+
+	// Fetch comparison period ranking
+	const comparisonRanking = await fetchRankingForPeriod({
+		periodAfter: comparingPeriodAfter,
+		periodBefore: comparingPeriodBefore,
+		rankingBy,
+		userOrgId,
+	});
+
+	// Create a map of produtoId -> comparison data for quick lookup
+	const comparisonMap = new Map(
+		comparisonRanking.map((item) => [
+			item.produtoId,
+			{
+				rank: item.rank,
+				totalQuantity: item.totalQuantity,
+				totalRevenue: item.totalRevenue,
+				totalMargin: item.totalMargin,
+				marginPercentage: item.marginPercentage,
+			},
+		]),
+	);
+
+	// Merge current ranking with comparison data
+	const enrichedRanking = currentRanking.map((item) => {
+		const comparisonData = comparisonMap.get(item.produtoId);
+		const rankComparison = comparisonData?.rank ?? null;
+		const rankDelta = rankComparison !== null ? rankComparison - item.rank : null;
+
+		return {
+			...item,
+			rankComparison,
+			rankDelta,
+			totalQuantityComparison: comparisonData?.totalQuantity ?? null,
+			totalRevenueComparison: comparisonData?.totalRevenue ?? null,
+			totalMarginComparison: comparisonData?.totalMargin ?? null,
+			marginPercentageComparison: comparisonData?.marginPercentage ?? null,
+		};
+	});
 
 	return {
-		data: formattedRanking,
+		data: enrichedRanking,
 	};
 }
 
@@ -114,10 +205,15 @@ export type TGetProductsRankingOutput = Awaited<ReturnType<typeof getProductsRan
 const getProductsRankingRoute: NextApiHandler<TGetProductsRankingOutput> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-
+	console.log("[INFO] [GET PRODUCTS RANKING] Starting:", {
+		userOrg: sessionUser.user.organizacaoId,
+		query: req.query,
+	});
 	const input = GetProductsRankingInputSchema.parse({
 		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
+		comparingPeriodAfter: (req.query.comparingPeriodAfter as string | undefined) ?? null,
+		comparingPeriodBefore: (req.query.comparingPeriodBefore as string | undefined) ?? null,
 		rankingBy: (req.query.rankingBy as "sales-total-value" | "sales-total-qty" | "sales-total-margin" | undefined) ?? "sales-total-value",
 	});
 

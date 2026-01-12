@@ -170,8 +170,8 @@ function SellersStatsView() {
 							...prev,
 							periodAfter: value.after ? new Date(value.after) : null,
 							periodBefore: value.before ? new Date(value.before) : null,
-							comparingPeriodAfter: value.after ? dayjs().subtract(1, "month").toDate() : null,
-							comparingPeriodBefore: value.before ? dayjs().subtract(1, "month").toDate() : null,
+							comparingPeriodAfter: value.after ? dayjs(value.after).subtract(1, "month").toDate() : null,
+							comparingPeriodBefore: value.before ? dayjs(value.before).subtract(1, "month").toDate() : null,
 						}))
 					}
 				/>
@@ -263,7 +263,12 @@ function SellersStatsView() {
 					<SellersGraphs periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 				</div>
 				<div className="w-full lg:w-1/2 h-full min-h-0">
-					<SellersRanking periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+					<SellersRanking
+						periodAfter={filters.periodAfter}
+						periodBefore={filters.periodBefore}
+						comparingPeriodAfter={filters.comparingPeriodAfter}
+						comparingPeriodBefore={filters.comparingPeriodBefore}
+					/>
 				</div>
 			</div>
 		</div>

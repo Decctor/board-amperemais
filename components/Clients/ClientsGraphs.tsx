@@ -42,7 +42,7 @@ function CustomClientsTooltip({ active, payload, valueFormatter, metricLabel }: 
 					<div>
 						<p className="text-muted-foreground text-xs font-semibold mb-1">{data.comparisonLabel}</p>
 						<div className="flex items-center gap-2">
-							<div className="h-2 w-2 rounded-full bg-[#94a3b8]" />
+							<div className="h-2 w-2 rounded-full bg-[#24549C]" />
 							<span className="text-muted-foreground text-xs">{metricLabel}:</span>
 							<span className="text-muted-foreground text-xs font-semibold">{valueFormatter(data.comparisonValue)}</span>
 						</div>
@@ -83,7 +83,7 @@ export default function ClientsGraphs({ periodAfter, periodBefore, comparingPeri
 					: graphType === "new-clients"
 						? "Novos Clientes (período anterior)"
 						: "Clientes Ativos (período anterior)",
-			color: "#94a3b8",
+			color: "#24549C",
 		},
 	} satisfies ChartConfig;
 

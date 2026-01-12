@@ -27,22 +27,40 @@ const GetPartnersRankingInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
+	comparingPeriodAfter: z
+		.string({
+			required_error: "Período de comparação não informado.",
+			invalid_type_error: "Tipo inválido para período de comparação.",
+		})
+		.datetime({ message: "Tipo inválido para período de comparação." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	comparingPeriodBefore: z
+		.string({
+			required_error: "Período de comparação não informado.",
+			invalid_type_error: "Tipo inválido para período de comparação.",
+		})
+		.datetime({ message: "Tipo inválido para período de comparação." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 	rankingBy: z.enum(["sales-total-value", "sales-total-qty", "average-ticket", "margin"]).optional().nullable(),
 });
 
 export type TGetPartnersRankingInput = z.infer<typeof GetPartnersRankingInputSchema>;
 
-async function getPartnersRanking({ input, session }: { input: TGetPartnersRankingInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-
-	console.log("[INFO] [GET PARTNERS RANKING] Starting:", {
-		userOrg: userOrgId,
-		input,
-	});
-
-	const { periodAfter, periodBefore, rankingBy } = input;
-
+async function fetchRankingForPeriod({
+	periodAfter,
+	periodBefore,
+	rankingBy,
+	userOrgId,
+}: {
+	periodAfter: Date | null;
+	periodBefore: Date | null;
+	rankingBy: "sales-total-value" | "sales-total-qty" | "average-ticket" | "margin" | null | undefined;
+	userOrgId: string;
+}) {
 	// Build sale conditions
 	const saleConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda), isNotNull(sales.parceiroId), eq(sales.natureza, "SN01")];
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
@@ -121,7 +139,7 @@ async function getPartnersRanking({ input, session }: { input: TGetPartnersRanki
 	});
 
 	// Get top 10 and add rank
-	const top10Partners = sortedPartners.slice(0, 10).map((partner, index) => ({
+	return sortedPartners.slice(0, 10).map((partner, index) => ({
 		rank: index + 1,
 		parceiroId: partner.parceiroId,
 		parceiroNome: partner.parceiroNome,
@@ -135,9 +153,86 @@ async function getPartnersRanking({ input, session }: { input: TGetPartnersRanki
 		totalSalesQty: partner.totalSalesQty,
 		averageTicket: partner.averageTicket,
 	}));
+}
+
+async function getPartnersRanking({ input, session }: { input: TGetPartnersRankingInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	console.log("[INFO] [GET PARTNERS RANKING] Starting:", {
+		userOrg: userOrgId,
+		input,
+	});
+
+	const { periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore, rankingBy } = input;
+
+	// Fetch current period ranking
+	const currentRanking = await fetchRankingForPeriod({
+		periodAfter,
+		periodBefore,
+		rankingBy,
+		userOrgId,
+	});
+
+	// If no comparison period, return current ranking without comparison fields
+	if (!comparingPeriodAfter || !comparingPeriodBefore) {
+		return {
+			data: currentRanking.map((item) => ({
+				...item,
+				rankComparison: null,
+				rankDelta: null,
+				totalRevenueComparison: null,
+				totalSalesQtyComparison: null,
+				averageTicketComparison: null,
+				totalMarginComparison: null,
+				marginPercentageComparison: null,
+			})),
+		};
+	}
+
+	// Fetch comparison period ranking
+	const comparisonRanking = await fetchRankingForPeriod({
+		periodAfter: comparingPeriodAfter,
+		periodBefore: comparingPeriodBefore,
+		rankingBy,
+		userOrgId,
+	});
+
+	// Create a map of parceiroId -> comparison data for quick lookup
+	const comparisonMap = new Map(
+		comparisonRanking.map((item) => [
+			item.parceiroId,
+			{
+				rank: item.rank,
+				totalRevenue: item.totalRevenue,
+				totalSalesQty: item.totalSalesQty,
+				averageTicket: item.averageTicket,
+				totalMargin: item.totalMargin,
+				marginPercentage: item.marginPercentage,
+			},
+		]),
+	);
+
+	// Merge current ranking with comparison data
+	const enrichedRanking = currentRanking.map((item) => {
+		const comparisonData = comparisonMap.get(item.parceiroId);
+		const rankComparison = comparisonData?.rank ?? null;
+		const rankDelta = rankComparison !== null ? rankComparison - item.rank : null;
+
+		return {
+			...item,
+			rankComparison,
+			rankDelta,
+			totalRevenueComparison: comparisonData?.totalRevenue ?? null,
+			totalSalesQtyComparison: comparisonData?.totalSalesQty ?? null,
+			averageTicketComparison: comparisonData?.averageTicket ?? null,
+			totalMarginComparison: comparisonData?.totalMargin ?? null,
+			marginPercentageComparison: comparisonData?.marginPercentage ?? null,
+		};
+	});
 
 	return {
-		data: top10Partners,
+		data: enrichedRanking,
 	};
 }
 
@@ -151,10 +246,8 @@ const getPartnersRankingRoute = async (request: NextRequest) => {
 	const input = GetPartnersRankingInputSchema.parse({
 		periodAfter: searchParams.get("periodAfter") ?? null,
 		periodBefore: searchParams.get("periodBefore") ?? null,
-		saleNatures: searchParams.get("saleNatures") ? (searchParams.get("saleNatures") as string).split(",") : null,
-		excludedSalesIds: searchParams.get("excludedSalesIds") ? (searchParams.get("excludedSalesIds") as string).split(",") : null,
-		totalMin: searchParams.get("totalMin") ? Number(searchParams.get("totalMin")) : null,
-		totalMax: searchParams.get("totalMax") ? Number(searchParams.get("totalMax")) : null,
+		comparingPeriodAfter: searchParams.get("comparingPeriodAfter") ?? null,
+		comparingPeriodBefore: searchParams.get("comparingPeriodBefore") ?? null,
 		rankingBy:
 			(searchParams.get("rankingBy") as "sales-total-value" | "sales-total-qty" | "average-ticket" | "margin" | undefined) ?? "sales-total-value",
 	});

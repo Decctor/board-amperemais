@@ -190,7 +190,7 @@ function ProductsStatsView() {
 		periodAfter: initialStartDate.toDate(),
 		periodBefore: initialEndDate.toDate(),
 		comparingPeriodAfter: initialStartDate.subtract(1, "month").toDate(),
-		comparingPeriodBefore: null,
+		comparingPeriodBefore: initialEndDate.subtract(1, "month").toDate(),
 	});
 
 	const { data: productsOverallStats, isLoading: productsOverallStatsLoading } = useProductsOverallStats({
@@ -216,8 +216,8 @@ function ProductsStatsView() {
 							...prev,
 							periodAfter: value.after ? new Date(value.after) : null,
 							periodBefore: value.before ? new Date(value.before) : null,
-							comparingPeriodAfter: value.after ? dayjs().subtract(1, "month").toDate() : null,
-							comparingPeriodBefore: value.before ? dayjs().subtract(1, "month").toDate() : null,
+							comparingPeriodAfter: value.after ? dayjs(value.after).subtract(1, "month").toDate() : null,
+							comparingPeriodBefore: value.before ? dayjs(value.before).subtract(1, "month").toDate() : null,
 						}))
 					}
 				/>
@@ -359,7 +359,12 @@ function ProductsStatsView() {
 					<ProductsGraphs periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 				</div>
 				<div className="w-full lg:w-1/2 h-full min-h-0">
-					<ProductsRanking periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+					<ProductsRanking
+						periodAfter={filters.periodAfter}
+						periodBefore={filters.periodBefore}
+						comparingPeriodAfter={filters.comparingPeriodAfter}
+						comparingPeriodBefore={filters.comparingPeriodBefore}
+					/>
 				</div>
 			</div>
 		</div>

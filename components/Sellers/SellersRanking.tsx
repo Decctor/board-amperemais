@@ -7,21 +7,25 @@ import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/
 import { useSellersRanking } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
 import type { TGetSellersRankingInput } from "@/pages/api/sellers/stats/ranking";
-import { BadgeDollarSign, CirclePlus, Crown, Target, Ticket, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, BadgeDollarSign, CirclePlus, Crown, Minus, Target, Ticket, TrendingUp } from "lucide-react";
 import { useState } from "react";
 
 type SellersRankingProps = {
 	periodAfter: Date | null;
 	periodBefore: Date | null;
+	comparingPeriodAfter?: Date | null;
+	comparingPeriodBefore?: Date | null;
 };
 
-export default function SellersRanking({ periodAfter, periodBefore }: SellersRankingProps) {
+export default function SellersRanking({ periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore }: SellersRankingProps) {
 	const [rankingBy, setRankingBy] = useState<TGetSellersRankingInput["rankingBy"]>("sales-total-value");
 
 	const { data: rankingData, isLoading: rankingLoading } = useSellersRanking({
 		rankingBy,
 		periodAfter: periodAfter ?? null,
 		periodBefore: periodBefore ?? null,
+		comparingPeriodAfter: comparingPeriodAfter ?? null,
+		comparingPeriodBefore: comparingPeriodBefore ?? null,
 	});
 
 	const RANKING_LABEL_MAP = {
@@ -116,7 +120,7 @@ export default function SellersRanking({ periodAfter, periodBefore }: SellersRan
 									seller.rank === 3 && "border-orange-600/50 bg-orange-600/5",
 								)}
 							>
-								<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+								<div className="w-full flex items-start justify-between gap-2 flex-wrap">
 									<div className="flex items-center gap-2 flex-wrap">
 										{seller.rank <= 3 ? (
 											<Crown
@@ -136,42 +140,90 @@ export default function SellersRanking({ periodAfter, periodBefore }: SellersRan
 											<AvatarImage src={seller.vendedorAvatarUrl ?? undefined} alt={seller.vendedorNome} />
 											<AvatarFallback>{formatNameAsInitials(seller.vendedorNome)}</AvatarFallback>
 										</Avatar>
-										<div className="flex items-start flex-col">
-											<h1 className="text-xs font-bold tracking-tight lg:text-sm">{seller.vendedorNome}</h1>
+										<div className="flex items-start flex-col gap-1">
+											<div className="flex items-center gap-2">
+												<h1 className="text-xs font-bold tracking-tight lg:text-sm">{seller.vendedorNome}</h1>
+												{seller.rankDelta !== null && seller.rankDelta !== 0 && (
+													<div
+														className={cn(
+															"flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold",
+															seller.rankDelta > 0 && "bg-green-500/10 text-green-600 dark:text-green-400",
+															seller.rankDelta < 0 && "bg-red-500/10 text-red-600 dark:text-red-400",
+														)}
+													>
+														{seller.rankDelta > 0 ? (
+															<>
+																<ArrowUp className="w-3 h-3 min-w-3 min-h-3" />
+																<span>+{seller.rankDelta}</span>
+															</>
+														) : (
+															<>
+																<ArrowDown className="w-3 h-3 min-w-3 min-h-3" />
+																<span>{seller.rankDelta}</span>
+															</>
+														)}
+													</div>
+												)}
+												{seller.rankDelta === 0 && (
+													<div className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold bg-gray-500/10 text-gray-600 dark:text-gray-400">
+														<Minus className="w-3 h-3 min-w-3 min-h-3" />
+													</div>
+												)}
+											</div>
 										</div>
 									</div>
 									<div className="flex items-center gap-3">
 										{rankingBy === "sales-total-value" ? (
-											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-												<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
-												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.totalRevenue)}</p>
+											<div className="flex flex-col items-end gap-1">
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+													<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.totalRevenue)}</p>
+												</div>
+												{seller.totalRevenueComparison !== null && (
+													<p className="text-[0.60rem] text-muted-foreground">Anterior: {formatToMoney(seller.totalRevenueComparison)}</p>
+												)}
 											</div>
 										) : null}
 										{rankingBy === "sales-total-qty" ? (
-											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-												<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
-												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.totalSalesQty)}</p>
+											<div className="flex flex-col items-end gap-1">
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+													<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.totalSalesQty)}</p>
+												</div>
+												{seller.totalSalesQtyComparison !== null && (
+													<p className="text-[0.60rem] text-muted-foreground">Anterior: {formatDecimalPlaces(seller.totalSalesQtyComparison)}</p>
+												)}
 											</div>
 										) : null}
 										{rankingBy === "average-ticket" ? (
-											<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
-												<Ticket className="w-3 min-w-3 h-3 min-h-3" />
-												<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.averageTicket)}</p>
+											<div className="flex flex-col items-end gap-1">
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+													<Ticket className="w-3 min-w-3 h-3 min-h-3" />
+													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.averageTicket)}</p>
+												</div>
+												{seller.averageTicketComparison !== null && (
+													<p className="text-[0.60rem] text-muted-foreground">Anterior: {formatToMoney(seller.averageTicketComparison)}</p>
+												)}
 											</div>
 										) : null}
 										{rankingBy === "goal-achievement" ? (
-											<div
-												className={cn(
-													"flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-bold",
-													seller.goalAchievementPercentage >= 100 && "bg-green-500/20 text-green-700 dark:text-green-400",
-													seller.goalAchievementPercentage >= 75 &&
-														seller.goalAchievementPercentage < 100 &&
-														"bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
-													seller.goalAchievementPercentage < 75 && "bg-red-500/20 text-red-700 dark:text-red-400",
+											<div className="flex flex-col items-end gap-1">
+												<div
+													className={cn(
+														"flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-bold",
+														seller.goalAchievementPercentage >= 100 && "bg-green-500/20 text-green-700 dark:text-green-400",
+														seller.goalAchievementPercentage >= 75 &&
+															seller.goalAchievementPercentage < 100 &&
+															"bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
+														seller.goalAchievementPercentage < 75 && "bg-red-500/20 text-red-700 dark:text-red-400",
+													)}
+												>
+													<Target className="w-3 min-w-3 h-3 min-h-3" />
+													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.goalAchievementPercentage)}%</p>
+												</div>
+												{seller.goalAchievementPercentageComparison !== null && (
+													<p className="text-[0.60rem] text-muted-foreground">Anterior: {formatDecimalPlaces(seller.goalAchievementPercentageComparison)}%</p>
 												)}
-											>
-												<Target className="w-3 min-w-3 h-3 min-h-3" />
-												<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.goalAchievementPercentage)}%</p>
 											</div>
 										) : null}
 									</div>

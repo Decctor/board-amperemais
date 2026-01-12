@@ -150,7 +150,12 @@ function PartnersStatsView() {
 		comparingPeriodAfter: filters.comparingPeriodAfter ?? null,
 		comparingPeriodBefore: filters.comparingPeriodBefore ?? null,
 	});
-
+	console.log("[INFO] [PARTNERS RANKING] Starting:", {
+		periodAfter: filters.periodAfter,
+		periodBefore: filters.periodBefore,
+		comparingPeriodAfter: filters.comparingPeriodAfter,
+		comparingPeriodBefore: filters.comparingPeriodBefore,
+	});
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end">
@@ -162,15 +167,15 @@ function PartnersStatsView() {
 						after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
 						before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
 					}}
-					handleChange={(value) =>
+					handleChange={(value) => {
 						setFilters((prev) => ({
 							...prev,
 							periodAfter: value.after ? new Date(value.after) : null,
 							periodBefore: value.before ? new Date(value.before) : null,
-							comparingPeriodAfter: value.after ? dayjs().subtract(1, "month").toDate() : null,
-							comparingPeriodBefore: value.before ? dayjs().subtract(1, "month").toDate() : null,
-						}))
-					}
+							comparingPeriodAfter: value.after ? dayjs(value.after).subtract(1, "month").toDate() : null,
+							comparingPeriodBefore: value.before ? dayjs(value.before).subtract(1, "month").toDate() : null,
+						}));
+					}}
 				/>
 			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
@@ -244,7 +249,12 @@ function PartnersStatsView() {
 					<PartnersGraphs periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 				</div>
 				<div className="w-full lg:w-1/2 h-full min-h-0">
-					<PartnersRanking periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+					<PartnersRanking
+						periodAfter={filters.periodAfter}
+						periodBefore={filters.periodBefore}
+						comparingPeriodAfter={filters.comparingPeriodAfter}
+						comparingPeriodBefore={filters.comparingPeriodBefore}
+					/>
 				</div>
 			</div>
 		</div>

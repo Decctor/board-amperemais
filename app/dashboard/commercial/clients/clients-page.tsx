@@ -168,8 +168,8 @@ function ClientsStatsView() {
 						setFilters({
 							periodAfter: value.after ? new Date(value.after) : null,
 							periodBefore: value.before ? new Date(value.before) : null,
-							comparingPeriodAfter: value.after ? dayjs().subtract(1, "month").toDate() : null,
-							comparingPeriodBefore: value.before ? dayjs().toDate() : null,
+							comparingPeriodAfter: value.after ? dayjs(value.after).subtract(1, "month").toDate() : null,
+							comparingPeriodBefore: value.before ? dayjs(value.before).subtract(1, "month").toDate() : null,
 						})
 					}
 				/>

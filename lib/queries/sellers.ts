@@ -178,6 +178,8 @@ async function fetchSellersRanking(input: TGetSellersRankingInput) {
 		const searchParams = new URLSearchParams();
 		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
 		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		if (input.comparingPeriodAfter) searchParams.set("comparingPeriodAfter", input.comparingPeriodAfter.toISOString());
+		if (input.comparingPeriodBefore) searchParams.set("comparingPeriodBefore", input.comparingPeriodBefore.toISOString());
 		if (input.rankingBy) searchParams.set("rankingBy", input.rankingBy);
 		const { data } = await axios.get<TGetSellersRankingOutput>(`/api/sellers/stats/ranking?${searchParams.toString()}`);
 		return data.data;

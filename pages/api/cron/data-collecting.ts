@@ -709,7 +709,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 										const meetsTotalCashbackThreshold =
 											campaign.gatilhoTotalCashbackAcumuladoValorMinimo === null ||
 											campaign.gatilhoTotalCashbackAcumuladoValorMinimo === undefined ||
-											newOverallAccumulatedBalance >= campaign.gatilhoTotalCashbackAcumuladoValorMinimo;
+											newOverallAvailableBalance >= campaign.gatilhoTotalCashbackAcumuladoValorMinimo;
 
 										// Both conditions must be met (if defined)
 										return meetsNewCashbackThreshold && meetsTotalCashbackThreshold;
