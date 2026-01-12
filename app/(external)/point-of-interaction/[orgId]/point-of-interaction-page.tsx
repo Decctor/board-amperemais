@@ -88,12 +88,12 @@ export default function PointOfInteractionContent({
 			{/* HEADER SIMPLIFICADO: Foco na Marca */}
 			<header className="flex flex-col items-center mb-12 text-center">
 				{org.logoUrl ? (
-					<div className="relative w-32 h-32 md:w-40 md:h-40 mb-4 drop-shadow-sm rounded-full overflow-hidden">
+					<div className="relative w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-sm rounded-full overflow-hidden">
 						<Image src={org.logoUrl} alt={org.nome} fill className="object-contain" />
 					</div>
 				) : (
-					<div className="w-32 h-32 bg-primary/10 rounded-full overflow-hidden flex items-center justify-center mb-4">
-						<Building2 className="w-12 h-12 text-primary" />
+					<div className="w-24 h-24 md:w-32 md:h-32 bg-brand/10 rounded-full overflow-hidden flex items-center justify-center mb-4">
+						<Building2 className="w-12 h-12 text-brand" />
 					</div>
 				)}
 				<h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter">{org.nome}</h1>
@@ -107,7 +107,7 @@ export default function PointOfInteractionContent({
 					<Button
 						onClick={() => router.push(`/point-of-interaction/${org.id}/new-sale`)}
 						variant="default"
-						className="group relative flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-primary text-primary-foreground"
+						className="group relative flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
 					>
 						<div className="bg-white/20 p-6 rounded-3xl group-hover:scale-110 transition-transform">
 							<ShoppingCart className="w-16 h-16 md:w-20 md:h-20" />
@@ -127,8 +127,8 @@ export default function PointOfInteractionContent({
 						variant="outline"
 						className="group flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-md border-2 border-primary/20 p-8"
 					>
-						<div className="bg-slate-100 p-6 rounded-3xl group-hover:bg-primary/10 transition-colors">
-							<Users className="w-12 h-12 md:w-16 md:h-16 text-primary" />
+						<div className="bg-slate-100 p-6 rounded-3xl group-hover:bg-brand/10 transition-colors">
+							<Users className="w-12 h-12 md:w-16 md:h-16 text-brand" />
 						</div>
 						<div className="text-center">
 							<h3 className="text-xl md:text-2xl font-bold tracking-tight uppercase">MEU SALDO</h3>

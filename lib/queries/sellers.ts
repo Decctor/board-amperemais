@@ -22,6 +22,7 @@ async function fetchSellers(input: TGetSellersDefaultInput) {
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
 		if (input.page) searchParams.set("page", input.page.toString());
+		if (input.activeOnly) searchParams.set("activeOnly", input.activeOnly.toString());
 		const { data } = await axios.get<TGetSellersOutput>(`/api/sellers?${searchParams.toString()}`);
 		const result = data.data.default;
 		if (!result) throw new Error("Vendedores não encontrados.");
@@ -70,6 +71,7 @@ export function useSellers({ initialFilters }: UseSellersParams) {
 		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
 		orderByField: initialFilters?.orderByField || "nome",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
+		activeOnly: initialFilters?.activeOnly || true,
 	});
 	function updateFilters(newParams: Partial<TGetSellersDefaultInput>) {
 		setFilters((prevFilters) => ({ ...prevFilters, ...newParams }));

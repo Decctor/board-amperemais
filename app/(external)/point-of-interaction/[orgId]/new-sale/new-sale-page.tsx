@@ -80,7 +80,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 						</Link>
 					</Button>
 					<div className="flex items-center gap-3">
-						<div className="p-3 bg-primary rounded-2xl text-primary-foreground shadow-lg">
+						<div className="p-3 bg-brand rounded-2xl text-brand-foreground shadow-lg">
 							<ShoppingCart className="w-6 h-6 md:w-8 md:h-8" />
 						</div>
 						<div>
@@ -91,7 +91,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 				</div>
 
 				{/* Wrapper de Estágios (Mantido conforme preferência) */}
-				<div className="bg-card rounded-3xl shadow-xl overflow-hidden border border-primary/20">
+				<div className="bg-card rounded-3xl shadow-xl overflow-hidden border border-brand/20">
 					<div className="flex border-b">
 						{[
 							{ id: 1, label: "CLIENTE", icon: UserRound },
@@ -103,7 +103,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								key={step.id}
 								className={cn(
 									"flex-1 flex flex-col lg:flex-row items-center justify-center gap-2 py-4 transition-all border-b-4",
-									currentStep === step.id ? "border-primary text-primary bg-primary/5" : "border-transparent text-muted-foreground",
+									currentStep === step.id ? "border-brand text-brand bg-brand/5" : "border-transparent text-muted-foreground",
 								)}
 							>
 								<step.icon className="w-4 h-4" />
@@ -148,7 +148,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								size="lg"
 								disabled={isCreatingSale}
 								className={cn(
-									"flex-1 rounded-2xl h-16 text-lg font-bold shadow-lg shadow-primary/20 uppercase tracking-widest",
+									"flex-1 rounded-2xl h-16 text-lg font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
 									currentStep === 4 && "bg-green-600 hover:bg-green-700",
 								)}
 							>
@@ -208,13 +208,13 @@ function SaleValueStep({ value, onChange }: { value: number; onChange: (value: n
 					type="number"
 					value={value || ""}
 					onChange={(e) => onChange(Number(e.target.value))}
-					className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-primary/20 focus:border-primary px-12"
+					className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
 				/>
 			</div>
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
 				{helpers.map((h) => (
 					<Button key={h} variant="secondary" onClick={() => onChange(value + h)} className="h-14 rounded-xl font-black text-lg">
-						<Plus className="w-4 h-4 mr-1 text-primary" /> {h}
+						<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
 					</Button>
 				))}
 				<Button variant="ghost" onClick={() => onChange(0)} className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic">
@@ -246,7 +246,7 @@ function CashbackStep({
 }) {
 	return (
 		<div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-			<div className="bg-primary/5 rounded-3xl p-6 border-2 border-dashed border-primary/20">
+			<div className="bg-brand/5 rounded-3xl p-6 border-2 border-dashed border-brand/20">
 				<div className="flex justify-between items-center mb-4">
 					<div className="flex items-center gap-3">
 						<div className="p-2 bg-green-100 rounded-lg text-green-600">
@@ -257,13 +257,13 @@ function CashbackStep({
 					<Switch checked={applied} onCheckedChange={onToggle} disabled={available === 0} className="scale-125" />
 				</div>
 				<div className="grid grid-cols-2 gap-4">
-					<div className="bg-white p-4 rounded-2xl shadow-sm border border-primary/20">
+					<div className="bg-white p-4 rounded-2xl shadow-sm border border-brand/20">
 						<p className="text-[0.6rem] font-bold text-muted-foreground uppercase">Seu Saldo</p>
 						<p className="text-xl font-black text-green-600">{formatToMoney(available)}</p>
 					</div>
-					<div className="bg-white p-4 rounded-2xl shadow-sm border border-primary/20">
+					<div className="bg-white p-4 rounded-2xl shadow-sm border border-brand/20">
 						<p className="text-[0.6rem] font-bold text-muted-foreground uppercase">Limite p/ esta compra</p>
-						<p className="text-xl font-black text-primary">{formatToMoney(maxAllowed)}</p>
+						<p className="text-xl font-black text-brand">{formatToMoney(maxAllowed)}</p>
 					</div>
 				</div>
 			</div>
@@ -281,7 +281,7 @@ function CashbackStep({
 				</div>
 			)}
 
-			<div className="bg-primary/90 rounded-3xl p-8 text-primary-foreground shadow-2xl relative overflow-hidden">
+			<div className="bg-brand rounded-3xl p-8 text-brand-foreground shadow-2xl relative overflow-hidden">
 				<div className="relative z-10 flex flex-col gap-4">
 					<div className="flex justify-between items-center opacity-60">
 						<span className="text-sm font-bold uppercase tracking-widest">Subtotal</span>
@@ -296,7 +296,7 @@ function CashbackStep({
 					<div className="h-px bg-background my-2" />
 					<div className="flex justify-between items-end">
 						<span className="text-lg font-black uppercase italic">Total a Pagar</span>
-						<span className="text-4xl font-black text-primary-foreground">{formatToMoney(finalValue)}</span>
+						<span className="text-4xl font-black text-brand-foreground">{formatToMoney(finalValue)}</span>
 					</div>
 				</div>
 				<BadgePercent className="absolute -right-4 -bottom-4 w-32 h-32 text-white/5 rotate-12" />
@@ -318,14 +318,14 @@ function ConfirmationStep({
 				<p className="text-muted-foreground">Confira os dados e digite a senha do operador.</p>
 			</div>
 
-			<div className="bg-primary/5 rounded-3xl p-6 space-y-3 border border-primary/20">
+			<div className="bg-brand/5 rounded-3xl p-6 space-y-3 border border-brand/20">
 				<div className="flex justify-between">
 					<span className="text-muted-foreground font-bold text-xs uppercase">Cliente</span>
-					<span className="font-black text-primary">{client?.nome}</span>
+					<span className="font-black text-brand">{client?.nome}</span>
 				</div>
 				<div className="flex justify-between">
 					<span className="text-muted-foreground font-bold text-xs uppercase">Valor Final</span>
-					<span className="font-black text-primary text-xl">{formatToMoney(finalValue)}</span>
+					<span className="font-black text-brand text-xl">{formatToMoney(finalValue)}</span>
 				</div>
 			</div>
 
@@ -339,7 +339,7 @@ function ConfirmationStep({
 					inputMode="numeric"
 					placeholder="••••"
 					onChange={(e) => onPasswordChange(e.target.value.replace(/\D/g, ""))}
-					className="h-20 text-4xl text-center tracking-[1.5rem] rounded-2xl border-4 border-primary/20 focus:border-green-500 transition-all font-black"
+					className="h-20 text-4xl text-center tracking-[1.5rem] rounded-2xl border-4 border-brand/20 focus:border-green-500 transition-all font-black"
 				/>
 			</div>
 		</div>

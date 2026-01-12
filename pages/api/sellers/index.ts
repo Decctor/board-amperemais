@@ -82,6 +82,13 @@ const GetSellersDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? Number(val) : null)),
+	activeOnly: z
+		.string({
+			invalid_type_error: "Tipo não válido para ativo apenas.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val === "true" : null)),
 });
 export type TGetSellersDefaultInput = z.infer<typeof GetSellersDefaultInputSchema>;
 const GetSellersByIdInputSchema = z.object({
@@ -126,6 +133,7 @@ async function getSellers({ input, user }: GetSellersParams) {
 			sql`(to_tsvector('portuguese', ${sellers.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${sellers.nome} ILIKE '%' || ${input.search} || '%')`,
 		);
 	if (input.sellersIds && input.sellersIds.length > 0) sellerQueryConditions.push(inArray(sellers.id, input.sellersIds));
+	if (input.activeOnly) sellerQueryConditions.push(eq(sellers.ativo, input.activeOnly));
 
 	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
