@@ -6,17 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { formatToMoney, formatToPhone } from "@/lib/formatting";
-import { createSale } from "@/lib/mutations/sales";
+import { createPointOfInteractionSale } from "@/lib/mutations/sales";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TClientByLookupOutput } from "@/pages/api/clients/lookup";
-import type { TCreateSaleInput } from "@/pages/api/sales";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
+import { usePointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, BadgePercent, Check, CreditCard, Lock, Minus, Plus, ShoppingCart, Tag, UserRound, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgePercent, Check, CreditCard, Lock, Plus, ShoppingCart, Tag, UserPlus, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { toast } from "sonner";
 
 type NewSaleContentProps = {
@@ -31,41 +31,45 @@ type NewSaleContentProps = {
 };
 export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	const router = useRouter();
-	const [newSaleHolder, setNewSaleHolder] = useState<TCreateSaleInput>({
-		orgId: org.id,
-		clientId: clientId ?? "",
-		saleValue: 0,
-		password: "",
-		cashbackApplied: false,
-		cashbackAppliedAmount: 0,
-	});
+	const { state, updateClient, updateSale, updateCashback, updateOperatorIdentifier } = usePointOfInteractionNewSaleState(org.id);
 
-	const [currentStep, setCurrentStep] = useState(1);
+	const [currentStep, setCurrentStep] = React.useState<number>(1);
 	const { data: client, params, updateParams } = useClientByLookup({ initialParams: { orgId: org.id, phone: "", clientId: clientId } });
 
 	useEffect(() => {
-		if (client) setNewSaleHolder((prev) => ({ ...prev, clientId: client.id }));
-	}, [client]);
-
-	const updateNewSaleHolder = (changes: Partial<TCreateSaleInput>) => {
-		setNewSaleHolder((prev) => ({ ...prev, ...changes }));
-	};
+		if (client) {
+			updateClient({
+				id: client.id,
+				nome: client.nome,
+				telefone: client.telefone,
+				cpfCnpj: null,
+			});
+		}
+	}, [client, updateClient]);
 
 	const handleNextStep = () => {
-		if (currentStep === 1 && !client) return toast.error("Selecione um cliente.");
-		if (currentStep === 2 && newSaleHolder.saleValue <= 0) return toast.error("Digite o valor da venda.");
+		if (currentStep === 1) {
+			// Must have either an existing client or new client data
+			if (!state.client.id && (!state.client.nome || !state.client.telefone)) {
+				return toast.error("Complete os dados do cliente.");
+			}
+		}
+		if (currentStep === 2 && state.sale.valor <= 0) {
+			return toast.error("Digite o valor da venda.");
+		}
 		setCurrentStep((prev) => Math.min(prev + 1, 4));
 	};
 
 	const getAvailableCashback = () => client?.saldos?.[0]?.saldoValorDisponivel ?? 0;
-	const getMaxCashbackToUse = () => Math.min(getAvailableCashback(), newSaleHolder.saleValue);
-	const getFinalValue = () => Math.max(0, newSaleHolder.saleValue - (newSaleHolder.cashbackApplied ? newSaleHolder.cashbackAppliedAmount : 0));
+	const getMaxCashbackToUse = () => Math.min(getAvailableCashback(), state.sale.valor);
+	const getFinalValue = () => Math.max(0, state.sale.valor - (state.sale.cashback.aplicar ? state.sale.cashback.valor : 0));
 
 	const { mutate: createSaleMutation, isPending: isCreatingSale } = useMutation({
-		mutationFn: createSale,
+		mutationFn: createPointOfInteractionSale,
 		onSuccess: (data) => {
 			toast.success(`Venda finalizada! Saldo: ${formatToMoney(data.data.cashbackAcumulado)}`);
-			router.push(`/point-of-interaction/${org.id}/client-profile/${client?.id}`);
+			const finalClientId = state.client.id || "novo";
+			router.push(`/point-of-interaction/${org.id}`);
 		},
 	});
 
@@ -113,26 +117,39 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 					</div>
 
 					<div className="p-6 md:p-10">
-						{currentStep === 1 && <ClientStep client={client ?? null} phone={params.phone} onPhoneChange={(v) => updateParams({ phone: v })} />}
-						{currentStep === 2 && <SaleValueStep value={newSaleHolder.saleValue} onChange={(v) => updateNewSaleHolder({ saleValue: v })} />}
+						{currentStep === 1 && (
+							<ClientStep
+								client={client ?? null}
+								phone={params.phone}
+								onPhoneChange={(v) => updateParams({ phone: v })}
+								newClientData={state.client}
+								onNewClientChange={updateClient}
+							/>
+						)}
+						{currentStep === 2 && <SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} />}
 						{currentStep === 3 && (
 							<CashbackStep
 								available={getAvailableCashback()}
 								maxAllowed={getMaxCashbackToUse()}
-								saleValue={newSaleHolder.saleValue}
-								applied={newSaleHolder.cashbackApplied}
-								amount={newSaleHolder.cashbackAppliedAmount}
+								saleValue={state.sale.valor}
+								applied={state.sale.cashback.aplicar}
+								amount={state.sale.cashback.valor}
 								finalValue={getFinalValue()}
-								onToggle={(v) => updateNewSaleHolder({ cashbackApplied: v, cashbackAppliedAmount: v ? getMaxCashbackToUse() : 0 })}
-								onAmountChange={(v) => updateNewSaleHolder({ cashbackAppliedAmount: v })}
+								onToggle={(v) =>
+									updateCashback({
+										aplicar: v,
+										valor: v ? getMaxCashbackToUse() : 0,
+									})
+								}
+								onAmountChange={(v) => updateCashback({ valor: v })}
 							/>
 						)}
-						{currentStep === 4 && client && (
+						{currentStep === 4 && (
 							<ConfirmationStep
-								holder={newSaleHolder}
-								client={client}
+								clientName={state.client.nome || client?.nome || ""}
 								finalValue={getFinalValue()}
-								onPasswordChange={(v) => updateNewSaleHolder({ password: v })}
+								operatorIdentifier={state.operatorIdentifier}
+								onOperatorIdentifierChange={updateOperatorIdentifier}
 							/>
 						)}
 
@@ -144,7 +161,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								</Button>
 							)}
 							<Button
-								onClick={currentStep === 4 ? () => createSaleMutation(newSaleHolder) : handleNextStep}
+								onClick={currentStep === 4 ? () => createSaleMutation(state) : handleNextStep}
 								size="lg"
 								disabled={isCreatingSale}
 								className={cn(
@@ -169,7 +186,26 @@ function ClientStep({
 	client,
 	phone,
 	onPhoneChange,
-}: { client: TClientByLookupOutput["data"]; phone: string; onPhoneChange: (phone: string) => void }) {
+	newClientData,
+	onNewClientChange,
+}: {
+	client: TClientByLookupOutput["data"];
+	phone: string;
+	onPhoneChange: (phone: string) => void;
+	newClientData: { id?: string | null; nome: string; cpfCnpj?: string | null; telefone: string };
+	onNewClientChange: (data: Partial<typeof newClientData>) => void;
+}) {
+	const phoneDigits = phone.replace(/\D/g, "");
+	const isPhoneValid = phoneDigits.length === 11;
+	const showNewClientForm = !client && isPhoneValid && phoneDigits.length > 0;
+
+	React.useEffect(() => {
+		// Keep phone in sync with lookup
+		if (phone && phone !== newClientData.telefone) {
+			onNewClientChange({ telefone: phone });
+		}
+	}, [phone, newClientData.telefone, onNewClientChange]);
+
 	return (
 		<div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
 			<div className="text-center space-y-2">
@@ -179,6 +215,7 @@ function ClientStep({
 			<div className="max-w-md mx-auto">
 				<TextInput label="TELEFONE" placeholder="(00) 00000-0000" value={formatToPhone(phone)} handleChange={onPhoneChange} />
 			</div>
+
 			{client && (
 				<div className="bg-green-50 border-2 border-green-200 rounded-3xl p-6 flex flex-col items-center gap-4 animate-in zoom-in">
 					<div className="text-center">
@@ -188,6 +225,42 @@ function ClientStep({
 					<div className="bg-green-600 w-full rounded-2xl p-4 text-center text-white shadow-md">
 						<p className="text-[0.6rem] font-bold opacity-80 uppercase tracking-widest">Saldo Disponível</p>
 						<p className="text-3xl font-black">{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}</p>
+					</div>
+				</div>
+			)}
+
+			{showNewClientForm && (
+				<div className="bg-blue-50 border-2 border-blue-200 rounded-3xl p-6 animate-in zoom-in">
+					<div className="flex items-center gap-3 mb-4">
+						<div className="p-2 bg-blue-600 rounded-lg text-white">
+							<UserPlus className="w-5 h-5" />
+						</div>
+						<div>
+							<h3 className="font-black uppercase text-blue-900">Novo Cliente</h3>
+							<p className="text-xs text-blue-600">Complete os dados para cadastrar</p>
+						</div>
+					</div>
+					<div className="space-y-4">
+						<div>
+							<Label className="text-xs font-bold text-blue-900 uppercase tracking-wider">Nome Completo *</Label>
+							<Input
+								type="text"
+								placeholder="Digite o nome do cliente"
+								value={newClientData.nome}
+								onChange={(e) => onNewClientChange({ nome: e.target.value })}
+								className="mt-2 h-12 border-2 border-blue-200 focus:border-blue-500"
+							/>
+						</div>
+						<div>
+							<Label className="text-xs font-bold text-blue-900 uppercase tracking-wider">CPF/CNPJ (opcional)</Label>
+							<Input
+								type="text"
+								placeholder="000.000.000-00"
+								value={newClientData.cpfCnpj || ""}
+								onChange={(e) => onNewClientChange({ cpfCnpj: e.target.value })}
+								className="mt-2 h-12 border-2 border-blue-200 focus:border-blue-500"
+							/>
+						</div>
 					</div>
 				</div>
 			)}
@@ -306,22 +379,22 @@ function CashbackStep({
 }
 
 function ConfirmationStep({
-	holder,
-	client,
+	clientName,
 	finalValue,
-	onPasswordChange,
-}: { holder: TCreateSaleInput; client: TClientByLookupOutput["data"]; finalValue: number; onPasswordChange: (password: string) => void }) {
+	operatorIdentifier,
+	onOperatorIdentifierChange,
+}: { clientName: string; finalValue: number; operatorIdentifier: string; onOperatorIdentifierChange: (identifier: string) => void }) {
 	return (
 		<div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
 			<div className="text-center space-y-2">
 				<h2 className="text-xl font-black uppercase tracking-tight">Finalizar Operação</h2>
-				<p className="text-muted-foreground">Confira os dados e digite a senha do operador.</p>
+				<p className="text-muted-foreground">Confira os dados e digite o usuário do operador.</p>
 			</div>
 
 			<div className="bg-brand/5 rounded-3xl p-6 space-y-3 border border-brand/20">
 				<div className="flex justify-between">
 					<span className="text-muted-foreground font-bold text-xs uppercase">Cliente</span>
-					<span className="font-black text-brand">{client?.nome}</span>
+					<span className="font-black text-brand">{clientName}</span>
 				</div>
 				<div className="flex justify-between">
 					<span className="text-muted-foreground font-bold text-xs uppercase">Valor Final</span>
@@ -329,17 +402,14 @@ function ConfirmationStep({
 				</div>
 			</div>
 
-			<div className="space-y-4 max-w-xs mx-auto">
-				<Label className="block text-center font-black text-xs text-muted-foreground uppercase tracking-widest italic">
-					Senha do Operador (4 dígitos)
-				</Label>
+			<div className="space-y-4 max-w-md mx-auto">
+				<Label className="block text-center font-black text-xs text-muted-foreground uppercase tracking-widest italic">Usuário do Operador</Label>
 				<Input
-					type="password"
-					maxLength={4}
-					inputMode="numeric"
-					placeholder="••••"
-					onChange={(e) => onPasswordChange(e.target.value.replace(/\D/g, ""))}
-					className="h-20 text-4xl text-center tracking-[1.5rem] rounded-2xl border-4 border-brand/20 focus:border-green-500 transition-all font-black"
+					type="text"
+					placeholder="Digite seu usuário"
+					value={operatorIdentifier}
+					onChange={(e) => onOperatorIdentifierChange(e.target.value)}
+					className="h-16 text-2xl text-center rounded-2xl border-4 border-brand/20 focus:border-green-500 transition-all font-bold"
 				/>
 			</div>
 		</div>
