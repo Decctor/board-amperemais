@@ -139,6 +139,42 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 			),
 		);
 
+	const totalRevenueResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.where(
+			and(...saleConditions, periodAfter ? gte(sales.dataVenda, periodAfter) : undefined, periodBefore ? lte(sales.dataVenda, periodBefore) : undefined),
+		);
+	const totalRevenue = Number(totalRevenueResult[0]?.total ?? 0);
+
+	// Revenue from Existing Clients (first purchase BEFORE periodAfter)
+	const existingClientsRevenueResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.innerJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...saleConditions,
+				periodAfter ? gte(sales.dataVenda, periodAfter) : undefined,
+				periodBefore ? lte(sales.dataVenda, periodBefore) : undefined,
+				periodAfter ? lt(clients.primeiraCompraData, periodAfter) : undefined,
+			),
+		);
+
+	// Revenue from New Clients (first purchase WITHIN periodAfter and periodBefore)
+	const newClientsRevenueResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.innerJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...saleConditions,
+				periodAfter ? gte(sales.dataVenda, periodAfter) : undefined,
+				periodBefore ? lte(sales.dataVenda, periodBefore) : undefined,
+				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
+				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
+			),
+		);
 	if (!comparingPeriodAfter && !comparingPeriodBefore) {
 		return {
 			data: {
@@ -157,6 +193,17 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 				avgLifetime: {
 					current: avgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
 					comparison: null,
+				},
+				revenueFromRecurrentClients: {
+					current: existingClientsRevenueResult[0]?.total ? Number(existingClientsRevenueResult[0]?.total) : 0,
+					comparison: null,
+					percentage:
+						totalRevenue > 0 ? ((existingClientsRevenueResult[0]?.total ? Number(existingClientsRevenueResult[0]?.total) : 0) / totalRevenue) * 100 : 0,
+				},
+				revenueFromNewClients: {
+					current: newClientsRevenueResult[0]?.total ? Number(newClientsRevenueResult[0]?.total) : 0,
+					comparison: null,
+					percentage: totalRevenue > 0 ? ((newClientsRevenueResult[0]?.total ? Number(newClientsRevenueResult[0]?.total) : 0) / totalRevenue) * 100 : 0,
 				},
 			},
 		};
@@ -211,6 +258,46 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 			),
 		);
 
+	// Comparison Total Revenue
+	const comparisonTotalRevenueResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.where(
+			and(
+				...saleConditions,
+				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
+				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
+			),
+		);
+	const comparisonTotalRevenue = Number(comparisonTotalRevenueResult[0]?.total ?? 0);
+	// Comparison Revenue from Existing Clients
+	const comparisonExistingClientsRevenueResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.innerJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...saleConditions,
+				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
+				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
+				comparingPeriodAfter ? lt(clients.primeiraCompraData, comparingPeriodAfter) : undefined,
+			),
+		);
+
+	// Comparison Revenue from New Clients
+	const comparisonNewClientsRevenueResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.innerJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...saleConditions,
+				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
+				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
+				comparingPeriodAfter ? gte(clients.primeiraCompraData, comparingPeriodAfter) : undefined,
+				comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined,
+			),
+		);
 	return {
 		data: {
 			totalClients: {
@@ -228,6 +315,23 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 			avgLifetime: {
 				current: avgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
 				comparison: comparisonAvgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
+			},
+			revenueFromRecurrentClients: {
+				current: existingClientsRevenueResult[0]?.total ? Number(existingClientsRevenueResult[0]?.total) : 0,
+				comparison: comparisonExistingClientsRevenueResult[0]?.total ? Number(comparisonExistingClientsRevenueResult[0]?.total) : 0,
+				percentage:
+					comparisonTotalRevenue > 0
+						? ((comparisonExistingClientsRevenueResult[0]?.total ? Number(comparisonExistingClientsRevenueResult[0]?.total) : 0) / comparisonTotalRevenue) *
+							100
+						: 0,
+			},
+			revenueFromNewClients: {
+				current: newClientsRevenueResult[0]?.total ? Number(newClientsRevenueResult[0]?.total) : 0,
+				comparison: comparisonNewClientsRevenueResult[0]?.total ? Number(comparisonNewClientsRevenueResult[0]?.total) : 0,
+				percentage:
+					comparisonTotalRevenue > 0
+						? ((comparisonNewClientsRevenueResult[0]?.total ? Number(comparisonNewClientsRevenueResult[0]?.total) : 0) / comparisonTotalRevenue) * 100
+						: 0,
 			},
 		},
 	};
