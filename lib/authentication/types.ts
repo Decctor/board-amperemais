@@ -10,6 +10,7 @@ export type TAuthUserSession = {
 		dataExpiracao: TAuthSessionEntity["dataExpiracao"];
 	};
 	user: {
+		admin: TUserEntity["admin"];
 		id: TUserEntity["id"];
 		nome: TUserEntity["nome"];
 		telefone: TUserEntity["telefone"];

@@ -30,6 +30,14 @@ export type TUserDTO = TUser & { _id: string };
 export type TUserSession = Omit<TUserDTO, "senha">;
 
 export const NewUserSchema = z.object({
+	admin: z.boolean({ required_error: "Admin do usuário não informado.", invalid_type_error: "Tipo não válido para o admin do usuário." }),
+	organizacaoId: z
+		.string({
+			required_error: "Organização do usuário não informada.",
+			invalid_type_error: "Tipo não válido para a organização do usuário.",
+		})
+		.optional()
+		.nullable(),
 	nome: z.string({ required_error: "Nome do usuário não informado.", invalid_type_error: "Tipo não válido para o nome do usuário." }),
 	email: z.string({ required_error: "Email do usuário não informado.", invalid_type_error: "Tipo não válido para o email do usuário." }),
 	telefone: z.string({ required_error: "Telefone do usuário não informado.", invalid_type_error: "Tipo não válido para o telefone do usuário." }),

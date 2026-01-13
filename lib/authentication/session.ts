@@ -72,6 +72,7 @@ export async function validateSession(token: string) {
 			dataExpiracao: session.dataExpiracao,
 		},
 		user: {
+			admin: user.admin,
 			id: session.usuarioId,
 			nome: user.nome,
 			telefone: user.telefone,

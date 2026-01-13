@@ -1,6 +1,6 @@
 import type { TUserPermissions } from "@/schemas/users";
 import { relations } from "drizzle-orm";
-import { jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { sellers } from "./sellers";
@@ -9,6 +9,7 @@ export const users = newTable("users", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	admin: boolean("admin").notNull().default(false),
 	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	nome: text("nome").notNull(),
 	email: text("email").notNull(),
