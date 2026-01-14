@@ -18,6 +18,7 @@ export const organizations = newTable("organizations", {
 	localizacaoLogradouro: text("localizacao_logradouro"),
 	localizacaoNumero: text("localizacao_numero"),
 	localizacaoComplemento: text("localizacao_complemento"),
+	assinaturaPlano: text("assinatura_plano").default("STARTER"),
 	integracaoTipo: organizationIntegrationTypeEnum("integracao_tipo"),
 	integracaoConfiguracao: jsonb("integracao_configuracao").$type<TOrganizationIntegrationConfig>(),
 	integracaoDataUltimaSincronizacao: timestamp("integracao_data_ultima_sincronizacao"),

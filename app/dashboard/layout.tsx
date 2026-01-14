@@ -12,7 +12,7 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 	if (!user) redirect("/auth/signin");
 	return (
 		<SidebarProvider className="font-raleway">
-			<AppSidebar user={user?.user} />
+			<AppSidebar user={user?.user} organization={user?.organization} />
 			<Suspense fallback={<LoadingComponent />}>
 				<SidebarInset className="overflow-y-auto p-6 flex flex-col gap-3">
 					<AppHeader />

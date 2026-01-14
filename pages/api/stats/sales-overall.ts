@@ -296,6 +296,7 @@ export async function getOverallStats(filters: TSaleStatsGeneralQueryParams, org
 	const totalSalesValorTotal = totalSalesStats.valorTotal ? Number(totalSalesStats.valorTotal) : 0;
 	const totalSalesCustoTotal = totalSalesStats.custoTotal ? Number(totalSalesStats.custoTotal) : 0;
 
+	console.log("[INFO] [GET_OVERALL_STATS] Total sales items stats result: ", { totalSalesValorTotal, totalSalesCustoTotal });
 	const totalSalesItemsStatsResult = await db
 		.select({
 			total: sum(saleItems.quantidade),

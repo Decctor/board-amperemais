@@ -48,14 +48,20 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
 import { useState } from "react";
 
 type ProductsPageProps = {
 	user: TAuthUserSession["user"];
+	userOrg: TAuthUserSession["organization"];
 };
 
-export default function ProductsPage({ user }: ProductsPageProps) {
+export default function ProductsPage({ user, userOrg }: ProductsPageProps) {
 	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
+
+	if (userOrg?.assinaturaPlano !== "PLUS") {
+		return <PlanRestrictionComponent />;
+	}
 
 	return (
 		<div className="w-full h-full flex flex-col gap-3">

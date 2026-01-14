@@ -1,4 +1,4 @@
-import type { TAuthSessionEntity, TUserEntity } from "@/services/drizzle/schema";
+import type { TAuthSessionEntity, TOrganizationEntity, TUserEntity } from "@/services/drizzle/schema";
 import z from "zod";
 
 export type TAuthUserSession = {
@@ -20,6 +20,13 @@ export type TAuthUserSession = {
 		vendedorId: TUserEntity["vendedorId"];
 		organizacaoId: TUserEntity["organizacaoId"];
 	};
+	organization: {
+		id: TOrganizationEntity["id"];
+		nome: TOrganizationEntity["nome"];
+		cnpj: TOrganizationEntity["cnpj"];
+		logoUrl: TOrganizationEntity["logoUrl"];
+		assinaturaPlano: TOrganizationEntity["assinaturaPlano"];
+	} | null;
 };
 
 export const LoginSchema = z.object({

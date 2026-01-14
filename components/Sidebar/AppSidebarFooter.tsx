@@ -76,7 +76,7 @@ export default function AppSidebarFooter({
 						<DropdownMenuSeparator />
 						<DropdownMenuItem>
 							<SidebarMenuButton asChild>
-								<Link href="/api/auth/logout" prefetch={false}>
+								<Link href="/auth/logout" prefetch={false}>
 									<LogOut />
 									Sair
 								</Link>

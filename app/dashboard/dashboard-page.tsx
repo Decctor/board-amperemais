@@ -18,8 +18,9 @@ const initialPeriodStart = dayjs().startOf("month").toISOString();
 const initialPeriodEnd = dayjs().endOf("day").toISOString();
 type DashboardPageProps = {
 	user: TAuthUserSession["user"];
+	userOrg: TAuthUserSession["organization"];
 };
-export function DashboardPage({ user }: DashboardPageProps) {
+export function DashboardPage({ user, userOrg }: DashboardPageProps) {
 	const initialSellers = user.permissoes.resultados.escopo ? user.permissoes.resultados.escopo : [];
 
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
@@ -59,7 +60,7 @@ export function DashboardPage({ user }: DashboardPageProps) {
 				queryParams={generalQueryParams}
 				updateQueryParams={updateGeneralQueryParams}
 			/>
-			<OverallStatsBlock generalQueryParams={generalQueryParams} user={user} />
+			<OverallStatsBlock generalQueryParams={generalQueryParams} user={user} userOrg={userOrg} />
 			<SalesGraphBlock generalQueryParams={generalQueryParams} user={user} />
 			<GroupedStatsBlock generalQueryParams={generalQueryParams} user={user} />
 			{filterMenuIsOpen ? (

@@ -29,6 +29,10 @@ export const usersRelations = relations(users, ({ one }) => ({
 		fields: [users.vendedorId],
 		references: [sellers.id],
 	}),
+	organizacao: one(organizations, {
+		fields: [users.organizacaoId],
+		references: [organizations.id],
+	}),
 }));
 export type TUserEntity = typeof users.$inferSelect;
 export type TNewUserEntity = typeof users.$inferInsert;

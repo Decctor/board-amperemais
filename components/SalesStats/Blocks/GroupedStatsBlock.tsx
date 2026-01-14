@@ -26,8 +26,9 @@ import { toast } from "sonner";
 type GroupedStatsBlockProps = {
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 	user: TAuthUserSession["user"];
+	userOrg: TAuthUserSession["organization"];
 };
-function GroupedStatsBlock({ generalQueryParams, user }: GroupedStatsBlockProps) {
+function GroupedStatsBlock({ generalQueryParams, user, userOrg }: GroupedStatsBlockProps) {
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
 
 	const [debouncedQueryParams] = useDebounce(queryParams, 1000);
@@ -47,14 +48,17 @@ function GroupedStatsBlock({ generalQueryParams, user }: GroupedStatsBlockProps)
 					<ResultsBySellerGraph data={groupedStats?.porVendedor || []} />
 				</div>
 			</div>
-			<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
+			{
+				userOrg?.assinaturaPlano === "PLUS" ? <div className="w-full flex flex-col items-center gap-2 lg:flex-row">
 				<div className="w-full lg:w-[50%]">
 					<ResultsByItemGraph data={groupedStats?.porItem || []} />
 				</div>
 				<div className="w-full lg:w-[50%]">
 					<ResultsByProductGroupGraph data={groupedStats?.porGrupo || []} />
 				</div>
-			</div>
+			</div> : null
+			}
+			
 			<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
 				<div className="w-full lg:w-1/3">
 					<GroupedByMonthDay data={groupedStats?.porDiaDoMes || []} />

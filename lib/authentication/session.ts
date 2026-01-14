@@ -55,6 +55,9 @@ export async function validateSession(token: string) {
 
 	const user = await db.query.users.findFirst({
 		where: (fields, { eq }) => eq(fields.id, session.usuarioId),
+		with: {
+			organizacao: true,
+		},
 	});
 	if (!user) {
 		console.log("No user found running --validateSession-- method.");
@@ -82,6 +85,15 @@ export async function validateSession(token: string) {
 			permissoes: user.permissoes,
 			vendedorId: user.vendedorId,
 		},
+		organization: user.organizacao
+			? {
+					id: user.organizacao.id,
+					nome: user.organizacao.nome,
+					cnpj: user.organizacao.cnpj,
+					logoUrl: user.organizacao.logoUrl,
+					assinaturaPlano: user.organizacao.assinaturaPlano,
+				}
+			: null,
 	};
 	// Checking if the session is expired
 	if (Date.now() > new Date(session.dataExpiracao).getTime()) {

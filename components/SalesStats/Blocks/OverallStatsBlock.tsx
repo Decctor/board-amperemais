@@ -3,6 +3,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useOverallSalesStats } from "@/lib/queries/stats/overall";
 import { cn } from "@/lib/utils";
+import type { TOverallSalesStats } from "@/pages/api/stats/sales-overall";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { Percent, ShoppingBag } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -14,9 +15,10 @@ import { useDebounce } from "use-debounce";
 
 type OverallStatsBlockProps = {
 	user: TAuthUserSession["user"];
+	userOrg: TAuthUserSession["organization"];
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 };
-function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps) {
+function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBlockProps) {
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
 
 	const [debouncedQueryParams] = useDebounce(queryParams, 1000);
@@ -44,7 +46,71 @@ function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps)
 					/>
 				</div>
 			</div>
+			{userOrg?.assinaturaPlano === "STARTER" ? (
+				<OverallStatsBlockStarter overallStats={overallStats} />
+			) : (
+				<OverallStatsBlockPlus overallStats={overallStats} />
+			)}
+		</div>
+	);
+}
 
+export default OverallStatsBlock;
+
+type OverallStatsBlockStarterProps = {
+	overallStats: TOverallSalesStats | undefined;
+};
+function OverallStatsBlockStarter({ overallStats }: OverallStatsBlockStarterProps) {
+	return (
+		<>
+			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
+				<StatUnitCard
+					title="Número de Vendas"
+					icon={<VscDiffAdded className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.qtdeVendas.atual || 0, format: (n) => formatDecimalPlaces(n) }}
+					previous={
+						overallStats?.qtdeVendas.anterior ? { value: overallStats?.qtdeVendas.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined
+					}
+					className="w-full lg:w-1/2"
+				/>
+				<StatUnitCard
+					title="Faturamento"
+					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.faturamento.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={overallStats?.faturamento.anterior ? { value: overallStats.faturamento.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
+					className="w-full lg:w-1/2"
+				/>
+			</div>
+			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
+				<StatUnitCard
+					title="Ticket Médio"
+					icon={<BsTicketPerforated className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.ticketMedio.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={overallStats?.ticketMedio.anterior ? { value: overallStats.ticketMedio.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
+					className="w-full lg:w-1/2"
+				/>
+				<StatUnitCard
+					title="Valor Diário Vendido"
+					icon={<BsCart className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: overallStats?.valorDiarioVendido.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={
+						overallStats?.valorDiarioVendido.anterior
+							? { value: overallStats.valorDiarioVendido.anterior || 0, format: (n) => formatToMoney(n) }
+							: undefined
+					}
+					className="w-full lg:w-1/2"
+				/>
+			</div>
+		</>
+	);
+}
+
+type OverallStatsBlockPlusProps = {
+	overallStats: TOverallSalesStats | undefined;
+};
+function OverallStatsBlockPlus({ overallStats }: OverallStatsBlockPlusProps) {
+	return (
+		<>
 			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
 				<StatUnitCard
 					title="Número de Vendas"
@@ -118,11 +184,9 @@ function OverallStatsBlock({ user, generalQueryParams }: OverallStatsBlockProps)
 					className="w-full lg:w-1/3"
 				/>
 			</div>
-		</div>
+		</>
 	);
 }
-
-export default OverallStatsBlock;
 
 type GoalTrackingBarProps = {
 	valueGoal?: number;
