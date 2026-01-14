@@ -1,5 +1,6 @@
 "use client";
 
+import type { TCreatePointOfInteractionNewSaleOutput } from "@/app/api/point-of-interaction/new-sale/route";
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,23 @@ import type { TClientByLookupOutput } from "@/pages/api/clients/lookup";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { usePointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, BadgePercent, Check, CreditCard, Loader2, Lock, Plus, ShoppingCart, Tag, UserPlus, UserRound, X } from "lucide-react";
+import {
+	ArrowLeft,
+	ArrowRight,
+	BadgePercent,
+	Check,
+	CheckCircle2,
+	CreditCard,
+	Loader2,
+	Lock,
+	PartyPopper,
+	Plus,
+	ShoppingCart,
+	Tag,
+	UserPlus,
+	UserRound,
+	X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
@@ -31,9 +48,10 @@ type NewSaleContentProps = {
 };
 export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	const router = useRouter();
-	const { state, updateClient, updateSale, updateCashback, updateOperatorIdentifier } = usePointOfInteractionNewSaleState(org.id);
+	const { state, updateClient, updateSale, updateCashback, updateOperatorIdentifier, resetState } = usePointOfInteractionNewSaleState(org.id);
 
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
+	const [successData, setSuccessData] = React.useState<TCreatePointOfInteractionNewSaleOutput["data"] | null>(null);
 	const {
 		data: client,
 		isLoading: isLoadingClient,
@@ -74,10 +92,17 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 		mutationFn: createPointOfInteractionSale,
 		onSuccess: (data) => {
 			toast.success(`Venda finalizada! Saldo: ${formatToMoney(data.data.cashbackAcumulado)}`);
-			const finalClientId = state.client.id || "novo";
-			router.push(`/point-of-interaction/${org.id}`);
+			setSuccessData(data.data);
+			setCurrentStep(5);
 		},
 	});
+
+	const handleReset = () => {
+		resetState();
+		updateParams({ phone: "" });
+		setSuccessData(null);
+		setCurrentStep(1);
+	};
 
 	return (
 		<div className="w-full min-h-screen bg-secondary p-6 md:p-10 flex flex-col items-center">
@@ -102,25 +127,27 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 
 				{/* Wrapper de Estágios (Mantido conforme preferência) */}
 				<div className="bg-card rounded-3xl shadow-xl overflow-hidden border border-brand/20">
-					<div className="flex border-b">
-						{[
-							{ id: 1, label: "CLIENTE", icon: UserRound },
-							{ id: 2, label: "VENDA", icon: Tag },
-							{ id: 3, label: "CASHBACK", icon: BadgePercent },
-							{ id: 4, label: "CONFIRMAÇÃO", icon: Lock },
-						].map((step) => (
-							<div
-								key={step.id}
-								className={cn(
-									"flex-1 flex flex-col lg:flex-row items-center justify-center gap-2 py-4 transition-all border-b-4",
-									currentStep === step.id ? "border-brand text-brand bg-brand/5" : "border-transparent text-muted-foreground",
-								)}
-							>
-								<step.icon className="w-4 h-4" />
-								<span className="text-[0.6rem] lg:text-xs font-black tracking-widest">{step.label}</span>
-							</div>
-						))}
-					</div>
+					{currentStep < 5 && (
+						<div className="flex border-b">
+							{[
+								{ id: 1, label: "CLIENTE", icon: UserRound },
+								{ id: 2, label: "VENDA", icon: Tag },
+								{ id: 3, label: "CASHBACK", icon: BadgePercent },
+								{ id: 4, label: "CONFIRMAÇÃO", icon: Lock },
+							].map((step) => (
+								<div
+									key={step.id}
+									className={cn(
+										"flex-1 flex flex-col lg:flex-row items-center justify-center gap-2 py-4 transition-all border-b-4",
+										currentStep === step.id ? "border-brand text-brand bg-brand/5" : "border-transparent text-muted-foreground",
+									)}
+								>
+									<step.icon className="w-4 h-4" />
+									<span className="text-[0.6rem] lg:text-xs font-black tracking-widest">{step.label}</span>
+								</div>
+							))}
+						</div>
+					)}
 
 					<div className="p-6 md:p-10">
 						{currentStep === 1 && (
@@ -160,29 +187,95 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								onOperatorIdentifierChange={updateOperatorIdentifier}
 							/>
 						)}
+						{currentStep === 5 && successData && (
+							<SuccessStep
+								cashbackEarned={successData.cashbackAcumulado}
+								newBalance={successData.newBalance}
+								onReset={handleReset}
+								onGoHome={() => router.push(`/point-of-interaction/${org.id}`)}
+							/>
+						)}
 
 						{/* Botões de Ação */}
-						<div className="flex gap-4 mt-10">
-							{currentStep > 1 && (
-								<Button onClick={() => setCurrentStep((p) => p - 1)} variant="outline" size="lg" className="flex-1 rounded-2xl h-16 text-lg font-bold">
-									VOLTAR
-								</Button>
-							)}
-							<Button
-								onClick={currentStep === 4 ? () => createSaleMutation(state) : handleNextStep}
-								size="lg"
-								disabled={isCreatingSale}
-								className={cn(
-									"flex-1 rounded-2xl h-16 text-lg font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
-									currentStep === 4 && "bg-green-600 hover:bg-green-700",
+						{currentStep < 5 && (
+							<div className="flex gap-4 mt-10">
+								{currentStep > 1 && (
+									<Button onClick={() => setCurrentStep((p) => p - 1)} variant="outline" size="lg" className="flex-1 rounded-2xl h-16 text-lg font-bold">
+										VOLTAR
+									</Button>
 								)}
-							>
-								{currentStep === 4 ? (isCreatingSale ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
-								{currentStep === 4 ? <Check className="ml-2 w-6 h-6" /> : <ArrowRight className="ml-2 w-6 h-6" />}
-							</Button>
-						</div>
+								<Button
+									onClick={currentStep === 4 ? () => createSaleMutation(state) : handleNextStep}
+									size="lg"
+									disabled={isCreatingSale}
+									className={cn(
+										"flex-1 rounded-2xl h-16 text-lg font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
+										currentStep === 4 && "bg-green-600 hover:bg-green-700",
+									)}
+								>
+									{currentStep === 4 ? (isCreatingSale ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
+									{currentStep === 4 ? <Check className="ml-2 w-6 h-6" /> : <ArrowRight className="ml-2 w-6 h-6" />}
+								</Button>
+							</div>
+						)}
 					</div>
 				</div>
+			</div>
+		</div>
+	);
+}
+
+function SuccessStep({
+	cashbackEarned,
+	newBalance,
+	onReset,
+	onGoHome,
+}: {
+	cashbackEarned: number;
+	newBalance: number;
+	onReset: () => void;
+	onGoHome: () => void;
+}) {
+	return (
+		<div className="flex flex-col items-center text-center space-y-8 animate-in zoom-in duration-500">
+			<div className="relative">
+				<div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse" />
+				<div className="relative bg-green-600 p-8 rounded-full text-white shadow-2xl shadow-green-600/30">
+					<CheckCircle2 className="w-20 h-20" />
+				</div>
+				<div className="absolute -top-4 -right-4 bg-yellow-400 p-3 rounded-2xl text-yellow-900 shadow-lg animate-bounce">
+					<PartyPopper className="w-6 h-6" />
+				</div>
+			</div>
+
+			<div className="space-y-2">
+				<h2 className="text-4xl font-black uppercase tracking-tighter text-green-700">VENDA REALIZADA!</h2>
+				<p className="text-muted-foreground font-medium text-lg">A operação foi processada com sucesso.</p>
+			</div>
+
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-xl">
+				<div className="bg-green-50 border-2 border-green-200 rounded-3xl p-6 shadow-sm">
+					<p className="text-[0.7rem] font-black text-green-600 uppercase tracking-widest mb-1">CASHBACK GERADO</p>
+					<p className="text-4xl font-black text-green-700">{formatToMoney(cashbackEarned)}</p>
+				</div>
+				<div className="bg-brand/5 border-2 border-brand/20 rounded-3xl p-6 shadow-sm">
+					<p className="text-[0.7rem] font-black text-brand uppercase tracking-widest mb-1">NOVO SALDO TOTAL</p>
+					<p className="text-4xl font-black text-brand">{formatToMoney(newBalance)}</p>
+				</div>
+			</div>
+
+			<div className="flex flex-col sm:flex-row gap-4 w-full max-w-xl">
+				<Button onClick={onReset} size="lg" className="flex-1 rounded-2xl h-20 text-xl font-black shadow-xl uppercase tracking-wider">
+					NOVA VENDA
+				</Button>
+				<Button
+					onClick={onGoHome}
+					variant="outline"
+					size="lg"
+					className="flex-1 rounded-2xl h-20 text-xl font-black border-4 hover:bg-muted uppercase tracking-wider"
+				>
+					VOLTAR AO INÍCIO
+				</Button>
 			</div>
 		</div>
 	);
