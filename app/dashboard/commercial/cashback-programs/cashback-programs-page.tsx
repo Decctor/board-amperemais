@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { copyToClipboard } from "@/lib/utils";
 import dayjs from "dayjs";
-import { Calendar, DollarSign, Edit, Pencil, Settings, TrendingUp } from "lucide-react";
+import { Calendar, DollarSign, Edit, Pencil, Presentation, Settings, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import CashbackStatsBlock from "./CashbackStatsBlock";
 import RecentTransactionsBlock from "./RecentTransactionsBlock";
@@ -96,6 +97,17 @@ export default function CashbackProgramsPage({ user, cashbackProgram }: Cashback
 						}
 					/>
 				</div>
+			</div>
+			<div className="w-full flex items-center justify-end">
+				<Button
+					variant="ghost"
+					className="flex items-center gap-2"
+					size="sm"
+					onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${user.organizacaoId}`)}
+				>
+					<Presentation className="w-4 h-4 min-w-4 min-h-4" />
+					PONTO DE INTERAÇÃO
+				</Button>
 			</div>
 			<CashbackStatsBlock period={periodFormatted} />
 			<div className="w-full flex flex-col lg:flex-row gap-3 items-stretch">

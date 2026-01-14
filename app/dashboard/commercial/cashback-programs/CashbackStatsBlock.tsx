@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useDebounceMemo } from "@/lib/hooks/use-debounce";
 import { useCashbackProgramStats, useCashbackProgramsGraph } from "@/lib/queries/cashback-programs";
-import { BadgeDollarSign, CirclePlus, Clock, Percent, UserRoundPlus, UsersRound, XCircle } from "lucide-react";
+import { BadgeDollarSign, CirclePlus, Clock, Percent, ShoppingCart, UserPlus, UserRoundPlus, Users, UsersRound, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { useDebounce } from "use-debounce";
@@ -30,7 +30,7 @@ export default function CashbackStatsBlock({ period }: CashbackStatsBlockProps) 
 					previous={
 						stats?.totalParticipants.anterior ? { value: stats.totalParticipants.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined
 					}
-					className="w-full lg:w-1/2"
+					className="w-full lg:w-1/4"
 				/>
 				<StatUnitCard
 					title="Total de Novos Participantes"
@@ -38,6 +38,118 @@ export default function CashbackStatsBlock({ period }: CashbackStatsBlockProps) 
 					current={{ value: stats?.totalNewParticipants.atual || 0, format: (n) => formatDecimalPlaces(n) }}
 					previous={
 						stats?.totalNewParticipants.anterior ? { value: stats.totalNewParticipants.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined
+					}
+					className="w-full lg:w-1/4"
+				/>
+				<StatUnitCard
+					title="Total de Clientes"
+					icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: stats?.totalClients.atual || 0, format: (n) => formatDecimalPlaces(n) }}
+					previous={stats?.totalClients.anterior ? { value: stats.totalClients.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined}
+					className="w-full lg:w-1/4"
+				/>
+				<StatUnitCard
+					title="Total de Novos Clientes"
+					icon={<UserPlus className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: stats?.totalNewClients.atual || 0, format: (n) => formatDecimalPlaces(n) }}
+					previous={stats?.totalNewClients.anterior ? { value: stats.totalNewClients.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined}
+					className="w-full lg:w-1/4"
+				/>
+			</div>
+			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
+				<StatUnitCard
+					title="Faturamento por Clientes Existentes"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: stats?.revenueFromRecurrentClients.atual ? Number(stats.revenueFromRecurrentClients.atual) : 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						stats?.revenueFromRecurrentClients.anterior
+							? {
+									value: stats.revenueFromRecurrentClients.anterior || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+					footer={
+						<div className="flex items-center gap-1">
+							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
+							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromRecurrentClients.percentage || 0)}%</p>
+						</div>
+					}
+					className="w-full lg:w-1/2"
+				/>
+				<StatUnitCard
+					title="Faturamento por Clientes Novos"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: stats?.revenueFromNewClients.atual ? Number(stats.revenueFromNewClients.atual) : 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						stats?.revenueFromNewClients.anterior
+							? {
+									value: stats.revenueFromNewClients.anterior || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+					footer={
+						<div className="flex items-center gap-1">
+							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
+							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromNewClients.percentage || 0)}%</p>
+						</div>
+					}
+					className="w-full lg:w-1/2"
+				/>
+			</div>
+			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
+				<StatUnitCard
+					title="Nº TOTAL DE VENDAS"
+					icon={<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: stats?.totalSalesCount.atual || 0, format: (n) => formatDecimalPlaces(n) }}
+					previous={stats?.totalSalesCount.anterior ? { value: stats.totalSalesCount.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined}
+					className="w-full lg:w-1/2"
+				/>
+				<StatUnitCard
+					title="VALOR TOTAL VENDIDO"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: stats?.totalSalesValue.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={stats?.totalSalesValue.anterior ? { value: stats.totalSalesValue.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
+					className="w-full lg:w-1/2"
+				/>
+			</div>
+			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
+				<StatUnitCard
+					title="Nº VENDAS COM CASHBACK"
+					icon={<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: stats?.salesWithCashbackCount.atual || 0, format: (n) => formatDecimalPlaces(n) }}
+					previous={
+						stats?.salesWithCashbackCount.anterior
+							? { value: stats.salesWithCashbackCount.anterior || 0, format: (n) => formatDecimalPlaces(n) }
+							: undefined
+					}
+					footer={
+						<div className="flex items-center gap-1">
+							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
+							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.salesWithCashbackCount.percentage || 0)}%</p>
+						</div>
+					}
+					className="w-full lg:w-1/2"
+				/>
+				<StatUnitCard
+					title="VALOR VENDIDO COM CASHBACK"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: stats?.salesWithCashbackValue.atual || 0, format: (n) => formatToMoney(n) }}
+					previous={
+						stats?.salesWithCashbackValue.anterior ? { value: stats.salesWithCashbackValue.anterior || 0, format: (n) => formatToMoney(n) } : undefined
+					}
+					footer={
+						<div className="flex items-center gap-1">
+							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
+							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.salesWithCashbackValue.percentage || 0)}%</p>
+						</div>
 					}
 					className="w-full lg:w-1/2"
 				/>

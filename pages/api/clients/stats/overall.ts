@@ -45,34 +45,6 @@ const GetClientsOverallStatsInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	// saleNatures: z
-	// 	.array(
-	// 		z.string({
-	// 			invalid_type_error: "Tipo inválido para natureza de venda.",
-	// 		}),
-	// 	)
-	// 	.optional()
-	// 	.nullable(),
-	// excludedSalesIds: z
-	// 	.array(
-	// 		z.string({
-	// 			invalid_type_error: "Tipo inválido para ID da venda.",
-	// 		}),
-	// 	)
-	// 	.optional()
-	// 	.nullable(),
-	// totalMin: z
-	// 	.number({
-	// 		invalid_type_error: "Tipo inválido para valor mínimo da venda.",
-	// 	})
-	// 	.optional()
-	// 	.nullable(),
-	// totalMax: z
-	// 	.number({
-	// 		invalid_type_error: "Tipo inválido para valor máximo da venda.",
-	// 	})
-	// 	.optional()
-	// 	.nullable(),
 });
 
 export type TGetClientsOverallStatsInput = z.infer<typeof GetClientsOverallStatsInputSchema>;

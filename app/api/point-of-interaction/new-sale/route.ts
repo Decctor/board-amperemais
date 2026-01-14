@@ -151,6 +151,8 @@ export async function POST(req: Request) {
 
 			// 2. Get or create client
 			let clientId = input.client.id;
+			let clientFirstSaleId: string | null = null;
+			let clientFirstSaleDate: Date | null = null;
 
 			if (!clientId) {
 				// Create new client
@@ -192,6 +194,13 @@ export async function POST(req: Request) {
 						saldoValorResgatadoTotal: 0,
 					});
 				}
+			} else {
+				const client = await tx.query.clients.findFirst({
+					where: (fields, { and, eq }) => and(eq(fields.id, clientId as string), eq(fields.organizacaoId, input.orgId)),
+				});
+				if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
+				clientFirstSaleId = client.primeiraCompraId;
+				clientFirstSaleDate = client.primeiraCompraData;
 			}
 
 			if (!program) {
@@ -270,7 +279,10 @@ export async function POST(req: Request) {
 			if (!saleId) {
 				throw new createHttpError.InternalServerError("Erro ao criar venda.");
 			}
-
+			if (!clientFirstSaleId && !clientFirstSaleDate) {
+				clientFirstSaleId = saleId;
+				clientFirstSaleDate = saleDate;
+			}
 			// 7. If cashback was used, create the redemption transaction
 			if (input.sale.cashback.aplicar && input.sale.cashback.valor > 0) {
 				await tx.insert(cashbackProgramTransactions).values({
@@ -408,6 +420,8 @@ export async function POST(req: Request) {
 			await tx
 				.update(clients)
 				.set({
+					primeiraCompraData: clientFirstSaleDate,
+					primeiraCompraId: clientFirstSaleId,
 					ultimaCompraData: saleDate,
 					ultimaCompraId: saleId,
 				})
