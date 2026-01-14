@@ -174,7 +174,7 @@ export function useClientByLookup({ initialParams }: UseClientByLookupParams) {
 		...useQuery({
 			queryKey: ["client-by-lookup", debouncedInput],
 			queryFn: () => fetchClientByLookup(debouncedInput),
-			enabled: !!(params.clientId || params.phone.length === 15),
+			enabled: !!(params.clientId || params.phone.length === 14),
 		}),
 
 		queryKey: ["client-by-lookup", debouncedInput],

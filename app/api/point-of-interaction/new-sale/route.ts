@@ -131,6 +131,15 @@ export async function POST(req: Request) {
 		const input = CreatePointOfInteractionNewSaleInputSchema.parse(body);
 
 		const result = await db.transaction(async (tx) => {
+			const program = await tx.query.cashbackPrograms.findFirst({
+				where: eq(cashbackPrograms.organizacaoId, input.orgId),
+			});
+			if (!program) {
+				throw new createHttpError.NotFound("Programa de cashback não encontrado.");
+			}
+			if (!program.acumuloPermitirViaPontoIntegracao) {
+				throw new createHttpError.BadRequest("Programa de cashback não permite acumulação via Ponto de Interação.");
+			}
 			// 1. Validate operator
 			const operator = await tx.query.users.findFirst({
 				where: (fields, { and, eq }) => and(eq(fields.usuario, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
@@ -146,6 +155,12 @@ export async function POST(req: Request) {
 			if (!clientId) {
 				// Create new client
 				const phoneBase = formatPhoneAsBase(input.client.telefone);
+
+				const existingClientForPhone = await tx.query.clients.findFirst({
+					where: (fields, { and, eq }) => and(eq(fields.telefoneBase, phoneBase), eq(fields.organizacaoId, input.orgId)),
+				});
+
+				if (existingClientForPhone) throw new createHttpError.BadRequest("Cliente já existe para este telefone.");
 
 				const insertedClientResponse = await tx
 					.insert(clients)
@@ -166,9 +181,6 @@ export async function POST(req: Request) {
 				clientId = insertedClientId;
 
 				// Initialize cashback balance for new client
-				const program = await tx.query.cashbackPrograms.findFirst({
-					where: eq(cashbackPrograms.organizacaoId, input.orgId),
-				});
 
 				if (program) {
 					await tx.insert(cashbackProgramBalances).values({
@@ -181,11 +193,6 @@ export async function POST(req: Request) {
 					});
 				}
 			}
-
-			// 3. Get cashback program
-			const program = await tx.query.cashbackPrograms.findFirst({
-				where: eq(cashbackPrograms.organizacaoId, input.orgId),
-			});
 
 			if (!program) {
 				throw new createHttpError.NotFound("Programa de cashback não encontrado.");
@@ -270,6 +277,7 @@ export async function POST(req: Request) {
 					organizacaoId: input.orgId,
 					clienteId: clientId,
 					vendaId: saleId,
+					vendaValor: input.sale.valor,
 					programaId: program.id,
 					tipo: "RESGATE",
 					status: "ATIVO",
@@ -322,6 +330,7 @@ export async function POST(req: Request) {
 					organizacaoId: input.orgId,
 					clienteId: clientId,
 					vendaId: saleId,
+					vendaValor: input.sale.valor,
 					programaId: program.id,
 					tipo: "ACÚMULO",
 					status: "ATIVO",

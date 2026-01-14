@@ -1,12 +1,17 @@
 "use client";
 
+import type { TCreateCashbackProgramRedemptionInput } from "@/app/api/cashback-programs/transactions/redemption/route";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { createCashbackProgramRedemption } from "@/lib/mutations/cashback-programs";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Award, CheckCircle2, History, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
+import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
+import { useMutation } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, Award, CheckCircle2, History, LockIcon, Plus, ShoppingCart, TrendingUp, Wallet, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -24,6 +29,7 @@ type Transaction = {
 
 type ClientProfileContentProps = {
 	orgId: string;
+	cashbackProgram: TCashbackProgramEntity;
 	client: {
 		id: string;
 		nome: string;
@@ -41,9 +47,10 @@ type ClientProfileContentProps = {
 
 // --- Componente Principal ---
 
-export default function ClientProfileContent({ orgId, client, balance, rankingPosition, transactions }: ClientProfileContentProps) {
+export default function ClientProfileContent({ orgId, cashbackProgram, client, balance, rankingPosition, transactions }: ClientProfileContentProps) {
 	const router = useRouter();
 
+	const allowAccumulation = cashbackProgram.acumuloPermitirViaPontoIntegracao;
 	// Estados para o fluxo de resgate
 	const [showRedemptionMenu, setShowRedemptionMenu] = useState(false);
 	const [selectedRedemptionValue, setSelectedRedemptionValue] = useState<number>(0);
@@ -65,41 +72,6 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 		setShowRedemptionMenu(false);
 		setOperatorPassword("");
 		setSelectedRedemptionValue(0);
-	};
-
-	const handleRedemption = async () => {
-		if (!operatorPassword || operatorPassword.length !== 4) {
-			toast.error("A senha do operador deve ter 4 dígitos.");
-			return;
-		}
-
-		setRedemptionIsLoading(true);
-		try {
-			const response = await fetch("/api/cashback-programs/transactions/redemption", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					orgId,
-					clienteId: client.id,
-					valor: selectedRedemptionValue,
-					senhaOperador: operatorPassword,
-				}),
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error?.message || "Erro ao processar resgate.");
-			}
-
-			toast.success(`Resgate de ${formatToMoney(selectedRedemptionValue)} realizado!`);
-			handleCloseRedemptionMenu();
-			router.refresh(); // Atualiza os dados da página
-		} catch (error: any) {
-			toast.error(error.message);
-		} finally {
-			setRedemptionIsLoading(false);
-		}
 	};
 
 	return (
@@ -132,23 +104,25 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 						</div>
 					</div>
 				</header>
-
 				{/* 2. BOTÃO CENTRAL: Ação de Nova Compra */}
-				<Button
-					onClick={() => router.push(`/point-of-interaction/${orgId}/new-sale?clientId=${client.id}`)}
-					className="w-full h-24 rounded-3xl shadow-xl shadow-brand/20 group transition-all border-none bg-brand text-brand-foreground hover:bg-brand/90"
-				>
-					<div className="flex items-center gap-4 text-left">
-						<div className="bg-brand-foreground p-3 rounded-2xl group-hover:scale-110 transition-transform">
-							<ShoppingCart className="w-8 h-8 text-brand" />
+
+				{allowAccumulation ? (
+					<Button
+						onClick={() => router.push(`/point-of-interaction/${orgId}/new-sale?clientId=${client.id}`)}
+						className="w-full h-24 rounded-3xl shadow-xl shadow-brand/20 group transition-all border-none bg-brand text-brand-foreground hover:bg-brand/90"
+					>
+						<div className="flex items-center gap-4 text-left">
+							<div className="bg-brand-foreground p-3 rounded-2xl group-hover:scale-110 transition-transform">
+								<ShoppingCart className="w-8 h-8 text-brand" />
+							</div>
+							<div>
+								<span className="block text-2xl font-black text-brand-foreground italic leading-none uppercase">Nova Compra</span>
+								<span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Registre pontos e acumule cashback</span>
+							</div>
 						</div>
-						<div>
-							<span className="block text-2xl font-black text-brand-foreground italic leading-none uppercase">Nova Compra</span>
-							<span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Registre pontos e acumule cashback</span>
-						</div>
-					</div>
-					<ArrowRight className="ml-auto mr-4 w-8 h-8 text-brand-foreground opacity-50 group-hover:translate-x-2 transition-transform" />
-				</Button>
+						<ArrowRight className="ml-auto mr-4 w-8 h-8 text-brand-foreground opacity-50 group-hover:translate-x-2 transition-transform" />
+					</Button>
+				) : null}
 
 				{/* 3. GRID INFERIOR: Resgates e Histórico */}
 				<div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
@@ -179,6 +153,19 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 									<span className={balance.saldoValorDisponivel >= value ? "text-green-600" : ""}>{formatToMoney(value)}</span>
 								</Button>
 							))}
+							<Button
+								onClick={() => handleRedemptionClick(balance.saldoValorDisponivel)}
+								disabled={balance.saldoValorDisponivel <= 0}
+								variant="outline"
+								className={cn(
+									"h-20 rounded-2xl border-2 font-black text-xl flex justify-between px-6 transition-all",
+									balance.saldoValorDisponivel > 0
+										? "border-brand/20 hover:border-green-500 hover:bg-green-50 text-brand"
+										: "opacity-40 bg-brand/5 italic text-muted-foreground border-transparent cursor-not-allowed",
+								)}
+							>
+								<span>RESGATE PERSONALIZADO</span>
+							</Button>
 						</div>
 						<div className="mt-8 p-4 bg-brand/5 rounded-2xl border border-brand/20 text-center">
 							<p className="text-[0.65rem] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
@@ -232,47 +219,172 @@ export default function ClientProfileContent({ orgId, client, balance, rankingPo
 
 			{/* 4. MODAL DE CONFIRMAÇÃO DE RESGATE */}
 			{showRedemptionMenu && (
-				<ResponsiveMenu
-					menuTitle="VALIDAR RESGATE"
-					menuDescription={`Confirme o resgate de ${formatToMoney(selectedRedemptionValue)} para este cliente.`}
-					menuActionButtonText="CONFIRMAR E BAIXAR"
-					menuCancelButtonText="CANCELAR"
+				<NewCashbackProgramRedemption
+					orgId={orgId}
+					clientId={client.id}
+					clientAvailableBalance={balance.saldoValorDisponivel}
+					initialRedemptionValue={selectedRedemptionValue}
+					callbacks={{
+						onSuccess() {
+							handleCloseRedemptionMenu();
+							router.refresh();
+						},
+					}}
 					closeMenu={handleCloseRedemptionMenu}
-					actionFunction={handleRedemption}
-					actionIsLoading={redemptionIsLoading}
-					stateIsLoading={false}
-					stateError={null}
-					dialogVariant="sm"
-				>
-					<div className="space-y-6 py-4">
-						<div className="bg-brand/10 rounded-2xl p-6 text-center border-2 border-brand/20 animate-in zoom-in duration-300">
-							<p className="text-xs font-bold text-brand uppercase tracking-widest mb-1">Valor a ser resgatado</p>
-							<p className="text-4xl font-black text-brand italic">{formatToMoney(selectedRedemptionValue)}</p>
-						</div>
-
-						<div className="space-y-3">
-							<Label className="font-black text-xs text-muted-foreground uppercase tracking-widest ml-1">Senha do Operador</Label>
-							<Input
-								type="password"
-								inputMode="numeric"
-								maxLength={4}
-								placeholder="••••"
-								value={operatorPassword}
-								onChange={(e) => setOperatorPassword(e.target.value.replace(/\D/g, ""))}
-								className="h-20 text-4xl text-center tracking-[1.5rem] rounded-2xl border-4 border-brand/20 focus:border-brand transition-all font-black"
-								autoFocus
-							/>
-						</div>
-
-						<div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-4 rounded-xl border border-amber-200">
-							<CheckCircle2 className="w-5 h-5 shrink-0" />
-							<p className="text-[0.7rem] font-bold uppercase leading-tight">
-								Esta operação é irreversível. O saldo será deduzido imediatamente após a confirmação.
-							</p>
-						</div>
-					</div>
-				</ResponsiveMenu>
+				/>
 			)}
 		</div>
+	);
+}
+
+type NewCashbackProgramRedemptionProps = {
+	orgId: string;
+	clientId: string;
+	clientAvailableBalance: number;
+	initialRedemptionValue: number;
+	callbacks: {
+		onMutate?: () => void;
+		onSuccess?: () => void;
+		onError?: () => void;
+		onSettled?: () => void;
+	};
+	closeMenu: () => void;
+};
+function NewCashbackProgramRedemption({
+	orgId,
+	clientId,
+	clientAvailableBalance,
+	initialRedemptionValue,
+	callbacks,
+	closeMenu,
+}: NewCashbackProgramRedemptionProps) {
+	const [infoHolder, setInfoHolder] = useState<TCreateCashbackProgramRedemptionInput>({
+		orgId,
+		clientId,
+		saleValue: 0,
+		redemptionValue: initialRedemptionValue,
+		operatorIdentifier: "",
+	});
+
+	function updateInfoHolder(changes: Partial<TCreateCashbackProgramRedemptionInput>) {
+		setInfoHolder((prev) => ({ ...prev, ...changes }));
+	}
+
+	const { mutate: handleCreateCashbackProgramRedemptionMutation, isPending: isCreatingCashbackProgramRedemption } = useMutation({
+		mutationKey: ["create-cashback-program-redemption"],
+		mutationFn: createCashbackProgramRedemption,
+		onMutate: async () => {
+			if (callbacks?.onMutate) callbacks.onMutate();
+			return;
+		},
+		onSuccess: async (data) => {
+			if (callbacks?.onSuccess) callbacks.onSuccess();
+			toast.success(data.message);
+			return closeMenu();
+		},
+		onError: async (error) => {
+			if (callbacks?.onError) callbacks.onError();
+			return toast.error(getErrorMessage(error));
+		},
+		onSettled: async () => {
+			if (callbacks?.onSettled) callbacks.onSettled();
+			return;
+		},
+	});
+	const valueHelpers = [10, 25, 50, 100];
+
+	return (
+		<ResponsiveMenu
+			menuTitle="VALIDAR RESGATE"
+			menuDescription={`Confirme o resgate de ${formatToMoney(infoHolder.redemptionValue)} para este cliente.`}
+			menuActionButtonText="CONFIRMAR E BAIXAR"
+			menuCancelButtonText="CANCELAR"
+			closeMenu={closeMenu}
+			actionFunction={() => handleCreateCashbackProgramRedemptionMutation(infoHolder)}
+			actionIsLoading={isCreatingCashbackProgramRedemption}
+			stateIsLoading={false}
+			stateError={null}
+			dialogVariant="sm"
+		>
+			<div className="w-full flex flex-col gap-1.5">
+				<h2 className="text-xl font-medium uppercase tracking-tight">Qual o valor da compra?</h2>
+				<div className="relative max-w-md mx-auto">
+					<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
+					<Input
+						type="number"
+						value={infoHolder.saleValue.toString()}
+						onChange={(e) => updateInfoHolder({ saleValue: Number(e.target.value) })}
+						className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+					/>
+				</div>
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
+					{valueHelpers.map((h) => (
+						<Button
+							key={h}
+							variant="secondary"
+							onClick={() => updateInfoHolder({ saleValue: infoHolder.saleValue + h })}
+							className="h-14 rounded-xl font-black text-lg"
+						>
+							<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
+						</Button>
+					))}
+					<Button
+						variant="ghost"
+						onClick={() => updateInfoHolder({ saleValue: 0 })}
+						className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
+					>
+						<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
+					</Button>
+				</div>
+			</div>
+			<div className="w-full flex flex-col gap-1.5">
+				<h2 className="text-xl font-medium uppercase tracking-tight">Qual o valor do resgate?</h2>
+				<div className="relative max-w-md mx-auto">
+					<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
+					<Input
+						type="number"
+						value={infoHolder.redemptionValue.toString()}
+						onChange={(e) => updateInfoHolder({ redemptionValue: Number(e.target.value) })}
+						className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+					/>
+				</div>
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
+					{valueHelpers.map((h) => (
+						<Button
+							key={h}
+							variant="secondary"
+							onClick={() => updateInfoHolder({ redemptionValue: Math.min(infoHolder.redemptionValue + h, clientAvailableBalance) })}
+							className="h-14 rounded-xl font-black text-lg"
+						>
+							<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
+						</Button>
+					))}
+					<Button
+						variant="ghost"
+						onClick={() => updateInfoHolder({ redemptionValue: 0 })}
+						className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
+					>
+						<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
+					</Button>
+				</div>
+			</div>
+			{infoHolder.redemptionValue > clientAvailableBalance ? (
+				<h3 className="text-red-500 font-black text-center p-2 rounded-lg border border-red-500 bg-red-200">
+					OOPS, SALDO INSUFICIENTE PARA ESTE RESGATE :(
+				</h3>
+			) : null}
+			<div className="w-full flex flex-col gap-1.5">
+				<h2 className="text-xl font-medium uppercase tracking-tight">SENHA DO OPERADOR</h2>
+				<div className="relative max-w-md mx-auto">
+					<LockIcon className="w-4 h-4 absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground" />
+					<Input
+						value={infoHolder.operatorIdentifier}
+						onChange={(e) => updateInfoHolder({ operatorIdentifier: e.target.value })}
+						placeholder="******"
+						className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+					/>
+				</div>
+			</div>
+		</ResponsiveMenu>
 	);
 }

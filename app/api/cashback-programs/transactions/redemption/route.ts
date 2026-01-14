@@ -11,26 +11,25 @@ const RedemptionInputSchema = z.object({
 		required_error: "ID da organização não informado.",
 		invalid_type_error: "Tipo não válido para ID da organização.",
 	}),
-	clienteId: z.string({
+	clientId: z.string({
 		required_error: "ID do cliente não informado.",
 		invalid_type_error: "Tipo não válido para ID do cliente.",
 	}),
-	valor: z
-		.number({
-			required_error: "Valor não informado.",
-			invalid_type_error: "Tipo não válido para valor.",
-		})
-		.refine((val) => [10, 20, 30, 50].includes(val), {
-			message: "Valor deve ser 10, 20, 30 ou 50.",
-		}),
-	senhaOperador: z
-		.string({
-			required_error: "Senha do operador não informada.",
-			invalid_type_error: "Tipo não válido para senha do operador.",
-		})
-		.length(4, "Senha deve ter 4 dígitos."),
-});
+	saleValue: z.number({
+		required_error: "Valor da venda não informado.",
+		invalid_type_error: "Tipo não válido para valor da venda.",
+	}),
+	redemptionValue: z.number({
+		required_error: "Valor do resgate não informado.",
+		invalid_type_error: "Tipo não válido para valor do resgate.",
+	}),
 
+	operatorIdentifier: z.string({
+		required_error: "Identificador do operador não informado.",
+		invalid_type_error: "Tipo não válido para identificador do operador.",
+	}),
+});
+export type TCreateCashbackProgramRedemptionInput = z.infer<typeof RedemptionInputSchema>;
 type RedemptionResponse = {
 	data: {
 		transactionId: string;
@@ -52,9 +51,14 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			throw new createHttpError.NotFound("Organização não encontrada.");
 		}
 
-		const cnpjFirst4Digits = org.cnpj.replace(/\D/g, "").substring(0, 4);
-		if (input.senhaOperador !== cnpjFirst4Digits) {
-			throw new createHttpError.Unauthorized("Senha inválida.");
+		// 1. Validate operator
+		const operator = await tx.query.users.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.usuario, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
+			columns: { id: true },
+		});
+
+		if (!operator) {
+			throw new createHttpError.Unauthorized("Operador não encontrado ou não pertence a esta organização.");
 		}
 
 		// 2. Get cashback program
@@ -68,37 +72,39 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 
 		// 3. Get balance
 		const balance = await tx.query.cashbackProgramBalances.findFirst({
-			where: and(eq(cashbackProgramBalances.clienteId, input.clienteId), eq(cashbackProgramBalances.organizacaoId, input.orgId)),
+			where: and(eq(cashbackProgramBalances.clienteId, input.clientId), eq(cashbackProgramBalances.organizacaoId, input.orgId)),
 		});
 
 		if (!balance) {
 			throw new createHttpError.NotFound("Saldo de cashback não encontrado para este cliente.");
 		}
 
-		if (balance.saldoValorDisponivel < input.valor) {
+		if (balance.saldoValorDisponivel < input.redemptionValue) {
 			throw new createHttpError.BadRequest("Saldo insuficiente.");
 		}
 
 		// 4. Calculate new balances
 		const previousBalance = balance.saldoValorDisponivel;
-		const newBalance = previousBalance - input.valor;
-		const newResgatadoTotal = balance.saldoValorResgatadoTotal + input.valor;
+		const newBalance = previousBalance - input.redemptionValue;
+		const newResgatadoTotal = balance.saldoValorResgatadoTotal + input.redemptionValue;
 
 		// 5. Create redemption transaction
 		const transactionResult = await tx
 			.insert(cashbackProgramTransactions)
 			.values({
 				organizacaoId: input.orgId,
-				clienteId: input.clienteId,
+				clienteId: input.clientId,
 				programaId: program.id,
 				vendaId: null, // No associated sale for quick redemptions
+				vendaValor: input.saleValue,
 				tipo: "RESGATE",
 				status: "ATIVO",
-				valor: input.valor,
+				valor: input.redemptionValue,
 				valorRestante: 0, // Fully consumed
 				saldoValorAnterior: previousBalance,
 				saldoValorPosterior: newBalance,
 				expiracaoData: null,
+				operadorId: operator.id,
 			})
 			.returning({ id: cashbackProgramTransactions.id });
 
@@ -128,7 +134,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 		};
 	});
 }
-
+export type TCreateCashbackProgramRedemptionOutput = ReturnType<typeof processRedemption>;
 const redemptionRoute = async (request: NextRequest) => {
 	const payload = await request.json();
 	const input = RedemptionInputSchema.parse(payload);

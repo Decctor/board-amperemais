@@ -153,9 +153,10 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						acumuloRegraValorMinimo: true,
 						acumuloValor: true,
 						expiracaoRegraValidadeValor: true,
+						acumuloPermitirViaIntegracao: true,
 					},
 				});
-
+				const cashbackProgramAllowsAccumulationViaIntegration = cashbackProgram?.acumuloPermitirViaIntegracao;
 				const existingSales = await tx.query.sales.findMany({
 					where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, organization.id), inArray(fields.idExterno, OnlineSoftwareSalesIds)),
 					with: {
@@ -636,7 +637,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						}
 					}
 					// Checking for applicable cashback program balance updates
-					if (cashbackProgram && isValidSale && isNewSale) {
+					if (cashbackProgram && cashbackProgramAllowsAccumulationViaIntegration && isValidSale && isNewSale) {
 						const clientCashbackProgramBalance = existingCashbackProgramBalancesMap.get(saleClientId);
 
 						if (clientCashbackProgramBalance) {

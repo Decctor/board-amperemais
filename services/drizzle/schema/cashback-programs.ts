@@ -6,6 +6,7 @@ import { newTable } from "./common";
 import { cashbackProgramAccumulationTypeEnum, cashbackProgramTransactionStatusEnum, cashbackProgramTransactionTypeEnum } from "./enums";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
+import { users } from "./users";
 
 export const cashbackPrograms = newTable("cashback_programs", {
 	id: varchar("id", { length: 255 })
@@ -18,6 +19,9 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	acumuloTipo: cashbackProgramAccumulationTypeEnum().notNull().default("FIXO"),
 	acumuloValor: doublePrecision("acumulo_valor").notNull().default(0),
 	acumuloRegraValorMinimo: doublePrecision("acumulo_regra_valor_minimo").notNull().default(0),
+	// Configurations for accumulation source
+	acumuloPermitirViaIntegracao: boolean("acumulo_permitir_via_integracao").notNull().default(false),
+	acumuloPermitirViaPontoIntegracao: boolean("acumulo_permitir_via_ponto_integracao").notNull().default(false),
 	expiracaoRegraValidadeValor: doublePrecision("expiracao_regra_validade_valor").notNull().default(0),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
@@ -26,6 +30,7 @@ export const cashbackProgramRelations = relations(cashbackPrograms, ({ many }) =
 	saldos: many(cashbackProgramBalances),
 	transacoes: many(cashbackProgramTransactions),
 }));
+export type TCashbackProgramEntity = typeof cashbackPrograms.$inferSelect;
 
 export const cashbackProgramBalances = newTable("cashback_program_balances", {
 	id: varchar("id", { length: 255 })
@@ -64,6 +69,7 @@ export const cashbackProgramTransactions = newTable("cashback_program_transactio
 		.references(() => clients.id)
 		.notNull(),
 	vendaId: varchar("venda_id", { length: 255 }).references(() => sales.id),
+	vendaValor: doublePrecision("venda_valor").notNull().default(0),
 	programaId: varchar("programa_id", { length: 255 })
 		.references(() => cashbackPrograms.id)
 		.notNull(),
@@ -76,6 +82,8 @@ export const cashbackProgramTransactions = newTable("cashback_program_transactio
 	saldoValorPosterior: doublePrecision("saldo_valor_posterior").notNull(),
 
 	expiracaoData: timestamp("expiracao_data"),
+
+	operadorId: varchar("operador_id", { length: 255 }).references(() => users.id),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
 });

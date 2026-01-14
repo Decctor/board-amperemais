@@ -26,6 +26,12 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 	if (!org) {
 		return <ErrorComponent msg="Organização não encontrada" />;
 	}
+	const cashbackProgram = await db.query.cashbackPrograms.findFirst({
+		where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
+	});
+	if (!cashbackProgram) {
+		return <ErrorComponent msg="Programa de cashback não encontrado" />;
+	}
 
 	// Fetch client with balance
 	const client = await db.query.clients.findFirst({
@@ -61,7 +67,11 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 		.select({ count: eq(cashbackProgramBalances.organizacaoId, orgId) })
 		.from(cashbackProgramBalances)
 		.where(
-			and(eq(cashbackProgramBalances.organizacaoId, orgId), gt(cashbackProgramBalances.saldoValorAcumuladoTotal, balance.saldoValorAcumuladoTotal)),
+			and(
+				eq(cashbackProgramBalances.organizacaoId, orgId),
+				eq(cashbackProgramBalances.programaId, cashbackProgram.id),
+				gt(cashbackProgramBalances.saldoValorAcumuladoTotal, balance.saldoValorAcumuladoTotal),
+			),
 		);
 
 	const rankingPosition = (clientsWithHigherBalance.length || 0) + 1;
@@ -81,5 +91,14 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 		limit: 50,
 	});
 
-	return <ClientProfileContent orgId={orgId} client={client} balance={balance} rankingPosition={rankingPosition} transactions={transactions} />;
+	return (
+		<ClientProfileContent
+			orgId={orgId}
+			cashbackProgram={cashbackProgram}
+			client={client}
+			balance={balance}
+			rankingPosition={rankingPosition}
+			transactions={transactions}
+		/>
+	);
 }

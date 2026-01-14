@@ -23,5 +23,12 @@ export default async function PointOfInteraction({ params }: { params: Promise<{
 		return <ErrorComponent msg="Organização não encontrada" />;
 	}
 
-	return <PointOfInteractionContent org={org} />;
+	const cashbackProgram = await db.query.cashbackPrograms.findFirst({
+		where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
+	});
+	if (!cashbackProgram) {
+		return <ErrorComponent msg="Programa de cashback não encontrado" />;
+	}
+
+	return <PointOfInteractionContent org={org} cashbackProgram={cashbackProgram} />;
 }

@@ -238,6 +238,7 @@ async function getProducts({ input, user }: GetProductsParams) {
 	// Crie um fragmento SQL reutilizável para o valor total (trata NULL como 0)
 	const totalSalesSql = sql`COALESCE(sum(${saleItems.valorVendaTotalLiquido}), 0)`;
 
+	console.log("STATSCONDITIONS LENGTH:", statsConditions.length);
 	const statsByProductResult = await db
 		.select({
 			productId: products.id,
@@ -262,19 +263,19 @@ async function getProducts({ input, user }: GetProductsParams) {
 
 	const productIds = statsByProductResult.map((product) => product.productId);
 	const productsResult = await db.query.products.findMany({
-		where: and(eq(products.organizacaoId, userOrgId), inArray(products.id, productIds)),
+		where: and(eq(products.organizacaoId, userOrgId), statsConditions.length > 1 ? inArray(products.id, productIds) : undefined),
 	});
 
 	const productsMap = new Map(productsResult.map((p) => [p.id, p]));
-	const productsWithStats = statsByProductResult
-		.map((stats) => {
-			const product = productsMap.get(stats.productId);
-			if (!product) return null;
+	const statsByProductMap = new Map(statsByProductResult.map((s) => [s.productId, s]));
+	const productsWithStats = productsResult
+		.map((product) => {
+			const stats = statsByProductMap.get(product.id);
 
 			// Lógica da Curva ABC
-			const totalSales = stats.totalSalesValue ? Number(stats.totalSalesValue) : 0;
-			const accumulated = Number(stats.accumulatedSales);
-			const globalTotal = Number(stats.totalSalesGlobal);
+			const totalSales = stats?.totalSalesValue ? Number(stats.totalSalesValue) : 0;
+			const accumulated = stats?.accumulatedSales ? Number(stats.accumulatedSales) : 0;
+			const globalTotal = stats?.totalSalesGlobal ? Number(stats.totalSalesGlobal) : 0;
 
 			let curvaABC = "C";
 			if (globalTotal > 0) {
