@@ -1,7 +1,10 @@
 "use client";
 
-import type { TCreateCashbackProgramRedemptionInput } from "@/app/api/cashback-programs/transactions/redemption/route";
-import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
+import type {
+	TCreateCashbackProgramRedemptionInput,
+	TCreateCashbackProgramRedemptionOutput,
+} from "@/app/api/cashback-programs/transactions/redemption/route";
+import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +14,7 @@ import { createCashbackProgramRedemption } from "@/lib/mutations/cashback-progra
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Award, CheckCircle2, History, LockIcon, Plus, ShoppingCart, TrendingUp, Wallet, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Award, CheckCircle2, History, LockIcon, PartyPopper, Plus, ShoppingCart, TrendingUp, Wallet, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -265,6 +268,7 @@ function NewCashbackProgramRedemption({
 		redemptionValue: initialRedemptionValue,
 		operatorIdentifier: "",
 	});
+	const [successData, setSuccessData] = useState<Awaited<TCreateCashbackProgramRedemptionOutput>["data"] | null>(null);
 
 	function updateInfoHolder(changes: Partial<TCreateCashbackProgramRedemptionInput>) {
 		setInfoHolder((prev) => ({ ...prev, ...changes }));
@@ -278,9 +282,9 @@ function NewCashbackProgramRedemption({
 			return;
 		},
 		onSuccess: async (data) => {
-			if (callbacks?.onSuccess) callbacks.onSuccess();
+			setSuccessData(data.data);
 			toast.success(data.message);
-			return closeMenu();
+			return;
 		},
 		onError: async (error) => {
 			if (callbacks?.onError) callbacks.onError();
@@ -294,9 +298,9 @@ function NewCashbackProgramRedemption({
 	const valueHelpers = [10, 25, 50, 100];
 
 	return (
-		<ResponsiveMenu
-			menuTitle="VALIDAR RESGATE"
-			menuDescription={`Confirme o resgate de ${formatToMoney(infoHolder.redemptionValue)} para este cliente.`}
+		<ResponsiveMenuV2
+			menuTitle={successData ? "" : "VALIDAR RESGATE"}
+			menuDescription={successData ? "" : `Confirme o resgate de ${formatToMoney(infoHolder.redemptionValue)} para este cliente.`}
 			menuActionButtonText="CONFIRMAR E BAIXAR"
 			menuCancelButtonText="CANCELAR"
 			closeMenu={closeMenu}
@@ -305,6 +309,48 @@ function NewCashbackProgramRedemption({
 			stateIsLoading={false}
 			stateError={null}
 			dialogVariant="sm"
+			successContent={
+				successData ? (
+					<div className="flex flex-col items-center text-center space-y-6 animate-in zoom-in duration-300">
+						<div className="relative">
+							<div className="absolute inset-0 bg-green-500/20 blur-2xl rounded-full scale-125 animate-pulse" />
+							<div className="relative bg-green-600 p-6 rounded-full text-white shadow-xl shadow-green-600/20">
+								<CheckCircle2 className="w-12 h-12" />
+							</div>
+							<div className="absolute -top-2 -right-2 bg-yellow-400 p-2 rounded-xl text-yellow-900 shadow-md">
+								<PartyPopper className="w-4 h-4" />
+							</div>
+						</div>
+
+						<div className="space-y-1">
+							<h3 className="text-2xl font-black uppercase tracking-tight text-green-700">RESGATE REALIZADO!</h3>
+							<p className="text-muted-foreground font-bold text-sm">O saldo foi baixado com sucesso.</p>
+						</div>
+
+						<div className="grid grid-cols-1 gap-4 w-full">
+							<div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4">
+								<p className="text-[0.6rem] font-black text-green-600 uppercase tracking-widest mb-1">VALOR RESGATADO</p>
+								<p className="text-3xl font-black text-green-700">{formatToMoney(infoHolder.redemptionValue)}</p>
+							</div>
+							<div className="bg-brand/5 border-2 border-brand/20 rounded-2xl p-4">
+								<p className="text-[0.6rem] font-black text-brand uppercase tracking-widest mb-1">SALDO DISPONÍVEL</p>
+								<p className="text-3xl font-black text-brand">{formatToMoney(successData.newBalance)}</p>
+							</div>
+						</div>
+
+						<Button
+							onClick={() => {
+								if (callbacks?.onSuccess) callbacks.onSuccess();
+								closeMenu();
+							}}
+							size="lg"
+							className="w-full rounded-2xl h-16 text-lg font-black shadow-lg uppercase tracking-wider"
+						>
+							VOLTAR AO PERFIL
+						</Button>
+					</div>
+				) : null
+			}
 		>
 			<div className="w-full flex flex-col gap-1.5">
 				<h2 className="text-xl font-medium uppercase tracking-tight">Qual o valor da compra?</h2>
@@ -385,6 +431,6 @@ function NewCashbackProgramRedemption({
 					/>
 				</div>
 			</div>
-		</ResponsiveMenu>
+		</ResponsiveMenuV2>
 	);
 }
