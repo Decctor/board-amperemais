@@ -15,6 +15,7 @@ type TextInputProps = {
 	required?: boolean;
 	handleChange: (value: string) => void;
 	handleOnBlur?: () => void;
+	inputType?: "text" | "tel";
 };
 function TextInput({
 	width,
@@ -26,6 +27,7 @@ function TextInput({
 	placeholder,
 	editable = true,
 	required = false,
+	inputType = "text",
 	handleChange,
 	handleOnBlur,
 }: TextInputProps) {

@@ -84,7 +84,7 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 							<ArrowLeft className="w-5 h-5" />
 						</Button>
 						<div>
-							<h1 className="text-2xl font-black text-brand uppercase italic leading-none">{client.nome}</h1>
+							<h1 className="text-2xl font-black text-black uppercase italic leading-none">{client.nome}</h1>
 							<p className="text-sm font-bold text-muted-foreground mt-1">{formatToPhone(client.telefone)}</p>
 						</div>
 					</div>
@@ -92,11 +92,11 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 					{/* Badge de Saldo e Ranking em estilo "Pílula" */}
 					<div className="flex items-center bg-brand/5 border-2 border-brand/10 rounded-full px-8 py-3 gap-8 shadow-inner">
 						<div className="flex flex-col items-center border-r-2 border-brand/10 pr-8">
-							<span className="text-[0.65rem] font-black text-brand uppercase tracking-widest">Saldo Disponível</span>
+							<span className="text-[0.65rem] font-black text-black uppercase tracking-widest">Saldo Disponível</span>
 							<span className="text-2xl font-black text-brand">{formatToMoney(balance.saldoValorDisponivel)}</span>
 						</div>
 						<div className="flex flex-col items-center">
-							<span className="text-[0.65rem] font-black text-brand uppercase tracking-widest">Ranking</span>
+							<span className="text-[0.65rem] font-black text-black uppercase tracking-widest">Ranking</span>
 							<div className="flex items-center gap-1">
 								<Award className="w-5 h-5 text-amber-500" />
 								<span className="text-2xl font-black text-brand">#{rankingPosition}</span>

@@ -14,7 +14,7 @@ import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { fetchClientByLookup, useClientByLookup } from "@/lib/queries/clients";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Building2, Coins, IdCard, Mail, MapPin, Phone, ShoppingCart, Trophy, Users } from "lucide-react";
+import { ArrowRight, Building2, Coins, IdCard, Loader2, Mail, MapPin, Phone, ShoppingCart, Trophy, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -119,15 +119,22 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 			menuDescription="Informe seu telefone para ver seu saldo atual"
 			menuCancelButtonText="CANCELAR"
 			closeMenu={closeMenu}
-			stateIsLoading={isLoadingClient}
+			stateIsLoading={false}
 			stateError={null}
 		>
 			<TextInput
 				label="NÚMERO DO WHATSAPP"
+				inputType="tel"
 				placeholder="(00) 00000-0000"
 				value={params.phone}
 				handleChange={(value) => updateParams({ phone: formatToPhone(value) })}
 			/>
+			{isLoadingClient ? (
+				<div className="w-full flex items-center justify-center gap-1.5">
+					<Loader2 className="w-4 h-4 animate-spin" />
+					<p className="text-sm text-muted-foreground">Buscando registros...</p>
+				</div>
+			) : null}
 
 			{isSuccessClient && client ? (
 				<div className="bg-green-50 border-2 border-green-200 rounded-3xl p-6 flex flex-col items-center gap-4 animate-in zoom-in">

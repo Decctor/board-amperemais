@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { createPointOfInteractionSale } from "@/lib/mutations/sales";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import type { TClientByLookupOutput } from "@/pages/api/clients/lookup";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { usePointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, BadgePercent, Check, CreditCard, Lock, Plus, ShoppingCart, Tag, UserPlus, UserRound, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgePercent, Check, CreditCard, Loader2, Lock, Plus, ShoppingCart, Tag, UserPlus, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
@@ -34,7 +34,13 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	const { state, updateClient, updateSale, updateCashback, updateOperatorIdentifier } = usePointOfInteractionNewSaleState(org.id);
 
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
-	const { data: client, params, updateParams } = useClientByLookup({ initialParams: { orgId: org.id, phone: "", clientId: clientId } });
+	const {
+		data: client,
+		isLoading: isLoadingClient,
+		isSuccess: isSuccessClient,
+		params,
+		updateParams,
+	} = useClientByLookup({ initialParams: { orgId: org.id, phone: "", clientId: clientId } });
 
 	useEffect(() => {
 		if (client) {
@@ -119,9 +125,11 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 					<div className="p-6 md:p-10">
 						{currentStep === 1 && (
 							<ClientStep
+								isLoadingClient={isLoadingClient}
+								isSuccessClient={isSuccessClient}
 								client={client ?? null}
 								phone={params.phone}
-								onPhoneChange={(v) => updateParams({ phone: v })}
+								onPhoneChange={(v) => updateParams({ phone: formatToPhone(v) })}
 								newClientData={state.client}
 								onNewClientChange={updateClient}
 							/>
@@ -188,17 +196,17 @@ function ClientStep({
 	onPhoneChange,
 	newClientData,
 	onNewClientChange,
+	isLoadingClient,
+	isSuccessClient,
 }: {
 	client: TClientByLookupOutput["data"];
 	phone: string;
 	onPhoneChange: (phone: string) => void;
 	newClientData: { id?: string | null; nome: string; cpfCnpj?: string | null; telefone: string };
 	onNewClientChange: (data: Partial<typeof newClientData>) => void;
+	isLoadingClient: boolean;
+	isSuccessClient: boolean;
 }) {
-	const phoneDigits = phone.replace(/\D/g, "");
-	const isPhoneValid = phoneDigits.length === 11;
-	const showNewClientForm = !client && isPhoneValid && phoneDigits.length > 0;
-
 	React.useEffect(() => {
 		// Keep phone in sync with lookup
 		if (phone && phone !== newClientData.telefone) {
@@ -213,10 +221,15 @@ function ClientStep({
 				<p className="text-muted-foreground">Digite o número de telefone para localizar o perfil.</p>
 			</div>
 			<div className="max-w-md mx-auto">
-				<TextInput label="TELEFONE" placeholder="(00) 00000-0000" value={formatToPhone(phone)} handleChange={onPhoneChange} />
+				<TextInput label="TELEFONE" inputType="tel" placeholder="(00) 00000-0000" value={phone} handleChange={onPhoneChange} />
 			</div>
-
-			{client && (
+			{isLoadingClient ? (
+				<div className="w-full flex items-center justify-center gap-1.5">
+					<Loader2 className="w-4 h-4 animate-spin" />
+					<p className="text-sm text-muted-foreground">Buscando registros...</p>
+				</div>
+			) : null}
+			{isSuccessClient && client ? (
 				<div className="bg-green-50 border-2 border-green-200 rounded-3xl p-6 flex flex-col items-center gap-4 animate-in zoom-in">
 					<div className="text-center">
 						<p className="text-green-900 font-black text-2xl uppercase italic">{client.nome}</p>
@@ -227,43 +240,37 @@ function ClientStep({
 						<p className="text-3xl font-black">{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}</p>
 					</div>
 				</div>
-			)}
+			) : null}
 
-			{showNewClientForm && (
+			{isSuccessClient && !client ? (
 				<div className="bg-blue-50 border-2 border-blue-200 rounded-3xl p-6 animate-in zoom-in">
 					<div className="flex items-center gap-3 mb-4">
 						<div className="p-2 bg-blue-600 rounded-lg text-white">
 							<UserPlus className="w-5 h-5" />
 						</div>
 						<div>
-							<h3 className="font-black uppercase text-blue-900">Novo Cliente</h3>
-							<p className="text-xs text-blue-600">Complete os dados para cadastrar</p>
+							<h3 className="font-black uppercase text-blue-900">NOVO CLIENTE</h3>
+							<p className="text-xs text-blue-600">Complete os dados para criar o seu cadastro !</p>
 						</div>
 					</div>
-					<div className="space-y-4">
-						<div>
-							<Label className="text-xs font-bold text-blue-900 uppercase tracking-wider">Nome Completo *</Label>
-							<Input
-								type="text"
-								placeholder="Digite o nome do cliente"
-								value={newClientData.nome}
-								onChange={(e) => onNewClientChange({ nome: e.target.value })}
-								className="mt-2 h-12 border-2 border-blue-200 focus:border-blue-500"
-							/>
-						</div>
-						<div>
-							<Label className="text-xs font-bold text-blue-900 uppercase tracking-wider">CPF/CNPJ (opcional)</Label>
-							<Input
-								type="text"
-								placeholder="000.000.000-00"
-								value={newClientData.cpfCnpj || ""}
-								onChange={(e) => onNewClientChange({ cpfCnpj: e.target.value })}
-								className="mt-2 h-12 border-2 border-blue-200 focus:border-blue-500"
-							/>
-						</div>
+					<div className="w-full flex flex-col gap-1.5">
+						<TextInput
+							label="NOME COMPLETO"
+							placeholder="Digite o nome do cliente"
+							value={newClientData.nome}
+							handleChange={(value) => onNewClientChange({ nome: value })}
+							width="100%"
+						/>
+						<TextInput
+							label="CPF/CNPJ"
+							placeholder="Digite o CPF/CNPJ do cliente"
+							value={newClientData.cpfCnpj || ""}
+							handleChange={(value) => onNewClientChange({ cpfCnpj: formatToCPForCNPJ(value) })}
+							width="100%"
+						/>
 					</div>
 				</div>
-			)}
+			) : null}
 		</div>
 	);
 }
