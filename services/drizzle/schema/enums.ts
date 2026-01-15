@@ -6,6 +6,7 @@ export const campaignTriggerTypeEnum = pgEnum("campaign_trigger_type", [
 	"PERMANÊNCIA-SEGMENTAÇÃO",
 	"ENTRADA-SEGMENTAÇÃO",
 	"CASHBACK-ACUMULADO",
+	"CASHBACK-EXPIRANDO",
 ]);
 
 export const timeDurationUnitsEnum = pgEnum("time_duration_units", ["DIAS", "SEMANAS", "MESES", "ANOS"]);
