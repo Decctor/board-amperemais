@@ -182,6 +182,11 @@ export function formatToCEP(value: string): string {
 		.replace(/(-\d{3})\d+?$/, "$1");
 }
 
+export function formatToNumericPassword(value: string, maxDigits = 5): string {
+	const digits = value.replace(/\D/g, "");
+	return digits.slice(0, maxDigits);
+}
+
 export function formatLocation({
 	location,
 	includeUf,

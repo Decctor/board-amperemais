@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatToCPForCNPJ, formatToMoney, formatToNumericPassword, formatToPhone } from "@/lib/formatting";
 import { createPointOfInteractionSale } from "@/lib/mutations/sales";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
@@ -503,12 +503,12 @@ function ConfirmationStep({
 			</div>
 
 			<div className="space-y-4 max-w-md mx-auto">
-				<Label className="block text-center font-black text-xs text-muted-foreground uppercase tracking-widest italic">Usuário do Operador</Label>
+				<Label className="block text-center font-black text-xs text-muted-foreground uppercase tracking-widest italic">Senha do Operador</Label>
 				<Input
-					type="text"
-					placeholder="Digite seu usuário"
+					type="number"
+					placeholder="*****"
 					value={operatorIdentifier}
-					onChange={(e) => onOperatorIdentifierChange(e.target.value)}
+					onChange={(e) => onOperatorIdentifierChange(formatToNumericPassword(e.target.value))}
 					className="h-16 text-2xl text-center rounded-2xl border-4 border-brand/20 focus:border-green-500 transition-all font-bold"
 				/>
 			</div>

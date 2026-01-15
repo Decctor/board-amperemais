@@ -12,6 +12,12 @@ export const SellerSchema = z.object({
 	telefone: z.string({ invalid_type_error: "Tipo não válido para o telefone do vendedor." }).optional().nullable(),
 	email: z.string({ invalid_type_error: "Tipo não válido para o email do vendedor." }).optional().nullable(),
 	avatarUrl: z.string({ invalid_type_error: "Tipo não válido para a url do avatar do vendedor." }).optional().nullable(),
+	senhaOperador: z
+		.string({
+			required_error: "Senha do operador do vendedor não informada.",
+			invalid_type_error: "Tipo não válido para a senha do operador do vendedor.",
+		})
+		.default("0000"),
 	dataInsercao: z
 		.string({
 			required_error: "Data de inserção do vendedor não informada.",

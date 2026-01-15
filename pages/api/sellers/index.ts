@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { SellerSchema } from "@/schemas/sellers";
 import { db } from "@/services/drizzle";
 import { sales, sellers } from "@/services/drizzle/schema";
-import { and, asc, count, desc, eq, gte, inArray, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lte, max, min, ne, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -209,7 +209,11 @@ async function getSellers({ input, user }: GetSellersParams) {
 
 	const sellerIds = statsBySeller.map((seller) => seller.sellerId);
 	const sellersResult = await db.query.sellers.findMany({
-		where: and(eq(sellers.organizacaoId, userOrgId), applyRestrictiveSalesFilters ? inArray(sellers.id, sellerIds) : undefined),
+		where: and(
+			eq(sellers.organizacaoId, userOrgId),
+			...sellerQueryConditions,
+			applyRestrictiveSalesFilters ? inArray(sellers.id, sellerIds) : undefined,
+		),
 	});
 
 	const sellersWithStats = sellersResult.map((seller) => {
@@ -273,6 +277,24 @@ async function updateSeller({ input, user }: UpdateSellerParams) {
 	const userOrgId = user.organizacaoId;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
+	const seller = await db.query.sellers.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.id, input.sellerId), eq(fields.organizacaoId, userOrgId)),
+	});
+	if (!seller) throw new createHttpError.NotFound("Vendedor não encontrado.");
+
+	const senhaParaValidar = input.seller.senhaOperador ?? seller.senhaOperador;
+
+	const existingPassword = await db.query.sellers.findFirst({
+		where: (fields, { and, eq, ne }) =>
+			and(eq(fields.senhaOperador, senhaParaValidar), eq(fields.organizacaoId, userOrgId), ne(fields.id, input.sellerId)),
+	});
+
+	if (existingPassword) {
+		throw new createHttpError.Conflict(
+			"Esta senha do operador já está sendo utilizada por outro vendedor nesta organização. Por favor, defina uma nova senha única.",
+		);
+	}
+
 	const updatedSeller = await db
 		.update(sellers)
 		.set({ ...input.seller, organizacaoId: userOrgId })
@@ -314,6 +336,12 @@ async function createSeller({ input, user }: CreateSellerParams) {
 	});
 
 	if (existingSeller) throw new createHttpError.Conflict("Já existe um vendedor com este identificador nesta organização.");
+
+	const existingPassword = await db.query.sellers.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.senhaOperador), eq(fields.organizacaoId, userOrgId)),
+	});
+
+	if (existingPassword) throw new createHttpError.Conflict("Já existe um vendedor utilizando esta senha do operador nesta organização.");
 
 	const createdSeller = await db
 		.insert(sellers)

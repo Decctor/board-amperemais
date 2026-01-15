@@ -141,11 +141,14 @@ export async function POST(req: Request) {
 				throw new createHttpError.BadRequest("Programa de cashback não permite acumulação via Ponto de Interação.");
 			}
 			// 1. Validate operator
-			const operator = await tx.query.users.findFirst({
-				where: (fields, { and, eq }) => and(eq(fields.usuario, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
+			const operator = await tx.query.sellers.findFirst({
+				where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
+				with: {
+					usuario: true,
+				},
 			});
 
-			if (!operator) {
+			if (!operator || !operator.usuario) {
 				throw new createHttpError.Unauthorized("Operador não encontrado ou não pertence a esta organização.");
 			}
 
@@ -260,7 +263,7 @@ export async function POST(req: Request) {
 					valorTotal: valorFinalVenda,
 					custoTotal: 0,
 					vendedorNome: operator.nome,
-					vendedorId: operator.vendedorId,
+					vendedorId: operator.id,
 					parceiro: "N/A",
 					parceiroId: null,
 					chave: "N/A",
@@ -298,6 +301,7 @@ export async function POST(req: Request) {
 					saldoValorAnterior: currentBalance + input.sale.cashback.valor,
 					saldoValorPosterior: currentBalance,
 					expiracaoData: null,
+					operadorId: operator.usuario.id,
 				});
 			}
 
@@ -352,6 +356,7 @@ export async function POST(req: Request) {
 					saldoValorPosterior: newOverallAvailableBalance,
 					expiracaoData: dayjs().add(program.expiracaoRegraValidadeValor, "day").toDate(),
 					dataInsercao: saleDate,
+					operadorId: operator.usuario.id,
 				});
 
 				// 9. Check for applicable cashback accumulation campaigns

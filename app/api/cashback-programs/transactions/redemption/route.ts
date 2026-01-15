@@ -52,12 +52,14 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 		}
 
 		// 1. Validate operator
-		const operator = await tx.query.users.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.usuario, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
-			columns: { id: true },
+		const operator = await tx.query.sellers.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
+			with: {
+				usuario: true,
+			},
 		});
 
-		if (!operator) {
+		if (!operator || !operator.usuario) {
 			throw new createHttpError.Unauthorized("Operador não encontrado ou não pertence a esta organização.");
 		}
 
@@ -104,7 +106,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 				saldoValorAnterior: previousBalance,
 				saldoValorPosterior: newBalance,
 				expiracaoData: null,
-				operadorId: operator.id,
+				operadorId: operator.usuario.id,
 			})
 			.returning({ id: cashbackProgramTransactions.id });
 

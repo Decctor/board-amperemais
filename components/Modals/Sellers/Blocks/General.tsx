@@ -1,6 +1,6 @@
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import TextInput from "@/components/Inputs/TextInput";
-import { formatToPhone } from "@/lib/formatting";
+import { formatToNumericPassword, formatToPhone } from "@/lib/formatting";
 import type { TSellerState } from "@/schemas/sellers";
 import { Code, LayoutGrid } from "lucide-react";
 import Image from "next/image";
@@ -49,6 +49,13 @@ export function GeneralBlock({ seller, updateSeller, avatarHolder, updateAvatar 
 					value={seller.email || ""}
 					placeholder="Preencha aqui o email do vendedor..."
 					handleChange={(value) => updateSeller({ email: value })}
+					width="100%"
+				/>
+				<TextInput
+					label="SENHA DO OPERADOR"
+					value={seller.senhaOperador}
+					placeholder="Preencha aqui a senha do operador do vendedor..."
+					handleChange={(value) => updateSeller({ senhaOperador: formatToNumericPassword(value) })}
 					width="100%"
 				/>
 			</div>

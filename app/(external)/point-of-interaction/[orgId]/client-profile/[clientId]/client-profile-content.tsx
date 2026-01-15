@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatDateAsLocale, formatToMoney, formatToNumericPassword, formatToPhone } from "@/lib/formatting";
 import { createCashbackProgramRedemption } from "@/lib/mutations/cashback-programs";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
@@ -424,9 +424,10 @@ function NewCashbackProgramRedemption({
 				<div className="relative max-w-md mx-auto">
 					<LockIcon className="w-4 h-4 absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground" />
 					<Input
+						type="number"
 						value={infoHolder.operatorIdentifier}
-						onChange={(e) => updateInfoHolder({ operatorIdentifier: e.target.value })}
-						placeholder="******"
+						onChange={(e) => updateInfoHolder({ operatorIdentifier: formatToNumericPassword(e.target.value) })}
+						placeholder="*****"
 						className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
 					/>
 				</div>
