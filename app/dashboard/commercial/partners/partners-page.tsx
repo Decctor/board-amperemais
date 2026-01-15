@@ -5,6 +5,7 @@ import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import EditPartner from "@/components/Modals/Partners/EditPartner";
+import NewPartner from "@/components/Modals/Partners/NewPartner";
 import PartnersFilterMenu from "@/components/Partners/PartnersFilterMenu";
 import PartnersGraphs from "@/components/Partners/PartnersGraphs";
 import PartnersRanking from "@/components/Partners/PartnersRanking";
@@ -21,7 +22,7 @@ import { usePartners, usePartnersOverallStats } from "@/lib/queries/partners";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { Activity, BadgeDollarSign, CirclePlus, IdCard, ListFilter, Mail, Pencil, Phone, Ticket, TrendingUp, Users, X } from "lucide-react";
+import { Activity, BadgeDollarSign, CirclePlus, IdCard, ListFilter, Mail, Pencil, Phone, Plus, Ticket, TrendingUp, Users, X } from "lucide-react";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 
@@ -58,6 +59,7 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 	const queryClient = useQueryClient();
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
+	const [newPartnerModalIsOpen, setNewPartnerModalIsOpen] = useState<boolean>(false);
 	const [editPartnerModalId, setEditPartnerModalId] = useState<string | null>(null);
 	const {
 		data: partnersResult,
@@ -94,9 +96,14 @@ function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 					onChange={(e) => updateQueryParams({ search: e.target.value })}
 					className="grow rounded-xl"
 				/>
+
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
 					FILTROS
+				</Button>
+				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewPartnerModalIsOpen(true)}>
+					<Plus className="w-4 h-4 min-w-4 min-h-4" />
+					NOVO PARCEIRO
 				</Button>
 			</div>
 			<GeneralPaginationComponent
@@ -130,6 +137,9 @@ function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 					closeModal={() => setEditPartnerModalId(null)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
+			) : null}
+			{newPartnerModalIsOpen ? (
+				<NewPartner user={user} closeModal={() => setNewPartnerModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 		</div>
 	);

@@ -144,6 +144,8 @@ async function getProducts({ input, user }: GetProductsParams) {
 	}
 
 	const productQueryConditions = [eq(products.organizacaoId, userOrgId)];
+	let applyRestrictiveSalesFilters = false;
+
 	if (input.search) {
 		productQueryConditions.push(
 			sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`,
@@ -187,8 +189,14 @@ async function getProducts({ input, user }: GetProductsParams) {
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 	if (input.statsSellerIds && input.statsSellerIds.length > 0) statsConditions.push(inArray(sales.vendedorId, input.statsSellerIds));
 	const havingConditions = [];
-	if (input.statsTotalMin) havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
-	if (input.statsTotalMax) havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+	if (input.statsTotalMin) {
+		havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
+		applyRestrictiveSalesFilters = true;
+	}
+	if (input.statsTotalMax) {
+		havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+		applyRestrictiveSalesFilters = true;
+	}
 
 	let orderByClause = asc(products.descricao);
 	const direction = input.orderByDirection === "desc" ? desc : asc;
@@ -263,7 +271,7 @@ async function getProducts({ input, user }: GetProductsParams) {
 
 	const productIds = statsByProductResult.map((product) => product.productId);
 	const productsResult = await db.query.products.findMany({
-		where: and(eq(products.organizacaoId, userOrgId), statsConditions.length > 1 ? inArray(products.id, productIds) : undefined),
+		where: and(eq(products.organizacaoId, userOrgId), applyRestrictiveSalesFilters ? inArray(products.id, productIds) : undefined),
 	});
 
 	const productsMap = new Map(productsResult.map((p) => [p.id, p]));

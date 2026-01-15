@@ -3,6 +3,7 @@ import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import EditSeller from "@/components/Modals/Sellers/EditSeller";
+import NewSeller from "@/components/Modals/Sellers/NewSeller";
 import SalesTeamFilterMenu from "@/components/SalesTeam/SalesTeamFilterMenu";
 import SalesTeamFilterShowcase from "@/components/SalesTeam/SalesTeamFilterShowcase";
 import SellersGraphs from "@/components/Sellers/SellersGraphs";
@@ -22,7 +23,21 @@ import type { TGetSellersDefaultInput } from "@/pages/api/sellers";
 import type { TGetSellersOverallStatsInput } from "@/pages/api/sellers/stats/overall";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { Activity, AreaChart, BadgeDollarSign, CirclePlus, ListFilter, Mail, Pencil, Phone, Target, Ticket, TrendingUp, Users } from "lucide-react";
+import {
+	Activity,
+	AreaChart,
+	BadgeDollarSign,
+	CirclePlus,
+	ListFilter,
+	Mail,
+	Pencil,
+	Phone,
+	Plus,
+	Target,
+	Ticket,
+	TrendingUp,
+	Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -31,7 +46,6 @@ type SellersPageProps = {
 };
 export default function SellersPage({ user }: SellersPageProps) {
 	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
-
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<Tabs value={viewMode} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
@@ -58,6 +72,7 @@ export default function SellersPage({ user }: SellersPageProps) {
 
 function SellersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 	const queryClient = useQueryClient();
+	const [newSellerModalIsOpen, setNewSellerModalIsOpen] = useState(false);
 	const [editSellerId, setEditSellerId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const {
@@ -88,6 +103,10 @@ function SellersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
 					FILTROS
+				</Button>
+				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewSellerModalIsOpen(true)}>
+					<Plus className="w-4 h-4 min-w-4 min-h-4" />
+					NOVO VENDEDOR
 				</Button>
 			</div>
 			<GeneralPaginationComponent
@@ -133,6 +152,9 @@ function SellersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 			) : null}
 			{filterMenuIsOpen ? (
 				<SalesTeamFilterMenu queryParams={filters} updateQueryParams={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
+			) : null}
+			{newSellerModalIsOpen ? (
+				<NewSeller user={user} closeModal={() => setNewSellerModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 		</div>
 	);

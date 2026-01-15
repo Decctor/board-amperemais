@@ -18,6 +18,12 @@ async function createPartner({ input, session }: { input: TCreatePartnerInput; s
 	const userOrgId = session.organizacaoId;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
+	const existingPartner = await db.query.partners.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.identificador, input.partner.identificador), eq(fields.organizacaoId, userOrgId)),
+	});
+
+	if (existingPartner) throw new createHttpError.Conflict("Já existe um parceiro com este identificador nesta organização.");
+
 	const insertedPartner = await db
 		.insert(partners)
 		.values({ ...input.partner, organizacaoId: userOrgId })
@@ -118,7 +124,8 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 		};
 	}
 
-	const partnerConditions = [];
+	const partnerConditions = [eq(partners.organizacaoId, userOrgId)];
+	let applyRestrictiveSalesFilters = false;
 	if (input.search) {
 		partnerConditions.push(
 			or(
@@ -138,8 +145,14 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 
 	const havingConditions = [];
-	if (input.statsTotalMin) havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
-	if (input.statsTotalMax) havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+	if (input.statsTotalMin) {
+		havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
+		applyRestrictiveSalesFilters = true;
+	}
+	if (input.statsTotalMax) {
+		havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+		applyRestrictiveSalesFilters = true;
+	}
 
 	const PAGE_SIZE = 25;
 	const skip = PAGE_SIZE * (input.page - 1);
@@ -183,7 +196,7 @@ async function getPartners({ input, session }: { input: TGetPartnersInput; sessi
 
 	const partnerIds = statsByPartnerResult.map((partner) => partner.partnerId);
 	const partnersResult = await db.query.partners.findMany({
-		where: and(eq(partners.organizacaoId, userOrgId), inArray(partners.id, partnerIds)),
+		where: and(eq(partners.organizacaoId, userOrgId), applyRestrictiveSalesFilters ? inArray(partners.id, partnerIds) : undefined),
 	});
 
 	const partnersWithStats = partnersResult.map((partner) => {

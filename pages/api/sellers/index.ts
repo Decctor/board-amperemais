@@ -128,6 +128,7 @@ async function getSellers({ input, user }: GetSellersParams) {
 	}
 
 	const sellerQueryConditions = [eq(sellers.organizacaoId, userOrgId)];
+	let applyRestrictiveSalesFilters = false;
 	if (input.search)
 		sellerQueryConditions.push(
 			sql`(to_tsvector('portuguese', ${sellers.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${sellers.nome} ILIKE '%' || ${input.search} || '%')`,
@@ -142,8 +143,14 @@ async function getSellers({ input, user }: GetSellersParams) {
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 
 	const havingConditions = [];
-	if (input.statsTotalMin) havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
-	if (input.statsTotalMax) havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+	if (input.statsTotalMin) {
+		havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
+		applyRestrictiveSalesFilters = true;
+	}
+	if (input.statsTotalMax) {
+		havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+		applyRestrictiveSalesFilters = true;
+	}
 
 	let orderByClause = asc(sellers.nome);
 	const direction = input.orderByDirection === "desc" ? desc : asc;
@@ -202,7 +209,7 @@ async function getSellers({ input, user }: GetSellersParams) {
 
 	const sellerIds = statsBySeller.map((seller) => seller.sellerId);
 	const sellersResult = await db.query.sellers.findMany({
-		where: and(eq(sellers.organizacaoId, userOrgId), inArray(sellers.id, sellerIds)),
+		where: and(eq(sellers.organizacaoId, userOrgId), applyRestrictiveSalesFilters ? inArray(sellers.id, sellerIds) : undefined),
 	});
 
 	const sellersWithStats = sellersResult.map((seller) => {
@@ -290,4 +297,49 @@ const updateSellerHandler: NextApiHandler<TUpdateSellerOutput> = async (req, res
 	return res.status(200).json(data);
 };
 
-export default apiHandler({ GET: getSellersHandler, PUT: updateSellerHandler });
+const CreateSellerInputSchema = SellerSchema.omit({ dataInsercao: true });
+export type TCreateSellerInput = z.infer<typeof CreateSellerInputSchema>;
+
+type CreateSellerParams = {
+	input: TCreateSellerInput;
+	user: TAuthUserSession["user"];
+};
+
+async function createSeller({ input, user }: CreateSellerParams) {
+	const userOrgId = user.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const existingSeller = await db.query.sellers.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.identificador, input.identificador), eq(fields.organizacaoId, userOrgId)),
+	});
+
+	if (existingSeller) throw new createHttpError.Conflict("Já existe um vendedor com este identificador nesta organização.");
+
+	const createdSeller = await db
+		.insert(sellers)
+		.values({ ...input, organizacaoId: userOrgId })
+		.returning({ id: sellers.id });
+
+	const createdSellerId = createdSeller[0]?.id;
+	if (!createdSellerId) throw new createHttpError.InternalServerError("Erro ao criar vendedor.");
+
+	return {
+		data: {
+			createdId: createdSellerId,
+		},
+		message: "Vendedor criado com sucesso.",
+	};
+}
+
+export type TCreateSellerOutput = Awaited<ReturnType<typeof createSeller>>;
+
+const createSellerHandler: NextApiHandler<TCreateSellerOutput> = async (req, res) => {
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const input = CreateSellerInputSchema.parse(req.body);
+	const data = await createSeller({ input, user: sessionUser.user });
+	return res.status(200).json(data);
+};
+
+export default apiHandler({ GET: getSellersHandler, PUT: updateSellerHandler, POST: createSellerHandler });

@@ -98,12 +98,7 @@ async function getSellerStats({ user, input }: GetSellerStatsParams) {
 	const totalSalesItemsResult = await db
 		.select({ total: sum(saleItems.quantidade) })
 		.from(saleItems)
-		.where(
-			and(
-				eq(saleItems.organizacaoId, userOrgId),
-				inArray(saleItems.vendaId, db.select({ id: sales.id }).from(sales).where(saleWhere)),
-			),
-		);
+		.where(and(eq(saleItems.organizacaoId, userOrgId), inArray(saleItems.vendaId, db.select({ id: sales.id }).from(sales).where(saleWhere))));
 	const totalSalesItems = totalSalesItemsResult[0]?.total ? Number(totalSalesItemsResult[0].total) : 0;
 
 	const avgSalesItemsPerSale = totalSalesItems / salesCount;

@@ -3,15 +3,14 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { updatePartner as updatePartnerMutation } from "@/lib/mutations/partners";
-import { updateSeller as updateSellerMutation } from "@/lib/mutations/sellers";
 import { usePartnerById } from "@/lib/queries/partners";
-import { useSellerById } from "@/lib/queries/sellers";
 import type { TPartnerState } from "@/schemas/partners";
-import type { TSeller, TSellerState } from "@/schemas/sellers";
+import { usePartnerState } from "@/state-hooks/use-partner-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { GeneralBlock } from "./Blocks/General";
+
 type EditPartnerProps = {
 	partnerId: string;
 	user: TAuthUserSession["user"];
@@ -23,46 +22,33 @@ type EditPartnerProps = {
 	};
 	closeModal: () => void;
 };
+
 export default function EditPartner({ partnerId, user, callbacks, closeModal }: EditPartnerProps) {
 	const queryClient = useQueryClient();
-	const { data: partner, queryKey, isLoading, isError, isSuccess, error } = usePartnerById({ id: partnerId });
-	const [infoHolder, setInfoHolder] = useState<TPartnerState>({
-		partner: {
-			nome: "",
-			identificador: "",
-			telefone: "",
-			telefoneBase: "",
-			email: "",
-			avatarUrl: "",
-			dataInsercao: new Date(),
-		},
-		avatarHolder: {
-			file: null,
-			previewUrl: null,
-		},
-	});
-
-	function updatePartner(changes: Partial<TPartnerState["partner"]>) {
-		setInfoHolder((prev) => ({ ...prev, partner: { ...prev.partner, ...changes } }));
-	}
-
-	function updateAvatar(changes: Partial<TPartnerState["avatarHolder"]>) {
-		setInfoHolder((prev) => ({ ...prev, avatarHolder: { ...prev.avatarHolder, ...changes } }));
-	}
+	const { state, updatePartner, updateAvatarHolder, redefineState } = usePartnerState();
+	const { data: partner, queryKey, isLoading, error } = usePartnerById({ id: partnerId });
 
 	async function handleUpdatePartnerMutation(state: TPartnerState) {
 		let partnerAvatarUrl = state.partner.avatarUrl;
 		if (state.avatarHolder.file) {
-			const { url, format, size } = await uploadFile({ file: state.avatarHolder.file, fileName: state.partner.nome, prefix: "avatars" });
+			const { url } = await uploadFile({
+				file: state.avatarHolder.file,
+				fileName: state.partner.nome,
+				prefix: "avatars",
+			});
 			partnerAvatarUrl = url;
 		}
-		return await updatePartnerMutation({ partnerId: partnerId, partner: { ...state.partner, avatarUrl: partnerAvatarUrl } });
+		return await updatePartnerMutation({
+			partnerId: partnerId,
+			partner: { ...state.partner, avatarUrl: partnerAvatarUrl },
+		});
 	}
+
 	const { mutate: mutateEditPartner, isPending } = useMutation({
 		mutationKey: ["update-partner", partnerId],
 		mutationFn: handleUpdatePartnerMutation,
 		onMutate: async () => {
-			await queryClient.cancelQueries({ queryKey: queryKey });
+			await queryClient.cancelQueries({ queryKey });
 			if (callbacks?.onMutate) callbacks.onMutate();
 		},
 		onSuccess: (data) => {
@@ -74,20 +60,23 @@ export default function EditPartner({ partnerId, user, callbacks, closeModal }: 
 			return toast.error(getErrorMessage(error));
 		},
 		onSettled: async () => {
-			await queryClient.invalidateQueries({ queryKey: queryKey });
+			await queryClient.invalidateQueries({ queryKey });
 			if (callbacks?.onSettled) callbacks.onSettled();
 		},
 	});
+
 	useEffect(() => {
-		if (partner)
-			setInfoHolder({
+		if (partner) {
+			redefineState({
 				partner: partner,
 				avatarHolder: {
 					file: null,
 					previewUrl: null,
 				},
 			});
-	}, [partner]);
+		}
+	}, [partner, redefineState]);
+
 	return (
 		<ResponsiveMenu
 			menuTitle="EDITAR PARCEIRO"
@@ -95,14 +84,14 @@ export default function EditPartner({ partnerId, user, callbacks, closeModal }: 
 			menuActionButtonText="ATUALIZAR PARCEIRO"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={() => {
-				mutateEditPartner({ partner: infoHolder.partner, avatarHolder: infoHolder.avatarHolder });
+				mutateEditPartner(state);
 			}}
 			actionIsLoading={isPending}
 			stateIsLoading={isLoading}
 			stateError={error ? getErrorMessage(error) : null}
 			closeMenu={closeModal}
 		>
-			<GeneralBlock partner={infoHolder.partner} updatePartner={updatePartner} avatarHolder={infoHolder.avatarHolder} updateAvatar={updateAvatar} />
+			<GeneralBlock partner={state.partner} updatePartner={updatePartner} avatarHolder={state.avatarHolder} updateAvatar={updateAvatarHolder} />
 		</ResponsiveMenu>
 	);
 }
