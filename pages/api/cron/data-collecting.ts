@@ -122,6 +122,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			await db
 				.insert(utils)
 				.values({
+					organizacaoId: organization.id,
 					identificador: "ONLINE_IMPORTATION",
 					valor: {
 						identificador: "ONLINE_IMPORTATION",
@@ -784,6 +785,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		} catch (error) {
 			console.error(`[ORG: ${organization.id}] [ERROR] Running into error for the data collecting cron`, error);
 			await db.insert(utils).values({
+				organizacaoId: organization.id,
 				identificador: "ONLINE_IMPORTATION",
 				valor: {
 					identificador: "ONLINE_IMPORTATION",

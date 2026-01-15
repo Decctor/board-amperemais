@@ -1,625 +1,129 @@
+import Settings from "@/app/dashboard/settings/page";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { updateRFMConfig } from "@/lib/mutations/configs";
 import { useRFMConfigQuery } from "@/lib/queries/configs";
 import { cn } from "@/lib/utils";
 import type { TRFMConfig } from "@/utils/rfm";
-import { useMutation } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import NumberInput from "../Inputs/NumberInput";
+import { Clock, Edit, Plus, Settings2, ShoppingCart } from "lucide-react";
+import { useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
-import { LoadingButton } from "../loading-button";
+import EditRFMConfig from "../Modals/RFMConfig/EditRFMConfig";
+import NewRFMConfig from "../Modals/RFMConfig/NewRFMConfig";
+import { Button } from "../ui/button";
 
 type SettingsSegmentsProps = {
 	user: TAuthUserSession["user"];
 };
+
 export default function SettingsSegments({ user }: SettingsSegmentsProps) {
 	const { data, isLoading, isError, isSuccess, error } = useRFMConfigQuery();
-	const [infoHolder, setInfoHolder] = useState<TRFMConfig>({
-		identificador: "CONFIG_RFM",
-		recencia: {
-			"1": { min: 0, max: 0 },
-			"2": { min: 0, max: 0 },
-			"3": { min: 0, max: 0 },
-			"4": { min: 0, max: 0 },
-			"5": { min: 0, max: 0 },
-		},
-		frequencia: {
-			"1": { min: 0, max: 0 },
-			"2": { min: 0, max: 0 },
-			"3": { min: 0, max: 0 },
-			"4": { min: 0, max: 0 },
-			"5": { min: 0, max: 0 },
-		},
-		monetario: {
-			"1": { min: 0, max: 0 },
-			"2": { min: 0, max: 0 },
-			"3": { min: 0, max: 0 },
-			"4": { min: 0, max: 0 },
-			"5": { min: 0, max: 0 },
-		},
-	});
-	useEffect(() => {
-		if (data) setInfoHolder(data);
-	}, [data]);
+	const [editRFMConfigMenuIsOpen, setEditRFMConfigMenuIsOpen] = useState(false);
+	const [newRFMConfigMenuIsOpen, setNewRFMConfigMenuIsOpen] = useState(false);
 
-	const { mutate: updateRFMConfigMutation, isPending } = useMutation({
-		mutationKey: ["update-rfm-config"],
-		mutationFn: updateRFMConfig,
-		onSuccess: (data) => {
-			toast.success(data);
-		},
-	});
+	const hasRFMConfigDefined = isSuccess && data;
+	const hasNoRFMConfigDefined = isSuccess && !data;
 	return (
-		<div className={cn("flex w-full flex-col gap-3")}>
-			<div className="w-full flex flex-col gap-2">
-				<div className="w-full flex items-center gap-2">
-					<h1 className="w-1/4 text-center">NOTA</h1>
-					<h1 className="w-1/4 text-center">FREQUÊNCIA</h1>
-					<h1 className="w-1/4 text-center">RECÊNCIA</h1>
-					<h1 className="w-1/4 text-center">MONETÁRIO</h1>
-				</div>
-				{isLoading ? <LoadingComponent /> : null}
-				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-				{isSuccess ? (
-					<div className="w-full flex flex-col gap-2">
-						<div className="w-full flex items-center gap-2">
-							<h1 className="w-1/4 text-center">1</h1>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.frequencia[1].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"1": { ...prev.frequencia["1"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.frequencia[1].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"1": { ...prev.frequencia["1"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
+		<div className={cn("flex w-full flex-col gap-6")}>
+			{hasRFMConfigDefined ? (
+				<div className="w-full flex flex-col gap-6">
+					<div className="flex items-center justify-end border-b pb-4">
+						<Button size="sm" className="flex items-center gap-2" onClick={() => setEditRFMConfigMenuIsOpen(true)}>
+							<Edit className="h-4 w-4" />
+							EDITAR MATRIZ
+						</Button>
+					</div>
+
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+						{/* Frequência Card */}
+						<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+							<div className="flex items-center justify-between">
+								<h1 className="text-xs font-medium tracking-tight uppercase">FREQUÊNCIA</h1>
+								<div className="flex items-center gap-2">
+									<div className="flex items-center justify-center w-5 h-5 min-w-5 min-h-5 rounded-full bg-orange-200 text-orange-700">
+										<ShoppingCart className="h-3 min-h-3 w-3 min-w-3" />
+									</div>
 								</div>
 							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.recencia[1].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												recencia: {
-													...prev.recencia,
-													"1": { ...prev.recencia["1"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.recencia[1].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												recencia: {
-													...prev.recencia,
-													"1": { ...prev.recencia["1"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.monetario[1].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												monetario: {
-													...prev.monetario,
-													"1": { ...prev.monetario["1"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.monetario[1].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												monetario: {
-													...prev.monetario,
-													"1": { ...prev.monetario["1"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
+							<div className="flex w-full flex-col gap-1.5">
+								{([5, 4, 3, 2, 1] as const).map((score) => (
+									<div key={score} className="flex items-center justify-between px-2 py-1 rounded-lg bg-orange-100 border border-orange-100">
+										<span className="font-bold text-orange-700">NOTA {score}</span>
+										<span className="text-sm font-medium">
+											{data?.frequencia[score].min} a {data?.frequencia[score].max} pedidos
+										</span>
+									</div>
+								))}
 							</div>
 						</div>
-						<div className="w-full flex items-center gap-2">
-							<h1 className="w-1/4 text-center">2</h1>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.frequencia[2].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"2": { ...prev.frequencia["2"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.frequencia[2].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"2": { ...prev.frequencia["2"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
+
+						{/* Recência Card */}
+						<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+							<div className="flex items-center justify-between">
+								<h1 className="text-xs font-medium tracking-tight uppercase">RECÊNCIA</h1>
+								<div className="flex items-center gap-2">
+									<div className="flex items-center justify-center w-5 h-5 min-w-5 min-h-5 rounded-full bg-blue-200 text-blue-700">
+										<Clock className="h-3 min-h-3 w-3 min-w-3" />
+									</div>
 								</div>
 							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.recencia[2].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												recencia: {
-													...prev.recencia,
-													"2": { ...prev.recencia["2"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.recencia[2].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												recencia: {
-													...prev.recencia,
-													"2": { ...prev.recencia["2"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.monetario[2].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												monetario: {
-													...prev.monetario,
-													"2": { ...prev.monetario["2"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.monetario[2].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												monetario: {
-													...prev.monetario,
-													"2": { ...prev.monetario["2"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
+							<div className="flex w-full flex-col gap-1.5">
+								{([5, 4, 3, 2, 1] as const).map((score) => (
+									<div key={score} className="flex items-center justify-between px-2 py-1 rounded-lg bg-blue-100 border border-blue-100">
+										<span className="font-bold text-blue-700">NOTA {score}</span>
+										<span className="text-sm font-medium">
+											{data?.recencia[score].min} a {data?.recencia[score].max} dias
+										</span>
+									</div>
+								))}
 							</div>
 						</div>
-						<div className="w-full flex items-center gap-2">
-							<h1 className="w-1/4 text-center">3</h1>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.frequencia[3].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"3": { ...prev.frequencia["3"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.frequencia[3].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"3": { ...prev.frequencia["3"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
+
+						{/* Monetário Card */}
+						<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+							<div className="flex items-center justify-between">
+								<h1 className="text-xs font-medium tracking-tight uppercase">MONETÁRIO</h1>
+								<div className="flex items-center gap-2">
+									<div className="flex items-center justify-center w-5 h-5 min-w-5 min-h-5 rounded-full bg-green-200 text-green-700">
+										<Settings2 className="h-3 min-h-3 w-3 min-w-3" />
+									</div>
 								</div>
 							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<NumberInput
-									label="MÍNIMO"
-									placeholder="Preencha aqui o valor mínimo para a nota"
-									value={infoHolder.recencia[3].min}
-									handleChange={(value) =>
-										setInfoHolder((prev) => ({
-											...prev,
-											recencia: {
-												...prev.recencia,
-												"3": { ...prev.recencia["3"], min: value },
-											},
-										}))
-									}
-									width="100%"
-								/>
-								<NumberInput
-									label="MÁXIMO"
-									placeholder="Preencha aqui o valor máximo para a nota"
-									value={infoHolder.recencia[3].max}
-									handleChange={(value) =>
-										setInfoHolder((prev) => ({
-											...prev,
-											recencia: {
-												...prev.recencia,
-												"3": { ...prev.recencia["3"], max: value },
-											},
-										}))
-									}
-									width="100%"
-								/>
-							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<NumberInput
-									label="MÍNIMO"
-									placeholder="Preencha aqui o valor mínimo para a nota"
-									value={infoHolder.monetario[3].min}
-									handleChange={(value) =>
-										setInfoHolder((prev) => ({
-											...prev,
-											monetario: {
-												...prev.monetario,
-												"3": { ...prev.monetario["3"], min: value },
-											},
-										}))
-									}
-									width="100%"
-								/>
-								<NumberInput
-									label="MÁXIMO"
-									placeholder="Preencha aqui o valor máximo para a nota"
-									value={infoHolder.monetario[3].max}
-									handleChange={(value) =>
-										setInfoHolder((prev) => ({
-											...prev,
-											monetario: {
-												...prev.monetario,
-												"3": { ...prev.monetario["3"], max: value },
-											},
-										}))
-									}
-									width="100%"
-								/>
-							</div>
-						</div>
-						<div className="w-full flex items-center gap-2">
-							<h1 className="w-1/4 text-center">4</h1>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.frequencia[4].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"4": { ...prev.frequencia["4"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.frequencia[4].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"4": { ...prev.frequencia["4"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.recencia[4].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												recencia: {
-													...prev.recencia,
-													"4": { ...prev.recencia["4"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.recencia[4].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												recencia: {
-													...prev.recencia,
-													"4": { ...prev.recencia["4"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.monetario[4].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												monetario: {
-													...prev.monetario,
-													"4": { ...prev.monetario["4"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.monetario[4].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												monetario: {
-													...prev.monetario,
-													"4": { ...prev.monetario["4"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-							</div>
-						</div>
-						<div className="w-full flex items-center gap-2">
-							<h1 className="w-1/4 text-center">5</h1>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.frequencia[5].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"5": { ...prev.frequencia["5"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.frequencia[5].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												frequencia: {
-													...prev.frequencia,
-													"5": { ...prev.frequencia["5"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.recencia[5].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												recencia: {
-													...prev.recencia,
-													"5": { ...prev.recencia["5"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.recencia[5].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												recencia: {
-													...prev.recencia,
-													"5": { ...prev.recencia["5"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-							</div>
-							<div className="w-1/4 flex items-center gap-1 flex-col lg:flex-row">
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÍNIMO"
-										placeholder="Preencha aqui o valor mínimo para a nota"
-										value={infoHolder.monetario[5].min}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												monetario: {
-													...prev.monetario,
-													"5": { ...prev.monetario["5"], min: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
-								<div className="w-full lg:w-1/2">
-									<NumberInput
-										label="MÁXIMO"
-										placeholder="Preencha aqui o valor máximo para a nota"
-										value={infoHolder.monetario[5].max}
-										handleChange={(value) =>
-											setInfoHolder((prev) => ({
-												...prev,
-												monetario: {
-													...prev.monetario,
-													"5": { ...prev.monetario["5"], max: value },
-												},
-											}))
-										}
-										width="100%"
-									/>
-								</div>
+							<div className="flex w-full flex-col gap-1.5">
+								{([5, 4, 3, 2, 1] as const).map((score) => (
+									<div key={score} className="flex items-center justify-between px-2 py-1 rounded-lg bg-green-100 border border-green-100">
+										<span className="font-bold text-green-700">NOTA {score}</span>
+										<span className="text-sm font-medium">
+											R$ {data?.monetario[score].min.toLocaleString()} a R$ {data?.monetario[score].max.toLocaleString()}
+										</span>
+									</div>
+								))}
 							</div>
 						</div>
 					</div>
-				) : null}
-			</div>
-			<div className="w-full flex items-center justify-end">
-				<LoadingButton loading={isPending || !isSuccess} onClick={() => updateRFMConfigMutation(infoHolder)}>
-					SALVAR
-				</LoadingButton>
-			</div>
+
+					{editRFMConfigMenuIsOpen && <EditRFMConfig user={user} rfmConfig={data} closeModal={() => setEditRFMConfigMenuIsOpen(false)} />}
+				</div>
+			) : null}
+			{hasNoRFMConfigDefined ? (
+				<div className="flex flex-col items-center justify-center py-20 px-4 text-center gap-6 rounded-2xl border-2 border-dashed bg-muted/30">
+					<div className="p-4 rounded-full bg-primary/10 text-primary">
+						<Settings2 className="h-12 w-12" />
+					</div>
+					<div className="flex flex-col gap-2 max-w-md">
+						<h2 className="text-2xl font-bold tracking-tight">Nenhuma configuração encontrada</h2>
+						<p className="text-muted-foreground">
+							Sua organização ainda não possui uma matriz RFM definida. Configure-a para começar a segmentar seus clientes de forma inteligente.
+						</p>
+					</div>
+					<Button onClick={() => setNewRFMConfigMenuIsOpen(true)} size="lg" className="gap-2 px-8">
+						<Plus className="h-5 w-5" />
+						DEFINIR CONFIGURAÇÃO RFM
+					</Button>
+
+					{newRFMConfigMenuIsOpen && <NewRFMConfig user={user} closeModal={() => setNewRFMConfigMenuIsOpen(false)} />}
+				</div>
+			) : null}
 		</div>
 	);
 }

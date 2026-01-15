@@ -1,13 +1,12 @@
-import type { TRFMConfig } from "@/utils/rfm";
+import type { TCreateRFMConfigInput, TCreateRFMConfigOutput, TUpdateRFMConfigInput, TUpdateRFMConfigOutput } from "@/pages/api/settings/rfm";
 import axios from "axios";
 
-export async function updateRFMConfig(info: TRFMConfig) {
-	try {
-		const { data } = await axios.put("/api/settings/rfm", info);
+export async function updateRFMConfig(info: TUpdateRFMConfigInput) {
+	const { data } = await axios.put<TUpdateRFMConfigOutput>("/api/settings/rfm", info);
+	return data;
+}
 
-		return data.message as string;
-	} catch (error) {
-		console.log("Error running updateRFMConfig", error);
-		throw error;
-	}
+export async function createRFMConfig(info: TCreateRFMConfigInput) {
+	const { data } = await axios.post<TCreateRFMConfigOutput>("/api/settings/rfm", info);
+	return data;
 }

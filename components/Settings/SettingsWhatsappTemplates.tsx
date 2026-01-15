@@ -38,7 +38,7 @@ export default function SettingsWhatsappTemplates({ user }: SettingsWhatsappTemp
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-start gap-2">
+			<div className="w-full flex items-center justify-end gap-2">
 				<Button size="sm" className="flex items-center gap-2" onClick={() => setNewWhatsappTemplateModalIsOpen(true)}>
 					<Plus className="w-4 h-4 min-w-4 min-h-4" />
 					NOVO TEMPLATE

@@ -1,7 +1,10 @@
 import z from "zod";
 
-const UtilsRFmSchema = z.object({
+export const UtilsRFMSchema = z.object({
 	identificador: z.enum(["CONFIG_RFM"]),
+	organizacaoId: z.string({
+		invalid_type_error: "Tipo não válido para a organização ID.",
+	}),
 	valor: z.object({
 		identificador: z.enum(["CONFIG_RFM"]),
 		frequencia: z.object({
@@ -75,6 +78,10 @@ const UtilsRFmSchema = z.object({
 
 const UtilsOnlineImportationSchema = z.object({
 	identificador: z.enum(["ONLINE_IMPORTATION"]),
+	organizacaoId: z.string({
+		required_error: "Organização ID não informada.",
+		invalid_type_error: "Tipo não válido para a organização ID.",
+	}),
 	valor: z.object({
 		identificador: z.enum(["ONLINE_IMPORTATION"]),
 		dados: z.record(z.string(), z.any()),
@@ -83,6 +90,10 @@ const UtilsOnlineImportationSchema = z.object({
 
 const UtilsSalesPromoCampaignSchema = z.object({
 	identificador: z.enum(["SALES_PROMO_CAMPAIGN"]),
+	organizacaoId: z.string({
+		required_error: "Organização ID não informada.",
+		invalid_type_error: "Tipo não válido para a organização ID.",
+	}),
 	valor: z.object({
 		identificador: z.enum(["SALES_PROMO_CAMPAIGN"]),
 		dados: z.object({
@@ -147,9 +158,9 @@ const UtilsSalesPromoCampaignSchema = z.object({
 	}),
 });
 
-export const UtilsSchema = z.discriminatedUnion("identificador", [UtilsRFmSchema, UtilsOnlineImportationSchema, UtilsSalesPromoCampaignSchema]);
+export const UtilsSchema = z.discriminatedUnion("identificador", [UtilsRFMSchema, UtilsOnlineImportationSchema, UtilsSalesPromoCampaignSchema]);
 export const UtilsIdentifierSchema = z.enum(["CONFIG_RFM", "ONLINE_IMPORTATION", "SALES_PROMO_CAMPAIGN"]);
 export type TUtilsIdentifier = z.infer<typeof UtilsIdentifierSchema>;
-export type TUtilsRFMConfig = z.infer<typeof UtilsRFmSchema>;
+export type TUtilsRFMConfig = z.infer<typeof UtilsRFMSchema>;
 export type TUtilsValue = z.infer<typeof UtilsSchema>["valor"];
 export type TUtilsSalesPromoCampaignConfig = z.infer<typeof UtilsSalesPromoCampaignSchema>;
