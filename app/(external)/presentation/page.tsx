@@ -111,8 +111,8 @@ function AnalyticsSlideContent() {
 					</div>
 				</div>
 				<p className="text-lg text-white/60 mb-8 mt-8 leading-relaxed">
-					Tenha o controle total da sua operação. Acompanhe rankings de vendedores, desempenho de parceiros (afiliados) e vendas de produtos em
-					dashboards intuitivos e detalhados.
+					Tenha o controle total da sua operação. Acompanhe rankings de vendedores, desempenho de parceiros (afiliados) e vendas de produtos em dashboards
+					intuitivos e detalhados.
 				</p>
 			</div>
 
@@ -264,13 +264,7 @@ const SLIDES: SlideData[] = [
 					className="relative"
 				>
 					<div className="absolute inset-0 bg-blue-500/20 blur-[80px] rounded-full" />
-					<Image
-						src={LogoCompleteVerticalColorful}
-						alt="RecompraCRM"
-						width={180}
-						height={180}
-						className="relative z-10 drop-shadow-2xl"
-					/>
+					<Image src={LogoCompleteVerticalColorful} alt="RecompraCRM" width={180} height={180} className="relative z-10 drop-shadow-2xl" />
 				</motion.div>
 
 				<div className="text-center space-y-6">
@@ -290,7 +284,8 @@ const SLIDES: SlideData[] = [
 						className="flex flex-col gap-4 items-center"
 					>
 						<p className="text-xl text-blue-100/60 max-w-2xl text-balance leading-relaxed">
-							O <strong className="text-blue-400 font-semibold">RecompraCRM</strong> impulsiona suas vendas através da fidelização inteligente da base de clientes.
+							O <strong className="text-blue-400 font-semibold">RecompraCRM</strong> impulsiona suas vendas através da fidelização inteligente da base de
+							clientes.
 						</p>
 
 						<div className="flex flex-wrap justify-center gap-3 mt-4">
@@ -300,7 +295,7 @@ const SLIDES: SlideData[] = [
 								</div>
 								<span className="text-sm font-medium tracking-wide">Programas de Cashback</span>
 							</div>
-							
+
 							<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-100 shadow-lg shadow-purple-900/10 backdrop-blur-sm">
 								<div className="bg-green-500 rounded-full p-1">
 									<MessageCircle className="w-3 h-3 text-black" fill="currentColor" />
@@ -364,7 +359,7 @@ const SLIDES: SlideData[] = [
 					{/* Differentiators */}
 					<div className="relative">
 						<div className="absolute inset-0 bg-blue-500/5 rounded-xl border border-blue-500/20" />
-						
+
 						<div className="relative p-1 space-y-1">
 							{/* Integração Total */}
 							<div className="p-3 grid md:grid-cols-12 gap-4 items-center rounded-lg hover:bg-blue-500/10 transition-colors">
@@ -453,7 +448,6 @@ const SLIDES: SlideData[] = [
 									<CheckCircle2 className="w-6 h-6 text-blue-400" />
 								</div>
 							</div>
-
 						</div>
 					</div>
 				</div>
@@ -481,64 +475,68 @@ const SLIDES: SlideData[] = [
 						</div>
 					</div>
 					<p className="text-lg text-white/60 mb-8 leading-relaxed">
-						Transforme o balcão em um ponto de experiência. Com o POI (Tablet), o cliente visualiza seu cashback, vê ofertas personalizadas e se engaja
-						com a marca enquanto é atendido.
+						Transforme o balcão em um ponto de experiência. Com o POI (Tablet), o cliente visualiza seu cashback, vê ofertas personalizadas e se engaja com
+						a marca enquanto é atendido.
 					</p>
 				</div>
 
 				<div className="relative">
 					{/* Mock UI POI (Tablet) */}
 					<div className="bg-black border-[8px] border-zinc-800 rounded-[2rem] p-2 shadow-2xl flex flex-col gap-4 aspect-[4/3] relative overflow-hidden group">
-                        {/* Status Bar */}
-                        <div className="absolute top-0 inset-x-0 h-6 bg-black z-20 flex justify-between px-6 items-center">
-                            <div className="text-[10px] text-white/50">9:41</div>
-                            <div className="flex gap-1">
-                                <div className="w-3 h-3 rounded-full bg-white/20"/>
-                                <div className="w-3 h-3 rounded-full bg-white/20"/>
-                            </div>
-                        </div>
+						{/* Status Bar */}
+						<div className="absolute top-0 inset-x-0 h-6 bg-black z-20 flex justify-between px-6 items-center">
+							<div className="text-[10px] text-white/50">9:41</div>
+							<div className="flex gap-1">
+								<div className="w-3 h-3 rounded-full bg-white/20" />
+								<div className="w-3 h-3 rounded-full bg-white/20" />
+							</div>
+						</div>
 
-                        {/* POI App Content */}
-                        <div className="flex-1 bg-zinc-950 rounded-2xl overflow-hidden flex flex-col relative z-10 pt-8 px-6 pb-6">
-                            {/* Header */}
-                            <div className="flex flex-col items-center mb-6">
-                                <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mb-2">
-                                     <Store className="w-6 h-6 text-white" />
-                                </div>
-                                <div className="h-2 w-24 bg-white/20 rounded-full"/>
-                            </div>
+						{/* POI App Content */}
+						<div className="flex-1 bg-zinc-950 rounded-2xl overflow-hidden flex flex-col relative z-10 pt-8 px-6 pb-6">
+							{/* Header */}
+							<div className="flex flex-col items-center mb-6">
+								<div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mb-2">
+									<Store className="w-6 h-6 text-white" />
+								</div>
+								<div className="h-2 w-24 bg-white/20 rounded-full" />
+							</div>
 
-                            {/* Main Actions */}
-                            <div className="flex gap-4 h-full">
-                                {/* Left: Cashier/Sale */}
-                                <div className="flex-1 bg-blue-600 rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-2 relative overflow-hidden group/card cursor-pointer">
-                                     <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/card:opacity-100 transition-opacity" />
-                                     <div className="bg-white/20 p-3 rounded-full mb-1">
-                                        <ShoppingCart className="w-6 h-6 text-white" />
-                                     </div>
-                                     <div className="font-black text-white text-lg leading-tight">GANHAR<br/>CASHBACK</div>
-                                </div>
+							{/* Main Actions */}
+							<div className="flex gap-4 h-full">
+								{/* Left: Cashier/Sale */}
+								<div className="flex-1 bg-blue-600 rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-2 relative overflow-hidden group/card cursor-pointer">
+									<div className="absolute inset-0 bg-white/10 opacity-0 group-hover/card:opacity-100 transition-opacity" />
+									<div className="bg-white/20 p-3 rounded-full mb-1">
+										<ShoppingCart className="w-6 h-6 text-white" />
+									</div>
+									<div className="font-black text-white text-lg leading-tight">
+										GANHAR
+										<br />
+										CASHBACK
+									</div>
+								</div>
 
-                                {/* Right: Secondary */}
-                                <div className="flex flex-col gap-4 w-1/3">
-                                    <div className="flex-1 bg-zinc-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center gap-1 border border-white/5">
-                                         <Coins className="w-5 h-5 text-yellow-400" />
-                                         <div className="text-[10px] font-bold text-white/60">SALDO</div>
-                                    </div>
-                                    <div className="flex-1 bg-zinc-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center gap-1 border border-white/5">
-                                         <Trophy className="w-5 h-5 text-orange-400" />
-                                         <div className="text-[10px] font-bold text-white/60">RANKING</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+								{/* Right: Secondary */}
+								<div className="flex flex-col gap-4 w-1/3">
+									<div className="flex-1 bg-zinc-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center gap-1 border border-white/5">
+										<Coins className="w-5 h-5 text-yellow-400" />
+										<div className="text-[10px] font-bold text-white/60">SALDO</div>
+									</div>
+									<div className="flex-1 bg-zinc-800 rounded-2xl p-2 flex flex-col items-center justify-center text-center gap-1 border border-white/5">
+										<Trophy className="w-5 h-5 text-orange-400" />
+										<div className="text-[10px] font-bold text-white/60">RANKING</div>
+									</div>
+								</div>
+							</div>
+						</div>
 					</div>
 
 					{/* Floating Hand/Touch Indicator (Optional) */}
 					<div className="absolute bottom-10 right-10 w-12 h-12 bg-white/20 rounded-full animate-ping duration-[3000ms]" />
-                    <div className="absolute bottom-10 right-10 w-12 h-12 bg-white/30 backdrop-blur-md rounded-full border border-white/50 flex items-center justify-center shadow-lg">
-                        <div className="w-8 h-8 rounded-full bg-white/80" />
-                    </div>
+					<div className="absolute bottom-10 right-10 w-12 h-12 bg-white/30 backdrop-blur-md rounded-full border border-white/50 flex items-center justify-center shadow-lg">
+						<div className="w-8 h-8 rounded-full bg-white/80" />
+					</div>
 				</div>
 			</div>
 		),
@@ -567,9 +565,7 @@ const SLIDES: SlideData[] = [
 							</div>
 							<div>
 								<h4 className="text-white font-semibold mb-1">Passagem de Bastão</h4>
-								<p className="text-sm text-white/60">
-									Detectou interesse em fechar? A IA alerta seu vendedor e transfere o atendimento com todo o contexto.
-								</p>
+								<p className="text-sm text-white/60">Detectou interesse em fechar? A IA alerta seu vendedor e transfere o atendimento com todo o contexto.</p>
 							</div>
 						</div>
 					</div>
@@ -759,8 +755,8 @@ const SLIDES: SlideData[] = [
 						</div>
 					</div>
 					<p className="text-lg text-white/60 mb-8 leading-relaxed">
-						Transforme dados brutos em estratégias de lealdade. Utilize nossa análise RFM para identificar quem são seus melhores clientes e crie
-						programas de Cashback que incentivam o retorno imediato.
+						Transforme dados brutos em estratégias de lealdade. Utilize nossa análise RFM para identificar quem são seus melhores clientes e crie programas
+						de Cashback que incentivam o retorno imediato.
 					</p>
 				</div>
 			</div>
@@ -785,7 +781,7 @@ const SLIDES: SlideData[] = [
 					<div className="absolute top-0 right-0 p-4 opacity-50">
 						<FileJson className="w-24 h-24 text-white/5" />
 					</div>
-					
+
 					<div className="flex items-center gap-4 mb-6 z-10">
 						<div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center p-2 shadow-lg">
 							<Image src={OnlineSoftwareLogo} alt="Online Software" className="w-full h-auto object-contain" />
@@ -803,21 +799,39 @@ const SLIDES: SlideData[] = [
 					<div className="flex-1 bg-black/50 rounded-xl p-4 font-mono text-xs text-blue-100/70 overflow-hidden relative border border-white/5">
 						<div className="absolute top-0 left-0 w-full h-8 bg-linear-to-b from-zinc-900 to-transparent z-10" />
 						<div className="space-y-1 opacity-80">
-							<p><span className="text-pink-400">"cliente"</span>: <span className="text-green-300">"João da Silva"</span>,</p>
-							<p><span className="text-pink-400">"documento"</span>: <span className="text-green-300">"123.456.789-00"</span>,</p>
-							<p><span className="text-pink-400">"valor"</span>: <span className="text-yellow-300">150.00</span>,</p>
-							<p><span className="text-pink-400">"itens"</span>: [</p>
+							<p>
+								<span className="text-pink-400">"cliente"</span>: <span className="text-green-300">"João da Silva"</span>,
+							</p>
+							<p>
+								<span className="text-pink-400">"documento"</span>: <span className="text-green-300">"123.456.789-00"</span>,
+							</p>
+							<p>
+								<span className="text-pink-400">"valor"</span>: <span className="text-yellow-300">150.00</span>,
+							</p>
+							<p>
+								<span className="text-pink-400">"itens"</span>: [
+							</p>
 							<div className="pl-4 border-l border-white/10">
 								<p>{"{"}</p>
-								<p className="pl-4"><span className="text-pink-400">"codigo"</span>: <span className="text-green-300">"SKU-123"</span>,</p>
-								<p className="pl-4"><span className="text-pink-400">"descricao"</span>: <span className="text-green-300">"Camisa Polo"</span>,</p>
-								<p className="pl-4"><span className="text-pink-400">"vprod"</span>: <span className="text-yellow-300">75.00</span>,</p>
-								<p className="pl-4"><span className="text-pink-400">"grupo"</span>: <span className="text-green-300">"Vestuário"</span></p>
+								<p className="pl-4">
+									<span className="text-pink-400">"codigo"</span>: <span className="text-green-300">"SKU-123"</span>,
+								</p>
+								<p className="pl-4">
+									<span className="text-pink-400">"descricao"</span>: <span className="text-green-300">"Camisa Polo"</span>,
+								</p>
+								<p className="pl-4">
+									<span className="text-pink-400">"vprod"</span>: <span className="text-yellow-300">75.00</span>,
+								</p>
+								<p className="pl-4">
+									<span className="text-pink-400">"grupo"</span>: <span className="text-green-300">"Vestuário"</span>
+								</p>
 								<p>{"},"}</p>
 								<p>{"..."}</p>
 							</div>
 							<p>]</p>
-							<p><span className="text-pink-400">"parceiro"</span>: <span className="text-green-300">"Influencer 01"</span></p>
+							<p>
+								<span className="text-pink-400">"parceiro"</span>: <span className="text-green-300">"Influencer 01"</span>
+							</p>
 						</div>
 						<div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-zinc-900 via-zinc-900/80 to-transparent z-10 flex items-end justify-center pb-4">
 							<span className="text-white/40 text-xs">Análise detalhada de Itens, Grupos e Parceiros</span>
@@ -848,22 +862,34 @@ const SLIDES: SlideData[] = [
 					<div className="flex-1 bg-black/50 rounded-xl p-4 font-mono text-xs text-green-100/70 overflow-hidden relative border border-white/5">
 						<div className="absolute top-0 left-0 w-full h-8 bg-linear-to-b from-zinc-900 to-transparent z-10" />
 						<div className="space-y-1 opacity-80">
-							<p><span className="text-pink-400">"order_type"</span>: <span className="text-green-300">"takeout"</span>,</p>
-							<p><span className="text-pink-400">"payment_method"</span>: <span className="text-green-300">"pix"</span>,</p>
-							<p><span className="text-pink-400">"items"</span>: [</p>
+							<p>
+								<span className="text-pink-400">"order_type"</span>: <span className="text-green-300">"takeout"</span>,
+							</p>
+							<p>
+								<span className="text-pink-400">"payment_method"</span>: <span className="text-green-300">"pix"</span>,
+							</p>
+							<p>
+								<span className="text-pink-400">"items"</span>: [
+							</p>
 							<div className="pl-4 border-l border-white/10">
 								<p>{"{"}</p>
-								<p className="pl-4"><span className="text-pink-400">"name"</span>: <span className="text-green-300">"Hamburguer"</span>,</p>
-								<p className="pl-4"><span className="text-pink-400">"options"</span>: [</p>
+								<p className="pl-4">
+									<span className="text-pink-400">"name"</span>: <span className="text-green-300">"Hamburguer"</span>,
+								</p>
+								<p className="pl-4">
+									<span className="text-pink-400">"options"</span>: [
+								</p>
 								<div className="pl-4 border-l border-white/10 text-white/50">
-									<p>{"{ \"name\": \"Bacon\" },"}</p>
-									<p>{"{ \"name\": \"Coca Cola\" }"}</p>
+									<p>{'{ "name": "Bacon" },'}</p>
+									<p>{'{ "name": "Coca Cola" }'}</p>
 								</div>
 								<p className="pl-4">]</p>
 								<p>{"},"}</p>
 							</div>
 							<p>]</p>
-							<p><span className="text-pink-400">"customer"</span>: <span className="text-green-300">"..."</span></p>
+							<p>
+								<span className="text-pink-400">"customer"</span>: <span className="text-green-300">"..."</span>
+							</p>
 						</div>
 						<div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-zinc-900 via-zinc-900/80 to-transparent z-10 flex items-end justify-center pb-4">
 							<span className="text-white/40 text-xs">Preferências de sabor, Adicionais e Hábitos</span>
@@ -903,23 +929,21 @@ const SLIDES: SlideData[] = [
 						{/* Bar Container */}
 						<div className="h-12 w-full bg-white/5 rounded-full relative overflow-hidden flex items-center">
 							{/* Active Bar - Spans 66% (2 months) */}
-							<motion.div 
-                                initial={{ width: 0 }}
-                                whileInView={{ width: "66.66%" }}
-                                transition={{ duration: 1, ease: "easeOut" }}
-                                className="h-full bg-linear-to-r from-purple-600 to-blue-600 rounded-l-full relative group"
-                            >
-                                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="absolute top-1/2 -translate-y-1/2 right-4 text-xs font-bold text-white whitespace-nowrap drop-shadow-md">
-                                    Entrega Fase 1
-                                </div>
-                            </motion.div>
+							<motion.div
+								initial={{ width: 0 }}
+								whileInView={{ width: "66.66%" }}
+								transition={{ duration: 1, ease: "easeOut" }}
+								className="h-full bg-linear-to-r from-purple-600 to-blue-600 rounded-l-full relative group"
+							>
+								<div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+								<div className="absolute top-1/2 -translate-y-1/2 right-4 text-xs font-bold text-white whitespace-nowrap drop-shadow-md">Entrega Fase 1</div>
+							</motion.div>
 						</div>
-                        {/* Subtasks */}
-                        <div className="flex justify-between w-[66%] px-4 mt-2 text-xs text-white/50">
-                            <span>PDV & Estoque</span>
-                            <span>Fiscal & Financeiro</span>
-                        </div>
+						{/* Subtasks */}
+						<div className="flex justify-between w-[66%] px-4 mt-2 text-xs text-white/50">
+							<span>PDV & Estoque</span>
+							<span>Fiscal & Financeiro</span>
+						</div>
 					</div>
 
 					{/* Agent Row */}
@@ -932,39 +956,35 @@ const SLIDES: SlideData[] = [
 						</div>
 						{/* Bar Container */}
 						<div className="h-12 w-full bg-white/5 rounded-full relative overflow-hidden flex items-center">
-                             {/* Spacer for start delay (approx 1.5 months = 50%) */}
-                            <div className="w-[50%] h-full flex-shrink-0" />
-							
-                            {/* Active Bar - Spans remaining */}
-							<motion.div 
-                                initial={{ width: 0 }}
-                                whileInView={{ width: "50%" }}
-                                transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
-                                className="h-full bg-linear-to-r from-orange-500 to-red-500 rounded-r-full relative group" 
-                            >
-                                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                 <div className="absolute top-1/2 -translate-y-1/2 left-4 text-xs font-bold text-white whitespace-nowrap drop-shadow-md">
-                                    Início Fase 2
-                                </div>
-                            </motion.div>
+							{/* Spacer for start delay (approx 1.5 months = 50%) */}
+							<div className="w-[50%] h-full flex-shrink-0" />
+
+							{/* Active Bar - Spans remaining */}
+							<motion.div
+								initial={{ width: 0 }}
+								whileInView={{ width: "50%" }}
+								transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+								className="h-full bg-linear-to-r from-orange-500 to-red-500 rounded-r-full relative group"
+							>
+								<div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+								<div className="absolute top-1/2 -translate-y-1/2 left-4 text-xs font-bold text-white whitespace-nowrap drop-shadow-md">Início Fase 2</div>
+							</motion.div>
 						</div>
-                         {/* Subtasks */}
-                         <div className="flex justify-end w-full px-4 mt-2 text-xs text-white/50 gap-16">
-                            <span>Treinamento RAG</span>
-                            <span>Autonomia Total</span>
-                        </div>
+						{/* Subtasks */}
+						<div className="flex justify-end w-full px-4 mt-2 text-xs text-white/50 gap-16">
+							<span>Treinamento RAG</span>
+							<span>Autonomia Total</span>
+						</div>
 					</div>
 				</div>
-                
-                {/* Current Status Line (Optional Decor) */}
-                <div className="absolute top-0 bottom-0 left-[10%] w-0.5 bg-green-500 z-20 shadow-[0_0_10px_rgba(34,197,94,0.5)]">
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        HOJE
-                    </div>
-                </div>
+
+				{/* Current Status Line (Optional Decor) */}
+				<div className="absolute top-0 bottom-0 left-[10%] w-0.5 bg-green-500 z-20 shadow-[0_0_10px_rgba(34,197,94,0.5)]">
+					<div className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">HOJE</div>
+				</div>
 			</div>
 		),
-	}
+	},
 ];
 
 export default function PresentationPage() {
@@ -1038,12 +1058,7 @@ export default function PresentationPage() {
 									{currentSlide.title}
 								</motion.h2>
 								{currentSlide.subtitle && (
-									<motion.p
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										transition={{ delay: 0.3 }}
-										className="text-lg text-white/50 font-medium"
-									>
+									<motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-lg text-white/50 font-medium">
 										{currentSlide.subtitle}
 									</motion.p>
 								)}

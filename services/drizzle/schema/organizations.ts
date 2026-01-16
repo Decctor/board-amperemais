@@ -1,5 +1,5 @@
 import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
-import { jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, organizationIntegrationTypeEnum } from ".";
 
 export const organizations = newTable("organizations", {
@@ -18,7 +18,17 @@ export const organizations = newTable("organizations", {
 	localizacaoLogradouro: text("localizacao_logradouro"),
 	localizacaoNumero: text("localizacao_numero"),
 	localizacaoComplemento: text("localizacao_complemento"),
+	// Onboarding + Marketing + Commercial Data (for us)
+	atuacaoNicho: text("atuacao_nicho"), // Alimentação, Construção, Moda, Perfumaria, etc.
+	atuacaoCanais: text("atuacao_canais"), // Loja física, e-commerce, marketplaces, etc (separated by comma)
+	tamanhoBaseClientes: integer("tamanho_base_clientes"),
+	plataformasUtilizadas: text("plataformas_utilizadas"), // Shopify, WooCommerce, Magento, etc (separated by comma)
+	oirgemLeads: text("oirgem_leads"), // How did you hear about us? (Instagram, Google, Linkedin, etc)
+
 	assinaturaPlano: text("assinatura_plano").default("STARTER"),
+	dadosViaERP: boolean("dados_via_erp").notNull().default(false),
+	dadosViaPDI: boolean("dados_via_pdi").notNull().default(false),
+	dadosViaIntegraoes: boolean("dados_via_integracoes").notNull().default(false),
 	integracaoTipo: organizationIntegrationTypeEnum("integracao_tipo"),
 	integracaoConfiguracao: jsonb("integracao_configuracao").$type<TOrganizationIntegrationConfig>(),
 	integracaoDataUltimaSincronizacao: timestamp("integracao_data_ultima_sincronizacao"),
