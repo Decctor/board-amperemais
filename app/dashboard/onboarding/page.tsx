@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { OnboardingPage } from "./onboarding-page";
 
-export async function Onboarding() {
+export default async function Onboarding() {
 	const authSession = await getCurrentSession();
 	if (!authSession) redirect("/auth/signin");
 	// if user has organization defined, redirect to dashboard
