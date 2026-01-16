@@ -10,6 +10,19 @@ export const AppSubscriptionPlans: {
 				redirectTo: string | null;
 			};
 		};
+		stripeProdutoId: string;
+		pricing: {
+			monthly: {
+				price: number;
+				currency: string;
+				interval: "month" | "year";
+			};
+			yearly: {
+				price: number;
+				currency: string;
+				interval: "month" | "year";
+			};
+		};
 	};
 } = {
 	STARTER: {
@@ -65,6 +78,19 @@ export const AppSubscriptionPlans: {
 				redirectTo: null,
 			},
 		},
+		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_STARTER as string,
+		pricing: {
+			monthly: {
+				price: 499,
+				currency: "BRL",
+				interval: "month",
+			},
+			yearly: {
+				price: 5499,
+				currency: "BRL",
+				interval: "year",
+			},
+		},
 	},
 	PLUS: {
 		name: "Plus",
@@ -117,6 +143,19 @@ export const AppSubscriptionPlans: {
 			"/dashboard/settings": {
 				accessible: true,
 				redirectTo: null,
+			},
+		},
+		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_PLUS as string,
+		pricing: {
+			monthly: {
+				price: 999,
+				currency: "BRL",
+				interval: "month",
+			},
+			yearly: {
+				price: 9999,
+				currency: "BRL",
+				interval: "year",
 			},
 		},
 	},

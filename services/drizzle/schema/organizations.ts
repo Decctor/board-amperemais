@@ -23,7 +23,7 @@ export const organizations = newTable("organizations", {
 	atuacaoCanais: text("atuacao_canais"), // Loja física, e-commerce, marketplaces, etc (separated by comma)
 	tamanhoBaseClientes: integer("tamanho_base_clientes"),
 	plataformasUtilizadas: text("plataformas_utilizadas"), // Shopify, WooCommerce, Magento, etc (separated by comma)
-	oirgemLeads: text("oirgem_leads"), // How did you hear about us? (Instagram, Google, Linkedin, etc)
+	origemLead: text("origem_lead"), // How did you hear about us? (Instagram, Google, Linkedin, etc)
 
 	assinaturaPlano: text("assinatura_plano").default("STARTER"),
 	dadosViaERP: boolean("dados_via_erp").notNull().default(false),
@@ -32,6 +32,8 @@ export const organizations = newTable("organizations", {
 	integracaoTipo: organizationIntegrationTypeEnum("integracao_tipo"),
 	integracaoConfiguracao: jsonb("integracao_configuracao").$type<TOrganizationIntegrationConfig>(),
 	integracaoDataUltimaSincronizacao: timestamp("integracao_data_ultima_sincronizacao"),
+	periodoTesteInicio: timestamp("periodo_teste_inicio"),
+	periodoTesteFim: timestamp("periodo_teste_fim"),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
 export type TOrganizationEntity = typeof organizations.$inferSelect;

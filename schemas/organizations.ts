@@ -35,7 +35,7 @@ export const OrganizationSchema = z.object({
 	atuacaoCanais: z.string({ invalid_type_error: "Tipo não válido para os canais de atuação da organização." }).optional().nullable(),
 	tamanhoBaseClientes: z.number({ invalid_type_error: "Tipo não válido para o tamanho da base de clientes da organização." }).optional().nullable(),
 	plataformasUtilizadas: z.string({ invalid_type_error: "Tipo não válido para as plataformas utilizadas da organização." }).optional().nullable(),
-	oirgemLeads: z.string({ invalid_type_error: "Tipo não válido para a origem dos leads da organização." }).optional().nullable(),
+	origemLead: z.string({ invalid_type_error: "Tipo não válido para a origem dos leads da organização." }).optional().nullable(),
 
 	assinaturaPlano: z.string({ invalid_type_error: "Tipo não válido para o plano de assinatura da organização." }).optional().nullable(),
 	dadosViaERP: z.boolean({ invalid_type_error: "Tipo não válido para se os dados da organização foram via ERP." }).default(false),
@@ -50,6 +50,18 @@ export const OrganizationSchema = z.object({
 		.nullable(),
 
 	// Others
+	periodoTesteInicio: z
+		.string({ invalid_type_error: "Tipo não válido para a data de início do período de teste." })
+		.datetime({ message: "Tipo não válido para a data de início do período de teste." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	periodoTesteFim: z
+		.string({ invalid_type_error: "Tipo não válido para a data de fim do período de teste." })
+		.datetime({ message: "Tipo não válido para a data de fim do período de teste." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção da organização." })
 		.datetime({ message: "Tipo não válido para a data de inserção da organização." })

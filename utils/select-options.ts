@@ -5,6 +5,13 @@ import type {
 	TTimeDurationUnitsEnum,
 } from "@/schemas/enums";
 
+export const OrganizationNicheOptions: { id: number; label: string; value: string }[] = [
+	{ id: 1, label: "ALIMENTAÇÃO", value: "ALIMENTAÇÃO" },
+	{ id: 2, label: "CONSTRUÇÃO", value: "CONSTRUÇÃO" },
+	{ id: 3, label: "MODA", value: "MODA" },
+	{ id: 4, label: "PERFUMARIA", value: "PERFUMARIA" },
+];
+
 export const CustomersAcquisitionChannels = [
 	{ id: 1, label: "ANUNCIO GOOGLE", value: "ANUNCIO GOOGLE" },
 	{ id: 2, label: "ANUNCIO FB", value: "ANUNCIO FB" },
