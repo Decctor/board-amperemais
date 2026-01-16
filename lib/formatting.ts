@@ -17,6 +17,14 @@ export function formatDateBirthdayAsLocale(date?: string | Date | null, showAge 
 	if (showAge) return `${formatDateAsLocale(date)} (${getAgeFromBirthdayDate(date)} anos)`;
 	return formatDateAsLocale(date);
 }
+export function formatAsSlug(string: string) {
+	return string
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.replace(/ /g, "-")
+		.replace(/[^\w-]+/g, "");
+}
 
 export function formatDateForInputValue(value: Date | string | null | undefined, type: "default" | "datetime" = "default"): string | undefined {
 	if (value === "" || value === undefined || value === null) return undefined;

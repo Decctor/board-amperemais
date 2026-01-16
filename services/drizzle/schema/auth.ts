@@ -22,3 +22,24 @@ export const authSessionsRelations = relations(authSessions, ({ one }) => ({
 }));
 export type TAuthSessionEntity = typeof authSessions.$inferSelect;
 export type TNewAuthSessionEntity = typeof authSessions.$inferInsert;
+
+export const authMagicLinks = newTable("auth_magic_links", {
+	id: varchar("id", { length: 255 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	usuarioId: varchar("usuario_id", { length: 255 })
+		.references(() => users.id)
+		.notNull(),
+	token: text("token").notNull(),
+	codigo: text("codigo").notNull(),
+	dataExpiracao: timestamp("data_expiracao").notNull(),
+	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+});
+export const authMagicLinksRelations = relations(authMagicLinks, ({ one }) => ({
+	usuario: one(users, {
+		fields: [authMagicLinks.usuarioId],
+		references: [users.id],
+	}),
+}));
+export type TAuthMagicLinkEntity = typeof authMagicLinks.$inferSelect;
+export type TNewAuthMagicLinkEntity = typeof authMagicLinks.$inferInsert;

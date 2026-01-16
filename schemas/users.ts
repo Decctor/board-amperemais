@@ -42,6 +42,16 @@ export const NewUserSchema = z.object({
 	email: z.string({ required_error: "Email do usuário não informado.", invalid_type_error: "Tipo não válido para o email do usuário." }),
 	telefone: z.string({ required_error: "Telefone do usuário não informado.", invalid_type_error: "Tipo não válido para o telefone do usuário." }),
 	avatarUrl: z.string({ invalid_type_error: "Tipo não válido para avatar do usuário." }).optional().nullable(),
+	// Location
+	localizacaoCep: z.string({ invalid_type_error: "Tipo não válido para o CEP do usuário." }).optional().nullable(),
+	localizacaoEstado: z.string({ invalid_type_error: "Tipo não válido para o estado do usuário." }).optional().nullable(),
+	localizacaoCidade: z.string({ invalid_type_error: "Tipo não válido para a cidade do usuário." }).optional().nullable(),
+	localizacaoBairro: z.string({ invalid_type_error: "Tipo não válido para o bairro do usuário." }).optional().nullable(),
+	localizacaoLogradouro: z.string({ invalid_type_error: "Tipo não válido para o logradouro do usuário." }).optional().nullable(),
+	localizacaoNumero: z.string({ invalid_type_error: "Tipo não válido para o número do usuário." }).optional().nullable(),
+	localizacaoComplemento: z.string({ invalid_type_error: "Tipo não válido para o complemento do usuário." }).optional().nullable(),
+	localizacaoLatitude: z.string({ invalid_type_error: "Tipo não válido para a latitude do usuário." }).optional().nullable(),
+	localizacaoLongitude: z.string({ invalid_type_error: "Tipo não válido para a longitude do usuário." }).optional().nullable(),
 	// Auth related
 	usuario: z.string({ required_error: "Usuário do usuário não informado.", invalid_type_error: "Tipo não válido para o usuário do usuário." }),
 	senha: z.string({ required_error: "Senha do usuário não informada.", invalid_type_error: "Tipo não válido para a senha do usuário." }),
@@ -117,6 +127,9 @@ export const NewUserSchema = z.object({
 				.nullable(),
 		}),
 	}),
+	googleId: z.string({ invalid_type_error: "Tipo não válido para o ID do Google do usuário." }).optional().nullable(),
+	googleRefreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de refresh do Google do usuário." }).optional().nullable(),
+	googleAccessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do Google do usuário." }).optional().nullable(),
 	// Others
 	dataNascimento: z
 		.string({ invalid_type_error: "Tipo não válido para a data de nascimento do usuário." })

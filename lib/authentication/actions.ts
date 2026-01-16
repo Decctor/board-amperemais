@@ -1,8 +1,21 @@
 "use server";
+import { randomBytes } from "node:crypto";
 import { db } from "@/services/drizzle";
+import { authMagicLinks, users } from "@/services/drizzle/schema";
+import dayjs from "dayjs";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { EmailTemplate, sendEmailWithResend } from "../email";
+import { formatAsSlug } from "../formatting";
 import { createSession, generateSessionToken, setSetSessionCookie } from "./session";
-import { LoginSchema, type TLogin } from "./types";
+import {
+	LoginSchema,
+	SignUpWithEmailSchema,
+	type TLogin,
+	type TSignUpWithEmailSchema,
+	type TVerifyMagicLinkCodeSchema,
+	VerifyMagicLinkCodeSchema,
+} from "./types";
 
 type TLoginResult = {
 	formError?: string;
@@ -12,53 +25,263 @@ type TLoginResult = {
 };
 export async function login(_: TLoginResult, input: FormData): Promise<TLoginResult> {
 	const data = {
-		username: input.get("username") as string,
-		password: input.get("password") as string,
+		email: input.get("email") as string,
 	};
+	console.log("[INFO] [LOGIN] Input data received", data);
 	const validationParsed = LoginSchema.safeParse(data);
 	if (!validationParsed.success) {
 		const err = validationParsed.error.flatten();
 		return {
 			fieldError: {
-				username: err.fieldErrors.username?.[0],
-				password: err.fieldErrors.password?.[0],
+				email: err.fieldErrors.email?.[0],
 			},
 		};
 	}
 
-	const { username, password } = data;
+	const { email } = validationParsed.data;
 
 	const user = await db.query.users.findFirst({
-		where: (fields, { eq }) => eq(fields.usuario, username),
+		where: (fields, { eq }) => eq(fields.email, email),
 	});
 	if (!user) {
+		console.log("[ERROR] [LOGIN] User not found", email);
 		return {
 			formError: "Usuário ou senha incorretos.",
 		};
 	}
 
-	if (password !== user.senha) {
+	// Creating magic link to send to the user
+	const verificationToken = randomBytes(32).toString("hex");
+	const verificationCode = Math.floor(100_000 + Math.random() * 900_000).toString(); // Gera código de 6 dígitos
+	const insertedAuthMagicLinkResponse = await db
+		.insert(authMagicLinks)
+		.values({
+			usuarioId: user.id,
+			token: verificationToken,
+			codigo: verificationCode,
+			dataInsercao: dayjs().toDate(),
+			dataExpiracao: dayjs().add(30, "minutes").toDate(),
+		})
+		.returning({ id: authMagicLinks.id });
+
+	const insertedAuthMagicLinkId = insertedAuthMagicLinkResponse[0]?.id;
+	if (!insertedAuthMagicLinkId) {
 		return {
-			formError: "Usuário ou senha incorretos.",
+			formError: "Um erro desconhecido ocorreu.",
+		};
+	}
+	console.log("[INFO] [LOGIN] Magic link created", {
+		id: insertedAuthMagicLinkId,
+		token: verificationToken,
+		code: verificationCode,
+	});
+	const emailSentResponse = await sendEmailWithResend(email, EmailTemplate.AuthMagicLink, {
+		magicLink: `${process.env.NEXT_PUBLIC_URL}/auth/magic-link/callback?token=${verificationToken}`,
+		verificationCode,
+		expiresInMinutes: 30,
+	});
+	console.log("[INFO] [LOGIN] Email sent", { emailSentResponse });
+	return redirect(`/auth/magic-link?id=${insertedAuthMagicLinkId}`);
+}
+
+type TSignUpWithEmailResult = {
+	formError?: string;
+	fieldError?: {
+		[key in keyof TSignUpWithEmailSchema]?: string;
+	};
+};
+export async function signUpWithEmail(_: TSignUpWithEmailResult, input: FormData): Promise<TSignUpWithEmailResult> {
+	const data = {
+		nome: input.get("nome") as string,
+		email: input.get("email") as string,
+	};
+
+	console.log("[INFO] [SIGN UP WITH EMAIL] Input data received", data);
+	const validationParsed = SignUpWithEmailSchema.safeParse(data);
+	if (!validationParsed.success) {
+		const err = validationParsed.error.flatten();
+		return {
+			fieldError: {
+				nome: err.fieldErrors.nome?.[0],
+				email: err.fieldErrors.email?.[0],
+			},
 		};
 	}
 
+	const { nome, email } = validationParsed.data;
+
+	const existingUser = await db.query.users.findFirst({
+		where: (fields, { eq }) => eq(fields.email, email),
+	});
+	if (existingUser) {
+		console.log("[ERROR] [SIGN UP WITH EMAIL] User attempts to sign up with an already existing email", existingUser);
+		return {
+			formError: "Usuário já existe.",
+		};
+	}
+
+	const insertedUserResponse = await db
+		.insert(users)
+		.values({
+			nome,
+			email,
+			telefone: "",
+			usuario: formatAsSlug(nome),
+			permissoes: {
+				resultados: {
+					visualizar: true,
+					criarMetas: true,
+					visualizarMetas: true,
+					editarMetas: true,
+					excluirMetas: true,
+					escopo: [],
+				},
+				usuarios: { visualizar: true, criar: true, editar: true, excluir: true },
+				atendimentos: { visualizar: true, iniciar: true, responder: true, finalizar: true },
+			},
+			senha: "",
+		})
+		.returning({ id: users.id });
+
+	const insertedUserId = insertedUserResponse[0]?.id;
+	if (!insertedUserId) {
+		console.log("[ERROR] [SIGN UP WITH EMAIL] User not created", data);
+		return {
+			formError: "Um erro desconhecido ocorreu.",
+		};
+	}
+	console.log("[INFO] [SIGN UP WITH EMAIL] User created", {
+		id: insertedUserId,
+		email,
+	});
+	// Creating magic link
+	const verificationToken = randomBytes(32).toString("hex");
+	const verificationCode = Math.floor(100_000 + Math.random() * 900_000).toString(); // Gera código de 6 dígitos
+
+	const insertedAuthMagicLinkResponse = await db
+		.insert(authMagicLinks)
+		.values({
+			usuarioId: insertedUserId,
+			token: verificationToken,
+			codigo: verificationCode,
+			dataInsercao: dayjs().toDate(),
+			dataExpiracao: dayjs().add(30, "minutes").toDate(),
+		})
+		.returning({ id: authMagicLinks.id });
+
+	const insertedAuthMagicLinkId = insertedAuthMagicLinkResponse[0]?.id;
+	if (!insertedAuthMagicLinkId) {
+		return {
+			formError: "Um erro desconhecido ocorreu.",
+		};
+	}
+	console.log("[INFO] [SIGN UP WITH EMAIL] Magic link created", {
+		id: insertedAuthMagicLinkId,
+		token: verificationToken,
+		code: verificationCode,
+	});
+	const emailSentResponse = await sendEmailWithResend(email, EmailTemplate.AuthMagicLink, {
+		magicLink: `${process.env.NEXT_PUBLIC_URL}/auth/magic-link/callback?token=${verificationToken}`,
+		verificationCode,
+		expiresInMinutes: 30,
+	});
+	console.log("[INFO] [SIGN UP WITH EMAIL] Email sent", emailSentResponse);
+	return redirect(`/auth/magic-link?id=${insertedAuthMagicLinkId}`);
+}
+type TVerifyMagicLinkCodeResult = {
+	formError?: string;
+	fieldError?: {
+		[key in keyof TVerifyMagicLinkCodeSchema]?: string;
+	};
+};
+export async function verifyMagicLinkCode(_: TVerifyMagicLinkCodeResult, input: TVerifyMagicLinkCodeSchema): Promise<TVerifyMagicLinkCodeResult> {
+	const validationParsed = VerifyMagicLinkCodeSchema.safeParse(input);
+	if (!validationParsed.success) {
+		const err = validationParsed.error.flatten();
+		return {
+			fieldError: {
+				code: err.fieldErrors.code?.[0],
+				verificationTokenId: err.fieldErrors.verificationTokenId?.[0],
+			},
+		};
+	}
+
+	const { code, verificationTokenId } = validationParsed.data;
+
+	const magicLink = await db.query.authMagicLinks.findFirst({
+		where: (fields, { eq }) => eq(fields.id, verificationTokenId),
+	});
+	if (!magicLink) {
+		return {
+			formError: "Código de verificação inválido.",
+		};
+	}
+	// Checking if the magic link is expired
+	const now = dayjs();
+	const expirationDate = dayjs(magicLink.dataExpiracao);
+	if (now.isAfter(expirationDate)) {
+		return {
+			formError: "Código expirado.",
+		};
+	}
+
+	// Checking if the code is correct
+	if (magicLink.codigo !== code) {
+		return {
+			formError: "Código de verificação incorreto.",
+		};
+	}
+
+	// Deleting the magic link
+	await db.delete(authMagicLinks).where(eq(authMagicLinks.id, verificationTokenId));
+	// Creating the new session
 	const sessionToken = await generateSessionToken();
 	const session = await createSession({
 		token: sessionToken,
-		userId: user.id,
+		userId: magicLink.usuarioId,
 	});
+
 	try {
 		await setSetSessionCookie({
 			token: sessionToken,
 			expiresAt: session.dataExpiracao,
 		});
 	} catch (error) {
-		console.log("[ERROR] [LOGIN] Error setting session cookie", error);
+		console.log("[ERROR] [VERIFY MAGIC LINK CODE] Error setting session cookie", error);
 		const errorMsg = "Um erro desconhecido ocorreu.";
 		return {
 			formError: errorMsg,
 		};
 	}
 	redirect("/dashboard");
+}
+
+export async function getMagicLinkById(id: string) {
+	try {
+		const magicLink = await db.query.authMagicLinks.findFirst({
+			where: (fields, { eq }) => eq(fields.id, id),
+			with: {
+				usuario: {
+					columns: {
+						email: true,
+					},
+				},
+			},
+		});
+		if (!magicLink) return null;
+
+		const isExpired = new Date().getTime() > new Date(magicLink.dataExpiracao).getTime();
+
+		if (isExpired) return null;
+
+		return {
+			id: magicLink.id,
+			usuarioId: magicLink.usuarioId,
+			usuarioEmail: magicLink.usuario.email,
+			dataExpiracao: magicLink.dataExpiracao,
+		};
+	} catch (error) {
+		console.log("Error getting the magic link by id", error);
+		throw error;
+	}
 }

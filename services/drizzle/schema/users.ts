@@ -15,10 +15,23 @@ export const users = newTable("users", {
 	email: text("email").notNull(),
 	telefone: text("telefone").notNull(),
 	avatarUrl: text("avatar_url"),
+	// Location
+	localizacaoCep: text("localizacao_cep"),
+	localizacaoEstado: text("localizacao_estado"),
+	localizacaoCidade: text("localizacao_cidade"),
+	localizacaoBairro: text("localizacao_bairro"),
+	localizacaoLogradouro: text("localizacao_logradouro"),
+	localizacaoNumero: text("localizacao_numero"),
+	localizacaoComplemento: text("localizacao_complemento"),
+	localizacaoLatitude: text("localizacao_latitude"),
+	localizacaoLongitude: text("localizacao_longitude"),
 	// Auth related
 	usuario: text("usuario").notNull(),
 	senha: text("senha").notNull(),
 	permissoes: jsonb("permissoes").$type<TUserPermissions>().notNull(),
+	googleId: text("google_id"),
+	googleRefreshToken: text("google_refresh_token"),
+	googleAccessToken: text("google_access_token"),
 	// Others
 	dataNascimento: timestamp("data_nascimento"),
 	vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id),

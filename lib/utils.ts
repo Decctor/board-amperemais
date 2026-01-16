@@ -5,6 +5,9 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
+export function absoluteUrl(path: string) {
+	return new URL(path, process.env.NEXT_PUBLIC_APP_URL).href;
+}
 export function isEmpty(value: any) {
 	return value == null || (typeof value === "string" && value.trim().length === 0);
 }
