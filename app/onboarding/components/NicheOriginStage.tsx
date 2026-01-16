@@ -1,6 +1,7 @@
+import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import type { TUseOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { OrganizationNicheOptions } from "@/utils/select-options";
-import { Hammer, HelpCircle, Shirt, SprayCan, Utensils } from "lucide-react";
+import { Hammer, HelpCircle, Shirt, SprayCan, TargetIcon, Utensils } from "lucide-react";
 import { FaGoogle, FaInstagram, FaLinkedin, FaUserGroup, FaYoutube } from "react-icons/fa6";
 import { SelectableCard } from "./SelectableCard";
 
@@ -17,7 +18,7 @@ const NICHE_ICONS: Record<string, React.ReactNode> = {
 };
 
 const ORIGIN_OPTIONS = [
-	{ id: "instagram", label: "Instagram", icon: <FaInstagram /> },
+	{ id: "instagram", label: "INSTAGRAM", icon: <FaInstagram /> },
 	{ id: "linkedin", label: "LinkedIn", icon: <FaLinkedin /> },
 	{ id: "youtube", label: "YouTube", icon: <FaYoutube /> },
 	{ id: "google", label: "Google", icon: <FaGoogle /> },
@@ -27,10 +28,10 @@ const ORIGIN_OPTIONS = [
 
 export function NicheOriginStage({ state, updateOrganization }: NicheOriginStageProps) {
 	return (
-		<div className="flex flex-col gap-8">
-			<div className="flex flex-col gap-4">
-				<h3 className="font-semibold text-lg">Qual o nicho de atuação da sua empresa?</h3>
-				<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+		<div className="w-full flex flex-col gap-6">
+			<div className="w-full flex flex-col gap-3">
+				<h3 className="text-lg font-medium tracking-tight">Qual o nicho de atuação da sua empresa?</h3>
+				<div className="w-full flex flex-wrap gap-x-4 gap-y-2">
 					{OrganizationNicheOptions.map((niche) => (
 						<SelectableCard
 							key={niche.id}
@@ -38,13 +39,14 @@ export function NicheOriginStage({ state, updateOrganization }: NicheOriginStage
 							icon={NICHE_ICONS[niche.value] || <HelpCircle />}
 							selected={state.organization.atuacaoNicho === niche.value}
 							onSelect={() => updateOrganization({ atuacaoNicho: niche.value })}
+							className="w-36 h-36"
 						/>
 					))}
 				</div>
 			</div>
 
-			<div className="flex flex-col gap-4">
-				<h3 className="font-semibold text-lg">Como você conheceu a RecompraCRM?</h3>
+			<div className="w-full flex flex-col gap-3">
+				<h3 className="text-lg font-medium tracking-tight">Como você conheceu a RecompraCRM?</h3>
 				<div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
 					{ORIGIN_OPTIONS.map((origin) => (
 						<SelectableCard
@@ -53,6 +55,7 @@ export function NicheOriginStage({ state, updateOrganization }: NicheOriginStage
 							icon={origin.icon}
 							selected={state.organization.origemLead === origin.label.toUpperCase()}
 							onSelect={() => updateOrganization({ origemLead: origin.label.toUpperCase() })}
+							className="w-36 h-36"
 						/>
 					))}
 				</div>

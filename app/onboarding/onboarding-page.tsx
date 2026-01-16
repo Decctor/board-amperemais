@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { ActuationStage } from "./components/ActuationStage";
@@ -40,7 +41,7 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 			case "organization-actuation":
 				return <ActuationStage state={state} updateOrganization={updateOrganization} />;
 			case "subscription-plans-section":
-				return <SubscriptionPlansStage state={state} updateOrganizationOnboarding={updateOrganizationOnboarding} />;
+				return <SubscriptionPlansStage state={state} handlePlanSelection={updateOrganizationOnboarding} />;
 			default:
 				return null;
 		}
@@ -51,25 +52,25 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 			case "organization-general-info":
 				return {
 					step: 1,
-					title: "Sobre a organização",
-					description: "Preencha as informações básicas da sua empresa para começarmos.",
+					title: "SOBRE A EMPRESA",
+					description: "Preencha aqui as informações básicas da sua empresa para começarmos.",
 				};
 			case "organization-niche-origin":
 				return {
 					step: 2,
-					title: "Nicho e Origem",
+					title: "NICHO E ORIGEM",
 					description: "Conte-nos um pouco mais sobre o seu mercado e como nos conheceu.",
 				};
 			case "organization-actuation":
 				return {
 					step: 3,
-					title: "Atuação",
+					title: "ATUAÇÃO",
 					description: "Entenda melhor o perfil e escala da sua operação.",
 				};
 			case "subscription-plans-section":
 				return {
 					step: 4,
-					title: "Planos",
+					title: "PLANOS",
 					description: "Escolha o plano ideal para o seu negócio.",
 				};
 		}
@@ -79,29 +80,36 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 
 	return (
 		<OnboardingLayout currentStage={state.stage}>
-			<Card className="w-full shadow-lg">
-				<CardHeader className="space-y-1">
-					<div className="flex items-center justify-between">
-						<span className="font-semibold text-primary text-xs uppercase tracking-wider">Passo {stageInfo.step} de 4</span>
-					</div>
-					<h2 className="font-bold text-2xl">{stageInfo.title}</h2>
-					<p className="text-muted-foreground">{stageInfo.description}</p>
-				</CardHeader>
+			<div className="h-full flex w-full flex-col gap-6 min-h-0">
+				<div className="flex flex-col gap-0.5">
+					<h3 className="text-xs text-gray-500 tracking-tight">ETAPA {stageInfo.step}</h3>
+					<h1 className="font-bold text-xl md:text-2xl text-gray-900 tracking-tight">{stageInfo.title}</h1>
+					<p className="text-sm text-gray-500 tracking-tight">{stageInfo.description}</p>
+				</div>
+				<div className="w-full flex flex-col gap-6 grow overflow-y-auto px-1 min-h-0 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
+					{renderStageContent()}
+				</div>
+				{state.stage !== "subscription-plans-section" ? (
+					<>
+						<Separator />
+						<div className="w-full flex items-center justify-between">
+							<Button variant="ghost" size="lg" onClick={handleBack} className="flex items-center gap-1.5 rounded-xl py-3">
+								<ArrowLeft className="h-4 w-4" />
+								VOLTAR
+							</Button>
 
-				<CardContent className="pt-6">{renderStageContent()}</CardContent>
-
-				<CardFooter className="flex justify-between border-t p-6">
-					<Button variant="ghost" onClick={handleBack} disabled={state.stage === "organization-general-info"} className="gap-2">
-						<ArrowLeft className="h-4 w-4" />
-						Voltar
-					</Button>
-
-					<Button onClick={handleNext} className="gap-2 bg-[#24549C] px-8 hover:bg-[#1e4682]">
-						{state.stage === "subscription-plans-section" ? "Finalizar" : "Próximo"}
-						{state.stage === "subscription-plans-section" ? <Check className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-					</Button>
-				</CardFooter>
-			</Card>
+							<Button
+								onClick={handleNext}
+								size={"lg"}
+								className="flex items-center gap-1.5 bg-[#24549C] text-white hover:bg-[#1e4682] transition-all rounded-xl py-3"
+							>
+								CONTINUAR
+								<ArrowRight className="h-4 w-4" />
+							</Button>
+						</div>
+					</>
+				) : null}
+			</div>
 		</OnboardingLayout>
 	);
 }

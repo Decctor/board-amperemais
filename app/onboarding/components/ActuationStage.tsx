@@ -57,42 +57,40 @@ export function ActuationStage({ state, updateOrganization }: ActuationStageProp
 	};
 
 	return (
-		<div className="flex flex-col gap-8">
-			<div className="flex flex-col gap-4">
-				<h3 className="font-semibold text-lg">Qual o tamanho da sua base de clientes?</h3>
-				<div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+		<div className="w-full flex flex-col gap-6">
+			<div className="w-full flex flex-col gap-3">
+				<h3 className="text-lg font-medium tracking-tight">Qual o tamanho da sua base de clientes?</h3>
+				<div className="w-full flex flex-wrap gap-x-4 gap-y-2">
 					{BASE_SIZE_OPTIONS.map((option) => (
 						<SelectableCard
 							key={option.value}
 							label={option.label}
 							selected={state.organization.tamanhoBaseClientes === option.value}
 							onSelect={() => updateOrganization({ tamanhoBaseClientes: option.value })}
-							className="h-24 justify-center"
+							className="w-36 h-36"
 						/>
 					))}
 				</div>
 			</div>
 
-			<div className="flex flex-col gap-4">
-				<h3 className="font-semibold text-lg">Quais sistemas (ERPs) vocês utilizam?</h3>
-				<p className="text-sm text-muted-foreground">Selecione todas as opções que se aplicam</p>
-				<div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+			<div className="w-full flex flex-col gap-3">
+				<h3 className="text-lg font-medium tracking-tight">Quais sistemas (ERPs) vocês utilizam?</h3>
+				<div className="w-full flex flex-wrap gap-x-4 gap-y-2">
 					{ERP_OPTIONS.map((option) => (
 						<SelectableCard
 							key={option.id}
 							label={option.label}
 							selected={isSelected("plataformasUtilizadas", option.value)}
 							onSelect={() => handleMultiSelect("plataformasUtilizadas", option.value)}
-							className="h-24 justify-center text-sm"
+							className="w-36 h-36"
 						/>
 					))}
 				</div>
 			</div>
 
-			<div className="flex flex-col gap-4">
-				<h3 className="font-semibold text-lg">Quais são seus canais de venda?</h3>
-				<p className="text-sm text-muted-foreground">Selecione todas as opções que se aplicam</p>
-				<div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+			<div className="w-full flex flex-col gap-3">
+				<h3 className="text-lg font-medium tracking-tight">Quais são seus canais de venda?</h3>
+				<div className="w-full flex flex-wrap gap-x-4 gap-y-2">
 					{CHANNEL_OPTIONS.map((option) => (
 						<SelectableCard
 							key={option.id}
@@ -100,6 +98,7 @@ export function ActuationStage({ state, updateOrganization }: ActuationStageProp
 							icon={option.icon}
 							selected={isSelected("atuacaoCanais", option.value)}
 							onSelect={() => handleMultiSelect("atuacaoCanais", option.value)}
+							className="w-36 h-36"
 						/>
 					))}
 				</div>

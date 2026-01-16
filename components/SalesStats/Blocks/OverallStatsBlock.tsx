@@ -46,7 +46,7 @@ function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBl
 					/>
 				</div>
 			</div>
-			{userOrg?.assinaturaPlano === "STARTER" ? (
+			{userOrg?.assinaturaPlano === "ESSENCIAL" ? (
 				<OverallStatsBlockStarter overallStats={overallStats} />
 			) : (
 				<OverallStatsBlockPlus overallStats={overallStats} />

@@ -25,7 +25,7 @@ export const organizations = newTable("organizations", {
 	plataformasUtilizadas: text("plataformas_utilizadas"), // Shopify, WooCommerce, Magento, etc (separated by comma)
 	origemLead: text("origem_lead"), // How did you hear about us? (Instagram, Google, Linkedin, etc)
 
-	assinaturaPlano: text("assinatura_plano").default("STARTER"),
+	assinaturaPlano: text("assinatura_plano").default("ESSENCIAL"),
 	dadosViaERP: boolean("dados_via_erp").notNull().default(false),
 	dadosViaPDI: boolean("dados_via_pdi").notNull().default(false),
 	dadosViaIntegraoes: boolean("dados_via_integracoes").notNull().default(false),

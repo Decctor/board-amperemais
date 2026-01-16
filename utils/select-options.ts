@@ -6,10 +6,10 @@ import type {
 } from "@/schemas/enums";
 
 export const OrganizationNicheOptions: { id: number; label: string; value: string }[] = [
-	{ id: 1, label: "ALIMENTAÇÃO", value: "ALIMENTAÇÃO" },
-	{ id: 2, label: "CONSTRUÇÃO", value: "CONSTRUÇÃO" },
-	{ id: 3, label: "MODA", value: "MODA" },
-	{ id: 4, label: "PERFUMARIA", value: "PERFUMARIA" },
+	{ id: 1, label: "ALIMENTAÇÃO", value: "Alimentação" },
+	{ id: 2, label: "CONSTRUÇÃO", value: "Construção" },
+	{ id: 3, label: "MODA", value: "Moda" },
+	{ id: 4, label: "PERFUMARIA", value: "Perfumaria" },
 ];
 
 export const CustomersAcquisitionChannels = [

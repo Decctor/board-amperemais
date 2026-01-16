@@ -48,17 +48,17 @@ function GroupedStatsBlock({ generalQueryParams, user, userOrg }: GroupedStatsBl
 					<ResultsBySellerGraph data={groupedStats?.porVendedor || []} />
 				</div>
 			</div>
-			{
-				userOrg?.assinaturaPlano === "PLUS" ? <div className="w-full flex flex-col items-center gap-2 lg:flex-row">
-				<div className="w-full lg:w-[50%]">
-					<ResultsByItemGraph data={groupedStats?.porItem || []} />
+			{userOrg?.assinaturaPlano === "CRESCIMENTO" ? (
+				<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
+					<div className="w-full lg:w-[50%]">
+						<ResultsByItemGraph data={groupedStats?.porItem || []} />
+					</div>
+					<div className="w-full lg:w-[50%]">
+						<ResultsByProductGroupGraph data={groupedStats?.porGrupo || []} />
+					</div>
 				</div>
-				<div className="w-full lg:w-[50%]">
-					<ResultsByProductGroupGraph data={groupedStats?.porGrupo || []} />
-				</div>
-			</div> : null
-			}
-			
+			) : null}
+
 			<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
 				<div className="w-full lg:w-1/3">
 					<GroupedByMonthDay data={groupedStats?.porDiaDoMes || []} />

@@ -7,6 +7,6 @@ export default async function Main() {
 	const authSession = await getCurrentSession();
 	if (!authSession) redirect("/auth/signin");
 	if (!authSession.user.permissoes.resultados.visualizar) return <UnauthorizedPage />;
-	if (!authSession.organization) redirect("/dashboard/onboarding");
+	if (!authSession.organization) redirect("/onboarding");
 	return <DashboardPage user={authSession.user} userOrg={authSession.organization} />;
 }

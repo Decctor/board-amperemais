@@ -4,6 +4,7 @@ import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
 import ControlProduct from "@/components/Modals/Products/ControlProduct";
 import NewProduct from "@/components/Modals/Products/NewProduct";
 import ProductsFilterMenu from "@/components/Products/ProductsFilterMenu";
@@ -48,7 +49,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
 import { useState } from "react";
 
 type ProductsPageProps = {
@@ -59,7 +59,7 @@ type ProductsPageProps = {
 export default function ProductsPage({ user, userOrg }: ProductsPageProps) {
 	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
 
-	if (userOrg?.assinaturaPlano !== "PLUS") {
+	if (userOrg?.assinaturaPlano !== "CRESCIMENTO") {
 		return <PlanRestrictionComponent />;
 	}
 
