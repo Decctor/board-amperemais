@@ -105,6 +105,7 @@ async function createOrganization({ input, sessionUser }: { input: TCreateOrgani
 		.update(organizations)
 		.set({
 			stripeCustomerId: stripeCustomer.id,
+			assinaturaPlano: planName,
 		})
 		.where(eq(organizations.id, insertedOrgId));
 
