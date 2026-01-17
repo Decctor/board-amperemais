@@ -204,6 +204,7 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 			/>
 			<TextInput
 				label="CPF/CNPJ"
+				inputType="tel"
 				placeholder="Digite o CPF/CNPJ do cliente"
 				value={infoHolder.cpfCnpj ?? ""}
 				handleChange={(value) => setInfoHolder((prev) => ({ ...prev, cpfCnpj: formatToCPForCNPJ(value) }))}

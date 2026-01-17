@@ -356,6 +356,7 @@ function ClientStep({
 						/>
 						<TextInput
 							label="CPF/CNPJ"
+							inputType="tel"
 							placeholder="Digite o CPF/CNPJ do cliente"
 							value={newClientData.cpfCnpj || ""}
 							handleChange={(value) => onNewClientChange({ cpfCnpj: formatToCPForCNPJ(value) })}
