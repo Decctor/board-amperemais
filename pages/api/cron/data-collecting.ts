@@ -333,10 +333,11 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					}
 
 					// Then, we check for an existing seller with the same name (in this case, our primary key for the integration)
-					const equivalentSaleSeller = existingSellersMap.get(OnlineSale.vendedor);
+					const isValidSeller = !!OnlineSale.vendedor && OnlineSale.vendedor !== "N/A" && OnlineSale.vendedor !== "0";
+					const equivalentSaleSeller = isValidSeller ? existingSellersMap.get(OnlineSale.vendedor) : null;
 					// Initalize the saleSellerId holder with the existing seller (if any)
 					let saleSellerId = equivalentSaleSeller;
-					if (!saleSellerId) {
+					if (!saleSellerId && isValidSeller) {
 						// If no existing seller is found, we create a new one
 						const insertedSellerResponse = await tx
 							.insert(sellers)

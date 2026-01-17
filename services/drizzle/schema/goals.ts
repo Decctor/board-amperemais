@@ -27,7 +27,7 @@ export const goalsSellers = newTable("goals_sellers", {
 		.references(() => goals.id)
 		.notNull(),
 	vendedorId: varchar("vendedor_id", { length: 255 })
-		.references(() => sellers.id)
+		.references(() => sellers.id, { onDelete: "cascade" })
 		.notNull(),
 	objetivoValor: doublePrecision("objetivo_valor").notNull(),
 });

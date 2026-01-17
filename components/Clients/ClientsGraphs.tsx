@@ -150,7 +150,7 @@ export default function ClientsGraphs({ periodAfter, periodBefore, comparingPeri
 						</TooltipProvider>
 					</div>
 				</div>
-				<div className="flex w-full flex-1 gap-4 overflow-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 min-h-0">
+				<div className="flex w-full flex-1 gap-4 min-h-0">
 					{graphLoading ? (
 						<div className="flex w-full h-full items-center justify-center">
 							<p className="text-sm text-muted-foreground">Carregando gráfico...</p>
