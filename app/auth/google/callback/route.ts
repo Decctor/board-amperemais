@@ -16,7 +16,7 @@ import type { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest): Promise<Response> {
 	const userRequestLocation = geolocation(request);
-	console.log("CALLBACK", userRequestLocation);
+	console.log("[INFO] [GOOGLE_CALLBACK] Callback received with user location:", userRequestLocation);
 	const cookieStore = await cookies();
 
 	const url = new URL(request.url);
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 	const storedState = cookieStore.get(GOOGLE_OAUTH_STATE_COOKIE_NAME)?.value ?? null;
 	const codeVerifier = cookieStore.get(GOOGLE_OAUTH_VERIFIER_COOKIE_NAME)?.value ?? null;
 
+	console.log("[INFO] [GOOGLE_CALLBACK] Code/state validation:", { code, state, storedState, codeVerifier });
 	if (!code || !state || !storedState || state !== storedState || !codeVerifier) {
 		console.log("[ERROR] [GOOGLE_CALLBACK] Error in code/state validation.");
 		return new Response(null, {

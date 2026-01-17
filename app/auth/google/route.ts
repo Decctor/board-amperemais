@@ -20,6 +20,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 	url.searchParams.set("access_type", "offline");
 	url.searchParams.set("prompt", "consent");
 
+	console.log("[INFO] [GOOGLE_AUTH] Google OAuth params set:", { state, codeVerifier });
 	cookieStore.set(GOOGLE_OAUTH_STATE_COOKIE_NAME, state, {
 		secure: true,
 		path: "/",
