@@ -66,9 +66,14 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 				return (
 					<SubscriptionPlansStage
 						state={state}
-						updateOrganizationOnboarding={updateOrganizationOnboarding}
+						handleSelectPlan={(info) => {
+							updateOrganizationOnboarding({ subscription: info });
+							mutation.mutate({
+								organization: state.organization,
+								subscription: info,
+							});
+						}}
 						isMutationPending={mutation.isPending}
-						handleSubmit={handleSubmit}
 					/>
 				);
 			default:

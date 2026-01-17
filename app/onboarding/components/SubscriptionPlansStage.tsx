@@ -8,31 +8,24 @@ import { useState } from "react";
 
 type SubscriptionPlansStageProps = {
 	state: TUseOrganizationOnboardingState["state"];
-	updateOrganizationOnboarding: (changes: Partial<TUseOrganizationOnboardingState["state"]>) => void;
 	isMutationPending: boolean;
-	handleSubmit: () => void;
+	handleSelectPlan: (plan: TUseOrganizationOnboardingState["state"]["subscription"]) => void;
 };
 
-export function SubscriptionPlansStage({ state, updateOrganizationOnboarding, isMutationPending, handleSubmit }: SubscriptionPlansStageProps) {
+export function SubscriptionPlansStage({ state, isMutationPending, handleSelectPlan }: SubscriptionPlansStageProps) {
 	const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
 
 	const handlePlanSelect = (plan: "ESSENCIAL" | "CRESCIMENTO") => {
-		const subscriptionKey = `${plan}-${billingInterval.toUpperCase()}` as
-			| "ESSENCIAL-MONTHLY"
-			| "ESSENCIAL-YEARLY"
-			| "CRESCIMENTO-MONTHLY"
-			| "CRESCIMENTO-YEARLY";
+		const subscriptionKey = `${plan}-${billingInterval.toUpperCase()}` as TUseOrganizationOnboardingState["state"]["subscription"];
 		// Update state with selected plan
-		updateOrganizationOnboarding({ subscription: subscriptionKey });
 		// Trigger submission
-		handleSubmit();
+		handleSelectPlan(subscriptionKey);
 	};
 
 	const handleFreeTrialSelect = () => {
 		// Update state with FREE-TRIAL
-		updateOrganizationOnboarding({ subscription: "FREE-TRIAL" });
+		handleSelectPlan("FREE-TRIAL");
 		// Trigger submission
-		handleSubmit();
 	};
 
 	return (

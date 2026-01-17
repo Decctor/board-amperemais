@@ -9,7 +9,10 @@ const OrganizationOnboardingStateSchema = z.object({
 		file: z.instanceof(File).optional().nullable(),
 		previewUrl: z.string({ invalid_type_error: "Tipo não válido para a url do preview do logo da organização." }).optional().nullable(),
 	}),
-	subscription: z.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "FREE-TRIAL"]).optional().nullable(),
+	subscription: z
+		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL"])
+		.optional()
+		.nullable(),
 });
 export type TOrganizationOnboardingState = z.infer<typeof OrganizationOnboardingStateSchema>;
 
