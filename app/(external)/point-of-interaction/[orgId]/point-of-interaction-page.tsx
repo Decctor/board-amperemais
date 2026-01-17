@@ -2,19 +2,16 @@
 
 import type { TCreatePointOfInteractionNewSaleInput } from "@/app/api/point-of-interaction/new-sale/route";
 import TextInput from "@/components/Inputs/TextInput";
-import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
-import { formatLocation, formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
-import { fetchClientByLookup, useClientByLookup } from "@/lib/queries/clients";
+import { useClientByLookup } from "@/lib/queries/clients";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Building2, Coins, IdCard, Loader2, Mail, MapPin, Phone, ShoppingCart, Trophy, Users } from "lucide-react";
+import { ArrowRight, Building2, Coins, Loader2, ShoppingCart, Trophy } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

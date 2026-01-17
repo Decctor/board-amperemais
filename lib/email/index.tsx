@@ -17,7 +17,7 @@ function getReactEmailTemplateAndSubject<T extends EmailTemplate>(template: T, p
 			console.log(props);
 			return {
 				templateComponent: <MagicLinkTemplate {...(props as PropsMap[EmailTemplate.AuthMagicLink])} />,
-				subject: "Aqui está seu link de acesso ao Conecta Ampère.",
+				subject: "Aqui está seu link de acesso ao RecompraCRM.",
 			};
 		default:
 			throw new Error("Template de email inválido.");
