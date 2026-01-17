@@ -3,10 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { getErrorMessage } from "@/lib/errors";
 import { createOrganization } from "@/lib/mutations/organizations";
 import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { toast } from "sonner";
 import { ActuationStage } from "./components/ActuationStage";
 import { GeneralInfoStage } from "./components/GeneralInfoStage";
 import { NicheOriginStage } from "./components/NicheOriginStage";
@@ -26,6 +28,9 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 		onSuccess: (data) => {
 			// Redirect to the provided URL (either dashboard or Stripe checkout)
 			window.location.href = data.data.redirectTo;
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
 		},
 	});
 

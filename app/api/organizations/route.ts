@@ -4,7 +4,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { OrganizationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
+import { organizations, users } from "@/services/drizzle/schema";
 import { stripe } from "@/services/stripe";
 import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -28,6 +28,7 @@ async function createOrganization({ input, sessionUser }: { input: TCreateOrgani
 
 	const { organization, subscription } = input;
 
+	console.log("[INFO] [CREATE_ORGANIZATION] Starting the organization onboarding conclusion process:", JSON.stringify(input, null, 2));
 	// 1. Insert organization first
 	const insertedOrganizationResponse = await db
 		.insert(organizations)
@@ -38,9 +39,17 @@ async function createOrganization({ input, sessionUser }: { input: TCreateOrgani
 
 	const insertedOrgId = insertedOrganizationResponse[0]?.id;
 	if (!insertedOrgId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar organização.");
+	console.log("[INFO] [CREATE_ORGANIZATION] Organization created successfully with ID:", insertedOrgId);
 
+	await db
+		.update(users)
+		.set({
+			organizacaoId: insertedOrgId,
+		})
+		.where(eq(users.id, sessionUser.id));
 	// 2. Process subscription
 	if (!subscription || subscription === "FREE-TRIAL") {
+		console.log("[INFO] [CREATE_ORGANIZATION] Free trial selected. Defining free trial period.");
 		// FREE-TRIAL logic
 		const periodoTesteInicio = new Date();
 		const periodoTesteFim = new Date();
@@ -54,6 +63,7 @@ async function createOrganization({ input, sessionUser }: { input: TCreateOrgani
 			})
 			.where(eq(organizations.id, insertedOrgId));
 
+		console.log("[INFO] [CREATE_ORGANIZATION] Free trial period defined successfully.");
 		return {
 			data: {
 				insertedId: insertedOrgId,
@@ -63,6 +73,10 @@ async function createOrganization({ input, sessionUser }: { input: TCreateOrgani
 		};
 	}
 
+	console.log("[INFO] [CREATE_ORGANIZATION] Paid plan selected, starting Stripe checkout processing.", {
+		organizationId: insertedOrgId,
+		subscription,
+	});
 	// Paid plans logic
 	// Parse subscription format: "ESSENCIAL-MONTHLY" -> plan: "ESSENCIAL", modality: "monthly"
 	const [planName, modalityName] = subscription.split("-") as [keyof typeof AppSubscriptionPlans, "MONTHLY" | "YEARLY"];
@@ -85,7 +99,7 @@ async function createOrganization({ input, sessionUser }: { input: TCreateOrgani
 			organizationId: insertedOrgId,
 		},
 	});
-
+	console.log("[INFO] [CREATE_ORGANIZATION] Stripe customer created successfully with ID:", stripeCustomer.id);
 	// Update organization with Stripe customer ID
 	await db
 		.update(organizations)
@@ -113,8 +127,8 @@ async function createOrganization({ input, sessionUser }: { input: TCreateOrgani
 			},
 		},
 	});
-
 	if (!checkoutSession.url) throw new createHttpError.InternalServerError("Erro ao criar sessão de checkout.");
+	console.log("[INFO] [CREATE_ORGANIZATION] Stripe checkout session created successfully with URL:", checkoutSession.url);
 
 	return {
 		data: {
