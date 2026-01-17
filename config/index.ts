@@ -1,5 +1,7 @@
 export const SESSION_COOKIE_NAME = "syncrono-session";
 
+export const FREE_TRIAL_DURATION_DAYS = 15;
+
 export const AppSubscriptionPlans: {
 	[key in "ESSENCIAL" | "CRESCIMENTO" | "ESCALA"]: {
 		name: string;
@@ -20,11 +22,13 @@ export const AppSubscriptionPlans: {
 				price: number;
 				currency: string;
 				interval: "month" | "year";
+				stripePriceId: string;
 			};
 			yearly: {
 				price: number;
 				currency: string;
 				interval: "month" | "year";
+				stripePriceId: string;
 			};
 		};
 	};
@@ -110,11 +114,13 @@ export const AppSubscriptionPlans: {
 				price: 499,
 				currency: "BRL",
 				interval: "month",
+				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESSENCIAL_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
 				price: 5499,
 				currency: "BRL",
 				interval: "year",
+				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESSENCIAL_YEARLY_PLAN_PRICE_ID as string,
 			},
 		},
 	},
@@ -199,11 +205,13 @@ export const AppSubscriptionPlans: {
 				price: 999,
 				currency: "BRL",
 				interval: "month",
+				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_CRESCIMENTO_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
 				price: 9999,
 				currency: "BRL",
 				interval: "year",
+				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_CRESCIMENTO_YEARLY_PLAN_PRICE_ID as string,
 			},
 		},
 	},
@@ -288,11 +296,13 @@ export const AppSubscriptionPlans: {
 				price: 999,
 				currency: "BRL",
 				interval: "month",
+				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESCALA_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
 				price: 9999,
 				currency: "BRL",
 				interval: "year",
+				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESCALA_YEARLY_PLAN_PRICE_ID as string,
 			},
 		},
 	},

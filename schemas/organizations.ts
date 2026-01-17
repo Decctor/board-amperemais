@@ -40,7 +40,7 @@ export const OrganizationSchema = z.object({
 	assinaturaPlano: z.string({ invalid_type_error: "Tipo não válido para o plano de assinatura da organização." }).optional().nullable(),
 	dadosViaERP: z.boolean({ invalid_type_error: "Tipo não válido para se os dados da organização foram via ERP." }).default(false),
 	dadosViaPDI: z.boolean({ invalid_type_error: "Tipo não válido para se os dados da organização foram via PDI." }).default(false),
-	dadosViaIntegraoes: z.boolean({ invalid_type_error: "Tipo não válido para se os dados da organização foram via integrações." }).default(false),
+	dadosViaIntegracoes: z.boolean({ invalid_type_error: "Tipo não válido para se os dados da organização foram via integrações." }).default(false),
 	// Integration
 	integracaoTipo: OrganizationIntegrationTypeEnum.optional().nullable(),
 	integracaoConfiguracao: OrganizationIntegrationConfigSchema.optional().nullable(),

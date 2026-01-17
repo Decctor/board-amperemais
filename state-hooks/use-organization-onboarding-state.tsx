@@ -31,7 +31,7 @@ export function useOrganizationOnboardingState({ initialState }: TUseOrganizatio
 				assinaturaPlano: initialState?.organization?.assinaturaPlano ?? null,
 				dadosViaERP: initialState?.organization?.dadosViaERP ?? false,
 				dadosViaPDI: initialState?.organization?.dadosViaPDI ?? false,
-				dadosViaIntegraoes: initialState?.organization?.dadosViaIntegraoes ?? false,
+				dadosViaIntegracoes: initialState?.organization?.dadosViaIntegracoes ?? false,
 				telefone: initialState?.organization?.telefone ?? null,
 				email: initialState?.organization?.email ?? null,
 				localizacaoCep: initialState?.organization?.localizacaoCep ?? null,

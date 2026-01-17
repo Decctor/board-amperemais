@@ -3,7 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { createOrganization } from "@/lib/mutations/organizations";
 import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
+import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { ActuationStage } from "./components/ActuationStage";
 import { GeneralInfoStage } from "./components/GeneralInfoStage";
@@ -18,6 +20,21 @@ type OnboardingPageProps = {
 export function OnboardingPage({ user }: OnboardingPageProps) {
 	const { state, updateOrganization, updateOrganizationLogoHolder, updateOrganizationOnboarding, goToNextStage, goToPreviousStage } =
 		useOrganizationOnboardingState({});
+
+	const mutation = useMutation({
+		mutationFn: createOrganization,
+		onSuccess: (data) => {
+			// Redirect to the provided URL (either dashboard or Stripe checkout)
+			window.location.href = data.data.redirectTo;
+		},
+	});
+
+	const handleSubmit = () => {
+		mutation.mutate({
+			organization: state.organization,
+			subscription: state.subscription,
+		});
+	};
 
 	const handleNext = () => {
 		if (state.stage === "subscription-plans-section") {
@@ -41,7 +58,14 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 			case "organization-actuation":
 				return <ActuationStage state={state} updateOrganization={updateOrganization} />;
 			case "subscription-plans-section":
-				return <SubscriptionPlansStage state={state} handlePlanSelection={updateOrganizationOnboarding} />;
+				return (
+					<SubscriptionPlansStage
+						state={state}
+						updateOrganizationOnboarding={updateOrganizationOnboarding}
+						isMutationPending={mutation.isPending}
+						handleSubmit={handleSubmit}
+					/>
+				);
 			default:
 				return null;
 		}

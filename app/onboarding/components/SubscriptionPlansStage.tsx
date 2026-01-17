@@ -3,16 +3,17 @@ import { AppSubscriptionPlans } from "@/config";
 import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { TUseOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useState } from "react";
 
 type SubscriptionPlansStageProps = {
 	state: TUseOrganizationOnboardingState["state"];
-	handlePlanSelection: (plan: TUseOrganizationOnboardingState["state"]["subscription"]) => void;
 	updateOrganizationOnboarding: (changes: Partial<TUseOrganizationOnboardingState["state"]>) => void;
+	isMutationPending: boolean;
+	handleSubmit: () => void;
 };
 
-export function SubscriptionPlansStage({ state, handlePlanSelection }: SubscriptionPlansStageProps) {
+export function SubscriptionPlansStage({ state, updateOrganizationOnboarding, isMutationPending, handleSubmit }: SubscriptionPlansStageProps) {
 	const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
 
 	const handlePlanSelect = (plan: "ESSENCIAL" | "CRESCIMENTO") => {
@@ -21,7 +22,17 @@ export function SubscriptionPlansStage({ state, handlePlanSelection }: Subscript
 			| "ESSENCIAL-YEARLY"
 			| "CRESCIMENTO-MONTHLY"
 			| "CRESCIMENTO-YEARLY";
-		handlePlanSelection(subscriptionKey);
+		// Update state with selected plan
+		updateOrganizationOnboarding({ subscription: subscriptionKey });
+		// Trigger submission
+		handleSubmit();
+	};
+
+	const handleFreeTrialSelect = () => {
+		// Update state with FREE-TRIAL
+		updateOrganizationOnboarding({ subscription: "FREE-TRIAL" });
+		// Trigger submission
+		handleSubmit();
 	};
 
 	return (
@@ -32,9 +43,11 @@ export function SubscriptionPlansStage({ state, handlePlanSelection }: Subscript
 					<button
 						type="button"
 						onClick={() => setBillingInterval("monthly")}
+						disabled={isMutationPending}
 						className={cn(
 							"relative z-10 box-border w-32 rounded-full py-2.5 text-center text-sm font-bold transition-colors duration-300",
 							billingInterval === "monthly" ? "text-gray-900" : "text-gray-500 hover:text-gray-700",
+							isMutationPending && "opacity-50 cursor-not-allowed",
 						)}
 					>
 						MENSAL
@@ -42,9 +55,11 @@ export function SubscriptionPlansStage({ state, handlePlanSelection }: Subscript
 					<button
 						type="button"
 						onClick={() => setBillingInterval("yearly")}
+						disabled={isMutationPending}
 						className={cn(
 							"relative z-10 box-border w-32 rounded-full py-2.5 text-center text-sm font-bold transition-colors duration-300",
 							billingInterval === "yearly" ? "text-gray-900" : "text-gray-500 hover:text-gray-700",
+							isMutationPending && "opacity-50 cursor-not-allowed",
 						)}
 					>
 						ANUAL
@@ -69,12 +84,15 @@ export function SubscriptionPlansStage({ state, handlePlanSelection }: Subscript
 						<button
 							key={planKey}
 							type="button"
+							disabled={isMutationPending}
 							className={cn(
 								"group relative flex flex-col rounded-3xl p-8 transition-all duration-300 border-2 cursor-pointer text-left focus:outline-none focus:ring-4 focus:ring-yellow-400/30",
 								// Base styles (idle)
 								"bg-transparent border-transparent hover:bg-[#F5F5F0] hover:shadow-xl hover:scale-[1.02]",
 								// Selected styles
 								isSelected ? "bg-[#F5F5F0] shadow-xl scale-[1.02] ring-2 ring-[#FFD600] ring-offset-2 border-transparent" : "",
+								// Disabled styles
+								isMutationPending && "opacity-50 cursor-not-allowed hover:scale-100",
 							)}
 							onClick={() => handlePlanSelect(planKey)}
 						>
@@ -105,13 +123,21 @@ export function SubscriptionPlansStage({ state, handlePlanSelection }: Subscript
 								</div>
 
 								<Button
+									disabled={isMutationPending}
 									className={cn(
 										"w-full h-10 rounded-xl text-base font-bold transition-all duration-300",
 										"bg-[#FFD600] text-gray-900 hover:bg-[#E5C000] hover:shadow-lg hover:-translate-y-0.5",
 										isSelected && "ring-2 ring-gray-900 ring-offset-2",
 									)}
 								>
-									COMEÇAR AGORA
+									{isMutationPending ? (
+										<>
+											<Loader2 className="h-4 w-4 animate-spin mr-2" />
+											PROCESSANDO...
+										</>
+									) : (
+										"COMEÇAR AGORA"
+									)}
 								</Button>
 							</div>
 						</button>
@@ -123,10 +149,18 @@ export function SubscriptionPlansStage({ state, handlePlanSelection }: Subscript
 			<div className="flex justify-center pt-8">
 				<Button
 					variant="ghost"
-					className="text-gray-500 hover:text-gray-900 text-sm font-medium underline-offset-4 hover:underline"
-					onClick={() => handlePlanSelection("FREE-TRIAL")}
+					disabled={isMutationPending}
+					className="text-gray-500 hover:text-gray-900 text-sm font-medium underline-offset-4 hover:underline disabled:opacity-50"
+					onClick={handleFreeTrialSelect}
 				>
-					Ou comece com um teste grátis de 7 dias
+					{isMutationPending ? (
+						<>
+							<Loader2 className="h-4 w-4 animate-spin mr-2" />
+							Processando...
+						</>
+					) : (
+						"Ou comece com um teste grátis de 15 dias"
+					)}
 				</Button>
 			</div>
 		</div>

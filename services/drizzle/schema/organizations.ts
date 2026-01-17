@@ -25,10 +25,15 @@ export const organizations = newTable("organizations", {
 	plataformasUtilizadas: text("plataformas_utilizadas"), // Shopify, WooCommerce, Magento, etc (separated by comma)
 	origemLead: text("origem_lead"), // How did you hear about us? (Instagram, Google, Linkedin, etc)
 
+	// Stripe
+	stripeCustomerId: text("stripe_customer_id"),
+	stripeSubscriptionId: text("stripe_subscription_id"),
+	stripeSubscriptionStatus: text("stripe_subscription_status"),
+
 	assinaturaPlano: text("assinatura_plano").default("ESSENCIAL"),
 	dadosViaERP: boolean("dados_via_erp").notNull().default(false),
 	dadosViaPDI: boolean("dados_via_pdi").notNull().default(false),
-	dadosViaIntegraoes: boolean("dados_via_integracoes").notNull().default(false),
+	dadosViaIntegracoes: boolean("dados_via_integracoes").notNull().default(false),
 	integracaoTipo: organizationIntegrationTypeEnum("integracao_tipo"),
 	integracaoConfiguracao: jsonb("integracao_configuracao").$type<TOrganizationIntegrationConfig>(),
 	integracaoDataUltimaSincronizacao: timestamp("integracao_data_ultima_sincronizacao"),
