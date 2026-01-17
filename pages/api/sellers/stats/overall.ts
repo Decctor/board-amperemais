@@ -50,92 +50,67 @@ const GetSellersOverallStatsInputSchema = z.object({
 
 export type TGetSellersOverallStatsInput = z.infer<typeof GetSellersOverallStatsInputSchema>;
 
-async function getTotalSellersGoal({
-	periodAfter,
-	periodBefore,
-	organizacaoId,
-}: {
-	periodAfter: Date | null;
-	periodBefore: Date | null;
+type GetOverallSaleGoalProps = {
+	after: string;
+	before: string;
 	organizacaoId: string;
-}): Promise<number> {
-	if (!periodAfter || !periodBefore) return 0;
-
-	const adjustedAfter = new Date(periodAfter);
-	const adjustedBefore = new Date(periodBefore);
-
-	// Get all sellers in organization
-	const allSellers = await db.query.sellers.findMany({
-		where: eq(sellers.organizacaoId, organizacaoId),
-		columns: {
-			id: true,
-		},
-	});
-
-	let totalGoal = 0;
-
-	// Calculate goal for each seller
-	for (const seller of allSellers) {
-		const sellerGoalsResult = await db.query.goalsSellers.findMany({
-			where: and(
-				eq(goalsSellers.vendedorId, seller.id),
-				inArray(
-					goalsSellers.metaId,
-					db
-						.select({ id: goals.id })
-						.from(goals)
-						.where(
-							and(
-								eq(goals.organizacaoId, organizacaoId),
-								or(
-									and(gte(goals.dataInicio, adjustedAfter), lte(goals.dataInicio, adjustedBefore)),
-									and(gte(goals.dataFim, adjustedAfter), lte(goals.dataFim, adjustedBefore)),
-								),
-							),
-						),
+};
+async function getOverallSaleGoal({ after, before, organizacaoId }: GetOverallSaleGoalProps) {
+	const ajustedAfter = dayjs(after).toDate();
+	const ajustedBefore = dayjs(before).endOf("day").toDate();
+	try {
+		const goals = await db.query.goals.findMany({
+			where: (fields, { and, or, gte, lte, eq }) =>
+				and(
+					eq(fields.organizacaoId, organizacaoId),
+					or(
+						and(gte(fields.dataInicio, ajustedAfter), lte(fields.dataInicio, ajustedBefore)),
+						and(gte(fields.dataFim, ajustedAfter), lte(fields.dataFim, ajustedBefore)),
+					),
 				),
-			),
-			with: {
-				meta: {
-					columns: {
-						dataInicio: true,
-						dataFim: true,
-					},
-				},
-			},
 		});
 
-		const sellerGoal = sellerGoalsResult.reduce((acc, goal) => {
-			const afterDatetime = adjustedAfter.getTime();
-			const beforeDatetime = adjustedBefore.getTime();
+		console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goals: ", goals);
+		const applicableSaleGoal = goals.reduce((acc, current) => {
+			const afterDatetime = new Date(after).getTime();
+			const beforeDatetime = new Date(before).getTime();
 
-			const monthStartDatetime = new Date(goal.meta.dataInicio).getTime();
-			const monthEndDatetime = new Date(goal.meta.dataFim).getTime();
+			const monthStartDatetime = new Date(current.dataInicio).getTime();
+			const monthEndDatetime = new Date(current.dataFim).getTime();
 
-			const days = Math.abs(dayjs(goal.meta.dataFim).diff(dayjs(goal.meta.dataInicio), "days")) + 1;
+			const days = Math.abs(dayjs(current.dataFim).diff(dayjs(current.dataInicio), "days")) + 1;
 
 			if (
 				(afterDatetime < monthStartDatetime && beforeDatetime < monthStartDatetime) ||
 				(afterDatetime > monthEndDatetime && beforeDatetime > monthEndDatetime)
 			) {
+				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal not applicable: ", { current });
 				return acc;
 			}
 			if (afterDatetime <= monthStartDatetime && beforeDatetime >= monthEndDatetime) {
-				return acc + goal.objetivoValor;
+				// Caso o período de filtro da query compreenda o mês inteiro
+				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for all period: ", { current });
+				return acc + current.objetivoValor;
 			}
 			if (beforeDatetime > monthEndDatetime) {
-				const applicableDays = dayjs(goal.meta.dataFim).diff(dayjs(adjustedAfter), "days");
-				return acc + (goal.objetivoValor * applicableDays) / days;
+				const applicableDays = dayjs(current.dataFim).diff(dayjs(after), "days");
+
+				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for partial period: ", { current, applicableDays, days });
+				return acc + (current.objetivoValor * applicableDays) / days;
 			}
 
-			const applicableDays = dayjs(adjustedBefore).diff(dayjs(goal.meta.dataInicio), "days") + 1;
-			return acc + (goal.objetivoValor * applicableDays) / days;
+			const applicableDays = dayjs(before).diff(dayjs(current.dataInicio), "days") + 1;
+
+			console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for partial period: ", { current, applicableDays, days });
+
+			return acc + (current.objetivoValor * applicableDays) / days;
 		}, 0);
 
-		totalGoal += sellerGoal;
+		return applicableSaleGoal;
+	} catch (error) {
+		console.log("Error getting overall sale goal", error);
+		throw error;
 	}
-
-	return totalGoal;
 }
 
 async function getSellersOverallStats({ input, session }: { input: TGetSellersOverallStatsInput; session: TAuthUserSession["user"] }) {
@@ -176,11 +151,14 @@ async function getSellersOverallStats({ input, session }: { input: TGetSellersOv
 	const averageTicket = salesCount > 0 ? totalRevenue / salesCount : 0;
 
 	// 4. Total goal
-	const totalGoal = await getTotalSellersGoal({
-		periodAfter: periodAfter ?? null,
-		periodBefore: periodBefore ?? null,
-		organizacaoId: userOrgId,
-	});
+	const totalGoal =
+		periodAfter && periodBefore
+			? await getOverallSaleGoal({
+					after: periodAfter?.toISOString(),
+					before: periodBefore?.toISOString(),
+					organizacaoId: userOrgId,
+				})
+			: 0;
 	const goalAchievementPercentage = totalGoal > 0 ? (totalRevenue / totalGoal) * 100 : 0;
 
 	// If no comparison period, return current stats only
@@ -235,11 +213,14 @@ async function getSellersOverallStats({ input, session }: { input: TGetSellersOv
 	const comparisonSalesCount = Number(comparisonRevenueResult[0]?.salesCount ?? 0);
 	const comparisonAverageTicket = comparisonSalesCount > 0 ? comparisonTotalRevenue / comparisonSalesCount : 0;
 
-	const comparisonTotalGoal = await getTotalSellersGoal({
-		periodAfter: comparingPeriodAfter ?? null,
-		periodBefore: comparingPeriodBefore ?? null,
-		organizacaoId: userOrgId,
-	});
+	const comparisonTotalGoal =
+		comparingPeriodAfter && comparingPeriodBefore
+			? await getOverallSaleGoal({
+					after: comparingPeriodAfter?.toISOString(),
+					before: comparingPeriodBefore?.toISOString(),
+					organizacaoId: userOrgId,
+				})
+			: 0;
 	const comparisonGoalAchievementPercentage = comparisonTotalGoal > 0 ? (comparisonTotalRevenue / comparisonTotalGoal) * 100 : 0;
 
 	return {
