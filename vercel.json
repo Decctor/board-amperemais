@@ -23,6 +23,14 @@
 		{
 			"path": "/api/cron/process-interactions",
 			"schedule": "0 */3 * * *"
+		},
+		{
+			"path": "/api/cron/cashback-expire",
+			"schedule": "0 23 * * *"
+		},
+		{
+			"path": "/api/cron/cashback-expiring-notify",
+			"schedule": "0 9 */3 * *"
 		}
 	]
 }

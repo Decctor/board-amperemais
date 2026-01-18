@@ -390,13 +390,7 @@ function ClientStep({
 function SaleValueStep({ value, onChange, onSubmit }: { value: number; onChange: (value: number) => void; onSubmit: () => void }) {
 	const helpers = [10, 25, 50, 100];
 	return (
-		<form
-			className="space-y-8 animate-in fade-in slide-in-from-bottom-4"
-			onSubmit={(e) => {
-				e.preventDefault();
-				onSubmit();
-			}}
-		>
+		<div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
 			<div className="text-center space-y-2">
 				<h2 className="text-xl font-black uppercase tracking-tight">Qual o valor da compra?</h2>
 			</div>
@@ -419,7 +413,7 @@ function SaleValueStep({ value, onChange, onSubmit }: { value: number; onChange:
 					<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
 				</Button>
 			</div>
-		</form>
+		</div>
 	);
 }
 
