@@ -16,6 +16,8 @@ export function useCampaignState() {
 			permitirRecorrencia: true,
 			frequenciaIntervaloValor: 0,
 			frequenciaIntervaloMedida: "DIAS",
+			atribuicaoModelo: "LAST_TOUCH",
+			atribuicaoJanelaDias: 14,
 		},
 		segmentations: [],
 	};

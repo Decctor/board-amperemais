@@ -27,6 +27,10 @@ export const interactions = newTable("interactions", {
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataExecucao: timestamp("data_execucao"),
 	metadados: jsonb("metadados"),
+
+	// Delivery status tracking
+	dataEnvio: timestamp("data_envio"), // When message was actually sent
+	statusEnvio: text("status_envio"), // PENDING, SENT, DELIVERED, READ, FAILED
 });
 export const interactionRelations = relations(interactions, ({ one }) => ({
 	cliente: one(clients, {

@@ -47,3 +47,5 @@ export const ChatMessageStatusEnum = z.enum(["CANCELADO", "ENVIADO", "RECEBIDO",
 export type TChatMessageStatusEnum = z.infer<typeof ChatMessageStatusEnum>;
 export const ChatMessageWhatsappStatusEnum = z.enum(["PENDENTE", "ENVIADO", "ENTREGUE", "FALHOU"]);
 export type TChatMessageWhatsappStatusEnum = z.infer<typeof ChatMessageWhatsappStatusEnum>;
+export const AttributionModelEnum = z.enum(["LAST_TOUCH", "FIRST_TOUCH", "LINEAR"]);
+export type TAttributionModelEnum = z.infer<typeof AttributionModelEnum>;

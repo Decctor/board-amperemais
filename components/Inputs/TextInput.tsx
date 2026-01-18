@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
-import React from "react";
+import type React from "react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
-type TextInputProps = {
+type TextInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 	width?: string;
 	label: string;
 	labelClassName?: string;
@@ -30,6 +30,7 @@ function TextInput({
 	inputType = "text",
 	handleChange,
 	handleOnBlur,
+	...props
 }: TextInputProps) {
 	const inputIdentifier = label.toLowerCase().replace(" ", "_");
 	return (
@@ -42,6 +43,7 @@ function TextInput({
 			) : null}
 
 			<Input
+				{...props}
 				value={value}
 				onChange={(e) => handleChange(e.target.value)}
 				id={inputIdentifier}

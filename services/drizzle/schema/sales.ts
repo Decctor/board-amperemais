@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
-import { doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { campaigns } from "./campaigns";
 import { clients } from "./clients";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
@@ -35,6 +36,11 @@ export const sales = newTable(
 		situacao: text("situacao").notNull(),
 		tipo: text("tipo").notNull(),
 		dataVenda: timestamp("data_venda"),
+
+		// Conversion Attribution fields
+		atribuicaoProcessada: boolean("atribuicao_processada").default(false),
+		atribuicaoCampanhaPrincipalId: varchar("atribuicao_campanha_principal_id", { length: 255 }).references(() => campaigns.id),
+		atribuicaoAplicavel: boolean("atribuicao_aplicavel").default(false),
 	},
 	(table) => ({
 		clientIdIdx: index("idx_sales_client_id").on(table.clienteId),
@@ -60,6 +66,10 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 	parceiro: one(partners, {
 		fields: [sales.parceiroId],
 		references: [partners.id],
+	}),
+	atribuicaoCampanhaPrincipal: one(campaigns, {
+		fields: [sales.atribuicaoCampanhaPrincipalId],
+		references: [campaigns.id],
 	}),
 	itens: many(saleItems),
 }));

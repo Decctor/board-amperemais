@@ -10,6 +10,7 @@ export * from "./utils";
 export * from "./partners";
 export * from "./enums";
 export * from "./campaigns";
+export * from "./campaign-conversions";
 export * from "./interactions";
 export * from "./whatsapp-templates";
 export * from "./cashback-programs";

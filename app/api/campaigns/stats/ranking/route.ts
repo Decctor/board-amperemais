@@ -1,0 +1,249 @@
+import { appApiHandler } from "@/lib/app-api";
+import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { db } from "@/services/drizzle";
+import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
+import { and, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
+import createHttpError from "http-errors";
+import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const GetCampaignRankingInputSchema = z.object({
+	startDate: z
+		.string({
+			required_error: "Período não informado.",
+			invalid_type_error: "Tipo inválido para período.",
+		})
+		.datetime({ message: "Tipo inválido para período." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	endDate: z
+		.string({
+			required_error: "Período não informado.",
+			invalid_type_error: "Tipo inválido para período.",
+		})
+		.datetime({ message: "Tipo inválido para período." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	comparingStartDate: z
+		.string({
+			required_error: "Período de comparação não informado.",
+			invalid_type_error: "Tipo inválido para período de comparação.",
+		})
+		.datetime({ message: "Tipo inválido para período de comparação." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	comparingEndDate: z
+		.string({
+			required_error: "Período de comparação não informado.",
+			invalid_type_error: "Tipo inválido para período de comparação.",
+		})
+		.datetime({ message: "Tipo inválido para período de comparação." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	rankingBy: z.enum(["revenue", "conversions", "conversion-rate"]).optional().nullable(),
+});
+export type TGetCampaignRankingInput = z.infer<typeof GetCampaignRankingInputSchema>;
+
+async function fetchRankingForPeriod({
+	startDate,
+	endDate,
+	rankingBy,
+	userOrgId,
+}: {
+	startDate: Date | null;
+	endDate: Date | null;
+	rankingBy: "revenue" | "conversions" | "conversion-rate" | null | undefined;
+	userOrgId: string;
+}) {
+	// Get all campaigns
+	const allCampaigns = await db.query.campaigns.findMany({
+		where: eq(campaigns.organizacaoId, userOrgId),
+		columns: {
+			id: true,
+			titulo: true,
+			ativo: true,
+		},
+	});
+
+	// Build interaction conditions
+	const interactionConditions = [eq(interactions.organizacaoId, userOrgId), eq(interactions.tipo, "ENVIO-MENSAGEM")];
+	if (startDate) interactionConditions.push(gte(interactions.dataInsercao, startDate));
+	if (endDate) interactionConditions.push(lte(interactions.dataInsercao, endDate));
+
+	// Get interactions per campaign
+	const interactionsData = await db
+		.select({
+			campanhaId: interactions.campanhaId,
+			total: count(interactions.id),
+		})
+		.from(interactions)
+		.where(and(...interactionConditions))
+		.groupBy(interactions.campanhaId);
+
+	const interactionsMap = new Map(interactionsData.map((i) => [i.campanhaId, Number(i.total)]));
+
+	// Build conversion conditions
+	const conversionConditions = [eq(campaignConversions.organizacaoId, userOrgId)];
+	if (startDate) conversionConditions.push(gte(campaignConversions.dataConversao, startDate));
+	if (endDate) conversionConditions.push(lte(campaignConversions.dataConversao, endDate));
+
+	// Get conversions per campaign
+	const conversionsData = await db
+		.select({
+			campanhaId: campaignConversions.campanhaId,
+			totalConversions: count(campaignConversions.id),
+			totalRevenue: sum(campaignConversions.atribuicaoReceita),
+		})
+		.from(campaignConversions)
+		.where(and(...conversionConditions))
+		.groupBy(campaignConversions.campanhaId);
+
+	const conversionsMap = new Map(
+		conversionsData.map((c) => [
+			c.campanhaId,
+			{
+				conversions: Number(c.totalConversions),
+				revenue: Number(c.totalRevenue ?? 0),
+			},
+		]),
+	);
+
+	// Build campaign stats
+	const campaignStats = allCampaigns.map((campaign) => {
+		const interacoes = interactionsMap.get(campaign.id) ?? 0;
+		const conversionData = conversionsMap.get(campaign.id) ?? { conversions: 0, revenue: 0 };
+		const taxaConversao = interacoes > 0 ? (conversionData.conversions / interacoes) * 100 : 0;
+
+		return {
+			campanhaId: campaign.id,
+			titulo: campaign.titulo,
+			ativo: campaign.ativo,
+			interacoes,
+			conversoes: conversionData.conversions,
+			receita: conversionData.revenue,
+			taxaConversao: Math.round(taxaConversao * 100) / 100,
+		};
+	});
+
+	// Sort based on ranking criteria
+	const sortedStats = [...campaignStats];
+	if (rankingBy === "revenue") {
+		sortedStats.sort((a, b) => b.receita - a.receita);
+	} else if (rankingBy === "conversions") {
+		sortedStats.sort((a, b) => b.conversoes - a.conversoes);
+	} else if (rankingBy === "conversion-rate") {
+		sortedStats.sort((a, b) => b.taxaConversao - a.taxaConversao);
+	} else {
+		// Default to revenue
+		sortedStats.sort((a, b) => b.receita - a.receita);
+	}
+
+	// Take top 10 and add rank
+	return sortedStats.slice(0, 10).map((item, index) => ({
+		...item,
+		rank: index + 1,
+	}));
+}
+
+async function getCampaignRanking({ input, session }: { input: TGetCampaignRankingInput; session: TAuthUserSession["user"] }) {
+	const userOrgId = session.organizacaoId;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const { startDate, endDate, comparingStartDate, comparingEndDate, rankingBy } = input;
+
+	// Fetch current period ranking
+	const currentRanking = await fetchRankingForPeriod({
+		startDate,
+		endDate,
+		rankingBy,
+		userOrgId,
+	});
+
+	// If no comparison period, return current ranking without comparison fields
+	if (!comparingStartDate || !comparingEndDate) {
+		return {
+			data: currentRanking.map((item) => ({
+				...item,
+				rankComparison: null,
+				rankDelta: null,
+				interacoesComparison: null,
+				conversoesComparison: null,
+				receitaComparison: null,
+				taxaConversaoComparison: null,
+			})),
+			message: "Ranking de campanhas recuperado com sucesso.",
+		};
+	}
+
+	// Fetch comparison period ranking
+	const comparisonRanking = await fetchRankingForPeriod({
+		startDate: comparingStartDate,
+		endDate: comparingEndDate,
+		rankingBy,
+		userOrgId,
+	});
+
+	// Create a map of campanhaId -> comparison data for quick lookup
+	const comparisonMap = new Map(
+		comparisonRanking.map((item) => [
+			item.campanhaId,
+			{
+				rank: item.rank,
+				interacoes: item.interacoes,
+				conversoes: item.conversoes,
+				receita: item.receita,
+				taxaConversao: item.taxaConversao,
+			},
+		]),
+	);
+
+	// Merge current ranking with comparison data
+	const enrichedRanking = currentRanking.map((item) => {
+		const comparisonData = comparisonMap.get(item.campanhaId);
+		const rankComparison = comparisonData?.rank ?? null;
+		const rankDelta = rankComparison !== null ? rankComparison - item.rank : null;
+
+		return {
+			...item,
+			rankComparison,
+			rankDelta,
+			interacoesComparison: comparisonData?.interacoes ?? null,
+			conversoesComparison: comparisonData?.conversoes ?? null,
+			receitaComparison: comparisonData?.receita ?? null,
+			taxaConversaoComparison: comparisonData?.taxaConversao ?? null,
+		};
+	});
+
+	return {
+		data: enrichedRanking,
+		message: "Ranking de campanhas recuperado com sucesso.",
+	};
+}
+
+export type TGetCampaignRankingOutput = Awaited<ReturnType<typeof getCampaignRanking>>;
+
+const getCampaignRankingRoute = async (request: NextRequest) => {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+
+	const searchParams = request.nextUrl.searchParams;
+	const input = GetCampaignRankingInputSchema.parse({
+		startDate: searchParams.get("startDate") ?? null,
+		endDate: searchParams.get("endDate") ?? null,
+		comparingStartDate: searchParams.get("comparingStartDate") ?? null,
+		comparingEndDate: searchParams.get("comparingEndDate") ?? null,
+		rankingBy: (searchParams.get("rankingBy") as "revenue" | "conversions" | "conversion-rate" | undefined) ?? "revenue",
+	});
+
+	const result = await getCampaignRanking({ input, session: session.user });
+	return NextResponse.json(result, { status: 200 });
+};
+
+export const GET = appApiHandler({
+	GET: getCampaignRankingRoute,
+});

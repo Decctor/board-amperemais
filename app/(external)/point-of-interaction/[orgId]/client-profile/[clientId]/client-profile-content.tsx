@@ -356,86 +356,95 @@ function NewCashbackProgramRedemption({
 				) : null
 			}
 		>
-			<div className="w-full flex flex-col gap-1.5">
-				<h2 className="text-xl font-medium uppercase tracking-tight">Qual o valor da compra?</h2>
-				<div className="relative max-w-md mx-auto">
-					<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
-					<Input
-						type="number"
-						value={infoHolder.saleValue.toString()}
-						onChange={(e) => updateInfoHolder({ saleValue: Number(e.target.value) })}
-						className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
-					/>
-				</div>
-				<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
-					{valueHelpers.map((h) => (
+			<form
+				className="w-full flex flex-col gap-6"
+				onSubmit={(e) => {
+					e.preventDefault();
+					handleCreateCashbackProgramRedemptionMutation(infoHolder);
+				}}
+			>
+				<button type="submit" className="hidden" />
+				<div className="w-full flex flex-col gap-1.5">
+					<h2 className="text-xl font-medium uppercase tracking-tight">Qual o valor da compra?</h2>
+					<div className="relative max-w-md mx-auto">
+						<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
+						<Input
+							type="number"
+							value={infoHolder.saleValue.toString()}
+							onChange={(e) => updateInfoHolder({ saleValue: Number(e.target.value) })}
+							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+						/>
+					</div>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
+						{valueHelpers.map((h) => (
+							<Button
+								key={h}
+								variant="secondary"
+								onClick={() => updateInfoHolder({ saleValue: infoHolder.saleValue + h })}
+								className="h-14 rounded-xl font-black text-lg"
+							>
+								<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
+							</Button>
+						))}
 						<Button
-							key={h}
-							variant="secondary"
-							onClick={() => updateInfoHolder({ saleValue: infoHolder.saleValue + h })}
-							className="h-14 rounded-xl font-black text-lg"
+							variant="ghost"
+							onClick={() => updateInfoHolder({ saleValue: 0 })}
+							className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
 						>
-							<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
+							<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
 						</Button>
-					))}
-					<Button
-						variant="ghost"
-						onClick={() => updateInfoHolder({ saleValue: 0 })}
-						className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
-					>
-						<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
-					</Button>
+					</div>
 				</div>
-			</div>
-			<div className="w-full flex flex-col gap-1.5">
-				<h2 className="text-xl font-medium uppercase tracking-tight">Qual o valor do resgate?</h2>
-				<div className="relative max-w-md mx-auto">
-					<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
-					<Input
-						type="number"
-						value={infoHolder.redemptionValue.toString()}
-						onChange={(e) => updateInfoHolder({ redemptionValue: Number(e.target.value) })}
-						className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
-					/>
-				</div>
-				<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
-					{valueHelpers.map((h) => (
+				<div className="w-full flex flex-col gap-1.5">
+					<h2 className="text-xl font-medium uppercase tracking-tight">Qual o valor do resgate?</h2>
+					<div className="relative max-w-md mx-auto">
+						<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
+						<Input
+							type="number"
+							value={infoHolder.redemptionValue.toString()}
+							onChange={(e) => updateInfoHolder({ redemptionValue: Number(e.target.value) })}
+							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+						/>
+					</div>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
+						{valueHelpers.map((h) => (
+							<Button
+								key={h}
+								variant="secondary"
+								onClick={() => updateInfoHolder({ redemptionValue: Math.min(infoHolder.redemptionValue + h, clientAvailableBalance) })}
+								className="h-14 rounded-xl font-black text-lg"
+							>
+								<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
+							</Button>
+						))}
 						<Button
-							key={h}
-							variant="secondary"
-							onClick={() => updateInfoHolder({ redemptionValue: Math.min(infoHolder.redemptionValue + h, clientAvailableBalance) })}
-							className="h-14 rounded-xl font-black text-lg"
+							variant="ghost"
+							onClick={() => updateInfoHolder({ redemptionValue: 0 })}
+							className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
 						>
-							<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
+							<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
 						</Button>
-					))}
-					<Button
-						variant="ghost"
-						onClick={() => updateInfoHolder({ redemptionValue: 0 })}
-						className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
-					>
-						<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
-					</Button>
+					</div>
 				</div>
-			</div>
-			{infoHolder.redemptionValue > clientAvailableBalance ? (
-				<h3 className="text-red-500 font-black text-center p-2 rounded-lg border border-red-500 bg-red-200">
-					OOPS, SALDO INSUFICIENTE PARA ESTE RESGATE :(
-				</h3>
-			) : null}
-			<div className="w-full flex flex-col gap-1.5">
-				<h2 className="text-xl font-medium uppercase tracking-tight">SENHA DO OPERADOR</h2>
-				<div className="relative max-w-md mx-auto">
-					<LockIcon className="w-4 h-4 absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground" />
-					<Input
-						type="number"
-						value={infoHolder.operatorIdentifier}
-						onChange={(e) => updateInfoHolder({ operatorIdentifier: formatToNumericPassword(e.target.value) })}
-						placeholder="*****"
-						className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
-					/>
+				{infoHolder.redemptionValue > clientAvailableBalance ? (
+					<h3 className="text-red-500 font-black text-center p-2 rounded-lg border border-red-500 bg-red-200">
+						OOPS, SALDO INSUFICIENTE PARA ESTE RESGATE :(
+					</h3>
+				) : null}
+				<div className="w-full flex flex-col gap-1.5">
+					<h2 className="text-xl font-medium uppercase tracking-tight">SENHA DO OPERADOR</h2>
+					<div className="relative max-w-md mx-auto">
+						<LockIcon className="w-4 h-4 absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							type="number"
+							value={infoHolder.operatorIdentifier}
+							onChange={(e) => updateInfoHolder({ operatorIdentifier: formatToNumericPassword(e.target.value) })}
+							placeholder="*****"
+							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+						/>
+					</div>
 				</div>
-			</div>
+			</form>
 		</ResponsiveMenuV2>
 	);
 }

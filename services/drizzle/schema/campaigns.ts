@@ -1,3 +1,4 @@
+import type { TAttributionModelEnum } from "@/schemas/enums";
 import { relations } from "drizzle-orm";
 import { boolean, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users, whatsappTemplates } from ".";
@@ -42,6 +43,10 @@ export const campaigns = newTable("campaigns", {
 		.references(() => users.id)
 		.notNull(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+
+	// Attribution settings
+	atribuicaoModelo: text("atribuicao_modelo").$type<TAttributionModelEnum>().default("LAST_TOUCH").notNull(), // LAST_TOUCH, FIRST_TOUCH, LINEAR
+	atribuicaoJanelaDias: integer("atribuicao_janela_dias").default(14).notNull(),
 });
 export const campaignRelations = relations(campaigns, ({ many, one }) => ({
 	segmentacoes: many(campaignSegmentations),

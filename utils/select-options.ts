@@ -1,4 +1,5 @@
 import type {
+	TAttributionModelEnum,
 	TCampaignTriggerTypeEnum,
 	TCashbackProgramAccumulationTypeEnum,
 	TInteractionsCronJobTimeBlocksEnum,
@@ -77,4 +78,10 @@ export const UnitsOfMeasurementOptions: { id: number; label: string; value: stri
 	{ id: 18, label: "PACOTE", value: "PACOTE" }, // Pacote
 	{ id: 19, label: "BARRA", value: "BARRA" }, // Barra
 	{ id: 20, label: "FATIA", value: "FATIA" }, // Fatia
+];
+
+export const AttributionModelOptions: { id: number; label: string; value: TAttributionModelEnum }[] = [
+	{ id: 1, label: "ÚLTIMA INTERAÇÃO", value: "LAST_TOUCH" },
+	{ id: 2, label: "PRIMEIRA INTERAÇÃO", value: "FIRST_TOUCH" },
+	{ id: 3, label: "MÉDIA DE INTERAÇÕES", value: "LINEAR" },
 ];

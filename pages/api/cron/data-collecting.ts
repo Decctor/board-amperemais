@@ -1,3 +1,4 @@
+import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
@@ -483,6 +484,18 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						}
 						// Defining the saleId
 						saleId = insertedSaleId;
+
+						// Process conversion attribution for new valid sales
+						if (insertedSaleId && isValidSale) {
+							await processConversionAttribution(tx, {
+								vendaId: insertedSaleId,
+								clienteId: saleClientId,
+								organizacaoId: organization.id,
+								valorVenda: Number(OnlineSale.valor),
+								dataVenda: saleDate,
+							});
+						}
+
 						createdSalesCount++;
 					} else {
 						isNewSale = false; // É APENAS ATUALIZAÇÃO

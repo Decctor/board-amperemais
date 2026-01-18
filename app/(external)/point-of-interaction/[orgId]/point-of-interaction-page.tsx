@@ -128,13 +128,20 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 			stateIsLoading={false}
 			stateError={null}
 		>
-			<TextInput
-				label="NÚMERO DO WHATSAPP"
-				inputType="tel"
-				placeholder="(00) 00000-0000"
-				value={params.phone}
-				handleChange={(value) => updateParams({ phone: formatToPhone(value) })}
-			/>
+			<form
+				className="w-full"
+				onSubmit={(e) => {
+					e.preventDefault();
+				}}
+			>
+				<TextInput
+					label="NÚMERO DO WHATSAPP"
+					inputType="tel"
+					placeholder="(00) 00000-0000"
+					value={params.phone}
+					handleChange={(value) => updateParams({ phone: formatToPhone(value) })}
+				/>
+			</form>
 			{isLoadingClient ? (
 				<div className="w-full flex items-center justify-center gap-1.5">
 					<Loader2 className="w-4 h-4 animate-spin" />
@@ -203,7 +210,13 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 		},
 	});
 	return (
-		<div className="w-full flex flex-col gap-3">
+		<form
+			className="w-full flex flex-col gap-3"
+			onSubmit={(e) => {
+				e.preventDefault();
+				handleCreateClientMutation({ orgId, client: { ...infoHolder, telefone: phone } });
+			}}
+		>
 			<p className="text-sm text-muted-foreground text-pretty">
 				Oops, parece que você ainda não tem um cadastro. Por favor, preencha os dados abaixo para criar seu cadastro e começar a ganhar cashback !
 			</p>
@@ -220,10 +233,10 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 				value={infoHolder.cpfCnpj ?? ""}
 				handleChange={(value) => setInfoHolder((prev) => ({ ...prev, cpfCnpj: formatToCPForCNPJ(value) }))}
 			/>
-			<LoadingButton loading={isCreatingClient} onClick={() => handleCreateClientMutation({ orgId, client: { ...infoHolder, telefone: phone } })}>
+			<LoadingButton type="submit" loading={isCreatingClient}>
 				CRIAR CADASTRO
 			</LoadingButton>
-		</div>
+		</form>
 	);
 }
 type PointOfInteractionWithAccumulationViaPDIProps = {

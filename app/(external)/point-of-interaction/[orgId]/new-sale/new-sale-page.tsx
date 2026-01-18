@@ -166,9 +166,10 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								onPhoneChange={(v) => updateParams({ phone: formatToPhone(v) })}
 								newClientData={state.client}
 								onNewClientChange={updateClient}
+								onSubmit={handleNextStep}
 							/>
 						)}
-						{currentStep === 2 && <SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} />}
+						{currentStep === 2 && <SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} />}
 						{currentStep === 3 && (
 							<CashbackStep
 								available={getAvailableCashback()}
@@ -184,6 +185,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 									})
 								}
 								onAmountChange={(v) => updateCashback({ valor: v })}
+								onSubmit={handleNextStep}
 							/>
 						)}
 						{currentStep === 4 && (
@@ -192,6 +194,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								finalValue={getFinalValue()}
 								operatorIdentifier={state.operatorIdentifier}
 								onOperatorIdentifierChange={updateOperatorIdentifier}
+								onSubmit={() => createSaleMutation(state)}
 							/>
 						)}
 						{currentStep === 5 && successData && (
@@ -298,6 +301,7 @@ function ClientStep({
 	onNewClientChange,
 	isLoadingClient,
 	isSuccessClient,
+	onSubmit,
 }: {
 	client: TClientByLookupOutput["data"];
 	phone: string;
@@ -306,6 +310,7 @@ function ClientStep({
 	onNewClientChange: (data: Partial<typeof newClientData>) => void;
 	isLoadingClient: boolean;
 	isSuccessClient: boolean;
+	onSubmit: () => void;
 }) {
 	React.useEffect(() => {
 		// Keep phone in sync with lookup
@@ -315,7 +320,13 @@ function ClientStep({
 	}, [phone, newClientData.telefone, onNewClientChange]);
 
 	return (
-		<div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+		<form
+			className="space-y-8 animate-in fade-in slide-in-from-bottom-4"
+			onSubmit={(e) => {
+				e.preventDefault();
+				onSubmit();
+			}}
+		>
 			<div className="text-center space-y-2">
 				<h2 className="text-xl font-black uppercase tracking-tight">Quem é o cliente?</h2>
 				<p className="text-muted-foreground">Digite o número de telefone para localizar o perfil.</p>
@@ -372,14 +383,20 @@ function ClientStep({
 					</div>
 				</div>
 			) : null}
-		</div>
+		</form>
 	);
 }
 
-function SaleValueStep({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+function SaleValueStep({ value, onChange, onSubmit }: { value: number; onChange: (value: number) => void; onSubmit: () => void }) {
 	const helpers = [10, 25, 50, 100];
 	return (
-		<div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+		<form
+			className="space-y-8 animate-in fade-in slide-in-from-bottom-4"
+			onSubmit={(e) => {
+				e.preventDefault();
+				onSubmit();
+			}}
+		>
 			<div className="text-center space-y-2">
 				<h2 className="text-xl font-black uppercase tracking-tight">Qual o valor da compra?</h2>
 			</div>
@@ -402,7 +419,7 @@ function SaleValueStep({ value, onChange }: { value: number; onChange: (value: n
 					<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
 				</Button>
 			</div>
-		</div>
+		</form>
 	);
 }
 
@@ -415,6 +432,7 @@ function CashbackStep({
 	onAmountChange,
 	saleValue,
 	finalValue,
+	onSubmit,
 }: {
 	available: number;
 	maxAllowed: number;
@@ -424,9 +442,16 @@ function CashbackStep({
 	onAmountChange: (amount: number) => void;
 	saleValue: number;
 	finalValue: number;
+	onSubmit: () => void;
 }) {
 	return (
-		<div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+		<form
+			className="space-y-6 animate-in fade-in slide-in-from-bottom-4"
+			onSubmit={(e) => {
+				e.preventDefault();
+				onSubmit();
+			}}
+		>
 			<div className="bg-brand/5 rounded-3xl p-6 border-2 border-dashed border-brand/20">
 				<div className="flex justify-between items-center mb-4">
 					<div className="flex items-center gap-3">
@@ -482,7 +507,7 @@ function CashbackStep({
 				</div>
 				<BadgePercent className="absolute -right-4 -bottom-4 w-32 h-32 text-white/5 rotate-12" />
 			</div>
-		</div>
+		</form>
 	);
 }
 
@@ -491,9 +516,22 @@ function ConfirmationStep({
 	finalValue,
 	operatorIdentifier,
 	onOperatorIdentifierChange,
-}: { clientName: string; finalValue: number; operatorIdentifier: string; onOperatorIdentifierChange: (identifier: string) => void }) {
+	onSubmit,
+}: {
+	clientName: string;
+	finalValue: number;
+	operatorIdentifier: string;
+	onOperatorIdentifierChange: (identifier: string) => void;
+	onSubmit: () => void;
+}) {
 	return (
-		<div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+		<form
+			className="space-y-8 animate-in fade-in slide-in-from-bottom-4"
+			onSubmit={(e) => {
+				e.preventDefault();
+				onSubmit();
+			}}
+		>
 			<div className="text-center space-y-2">
 				<h2 className="text-xl font-black uppercase tracking-tight">Finalizar Operação</h2>
 				<p className="text-muted-foreground">Confira os dados e digite o usuário do operador.</p>
@@ -520,6 +558,6 @@ function ConfirmationStep({
 					className="h-16 text-2xl text-center rounded-2xl border-4 border-brand/20 focus:border-green-500 transition-all font-bold"
 				/>
 			</div>
-		</div>
+		</form>
 	);
 }

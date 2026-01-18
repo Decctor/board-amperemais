@@ -1,5 +1,5 @@
 import z from "zod";
-import { CampaignTriggerTypeEnum, InteractionsCronJobTimeBlocksEnum, TimeDurationUnitsEnum } from "./enums";
+import { AttributionModelEnum, CampaignTriggerTypeEnum, InteractionsCronJobTimeBlocksEnum, TimeDurationUnitsEnum } from "./enums";
 
 export const CampaignSchema = z.object({
 	ativo: z
@@ -83,6 +83,13 @@ export const CampaignSchema = z.object({
 	autorId: z.string({
 		required_error: "ID do autor da campanha não informado.",
 		invalid_type_error: "Tipo não válido para o ID do autor da campanha.",
+	}),
+
+	// Conversion Attribution settings
+	atribuicaoModelo: AttributionModelEnum,
+	atribuicaoJanelaDias: z.number({
+		required_error: "Janela de atribuição não informada.",
+		invalid_type_error: "Tipo não válido para a janela de atribuição.",
 	}),
 	dataInsercao: z
 		.string({

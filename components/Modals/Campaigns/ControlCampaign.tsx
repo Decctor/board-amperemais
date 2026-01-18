@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import CampaignsActionBlock from "./Blocks/Action";
 import CampaignsConfigBlock from "./Blocks/Config";
+import CampaignsConversionBlock from "./Blocks/Conversion";
 import CampaignsExecutionBlock from "./Blocks/Execution";
 import CampaignsGeneralBlock from "./Blocks/General";
 import CampaignsTriggerBlock from "./Blocks/Trigger";
@@ -50,6 +51,7 @@ export default function ControlCampaign({ campaignId, user, closeModal, callback
 			return;
 		},
 	});
+	console.log(campaign?.atribuicaoModelo);
 	useEffect(() => {
 		if (campaign) redefineState({ campaign: campaign, segmentations: campaign.segmentacoes });
 	}, [campaign, redefineState]);
@@ -75,6 +77,7 @@ export default function ControlCampaign({ campaignId, user, closeModal, callback
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsExecutionBlock campaign={state.campaign} updateCampaign={updateCampaign} campaignSegmentations={state.segmentations} />
 			<CampaignsActionBlock organizationId={user.organizacaoId as string} campaign={state.campaign} updateCampaign={updateCampaign} />
+			<CampaignsConversionBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsConfigBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 		</ResponsiveMenu>
 	);
