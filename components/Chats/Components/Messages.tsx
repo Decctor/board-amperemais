@@ -1,17 +1,21 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useDesktopNotifications } from "@/lib/hooks/use-desktop-notifications";
 import { useChatMessagesRealtime } from "@/lib/hooks/use-supabase-realtime";
 import { useRetryMessage } from "@/lib/mutations/chats";
-import { useChatMessages } from "@/lib/queries/chats";
+import { useChat, useChatMessages } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import { AlertCircle, ArrowDown, Check, CheckCheck, Clock, Loader2, RefreshCw } from "lucide-react";
+import dayjs from "dayjs";
+import ptBr from "dayjs/locale/pt-br";
+import { AlertCircle, ArrowDown, Check, CheckCheck, ChevronsDown, Clock, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import MediaMessageDisplay from "../MediaMessageDisplay";
 import { useChatHub } from "./context";
-
+dayjs.locale(ptBr);
 export type ChatHubMessagesProps = {
 	className?: string;
 	emptyState?: React.ReactNode;
@@ -36,29 +40,80 @@ type MessageType = {
 export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 	const { selectedChatId } = useChatHub();
 	const previousChatId = useRef(selectedChatId);
+	const [showNewMessagesBanner, setShowNewMessagesBanner] = useState(false);
 
 	// Use TanStack Query for messages
 	const { messages, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage } = useChatMessages(selectedChatId);
 
-	// Subscribe to realtime updates
+	// Get chat details for unread count
+	const { data: chat } = useChat(selectedChatId);
+	const unreadCount = chat?.mensagensNaoLidas ?? 0;
+
+	// Desktop notifications
+	const { showNotification, requestPermission, permission } = useDesktopNotifications();
+
+	// Request notification permission on first render
+	useEffect(() => {
+		if (permission === "default") {
+			requestPermission();
+		}
+	}, [permission, requestPermission]);
+
+	// Handle new message notifications
+	const handleNewMessage = useCallback(
+		(message: Record<string, unknown>) => {
+			// Only show notification for client messages (not our own)
+			if (message.autor_tipo === "CLIENTE") {
+				showNotification({
+					title: "Nova mensagem",
+					body: (message.conteudo_texto as string) || "Nova mensagem recebida",
+					tag: `chat-${selectedChatId}`,
+					onClick: () => {
+						// Focus the chat when clicking notification
+						window.focus();
+					},
+				});
+			}
+		},
+		[selectedChatId, showNotification],
+	);
+
+	// Subscribe to realtime updates with notification callback
 	useChatMessagesRealtime({
 		chatId: selectedChatId,
 		enabled: !!selectedChatId,
+		onNewMessage: handleNewMessage,
 	});
 
-	// Reset when chat changes
+	// Show banner when entering chat with unread messages
 	useEffect(() => {
 		if (selectedChatId !== previousChatId.current) {
 			previousChatId.current = selectedChatId;
+			// Show banner if there are unread messages
+			if (unreadCount > 0) {
+				setShowNewMessagesBanner(true);
+			} else {
+				setShowNewMessagesBanner(false);
+			}
 		}
-	}, [selectedChatId]);
+	}, [selectedChatId, unreadCount]);
+
+	// Hide banner after a delay or when user scrolls to bottom
+	useEffect(() => {
+		if (showNewMessagesBanner) {
+			const timer = setTimeout(() => {
+				setShowNewMessagesBanner(false);
+			}, 5000);
+			return () => clearTimeout(timer);
+		}
+	}, [showNewMessagesBanner]);
 
 	// Initial loading state
 	if (isPending) {
 		return (
-			<div className={cn("flex-1 flex items-center justify-center bg-background/50", className)}>
+			<div className={cn("flex-1 flex items-center justify-center bg-background/50", className)} aria-busy="true" aria-live="polite">
 				<div className="flex flex-col items-center gap-2">
-					<Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+					<Loader2 className="w-8 h-8 animate-spin text-primary/40" aria-hidden="true" />
 					<div className="text-sm text-primary/60">Carregando mensagens...</div>
 				</div>
 			</div>
@@ -129,20 +184,25 @@ export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 					const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
 
 					const isUser = message.autorTipo === "USUÁRIO" || message.autorTipo === "AI" || message.autorTipo === "BUSINESS-APP";
-					const isSameAuthorAsPrevious = previousMessage?.autorTipo === message.autorTipo;
-					const isSameAuthorAsNext = nextMessage?.autorTipo === message.autorTipo;
-
+					const showDateSeparator = shouldShowDateSeparator(message as MessageType, previousMessage as MessageType | null);
+					const isSameAuthorAsPrevious = previousMessage?.autorTipo === message.autorTipo && !showDateSeparator;
+					const isSameAuthorAsNext =
+						nextMessage?.autorTipo === message.autorTipo && !shouldShowDateSeparator(nextMessage as MessageType, message as MessageType);
+					console.log("SHOULD SHOW TIMESTAMP", showDateSeparator);
 					return (
-						<MessageBubble
-							key={message.id}
-							message={message as MessageType}
-							isUser={isUser}
-							isSameAuthorAsPrevious={isSameAuthorAsPrevious}
-							isSameAuthorAsNext={isSameAuthorAsNext}
-						/>
+						<div key={message.id}>
+							{showDateSeparator && <DateSeparator date={message.dataEnvio} />}
+							<MessageBubble
+								message={message as MessageType}
+								isUser={isUser}
+								isSameAuthorAsPrevious={isSameAuthorAsPrevious}
+								isSameAuthorAsNext={isSameAuthorAsNext}
+							/>
+						</div>
 					);
 				})}
 			</StickToBottom.Content>
+			<NewMessagesBanner show={showNewMessagesBanner} count={unreadCount} onDismiss={() => setShowNewMessagesBanner(false)} />
 			<ScrollToBottomButton />
 		</StickToBottom>
 	);
@@ -153,9 +213,11 @@ type MessageBubbleProps = {
 	isUser: boolean;
 	isSameAuthorAsPrevious: boolean;
 	isSameAuthorAsNext: boolean;
+	previousMessageTime?: Date | null;
 };
 
 function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAsNext }: MessageBubbleProps) {
+	// Always show timestamp for the last message in a group or if there's a significant time gap
 	const shouldShowTimestamp = !isSameAuthorAsNext;
 	const marginTop = isSameAuthorAsPrevious ? "mt-1" : "mt-4";
 
@@ -273,6 +335,42 @@ function MessageStatusIcon({ status, messageId, chatId }: MessageStatusIconProps
 	}
 }
 
+type NewMessagesBannerProps = {
+	show: boolean;
+	count: number;
+	onDismiss: () => void;
+};
+
+function NewMessagesBanner({ show, count, onDismiss }: NewMessagesBannerProps) {
+	const { scrollToBottom } = useStickToBottomContext();
+
+	if (!show || count === 0) return null;
+
+	const handleClick = () => {
+		scrollToBottom();
+		onDismiss();
+	};
+
+	return (
+		<Button
+			onClick={handleClick}
+			className={cn(
+				"absolute top-4 left-1/2 -translate-x-1/2 z-10",
+				"rounded-full shadow-lg px-4 py-2",
+				"bg-green-500 hover:bg-green-600 text-white",
+				"animate-in fade-in slide-in-from-top-2 duration-300",
+				"flex items-center gap-2",
+			)}
+			size="sm"
+		>
+			<ChevronsDown className="w-4 h-4" />
+			<span>
+				{count} {count === 1 ? "nova mensagem" : "novas mensagens"}
+			</span>
+		</Button>
+	);
+}
+
 function ScrollToBottomButton() {
 	const { isAtBottom, scrollToBottom } = useStickToBottomContext();
 
@@ -300,4 +398,44 @@ function ScrollToBottomButton() {
 			<ArrowDown className="w-4 h-4" />
 		</Button>
 	);
+}
+
+type DateSeparatorProps = {
+	date: Date;
+};
+
+function DateSeparator({ date }: DateSeparatorProps) {
+	const formatDateLabel = (date: Date): string => {
+		const today = dayjs();
+		const messageDate = dayjs(date);
+
+		if (messageDate.isSame(today, "day")) {
+			return "Hoje";
+		}
+		if (messageDate.isSame(today.subtract(1, "day"), "day")) {
+			return "Ontem";
+		}
+		if (messageDate.isSame(today, "week")) {
+			return messageDate.format("dddd");
+		}
+		if (messageDate.isSame(today, "year")) {
+			return messageDate.format("D [de] MMMM");
+		}
+		return messageDate.format("D [de] MMMM [de] YYYY");
+	};
+
+	return (
+		<div className="flex items-center justify-center my-4">
+			<div className="px-3 py-1 bg-primary/10 rounded-full">
+				<span className="text-xs font-medium text-primary/70">{formatDateLabel(date)}</span>
+			</div>
+		</div>
+	);
+}
+
+function shouldShowDateSeparator(currentMessage: MessageType, previousMessage: MessageType | null): boolean {
+	if (!previousMessage) return true;
+	const currentDate = dayjs(currentMessage.dataEnvio);
+	const previousDate = dayjs(previousMessage.dataEnvio);
+	return !currentDate.isSame(previousDate, "day");
 }

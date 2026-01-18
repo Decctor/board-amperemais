@@ -45,7 +45,7 @@ type UseChatsParams = {
  * Hook to fetch and manage chats list with pagination and search
  */
 export function useChats({ whatsappPhoneId, search = "" }: UseChatsParams) {
-	const debouncedSearch = useDebounceMemo({ search }, 1000);
+	const debouncedSearch = useDebounceMemo({ search }, 350);
 
 	const query = useInfiniteQuery({
 		queryKey: ["chats", whatsappPhoneId, debouncedSearch],

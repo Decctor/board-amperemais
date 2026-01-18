@@ -161,13 +161,21 @@ function FileUploadComponent({ onFileSelect, disabled = false, chatId, organizac
 							<p className="text-xs text-blue-600 dark:text-blue-400">Enviando...</p>
 						</div>
 					</div>
-					<Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelUpload}>
+					<Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelUpload} aria-label="Cancelar upload">
 						<X className="w-4 h-4" />
 					</Button>
 				</div>
 			) : (
 				<div onDrop={handleDrop} onDragOver={handleDragOver} className="flex items-center justify-center">
-					<Button type="button" size="icon" onClick={openFileDialog} disabled={disabled || isUploading} title="Anexar arquivo" variant="ghost">
+					<Button
+						type="button"
+						size="icon"
+						onClick={openFileDialog}
+						disabled={disabled || isUploading}
+						title="Anexar arquivo"
+						aria-label="Anexar arquivo"
+						variant="ghost"
+					>
 						<Paperclip className="w-4 h-4" />
 					</Button>
 				</div>
