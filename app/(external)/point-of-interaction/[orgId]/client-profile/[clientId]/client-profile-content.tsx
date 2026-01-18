@@ -18,6 +18,7 @@ import { ArrowLeft, ArrowRight, Award, CheckCircle2, History, LockIcon, PartyPop
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import useSound from "use-sound";
 
 // --- Tipagens ---
 
@@ -270,6 +271,8 @@ function NewCashbackProgramRedemption({
 	});
 	const [successData, setSuccessData] = useState<Awaited<TCreateCashbackProgramRedemptionOutput>["data"] | null>(null);
 
+	const [playSuccess] = useSound("/sounds/success.mp3");
+
 	function updateInfoHolder(changes: Partial<TCreateCashbackProgramRedemptionInput>) {
 		setInfoHolder((prev) => ({ ...prev, ...changes }));
 	}
@@ -282,6 +285,7 @@ function NewCashbackProgramRedemption({
 			return;
 		},
 		onSuccess: async (data) => {
+			playSuccess();
 			setSuccessData(data.data);
 			toast.success(data.message);
 			return;

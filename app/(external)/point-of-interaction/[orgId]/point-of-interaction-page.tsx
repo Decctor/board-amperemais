@@ -15,8 +15,9 @@ import { ArrowRight, Building2, Coins, Loader2, ShoppingCart, Trophy } from "luc
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import useSound from "use-sound";
 
 type ClientLookupResult = {
 	id: string;
@@ -110,6 +111,14 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 		},
 	});
 
+	const [playAction] = useSound("/sounds/action-completed.mp3");
+
+	useEffect(() => {
+		if (isSuccessClient && client) {
+			playAction();
+		}
+	}, [isSuccessClient, client, playAction]);
+
 	return (
 		<ResponsiveMenuViewOnly
 			menuTitle="IDENTIFIQUE-SE"
@@ -170,6 +179,7 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 		nome: "",
 		cpfCnpj: null,
 	});
+	const [playSuccess] = useSound("/sounds/success.mp3");
 	const { mutate: handleCreateClientMutation, isPending: isCreatingClient } = useMutation({
 		mutationKey: ["create-client"],
 		mutationFn: createClientViaPointOfInteraction,
@@ -179,6 +189,7 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 		},
 		onSuccess: async (data) => {
 			if (callbacks?.onSuccess) callbacks.onSuccess();
+			playSuccess();
 			toast.success(data.message);
 			return router.push(`/point-of-interaction/${orgId}/client-profile/${data.data.insertedClientId}`);
 		},

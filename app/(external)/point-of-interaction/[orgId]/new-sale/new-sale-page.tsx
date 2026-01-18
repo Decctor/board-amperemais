@@ -35,6 +35,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { toast } from "sonner";
+import useSound from "use-sound";
 
 type NewSaleContentProps = {
 	org: {
@@ -60,6 +61,9 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 		updateParams,
 	} = useClientByLookup({ initialParams: { orgId: org.id, phone: "", clientId: clientId } });
 
+	const [playAction] = useSound("/sounds/action-completed.mp3");
+	const [playSuccess] = useSound("/sounds/success.mp3");
+
 	useEffect(() => {
 		if (client) {
 			updateClient({
@@ -68,8 +72,9 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 				telefone: client.telefone,
 				cpfCnpj: null,
 			});
+			playAction();
 		}
-	}, [client, updateClient]);
+	}, [client, updateClient, playAction]);
 
 	const handleNextStep = () => {
 		if (currentStep === 1) {
@@ -81,6 +86,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 		if (currentStep === 2 && state.sale.valor <= 0) {
 			return toast.error("Digite o valor da venda.");
 		}
+		playAction();
 		setCurrentStep((prev) => Math.min(prev + 1, 4));
 	};
 
@@ -91,6 +97,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	const { mutate: createSaleMutation, isPending: isCreatingSale } = useMutation({
 		mutationFn: createPointOfInteractionSale,
 		onSuccess: (data) => {
+			playSuccess();
 			toast.success(`Venda finalizada! Saldo: ${formatToMoney(data.data.cashbackAcumulado)}`);
 			setSuccessData(data.data);
 			setCurrentStep(5);
