@@ -8,7 +8,7 @@ import { useChat } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp/templates";
 import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
-import { AlertTriangle, FileText, Loader2, Send, X } from "lucide-react";
+import { AlertTriangle, Clock, FileText, Loader2, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileUploadComponent from "../FileUploadComponent";
@@ -37,6 +37,31 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 	const markMessagesAsReadMutation = useMarkMessagesAsRead();
 
 	const isConversationExpired = chat?.status === "FECHADA";
+
+	// Calculate time remaining for 24h window
+	const getExpirationInfo = () => {
+		if (!chat?.ultimaInteracaoClienteData) return null;
+
+		const lastInteraction = new Date(chat.ultimaInteracaoClienteData);
+		const expirationTime = new Date(lastInteraction.getTime() + 24 * 60 * 60 * 1000);
+		const now = new Date();
+		const remainingMs = expirationTime.getTime() - now.getTime();
+
+		if (remainingMs <= 0) return { expired: true, remainingHours: 0, remainingMinutes: 0 };
+
+		const remainingHours = Math.floor(remainingMs / (60 * 60 * 1000));
+		const remainingMinutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+
+		return {
+			expired: false,
+			remainingHours,
+			remainingMinutes,
+			isWarning: remainingHours < 4, // Show warning when less than 4 hours
+			isCritical: remainingHours < 1, // Critical when less than 1 hour
+		};
+	};
+
+	const expirationInfo = getExpirationInfo();
 
 	// Audio recording
 	const audioRecorder = useAudioRecorder();
@@ -229,6 +254,43 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 	return (
 		<div className={cn("w-full px-4 py-3 bg-card/80 backdrop-blur-sm border-t border-primary/10", className)}>
 			<div className="flex flex-col gap-2 max-w-5xl mx-auto">
+				{/* Expiration Warning Banner (when approaching 24h limit) */}
+				{!isConversationExpired && expirationInfo?.isWarning && (
+					<div
+						className={cn(
+							"flex items-center gap-2 px-3 py-2 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300",
+							expirationInfo.isCritical
+								? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
+								: "bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800",
+						)}
+					>
+						<Clock
+							className={cn(
+								"w-4 h-4 shrink-0",
+								expirationInfo.isCritical ? "text-red-600 dark:text-red-500" : "text-amber-600 dark:text-amber-500",
+							)}
+						/>
+						<div className="flex-1 min-w-0">
+							<p
+								className={cn(
+									"text-xs font-medium",
+									expirationInfo.isCritical ? "text-red-800 dark:text-red-200" : "text-amber-800 dark:text-amber-200",
+								)}
+							>
+								{expirationInfo.isCritical ? "Janela de conversação expira em breve!" : "Janela de conversação se aproximando do fim"}
+							</p>
+							<p
+								className={cn(
+									"text-xs",
+									expirationInfo.isCritical ? "text-red-700 dark:text-red-300/80" : "text-amber-700 dark:text-amber-300/80",
+								)}
+							>
+								Tempo restante: {expirationInfo.remainingHours}h {expirationInfo.remainingMinutes}min - Após expirar, será necessário enviar um template.
+							</p>
+						</div>
+					</div>
+				)}
+
 				{/* Expired Conversation Warning */}
 				{isConversationExpired ? (
 					<div className="flex items-start gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
@@ -251,6 +313,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 										isConversationExpired && "bg-linear-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md",
 									)}
 									title="Enviar template"
+									aria-label="Abrir seletor de templates"
 								>
 									<FileText className="w-4 h-4" />
 								</Button>
@@ -307,6 +370,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 							size="icon"
 							onClick={sendTextMessage}
 							disabled={!messageText.trim() || isConversationExpired || isSending}
+							aria-label={isSending ? "Enviando mensagem" : "Enviar mensagem"}
 							className={cn(
 								"h-10 w-10 rounded-full shrink-0",
 								"bg-linear-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
@@ -315,7 +379,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 								"hover:scale-105 active:scale-95",
 							)}
 						>
-							{isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+							{isSending ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Send className="w-4 h-4" />}
 						</Button>
 
 						{/* Template Selector */}
@@ -328,6 +392,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 									disabled={isSending}
 									className={cn("h-10 w-10 rounded-full shrink-0 transition-all duration-200", "hover:scale-105 active:scale-95")}
 									title="Enviar template"
+									aria-label="Abrir seletor de templates"
 								>
 									<FileText className="w-4 h-4" />
 								</Button>

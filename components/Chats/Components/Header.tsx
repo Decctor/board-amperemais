@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown, MessageCircle, Plus, Search, X } from "lucide-react";
+import { Check, ChevronDown, MessageCircle, Plus, Search, Wifi, WifiOff, X } from "lucide-react";
 import { type ReactNode, useMemo } from "react";
 import { useChatHub } from "./context";
 
@@ -46,6 +47,7 @@ export function Header({
 		() => phoneNumbers.find((phone) => phone.whatsappTelefoneId === selectedPhoneNumber),
 		[phoneNumbers, selectedPhoneNumber],
 	);
+
 	return (
 		<div className={cn("w-full flex flex-col gap-3 px-4 py-3", "border-b border-primary/20 bg-card/50 backdrop-blur-sm", className)}>
 			<div className="w-full flex items-center justify-between gap-3">
@@ -80,8 +82,6 @@ export function Header({
 				{/* Right section - Actions */}
 				<div className="flex items-center gap-2">
 					{children}
-
-					{/* Phone Number Selector */}
 
 					{/* New Chat Button */}
 					{onNewChat && (
