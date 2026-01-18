@@ -87,7 +87,7 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 	// Initial loading
 	if (isPending) {
 		return (
-			<div className={cn("flex flex-col gap-3 p-3", className)}>
+			<div className={cn("flex flex-col gap-3 p-3", className)} aria-busy="true" aria-live="polite">
 				{Array.from({ length: 5 }).map((_, i) => (
 					<ChatItemSkeleton key={i.toString()} />
 				))}

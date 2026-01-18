@@ -11,7 +11,7 @@ import { transferService, useTransferService } from "@/lib/mutations/chats";
 import { useUsers } from "@/lib/queries/users";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
-import { Bot, UserRound, Users } from "lucide-react";
+import { AlertTriangle, Bot, UserRound, Users } from "lucide-react";
 import { useState } from "react";
 import type React from "react";
 import { toast } from "sonner";
@@ -120,6 +120,17 @@ export function ServiceTransferDialog({ closeMenu, serviceId, currentResponsible
 			closeMenu={() => closeMenu()}
 		>
 			<div className="py-4 space-y-6">
+				{/* Warning Banner */}
+				<div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+					<AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" />
+					<div className="flex-1">
+						<p className="text-sm font-medium text-blue-800 dark:text-blue-200">Transferência de responsabilidade</p>
+						<p className="text-xs text-blue-700 dark:text-blue-300/80 mt-0.5">
+							O novo responsável receberá o atendimento e será notificado sobre a transferência.
+						</p>
+					</div>
+				</div>
+
 				{/* Current responsible */}
 				<div className="flex items-center gap-3">
 					<span className="text-sm text-muted-foreground min-w-[80px]">DE:</span>
