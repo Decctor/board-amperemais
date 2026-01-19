@@ -159,7 +159,7 @@ export async function POST(req: Request) {
 			let clientFirstSaleId: string | null = null;
 			let clientFirstSaleDate: Date | null = null;
 			let isNewClient = false;
-			let clientRfmTitle: string | null = "RECENTES";
+			let clientRfmTitle: string | null = "CLIENTES RECENTES";
 
 			if (!clientId) {
 				// Create new client
@@ -210,7 +210,7 @@ export async function POST(req: Request) {
 				if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
 				clientFirstSaleId = client.primeiraCompraId;
 				clientFirstSaleDate = client.primeiraCompraData;
-				clientRfmTitle = client.analiseRFMTitulo;
+				clientRfmTitle = client.analiseRFMTitulo ?? "CLIENTES RECENTES";
 			}
 
 			if (!program) {
@@ -234,10 +234,20 @@ export async function POST(req: Request) {
 			const campaignsForFirstPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "PRIMEIRA-COMPRA");
 			const campaignsForCashbackAccumulation = campaigns.filter((campaign) => campaign.gatilhoTipo === "CASHBACK-ACUMULADO");
 
+			console.log(`[POI] [ORG: ${input.orgId}] [CAMPAIGNS] Total campaigns found: ${campaigns.length}`);
+			console.log(
+				`[POI] [ORG: ${input.orgId}] [CAMPAIGNS] NOVA-COMPRA: ${campaignsForNewPurchase.length}, PRIMEIRA-COMPRA: ${campaignsForFirstPurchase.length}, CASHBACK-ACUMULADO: ${campaignsForCashbackAccumulation.length}`,
+			);
+			console.log(`[POI] [ORG: ${input.orgId}] [CLIENT] isNewClient: ${isNewClient}, clientRfmTitle: ${clientRfmTitle}, clientId: ${clientId}`);
+
 			// Query whatsappConnection for immediate processing
 			const whatsappConnection = await tx.query.whatsappConnections.findFirst({
 				where: (fields, { eq }) => eq(fields.organizacaoId, input.orgId),
 			});
+
+			console.log(
+				`[POI] [ORG: ${input.orgId}] [WHATSAPP] Connection found: ${!!whatsappConnection}, token: ${whatsappConnection?.token ? "present" : "missing"}`,
+			);
 
 			// 5. If using cashback: validate balance and create redemption
 			let currentBalance = 0;
@@ -313,9 +323,17 @@ export async function POST(req: Request) {
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
 			// 6.1. Process PRIMEIRA-COMPRA campaigns for new clients
+			console.log(
+				`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] Checking conditions: isNewClient=${isNewClient}, campaignsCount=${campaignsForFirstPurchase.length}`,
+			);
+
 			if (isNewClient && campaignsForFirstPurchase.length > 0) {
 				const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) =>
 					campaign.segmentacoes.some((s) => s.segmentacao === "CLIENTES RECENTES"),
+				);
+
+				console.log(
+					`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] ${applicableCampaigns.length} applicable campaigns after filtering for "CLIENTES RECENTES"`,
 				);
 
 				if (applicableCampaigns.length > 0) {
@@ -324,6 +342,8 @@ export async function POST(req: Request) {
 					);
 
 					for (const campaign of applicableCampaigns) {
+						console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] Processing campaign "${campaign.titulo}"`);
+
 						// Validate campaign frequency before scheduling
 						const canSchedule = await canScheduleCampaignForClient(
 							tx,
@@ -359,8 +379,19 @@ export async function POST(req: Request) {
 							})
 							.returning({ id: interactions.id });
 
-						// Check for immediate processing (execucaoAgendadaValor === 0)
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+						console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] Interaction created: ${insertedInteraction.id}`);
+
+						// Check for immediate processing (execucaoAgendadaValor === 0 or null/undefined means immediate)
+						const shouldProcessImmediately =
+							campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
+
+						console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] Immediate processing check:`);
+						console.log(`  - shouldProcessImmediately: ${shouldProcessImmediately} (execucaoAgendadaValor: ${campaign.execucaoAgendadaValor})`);
+						console.log(`  - whatsappTemplate: ${!!campaign.whatsappTemplate}`);
+						console.log(`  - whatsappConnection: ${!!whatsappConnection}`);
+
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection) {
+							console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] Adding to immediate processing list`);
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
@@ -378,10 +409,13 @@ export async function POST(req: Request) {
 								},
 								whatsappToken: whatsappConnection.token,
 							});
+						} else {
+							console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] NOT adding to immediate processing - conditions not met`);
 						}
 
 						// Generate campaign cashback for PRIMEIRA-COMPRA trigger
 						if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+							console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] Generating campaign cashback`);
 							await generateCashbackForCampaign({
 								tx,
 								organizationId: input.orgId,
@@ -399,7 +433,36 @@ export async function POST(req: Request) {
 			}
 
 			// 6.2. Process NOVA-COMPRA campaigns for existing clients
+			console.log(
+				`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Checking conditions: isNewClient=${isNewClient}, campaignsCount=${campaignsForNewPurchase.length}`,
+			);
+
 			if (!isNewClient && campaignsForNewPurchase.length > 0) {
+				console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Processing ${campaignsForNewPurchase.length} campaigns for existing client`);
+
+				// Log each campaign's evaluation
+				for (const campaign of campaignsForNewPurchase) {
+					const meetsNewPurchaseValueTrigger =
+						campaign.gatilhoNovaCompraValorMinimo === null ||
+						campaign.gatilhoNovaCompraValorMinimo === undefined ||
+						input.sale.valor >= campaign.gatilhoNovaCompraValorMinimo;
+
+					const matchingSegmentation = campaign.segmentacoes.find((s) => s.segmentacao === clientRfmTitle);
+					const meetsSegmentationTrigger = !!matchingSegmentation;
+
+					console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Campaign "${campaign.titulo}" (${campaign.id}):`);
+					console.log(
+						`  - gatilhoNovaCompraValorMinimo: ${campaign.gatilhoNovaCompraValorMinimo}, saleValue: ${input.sale.valor}, meetsValueTrigger: ${meetsNewPurchaseValueTrigger}`,
+					);
+					console.log(
+						`  - clientRfmTitle: "${clientRfmTitle}", segmentacoes: [${campaign.segmentacoes.map((s) => s.segmentacao).join(", ")}], meetsSegmentation: ${meetsSegmentationTrigger}`,
+					);
+					console.log(
+						`  - execucaoAgendadaValor: ${campaign.execucaoAgendadaValor} (type: ${typeof campaign.execucaoAgendadaValor}), execucaoAgendadaMedida: ${campaign.execucaoAgendadaMedida}`,
+					);
+					console.log(`  - whatsappTemplate: ${campaign.whatsappTemplate ? "present" : "missing"}, whatsappTemplateId: ${campaign.whatsappTemplateId}`);
+				}
+
 				const applicableCampaigns = campaignsForNewPurchase.filter((campaign) => {
 					// Validate campaign trigger for new purchase
 					const meetsNewPurchaseValueTrigger =
@@ -411,6 +474,8 @@ export async function POST(req: Request) {
 
 					return meetsNewPurchaseValueTrigger && meetsSegmentationTrigger;
 				});
+
+				console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] ${applicableCampaigns.length} applicable campaigns after filtering`);
 
 				if (applicableCampaigns.length > 0) {
 					console.log(`[ORG: ${input.orgId}] ${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${clientId}.`);
@@ -427,7 +492,13 @@ export async function POST(req: Request) {
 						},
 					});
 
+					console.log(
+						`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Client data for immediate processing: ${clientData ? `found (telefone: ${clientData.telefone})` : "NOT FOUND"}`,
+					);
+
 					for (const campaign of applicableCampaigns) {
+						console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Processing campaign "${campaign.titulo}"`);
+
 						// Validate campaign frequency before scheduling
 						const canSchedule = await canScheduleCampaignForClient(
 							tx,
@@ -449,6 +520,10 @@ export async function POST(req: Request) {
 							value: campaign.execucaoAgendadaValor,
 						});
 
+						console.log(
+							`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Creating interaction with schedule date: ${dayjs(interactionScheduleDate).format("YYYY-MM-DD")}`,
+						);
+
 						const [insertedInteraction] = await tx
 							.insert(interactions)
 							.values({
@@ -463,8 +538,20 @@ export async function POST(req: Request) {
 							})
 							.returning({ id: interactions.id });
 
-						// Check for immediate processing (execucaoAgendadaValor === 0)
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && clientData) {
+						console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Interaction created: ${insertedInteraction.id}`);
+
+						// Check for immediate processing (execucaoAgendadaValor === 0 or null/undefined means immediate)
+						const shouldProcessImmediately =
+							campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
+
+						console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Immediate processing check:`);
+						console.log(`  - shouldProcessImmediately: ${shouldProcessImmediately} (execucaoAgendadaValor: ${campaign.execucaoAgendadaValor})`);
+						console.log(`  - whatsappTemplate: ${!!campaign.whatsappTemplate}`);
+						console.log(`  - whatsappConnection: ${!!whatsappConnection}`);
+						console.log(`  - clientData: ${!!clientData}`);
+
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
+							console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Adding to immediate processing list`);
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
@@ -482,10 +569,13 @@ export async function POST(req: Request) {
 								},
 								whatsappToken: whatsappConnection.token,
 							});
+						} else {
+							console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] NOT adding to immediate processing - conditions not met`);
 						}
 
 						// Generate campaign cashback for NOVA-COMPRA trigger
 						if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+							console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Generating campaign cashback`);
 							await generateCashbackForCampaign({
 								tx,
 								organizationId: input.orgId,
@@ -499,7 +589,11 @@ export async function POST(req: Request) {
 							});
 						}
 					}
+				} else {
+					console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] No applicable campaigns found after filtering`);
 				}
+			} else {
+				console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Skipping: isNewClient=${isNewClient}, campaignsCount=${campaignsForNewPurchase.length}`);
 			}
 
 			// 7. If cashback was used, create the redemption transaction
@@ -650,8 +744,12 @@ export async function POST(req: Request) {
 							})
 							.returning({ id: interactions.id });
 
-						// Check for immediate processing (execucaoAgendadaValor === 0)
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && clientData) {
+						// Check for immediate processing (execucaoAgendadaValor === 0 or null/undefined means immediate)
+						const shouldProcessImmediately =
+							campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
+
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
+							console.log(`[POI] [ORG: ${input.orgId}] [CASHBACK-ACUMULADO] Adding to immediate processing list`);
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
@@ -674,6 +772,8 @@ export async function POST(req: Request) {
 				}
 			}
 
+			console.log(`[POI] [ORG: ${input.orgId}] [SUMMARY] Total immediate processing items: ${immediateProcessingDataList.length}`);
+
 			// 10. Update client last purchase
 			await tx
 				.update(clients)
@@ -694,12 +794,25 @@ export async function POST(req: Request) {
 		});
 
 		// Process interactions immediately after transaction (fire-and-forget)
+		console.log(`[POI] [IMMEDIATE_PROCESS] Interactions to process immediately: ${result.immediateProcessingDataList?.length || 0}`);
+
 		if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
 			for (const processingData of result.immediateProcessingDataList) {
-				processSingleInteractionImmediately(processingData).catch((err) =>
-					console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
+				console.log(`[POI] [IMMEDIATE_PROCESS] Processing interaction ${processingData.interactionId} for client ${processingData.client.id}`);
+				console.log(
+					`[POI] [IMMEDIATE_PROCESS] Client phone: ${processingData.client.telefone}, Template: ${processingData.campaign.whatsappTemplate?.nome || "unknown"}`,
 				);
+
+				processSingleInteractionImmediately(processingData)
+					.then(() => {
+						console.log(`[POI] [IMMEDIATE_PROCESS] Successfully processed interaction ${processingData.interactionId}`);
+					})
+					.catch((err) => {
+						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
+					});
 			}
+		} else {
+			console.log("[POI] [IMMEDIATE_PROCESS] No interactions to process immediately");
 		}
 
 		return NextResponse.json(

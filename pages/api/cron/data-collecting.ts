@@ -313,23 +313,22 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									unit: campaign.execucaoAgendadaMedida,
 									value: campaign.execucaoAgendadaValor,
 								});
-								const [insertedInteraction] = await tx.insert(interactions).values({
-									clienteId: insertedClientId,
-									campanhaId: campaign.id,
-									organizacaoId: organization.id,
-									titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
-									tipo: "ENVIO-MENSAGEM",
-									descricao: "Cliente realizou sua primeira compra.",
-									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-								}).returning({ id: interactions.id });
+								const [insertedInteraction] = await tx
+									.insert(interactions)
+									.values({
+										clienteId: insertedClientId,
+										campanhaId: campaign.id,
+										organizacaoId: organization.id,
+										titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+										tipo: "ENVIO-MENSAGEM",
+										descricao: "Cliente realizou sua primeira compra.",
+										agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+										agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+									})
+									.returning({ id: interactions.id });
 
 								// Check for immediate processing (execucaoAgendadaValor === 0)
-								if (
-									campaign.execucaoAgendadaValor === 0 &&
-									campaign.whatsappTemplate &&
-									whatsappConnection
-								) {
+								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
 									// Query client data for immediate processing
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, insertedClientId),
@@ -681,7 +680,9 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								campaign.gatilhoNovaCompraValorMinimo === undefined ||
 								Number(OnlineSale.valor) >= campaign.gatilhoNovaCompraValorMinimo;
 
-							const meetsSegmentationTrigger = campaign.segmentacoes.some((s) => s.segmentacao === existingClientsMap.get(OnlineSale.cliente)?.rfmTitle);
+							const meetsSegmentationTrigger = campaign.segmentacoes.some(
+								(s) => s.segmentacao === (existingClientsMap.get(OnlineSale.cliente)?.rfmTitle ?? "CLIENTES RECENTES"),
+							);
 
 							return meetsNewPurchaseValueTrigger && meetsSegmentationTrigger;
 						});
@@ -712,23 +713,22 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									unit: campaign.execucaoAgendadaMedida,
 									value: campaign.execucaoAgendadaValor,
 								});
-								const [insertedInteraction] = await tx.insert(interactions).values({
-									clienteId: saleClientId,
-									campanhaId: campaign.id,
-									organizacaoId: organization.id,
-									titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
-									tipo: "ENVIO-MENSAGEM",
-									descricao: `Cliente se enquadrou no parâmetro de nova compra ${existingClientsMap.get(OnlineSale.cliente)?.rfmTitle}.`,
-									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-								}).returning({ id: interactions.id });
+								const [insertedInteraction] = await tx
+									.insert(interactions)
+									.values({
+										clienteId: saleClientId,
+										campanhaId: campaign.id,
+										organizacaoId: organization.id,
+										titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+										tipo: "ENVIO-MENSAGEM",
+										descricao: `Cliente se enquadrou no parâmetro de nova compra ${existingClientsMap.get(OnlineSale.cliente)?.rfmTitle}.`,
+										agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+										agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+									})
+									.returning({ id: interactions.id });
 
 								// Check for immediate processing (execucaoAgendadaValor === 0)
-								if (
-									campaign.execucaoAgendadaValor === 0 &&
-									campaign.whatsappTemplate &&
-									whatsappConnection
-								) {
+								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
 									// Query client data for immediate processing
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, saleClientId),
@@ -856,7 +856,9 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 											campaign.gatilhoTotalCashbackAcumuladoValorMinimo === undefined ||
 											newOverallAvailableBalance >= campaign.gatilhoTotalCashbackAcumuladoValorMinimo;
 
-										const meetsSegmentationTrigger = campaign.segmentacoes.some((s) => s.segmentacao === existingClientsMap.get(OnlineSale.cliente)?.rfmTitle);
+										const meetsSegmentationTrigger = campaign.segmentacoes.some(
+											(s) => s.segmentacao === (existingClientsMap.get(OnlineSale.cliente)?.rfmTitle ?? "CLIENTES RECENTES"),
+										);
 										// All conditions must be met (if defined)
 										return meetsNewCashbackThreshold && meetsTotalCashbackThreshold && meetsSegmentationTrigger;
 									});
@@ -891,28 +893,27 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 											value: campaign.execucaoAgendadaValor,
 										});
 
-										const [insertedInteraction] = await tx.insert(interactions).values({
-											clienteId: saleClientId,
-											campanhaId: campaign.id,
-											organizacaoId: organization.id,
-											titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
-											tipo: "ENVIO-MENSAGEM",
-											descricao: `Cliente acumulou R$ ${(accumulatedBalance / 100).toFixed(2)} em cashback. Total acumulado: R$ ${(newOverallAccumulatedBalance / 100).toFixed(2)}.`,
-											agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-											agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-											metadados: {
-												cashbackAcumuladoValor: accumulatedBalance,
-												whatsappMensagemId: null,
-												whatsappTemplateId: null,
-											},
-										}).returning({ id: interactions.id });
+										const [insertedInteraction] = await tx
+											.insert(interactions)
+											.values({
+												clienteId: saleClientId,
+												campanhaId: campaign.id,
+												organizacaoId: organization.id,
+												titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+												tipo: "ENVIO-MENSAGEM",
+												descricao: `Cliente acumulou R$ ${(accumulatedBalance / 100).toFixed(2)} em cashback. Total acumulado: R$ ${(newOverallAccumulatedBalance / 100).toFixed(2)}.`,
+												agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+												agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+												metadados: {
+													cashbackAcumuladoValor: accumulatedBalance,
+													whatsappMensagemId: null,
+													whatsappTemplateId: null,
+												},
+											})
+											.returning({ id: interactions.id });
 
 										// Check for immediate processing (execucaoAgendadaValor === 0)
-										if (
-											campaign.execucaoAgendadaValor === 0 &&
-											campaign.whatsappTemplate &&
-											whatsappConnection
-										) {
+										if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
 											// Query client data for immediate processing
 											const clientData = await tx.query.clients.findFirst({
 												where: (fields, { eq }) => eq(fields.id, saleClientId),
