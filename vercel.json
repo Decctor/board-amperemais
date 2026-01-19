@@ -5,6 +5,10 @@
 			"schedule": "*/5 * * * *"
 		},
 		{
+			"path": "/api/cron/fix-previous-sales",
+			"schedule": "0 4 * * *"
+		},
+		{
 			"path": "/api/cron/rfm-analysis",
 			"schedule": "0 5 * * *"
 		},
