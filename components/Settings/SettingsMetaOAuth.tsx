@@ -23,6 +23,7 @@ export default function SettingsMetaOAuth({ user }: SettingsMetaOAuthProps) {
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 
+	console.log("ISERROR", isError);
 	return (
 		<div className="flex h-full grow flex-col">
 			<div className="border-primary/20 flex w-full flex-col items-center justify-between border-b pb-2 lg:flex-row">
@@ -54,7 +55,7 @@ function WhatsAppConnectionBlockUnconnected() {
 }
 
 type WhatsAppConnectionBlockConnectedProps = {
-	whatsappConnection: TGetWhatsappConnectionOutput["data"];
+	whatsappConnection: Exclude<TGetWhatsappConnectionOutput["data"], null>;
 	callbacks: {
 		onMutate?: () => void;
 		onSuccess?: () => void;

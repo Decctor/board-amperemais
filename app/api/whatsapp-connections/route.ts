@@ -18,9 +18,8 @@ async function getWhatsappConnection({ session }: { session: TAuthUserSession["u
 			telefones: true,
 		},
 	});
-	if (!whatsappConnection) throw new createHttpError.NotFound("Conexão do WhatsApp não encontrada.");
 	return {
-		data: whatsappConnection,
+		data: whatsappConnection ?? null,
 		message: "Conexão do WhatsApp encontrada com sucesso.",
 	};
 }
