@@ -2,6 +2,7 @@ import { FacebookOAuth } from "@/lib/authentication/oauth";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { db } from "@/services/drizzle";
 import { type TNewWhatsappConnection, whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema";
+import type { OAuth2Tokens } from "arctic";
 
 import dayjs from "dayjs";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -35,18 +36,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 	const appId = process.env.NEXT_PUBLIC_META_APP_ID;
 	const appSecret = process.env.META_APP_SECRET;
+	const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/whatsapp/auth/callback`;
+
+	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Config:", {
+		appId,
+		appSecretPresent: !!appSecret,
+		redirectUri,
+		codeLength: (code as string).length,
+	});
+
 	// O redirect_uri deve ser um dos URIs configurados no seu painel da Meta
-	const tokens = await FacebookOAuth.validateAuthorizationCode(code as string);
+	let tokens: OAuth2Tokens | undefined;
 	let accessToken: string | undefined;
 	let accessTokenExpiresAt: Date | undefined;
+
 	try {
+		tokens = await FacebookOAuth.validateAuthorizationCode(code as string);
 		accessToken = tokens.accessToken();
 		accessTokenExpiresAt = tokens.accessTokenExpiresAt();
-	} catch (error) {
-		console.error("[ERROR] [WHATSAPP_CONNECT_CALLBACK] Error validating authorization code:", error);
+	} catch (error: any) {
+		console.error("[ERROR] [WHATSAPP_CONNECT_CALLBACK] Error validating authorization code:", {
+			message: error.message,
+			status: error.status,
+			data: error.data,
+			stack: error.stack,
+		});
+		return res.status(400).json({
+			error: "Falha ao validar código de autorização",
+			details: error.data || error.message,
+			hint: "Verifique se o redirect_uri no Meta App Dashboard corresponde exatamente a: " + redirectUri,
+		});
 	}
 
-	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Tokens:", { tokens, accessToken, accessTokenExpiresAt });
+	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Tokens obtidos com sucesso:", {
+		hasAccessToken: !!accessToken,
+		accessTokenExpiresAt,
+		tokenLength: accessToken?.length,
+	});
 
 	const debugUrl = `https://graph.facebook.com/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`;
 	const debugResponse = await fetch(debugUrl);
@@ -63,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 				const whatsappBusinessAccountId = targetId;
 
 				try {
-					const subscribeUrl = `https://graph.facebook.com/v19.0/${whatsappBusinessAccountId}/subscribed_apps`;
+					const subscribeUrl = `https://graph.facebook.com/v21.0/${whatsappBusinessAccountId}/subscribed_apps`;
 					const subscribeResponse = await fetch(subscribeUrl, {
 						method: "POST",
 						headers: {
@@ -81,7 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 					console.error(`[ERROR] Erro na requisição de subscribed_apps para ${whatsappBusinessAccountId}:`, error);
 				}
 
-				const phoneNumbersUrl = `https://graph.facebook.com/v19.0/${whatsappBusinessAccountId}/phone_numbers?access_token=${accessToken}`;
+				const phoneNumbersUrl = `https://graph.facebook.com/v21.0/${whatsappBusinessAccountId}/phone_numbers?access_token=${accessToken}`;
 				const phoneNumbersResponse = await fetch(phoneNumbersUrl);
 				const phoneNumbersDataResult = await phoneNumbersResponse.json();
 				const phoneNumbersData = phoneNumbersDataResult.data[0];
