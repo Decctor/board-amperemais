@@ -2,6 +2,7 @@ import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-ca
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -100,6 +101,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 				),
 			with: {
 				segmentacoes: true,
+				whatsappTemplate: true,
 			},
 		});
 		const campaignsForNewPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "NOVA-COMPRA");
@@ -108,6 +110,14 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		console.log(`[ORG: ${organization.id}] ${campaignsForNewPurchase.length} campanhas de nova compra encontradas.`);
 		console.log(`[ORG: ${organization.id}] ${campaignsForFirstPurchase.length} campanhas de primeira compra encontradas.`);
 		console.log(`[ORG: ${organization.id}] ${campaignsForCashbackAccumulation.length} campanhas de cashback acumulado encontradas.`);
+
+		// Query whatsappConnection for immediate processing
+		const whatsappConnection = await db.query.whatsappConnections.findFirst({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
+		});
+
+		// Collect data for immediate processing
+		const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
 		if (organization.integracaoTipo !== "ONLINE-SOFTWARE") {
 			console.log(`[INFO] [DATA_COLLECTING] [ORGANIZATION] Organization ${organization.id} does not have ONLINE-SOFTWARE integration type.`);
@@ -303,7 +313,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									unit: campaign.execucaoAgendadaMedida,
 									value: campaign.execucaoAgendadaValor,
 								});
-								await tx.insert(interactions).values({
+								const [insertedInteraction] = await tx.insert(interactions).values({
 									clienteId: insertedClientId,
 									campanhaId: campaign.id,
 									organizacaoId: organization.id,
@@ -312,7 +322,46 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									descricao: "Cliente realizou sua primeira compra.",
 									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-								});
+								}).returning({ id: interactions.id });
+
+								// Check for immediate processing (execucaoAgendadaValor === 0)
+								if (
+									campaign.execucaoAgendadaValor === 0 &&
+									campaign.whatsappTemplate &&
+									whatsappConnection
+								) {
+									// Query client data for immediate processing
+									const clientData = await tx.query.clients.findFirst({
+										where: (fields, { eq }) => eq(fields.id, insertedClientId),
+										columns: {
+											id: true,
+											nome: true,
+											telefone: true,
+											email: true,
+											analiseRFMTitulo: true,
+										},
+									});
+
+									if (clientData) {
+										immediateProcessingDataList.push({
+											interactionId: insertedInteraction.id,
+											organizationId: organization.id,
+											client: {
+												id: clientData.id,
+												nome: clientData.nome,
+												telefone: clientData.telefone,
+												email: clientData.email,
+												analiseRFMTitulo: clientData.analiseRFMTitulo,
+											},
+											campaign: {
+												autorId: campaign.autorId,
+												whatsappTelefoneId: campaign.whatsappTelefoneId,
+												whatsappTemplate: campaign.whatsappTemplate,
+											},
+											whatsappToken: whatsappConnection.token,
+										});
+									}
+								}
 
 								// Generate campaign cashback for PRIMEIRA-COMPRA trigger
 								if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
@@ -663,7 +712,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									unit: campaign.execucaoAgendadaMedida,
 									value: campaign.execucaoAgendadaValor,
 								});
-								await tx.insert(interactions).values({
+								const [insertedInteraction] = await tx.insert(interactions).values({
 									clienteId: saleClientId,
 									campanhaId: campaign.id,
 									organizacaoId: organization.id,
@@ -672,7 +721,46 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									descricao: `Cliente se enquadrou no parâmetro de nova compra ${existingClientsMap.get(OnlineSale.cliente)?.rfmTitle}.`,
 									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-								});
+								}).returning({ id: interactions.id });
+
+								// Check for immediate processing (execucaoAgendadaValor === 0)
+								if (
+									campaign.execucaoAgendadaValor === 0 &&
+									campaign.whatsappTemplate &&
+									whatsappConnection
+								) {
+									// Query client data for immediate processing
+									const clientData = await tx.query.clients.findFirst({
+										where: (fields, { eq }) => eq(fields.id, saleClientId),
+										columns: {
+											id: true,
+											nome: true,
+											telefone: true,
+											email: true,
+											analiseRFMTitulo: true,
+										},
+									});
+
+									if (clientData) {
+										immediateProcessingDataList.push({
+											interactionId: insertedInteraction.id,
+											organizationId: organization.id,
+											client: {
+												id: clientData.id,
+												nome: clientData.nome,
+												telefone: clientData.telefone,
+												email: clientData.email,
+												analiseRFMTitulo: clientData.analiseRFMTitulo,
+											},
+											campaign: {
+												autorId: campaign.autorId,
+												whatsappTelefoneId: campaign.whatsappTelefoneId,
+												whatsappTemplate: campaign.whatsappTemplate,
+											},
+											whatsappToken: whatsappConnection.token,
+										});
+									}
+								}
 
 								// Generate campaign cashback for NOVA-COMPRA trigger
 								if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
@@ -803,7 +891,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 											value: campaign.execucaoAgendadaValor,
 										});
 
-										await tx.insert(interactions).values({
+										const [insertedInteraction] = await tx.insert(interactions).values({
 											clienteId: saleClientId,
 											campanhaId: campaign.id,
 											organizacaoId: organization.id,
@@ -817,7 +905,46 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												whatsappMensagemId: null,
 												whatsappTemplateId: null,
 											},
-										});
+										}).returning({ id: interactions.id });
+
+										// Check for immediate processing (execucaoAgendadaValor === 0)
+										if (
+											campaign.execucaoAgendadaValor === 0 &&
+											campaign.whatsappTemplate &&
+											whatsappConnection
+										) {
+											// Query client data for immediate processing
+											const clientData = await tx.query.clients.findFirst({
+												where: (fields, { eq }) => eq(fields.id, saleClientId),
+												columns: {
+													id: true,
+													nome: true,
+													telefone: true,
+													email: true,
+													analiseRFMTitulo: true,
+												},
+											});
+
+											if (clientData) {
+												immediateProcessingDataList.push({
+													interactionId: insertedInteraction.id,
+													organizationId: organization.id,
+													client: {
+														id: clientData.id,
+														nome: clientData.nome,
+														telefone: clientData.telefone,
+														email: clientData.email,
+														analiseRFMTitulo: clientData.analiseRFMTitulo,
+													},
+													campaign: {
+														autorId: campaign.autorId,
+														whatsappTelefoneId: campaign.whatsappTelefoneId,
+														whatsappTemplate: campaign.whatsappTemplate,
+													},
+													whatsappToken: whatsappConnection.token,
+												});
+											}
+										}
 
 										// Generate campaign cashback for CASHBACK-ACUMULADO trigger (FIXO only)
 										if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
@@ -853,6 +980,17 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					`[ORG: ${organization.id}] [INFO] [DATA_COLLECTING] [SALES] Created ${createdSalesCount} sales and updated ${updatedSalesCount} sales.`,
 				);
 			});
+
+			// Process interactions immediately after transaction (with delay to avoid rate limiting)
+			if (immediateProcessingDataList.length > 0) {
+				console.log(`[ORG: ${organization.id}] [INFO] Processing ${immediateProcessingDataList.length} immediate interactions`);
+				for (const processingData of immediateProcessingDataList) {
+					processSingleInteractionImmediately(processingData).catch((err) =>
+						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
+					);
+					await delay(100); // Small delay between sends to avoid rate limiting
+				}
+			}
 		} catch (error) {
 			console.error(`[ORG: ${organization.id}] [ERROR] Running into error for the data collecting cron`, error);
 			await db.insert(utils).values({

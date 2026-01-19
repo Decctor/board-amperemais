@@ -1,5 +1,6 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
+import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { campaigns, cashbackProgramTransactions, interactions, organizations } from "@/services/drizzle/schema";
@@ -64,11 +65,22 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 		for (const organization of organizationsList) {
 			console.log(`[ORG: ${organization.id}] Processing organization...`);
 
+			// Query whatsappConnection for immediate processing
+			const whatsappConnection = await db.query.whatsappConnections.findFirst({
+				where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
+			});
+
+			// Collect data for immediate processing
+			const immediateProcessingDataList: ImmediateProcessingData[] = [];
+
 			await db.transaction(async (tx) => {
 				// Get active campaigns for expiring cashback notifications
 				const campaignsForExpiration = await tx.query.campaigns.findMany({
 					where: (fields, { and, eq }) =>
 						and(eq(fields.organizacaoId, organization.id), eq(fields.ativo, true), eq(fields.gatilhoTipo, "CASHBACK-EXPIRANDO")),
+					with: {
+						whatsappTemplate: true,
+					},
 				});
 
 				if (campaignsForExpiration.length === 0) {
@@ -120,7 +132,7 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 								value: campaign.execucaoAgendadaValor,
 							});
 
-							await tx.insert(interactions).values({
+							const [insertedInteraction] = await tx.insert(interactions).values({
 								clienteId: clienteId,
 								campanhaId: campaign.id,
 								organizacaoId: organization.id,
@@ -129,7 +141,46 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 								descricao: `Você tem R$ ${(totalExpiring / 100).toFixed(2)} em cashback expirando nos próximos ${EXPIRING_SOON_DAYS} dias.`,
 								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-							});
+							}).returning({ id: interactions.id });
+
+							// Check for immediate processing (execucaoAgendadaValor === 0)
+							if (
+								campaign.execucaoAgendadaValor === 0 &&
+								campaign.whatsappTemplate &&
+								whatsappConnection
+							) {
+								// Query client data for immediate processing
+								const clientData = await tx.query.clients.findFirst({
+									where: (fields, { eq }) => eq(fields.id, clienteId),
+									columns: {
+										id: true,
+										nome: true,
+										telefone: true,
+										email: true,
+										analiseRFMTitulo: true,
+									},
+								});
+
+								if (clientData) {
+									immediateProcessingDataList.push({
+										interactionId: insertedInteraction.id,
+										organizationId: organization.id,
+										client: {
+											id: clientData.id,
+											nome: clientData.nome,
+											telefone: clientData.telefone,
+											email: clientData.email,
+											analiseRFMTitulo: clientData.analiseRFMTitulo,
+										},
+										campaign: {
+											autorId: campaign.autorId,
+											whatsappTelefoneId: campaign.whatsappTelefoneId,
+											whatsappTemplate: campaign.whatsappTemplate,
+										},
+										whatsappToken: whatsappConnection.token,
+									});
+								}
+							}
 
 							// Generate campaign cashback for CASHBACK-EXPIRANDO trigger (FIXO only)
 							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
@@ -149,6 +200,17 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 					}
 				}
 			});
+
+			// Process interactions immediately after transaction (with delay to avoid rate limiting)
+			if (immediateProcessingDataList.length > 0) {
+				console.log(`[ORG: ${organization.id}] [INFO] Processing ${immediateProcessingDataList.length} immediate interactions`);
+				for (const processingData of immediateProcessingDataList) {
+					processSingleInteractionImmediately(processingData).catch((err) =>
+						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
+					);
+					await delay(100); // Small delay between sends to avoid rate limiting
+				}
+			}
 		}
 
 		console.log("[INFO] [CASHBACK_EXPIRING_NOTIFY] All organizations processed successfully");

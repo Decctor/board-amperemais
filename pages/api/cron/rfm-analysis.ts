@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
+import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
 import { TimeDurationUnitsEnum } from "@/schemas/enums";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -92,7 +93,13 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 					),
 				with: {
 					segmentacoes: true,
+					whatsappTemplate: true,
 				},
+			});
+
+			// Query whatsappConnection for immediate processing
+			const whatsappConnection = await db.query.whatsappConnections.findFirst({
+				where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
 			});
 
 			const campaignsForPermanenceInSegmentation = campaigns.filter((campaign) => campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO");
@@ -133,6 +140,9 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 				console.error(`[ORG: ${organization.id}] [ERROR] Configuração RFM não encontrada.`);
 				continue;
 			}
+
+			// Collect data for immediate processing
+			const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
 			await db.transaction(async (tx) => {
 				for (const [index, results] of accumulatedResultsByClient.entries()) {
@@ -192,7 +202,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								unit: campaign.execucaoAgendadaMedida,
 								value: campaign.execucaoAgendadaValor,
 							});
-							await tx.insert(interactions).values({
+							const [insertedInteraction] = await tx.insert(interactions).values({
 								clienteId: results.clientId,
 								campanhaId: campaign.id,
 								organizacaoId: organization.id,
@@ -201,7 +211,46 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								descricao: `Cliente se enquadrou no parâmetro de entrada na classificação RFM ${newRFMLabel}.`,
 								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-							});
+							}).returning({ id: interactions.id });
+
+							// Check for immediate processing (execucaoAgendadaValor === 0)
+							if (
+								campaign.execucaoAgendadaValor === 0 &&
+								campaign.whatsappTemplate &&
+								whatsappConnection
+							) {
+								// Query client data for immediate processing
+								const clientData = await tx.query.clients.findFirst({
+									where: (fields, { eq }) => eq(fields.id, results.clientId),
+									columns: {
+										id: true,
+										nome: true,
+										telefone: true,
+										email: true,
+										analiseRFMTitulo: true,
+									},
+								});
+
+								if (clientData) {
+									immediateProcessingDataList.push({
+										interactionId: insertedInteraction.id,
+										organizationId: organization.id,
+										client: {
+											id: clientData.id,
+											nome: clientData.nome,
+											telefone: clientData.telefone,
+											email: clientData.email,
+											analiseRFMTitulo: clientData.analiseRFMTitulo,
+										},
+										campaign: {
+											autorId: campaign.autorId,
+											whatsappTelefoneId: campaign.whatsappTelefoneId,
+											whatsappTemplate: campaign.whatsappTemplate,
+										},
+										whatsappToken: whatsappConnection.token,
+									});
+								}
+							}
 
 							// Generate campaign cashback for ENTRADA-SEGMENTAÇÃO trigger (FIXO only)
 							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
@@ -277,7 +326,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								unit: campaign.execucaoAgendadaMedida,
 								value: campaign.execucaoAgendadaValor,
 							});
-							await tx.insert(interactions).values({
+							const [insertedInteraction] = await tx.insert(interactions).values({
 								clienteId: results.clientId,
 								campanhaId: campaign.id,
 								organizacaoId: organization.id,
@@ -286,7 +335,46 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								descricao: `Cliente se enquadrou no parâmetro de permanência na classificação RFM ${newRFMLabel}.`,
 								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-							});
+							}).returning({ id: interactions.id });
+
+							// Check for immediate processing (execucaoAgendadaValor === 0)
+							if (
+								campaign.execucaoAgendadaValor === 0 &&
+								campaign.whatsappTemplate &&
+								whatsappConnection
+							) {
+								// Query client data for immediate processing
+								const clientData = await tx.query.clients.findFirst({
+									where: (fields, { eq }) => eq(fields.id, results.clientId),
+									columns: {
+										id: true,
+										nome: true,
+										telefone: true,
+										email: true,
+										analiseRFMTitulo: true,
+									},
+								});
+
+								if (clientData) {
+									immediateProcessingDataList.push({
+										interactionId: insertedInteraction.id,
+										organizationId: organization.id,
+										client: {
+											id: clientData.id,
+											nome: clientData.nome,
+											telefone: clientData.telefone,
+											email: clientData.email,
+											analiseRFMTitulo: clientData.analiseRFMTitulo,
+										},
+										campaign: {
+											autorId: campaign.autorId,
+											whatsappTelefoneId: campaign.whatsappTelefoneId,
+											whatsappTemplate: campaign.whatsappTemplate,
+										},
+										whatsappToken: whatsappConnection.token,
+									});
+								}
+							}
 
 							// Generate campaign cashback for PERMANÊNCIA-SEGMENTAÇÃO trigger (FIXO only)
 							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
@@ -318,6 +406,17 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 						.where(and(eq(clients.id, results.clientId), eq(clients.organizacaoId, organization.id)));
 				}
 			});
+
+			// Process interactions immediately after transaction (with delay to avoid rate limiting)
+			if (immediateProcessingDataList.length > 0) {
+				console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Processing ${immediateProcessingDataList.length} immediate interactions`);
+				for (const processingData of immediateProcessingDataList) {
+					processSingleInteractionImmediately(processingData).catch((err) =>
+						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
+					);
+					await delay(100); // Small delay between sends to avoid rate limiting
+				}
+			}
 
 			console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] RFM analysis completed successfully`);
 		} catch (error) {

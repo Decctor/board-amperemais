@@ -1,5 +1,6 @@
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase } from "@/lib/formatting";
+import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import type { DBTransaction } from "@/services/drizzle";
@@ -215,7 +216,13 @@ export async function POST(req: Request) {
 				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, input.orgId), eq(fields.ativo, true), eq(fields.gatilhoTipo, "CASHBACK-ACUMULADO")),
 				with: {
 					segmentacoes: true,
+					whatsappTemplate: true,
 				},
+			});
+
+			// Query whatsappConnection for immediate processing
+			const whatsappConnection = await tx.query.whatsappConnections.findFirst({
+				where: (fields, { eq }) => eq(fields.organizacaoId, input.orgId),
 			});
 
 			// 5. If using cashback: validate balance and create redemption
@@ -330,6 +337,9 @@ export async function POST(req: Request) {
 			const newOverallAvailableBalance = previousOverallAvailableBalance + accumulatedBalance;
 			const newOverallAccumulatedBalance = previousOverallAccumulatedBalance + accumulatedBalance;
 
+			// Collect data for immediate processing
+			const immediateProcessingDataList: ImmediateProcessingData[] = [];
+
 			if (accumulatedBalance > 0) {
 				// Update balance (credit)
 				await tx
@@ -360,6 +370,7 @@ export async function POST(req: Request) {
 				});
 
 				// 9. Check for applicable cashback accumulation campaigns
+
 				if (campaignsForCashbackAccumulation.length > 0) {
 					const applicableCampaigns = campaignsForCashbackAccumulation.filter((campaign) => {
 						const meetsNewCashbackThreshold =
@@ -380,6 +391,18 @@ export async function POST(req: Request) {
 							`[ORG: ${input.orgId}] ${applicableCampaigns.length} campanhas de cashback acumulado aplicáveis encontradas para o cliente ${clientId}.`,
 						);
 					}
+
+					// Query client data for immediate processing
+					const clientData = await tx.query.clients.findFirst({
+						where: (fields, { eq }) => eq(fields.id, clientId),
+						columns: {
+							id: true,
+							nome: true,
+							telefone: true,
+							email: true,
+							analiseRFMTitulo: true,
+						},
+					});
 
 					for (const campaign of applicableCampaigns) {
 						const canSchedule = await canScheduleCampaignForClient(
@@ -402,7 +425,7 @@ export async function POST(req: Request) {
 							value: campaign.execucaoAgendadaValor,
 						});
 
-						await tx.insert(interactions).values({
+						const [insertedInteraction] = await tx.insert(interactions).values({
 							clienteId: clientId,
 							campanhaId: campaign.id,
 							organizacaoId: input.orgId,
@@ -416,7 +439,33 @@ export async function POST(req: Request) {
 								whatsappMensagemId: null,
 								whatsappTemplateId: null,
 							},
-						});
+						}).returning({ id: interactions.id });
+
+						// Check for immediate processing (execucaoAgendadaValor === 0)
+						if (
+							campaign.execucaoAgendadaValor === 0 &&
+							campaign.whatsappTemplate &&
+							whatsappConnection &&
+							clientData
+						) {
+							immediateProcessingDataList.push({
+								interactionId: insertedInteraction.id,
+								organizationId: input.orgId,
+								client: {
+									id: clientData.id,
+									nome: clientData.nome,
+									telefone: clientData.telefone,
+									email: clientData.email,
+									analiseRFMTitulo: clientData.analiseRFMTitulo,
+								},
+								campaign: {
+									autorId: campaign.autorId,
+									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappTemplate: campaign.whatsappTemplate,
+								},
+								whatsappToken: whatsappConnection.token,
+							});
+						}
 					}
 				}
 			}
@@ -436,12 +485,26 @@ export async function POST(req: Request) {
 				saleId,
 				cashbackAcumulado: accumulatedBalance,
 				newBalance: newOverallAvailableBalance,
+				immediateProcessingDataList,
 			};
 		});
 
+		// Process interactions immediately after transaction (fire-and-forget)
+		if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
+			for (const processingData of result.immediateProcessingDataList) {
+				processSingleInteractionImmediately(processingData).catch((err) =>
+					console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
+				);
+			}
+		}
+
 		return NextResponse.json(
 			{
-				data: result,
+				data: {
+					saleId: result.saleId,
+					cashbackAcumulado: result.cashbackAcumulado,
+					newBalance: result.newBalance,
+				},
 				message: "Venda criada com sucesso.",
 			},
 			{ status: 201 },
