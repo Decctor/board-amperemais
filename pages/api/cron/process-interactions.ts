@@ -3,7 +3,7 @@ import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variabl
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import type { TInteractionsCronJobTimeBlocksEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { chatMessages, interactions, organizations } from "@/services/drizzle/schema";
+import { chatMessages, chats, interactions, organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { NextApiHandler } from "next";
@@ -114,7 +114,8 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 						console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Processing interaction ${index + 1} of ${interactionsResult.length}`);
 					}
 					const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
-					if (!campaign || !interaction.campanha?.whatsappTelefoneId) continue;
+					const interactionCampaign = interaction.campanha;
+					if (!campaign || !interactionCampaign) continue;
 
 					const whatsappTemplate = campaign.whatsappTemplate;
 					if (!whatsappTemplate) continue;
@@ -139,14 +140,38 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					});
 					console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Creating template message:`, JSON.stringify(payload, null, 2));
 
+					let chatId: string | null = null;
+					const existingChat = await db.query.chats.findFirst({
+						where: (fields, { and, eq }) =>
+							and(
+								eq(fields.organizacaoId, organization.id),
+								eq(fields.clienteId, interaction.clienteId),
+								eq(fields.whatsappTelefoneId, interactionCampaign.whatsappTelefoneId),
+							),
+					});
+					if (existingChat) {
+						chatId = existingChat.id;
+					} else {
+						const [newChat] = await db
+							.insert(chats)
+							.values({
+								organizacaoId: organization.id,
+								clienteId: interaction.clienteId,
+								whatsappTelefoneId: interactionCampaign.whatsappTelefoneId,
+								ultimaMensagemData: new Date(),
+								ultimaMensagemConteudoTipo: "TEXTO",
+							})
+							.returning({ id: chats.id });
+						chatId = newChat.id;
+					}
 					// Inserting message in db
 					const insertedChatMessageResponse = await db
 						.insert(chatMessages)
 						.values({
 							organizacaoId: organization.id,
-							chatId: interaction.id,
+							chatId: chatId,
 							autorTipo: "USUÁRIO",
-							autorUsuarioId: interaction.campanha.autorId,
+							autorUsuarioId: interactionCampaign.autorId,
 							conteudoTexto: payload.content,
 							conteudoMidiaTipo: "TEXTO",
 						})
@@ -158,7 +183,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 
 					try {
 						const sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
-							fromPhoneNumberId: interaction.campanha.whatsappTelefoneId,
+							fromPhoneNumberId: interactionCampaign.whatsappTelefoneId,
 							templatePayload: payload.data,
 							whatsappToken: whatsappConnection.token,
 						});
