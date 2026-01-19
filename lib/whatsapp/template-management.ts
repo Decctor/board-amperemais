@@ -119,7 +119,7 @@ export function validateTemplateComponents(componentes: TWhatsappTemplateCompone
 /**
  * Converts internal template format to WhatsApp API payload format
  */
-export function convertToWhatsappApiPayload(template: Omit<TWhatsappTemplate, "_id" | "autorId" | "dataInsercao" | "status">) {
+export function convertToWhatsappApiPayload(template: Omit<TWhatsappTemplate, "autorId" | "dataInsercao">) {
 	const components: Array<Record<string, unknown>> = [];
 
 	// Add header component if exists
@@ -225,7 +225,9 @@ export function convertToWhatsappApiPayload(template: Omit<TWhatsappTemplate, "_
 }
 
 type CreateWhatsappTemplateParams = {
-	template: Omit<TWhatsappTemplate, "_id" | "autor" | "dataInsercao" | "status" | "whatsappTemplateId">;
+	whatsappToken: string;
+	whatsappBusinessAccountId: string;
+	template: Omit<TWhatsappTemplate, "autorId" | "dataInsercao">;
 };
 
 type CreateWhatsappTemplateResponse = {
@@ -237,13 +239,17 @@ type CreateWhatsappTemplateResponse = {
 /**
  * Creates a template in WhatsApp Business API
  */
-export async function createWhatsappTemplate({ template }: CreateWhatsappTemplateParams): Promise<CreateWhatsappTemplateResponse> {
+export async function createWhatsappTemplate({
+	whatsappToken,
+	whatsappBusinessAccountId,
+	template,
+}: CreateWhatsappTemplateParams): Promise<CreateWhatsappTemplateResponse> {
 	try {
-		if (!WHATSAPP_BUSINESS_ACCOUNT_ID) {
-			throw new createHttpError.InternalServerError("WhatsApp Business Account ID não configurado.");
+		if (!whatsappToken) {
+			throw new createHttpError.InternalServerError("WhatsApp token não configurado.");
 		}
-		if (!WHATSAPP_AUTH_TOKEN) {
-			throw new createHttpError.InternalServerError("WhatsApp auth token não configurado.");
+		if (!whatsappBusinessAccountId) {
+			throw new createHttpError.InternalServerError("WhatsApp Business Account ID não configurado.");
 		}
 
 		// Validate components
@@ -256,9 +262,9 @@ export async function createWhatsappTemplate({ template }: CreateWhatsappTemplat
 
 		console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Creating template:", template.nome, JSON.stringify(payload, null, 2));
 
-		const response = await axios.post(`${GRAPH_API_BASE_URL}/${WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates`, payload, {
+		const response = await axios.post(`${GRAPH_API_BASE_URL}/${whatsappBusinessAccountId}/message_templates`, payload, {
 			headers: {
-				Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+				Authorization: `Bearer ${whatsappToken}`,
 				"Content-Type": "application/json",
 			},
 		});

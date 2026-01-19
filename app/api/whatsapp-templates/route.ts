@@ -4,41 +4,96 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { createWhatsappTemplate as createWhatsappTemplateInMeta } from "@/lib/whatsapp/template-management";
 import { WhatsappTemplateSchema } from "@/schemas/whatsapp-templates";
 import { db } from "@/services/drizzle";
-import { whatsappTemplates } from "@/services/drizzle/schema";
-import { and, count, eq, isNull, or, sql } from "drizzle-orm";
+import { whatsappTemplatePhones, whatsappTemplates } from "@/services/drizzle/schema";
+import { and, count, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import z from "zod";
 const CreateWhatsappTemplateInputSchema = z.object({
-	template: WhatsappTemplateSchema.omit({ whatsappTemplateId: true, qualidade: true, rejeicao: true, status: true }),
+	template: WhatsappTemplateSchema.omit({ autorId: true, dataInsercao: true }),
 });
 export type TCreateWhatsappTemplateInput = z.infer<typeof CreateWhatsappTemplateInputSchema>;
 
 async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsappTemplateInput; session: TAuthUserSession["user"] }) {
 	const userOrgId = session.organizacaoId;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const insertedWhatsappTemplate = await db
+
+	const orgWhatsappConnection = await db.query.whatsappConnections.findFirst({
+		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
+		with: {
+			telefones: true,
+		},
+	});
+	if (!orgWhatsappConnection) throw new createHttpError.NotFound("Conexão WhatsApp não encontrada.");
+	if (orgWhatsappConnection.telefones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
+
+	const whatsappToken = orgWhatsappConnection.token;
+
+	// 1. Insert parent template first
+	const [insertedTemplate] = await db
 		.insert(whatsappTemplates)
-		.values({ ...input.template, status: "RASCUNHO", qualidade: "PENDENTE", organizacaoId: userOrgId })
+		.values({
+			nome: input.template.nome,
+			categoria: input.template.categoria,
+			componentes: input.template.componentes,
+			autorId: session.id,
+			organizacaoId: userOrgId,
+		})
 		.returning({ id: whatsappTemplates.id });
 
-	const createdWhatsappTemplateResponse = await createWhatsappTemplateInMeta({ template: { ...input.template, qualidade: "PENDENTE" } });
+	// 2. Create template in Meta API for each phone and insert child records
+	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; error?: string }> = [];
 
-	console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Meta response:", createdWhatsappTemplateResponse);
-	const insertedWhatsappTemplateId = insertedWhatsappTemplate[0]?.id;
-	if (!insertedWhatsappTemplateId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar template.");
-	await db
-		.update(whatsappTemplates)
-		.set({ whatsappTemplateId: createdWhatsappTemplateResponse.whatsappTemplateId })
-		.where(and(eq(whatsappTemplates.id, insertedWhatsappTemplateId), eq(whatsappTemplates.organizacaoId, userOrgId)));
+	for (const telefone of orgWhatsappConnection.telefones) {
+		try {
+			const metaResponse = await createWhatsappTemplateInMeta({
+				whatsappToken,
+				whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
+				template: input.template,
+			});
+
+			// Insert child record with the whatsappTemplateId from Meta
+			await db.insert(whatsappTemplatePhones).values({
+				templateId: insertedTemplate.id,
+				telefoneId: telefone.id,
+				whatsappTemplateId: metaResponse.whatsappTemplateId,
+				status: "PENDENTE",
+				qualidade: "PENDENTE",
+			});
+
+			phoneResults.push({
+				telefoneId: telefone.id,
+				whatsappTemplateId: metaResponse.whatsappTemplateId,
+			});
+
+			console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Created template for phone ${telefone.numero}: ${metaResponse.whatsappTemplateId}`);
+		} catch (error) {
+			console.error(`[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to create template for phone ${telefone.numero}:`, error);
+			phoneResults.push({
+				telefoneId: telefone.id,
+				whatsappTemplateId: null,
+				error: error instanceof Error ? error.message : "Erro desconhecido",
+			});
+		}
+	}
+
+	const successfulPhones = phoneResults.filter((r) => r.whatsappTemplateId !== null);
+	const failedPhones = phoneResults.filter((r) => r.whatsappTemplateId === null);
 
 	return {
 		data: {
-			insertedId: insertedWhatsappTemplateId,
-			metaWhatsappTemplateId: createdWhatsappTemplateResponse.whatsappTemplateId,
+			insertedId: insertedTemplate.id,
+			phoneResults: {
+				successful: successfulPhones.length,
+				failed: failedPhones.length,
+				details: phoneResults,
+			},
 		},
-		message: "Template criado com sucesso.",
+		message:
+			failedPhones.length > 0
+				? `Template criado com ${successfulPhones.length} telefone(s) e ${failedPhones.length} falha(s).`
+				: "Template criado com sucesso em todos os telefones.",
 	};
 }
 export type TCreateWhatsappTemplateOutput = Awaited<ReturnType<typeof createWhatsappTemplate>>;
@@ -65,23 +120,79 @@ const GetWhatsappTemplatesInputSchema = z.object({
 		.nullable()
 		.transform((val) => Number(val)),
 	search: z.string({ invalid_type_error: "Tipo inválido para busca." }).optional().nullable(),
+	whatsappConnectionPhoneId: z.string({ invalid_type_error: "Tipo inválido para ID do telefone." }).optional().nullable(),
 });
 export type TGetWhatsappTemplatesInput = z.infer<typeof GetWhatsappTemplatesInputSchema>;
+
+// Helper to compute worst-case status (priority: REJEITADO > DESABILITADO > PAUSADO > PENDENTE > APROVADO > RASCUNHO)
+function computeWorstStatus(
+	statuses: Array<"RASCUNHO" | "PENDENTE" | "APROVADO" | "REJEITADO" | "PAUSADO" | "DESABILITADO">,
+): "RASCUNHO" | "PENDENTE" | "APROVADO" | "REJEITADO" | "PAUSADO" | "DESABILITADO" {
+	const priority = ["REJEITADO", "DESABILITADO", "PAUSADO", "PENDENTE", "RASCUNHO", "APROVADO"] as const;
+	for (const status of priority) {
+		if (statuses.includes(status)) return status;
+	}
+	return "PENDENTE";
+}
+
+// Helper to compute worst-case quality (priority: BAIXA > MEDIA > PENDENTE > ALTA)
+function computeWorstQuality(qualities: Array<"PENDENTE" | "ALTA" | "MEDIA" | "BAIXA">): "PENDENTE" | "ALTA" | "MEDIA" | "BAIXA" {
+	const priority = ["BAIXA", "MEDIA", "PENDENTE", "ALTA"] as const;
+	for (const quality of priority) {
+		if (qualities.includes(quality)) return quality;
+	}
+	return "PENDENTE";
+}
 
 async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTemplatesInput; session: TAuthUserSession["user"] }) {
 	const userOrgId = session.organizacaoId;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
 	if ("id" in input && input.id) {
 		const id = input.id;
 		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
 		const whatsappTemplate = await db.query.whatsappTemplates.findFirst({
 			where: (fields, { eq, or, isNull }) => and(eq(fields.id, id), or(eq(fields.organizacaoId, userOrgId), isNull(fields.organizacaoId))),
+			with: {
+				telefones: {
+					with: {
+						telefone: {
+							columns: {
+								id: true,
+								numero: true,
+								nome: true,
+							},
+						},
+					},
+				},
+			},
 		});
 		if (!whatsappTemplate) throw new createHttpError.NotFound("Template não encontrado.");
+
+		// Compute overall status and quality from phone statuses
+		const phoneStatuses = whatsappTemplate.telefones.map((t) => t.status);
+		const phoneQualities = whatsappTemplate.telefones.map((t) => t.qualidade);
+		const statusGeral = phoneStatuses.length > 0 ? computeWorstStatus(phoneStatuses) : "PENDENTE";
+		const qualidadeGeral = phoneQualities.length > 0 ? computeWorstQuality(phoneQualities) : "PENDENTE";
+
 		return {
 			data: {
 				default: null,
-				byId: whatsappTemplate,
+				byId: {
+					...whatsappTemplate,
+					statusGeral,
+					qualidadeGeral,
+					telefones: whatsappTemplate.telefones.map((t) => ({
+						id: t.id,
+						telefoneId: t.telefoneId,
+						telefoneNumero: t.telefone?.numero,
+						telefoneName: t.telefone?.nome,
+						whatsappTemplateId: t.whatsappTemplateId,
+						status: t.status,
+						qualidade: t.qualidade,
+						rejeicao: t.rejeicao,
+					})),
+				},
 			},
 			message: "Template encontrado com sucesso.",
 		};
@@ -91,6 +202,21 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 	if (input.search && input.search.trim().length > 0) {
 		conditions.push(
 			sql`(to_tsvector('portuguese', ${whatsappTemplates.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${whatsappTemplates.nome} ILIKE '%' || ${input.search} || '%')`,
+		);
+	}
+
+	// If filtering by telefoneId, only return templates that have a record for that phone
+	if (input.whatsappConnectionPhoneId) {
+		conditions.push(
+			inArray(
+				whatsappTemplates.id,
+				db
+					.select({
+						templateId: whatsappTemplatePhones.templateId,
+					})
+					.from(whatsappTemplatePhones)
+					.where(and(eq(whatsappTemplatePhones.telefoneId, input.whatsappConnectionPhoneId))),
+			),
 		);
 	}
 
@@ -111,11 +237,7 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 			id: true,
 			nome: true,
 			categoria: true,
-			whatsappTemplateId: true,
-			qualidade: true,
-			rejeicao: true,
 			dataInsercao: true,
-			status: true,
 		},
 		with: {
 			autor: {
@@ -125,16 +247,45 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 					avatarUrl: true,
 				},
 			},
+			telefones: {
+				columns: {
+					id: true,
+					status: true,
+					qualidade: true,
+				},
+			},
 		},
 		orderBy: (fields, { asc }) => asc(fields.nome),
 		offset: skip,
 		limit: PAGE_SIZE,
 	});
 
+	// Compute overall status and quality for each template
+	const templatesWithComputedStatus = whatsappTemplatesResult.map((template) => {
+		const phoneStatuses = template.telefones.map((t) => t.status);
+		const phoneQualities = template.telefones.map((t) => t.qualidade);
+		const statusGeral = phoneStatuses.length > 0 ? computeWorstStatus(phoneStatuses) : "PENDENTE";
+		const qualidadeGeral = phoneQualities.length > 0 ? computeWorstQuality(phoneQualities) : "PENDENTE";
+		const totalPhones = template.telefones.length;
+		const approvedPhones = template.telefones.filter((t) => t.status === "APROVADO").length;
+
+		return {
+			id: template.id,
+			nome: template.nome,
+			categoria: template.categoria,
+			dataInsercao: template.dataInsercao,
+			autor: template.autor,
+			statusGeral,
+			qualidadeGeral,
+			telefonesTotal: totalPhones,
+			telefonesAprovados: approvedPhones,
+		};
+	});
+
 	return {
 		data: {
 			default: {
-				whatsappTemplates: whatsappTemplatesResult,
+				whatsappTemplates: templatesWithComputedStatus,
 				whatsappTemplatesMatched: matchedWhatsappTemplatesCount,
 				totalPages: totalPages,
 			},
@@ -156,6 +307,7 @@ async function getWhatsappTemplatesRoute(request: NextRequest) {
 		id: searchParams.get("id") ?? undefined,
 		search: searchParams.get("search") ?? undefined,
 		page: searchParams.get("page") ?? undefined,
+		whatsappConnectionPhoneId: searchParams.get("whatsappConnectionPhoneId") ?? undefined,
 	});
 	const result = await getWhatsappTemplates({ input, session: session.user });
 	return NextResponse.json(result, { status: 200 });
@@ -166,6 +318,6 @@ export const GET = appApiHandler({
 
 const UpdateWhatsappTemplateInputSchema = z.object({
 	id: z.string({ invalid_type_error: "Tipo inválido para ID do template." }),
-	template: WhatsappTemplateSchema.omit({ whatsappTemplateId: true, qualidade: true, rejeicao: true, status: true }),
+	template: WhatsappTemplateSchema.omit({ autorId: true, dataInsercao: true }),
 });
 export type TUpdateWhatsappTemplateInput = z.infer<typeof UpdateWhatsappTemplateInputSchema>;

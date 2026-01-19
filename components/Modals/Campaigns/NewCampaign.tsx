@@ -6,6 +6,7 @@ import { useCampaignState } from "@/state-hooks/use-campaign-state";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import CampaignsActionBlock from "./Blocks/Action";
+import CampaignsCashbackGenerationBlock from "./Blocks/CashbackGeneration";
 import CampaignsConfigBlock from "./Blocks/Config";
 import CampaignsConversionBlock from "./Blocks/Conversion";
 import CampaignsExecutionBlock from "./Blocks/Execution";
@@ -69,6 +70,7 @@ export default function NewCampaign({ user, closeModal, callbacks }: NewCampaign
 			<CampaignsActionBlock organizationId={user.organizacaoId as string} campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsConversionBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsConfigBlock campaign={state.campaign} updateCampaign={updateCampaign} />
+			<CampaignsCashbackGenerationBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 		</ResponsiveMenu>
 	);
 }

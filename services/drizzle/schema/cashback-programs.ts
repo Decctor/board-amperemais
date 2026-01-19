@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { doublePrecision, timestamp } from "drizzle-orm/pg-core";
 import { boolean, text, varchar } from "drizzle-orm/pg-core";
+import { campaigns } from "./campaigns";
 import { clients } from "./clients";
 import { newTable } from "./common";
 import { cashbackProgramAccumulationTypeEnum, cashbackProgramTransactionStatusEnum, cashbackProgramTransactionTypeEnum } from "./enums";
@@ -84,6 +85,7 @@ export const cashbackProgramTransactions = newTable("cashback_program_transactio
 	expiracaoData: timestamp("expiracao_data"),
 
 	operadorId: varchar("operador_id", { length: 255 }).references(() => users.id),
+	campanhaId: varchar("campanha_id", { length: 255 }).references(() => campaigns.id),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
 });
@@ -99,5 +101,9 @@ export const cashbackProgramTransactionRelations = relations(cashbackProgramTran
 	programa: one(cashbackPrograms, {
 		fields: [cashbackProgramTransactions.programaId],
 		references: [cashbackPrograms.id],
+	}),
+	campanha: one(campaigns, {
+		fields: [cashbackProgramTransactions.campanhaId],
+		references: [campaigns.id],
 	}),
 }));

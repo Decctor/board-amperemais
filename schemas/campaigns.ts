@@ -1,5 +1,11 @@
 import z from "zod";
-import { AttributionModelEnum, CampaignTriggerTypeEnum, InteractionsCronJobTimeBlocksEnum, TimeDurationUnitsEnum } from "./enums";
+import {
+	AttributionModelEnum,
+	CampaignTriggerTypeEnum,
+	CashbackProgramAccumulationTypeEnum,
+	InteractionsCronJobTimeBlocksEnum,
+	TimeDurationUnitsEnum,
+} from "./enums";
 
 export const CampaignSchema = z.object({
 	ativo: z
@@ -21,6 +27,14 @@ export const CampaignSchema = z.object({
 		.nullable(),
 	gatilhoTipo: CampaignTriggerTypeEnum,
 
+	// Specific for "NOVA-COMPRA"
+	gatilhoNovaCompraValorMinimo: z
+		.number({
+			required_error: "Valor mínimo de nova compra não informado.",
+			invalid_type_error: "Tipo não válido para o valor mínimo de nova compra.",
+		})
+		.optional()
+		.nullable(),
 	// Specific for "PERMANÊNCIA-SEGMENTAÇÃO"
 	gatilhoTempoPermanenciaMedida: TimeDurationUnitsEnum.optional().nullable(),
 	gatilhoTempoPermanenciaValor: z
@@ -91,6 +105,31 @@ export const CampaignSchema = z.object({
 		required_error: "Janela de atribuição não informada.",
 		invalid_type_error: "Tipo não válido para a janela de atribuição.",
 	}),
+
+	// Cashback generation configuration
+	cashbackGeracaoAtivo: z
+		.boolean({
+			required_error: "Ativo da geração de cashback não informado.",
+			invalid_type_error: "Tipo não válido para o ativo da geração de cashback.",
+		})
+		.default(false),
+	cashbackGeracaoTipo: CashbackProgramAccumulationTypeEnum.optional().nullable(),
+	cashbackGeracaoValor: z
+		.number({
+			required_error: "Valor da geração de cashback não informado.",
+			invalid_type_error: "Tipo não válido para o valor da geração de cashback.",
+		})
+		.optional()
+		.nullable(),
+	cashbackGeracaoExpiracaoMedida: TimeDurationUnitsEnum.optional().nullable(),
+	cashbackGeracaoExpiracaoValor: z
+		.number({
+			required_error: "Valor da expiração da geração de cashback não informado.",
+			invalid_type_error: "Tipo não válido para o valor da expiração da geração de cashback.",
+		})
+		.optional()
+		.nullable(),
+
 	dataInsercao: z
 		.string({
 			required_error: "Data de inserção da campanha não informada.",

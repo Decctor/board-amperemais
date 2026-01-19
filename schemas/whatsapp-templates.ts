@@ -92,15 +92,6 @@ export const WhatsappTemplateSchema = z.object({
 		.max(512, { message: "Nome do template deve ter no máximo 512 caracteres." }),
 	categoria: WhatsappTemplateCategoryEnum,
 	componentes: WhatsappTemplateComponentsSchema,
-	status: WhatsappTemplateStatusEnum,
-	whatsappTemplateId: z
-		.string({
-			invalid_type_error: "Tipo inválido para ID do template no WhatsApp.",
-		})
-		.optional()
-		.nullable(),
-	qualidade: WhatsappTemplateQualityEnum,
-	rejeicao: z.string().optional().nullable(),
 	autorId: z.string({
 		required_error: "ID do autor não informado.",
 		invalid_type_error: "Tipo inválido para ID do autor.",
@@ -114,6 +105,18 @@ export const WhatsappTemplateSchema = z.object({
 });
 
 export type TWhatsappTemplate = z.infer<typeof WhatsappTemplateSchema>;
+
+export const WhatsappTemplatePhoneStatusSchema = z.object({
+	id: z.string(),
+	telefoneId: z.string(),
+	telefoneNumero: z.string().optional(),
+	telefoneName: z.string().optional(),
+	whatsappTemplateId: z.string(),
+	status: WhatsappTemplateStatusEnum,
+	qualidade: WhatsappTemplateQualityEnum,
+	rejeicao: z.string().optional().nullable(),
+});
+export type TWhatsappTemplatePhoneStatus = z.infer<typeof WhatsappTemplatePhoneStatusSchema>;
 export type TWhatsappTemplateHeader = z.infer<typeof WhatsappTemplateHeaderSchema>;
 export type TWhatsappTemplateBody = z.infer<typeof WhatsappTemplateBodySchema>;
 export type TWhatsappTemplateFooter = z.infer<typeof WhatsappTemplateFooterSchema>;
@@ -125,3 +128,11 @@ export const WhatsappTemplateStateSchema = z.object({
 	whatsappTemplate: WhatsappTemplateSchema.omit({ autorId: true, dataInsercao: true }),
 });
 export type TWhatsappTemplateState = z.infer<typeof WhatsappTemplateStateSchema>;
+
+export const WhatsappTemplateWithPhonesSchema = WhatsappTemplateSchema.extend({
+	id: z.string(),
+	telefones: z.array(WhatsappTemplatePhoneStatusSchema),
+	statusGeral: WhatsappTemplateStatusEnum,
+	qualidadeGeral: WhatsappTemplateQualityEnum,
+});
+export type TWhatsappTemplateWithPhones = z.infer<typeof WhatsappTemplateWithPhonesSchema>;

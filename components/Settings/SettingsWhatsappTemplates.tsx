@@ -4,7 +4,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { CircleGauge, Diamond, PencilIcon, Plus, Variable } from "lucide-react";
+import { CircleGauge, Diamond, Phone, Plus } from "lucide-react";
 import { useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
@@ -92,16 +92,26 @@ function WhatsappTemplateCard({ whatsappTemplate }: WhatsappTemplateCardProps) {
 						<span className={"text-sm leading-none font-bold tracking-tight font-mono"}>TEMPLATE</span>
 						<p className="text-xs px-2 py-1 rounded-lg bg-primary/10">{whatsappTemplate.nome}</p>
 					</div>
-					<div
-						className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
-							"bg-blue-500 text-white": whatsappTemplate.status === "APROVADO",
-							"bg-primary/20 text-primary": whatsappTemplate.status === "PENDENTE",
-							"bg-yellow-500 text-white": whatsappTemplate.status === "REJEITADO",
-							"bg-orange-500 text-white": whatsappTemplate.status === "PAUSADO",
-							"bg-gray-500 text-white": whatsappTemplate.status === "DESABILITADO",
-						})}
-					>
-						{whatsappTemplate.status}
+					<div className="flex items-center gap-2">
+						{whatsappTemplate.telefonesTotal > 0 && (
+							<div className="flex items-center gap-1 text-xs text-muted-foreground">
+								<Phone className="w-3 h-3" />
+								<span>
+									{whatsappTemplate.telefonesAprovados}/{whatsappTemplate.telefonesTotal}
+								</span>
+							</div>
+						)}
+						<div
+							className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
+								"bg-blue-500 text-white": whatsappTemplate.statusGeral === "APROVADO",
+								"bg-primary/20 text-primary": whatsappTemplate.statusGeral === "PENDENTE",
+								"bg-red-500 text-white": whatsappTemplate.statusGeral === "REJEITADO",
+								"bg-orange-500 text-white": whatsappTemplate.statusGeral === "PAUSADO",
+								"bg-gray-500 text-white": whatsappTemplate.statusGeral === "DESABILITADO" || whatsappTemplate.statusGeral === "RASCUNHO",
+							})}
+						>
+							{whatsappTemplate.statusGeral}
+						</div>
 					</div>
 				</div>
 
@@ -112,7 +122,7 @@ function WhatsappTemplateCard({ whatsappTemplate }: WhatsappTemplateCardProps) {
 					</div>
 					<div className="flex items-center gap-1">
 						<CircleGauge className="w-4 h-4 min-w-4 min-h-4" />
-						<p className="text-xs font-medium text-primary/80">{whatsappTemplate.qualidade}</p>
+						<p className="text-xs font-medium text-primary/80">{whatsappTemplate.qualidadeGeral}</p>
 					</div>
 				</div>
 			</div>

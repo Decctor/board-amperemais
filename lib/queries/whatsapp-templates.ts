@@ -1,12 +1,13 @@
 import type { TGetWhatsappTemplatesInput, TGetWhatsappTemplatesOutput } from "@/app/api/whatsapp-templates/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
 
 async function getWhatsappTemplates(input: Omit<TGetWhatsappTemplatesInput, "id">) {
 	const searchParams = new URLSearchParams();
 	if (input.search && input.search.trim().length > 0) searchParams.set("search", input.search);
+	if (input.whatsappConnectionPhoneId) searchParams.set("whatsappConnectionPhoneId", input.whatsappConnectionPhoneId);
 
 	searchParams.set("page", input.page?.toString() ?? "1");
 	const url = `/api/whatsapp-templates?${searchParams.toString()}`;
@@ -30,10 +31,11 @@ export function useWhatsappTemplates({ initialParams }: UseWhatsappTemplatesPara
 	const [params, setParams] = useState<Omit<TGetWhatsappTemplatesInput, "id">>({
 		page: initialParams?.page || 1,
 		search: initialParams?.search || "",
+		whatsappConnectionPhoneId: initialParams?.whatsappConnectionPhoneId || undefined,
 	});
-	function updateParams(newParams: Partial<Omit<TGetWhatsappTemplatesInput, "id">>) {
+	const updateParams = useCallback((newParams: Partial<Omit<TGetWhatsappTemplatesInput, "id">>) => {
 		setParams((prevParams) => ({ ...prevParams, ...newParams }));
-	}
+	}, []);
 	const debouncedParams = useDebounceMemo(params, 500);
 	return {
 		...useQuery({

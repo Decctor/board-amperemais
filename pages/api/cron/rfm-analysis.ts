@@ -2,6 +2,7 @@ import type { TSale } from "@/schemas/sales";
 import dayjs, { type ManipulateType } from "dayjs";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { TimeDurationUnitsEnum } from "@/schemas/enums";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
@@ -201,6 +202,21 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 							});
+
+							// Generate campaign cashback for ENTRADA-SEGMENTAÇÃO trigger (FIXO only)
+							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
+								await generateCashbackForCampaign({
+									tx,
+									organizationId: organization.id,
+									clientId: results.clientId,
+									campaignId: campaign.id,
+									cashbackType: "FIXO",
+									cashbackValue: campaign.cashbackGeracaoValor,
+									saleValue: null,
+									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+								});
+							}
 						}
 					} else {
 						const lastRFMLabelModification = results.clientRFMLastLabelModification;
@@ -271,6 +287,21 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 							});
+
+							// Generate campaign cashback for PERMANÊNCIA-SEGMENTAÇÃO trigger (FIXO only)
+							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
+								await generateCashbackForCampaign({
+									tx,
+									organizationId: organization.id,
+									clientId: results.clientId,
+									campaignId: campaign.id,
+									cashbackType: "FIXO",
+									cashbackValue: campaign.cashbackGeracaoValor,
+									saleValue: null,
+									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+								});
+							}
 						}
 					}
 

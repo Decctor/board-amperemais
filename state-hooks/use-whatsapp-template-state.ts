@@ -37,8 +37,6 @@ export const useWhatsappTemplateState = ({ initialState }: UseWhatsappTemplateSt
 				rodape: null,
 				botoes: null,
 			},
-			status: "RASCUNHO",
-			qualidade: "PENDENTE",
 		},
 	});
 
@@ -151,8 +149,6 @@ export const useWhatsappTemplateState = ({ initialState }: UseWhatsappTemplateSt
 					rodape: null,
 					botoes: null,
 				},
-				status: "RASCUNHO",
-				qualidade: "PENDENTE",
 			},
 		});
 	}

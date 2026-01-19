@@ -1,3 +1,4 @@
+import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
@@ -312,6 +313,22 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 								});
+
+								// Generate campaign cashback for PRIMEIRA-COMPRA trigger
+								if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+									const saleValue = Number(OnlineSale.valor);
+									await generateCashbackForCampaign({
+										tx,
+										organizationId: organization.id,
+										clientId: insertedClientId,
+										campaignId: campaign.id,
+										cashbackType: campaign.cashbackGeracaoTipo,
+										cashbackValue: campaign.cashbackGeracaoValor,
+										saleValue: saleValue,
+										expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+										expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+									});
+								}
 							}
 						}
 
@@ -608,9 +625,17 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 
 					// Checking for applicable campaigns for new purchase
 					if (isNewSale && !isNewClient && isValidSale) {
-						const applicableCampaigns = campaignsForNewPurchase.filter((campaign) =>
-							campaign.segmentacoes.some((s) => s.segmentacao === existingClientsMap.get(OnlineSale.cliente)?.rfmTitle),
-						);
+						const applicableCampaigns = campaignsForNewPurchase.filter((campaign) => {
+							// Validate campaign trigger for new purchase
+							const meetsNewPurchaseValueTrigger =
+								campaign.gatilhoNovaCompraValorMinimo === null ||
+								campaign.gatilhoNovaCompraValorMinimo === undefined ||
+								Number(OnlineSale.valor) >= campaign.gatilhoNovaCompraValorMinimo;
+
+							const meetsSegmentationTrigger = campaign.segmentacoes.some((s) => s.segmentacao === existingClientsMap.get(OnlineSale.cliente)?.rfmTitle);
+
+							return meetsNewPurchaseValueTrigger && meetsSegmentationTrigger;
+						});
 						if (applicableCampaigns.length > 0) {
 							console.log(
 								`[ORG: ${organization.id}] ${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`,
@@ -648,6 +673,22 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 								});
+
+								// Generate campaign cashback for NOVA-COMPRA trigger
+								if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+									const saleValue = Number(OnlineSale.valor);
+									await generateCashbackForCampaign({
+										tx,
+										organizationId: organization.id,
+										clientId: saleClientId,
+										campaignId: campaign.id,
+										cashbackType: campaign.cashbackGeracaoTipo,
+										cashbackValue: campaign.cashbackGeracaoValor,
+										saleValue: saleValue,
+										expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+										expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+									});
+								}
 							}
 						}
 					}
@@ -727,8 +768,9 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 											campaign.gatilhoTotalCashbackAcumuladoValorMinimo === undefined ||
 											newOverallAvailableBalance >= campaign.gatilhoTotalCashbackAcumuladoValorMinimo;
 
-										// Both conditions must be met (if defined)
-										return meetsNewCashbackThreshold && meetsTotalCashbackThreshold;
+										const meetsSegmentationTrigger = campaign.segmentacoes.some((s) => s.segmentacao === existingClientsMap.get(OnlineSale.cliente)?.rfmTitle);
+										// All conditions must be met (if defined)
+										return meetsNewCashbackThreshold && meetsTotalCashbackThreshold && meetsSegmentationTrigger;
 									});
 
 									if (applicableCampaigns.length > 0) {
@@ -776,6 +818,21 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												whatsappTemplateId: null,
 											},
 										});
+
+										// Generate campaign cashback for CASHBACK-ACUMULADO trigger (FIXO only)
+										if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
+											await generateCashbackForCampaign({
+												tx,
+												organizationId: organization.id,
+												clientId: saleClientId,
+												campaignId: campaign.id,
+												cashbackType: "FIXO",
+												cashbackValue: campaign.cashbackGeracaoValor,
+												saleValue: null,
+												expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+												expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+											});
+										}
 									}
 								}
 							}

@@ -1,8 +1,8 @@
 import type { TAttributionModelEnum } from "@/schemas/enums";
 import { relations } from "drizzle-orm";
-import { boolean, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users, whatsappTemplates } from ".";
-import { campaignTriggerTypeEnum, interactionsCronJobTimeBlocksEnum, timeDurationUnitsEnum } from "./enums";
+import { campaignTriggerTypeEnum, cashbackProgramAccumulationTypeEnum, interactionsCronJobTimeBlocksEnum, timeDurationUnitsEnum } from "./enums";
 import { organizations } from "./organizations";
 
 export const campaigns = newTable("campaigns", {
@@ -14,6 +14,9 @@ export const campaigns = newTable("campaigns", {
 	titulo: text("titulo").notNull(),
 	descricao: text("descricao"),
 	gatilhoTipo: campaignTriggerTypeEnum("gatilho_tipo").notNull(),
+
+	// specific for "NOVA-COMPRA"
+	gatilhoNovaCompraValorMinimo: doublePrecision("gatilho_nova_compra_valor_minimo"), // defines the minimum required of new sale value for trigger to fire
 
 	// specific for "PERMANÊNCIA-SEGMENTAÇÃO"
 	gatilhoTempoPermanenciaMedida: timeDurationUnitsEnum("gatilho_tempo_permanencia_medida"),
@@ -47,6 +50,13 @@ export const campaigns = newTable("campaigns", {
 	// Attribution settings
 	atribuicaoModelo: text("atribuicao_modelo").$type<TAttributionModelEnum>().default("LAST_TOUCH").notNull(), // LAST_TOUCH, FIRST_TOUCH, LINEAR
 	atribuicaoJanelaDias: integer("atribuicao_janela_dias").default(14).notNull(),
+
+	// Cashback generation configuration
+	cashbackGeracaoAtivo: boolean("cashback_geracao_ativo").notNull().default(false),
+	cashbackGeracaoTipo: cashbackProgramAccumulationTypeEnum("cashback_geracao_tipo"), // FIXO or PERCENTUAL
+	cashbackGeracaoValor: doublePrecision("cashback_geracao_valor"),
+	cashbackGeracaoExpiracaoMedida: timeDurationUnitsEnum("cashback_geracao_expiracao_medida"),
+	cashbackGeracaoExpiracaoValor: integer("cashback_geracao_expiracao_valor"),
 });
 export const campaignRelations = relations(campaigns, ({ many, one }) => ({
 	segmentacoes: many(campaignSegmentations),

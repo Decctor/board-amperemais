@@ -11,7 +11,6 @@ import TemplateFooterConfig from "./Blocks/TemplateFooterConfig";
 import TemplateGeneral from "./Blocks/TemplateGeneral";
 import TemplateHeaderConfig from "./Blocks/TemplateHeaderConfig";
 import TemplatePreview from "./Blocks/TemplatePreview";
-import TemplateStatus from "./Blocks/TemplateStatus";
 type NewWhatsappTemplateProps = {
 	user: TAuthUserSession["user"];
 	callbacks?: {
@@ -60,8 +59,6 @@ function NewWhatsappTemplate({ user, closeMenu, callbacks }: NewWhatsappTemplate
 						nome: state.whatsappTemplate.nome,
 						categoria: state.whatsappTemplate.categoria,
 						componentes: state.whatsappTemplate.componentes,
-						autorId: user.id,
-						dataInsercao: new Date(),
 					},
 				})
 			}
@@ -72,8 +69,6 @@ function NewWhatsappTemplate({ user, closeMenu, callbacks }: NewWhatsappTemplate
 		>
 			<div className="w-full flex items-start gap-2 flex-col lg:flex-row lg:max-h-full lg:h-full">
 				<div className="w-full lg:w-2/3 flex flex-col gap-3 p-2 rounded-lg border border-primary/30 shadow-sm overflow-y-auto lg:h-full scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
-					{/* Status Information */}
-					<TemplateStatus whatsappTemplateId={null} status={null} quality={null} />
 					{/* Basic Information */}
 					<TemplateGeneral template={state.whatsappTemplate} updateTemplate={updateTemplate} whatsappTemplateId={null} />
 					<TemplateHeaderConfig

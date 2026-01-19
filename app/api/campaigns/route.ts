@@ -27,6 +27,23 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 		throw new createHttpError.BadRequest("Define um tempo de permanência para a segmentação.");
 	}
 
+	// Validate cashback generation settings
+	if (input.campaign.cashbackGeracaoAtivo) {
+		if (!input.campaign.cashbackGeracaoTipo) {
+			throw new createHttpError.BadRequest("Selecione o tipo de geração de cashback (FIXO ou PERCENTUAL).");
+		}
+		if (!input.campaign.cashbackGeracaoValor || input.campaign.cashbackGeracaoValor <= 0) {
+			throw new createHttpError.BadRequest("Informe um valor válido para o cashback.");
+		}
+		// Validate PERCENTUAL is only used with sale-value triggers
+		if (input.campaign.cashbackGeracaoTipo === "PERCENTUAL") {
+			const validTriggersForPercentual = ["NOVA-COMPRA", "PRIMEIRA-COMPRA"];
+			if (!validTriggersForPercentual.includes(input.campaign.gatilhoTipo)) {
+				throw new createHttpError.BadRequest("Cashback percentual só pode ser usado com gatilhos NOVA-COMPRA ou PRIMEIRA-COMPRA.");
+			}
+		}
+	}
+
 	const insertedCampaignResponse = await db
 		.insert(campaigns)
 		.values({ ...input.campaign, organizacaoId: userOrgId, autorId: session.id })
@@ -192,6 +209,23 @@ async function updateCampaign({ input, session }: { input: TUpdateCampaignInput;
 	const userOrgId = session.organizacaoId;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const campaignId = input.campaignId;
+
+	// Validate cashback generation settings
+	if (input.campaign.cashbackGeracaoAtivo) {
+		if (!input.campaign.cashbackGeracaoTipo) {
+			throw new createHttpError.BadRequest("Selecione o tipo de geração de cashback (FIXO ou PERCENTUAL).");
+		}
+		if (!input.campaign.cashbackGeracaoValor || input.campaign.cashbackGeracaoValor <= 0) {
+			throw new createHttpError.BadRequest("Informe um valor válido para o cashback.");
+		}
+		// Validate PERCENTUAL is only used with sale-value triggers
+		if (input.campaign.cashbackGeracaoTipo === "PERCENTUAL") {
+			const validTriggersForPercentual = ["NOVA-COMPRA", "PRIMEIRA-COMPRA"];
+			if (!validTriggersForPercentual.includes(input.campaign.gatilhoTipo)) {
+				throw new createHttpError.BadRequest("Cashback percentual só pode ser usado com gatilhos NOVA-COMPRA ou PRIMEIRA-COMPRA.");
+			}
+		}
+	}
 
 	return await db.transaction(async (trx) => {
 		console.log("[INFO] [UPDATE-CAMPAIGN] Starting to update campaign...", {

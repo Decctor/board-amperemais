@@ -9,6 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import CampaignsActionBlock from "./Blocks/Action";
+import CampaignsCashbackGenerationBlock from "./Blocks/CashbackGeneration";
 import CampaignsConfigBlock from "./Blocks/Config";
 import CampaignsConversionBlock from "./Blocks/Conversion";
 import CampaignsExecutionBlock from "./Blocks/Execution";
@@ -79,6 +80,7 @@ export default function ControlCampaign({ campaignId, user, closeModal, callback
 			<CampaignsActionBlock organizationId={user.organizacaoId as string} campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsConversionBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsConfigBlock campaign={state.campaign} updateCampaign={updateCampaign} />
+			<CampaignsCashbackGenerationBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 		</ResponsiveMenu>
 	);
 }

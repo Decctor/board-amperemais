@@ -1,3 +1,4 @@
+import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -129,6 +130,21 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 							});
+
+							// Generate campaign cashback for CASHBACK-EXPIRANDO trigger (FIXO only)
+							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
+								await generateCashbackForCampaign({
+									tx,
+									organizationId: organization.id,
+									clientId: clienteId,
+									campaignId: campaign.id,
+									cashbackType: "FIXO",
+									cashbackValue: campaign.cashbackGeracaoValor,
+									saleValue: null,
+									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+								});
+							}
 						}
 					}
 				}

@@ -68,6 +68,15 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 					</div>
 				</div>
 			) : null}
+			{campaign.gatilhoTipo === "NOVA-COMPRA" ? (
+				<NumberInput
+					label="VALOR MÍNIMO DE NOVA COMPRA"
+					value={campaign.gatilhoNovaCompraValorMinimo ?? null}
+					placeholder="Preencha aqui o valor mínimo de nova compra..."
+					handleChange={(value) => updateCampaign({ gatilhoNovaCompraValorMinimo: value })}
+					width="100%"
+				/>
+			) : null}
 		</ResponsiveMenuSection>
 	);
 }

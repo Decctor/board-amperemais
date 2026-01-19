@@ -271,7 +271,13 @@ async function getProducts({ input, user }: GetProductsParams) {
 
 	const productIds = statsByProductResult.map((product) => product.productId);
 	const productsResult = await db.query.products.findMany({
-		where: and(eq(products.organizacaoId, userOrgId), applyRestrictiveSalesFilters ? inArray(products.id, productIds) : undefined),
+		where: and(
+			eq(products.organizacaoId, userOrgId),
+			...productQueryConditions,
+			applyRestrictiveSalesFilters ? inArray(products.id, productIds) : undefined,
+		),
+		limit: PAGE_SIZE,
+		offset: skip,
 	});
 
 	const productsMap = new Map(productsResult.map((p) => [p.id, p]));
