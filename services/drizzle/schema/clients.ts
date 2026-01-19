@@ -39,6 +39,8 @@ export const clients = newTable(
 		analiseRFMNotasMonetario: text("analise_rfm_notas_monetario"),
 		analiseRFMUltimaAtualizacao: timestamp("analise_rfm_ultima_atualizacao"),
 		analiseRFMUltimaAlteracao: timestamp("analise_rfm_ultima_alteracao"),
+
+		dataNascimento: timestamp("data_nascimento"),
 		dataInsercao: timestamp("data_insercao").defaultNow(),
 	},
 	(table) => ({

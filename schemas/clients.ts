@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { TSale } from "./sales";
 import { SaleNatureEnum } from "./enums";
+import type { TSale } from "./sales";
 
 export const ClientSchema = z.object({
 	nome: z.string({
@@ -70,6 +70,14 @@ export const ClientSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+
+	dataNascimento: z
+		.string({
+			invalid_type_error: "Tipo não válido para data de nascimento.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 	dataInsercao: z.date({
 		invalid_type_error: "Tipo não válido para data de inserção.",
 	}),
