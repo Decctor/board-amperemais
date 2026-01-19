@@ -46,14 +46,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	});
 
 	// O redirect_uri deve ser um dos URIs configurados no seu painel da Meta
-	let tokens: OAuth2Tokens | undefined;
+	let tokens: any; // Usando any temporariamente para lidar com a resposta manual
 	let accessToken: string | undefined;
 	let accessTokenExpiresAt: Date | undefined;
 
 	try {
-		tokens = await FacebookOAuth.validateAuthorizationCode(code as string);
-		accessToken = tokens.accessToken();
-		accessTokenExpiresAt = tokens.accessTokenExpiresAt();
+		// Tentativa manual de troca de token para debug detalhado e contorno de erro da lib
+		const tokenUrl = new URL("https://graph.facebook.com/v21.0/oauth/access_token");
+		tokenUrl.searchParams.set("client_id", appId as string);
+		tokenUrl.searchParams.set("redirect_uri", redirectUri);
+		tokenUrl.searchParams.set("client_secret", appSecret as string);
+		tokenUrl.searchParams.set("code", code as string);
+
+		console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Trocando código por token manualmente:", tokenUrl.toString().replace(appSecret as string, "***"));
+
+		const response = await fetch(tokenUrl.toString());
+		const data = await response.json();
+
+		console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Resposta da troca de token:", data);
+
+		if (data.error) {
+			throw {
+				message: data.error.message,
+				data: data.error,
+				status: 400,
+			};
+		}
+
+		// Mapeia a resposta manual para o formato esperado
+		accessToken = data.access_token;
+		if (data.expires_in) {
+			accessTokenExpiresAt = dayjs().add(data.expires_in, "seconds").toDate();
+		} else {
+			// Se não vier expires_in, definimos um padrão de 60 dias (token de longa duração comum no FB)
+			console.warn("[WARN] 'expires_in' não retornado pela Meta. Usando padrão de 60 dias.");
+			accessTokenExpiresAt = dayjs().add(60, "days").toDate();
+		}
+
+		// Simula o objeto tokens para compatibilidade se necessário, mas já extraímos o que precisamos
+		tokens = {
+			accessToken: () => accessToken,
+			accessTokenExpiresAt: () => accessTokenExpiresAt,
+		};
 	} catch (error: any) {
 		console.error("[ERROR] [WHATSAPP_CONNECT_CALLBACK] Error validating authorization code:", {
 			message: error.message,
