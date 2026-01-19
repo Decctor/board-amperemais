@@ -279,7 +279,9 @@ type CashbackProgramsGraphBlockProps = {
 	period: { after: string; before: string };
 };
 function CashbackProgramsGraphBlock({ period }: CashbackProgramsGraphBlockProps) {
-	const [graphType, setGraphType] = useState<"participants-growth" | "total-cashback-generated" | "total-cashback-rescued">("participants-growth");
+	const [graphType, setGraphType] = useState<"participants-growth" | "total-cashback-generated" | "total-cashback-rescued">(
+		"total-cashback-generated",
+	);
 	const debouncedPeriod = useDebounceMemo(period, 1000);
 	const { data: graphsStats, queryKey } = useCashbackProgramsGraph({
 		graphType,

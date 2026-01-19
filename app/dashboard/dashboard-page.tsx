@@ -32,7 +32,7 @@ export function DashboardPage({ user, userOrg }: DashboardPageProps) {
 			before: initialPeriodEnd,
 		},
 		total: {},
-		saleNatures: [],
+		saleNatures: ["SN01"],
 		sellers: initialSellers,
 		clientRFMTitles: [],
 		productGroups: [],
