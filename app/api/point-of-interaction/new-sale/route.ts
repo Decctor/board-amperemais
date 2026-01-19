@@ -1,3 +1,4 @@
+import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
@@ -157,6 +158,8 @@ export async function POST(req: Request) {
 			let clientId = input.client.id;
 			let clientFirstSaleId: string | null = null;
 			let clientFirstSaleDate: Date | null = null;
+			let isNewClient = false;
+			let clientRfmTitle: string | null = "RECENTES";
 
 			if (!clientId) {
 				// Create new client
@@ -185,6 +188,8 @@ export async function POST(req: Request) {
 				}
 
 				clientId = insertedClientId;
+				isNewClient = true;
+				clientRfmTitle = "CLIENTES RECENTES";
 
 				// Initialize cashback balance for new client
 
@@ -205,20 +210,29 @@ export async function POST(req: Request) {
 				if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
 				clientFirstSaleId = client.primeiraCompraId;
 				clientFirstSaleDate = client.primeiraCompraData;
+				clientRfmTitle = client.analiseRFMTitulo;
 			}
 
 			if (!program) {
 				throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 			}
 
-			// 4. Query campaigns for cashback accumulation trigger
-			const campaignsForCashbackAccumulation = await tx.query.campaigns.findMany({
-				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, input.orgId), eq(fields.ativo, true), eq(fields.gatilhoTipo, "CASHBACK-ACUMULADO")),
+			// 4. Query campaigns for triggers (NOVA-COMPRA, PRIMEIRA-COMPRA, CASHBACK-ACUMULADO)
+			const campaigns = await tx.query.campaigns.findMany({
+				where: (fields, { and, or, eq }) =>
+					and(
+						eq(fields.organizacaoId, input.orgId),
+						eq(fields.ativo, true),
+						or(eq(fields.gatilhoTipo, "NOVA-COMPRA"), eq(fields.gatilhoTipo, "PRIMEIRA-COMPRA"), eq(fields.gatilhoTipo, "CASHBACK-ACUMULADO")),
+					),
 				with: {
 					segmentacoes: true,
 					whatsappTemplate: true,
 				},
 			});
+			const campaignsForNewPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "NOVA-COMPRA");
+			const campaignsForFirstPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "PRIMEIRA-COMPRA");
+			const campaignsForCashbackAccumulation = campaigns.filter((campaign) => campaign.gatilhoTipo === "CASHBACK-ACUMULADO");
 
 			// Query whatsappConnection for immediate processing
 			const whatsappConnection = await tx.query.whatsappConnections.findFirst({
@@ -289,10 +303,205 @@ export async function POST(req: Request) {
 			if (!saleId) {
 				throw new createHttpError.InternalServerError("Erro ao criar venda.");
 			}
-			if (!clientFirstSaleId && !clientFirstSaleDate) {
+			const isFirstPurchase = !clientFirstSaleId && !clientFirstSaleDate;
+			if (isFirstPurchase) {
 				clientFirstSaleId = saleId;
 				clientFirstSaleDate = saleDate;
 			}
+
+			// Collect data for immediate processing
+			const immediateProcessingDataList: ImmediateProcessingData[] = [];
+
+			// 6.1. Process PRIMEIRA-COMPRA campaigns for new clients
+			if (isNewClient && campaignsForFirstPurchase.length > 0) {
+				const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) =>
+					campaign.segmentacoes.some((s) => s.segmentacao === "CLIENTES RECENTES"),
+				);
+
+				if (applicableCampaigns.length > 0) {
+					console.log(
+						`[ORG: ${input.orgId}] ${applicableCampaigns.length} campanhas de primeira compra aplicáveis encontradas para o cliente ${clientId}.`,
+					);
+
+					for (const campaign of applicableCampaigns) {
+						// Validate campaign frequency before scheduling
+						const canSchedule = await canScheduleCampaignForClient(
+							tx,
+							clientId,
+							campaign.id,
+							campaign.permitirRecorrencia,
+							campaign.frequenciaIntervaloValor,
+							campaign.frequenciaIntervaloMedida,
+						);
+
+						if (!canSchedule) {
+							console.log(`[ORG: ${input.orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
+							continue;
+						}
+
+						const interactionScheduleDate = getPostponedDateFromReferenceDate({
+							date: dayjs().toDate(),
+							unit: campaign.execucaoAgendadaMedida,
+							value: campaign.execucaoAgendadaValor,
+						});
+
+						const [insertedInteraction] = await tx
+							.insert(interactions)
+							.values({
+								clienteId: clientId,
+								campanhaId: campaign.id,
+								organizacaoId: input.orgId,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: "Cliente realizou sua primeira compra.",
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							})
+							.returning({ id: interactions.id });
+
+						// Check for immediate processing (execucaoAgendadaValor === 0)
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+							immediateProcessingDataList.push({
+								interactionId: insertedInteraction.id,
+								organizationId: input.orgId,
+								client: {
+									id: clientId,
+									nome: input.client.nome,
+									telefone: input.client.telefone,
+									email: null,
+									analiseRFMTitulo: clientRfmTitle,
+								},
+								campaign: {
+									autorId: campaign.autorId,
+									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappTemplate: campaign.whatsappTemplate,
+								},
+								whatsappToken: whatsappConnection.token,
+							});
+						}
+
+						// Generate campaign cashback for PRIMEIRA-COMPRA trigger
+						if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+							await generateCashbackForCampaign({
+								tx,
+								organizationId: input.orgId,
+								clientId: clientId,
+								campaignId: campaign.id,
+								cashbackType: campaign.cashbackGeracaoTipo,
+								cashbackValue: campaign.cashbackGeracaoValor,
+								saleValue: input.sale.valor,
+								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+								expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+							});
+						}
+					}
+				}
+			}
+
+			// 6.2. Process NOVA-COMPRA campaigns for existing clients
+			if (!isNewClient && campaignsForNewPurchase.length > 0) {
+				const applicableCampaigns = campaignsForNewPurchase.filter((campaign) => {
+					// Validate campaign trigger for new purchase
+					const meetsNewPurchaseValueTrigger =
+						campaign.gatilhoNovaCompraValorMinimo === null ||
+						campaign.gatilhoNovaCompraValorMinimo === undefined ||
+						input.sale.valor >= campaign.gatilhoNovaCompraValorMinimo;
+
+					const meetsSegmentationTrigger = campaign.segmentacoes.some((s) => s.segmentacao === clientRfmTitle);
+
+					return meetsNewPurchaseValueTrigger && meetsSegmentationTrigger;
+				});
+
+				if (applicableCampaigns.length > 0) {
+					console.log(`[ORG: ${input.orgId}] ${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${clientId}.`);
+
+					// Query client data for immediate processing
+					const clientData = await tx.query.clients.findFirst({
+						where: (fields, { eq }) => eq(fields.id, clientId),
+						columns: {
+							id: true,
+							nome: true,
+							telefone: true,
+							email: true,
+							analiseRFMTitulo: true,
+						},
+					});
+
+					for (const campaign of applicableCampaigns) {
+						// Validate campaign frequency before scheduling
+						const canSchedule = await canScheduleCampaignForClient(
+							tx,
+							clientId,
+							campaign.id,
+							campaign.permitirRecorrencia,
+							campaign.frequenciaIntervaloValor,
+							campaign.frequenciaIntervaloMedida,
+						);
+
+						if (!canSchedule) {
+							console.log(`[ORG: ${input.orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
+							continue;
+						}
+
+						const interactionScheduleDate = getPostponedDateFromReferenceDate({
+							date: dayjs().toDate(),
+							unit: campaign.execucaoAgendadaMedida,
+							value: campaign.execucaoAgendadaValor,
+						});
+
+						const [insertedInteraction] = await tx
+							.insert(interactions)
+							.values({
+								clienteId: clientId,
+								campanhaId: campaign.id,
+								organizacaoId: input.orgId,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: `Cliente se enquadrou no parâmetro de nova compra ${clientRfmTitle}.`,
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							})
+							.returning({ id: interactions.id });
+
+						// Check for immediate processing (execucaoAgendadaValor === 0)
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && clientData) {
+							immediateProcessingDataList.push({
+								interactionId: insertedInteraction.id,
+								organizationId: input.orgId,
+								client: {
+									id: clientData.id,
+									nome: clientData.nome,
+									telefone: clientData.telefone,
+									email: clientData.email,
+									analiseRFMTitulo: clientData.analiseRFMTitulo,
+								},
+								campaign: {
+									autorId: campaign.autorId,
+									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappTemplate: campaign.whatsappTemplate,
+								},
+								whatsappToken: whatsappConnection.token,
+							});
+						}
+
+						// Generate campaign cashback for NOVA-COMPRA trigger
+						if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+							await generateCashbackForCampaign({
+								tx,
+								organizationId: input.orgId,
+								clientId: clientId,
+								campaignId: campaign.id,
+								cashbackType: campaign.cashbackGeracaoTipo,
+								cashbackValue: campaign.cashbackGeracaoValor,
+								saleValue: input.sale.valor,
+								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+								expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+							});
+						}
+					}
+				}
+			}
+
 			// 7. If cashback was used, create the redemption transaction
 			if (input.sale.cashback.aplicar && input.sale.cashback.valor > 0) {
 				await tx.insert(cashbackProgramTransactions).values({
@@ -336,9 +545,6 @@ export async function POST(req: Request) {
 			const previousOverallAccumulatedBalance = balance.saldoValorAcumuladoTotal;
 			const newOverallAvailableBalance = previousOverallAvailableBalance + accumulatedBalance;
 			const newOverallAccumulatedBalance = previousOverallAccumulatedBalance + accumulatedBalance;
-
-			// Collect data for immediate processing
-			const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
 			if (accumulatedBalance > 0) {
 				// Update balance (credit)
@@ -425,29 +631,27 @@ export async function POST(req: Request) {
 							value: campaign.execucaoAgendadaValor,
 						});
 
-						const [insertedInteraction] = await tx.insert(interactions).values({
-							clienteId: clientId,
-							campanhaId: campaign.id,
-							organizacaoId: input.orgId,
-							titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
-							tipo: "ENVIO-MENSAGEM",
-							descricao: `Cliente acumulou R$ ${(accumulatedBalance / 100).toFixed(2)} em cashback. Total acumulado: R$ ${(newOverallAccumulatedBalance / 100).toFixed(2)}.`,
-							agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-							agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-							metadados: {
-								cashbackAcumuladoValor: accumulatedBalance,
-								whatsappMensagemId: null,
-								whatsappTemplateId: null,
-							},
-						}).returning({ id: interactions.id });
+						const [insertedInteraction] = await tx
+							.insert(interactions)
+							.values({
+								clienteId: clientId,
+								campanhaId: campaign.id,
+								organizacaoId: input.orgId,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: `Cliente acumulou R$ ${(accumulatedBalance / 100).toFixed(2)} em cashback. Total acumulado: R$ ${(newOverallAccumulatedBalance / 100).toFixed(2)}.`,
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+								metadados: {
+									cashbackAcumuladoValor: accumulatedBalance,
+									whatsappMensagemId: null,
+									whatsappTemplateId: null,
+								},
+							})
+							.returning({ id: interactions.id });
 
 						// Check for immediate processing (execucaoAgendadaValor === 0)
-						if (
-							campaign.execucaoAgendadaValor === 0 &&
-							campaign.whatsappTemplate &&
-							whatsappConnection &&
-							clientData
-						) {
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && clientData) {
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
