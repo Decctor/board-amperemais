@@ -200,8 +200,8 @@ async function getGraphDataForPeriod({
 	return [];
 }
 
-async function getCampaignGraph({ input, session }: { input: TGetCampaignGraphInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getCampaignGraph({ input, session }: { input: TGetCampaignGraphInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const period = {
@@ -283,7 +283,7 @@ const getCampaignGraphRoute = async (request: NextRequest) => {
 		comparingEndDate: searchParams.get("comparingEndDate") ?? null,
 	});
 
-	const result = await getCampaignGraph({ input, session: session.user });
+	const result = await getCampaignGraph({ input, session: session });
 	return NextResponse.json(result, { status: 200 });
 };
 

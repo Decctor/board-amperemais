@@ -122,8 +122,8 @@ async function fetchRankingForPeriod({
 		}));
 }
 
-async function getProductsRanking({ input, session }: { input: TGetProductsRankingInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getProductsRanking({ input, session }: { input: TGetProductsRankingInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [GET PRODUCTS RANKING] Starting:", {
@@ -206,7 +206,7 @@ const getProductsRankingRoute: NextApiHandler<TGetProductsRankingOutput> = async
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	console.log("[INFO] [GET PRODUCTS RANKING] Starting:", {
-		userOrg: sessionUser.user.organizacaoId,
+		userOrg: sessionUser.membership?.organizacao.id,
 		query: req.query,
 	});
 	const input = GetProductsRankingInputSchema.parse({
@@ -217,7 +217,7 @@ const getProductsRankingRoute: NextApiHandler<TGetProductsRankingOutput> = async
 		rankingBy: (req.query.rankingBy as "sales-total-value" | "sales-total-qty" | "sales-total-margin" | undefined) ?? "sales-total-value",
 	});
 
-	const data = await getProductsRanking({ input, session: sessionUser.user });
+	const data = await getProductsRanking({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 

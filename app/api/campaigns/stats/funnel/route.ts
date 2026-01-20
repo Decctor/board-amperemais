@@ -22,9 +22,8 @@ const GetCampaignFunnelInputSchema = z.object({
 		.transform((v) => (v ? dayjs(v).endOf("day").toDate() : undefined)),
 });
 export type TGetCampaignFunnelInput = z.infer<typeof GetCampaignFunnelInputSchema>;
-
-async function getCampaignFunnel({ input, session }: { input: TGetCampaignFunnelInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getCampaignFunnel({ input, session }: { input: TGetCampaignFunnelInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	let startDate = input.startDate;
@@ -134,7 +133,7 @@ const getCampaignFunnelRoute = async (request: NextRequest) => {
 		endDate: searchParams.get("endDate") ?? undefined,
 	});
 
-	const result = await getCampaignFunnel({ input, session: session.user });
+	const result = await getCampaignFunnel({ input, session: session });
 	return NextResponse.json(result, { status: 200 });
 };
 

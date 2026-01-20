@@ -18,9 +18,10 @@ import TopClientsBlock from "./TopClientsBlock";
 type CashbackProgramsPageProps = {
 	user: TAuthUserSession["user"];
 	cashbackProgram: Exclude<TGetCashbackProgramOutput["data"], null>;
+	organizationId: string;
 };
 
-export default function CashbackProgramsPage({ user, cashbackProgram }: CashbackProgramsPageProps) {
+export default function CashbackProgramsPage({ user, cashbackProgram, organizationId }: CashbackProgramsPageProps) {
 	// Initialize with current month
 	const [period, setPeriod] = useState<{ after?: Date; before?: Date }>({
 		after: dayjs().startOf("month").toDate(),
@@ -103,7 +104,7 @@ export default function CashbackProgramsPage({ user, cashbackProgram }: Cashback
 					variant="ghost"
 					className="flex items-center gap-2"
 					size="sm"
-					onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${user.organizacaoId}`)}
+					onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${organizationId}`)}
 				>
 					<Presentation className="w-4 h-4 min-w-4 min-h-4" />
 					PONTO DE INTERAÇÃO

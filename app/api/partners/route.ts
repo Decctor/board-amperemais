@@ -14,8 +14,8 @@ const CreatePartnerInputSchema = z.object({
 });
 export type TCreatePartnerInput = z.infer<typeof CreatePartnerInputSchema>;
 
-async function createPartner({ input, session }: { input: TCreatePartnerInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function createPartner({ input, session }: { input: TCreatePartnerInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const existingPartner = await db.query.partners.findFirst({
@@ -45,7 +45,7 @@ const createPartnerRoute = async (request: NextRequest) => {
 	// if (!session.user.permissoes.parceiros.criar) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 	const payload = await request.json();
 	const input = CreatePartnerInputSchema.parse(payload);
-	const result = await createPartner({ input, session: session.user });
+	const result = await createPartner({ input, session });
 	return NextResponse.json(result, { status: 201 });
 };
 
@@ -105,8 +105,8 @@ const GetPartnersInputSchema = z.object({
 
 export type TGetPartnersInput = z.infer<typeof GetPartnersInputSchema>;
 
-async function getPartners({ input, session }: { input: TGetPartnersInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getPartners({ input, session }: { input: TGetPartnersInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	if ("id" in input && input.id) {
@@ -243,7 +243,7 @@ const getPartnersRoute = async (request: NextRequest) => {
 		statsTotalMin: searchParams.get("statsTotalMin") ?? undefined,
 		statsTotalMax: searchParams.get("statsTotalMax") ?? undefined,
 	});
-	const result = await getPartners({ input, session: session.user });
+	const result = await getPartners({ input, session });
 	return NextResponse.json(result);
 };
 export const GET = appApiHandler({
@@ -258,10 +258,10 @@ export type TUpdatePartnerInput = z.infer<typeof UpdatePartnerInputSchema>;
 
 type UpdatePartnerParams = {
 	input: TUpdatePartnerInput;
-	session: TAuthUserSession["user"];
+	session: TAuthUserSession;
 };
 async function updatePartner({ input, session }: UpdatePartnerParams) {
-	const userOrgId = session.organizacaoId;
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const updatedPartner = await db
@@ -286,7 +286,7 @@ const updatePartnerRoute = async (request: NextRequest) => {
 	// if (!session.user.permissoes.parceiros.criar) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 	const payload = await request.json();
 	const input = UpdatePartnerInputSchema.parse(payload);
-	const result = await updatePartner({ input, session: session.user });
+	const result = await updatePartner({ input, session });
 	return NextResponse.json(result);
 };
 export const PUT = appApiHandler({

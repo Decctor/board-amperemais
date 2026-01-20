@@ -39,9 +39,7 @@ export type ProcessSingleInteractionResult = {
  * 5. Updating interaction with dataExecucao
  * 6. Error handling (marks message as "FALHOU", doesn't mark interaction as executed)
  */
-export async function processSingleInteractionImmediately(
-	params: ImmediateProcessingData,
-): Promise<ProcessSingleInteractionResult> {
+export async function processSingleInteractionImmediately(params: ImmediateProcessingData): Promise<ProcessSingleInteractionResult> {
 	const { interactionId, organizationId, client, campaign, whatsappToken } = params;
 
 	try {
@@ -74,11 +72,7 @@ export async function processSingleInteractionImmediately(
 		let chatId: string | null = null;
 		const existingChat = await db.query.chats.findFirst({
 			where: (fields, { and, eq }) =>
-				and(
-					eq(fields.organizacaoId, organizationId),
-					eq(fields.clienteId, client.id),
-					eq(fields.whatsappTelefoneId, campaign.whatsappTelefoneId),
-				),
+				and(eq(fields.organizacaoId, organizationId), eq(fields.clienteId, client.id), eq(fields.whatsappTelefoneId, campaign.whatsappTelefoneId)),
 		});
 
 		if (existingChat) {
@@ -123,7 +117,7 @@ export async function processSingleInteractionImmediately(
 				templatePayload: payload.data,
 				whatsappToken: whatsappToken,
 			});
-
+			console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
 			// Update chat message with WhatsApp message ID
 			await db
 				.update(chatMessages)

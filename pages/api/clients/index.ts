@@ -90,8 +90,8 @@ const GetClientsInputSchema = z.object({
 });
 export type TGetClientsInput = z.infer<typeof GetClientsInputSchema>;
 
-async function getClients({ input, session }: { input: TGetClientsInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getClients({ input, session }: { input: TGetClientsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	if ("id" in input) {
@@ -215,7 +215,7 @@ const getClientsRoute: NextApiHandler<any> = async (req, res) => {
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	// if (!session.user.permissoes.parceiros.criar) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 	const input = GetClientsInputSchema.parse(req.query);
-	const result = await getClients({ input, session: sessionUser.user });
+	const result = await getClients({ input, session: sessionUser });
 	return res.status(200).json(result);
 };
 
@@ -228,7 +228,7 @@ const createClientRoute: NextApiHandler<PostResponse> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const userOrgId = sessionUser.user.organizacaoId;
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const client = ClientSchema.parse(req.body);

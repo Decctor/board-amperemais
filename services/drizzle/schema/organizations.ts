@@ -1,6 +1,8 @@
 import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
+import type { TUserPermissions } from "@/schemas/users";
+import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { newTable, organizationIntegrationTypeEnum } from ".";
+import { newTable, organizationIntegrationTypeEnum, users } from ".";
 
 export const organizations = newTable("organizations", {
 	id: varchar("id", { length: 255 })
@@ -39,7 +41,39 @@ export const organizations = newTable("organizations", {
 	integracaoDataUltimaSincronizacao: timestamp("integracao_data_ultima_sincronizacao"),
 	periodoTesteInicio: timestamp("periodo_teste_inicio"),
 	periodoTesteFim: timestamp("periodo_teste_fim"),
+	autorId: varchar("autor_id", { length: 255 }),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+	autor: one(users, {
+		fields: [organizations.autorId],
+		references: [users.id],
+	}),
+	membros: many(organizationMembers),
+}));
 export type TOrganizationEntity = typeof organizations.$inferSelect;
 export type TNewOrganizationEntity = typeof organizations.$inferInsert;
+
+export const organizationMembers = newTable("organization_members", {
+	id: varchar("id", { length: 255 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 })
+		.references(() => organizations.id)
+		.notNull(),
+	usuarioId: varchar("usuario_id", { length: 255 }).references(() => users.id),
+	permissoes: jsonb("permissoes").$type<TUserPermissions>().notNull(),
+	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+});
+export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
+	organizacao: one(organizations, {
+		fields: [organizationMembers.organizacaoId],
+		references: [organizations.id],
+	}),
+	usuario: one(users, {
+		fields: [organizationMembers.usuarioId],
+		references: [users.id],
+	}),
+}));
+export type TOrganizationMemberEntity = typeof organizationMembers.$inferSelect;
+export type TNewOrganizationMemberEntity = typeof organizationMembers.$inferInsert;

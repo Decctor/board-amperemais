@@ -155,8 +155,8 @@ async function fetchRankingForPeriod({
 	}));
 }
 
-async function getPartnersRanking({ input, session }: { input: TGetPartnersRankingInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getPartnersRanking({ input, session }: { input: TGetPartnersRankingInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [GET PARTNERS RANKING] Starting:", {
@@ -252,7 +252,7 @@ const getPartnersRankingRoute = async (request: NextRequest) => {
 			(searchParams.get("rankingBy") as "sales-total-value" | "sales-total-qty" | "average-ticket" | "margin" | undefined) ?? "sales-total-value",
 	});
 
-	const data = await getPartnersRanking({ input, session: session.user });
+	const data = await getPartnersRanking({ input, session });
 	return NextResponse.json(data);
 };
 

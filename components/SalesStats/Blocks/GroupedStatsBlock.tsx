@@ -26,7 +26,7 @@ import { toast } from "sonner";
 type GroupedStatsBlockProps = {
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 	user: TAuthUserSession["user"];
-	userOrg: TAuthUserSession["organization"];
+	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 };
 function GroupedStatsBlock({ generalQueryParams, user, userOrg }: GroupedStatsBlockProps) {
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);

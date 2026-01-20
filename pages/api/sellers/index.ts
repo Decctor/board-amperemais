@@ -105,10 +105,10 @@ const GetSellersInputSchema = z.union([GetSellersByIdInputSchema, GetSellersDefa
 export type TGetSellersInput = z.infer<typeof GetSellersInputSchema>;
 type GetSellersParams = {
 	input: TGetSellersInput;
-	user: TAuthUserSession["user"];
+	session: TAuthUserSession;
 };
-async function getSellers({ input, user }: GetSellersParams) {
-	const userOrgId = user.organizacaoId;
+async function getSellers({ input, session }: GetSellersParams) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [GET SELLERS] Input:", input);
@@ -255,7 +255,7 @@ const getSellersHandler: NextApiHandler<TGetSellersOutput> = async (req, res) =>
 		orderByField: req.query.orderByField as string | undefined,
 		orderByDirection: req.query.orderByDirection as string | undefined,
 	});
-	const data = await getSellers({ input, user: sessionUser.user });
+	const data = await getSellers({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 
@@ -271,10 +271,10 @@ export type TUpdateSellerInput = z.infer<typeof UpdateSellerInputSchema>;
 
 type UpdateSellerParams = {
 	input: TUpdateSellerInput;
-	user: TAuthUserSession["user"];
+	session: TAuthUserSession;
 };
-async function updateSeller({ input, user }: UpdateSellerParams) {
-	const userOrgId = user.organizacaoId;
+async function updateSeller({ input, session }: UpdateSellerParams) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const seller = await db.query.sellers.findFirst({
@@ -315,7 +315,7 @@ const updateSellerHandler: NextApiHandler<TUpdateSellerOutput> = async (req, res
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = UpdateSellerInputSchema.parse(req.body);
-	const data = await updateSeller({ input, user: sessionUser.user });
+	const data = await updateSeller({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 
@@ -324,11 +324,11 @@ export type TCreateSellerInput = z.infer<typeof CreateSellerInputSchema>;
 
 type CreateSellerParams = {
 	input: TCreateSellerInput;
-	user: TAuthUserSession["user"];
+	session: TAuthUserSession;
 };
 
-async function createSeller({ input, user }: CreateSellerParams) {
-	const userOrgId = user.organizacaoId;
+async function createSeller({ input, session }: CreateSellerParams) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const existingSeller = await db.query.sellers.findFirst({
@@ -366,7 +366,7 @@ const createSellerHandler: NextApiHandler<TCreateSellerOutput> = async (req, res
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const input = CreateSellerInputSchema.parse(req.body);
-	const data = await createSeller({ input, user: sessionUser.user });
+	const data = await createSeller({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 

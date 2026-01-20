@@ -19,8 +19,8 @@ const updateMessageBodySchema = z.object({
 
 export type TUpdateMessageInput = z.infer<typeof updateMessageBodySchema>;
 
-async function updateMessage({ session, messageId, input }: { session: TAuthUserSession["user"]; messageId: string; input: TUpdateMessageInput }) {
-	const organizacaoId = session.organizacaoId;
+async function updateMessage({ session, messageId, input }: { session: TAuthUserSession; messageId: string; input: TUpdateMessageInput }) {
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -77,7 +77,7 @@ async function updateMessageRoute(req: NextRequest) {
 	const body = await req.json();
 	const input = updateMessageBodySchema.parse(body);
 
-	const result = await updateMessage({ session: session.user, messageId, input });
+	const result = await updateMessage({ session, messageId, input });
 	return NextResponse.json(result, { status: 200 });
 }
 

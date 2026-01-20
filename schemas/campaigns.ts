@@ -74,7 +74,6 @@ export const CampaignSchema = z.object({
 			invalid_type_error: "Tipo não válido para permitir recorrência.",
 		})
 		.optional()
-		.nullable()
 		.default(true),
 	frequenciaIntervaloValor: z
 		.number({
@@ -82,9 +81,8 @@ export const CampaignSchema = z.object({
 			invalid_type_error: "Tipo não válido para o valor da frequência de intervalo.",
 		})
 		.optional()
-		.nullable()
 		.default(0),
-	frequenciaIntervaloMedida: TimeDurationUnitsEnum.optional().nullable().default("DIAS"),
+	frequenciaIntervaloMedida: TimeDurationUnitsEnum.optional().default("DIAS"),
 	// Whatsapp specific
 	whatsappTelefoneId: z.string({
 		required_error: "ID do telefone do WhatsApp não informado.",

@@ -18,10 +18,11 @@ const initialPeriodStart = dayjs().startOf("month").toISOString();
 const initialPeriodEnd = dayjs().endOf("day").toISOString();
 type DashboardPageProps = {
 	user: TAuthUserSession["user"];
-	userOrg: TAuthUserSession["organization"];
+	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
 };
-export function DashboardPage({ user, userOrg }: DashboardPageProps) {
-	const initialSellers = user.permissoes.resultados.escopo ? user.permissoes.resultados.escopo : [];
+export function DashboardPage({ user, userOrg, membership }: DashboardPageProps) {
+	const initialSellers = membership.permissoes.resultados.escopo ? membership.permissoes.resultados.escopo : [];
 
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const [comparisonMenuIsOpen, setComparisonMenuIsOpen] = useState(false);
@@ -66,6 +67,7 @@ export function DashboardPage({ user, userOrg }: DashboardPageProps) {
 			{filterMenuIsOpen ? (
 				<SalesQueryParamsMenu
 					user={user}
+					membership={membership}
 					queryParams={generalQueryParams}
 					updateQueryParams={updateGeneralQueryParams}
 					closeMenu={() => setFilterMenuIsOpen(false)}

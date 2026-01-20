@@ -49,8 +49,8 @@ const GetProductsOverallStatsInputSchema = z.object({
 
 export type TGetProductsOverallStatsInput = z.infer<typeof GetProductsOverallStatsInputSchema>;
 
-async function getProductsOverallStats({ input, session }: { input: TGetProductsOverallStatsInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getProductsOverallStats({ input, session }: { input: TGetProductsOverallStatsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [GET PRODUCTS STATS] Starting:", {
@@ -329,7 +329,7 @@ const getProductsOverallStatsRoute: NextApiHandler<TGetProductsOverallStatsOutpu
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = GetProductsOverallStatsInputSchema.parse(req.query);
-	const data = await getProductsOverallStats({ input, session: sessionUser.user });
+	const data = await getProductsOverallStats({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 

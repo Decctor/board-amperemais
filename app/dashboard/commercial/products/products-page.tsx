@@ -53,7 +53,7 @@ import { useState } from "react";
 
 type ProductsPageProps = {
 	user: TAuthUserSession["user"];
-	userOrg: TAuthUserSession["organization"];
+	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 };
 
 export default function ProductsPage({ user, userOrg }: ProductsPageProps) {

@@ -37,9 +37,11 @@ const GetPartnersGraphInputSchema = z.object({
 
 export type TGetPartnersGraphInput = z.infer<typeof GetPartnersGraphInputSchema>;
 
-async function getPartnersGraph({ input, sessionUser }: { input: TGetPartnersGraphInput; sessionUser: TAuthUserSession["user"] }) {
-	const userOrgId = sessionUser.organizacaoId;
+async function getPartnersGraph({ input, session }: { input: TGetPartnersGraphInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const sessionUser = session.user;
 
 	const period = {
 		after: input.periodAfter,
@@ -287,7 +289,7 @@ const getPartnersGraphRoute = async (request: NextRequest) => {
 		periodBefore: searchParams.get("periodBefore") ?? null,
 	});
 
-	const result = await getPartnersGraph({ input, sessionUser: session.user });
+	const result = await getPartnersGraph({ input, session: session });
 	return NextResponse.json(result);
 };
 

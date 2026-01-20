@@ -9,10 +9,10 @@ import { type ReactNode, Suspense } from "react";
 
 const MainLayout = async ({ children }: { children: ReactNode }) => {
 	const user = await getCurrentSession();
-	if (!user) redirect("/auth/signin");
+	if (!user || !user.membership) redirect("/auth/signin");
 	return (
 		<SidebarProvider className="font-raleway">
-			<AppSidebar user={user?.user} organization={user?.organization} />
+			<AppSidebar user={user.user} organization={user.membership.organizacao} />
 			<Suspense fallback={<LoadingComponent />}>
 				<SidebarInset className="overflow-y-auto p-6 flex flex-col gap-3">
 					<AppHeader />

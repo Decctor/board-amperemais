@@ -36,9 +36,9 @@ async function getTopCashbackClients({
 	session,
 }: {
 	input: TTopCashbackClientsInput;
-	session: TAuthUserSession["user"];
+	session: TAuthUserSession;
 }): Promise<GetResponse> {
-	const userOrgId = session.organizacaoId;
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const orderByColumn =
@@ -81,7 +81,7 @@ const getTopCashbackClientsRoute = async (request: NextRequest) => {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const payload = await request.json();
 	const input = TopCashbackClientsInputSchema.parse(payload);
-	const result = await getTopCashbackClients({ input, session: session.user });
+	const result = await getTopCashbackClients({ input, session });
 	return NextResponse.json(result, { status: 200 });
 };
 

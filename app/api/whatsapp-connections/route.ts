@@ -8,8 +8,8 @@ import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-async function getWhatsappConnection({ session }: { session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getWhatsappConnection({ session }: { session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização para conectar o WhatsApp.");
 
 	const whatsappConnection = await db.query.whatsappConnections.findFirst({
@@ -30,12 +30,12 @@ async function getWhatsappConnectionRoute(req: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
 
-	const result = await getWhatsappConnection({ session: session.user });
+	const result = await getWhatsappConnection({ session });
 	return NextResponse.json(result, { status: 200 });
 }
 
-async function deleteWhatsappConnection({ input, session }: { input: string; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function deleteWhatsappConnection({ input, session }: { input: string; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 
 	if (!userOrgId) throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização para deletar a conexão do WhatsApp.");
 	const deletedWhatsappConnection = await db
@@ -55,8 +55,10 @@ async function deleteWhatsappConnection({ input, session }: { input: string; ses
 }
 export type TDeleteWhatsappConnectionOutput = Awaited<ReturnType<typeof deleteWhatsappConnection>>;
 async function deleteWhatsappConnectionRoute(req: NextRequest) {
+	console.log("REQ:", req);
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	console.log("PARAMS:", req.nextUrl.searchParams);
 	const input = z
 		.string({
 			required_error: "ID da conexão do WhatsApp não informado.",
@@ -64,11 +66,14 @@ async function deleteWhatsappConnectionRoute(req: NextRequest) {
 		})
 		.parse(req.nextUrl.searchParams.get("id"));
 	if (!input) throw new createHttpError.BadRequest("ID da conexão do WhatsApp não informado.");
-	const result = await deleteWhatsappConnection({ input, session: session.user });
+	const result = await deleteWhatsappConnection({ input, session });
 	return NextResponse.json(result, { status: 200 });
 }
 
 export const GET = appApiHandler({
 	GET: getWhatsappConnectionRoute,
+});
+
+export const DELETE = appApiHandler({
 	DELETE: deleteWhatsappConnectionRoute,
 });

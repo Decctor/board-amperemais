@@ -31,8 +31,8 @@ const GetGoalsInputSchema = z.object({
 });
 export type TGetGoalsByIdInput = Pick<TGetGoalsInput, "id">;
 export type TGetGoalsInput = z.infer<typeof GetGoalsInputSchema>;
-async function getGoals({ input, user }: { input: TGetGoalsInput; user: TAuthUserSession["user"] }) {
-	const userOrgId = user.organizacaoId;
+async function getGoals({ input, session }: { input: TGetGoalsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const { id } = input;
@@ -97,7 +97,7 @@ const getGoalsHandler: NextApiHandler<TGetGoalsOutput> = async (req, res) => {
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const input = GetGoalsInputSchema.parse(req.query);
-	const goals = await getGoals({ input, user: sessionUser.user });
+	const goals = await getGoals({ input, session: sessionUser });
 	return res.status(200).json(goals);
 };
 
@@ -107,8 +107,8 @@ const CreateGoalInputSchema = z.object({
 });
 export type TCreateGoalInput = z.infer<typeof CreateGoalInputSchema>;
 
-async function createGoal({ input, user }: { input: TCreateGoalInput; user: TAuthUserSession["user"] }) {
-	const userOrgId = user.organizacaoId;
+async function createGoal({ input, session }: { input: TCreateGoalInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const { goal: payloadGoal, goalSellers: payloadGoalSellers } = input;
@@ -148,7 +148,7 @@ const createGoalHandler: NextApiHandler<TCreateGoalOutput> = async (req, res) =>
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const input = CreateGoalInputSchema.parse(req.body);
-	const goal = await createGoal({ input, user: sessionUser.user });
+	const goal = await createGoal({ input, session: sessionUser });
 	return res.status(200).json(goal);
 };
 
@@ -177,8 +177,8 @@ const UpdateGoalInputSchema = z.object({
 });
 export type TUpdateGoalInput = z.infer<typeof UpdateGoalInputSchema>;
 
-async function updateGoal({ input, user }: { input: TUpdateGoalInput; user: TAuthUserSession["user"] }) {
-	const userOrgId = user.organizacaoId;
+async function updateGoal({ input, session }: { input: TUpdateGoalInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const { goalId, goal: payloadGoal, goalSellers: payloadGoalSellers } = input;
@@ -215,7 +215,7 @@ const updateGoalHandler: NextApiHandler<TUpdateGoalOutput> = async (req, res) =>
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = UpdateGoalInputSchema.parse(req.body);
-	const goal = await updateGoal({ input, user: sessionUser.user });
+	const goal = await updateGoal({ input, session: sessionUser });
 	return res.status(200).json(goal);
 };
 
@@ -227,8 +227,8 @@ const DeleteGoalInputSchema = z.object({
 });
 export type TDeleteGoalInput = z.infer<typeof DeleteGoalInputSchema>;
 
-async function deleteGoal({ input, user }: { input: TDeleteGoalInput; user: TAuthUserSession["user"] }) {
-	const userOrgId = user.organizacaoId;
+async function deleteGoal({ input, session }: { input: TDeleteGoalInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const { goalId } = input;
@@ -255,7 +255,7 @@ const deleteGoalHandler: NextApiHandler<TDeleteGoalOutput> = async (req, res) =>
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = DeleteGoalInputSchema.parse(req.query);
-	const goal = await deleteGoal({ input, user: sessionUser.user });
+	const goal = await deleteGoal({ input, session: sessionUser });
 	return res.status(200).json(goal);
 };
 

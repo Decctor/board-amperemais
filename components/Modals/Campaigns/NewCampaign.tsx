@@ -15,6 +15,7 @@ import CampaignsTriggerBlock from "./Blocks/Trigger";
 
 type NewCampaignProps = {
 	user: TAuthUserSession["user"];
+	organizationId: string;
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -23,7 +24,7 @@ type NewCampaignProps = {
 		onSettled?: () => void;
 	};
 };
-export default function NewCampaign({ user, closeModal, callbacks }: NewCampaignProps) {
+export default function NewCampaign({ user, organizationId, closeModal, callbacks }: NewCampaignProps) {
 	const { state, updateCampaign, addSegmentation, updateSegmentation, deleteSegmentation, resetState, redefineState } = useCampaignState();
 
 	const { mutate: handleCreateCampaignMutation, isPending } = useMutation({
@@ -67,7 +68,7 @@ export default function NewCampaign({ user, closeModal, callbacks }: NewCampaign
 			/>
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsExecutionBlock campaign={state.campaign} updateCampaign={updateCampaign} campaignSegmentations={state.segmentations} />
-			<CampaignsActionBlock organizationId={user.organizacaoId as string} campaign={state.campaign} updateCampaign={updateCampaign} />
+			<CampaignsActionBlock organizationId={organizationId} campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsConversionBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsConfigBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsCashbackGenerationBlock campaign={state.campaign} updateCampaign={updateCampaign} />

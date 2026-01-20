@@ -42,8 +42,8 @@ const sendWhatsappBodySchema = z.discriminatedUnion("type", [sendWhatsappTextSch
 
 export type TSendWhatsappInput = z.infer<typeof sendWhatsappBodySchema>;
 
-async function sendWhatsappMessage({ session, input }: { session: TAuthUserSession["user"]; input: TSendWhatsappInput }) {
-	const organizacaoId = session.organizacaoId;
+async function sendWhatsappMessage({ session, input }: { session: TAuthUserSession; input: TSendWhatsappInput }) {
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -219,7 +219,7 @@ async function sendWhatsappRoute(req: NextRequest) {
 	const body = await req.json();
 	const input = sendWhatsappBodySchema.parse(body);
 
-	const result = await sendWhatsappMessage({ session: session.user, input });
+	const result = await sendWhatsappMessage({ session, input });
 	return NextResponse.json(result, { status: 200 });
 }
 
@@ -231,8 +231,8 @@ const retryMessageBodySchema = z.object({
 
 export type TRetryMessageInput = z.infer<typeof retryMessageBodySchema>;
 
-async function retryMessage({ session, input }: { session: TAuthUserSession["user"]; input: TRetryMessageInput }) {
-	const organizacaoId = session.organizacaoId;
+async function retryMessage({ session, input }: { session: TAuthUserSession; input: TRetryMessageInput }) {
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");

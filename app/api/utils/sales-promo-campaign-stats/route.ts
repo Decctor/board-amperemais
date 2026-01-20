@@ -65,8 +65,8 @@ export type TCampaignStatsOutput = {
 async function getCampaignStats({
 	input,
 	session,
-}: { input: TGetCampaignStatsInput; session: TAuthUserSession["user"] }): Promise<TCampaignStatsOutput> {
-	const userOrgId = session.organizacaoId;
+}: { input: TGetCampaignStatsInput; session: TAuthUserSession }): Promise<TCampaignStatsOutput> {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	// Fetch campaign from utils table
@@ -280,7 +280,7 @@ const getCampaignStatsRoute = async (request: NextRequest) => {
 		campaignId: searchParams.get("campaignId") ?? undefined,
 	});
 
-	const result = await getCampaignStats({ input, session: session.user });
+	const result = await getCampaignStats({ input, session });
 	return NextResponse.json(result, { status: 200 });
 };
 

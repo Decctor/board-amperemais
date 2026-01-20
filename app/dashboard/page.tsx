@@ -5,8 +5,8 @@ import { DashboardPage } from "./dashboard-page";
 
 export default async function Main() {
 	const authSession = await getCurrentSession();
+	console.log("AUTH SESSION DASHBOARD PAGE", authSession);
 	if (!authSession) redirect("/auth/signin");
-	if (!authSession.user.permissoes.resultados.visualizar) return <UnauthorizedPage />;
-	if (!authSession.organization) redirect("/onboarding");
-	return <DashboardPage user={authSession.user} userOrg={authSession.organization} />;
+	if (!authSession.membership?.organizacao) redirect("/onboarding");
+	return <DashboardPage user={authSession.user} userOrg={authSession.membership.organizacao} membership={authSession.membership} />;
 }

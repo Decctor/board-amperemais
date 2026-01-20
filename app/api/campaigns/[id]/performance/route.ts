@@ -30,9 +30,9 @@ async function getCampaignPerformance({
 }: {
 	campaignId: string;
 	input: TGetCampaignPerformanceInput;
-	session: TAuthUserSession["user"];
+	session: TAuthUserSession;
 }) {
-	const userOrgId = session.organizacaoId;
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	// Verify campaign exists and belongs to the organization
@@ -117,7 +117,7 @@ const getCampaignPerformanceRoute = async (request: NextRequest, { params }: { p
 		endDate: searchParams.get("endDate") ?? undefined,
 	});
 
-	const result = await getCampaignPerformance({ campaignId, input, session: session.user });
+	const result = await getCampaignPerformance({ campaignId, input, session: session });
 	return NextResponse.json(result, { status: 200 });
 };
 

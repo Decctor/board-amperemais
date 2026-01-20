@@ -19,9 +19,9 @@ const getMessagesQuerySchema = z.object({
 
 export type TGetMessagesInput = z.infer<typeof getMessagesQuerySchema>;
 
-async function getMessages({ session, input }: { session: TAuthUserSession["user"]; input: TGetMessagesInput }) {
+async function getMessages({ session, input }: { session: TAuthUserSession; input: TGetMessagesInput }) {
 	const { chatId, cursor, limit } = input;
-	const organizacaoId = session.organizacaoId;
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -139,7 +139,7 @@ async function getMessagesRoute(req: NextRequest) {
 		limit: searchParams.get("limit") || 50,
 	});
 
-	const result = await getMessages({ session: session.user, input });
+	const result = await getMessages({ session, input });
 	return NextResponse.json(result, { status: 200 });
 }
 
@@ -156,8 +156,8 @@ const createMessageBodySchema = z.object({
 
 export type TCreateMessageInput = z.infer<typeof createMessageBodySchema>;
 
-async function createMessage({ session, input }: { session: TAuthUserSession["user"]; input: TCreateMessageInput }) {
-	const organizacaoId = session.organizacaoId;
+async function createMessage({ session, input }: { session: TAuthUserSession; input: TCreateMessageInput }) {
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -190,12 +190,12 @@ async function createMessage({ session, input }: { session: TAuthUserSession["us
 	if (existingService) {
 		serviceId = existingService.id;
 		// Update responsible to current user
-		if (existingService.responsavelTipo !== "USUÁRIO" || existingService.responsavelUsuarioId !== session.id) {
+		if (existingService.responsavelTipo !== "USUÁRIO" || existingService.responsavelUsuarioId !== session.user.id) {
 			await db
 				.update(chatServices)
 				.set({
 					responsavelTipo: "USUÁRIO",
-					responsavelUsuarioId: session.id,
+					responsavelUsuarioId: session.user.id,
 				})
 				.where(eq(chatServices.id, serviceId));
 		}
@@ -208,7 +208,7 @@ async function createMessage({ session, input }: { session: TAuthUserSession["us
 				chatId: input.chatId,
 				clienteId: chat.clienteId,
 				responsavelTipo: "USUÁRIO",
-				responsavelUsuarioId: session.id,
+				responsavelUsuarioId: session.user.id,
 				descricao: "NÃO ESPECIFICADO",
 				status: "PENDENTE",
 			})
@@ -244,7 +244,7 @@ async function createMessage({ session, input }: { session: TAuthUserSession["us
 			organizacaoId,
 			chatId: input.chatId,
 			autorTipo: "USUÁRIO",
-			autorUsuarioId: session.id,
+			autorUsuarioId: session.user.id,
 			conteudoTexto: input.conteudoTexto || "",
 			conteudoMidiaTipo: input.conteudoMidiaTipo,
 			conteudoMidiaUrl: mediaUrl,
@@ -301,7 +301,7 @@ async function createMessageRoute(req: NextRequest) {
 	const body = await req.json();
 	const input = createMessageBodySchema.parse(body);
 
-	const result = await createMessage({ session: session.user, input });
+	const result = await createMessage({ session, input });
 	return NextResponse.json(result, { status: 201 });
 }
 

@@ -93,8 +93,8 @@ async function fetchRankingForPeriod({
 	}));
 }
 
-async function getClientsRanking({ input, session }: { input: TGetClientsRankingInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getClientsRanking({ input, session }: { input: TGetClientsRankingInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [GET CLIENTS RANKING] Starting:", {
@@ -179,7 +179,7 @@ const getClientsRankingRoute: NextApiHandler<TGetClientsRankingOutput> = async (
 		rankingBy: (req.query.rankingBy as "purchases-total-qty" | "purchases-total-value" | undefined) ?? "purchases-total-value",
 	});
 
-	const data = await getClientsRanking({ input, session: sessionUser.user });
+	const data = await getClientsRanking({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 

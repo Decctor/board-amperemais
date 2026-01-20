@@ -16,16 +16,17 @@ import { Button } from "../ui/button";
 
 type SettingsUsersProps = {
 	user: TAuthUserSession["user"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
 };
-export default function SettingsUsers({ user }: SettingsUsersProps) {
+export default function SettingsUsers({ user, membership }: SettingsUsersProps) {
 	const queryClient = useQueryClient();
 	const { data: users, queryKey, isLoading, isError, isSuccess, error } = useUsers({ initialFilters: { search: "" } });
 	const [newUserModalIsOpen, setNewUserModalIsOpen] = useState(false);
 	const [editUserModalId, setEditUserModalId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 
-	const sessionUserHasCreatePermission = user.permissoes.usuarios.criar;
-	const sessionUserHasEditPermission = user.permissoes.usuarios.editar;
+	const sessionUserHasCreatePermission = membership.permissoes.usuarios.criar;
+	const sessionUserHasEditPermission = membership.permissoes.usuarios.editar;
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 	return (

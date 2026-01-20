@@ -17,7 +17,7 @@ export const GetProductsByCodesInputSchema = z.object({
 export type TGetProductsByCodesInput = z.infer<typeof GetProductsByCodesInputSchema>;
 
 async function getProductsByCodes({ input, session }: { input: TGetProductsByCodesInput; session: TAuthUserSession }) {
-	const userOrgId = session.user.organizacaoId;
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	if (input.codes.length === 0) throw new createHttpError.BadRequest("Pelo menos um código de produto deve ser informado.");

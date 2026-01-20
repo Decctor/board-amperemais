@@ -10,13 +10,14 @@ import { ChatHubContext } from "./context";
 export type ChatHubRootProps = {
 	children: ReactNode;
 	user: TAuthUserSession["user"];
+	organizationId: string;
 	userHasMessageSendingPermission: boolean;
 	whatsappConnection: TGetWhatsappConnectionOutput["data"];
 	className?: string;
 	defaultPhoneNumber?: string;
 };
 
-export function Root({ children, user, userHasMessageSendingPermission, whatsappConnection, className, defaultPhoneNumber }: ChatHubRootProps) {
+export function Root({ children, user, organizationId, userHasMessageSendingPermission, whatsappConnection, className, defaultPhoneNumber }: ChatHubRootProps) {
 	const isDesktop = useMediaQuery("(min-width: 1024px)");
 
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export function Root({ children, user, userHasMessageSendingPermission, whatsapp
 		selectedChatId,
 		selectedPhoneNumber,
 		user,
+		organizationId,
 		isDesktop,
 		userHasMessageSendingPermission,
 		whatsappConnection,

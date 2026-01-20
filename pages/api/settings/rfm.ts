@@ -10,10 +10,10 @@ import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import z from "zod";
 
-async function getRFMConfig({ sessionUser }: { sessionUser: TAuthUserSession["user"] }) {
+async function getRFMConfig({ sessionUser }: { sessionUser: TAuthUserSession }) {
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const sessionUserOrgId = sessionUser.organizacaoId;
+	const sessionUserOrgId = sessionUser.membership?.organizacao.id;
 	if (!sessionUserOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const configReturned = await db.query.utils.findFirst({
@@ -32,7 +32,7 @@ const getRFMConfigRoute: NextApiHandler<TGetRFMConfigOutput> = async (req, res) 
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const result = await getRFMConfig({ sessionUser: sessionUser.user });
+	const result = await getRFMConfig({ sessionUser });
 	return res.status(200).json(result);
 };
 
@@ -41,8 +41,8 @@ export const UpdateRFMConfigInputSchema = z.object({
 });
 export type TUpdateRFMConfigInput = z.infer<typeof UpdateRFMConfigInputSchema>;
 
-async function updateRFMConfig({ sessionUser, input }: { sessionUser: TAuthUserSession["user"]; input: TUpdateRFMConfigInput }) {
-	const sessionUserOrgId = sessionUser.organizacaoId;
+async function updateRFMConfig({ sessionUser, input }: { sessionUser: TAuthUserSession; input: TUpdateRFMConfigInput }) {
+	const sessionUserOrgId = sessionUser.membership?.organizacao.id;
 	if (!sessionUserOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const organizationRFMConfig = await db.query.utils.findFirst({
@@ -79,7 +79,7 @@ const updateRFMConfigRoute: NextApiHandler<TUpdateRFMConfigOutput> = async (req,
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const input = UpdateRFMConfigInputSchema.parse(req.body);
-	const result = await updateRFMConfig({ sessionUser: sessionUser.user, input });
+	const result = await updateRFMConfig({ sessionUser, input });
 	return res.status(200).json(result);
 };
 
@@ -88,8 +88,8 @@ const CreateRFMConfigInputSchema = z.object({
 });
 export type TCreateRFMConfigInput = z.infer<typeof CreateRFMConfigInputSchema>;
 
-async function createRFMConfig({ sessionUser, input }: { sessionUser: TAuthUserSession["user"]; input: TCreateRFMConfigInput }) {
-	const sessionUserOrgId = sessionUser.organizacaoId;
+async function createRFMConfig({ sessionUser, input }: { sessionUser: TAuthUserSession; input: TCreateRFMConfigInput }) {
+	const sessionUserOrgId = sessionUser.membership?.organizacao.id;
 	if (!sessionUserOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const existingOrganizationRFMConfig = await db.query.utils.findFirst({
@@ -126,7 +126,7 @@ const createRFMConfigRoute: NextApiHandler<TCreateRFMConfigOutput> = async (req,
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const input = CreateRFMConfigInputSchema.parse(req.body);
-	const result = await createRFMConfig({ sessionUser: sessionUser.user, input });
+	const result = await createRFMConfig({ sessionUser, input });
 	return res.status(200).json(result);
 };
 export default apiHandler({

@@ -6,7 +6,7 @@ import GoalsPage from "./goals-page";
 export default async function Goals() {
 	const sessionUser = await getCurrentSession();
 	if (!sessionUser) redirect("/auth/signin");
-	if (!sessionUser.user.permissoes.resultados.visualizarMetas)
+	if (!sessionUser.membership?.permissoes.resultados.visualizarMetas)
 		return <UnauthorizedPage message="Oops, aparentemente você não possui permissão para visualizar metas." />;
 	return <GoalsPage user={sessionUser.user} />;
 }

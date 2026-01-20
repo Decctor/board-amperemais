@@ -25,6 +25,9 @@ export async function createSession({ token, userId }: CreateSessionParams) {
 	try {
 		const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
 
+		const sessionUserMembership = await db.query.organizationMembers.findFirst({
+			where: (fields, { eq }) => eq(fields.usuarioId, userId),
+		});
 		const session: TAuthSessionEntity = {
 			id: sessionId,
 			usuarioId: userId,
@@ -32,6 +35,7 @@ export async function createSession({ token, userId }: CreateSessionParams) {
 			usuarioDispositivo: null,
 			usuarioEnderecoIp: null,
 			usuarioNavegador: null,
+			organizacaoAtivaId: sessionUserMembership?.organizacaoId ?? null,
 			dataExpiracao: dayjs().add(1, "month").toDate(),
 		};
 
@@ -55,9 +59,6 @@ export async function validateSession(token: string) {
 
 	const user = await db.query.users.findFirst({
 		where: (fields, { eq }) => eq(fields.id, session.usuarioId),
-		with: {
-			organizacao: true,
-		},
 	});
 	if (!user) {
 		console.log("No user found running --validateSession-- method.");
@@ -66,12 +67,62 @@ export async function validateSession(token: string) {
 		return null;
 	}
 
+	const sessionUserActiveOrganizationId = session.organizacaoAtivaId;
+	let sessionUserActiveOrganizationMembership: TAuthUserSession["membership"] | null = null;
+	if (sessionUserActiveOrganizationId) {
+		console.log(`[INFO] [VALIDATE SESSION] Active organization was defined with ID: ${sessionUserActiveOrganizationId}`);
+		const membership = await db.query.organizationMembers.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.usuarioId, session.usuarioId), eq(fields.organizacaoId, sessionUserActiveOrganizationId)),
+			with: {
+				organizacao: true,
+			},
+		});
+		if (membership) {
+			sessionUserActiveOrganizationMembership = {
+				id: membership.id,
+				organizacao: {
+					id: membership.organizacao.id,
+					nome: membership.organizacao.nome,
+					cnpj: membership.organizacao.cnpj,
+					logoUrl: membership.organizacao.logoUrl,
+					assinaturaPlano: membership.organizacao.assinaturaPlano,
+				},
+				permissoes: membership.permissoes,
+			};
+		}
+	} else {
+		console.log(`[INFO] [VALIDATE SESSION] No active organization was defined, fetching the most recent one for user ${session.usuarioId}`);
+		const memberships = await db.query.organizationMembers.findMany({
+			where: (fields, { eq }) => eq(fields.usuarioId, session.usuarioId),
+			with: {
+				organizacao: true,
+			},
+			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
+		});
+		const mostRecentMembership = memberships[0];
+		if (mostRecentMembership) {
+			sessionUserActiveOrganizationMembership = {
+				id: mostRecentMembership.id,
+				organizacao: {
+					id: mostRecentMembership.organizacao.id,
+					nome: mostRecentMembership.organizacao.nome,
+					cnpj: mostRecentMembership.organizacao.cnpj,
+					logoUrl: mostRecentMembership.organizacao.logoUrl,
+					assinaturaPlano: mostRecentMembership.organizacao.assinaturaPlano,
+				},
+				permissoes: mostRecentMembership.permissoes,
+			};
+			await db.update(authSessions).set({ organizacaoAtivaId: mostRecentMembership.organizacao.id }).where(eq(authSessions.id, session.id));
+			session.organizacaoAtivaId = mostRecentMembership.organizacao.id;
+		}
+	}
 	const authSession: TAuthUserSession = {
 		session: {
 			id: session.id,
 			usuarioId: session.usuarioId,
 			usuarioDispositivo: session.usuarioDispositivo,
 			usuarioNavegador: session.usuarioNavegador,
+			organizacaoAtivaId: session.organizacaoAtivaId,
 			dataExpiracao: session.dataExpiracao,
 		},
 		user: {
@@ -79,21 +130,11 @@ export async function validateSession(token: string) {
 			id: session.usuarioId,
 			nome: user.nome,
 			telefone: user.telefone,
-			organizacaoId: user.organizacaoId,
 			avatarUrl: user.avatarUrl,
 			email: user.email,
-			permissoes: user.permissoes,
 			vendedorId: user.vendedorId,
 		},
-		organization: user.organizacao
-			? {
-					id: user.organizacao.id,
-					nome: user.organizacao.nome,
-					cnpj: user.organizacao.cnpj,
-					logoUrl: user.organizacao.logoUrl,
-					assinaturaPlano: user.organizacao.assinaturaPlano,
-				}
-			: null,
+		membership: sessionUserActiveOrganizationMembership,
 	};
 	// Checking if the session is expired
 	if (Date.now() > new Date(session.dataExpiracao).getTime()) {

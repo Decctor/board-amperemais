@@ -50,9 +50,9 @@ async function getCashbackProgramTransactions({
 	session,
 }: {
 	input: TCashbackProgramTransactionsInput;
-	session: TAuthUserSession["user"];
+	session: TAuthUserSession;
 }): Promise<GetResponse> {
-	const userOrgId = session.organizacaoId;
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const conditions = [eq(cashbackProgramTransactions.organizacaoId, userOrgId)];
@@ -132,7 +132,7 @@ const getCashbackProgramTransactionsRoute = async (request: NextRequest) => {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const payload = await request.json();
 	const input = CashbackProgramTransactionsInputSchema.parse(payload);
-	const result = await getCashbackProgramTransactions({ input, session: session.user });
+	const result = await getCashbackProgramTransactions({ input, session });
 	return NextResponse.json(result, { status: 200 });
 };
 

@@ -23,7 +23,7 @@ export type ChatHubInputProps = {
 };
 
 export function Input({ className, placeholder = "Digite uma mensagem...", maxRows = 4, onMessageSent }: ChatHubInputProps) {
-	const { whatsappConnection, selectedChatId, selectedPhoneNumber, user, userHasMessageSendingPermission } = useChatHub();
+	const { whatsappConnection, selectedChatId, selectedPhoneNumber, user, organizationId, userHasMessageSendingPermission } = useChatHub();
 
 	const { data: chat } = useChat(selectedChatId);
 
@@ -339,7 +339,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 							}}
 							disabled={isConversationExpired || isSending}
 							chatId={selectedChatId || ""}
-							organizacaoId={user.organizacaoId as string}
+							organizacaoId={organizationId}
 						/>
 
 						{/* Text Input */}

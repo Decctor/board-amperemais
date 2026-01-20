@@ -11,5 +11,6 @@ export const metadata: Metadata = {
 export default async function NewSale() {
 	const sessionUser = await getCurrentSession();
 	if (!sessionUser) redirect("/auth/signin");
-	return <NewSalePage user={sessionUser.user} />;
+	if (!sessionUser.membership) redirect("/onboarding");
+	return <NewSalePage user={sessionUser.user} membership={sessionUser.membership} />;
 }

@@ -45,12 +45,12 @@ export type TGetSellerStatsInput = z.infer<typeof GetSellerStatsInputSchema>;
 // 4. Quantidade e valor de vendas agrupado por mês
 
 type GetSellerStatsParams = {
-	user: TAuthUserSession["user"];
+	session: TAuthUserSession;
 	input: TGetSellerStatsInput;
 };
 
-async function getSellerStats({ user, input }: GetSellerStatsParams) {
-	const userOrgId = user.organizacaoId;
+async function getSellerStats({ session, input }: GetSellerStatsParams) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const seller = await db.query.sellers.findFirst({
@@ -237,7 +237,7 @@ const getSellerStatsHandler: NextApiHandler<TGetSellerStatsOutput> = async (req,
 		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
 	});
-	const data = await getSellerStats({ user: sessionUser.user, input });
+	const data = await getSellerStats({ session: sessionUser, input });
 	return res.status(200).json(data);
 };
 

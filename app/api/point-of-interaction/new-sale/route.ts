@@ -390,6 +390,11 @@ export async function POST(req: Request) {
 						console.log(`  - whatsappTemplate: ${!!campaign.whatsappTemplate}`);
 						console.log(`  - whatsappConnection: ${!!whatsappConnection}`);
 
+						console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
+							SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
+							HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
+							HAS_WHATSAPP_CONNECTION: !!whatsappConnection,
+						});
 						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection) {
 							console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] Adding to immediate processing list`);
 							immediateProcessingDataList.push({
@@ -549,7 +554,12 @@ export async function POST(req: Request) {
 						console.log(`  - whatsappTemplate: ${!!campaign.whatsappTemplate}`);
 						console.log(`  - whatsappConnection: ${!!whatsappConnection}`);
 						console.log(`  - clientData: ${!!clientData}`);
-
+						console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
+							SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
+							HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
+							HAS_WHATSAPP_CONNECTION: !!whatsappConnection,
+							HAS_CLIENT_DATA: !!clientData,
+						});
 						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
 							console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Adding to immediate processing list`);
 							immediateProcessingDataList.push({
@@ -748,6 +758,12 @@ export async function POST(req: Request) {
 						const shouldProcessImmediately =
 							campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
 
+						console.log(`[POI] [ORG: ${input.orgId}] [CASHBACK-ACUMULADO] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
+							SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
+							HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
+							HAS_WHATSAPP_CONNECTION: !!whatsappConnection,
+							HAS_CLIENT_DATA: !!clientData,
+						});
 						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
 							console.log(`[POI] [ORG: ${input.orgId}] [CASHBACK-ACUMULADO] Adding to immediate processing list`);
 							immediateProcessingDataList.push({

@@ -15,10 +15,10 @@ const CreateUserInputSchema = z.object({
 });
 export type TCreateUserInput = z.infer<typeof CreateUserInputSchema>;
 
-async function createUser({ input, session }: { input: TCreateUserInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function createUser({ input, session }: { input: TCreateUserInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const sessionUserHasPermission = session.permissoes.usuarios.criar;
+	const sessionUserHasPermission = session.membership?.permissoes.usuarios.criar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
 	const insertedUser = await db
@@ -45,13 +45,13 @@ export type TCreateUserOutput = Awaited<ReturnType<typeof createUser>>;
 async function createUserRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	if (!session.user.permissoes.usuarios.criar) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
+	if (!session.membership?.permissoes.usuarios.criar) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
 	const payload = await request.json();
 
 	const input = CreateUserInputSchema.parse(payload);
 
-	const result = await createUser({ input, session: session.user });
+	const result = await createUser({ input, session });
 
 	return NextResponse.json(result);
 }
@@ -78,10 +78,10 @@ const GetUsersInputSchema = z.object({
 });
 export type TGetUsersInput = z.infer<typeof GetUsersInputSchema>;
 
-async function getUsers({ input, session }: { input: TGetUsersInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getUsers({ input, session }: { input: TGetUsersInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const sessionUserHasPermission = session.permissoes.usuarios.visualizar;
+	const sessionUserHasPermission = session.membership?.permissoes.usuarios.visualizar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
 	console.log("[INFO] [GET USERS] Input:", input);
@@ -134,7 +134,7 @@ async function getUsersRoute(request: NextRequest) {
 		search: searchParams.get("search") ?? undefined,
 	});
 
-	const result = await getUsers({ input, session: session.user });
+	const result = await getUsers({ input, session });
 
 	return NextResponse.json(result);
 }
@@ -152,10 +152,10 @@ const UpdateUserInputSchema = z.object({
 });
 export type TUpdateUserInput = z.infer<typeof UpdateUserInputSchema>;
 
-async function updateUser({ input, session }: { input: TUpdateUserInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function updateUser({ input, session }: { input: TUpdateUserInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const sessionUserHasPermission = session.permissoes.usuarios.editar;
+	const sessionUserHasPermission = session.membership?.permissoes.usuarios.editar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
 	const updatedUser = await db
@@ -187,7 +187,7 @@ async function updateUserRoute(request: NextRequest) {
 	const payload = await request.json();
 	const input = UpdateUserInputSchema.parse(payload);
 
-	const result = await updateUser({ input, session: session.user });
+	const result = await updateUser({ input, session });
 
 	return NextResponse.json(result);
 }

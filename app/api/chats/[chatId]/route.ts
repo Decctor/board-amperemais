@@ -16,8 +16,8 @@ type RouteContext = {
 
 // ============= GET - Get chat details with client and service =============
 
-async function getChatDetails({ session, chatId }: { session: TAuthUserSession["user"]; chatId: string }) {
-	const organizacaoId = session.organizacaoId;
+async function getChatDetails({ session, chatId }: { session: TAuthUserSession; chatId: string }) {
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -82,7 +82,7 @@ async function getChatRoute(req: NextRequest, context: RouteContext) {
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado.");
 
 	const { chatId } = await context.params;
-	const result = await getChatDetails({ session: session.user, chatId });
+	const result = await getChatDetails({ session, chatId });
 	return NextResponse.json(result, { status: 200 });
 }
 
@@ -95,8 +95,8 @@ const updateChatBodySchema = z.object({
 
 export type TUpdateChatInput = z.infer<typeof updateChatBodySchema>;
 
-async function updateChat({ session, chatId, input }: { session: TAuthUserSession["user"]; chatId: string; input: TUpdateChatInput }) {
-	const organizacaoId = session.organizacaoId;
+async function updateChat({ session, chatId, input }: { session: TAuthUserSession; chatId: string; input: TUpdateChatInput }) {
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -155,7 +155,7 @@ async function updateChatRoute(req: NextRequest, context: RouteContext) {
 	const body = await req.json();
 	const input = updateChatBodySchema.parse(body);
 
-	const result = await updateChat({ session: session.user, chatId, input });
+	const result = await updateChat({ session, chatId, input });
 	return NextResponse.json(result, { status: 200 });
 }
 

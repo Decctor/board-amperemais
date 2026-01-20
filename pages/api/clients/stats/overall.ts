@@ -49,8 +49,8 @@ const GetClientsOverallStatsInputSchema = z.object({
 
 export type TGetClientsOverallStatsInput = z.infer<typeof GetClientsOverallStatsInputSchema>;
 
-async function getClientsOverallStats({ input, session }: { input: TGetClientsOverallStatsInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getClientsOverallStats({ input, session }: { input: TGetClientsOverallStatsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	// Stats to get:
@@ -314,7 +314,7 @@ const getClientsOverallStatsRoute: NextApiHandler<TGetClientsOverallStatsOutput>
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = GetClientsOverallStatsInputSchema.parse(req.query);
-	const data = await getClientsOverallStats({ input, session: sessionUser.user });
+	const data = await getClientsOverallStats({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 

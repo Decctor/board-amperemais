@@ -9,8 +9,8 @@ import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
-async function getCashbackPrograms({ session }: { session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getCashbackPrograms({ session }: { session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const cashbackProgram = await db.query.cashbackPrograms.findFirst({
@@ -26,7 +26,7 @@ export type TGetCashbackProgramOutput = Awaited<ReturnType<typeof getCashbackPro
 const getCashbackProgramsRoute = async (request: NextRequest) => {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const result = await getCashbackPrograms({ session: session.user });
+	const result = await getCashbackPrograms({ session });
 	return NextResponse.json(result, { status: 200 });
 };
 export const GET = appApiHandler({
@@ -38,8 +38,8 @@ const CreateCashbackProgramInputSchema = z.object({
 });
 export type TCreateCashbackProgramInput = z.infer<typeof CreateCashbackProgramInputSchema>;
 
-async function createCashbackProgram({ input, session }: { input: TCreateCashbackProgramInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function createCashbackProgram({ input, session }: { input: TCreateCashbackProgramInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const insertedCashbackProgram = await db
 		.insert(cashbackPrograms)
@@ -61,7 +61,7 @@ const createCashbackProgramRoute = async (request: NextRequest) => {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const payload = await request.json();
 	const input = CreateCashbackProgramInputSchema.parse(payload);
-	const result = await createCashbackProgram({ input, session: session.user });
+	const result = await createCashbackProgram({ input, session });
 	return NextResponse.json(result, { status: 200 });
 };
 export const POST = appApiHandler({
@@ -77,8 +77,8 @@ const UpdateCashbackProgramInputSchema = z.object({
 });
 export type TUpdateCashbackProgramInput = z.infer<typeof UpdateCashbackProgramInputSchema>;
 
-async function updateCashbackProgram({ input, session }: { input: TUpdateCashbackProgramInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function updateCashbackProgram({ input, session }: { input: TUpdateCashbackProgramInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const updatedCashbackProgram = await db
 		.update(cashbackPrograms)
@@ -101,7 +101,7 @@ const updateCashbackProgramRoute = async (request: NextRequest) => {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const payload = await request.json();
 	const input = UpdateCashbackProgramInputSchema.parse(payload);
-	const result = await updateCashbackProgram({ input, session: session.user });
+	const result = await updateCashbackProgram({ input, session });
 	return NextResponse.json(result, { status: 200 });
 };
 

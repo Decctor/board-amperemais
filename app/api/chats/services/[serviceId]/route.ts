@@ -17,8 +17,8 @@ const updateServiceBodySchema = z.object({
 
 export type TUpdateServiceInput = z.infer<typeof updateServiceBodySchema>;
 
-async function updateService({ session, serviceId, input }: { session: TAuthUserSession["user"]; serviceId: string; input: TUpdateServiceInput }) {
-	const organizacaoId = session.organizacaoId;
+async function updateService({ session, serviceId, input }: { session: TAuthUserSession; serviceId: string; input: TUpdateServiceInput }) {
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -59,7 +59,7 @@ async function updateServiceRoute(req: NextRequest, context: RouteContext<"/api/
 	const body = await req.json();
 	const input = updateServiceBodySchema.parse(body);
 
-	const result = await updateService({ session: session.user, serviceId, input });
+	const result = await updateService({ session, serviceId, input });
 	return NextResponse.json(result, { status: 200 });
 }
 

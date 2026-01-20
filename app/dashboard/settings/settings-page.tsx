@@ -13,8 +13,9 @@ import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 type SettingsPageProps = {
 	user: TAuthUserSession["user"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
 };
-export default function SettingsPage({ user }: SettingsPageProps) {
+export default function SettingsPage({ user, membership }: SettingsPageProps) {
 	const [view, setView] = useQueryState("view", parseAsStringEnum(["users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns"]));
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -23,7 +24,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
 					variant="ghost"
 					className="flex items-center gap-2"
 					size="sm"
-					onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${user.organizacaoId}`)}
+					onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${membership.organizacao.id}`)}
 				>
 					<Presentation className="w-4 h-4 min-w-4 min-h-4" />
 					PONTO DE INTERAÇÃO
@@ -79,7 +80,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
 					</Button>
 				</div>
 			</div>
-			{!view || view === "users" ? user.permissoes.usuarios.visualizar ? <SettingsUsers user={user} /> : <UnauthorizedPage /> : null}
+			{!view || view === "users" ? membership.permissoes.usuarios.visualizar ? <SettingsUsers user={user} membership={membership} /> : <UnauthorizedPage /> : null}
 			{view === "meta-oauth" ? <SettingsMetaOAuth user={user} /> : null}
 			{view === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} /> : null}
 			{view === "segments" ? <SettingsSegments user={user} /> : null}

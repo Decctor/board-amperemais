@@ -42,9 +42,9 @@ async function getCashbackProgramsGraph({
 	sessionUser,
 }: {
 	input: TCashbackProgramsGraphInput;
-	sessionUser: TAuthUserSession["user"];
+	sessionUser: TAuthUserSession;
 }) {
-	const userOrgId = sessionUser.organizacaoId;
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const period = {
@@ -286,7 +286,7 @@ const getCashbackProgramsGraphRoute = async (request: NextRequest) => {
 		periodAfter: searchParams.get("periodAfter") as string | undefined,
 		periodBefore: searchParams.get("periodBefore") as string | undefined,
 	});
-	const result = await getCashbackProgramsGraph({ input, sessionUser: session.user });
+	const result = await getCashbackProgramsGraph({ input, sessionUser: session });
 	return NextResponse.json(result, { status: 200 });
 };
 

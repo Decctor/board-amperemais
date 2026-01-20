@@ -37,8 +37,8 @@ const GetProductsGraphInputSchema = z.object({
 
 export type TGetProductsGraphInput = z.infer<typeof GetProductsGraphInputSchema>;
 
-async function getProductsGraph({ input, sessionUser }: { input: TGetProductsGraphInput; sessionUser: TAuthUserSession["user"] }) {
-	const userOrgId = sessionUser.organizacaoId;
+async function getProductsGraph({ input, sessionUser }: { input: TGetProductsGraphInput; sessionUser: TAuthUserSession }) {
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const period = {
@@ -290,7 +290,7 @@ const getProductsGraphRoute: NextApiHandler<TGetProductsGraphOutput> = async (re
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
 	});
 
-	const result = await getProductsGraph({ input, sessionUser: sessionUser.user });
+	const result = await getProductsGraph({ input, sessionUser });
 	return res.status(200).json(result);
 };
 

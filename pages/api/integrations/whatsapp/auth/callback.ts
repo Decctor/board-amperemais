@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	if (!sessionUser) {
 		return res.status(401).json({ error: "Você precisa estar autenticado para conectar o WhatsApp." });
 	}
-	const userOrgId = sessionUser.user.organizacaoId;
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) {
 		return res.status(400).json({ error: "Você precisa estar vinculado a uma organização para conectar o WhatsApp." });
 	}

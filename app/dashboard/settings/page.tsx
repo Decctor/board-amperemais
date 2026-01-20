@@ -5,5 +5,6 @@ import SettingsPage from "./settings-page";
 export default async function Settings() {
 	const authSession = await getCurrentSession();
 	if (!authSession) redirect("/auth/signin");
-	return <SettingsPage user={authSession.user} />;
+	if (!authSession.membership) redirect("/onboarding");
+	return <SettingsPage user={authSession.user} membership={authSession.membership} />;
 }

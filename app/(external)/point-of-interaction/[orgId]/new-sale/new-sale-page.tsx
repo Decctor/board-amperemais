@@ -332,7 +332,18 @@ function ClientStep({
 				<p className="text-muted-foreground">Digite o número de telefone para localizar o perfil.</p>
 			</div>
 			<div className="max-w-md mx-auto">
-				<TextInput label="TELEFONE" inputType="tel" placeholder="(00) 00000-0000" value={phone} handleChange={onPhoneChange} />
+				<TextInput
+					label="TELEFONE"
+					inputType="tel"
+					placeholder="(00) 00000-0000"
+					value={phone}
+					handleChange={onPhoneChange}
+					onFocus={(e) => {
+						setTimeout(() => {
+							e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+						}, 300);
+					}}
+				/>
 			</div>
 			{isLoadingClient ? (
 				<div className="w-full flex items-center justify-center gap-1.5">
@@ -370,6 +381,11 @@ function ClientStep({
 							placeholder="Digite o nome do cliente"
 							value={newClientData.nome}
 							handleChange={(value) => onNewClientChange({ nome: value })}
+							onFocus={(e) => {
+								setTimeout(() => {
+									e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+								}, 300);
+							}}
 							width="100%"
 						/>
 						<TextInput
@@ -378,6 +394,11 @@ function ClientStep({
 							placeholder="Digite o CPF/CNPJ do cliente"
 							value={newClientData.cpfCnpj || ""}
 							handleChange={(value) => onNewClientChange({ cpfCnpj: formatToCPForCNPJ(value) })}
+							onFocus={(e) => {
+								setTimeout(() => {
+									e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+								}, 300);
+							}}
 							width="100%"
 						/>
 					</div>
@@ -401,6 +422,11 @@ function SaleValueStep({ value, onChange, onSubmit }: { value: number; onChange:
 					value={value || ""}
 					onChange={(e) => onChange(Number(e.target.value))}
 					className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+					onFocus={(e) => {
+						setTimeout(() => {
+							e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+						}, 300);
+					}}
 				/>
 			</div>
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
@@ -477,6 +503,11 @@ function CashbackStep({
 						value={amount}
 						onChange={(e) => onAmountChange(Number(e.target.value))}
 						className="h-16 text-3xl font-black text-center rounded-2xl border-2 border-green-200 bg-green-50/30"
+						onFocus={(e) => {
+							setTimeout(() => {
+								e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+							}, 300);
+						}}
 					/>
 				</div>
 			)}
@@ -550,6 +581,11 @@ function ConfirmationStep({
 					value={operatorIdentifier}
 					onChange={(e) => onOperatorIdentifierChange(formatToNumericPassword(e.target.value))}
 					className="h-16 text-2xl text-center rounded-2xl border-4 border-brand/20 focus:border-green-500 transition-all font-bold"
+					onFocus={(e) => {
+						setTimeout(() => {
+							e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+						}, 300);
+					}}
 				/>
 			</div>
 		</form>

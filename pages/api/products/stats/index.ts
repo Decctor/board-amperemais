@@ -48,12 +48,12 @@ const GetProductStatsInputSchema = z.object({
 export type TGetProductStatsInput = z.infer<typeof GetProductStatsInputSchema>;
 
 type GetProductStatsParams = {
-	user: TAuthUserSession["user"];
+	session: TAuthUserSession;
 	input: TGetProductStatsInput;
 };
 
-async function getProductStats({ user, input }: GetProductStatsParams) {
-	const userOrgId = user.organizacaoId;
+async function getProductStats({ session, input }: GetProductStatsParams) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const product = await db.query.products.findFirst({
@@ -475,7 +475,7 @@ const getProductStatsHandler: NextApiHandler<TGetProductStatsOutput> = async (re
 		partnerId: (req.query.partnerId as string | undefined) ?? null,
 		saleNatures: req.query.saleNatures ? JSON.parse(req.query.saleNatures as string) : null,
 	});
-	const data = await getProductStats({ user: sessionUser.user, input });
+	const data = await getProductStats({ session: sessionUser, input });
 	return res.status(200).json(data);
 };
 

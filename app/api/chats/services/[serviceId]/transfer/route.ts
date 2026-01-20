@@ -21,8 +21,8 @@ async function transferService({
 	session,
 	serviceId,
 	input,
-}: { session: TAuthUserSession["user"]; serviceId: string; input: TTransferServiceInput }) {
-	const organizacaoId = session.organizacaoId;
+}: { session: TAuthUserSession; serviceId: string; input: TTransferServiceInput }) {
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -96,7 +96,7 @@ async function transferServiceRoute(req: NextRequest, context: RouteContext<"/ap
 	const body = await req.json();
 	const input = transferServiceBodySchema.parse(body);
 
-	const result = await transferService({ session: session.user, serviceId, input });
+	const result = await transferService({ session, serviceId, input });
 	return NextResponse.json(result, { status: 200 });
 }
 

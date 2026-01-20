@@ -15,8 +15,8 @@ const CreateWhatsappTemplateInputSchema = z.object({
 });
 export type TCreateWhatsappTemplateInput = z.infer<typeof CreateWhatsappTemplateInputSchema>;
 
-async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsappTemplateInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsappTemplateInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const orgWhatsappConnection = await db.query.whatsappConnections.findFirst({
@@ -37,7 +37,7 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 			nome: input.template.nome,
 			categoria: input.template.categoria,
 			componentes: input.template.componentes,
-			autorId: session.id,
+			autorId: session.user.id,
 			organizacaoId: userOrgId,
 		})
 		.returning({ id: whatsappTemplates.id });
@@ -103,7 +103,7 @@ async function createWhatsappTemplateRoute(request: NextRequest) {
 
 	const payload = await request.json();
 	const input = CreateWhatsappTemplateInputSchema.parse(payload);
-	const result = await createWhatsappTemplate({ input, session: session.user });
+	const result = await createWhatsappTemplate({ input, session });
 	return NextResponse.json(result, { status: 201 });
 }
 export const POST = appApiHandler({
@@ -144,8 +144,8 @@ function computeWorstQuality(qualities: Array<"PENDENTE" | "ALTA" | "MEDIA" | "B
 	return "PENDENTE";
 }
 
-async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTemplatesInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTemplatesInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	if ("id" in input && input.id) {
@@ -309,7 +309,7 @@ async function getWhatsappTemplatesRoute(request: NextRequest) {
 		page: searchParams.get("page") ?? undefined,
 		whatsappConnectionPhoneId: searchParams.get("whatsappConnectionPhoneId") ?? undefined,
 	});
-	const result = await getWhatsappTemplates({ input, session: session.user });
+	const result = await getWhatsappTemplates({ input, session });
 	return NextResponse.json(result, { status: 200 });
 }
 export const GET = appApiHandler({

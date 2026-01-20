@@ -16,8 +16,8 @@ const CreateCampaignInputSchema = z.object({
 });
 export type TCreateCampaignInput = z.infer<typeof CreateCampaignInputSchema>;
 
-async function createCampaign({ input, session }: { input: TCreateCampaignInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function createCampaign({ input, session }: { input: TCreateCampaignInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	// Doing some validations before starting the process
 	if (
@@ -46,7 +46,7 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 
 	const insertedCampaignResponse = await db
 		.insert(campaigns)
-		.values({ ...input.campaign, organizacaoId: userOrgId, autorId: session.id })
+		.values({ ...input.campaign, organizacaoId: userOrgId, autorId: session.user.id })
 		.returning({ id: campaigns.id });
 
 	const insertedCampaignId = insertedCampaignResponse[0]?.id;
@@ -70,7 +70,7 @@ const createCampaignRoute = async (request: NextRequest) => {
 
 	const input = await request.json();
 	const parsedInput = CreateCampaignInputSchema.parse(input);
-	const result = await createCampaign({ input: parsedInput, session: session.user });
+	const result = await createCampaign({ input: parsedInput, session: session });
 	return NextResponse.json(result, { status: 201 });
 };
 
@@ -105,8 +105,8 @@ const GetCampaignsInputSchema = z.object({
 });
 export type TGetCampaignsInput = z.infer<typeof GetCampaignsInputSchema>;
 
-async function getCampaigns({ input, session }: { input: TGetCampaignsInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getCampaigns({ input, session }: { input: TGetCampaignsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	if ("id" in input && input.id) {
@@ -173,7 +173,7 @@ const getCampaignsRoute = async (request: NextRequest) => {
 		search: searchParams.get("search") ?? undefined,
 		activeOnly: searchParams.get("activeOnly") ?? undefined,
 	});
-	const result = await getCampaigns({ input, session: session.user });
+	const result = await getCampaigns({ input, session: session });
 	return NextResponse.json(result, { status: 200 });
 };
 export const GET = appApiHandler({
@@ -205,8 +205,8 @@ const UpdateCampaignInputSchema = z.object({
 });
 export type TUpdateCampaignInput = z.infer<typeof UpdateCampaignInputSchema>;
 
-async function updateCampaign({ input, session }: { input: TUpdateCampaignInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function updateCampaign({ input, session }: { input: TUpdateCampaignInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const campaignId = input.campaignId;
 
@@ -268,7 +268,7 @@ const updateCampaignRoute = async (request: NextRequest) => {
 
 	const input = await request.json();
 	const parsedInput = UpdateCampaignInputSchema.parse(input);
-	const result = await updateCampaign({ input: parsedInput, session: session.user });
+	const result = await updateCampaign({ input: parsedInput, session: session });
 	return NextResponse.json(result, { status: 200 });
 };
 export const PUT = appApiHandler({

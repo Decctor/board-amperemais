@@ -119,11 +119,11 @@ export type TGetProductsInput = z.infer<typeof GetProductsInputSchema>;
 
 type GetProductsParams = {
 	input: TGetProductsInput;
-	user: TAuthUserSession["user"];
+	session: TAuthUserSession;
 };
 
-async function getProducts({ input, user }: GetProductsParams) {
-	const userOrgId = user.organizacaoId;
+async function getProducts({ input, session }: GetProductsParams) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [GET PRODUCTS] Input:", input);
@@ -352,7 +352,7 @@ const getProductsHandler: NextApiHandler<TGetProductsOutput> = async (req, res) 
 		orderByField: req.query.orderByField as string | undefined,
 		orderByDirection: req.query.orderByDirection as string | undefined,
 	});
-	const data = await getProducts({ input, user: sessionUser.user });
+	const data = await getProducts({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 
@@ -365,8 +365,8 @@ const UpdateProductInputSchema = z.object({
 });
 export type TUpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
 
-async function updateProduct({ user, input }: { user: TAuthUserSession["user"]; input: TUpdateProductInput }) {
-	const userOrgId = user.organizacaoId;
+async function updateProduct({ session, input }: { session: TAuthUserSession; input: TUpdateProductInput }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const product = await db.query.products.findFirst({
@@ -392,7 +392,7 @@ const updateProductHandler: NextApiHandler<TUpdateProductOutput> = async (req, r
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = UpdateProductInputSchema.parse(req.body);
-	const data = await updateProduct({ user: sessionUser.user, input });
+	const data = await updateProduct({ session: sessionUser, input });
 	return res.status(200).json(data);
 };
 
@@ -419,8 +419,8 @@ const CreateProductInputSchema = z.object({
 
 export type TCreateProductInput = z.infer<typeof CreateProductInputSchema>;
 
-async function createProduct({ user, input }: { user: TAuthUserSession["user"]; input: TCreateProductInput }) {
-	const userOrgId = user.organizacaoId;
+async function createProduct({ session, input }: { session: TAuthUserSession; input: TCreateProductInput }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [CREATE PRODUCT] Input:", JSON.stringify(input, null, 2));
@@ -562,7 +562,7 @@ const createProductHandler: NextApiHandler<TCreateProductOutput> = async (req, r
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = CreateProductInputSchema.parse(req.body);
-	const data = await createProduct({ user: sessionUser.user, input });
+	const data = await createProduct({ session: sessionUser, input });
 	return res.status(201).json(data);
 };
 

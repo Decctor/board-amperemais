@@ -20,9 +20,9 @@ const getChatsQuerySchema = z.object({
 
 export type TGetChatsInput = z.infer<typeof getChatsQuerySchema>;
 
-async function getChats({ session, input }: { session: TAuthUserSession["user"]; input: TGetChatsInput }) {
+async function getChats({ session, input }: { session: TAuthUserSession; input: TGetChatsInput }) {
 	const { whatsappPhoneId, cursor, limit, search } = input;
-	const organizacaoId = session.organizacaoId;
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -139,7 +139,7 @@ async function getChatsRoute(req: NextRequest) {
 		search: searchParams.get("search") || undefined,
 	});
 
-	const result = await getChats({ session: session.user, input });
+	const result = await getChats({ session, input });
 	return NextResponse.json(result, { status: 200 });
 }
 
@@ -154,9 +154,9 @@ const createChatBodySchema = z.object({
 
 export type TCreateChatInput = z.infer<typeof createChatBodySchema>;
 
-async function createChat({ session, input }: { session: TAuthUserSession["user"]; input: TCreateChatInput }) {
+async function createChat({ session, input }: { session: TAuthUserSession; input: TCreateChatInput }) {
 	const { clienteId, whatsappPhoneNumberId, whatsappConexaoId, whatsappConexaoTelefoneId } = input;
-	const organizacaoId = session.organizacaoId;
+	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
@@ -233,7 +233,7 @@ async function createChatRoute(req: NextRequest) {
 	const body = await req.json();
 	const input = createChatBodySchema.parse(body);
 
-	const result = await createChat({ session: session.user, input });
+	const result = await createChat({ session, input });
 	return NextResponse.json(result, { status: 201 });
 }
 

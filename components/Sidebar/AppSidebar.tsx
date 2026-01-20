@@ -124,7 +124,10 @@ export function AppSidebar({
 	user,
 	organization,
 	...props
-}: React.ComponentProps<typeof Sidebar> & { user: TAuthUserSession["user"]; organization: TAuthUserSession["organization"] }) {
+}: React.ComponentProps<typeof Sidebar> & {
+	user: TAuthUserSession["user"];
+	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
+}) {
 	return (
 		<Sidebar variant="inset" collapsible="icon" {...props}>
 			<SidebarHeader>

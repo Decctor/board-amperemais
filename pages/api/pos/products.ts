@@ -32,8 +32,8 @@ const GetPOSProductsInputSchema = z.object({
 });
 export type TGetPOSProductsInput = z.infer<typeof GetPOSProductsInputSchema>;
 
-async function getPOSProducts({ input, user }: { input: TGetPOSProductsInput; user: TAuthUserSession["user"] }) {
-	const userOrgId = user.organizacaoId;
+async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const PAGE_SIZE = 24; // Grid-friendly number (4x6 or 3x8)
@@ -105,11 +105,11 @@ const getPOSProductsHandler: NextApiHandler<TGetPOSProductsOutput> = async (req,
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const userOrgId = sessionUser.user.organizacaoId;
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const input = GetPOSProductsInputSchema.parse(req.query);
-	const data = await getPOSProducts({ input, user: sessionUser.user });
+	const data = await getPOSProducts({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 

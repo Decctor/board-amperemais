@@ -37,8 +37,8 @@ const GetSellersGraphInputSchema = z.object({
 
 export type TGetSellersGraphInput = z.infer<typeof GetSellersGraphInputSchema>;
 
-async function getSellersGraph({ input, sessionUser }: { input: TGetSellersGraphInput; sessionUser: TAuthUserSession["user"] }) {
-	const userOrgId = sessionUser.organizacaoId;
+async function getSellersGraph({ input, sessionUser }: { input: TGetSellersGraphInput; sessionUser: TAuthUserSession }) {
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const period = {
@@ -286,7 +286,7 @@ const getSellersGraphRoute: NextApiHandler<TGetSellersGraphOutput> = async (req,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
 	});
 
-	const result = await getSellersGraph({ input, sessionUser: sessionUser.user });
+	const result = await getSellersGraph({ input, sessionUser });
 	return res.status(200).json(result);
 };
 

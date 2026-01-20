@@ -9,6 +9,7 @@ import * as ChatHub from "./Components/index";
 
 type ChatsHubProps = {
 	user: TAuthUserSession["user"];
+	organizationId: string;
 	userHasMessageSendingPermission: boolean;
 	whatsappConnection: TGetWhatsappConnectionOutput["data"];
 };
@@ -28,9 +29,9 @@ type ChatsHubProps = {
  * - Type-safe with TypeScript
  * - Composable architecture
  */
-export default function ChatsHub({ user, userHasMessageSendingPermission, whatsappConnection }: ChatsHubProps) {
+export default function ChatsHub({ user, organizationId, userHasMessageSendingPermission, whatsappConnection }: ChatsHubProps) {
 	return (
-		<ChatHub.Root user={user} userHasMessageSendingPermission={userHasMessageSendingPermission} whatsappConnection={whatsappConnection}>
+		<ChatHub.Root user={user} organizationId={organizationId} userHasMessageSendingPermission={userHasMessageSendingPermission} whatsappConnection={whatsappConnection}>
 			<ChatHubContent whatsappConnection={whatsappConnection} />
 		</ChatHub.Root>
 	);

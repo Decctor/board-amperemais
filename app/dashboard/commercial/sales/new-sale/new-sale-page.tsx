@@ -18,8 +18,9 @@ import ProductCard from "./components/ProductCard";
 
 type NewSalePageProps = {
 	user: TAuthUserSession["user"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
 };
-export default function NewSalePage({ user }: NewSalePageProps) {
+export default function NewSalePage({ user, membership }: NewSalePageProps) {
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [searchValue, setSearchValue] = useState("");
 	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
@@ -195,7 +196,7 @@ export default function NewSalePage({ user }: NewSalePageProps) {
 			{/* Right Pane: Cart */}
 			<div className="w-full lg:w-96 shrink-0">
 				<div className="h-full max-h-[calc(100vh-6rem)] sticky top-4 overflow-hidden">
-					<CartPane organizationId={user.organizacaoId as string} saleState={saleState} onCheckout={handleCheckout} />
+					<CartPane organizationId={membership.organizacao.id} saleState={saleState} onCheckout={handleCheckout} />
 				</div>
 			</div>
 

@@ -135,7 +135,7 @@ export type TGetSalesInput = z.infer<typeof GetSalesInputSchema>;
 
 async function getSales({ input, sessionUser }: { input: TGetSalesInput; sessionUser: TAuthUserSession }) {
 	const PAGE_SIZE = 25;
-	const userOrgId = sessionUser.user.organizacaoId;
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const { page, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures } = input;
 
@@ -242,7 +242,7 @@ const getSalesRoute: NextApiHandler<TGetSalesOutput> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const userOrgId = sessionUser.user.organizacaoId;
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const input = GetSalesInputSchema.parse(req.query);

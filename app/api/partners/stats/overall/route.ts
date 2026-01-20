@@ -49,8 +49,8 @@ const GetPartnersOverallStatsInputSchema = z.object({
 
 export type TGetPartnersOverallStatsInput = z.infer<typeof GetPartnersOverallStatsInputSchema>;
 
-async function getPartnersOverallStats({ input, session }: { input: TGetPartnersOverallStatsInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getPartnersOverallStats({ input, session }: { input: TGetPartnersOverallStatsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [GET PARTNERS OVERALL STATS] Starting:", {
@@ -170,7 +170,7 @@ const getPartnersOverallStatsRoute = async (request: NextRequest) => {
 		comparingPeriodBefore: searchParams.get("comparingPeriodBefore") ?? null,
 	});
 
-	const data = await getPartnersOverallStats({ input, session: session.user });
+	const data = await getPartnersOverallStats({ input, session });
 	return NextResponse.json(data);
 };
 

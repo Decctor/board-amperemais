@@ -9,14 +9,15 @@ import ChatsHub from "./ChatsHub";
 
 type ChatsMainProps = {
 	user: TAuthUserSession["user"];
+	organizationId: string;
 };
 
-export default function ChatsMain({ user }: ChatsMainProps) {
+export default function ChatsMain({ user, organizationId }: ChatsMainProps) {
 	const { data: whatsappConnection, isPending, isError, error } = useWhatsappConnection();
 
 	if (isPending) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
 	if (!whatsappConnection) return <ErrorComponent msg="Conexão do WhatsApp não encontrada." />;
 
-	return <ChatsHub user={user} userHasMessageSendingPermission={true} whatsappConnection={whatsappConnection} />;
+	return <ChatsHub user={user} organizationId={organizationId} userHasMessageSendingPermission={true} whatsappConnection={whatsappConnection} />;
 }

@@ -23,8 +23,8 @@ const GetCampaignAnalyticsInputSchema = z.object({
 });
 export type TGetCampaignAnalyticsInput = z.infer<typeof GetCampaignAnalyticsInputSchema>;
 
-async function getCampaignAnalytics({ input, session }: { input: TGetCampaignAnalyticsInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getCampaignAnalytics({ input, session }: { input: TGetCampaignAnalyticsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	let startDate = input.startDate;
@@ -156,7 +156,7 @@ const getCampaignAnalyticsRoute = async (request: NextRequest) => {
 		endDate: searchParams.get("endDate") ?? undefined,
 	});
 
-	const result = await getCampaignAnalytics({ input, session: session.user });
+	const result = await getCampaignAnalytics({ input, session: session });
 	return NextResponse.json(result, { status: 200 });
 };
 

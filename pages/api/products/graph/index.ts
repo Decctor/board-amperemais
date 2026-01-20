@@ -70,8 +70,8 @@ export type TGetProductGraphOutput = {
 	}>;
 };
 
-async function fetchProductGraph(input: TGetProductGraphInput, user: TAuthUserSession["user"]) {
-	const userOrgId = user.organizacaoId;
+async function fetchProductGraph(input: TGetProductGraphInput, session: TAuthUserSession) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [FETCH PRODUCT GRAPH] Input:", input);
@@ -203,7 +203,7 @@ const handleGetProductGraphRoute: NextApiHandler<TGetProductGraphOutput> = async
 		saleNatures: req.query.saleNatures ? JSON.parse(req.query.saleNatures as string) : null,
 	});
 
-	const productGraph = await fetchProductGraph(input, sessionUser.user);
+	const productGraph = await fetchProductGraph(input, sessionUser);
 
 	return res.status(200).json(productGraph);
 };

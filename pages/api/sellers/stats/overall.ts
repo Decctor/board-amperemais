@@ -113,8 +113,8 @@ async function getOverallSaleGoal({ after, before, organizacaoId }: GetOverallSa
 	}
 }
 
-async function getSellersOverallStats({ input, session }: { input: TGetSellersOverallStatsInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getSellersOverallStats({ input, session }: { input: TGetSellersOverallStatsInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	console.log("[INFO] [GET SELLERS OVERALL STATS] Starting:", {
@@ -255,7 +255,7 @@ const getSellersOverallStatsRoute: NextApiHandler<TGetSellersOverallStatsOutput>
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = GetSellersOverallStatsInputSchema.parse(req.query);
-	const data = await getSellersOverallStats({ input, session: sessionUser.user });
+	const data = await getSellersOverallStats({ input, session: sessionUser });
 	return res.status(200).json(data);
 };
 

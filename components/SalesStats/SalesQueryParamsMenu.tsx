@@ -15,15 +15,16 @@ import { Button } from "../ui/button";
 
 type SalesQueryParamsMenuProps = {
 	user: TAuthUserSession["user"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
 	queryParams: TSaleStatsGeneralQueryParams;
 	updateQueryParams: (newParams: Partial<TSaleStatsGeneralQueryParams>) => void;
 	closeMenu: () => void;
 };
-function SalesQueryParamsMenu({ user, queryParams, updateQueryParams, closeMenu }: SalesQueryParamsMenuProps) {
+function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams, closeMenu }: SalesQueryParamsMenuProps) {
 	const [queryParamsHolder, setQueryParamsHolder] = useState<TSaleStatsGeneralQueryParams>(queryParams);
 	const { data: filterOptions } = useSaleQueryFilterOptions();
 
-	const selectableSellersIds = user.permissoes.resultados.escopo ? user.permissoes.resultados.escopo : null;
+	const selectableSellersIds = membership.permissoes.resultados.escopo ? membership.permissoes.resultados.escopo : null;
 
 	const selectableSellers = selectableSellersIds
 		? filterOptions?.sellers.filter((s) => selectableSellersIds.includes(s.id))

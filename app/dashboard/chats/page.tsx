@@ -8,6 +8,7 @@ export default async function Chats() {
 	const sessionUser = await getCurrentSession();
 
 	if (!sessionUser) redirect("/auth/signin");
-	if (!sessionUser.user.permissoes.atendimentos.visualizar) return <UnauthorizedPage />;
-	return <ChatsPage user={sessionUser.user} />;
+	if (!sessionUser.membership?.permissoes.atendimentos.visualizar) return <UnauthorizedPage />;
+	if (!sessionUser.membership) redirect("/onboarding");
+	return <ChatsPage user={sessionUser.user} membership={sessionUser.membership} />;
 }

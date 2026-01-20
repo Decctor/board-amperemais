@@ -15,7 +15,7 @@ import { useDebounce } from "use-debounce";
 
 type OverallStatsBlockProps = {
 	user: TAuthUserSession["user"];
-	userOrg: TAuthUserSession["organization"];
+	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 };
 function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBlockProps) {

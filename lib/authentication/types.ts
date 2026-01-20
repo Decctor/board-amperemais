@@ -1,4 +1,5 @@
-import type { TAuthSessionEntity, TOrganizationEntity, TUserEntity } from "@/services/drizzle/schema";
+import type { TUserPermissions } from "@/schemas/users";
+import type { TAuthSessionEntity, TOrganizationEntity, TOrganizationMemberEntity, TUserEntity } from "@/services/drizzle/schema";
 import z from "zod";
 
 export type TAuthUserSession = {
@@ -7,6 +8,7 @@ export type TAuthUserSession = {
 		usuarioId: TAuthSessionEntity["usuarioId"];
 		usuarioDispositivo: TAuthSessionEntity["usuarioDispositivo"];
 		usuarioNavegador: TAuthSessionEntity["usuarioNavegador"];
+		organizacaoAtivaId: TAuthSessionEntity["organizacaoAtivaId"];
 		dataExpiracao: TAuthSessionEntity["dataExpiracao"];
 	};
 	user: {
@@ -16,16 +18,18 @@ export type TAuthUserSession = {
 		telefone: TUserEntity["telefone"];
 		email: TUserEntity["email"];
 		avatarUrl: TUserEntity["avatarUrl"];
-		permissoes: TUserEntity["permissoes"];
 		vendedorId: TUserEntity["vendedorId"];
-		organizacaoId: TUserEntity["organizacaoId"];
 	};
-	organization: {
-		id: TOrganizationEntity["id"];
-		nome: TOrganizationEntity["nome"];
-		cnpj: TOrganizationEntity["cnpj"];
-		logoUrl: TOrganizationEntity["logoUrl"];
-		assinaturaPlano: TOrganizationEntity["assinaturaPlano"];
+	membership: {
+		id: TOrganizationMemberEntity["id"];
+		organizacao: {
+			id: TOrganizationEntity["id"];
+			nome: TOrganizationEntity["nome"];
+			cnpj: TOrganizationEntity["cnpj"];
+			logoUrl: TOrganizationEntity["logoUrl"];
+			assinaturaPlano: TOrganizationEntity["assinaturaPlano"];
+		};
+		permissoes: TOrganizationMemberEntity["permissoes"];
 	} | null;
 };
 

@@ -36,8 +36,9 @@ import { useState } from "react";
 
 type CampaignsPageProps = {
 	user: TAuthUserSession["user"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
 };
-export default function CampaignsPage({ user }: CampaignsPageProps) {
+export default function CampaignsPage({ user, membership }: CampaignsPageProps) {
 	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -56,14 +57,14 @@ export default function CampaignsPage({ user }: CampaignsPageProps) {
 					<CampaignsStatsView />
 				</TabsContent>
 				<TabsContent value="database">
-					<CampaignsDatabaseView user={user} />
+					<CampaignsDatabaseView user={user} membership={membership} />
 				</TabsContent>
 			</Tabs>
 		</div>
 	);
 }
 
-function CampaignsDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
+function CampaignsDatabaseView({ user, membership }: { user: TAuthUserSession["user"]; membership: NonNullable<TAuthUserSession["membership"]> }) {
 	const queryClient = useQueryClient();
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
 	const [newCampaignModalIsOpen, setNewCampaignModalIsOpen] = useState<boolean>(false);
@@ -123,6 +124,7 @@ function CampaignsDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 			{newCampaignModalIsOpen ? (
 				<NewCampaign
 					user={user}
+					organizationId={membership.organizacao.id}
 					closeModal={() => setNewCampaignModalIsOpen(false)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
@@ -131,6 +133,7 @@ function CampaignsDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 				<ControlCampaign
 					campaignId={editCampaignModalId}
 					user={user}
+					organizationId={membership.organizacao.id}
 					closeModal={() => setEditCampaignModalId(null)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>

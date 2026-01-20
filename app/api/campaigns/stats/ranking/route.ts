@@ -150,8 +150,8 @@ async function fetchRankingForPeriod({
 	}));
 }
 
-async function getCampaignRanking({ input, session }: { input: TGetCampaignRankingInput; session: TAuthUserSession["user"] }) {
-	const userOrgId = session.organizacaoId;
+async function getCampaignRanking({ input, session }: { input: TGetCampaignRankingInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const { startDate, endDate, comparingStartDate, comparingEndDate, rankingBy } = input;
@@ -240,7 +240,7 @@ const getCampaignRankingRoute = async (request: NextRequest) => {
 		rankingBy: (searchParams.get("rankingBy") as "revenue" | "conversions" | "conversion-rate" | undefined) ?? "revenue",
 	});
 
-	const result = await getCampaignRanking({ input, session: session.user });
+	const result = await getCampaignRanking({ input, session });
 	return NextResponse.json(result, { status: 200 });
 };
 

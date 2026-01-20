@@ -33,12 +33,12 @@ const GetClientStatsInputSchema = z.object({
 export type TGetClientStatsInput = z.infer<typeof GetClientStatsInputSchema>;
 
 type GetClientStatsParams = {
-	user: TAuthUserSession["user"];
+	session: TAuthUserSession;
 	input: TGetClientStatsInput;
 };
 
-async function getClientStats({ user, input }: GetClientStatsParams) {
-	const userOrgId = user.organizacaoId;
+async function getClientStats({ session, input }: GetClientStatsParams) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const client = await db.query.clients.findFirst({
@@ -212,7 +212,7 @@ const getClientStatsHandler: NextApiHandler<TGetClientStatsOutput> = async (req,
 		periodAfter: (req.query.periodAfter as string | undefined) ?? null,
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
 	});
-	const data = await getClientStats({ user: sessionUser.user, input });
+	const data = await getClientStats({ session: sessionUser, input });
 	return res.status(200).json(data);
 };
 

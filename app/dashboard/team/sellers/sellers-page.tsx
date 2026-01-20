@@ -43,8 +43,9 @@ import { useState } from "react";
 
 type SellersPageProps = {
 	user: TAuthUserSession["user"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
 };
-export default function SellersPage({ user }: SellersPageProps) {
+export default function SellersPage({ user, membership }: SellersPageProps) {
 	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -63,14 +64,14 @@ export default function SellersPage({ user }: SellersPageProps) {
 					<SellersStatsView />
 				</TabsContent>
 				<TabsContent value="database">
-					<SellersDatabaseView user={user} />
+					<SellersDatabaseView user={user} membership={membership} />
 				</TabsContent>
 			</Tabs>
 		</div>
 	);
 }
 
-function SellersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
+function SellersDatabaseView({ user, membership }: { user: TAuthUserSession["user"]; membership: NonNullable<TAuthUserSession["membership"]> }) {
 	const queryClient = useQueryClient();
 	const [newSellerModalIsOpen, setNewSellerModalIsOpen] = useState(false);
 	const [editSellerId, setEditSellerId] = useState<string | null>(null);
@@ -130,10 +131,10 @@ function SellersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 								seller={seller}
 								handleEditClick={setEditSellerId}
 								userHasEditPermission={
-									user.permissoes.resultados.visualizar && (!user.permissoes.resultados.escopo || user.permissoes.resultados.escopo?.includes(seller.id))
+									membership.permissoes.resultados.visualizar && (!membership.permissoes.resultados.escopo || membership.permissoes.resultados.escopo?.includes(seller.id))
 								}
 								userHasViewPermission={
-									user.permissoes.resultados.visualizar && (!user.permissoes.resultados.escopo || user.permissoes.resultados.escopo?.includes(seller.id))
+									membership.permissoes.resultados.visualizar && (!membership.permissoes.resultados.escopo || membership.permissoes.resultados.escopo?.includes(seller.id))
 								}
 							/>
 						))

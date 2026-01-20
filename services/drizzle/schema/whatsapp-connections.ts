@@ -30,7 +30,7 @@ export const whatsappConnectionPhones = newTable("whatsapp_connection_phones", {
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
 	conexaoId: varchar("conexao_id", { length: 255 })
-		.references(() => whatsappConnections.id)
+		.references(() => whatsappConnections.id, { onDelete: "cascade" })
 		.notNull(),
 	nome: text("nome").notNull(),
 	whatsappBusinessAccountId: varchar("whatsapp_business_account_id", { length: 255 }).notNull(),

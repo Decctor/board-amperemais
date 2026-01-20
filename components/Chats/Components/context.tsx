@@ -9,6 +9,7 @@ export type ChatHubContextValue = {
 	selectedChatId: string | null;
 	selectedPhoneNumber: string | null;
 	user: TAuthUserSession["user"];
+	organizationId: string;
 	isDesktop: boolean;
 	userHasMessageSendingPermission: boolean;
 	whatsappConnection: TGetWhatsappConnectionOutput["data"];

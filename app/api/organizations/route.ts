@@ -22,11 +22,12 @@ export const CreateOrganizationInputSchema = z.object({
 export type TCreateOrganizationInputSchema = z.infer<typeof CreateOrganizationInputSchema>;
 
 // This route must be called at the end of the onboarding process
-async function createOrganization({ input, sessionUser }: { input: TCreateOrganizationInputSchema; sessionUser: TAuthUserSession["user"] }) {
-	const userHasOrgAlready = !!sessionUser.organizacaoId;
+async function createOrganization({ input, session }: { input: TCreateOrganizationInputSchema; session: TAuthUserSession }) {
+	const userHasOrgAlready = !!session.membership?.organizacao.id;
 	if (userHasOrgAlready) throw new createHttpError.BadRequest("Você já está vinculado a uma organização.");
 
 	const { organization, subscription } = input;
+	const sessionUser = session.user;
 
 	console.log("[INFO] [CREATE_ORGANIZATION] Starting the organization onboarding conclusion process:", JSON.stringify(input, null, 2));
 	// 1. Insert organization first
@@ -149,7 +150,7 @@ async function createOrganizationRoute(request: NextRequest) {
 	const payload = await request.json();
 	const input = CreateOrganizationInputSchema.parse(payload);
 
-	const result = await createOrganization({ input, sessionUser: session.user });
+	const result = await createOrganization({ input, session: session });
 
 	return NextResponse.json(result);
 }

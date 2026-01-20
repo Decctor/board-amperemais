@@ -198,8 +198,8 @@ async function getGraphDataForPeriod({
 	return [];
 }
 
-async function getClientsGraph({ input, sessionUser }: { input: TGetClientsGraphInput; sessionUser: TAuthUserSession["user"] }) {
-	const userOrgId = sessionUser.organizacaoId;
+async function getClientsGraph({ input, sessionUser }: { input: TGetClientsGraphInput; sessionUser: TAuthUserSession }) {
+	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const period = {
@@ -281,7 +281,7 @@ const getClientsGraphRoute: NextApiHandler<TGetClientsGraphOutput> = async (req,
 		comparingPeriodBefore: (req.query.comparingPeriodBefore as string | undefined) ?? null,
 	});
 
-	const result = await getClientsGraph({ input, sessionUser: sessionUser.user });
+	const result = await getClientsGraph({ input, sessionUser });
 	return res.status(200).json(result);
 };
 
