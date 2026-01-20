@@ -8,6 +8,7 @@ import { useState } from "react";
 async function fetchSales(input: TGetSalesInput) {
 	const searchParams = new URLSearchParams();
 	if (input.page) searchParams.set("page", input.page.toString());
+	if (input.search) searchParams.set("search", input.search);
 	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
 	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
 	if (input.sellersIds) searchParams.set("sellersIds", input.sellersIds.join(","));
@@ -24,6 +25,7 @@ type UseSalesParams = {
 export function useSales({ initialParams }: UseSalesParams) {
 	const [params, setParams] = useState<TGetSalesInput>({
 		page: initialParams.page || 1,
+		search: initialParams.search || "",
 		periodAfter: initialParams.periodAfter || null,
 		periodBefore: initialParams.periodBefore || null,
 		sellersIds: initialParams.sellersIds || [],

@@ -1,5 +1,6 @@
 import type { TGetCampaignAnalyticsInput, TGetCampaignAnalyticsOutput } from "@/app/api/campaigns/analytics/route";
 import type { TGetCampaignsInput, TGetCampaignsOutput } from "@/app/api/campaigns/route";
+import type { TGetStatsBySegmentationInput, TGetStatsBySegmentationOutput } from "@/app/api/campaigns/stats/by-segmentation/route";
 import type { TGetCampaignFunnelInput, TGetCampaignFunnelOutput } from "@/app/api/campaigns/stats/funnel/route";
 import type { TGetCampaignGraphInput, TGetCampaignGraphOutput } from "@/app/api/campaigns/stats/graph/route";
 import type { TGetCampaignRankingInput, TGetCampaignRankingOutput } from "@/app/api/campaigns/stats/ranking/route";
@@ -149,5 +150,25 @@ export function useCampaignFunnel(input: TGetCampaignFunnelInput) {
 	return useQuery({
 		queryKey: ["campaign-funnel", input],
 		queryFn: async () => await fetchCampaignFunnel(input),
+	});
+}
+
+async function fetchStatsBySegmentation(input: TGetStatsBySegmentationInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.startDate) searchParams.set("startDate", input.startDate.toISOString());
+		if (input.endDate) searchParams.set("endDate", input.endDate.toISOString());
+		const { data } = await axios.get<TGetStatsBySegmentationOutput>(`/api/campaigns/stats/by-segmentation?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchStatsBySegmentation", error);
+		throw error;
+	}
+}
+
+export function useStatsBySegmentation(input: TGetStatsBySegmentationInput) {
+	return useQuery({
+		queryKey: ["campaign-stats-by-segmentation", input],
+		queryFn: async () => await fetchStatsBySegmentation(input),
 	});
 }
