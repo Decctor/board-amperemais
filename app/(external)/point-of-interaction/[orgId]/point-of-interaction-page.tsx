@@ -285,7 +285,7 @@ function PointOfInteractionWithAccumulationViaPDI({
 						</div>
 						<div className="text-center">
 							<h3 className="text-2xl md:text-3xl font-black tracking-tight">GANHAR CASHBACK</h3>
-							<p className="text-sm md:text-base opacity-90 mt-2 font-medium">
+							<p className="text-sm md:text-base opacity-90 mt-2 font-medium text-wrap whitespace-pre-wrap">
 								Registre sua compra agora e <br className="hidden md:block" /> acumule saldo para usar depois.
 							</p>
 						</div>
@@ -331,7 +331,7 @@ function PointOfInteractionWithAccumulationViaPDI({
 						<Trophy className="w-10 h-10" />
 						<div className="text-center">
 							<h3 className="text-lg font-bold uppercase">RANKING VENDEDORES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho</p>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho dos vendedores</p>
 						</div>
 					</Button>
 				</div>
@@ -369,7 +369,7 @@ function PointerOfInteractionWithoutAccumulationViaPDI({ org, router, handleOpen
 						</div>
 						<div className="text-center">
 							<h3 className="text-2xl md:text-3xl font-black tracking-tight">RESGATAR CASHBACK</h3>
-							<p className="text-sm md:text-base opacity-90 mt-2 font-medium">
+							<p className="text-sm md:text-base opacity-90 mt-2 font-medium text-wrap whitespace-pre-wrap">
 								Use seu saldo acumulado <br className="hidden md:block" /> para pagar suas compras.
 							</p>
 						</div>
@@ -402,7 +402,7 @@ function PointerOfInteractionWithoutAccumulationViaPDI({ org, router, handleOpen
 						<Trophy className="w-10 h-10" />
 						<div className="text-center">
 							<h3 className="text-lg font-bold uppercase">RANKING DE VENDEDORES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho</p>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho dos vendedores</p>
 						</div>
 					</Button>
 				</div>

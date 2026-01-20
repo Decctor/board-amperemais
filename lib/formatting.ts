@@ -163,25 +163,38 @@ export function formatPhoneAsBase(phone: string) {
 export function formatToPhone(value: string): string {
 	if (!value) return "";
 	value = value.replace(/\D/g, "");
+	// Limita a 11 dígitos (máximo para telefone brasileiro: DDD + 9 dígitos)
+	value = value.slice(0, 11);
 	value = value.replace(/(\d{2})(\d)/, "($1) $2");
 	value = value.replace(/(\d)(\d{4})$/, "$1-$2");
 	return value;
 }
 
 export function formatToCPF(value: string): string {
+	if (!value) return "";
+	value = value.replace(/\D/g, "");
+	// Limita a 11 dígitos (máximo para CPF)
+	value = value.slice(0, 11);
 	return value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/g, "$1.$2.$3-$4");
 }
 export function formatToCNPJ(value: string): string {
+	if (!value) return "";
+	value = value.replace(/\D/g, "");
+	// Limita a 14 dígitos (máximo para CNPJ)
+	value = value.slice(0, 14);
 	return value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/g, "$1.$2.$3/$4-$5");
 }
 export function formatToCPForCNPJ(value: string): string {
+	if (!value) return "";
 	const cnpjCpf = value.replace(/\D/g, "");
 
 	if (cnpjCpf.length === 11) {
-		return formatToCPF(cnpjCpf);
+		// Limita a 11 dígitos e formata como CPF
+		return formatToCPF(cnpjCpf.slice(0, 11));
 	}
 
-	return formatToCNPJ(cnpjCpf);
+	// Limita a 14 dígitos e formata como CNPJ
+	return formatToCNPJ(cnpjCpf.slice(0, 14));
 }
 export function formatToCEP(value: string): string {
 	return value
