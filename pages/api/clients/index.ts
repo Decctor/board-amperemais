@@ -180,6 +180,9 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	const clientIds = statsByClientResult.map((client) => client.clientId);
 	const clientsResult = await db.query.clients.findMany({
 		where: and(eq(clients.organizacaoId, userOrgId), inArray(clients.id, clientIds)),
+		with: {
+			saldos: true,
+		},
 	});
 
 	const clientsWithStats = clientsResult.map((client) => {

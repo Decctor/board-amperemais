@@ -19,7 +19,7 @@ import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/cli
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
 import type { TGetClientsOverallStatsInput } from "@/pages/api/clients/stats/overall";
 import dayjs from "dayjs";
-import { BadgeDollarSign, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { BadgeDollarSign, BadgePercent, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
@@ -312,9 +312,10 @@ type ClientCardProps = {
 	client: TGetClientsOutputDefault["clients"][number];
 };
 function ClientPageCard({ client }: ClientCardProps) {
+	const clientCashbackBalance = client.saldos.length > 0 ? client.saldos[0] : null;
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
-			<div className="w-full flex items-center justify-between gap-2">
+			<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
 					<div className="flex items-center gap-1">
@@ -344,6 +345,12 @@ function ClientPageCard({ client }: ClientCardProps) {
 							<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
 							<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(client.estatisticas.comprasValorTotal)}</p>
 						</div>
+						{clientCashbackBalance ? (
+							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+								<BadgePercent className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-bold tracking-tight uppercase">CASHBACK: {formatToMoney(clientCashbackBalance.saldoValorDisponivel)}</p>
+							</div>
+						) : null}
 					</div>
 				</div>
 			</div>

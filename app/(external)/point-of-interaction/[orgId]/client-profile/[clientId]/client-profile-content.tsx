@@ -373,6 +373,11 @@ function NewCashbackProgramRedemption({
 							value={infoHolder.saleValue.toString()}
 							onChange={(e) => updateInfoHolder({ saleValue: Number(e.target.value) })}
 							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+							onFocus={(e) => {
+								setTimeout(() => {
+									e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+								}, 300);
+							}}
 						/>
 					</div>
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
@@ -404,6 +409,11 @@ function NewCashbackProgramRedemption({
 							value={infoHolder.redemptionValue.toString()}
 							onChange={(e) => updateInfoHolder({ redemptionValue: Number(e.target.value) })}
 							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+							onFocus={(e) => {
+								setTimeout(() => {
+									e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+								}, 300);
+							}}
 						/>
 					</div>
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
@@ -441,6 +451,11 @@ function NewCashbackProgramRedemption({
 							onChange={(e) => updateInfoHolder({ operatorIdentifier: formatToNumericPassword(e.target.value) })}
 							placeholder="*****"
 							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+							onFocus={(e) => {
+								setTimeout(() => {
+									e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+								}, 300);
+							}}
 						/>
 					</div>
 				</div>

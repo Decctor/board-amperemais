@@ -139,6 +139,11 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 					placeholder="(00) 00000-0000"
 					value={params.phone}
 					handleChange={(value) => updateParams({ phone: formatToPhone(value) })}
+					onFocus={(e) => {
+						setTimeout(() => {
+							e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+						}, 300);
+					}}
 				/>
 			</form>
 			{isLoadingClient ? (
@@ -224,6 +229,11 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 				placeholder="Digite o nome do cliente"
 				value={infoHolder.nome}
 				handleChange={(value) => setInfoHolder((prev) => ({ ...prev, nome: value }))}
+				onFocus={(e) => {
+					setTimeout(() => {
+						e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+					}, 300);
+				}}
 			/>
 			<TextInput
 				label="CPF/CNPJ"
@@ -231,6 +241,11 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 				placeholder="Digite o CPF/CNPJ do cliente"
 				value={infoHolder.cpfCnpj ?? ""}
 				handleChange={(value) => setInfoHolder((prev) => ({ ...prev, cpfCnpj: formatToCPForCNPJ(value) }))}
+				onFocus={(e) => {
+					setTimeout(() => {
+						e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+					}, 300);
+				}}
 			/>
 			<LoadingButton type="submit" loading={isCreatingClient}>
 				CRIAR CADASTRO
