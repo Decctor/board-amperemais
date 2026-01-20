@@ -31,7 +31,7 @@ const SaleItemSchema = z.object({
 export const SaleSchema = z.object({
 	id: z.string({}),
 	chave: z.string({}),
-	cliente: z.string({}),
+	cliente: z.string({}).optional().nullable(),
 	data: z.string({}),
 	dataVenda: z.string({}),
 	modelo: z.enum(["DV", "55", "65", "3A", "02"]),

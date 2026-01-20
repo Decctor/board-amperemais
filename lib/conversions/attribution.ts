@@ -133,23 +133,32 @@ export async function processConversionAttribution(tx: DBTransaction, params: At
 		return;
 	}
 
+	let attributionConversionId: string | null = null;
 	// 6. Store attributions
 	for (const attr of attributions) {
 		const campaignSettings = campaignSettingsMap.get(attr.campanhaId);
 
-		await tx.insert(campaignConversions).values({
-			organizacaoId,
-			vendaId,
-			interacaoId: attr.interactionId,
-			campanhaId: attr.campanhaId,
-			clienteId,
-			atribuicaoModelo: campaignSettings?.model ?? "LAST_TOUCH",
-			atribuicaoPeso: attr.peso,
-			atribuicaoReceita: attr.receita,
-			dataInteracao: attr.dataInteracao,
-			dataConversao: dataVenda,
-			tempoParaConversaoMinutos: attr.tempoMinutos,
-		});
+		const insertedCampaignConversion = await tx
+			.insert(campaignConversions)
+			.values({
+				organizacaoId,
+				vendaId,
+				interacaoId: attr.interactionId,
+				campanhaId: attr.campanhaId,
+				clienteId,
+				atribuicaoModelo: campaignSettings?.model ?? "LAST_TOUCH",
+				atribuicaoPeso: attr.peso,
+				atribuicaoReceita: attr.receita,
+				dataInteracao: attr.dataInteracao,
+				dataConversao: dataVenda,
+				tempoParaConversaoMinutos: attr.tempoMinutos,
+			})
+			.returning({ id: campaignConversions.id });
+		const campaignConversionId = insertedCampaignConversion[0]?.id;
+
+		// If no attribution conversion id is set, set it to the campaign conversion id
+		// Setting the first attribution conversion id as the primary attribution conversion id
+		if (!attributionConversionId) attributionConversionId = campaignConversionId;
 	}
 
 	// 7. Update sale with primary campaign (the one with highest weight, or first in last-touch)
@@ -159,6 +168,8 @@ export async function processConversionAttribution(tx: DBTransaction, params: At
 			atribuicaoProcessada: true,
 			atribuicaoAplicavel: true,
 			atribuicaoCampanhaPrincipalId: attributions[0]?.campanhaId,
+			atribuicaoCampanhaConversaoId: attributionConversionId,
+			atribuicaoInteracaoId: attributions[0]?.interactionId,
 		})
 		.where(eq(sales.id, vendaId));
 }

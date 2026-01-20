@@ -39,7 +39,7 @@ export const cashbackProgramBalances = newTable("cashback_program_balances", {
 		.$defaultFn(() => crypto.randomUUID()),
 	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	clienteId: varchar("cliente_id", { length: 255 })
-		.references(() => clients.id)
+		.references(() => clients.id, { onDelete: "cascade" })
 		.notNull(),
 	programaId: varchar("programa_id", { length: 255 })
 		.references(() => cashbackPrograms.id)
@@ -67,7 +67,7 @@ export const cashbackProgramTransactions = newTable("cashback_program_transactio
 		.$defaultFn(() => crypto.randomUUID()),
 	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	clienteId: varchar("cliente_id", { length: 255 })
-		.references(() => clients.id)
+		.references(() => clients.id, { onDelete: "cascade" })
 		.notNull(),
 	vendaId: varchar("venda_id", { length: 255 }).references(() => sales.id),
 	vendaValor: doublePrecision("venda_valor").notNull().default(0),

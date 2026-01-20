@@ -111,7 +111,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutput["data"]["default"]["sales"][
 				<div className="flex flex-col gap-1.5 grow">
 					<div className="flex items-center gap-2">
 						<CircleUser className="w-4 h-4 text-primary/70" />
-						<h1 className="text-sm font-bold tracking-tight uppercase">{sale.cliente.nome}</h1>
+						<h1 className="text-sm font-bold tracking-tight uppercase">{sale.cliente?.nome ?? "AO CONSUMIDOR"}</h1>
 					</div>
 					<div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
 						<div className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded-md">

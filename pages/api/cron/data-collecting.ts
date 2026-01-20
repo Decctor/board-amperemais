@@ -250,9 +250,10 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					const isValidSale = OnlineSale.natureza === "SN01";
 					// First, we check for an existing client with the same name (in this case, our primary key for the integration)
 					const equivalentSaleClient = existingClientsMap.get(OnlineSale.cliente);
+					const isValidClient = OnlineSale.cliente !== "AO CONSUMIDOR";
 					// Initalize the saleClientId holder with the existing client (if any)
 					let saleClientId = equivalentSaleClient?.id;
-					if (!saleClientId) {
+					if (!saleClientId && isValidClient) {
 						console.log(`[ORG: ${organization.id}] [INFO] [DATA_COLLECTING] [CLIENT] Creating new client for ${OnlineSale.cliente}`);
 						// If no existing client is found, we create a new one
 						const insertedClientResponse = await tx
@@ -550,8 +551,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						// Defining the saleId
 						saleId = insertedSaleId;
 
-						// Process conversion attribution for new valid sales
-						if (insertedSaleId && isValidSale) {
+						// Process conversion attribution for new valid sales (and valid client)
+						if (insertedSaleId && isValidSale && saleClientId) {
 							await processConversionAttribution(tx, {
 								vendaId: insertedSaleId,
 								clienteId: saleClientId,
@@ -691,6 +692,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								`[ORG: ${organization.id}] ${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`,
 							);
 							for (const campaign of applicableCampaigns) {
+								if (!saleClientId) continue; // If no sale client id is found, skip the campaign
 								// Validate campaign frequency before scheduling
 								const canSchedule = await canScheduleCampaignForClient(
 									tx,
@@ -782,6 +784,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					}
 					// Checking for applicable cashback program balance updates
 					if (cashbackProgram && cashbackProgramAllowsAccumulationViaIntegration && isValidSale && isNewSale) {
+						if (!saleClientId) continue; // If no sale client id is found, skip the cashback program balance update
 						const clientCashbackProgramBalance = existingCashbackProgramBalancesMap.get(saleClientId);
 
 						if (clientCashbackProgramBalance) {
@@ -966,7 +969,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							}
 						}
 					}
-					if (isValidSale) {
+					if (isValidSale && saleClientId) {
 						await tx
 							.update(clients)
 							.set({

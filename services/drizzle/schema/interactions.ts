@@ -13,7 +13,7 @@ export const interactions = newTable("interactions", {
 		.$defaultFn(() => crypto.randomUUID()),
 	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	clienteId: varchar("cliente_id", { length: 255 })
-		.references(() => clients.id)
+		.references(() => clients.id, { onDelete: "cascade" })
 		.notNull(),
 	campanhaId: varchar("campanha_id", { length: 255 }).references(() => campaigns.id),
 	titulo: text("titulo").notNull(),

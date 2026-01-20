@@ -1,8 +1,10 @@
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { campaignConversions } from "./campaign-conversions";
 import { campaigns } from "./campaigns";
 import { clients } from "./clients";
 import { newTable } from "./common";
+import { interactions } from "./interactions";
 import { organizations } from "./organizations";
 import { partners } from "./partners";
 import { productAddOnOptions, productVariants, products } from "./products";
@@ -15,9 +17,7 @@ export const sales = newTable(
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
 		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
-		clienteId: varchar("cliente_id", { length: 255 })
-			.references(() => clients.id)
-			.notNull(),
+		clienteId: varchar("cliente_id", { length: 255 }).references(() => clients.id, { onDelete: "set null" }), // allow nulls for non-identified clients
 		idExterno: text("id_externo").notNull(),
 		valorTotal: doublePrecision("valor_total").notNull(),
 		custoTotal: doublePrecision("custo_total").notNull(),
@@ -40,6 +40,8 @@ export const sales = newTable(
 		// Conversion Attribution fields
 		atribuicaoProcessada: boolean("atribuicao_processada").default(false),
 		atribuicaoCampanhaPrincipalId: varchar("atribuicao_campanha_principal_id", { length: 255 }).references(() => campaigns.id),
+		atribuicaoCampanhaConversaoId: varchar("atribuicao_campanha_conversao_id", { length: 255 }),
+		atribuicaoInteracaoId: varchar("atribuicao_interacao_id", { length: 255 }).references(() => interactions.id),
 		atribuicaoAplicavel: boolean("atribuicao_aplicavel").default(false),
 	},
 	(table) => ({
@@ -71,6 +73,14 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 		fields: [sales.atribuicaoCampanhaPrincipalId],
 		references: [campaigns.id],
 	}),
+	atribuicaoInteracao: one(interactions, {
+		fields: [sales.atribuicaoInteracaoId],
+		references: [interactions.id],
+	}),
+	atribuicaoCampanhaConversao: one(campaignConversions, {
+		fields: [sales.atribuicaoCampanhaConversaoId],
+		references: [campaignConversions.id],
+	}),
 	itens: many(saleItems),
 }));
 
@@ -84,9 +94,7 @@ export const saleItems = newTable(
 		vendaId: varchar("venda_id", { length: 255 })
 			.references(() => sales.id, { onDelete: "cascade" })
 			.notNull(),
-		clienteId: varchar("cliente_id", { length: 255 })
-			.references(() => clients.id, { onDelete: "cascade" })
-			.notNull(),
+		clienteId: varchar("cliente_id", { length: 255 }).references(() => clients.id, { onDelete: "cascade" }),
 		produtoId: varchar("produto_id", { length: 255 })
 			.references(() => products.id)
 			.notNull(),

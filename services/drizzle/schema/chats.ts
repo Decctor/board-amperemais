@@ -24,7 +24,7 @@ export const chats = newTable("chats", {
 		.references(() => organizations.id)
 		.notNull(),
 	clienteId: varchar("cliente_id", { length: 255 })
-		.references(() => clients.id)
+		.references(() => clients.id, { onDelete: "cascade" })
 		.notNull(),
 	whatsappConexaoId: varchar("whatsapp_conexao_id", { length: 255 }).references(() => whatsappConnections.id, {
 		onDelete: "set null",
@@ -73,10 +73,10 @@ export const chatServices = newTable("chat_services", {
 		.references(() => organizations.id)
 		.notNull(),
 	chatId: varchar("chat_id", { length: 255 })
-		.references(() => chats.id)
+		.references(() => chats.id, { onDelete: "cascade" })
 		.notNull(),
 	clienteId: varchar("cliente_id", { length: 255 })
-		.references(() => clients.id)
+		.references(() => clients.id, { onDelete: "cascade" })
 		.notNull(),
 	responsavelTipo: chatServiceResponsibleTypeEnum("responsavel_tipo").notNull().default("USUÁRIO"), // User, AI, Business-App or Client
 	responsavelUsuarioId: varchar("responsavel_usuario_id", { length: 255 }).references(() => users.id, {
@@ -112,7 +112,7 @@ export const chatMessages = newTable("chat_messages", {
 		.references(() => organizations.id)
 		.notNull(),
 	chatId: varchar("chat_id", { length: 255 })
-		.references(() => chats.id)
+		.references(() => chats.id, { onDelete: "cascade" })
 		.notNull(),
 	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }).references(() => whatsappTemplates.id, {
 		onDelete: "set null",

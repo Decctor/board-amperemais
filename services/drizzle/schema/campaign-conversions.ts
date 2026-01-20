@@ -3,8 +3,8 @@ import { doublePrecision, index, integer, text, timestamp, varchar } from "drizz
 import { campaigns } from "./campaigns";
 import { clients } from "./clients";
 import { newTable } from "./common";
-import { organizations } from "./organizations";
 import { interactions } from "./interactions";
+import { organizations } from "./organizations";
 import { sales } from "./sales";
 
 export const campaignConversions = newTable(

@@ -59,6 +59,14 @@ const weeklyReportHandler: NextApiHandler = async (req, res) => {
 
 		for (const organization of organizationsList) {
 			try {
+				const whatsappConnection = await db.query.whatsappConnections.findFirst({
+					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
+					with: {
+						telefones: true,
+					},
+				});
+				if (!whatsappConnection) continue;
+
 				console.log(`[ORG: ${organization.id}] [INFO] [WEEKLY_REPORT] Generating report`);
 
 				// Get data for last week (Sunday to Saturday of last week)
@@ -153,6 +161,7 @@ const weeklyReportHandler: NextApiHandler = async (req, res) => {
 						const result = await sendTemplateWhatsappMessage({
 							fromPhoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
 							templatePayload: templatePayload.data,
+							whatsappToken: whatsappConnection.token,
 						});
 
 						allResults.push({
