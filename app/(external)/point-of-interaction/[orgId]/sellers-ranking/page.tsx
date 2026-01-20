@@ -72,7 +72,7 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 	const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
 	return (
-		<div className="w-full min-h-screen bg-secondary p-6 md:p-10 flex flex-col items-center">
+		<div className="w-full min-h-full flex-1 p-6 md:p-10 flex flex-col items-center">
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header */}
 				<div className="flex items-center gap-4">

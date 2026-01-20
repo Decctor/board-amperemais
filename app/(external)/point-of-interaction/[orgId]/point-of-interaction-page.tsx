@@ -10,6 +10,7 @@ import { formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formattin
 import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
+import LogoHorizontalRecompraCRM from "@/utils/images/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.png";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Building2, Coins, Loader2, ShoppingCart, Trophy } from "lucide-react";
 import Image from "next/image";
@@ -18,7 +19,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import useSound from "use-sound";
-
 type ClientLookupResult = {
 	id: string;
 	nome: string;
@@ -51,9 +51,9 @@ export default function PointOfInteractionContent({
 	const allowAccumulation = cashbackProgram.acumuloPermitirViaPontoIntegracao ?? true;
 
 	return (
-		<div className="w-full min-h-screen bg-secondary p-6 md:p-10 flex flex-col items-center">
+		<div className="grow bg-background p-6 md:p-10 flex flex-col items-center gap-6">
 			{/* HEADER SIMPLIFICADO: Foco na Marca */}
-			<header className="flex flex-col items-center mb-12 text-center">
+			<header className="flex flex-col items-center text-center">
 				{org.logoUrl ? (
 					<div className="relative w-16 h-16 md:w-24 md:h-24 mb-4 drop-shadow-sm rounded-full overflow-hidden">
 						<Image src={org.logoUrl} alt={org.nome} fill className="object-contain" />
@@ -63,8 +63,7 @@ export default function PointOfInteractionContent({
 						<Building2 className="w-12 h-12 text-brand" />
 					</div>
 				)}
-				<h1 className="text-xl md:text-2xl font-black uppercase tracking-tighter">{org.nome}</h1>
-				<p className="text-muted-foreground font-medium tracking-tight">TOQUE EM UMA OPÇÃO PARA COMEÇAR</p>
+				<h1 className="text-xl md:text-2xl font-black uppercase tracking-tighter">SEJA BEM VINDO À {org.nome}</h1>
 			</header>
 
 			{allowAccumulation ? (
@@ -258,13 +257,13 @@ function PointOfInteractionWithAccumulationViaPDI({
 	handleOpenProfileMenu,
 }: PointOfInteractionWithAccumulationViaPDIProps) {
 	return (
-		<main className="w-full max-w-5xl">
-			<div className="flex items-stretch gap-6 md:gap-10">
-				<div className="w-1/2 flex flex-col gap-6">
+		<main className="w-full max-w-5xl flex-1 flex flex-col">
+			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
+				<div className="w-full md:w-1/2 flex flex-col gap-6">
 					<Button
 						onClick={() => router.push(`/point-of-interaction/${org.id}/new-sale`)}
 						variant="default"
-						className="group relative flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
+						className="group relative flex flex-col items-center justify-center gap-4 h-auto flex-1 rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
 					>
 						<div className="bg-white/20 p-6 rounded-3xl group-hover:scale-110 transition-transform">
 							<ShoppingCart className="w-16 h-16 md:w-20 md:h-20" />
@@ -278,16 +277,19 @@ function PointOfInteractionWithAccumulationViaPDI({
 						<ArrowRight className="absolute bottom-8 right-8 w-8 h-8 opacity-50" />
 					</Button>
 				</div>
-				<div className="w-1/2 flex flex-col gap-6">
+				<div className="w-full md:w-1/2 flex flex-col gap-6">
 					{/* MEU SALDO / RESGATAR CASHBACK */}
 					<Button
 						onClick={handleOpenProfileMenu}
 						variant="outline"
 						size="fit"
-						className="flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
+						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
 					>
 						<Coins className="w-10 h-10" />
-						<h3 className="text-lg font-bold uppercase">MEU SALDO</h3>
+						<div className="text-center">
+							<h3 className="text-lg font-bold uppercase">MEU SALDO</h3>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Consulte seu extrato</p>
+						</div>
 					</Button>
 
 					{/* RANKING CLIENTES */}
@@ -295,10 +297,13 @@ function PointOfInteractionWithAccumulationViaPDI({
 						onClick={() => router.push(`/point-of-interaction/${org.id}/clients-ranking`)}
 						variant="ghost"
 						size="fit"
-						className="flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
+						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full bg-secondary"
 					>
 						<Trophy className="w-10 h-10" />
-						<h3 className="text-lg font-bold uppercase">RANKING CLIENTES</h3>
+						<div className="text-center">
+							<h3 className="text-lg font-bold uppercase">RANKING CLIENTES</h3>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Veja os maiores compradores</p>
+						</div>
 					</Button>
 
 					{/* RANKING VENDEDORES */}
@@ -306,10 +311,13 @@ function PointOfInteractionWithAccumulationViaPDI({
 						onClick={() => router.push(`/point-of-interaction/${org.id}/sellers-ranking`)}
 						variant="outline"
 						size="fit"
-						className="flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
+						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full bg-secondary"
 					>
 						<Trophy className="w-10 h-10" />
-						<h3 className="text-lg font-bold uppercase">RANKING VENDEDORES</h3>
+						<div className="text-center">
+							<h3 className="text-lg font-bold uppercase">RANKING VENDEDORES</h3>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho</p>
+						</div>
 					</Button>
 				</div>
 			</div>
@@ -331,15 +339,15 @@ type PointOfInteractionWithoutAccumulationViaPDIProps = {
 };
 function PointerOfInteractionWithoutAccumulationViaPDI({ org, router, handleOpenProfileMenu }: PointOfInteractionWithoutAccumulationViaPDIProps) {
 	return (
-		<main className="w-full max-w-5xl">
+		<main className="w-full max-w-5xl flex-1 flex flex-col">
 			{/* GRID DE AÇÕES: 2 colunas no tablet */}
-			<div className="flex items-stretch gap-6 md:gap-10">
-				<div className="w-1/2 flex flex-col gap-6">
+			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
+				<div className="w-full md:w-1/2 flex flex-col gap-6">
 					{/* CARD PRINCIPAL: NOVA COMPRA (MAIOR DESTAQUE) */}
 					<Button
 						onClick={handleOpenProfileMenu}
 						variant="default"
-						className="group relative flex flex-col items-center justify-center gap-4 h-auto aspect-4/3 md:aspect-square rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
+						className="group relative flex flex-col items-center justify-center gap-4 h-auto flex-1 rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
 					>
 						<div className="bg-white/20 p-6 rounded-3xl group-hover:scale-110 transition-transform">
 							<ShoppingCart className="w-16 h-16 md:w-20 md:h-20" />
@@ -354,16 +362,19 @@ function PointerOfInteractionWithoutAccumulationViaPDI({ org, router, handleOpen
 					</Button>
 				</div>
 
-				<div className="w-1/2 flex flex-col gap-6">
+				<div className="w-full md:w-1/2 flex flex-col gap-6">
 					{/* RANKING CLIENTES */}
 					<Button
 						onClick={() => router.push(`/point-of-interaction/${org.id}/clients-ranking`)}
 						variant="ghost"
 						size="fit"
-						className="flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
+						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
 					>
 						<Trophy className="w-10 h-10" />
-						<h3 className="text-lg font-bold uppercase">RANKING DE CLIENTES</h3>
+						<div className="text-center">
+							<h3 className="text-lg font-bold uppercase">RANKING DE CLIENTES</h3>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Veja os maiores compradores</p>
+						</div>
 					</Button>
 
 					{/* RANKING VENDEDORES */}
@@ -371,10 +382,13 @@ function PointerOfInteractionWithoutAccumulationViaPDI({ org, router, handleOpen
 						onClick={() => router.push(`/point-of-interaction/${org.id}/sellers-ranking`)}
 						variant="outline"
 						size={"fit"}
-						className="flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
+						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
 					>
 						<Trophy className="w-10 h-10" />
-						<h3 className="text-lg font-bold uppercase">RANKING DE VENDEDORES</h3>
+						<div className="text-center">
+							<h3 className="text-lg font-bold uppercase">RANKING DE VENDEDORES</h3>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho</p>
+						</div>
 					</Button>
 				</div>
 			</div>

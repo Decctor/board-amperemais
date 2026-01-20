@@ -67,7 +67,7 @@ export default async function ClientsRankingPage({ params }: { params: Promise<{
 	}));
 
 	return (
-		<div className="w-full min-h-screen bg-secondary p-6 md:p-10 flex flex-col items-center">
+		<div className="w-full min-h-full flex-1 p-6 md:p-10 flex flex-col items-center">
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header */}
 				<div className="flex items-center gap-4">
@@ -127,7 +127,7 @@ export default async function ClientsRankingPage({ params }: { params: Promise<{
 											)}
 										</div>
 										<div className="min-w-0 flex-1">
-											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic text-brand">{client.clienteNome}</h3>
+											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic text-primary">{client.clienteNome}</h3>
 										</div>
 									</div>
 
