@@ -1,4 +1,5 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
@@ -594,6 +595,25 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								dataVenda: saleDate,
 							})
 							.where(eq(sales.id, existingSale.id));
+
+						// Check if sale was canceled
+						const wasPreviouslyValid = existingSale.natureza === "SN01" && existingSale.valorTotal > 0;
+						const isNowCanceled = OnlineSale.natureza !== "SN01" || Number(OnlineSale.valor) === 0;
+
+						if (wasPreviouslyValid && isNowCanceled && saleClientId) {
+							console.log(
+								`[ORG: ${organization.id}] [SALE_CANCELED] Venda ${OnlineSale.id} foi cancelada. ` +
+									`Revertendo cashback e cancelando interações...`,
+							);
+
+							await reverseSaleCashback({
+								tx,
+								saleId: existingSale.id,
+								clientId: saleClientId,
+								organizationId: organization.id,
+								reason: "VENDA_CANCELADA",
+							});
+						}
 
 						// Now, since we can reliably update sale items, we will delete all previous items and insert the new ones
 
