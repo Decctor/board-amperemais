@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
+import { whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -46,6 +47,7 @@ async function deleteWhatsappConnection({ input, session }: { input: string; ses
 		});
 	const deletedWhatsappConnectionId = deletedWhatsappConnection[0]?.id;
 	if (!deletedWhatsappConnectionId) throw new createHttpError.NotFound("Conexão do WhatsApp não encontrada.");
+	await db.delete(whatsappTemplates).where(eq(whatsappTemplates.organizacaoId, userOrgId));
 	return {
 		data: {
 			deletedId: deletedWhatsappConnectionId,

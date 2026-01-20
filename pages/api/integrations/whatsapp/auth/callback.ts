@@ -1,5 +1,6 @@
 import { FacebookOAuth } from "@/lib/authentication/oauth";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
+import { syncWhatsappTemplates } from "@/lib/whatsapp/template-management";
 import { db } from "@/services/drizzle";
 import { type TNewWhatsappConnection, whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema";
 import type { OAuth2Tokens } from "arctic";
@@ -157,7 +158,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		)
 	).filter((p) => !!p);
 
-	await db.transaction(async (tx) => {
+	const insertedPhones = await db.transaction(async (tx) => {
 		const whatsappConnection: TNewWhatsappConnection = {
 			organizacaoId: userOrgId,
 			token: accessToken ?? "",
@@ -181,8 +182,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 					numero: phone.numero,
 				})),
 			)
-			.returning({ id: whatsappConnectionPhones.id });
+			.returning({ id: whatsappConnectionPhones.id, whatsappBusinessAccountId: whatsappConnectionPhones.whatsappBusinessAccountId });
+
+		return insertedWhatsappConnectionPhones;
 	});
+
+	// Sync templates for each connected phone
+	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Starting automatic template sync for connected phones");
+	for (const phone of insertedPhones) {
+		try {
+			const syncResult = await syncWhatsappTemplates({
+				whatsappToken: accessToken ?? "",
+				whatsappBusinessAccountId: phone.whatsappBusinessAccountId,
+				phoneId: phone.id,
+				organizationId: userOrgId,
+				userId: sessionUser.user.id,
+				db,
+			});
+			console.log(
+				`[INFO] [WHATSAPP_CONNECT_CALLBACK] Template sync completed for phone ${phone.id}. Created: ${syncResult.created}, Updated: ${syncResult.updated}, Errors: ${syncResult.errors}`,
+			);
+		} catch (error) {
+			console.error(`[ERROR] [WHATSAPP_CONNECT_CALLBACK] Failed to sync templates for phone ${phone.id}:`, error);
+			// Don't fail the connection if template sync fails
+		}
+	}
 
 	return res.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?view=meta-oauth`);
 }

@@ -1,11 +1,13 @@
 import type { TGetWhatsappTemplatesOutputDefault } from "@/app/api/whatsapp-templates/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { syncWhatsappTemplates } from "@/lib/mutations/whatsapp-templates";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
-import { CircleGauge, Diamond, Phone, Plus } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { CircleGauge, Diamond, Phone, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import NewWhatsappTemplate from "../Modals/WhatsappTemplates/NewWhatsappTemplate";
@@ -36,9 +38,36 @@ export default function SettingsWhatsappTemplates({ user }: SettingsWhatsappTemp
 
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
+
+	const { mutate: handleSyncMutation, isPending: isSyncingMutation } = useMutation({
+		mutationFn: syncWhatsappTemplates,
+		onMutate: handleOnMutate,
+		onSuccess: (data) => {
+			toast.success(data.message, {
+				description: `${data.data.summary.totalCreated} templates criados, ${data.data.summary.totalUpdated} atualizados`,
+			});
+		},
+		onError: (error) => {
+			toast.error("Erro ao sincronizar templates", {
+				description: getErrorMessage(error),
+			});
+		},
+		onSettled: handleOnSettled,
+	});
+
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end gap-2">
+				<Button
+					size="sm"
+					variant="outline"
+					className="flex items-center gap-2"
+					onClick={() => handleSyncMutation({})}
+					disabled={isSyncingMutation || isLoading}
+				>
+					<RefreshCw className={cn("w-4 h-4 min-w-4 min-h-4", isSyncingMutation && "animate-spin")} />
+					{isSyncingMutation ? "SINCRONIZANDO..." : "SINCRONIZAR"}
+				</Button>
 				<Button size="sm" className="flex items-center gap-2" onClick={() => setNewWhatsappTemplateModalIsOpen(true)}>
 					<Plus className="w-4 h-4 min-w-4 min-h-4" />
 					NOVO TEMPLATE
