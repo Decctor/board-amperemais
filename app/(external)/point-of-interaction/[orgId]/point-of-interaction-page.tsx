@@ -126,6 +126,7 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 			closeMenu={closeMenu}
 			stateIsLoading={false}
 			stateError={null}
+			drawerContentClassName="min-h-[50vh]"
 		>
 			<form
 				className="w-full"
