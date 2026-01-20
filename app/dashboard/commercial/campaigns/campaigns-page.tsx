@@ -1,6 +1,7 @@
 "use client";
 import type { TGetCampaignAnalyticsInput } from "@/app/api/campaigns/analytics/route";
 import type { TGetCampaignsOutputDefault } from "@/app/api/campaigns/route";
+import CampaignsBySegmentation from "@/components/Campaigns/CampaignsBySegmentation";
 import CampaignsFunnel from "@/components/Campaigns/CampaignsFunnel";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import CampaignsRanking from "@/components/Campaigns/CampaignsRanking";
@@ -261,6 +262,9 @@ function CampaignsStatsView() {
 			</div>
 			<div className="w-full h-[550px]">
 				<CampaignsFunnel startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
+			</div>
+			<div className="w-full h-[550px]">
+				<CampaignsBySegmentation startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
 			</div>
 		</div>
 	);

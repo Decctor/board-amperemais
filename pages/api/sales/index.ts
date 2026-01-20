@@ -219,6 +219,12 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 					},
 				},
 			},
+			atribuicaoCampanhaPrincipal: {
+				columns: {
+					id: true,
+					descricao: true,
+				},
+			},
 		},
 		orderBy: (fields, { desc }) => desc(fields.dataVenda),
 		offset: skip,
@@ -528,29 +534,27 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 						value: campaign.execucaoAgendadaValor,
 					});
 
-					const [insertedInteraction] = await tx.insert(interactions).values({
-						clienteId: input.clientId,
-						campanhaId: campaign.id,
-						organizacaoId: input.orgId,
-						titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
-						tipo: "ENVIO-MENSAGEM",
-						descricao: `Cliente acumulou R$ ${(accumulatedBalance / 100).toFixed(2)} em cashback. Total acumulado: R$ ${(newOverallAccumulatedBalance / 100).toFixed(2)}.`,
-						agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-						agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-						metadados: {
-							cashbackAcumuladoValor: accumulatedBalance,
-							whatsappMensagemId: null,
-							whatsappTemplateId: null,
-						},
-					}).returning({ id: interactions.id });
+					const [insertedInteraction] = await tx
+						.insert(interactions)
+						.values({
+							clienteId: input.clientId,
+							campanhaId: campaign.id,
+							organizacaoId: input.orgId,
+							titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+							tipo: "ENVIO-MENSAGEM",
+							descricao: `Cliente acumulou R$ ${(accumulatedBalance / 100).toFixed(2)} em cashback. Total acumulado: R$ ${(newOverallAccumulatedBalance / 100).toFixed(2)}.`,
+							agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+							agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							metadados: {
+								cashbackAcumuladoValor: accumulatedBalance,
+								whatsappMensagemId: null,
+								whatsappTemplateId: null,
+							},
+						})
+						.returning({ id: interactions.id });
 
 					// Check for immediate processing (execucaoAgendadaValor === 0)
-					if (
-						campaign.execucaoAgendadaValor === 0 &&
-						campaign.whatsappTemplate &&
-						whatsappConnection &&
-						clientData
-					) {
+					if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && clientData) {
 						immediateProcessingDataList.push({
 							interactionId: insertedInteraction.id,
 							organizationId: input.orgId,
