@@ -232,6 +232,10 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 					clientId={client.id}
 					clientAvailableBalance={balance.saldoValorDisponivel}
 					initialRedemptionValue={selectedRedemptionValue}
+					redemptionLimit={{
+						tipo: cashbackProgram.resgateLimiteTipo ?? null,
+						valor: cashbackProgram.resgateLimiteValor ?? null,
+					}}
 					callbacks={{
 						onSuccess() {
 							handleCloseRedemptionMenu();
@@ -250,6 +254,10 @@ type NewCashbackProgramRedemptionProps = {
 	clientId: string;
 	clientAvailableBalance: number;
 	initialRedemptionValue: number;
+	redemptionLimit: {
+		tipo: string | null;
+		valor: number | null;
+	};
 	callbacks: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -263,6 +271,7 @@ function NewCashbackProgramRedemption({
 	clientId,
 	clientAvailableBalance,
 	initialRedemptionValue,
+	redemptionLimit,
 	callbacks,
 	closeMenu,
 }: NewCashbackProgramRedemptionProps) {
@@ -276,6 +285,32 @@ function NewCashbackProgramRedemption({
 	const [successData, setSuccessData] = useState<Awaited<TCreateCashbackProgramRedemptionOutput>["data"] | null>(null);
 
 	const [playSuccess] = useSound("/sounds/success.mp3");
+
+	// Calculate max allowed redemption based on limit config
+	const getMaxAllowedRedemption = () => {
+		let maxByLimit = Number.MAX_SAFE_INTEGER; // No limit by default
+		if (redemptionLimit.tipo && redemptionLimit.valor !== null) {
+			if (redemptionLimit.tipo === "FIXO") {
+				maxByLimit = redemptionLimit.valor;
+			} else if (redemptionLimit.tipo === "PERCENTUAL" && infoHolder.saleValue > 0) {
+				maxByLimit = (infoHolder.saleValue * redemptionLimit.valor) / 100;
+			}
+		}
+		return Math.min(clientAvailableBalance, maxByLimit);
+	};
+
+	const getLimitDescription = () => {
+		if (!redemptionLimit.tipo || redemptionLimit.valor === null) return null;
+		if (redemptionLimit.tipo === "FIXO") {
+			return `Limite máximo: ${formatToMoney(redemptionLimit.valor)}`;
+		}
+		return `Limite máximo: ${redemptionLimit.valor}% do valor da compra`;
+	};
+
+	const isExceedingLimit = () => {
+		const maxAllowed = getMaxAllowedRedemption();
+		return infoHolder.redemptionValue > maxAllowed;
+	};
 
 	function updateInfoHolder(changes: Partial<TCreateCashbackProgramRedemptionInput>) {
 		setInfoHolder((prev) => ({ ...prev, ...changes }));
@@ -444,7 +479,19 @@ function NewCashbackProgramRedemption({
 					<h3 className="text-red-500 font-black text-center p-2 rounded-lg border border-red-500 bg-red-200">
 						OOPS, SALDO INSUFICIENTE PARA ESTE RESGATE :(
 					</h3>
+				) : isExceedingLimit() ? (
+					<h3 className="text-red-500 font-black text-center p-2 rounded-lg border border-red-500 bg-red-200">
+						VALOR EXCEDE O LIMITE DE RESGATE PERMITIDO
+					</h3>
 				) : null}
+				{getLimitDescription() && (
+					<p className="text-[0.65rem] font-medium text-muted-foreground text-center italic">
+						{getLimitDescription()}
+						{infoHolder.saleValue > 0 && redemptionLimit.tipo === "PERCENTUAL" && (
+							<> (Máx: {formatToMoney(getMaxAllowedRedemption())})</>
+						)}
+					</p>
+				)}
 				<div className="w-full flex flex-col gap-1.5">
 					<h2 className="text-xl font-medium uppercase tracking-tight">SENHA DO OPERADOR</h2>
 					<div className="relative max-w-md mx-auto">

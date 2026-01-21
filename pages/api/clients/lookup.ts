@@ -80,6 +80,15 @@ async function getClientByLookup(input: TClientByLookupInput) {
 					saldoValorAcumuladoTotal: true,
 					saldoValorResgatadoTotal: true,
 				},
+				with: {
+					programa: {
+						columns: {
+							id: true,
+							resgateLimiteTipo: true,
+							resgateLimiteValor: true,
+						},
+					},
+				},
 			},
 		},
 	});

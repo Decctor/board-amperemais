@@ -91,7 +91,29 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	};
 
 	const getAvailableCashback = () => client?.saldos?.[0]?.saldoValorDisponivel ?? 0;
-	const getMaxCashbackToUse = () => Math.min(getAvailableCashback(), state.sale.valor);
+	const getRedemptionLimitConfig = () => {
+		const programa = client?.saldos?.[0]?.programa;
+		return {
+			tipo: programa?.resgateLimiteTipo ?? null,
+			valor: programa?.resgateLimiteValor ?? null,
+		};
+	};
+	const getMaxCashbackToUse = () => {
+		const available = getAvailableCashback();
+		const saleValue = state.sale.valor;
+		const limitConfig = getRedemptionLimitConfig();
+
+		let maxByLimit = saleValue; // Default: limited by sale value
+		if (limitConfig.tipo && limitConfig.valor !== null) {
+			if (limitConfig.tipo === "FIXO") {
+				maxByLimit = limitConfig.valor;
+			} else if (limitConfig.tipo === "PERCENTUAL") {
+				maxByLimit = (saleValue * limitConfig.valor) / 100;
+			}
+		}
+
+		return Math.min(available, saleValue, maxByLimit);
+	};
 	const getFinalValue = () => Math.max(0, state.sale.valor - (state.sale.cashback.aplicar ? state.sale.cashback.valor : 0));
 
 	const { mutate: createSaleMutation, isPending: isCreatingSale } = useMutation({
@@ -178,6 +200,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								applied={state.sale.cashback.aplicar}
 								amount={state.sale.cashback.valor}
 								finalValue={getFinalValue()}
+								redemptionLimit={getRedemptionLimitConfig()}
 								onToggle={(v) =>
 									updateCashback({
 										aplicar: v,
@@ -452,6 +475,7 @@ function CashbackStep({
 	onAmountChange,
 	saleValue,
 	finalValue,
+	redemptionLimit,
 	onSubmit,
 }: {
 	available: number;
@@ -462,8 +486,16 @@ function CashbackStep({
 	onAmountChange: (amount: number) => void;
 	saleValue: number;
 	finalValue: number;
+	redemptionLimit: { tipo: string | null; valor: number | null };
 	onSubmit: () => void;
 }) {
+	const getLimitDescription = () => {
+		if (!redemptionLimit.tipo || redemptionLimit.valor === null) return null;
+		if (redemptionLimit.tipo === "FIXO") {
+			return `Limite máximo: ${formatToMoney(redemptionLimit.valor)}`;
+		}
+		return `Limite máximo: ${redemptionLimit.valor}% do valor da compra`;
+	};
 	return (
 		<form
 			className="space-y-6 animate-in fade-in slide-in-from-bottom-4"
@@ -492,6 +524,9 @@ function CashbackStep({
 						<p className="text-xl font-black text-brand">{formatToMoney(maxAllowed)}</p>
 					</div>
 				</div>
+				{getLimitDescription() && (
+					<p className="text-[0.65rem] font-medium text-muted-foreground text-center mt-2 italic">{getLimitDescription()}</p>
+				)}
 			</div>
 
 			{applied && (

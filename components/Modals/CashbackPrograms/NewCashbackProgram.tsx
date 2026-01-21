@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import CashbackProgramsAccumulationBlock from "./Blocks/Accumulation";
 import CashbackProgramsExpirationBlock from "./Blocks/Expiration";
 import CashbackProgramsGeneralBlock from "./Blocks/General";
+import CashbackProgramsRedemptionLimitBlock from "./Blocks/RedemptionLimit";
 
 type NewCashbackProgramProps = {
 	user: TAuthUserSession["user"];
@@ -57,6 +58,7 @@ export default function NewCashbackProgram({ user, closeModal, callbacks }: NewC
 			<CashbackProgramsGeneralBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateCashbackProgram} />
 			<CashbackProgramsAccumulationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateCashbackProgram} />
 			<CashbackProgramsExpirationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateCashbackProgram} />
+			<CashbackProgramsRedemptionLimitBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateCashbackProgram} />
 		</ResponsiveMenu>
 	);
 }

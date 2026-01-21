@@ -2,6 +2,7 @@ import type {
 	TAttributionModelEnum,
 	TCampaignTriggerTypeEnum,
 	TCashbackProgramAccumulationTypeEnum,
+	TCashbackProgramRedemptionLimitTypeEnum,
 	TInteractionsCronJobTimeBlocksEnum,
 	TTimeDurationUnitsEnum,
 } from "@/schemas/enums";
@@ -54,6 +55,11 @@ export const InteractionsCronJobTimeBlocksOptions: { id: number; label: string; 
 ];
 
 export const CashbackProgramAccumulationTypeOptions: { id: number; label: string; value: TCashbackProgramAccumulationTypeEnum }[] = [
+	{ id: 1, label: "FIXO", value: "FIXO" },
+	{ id: 2, label: "PERCENTUAL", value: "PERCENTUAL" },
+];
+
+export const CashbackProgramRedemptionLimitTypeOptions: { id: number; label: string; value: TCashbackProgramRedemptionLimitTypeEnum }[] = [
 	{ id: 1, label: "FIXO", value: "FIXO" },
 	{ id: 2, label: "PERCENTUAL", value: "PERCENTUAL" },
 ];

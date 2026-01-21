@@ -1,5 +1,10 @@
 import z from "zod";
-import { CashbackProgramAccumulationTypeEnum, CashbackProgramTransactionStatusEnum, CashbackProgramTransactionTypeEnum } from "./enums";
+import {
+	CashbackProgramAccumulationTypeEnum,
+	CashbackProgramRedemptionLimitTypeEnum,
+	CashbackProgramTransactionStatusEnum,
+	CashbackProgramTransactionTypeEnum,
+} from "./enums";
 
 export const CashbackProgramSchema = z.object({
 	ativo: z
@@ -36,6 +41,13 @@ export const CashbackProgramSchema = z.object({
 			invalid_type_error: "Tipo não válido para o valor de validade do saldo do programa de cashback.",
 		})
 		.default(0),
+	resgateLimiteTipo: CashbackProgramRedemptionLimitTypeEnum.optional().nullable(),
+	resgateLimiteValor: z
+		.number({
+			invalid_type_error: "Tipo não válido para o valor do limite de resgate do programa de cashback.",
+		})
+		.optional()
+		.nullable(),
 	dataInsercao: z
 		.string({
 			required_error: "Data de inserção do programa de cashback não informada.",

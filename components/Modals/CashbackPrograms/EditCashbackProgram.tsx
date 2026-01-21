@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import CashbackProgramsAccumulationBlock from "./Blocks/Accumulation";
 import CashbackProgramsExpirationBlock from "./Blocks/Expiration";
 import CashbackProgramsGeneralBlock from "./Blocks/General";
+import CashbackProgramsRedemptionLimitBlock from "./Blocks/RedemptionLimit";
 
 type EditCashbackProgramProps = {
 	user: TAuthUserSession["user"];
@@ -37,6 +38,8 @@ export default function EditCashbackProgram({ user, cashbackProgram, closeModal,
 					acumuloValor: cashbackProgram.acumuloValor,
 					acumuloRegraValorMinimo: cashbackProgram.acumuloRegraValorMinimo,
 					expiracaoRegraValidadeValor: cashbackProgram.expiracaoRegraValidadeValor,
+					resgateLimiteTipo: cashbackProgram.resgateLimiteTipo,
+					resgateLimiteValor: cashbackProgram.resgateLimiteValor,
 				},
 			});
 		}
@@ -83,6 +86,7 @@ export default function EditCashbackProgram({ user, cashbackProgram, closeModal,
 			<CashbackProgramsGeneralBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 			<CashbackProgramsAccumulationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 			<CashbackProgramsExpirationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
+			<CashbackProgramsRedemptionLimitBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 		</ResponsiveMenu>
 	);
 }

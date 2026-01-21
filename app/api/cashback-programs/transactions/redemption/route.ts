@@ -72,6 +72,28 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 		}
 
+		// 2.1 Validate redemption limit
+		if (program.resgateLimiteTipo && program.resgateLimiteValor !== null) {
+			let maxAllowedRedemption: number;
+
+			if (program.resgateLimiteTipo === "FIXO") {
+				maxAllowedRedemption = program.resgateLimiteValor;
+			} else if (program.resgateLimiteTipo === "PERCENTUAL") {
+				if (input.saleValue <= 0) {
+					throw new createHttpError.BadRequest("Valor da venda deve ser informado para calcular o limite de resgate percentual.");
+				}
+				maxAllowedRedemption = (input.saleValue * program.resgateLimiteValor) / 100;
+			} else {
+				maxAllowedRedemption = Number.MAX_SAFE_INTEGER;
+			}
+
+			if (input.redemptionValue > maxAllowedRedemption) {
+				throw new createHttpError.BadRequest(
+					`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`
+				);
+			}
+		}
+
 		// 3. Get balance
 		const balance = await tx.query.cashbackProgramBalances.findFirst({
 			where: and(eq(cashbackProgramBalances.clienteId, input.clientId), eq(cashbackProgramBalances.organizacaoId, input.orgId)),

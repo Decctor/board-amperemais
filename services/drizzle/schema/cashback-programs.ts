@@ -4,7 +4,12 @@ import { boolean, text, varchar } from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
 import { clients } from "./clients";
 import { newTable } from "./common";
-import { cashbackProgramAccumulationTypeEnum, cashbackProgramTransactionStatusEnum, cashbackProgramTransactionTypeEnum } from "./enums";
+import {
+	cashbackProgramAccumulationTypeEnum,
+	cashbackProgramRedemptionLimitTypeEnum,
+	cashbackProgramTransactionStatusEnum,
+	cashbackProgramTransactionTypeEnum,
+} from "./enums";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
 import { users } from "./users";
@@ -24,6 +29,8 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	acumuloPermitirViaIntegracao: boolean("acumulo_permitir_via_integracao").notNull().default(false),
 	acumuloPermitirViaPontoIntegracao: boolean("acumulo_permitir_via_ponto_integracao").notNull().default(false),
 	expiracaoRegraValidadeValor: doublePrecision("expiracao_regra_validade_valor").notNull().default(0),
+	resgateLimiteTipo: cashbackProgramRedemptionLimitTypeEnum(),
+	resgateLimiteValor: doublePrecision("resgate_limite_valor"),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
 });
