@@ -75,6 +75,9 @@ export default function PointOfInteractionContent({
 						setShowProfileMenu(true);
 						playAction();
 					}}
+					handlePlayAction={() => {
+						playAction();
+					}}
 				/>
 			) : (
 				<PointerOfInteractionWithoutAccumulationViaPDI
@@ -414,19 +417,24 @@ type PointOfInteractionWithAccumulationViaPDIProps = {
 	cashbackProgram: TCashbackProgramEntity;
 	router: ReturnType<typeof useRouter>;
 	handleOpenProfileMenu: () => void;
+	handlePlayAction: () => void;
 };
 function PointOfInteractionWithAccumulationViaPDI({
 	org,
 	cashbackProgram,
 	router,
 	handleOpenProfileMenu,
+	handlePlayAction,
 }: PointOfInteractionWithAccumulationViaPDIProps) {
 	return (
 		<main className="w-full max-w-5xl flex-1 flex flex-col">
 			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
 				<div className="w-full md:w-1/2 flex flex-col gap-6">
 					<Button
-						onClick={() => router.push(`/point-of-interaction/${org.id}/new-sale`)}
+						onClick={() => {
+							handlePlayAction();
+							router.push(`/point-of-interaction/${org.id}/new-sale`);
+						}}
 						variant="default"
 						className="group relative flex flex-col items-center justify-center gap-4 h-auto flex-1 rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
 					>
@@ -452,7 +460,7 @@ function PointOfInteractionWithAccumulationViaPDI({
 					>
 						<Coins className="w-10 h-10" />
 						<div className="text-center">
-							<h3 className="text-lg font-bold uppercase">MEU SALDO</h3>
+							<h3 className="text-base font-bold uppercase">MEU SALDO</h3>
 							<p className="text-xs md:text-sm opacity-80 font-medium">Consulte seu extrato</p>
 						</div>
 					</Button>
@@ -466,7 +474,7 @@ function PointOfInteractionWithAccumulationViaPDI({
 					>
 						<Trophy className="w-10 h-10" />
 						<div className="text-center">
-							<h3 className="text-lg font-bold uppercase">RANKING CLIENTES</h3>
+							<h3 className="text-base font-bold uppercase">RANKING CLIENTES</h3>
 							<p className="text-xs md:text-sm opacity-80 font-medium">Veja os maiores compradores</p>
 						</div>
 					</Button>
@@ -480,7 +488,7 @@ function PointOfInteractionWithAccumulationViaPDI({
 					>
 						<Trophy className="w-10 h-10" />
 						<div className="text-center">
-							<h3 className="text-lg font-bold uppercase">RANKING VENDEDORES</h3>
+							<h3 className="text-base font-bold uppercase">RANKING VENDEDORES</h3>
 							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho dos vendedores</p>
 						</div>
 					</Button>
