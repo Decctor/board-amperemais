@@ -11,10 +11,10 @@ import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import LogoHorizontalRecompraCRM from "@/utils/images/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.png";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Building2, Coins, Loader2, ShoppingCart, Trophy } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -47,7 +47,7 @@ export default function PointOfInteractionContent({
 }) {
 	const router = useRouter();
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
-
+	const [playAction] = useSound("/sounds/action-completed.mp3");
 	const allowAccumulation = cashbackProgram.acumuloPermitirViaPontoIntegracao ?? true;
 
 	return (
@@ -71,10 +71,20 @@ export default function PointOfInteractionContent({
 					org={org}
 					cashbackProgram={cashbackProgram}
 					router={router}
-					handleOpenProfileMenu={() => setShowProfileMenu(true)}
+					handleOpenProfileMenu={() => {
+						setShowProfileMenu(true);
+						playAction();
+					}}
 				/>
 			) : (
-				<PointerOfInteractionWithoutAccumulationViaPDI org={org} router={router} handleOpenProfileMenu={() => setShowProfileMenu(true)} />
+				<PointerOfInteractionWithoutAccumulationViaPDI
+					org={org}
+					router={router}
+					handleOpenProfileMenu={() => {
+						setShowProfileMenu(true);
+						playAction();
+					}}
+				/>
 			)}
 
 			{/* MODAL DE BUSCA (Mantém a lógica, mas com ajuste visual no input) */}
@@ -94,12 +104,16 @@ type IdentificationMenuProps = {
 	};
 };
 function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuProps) {
+	const router = useRouter();
+	const queryClient = useQueryClient();
 	const {
 		data: client,
+		queryKey,
 		isSuccess: isSuccessClient,
 		isLoading: isLoadingClient,
 		isError: isErrorClient,
 		error: errorClient,
+
 		params,
 		updateParams,
 	} = useClientByLookup({
@@ -112,11 +126,58 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 
 	const [playAction] = useSound("/sounds/action-completed.mp3");
 
+	// Auto-redirect timer state
+	const REDIRECT_COUNTDOWN_SECONDS = 3;
+	const [countdown, setCountdown] = useState<number | null>(null);
+	const [isRedirecting, setIsRedirecting] = useState(false);
+	const [wasCancelled, setWasCancelled] = useState(false);
+
+	// Reset wasCancelled when user starts typing a new phone number
 	useEffect(() => {
-		if (isSuccessClient && client) {
-			playAction();
+		if (params.phone && wasCancelled) {
+			setWasCancelled(false);
 		}
-	}, [isSuccessClient, client, playAction]);
+	}, [params.phone, wasCancelled]);
+
+	// Start countdown when client is found
+	useEffect(() => {
+		if (isSuccessClient && client && countdown === null && !isRedirecting && !wasCancelled) {
+			playAction();
+			setCountdown(REDIRECT_COUNTDOWN_SECONDS);
+		}
+	}, [isSuccessClient, client, countdown, isRedirecting, wasCancelled, playAction]);
+
+	// Handle countdown timer and auto-redirect
+	useEffect(() => {
+		if (countdown === null || countdown < 0) return;
+
+		if (countdown === 0) {
+			setIsRedirecting(true);
+			router.push(`/point-of-interaction/${orgId}/client-profile/${client?.id}`);
+			return;
+		}
+
+		const timer = setTimeout(() => {
+			setCountdown((prev) => (prev !== null ? prev - 1 : null));
+		}, 1000);
+
+		return () => clearTimeout(timer);
+	}, [countdown, router, orgId, client?.id]);
+
+	// Cancel auto-redirect and reset search
+	async function handleCancelRedirect() {
+		await queryClient.cancelQueries({ queryKey });
+		await queryClient.invalidateQueries({ queryKey });
+		setCountdown(null);
+		setIsRedirecting(false);
+		setWasCancelled(true);
+		updateParams({ phone: "", clientId: null });
+	}
+
+	// Show found client card with auto-redirect
+	const showFoundClientCard = isSuccessClient && client && !isRedirecting && !wasCancelled;
+	// Show input only when not found or cancelled
+	const showInput = !showFoundClientCard && !isRedirecting;
 
 	return (
 		<ResponsiveMenuViewOnly
@@ -127,49 +188,137 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 			stateIsLoading={false}
 			stateError={null}
 			drawerContentClassName="min-h-[50vh]"
+			dialogShowFooter={false}
 		>
-			<form
-				className="w-full"
-				onSubmit={(e) => {
-					e.preventDefault();
-				}}
-			>
-				<TextInput
-					label="NÚMERO DO WHATSAPP"
-					inputType="tel"
-					placeholder="(00) 00000-0000"
-					value={params.phone}
-					handleChange={(value) => updateParams({ phone: formatToPhone(value) })}
-					onFocus={(e) => {
-						setTimeout(() => {
-							e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-						}, 300);
-					}}
-				/>
-			</form>
-			{isLoadingClient ? (
-				<div className="w-full flex items-center justify-center gap-1.5">
-					<Loader2 className="w-4 h-4 animate-spin" />
-					<p className="text-sm text-muted-foreground">Buscando registros...</p>
-				</div>
-			) : null}
+			<AnimatePresence mode="wait">
+				{showInput ? (
+					<motion.div
+						key="input-form"
+						initial={{ opacity: 0, x: -20 }}
+						animate={{ opacity: 1, x: 0 }}
+						exit={{ opacity: 0, x: 20 }}
+						transition={{ duration: 0.3, ease: "easeOut" }}
+						className="w-full flex flex-col gap-4"
+					>
+						<form
+							className="w-full"
+							onSubmit={(e) => {
+								e.preventDefault();
+							}}
+						>
+							<TextInput
+								label="NÚMERO DO WHATSAPP"
+								inputType="tel"
+								placeholder="(00) 00000-0000"
+								value={params.phone}
+								handleChange={(value) => updateParams({ phone: formatToPhone(value) })}
+								onFocus={(e) => {
+									setTimeout(() => {
+										e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+									}, 300);
+								}}
+							/>
+						</form>
+						<AnimatePresence>
+							{isLoadingClient ? (
+								<motion.div
+									initial={{ opacity: 0, y: -10 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -10 }}
+									className="w-full flex items-center justify-center gap-1.5"
+								>
+									<Loader2 className="w-4 h-4 animate-spin" />
+									<p className="text-sm text-muted-foreground">Buscando registros...</p>
+								</motion.div>
+							) : null}
+						</AnimatePresence>
+						{isSuccessClient && !client ? <NewClientForm orgId={orgId} phone={params.phone} closeMenu={closeMenu} callbacks={callbacks} /> : null}
+					</motion.div>
+				) : null}
 
-			{isSuccessClient && client ? (
-				<div className="bg-green-50 border-2 border-green-200 rounded-3xl p-6 flex flex-col items-center gap-4 animate-in zoom-in">
-					<div className="text-center">
-						<p className="text-green-900 font-black text-2xl uppercase italic">{client.nome}</p>
-						<p className="text-green-600 font-bold">{formatToPhone(client.telefone)}</p>
-					</div>
-					<div className="bg-green-600 w-full rounded-2xl p-4 text-center text-white shadow-md">
-						<p className="text-[0.6rem] font-bold opacity-80 uppercase tracking-widest">Saldo Disponível</p>
-						<p className="text-3xl font-black">{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}</p>
-					</div>
-					<Button asChild size={"fit"} className="w-full p-4 font-black">
-						<Link href={`/point-of-interaction/${orgId}/client-profile/${client.id}`}>VER PERFIL</Link>
-					</Button>
-				</div>
-			) : null}
-			{isSuccessClient && !client ? <NewClientForm orgId={orgId} phone={params.phone} closeMenu={closeMenu} callbacks={callbacks} /> : null}
+				{showFoundClientCard && client ? (
+					<motion.div
+						key="profile-card"
+						initial={{ opacity: 0, scale: 0.9 }}
+						animate={{ opacity: 1, scale: 1 }}
+						exit={{ opacity: 0, scale: 0.9 }}
+						transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+						className="bg-green-50 border-2 border-green-200 rounded-3xl p-6 flex flex-col items-center gap-4 w-full"
+					>
+						<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.3 }} className="text-center">
+							<motion.p
+								initial={{ scale: 0 }}
+								animate={{ scale: 1 }}
+								transition={{ delay: 0.15, type: "spring", stiffness: 500, damping: 25 }}
+								className="text-xs font-bold text-green-600 uppercase tracking-widest mb-1"
+							>
+								✓ Perfil Encontrado
+							</motion.p>
+							<p className="text-green-900 font-black text-2xl uppercase italic">{client.nome}</p>
+							<p className="text-green-600 font-bold">{formatToPhone(client.telefone)}</p>
+						</motion.div>
+
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
+							className="bg-green-600 w-full rounded-2xl p-4 text-center text-white shadow-md"
+						>
+							<p className="text-[0.6rem] font-bold opacity-80 uppercase tracking-widest">Saldo Disponível</p>
+							<motion.p
+								initial={{ opacity: 0, scale: 0.5 }}
+								animate={{ opacity: 1, scale: 1 }}
+								transition={{ delay: 0.35, type: "spring", stiffness: 400, damping: 20 }}
+								className="text-3xl font-black"
+							>
+								{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}
+							</motion.p>
+						</motion.div>
+
+						{/* Progress bar and countdown */}
+						<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.3 }} className="w-full flex flex-col gap-2">
+							<div className="w-full h-2 bg-green-200 rounded-full overflow-hidden">
+								<motion.div
+									className="h-full bg-green-600"
+									initial={{ width: "100%" }}
+									animate={{ width: `${((countdown ?? 0) / REDIRECT_COUNTDOWN_SECONDS) * 100}%` }}
+									transition={{ duration: 1, ease: "linear" }}
+								/>
+							</div>
+							<p className="text-sm text-green-700 text-center font-medium">
+								Redirecionando em {countdown} segundo{countdown !== 1 ? "s" : ""}...
+							</p>
+						</motion.div>
+
+						<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.3 }} className="w-full">
+							<Button
+								variant="outline"
+								size="fit"
+								className="w-full p-4 font-black border-green-300 text-green-700 hover:bg-green-100"
+								onClick={handleCancelRedirect}
+							>
+								CANCELAR
+							</Button>
+						</motion.div>
+					</motion.div>
+				) : null}
+
+				{isRedirecting ? (
+					<motion.div
+						key="redirecting"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.3 }}
+						className="w-full flex flex-col items-center justify-center gap-3 py-8"
+					>
+						<motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}>
+							<Loader2 className="w-8 h-8 text-green-600" />
+						</motion.div>
+						<p className="text-sm text-muted-foreground font-medium">Carregando perfil...</p>
+					</motion.div>
+				) : null}
+			</AnimatePresence>
 		</ResponsiveMenuViewOnly>
 	);
 }

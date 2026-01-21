@@ -49,6 +49,8 @@ type ResponsiveMenuViewOnlyProps = PropsWithChildren & {
 	closeMenu: () => void;
 	dialogVariant?: "fit" | "sm" | "md" | "lg";
 	drawerVariant?: "fit" | "sm" | "md" | "lg";
+	dialogShowFooter?: boolean;
+	drawerShowFooter?: boolean;
 };
 function ResponsiveMenuViewOnly({
 	children,
@@ -62,6 +64,8 @@ function ResponsiveMenuViewOnly({
 	drawerContentClassName,
 	dialogVariant = "sm",
 	drawerVariant = "sm",
+	dialogShowFooter = true,
+	drawerShowFooter = true,
 }: ResponsiveMenuViewOnlyProps) {
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	return isDesktop ? (
@@ -80,12 +84,13 @@ function ResponsiveMenuViewOnly({
 						{children}
 					</div>
 				)}
-
-				<DialogFooter className="flex-wrap gap-y-2">
-					<DialogClose asChild>
-						<Button variant="outline">{menuCancelButtonText}</Button>
-					</DialogClose>
-				</DialogFooter>
+				{dialogShowFooter && (
+					<DialogFooter className="flex-wrap gap-y-2">
+						<DialogClose asChild>
+							<Button variant="outline">{menuCancelButtonText}</Button>
+						</DialogClose>
+					</DialogFooter>
+				)}
 			</DialogContent>
 		</Dialog>
 	) : (
@@ -106,11 +111,13 @@ function ResponsiveMenuViewOnly({
 					</div>
 				)}
 
-				<DrawerFooter>
-					<DrawerClose asChild>
-						<Button variant="outline">{menuCancelButtonText}</Button>
-					</DrawerClose>
-				</DrawerFooter>
+				{drawerShowFooter && (
+					<DrawerFooter>
+						<DrawerClose asChild>
+							<Button variant="outline">{menuCancelButtonText}</Button>
+						</DrawerClose>
+					</DrawerFooter>
+				)}
 			</DrawerContent>
 		</Drawer>
 	);

@@ -3,6 +3,29 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+	/* Define a animação vinculando ao nome dos keyframes */
+	--animate-pulse-slow: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+	/* Define os keyframes da animação */
+	@keyframes pulse-slow {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.3;
+		}
+	}
+
+	@keyframes wave {
+		0%,
+		100% {
+			transform: translateY(0) scaleY(1);
+		}
+		50% {
+			transform: translateY(-8px) scaleY(1.15);
+		}
+	}
+
 	--font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 	--font-raleway: var(--font-raleway);
 

@@ -76,9 +76,10 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header */}
 				<div className="flex items-center gap-4">
-					<Button variant="ghost" size="icon" asChild className="rounded-full hover:bg-brand/10">
+					<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1.5 px-2 py-4">
 						<Link href={`/point-of-interaction/${orgId}`}>
 							<ArrowLeft className="w-6 h-6" />
+							VOLTAR
 						</Link>
 					</Button>
 					<div className="flex items-center gap-3">
@@ -132,7 +133,7 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 											)}
 										</div>
 										<div className="min-w-0 flex-1">
-											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic text-brand">{seller.vendedorNome}</h3>
+											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic text-black">{seller.vendedorNome}</h3>
 											<p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
 												{seller.numeroVendas} {seller.numeroVendas === 1 ? "venda" : "vendas"}
 											</p>

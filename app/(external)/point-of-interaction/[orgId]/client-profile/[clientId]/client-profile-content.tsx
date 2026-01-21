@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Award, CheckCircle2, History, LockIcon, PartyPopper, Plus, ShoppingCart, TrendingUp, Wallet, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -84,8 +85,11 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 				{/* 1. HEADER: Informações e Status (Conforme Rascunho) */}
 				<header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
 					<div className="flex items-center gap-4">
-						<Button variant="ghost" size="icon" onClick={() => router.push(`/point-of-interaction/${orgId}`)} className="rounded-full">
-							<ArrowLeft className="w-5 h-5" />
+						<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1.5 px-2 py-4">
+							<Link href={`/point-of-interaction/${orgId}`} className="flex items-center gap-1.5">
+								<ArrowLeft className="w-6 h-6" />
+								VOLTAR
+							</Link>
 						</Button>
 						<div>
 							<h1 className="text-2xl font-black text-black uppercase italic leading-none">{client.nome}</h1>
@@ -136,7 +140,7 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 							<div className="p-2 bg-green-50 rounded-lg text-green-600">
 								<TrendingUp className="w-5 h-5" />
 							</div>
-							<h2 className="text-xl font-black text-brand uppercase italic">Novo Resgate</h2>
+							<h2 className="text-xl font-black text-black uppercase italic">PAINEL DE RESGATES</h2>
 						</div>
 
 						<div className="grid grid-cols-1 gap-4">
@@ -185,7 +189,7 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 								<div className="p-2 bg-brand/5 rounded-lg text-muted-foreground">
 									<History className="w-5 h-5" />
 								</div>
-								<h2 className="text-xl font-black text-brand uppercase italic">Histórico</h2>
+								<h2 className="text-xl font-black text-black uppercase italic">Histórico</h2>
 							</div>
 						</div>
 

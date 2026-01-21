@@ -71,9 +71,10 @@ export default async function ClientsRankingPage({ params }: { params: Promise<{
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header */}
 				<div className="flex items-center gap-4">
-					<Button variant="ghost" size="icon" asChild className="rounded-full hover:bg-brand/10">
-						<Link href={`/point-of-interaction/${orgId}`}>
+					<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1.5 px-2 py-4">
+						<Link href={`/point-of-interaction/${orgId}`} className="flex items-center gap-1.5">
 							<ArrowLeft className="w-6 h-6" />
+							VOLTAR
 						</Link>
 					</Button>
 					<div className="flex items-center gap-3">
@@ -127,7 +128,7 @@ export default async function ClientsRankingPage({ params }: { params: Promise<{
 											)}
 										</div>
 										<div className="min-w-0 flex-1">
-											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic text-primary">{client.clienteNome}</h3>
+											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic text-black">{client.clienteNome}</h3>
 										</div>
 									</div>
 
