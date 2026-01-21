@@ -14,7 +14,21 @@ import { createCashbackProgramRedemption } from "@/lib/mutations/cashback-progra
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Award, CheckCircle2, History, LockIcon, PartyPopper, Plus, ShoppingCart, TrendingUp, Wallet, X } from "lucide-react";
+import {
+	AlertTriangle,
+	ArrowLeft,
+	ArrowRight,
+	Award,
+	CheckCircle2,
+	History,
+	LockIcon,
+	PartyPopper,
+	Plus,
+	ShoppingCart,
+	TrendingUp,
+	Wallet,
+	X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -506,20 +520,38 @@ function NewCashbackProgramRedemption({
 					</div>
 				</div>
 				{infoHolder.redemptionValue > clientAvailableBalance ? (
-					<h3 className="text-red-500 font-black text-center p-2 rounded-lg border border-red-500 bg-red-200">
-						OOPS, SALDO INSUFICIENTE PARA ESTE RESGATE :(
-					</h3>
+					<div className="w-full flex items-center justify-center flex-col px-1.5 py-3 bg-red-200 text-red-600 rounded-2xl gap-1.5">
+						<div className="w-fit self-center flex items-center justify-center gap-1.5">
+							<AlertTriangle className="w-4 h-4" />
+							<p className="text-xs font-medium text-center italic">Oops, saldo insuficiente para este resgate :(</p>
+						</div>
+						<button
+							type="button"
+							onClick={() => updateInfoHolder({ redemptionValue: clientAvailableBalance })}
+							className="px-2 py-1 rounded-xl bg-red-600 text-white text-xs font-medium"
+						>
+							USAR SALDO DISPONÍVEL
+						</button>
+					</div>
 				) : isExceedingLimit() ? (
-					<h3 className="text-red-500 font-black text-center p-2 rounded-lg border border-red-500 bg-red-200">
-						VALOR EXCEDE O LIMITE DE RESGATE PERMITIDO
-					</h3>
+					<div className="w-full flex items-center justify-center flex-col px-1.5 py-3 bg-red-200 text-red-600 rounded-2xl gap-1.5">
+						<div className="w-fit self-center flex items-center justify-center gap-1.5">
+							<AlertTriangle className="w-4 h-4" />
+							<p className="text-xs font-medium text-center italic">O valor do cashback não pode ser maior que o valor máximo permitido.</p>
+						</div>
+						<button
+							type="button"
+							onClick={() => updateInfoHolder({ redemptionValue: getMaxAllowedRedemption() })}
+							className="px-2 py-1 rounded-xl bg-red-600 text-white text-xs font-medium"
+						>
+							USAR VALOR MÁXIMO
+						</button>
+					</div>
 				) : null}
 				{getLimitDescription() && (
 					<p className="text-[0.65rem] font-medium text-muted-foreground text-center italic">
 						{getLimitDescription()}
-						{infoHolder.saleValue > 0 && redemptionLimit.tipo === "PERCENTUAL" && (
-							<> (Máx: {formatToMoney(getMaxAllowedRedemption())})</>
-						)}
+						{infoHolder.saleValue > 0 && redemptionLimit.tipo === "PERCENTUAL" && <> (Máx: {formatToMoney(getMaxAllowedRedemption())})</>}
 					</p>
 				)}
 				<div className="w-full flex flex-col gap-1.5">
