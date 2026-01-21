@@ -440,7 +440,7 @@ function NewCashbackProgramRedemption({
 			}
 		>
 			<form
-				className="w-full flex flex-col gap-6"
+				className="w-full flex flex-col gap-3"
 				onSubmit={(e) => {
 					e.preventDefault();
 					handleCreateCashbackProgramRedemptionMutation(infoHolder);
@@ -455,7 +455,7 @@ function NewCashbackProgramRedemption({
 							type="number"
 							value={infoHolder.saleValue.toString()}
 							onChange={(e) => updateInfoHolder({ saleValue: Number(e.target.value) })}
-							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+							className="h-16 text-3xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
 							onFocus={(e) => {
 								setTimeout(() => {
 									e.target.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -477,7 +477,7 @@ function NewCashbackProgramRedemption({
 						<Button
 							variant="ghost"
 							onClick={() => updateInfoHolder({ saleValue: 0 })}
-							className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
+							className="h-10 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
 						>
 							<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
 						</Button>
@@ -491,7 +491,7 @@ function NewCashbackProgramRedemption({
 							type="number"
 							value={infoHolder.redemptionValue.toString()}
 							onChange={(e) => updateInfoHolder({ redemptionValue: Number(e.target.value) })}
-							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+							className="h-16 text-3xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
 							onFocus={(e) => {
 								setTimeout(() => {
 									e.target.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -513,7 +513,7 @@ function NewCashbackProgramRedemption({
 						<Button
 							variant="ghost"
 							onClick={() => updateInfoHolder({ redemptionValue: 0 })}
-							className="h-14 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
+							className="h-10 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
 						>
 							<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
 						</Button>
@@ -563,7 +563,7 @@ function NewCashbackProgramRedemption({
 							value={infoHolder.operatorIdentifier}
 							onChange={(e) => updateInfoHolder({ operatorIdentifier: formatToNumericPassword(e.target.value) })}
 							placeholder="*****"
-							className="h-24 text-5xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
+							className="h-16 text-3xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
 							onFocus={(e) => {
 								setTimeout(() => {
 									e.target.scrollIntoView({ behavior: "smooth", block: "center" });

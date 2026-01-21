@@ -141,9 +141,10 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header com Navegação */}
 				<div className="flex items-center gap-4">
-					<Button variant="ghost" size="icon" asChild className="rounded-full">
-						<Link href={`/point-of-interaction/${org.id}`}>
-							<ArrowLeft className="w-6 h-6" />
+					<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2">
+						<Link href={`/point-of-interaction/${org.id}`} className="flex items-center gap-1">
+							<ArrowLeft className="w-5 h-5" />
+							VOLTAR
 						</Link>
 					</Button>
 					<div className="flex items-center gap-3">
