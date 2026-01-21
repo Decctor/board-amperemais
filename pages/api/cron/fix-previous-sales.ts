@@ -1,3 +1,4 @@
+import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { db } from "@/services/drizzle";
@@ -339,6 +340,25 @@ const handleFixPreviousSales: NextApiHandler<string> = async (req, res) => {
 								dataVenda: saleDate,
 							})
 							.where(eq(sales.id, existingSale.id));
+
+						// Check if sale was canceled
+						const wasPreviouslyValid = existingSale.natureza === "SN01" && existingSale.valorTotal > 0;
+						const isNowCanceled = OnlineSale.natureza !== "SN01" || Number(OnlineSale.valor) === 0;
+
+						if (wasPreviouslyValid && isNowCanceled) {
+							console.log(
+								`[ORG: ${organization.id}] [FIX_PREVIOUS_SALES] [SALE_CANCELED] ` +
+									`Venda ${OnlineSale.id} foi cancelada. Revertendo cashback...`,
+							);
+
+							await reverseSaleCashback({
+								tx,
+								saleId: existingSale.id,
+								clientId: saleClientId,
+								organizationId: organization.id,
+								reason: "VENDA_CANCELADA_RETROATIVA",
+							});
+						}
 
 						// Delete existing items and re-insert
 						await tx.delete(saleItems).where(and(eq(saleItems.vendaId, existingSale.id), eq(saleItems.organizacaoId, organization.id)));
