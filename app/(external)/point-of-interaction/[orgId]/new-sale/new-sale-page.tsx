@@ -15,6 +15,7 @@ import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { usePointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
 import { useMutation } from "@tanstack/react-query";
 import {
+	AlertTriangle,
 	ArrowLeft,
 	ArrowRight,
 	BadgePercent,
@@ -133,6 +134,8 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 		setCurrentStep(1);
 	};
 
+	const maximumCashbackAllowed = getMaxCashbackToUse();
+	const isAttemptingToUseMoreCashbackThanAllowed = state.sale.cashback.aplicar && state.sale.cashback.valor > maximumCashbackAllowed;
 	return (
 		<div className="w-full min-h-screen bg-secondary p-6 md:p-10 flex flex-col items-center">
 			<div className="w-full max-w-4xl flex flex-col gap-6">
@@ -195,10 +198,11 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 						{currentStep === 3 && (
 							<CashbackStep
 								available={getAvailableCashback()}
-								maxAllowed={getMaxCashbackToUse()}
+								maxAllowed={maximumCashbackAllowed}
 								saleValue={state.sale.valor}
 								applied={state.sale.cashback.aplicar}
 								amount={state.sale.cashback.valor}
+								isAttemptingToUseMoreCashbackThanAllowed={isAttemptingToUseMoreCashbackThanAllowed}
 								finalValue={getFinalValue()}
 								redemptionLimit={getRedemptionLimitConfig()}
 								onToggle={(v) =>
@@ -240,7 +244,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								<Button
 									onClick={currentStep === 4 ? () => createSaleMutation(state) : handleNextStep}
 									size="lg"
-									disabled={isCreatingSale}
+									disabled={isCreatingSale || isAttemptingToUseMoreCashbackThanAllowed}
 									className={cn(
 										"flex-1 rounded-2xl h-16 text-lg font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
 										currentStep === 4 && "bg-green-600 hover:bg-green-700",
@@ -471,6 +475,7 @@ function CashbackStep({
 	maxAllowed,
 	applied,
 	amount,
+	isAttemptingToUseMoreCashbackThanAllowed,
 	onToggle,
 	onAmountChange,
 	saleValue,
@@ -482,6 +487,7 @@ function CashbackStep({
 	maxAllowed: number;
 	applied: boolean;
 	amount: number;
+	isAttemptingToUseMoreCashbackThanAllowed: boolean;
 	onToggle: (applied: boolean) => void;
 	onAmountChange: (amount: number) => void;
 	saleValue: number;
@@ -524,9 +530,7 @@ function CashbackStep({
 						<p className="text-xl font-black text-brand">{formatToMoney(maxAllowed)}</p>
 					</div>
 				</div>
-				{getLimitDescription() && (
-					<p className="text-[0.65rem] font-medium text-muted-foreground text-center mt-2 italic">{getLimitDescription()}</p>
-				)}
+				{getLimitDescription() && <p className="text-[0.65rem] font-medium text-muted-foreground text-center mt-2 italic">{getLimitDescription()}</p>}
 			</div>
 
 			{applied && (
@@ -567,6 +571,14 @@ function CashbackStep({
 				</div>
 				<BadgePercent className="absolute -right-4 -bottom-4 w-32 h-32 text-white/5 rotate-12" />
 			</div>
+			{isAttemptingToUseMoreCashbackThanAllowed && (
+				<div className="w-full flex items-center justify-center">
+					<div className="w-fit self-center flex items-center justify-center px-2 py-1 bg-red-200 text-red-600 rounded-2xl gap-1.5">
+						<AlertTriangle className="w-4 h-4" />
+						<p className="text-[0.65rem] font-medium text-center italic">O valor do cashback não pode ser maior que o valor máximo permitido.</p>
+					</div>
+				</div>
+			)}
 		</form>
 	);
 }
