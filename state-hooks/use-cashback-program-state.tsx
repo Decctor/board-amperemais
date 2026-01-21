@@ -17,6 +17,8 @@ export function useCashbackProgramState() {
 			acumuloValor: 0,
 			acumuloRegraValorMinimo: 0,
 			expiracaoRegraValidadeValor: 0,
+			resgateLimiteTipo: null,
+			resgateLimiteValor: null,
 		},
 	});
 
@@ -37,6 +39,8 @@ export function useCashbackProgramState() {
 				acumuloValor: 0,
 				acumuloRegraValorMinimo: 0,
 				expiracaoRegraValidadeValor: 0,
+				resgateLimiteTipo: null,
+				resgateLimiteValor: null,
 			},
 		});
 	}, []);

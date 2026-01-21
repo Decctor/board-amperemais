@@ -249,9 +249,28 @@ export async function POST(req: Request) {
 				`[POI] [ORG: ${input.orgId}] [WHATSAPP] Connection found: ${!!whatsappConnection}, token: ${whatsappConnection?.token ? "present" : "missing"}`,
 			);
 
-			// 5. If using cashback: validate balance and create redemption
+			// 5. If using cashback: validate balance, redemption limit, and create redemption
 			let currentBalance = 0;
 			if (input.sale.cashback.aplicar && input.sale.cashback.valor > 0) {
+				// 5.1 Validate redemption limit
+				if (program.resgateLimiteTipo && program.resgateLimiteValor !== null) {
+					let maxAllowedRedemption: number;
+
+					if (program.resgateLimiteTipo === "FIXO") {
+						maxAllowedRedemption = program.resgateLimiteValor;
+					} else if (program.resgateLimiteTipo === "PERCENTUAL") {
+						maxAllowedRedemption = (input.sale.valor * program.resgateLimiteValor) / 100;
+					} else {
+						maxAllowedRedemption = Number.MAX_SAFE_INTEGER;
+					}
+
+					if (input.sale.cashback.valor > maxAllowedRedemption) {
+						throw new createHttpError.BadRequest(
+							`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`
+						);
+					}
+				}
+
 				const balance = await tx.query.cashbackProgramBalances.findFirst({
 					where: and(eq(cashbackProgramBalances.clienteId, clientId), eq(cashbackProgramBalances.organizacaoId, input.orgId)),
 				});
