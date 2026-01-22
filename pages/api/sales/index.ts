@@ -219,10 +219,50 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 					},
 				},
 			},
-			atribuicaoCampanhaPrincipal: {
+			transacoesCashback: {
 				columns: {
 					id: true,
-					descricao: true,
+					valor: true,
+					tipo: true,
+					status: true,
+					expiracaoData: true,
+					dataInsercao: true,
+					saldoValorAnterior: true,
+					saldoValorPosterior: true,
+				},
+				with: {
+					programa: {
+						columns: {
+							id: true,
+							titulo: true,
+						},
+					},
+				},
+			},
+			atribuicaoCampanhaConversao: {
+				columns: {
+					id: true,
+					dataInteracao: true,
+					dataConversao: true,
+					tempoParaConversaoMinutos: true,
+					atribuicaoReceita: true,
+				},
+				with: {
+					campanha: {
+						columns: {
+							id: true,
+							titulo: true,
+							cashbackGeracaoTipo: true,
+							cashbackGeracaoValor: true,
+						},
+					},
+					interacao: {
+						columns: {
+							id: true,
+							titulo: true,
+							dataEnvio: true,
+						},
+					},
 				},
 			},
 		},

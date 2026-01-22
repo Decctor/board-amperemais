@@ -1,7 +1,7 @@
 import { getPostponedDateFromReferenceDate } from "@/lib/dates";
 import type { TCashbackProgramAccumulationTypeEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import type { DBTransaction } from "@/services/drizzle";
-import { cashbackProgramBalances, cashbackPrograms, cashbackProgramTransactions } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 
 type GenerateCashbackForCampaignParams = {
@@ -28,7 +28,12 @@ export async function generateCashbackForCampaign({
 	saleValue,
 	expirationMeasure,
 	expirationValue,
-}: GenerateCashbackForCampaignParams): Promise<{ cashbackAmount: number; transactionId: string } | null> {
+}: GenerateCashbackForCampaignParams): Promise<{
+	cashbackAmount: number;
+	transactionId: string;
+	clientNewAvailableBalance: number;
+	clientNewAccumulatedTotal: number;
+} | null> {
 	// 1. Fetch the organization's cashback program
 	const program = await tx.query.cashbackPrograms.findFirst({
 		where: eq(cashbackPrograms.organizacaoId, organizationId),
@@ -139,7 +144,7 @@ export async function generateCashbackForCampaign({
 
 	const transactionId = insertedTransaction[0]?.id;
 	if (!transactionId) {
-		console.error(`[CAMPAIGN_CASHBACK] Failed to create transaction record.`);
+		console.error("[CAMPAIGN_CASHBACK] Failed to create transaction record.");
 		return null;
 	}
 
@@ -151,5 +156,7 @@ export async function generateCashbackForCampaign({
 	return {
 		cashbackAmount,
 		transactionId,
+		clientNewAvailableBalance: newBalance,
+		clientNewAccumulatedTotal: newAccumulatedTotal,
 	};
 }

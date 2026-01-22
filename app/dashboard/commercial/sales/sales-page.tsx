@@ -7,6 +7,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,7 +20,24 @@ import { cn } from "@/lib/utils";
 import type { TGetSalesInput, TGetSalesOutput } from "@/pages/api/sales";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { BadgeDollarSign, Calendar, CircleUser, Handshake, ListFilter, Package, Plus, Search, Tag, X } from "lucide-react";
+import {
+	ArrowRight,
+	BadgeDollarSign,
+	BadgePercent,
+	Calendar,
+	CircleUser,
+	Clock,
+	Handshake,
+	ListFilter,
+	Megaphone,
+	Package,
+	Plus,
+	Search,
+	Tag,
+	TrendingDown,
+	TrendingUp,
+	X,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -127,10 +145,154 @@ function SaleCard({ sale }: { sale: TGetSalesOutput["data"]["default"]["sales"][
 
 				{/* Financials & Items Summary */}
 				<div className="flex flex-col gap-2 md:items-end">
-					<div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md w-fit">
-						<BadgeDollarSign className="w-4 h-4" />
-						<span className="font-bold text-sm">{formatToMoney(sale.valorTotal)}</span>
+					<div className="flex items-center gap-1.5">
+						{sale.atribuicaoCampanhaConversao ? (
+							<HoverCard>
+								<HoverCardTrigger>
+									<div className="flex items-center gap-1.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 px-2 py-1 rounded-md cursor-pointer hover:bg-violet-500/20 transition-colors">
+										<Megaphone className="w-3.5 h-3.5" />
+										<span className="text-xs font-medium tracking-tight">CONVERSÃO</span>
+									</div>
+								</HoverCardTrigger>
+								<HoverCardContent className="w-72 p-0 overflow-hidden">
+									{/* Header */}
+									<div className="bg-violet-500/10 px-4 py-3 border-b border-violet-500/10">
+										<div className="flex items-center gap-2">
+											<div className="p-1.5 bg-violet-500/20 rounded-md">
+												<Megaphone className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+											</div>
+											<div className="flex flex-col">
+												<span className="text-[0.6rem] text-muted-foreground uppercase tracking-wide">Campanha</span>
+												<span className="text-sm font-semibold leading-tight">{sale.atribuicaoCampanhaConversao.campanha?.titulo}</span>
+											</div>
+										</div>
+									</div>
+									{/* Content */}
+									<div className="p-4 space-y-3">
+										{/* Timeline */}
+										<div className="flex items-center gap-3">
+											<div className="flex flex-col items-center gap-1">
+												<div className="w-2 h-2 rounded-full bg-blue-500" />
+												<div className="w-px h-6 bg-gradient-to-b from-blue-500 to-green-500" />
+												<div className="w-2 h-2 rounded-full bg-green-500" />
+											</div>
+											<div className="flex flex-col gap-3 flex-1">
+												<div className="flex flex-col">
+													<span className="text-[0.6rem] text-muted-foreground uppercase">Interação Enviada</span>
+													<span className="text-xs font-medium">{formatDateAsLocale(sale.atribuicaoCampanhaConversao.dataInteracao, true)}</span>
+												</div>
+												<div className="flex flex-col">
+													<span className="text-[0.6rem] text-muted-foreground uppercase">Converteu em</span>
+													<span className="text-xs font-medium">{formatDateAsLocale(sale.atribuicaoCampanhaConversao.dataConversao, true)}</span>
+												</div>
+											</div>
+										</div>
+										{/* Stats */}
+										<div className="flex items-center gap-2 pt-2 border-t border-border/50">
+											<div className="flex-1 flex flex-col items-center p-2 bg-secondary/50 rounded-lg">
+												<span className="text-[0.6rem] text-muted-foreground uppercase">Tempo</span>
+												<span className="text-xs font-bold">
+													{sale.atribuicaoCampanhaConversao.tempoParaConversaoMinutos < 60
+														? `${sale.atribuicaoCampanhaConversao.tempoParaConversaoMinutos}min`
+														: sale.atribuicaoCampanhaConversao.tempoParaConversaoMinutos < 1440
+															? `${Math.round(sale.atribuicaoCampanhaConversao.tempoParaConversaoMinutos / 60)}h`
+															: `${Math.round(sale.atribuicaoCampanhaConversao.tempoParaConversaoMinutos / 1440)}d`}
+												</span>
+											</div>
+											<div className="flex-1 flex flex-col items-center p-2 bg-green-500/10 rounded-lg">
+												<span className="text-[0.6rem] text-muted-foreground uppercase">Receita</span>
+												<span className="text-xs font-bold text-green-600 dark:text-green-400">
+													{formatToMoney(sale.atribuicaoCampanhaConversao.atribuicaoReceita)}
+												</span>
+											</div>
+										</div>
+									</div>
+								</HoverCardContent>
+							</HoverCard>
+						) : null}
+						{sale.transacoesCashback.length > 0 ? (
+							<HoverCard>
+								<HoverCardTrigger>
+									<div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-md cursor-pointer hover:bg-emerald-500/20 transition-colors">
+										<BadgePercent className="w-3.5 h-3.5" />
+										<span className="text-xs font-medium tracking-tight">CASHBACK</span>
+									</div>
+								</HoverCardTrigger>
+								<HoverCardContent className="w-80 p-0 overflow-hidden">
+									{/* Header */}
+									<div className="bg-emerald-500/10 px-4 py-3 border-b border-emerald-500/10">
+										<div className="flex items-center justify-between">
+											<div className="flex items-center gap-2">
+												<div className="p-1.5 bg-emerald-500/20 rounded-md">
+													<BadgePercent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+												</div>
+												<div className="flex flex-col">
+													<span className="text-[0.6rem] text-muted-foreground uppercase tracking-wide">Transações</span>
+													<span className="text-sm font-semibold leading-tight">
+														{sale.transacoesCashback.length} {sale.transacoesCashback.length === 1 ? "movimento" : "movimentos"}
+													</span>
+												</div>
+											</div>
+										</div>
+									</div>
+									{/* Transactions */}
+									<div className="p-3 space-y-2 max-h-64 overflow-y-auto">
+										{sale.transacoesCashback.map((transaction) => (
+											<div key={transaction.id} className="bg-secondary/30 rounded-lg p-3 space-y-2">
+												{/* Type and Value */}
+												<div className="flex items-center justify-between">
+													<div
+														className={cn(
+															"flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase",
+															transaction.tipo === "ACÚMULO"
+																? "bg-green-500/15 text-green-600 dark:text-green-400"
+																: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+														)}
+													>
+														{transaction.tipo === "ACÚMULO" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+														{transaction.tipo}
+													</div>
+													<span
+														className={cn(
+															"text-sm font-bold",
+															transaction.tipo === "ACÚMULO" ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400",
+														)}
+													>
+														{transaction.tipo === "ACÚMULO" ? "+" : "-"}
+														{formatToMoney(transaction.valor)}
+													</span>
+												</div>
+												{/* Balance Flow */}
+												<div className="flex items-center gap-2 text-[0.65rem] text-muted-foreground">
+													<span>{formatToMoney(transaction.saldoValorAnterior)}</span>
+													<ArrowRight className="w-3 h-3" />
+													<span className="font-medium text-foreground">{formatToMoney(transaction.saldoValorPosterior)}</span>
+												</div>
+												{/* Date and Expiration */}
+												<div className="flex items-center justify-between text-[0.6rem] text-muted-foreground pt-1 border-t border-border/30">
+													<div className="flex items-center gap-1">
+														<Calendar className="w-3 h-3" />
+														{formatDateAsLocale(transaction.dataInsercao)}
+													</div>
+													{transaction.expiracaoData && (
+														<div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+															<Clock className="w-3 h-3" />
+															Expira: {formatDateAsLocale(transaction.expiracaoData)}
+														</div>
+													)}
+												</div>
+											</div>
+										))}
+									</div>
+								</HoverCardContent>
+							</HoverCard>
+						) : null}
+						<div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md w-fit">
+							<BadgeDollarSign className="w-4 h-4" />
+							<span className="font-bold text-sm">{formatToMoney(sale.valorTotal)}</span>
+						</div>
 					</div>
+
 					<div className="flex items-center gap-1.5 text-xs text-muted-foreground w-fit">
 						<Package className="w-3 h-3" />
 						<span>

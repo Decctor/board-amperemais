@@ -283,6 +283,23 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							rfmTitle: "CLIENTES RECENTES",
 						});
 
+						if (cashbackProgram) {
+							// If there is a cashback program, we need to create a new balance for the client
+							await tx.insert(cashbackProgramBalances).values({
+								clienteId: insertedClientId,
+								programaId: cashbackProgram.id,
+								organizacaoId: organization.id,
+								saldoValorDisponivel: 0,
+								saldoValorAcumuladoTotal: 0,
+							});
+							existingCashbackProgramBalancesMap.set(insertedClientId, {
+								clienteId: insertedClientId,
+								programaId: cashbackProgram.id,
+								saldoValorDisponivel: 0,
+								saldoValorAcumuladoTotal: 0,
+							});
+						}
+
 						// Checking for applicable campaigns for new purchase
 						const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) =>
 							campaign.segmentacoes.some((s) => s.segmentacao === "CLIENTES RECENTES"),
@@ -365,9 +382,9 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								}
 
 								// Generate campaign cashback for PRIMEIRA-COMPRA trigger
-								if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+								if (cashbackProgram && campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
 									const saleValue = Number(OnlineSale.valor);
-									await generateCashbackForCampaign({
+									const cashbackGenerationResult = await generateCashbackForCampaign({
 										tx,
 										organizationId: organization.id,
 										clientId: insertedClientId,
@@ -378,25 +395,17 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 										expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 										expirationValue: campaign.cashbackGeracaoExpiracaoValor,
 									});
+
+									if (cashbackGenerationResult) {
+										existingCashbackProgramBalancesMap.set(insertedClientId, {
+											clienteId: insertedClientId,
+											programaId: cashbackProgram.id,
+											saldoValorDisponivel: cashbackGenerationResult.clientNewAvailableBalance,
+											saldoValorAcumuladoTotal: cashbackGenerationResult.clientNewAccumulatedTotal,
+										});
+									}
 								}
 							}
-						}
-
-						if (cashbackProgram) {
-							// If there is a cashback program, we need to create a new balance for the client
-							await tx.insert(cashbackProgramBalances).values({
-								clienteId: insertedClientId,
-								programaId: cashbackProgram.id,
-								organizacaoId: organization.id,
-								saldoValorDisponivel: 0,
-								saldoValorAcumuladoTotal: 0,
-							});
-							existingCashbackProgramBalancesMap.set(insertedClientId, {
-								clienteId: insertedClientId,
-								programaId: cashbackProgram.id,
-								saldoValorDisponivel: 0,
-								saldoValorAcumuladoTotal: 0,
-							});
 						}
 					}
 
@@ -602,8 +611,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 
 						if (wasPreviouslyValid && isNowCanceled && saleClientId) {
 							console.log(
-								`[ORG: ${organization.id}] [SALE_CANCELED] Venda ${OnlineSale.id} foi cancelada. ` +
-									`Revertendo cashback e cancelando interações...`,
+								`[ORG: ${organization.id}] [SALE_CANCELED] Venda ${OnlineSale.id} foi cancelada. ` + "Revertendo cashback e cancelando interações...",
 							);
 
 							await reverseSaleCashback({
@@ -787,7 +795,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								// Generate campaign cashback for NOVA-COMPRA trigger
 								if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
 									const saleValue = Number(OnlineSale.valor);
-									await generateCashbackForCampaign({
+									const cashbackGenerationResult = await generateCashbackForCampaign({
 										tx,
 										organizationId: organization.id,
 										clientId: saleClientId,
@@ -798,6 +806,17 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 										expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 										expirationValue: campaign.cashbackGeracaoExpiracaoValor,
 									});
+
+									if (cashbackGenerationResult) {
+										const clientCashbackProgramBalance = existingCashbackProgramBalancesMap.get(saleClientId);
+										if (clientCashbackProgramBalance) {
+											existingCashbackProgramBalancesMap.set(saleClientId, {
+												...clientCashbackProgramBalance,
+												saldoValorDisponivel: cashbackGenerationResult.clientNewAvailableBalance,
+												saldoValorAcumuladoTotal: cashbackGenerationResult.clientNewAccumulatedTotal,
+											});
+										}
+									}
 								}
 							}
 						}
@@ -972,7 +991,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 
 										// Generate campaign cashback for CASHBACK-ACUMULADO trigger (FIXO only)
 										if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
-											await generateCashbackForCampaign({
+											const cashbackGenerationResult = await generateCashbackForCampaign({
 												tx,
 												organizationId: organization.id,
 												clientId: saleClientId,
@@ -983,6 +1002,15 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 												expirationValue: campaign.cashbackGeracaoExpiracaoValor,
 											});
+
+											if (cashbackGenerationResult) {
+												existingCashbackProgramBalancesMap.set(saleClientId, {
+													clienteId: saleClientId,
+													programaId: cashbackProgram.id,
+													saldoValorDisponivel: cashbackGenerationResult.clientNewAvailableBalance,
+													saldoValorAcumuladoTotal: cashbackGenerationResult.clientNewAccumulatedTotal,
+												});
+											}
 										}
 									}
 								}

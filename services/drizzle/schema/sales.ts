@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { campaignConversions } from "./campaign-conversions";
 import { campaigns } from "./campaigns";
+import { cashbackProgramTransactions } from "./cashback-programs";
 import { clients } from "./clients";
 import { newTable } from "./common";
 import { interactions } from "./interactions";
@@ -82,6 +83,7 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 		references: [campaignConversions.id],
 	}),
 	itens: many(saleItems),
+	transacoesCashback: many(cashbackProgramTransactions),
 }));
 
 export const saleItems = newTable(
