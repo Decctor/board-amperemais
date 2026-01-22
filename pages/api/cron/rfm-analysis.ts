@@ -202,23 +202,22 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								unit: campaign.execucaoAgendadaMedida,
 								value: campaign.execucaoAgendadaValor,
 							});
-							const [insertedInteraction] = await tx.insert(interactions).values({
-								clienteId: results.clientId,
-								campanhaId: campaign.id,
-								organizacaoId: organization.id,
-								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
-								tipo: "ENVIO-MENSAGEM",
-								descricao: `Cliente se enquadrou no parâmetro de entrada na classificação RFM ${newRFMLabel}.`,
-								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-							}).returning({ id: interactions.id });
+							const [insertedInteraction] = await tx
+								.insert(interactions)
+								.values({
+									clienteId: results.clientId,
+									campanhaId: campaign.id,
+									organizacaoId: organization.id,
+									titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+									tipo: "ENVIO-MENSAGEM",
+									descricao: `Cliente se enquadrou no parâmetro de entrada na classificação RFM ${newRFMLabel}.`,
+									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+								})
+								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (
-								campaign.execucaoAgendadaValor === 0 &&
-								campaign.whatsappTemplate &&
-								whatsappConnection
-							) {
+							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, results.clientId),
@@ -261,6 +260,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 									campaignId: campaign.id,
 									cashbackType: "FIXO",
 									cashbackValue: campaign.cashbackGeracaoValor,
+									saleId: null,
 									saleValue: null,
 									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
@@ -326,23 +326,22 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								unit: campaign.execucaoAgendadaMedida,
 								value: campaign.execucaoAgendadaValor,
 							});
-							const [insertedInteraction] = await tx.insert(interactions).values({
-								clienteId: results.clientId,
-								campanhaId: campaign.id,
-								organizacaoId: organization.id,
-								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
-								tipo: "ENVIO-MENSAGEM",
-								descricao: `Cliente se enquadrou no parâmetro de permanência na classificação RFM ${newRFMLabel}.`,
-								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-							}).returning({ id: interactions.id });
+							const [insertedInteraction] = await tx
+								.insert(interactions)
+								.values({
+									clienteId: results.clientId,
+									campanhaId: campaign.id,
+									organizacaoId: organization.id,
+									titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+									tipo: "ENVIO-MENSAGEM",
+									descricao: `Cliente se enquadrou no parâmetro de permanência na classificação RFM ${newRFMLabel}.`,
+									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+								})
+								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (
-								campaign.execucaoAgendadaValor === 0 &&
-								campaign.whatsappTemplate &&
-								whatsappConnection
-							) {
+							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, results.clientId),
@@ -385,6 +384,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 									campaignId: campaign.id,
 									cashbackType: "FIXO",
 									cashbackValue: campaign.cashbackGeracaoValor,
+									saleId: null,
 									saleValue: null,
 									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 									expirationValue: campaign.cashbackGeracaoExpiracaoValor,

@@ -265,9 +265,7 @@ export async function POST(req: Request) {
 					}
 
 					if (input.sale.cashback.valor > maxAllowedRedemption) {
-						throw new createHttpError.BadRequest(
-							`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`
-						);
+						throw new createHttpError.BadRequest(`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`);
 					}
 				}
 
@@ -447,6 +445,7 @@ export async function POST(req: Request) {
 								campaignId: campaign.id,
 								cashbackType: campaign.cashbackGeracaoTipo,
 								cashbackValue: campaign.cashbackGeracaoValor,
+								saleId: saleId,
 								saleValue: input.sale.valor,
 								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 								expirationValue: campaign.cashbackGeracaoExpiracaoValor,
@@ -612,6 +611,7 @@ export async function POST(req: Request) {
 								campaignId: campaign.id,
 								cashbackType: campaign.cashbackGeracaoTipo,
 								cashbackValue: campaign.cashbackGeracaoValor,
+								saleId: saleId,
 								saleValue: input.sale.valor,
 								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 								expirationValue: campaign.cashbackGeracaoExpiracaoValor,

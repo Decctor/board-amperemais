@@ -132,23 +132,22 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 								value: campaign.execucaoAgendadaValor,
 							});
 
-							const [insertedInteraction] = await tx.insert(interactions).values({
-								clienteId: clienteId,
-								campanhaId: campaign.id,
-								organizacaoId: organization.id,
-								titulo: `Cashback Expirando: ${campaign.titulo}`,
-								tipo: "ENVIO-MENSAGEM",
-								descricao: `Você tem R$ ${(totalExpiring / 100).toFixed(2)} em cashback expirando nos próximos ${EXPIRING_SOON_DAYS} dias.`,
-								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-							}).returning({ id: interactions.id });
+							const [insertedInteraction] = await tx
+								.insert(interactions)
+								.values({
+									clienteId: clienteId,
+									campanhaId: campaign.id,
+									organizacaoId: organization.id,
+									titulo: `Cashback Expirando: ${campaign.titulo}`,
+									tipo: "ENVIO-MENSAGEM",
+									descricao: `Você tem R$ ${(totalExpiring / 100).toFixed(2)} em cashback expirando nos próximos ${EXPIRING_SOON_DAYS} dias.`,
+									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+								})
+								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (
-								campaign.execucaoAgendadaValor === 0 &&
-								campaign.whatsappTemplate &&
-								whatsappConnection
-							) {
+							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, clienteId),
@@ -191,6 +190,7 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 									campaignId: campaign.id,
 									cashbackType: "FIXO",
 									cashbackValue: campaign.cashbackGeracaoValor,
+									saleId: null,
 									saleValue: null,
 									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 									expirationValue: campaign.cashbackGeracaoExpiracaoValor,

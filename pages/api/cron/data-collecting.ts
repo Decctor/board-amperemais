@@ -80,6 +80,40 @@ async function canScheduleCampaignForClient(
 	return true;
 }
 
+/**
+ * Type definition for cashback balance entries stored in the local Map cache
+ */
+type TCashbackBalanceEntry = {
+	clienteId: string;
+	programaId: string;
+	saldoValorDisponivel: number;
+	saldoValorAcumuladoTotal: number;
+};
+
+/**
+ * Helper function to update the local cashback balance Map cache.
+ * This ensures consistency when tracking balances across multiple sales iterations.
+ * @param map - The Map storing cashback balances by clientId
+ * @param clientId - Client ID (key for the Map)
+ * @param programId - Cashback program ID
+ * @param availableBalance - New available balance value
+ * @param accumulatedTotal - New accumulated total value
+ */
+function updateCashbackBalanceInMap(
+	map: Map<string, TCashbackBalanceEntry>,
+	clientId: string,
+	programId: string,
+	availableBalance: number,
+	accumulatedTotal: number,
+): void {
+	map.set(clientId, {
+		clienteId: clientId,
+		programaId: programId,
+		saldoValorDisponivel: availableBalance,
+		saldoValorAcumuladoTotal: accumulatedTotal,
+	});
+}
+
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
 	const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
 	console.log("DATE BEING USED", dayjs().format("DD/MM/YYYY HH:mm"), dayjs().subtract(5, "hour").format("DD/MM/YYYY HH:mm"), currentDateFormatted);
@@ -292,120 +326,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								saldoValorDisponivel: 0,
 								saldoValorAcumuladoTotal: 0,
 							});
-							existingCashbackProgramBalancesMap.set(insertedClientId, {
-								clienteId: insertedClientId,
-								programaId: cashbackProgram.id,
-								saldoValorDisponivel: 0,
-								saldoValorAcumuladoTotal: 0,
-							});
-						}
-
-						// Checking for applicable campaigns for new purchase
-						const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) =>
-							campaign.segmentacoes.some((s) => s.segmentacao === "CLIENTES RECENTES"),
-						);
-						if (applicableCampaigns.length > 0 && isValidSale) {
-							console.log(
-								`[ORG: ${organization.id}] ${applicableCampaigns.length} campanhas de primeira compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`,
-							);
-							for (const campaign of applicableCampaigns) {
-								// Validate campaign frequency before scheduling
-								const canSchedule = await canScheduleCampaignForClient(
-									tx,
-									insertedClientId,
-									campaign.id,
-									campaign.permitirRecorrencia,
-									campaign.frequenciaIntervaloValor,
-									campaign.frequenciaIntervaloMedida,
-								);
-
-								if (!canSchedule) {
-									console.log(
-										`[ORG: ${organization.id}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${OnlineSale.cliente} due to frequency limits.`,
-									);
-									continue;
-								}
-
-								// For the applicable campaigns, we will iterate over them and schedule the interactions
-								const interactionScheduleDate = getPostponedDateFromReferenceDate({
-									date: dayjs().toDate(),
-									unit: campaign.execucaoAgendadaMedida,
-									value: campaign.execucaoAgendadaValor,
-								});
-								const [insertedInteraction] = await tx
-									.insert(interactions)
-									.values({
-										clienteId: insertedClientId,
-										campanhaId: campaign.id,
-										organizacaoId: organization.id,
-										titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
-										tipo: "ENVIO-MENSAGEM",
-										descricao: "Cliente realizou sua primeira compra.",
-										agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-										agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-									})
-									.returning({ id: interactions.id });
-
-								// Check for immediate processing (execucaoAgendadaValor === 0)
-								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
-									// Query client data for immediate processing
-									const clientData = await tx.query.clients.findFirst({
-										where: (fields, { eq }) => eq(fields.id, insertedClientId),
-										columns: {
-											id: true,
-											nome: true,
-											telefone: true,
-											email: true,
-											analiseRFMTitulo: true,
-										},
-									});
-
-									if (clientData) {
-										immediateProcessingDataList.push({
-											interactionId: insertedInteraction.id,
-											organizationId: organization.id,
-											client: {
-												id: clientData.id,
-												nome: clientData.nome,
-												telefone: clientData.telefone,
-												email: clientData.email,
-												analiseRFMTitulo: clientData.analiseRFMTitulo,
-											},
-											campaign: {
-												autorId: campaign.autorId,
-												whatsappTelefoneId: campaign.whatsappTelefoneId,
-												whatsappTemplate: campaign.whatsappTemplate,
-											},
-											whatsappToken: whatsappConnection.token,
-										});
-									}
-								}
-
-								// Generate campaign cashback for PRIMEIRA-COMPRA trigger
-								if (cashbackProgram && campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
-									const saleValue = Number(OnlineSale.valor);
-									const cashbackGenerationResult = await generateCashbackForCampaign({
-										tx,
-										organizationId: organization.id,
-										clientId: insertedClientId,
-										campaignId: campaign.id,
-										cashbackType: campaign.cashbackGeracaoTipo,
-										cashbackValue: campaign.cashbackGeracaoValor,
-										saleValue: saleValue,
-										expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-										expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-									});
-
-									if (cashbackGenerationResult) {
-										existingCashbackProgramBalancesMap.set(insertedClientId, {
-											clienteId: insertedClientId,
-											programaId: cashbackProgram.id,
-											saldoValorDisponivel: cashbackGenerationResult.clientNewAvailableBalance,
-											saldoValorAcumuladoTotal: cashbackGenerationResult.clientNewAccumulatedTotal,
-										});
-									}
-								}
-							}
+							updateCashbackBalanceInMap(existingCashbackProgramBalancesMap, insertedClientId, cashbackProgram.id, 0, 0);
 						}
 					}
 
@@ -700,6 +621,118 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						updatedSalesCount++;
 					}
 
+					// Checking for applicable campaigns for first purchases
+					if (isNewSale && isNewClient && isValidSale && saleClientId) {
+						// Checking for applicable campaigns for new purchase
+						const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) =>
+							campaign.segmentacoes.some((s) => s.segmentacao === "CLIENTES RECENTES"),
+						);
+						if (applicableCampaigns.length > 0 && isValidSale) {
+							console.log(
+								`[ORG: ${organization.id}] ${applicableCampaigns.length} campanhas de primeira compra aplicáveis encontradas para o cliente ${OnlineSale.cliente}.`,
+							);
+							for (const campaign of applicableCampaigns) {
+								// Validate campaign frequency before scheduling
+								const canSchedule = await canScheduleCampaignForClient(
+									tx,
+									saleClientId,
+									campaign.id,
+									campaign.permitirRecorrencia,
+									campaign.frequenciaIntervaloValor,
+									campaign.frequenciaIntervaloMedida,
+								);
+
+								if (!canSchedule) {
+									console.log(
+										`[ORG: ${organization.id}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${OnlineSale.cliente} due to frequency limits.`,
+									);
+									continue;
+								}
+
+								// For the applicable campaigns, we will iterate over them and schedule the interactions
+								const interactionScheduleDate = getPostponedDateFromReferenceDate({
+									date: dayjs().toDate(),
+									unit: campaign.execucaoAgendadaMedida,
+									value: campaign.execucaoAgendadaValor,
+								});
+								const [insertedInteraction] = await tx
+									.insert(interactions)
+									.values({
+										clienteId: saleClientId,
+										campanhaId: campaign.id,
+										organizacaoId: organization.id,
+										titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+										tipo: "ENVIO-MENSAGEM",
+										descricao: "Cliente realizou sua primeira compra.",
+										agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+										agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+									})
+									.returning({ id: interactions.id });
+
+								// Check for immediate processing (execucaoAgendadaValor === 0)
+								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+									// Query client data for immediate processing
+									const clientData = await tx.query.clients.findFirst({
+										where: (fields, { eq }) => eq(fields.id, saleClientId),
+										columns: {
+											id: true,
+											nome: true,
+											telefone: true,
+											email: true,
+											analiseRFMTitulo: true,
+										},
+									});
+
+									if (clientData) {
+										immediateProcessingDataList.push({
+											interactionId: insertedInteraction.id,
+											organizationId: organization.id,
+											client: {
+												id: clientData.id,
+												nome: clientData.nome,
+												telefone: clientData.telefone,
+												email: clientData.email,
+												analiseRFMTitulo: clientData.analiseRFMTitulo,
+											},
+											campaign: {
+												autorId: campaign.autorId,
+												whatsappTelefoneId: campaign.whatsappTelefoneId,
+												whatsappTemplate: campaign.whatsappTemplate,
+											},
+											whatsappToken: whatsappConnection.token,
+										});
+									}
+								}
+
+								// Generate campaign cashback for PRIMEIRA-COMPRA trigger
+								if (cashbackProgram && campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+									const saleValue = Number(OnlineSale.valor);
+									const cashbackGenerationResult = await generateCashbackForCampaign({
+										tx,
+										organizationId: organization.id,
+										clientId: saleClientId,
+										campaignId: campaign.id,
+										cashbackType: campaign.cashbackGeracaoTipo,
+										cashbackValue: campaign.cashbackGeracaoValor,
+										saleId: saleId,
+										saleValue: saleValue,
+										expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+										expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+									});
+
+									if (cashbackGenerationResult) {
+										updateCashbackBalanceInMap(
+											existingCashbackProgramBalancesMap,
+											saleClientId,
+											cashbackProgram.id,
+											cashbackGenerationResult.clientNewAvailableBalance,
+											cashbackGenerationResult.clientNewAccumulatedTotal,
+										);
+									}
+								}
+							}
+						}
+					}
 					// Checking for applicable campaigns for new purchase
 					if (isNewSale && !isNewClient && isValidSale) {
 						const applicableCampaigns = campaignsForNewPurchase.filter((campaign) => {
@@ -802,6 +835,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 										campaignId: campaign.id,
 										cashbackType: campaign.cashbackGeracaoTipo,
 										cashbackValue: campaign.cashbackGeracaoValor,
+										saleId: saleId,
 										saleValue: saleValue,
 										expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 										expirationValue: campaign.cashbackGeracaoExpiracaoValor,
@@ -810,11 +844,13 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									if (cashbackGenerationResult) {
 										const clientCashbackProgramBalance = existingCashbackProgramBalancesMap.get(saleClientId);
 										if (clientCashbackProgramBalance) {
-											existingCashbackProgramBalancesMap.set(saleClientId, {
-												...clientCashbackProgramBalance,
-												saldoValorDisponivel: cashbackGenerationResult.clientNewAvailableBalance,
-												saldoValorAcumuladoTotal: cashbackGenerationResult.clientNewAccumulatedTotal,
-											});
+											updateCashbackBalanceInMap(
+												existingCashbackProgramBalancesMap,
+												saleClientId,
+												clientCashbackProgramBalance.programaId,
+												cashbackGenerationResult.clientNewAvailableBalance,
+												cashbackGenerationResult.clientNewAccumulatedTotal,
+											);
 										}
 									}
 								}
@@ -876,12 +912,13 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								});
 
 								// Update the map for subsequent iterations
-								existingCashbackProgramBalancesMap.set(saleClientId, {
-									clienteId: saleClientId,
-									programaId: cashbackProgram.id,
-									saldoValorDisponivel: newOverallAvailableBalance,
-									saldoValorAcumuladoTotal: newOverallAccumulatedBalance,
-								});
+								updateCashbackBalanceInMap(
+									existingCashbackProgramBalancesMap,
+									saleClientId,
+									cashbackProgram.id,
+									newOverallAvailableBalance,
+									newOverallAccumulatedBalance,
+								);
 
 								// Checking for applicable campaigns for cashback accumulation
 								if (campaignsForCashbackAccumulation.length > 0) {
@@ -998,18 +1035,20 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												campaignId: campaign.id,
 												cashbackType: "FIXO",
 												cashbackValue: campaign.cashbackGeracaoValor,
-												saleValue: null,
+												saleValue: saleValue,
+												saleId: saleId,
 												expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 												expirationValue: campaign.cashbackGeracaoExpiracaoValor,
 											});
 
 											if (cashbackGenerationResult) {
-												existingCashbackProgramBalancesMap.set(saleClientId, {
-													clienteId: saleClientId,
-													programaId: cashbackProgram.id,
-													saldoValorDisponivel: cashbackGenerationResult.clientNewAvailableBalance,
-													saldoValorAcumuladoTotal: cashbackGenerationResult.clientNewAccumulatedTotal,
-												});
+												updateCashbackBalanceInMap(
+													existingCashbackProgramBalancesMap,
+													saleClientId,
+													cashbackProgram.id,
+													cashbackGenerationResult.clientNewAvailableBalance,
+													cashbackGenerationResult.clientNewAccumulatedTotal,
+												);
 											}
 										}
 									}
@@ -1017,7 +1056,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							}
 						}
 					}
-					if (isValidSale && saleClientId) {
+					if (isValidSale && saleClientId && isNewSale) {
 						await tx
 							.update(clients)
 							.set({

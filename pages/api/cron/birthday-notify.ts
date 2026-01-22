@@ -123,23 +123,22 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 								value: campaign.execucaoAgendadaValor,
 							});
 
-							const [insertedInteraction] = await tx.insert(interactions).values({
-								clienteId: client.id,
-								campanhaId: campaign.id,
-								organizacaoId: organization.id,
-								titulo: `Aniversário: ${campaign.titulo}`,
-								tipo: "ENVIO-MENSAGEM",
-								descricao: `Feliz aniversário, ${client.nome}!`,
-								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
-								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
-							}).returning({ id: interactions.id });
+							const [insertedInteraction] = await tx
+								.insert(interactions)
+								.values({
+									clienteId: client.id,
+									campanhaId: campaign.id,
+									organizacaoId: organization.id,
+									titulo: `Aniversário: ${campaign.titulo}`,
+									tipo: "ENVIO-MENSAGEM",
+									descricao: `Feliz aniversário, ${client.nome}!`,
+									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+								})
+								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (
-								campaign.execucaoAgendadaValor === 0 &&
-								campaign.whatsappTemplate &&
-								whatsappConnection
-							) {
+							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, client.id),
@@ -182,6 +181,7 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 									campaignId: campaign.id,
 									cashbackType: "FIXO",
 									cashbackValue: campaign.cashbackGeracaoValor,
+									saleId: null,
 									saleValue: null,
 									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 									expirationValue: campaign.cashbackGeracaoExpiracaoValor,

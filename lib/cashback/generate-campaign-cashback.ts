@@ -11,6 +11,7 @@ type GenerateCashbackForCampaignParams = {
 	campaignId: string;
 	cashbackType: TCashbackProgramAccumulationTypeEnum;
 	cashbackValue: number;
+	saleId: string | null;
 	saleValue: number | null; // Required for PERCENTUAL calculation
 	expirationMeasure: TTimeDurationUnitsEnum | null;
 	expirationValue: number | null;
@@ -23,6 +24,7 @@ export async function generateCashbackForCampaign({
 	organizationId,
 	clientId,
 	campaignId,
+	saleId,
 	cashbackType,
 	cashbackValue,
 	saleValue,
@@ -129,6 +131,7 @@ export async function generateCashbackForCampaign({
 			organizacaoId: organizationId,
 			clienteId: clientId,
 			programaId: program.id,
+			vendaId: saleId,
 			tipo: "ACÚMULO",
 			status: "ATIVO",
 			valor: cashbackAmount,
