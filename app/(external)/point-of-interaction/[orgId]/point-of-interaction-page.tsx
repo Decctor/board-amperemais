@@ -53,17 +53,37 @@ export default function PointOfInteractionContent({
 	return (
 		<div className="grow bg-background p-6 md:p-10 flex flex-col items-center gap-6">
 			{/* HEADER SIMPLIFICADO: Foco na Marca */}
-			<header className="flex flex-col items-center text-center">
-				{org.logoUrl ? (
-					<div className="relative w-16 h-16 md:w-24 md:h-24 mb-4 drop-shadow-sm rounded-full overflow-hidden">
-						<Image src={org.logoUrl} alt={org.nome} fill className="object-contain" />
+			{/* HEADER HORIZONTAL: Logo + Info + Regras */}
+			<header className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 bg-white/50 backdrop-blur-sm px-4 py-2 md:px-6 md:py-4 rounded-[2rem] border border-white/40 shadow-sm">
+				<div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+					{org.logoUrl ? (
+						<div className="relative w-12 h-12 md:w-16 md:h-16 drop-shadow-sm rounded-full overflow-hidden bg-white">
+							<Image src={org.logoUrl} alt={org.nome} fill className="object-contain" />
+						</div>
+					) : (
+						<div className="w-12 h-12 md:w-16 md:h-16 bg-brand/10 rounded-full overflow-hidden flex items-center justify-center">
+							<Building2 className="w-8 h-8 text-brand" />
+						</div>
+					)}
+					<div>
+						<h1 className="text-md md:text-lg font-black uppercase tracking-tight text-foreground/90">SEJA BEM VINDO À {org.nome}</h1>
+						<p className="text-xs md:text-sm font-medium text-muted-foreground">O melhor programa de fidelidade da região.</p>
 					</div>
-				) : (
-					<div className="w-16 h-16 md:w-24 md:h-24 bg-brand/10 rounded-full overflow-hidden flex items-center justify-center mb-4">
-						<Building2 className="w-12 h-12 text-brand" />
+				</div>
+
+				<div className="flex items-center gap-3 bg-brand/5 px-5 py-3 rounded-2xl border border-brand/10">
+					<div className="bg-brand/10 p-2.5 rounded-full">
+						<Coins className="w-5 h-5 text-brand" />
 					</div>
-				)}
-				<h1 className="text-xl md:text-2xl font-black uppercase tracking-tighter">SEJA BEM VINDO À {org.nome}</h1>
+					<div className="flex flex-col">
+						<span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Regras do Cashback</span>
+						<div className="flex items-center gap-2 text-sm font-bold text-foreground">
+							<span>Ganhe {cashbackProgram.acumuloValor}%</span>
+							<span className="w-1 h-1 bg-brand/30 rounded-full" />
+							<span>Válido por {cashbackProgram.expiracaoRegraValidadeValor} dias</span>
+						</div>
+					</div>
+				</div>
 			</header>
 
 			{allowAccumulation ? (
