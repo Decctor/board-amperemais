@@ -485,20 +485,6 @@ function PointOfInteractionWithAccumulationViaPDI({
 						</div>
 					</Button>
 
-					{/* RANKING CLIENTES */}
-					<Button
-						onClick={() => router.push(`/point-of-interaction/${org.id}/clients-ranking`)}
-						variant="ghost"
-						size="fit"
-						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full bg-secondary"
-					>
-						<Trophy className="w-10 h-10" />
-						<div className="text-center">
-							<h3 className="text-base font-bold uppercase">RANKING CLIENTES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Veja os maiores compradores</p>
-						</div>
-					</Button>
-
 					{/* RANKING VENDEDORES */}
 					<Button
 						onClick={() => router.push(`/point-of-interaction/${org.id}/sellers-ranking`)}
@@ -508,8 +494,8 @@ function PointOfInteractionWithAccumulationViaPDI({
 					>
 						<Trophy className="w-10 h-10" />
 						<div className="text-center">
-							<h3 className="text-base font-bold uppercase">RANKING VENDEDORES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho dos vendedores</p>
+							<h3 className="text-base font-bold uppercase">RANKING DE VENDEDORES</h3>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Acompanhe a competição entre os vendedores</p>
 						</div>
 					</Button>
 				</div>
@@ -556,20 +542,6 @@ function PointerOfInteractionWithoutAccumulationViaPDI({ org, router, handleOpen
 				</div>
 
 				<div className="w-full md:w-1/2 flex flex-col gap-6">
-					{/* RANKING CLIENTES */}
-					<Button
-						onClick={() => router.push(`/point-of-interaction/${org.id}/clients-ranking`)}
-						variant="ghost"
-						size="fit"
-						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
-					>
-						<Trophy className="w-10 h-10" />
-						<div className="text-center">
-							<h3 className="text-lg font-bold uppercase">RANKING DE CLIENTES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Veja os maiores compradores</p>
-						</div>
-					</Button>
-
 					{/* RANKING VENDEDORES */}
 					<Button
 						onClick={() => router.push(`/point-of-interaction/${org.id}/sellers-ranking`)}
@@ -580,7 +552,7 @@ function PointerOfInteractionWithoutAccumulationViaPDI({ org, router, handleOpen
 						<Trophy className="w-10 h-10" />
 						<div className="text-center">
 							<h3 className="text-lg font-bold uppercase">RANKING DE VENDEDORES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Confira o desempenho dos vendedores</p>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Acompanhe a competição entre os vendedores</p>
 						</div>
 					</Button>
 				</div>

@@ -38,7 +38,7 @@ const responsiveMenuV2Variants = cva("flex flex-col", {
 const drawerVariants = cva("flex flex-col", {
 	variants: {
 		drawerVariant: {
-			fit: "flex flex-col h-fit max-h-fit",
+			fit: "flex flex-col h-fit max-h-[90vh]",
 			sm: "flex flex-col h-fit max-h-[70vh]",
 			md: "flex flex-col h-fit max-h-[80vh]",
 			lg: "flex flex-col h-fit max-h-[90vh]",
@@ -69,6 +69,8 @@ type ResponsiveMenuV2Props = PropsWithChildren & {
 	closeMenu: () => void;
 	dialogVariant?: "fit" | "sm" | "md" | "lg" | "xl";
 	drawerVariant?: "fit" | "sm" | "md" | "lg" | "xl";
+	dialogShowFooter?: boolean;
+	drawerShowFooter?: boolean;
 	// Novas props para flexibilidade
 	successContent?: ReactNode;
 	customLoadingComponent?: ReactNode;
@@ -132,6 +134,8 @@ function ResponsiveMenuV2(props: ResponsiveMenuV2Props) {
 		drawerContentClassName,
 		dialogVariant = "sm",
 		drawerVariant = "sm",
+		dialogShowFooter = true,
+		drawerShowFooter = true,
 		successContent,
 	} = props;
 
@@ -169,7 +173,7 @@ function ResponsiveMenuV2(props: ResponsiveMenuV2Props) {
 					<MenuContentSwitcher {...props} />
 
 					{/* Oculta o footer padrão em caso de sucesso para focar no conteúdo de sucesso */}
-					{!successContent && <DialogFooter className="flex-wrap gap-y-2">{footerButtons}</DialogFooter>}
+					{!successContent && dialogShowFooter && <DialogFooter className="flex-wrap gap-y-2">{footerButtons}</DialogFooter>}
 				</DialogContent>
 			</Dialog>
 		);
@@ -185,7 +189,7 @@ function ResponsiveMenuV2(props: ResponsiveMenuV2Props) {
 
 				<MenuContentSwitcher {...props} />
 
-				{!successContent && <DrawerFooter>{footerButtons}</DrawerFooter>}
+				{!successContent && drawerShowFooter && <DrawerFooter>{footerButtons}</DrawerFooter>}
 			</DrawerContent>
 		</Drawer>
 	);

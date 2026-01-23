@@ -58,7 +58,7 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 		.from(sales)
 		.where(and(eq(sales.organizacaoId, orgId), gte(sales.dataVenda, monthStart), lte(sales.dataVenda, monthEnd), eq(sales.natureza, "SN01")))
 		.groupBy(sales.vendedorNome)
-		.orderBy(desc(sql`COALESCE(SUM(${sales.valorTotal}), 0)`))
+		.orderBy(desc(count(sales.id)))
 		.limit(50);
 
 	// Add position to each seller
@@ -134,9 +134,6 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 										</div>
 										<div className="min-w-0 flex-1">
 											<h3 className="text-lg md:text-xl font-black truncate tracking-tight uppercase italic text-black">{seller.vendedorNome}</h3>
-											<p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-												{seller.numeroVendas} {seller.numeroVendas === 1 ? "venda" : "vendas"}
-											</p>
 										</div>
 									</div>
 
@@ -148,7 +145,9 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 												seller.posicao <= 3 ? "bg-brand text-brand-foreground shadow-lg shadow-brand/20" : "bg-brand/5 text-brand",
 											)}
 										>
-											<p className="text-lg md:text-2xl font-black">{formatToMoney(seller.totalVendas)}</p>
+											<p className="text-lg md:text-2xl font-black">
+												{seller.numeroVendas} {seller.numeroVendas === 1 ? "venda" : "vendas"}
+											</p>
 										</div>
 									</div>
 								</div>
