@@ -56,7 +56,7 @@ export const productVariants = newTable(
 		produtoId: varchar("produto_id", { length: 255 })
 			.notNull()
 			.references(() => products.id, { onDelete: "cascade" }),
-
+		idExterno: text("id_externo"),
 		// Identity
 		nome: text("nome").notNull(), // "350ml", "G", "Preta"
 		codigo: text("codigo"), // Specific SKU for this variant (overrides product.codigo)
@@ -93,6 +93,7 @@ export const productAddOns = newTable("product_add_ons", {
 	organizacaoId: varchar("organizacao_id", { length: 255 })
 		.notNull()
 		.references(() => organizations.id),
+	idExterno: text("id_externo"),
 	nome: text("nome").notNull(), // "Ponto da Carne", "Borda", "Extras"
 	internoNome: text("interno_nome"), // Helpful for management: "Extras de Lanche" vs "Extras de Pizza"
 
@@ -122,6 +123,7 @@ export const productAddOnOptions = newTable("product_add_on_options", {
 		.notNull()
 		.references(() => productAddOns.id, { onDelete: "cascade" }),
 
+	idExterno: text("id_externo"),
 	nome: text("nome").notNull(), // "Bacon Extra"
 	// ---------------------------------------------------------
 	// STOCK LINKING

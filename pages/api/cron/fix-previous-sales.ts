@@ -61,9 +61,10 @@ const handleFixPreviousSales: NextApiHandler<string> = async (req, res) => {
 		}
 
 		try {
+			const onlineSoftwareConfig = organization.integracaoConfiguracao as { tipo: "ONLINE-SOFTWARE"; token: string };
 			// Fetching data from the online software API
 			const { data: onlineAPIResponse } = await axios.post("https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php", {
-				token: organization.integracaoConfiguracao?.token,
+				token: onlineSoftwareConfig.token,
 				rotina: "listarVendas001",
 				dtinicio: startDateFormatted,
 				dtfim: endDateFormatted,
@@ -137,9 +138,7 @@ const handleFixPreviousSales: NextApiHandler<string> = async (req, res) => {
 
 				for (const [OnlineSaleIndex, OnlineSale] of OnlineSoftwareSales.entries()) {
 					if (OnlineSaleIndex % 100 === 0) {
-						console.log(
-							`[ORG: ${organization.id}] [INFO] [FIX_PREVIOUS_SALES] Processing sale ${OnlineSaleIndex + 1} of ${OnlineSoftwareSales.length}...`,
-						);
+						console.log(`[ORG: ${organization.id}] [INFO] [FIX_PREVIOUS_SALES] Processing sale ${OnlineSaleIndex + 1} of ${OnlineSoftwareSales.length}...`);
 					}
 
 					const onlineBaseSaleDate = dayjs(OnlineSale.data, "DD/MM/YYYY");
@@ -347,8 +346,7 @@ const handleFixPreviousSales: NextApiHandler<string> = async (req, res) => {
 
 						if (wasPreviouslyValid && isNowCanceled) {
 							console.log(
-								`[ORG: ${organization.id}] [FIX_PREVIOUS_SALES] [SALE_CANCELED] ` +
-									`Venda ${OnlineSale.id} foi cancelada. Revertendo cashback...`,
+								`[ORG: ${organization.id}] [FIX_PREVIOUS_SALES] [SALE_CANCELED] ` + `Venda ${OnlineSale.id} foi cancelada. Revertendo cashback...`,
 							);
 
 							await reverseSaleCashback({
@@ -452,9 +450,7 @@ const handleFixPreviousSales: NextApiHandler<string> = async (req, res) => {
 					}
 				}
 
-				console.log(
-					`[ORG: ${organization.id}] [INFO] [FIX_PREVIOUS_SALES] Created ${createdSalesCount} sales and updated ${updatedSalesCount} sales.`,
-				);
+				console.log(`[ORG: ${organization.id}] [INFO] [FIX_PREVIOUS_SALES] Created ${createdSalesCount} sales and updated ${updatedSalesCount} sales.`);
 			});
 		} catch (error) {
 			console.error(`[ORG: ${organization.id}] [ERROR] [FIX_PREVIOUS_SALES] Error processing organization:`, error);

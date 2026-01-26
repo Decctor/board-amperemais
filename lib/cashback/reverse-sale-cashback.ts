@@ -27,13 +27,7 @@ type ReverseSaleCashbackParams = {
  * @param reason - Reason for cancellation (for audit trail)
  * @returns Object with reversal statistics
  */
-export async function reverseSaleCashback({
-	tx,
-	saleId,
-	clientId,
-	organizationId,
-	reason,
-}: ReverseSaleCashbackParams): Promise<{
+export async function reverseSaleCashback({ tx, saleId, clientId, organizationId, reason }: ReverseSaleCashbackParams): Promise<{
 	reversedTransactionsCount: number;
 	totalReversedAmount: number;
 	canceledInteractionsCount: number;
@@ -43,11 +37,7 @@ export async function reverseSaleCashback({
 	// 1. Find all active or consumed cashback transactions related to this sale
 	const relatedTransactions = await tx.query.cashbackProgramTransactions.findMany({
 		where: (fields, { and, eq, or }) =>
-			and(
-				eq(fields.vendaId, saleId),
-				eq(fields.tipo, "ACÚMULO"),
-				or(eq(fields.status, "ATIVO"), eq(fields.status, "CONSUMIDO")),
-			),
+			and(eq(fields.vendaId, saleId), eq(fields.tipo, "ACÚMULO"), or(eq(fields.status, "ATIVO"), eq(fields.status, "CONSUMIDO"))),
 	});
 
 	if (relatedTransactions.length === 0) {
@@ -70,9 +60,7 @@ export async function reverseSaleCashback({
 		const amountToReverse = transaction.valorRestante;
 
 		if (amountToReverse <= 0) {
-			console.log(
-				`[CASHBACK_REVERSAL] Transaction ${transaction.id} has no remaining value to reverse. Skipping but marking as EXPIRADO.`,
-			);
+			console.log(`[CASHBACK_REVERSAL] Transaction ${transaction.id} has no remaining value to reverse. Skipping but marking as EXPIRADO.`);
 			// Still mark as expired
 			await tx
 				.update(cashbackProgramTransactions)
@@ -86,11 +74,7 @@ export async function reverseSaleCashback({
 		// Get current balance
 		const currentBalance = await tx.query.cashbackProgramBalances.findFirst({
 			where: (fields, { and, eq }) =>
-				and(
-					eq(fields.clienteId, clientId),
-					eq(fields.programaId, transaction.programaId),
-					eq(fields.organizacaoId, organizationId),
-				),
+				and(eq(fields.clienteId, clientId), eq(fields.programaId, transaction.programaId), eq(fields.organizacaoId, organizationId)),
 		});
 
 		if (!currentBalance) {
@@ -105,8 +89,8 @@ export async function reverseSaleCashback({
 
 		// Create CANCELAMENTO transaction
 		await tx.insert(cashbackProgramTransactions).values({
-			organizacaoId,
-			clienteId,
+			organizacaoId: organizationId,
+			clienteId: clientId,
 			vendaId: saleId,
 			programaId: transaction.programaId,
 			tipo: "CANCELAMENTO",
@@ -166,11 +150,7 @@ export async function reverseSaleCashback({
 				eq(interactions.organizacaoId, organizationId),
 				isNull(interactions.dataExecucao),
 				// Only delete interactions from campaigns that might have generated cashback
-				or(
-					...relatedTransactions
-						.filter((t) => t.campanhaId !== null)
-						.map((t) => eq(interactions.campanhaId, t.campanhaId!)),
-				),
+				or(...relatedTransactions.filter((t) => t.campanhaId !== null).map((t) => eq(interactions.campanhaId, t.campanhaId!))),
 			),
 		)
 		.returning({ id: interactions.id });

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { doublePrecision, timestamp } from "drizzle-orm/pg-core";
+import { doublePrecision, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { boolean, text, varchar } from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
 import { clients } from "./clients";
@@ -93,6 +93,7 @@ export const cashbackProgramTransactions = newTable("cashback_program_transactio
 
 	operadorId: varchar("operador_id", { length: 255 }).references(() => users.id),
 	campanhaId: varchar("campanha_id", { length: 255 }).references(() => campaigns.id),
+	metadados: jsonb("metadados"),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
 });

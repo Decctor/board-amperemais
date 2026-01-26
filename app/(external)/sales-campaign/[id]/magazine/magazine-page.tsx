@@ -20,7 +20,7 @@ export default function SalesCampaignMagazine({ campaign, campaignItems }: Sales
 	const campaignTitle = campaign.valor.dados.titulo || "NOSSAS OFERTAS PARA SUA CASA !"; // Fallback if no description
 
 	// Chunk items into groups of 12 (3 cols x 4 rows)
-	const itemsPerPage = 12;
+	const itemsPerPage = 9;
 	const chunks = [];
 	for (let i = 0; i < items.length; i += itemsPerPage) {
 		chunks.push(items.slice(i, i + itemsPerPage));
@@ -110,7 +110,7 @@ function MagazinePageWrapper({
 			</div>
 
 			{/* Grid Content */}
-			<div className="grid grid-cols-4 grid-rows-3 gap-3 w-full grow px-6 pb-6">
+			<div className="grid grid-cols-3 grid-rows-3 gap-3 w-full grow px-6 pb-6">
 				{items.map((item, idx) => (
 					<MagazineCard key={`${item.titulo}-${idx}`} item={item} campaignItems={campaignItems} />
 				))}
@@ -170,9 +170,7 @@ function MagazineCard({
 
 			{/* Price Area */}
 			<div className="flex flex-col items-center justify-center gap-0 mb-1 mt-auto">
-				{hasBasePrice && (
-					<span className="text-[0.6rem] font-extrabold text-[#FBBF24] line-through decoration-2">DE R$ {formatMoney(item.valorBase)}</span>
-				)}
+				{hasBasePrice && <span className="text-[0.6rem] font-extrabold text-[#FBBF24] line-through decoration">DE R$ {formatMoney(item.valorBase)}</span>}
 
 				<div className="flex items-baseline text-[#FFCB00] leading-none mb-1">
 					<span className="text-sm font-black mr-1">R$</span>

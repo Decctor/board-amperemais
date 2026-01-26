@@ -1,6 +1,9 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import { processConversionAttribution } from "@/lib/conversions/attribution";
+import { fetchCardapioWebOrdersWithDetails } from "@/lib/data-connectors/cardapio-web";
+import { extractAllCardapioWebData, type MappedCardapioWebSale } from "@/lib/data-connectors/cardapio-web/mappers";
+import type { TCardapioWebConfig } from "@/lib/data-connectors/cardapio-web/types";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
@@ -13,6 +16,8 @@ import {
 	clients,
 	interactions,
 	partners,
+	productAddOnOptions,
+	productAddOns,
 	products,
 	saleItems,
 	sales,
@@ -114,6 +119,710 @@ function updateCashbackBalanceInMap(
 	});
 }
 
+/**
+ * Type for campaigns with relations (used by both ONLINE-SOFTWARE and CARDAPIO-WEB handlers)
+ */
+type TCampaignWithRelations = Awaited<
+	ReturnType<typeof db.query.campaigns.findMany<{ with: { segmentacoes: true; whatsappTemplate: true } }>>
+>[number];
+
+/**
+ * Handler for CARDAPIO-WEB integration.
+ * Fetches orders for the current day and processes them following the same patterns as ONLINE-SOFTWARE.
+ */
+async function handleCardapioWebImportation(
+	organizationId: string,
+	config: TCardapioWebConfig,
+	campaignsForNewPurchase: TCampaignWithRelations[],
+	campaignsForFirstPurchase: TCampaignWithRelations[],
+	campaignsForCashbackAccumulation: TCampaignWithRelations[],
+	whatsappConnection: Awaited<ReturnType<typeof db.query.whatsappConnections.findFirst>>,
+	immediateProcessingDataList: ImmediateProcessingData[],
+) {
+	// Fetch orders for today (start of day until now)
+	const startDate = dayjs().startOf("day").toISOString();
+	const endDate = dayjs().toISOString();
+
+	console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Fetching orders from ${startDate} to ${endDate}`);
+
+	// Fetch all orders with details from CardapioWeb API
+	const orderDetails = await fetchCardapioWebOrdersWithDetails(config, startDate, endDate);
+
+	if (orderDetails.length === 0) {
+		console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] No orders found.`);
+		return;
+	}
+
+	// Log the raw response for debugging
+	await db
+		.insert(utils)
+		.values({
+			organizacaoId: organizationId,
+			identificador: "CARDAPIO_WEB_IMPORTATION" as const,
+			valor: {
+				identificador: "CARDAPIO_WEB_IMPORTATION" as const,
+				dados: {
+					organizacaoId: organizationId,
+					data: dayjs().format("YYYY-MM-DD"),
+					conteudo: orderDetails,
+				},
+			},
+		})
+		.returning({ id: utils.id });
+
+	// Extract and map all data
+	const { sales: mappedSales, products: mappedProducts, partners: mappedPartners, productAddOns: mappedAddOns, productAddOnOptions: mappedAddOnOptions } =
+		extractAllCardapioWebData(orderDetails);
+
+	console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Mapped ${mappedSales.length} sales, ${mappedProducts.length} products, ${mappedPartners.length} partners`);
+	console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Mapped ${mappedAddOns.length} add-ons, ${mappedAddOnOptions.length} add-on options`);
+
+	const cardapioWebSalesIds = mappedSales.map((sale) => sale.idExterno);
+
+	await db.transaction(async (tx) => {
+		// Fetch existing data
+		const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+			columns: {
+				id: true,
+				acumuloTipo: true,
+				acumuloRegraValorMinimo: true,
+				acumuloValor: true,
+				expiracaoRegraValidadeValor: true,
+				acumuloPermitirViaIntegracao: true,
+			},
+		});
+		const cashbackProgramAllowsAccumulationViaIntegration = cashbackProgram?.acumuloPermitirViaIntegracao;
+
+		const existingSales = await tx.query.sales.findMany({
+			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, organizationId), inArray(fields.idExterno, cardapioWebSalesIds)),
+			with: { itens: true },
+		});
+
+		const existingClients = await tx.query.clients.findMany({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+			columns: { id: true, nome: true, primeiraCompraData: true, ultimaCompraData: true, analiseRFMTitulo: true },
+		});
+
+		const existingProducts = await tx.query.products.findMany({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+			columns: { id: true, codigo: true },
+		});
+
+		const existingPartners = await tx.query.partners.findMany({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+			columns: { id: true, identificador: true },
+		});
+
+		const existingAddOns = await tx.query.productAddOns.findMany({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+			columns: { id: true, idExterno: true },
+		});
+
+		const existingAddOnOptions = await tx.query.productAddOnOptions.findMany({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+			columns: { id: true, idExterno: true, produtoAddOnId: true },
+		});
+
+		const existingCashbackProgramBalances = cashbackProgram
+			? await tx.query.cashbackProgramBalances.findMany({
+					where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organizationId), eq(fields.programaId, cashbackProgram.id)),
+					columns: { programaId: true, clienteId: true, saldoValorDisponivel: true, saldoValorAcumuladoTotal: true },
+				})
+			: [];
+
+		// Create maps for quick lookups
+		const existingSalesMap = new Map(existingSales.map((sale) => [sale.idExterno, sale]));
+		const existingClientsMap = new Map(
+			existingClients.map((client) => [
+				client.nome,
+				{ id: client.id, firstPurchaseDate: client.primeiraCompraData, lastPurchaseDate: client.ultimaCompraData, rfmTitle: client.analiseRFMTitulo },
+			]),
+		);
+		const existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
+		const existingPartnersMap = new Map(existingPartners.map((partner) => [partner.identificador, partner.id]));
+		const existingAddOnsMap = new Map(existingAddOns.map((addon) => [addon.idExterno, addon.id]));
+		const existingAddOnOptionsMap = new Map(existingAddOnOptions.map((option) => [option.idExterno, { id: option.id, addOnId: option.produtoAddOnId }]));
+		const existingCashbackProgramBalancesMap = new Map(existingCashbackProgramBalances.map((balance) => [balance.clienteId, balance]));
+
+		// Sync Products
+		for (const product of mappedProducts) {
+			if (!existingProductsMap.has(product.codigo)) {
+				const [inserted] = await tx
+					.insert(products)
+					.values({
+						organizacaoId: organizationId,
+						codigo: product.codigo,
+						descricao: product.descricao,
+						unidade: product.unidade,
+						grupo: product.grupo,
+						ncm: product.ncm,
+						tipo: product.tipo,
+					})
+					.returning({ id: products.id });
+				existingProductsMap.set(product.codigo, inserted.id);
+			}
+		}
+
+		// Sync Partners
+		for (const partner of mappedPartners) {
+			if (!existingPartnersMap.has(partner.identificador)) {
+				const [inserted] = await tx
+					.insert(partners)
+					.values({
+						organizacaoId: organizationId,
+						identificador: partner.identificador,
+						nome: partner.nome,
+					})
+					.returning({ id: partners.id });
+				existingPartnersMap.set(partner.identificador, inserted.id);
+			}
+		}
+
+		// Sync ProductAddOns
+		for (const addon of mappedAddOns) {
+			if (!existingAddOnsMap.has(addon.idExterno)) {
+				const [inserted] = await tx
+					.insert(productAddOns)
+					.values({
+						organizacaoId: organizationId,
+						idExterno: addon.idExterno,
+						nome: addon.nome,
+						minOpcoes: addon.minOpcoes,
+						maxOpcoes: addon.maxOpcoes,
+					})
+					.returning({ id: productAddOns.id });
+				existingAddOnsMap.set(addon.idExterno, inserted.id);
+			}
+		}
+
+		// Sync ProductAddOnOptions
+		for (const option of mappedAddOnOptions) {
+			if (!existingAddOnOptionsMap.has(option.idExterno)) {
+				const addOnId = existingAddOnsMap.get(option.addOnIdExterno);
+				if (addOnId) {
+					const [inserted] = await tx
+						.insert(productAddOnOptions)
+						.values({
+							organizacaoId: organizationId,
+							produtoAddOnId: addOnId,
+							idExterno: option.idExterno,
+							nome: option.nome,
+							codigo: option.codigo,
+							precoDelta: option.precoDelta,
+							maxQtdePorItem: option.maxQtdePorItem,
+						})
+						.returning({ id: productAddOnOptions.id });
+					existingAddOnOptionsMap.set(option.idExterno, { id: inserted.id, addOnId });
+				}
+			}
+		}
+
+		let createdSalesCount = 0;
+		let updatedSalesCount = 0;
+
+		// Process each sale
+		for (const cardapioWebSale of mappedSales) {
+			let isNewClient = false;
+			let isNewSale = false;
+
+			const saleDate = cardapioWebSale.dataVenda;
+			const isValidSale = cardapioWebSale.isValidSale;
+			const clientName = cardapioWebSale.cliente?.nome;
+			const isValidClient = !!clientName && clientName !== "CLIENTE CARDAPIO WEB";
+
+			// Sync Client
+			const equivalentSaleClient = clientName ? existingClientsMap.get(clientName) : undefined;
+			let saleClientId = equivalentSaleClient?.id;
+
+			if (!saleClientId && isValidClient && cardapioWebSale.cliente) {
+				console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Creating new client: ${clientName}`);
+				const [insertedClient] = await tx
+					.insert(clients)
+					.values({
+						nome: clientName,
+						organizacaoId: organizationId,
+						telefone: cardapioWebSale.cliente.telefone,
+						telefoneBase: cardapioWebSale.cliente.telefoneBase,
+						primeiraCompraData: isValidSale ? saleDate : null,
+						ultimaCompraData: isValidSale ? saleDate : null,
+						analiseRFMTitulo: "CLIENTES RECENTES",
+					})
+					.returning({ id: clients.id });
+
+				saleClientId = insertedClient.id;
+				isNewClient = true;
+				existingClientsMap.set(clientName, {
+					id: insertedClient.id,
+					firstPurchaseDate: isValidSale ? saleDate : null,
+					lastPurchaseDate: isValidSale ? saleDate : null,
+					rfmTitle: "CLIENTES RECENTES",
+				});
+
+				if (cashbackProgram) {
+					await tx.insert(cashbackProgramBalances).values({
+						clienteId: insertedClient.id,
+						programaId: cashbackProgram.id,
+						organizacaoId: organizationId,
+						saldoValorDisponivel: 0,
+						saldoValorAcumuladoTotal: 0,
+					});
+					updateCashbackBalanceInMap(existingCashbackProgramBalancesMap, insertedClient.id, cashbackProgram.id, 0, 0);
+				}
+			}
+
+			// Sync Partner
+			const partnerId = cardapioWebSale.parceiro ? existingPartnersMap.get(cardapioWebSale.parceiro.identificador) : null;
+
+			let saleId: string | null = null;
+			const existingSale = existingSalesMap.get(cardapioWebSale.idExterno);
+
+			if (!existingSale) {
+				isNewSale = true;
+				console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Creating new sale ${cardapioWebSale.idExterno} with ${cardapioWebSale.itens.length} items...`);
+
+				const [insertedSale] = await tx
+					.insert(sales)
+					.values({
+						organizacaoId: organizationId,
+						idExterno: cardapioWebSale.idExterno,
+						clienteId: saleClientId,
+						valorTotal: cardapioWebSale.valorTotal,
+						custoTotal: cardapioWebSale.custoTotal,
+						vendedorNome: "CARDAPIO WEB",
+						vendedorId: null,
+						parceiro: cardapioWebSale.parceiro?.nome || "N/A",
+						parceiroId: partnerId,
+						chave: "N/A",
+						documento: cardapioWebSale.documento || "N/A",
+						modelo: "CARDAPIO-WEB",
+						movimento: cardapioWebSale.tipo,
+						natureza: cardapioWebSale.natureza,
+						serie: "N/A",
+						situacao: cardapioWebSale.natureza === "SN01" ? "FECHADO" : cardapioWebSale.natureza,
+						tipo: cardapioWebSale.tipo,
+						dataVenda: saleDate,
+					})
+					.returning({ id: sales.id });
+
+				saleId = insertedSale.id;
+
+				// Insert sale items
+				for (const item of cardapioWebSale.itens) {
+					const productId = existingProductsMap.get(item.produtoIdExterno);
+					if (productId) {
+						await tx.insert(saleItems).values({
+							organizacaoId: organizationId,
+							vendaId: saleId,
+							clienteId: saleClientId,
+							produtoId: productId,
+							quantidade: item.quantidade,
+							valorVendaUnitario: item.valorVendaUnitario,
+							valorCustoUnitario: 0,
+							valorVendaTotalBruto: item.valorVendaTotalBruto,
+							valorTotalDesconto: item.valorTotalDesconto,
+							valorVendaTotalLiquido: item.valorVendaTotalLiquido,
+							valorCustoTotal: 0,
+							metadados: {
+								observacao: item.observacao,
+								options: item.options,
+							},
+						});
+					}
+				}
+
+				// Process conversion attribution for new valid sales
+				if (saleId && isValidSale && saleClientId) {
+					await processConversionAttribution(tx, {
+						vendaId: saleId,
+						clienteId: saleClientId,
+						organizacaoId: organizationId,
+						valorVenda: cardapioWebSale.valorTotal,
+						dataVenda: saleDate,
+					});
+				}
+
+				createdSalesCount++;
+			} else {
+				isNewSale = false;
+				console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Updating sale ${cardapioWebSale.idExterno}...`);
+
+				// Check if sale was canceled
+				const wasPreviouslyValid = existingSale.natureza === "SN01" && existingSale.valorTotal > 0;
+				const isNowCanceled = cardapioWebSale.isCanceled || cardapioWebSale.valorTotal === 0;
+
+				if (wasPreviouslyValid && isNowCanceled && saleClientId) {
+					console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Sale ${cardapioWebSale.idExterno} was canceled. Reversing cashback...`);
+					await reverseSaleCashback({
+						tx,
+						saleId: existingSale.id,
+						clientId: saleClientId,
+						organizationId: organizationId,
+						reason: "VENDA_CANCELADA",
+					});
+				}
+
+				await tx
+					.update(sales)
+					.set({
+						valorTotal: cardapioWebSale.valorTotal,
+						natureza: cardapioWebSale.natureza,
+						situacao: cardapioWebSale.natureza === "SN01" ? "FECHADO" : cardapioWebSale.natureza,
+					})
+					.where(eq(sales.id, existingSale.id));
+
+				saleId = existingSale.id;
+				updatedSalesCount++;
+			}
+
+			// Campaign processing for PRIMEIRA-COMPRA
+			if (isNewSale && isNewClient && isValidSale && saleClientId) {
+				const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) =>
+					campaign.segmentacoes.some((s) => s.segmentacao === "CLIENTES RECENTES"),
+				);
+				if (applicableCampaigns.length > 0) {
+					console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] ${applicableCampaigns.length} first purchase campaigns found`);
+					for (const campaign of applicableCampaigns) {
+						const canSchedule = await canScheduleCampaignForClient(
+							tx,
+							saleClientId,
+							campaign.id,
+							campaign.permitirRecorrencia,
+							campaign.frequenciaIntervaloValor,
+							campaign.frequenciaIntervaloMedida,
+						);
+						if (!canSchedule) continue;
+
+						const interactionScheduleDate = getPostponedDateFromReferenceDate({
+							date: dayjs().toDate(),
+							unit: campaign.execucaoAgendadaMedida,
+							value: campaign.execucaoAgendadaValor,
+						});
+
+						const [insertedInteraction] = await tx
+							.insert(interactions)
+							.values({
+								clienteId: saleClientId,
+								campanhaId: campaign.id,
+								organizacaoId: organizationId,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: "Cliente realizou sua primeira compra via CardapioWeb.",
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							})
+							.returning({ id: interactions.id });
+
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+							const clientData = await tx.query.clients.findFirst({
+								where: (fields, { eq }) => eq(fields.id, saleClientId),
+								columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+							});
+							if (clientData) {
+								immediateProcessingDataList.push({
+									interactionId: insertedInteraction.id,
+									organizationId: organizationId,
+									client: clientData,
+									campaign: {
+										autorId: campaign.autorId,
+										whatsappTelefoneId: campaign.whatsappTelefoneId,
+										whatsappTemplate: campaign.whatsappTemplate,
+									},
+									whatsappToken: whatsappConnection.token,
+								});
+							}
+						}
+
+						if (cashbackProgram && campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+							const cashbackResult = await generateCashbackForCampaign({
+								tx,
+								organizationId,
+								clientId: saleClientId,
+								campaignId: campaign.id,
+								cashbackType: campaign.cashbackGeracaoTipo,
+								cashbackValue: campaign.cashbackGeracaoValor,
+								saleId,
+								saleValue: cardapioWebSale.valorTotal,
+								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+								expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+							});
+							if (cashbackResult) {
+								updateCashbackBalanceInMap(
+									existingCashbackProgramBalancesMap,
+									saleClientId,
+									cashbackProgram.id,
+									cashbackResult.clientNewAvailableBalance,
+									cashbackResult.clientNewAccumulatedTotal,
+								);
+							}
+						}
+					}
+				}
+			}
+
+			// Campaign processing for NOVA-COMPRA
+			if (isNewSale && !isNewClient && isValidSale && saleClientId) {
+				const clientRfmTitle = existingClientsMap.get(clientName || "")?.rfmTitle ?? "CLIENTES RECENTES";
+				const applicableCampaigns = campaignsForNewPurchase.filter((campaign) => {
+					const meetsValueTrigger =
+						campaign.gatilhoNovaCompraValorMinimo === null ||
+						campaign.gatilhoNovaCompraValorMinimo === undefined ||
+						cardapioWebSale.valorTotal >= campaign.gatilhoNovaCompraValorMinimo;
+					const meetsSegmentation = campaign.segmentacoes.some((s) => s.segmentacao === clientRfmTitle);
+					return meetsValueTrigger && meetsSegmentation;
+				});
+
+				if (applicableCampaigns.length > 0) {
+					console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] ${applicableCampaigns.length} new purchase campaigns found`);
+					for (const campaign of applicableCampaigns) {
+						const canSchedule = await canScheduleCampaignForClient(
+							tx,
+							saleClientId,
+							campaign.id,
+							campaign.permitirRecorrencia,
+							campaign.frequenciaIntervaloValor,
+							campaign.frequenciaIntervaloMedida,
+						);
+						if (!canSchedule) continue;
+
+						const interactionScheduleDate = getPostponedDateFromReferenceDate({
+							date: dayjs().toDate(),
+							unit: campaign.execucaoAgendadaMedida,
+							value: campaign.execucaoAgendadaValor,
+						});
+
+						const [insertedInteraction] = await tx
+							.insert(interactions)
+							.values({
+								clienteId: saleClientId,
+								campanhaId: campaign.id,
+								organizacaoId: organizationId,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: `Cliente realizou nova compra via CardapioWeb. Segmento: ${clientRfmTitle}.`,
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							})
+							.returning({ id: interactions.id });
+
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+							const clientData = await tx.query.clients.findFirst({
+								where: (fields, { eq }) => eq(fields.id, saleClientId),
+								columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+							});
+							if (clientData) {
+								immediateProcessingDataList.push({
+									interactionId: insertedInteraction.id,
+									organizationId: organizationId,
+									client: clientData,
+									campaign: {
+										autorId: campaign.autorId,
+										whatsappTelefoneId: campaign.whatsappTelefoneId,
+										whatsappTemplate: campaign.whatsappTemplate,
+									},
+									whatsappToken: whatsappConnection.token,
+								});
+							}
+						}
+
+						if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+							const cashbackResult = await generateCashbackForCampaign({
+								tx,
+								organizationId,
+								clientId: saleClientId,
+								campaignId: campaign.id,
+								cashbackType: campaign.cashbackGeracaoTipo,
+								cashbackValue: campaign.cashbackGeracaoValor,
+								saleId,
+								saleValue: cardapioWebSale.valorTotal,
+								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+								expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+							});
+							if (cashbackResult) {
+								const clientBalance = existingCashbackProgramBalancesMap.get(saleClientId);
+								if (clientBalance) {
+									updateCashbackBalanceInMap(
+										existingCashbackProgramBalancesMap,
+										saleClientId,
+										clientBalance.programaId,
+										cashbackResult.clientNewAvailableBalance,
+										cashbackResult.clientNewAccumulatedTotal,
+									);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Cashback accumulation for valid new sales
+			if (cashbackProgram && cashbackProgramAllowsAccumulationViaIntegration && isValidSale && isNewSale && saleClientId) {
+				const clientBalance = existingCashbackProgramBalancesMap.get(saleClientId);
+				if (clientBalance) {
+					const saleValue = cardapioWebSale.valorTotal;
+					const previousAvailable = clientBalance.saldoValorDisponivel;
+					const previousAccumulated = clientBalance.saldoValorAcumuladoTotal;
+
+					let accumulatedBalance = 0;
+					if (cashbackProgram.acumuloTipo === "FIXO") {
+						if (saleValue >= cashbackProgram.acumuloRegraValorMinimo) {
+							accumulatedBalance = cashbackProgram.acumuloValor;
+						}
+					} else if (cashbackProgram.acumuloTipo === "PERCENTUAL") {
+						if (saleValue >= cashbackProgram.acumuloRegraValorMinimo) {
+							accumulatedBalance = (saleValue * cashbackProgram.acumuloValor) / 100;
+						}
+					}
+
+					if (accumulatedBalance > 0) {
+						const newAvailable = previousAvailable + accumulatedBalance;
+						const newAccumulated = previousAccumulated + accumulatedBalance;
+
+						await tx
+							.update(cashbackProgramBalances)
+							.set({ saldoValorDisponivel: newAvailable, saldoValorAcumuladoTotal: newAccumulated })
+							.where(
+								and(
+									eq(cashbackProgramBalances.clienteId, saleClientId),
+									eq(cashbackProgramBalances.programaId, cashbackProgram.id),
+									eq(cashbackProgramBalances.organizacaoId, organizationId),
+								),
+							);
+
+						await tx.insert(cashbackProgramTransactions).values({
+							organizacaoId: organizationId,
+							clienteId: saleClientId,
+							vendaId: saleId,
+							programaId: cashbackProgram.id,
+							tipo: "ACÚMULO",
+							valor: accumulatedBalance,
+							valorRestante: accumulatedBalance,
+							saldoValorAnterior: previousAvailable,
+							saldoValorPosterior: newAvailable,
+							expiracaoData: dayjs().add(cashbackProgram.expiracaoRegraValidadeValor, "day").toDate(),
+							dataInsercao: saleDate,
+							status: "ATIVO",
+						});
+
+						updateCashbackBalanceInMap(existingCashbackProgramBalancesMap, saleClientId, cashbackProgram.id, newAvailable, newAccumulated);
+
+						// CASHBACK-ACUMULADO campaigns
+						if (campaignsForCashbackAccumulation.length > 0) {
+							const clientRfmTitle = existingClientsMap.get(clientName || "")?.rfmTitle ?? "CLIENTES RECENTES";
+							const applicableCampaigns = campaignsForCashbackAccumulation.filter((campaign) => {
+								const meetsNewThreshold =
+									campaign.gatilhoNovoCashbackAcumuladoValorMinimo == null || accumulatedBalance >= campaign.gatilhoNovoCashbackAcumuladoValorMinimo;
+								const meetsTotalThreshold =
+									campaign.gatilhoTotalCashbackAcumuladoValorMinimo == null || newAvailable >= campaign.gatilhoTotalCashbackAcumuladoValorMinimo;
+								const meetsSegmentation = campaign.segmentacoes.some((s) => s.segmentacao === clientRfmTitle);
+								return meetsNewThreshold && meetsTotalThreshold && meetsSegmentation;
+							});
+
+							for (const campaign of applicableCampaigns) {
+								const canSchedule = await canScheduleCampaignForClient(
+									tx,
+									saleClientId,
+									campaign.id,
+									campaign.permitirRecorrencia,
+									campaign.frequenciaIntervaloValor,
+									campaign.frequenciaIntervaloMedida,
+								);
+								if (!canSchedule) continue;
+
+								const interactionScheduleDate = getPostponedDateFromReferenceDate({
+									date: dayjs().toDate(),
+									unit: campaign.execucaoAgendadaMedida,
+									value: campaign.execucaoAgendadaValor,
+								});
+
+								const [insertedInteraction] = await tx
+									.insert(interactions)
+									.values({
+										clienteId: saleClientId,
+										campanhaId: campaign.id,
+										organizacaoId: organizationId,
+										titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+										tipo: "ENVIO-MENSAGEM",
+										descricao: `Cliente acumulou R$ ${(accumulatedBalance / 100).toFixed(2)} em cashback via CardapioWeb. Total: R$ ${(newAccumulated / 100).toFixed(2)}.`,
+										agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+										agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+										metadados: { cashbackAcumuladoValor: accumulatedBalance },
+									})
+									.returning({ id: interactions.id });
+
+								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+									const clientData = await tx.query.clients.findFirst({
+										where: (fields, { eq }) => eq(fields.id, saleClientId),
+										columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+									});
+									if (clientData) {
+										immediateProcessingDataList.push({
+											interactionId: insertedInteraction.id,
+											organizationId: organizationId,
+											client: clientData,
+											campaign: {
+												autorId: campaign.autorId,
+												whatsappTelefoneId: campaign.whatsappTelefoneId,
+												whatsappTemplate: campaign.whatsappTemplate,
+											},
+											whatsappToken: whatsappConnection.token,
+										});
+									}
+								}
+
+								if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
+									const cashbackResult = await generateCashbackForCampaign({
+										tx,
+										organizationId,
+										clientId: saleClientId,
+										campaignId: campaign.id,
+										cashbackType: "FIXO",
+										cashbackValue: campaign.cashbackGeracaoValor,
+										saleId,
+										saleValue,
+										expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+										expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+									});
+									if (cashbackResult) {
+										updateCashbackBalanceInMap(
+											existingCashbackProgramBalancesMap,
+											saleClientId,
+											cashbackProgram.id,
+											cashbackResult.clientNewAvailableBalance,
+											cashbackResult.clientNewAccumulatedTotal,
+										);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Update client's last purchase date
+			if (isValidSale && saleClientId && isNewSale) {
+				await tx
+					.update(clients)
+					.set({ ultimaCompraData: saleDate, ultimaCompraId: saleId })
+					.where(and(eq(clients.id, saleClientId), eq(clients.organizacaoId, organizationId)));
+			}
+		}
+
+		console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Created ${createdSalesCount} sales, updated ${updatedSalesCount} sales.`);
+	});
+
+	// Process immediate interactions after transaction
+	if (immediateProcessingDataList.length > 0) {
+		console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Processing ${immediateProcessingDataList.length} immediate interactions`);
+		for (const processingData of immediateProcessingDataList) {
+			processSingleInteractionImmediately(processingData).catch((err) =>
+				console.error(`[CARDAPIO-WEB] Failed to process interaction ${processingData.interactionId}:`, err),
+			);
+			await delay(100);
+		}
+	}
+}
+
 const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res) => {
 	const currentDateFormatted = dayjs().subtract(5, "hour").format("DD/MM/YYYY").replaceAll("/", "");
 	console.log("DATE BEING USED", dayjs().format("DD/MM/YYYY HH:mm"), dayjs().subtract(5, "hour").format("DD/MM/YYYY HH:mm"), currentDateFormatted);
@@ -154,14 +863,49 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		// Collect data for immediate processing
 		const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
+		// Handle CARDAPIO-WEB integration
+		if (organization.integracaoTipo === "CARDAPIO-WEB") {
+			try {
+				await handleCardapioWebImportation(
+					organization.id,
+					organization.integracaoConfiguracao as TCardapioWebConfig,
+					campaignsForNewPurchase,
+					campaignsForFirstPurchase,
+					campaignsForCashbackAccumulation,
+					whatsappConnection,
+					immediateProcessingDataList,
+				);
+			} catch (error) {
+				console.error(`[ORG: ${organization.id}] [ERROR] CARDAPIO-WEB integration error`, error);
+				await db
+					.insert(utils)
+					.values({
+						organizacaoId: organization.id,
+						identificador: "CARDAPIO_WEB_IMPORTATION" as const,
+						valor: {
+							identificador: "CARDAPIO_WEB_IMPORTATION" as const,
+							dados: {
+								organizacaoId: organization.id,
+								data: dayjs().format("YYYY-MM-DD"),
+								erro: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+								descricao: "Tentativa de importação de pedidos do CardapioWeb.",
+							},
+						},
+					})
+					.returning({ id: utils.id });
+			}
+			continue;
+		}
+
 		if (organization.integracaoTipo !== "ONLINE-SOFTWARE") {
-			console.log(`[INFO] [DATA_COLLECTING] [ORGANIZATION] Organization ${organization.id} does not have ONLINE-SOFTWARE integration type.`);
+			console.log(`[INFO] [DATA_COLLECTING] [ORGANIZATION] Organization ${organization.id} does not have a supported integration type.`);
 			continue;
 		}
 		try {
 			// Fetching data from the online software API
+			const onlineSoftwareConfig = organization.integracaoConfiguracao as { tipo: "ONLINE-SOFTWARE"; token: string };
 			const { data: onlineAPIResponse } = await axios.post("https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php", {
-				token: organization.integracaoConfiguracao?.token,
+				token: onlineSoftwareConfig.token,
 				rotina: "listarVendas001",
 				dtinicio: currentDateFormatted,
 				dtfim: currentDateFormatted,

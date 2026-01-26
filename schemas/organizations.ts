@@ -6,6 +6,11 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 		tipo: z.literal("ONLINE-SOFTWARE"),
 		token: z.string({ invalid_type_error: "Tipo não válido para o token da integração." }),
 	}),
+	z.object({
+		tipo: z.literal("CARDAPIO-WEB"),
+		merchantId: z.string({ invalid_type_error: "Tipo não válido para o ID do merchant." }),
+		apiKey: z.string({ invalid_type_error: "Tipo não válido para a API Key." }),
+	}),
 ]);
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
 export const OrganizationSchema = z.object({

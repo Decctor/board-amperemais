@@ -88,6 +88,18 @@ const UtilsOnlineImportationSchema = z.object({
 	}),
 });
 
+const UtilsCardapioWebImportationSchema = z.object({
+	identificador: z.enum(["CARDAPIO_WEB_IMPORTATION"]),
+	organizacaoId: z.string({
+		required_error: "Organização ID não informada.",
+		invalid_type_error: "Tipo não válido para a organização ID.",
+	}),
+	valor: z.object({
+		identificador: z.enum(["CARDAPIO_WEB_IMPORTATION"]),
+		dados: z.record(z.string(), z.any()),
+	}),
+});
+
 const UtilsSalesPromoCampaignSchema = z.object({
 	identificador: z.enum(["SALES_PROMO_CAMPAIGN"]),
 	organizacaoId: z.string({
@@ -158,8 +170,13 @@ const UtilsSalesPromoCampaignSchema = z.object({
 	}),
 });
 
-export const UtilsSchema = z.discriminatedUnion("identificador", [UtilsRFMSchema, UtilsOnlineImportationSchema, UtilsSalesPromoCampaignSchema]);
-export const UtilsIdentifierSchema = z.enum(["CONFIG_RFM", "ONLINE_IMPORTATION", "SALES_PROMO_CAMPAIGN"]);
+export const UtilsSchema = z.discriminatedUnion("identificador", [
+	UtilsRFMSchema,
+	UtilsOnlineImportationSchema,
+	UtilsCardapioWebImportationSchema,
+	UtilsSalesPromoCampaignSchema,
+]);
+export const UtilsIdentifierSchema = z.enum(["CONFIG_RFM", "ONLINE_IMPORTATION", "CARDAPIO_WEB_IMPORTATION", "SALES_PROMO_CAMPAIGN"]);
 export type TUtilsIdentifier = z.infer<typeof UtilsIdentifierSchema>;
 export type TUtilsRFMConfig = z.infer<typeof UtilsRFMSchema>;
 export type TUtilsValue = z.infer<typeof UtilsSchema>["valor"];
