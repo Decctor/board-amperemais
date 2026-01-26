@@ -8,6 +8,7 @@ type TStat = {
 };
 type StatUnitCardProps = {
 	title: string;
+	subtitle?: string;
 	icon: React.ReactNode;
 	current: TStat;
 	previous?: TStat;
@@ -18,6 +19,7 @@ type StatUnitCardProps = {
 };
 export default function StatUnitCard({
 	title,
+	subtitle,
 	icon,
 	current,
 	previous,
@@ -44,7 +46,10 @@ export default function StatUnitCard({
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs", className)}>
 			<div className="flex items-center justify-between">
-				<h1 className="text-xs font-medium tracking-tight uppercase">{title}</h1>
+				<div className="flex flex-col">
+					<h1 className="text-xs font-medium tracking-tight uppercase">{title}</h1>
+					{subtitle && <p className="text-[0.65rem] text-muted-foreground">{subtitle}</p>}
+				</div>
 				<div className="flex items-center gap-2">
 					{showComparison && !isNeutral && (
 						<div

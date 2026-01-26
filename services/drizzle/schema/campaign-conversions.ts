@@ -1,8 +1,9 @@
 import { relations } from "drizzle-orm";
-import { doublePrecision, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
 import { clients } from "./clients";
 import { newTable } from "./common";
+import { conversionTypeEnum } from "./enums";
 import { interactions } from "./interactions";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
@@ -36,6 +37,26 @@ export const campaignConversions = newTable(
 		dataInteracao: timestamp("data_interacao").notNull(),
 		dataConversao: timestamp("data_conversao").notNull(),
 		tempoParaConversaoMinutos: integer("tempo_para_conversao_minutos").notNull(),
+
+		// Client Profile Snapshot (at time of conversion)
+		clienteTicketMedioSnapshot: doublePrecision("cliente_ticket_medio_ss"),
+		clienteCicloCompraMedioSnapshot: integer("cliente_ciclo_compra_medio_ss"), // in days
+		clienteQtdeComprasSnapshot: integer("cliente_qtde_compras_ss"),
+		cicloCompraConfiavel: boolean("ciclo_compra_confiavel").default(false),
+
+		// Timing context
+		diasDesdeUltimaCompra: integer("dias_desde_ultima_compra"),
+
+		// Conversion classification
+		tipoConversao: conversionTypeEnum("tipo_conversao"),
+
+		// Deltas (stored for immutability)
+		deltaFrequencia: integer("delta_frequencia"), // positive = faster than cycle
+		deltaMonetarioAbsoluto: doublePrecision("delta_monetario_absoluto"), // valorVenda - ticketMedio
+		deltaMonetarioPercentual: doublePrecision("delta_monetario_percentual"), // percentage difference
+
+		// Denormalized for easier queries
+		vendaValor: doublePrecision("venda_valor"),
 
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},

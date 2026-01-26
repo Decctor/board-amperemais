@@ -1,6 +1,7 @@
 import type { TGetCampaignAnalyticsInput, TGetCampaignAnalyticsOutput } from "@/app/api/campaigns/analytics/route";
 import type { TGetCampaignsInput, TGetCampaignsOutput } from "@/app/api/campaigns/route";
 import type { TGetStatsBySegmentationInput, TGetStatsBySegmentationOutput } from "@/app/api/campaigns/stats/by-segmentation/route";
+import type { TGetConversionQualityInput, TGetConversionQualityOutput } from "@/app/api/campaigns/stats/conversion-quality/route";
 import type { TGetCampaignFunnelInput, TGetCampaignFunnelOutput } from "@/app/api/campaigns/stats/funnel/route";
 import type { TGetCampaignGraphInput, TGetCampaignGraphOutput } from "@/app/api/campaigns/stats/graph/route";
 import type { TGetCampaignRankingInput, TGetCampaignRankingOutput } from "@/app/api/campaigns/stats/ranking/route";
@@ -170,5 +171,26 @@ export function useStatsBySegmentation(input: TGetStatsBySegmentationInput) {
 	return useQuery({
 		queryKey: ["campaign-stats-by-segmentation", input],
 		queryFn: async () => await fetchStatsBySegmentation(input),
+	});
+}
+
+async function fetchConversionQuality(input: TGetConversionQualityInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.startDate) searchParams.set("startDate", input.startDate.toISOString());
+		if (input.endDate) searchParams.set("endDate", input.endDate.toISOString());
+		if (input.campanhaId) searchParams.set("campanhaId", input.campanhaId);
+		const { data } = await axios.get<TGetConversionQualityOutput>(`/api/campaigns/stats/conversion-quality?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchConversionQuality", error);
+		throw error;
+	}
+}
+
+export function useConversionQuality(input: TGetConversionQualityInput) {
+	return useQuery({
+		queryKey: ["campaign-conversion-quality", input],
+		queryFn: async () => await fetchConversionQuality(input),
 	});
 }

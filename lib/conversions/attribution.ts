@@ -1,7 +1,8 @@
 import type { DBTransaction } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions, sales } from "@/services/drizzle/schema";
+import type { TConversionTypeEnum } from "@/schemas/enums";
 import dayjs from "dayjs";
-import { and, eq, isNotNull, lte } from "drizzle-orm";
+import { and, eq, isNotNull, lt, lte } from "drizzle-orm";
 
 interface AttributionParams {
 	vendaId: string;
@@ -9,6 +10,147 @@ interface AttributionParams {
 	organizacaoId: string;
 	valorVenda: number;
 	dataVenda: Date;
+}
+
+interface ClientProfileSnapshot {
+	ticketMedio: number | null;
+	cicloCompraMedio: number | null; // in days
+	qtdeCompras: number;
+	cicloCompraConfiavel: boolean;
+	diasDesdeUltimaCompra: number | null;
+	tipoConversao: TConversionTypeEnum;
+	deltaFrequencia: number | null;
+	deltaMonetarioAbsoluto: number | null;
+	deltaMonetarioPercentual: number | null;
+}
+
+const MIN_PURCHASES_FOR_RELIABLE_CYCLE = 3;
+const MAX_REACTIVATION_DAYS = 90;
+
+/**
+ * Calculate client profile snapshot at the time of conversion
+ * This provides context about how this sale compares to the client's historical behavior
+ */
+async function calculateClientProfileSnapshot(
+	tx: DBTransaction,
+	clienteId: string,
+	organizacaoId: string,
+	dataVenda: Date,
+	valorVenda: number,
+): Promise<ClientProfileSnapshot> {
+	// Get all previous sales for this client (before current sale)
+	const previousSales = await tx.query.sales.findMany({
+		where: and(
+			eq(sales.clienteId, clienteId),
+			eq(sales.organizacaoId, organizacaoId),
+			lt(sales.dataVenda, dataVenda),
+			isNotNull(sales.dataVenda),
+		),
+		columns: {
+			id: true,
+			valorTotal: true,
+			dataVenda: true,
+		},
+		orderBy: (sales, { desc }) => [desc(sales.dataVenda)],
+	});
+
+	const qtdeCompras = previousSales.length;
+
+	// First purchase - this is an acquisition
+	if (qtdeCompras === 0) {
+		return {
+			ticketMedio: null,
+			cicloCompraMedio: null,
+			qtdeCompras: 0,
+			cicloCompraConfiavel: false,
+			diasDesdeUltimaCompra: null,
+			tipoConversao: "AQUISICAO",
+			deltaFrequencia: null,
+			deltaMonetarioAbsoluto: null,
+			deltaMonetarioPercentual: null,
+		};
+	}
+
+	// Calculate ticket medio from previous purchases
+	const totalPreviousValue = previousSales.reduce((sum, sale) => sum + (sale.valorTotal || 0), 0);
+	const ticketMedio = totalPreviousValue / qtdeCompras;
+
+	// Calculate days since last purchase
+	const lastPurchaseDate = previousSales[0]?.dataVenda;
+	const diasDesdeUltimaCompra = lastPurchaseDate
+		? dayjs(dataVenda).diff(dayjs(lastPurchaseDate), "day")
+		: null;
+
+	// Calculate average purchase cycle (only if we have enough data)
+	let cicloCompraMedio: number | null = null;
+	const cicloCompraConfiavel = qtdeCompras >= MIN_PURCHASES_FOR_RELIABLE_CYCLE;
+
+	if (qtdeCompras >= 2) {
+		// Calculate average days between consecutive purchases
+		const sortedSales = [...previousSales].sort(
+			(a, b) => new Date(a.dataVenda!).getTime() - new Date(b.dataVenda!).getTime(),
+		);
+
+		let totalDaysBetween = 0;
+		for (let i = 1; i < sortedSales.length; i++) {
+			const daysDiff = dayjs(sortedSales[i]!.dataVenda).diff(dayjs(sortedSales[i - 1]!.dataVenda), "day");
+			totalDaysBetween += daysDiff;
+		}
+		cicloCompraMedio = Math.round(totalDaysBetween / (sortedSales.length - 1));
+	}
+
+	// Determine conversion type
+	let tipoConversao: TConversionTypeEnum = "REGULAR";
+
+	if (diasDesdeUltimaCompra !== null) {
+		if (cicloCompraMedio !== null && cicloCompraConfiavel) {
+			// Reactivation threshold: min(3x cycle, 90 days)
+			const reactivationThreshold = Math.min(cicloCompraMedio * 3, MAX_REACTIVATION_DAYS);
+
+			if (diasDesdeUltimaCompra > reactivationThreshold) {
+				tipoConversao = "REATIVACAO";
+			} else if (diasDesdeUltimaCompra < cicloCompraMedio) {
+				tipoConversao = "ACELERACAO";
+			} else if (diasDesdeUltimaCompra > cicloCompraMedio) {
+				tipoConversao = "ATRASADA";
+			} else {
+				tipoConversao = "REGULAR";
+			}
+		} else {
+			// Without reliable cycle, use 90-day threshold for reactivation
+			if (diasDesdeUltimaCompra > MAX_REACTIVATION_DAYS) {
+				tipoConversao = "REATIVACAO";
+			}
+		}
+	}
+
+	// Calculate deltas
+	let deltaFrequencia: number | null = null;
+	let deltaMonetarioAbsoluto: number | null = null;
+	let deltaMonetarioPercentual: number | null = null;
+
+	// Frequency delta: positive means client came back faster than usual
+	if (cicloCompraMedio !== null && diasDesdeUltimaCompra !== null) {
+		deltaFrequencia = cicloCompraMedio - diasDesdeUltimaCompra;
+	}
+
+	// Monetary deltas
+	if (ticketMedio > 0) {
+		deltaMonetarioAbsoluto = valorVenda - ticketMedio;
+		deltaMonetarioPercentual = ((valorVenda / ticketMedio) - 1) * 100;
+	}
+
+	return {
+		ticketMedio,
+		cicloCompraMedio,
+		qtdeCompras,
+		cicloCompraConfiavel,
+		diasDesdeUltimaCompra,
+		tipoConversao,
+		deltaFrequencia,
+		deltaMonetarioAbsoluto,
+		deltaMonetarioPercentual,
+	};
 }
 
 interface AttributionResult {
@@ -133,8 +275,11 @@ export async function processConversionAttribution(tx: DBTransaction, params: At
 		return;
 	}
 
+	// 6. Calculate client profile snapshot for conversion quality analysis
+	const clientProfile = await calculateClientProfileSnapshot(tx, clienteId, organizacaoId, dataVenda, valorVenda);
+
 	let attributionConversionId: string | null = null;
-	// 6. Store attributions
+	// 7. Store attributions
 	for (const attr of attributions) {
 		const campaignSettings = campaignSettingsMap.get(attr.campanhaId);
 
@@ -152,6 +297,17 @@ export async function processConversionAttribution(tx: DBTransaction, params: At
 				dataInteracao: attr.dataInteracao,
 				dataConversao: dataVenda,
 				tempoParaConversaoMinutos: attr.tempoMinutos,
+				// Client profile snapshot
+				clienteTicketMedioSnapshot: clientProfile.ticketMedio,
+				clienteCicloCompraMedioSnapshot: clientProfile.cicloCompraMedio,
+				clienteQtdeComprasSnapshot: clientProfile.qtdeCompras,
+				cicloCompraConfiavel: clientProfile.cicloCompraConfiavel,
+				diasDesdeUltimaCompra: clientProfile.diasDesdeUltimaCompra,
+				tipoConversao: clientProfile.tipoConversao,
+				deltaFrequencia: clientProfile.deltaFrequencia,
+				deltaMonetarioAbsoluto: clientProfile.deltaMonetarioAbsoluto,
+				deltaMonetarioPercentual: clientProfile.deltaMonetarioPercentual,
+				vendaValor: valorVenda,
 			})
 			.returning({ id: campaignConversions.id });
 		const campaignConversionId = insertedCampaignConversion[0]?.id;
@@ -161,7 +317,7 @@ export async function processConversionAttribution(tx: DBTransaction, params: At
 		if (!attributionConversionId) attributionConversionId = campaignConversionId;
 	}
 
-	// 7. Update sale with primary campaign (the one with highest weight, or first in last-touch)
+	// 8. Update sale with primary campaign (the one with highest weight, or first in last-touch)
 	await tx
 		.update(sales)
 		.set({

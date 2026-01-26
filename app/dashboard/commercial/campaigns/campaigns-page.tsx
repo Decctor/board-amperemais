@@ -2,6 +2,7 @@
 import type { TGetCampaignAnalyticsInput } from "@/app/api/campaigns/analytics/route";
 import type { TGetCampaignsOutputDefault } from "@/app/api/campaigns/route";
 import CampaignsBySegmentation from "@/components/Campaigns/CampaignsBySegmentation";
+import CampaignsConversionQuality from "@/components/Campaigns/CampaignsConversionQuality";
 import CampaignsFunnel from "@/components/Campaigns/CampaignsFunnel";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import CampaignsRanking from "@/components/Campaigns/CampaignsRanking";
@@ -17,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { useCampaignAnalytics, useCampaigns } from "@/lib/queries/campaigns";
+import { useCampaignAnalytics, useCampaigns, useConversionQuality } from "@/lib/queries/campaigns";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -31,7 +32,10 @@ import {
 	MousePointerClick,
 	PencilIcon,
 	Plus,
+	RefreshCw,
 	TrendingUp,
+	UserPlus,
+	Zap,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -165,7 +169,17 @@ function CampaignsStatsView() {
 		endDate: filters.endDate ?? undefined,
 	});
 
+	const { data: qualityData } = useConversionQuality({
+		startDate: filters.startDate ?? undefined,
+		endDate: filters.endDate ?? undefined,
+	});
+
 	const totals = analytics?.totais;
+
+	// Calculate quality percentages
+	const aquisicoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "AQUISICAO");
+	const reativacoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "REATIVACAO");
+	const aceleracoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "ACELERACAO");
 
 	return (
 		<div className="w-full flex flex-col gap-3">
@@ -200,6 +214,7 @@ function CampaignsStatsView() {
 					}}
 				/>
 			</div>
+			{/* Primary KPIs */}
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
 				<StatUnitCard
 					title="TOTAL DE CAMPANHAS"
@@ -242,6 +257,54 @@ function CampaignsStatsView() {
 					}}
 				/>
 			</div>
+			{/* Conversion Quality KPIs */}
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="AQUISIÇÕES"
+					subtitle="Novos clientes"
+					icon={<UserPlus className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: aquisicoes?.quantidade || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+				/>
+				<StatUnitCard
+					title="REATIVAÇÕES"
+					subtitle="Clientes resgatados"
+					icon={<RefreshCw className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: reativacoes?.quantidade || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+				/>
+				<StatUnitCard
+					title="ACELERAÇÕES"
+					subtitle="Compraram mais rápido"
+					icon={<Zap className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: aceleracoes?.quantidade || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+				/>
+				<StatUnitCard
+					title="ANTECIPAÇÃO MÉDIA"
+					subtitle="Dias economizados"
+					icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: qualityData?.impactoFrequencia?.mediasDiasAntecipados || 0,
+						format: (n) => `${formatDecimalPlaces(n)} dias`,
+					}}
+				/>
+				<StatUnitCard
+					title="IMPACTO NO TICKET"
+					subtitle="Variação média"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: qualityData?.impactoMonetario?.deltaMonetarioPercentualMedio || 0,
+						format: (n) => `${n > 0 ? "+" : ""}${formatDecimalPlaces(n)}%`,
+					}}
+				/>
+			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
 				<div className="w-full lg:w-1/2 h-full min-h-0">
 					<CampaignsGraphs
@@ -265,6 +328,9 @@ function CampaignsStatsView() {
 			</div>
 			<div className="w-full h-[550px]">
 				<CampaignsBySegmentation startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
+			</div>
+			<div className="w-full h-[450px]">
+				<CampaignsConversionQuality startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
 			</div>
 		</div>
 	);
