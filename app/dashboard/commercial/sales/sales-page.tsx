@@ -134,7 +134,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutput["data"]["default"]["sales"][
 					<div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
 						<div className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded-md">
 							<Calendar className="w-3 h-3" />
-							<span>{formatDateAsLocale(sale.dataVenda)}</span>
+							<span>{formatDateAsLocale(sale.dataVenda, true)}</span>
 						</div>
 						<div className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded-md">
 							<Tag className="w-3 h-3" />

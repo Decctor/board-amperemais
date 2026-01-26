@@ -104,7 +104,7 @@ function MultipleSalesSelectInput<T>({
 			{selectedIds && selectedIds.length > 0 && sales
 				? sales.filter((item) => selectedIds.includes(item.id)).length > 1
 					? "MÚLTIPLAS SELEÇÕES"
-					: sales.filter((item) => selectedIds.includes(item.id))[0]?.cliente.nome || "NÃO DEFINIDO"
+					: sales.filter((item) => selectedIds.includes(item.id))[0]?.cliente?.nome || "AO CONSUMIDOR"
 				: "NÃO DEFINIDO"}
 			<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 		</Button>
@@ -161,7 +161,7 @@ function MultipleSalesSelectInput<T>({
 									className="cursor-pointer"
 								>
 									<div className="flex grow items-center gap-1 justify-between min-w-0">
-										<p className="text-sm font-medium truncate flex-1 min-w-0">{item.cliente.nome}</p>
+										<p className="text-sm font-medium truncate flex-1 min-w-0">{item.cliente?.nome || "AO CONSUMIDOR"}</p>
 										<div className="flex items-center gap-1 shrink-0">
 											<BadgeDollarSign size={12} />
 											<p className="text-xs text-primary/80">{formatToMoney(item.valorTotal)}</p>
