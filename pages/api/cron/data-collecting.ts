@@ -2,7 +2,7 @@ import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-ca
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { fetchCardapioWebOrdersWithDetails } from "@/lib/data-connectors/cardapio-web";
-import { extractAllCardapioWebData, type MappedCardapioWebSale } from "@/lib/data-connectors/cardapio-web/mappers";
+import { type MappedCardapioWebSale, extractAllCardapioWebData } from "@/lib/data-connectors/cardapio-web/mappers";
 import type { TCardapioWebConfig } from "@/lib/data-connectors/cardapio-web/types";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
@@ -171,10 +171,17 @@ async function handleCardapioWebImportation(
 		.returning({ id: utils.id });
 
 	// Extract and map all data
-	const { sales: mappedSales, products: mappedProducts, partners: mappedPartners, productAddOns: mappedAddOns, productAddOnOptions: mappedAddOnOptions } =
-		extractAllCardapioWebData(orderDetails);
+	const {
+		sales: mappedSales,
+		products: mappedProducts,
+		partners: mappedPartners,
+		productAddOns: mappedAddOns,
+		productAddOnOptions: mappedAddOnOptions,
+	} = extractAllCardapioWebData(orderDetails);
 
-	console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Mapped ${mappedSales.length} sales, ${mappedProducts.length} products, ${mappedPartners.length} partners`);
+	console.log(
+		`[ORG: ${organizationId}] [CARDAPIO-WEB] Mapped ${mappedSales.length} sales, ${mappedProducts.length} products, ${mappedPartners.length} partners`,
+	);
 	console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Mapped ${mappedAddOns.length} add-ons, ${mappedAddOnOptions.length} add-on options`);
 
 	const cardapioWebSalesIds = mappedSales.map((sale) => sale.idExterno);
@@ -242,7 +249,9 @@ async function handleCardapioWebImportation(
 		const existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
 		const existingPartnersMap = new Map(existingPartners.map((partner) => [partner.identificador, partner.id]));
 		const existingAddOnsMap = new Map(existingAddOns.map((addon) => [addon.idExterno, addon.id]));
-		const existingAddOnOptionsMap = new Map(existingAddOnOptions.map((option) => [option.idExterno, { id: option.id, addOnId: option.produtoAddOnId }]));
+		const existingAddOnOptionsMap = new Map(
+			existingAddOnOptions.map((option) => [option.idExterno, { id: option.id, addOnId: option.produtoAddOnId }]),
+		);
 		const existingCashbackProgramBalancesMap = new Map(existingCashbackProgramBalances.map((balance) => [balance.clienteId, balance]));
 
 		// Sync Products
@@ -379,7 +388,9 @@ async function handleCardapioWebImportation(
 
 			if (!existingSale) {
 				isNewSale = true;
-				console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Creating new sale ${cardapioWebSale.idExterno} with ${cardapioWebSale.itens.length} items...`);
+				console.log(
+					`[ORG: ${organizationId}] [CARDAPIO-WEB] Creating new sale ${cardapioWebSale.idExterno} with ${cardapioWebSale.itens.length} items...`,
+				);
 
 				const [insertedSale] = await tx
 					.insert(sales)
@@ -865,6 +876,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 
 		// Handle CARDAPIO-WEB integration
 		if (organization.integracaoTipo === "CARDAPIO-WEB") {
+			console.log(`[ORG: ${organization.id}] [INFO] [DATA_COLLECTING] [CARDAPIO-WEB] Starting CardapioWeb integration`);
 			try {
 				await handleCardapioWebImportation(
 					organization.id,
@@ -902,6 +914,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			continue;
 		}
 		try {
+			console.log(`[ORG: ${organization.id}] [INFO] [DATA_COLLECTING] [ONLINE-SOFTWARE] Starting OnlineSoftware integration`);
 			// Fetching data from the online software API
 			const onlineSoftwareConfig = organization.integracaoConfiguracao as { tipo: "ONLINE-SOFTWARE"; token: string };
 			const { data: onlineAPIResponse } = await axios.post("https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php", {
