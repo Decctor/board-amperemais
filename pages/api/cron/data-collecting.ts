@@ -411,7 +411,9 @@ async function handleCardapioWebImportation(
 						natureza: cardapioWebSale.natureza,
 						serie: "N/A",
 						situacao: cardapioWebSale.natureza === "SN01" ? "FECHADO" : cardapioWebSale.natureza,
+						entregaModalidade: cardapioWebSale.entregaModalidade,
 						tipo: cardapioWebSale.tipo,
+						canal: cardapioWebSale.salesChannel,
 						dataVenda: saleDate,
 					})
 					.returning({ id: sales.id });
@@ -479,6 +481,7 @@ async function handleCardapioWebImportation(
 						valorTotal: cardapioWebSale.valorTotal,
 						natureza: cardapioWebSale.natureza,
 						situacao: cardapioWebSale.natureza === "SN01" ? "FECHADO" : cardapioWebSale.natureza,
+						canal: cardapioWebSale.salesChannel,
 					})
 					.where(eq(sales.id, existingSale.id));
 
@@ -1159,6 +1162,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								serie: OnlineSale.serie || "N/A",
 								situacao: OnlineSale.situacao || "N/A",
 								tipo: OnlineSale.tipo,
+								canal: "Loja Física",
+								entregaModalidade: "PRESENCIAL",
 								dataVenda: saleDate,
 							})
 							.returning({
@@ -1279,6 +1284,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 								serie: OnlineSale.serie || "N/A",
 								situacao: OnlineSale.situacao || "N/A",
 								tipo: OnlineSale.tipo,
+								canal: "Loja Física",
+								entregaModalidade: "PRESENCIAL",
 								dataVenda: saleDate,
 							})
 							.where(eq(sales.id, existingSale.id));

@@ -16,6 +16,12 @@ type TGroupedSalesStatsReduced = {
 	porGrupo: {
 		[key: string]: { qtde: number; total: number };
 	};
+	porCanal: {
+		[key: string]: { qtde: number; total: number };
+	};
+	porEntregaModalidade: {
+		[key: string]: { qtde: number; total: number };
+	};
 	porVendedor: {
 		[key: string]: { qtde: number; total: number };
 	};
@@ -43,6 +49,16 @@ export type TGroupedSalesStats = {
 			nome: string;
 			avatarUrl: string | null;
 		};
+		qtde: number;
+		total: number;
+	}[];
+	porCanal: {
+		titulo: string;
+		qtde: number;
+		total: number;
+	}[];
+	porEntregaModalidade: {
+		titulo: string;
 		qtde: number;
 		total: number;
 	}[];
@@ -122,6 +138,12 @@ const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 				ultimaCompra: item.ultimaCompra,
 				vendedorMaisFrequente: item.vendedorMaisFrequente,
 				tempoAtividade: item.tempoAtividade,
+			})),
+			porCanal: stats.porCanal.map((item) => ({ titulo: item.titulo as string, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
+			porEntregaModalidade: stats.porEntregaModalidade.map((item) => ({
+				titulo: item.titulo as string,
+				qtde: item.qtde,
+				total: item.total ? Number(item.total) : 0,
 			})),
 			porDiaDoMes: stats.porDiaDoMes.map((item) => ({ dia: item.dia, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
 			porMes: stats.porMes.map((item) => ({ mes: item.mes, qtde: item.qtde, total: item.total ? Number(item.total) : 0 })),
@@ -395,6 +417,26 @@ async function getSalesGroupedStats({ filters, organizacaoId }: GetSalesParams) 
 		.where(and(...conditions))
 		.groupBy(sql`EXTRACT(DOW FROM ${sales.dataVenda})`);
 
+	const resultsByChannel = await db
+		.select({
+			titulo: sales.canal,
+			qtde: count(sales.id),
+			total: sum(sales.valorTotal),
+		})
+		.from(sales)
+		.where(and(...conditions, isNotNull(sales.canal)))
+		.groupBy(sales.canal);
+
+	const resultsByFulfillmentMethod = await db
+		.select({
+			titulo: sales.entregaModalidade,
+			qtde: count(sales.id),
+			total: sum(sales.valorTotal),
+		})
+		.from(sales)
+		.where(and(...conditions, isNotNull(sales.entregaModalidade)))
+		.groupBy(sales.entregaModalidade);
+
 	return {
 		porItem: resultsByItem,
 		porGrupo: resultsByItemGroup,
@@ -403,5 +445,7 @@ async function getSalesGroupedStats({ filters, organizacaoId }: GetSalesParams) 
 		porDiaDoMes: resultsByDayOfMonth,
 		porMes: resultsByMonth,
 		porDiaDaSemana: resultsByDayOfWeek,
+		porCanal: resultsByChannel,
+		porEntregaModalidade: resultsByFulfillmentMethod,
 	};
 }

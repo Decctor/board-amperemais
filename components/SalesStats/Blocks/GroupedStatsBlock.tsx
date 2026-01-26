@@ -59,6 +59,15 @@ function GroupedStatsBlock({ generalQueryParams, user, userOrg }: GroupedStatsBl
 				</div>
 			) : null}
 
+			<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
+				<div className="w-full lg:w-[50%]">
+					<ResultsByChannelGraph data={groupedStats?.porCanal || []} />
+				</div>
+				<div className="w-full lg:w-[50%]">
+					<ResultsByFulfillmentMethodGraph data={groupedStats?.porEntregaModalidade || []} />
+				</div>
+			</div>
+
 			<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
 				<div className="w-full lg:w-1/3">
 					<GroupedByMonthDay data={groupedStats?.porDiaDoMes || []} />
@@ -933,5 +942,183 @@ function GroupedByWeekDay({ data }: { data: TGroupedSalesStats["porDiaDaSemana"]
 				</div>
 			</div>
 		</TooltipProvider>
+	);
+}
+
+function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] }) {
+	const [type, setType] = useState<"qtde" | "total">("total");
+
+	async function handleExportData(data: TGroupedSalesStats["porCanal"] | undefined) {
+		try {
+			if (!data) throw new Error("Não há dados para exportar");
+			const exportationJSON = data.map((item) => ({
+				CANAL: item.titulo,
+				"VALOR VENDIDO": item.total,
+				"Nº DE VENDAS": item.qtde,
+			}));
+			getExcelFromJSON(exportationJSON, "RESULTADOS_POR_CANAL.xlsx");
+			return toast.success("Dados exportados com sucesso");
+		} catch (error) {
+			const msg = getErrorMessage(error);
+			return toast.error(msg);
+		}
+	}
+	const Collors = ["#15599a", "#fead41", "#ff595e", "#8ac926", "#6a4c93", "#5adbff"];
+	const total = useMemo(() => data.reduce((acc, current) => (type === "total" ? acc + current.total : acc + current.qtde), 0), [data, type]);
+	const graphData = useMemo(
+		() => data.sort((a, b) => b.qtde - a.qtde).map((p, index) => ({ ...p, fill: Collors[index % Collors.length] || "#000" })),
+		[data],
+	);
+	const chartConfig = { titulo: { label: "CANAL" } };
+	return (
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="flex items-center justify-between">
+				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR CANAL</h1>
+				<div className="flex items-center gap-2">
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+									<Download className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Baixar</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Valor Vendido</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Quantidade de Vendas</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				</div>
+			</div>
+			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
+				<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
+					<PieChart>
+						<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+						<Pie
+							data={graphData}
+							dataKey={type}
+							nameKey="titulo"
+							label={(x) => {
+								return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
+							}}
+							innerRadius={60}
+							strokeWidth={2}
+						/>
+						<ChartLegend
+							content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
+							className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
+						/>
+					</PieChart>
+				</ChartContainer>
+			</div>
+		</div>
+	);
+}
+
+function ResultsByFulfillmentMethodGraph({ data }: { data: TGroupedSalesStats["porEntregaModalidade"] }) {
+	const [type, setType] = useState<"qtde" | "total">("total");
+
+	async function handleExportData(data: TGroupedSalesStats["porEntregaModalidade"] | undefined) {
+		try {
+			if (!data) throw new Error("Não há dados para exportar");
+			const exportationJSON = data.map((item) => ({
+				MODALIDADE: item.titulo,
+				"VALOR VENDIDO": item.total,
+				"Nº DE VENDAS": item.qtde,
+			}));
+			getExcelFromJSON(exportationJSON, "RESULTADOS_POR_MODALIDADE.xlsx");
+			return toast.success("Dados exportados com sucesso");
+		} catch (error) {
+			const msg = getErrorMessage(error);
+			return toast.error(msg);
+		}
+	}
+	const Collors = ["#15599a", "#fead41", "#ff595e", "#8ac926", "#6a4c93", "#5adbff"];
+	const total = useMemo(() => data.reduce((acc, current) => (type === "total" ? acc + current.total : acc + current.qtde), 0), [data, type]);
+	const graphData = useMemo(
+		() => data.sort((a, b) => b.qtde - a.qtde).map((p, index) => ({ ...p, fill: Collors[index % Collors.length] || "#000" })),
+		[data],
+	);
+	const chartConfig = { titulo: { label: "MODALIDADE" } };
+	return (
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="flex items-center justify-between">
+				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR MODALIDADE</h1>
+				<div className="flex items-center gap-2">
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+									<Download className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Baixar</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Valor Vendido</p>
+							</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Quantidade de Vendas</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				</div>
+			</div>
+			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
+				<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
+					<PieChart>
+						<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+						<Pie
+							data={graphData}
+							dataKey={type}
+							nameKey="titulo"
+							label={(x) => {
+								return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
+							}}
+							innerRadius={60}
+							strokeWidth={2}
+						/>
+						<ChartLegend
+							content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
+							className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
+						/>
+					</PieChart>
+				</ChartContainer>
+			</div>
+		</div>
 	);
 }

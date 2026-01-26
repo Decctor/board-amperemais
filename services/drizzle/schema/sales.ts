@@ -36,8 +36,10 @@ export const sales = newTable(
 		serie: text("serie").notNull(),
 		situacao: text("situacao").notNull(),
 		tipo: text("tipo").notNull(),
-		dataVenda: timestamp("data_venda"),
 
+		entregaModalidade: text("entrega_modalidade"), // ENTREGA, RETIRADA, PRESENCIAL, COMANDA
+		canal: text("canal"),
+		dataVenda: timestamp("data_venda"),
 		// Conversion Attribution fields
 		atribuicaoProcessada: boolean("atribuicao_processada").default(false),
 		atribuicaoCampanhaPrincipalId: varchar("atribuicao_campanha_principal_id", { length: 255 }).references(() => campaigns.id),

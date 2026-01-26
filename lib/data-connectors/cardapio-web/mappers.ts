@@ -74,6 +74,7 @@ export interface MappedCardapioWebSale {
 	tipo: string;
 	timing: string;
 	salesChannel: string;
+	entregaModalidade: string;
 	documento: string | null;
 	observacao: string | null;
 	dataVenda: Date;
@@ -147,25 +148,26 @@ export function extractUniqueProducts(orders: TGetCardapioWebOrderDetailsOutput[
  * Partners in CardapioWeb context are the sales channels (iFood, WhatsApp, etc.)
  */
 export function mapCardapioWebPartner(order: TGetCardapioWebOrderDetailsOutput): MappedCardapioWebPartner | null {
-	const salesChannel = order.sales_channel;
+	return null; // Not the case for CardapioWeb, Sales Channels are handled differently
+	// const salesChannel = order.sales_channel;
 
-	// Only create partner for marketplace channels
-	if (salesChannel === "catalog" || salesChannel === "store_front_catalog") {
-		return null; // Direct orders, no partner
-	}
+	// // Only create partner for marketplace channels
+	// if (salesChannel === "catalog" || salesChannel === "store_front_catalog") {
+	// 	return null; // Direct orders, no partner
+	// }
 
-	const partnerNames: Record<string, string> = {
-		portal: "Portal CardapioWeb",
-		whatsapp_extension: "WhatsApp",
-		ifood: "iFood",
-	};
+	// const partnerNames: Record<string, string> = {
+	// 	portal: "Portal CardapioWeb",
+	// 	whatsapp_extension: "WhatsApp",
+	// 	ifood: "iFood",
+	// };
 
-	return {
-		idExterno: `cardapioweb_channel_${salesChannel}`,
-		identificador: salesChannel,
-		nome: partnerNames[salesChannel] || salesChannel.toUpperCase(),
-		salesChannel,
-	};
+	// return {
+	// 	idExterno: `cardapioweb_channel_${salesChannel}`,
+	// 	identificador: salesChannel,
+	// 	nome: partnerNames[salesChannel] || salesChannel.toUpperCase(),
+	// 	salesChannel,
+	// };
 }
 
 /**
@@ -301,6 +303,19 @@ export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): Ma
 	// Map natureza based on status (SN01 = valid sale, like ONLINE-SOFTWARE)
 	const natureza = isValidSale ? "SN01" : isCanceled ? "CANCELADO" : order.status.toUpperCase();
 
+	const salesChannelMap = {
+		portal: "Portal CardapioWeb",
+		whatsapp_extension: "WhatsApp",
+		ifood: "iFood",
+		catalog: "Catálogo CardapioWeb",
+		store_front_catalog: "Catálogo CardapioWeb",
+	};
+	const fulfillmentMethodMap = {
+		delivery: "ENTREGA",
+		takeout: "RETIRADA",
+		onsite: "PRESENCIAL",
+		closed_table: "COMANDA",
+	};
 	return {
 		idExterno: order.id.toString(),
 		displayId: order.display_id.toString(),
@@ -312,8 +327,9 @@ export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): Ma
 		descontoTotal: totalDiscount,
 		natureza,
 		tipo: order.order_type,
+		entregaModalidade: fulfillmentMethodMap[order.order_type as keyof typeof fulfillmentMethodMap] ?? "NÃO DEFINIDO",
 		timing: order.order_timing,
-		salesChannel: order.sales_channel,
+		salesChannel: salesChannelMap[order.sales_channel] ?? "NÃO DEFINIDO",
 		documento: order.fiscal_document,
 		observacao: order.observation,
 		dataVenda: new Date(order.created_at),
