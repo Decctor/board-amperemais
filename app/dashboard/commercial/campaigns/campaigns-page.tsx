@@ -329,9 +329,9 @@ function CampaignsStatsView() {
 			<div className="w-full h-[550px]">
 				<CampaignsBySegmentation startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
 			</div>
-			<div className="w-full h-[450px]">
+			{/* <div className="w-full h-[450px]">
 				<CampaignsConversionQuality startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
-			</div>
+			</div> */}
 		</div>
 	);
 }

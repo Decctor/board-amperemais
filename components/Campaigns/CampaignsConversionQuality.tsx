@@ -3,19 +3,7 @@ import type { TGetConversionQualityInput } from "@/app/api/campaigns/stats/conve
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useConversionQuality } from "@/lib/queries/campaigns";
 import { cn } from "@/lib/utils";
-import {
-	ArrowDownRight,
-	ArrowUpRight,
-	Clock,
-	DollarSign,
-	RefreshCw,
-	Rocket,
-	TrendingDown,
-	TrendingUp,
-	UserPlus,
-	Users,
-	Zap,
-} from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Clock, DollarSign, RefreshCw, Rocket, TrendingDown, TrendingUp, UserPlus, Users, Zap } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 type CampaignsConversionQualityProps = {
@@ -136,17 +124,9 @@ export default function CampaignsConversionQuality({ startDate, endDate, campanh
 								<div className="flex-1 min-h-[200px] flex items-center">
 									<ResponsiveContainer width="100%" height={200}>
 										<PieChart>
-											<Pie
-												data={chartData}
-												cx="50%"
-												cy="50%"
-												innerRadius={50}
-												outerRadius={80}
-												paddingAngle={2}
-												dataKey="value"
-											>
+											<Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
 												{chartData.map((entry, index) => (
-													<Cell key={`cell-${index}`} fill={entry.color} />
+													<Cell key={`cell-${index.toString()}`} fill={entry.color} />
 												))}
 											</Pie>
 											<Tooltip
@@ -191,10 +171,7 @@ export default function CampaignsConversionQuality({ startDate, endDate, campanh
 										{data.distribuicaoTipos.map((item) => {
 											const config = CONVERSION_TYPE_CONFIG[item.tipo ?? ""];
 											return (
-												<div
-													key={item.tipo}
-													className={cn("flex items-center justify-between gap-2 rounded-lg px-2 py-1.5", config?.bgColor ?? "bg-muted")}
-												>
+												<div key={item.tipo} className={cn("flex items-center justify-between gap-2 rounded-lg px-2 py-1.5", config?.bgColor ?? "bg-muted")}>
 													<div className="flex items-center gap-2">
 														<span className="text-primary">{config?.icon}</span>
 														<div className="flex flex-col">
@@ -219,9 +196,7 @@ export default function CampaignsConversionQuality({ startDate, endDate, campanh
 										{impactMetrics.map((metric) => (
 											<div key={metric.label} className="flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-2 py-2">
 												<div className="flex items-center gap-2">
-													<div
-														className={cn("p-1.5 rounded-lg", metric.positive ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600")}
-													>
+													<div className={cn("p-1.5 rounded-lg", metric.positive ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600")}>
 														{metric.icon}
 													</div>
 													<div className="flex flex-col">
@@ -230,11 +205,7 @@ export default function CampaignsConversionQuality({ startDate, endDate, campanh
 													</div>
 												</div>
 												<div className="flex items-center gap-1">
-													{metric.positive ? (
-														<TrendingUp className="w-3.5 h-3.5 text-green-600" />
-													) : (
-														<TrendingDown className="w-3.5 h-3.5 text-red-600" />
-													)}
+													{metric.positive ? <TrendingUp className="w-3.5 h-3.5 text-green-600" /> : <TrendingDown className="w-3.5 h-3.5 text-red-600" />}
 													<span className={cn("text-sm font-bold", metric.positive ? "text-green-600" : "text-red-600")}>
 														{metric.positive ? "+" : ""}
 														{formatDecimalPlaces(metric.value)}
@@ -250,8 +221,7 @@ export default function CampaignsConversionQuality({ startDate, endDate, campanh
 								{data.resumo.conversoesComCicloConfiavel > 0 && (
 									<div className="flex items-center gap-2 text-muted-foreground">
 										<span className="text-[0.65rem]">
-											{formatDecimalPlaces(data.resumo.conversoesComCicloConfiavel)} conversões com dados de ciclo confiáveis (3+
-											compras anteriores)
+											{formatDecimalPlaces(data.resumo.conversoesComCicloConfiavel)} conversões com dados de ciclo confiáveis (3+ compras anteriores)
 										</span>
 									</div>
 								)}
