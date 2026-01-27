@@ -65,31 +65,65 @@ async function fetchRankingForPeriod({
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
 	if (periodBefore) saleConditions.push(lte(sales.dataVenda, periodBefore));
 
-	// Get top clients based on ranking criteria
-	const ranking = await db
+	// Get clients with sales in the period - group by client ID only
+	const clientsWithSales = await db
 		.select({
 			clienteId: sales.clienteId,
-			clienteNome: clients.nome,
-			clienteTelefone: clients.telefone,
-			clienteEmail: clients.email,
 			totalPurchases: count(sales.id),
 			totalValue: sum(sales.valorTotal),
 		})
 		.from(sales)
-		.innerJoin(clients, eq(sales.clienteId, clients.id))
-		.where(and(...saleConditions, eq(clients.organizacaoId, userOrgId)))
-		.groupBy(sales.clienteId, clients.nome, clients.telefone, clients.email)
-		.orderBy(desc(rankingBy === "purchases-total-value" ? sum(sales.valorTotal) : count(sales.id)))
-		.limit(10);
+		.where(and(...saleConditions))
+		.groupBy(sales.clienteId);
 
-	return ranking.map((item, index) => ({
+	// Get client IDs
+	const clientIds = clientsWithSales.map((c) => c.clienteId).filter((id): id is string => id !== null);
+
+	// Fetch client details separately
+	const clientsDetails = await db.query.clients.findMany({
+		where: and(eq(clients.organizacaoId, userOrgId), inArray(clients.id, clientIds)),
+		columns: {
+			id: true,
+			nome: true,
+			telefone: true,
+			email: true,
+		},
+	});
+
+	// Create a map for quick lookup
+	const clientsMap = new Map(clientsDetails.map((client) => [client.id, client]));
+
+	// Enrich clients with sales metrics
+	const clientsWithMetrics = clientsWithSales.map((clientData) => {
+		const clientId = clientData.clienteId as string;
+		const clientInfo = clientsMap.get(clientId);
+
+		return {
+			clienteId: clientId,
+			nome: clientInfo?.nome ? (clientId ? "N/A" : "AO CONSUMIDOR") : "N/A",
+			telefone: clientInfo?.telefone || null,
+			email: clientInfo?.email || null,
+			totalPurchases: Number(clientData.totalPurchases),
+			totalValue: Number(clientData.totalValue ?? 0),
+		};
+	});
+
+	// Sort by ranking criteria
+	const sortedClients = clientsWithMetrics.sort((a, b) => {
+		if (rankingBy === "purchases-total-value") {
+			return b.totalValue - a.totalValue;
+		}
+		if (rankingBy === "purchases-total-qty") {
+			return b.totalPurchases - a.totalPurchases;
+		}
+		// Default: purchases-total-value
+		return b.totalValue - a.totalValue;
+	});
+
+	// Get top 10 and add rank
+	return sortedClients.slice(0, 10).map((client, index) => ({
 		rank: index + 1,
-		clienteId: item.clienteId,
-		nome: item.clienteNome,
-		telefone: item.clienteTelefone,
-		email: item.clienteEmail,
-		totalPurchases: Number(item.totalPurchases),
-		totalValue: Number(item.totalValue ?? 0),
+		...client,
 	}));
 }
 

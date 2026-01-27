@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { products, saleItems, sales } from "@/services/drizzle/schema";
-import { and, desc, eq, gte, lte, sum } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -66,60 +66,79 @@ async function fetchRankingForPeriod({
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
 	if (periodBefore) saleConditions.push(lte(sales.dataVenda, periodBefore));
 
-	// Get top products based on ranking criteria
-	const ranking = await db
+	// Get products with sales in the period - group by product ID only
+	const productsWithSales = await db
 		.select({
 			produtoId: saleItems.produtoId,
-			produtoDescricao: products.descricao,
-			produtoCodigo: products.codigo,
-			produtoGrupo: products.grupo,
-			produtoImagemCapaUrl: products.imagemCapaUrl,
 			totalQuantity: sum(saleItems.quantidade),
 			totalRevenue: sum(saleItems.valorVendaTotalLiquido),
 			totalCost: sum(saleItems.valorCustoTotal),
 		})
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.innerJoin(products, eq(saleItems.produtoId, products.id))
-		.where(and(...saleConditions, eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId)))
-		.groupBy(saleItems.produtoId, products.descricao, products.codigo, products.grupo, products.imagemCapaUrl)
-		.limit(10);
+		.where(and(...saleConditions, eq(saleItems.organizacaoId, userOrgId)))
+		.groupBy(saleItems.produtoId);
 
-	return ranking
-		.map((item) => {
-			const totalRevenue = Number(item.totalRevenue ?? 0);
-			const totalCost = Number(item.totalCost ?? 0);
-			const totalMargin = totalRevenue - totalCost;
-			const marginPercentage = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
+	// Get product IDs
+	const productIds = productsWithSales.map((p) => p.produtoId);
+	
+	// Fetch product details separately
+	const productsDetails = await db.query.products.findMany({
+		where: and(eq(products.organizacaoId, userOrgId), inArray(products.id, productIds)),
+		columns: {
+			id: true,
+			descricao: true,
+			codigo: true,
+			grupo: true,
+			imagemCapaUrl: true,
+		},
+	});
 
-			return {
-				produtoId: item.produtoId,
-				descricao: item.produtoDescricao,
-				codigo: item.produtoCodigo,
-				grupo: item.produtoGrupo,
-				imagemCapaUrl: item.produtoImagemCapaUrl,
-				totalQuantity: Number(item.totalQuantity ?? 0),
-				totalRevenue,
-				totalMargin,
-				marginPercentage,
-			};
-		})
-		.sort((a, b) => {
-			if (rankingBy === "sales-total-value") {
-				return b.totalRevenue - a.totalRevenue;
-			}
-			if (rankingBy === "sales-total-qty") {
-				return b.totalQuantity - a.totalQuantity;
-			}
-			if (rankingBy === "sales-total-margin") {
-				return b.marginPercentage - a.marginPercentage;
-			}
-			return 0;
-		})
-		.map((item, index) => ({
-			rank: index + 1,
-			...item,
-		}));
+	// Create a map for quick lookup
+	const productsMap = new Map(productsDetails.map((product) => [product.id, product]));
+
+	// Enrich products with sales metrics
+	const productsWithMetrics = productsWithSales.map((productData) => {
+		const productId = productData.produtoId;
+		const productInfo = productsMap.get(productId);
+		const totalRevenue = Number(productData.totalRevenue ?? 0);
+		const totalCost = Number(productData.totalCost ?? 0);
+		const totalMargin = totalRevenue - totalCost;
+		const marginPercentage = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
+
+		return {
+			produtoId: productId,
+			descricao: productInfo?.descricao || "N/A",
+			codigo: productInfo?.codigo || null,
+			grupo: productInfo?.grupo || null,
+			imagemCapaUrl: productInfo?.imagemCapaUrl || null,
+			totalQuantity: Number(productData.totalQuantity ?? 0),
+			totalRevenue,
+			totalMargin,
+			marginPercentage,
+		};
+	});
+
+	// Sort by ranking criteria
+	const sortedProducts = productsWithMetrics.sort((a, b) => {
+		if (rankingBy === "sales-total-value") {
+			return b.totalRevenue - a.totalRevenue;
+		}
+		if (rankingBy === "sales-total-qty") {
+			return b.totalQuantity - a.totalQuantity;
+		}
+		if (rankingBy === "sales-total-margin") {
+			return b.marginPercentage - a.marginPercentage;
+		}
+		// Default: sales-total-value
+		return b.totalRevenue - a.totalRevenue;
+	});
+
+	// Get top 10 and add rank
+	return sortedProducts.slice(0, 10).map((product, index) => ({
+		rank: index + 1,
+		...product,
+	}));
 }
 
 async function getProductsRanking({ input, session }: { input: TGetProductsRankingInput; session: TAuthUserSession }) {
