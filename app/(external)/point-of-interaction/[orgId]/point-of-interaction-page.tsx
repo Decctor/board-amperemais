@@ -13,7 +13,7 @@ import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/dri
 import LogoHorizontalRecompraCRM from "@/utils/images/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.png";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Building2, Coins, Loader2, ShoppingCart, Trophy } from "lucide-react";
+import { ArrowRight, Building2, Coins, Gift, Loader2, ShoppingCart, Trophy } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -31,6 +31,70 @@ type ClientLookupResult = {
 		saldoValorResgatadoTotal: number;
 	}>;
 };
+
+type AlternatingCashbackBadgeProps = {
+	cashbackProgram: TCashbackProgramEntity;
+};
+
+function AlternatingCashbackBadge({ cashbackProgram }: AlternatingCashbackBadgeProps) {
+	const [showPromo, setShowPromo] = useState(false);
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setShowPromo((prev) => !prev);
+		}, 3000);
+
+		return () => clearInterval(interval);
+	}, []);
+
+	return (
+		<div className="flex items-center gap-3 bg-brand/5 px-5 py-3 rounded-2xl border border-brand/10 min-w-[280px]">
+			<AnimatePresence mode="wait">
+				{!showPromo ? (
+					<motion.div
+						key="rules"
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						transition={{ duration: 0.4 }}
+						className="flex items-center gap-3 w-full"
+					>
+						<div className="bg-brand/10 p-2.5 rounded-full">
+							<Coins className="w-5 h-5 text-brand" />
+						</div>
+						<div className="flex flex-col">
+							<span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Regras do Cashback</span>
+							<div className="flex items-center gap-2 text-sm font-bold text-foreground">
+								<span>Ganhe {cashbackProgram.acumuloValor}%</span>
+								<span className="w-1 h-1 bg-brand/30 rounded-full" />
+								<span>Válido por {cashbackProgram.expiracaoRegraValidadeValor} dias</span>
+							</div>
+						</div>
+					</motion.div>
+				) : (
+					<motion.div
+						key="promo"
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						transition={{ duration: 0.4 }}
+						className="flex items-center gap-3 w-full"
+					>
+						<div className="bg-brand/10 p-2.5 rounded-full">
+							<Gift className="w-5 h-5 text-brand" />
+						</div>
+						<div className="flex flex-col">
+							<span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Promoção Especial</span>
+							<div className="flex items-center text-sm font-bold text-foreground">
+								<span>Ganhe R$ 20 na sua primeira compra</span>
+							</div>
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
+		</div>
+	);
+}
 
 export default function PointOfInteractionContent({
 	org,
@@ -71,19 +135,7 @@ export default function PointOfInteractionContent({
 					</div>
 				</div>
 
-				<div className="flex items-center gap-3 bg-brand/5 px-5 py-3 rounded-2xl border border-brand/10">
-					<div className="bg-brand/10 p-2.5 rounded-full">
-						<Coins className="w-5 h-5 text-brand" />
-					</div>
-					<div className="flex flex-col">
-						<span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Regras do Cashback</span>
-						<div className="flex items-center gap-2 text-sm font-bold text-foreground">
-							<span>Ganhe {cashbackProgram.acumuloValor}%</span>
-							<span className="w-1 h-1 bg-brand/30 rounded-full" />
-							<span>Válido por {cashbackProgram.expiracaoRegraValidadeValor} dias</span>
-						</div>
-					</div>
-				</div>
+				<AlternatingCashbackBadge cashbackProgram={cashbackProgram} />
 			</header>
 
 			{allowAccumulation ? (
