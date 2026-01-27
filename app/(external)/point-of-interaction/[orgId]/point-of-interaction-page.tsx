@@ -13,7 +13,7 @@ import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/dri
 import LogoHorizontalRecompraCRM from "@/utils/images/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.png";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Building2, Coins, Gift, Loader2, ShoppingCart, Trophy } from "lucide-react";
+import { ArrowRight, Building2, Coins, Gift, Loader2, ShoppingCart, Trophy, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -155,10 +155,6 @@ export default function PointOfInteractionContent({
 				<PointerOfInteractionWithoutAccumulationViaPDI
 					org={org}
 					router={router}
-					handleOpenProfileMenu={() => {
-						setShowProfileMenu(true);
-						playAction();
-					}}
 				/>
 			)}
 
@@ -566,22 +562,21 @@ type PointOfInteractionWithoutAccumulationViaPDIProps = {
 		telefone: TOrganizationEntity["telefone"];
 	};
 	router: ReturnType<typeof useRouter>;
-	handleOpenProfileMenu: () => void;
 };
-function PointerOfInteractionWithoutAccumulationViaPDI({ org, router, handleOpenProfileMenu }: PointOfInteractionWithoutAccumulationViaPDIProps) {
+function PointerOfInteractionWithoutAccumulationViaPDI({ org, router }: PointOfInteractionWithoutAccumulationViaPDIProps) {
 	return (
 		<main className="w-full max-w-5xl flex-1 flex flex-col">
 			{/* GRID DE AÇÕES: 2 colunas no tablet */}
 			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
-				<div className="w-full md:w-1/2 flex flex-col gap-6">
-					{/* CARD PRINCIPAL: NOVA COMPRA (MAIOR DESTAQUE) */}
+					<div className="w-full md:w-1/2 flex flex-col gap-6">
+					{/* CARD PRINCIPAL: RESGATAR CASHBACK (MAIOR DESTAQUE) */}
 					<Button
-						onClick={handleOpenProfileMenu}
+						onClick={() => router.push(`/point-of-interaction/${org.id}/new-cashback-redemption`)}
 						variant="default"
 						className="group relative flex flex-col items-center justify-center gap-4 h-auto flex-1 rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
 					>
 						<div className="bg-white/20 p-6 rounded-3xl group-hover:scale-110 transition-transform">
-							<ShoppingCart className="w-16 h-16 md:w-20 md:h-20" />
+							<Wallet className="w-16 h-16 md:w-20 md:h-20" />
 						</div>
 						<div className="text-center">
 							<h3 className="text-2xl md:text-3xl font-black tracking-tight">RESGATAR CASHBACK</h3>
