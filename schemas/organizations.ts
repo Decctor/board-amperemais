@@ -71,12 +71,22 @@ export const OrganizationSchema = z.object({
 	// Custom Colors
 	corPrimaria: z
 		.string({ invalid_type_error: "Tipo não válido para a cor primária." })
-		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor primária deve estar no formato hexadecimal (ex: #fead41)." })
+		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor primária deve estar no formato hexadecimal (ex: #FFB900)." })
+		.optional()
+		.nullable(),
+	corPrimariaForeground: z
+		.string({ invalid_type_error: "Tipo não válido para a cor de foreground primária." })
+		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor de foreground primária deve estar no formato hexadecimal (ex: #000000)." })
 		.optional()
 		.nullable(),
 	corSecundaria: z
 		.string({ invalid_type_error: "Tipo não válido para a cor secundária." })
 		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor secundária deve estar no formato hexadecimal (ex: #15599a)." })
+		.optional()
+		.nullable(),
+	corSecundariaForeground: z
+		.string({ invalid_type_error: "Tipo não válido para a cor de foreground secundária." })
+		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor de foreground secundária deve estar no formato hexadecimal (ex: #FFFFFF)." })
 		.optional()
 		.nullable(),
 

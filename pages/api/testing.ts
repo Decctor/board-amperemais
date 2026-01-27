@@ -1,5 +1,5 @@
 import { db } from "@/services/drizzle";
-import { sales } from "@/services/drizzle/schema";
+import { organizationMembers, sales } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -118,6 +118,22 @@ async function processBatch(
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 	const startTime = Date.now();
+	const memberships = await db.query.organizationMembers.findMany({});
+
+	for (const membership of memberships) {
+		await db
+			.update(organizationMembers)
+			.set({
+				permissoes: {
+					...membership.permissoes,
+					empresa: {
+						visualizar: true,
+						editar: true,
+					},
+				},
+			})
+			.where(eq(organizationMembers.id, membership.id));
+	}
 	return res.status(200).json({ message: "Processo concluído com sucesso" });
 	// try {
 	// 	console.log("[INFO] [TESTING] Iniciando processo de correção de vendas...");

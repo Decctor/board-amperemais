@@ -29,7 +29,9 @@ export type TAuthUserSession = {
 			logoUrl: TOrganizationEntity["logoUrl"];
 			assinaturaPlano: TOrganizationEntity["assinaturaPlano"];
 			corPrimaria: TOrganizationEntity["corPrimaria"];
+			corPrimariaForeground: TOrganizationEntity["corPrimariaForeground"];
 			corSecundaria: TOrganizationEntity["corSecundaria"];
+			corSecundariaForeground: TOrganizationEntity["corSecundariaForeground"];
 		};
 		permissoes: TOrganizationMemberEntity["permissoes"];
 	} | null;

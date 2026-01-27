@@ -56,6 +56,16 @@ export const NewUserSchema = z.object({
 	usuario: z.string({ required_error: "Usuário do usuário não informado.", invalid_type_error: "Tipo não válido para o usuário do usuário." }),
 	senha: z.string({ required_error: "Senha do usuário não informada.", invalid_type_error: "Tipo não válido para a senha do usuário." }),
 	permissoes: z.object({
+		empresa: z.object({
+			visualizar: z.boolean({
+				required_error: "Permissão de visualização das configurações da empresa não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de visualização das configurações da empresa.",
+			}),
+			editar: z.boolean({
+				required_error: "Permissão de edição das configurações da empresa não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de edição das configurações da empresa.",
+			}),
+		}),
 		resultados: z.object({
 			escopo: z
 				.array(z.string({ required_error: "Escopo de resultados não informado.", invalid_type_error: "Tipo não válido para o escopo de resultados." }))

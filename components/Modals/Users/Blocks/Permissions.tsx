@@ -14,6 +14,7 @@ type UsersPermissionsBlockProps = {
 export default function UsersPermissionsBlock({ userId, infoHolder, updateUserPermissions }: UsersPermissionsBlockProps) {
 	return (
 		<ResponsiveMenuSection title="PERMISSÕES" icon={<Shield className="h-4 min-h-4 w-4 min-w-4" />}>
+			<CompanyPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
 			<ResultsPermissions userId={userId} infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
 			<GoalsPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
 			<UsersPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
@@ -22,6 +23,31 @@ export default function UsersPermissionsBlock({ userId, infoHolder, updateUserPe
 	);
 }
 
+type CompanyPermissionsProps = {
+	infoHolder: TUseUserState["state"]["user"];
+	updateUserPermissions: TUseUserState["updateUserPermissions"];
+};
+function CompanyPermissions({ infoHolder, updateUserPermissions }: CompanyPermissionsProps) {
+	return (
+		<div className="w-full flex flex-col gap-1">
+			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE EMPRESA</h2>
+			<div className="w-full flex flex-col gap-2">
+				<CheckboxInput
+					labelTrue="APTO A VISUALIZAR EMPRESA"
+					labelFalse="APTO A VISUALIZAR EMPRESA"
+					checked={infoHolder.permissoes.empresa.visualizar}
+					handleChange={(value) => updateUserPermissions({ empresa: { ...infoHolder.permissoes.empresa, visualizar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A EDITAR EMPRESA"
+					labelFalse="APTO A EDITAR EMPRESA"
+					checked={infoHolder.permissoes.empresa.editar}
+					handleChange={(value) => updateUserPermissions({ empresa: { ...infoHolder.permissoes.empresa, editar: value } })}
+				/>
+			</div>
+		</div>
+	);
+}
 type ResultsPermissionsProps = {
 	userId?: string;
 	infoHolder: TUseUserState["state"]["user"];

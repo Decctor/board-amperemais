@@ -22,7 +22,9 @@ export default async function NewSalePage({
 			logoUrl: true,
 			telefone: true,
 			corPrimaria: true,
+			corPrimariaForeground: true,
 			corSecundaria: true,
+			corSecundariaForeground: true,
 		},
 	});
 	if (!org) {
@@ -30,7 +32,12 @@ export default async function NewSalePage({
 	}
 
 	return (
-		<OrgColorsProvider corPrimaria={org.corPrimaria} corSecundaria={org.corSecundaria}>
+		<OrgColorsProvider 
+			corPrimaria={org.corPrimaria} 
+			corPrimariaForeground={org.corPrimariaForeground}
+			corSecundaria={org.corSecundaria}
+			corSecundariaForeground={org.corSecundariaForeground}
+		>
 			<NewSaleContent org={org} clientId={clientId} />
 		</OrgColorsProvider>
 	);

@@ -61,7 +61,7 @@ export default function ProductsGraphs({ periodAfter, periodBefore }: ProductsGr
 						: graphType === "active-products"
 							? "Produtos Ativos"
 							: "Margem (%)",
-			color: "#fead41",
+			color: "#FFB900",
 		},
 	} satisfies ChartConfig;
 

@@ -1,11 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { type ReactNode, createContext, useContext, useEffect, useMemo } from "react";
 
 // Default colors used throughout the application
 export const DEFAULT_ORG_COLORS = {
-	primary: "#fead41", // Yellow/Gold - Current period charts, progress bars, buttons
-	secondary: "#15599a", // Blue - Previous period charts, alternative accents
+	primary: "#FFB900", // Yellow/Gold - Current period charts, progress bars, buttons
+	primaryForeground: "#000000", // Black text on yellow
+	secondary: "#24549C", // Blue - Previous period charts, alternative accents
+	secondaryForeground: "#FFFFFF", // White text on blue
 } as const;
 
 // Lighter variant for backgrounds (e.g., chart fills)
@@ -20,9 +22,9 @@ export function hexToRgba(hex: string, opacity: number): string {
 	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
 	if (!result) return `rgba(0, 0, 0, ${opacity})`;
 
-	const r = parseInt(result[1], 16);
-	const g = parseInt(result[2], 16);
-	const b = parseInt(result[3], 16);
+	const r = Number.parseInt(result[1], 16);
+	const g = Number.parseInt(result[2], 16);
+	const b = Number.parseInt(result[3], 16);
 
 	return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
@@ -32,9 +34,9 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
 	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
 	if (!result) return { h: 0, s: 0, l: 0 };
 
-	let r = parseInt(result[1], 16) / 255;
-	let g = parseInt(result[2], 16) / 255;
-	let b = parseInt(result[3], 16) / 255;
+	const r = Number.parseInt(result[1], 16) / 255;
+	const g = Number.parseInt(result[2], 16) / 255;
+	const b = Number.parseInt(result[3], 16) / 255;
 
 	const max = Math.max(r, g, b);
 	const min = Math.min(r, g, b);
@@ -78,7 +80,9 @@ export function getPrimaryGradientClass(primaryColor: string): string {
 
 export type OrgColors = {
 	primary: string;
+	primaryForeground: string;
 	secondary: string;
+	secondaryForeground: string;
 };
 
 type OrgColorsContextValue = {
@@ -97,16 +101,20 @@ const OrgColorsContext = createContext<OrgColorsContextValue | null>(null);
 type OrgColorsProviderProps = {
 	children: ReactNode;
 	corPrimaria?: string | null;
+	corPrimariaForeground?: string | null;
 	corSecundaria?: string | null;
+	corSecundariaForeground?: string | null;
 };
 
-export function OrgColorsProvider({ children, corPrimaria, corSecundaria }: OrgColorsProviderProps) {
+export function OrgColorsProvider({ children, corPrimaria, corPrimariaForeground, corSecundaria, corSecundariaForeground }: OrgColorsProviderProps) {
 	const colors: OrgColors = useMemo(
 		() => ({
 			primary: corPrimaria || DEFAULT_ORG_COLORS.primary,
+			primaryForeground: corPrimariaForeground || DEFAULT_ORG_COLORS.primaryForeground,
 			secondary: corSecundaria || DEFAULT_ORG_COLORS.secondary,
+			secondaryForeground: corSecundariaForeground || DEFAULT_ORG_COLORS.secondaryForeground,
 		}),
-		[corPrimaria, corSecundaria]
+		[corPrimaria, corPrimariaForeground, corSecundaria, corSecundariaForeground],
 	);
 
 	// Set CSS variables for the organization colors
@@ -115,10 +123,13 @@ export function OrgColorsProvider({ children, corPrimaria, corSecundaria }: OrgC
 
 		// Set the org colors as CSS variables
 		root.style.setProperty("--org-primary", colors.primary);
+		root.style.setProperty("--org-primary-foreground", colors.primaryForeground);
 		root.style.setProperty("--org-secondary", colors.secondary);
+		root.style.setProperty("--org-secondary-foreground", colors.secondaryForeground);
 
 		// Override --color-brand for POI and other pages using bg-brand class
 		root.style.setProperty("--color-brand", colors.primary);
+		root.style.setProperty("--color-brand-foreground", colors.primaryForeground);
 
 		// Also set HSL versions for more flexible styling
 		const primaryHsl = hexToHsl(colors.primary);
@@ -135,8 +146,11 @@ export function OrgColorsProvider({ children, corPrimaria, corSecundaria }: OrgC
 		return () => {
 			// Cleanup
 			root.style.removeProperty("--org-primary");
+			root.style.removeProperty("--org-primary-foreground");
 			root.style.removeProperty("--org-secondary");
+			root.style.removeProperty("--org-secondary-foreground");
 			root.style.removeProperty("--color-brand");
+			root.style.removeProperty("--color-brand-foreground");
 			root.style.removeProperty("--org-primary-h");
 			root.style.removeProperty("--org-primary-s");
 			root.style.removeProperty("--org-primary-l");
@@ -163,7 +177,7 @@ export function OrgColorsProvider({ children, corPrimaria, corSecundaria }: OrgC
 				goal: "#000000",
 			}),
 		}),
-		[colors]
+		[colors],
 	);
 
 	return <OrgColorsContext.Provider value={contextValue}>{children}</OrgColorsContext.Provider>;
@@ -174,7 +188,12 @@ export function useOrgColors(): OrgColorsContextValue {
 	if (!context) {
 		// Return default colors if used outside provider (e.g., in external pages)
 		return {
-			colors: DEFAULT_ORG_COLORS,
+			colors: {
+				primary: DEFAULT_ORG_COLORS.primary,
+				primaryForeground: DEFAULT_ORG_COLORS.primaryForeground,
+				secondary: DEFAULT_ORG_COLORS.secondary,
+				secondaryForeground: DEFAULT_ORG_COLORS.secondaryForeground,
+			},
 			getPrimaryGradientStyle: () => ({
 				background: "linear-gradient(to right, #fde68a, #fbbf24)",
 			}),

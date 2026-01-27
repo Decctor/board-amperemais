@@ -61,7 +61,7 @@ export default function PartnersGraphs({ periodAfter, periodBefore }: PartnersGr
 						: graphType === "active-partners"
 							? "Parceiros Ativos"
 							: "Ticket Médio",
-			color: "#fead41",
+			color: "#FFB900",
 		},
 	} satisfies ChartConfig;
 

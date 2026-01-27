@@ -114,7 +114,7 @@ function sanitizeFileName(fileName: string): string {
 			.replace(/^$/, "arquivo")
 	);
 }
-type TSupabaseUploadPrefix = "syncrono" | "avatars";
+type TSupabaseUploadPrefix = "syncrono" | "avatars" | "organizations";
 type UploadFileParams = {
 	file: File;
 	prefix?: TSupabaseUploadPrefix;

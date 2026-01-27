@@ -50,7 +50,9 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 		where: (fields, { eq }) => eq(fields.id, orgId),
 		columns: {
 			corPrimaria: true,
+			corPrimariaForeground: true,
 			corSecundaria: true,
+			corSecundariaForeground: true,
 		},
 	});
 
@@ -82,7 +84,12 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 	const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
 	return (
-		<OrgColorsProvider corPrimaria={org?.corPrimaria} corSecundaria={org?.corSecundaria}>
+		<OrgColorsProvider 
+			corPrimaria={org?.corPrimaria} 
+			corPrimariaForeground={org?.corPrimariaForeground}
+			corSecundaria={org?.corSecundaria}
+			corSecundariaForeground={org?.corSecundariaForeground}
+		>
 		<div className="w-full min-h-full flex-1 p-6 md:p-10 flex flex-col items-center">
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header */}

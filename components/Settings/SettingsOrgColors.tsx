@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { updateOrganization } from "@/lib/mutations/organizations";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Palette, RotateCcw, Save } from "lucide-react";
@@ -29,18 +30,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 		secondaryColor !== (membership.organizacao.corSecundaria || DEFAULT_ORG_COLORS.secondary);
 
 	const updateColorsMutation = useMutation({
-		mutationFn: async (data: { corPrimaria: string; corSecundaria: string }) => {
-			const response = await fetch(`/api/organizations/${membership.organizacao.id}/colors`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(data),
-			});
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.message || "Erro ao atualizar cores");
-			}
-			return response.json();
-		},
+		mutationFn: updateOrganization,
 		onSuccess: () => {
 			toast.success("Cores atualizadas com sucesso! Recarregue a página para ver as mudanças.");
 			// Force page reload to update all components with new colors
@@ -53,8 +43,10 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 
 	const handleSave = () => {
 		updateColorsMutation.mutate({
-			corPrimaria: primaryColor,
-			corSecundaria: secondaryColor,
+			organization: {
+				corPrimaria: primaryColor,
+				corSecundaria: secondaryColor,
+			},
 		});
 	};
 
@@ -71,8 +63,8 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 					<h2 className="text-sm font-semibold">Personalização de Cores</h2>
 				</div>
 				<p className="text-xs text-muted-foreground">
-					Personalize as cores do seu painel para refletir a identidade visual da sua organização. As cores serão aplicadas aos gráficos, botões e
-					outros elementos visuais.
+					Personalize as cores do seu painel para refletir a identidade visual da sua organização. As cores serão aplicadas aos gráficos, botões e outros
+					elementos visuais.
 				</p>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -81,9 +73,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 						<Label htmlFor="primaryColor" className="text-xs font-medium">
 							Cor Primária
 						</Label>
-						<p className="text-[0.65rem] text-muted-foreground">
-							Usada em gráficos de período atual, barras de progresso e elementos de destaque.
-						</p>
+						<p className="text-[0.65rem] text-muted-foreground">Usada em gráficos de período atual, barras de progresso e elementos de destaque.</p>
 						<div className="flex items-center gap-3">
 							<div className="relative">
 								<input
@@ -103,7 +93,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 										setPrimaryColor(value);
 									}
 								}}
-								placeholder="#fead41"
+								placeholder="#FFB900"
 								className="w-28 uppercase text-xs"
 							/>
 						</div>
@@ -136,7 +126,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 										setSecondaryColor(value);
 									}
 								}}
-								placeholder="#15599a"
+								placeholder="#24549C"
 								className="w-28 uppercase text-xs"
 							/>
 						</div>
@@ -189,7 +179,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 							<div className="flex gap-1">
 								{[0.2, 0.4, 0.6, 0.8, 1].map((opacity, index) => (
 									<div
-										key={index}
+										key={index.toString()}
 										className="w-8 h-8 rounded border border-primary/20 flex items-center justify-center text-[0.6rem] font-bold"
 										style={{ backgroundColor: hexToRgba(primaryColor, opacity) }}
 									>

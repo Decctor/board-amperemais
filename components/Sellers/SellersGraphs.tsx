@@ -61,7 +61,7 @@ export default function SellersGraphs({ periodAfter, periodBefore }: SellersGrap
 						: graphType === "active-sellers"
 							? "Vendedores Ativos"
 							: "Ticket Médio",
-			color: "#fead41",
+			color: "#FFB900",
 		},
 	} satisfies ChartConfig;
 

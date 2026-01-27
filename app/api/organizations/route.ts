@@ -155,6 +155,50 @@ async function createOrganizationRoute(request: NextRequest) {
 	return NextResponse.json(result);
 }
 
+const UpdateOrganizationInputSchema = z.object({
+	organization: OrganizationSchema.omit({ dataInsercao: true, assinaturaPlano: true, periodoTesteFim: true, periodoTesteInicio: true }).partial(),
+});
+export type TUpdateOrganizationInput = z.infer<typeof UpdateOrganizationInputSchema>;
+
+async function updateOrganization({ input, session }: { input: TUpdateOrganizationInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const { organization } = input;
+
+	const updatedOrganization = await db
+		.update(organizations)
+		.set({
+			...organization,
+		})
+		.where(eq(organizations.id, userOrgId))
+		.returning({ id: organizations.id });
+
+	const updatedOrganizationId = updatedOrganization[0]?.id;
+	if (!updatedOrganizationId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar organização.");
+
+	return {
+		data: {
+			updatedId: updatedOrganizationId,
+		},
+		message: "Organização atualizada com sucesso.",
+	};
+}
+export type TUpdateOrganizationOutput = Awaited<ReturnType<typeof updateOrganization>>;
+
+async function updateOrganizationRoute(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const payload = await request.json();
+	const input = UpdateOrganizationInputSchema.parse(payload);
+
+	const result = await updateOrganization({ input, session: session });
+
+	return NextResponse.json(result);
+}
 export const POST = appApiHandler({
 	POST: createOrganizationRoute,
+});
+export const PUT = appApiHandler({
+	PUT: updateOrganizationRoute,
 });

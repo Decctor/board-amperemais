@@ -1140,11 +1140,11 @@ function ProductGraphBlock({
 		},
 		quantidade: {
 			label: "Quantidade Vendida",
-			color: "#fead41",
+			color: "#FFB900",
 		},
 		valorLiquido: {
 			label: "Valor Líquido",
-			color: "#fead41",
+			color: "#FFB900",
 		},
 		margemPercentual: {
 			label: "Margem %",

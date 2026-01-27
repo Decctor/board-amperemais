@@ -18,7 +18,9 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 				<SidebarInset className="overflow-y-auto p-6 flex flex-col gap-3">
 					<OrgColorsProvider
 						corPrimaria={user.membership.organizacao.corPrimaria}
+						corPrimariaForeground={user.membership.organizacao.corPrimariaForeground}
 						corSecundaria={user.membership.organizacao.corSecundaria}
+						corSecundariaForeground={user.membership.organizacao.corSecundariaForeground}
 					>
 						<AppHeader />
 						{children}

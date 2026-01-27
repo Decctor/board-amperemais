@@ -22,7 +22,9 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 			logoUrl: true,
 			telefone: true,
 			corPrimaria: true,
+			corPrimariaForeground: true,
 			corSecundaria: true,
+			corSecundariaForeground: true,
 		},
 	});
 
@@ -95,7 +97,12 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 	});
 
 	return (
-		<OrgColorsProvider corPrimaria={org.corPrimaria} corSecundaria={org.corSecundaria}>
+		<OrgColorsProvider 
+			corPrimaria={org.corPrimaria} 
+			corPrimariaForeground={org.corPrimariaForeground}
+			corSecundaria={org.corSecundaria}
+			corSecundariaForeground={org.corSecundariaForeground}
+		>
 			<ClientProfileContent
 				orgId={orgId}
 				cashbackProgram={cashbackProgram}

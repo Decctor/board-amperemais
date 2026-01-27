@@ -10,7 +10,7 @@ import z from "zod";
 const UpdateOrganizationColorsSchema = z.object({
 	corPrimaria: z
 		.string()
-		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor primária deve estar no formato hexadecimal (ex: #fead41)." })
+		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor primária deve estar no formato hexadecimal (ex: #FFB900)." })
 		.optional()
 		.nullable(),
 	corSecundaria: z
