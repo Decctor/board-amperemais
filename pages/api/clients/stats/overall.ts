@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
-import { and, count, desc, eq, gte, inArray, lt, lte, notInArray, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, lt, lte, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import z from "zod";
@@ -118,7 +118,7 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 			and(...saleConditions, periodAfter ? gte(sales.dataVenda, periodAfter) : undefined, periodBefore ? lte(sales.dataVenda, periodBefore) : undefined),
 		);
 	const totalRevenue = Number(totalRevenueResult[0]?.total ?? 0);
-
+	console.log("[INFO] [GET CLIENTS STATS] Total Revenue:", totalRevenue);
 	// Revenue from Existing Clients (first purchase BEFORE periodAfter)
 	const existingClientsRevenueResult = await db
 		.select({ total: sum(sales.valorTotal) })
@@ -133,6 +133,7 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 			),
 		);
 
+	const existingClientsRevenue = Number(existingClientsRevenueResult[0]?.total ?? 0);
 	// Revenue from New Clients (first purchase WITHIN periodAfter and periodBefore)
 	const newClientsRevenueResult = await db
 		.select({ total: sum(sales.valorTotal) })
@@ -147,6 +148,23 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
 			),
 		);
+	const newClientsRevenue = Number(newClientsRevenueResult[0]?.total ?? 0);
+	// Revenue from Non-Identified Clients (sales without valid client - AO CONSUMIDOR)
+	const nonIdentifiedClientsRevenueResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.leftJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...saleConditions,
+				periodAfter ? gte(sales.dataVenda, periodAfter) : undefined,
+				periodBefore ? lte(sales.dataVenda, periodBefore) : undefined,
+				isNull(clients.id),
+			),
+		);
+	const nonIdentifiedClientsRevenue = Number(nonIdentifiedClientsRevenueResult[0]?.total ?? 0);
+	console.log("NEW CLIENTS PERCENTAGE:", totalRevenue > 0 ? (newClientsRevenue / totalRevenue) * 100 : 0);
+
 	if (!comparingPeriodAfter && !comparingPeriodBefore) {
 		return {
 			data: {
@@ -167,15 +185,19 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 					comparison: null,
 				},
 				revenueFromRecurrentClients: {
-					current: existingClientsRevenueResult[0]?.total ? Number(existingClientsRevenueResult[0]?.total) : 0,
+					current: existingClientsRevenue,
 					comparison: null,
-					percentage:
-						totalRevenue > 0 ? ((existingClientsRevenueResult[0]?.total ? Number(existingClientsRevenueResult[0]?.total) : 0) / totalRevenue) * 100 : 0,
+					percentage: totalRevenue > 0 ? (existingClientsRevenue / totalRevenue) * 100 : 0,
 				},
 				revenueFromNewClients: {
-					current: newClientsRevenueResult[0]?.total ? Number(newClientsRevenueResult[0]?.total) : 0,
+					current: newClientsRevenue,
 					comparison: null,
-					percentage: totalRevenue > 0 ? ((newClientsRevenueResult[0]?.total ? Number(newClientsRevenueResult[0]?.total) : 0) / totalRevenue) * 100 : 0,
+					percentage: totalRevenue > 0 ? (newClientsRevenue / totalRevenue) * 100 : 0,
+				},
+				revenueFromNonIdentifiedClients: {
+					current: nonIdentifiedClientsRevenue,
+					comparison: null,
+					percentage: totalRevenue > 0 ? (nonIdentifiedClientsRevenue / totalRevenue) * 100 : 0,
 				},
 			},
 		};
@@ -270,6 +292,20 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 				comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined,
 			),
 		);
+
+	// Comparison Revenue from Non-Identified Clients (AO CONSUMIDOR)
+	const comparisonNonIdentifiedClientsRevenueResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.leftJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...saleConditions,
+				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
+				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
+				isNull(clients.id),
+			),
+		);
 	return {
 		data: {
 			totalClients: {
@@ -291,19 +327,17 @@ async function getClientsOverallStats({ input, session }: { input: TGetClientsOv
 			revenueFromRecurrentClients: {
 				current: existingClientsRevenueResult[0]?.total ? Number(existingClientsRevenueResult[0]?.total) : 0,
 				comparison: comparisonExistingClientsRevenueResult[0]?.total ? Number(comparisonExistingClientsRevenueResult[0]?.total) : 0,
-				percentage:
-					comparisonTotalRevenue > 0
-						? ((comparisonExistingClientsRevenueResult[0]?.total ? Number(comparisonExistingClientsRevenueResult[0]?.total) : 0) / comparisonTotalRevenue) *
-							100
-						: 0,
+				percentage: totalRevenue > 0 ? (existingClientsRevenue / totalRevenue) * 100 : 0,
 			},
 			revenueFromNewClients: {
 				current: newClientsRevenueResult[0]?.total ? Number(newClientsRevenueResult[0]?.total) : 0,
 				comparison: comparisonNewClientsRevenueResult[0]?.total ? Number(comparisonNewClientsRevenueResult[0]?.total) : 0,
-				percentage:
-					comparisonTotalRevenue > 0
-						? ((comparisonNewClientsRevenueResult[0]?.total ? Number(comparisonNewClientsRevenueResult[0]?.total) : 0) / comparisonTotalRevenue) * 100
-						: 0,
+				percentage: totalRevenue > 0 ? (newClientsRevenue / totalRevenue) * 100 : 0,
+			},
+			revenueFromNonIdentifiedClients: {
+				current: nonIdentifiedClientsRevenueResult[0]?.total ? Number(nonIdentifiedClientsRevenueResult[0]?.total) : 0,
+				comparison: comparisonNonIdentifiedClientsRevenueResult[0]?.total ? Number(comparisonNonIdentifiedClientsRevenueResult[0]?.total) : 0,
+				percentage: totalRevenue > 0 ? (nonIdentifiedClientsRevenue / totalRevenue) * 100 : 0,
 			},
 		},
 	};

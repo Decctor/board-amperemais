@@ -19,7 +19,7 @@ import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/cli
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
 import type { TGetClientsOverallStatsInput } from "@/pages/api/clients/stats/overall";
 import dayjs from "dayjs";
-import { BadgeDollarSign, BadgePercent, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { BadgeDollarSign, BadgePercent, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, TrendingUp, UserPlus, UserRoundX, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
@@ -262,6 +262,7 @@ function ClientsStatsView() {
 							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromRecurrentClients.percentage || 0)}%</p>
 						</div>
 					}
+					className="w-full lg:w-1/3"
 				/>
 				<StatUnitCard
 					title="FATURAMENTO POR CLIENTES NOVOS"
@@ -284,6 +285,30 @@ function ClientsStatsView() {
 							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromNewClients.percentage || 0)}%</p>
 						</div>
 					}
+					className="w-full lg:w-1/3"
+				/>
+				<StatUnitCard
+					title="FATURAMENTO AO CONSUMIDOR"
+					icon={<UserRoundX className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.revenueFromNonIdentifiedClients.current ? Number(clientsOverallStats?.revenueFromNonIdentifiedClients.current) : 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						clientsOverallStats?.revenueFromNonIdentifiedClients.comparison
+							? {
+									value: clientsOverallStats?.revenueFromNonIdentifiedClients.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+					footer={
+						<div className="flex items-center gap-1">
+							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
+							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromNonIdentifiedClients.percentage || 0)}%</p>
+						</div>
+					}
+					className="w-full lg:w-1/3"
 				/>
 			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
