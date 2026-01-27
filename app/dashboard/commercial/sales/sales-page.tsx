@@ -28,6 +28,7 @@ import {
 	CircleUser,
 	Clock,
 	Handshake,
+	Info,
 	ListFilter,
 	Megaphone,
 	Package,
@@ -123,7 +124,7 @@ export default function SalesPage({ user }: SalesPageProps) {
 
 function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
+		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer">
 			<div className="flex flex-col md:flex-row justify-between gap-3">
 				{/* Client Info & Sale Basics */}
 				<div className="flex flex-col gap-1.5 grow">
@@ -331,6 +332,14 @@ function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 					)}
 				</div>
 			)}
+			<div className="w-full flex items-center justify-end">
+				<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+					<Link href={`/dashboard/commercial/sales/${sale.id}`}>
+						<Info className="w-3 min-w-3 h-3 min-h-3" />
+						DETALHES
+					</Link>
+				</Button>
+			</div>
 		</div>
 	);
 }

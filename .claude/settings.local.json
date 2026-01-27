@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx tsc:*)",
       "Bash(npm run lint:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npx next lint:*)"
     ]
   }
 }
