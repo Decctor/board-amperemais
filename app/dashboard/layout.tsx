@@ -1,5 +1,6 @@
 import AppHeader from "@/components/Layouts/HeaderApp";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -15,8 +16,15 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 			<AppSidebar user={user.user} organization={user.membership.organizacao} />
 			<Suspense fallback={<LoadingComponent />}>
 				<SidebarInset className="overflow-y-auto p-6 flex flex-col gap-3">
-					<AppHeader />
-					{children}
+					<OrgColorsProvider
+						corPrimaria={user.membership.organizacao.corPrimaria}
+						corPrimariaForeground={user.membership.organizacao.corPrimariaForeground}
+						corSecundaria={user.membership.organizacao.corSecundaria}
+						corSecundariaForeground={user.membership.organizacao.corSecundariaForeground}
+					>
+						<AppHeader />
+						{children}
+					</OrgColorsProvider>
 				</SidebarInset>
 			</Suspense>
 		</SidebarProvider>

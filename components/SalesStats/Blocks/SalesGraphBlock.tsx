@@ -1,4 +1,5 @@
 "use client";
+import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
@@ -6,14 +7,11 @@ import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatToMoney } from "@/lib/formatting";
 import { useSalesGraph } from "@/lib/queries/stats/sales-graph";
-import { cn } from "@/lib/utils";
 import type { TSalesGraphOutput } from "@/pages/api/stats/sales-graph";
 import type { TSaleStatsGeneralQueryParams, TSalesGraphFilters } from "@/schemas/query-params-utils";
 import { BadgeDollarSign, CirclePlus, Download } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { BsFillFileBarGraphFill } from "react-icons/bs";
-import { FaDownload } from "react-icons/fa";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, LabelList, Line, XAxis, YAxis } from "recharts";
+import React, { useEffect, useMemo, useState } from "react";
+import { Area, Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "../../ui/chart";
@@ -28,6 +26,8 @@ function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
 		...generalQueryParams,
 		group: "DIA",
 	});
+	const { getChartColors } = useOrgColors();
+	const chartColors = getChartColors();
 
 	const [debouncedQueryParams] = useDebounce(queryParams, 1000);
 
@@ -51,31 +51,35 @@ function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
 			return toast.error(msg);
 		}
 	}
-	const chartConfig = {
-		titulo: {
-			label: "DATA",
-		},
-		"ATUAL.total": {
-			label: "Período Atual - Valor Vendido",
-			color: "#fead41",
-		},
-		"ATUAL.qtde": {
-			label: "Período Atual - Qtde de Vendas",
-			color: "#fead41",
-		},
-		"ANTERIOR.total": {
-			label: "Período Anterior - Valor Vendido",
-			color: "#15599a",
-		},
-		"ANTERIOR.qtde": {
-			label: "Período Anterior - Qtde de Vendas",
-			color: "#15599a",
-		},
-		meta: {
-			label: "Meta",
-			color: "#000000",
-		},
-	} satisfies ChartConfig;
+	const chartConfig = useMemo(
+		() =>
+			({
+				titulo: {
+					label: "DATA",
+				},
+				"ATUAL.total": {
+					label: "Período Atual - Valor Vendido",
+					color: chartColors.current,
+				},
+				"ATUAL.qtde": {
+					label: "Período Atual - Qtde de Vendas",
+					color: chartColors.current,
+				},
+				"ANTERIOR.total": {
+					label: "Período Anterior - Valor Vendido",
+					color: chartColors.previous,
+				},
+				"ANTERIOR.qtde": {
+					label: "Período Anterior - Qtde de Vendas",
+					color: chartColors.previous,
+				},
+				meta: {
+					label: "Meta",
+					color: chartColors.goal,
+				},
+			}) satisfies ChartConfig,
+		[chartColors]
+	);
 	useEffect(() => {
 		setQueryParams((prev) => ({ ...prev, ...generalQueryParams }));
 	}, [generalQueryParams]);

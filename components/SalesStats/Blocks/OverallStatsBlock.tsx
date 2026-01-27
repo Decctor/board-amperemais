@@ -1,3 +1,4 @@
+import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
@@ -9,7 +10,6 @@ import { Percent, ShoppingBag } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { BsCart } from "react-icons/bs";
 import { BsFileEarmarkText, BsTicketPerforated } from "react-icons/bs";
-import { FaPercent } from "react-icons/fa";
 import { VscDiffAdded } from "react-icons/vsc";
 import { useDebounce } from "use-debounce";
 
@@ -20,6 +20,7 @@ type OverallStatsBlockProps = {
 };
 function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBlockProps) {
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
+	const { getPrimaryGradientStyle } = useOrgColors();
 
 	const [debouncedQueryParams] = useDebounce(queryParams, 1000);
 
@@ -36,7 +37,7 @@ function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBl
 				</div>
 				<div className="w-full flex items-center justify-center p-2">
 					<GoalTrackingBar
-						barBgColor="bg-linear-to-r from-yellow-200 to-amber-400"
+						barStyle={getPrimaryGradientStyle()}
 						goalText={`${overallStats?.faturamentoMeta || "..."}`}
 						barHeigth="25px"
 						valueGoal={overallStats?.faturamentoMeta || 0}
@@ -195,9 +196,9 @@ type GoalTrackingBarProps = {
 	formattedValueHit?: string;
 	goalText: string;
 	barHeigth: string;
-	barBgColor: string;
+	barStyle?: React.CSSProperties;
 };
-function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedValueHit, goalText, barHeigth, barBgColor }: GoalTrackingBarProps) {
+function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedValueHit, goalText, barHeigth, barStyle }: GoalTrackingBarProps) {
 	function getPercentage({ goal, hit }: { goal: number | undefined; hit: number | undefined }) {
 		if (!hit || hit === 0) return "0%";
 		if (!goal && hit) return "100%";
@@ -206,7 +207,6 @@ function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedVal
 			const percentage = ((hit / goal) * 100).toFixed(2);
 			return `${percentage}%`;
 		}
-		// return `${(Math.random() * 100).toFixed(2)}%`
 	}
 	function getWidth({ goal, hit }: { goal: number | undefined; hit: number | undefined }) {
 		if (!hit || hit === 0) return "0%";
@@ -217,7 +217,6 @@ function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedVal
 			percentage = percentage > 100 ? 100 : percentage.toFixed(2);
 			return `${percentage}%`;
 		}
-		// return `${(Math.random() * 100).toFixed(2)}%`
 	}
 
 	return (
@@ -228,8 +227,9 @@ function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedVal
 						style={{
 							width: getWidth({ goal: valueGoal, hit: valueHit }),
 							height: barHeigth,
+							...barStyle,
 						}}
-						className={cn("flex items-center justify-center rounded-sm text-xs text-white shadow-xs", barBgColor)}
+						className="flex items-center justify-center rounded-sm text-xs text-white shadow-xs"
 					/>
 				</div>
 			</div>

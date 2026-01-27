@@ -46,6 +46,15 @@ export function useOrganizationState() {
 			localizacaoComplemento: null,
 			integracaoTipo: null,
 			integracaoConfiguracao: null,
+			dadosViaERP: false,
+			dadosViaPDI: true,
+			dadosViaIntegracoes: false,
+			periodoTesteInicio: null,
+			periodoTesteFim: null,
+			corPrimaria: null,
+			corPrimariaForeground: null,
+			corSecundaria: null,
+			corSecundariaForeground: null,
 			integracaoDataUltimaSincronizacao: null,
 		},
 		logoHolder: {
@@ -62,6 +71,10 @@ export function useOrganizationState() {
 			senha: "",
 			admin: false,
 			permissoes: {
+				empresa: {
+					visualizar: true,
+					editar: true,
+				},
 				resultados: {
 					visualizar: true,
 					criarMetas: true,

@@ -1,3 +1,4 @@
+import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
 import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,17 @@ function getRankBgColor(position: number) {
 export default async function SellersRankingPage({ params }: { params: Promise<{ orgId: string }> }) {
 	const { orgId } = await params;
 
+	// Fetch organization for colors
+	const org = await db.query.organizations.findFirst({
+		where: (fields, { eq }) => eq(fields.id, orgId),
+		columns: {
+			corPrimaria: true,
+			corPrimariaForeground: true,
+			corSecundaria: true,
+			corSecundariaForeground: true,
+		},
+	});
+
 	// Get current month start and end dates
 	const monthStart = dayjs().startOf("month").toDate();
 	const monthEnd = dayjs().endOf("month").toDate();
@@ -72,6 +84,12 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 	const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
 	return (
+		<OrgColorsProvider 
+			corPrimaria={org?.corPrimaria} 
+			corPrimariaForeground={org?.corPrimariaForeground}
+			corSecundaria={org?.corSecundaria}
+			corSecundariaForeground={org?.corSecundariaForeground}
+		>
 		<div className="w-full min-h-full flex-1 p-6 md:p-10 flex flex-col items-center">
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header */}
@@ -157,5 +175,6 @@ export default async function SellersRankingPage({ params }: { params: Promise<{
 				)}
 			</div>
 		</div>
+		</OrgColorsProvider>
 	);
 }

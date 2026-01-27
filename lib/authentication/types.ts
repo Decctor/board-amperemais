@@ -28,6 +28,10 @@ export type TAuthUserSession = {
 			cnpj: TOrganizationEntity["cnpj"];
 			logoUrl: TOrganizationEntity["logoUrl"];
 			assinaturaPlano: TOrganizationEntity["assinaturaPlano"];
+			corPrimaria: TOrganizationEntity["corPrimaria"];
+			corPrimariaForeground: TOrganizationEntity["corPrimariaForeground"];
+			corSecundaria: TOrganizationEntity["corSecundaria"];
+			corSecundariaForeground: TOrganizationEntity["corSecundariaForeground"];
 		};
 		permissoes: TOrganizationMemberEntity["permissoes"];
 	} | null;

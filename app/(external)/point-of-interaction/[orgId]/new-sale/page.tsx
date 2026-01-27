@@ -1,4 +1,5 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { db } from "@/services/drizzle";
 import NewSaleContent from "./new-sale-page";
 
@@ -20,11 +21,24 @@ export default async function NewSalePage({
 			nome: true,
 			logoUrl: true,
 			telefone: true,
+			corPrimaria: true,
+			corPrimariaForeground: true,
+			corSecundaria: true,
+			corSecundariaForeground: true,
 		},
 	});
 	if (!org) {
 		return <ErrorComponent msg="Organização não encontrada" />;
 	}
 
-	return <NewSaleContent org={org} clientId={clientId} />;
+	return (
+		<OrgColorsProvider 
+			corPrimaria={org.corPrimaria} 
+			corPrimariaForeground={org.corPrimariaForeground}
+			corSecundaria={org.corSecundaria}
+			corSecundariaForeground={org.corSecundariaForeground}
+		>
+			<NewSaleContent org={org} clientId={clientId} />
+		</OrgColorsProvider>
+	);
 }

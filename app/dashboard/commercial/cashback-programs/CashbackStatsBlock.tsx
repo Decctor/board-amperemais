@@ -316,7 +316,7 @@ function CashbackProgramsGraphBlock({ period }: CashbackProgramsGraphBlockProps)
 		},
 		value: {
 			label: METRIC_LABELS[graphType].chartLabel,
-			color: "#fead41",
+			color: "#FFB900",
 		},
 	};
 

@@ -117,7 +117,7 @@ function StatsPeriodComparisonMenuData() {
 		},
 		totalVendido: {
 			label: "Valor Vendido",
-			color: "#fead41",
+			color: "#FFB900",
 		},
 	};
 
@@ -299,7 +299,7 @@ function StatsPeriodComparisonMenuData() {
 								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
 							</div>
 							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#fead41]">{formatToMoney(stats?.faturamentoBruto.segundoPeriodo || 0)}</h1>
+								<h1 className="text-sm font-black text-[#FFB900]">{formatToMoney(stats?.faturamentoBruto.segundoPeriodo || 0)}</h1>
 								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
 							</div>
 						</div>
@@ -315,7 +315,7 @@ function StatsPeriodComparisonMenuData() {
 								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
 							</div>
 							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#fead41]">{formatToMoney(stats?.faturamentoLiquido.segundoPeriodo || 0)}</h1>
+								<h1 className="text-sm font-black text-[#FFB900]">{formatToMoney(stats?.faturamentoLiquido.segundoPeriodo || 0)}</h1>
 								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
 							</div>
 						</div>
@@ -333,7 +333,7 @@ function StatsPeriodComparisonMenuData() {
 								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
 							</div>
 							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#fead41]">{stats?.qtdeVendas.segundoPeriodo}</h1>
+								<h1 className="text-sm font-black text-[#FFB900]">{stats?.qtdeVendas.segundoPeriodo}</h1>
 								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
 							</div>
 						</div>
@@ -349,7 +349,7 @@ function StatsPeriodComparisonMenuData() {
 								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
 							</div>
 							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#fead41]">{formatToMoney(stats?.ticketMedio.segundoPeriodo || 0)}</h1>
+								<h1 className="text-sm font-black text-[#FFB900]">{formatToMoney(stats?.ticketMedio.segundoPeriodo || 0)}</h1>
 								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
 							</div>
 						</div>
@@ -367,7 +367,7 @@ function StatsPeriodComparisonMenuData() {
 								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
 							</div>
 							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#fead41]">{formatToMoney(stats?.valorDiarioVendido.segundoPeriodo || 0)}</h1>
+								<h1 className="text-sm font-black text-[#FFB900]">{formatToMoney(stats?.valorDiarioVendido.segundoPeriodo || 0)}</h1>
 								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
 							</div>
 						</div>
@@ -383,7 +383,7 @@ function StatsPeriodComparisonMenuData() {
 								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
 							</div>
 							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#fead41]">{formatDecimalPlaces(stats?.itensPorVendaMedio.segundoPeriodo || 0, 1, 1)}</h1>
+								<h1 className="text-sm font-black text-[#FFB900]">{formatDecimalPlaces(stats?.itensPorVendaMedio.segundoPeriodo || 0, 1, 1)}</h1>
 								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
 							</div>
 						</div>
@@ -470,7 +470,7 @@ function StatsPeriodComparisonMenuData() {
 					</div>
 				</div>
 				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#fead41] text-white">
+					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#FFB900] text-white">
 						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS DO SEGUNDO PERÍODO</h1>
 						<BsCart className="w-4 h-4 min-w-4 min-h-4" />
 					</div>
@@ -651,13 +651,13 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 							<div className="flex items-center gap-2 grow">
 								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
-										className="h-full bg-[#fead41] rounded-full"
+										className="h-full bg-[#FFB900] rounded-full"
 										style={{
 											width: `${(seller.segundoPeriodo.qtdeVendas / Math.max(seller.primeiroPeriodo.qtdeVendas, seller.segundoPeriodo.qtdeVendas)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="text-[0.7rem] w-fit font-bold text-[#fead41]">{seller.segundoPeriodo.qtdeVendas}</span>
+								<span className="text-[0.7rem] w-fit font-bold text-[#FFB900]">{seller.segundoPeriodo.qtdeVendas}</span>
 							</div>
 							{/* <div
 										className={`flex-0 text-[0.65rem] font-medium ${
@@ -692,13 +692,13 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 							<div className="flex items-center gap-2 grow">
 								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
-										className="h-full bg-[#fead41] rounded-full"
+										className="h-full bg-[#FFB900] rounded-full"
 										style={{
 											width: `${(seller.segundoPeriodo.totalVendido / Math.max(seller.primeiroPeriodo.totalVendido, seller.segundoPeriodo.totalVendido)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="text-[0.7rem] w-fit font-bold text-[#fead41]">{formatToMoney(seller.segundoPeriodo.totalVendido)}</span>
+								<span className="text-[0.7rem] w-fit font-bold text-[#FFB900]">{formatToMoney(seller.segundoPeriodo.totalVendido)}</span>
 							</div>
 						</div>
 					</div>
@@ -858,13 +858,13 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 							<div className="flex items-center gap-2 grow">
 								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
-										className="h-full bg-[#fead41] rounded-full"
+										className="h-full bg-[#FFB900] rounded-full"
 										style={{
 											width: `${(product.segundoPeriodo.qtdeVendas / Math.max(product.primeiroPeriodo.qtdeVendas, product.segundoPeriodo.qtdeVendas)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="text-[0.7rem] w-fit font-bold text-[#fead41]">{product.segundoPeriodo.qtdeVendas}</span>
+								<span className="text-[0.7rem] w-fit font-bold text-[#FFB900]">{product.segundoPeriodo.qtdeVendas}</span>
 							</div>
 							{/* <div
 										className={`flex-0 text-[0.65rem] font-medium ${
@@ -899,13 +899,13 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 							<div className="flex items-center gap-2 grow">
 								<div className="grow h-2 rounded-full bg-primary/10">
 									<div
-										className="h-full bg-[#fead41] rounded-full"
+										className="h-full bg-[#FFB900] rounded-full"
 										style={{
 											width: `${(product.segundoPeriodo.totalVendido / Math.max(product.primeiroPeriodo.totalVendido, product.segundoPeriodo.totalVendido)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="text-[0.7rem] w-fit font-bold text-[#fead41]">{formatToMoney(product.segundoPeriodo.totalVendido)}</span>
+								<span className="text-[0.7rem] w-fit font-bold text-[#FFB900]">{formatToMoney(product.segundoPeriodo.totalVendido)}</span>
 							</div>
 						</div>
 					</div>

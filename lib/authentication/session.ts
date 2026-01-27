@@ -86,6 +86,10 @@ export async function validateSession(token: string) {
 					cnpj: membership.organizacao.cnpj,
 					logoUrl: membership.organizacao.logoUrl,
 					assinaturaPlano: membership.organizacao.assinaturaPlano,
+					corPrimaria: membership.organizacao.corPrimaria,
+					corPrimariaForeground: membership.organizacao.corPrimariaForeground,
+					corSecundaria: membership.organizacao.corSecundaria,
+					corSecundariaForeground: membership.organizacao.corSecundariaForeground,
 				},
 				permissoes: membership.permissoes,
 			};
@@ -109,6 +113,10 @@ export async function validateSession(token: string) {
 					cnpj: mostRecentMembership.organizacao.cnpj,
 					logoUrl: mostRecentMembership.organizacao.logoUrl,
 					assinaturaPlano: mostRecentMembership.organizacao.assinaturaPlano,
+					corPrimaria: mostRecentMembership.organizacao.corPrimaria,
+					corPrimariaForeground: mostRecentMembership.organizacao.corPrimariaForeground,
+					corSecundaria: mostRecentMembership.organizacao.corSecundaria,
+					corSecundariaForeground: mostRecentMembership.organizacao.corSecundariaForeground,
 				},
 				permissoes: mostRecentMembership.permissoes,
 			};

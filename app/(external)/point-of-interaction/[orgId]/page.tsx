@@ -1,4 +1,5 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { db } from "@/services/drizzle";
 import PointOfInteractionContent from "./point-of-interaction-page";
 
@@ -17,6 +18,10 @@ export default async function PointOfInteraction({ params }: { params: Promise<{
 			nome: true,
 			logoUrl: true,
 			telefone: true,
+			corPrimaria: true,
+			corPrimariaForeground: true,
+			corSecundaria: true,
+			corSecundariaForeground: true,
 		},
 	});
 	if (!org) {
@@ -30,5 +35,14 @@ export default async function PointOfInteraction({ params }: { params: Promise<{
 		return <ErrorComponent msg="Programa de cashback não encontrado" />;
 	}
 
-	return <PointOfInteractionContent org={org} cashbackProgram={cashbackProgram} />;
+	return (
+		<OrgColorsProvider 
+			corPrimaria={org.corPrimaria} 
+			corPrimariaForeground={org.corPrimariaForeground}
+			corSecundaria={org.corSecundaria}
+			corSecundariaForeground={org.corSecundariaForeground}
+		>
+			<PointOfInteractionContent org={org} cashbackProgram={cashbackProgram} />
+		</OrgColorsProvider>
+	);
 }
