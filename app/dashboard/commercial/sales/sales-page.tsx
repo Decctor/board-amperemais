@@ -17,7 +17,7 @@ import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange, f
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetSalesInput, TGetSalesOutput } from "@/pages/api/sales";
+import type { TGetSalesInput, TGetSalesOutputDefault } from "@/pages/api/sales";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
@@ -121,7 +121,7 @@ export default function SalesPage({ user }: SalesPageProps) {
 	);
 }
 
-function SaleCard({ sale }: { sale: TGetSalesOutput["data"]["default"]["sales"][number] }) {
+function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
 			<div className="flex flex-col md:flex-row justify-between gap-3">

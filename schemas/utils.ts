@@ -100,6 +100,27 @@ const UtilsCardapioWebImportationSchema = z.object({
 	}),
 });
 
+const UtilsCardapioWebCatalogSyncSchema = z.object({
+	identificador: z.enum(["CARDAPIO_WEB_CATALOG_SYNC"]),
+	organizacaoId: z.string({
+		required_error: "Organização ID não informada.",
+		invalid_type_error: "Tipo não válido para a organização ID.",
+	}),
+	valor: z.object({
+		identificador: z.enum(["CARDAPIO_WEB_CATALOG_SYNC"]),
+		dados: z.object({
+			organizacaoId: z.string({
+				required_error: "Organização ID não informada.",
+				invalid_type_error: "Tipo não válido para a organização ID.",
+			}),
+			data: z.string({
+				required_error: "Data não informada.",
+				invalid_type_error: "Tipo não válido para a data.",
+			}),
+		}),
+	}),
+});
+
 const UtilsSalesPromoCampaignSchema = z.object({
 	identificador: z.enum(["SALES_PROMO_CAMPAIGN"]),
 	organizacaoId: z.string({

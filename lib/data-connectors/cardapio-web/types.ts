@@ -592,3 +592,314 @@ export const GetCardapioWebOrderDetailsOutputSchema = z.object({
 	payments: z.array(CardapioWebPaymentSchema),
 });
 export type TGetCardapioWebOrderDetailsOutput = z.infer<typeof GetCardapioWebOrderDetailsOutputSchema>;
+
+// -----------------------------------------------------------------------------
+// CATALOG
+// -----------------------------------------------------------------------------
+
+// No input required for catalog endpoint
+export const GetCardapioWebCatalogInputSchema = z.object({});
+export type TGetCardapioWebCatalogInput = z.infer<typeof GetCardapioWebCatalogInputSchema>;
+
+const CardapioWebCatalogImageSchema = z.object({
+	image_url: z.string({
+		required_error: "URL da imagem não informada.",
+		invalid_type_error: "Tipo inválido para URL da imagem.",
+	}),
+	thumbnail_url: z.string({
+		required_error: "URL da imagem reduzida não informada.",
+		invalid_type_error: "Tipo inválido para URL da imagem reduzida.",
+	}),
+});
+
+const CardapioWebCatalogWeekdaySchema = z.enum(["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"], {
+	required_error: "Dia da semana não informado.",
+	invalid_type_error: "Tipo inválido para dia da semana.",
+});
+
+const CardapioWebCatalogAllowedTimesSchema = z.object({
+	weekday: CardapioWebCatalogWeekdaySchema,
+	start_at: z.string({
+		required_error: "Horário de início não informado.",
+		invalid_type_error: "Tipo inválido para horário de início.",
+	}),
+	end_at: z.string({
+		required_error: "Horário de fim não informado.",
+		invalid_type_error: "Tipo inválido para horário de fim.",
+	}),
+});
+
+const CardapioWebCatalogCategoryStatusSchema = z.enum(["ACTIVE", "INACTIVE"], {
+	required_error: "Status da categoria não informado.",
+	invalid_type_error: "Tipo inválido para status da categoria.",
+});
+
+const CardapioWebCatalogItemStatusSchema = z.enum(["ACTIVE", "INACTIVE", "MISSING"], {
+	required_error: "Status do item não informado.",
+	invalid_type_error: "Tipo inválido para status do item.",
+});
+
+const CardapioWebCatalogUnitTypeSchema = z
+	.enum(["UN", "KG", "L"], {
+		invalid_type_error: "Tipo inválido para unidade de medida.",
+	})
+	.default("UN");
+
+const CardapioWebCatalogItemKindSchema = z.enum(["regular_item", "combo"], {
+	required_error: "Tipo do item não informado.",
+	invalid_type_error: "Tipo inválido para tipo do item.",
+});
+
+const CardapioWebCatalogAvailableForSchema = z.enum(["delivery", "table", "service_desk", "view_only", "internal_table"], {
+	invalid_type_error: "Tipo inválido para local de disponibilidade.",
+});
+
+const CardapioWebCatalogChoiceTypeSchema = z.enum(["SINGLE", "MULTIPLE", "SUMMABLE"], {
+	required_error: "Tipo de escolha não informado.",
+	invalid_type_error: "Tipo inválido para tipo de escolha.",
+});
+
+const CardapioWebCatalogPriceCalculationTypeSchema = z.enum(["SUM", "MEAN", "MAX", "MIN"], {
+	required_error: "Tipo de cálculo de preço não informado.",
+	invalid_type_error: "Tipo inválido para tipo de cálculo de preço.",
+});
+
+const CardapioWebCatalogOptionGroupStatusSchema = z.enum(["ACTIVE", "INACTIVE"], {
+	required_error: "Status do grupo de complementos não informado.",
+	invalid_type_error: "Tipo inválido para status do grupo de complementos.",
+});
+
+const CardapioWebCatalogOptionSchema = z.object({
+	id: z
+		.number({
+			required_error: "ID da opção não informado.",
+			invalid_type_error: "Tipo inválido para ID da opção.",
+		})
+		.int(),
+	name: z.string({
+		required_error: "Nome da opção não informado.",
+		invalid_type_error: "Tipo inválido para nome da opção.",
+	}),
+	description: z
+		.string({
+			invalid_type_error: "Tipo inválido para descrição da opção.",
+		})
+		.nullable(),
+	external_code: z
+		.string({
+			invalid_type_error: "Tipo inválido para código externo da opção.",
+		})
+		.nullable(),
+	price: z
+		.number({
+			required_error: "Preço da opção não informado.",
+			invalid_type_error: "Tipo inválido para preço da opção.",
+		})
+		.min(0),
+	status: CardapioWebCatalogOptionGroupStatusSchema,
+	index: z
+		.number({
+			invalid_type_error: "Tipo inválido para índice da opção.",
+		})
+		.int()
+		.nullable(),
+	image: CardapioWebCatalogImageSchema.nullable(),
+});
+
+const CardapioWebCatalogOptionGroupSchema = z.object({
+	id: z
+		.number({
+			required_error: "ID do grupo de complementos não informado.",
+			invalid_type_error: "Tipo inválido para ID do grupo de complementos.",
+		})
+		.int(),
+	name: z.string({
+		required_error: "Nome do grupo de complementos não informado.",
+		invalid_type_error: "Tipo inválido para nome do grupo de complementos.",
+	}),
+	status: CardapioWebCatalogOptionGroupStatusSchema,
+	choice_type: CardapioWebCatalogChoiceTypeSchema,
+	price_calculation_type: CardapioWebCatalogPriceCalculationTypeSchema,
+	minimum_quantity: z
+		.number({
+			required_error: "Quantidade mínima não informada.",
+			invalid_type_error: "Tipo inválido para quantidade mínima.",
+		})
+		.int()
+		.min(0),
+	maximum_quantity: z
+		.number({
+			invalid_type_error: "Tipo inválido para quantidade máxima.",
+		})
+		.int()
+		.nullable(),
+	index: z
+		.number({
+			invalid_type_error: "Tipo inválido para índice do grupo.",
+		})
+		.int()
+		.nullable(),
+	available_for: z.array(CardapioWebCatalogAvailableForSchema),
+	options: z.array(CardapioWebCatalogOptionSchema),
+});
+
+const CardapioWebCatalogComboStepItemSchema = z.object({
+	item_id: z
+		.number({
+			required_error: "ID do item do combo não informado.",
+			invalid_type_error: "Tipo inválido para ID do item do combo.",
+		})
+		.int(),
+	index: z
+		.number({
+			invalid_type_error: "Tipo inválido para índice do item do combo.",
+		})
+		.int()
+		.nullable(),
+	additional_price: z
+		.number({
+			required_error: "Preço adicional não informado.",
+			invalid_type_error: "Tipo inválido para preço adicional.",
+		})
+		.min(0),
+});
+
+const CardapioWebCatalogComboStepSchema = z.object({
+	id: z
+		.number({
+			required_error: "ID da etapa do combo não informado.",
+			invalid_type_error: "Tipo inválido para ID da etapa do combo.",
+		})
+		.int(),
+	name: z.string({
+		required_error: "Nome da etapa do combo não informado.",
+		invalid_type_error: "Tipo inválido para nome da etapa do combo.",
+	}),
+	price: z
+		.number({
+			required_error: "Preço da etapa do combo não informado.",
+			invalid_type_error: "Tipo inválido para preço da etapa do combo.",
+		})
+		.min(0),
+	remove_add_on_prices: z.boolean({
+		required_error: "Indicador de remoção de preços de complementos não informado.",
+		invalid_type_error: "Tipo inválido para indicador de remoção de preços de complementos.",
+	}),
+	index: z
+		.number({
+			invalid_type_error: "Tipo inválido para índice da etapa do combo.",
+		})
+		.int()
+		.nullable(),
+	combo_step_items: z.array(CardapioWebCatalogComboStepItemSchema),
+});
+
+const CardapioWebCatalogItemSchema = z.object({
+	id: z
+		.number({
+			required_error: "ID do item não informado.",
+			invalid_type_error: "Tipo inválido para ID do item.",
+		})
+		.int(),
+	name: z.string({
+		required_error: "Nome do item não informado.",
+		invalid_type_error: "Tipo inválido para nome do item.",
+	}),
+	description: z.string({
+		required_error: "Descrição do item não informada.",
+		invalid_type_error: "Tipo inválido para descrição do item.",
+	}),
+	image: CardapioWebCatalogImageSchema.nullable(),
+	highlighted: z.boolean({
+		required_error: "Indicador de destaque não informado.",
+		invalid_type_error: "Tipo inválido para indicador de destaque.",
+	}),
+	external_code: z
+		.string({
+			required_error: "Código externo não informado.",
+			invalid_type_error: "Tipo inválido para código externo.",
+		})
+		.nullable(),
+	price: z
+		.number({
+			required_error: "Preço do item não informado.",
+			invalid_type_error: "Tipo inválido para preço do item.",
+		})
+		.min(0),
+	stock: z
+		.number({
+			invalid_type_error: "Tipo inválido para estoque.",
+		})
+		.min(0)
+		.nullable(),
+	active_stock_control: z.boolean({
+		required_error: "Indicador de controle de estoque não informado.",
+		invalid_type_error: "Tipo inválido para indicador de controle de estoque.",
+	}),
+	index: z
+		.number({
+			invalid_type_error: "Tipo inválido para índice do item.",
+		})
+		.int()
+		.nullable(),
+	available_for: z.array(CardapioWebCatalogAvailableForSchema),
+	hide_observation_field: z.boolean({
+		required_error: "Indicador de campo de observações não informado.",
+		invalid_type_error: "Tipo inválido para indicador de campo de observações.",
+	}),
+	adults_only: z.boolean({
+		required_error: "Indicador de maiores de 18 anos não informado.",
+		invalid_type_error: "Tipo inválido para indicador de maiores de 18 anos.",
+	}),
+	promotional_price_active: z.boolean({
+		required_error: "Indicador de preço promocional não informado.",
+		invalid_type_error: "Tipo inválido para indicador de preço promocional.",
+	}),
+	promotional_price: z
+		.number({
+			invalid_type_error: "Tipo inválido para preço promocional.",
+		})
+		.min(0)
+		.nullable(),
+	promotional_price_availability: z.array(CardapioWebCatalogWeekdaySchema),
+	status: CardapioWebCatalogItemStatusSchema,
+	unit_type: CardapioWebCatalogUnitTypeSchema,
+	kind: CardapioWebCatalogItemKindSchema,
+	allowed_times: z.array(CardapioWebCatalogAllowedTimesSchema),
+	extra_images: z.array(CardapioWebCatalogImageSchema),
+	option_groups: z.array(CardapioWebCatalogOptionGroupSchema),
+	combo_steps: z.array(CardapioWebCatalogComboStepSchema),
+});
+
+const CardapioWebCatalogCategorySchema = z.object({
+	id: z
+		.number({
+			required_error: "ID da categoria não informado.",
+			invalid_type_error: "Tipo inválido para ID da categoria.",
+		})
+		.int(),
+	name: z.string({
+		required_error: "Nome da categoria não informado.",
+		invalid_type_error: "Tipo inválido para nome da categoria.",
+	}),
+	description: z
+		.string({
+			invalid_type_error: "Tipo inválido para descrição da categoria.",
+		})
+		.nullable(),
+	status: CardapioWebCatalogCategoryStatusSchema,
+	index: z
+		.number({
+			invalid_type_error: "Tipo inválido para índice da categoria.",
+		})
+		.int()
+		.nullable(),
+	image: CardapioWebCatalogImageSchema.nullable(),
+	allowed_times: z.array(CardapioWebCatalogAllowedTimesSchema),
+	items: z.array(CardapioWebCatalogItemSchema),
+});
+
+export const GetCardapioWebCatalogOutputSchema = z.object({
+	categories: z.array(CardapioWebCatalogCategorySchema),
+});
+export type TGetCardapioWebCatalogOutput = z.infer<typeof GetCardapioWebCatalogOutputSchema>;

@@ -1,11 +1,13 @@
 import axios, { type AxiosInstance, type AxiosError } from "axios";
 import {
 	CardapioWebConfigSchema,
+	GetCardapioWebCatalogOutputSchema,
 	GetCardapioWebOrderDetailsInputSchema,
 	GetCardapioWebOrderDetailsOutputSchema,
 	GetCardapioWebOrderHistoryInputSchema,
 	GetCardapioWebOrderHistoryOutputSchema,
 	type TCardapioWebConfig,
+	type TGetCardapioWebCatalogOutput,
 	type TGetCardapioWebOrderDetailsInput,
 	type TGetCardapioWebOrderDetailsOutput,
 	type TGetCardapioWebOrderHistoryInput,
@@ -146,6 +148,7 @@ class RateLimiter {
 // Global rate limiter instances for CardapioWeb
 let cardapioWebHistoryRateLimiter: RateLimiter | null = null;
 let cardapioWebDetailsRateLimiter: RateLimiter | null = null;
+let cardapioWebCatalogRateLimiter: RateLimiter | null = null;
 
 /**
  * Rate limiter para o endpoint de history (5 req/min)
@@ -174,11 +177,25 @@ function getCardapioWebDetailsRateLimiter(): RateLimiter {
 }
 
 /**
+ * Rate limiter para o endpoint de catalog (5 req/min - mesmo que history)
+ */
+function getCardapioWebCatalogRateLimiter(): RateLimiter {
+	if (!cardapioWebCatalogRateLimiter) {
+		cardapioWebCatalogRateLimiter = new RateLimiter(CARDAPIO_WEB_RATE_LIMIT_PER_MINUTE_HISTORY, {
+			safetyMargin: 1.0, // Sem margem - já é super baixo (5 req/min)
+			maxRequestsPerSecond: 1, // Max 1 req/s para evitar burst
+		});
+	}
+	return cardapioWebCatalogRateLimiter;
+}
+
+/**
  * Reseta os rate limiters (útil para testes ou quando iniciar nova sessão)
  */
 export function resetCardapioWebRateLimiters(): void {
 	cardapioWebHistoryRateLimiter = null;
 	cardapioWebDetailsRateLimiter = null;
+	cardapioWebCatalogRateLimiter = null;
 }
 
 /**
@@ -299,6 +316,22 @@ export async function getCardapioWebOrderDetails(
 		getCardapioWebDetailsRateLimiter(), // Rate limiter específico para details
 		3,
 		`order ${validatedInput.order_id}`,
+	);
+}
+
+/**
+ * Fetches the store catalog from CardapioWeb API
+ * Usa rate limiting especial para catalog (5 req/min - mesmo que history) e retry automático
+ */
+export async function getCardapioWebCatalog(client: AxiosInstance): Promise<TGetCardapioWebCatalogOutput> {
+	return executeWithRateLimitAndRetry(
+		async () => {
+			const { data } = await client.get<TGetCardapioWebCatalogOutput>("/api/partner/v1/catalog");
+			return GetCardapioWebCatalogOutputSchema.parse(data);
+		},
+		getCardapioWebCatalogRateLimiter(), // Rate limiter específico para catalog
+		3,
+		"catalog",
 	);
 }
 

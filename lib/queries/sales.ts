@@ -46,6 +46,21 @@ export function useSales({ initialParams }: UseSalesParams) {
 	};
 }
 
+async function fetchSalesById({ id }: { id: string }) {
+	const { data } = await axios.get<TGetSalesOutput>(`/api/sales?id=${id}`);
+	if (!data.data.byId) throw new Error("Venda não encontrada.");
+	return data.data.byId;
+}
+
+export function useSalesById({ id }: { id: string }) {
+	return {
+		...useQuery({
+			queryKey: ["sales-by-id", id],
+			queryFn: async () => await fetchSalesById({ id }),
+		}),
+		queryKey: ["sales-by-id", id],
+	};
+}
 async function fetchSalesSimplifiedSearch(params: TSalesSimplifiedSearchQueryParams) {
 	try {
 		const { data } = await axios.post("/api/sales/simplified-search", params);

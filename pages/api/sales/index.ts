@@ -78,6 +78,12 @@ async function canScheduleCampaignForClient(
 }
 
 const GetSalesInputSchema = z.object({
+	id: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da venda.",
+		})
+		.optional()
+		.nullable(),
 	page: z
 		.string({
 			required_error: "Página não informada.",
@@ -137,8 +143,126 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	const PAGE_SIZE = 25;
 	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const { page, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures } = input;
+	const { id, page, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures } = input;
 
+	if (id) {
+		const sale = await db.query.sales.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
+			with: {
+				cliente: {
+					columns: {
+						id: true,
+						nome: true,
+						telefone: true,
+						email: true,
+						dataNascimento: true,
+						analiseRFMTitulo: true,
+						analiseRFMNotasFrequencia: true,
+						analiseRFMNotasMonetario: true,
+						analiseRFMNotasRecencia: true,
+						localizacaoCep: true,
+						localizacaoEstado: true,
+						localizacaoCidade: true,
+						localizacaoBairro: true,
+						localizacaoLogradouro: true,
+						localizacaoNumero: true,
+						localizacaoComplemento: true,
+					},
+				},
+				vendedor: {
+					columns: {
+						id: true,
+						nome: true,
+						avatarUrl: true,
+					},
+				},
+				parceiro: {
+					columns: {
+						id: true,
+						nome: true,
+						avatarUrl: true,
+					},
+				},
+				itens: {
+					columns: {
+						id: true,
+						quantidade: true,
+						valorCustoUnitario: true,
+						valorCustoTotal: true,
+						valorVendaUnitario: true,
+						valorVendaTotalBruto: true,
+						valorTotalDesconto: true,
+						valorVendaTotalLiquido: true,
+					},
+					with: {
+						produto: {
+							columns: {
+								id: true,
+								descricao: true,
+								codigo: true,
+								imagemCapaUrl: true,
+								grupo: true,
+								unidade: true,
+							},
+						},
+						produtoVariante: {
+							columns: {
+								id: true,
+								nome: true,
+								codigo: true,
+								imagemCapaUrl: true,
+							},
+						},
+						adicionais: {
+							columns: {
+								id: true,
+								quantidade: true,
+								valorUnitario: true,
+								valorTotal: true,
+							},
+							with: {
+								opcao: {
+									columns: {
+										id: true,
+										nome: true,
+									},
+								},
+							},
+						},
+					},
+				},
+				transacoesCashback: {
+					columns: {
+						tipo: true,
+						valor: true,
+						saldoValorAnterior: true,
+						saldoValorPosterior: true,
+						expiracaoData: true,
+						dataInsercao: true,
+					},
+				},
+				atribuicaoCampanhaConversao: {
+					columns: {
+						deltaFrequencia: true,
+						deltaMonetarioAbsoluto: true,
+						deltaMonetarioPercentual: true,
+						diasDesdeUltimaCompra: true,
+						tipoConversao: true,
+						dataInteracao: true,
+						tempoParaConversaoMinutos: true,
+					},
+				},
+			},
+		});
+		if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
+		return {
+			data: {
+				default: null,
+				byId: sale,
+			},
+			message: "Venda encontrada com sucesso.",
+		};
+	}
 	const conditions = [eq(sales.organizacaoId, userOrgId)];
 
 	if (search)
@@ -278,12 +402,14 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 				totalPages: totalPages,
 				salesMatched: salesMatchedCount,
 			},
+			byId: null,
 		},
 		message: "Vendas encontradas com sucesso.",
 	};
 }
 export type TGetSalesOutput = Awaited<ReturnType<typeof getSales>>;
-
+export type TGetSalesOutputDefault = Exclude<Awaited<TGetSalesOutput>["data"]["default"], null>;
+export type TGetSalesOutputById = Exclude<Awaited<TGetSalesOutput>["data"]["byId"], null>;
 const getSalesRoute: NextApiHandler<TGetSalesOutput> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
