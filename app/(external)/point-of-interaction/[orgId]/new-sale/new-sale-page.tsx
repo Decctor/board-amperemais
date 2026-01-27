@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { TClientByLookupOutput } from "@/pages/api/clients/lookup";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { usePointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	AlertTriangle,
 	ArrowLeft,
@@ -50,12 +50,14 @@ type NewSaleContentProps = {
 };
 export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	const router = useRouter();
+	const queryClient = useQueryClient()
 	const { state, updateClient, updateSale, updateCashback, updateOperatorIdentifier, resetState } = usePointOfInteractionNewSaleState(org.id);
 
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
 	const [successData, setSuccessData] = React.useState<TCreatePointOfInteractionNewSaleOutput["data"] | null>(null);
 	const {
 		data: client,
+		queryKey,
 		isLoading: isLoadingClient,
 		isSuccess: isSuccessClient,
 		params,
@@ -134,6 +136,12 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 		setCurrentStep(1);
 	};
 
+	async function handleCancelRedirect() {
+		await queryClient.cancelQueries({ queryKey });
+		await queryClient.invalidateQueries({ queryKey });
+		updateParams({ phone: "", clientId: null });
+	}
+
 	const maximumCashbackAllowed = getMaxCashbackToUse();
 	const isAttemptingToUseMoreCashbackThanAllowed = state.sale.cashback.aplicar && state.sale.cashback.valor > maximumCashbackAllowed;
 	return (
@@ -190,6 +198,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 								client={client ?? null}
 								phone={params.phone}
 								onPhoneChange={(v) => updateParams({ phone: formatToPhone(v) })}
+								onCancelSearch={handleCancelRedirect}
 								newClientData={state.client}
 								onNewClientChange={updateClient}
 								onSubmit={handleNextStep}
@@ -235,7 +244,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 						)}
 
 						{/* Botões de Ação */}
-						{currentStep < 5 && (
+						{currentStep < 5 && !(currentStep === 1 && client) && (
 							<div className="flex gap-4 mt-10">
 								{currentStep > 1 && (
 									<Button onClick={() => setCurrentStep((p) => p - 1)} variant="outline" size="lg" className="flex-1 rounded-2xl h-16 text-lg font-bold">
@@ -330,6 +339,7 @@ function ClientStep({
 	isLoadingClient,
 	isSuccessClient,
 	onSubmit,
+	onCancelSearch,
 }: {
 	client: TClientByLookupOutput["data"];
 	phone: string;
@@ -339,13 +349,66 @@ function ClientStep({
 	isLoadingClient: boolean;
 	isSuccessClient: boolean;
 	onSubmit: () => void;
+	onCancelSearch: () => void;
 }) {
+	// Auto-advance timer state
+	const ADVANCE_COUNTDOWN_SECONDS = 3;
+	const [countdown, setCountdown] = React.useState<number | null>(null);
+	const [isAdvancing, setIsAdvancing] = React.useState(false);
+	const [wasCancelled, setWasCancelled] = React.useState(false);
+	const [playAction] = useSound("/sounds/action-completed.mp3");
+
+	// Reset wasCancelled when user starts typing a new phone number
+	React.useEffect(() => {
+		if (phone && wasCancelled) {
+			setWasCancelled(false);
+		}
+	}, [phone, wasCancelled]);
+
+	// Start countdown when client is found
+	React.useEffect(() => {
+		if (isSuccessClient && client && countdown === null && !isAdvancing && !wasCancelled) {
+			playAction();
+			setCountdown(ADVANCE_COUNTDOWN_SECONDS);
+		}
+	}, [isSuccessClient, client, countdown, isAdvancing, wasCancelled, playAction]);
+
+	// Handle countdown timer and auto-advance
+	React.useEffect(() => {
+		if (countdown === null || countdown < 0) return;
+
+		if (countdown === 0) {
+			setIsAdvancing(true);
+			onSubmit();
+			return;
+		}
+
+		const timer = setTimeout(() => {
+			setCountdown((prev) => (prev !== null ? prev - 1 : null));
+		}, 1000);
+
+		return () => clearTimeout(timer);
+	}, [countdown, onSubmit]);
+
+	// Cancel auto-advance and reset search
+	function handleCancelAdvance() {
+		setCountdown(null);
+		setIsAdvancing(false);
+		setWasCancelled(true);
+		onCancelSearch();
+	}
+
 	React.useEffect(() => {
 		// Keep phone in sync with lookup
 		if (phone && phone !== newClientData.telefone) {
 			onNewClientChange({ telefone: phone });
 		}
 	}, [phone, newClientData.telefone, onNewClientChange]);
+
+	// Show found client card with auto-advance
+	const showFoundClientCard = isSuccessClient && client && !isAdvancing && !wasCancelled;
+	// Show input only when not found or cancelled
+	const showInput = !showFoundClientCard && !isAdvancing;
 
 	return (
 		<form
@@ -359,29 +422,36 @@ function ClientStep({
 				<h2 className="text-xl font-black uppercase tracking-tight">Quem é o cliente?</h2>
 				<p className="text-muted-foreground">Digite o número de telefone para localizar o perfil.</p>
 			</div>
-			<div className="max-w-md mx-auto">
-				<TextInput
-					label="TELEFONE"
-					inputType="tel"
-					placeholder="(00) 00000-0000"
-					value={phone}
-					handleChange={onPhoneChange}
-					onFocus={(e) => {
-						setTimeout(() => {
-							e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-						}, 300);
-					}}
-				/>
-			</div>
-			{isLoadingClient ? (
-				<div className="w-full flex items-center justify-center gap-1.5">
-					<Loader2 className="w-4 h-4 animate-spin" />
-					<p className="text-sm text-muted-foreground">Buscando registros...</p>
-				</div>
+			
+			{showInput ? (
+				<>
+					<div className="max-w-md mx-auto">
+						<TextInput
+							label="TELEFONE"
+							inputType="tel"
+							placeholder="(00) 00000-0000"
+							value={phone}
+							handleChange={onPhoneChange}
+							onFocus={(e) => {
+								setTimeout(() => {
+									e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+								}, 300);
+							}}
+						/>
+					</div>
+					{isLoadingClient ? (
+						<div className="w-full flex items-center justify-center gap-1.5">
+							<Loader2 className="w-4 h-4 animate-spin" />
+							<p className="text-sm text-muted-foreground">Buscando registros...</p>
+						</div>
+					) : null}
+				</>
 			) : null}
-			{isSuccessClient && client ? (
+
+			{showFoundClientCard && client ? (
 				<div className="bg-green-50 border-2 border-green-200 rounded-3xl p-6 flex flex-col items-center gap-4 animate-in zoom-in">
 					<div className="text-center">
+						<p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-1">✓ Perfil Encontrado</p>
 						<p className="text-green-900 font-black text-2xl uppercase italic">{client.nome}</p>
 						<p className="text-green-600 font-bold">{formatToPhone(client.telefone)}</p>
 					</div>
@@ -389,10 +459,40 @@ function ClientStep({
 						<p className="text-[0.6rem] font-bold opacity-80 uppercase tracking-widest">Saldo Disponível</p>
 						<p className="text-3xl font-black">{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}</p>
 					</div>
+					
+					{/* Progress bar and countdown */}
+					<div className="w-full flex flex-col gap-2">
+						<div className="w-full h-2 bg-green-200 rounded-full overflow-hidden">
+							<div
+								className="h-full bg-green-600 transition-all duration-1000 ease-linear"
+								style={{ width: `${((countdown ?? 0) / ADVANCE_COUNTDOWN_SECONDS) * 100}%` }}
+							/>
+						</div>
+						<p className="text-sm text-green-700 text-center font-medium">
+							Avançando em {countdown} segundo{countdown !== 1 ? "s" : ""}...
+						</p>
+					</div>
+
+					<Button
+						type="button"
+						variant="outline"
+						size="fit"
+						className="w-full p-4 font-black border-green-300 text-green-700 hover:bg-green-100"
+						onClick={handleCancelAdvance}
+					>
+						CANCELAR
+					</Button>
 				</div>
 			) : null}
 
-			{isSuccessClient && !client ? (
+			{isAdvancing ? (
+				<div className="w-full flex flex-col items-center justify-center gap-3 py-8">
+					<Loader2 className="w-8 h-8 text-green-600 animate-spin" />
+					<p className="text-sm text-muted-foreground font-medium">Avançando...</p>
+				</div>
+			) : null}
+
+			{isSuccessClient && !client && showInput ? (
 				<div className="bg-blue-50 border-2 border-blue-200 rounded-3xl p-6 animate-in zoom-in">
 					<div className="flex items-center gap-3 mb-4">
 						<div className="p-2 bg-blue-600 rounded-lg text-white">
