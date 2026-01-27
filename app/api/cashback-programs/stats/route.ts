@@ -5,7 +5,7 @@ import { PeriodQueryParamSchema } from "@/schemas/query-params-utils";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions, clients, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, countDistinct, eq, gte, lt, lte, sum } from "drizzle-orm";
+import { and, count, countDistinct, eq, gte, isNull, lt, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -59,6 +59,11 @@ type TCashbackProgramStats = {
 		percentage: number;
 	};
 	revenueFromNewClients: {
+		atual: number;
+		anterior: number | undefined;
+		percentage: number;
+	};
+	revenueFromNonIdentifiedClients: {
 		atual: number;
 		anterior: number | undefined;
 		percentage: number;
@@ -187,6 +192,7 @@ async function getCashbackProgramStats({
 		totalRevenueResult,
 		existingClientsRevenueResult,
 		newClientsRevenueResult,
+		nonIdentifiedClientsRevenueResult,
 		totalSalesCountResult,
 		salesWithCashbackCountResult,
 		salesWithCashbackValueResult,
@@ -228,6 +234,12 @@ async function getCashbackProgramStats({
 					lte(clients.primeiraCompraData, ajustedBefore),
 				),
 			),
+		// Revenue from non-identified clients (sales without valid client)
+		db
+			.select({ total: sum(sales.valorTotal) })
+			.from(sales)
+			.leftJoin(clients, eq(sales.clienteId, clients.id))
+			.where(and(...saleConditions, gte(sales.dataVenda, ajustedAfter), lte(sales.dataVenda, ajustedBefore), isNull(clients.id))),
 		// Total sales count
 		db
 			.select({ count: count() })
@@ -265,8 +277,10 @@ async function getCashbackProgramStats({
 	const currentTotalSalesCount = totalSalesCountResult[0]?.count ?? 0;
 	const currentExistingClientsRevenue = Number(existingClientsRevenueResult[0]?.total ?? 0);
 	const currentNewClientsRevenue = Number(newClientsRevenueResult[0]?.total ?? 0);
+	const currentNonIdentifiedClientsRevenue = Number(nonIdentifiedClientsRevenueResult[0]?.total ?? 0);
 	const currentExistingClientsRevenuePercentage = currentTotalRevenue > 0 ? (currentExistingClientsRevenue / currentTotalRevenue) * 100 : 0;
 	const currentNewClientsRevenuePercentage = currentTotalRevenue > 0 ? (currentNewClientsRevenue / currentTotalRevenue) * 100 : 0;
+	const currentNonIdentifiedClientsRevenuePercentage = currentTotalRevenue > 0 ? (currentNonIdentifiedClientsRevenue / currentTotalRevenue) * 100 : 0;
 	// Sales with cashback metrics
 	const currentSalesWithCashbackCount = salesWithCashbackCountResult[0]?.count ?? 0;
 	const currentSalesWithCashbackValue = Number(salesWithCashbackValueResult[0]?.total ?? 0);
@@ -346,6 +360,7 @@ async function getCashbackProgramStats({
 		prevTotalRevenueResult,
 		prevExistingClientsRevenueResult,
 		prevNewClientsRevenueResult,
+		prevNonIdentifiedClientsRevenueResult,
 		prevTotalSalesCountResult,
 		prevSalesWithCashbackCountResult,
 		prevSalesWithCashbackValueResult,
@@ -398,6 +413,14 @@ async function getCashbackProgramStats({
 					lte(clients.primeiraCompraData, previousPeriodBefore),
 				),
 			),
+		// Previous revenue from non-identified clients
+		db
+			.select({ total: sum(sales.valorTotal) })
+			.from(sales)
+			.leftJoin(clients, eq(sales.clienteId, clients.id))
+			.where(
+				and(...saleConditions, gte(sales.dataVenda, previousPeriodAfter), lte(sales.dataVenda, previousPeriodBefore), isNull(clients.id)),
+			),
 		// Previous total sales count
 		db
 			.select({ count: count() })
@@ -435,6 +458,7 @@ async function getCashbackProgramStats({
 	const previousTotalSalesCount = prevTotalSalesCountResult[0]?.count ?? 0;
 	const previousExistingClientsRevenue = Number(prevExistingClientsRevenueResult[0]?.total ?? 0);
 	const previousNewClientsRevenue = Number(prevNewClientsRevenueResult[0]?.total ?? 0);
+	const previousNonIdentifiedClientsRevenue = Number(prevNonIdentifiedClientsRevenueResult[0]?.total ?? 0);
 	const previousNewParticipants = prevNewParticipantsResult[0]?.total ? Number(prevNewParticipantsResult[0].total) : 0;
 	// Previous sales with cashback metrics
 	const previousSalesWithCashbackCount = prevSalesWithCashbackCountResult[0]?.count ?? 0;
@@ -487,6 +511,11 @@ async function getCashbackProgramStats({
 				atual: currentNewClientsRevenue,
 				anterior: previousNewClientsRevenue,
 				percentage: currentNewClientsRevenuePercentage,
+			},
+			revenueFromNonIdentifiedClients: {
+				atual: currentNonIdentifiedClientsRevenue,
+				anterior: previousNonIdentifiedClientsRevenue,
+				percentage: currentNonIdentifiedClientsRevenuePercentage,
 			},
 			// Sales metrics
 			totalSalesCount: {

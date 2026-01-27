@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useDebounceMemo } from "@/lib/hooks/use-debounce";
 import { useCashbackProgramStats, useCashbackProgramsGraph } from "@/lib/queries/cashback-programs";
-import { BadgeDollarSign, CirclePlus, Clock, Percent, ShoppingCart, UserPlus, UserRoundPlus, Users, UsersRound, XCircle } from "lucide-react";
+import { BadgeDollarSign, CirclePlus, Clock, Percent, ShoppingCart, UserPlus, UserRoundPlus, UserRoundX, Users, UsersRound, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { useDebounce } from "use-debounce";
@@ -78,7 +78,7 @@ export default function CashbackStatsBlock({ period }: CashbackStatsBlockProps) 
 							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromRecurrentClients.percentage || 0)}%</p>
 						</div>
 					}
-					className="w-full lg:w-1/2"
+					className="w-full lg:w-1/3"
 				/>
 				<StatUnitCard
 					title="Faturamento por Clientes Novos"
@@ -101,7 +101,30 @@ export default function CashbackStatsBlock({ period }: CashbackStatsBlockProps) 
 							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromNewClients.percentage || 0)}%</p>
 						</div>
 					}
-					className="w-full lg:w-1/2"
+					className="w-full lg:w-1/3"
+				/>
+				<StatUnitCard
+					title="Faturamento Ao Consumidor"
+					icon={<UserRoundX className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: stats?.revenueFromNonIdentifiedClients.atual ? Number(stats.revenueFromNonIdentifiedClients.atual) : 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						stats?.revenueFromNonIdentifiedClients.anterior
+							? {
+									value: stats.revenueFromNonIdentifiedClients.anterior || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+					footer={
+						<div className="flex items-center gap-1">
+							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
+							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromNonIdentifiedClients.percentage || 0)}%</p>
+						</div>
+					}
+					className="w-full lg:w-1/3"
 				/>
 			</div>
 			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">

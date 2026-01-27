@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
-import { and, count, desc, eq, gte, inArray, lte, notInArray, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, lte, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -73,7 +73,7 @@ async function fetchRankingForPeriod({
 			totalValue: sum(sales.valorTotal),
 		})
 		.from(sales)
-		.where(and(...saleConditions))
+		.where(and(...saleConditions, isNotNull(sales.clienteId)))
 		.groupBy(sales.clienteId);
 
 	// Get client IDs
@@ -100,7 +100,7 @@ async function fetchRankingForPeriod({
 
 		return {
 			clienteId: clientId,
-			nome: clientInfo?.nome ? (clientId ? "N/A" : "AO CONSUMIDOR") : "N/A",
+			nome: clientInfo?.nome ? clientInfo?.nome : "AO CONSUMIDOR",
 			telefone: clientInfo?.telefone || null,
 			email: clientInfo?.email || null,
 			totalPurchases: Number(clientData.totalPurchases),
