@@ -6,7 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import SectionWrapper from "@/components/ui/section-wrapper";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getAgeFromBirthdayDate } from "@/lib/dates";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDateBirthdayAsLocale, formatNameAsInitials, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useSalesById } from "@/lib/queries/sales";
@@ -20,7 +22,10 @@ import {
 	Calendar,
 	CircleUser,
 	Clock,
+	Code,
+	Diamond,
 	FileText,
+	Grid3X3,
 	Mail,
 	MapPin,
 	Megaphone,
@@ -73,33 +78,34 @@ export default function SaleByIdPage({ user, saleId }: SaleByIdPageProps) {
 		<div className="w-full h-full flex flex-col gap-4">
 			{/* Page Header */}
 			<div className="w-full flex items-center gap-3">
-				<Button variant="outline" size="sm" asChild>
-					<Link href="/dashboard/commercial/sales">
-						<ArrowLeft className="w-4 h-4" />
+				<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2">
+					<Link href={"/dashboard/commercial/sales"} className="flex items-center gap-1">
+						<ArrowLeft className="w-5 h-5" />
 						VOLTAR
 					</Link>
 				</Button>
+
 				<h1 className="text-lg font-bold tracking-tight">VENDA - {formatDateAsLocale(sale.dataVenda, true)}</h1>
 			</div>
 
 			{/* Sale Overview Section */}
 			<SaleOverviewSection sale={sale} />
-
-			{/* Two-Column Layout */}
-			<div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
-				{/* Left Column */}
-				<div className="flex flex-col gap-4">
-					{sale.cliente && <ClientSection client={sale.cliente} />}
-					{(sale.vendedor || sale.parceiro) && <ParticipantsSection vendedor={sale.vendedor} parceiro={sale.parceiro} />}
+			<div className="w-full flex flex-col lg:flex-row gap-4 lg:items-stretch">
+				<div className="w-full lg:w-1/2 flex">
+					<CampaignAttributionSection attribution={sale.atribuicaoCampanhaConversao} saleDate={sale.dataVenda} />
 				</div>
-
-				{/* Right Column */}
-				<div className="flex flex-col gap-4">
-					{sale.atribuicaoCampanhaConversao && <CampaignAttributionSection attribution={sale.atribuicaoCampanhaConversao} />}
-					{sale.transacoesCashback && sale.transacoesCashback.length > 0 && <CashbackTransactionsSection transactions={sale.transacoesCashback} />}
+				<div className="w-full lg:w-1/2 flex">
+					<CashbackTransactionsSection transactions={sale.transacoesCashback} />
 				</div>
 			</div>
-
+			<div className="w-full flex flex-col lg:flex-row gap-4 lg:items-stretch">
+				<div className="w-full lg:w-1/2 flex">
+					<ClientSection client={sale.cliente} />
+				</div>
+				<div className="w-full lg:w-1/2 flex">
+					<ParticipantsSection vendedor={sale.vendedor} parceiro={sale.parceiro} />
+				</div>
+			</div>
 			{/* Sale Items Section */}
 			<SaleItemsSection items={sale.itens} />
 		</div>
@@ -109,90 +115,64 @@ export default function SaleByIdPage({ user, saleId }: SaleByIdPageProps) {
 function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 	return (
 		<SectionWrapper title="VISÃO GERAL DA VENDA" icon={<Receipt className="w-4 h-4 min-w-4 min-h-4" />}>
-			<div className="w-full flex flex-col gap-4">
-				{/* Main Info Row */}
-				<div className="w-full flex flex-wrap items-center gap-3">
-					{/* Total Value Badge */}
-					<div className="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-lg">
-						<BadgeDollarSign className="w-5 h-5" />
-						<span className="text-lg font-bold">{formatToMoney(sale.valorTotal)}</span>
+			<div className="w-full flex flex-col gap-2">
+				<h1 className="text-xs leading-none tracking-tight">INFORMAÇÕES GERAIS</h1>
+				<div className="w-full flex flex-col gap-1.5">
+					<div className="w-full flex items-center gap-1.5">
+						<Code className="w-4 h-4" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">IDENTIFICADOR EXTERNO</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{sale.idExterno}</h3>
+					</div>
+					<div className="w-full flex items-center gap-1.5">
+						<BadgeDollarSign className="w-4 h-4" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">VALOR</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{formatToMoney(sale.valorTotal)}</h3>
 					</div>
 
-					{/* Status Badge */}
-					<div
-						className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold", SITUACAO_COLORS[sale.situacao] || "bg-gray-500/10")}
-					>
-						{SITUACAO_LABELS[sale.situacao] || sale.situacao}
+					<div className="w-full flex items-center gap-1.5">
+						<Calendar className="w-4 h-4" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">DATA DA VENDA</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{formatDateAsLocale(sale.dataVenda, true) || "DATA DA VENDA NÃO DEFINIDA"}</h3>
 					</div>
-				</div>
-
-				{/* Info Grid */}
-				<div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-					{/* Date/Time */}
-					<div className="flex items-center gap-1.5">
-						<Calendar className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">DATA/HORA</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{formatDateAsLocale(sale.dataVenda, true)}</h3>
+					<div className="w-full flex items-center gap-1.5">
+						<Calendar className="w-4 h-4" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">CANAL</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{sale.canal || "CANAL NÃO DEFINIDO"}</h3>
 					</div>
-
-					{/* Delivery Modality */}
-					{sale.entregaModalidade && (
-						<div className="flex items-center gap-1.5">
-							<Truck className="w-4 h-4 text-muted-foreground" />
-							<h3 className="text-sm font-semibold tracking-tighter text-primary/80">MODALIDADE</h3>
-							<h3 className="text-sm font-semibold tracking-tight">{sale.entregaModalidade}</h3>
-						</div>
-					)}
-
-					{/* Channel */}
-					{sale.canal && (
-						<div className="flex items-center gap-1.5">
-							<Tag className="w-4 h-4 text-muted-foreground" />
-							<h3 className="text-sm font-semibold tracking-tighter text-primary/80">CANAL</h3>
-							<h3 className="text-sm font-semibold tracking-tight">{sale.canal}</h3>
-						</div>
-					)}
-
-					{/* Nature */}
+					<div className="w-full flex items-center gap-1.5">
+						<Truck className="w-4 h-4" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">MODALIDADE</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{sale.entregaModalidade || "MODALIDADE NÃO DEFINIDA"}</h3>
+					</div>
 					<div className="flex items-center gap-1.5">
 						<Tag className="w-4 h-4 text-muted-foreground" />
 						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">NATUREZA</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{sale.natureza}</h3>
 					</div>
 				</div>
-
-				{/* Document Info Subsection */}
-				<div className="w-full flex flex-col gap-2">
-					<h1 className="text-xs leading-none tracking-tight">INFORMAÇÕES DO DOCUMENTO</h1>
-					<div className="w-full flex flex-col gap-1.5">
-						{sale.documento && (
-							<div className="flex items-center gap-1.5">
-								<FileText className="w-4 h-4 text-muted-foreground" />
-								<h3 className="text-sm font-semibold tracking-tighter text-primary/80">DOCUMENTO</h3>
-								<h3 className="text-sm font-semibold tracking-tight">{sale.documento}</h3>
-							</div>
-						)}
-						{sale.modelo && (
-							<div className="flex items-center gap-1.5">
-								<FileText className="w-4 h-4 text-muted-foreground" />
-								<h3 className="text-sm font-semibold tracking-tighter text-primary/80">MODELO</h3>
-								<h3 className="text-sm font-semibold tracking-tight">{sale.modelo}</h3>
-							</div>
-						)}
-						{sale.serie && (
-							<div className="flex items-center gap-1.5">
-								<FileText className="w-4 h-4 text-muted-foreground" />
-								<h3 className="text-sm font-semibold tracking-tighter text-primary/80">SÉRIE</h3>
-								<h3 className="text-sm font-semibold tracking-tight">{sale.serie}</h3>
-							</div>
-						)}
-						{sale.chave && sale.chave !== "N/A" && (
-							<div className="flex items-start gap-1.5">
-								<FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
-								<h3 className="text-sm font-semibold tracking-tighter text-primary/80">CHAVE</h3>
-								<h3 className="text-sm font-semibold tracking-tight break-all">{sale.chave}</h3>
-							</div>
-						)}
+			</div>
+			<div className="w-full flex flex-col gap-2">
+				<h1 className="text-xs leading-none tracking-tight">INFORMAÇÕES DO DOCUMENTO</h1>
+				<div className="w-full flex flex-col gap-1.5">
+					<div className="flex items-center gap-1.5">
+						<FileText className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">DOCUMENTO</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{sale.documento}</h3>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<FileText className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">MODELO</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{sale.modelo || "N/A"}</h3>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<FileText className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">SÉRIE</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{sale.serie || "N/A"}</h3>
+					</div>
+					<div className="flex items-start gap-1.5">
+						<FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
+						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">CHAVE</h3>
+						<h3 className="text-sm font-semibold tracking-tight break-all">{sale.chave || "N/A"}</h3>
 					</div>
 				</div>
 			</div>
@@ -200,7 +180,15 @@ function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 	);
 }
 
-function ClientSection({ client }: { client: NonNullable<TGetSalesOutputById["cliente"]> }) {
+function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
+	if (!client)
+		return (
+			<SectionWrapper title="CLIENTE" icon={<CircleUser className="w-4 h-4 min-w-4 min-h-4" />}>
+				<div className="w-full flex flex-col items-center justify-center gap-3">
+					<span className="text-sm font-medium text-muted-foreground">CLIENTE NÃO ATRIBUÍDO</span>
+				</div>
+			</SectionWrapper>
+		);
 	return (
 		<SectionWrapper
 			title="CLIENTE"
@@ -241,52 +229,50 @@ function ClientSection({ client }: { client: NonNullable<TGetSalesOutputById["cl
 				)}
 
 				{/* Birth Date */}
-				{client.dataNascimento && (
-					<div className="flex items-center gap-1.5">
-						<Calendar className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">NASCIMENTO</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{formatDateBirthdayAsLocale(client.dataNascimento, true)}</h3>
-					</div>
-				)}
-
-				{/* RFM Analysis */}
-				{client.analiseRFMTitulo && (
-					<div className="flex flex-col gap-2">
-						<div className="flex items-center gap-2">
-							<Badge variant="secondary" className="text-xs">
-								{client.analiseRFMTitulo}
-							</Badge>
+				<div className="flex items-center gap-1.5">
+					<Calendar className="w-4 h-4 text-muted-foreground" />
+					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">IDADE</h3>
+					<h3 className="text-sm font-semibold tracking-tight">
+						{client.dataNascimento
+							? `${getAgeFromBirthdayDate(client.dataNascimento)} ANOS (NASCIDO EM: ${formatDateBirthdayAsLocale(client.dataNascimento, true)})`
+							: "NÃO DEFINIDO"}
+					</h3>
+				</div>
+				<div className="flex items-center gap-1.5">
+					<Grid3X3 className="w-4 h-4 text-muted-foreground" />
+					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">SEGMENTAÇÃO RFM</h3>
+					<Badge variant="secondary" className="text-xs">
+						{client.analiseRFMTitulo}
+					</Badge>
+					{(client.analiseRFMNotasRecencia || client.analiseRFMNotasFrequencia || client.analiseRFMNotasMonetario) && (
+						<div className="flex items-center gap-3 text-xs text-muted-foreground">
+							{client.analiseRFMNotasRecencia !== null && (
+								<span>
+									R: <strong>{client.analiseRFMNotasRecencia}</strong>
+								</span>
+							)}
+							{client.analiseRFMNotasFrequencia !== null && (
+								<span>
+									F: <strong>{client.analiseRFMNotasFrequencia}</strong>
+								</span>
+							)}
+							{client.analiseRFMNotasMonetario !== null && (
+								<span>
+									M: <strong>{client.analiseRFMNotasMonetario}</strong>
+								</span>
+							)}
 						</div>
-						{(client.analiseRFMNotasRecencia || client.analiseRFMNotasFrequencia || client.analiseRFMNotasMonetario) && (
-							<div className="flex items-center gap-3 text-xs text-muted-foreground">
-								{client.analiseRFMNotasRecencia !== null && (
-									<span>
-										R: <strong>{client.analiseRFMNotasRecencia}</strong>
-									</span>
-								)}
-								{client.analiseRFMNotasFrequencia !== null && (
-									<span>
-										F: <strong>{client.analiseRFMNotasFrequencia}</strong>
-									</span>
-								)}
-								{client.analiseRFMNotasMonetario !== null && (
-									<span>
-										M: <strong>{client.analiseRFMNotasMonetario}</strong>
-									</span>
-								)}
-							</div>
-						)}
-					</div>
-				)}
+					)}
+				</div>
 
 				{/* Location */}
-				{(client.localizacaoCidade || client.localizacaoEstado) && (
-					<div className="flex items-center gap-1.5">
-						<MapPin className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">LOCALIZAÇÃO</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{[client.localizacaoCidade, client.localizacaoEstado].filter(Boolean).join(", ")}</h3>
-					</div>
-				)}
+				<div className="flex items-center gap-1.5">
+					<MapPin className="w-4 h-4 text-muted-foreground" />
+					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">LOCALIZAÇÃO</h3>
+					<h3 className="text-sm font-semibold tracking-tight">
+						{[client.localizacaoCidade, client.localizacaoEstado].filter(Boolean).join(", ") || "NÃO DEFINIDO"}
+					</h3>
+				</div>
 			</div>
 		</SectionWrapper>
 	);
@@ -302,7 +288,7 @@ function ParticipantsSection({
 	return (
 		<SectionWrapper title="PARTICIPANTES" icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}>
 			<div className="w-full flex flex-col gap-4">
-				{vendedor && (
+				{vendedor ? (
 					<div className="flex items-center gap-3">
 						<Avatar className="w-10 h-10">
 							<AvatarImage src={vendedor.avatarUrl ?? undefined} alt={vendedor.nome} />
@@ -313,8 +299,19 @@ function ParticipantsSection({
 							<span className="text-sm font-bold leading-tight mt-0.5">{vendedor.nome}</span>
 						</div>
 					</div>
+				) : (
+					<div className="flex items-center gap-3">
+						<Avatar className="w-10 h-10">
+							<AvatarImage src={undefined} alt={"Vendedor não atribuído"} />
+							<AvatarFallback>N/A</AvatarFallback>
+						</Avatar>
+						<div className="flex flex-col">
+							<span className="text-[0.65rem] text-muted-foreground font-medium uppercase leading-none">Vendedor</span>
+							<span className="text-sm font-bold leading-tight mt-0.5">VENDEDOR NÃO ATRIBUÍDO</span>
+						</div>
+					</div>
 				)}
-				{parceiro && (
+				{parceiro ? (
 					<div className="flex items-center gap-3">
 						<Avatar className="w-10 h-10">
 							<AvatarImage src={parceiro.avatarUrl ?? undefined} alt={parceiro.nome} />
@@ -325,6 +322,17 @@ function ParticipantsSection({
 							<span className="text-sm font-bold leading-tight mt-0.5">{parceiro.nome}</span>
 						</div>
 					</div>
+				) : (
+					<div className="flex items-center gap-3">
+						<Avatar className="w-10 h-10">
+							<AvatarImage src={undefined} alt={"Parceiro não atribuído"} />
+							<AvatarFallback>N/A</AvatarFallback>
+						</Avatar>
+						<div className="flex flex-col">
+							<span className="text-[0.65rem] text-muted-foreground font-medium uppercase leading-none">Parceiro</span>
+							<span className="text-sm font-bold leading-tight mt-0.5">PARCEIRO NÃO ATRIBUÍDO</span>
+						</div>
+					</div>
 				)}
 			</div>
 		</SectionWrapper>
@@ -332,10 +340,20 @@ function ParticipantsSection({
 }
 
 function CampaignAttributionSection({
+	saleDate,
 	attribution,
 }: {
-	attribution: NonNullable<TGetSalesOutputById["atribuicaoCampanhaConversao"]>;
+	saleDate: TGetSalesOutputById["dataVenda"];
+	attribution: TGetSalesOutputById["atribuicaoCampanhaConversao"];
 }) {
+	if (!attribution)
+		return (
+			<SectionWrapper title="ATRIBUIÇÃO DE CAMPANHA" icon={<Megaphone className="w-4 h-4 min-w-4 min-h-4 text-violet-600 dark:text-violet-400" />}>
+				<div className="w-full flex flex-col items-center justify-center gap-3">
+					<span className="text-sm font-medium text-muted-foreground">CAMPANHA NÃO ATRIBUÍDA</span>
+				</div>
+			</SectionWrapper>
+		);
 	return (
 		<SectionWrapper title="ATRIBUIÇÃO DE CAMPANHA" icon={<Megaphone className="w-4 h-4 min-w-4 min-h-4 text-violet-600 dark:text-violet-400" />}>
 			<div className="w-full flex flex-col gap-4">
@@ -353,7 +371,7 @@ function CampaignAttributionSection({
 						</div>
 						<div className="flex flex-col">
 							<span className="text-[0.65rem] text-muted-foreground uppercase">Converteu em</span>
-							<span className="text-sm font-medium">Esta venda</span>
+							<span className="text-sm font-medium">{formatDateAsLocale(saleDate, true)}</span>
 						</div>
 					</div>
 				</div>
@@ -411,6 +429,14 @@ function CashbackTransactionsSection({
 }: {
 	transactions: TGetSalesOutputById["transacoesCashback"];
 }) {
+	if (transactions.length === 0)
+		return (
+			<SectionWrapper title="TRANSAÇÕES DE CASHBACK" icon={<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-emerald-600 dark:text-emerald-400" />}>
+				<div className="w-full flex flex-col items-center justify-center gap-3">
+					<span className="text-sm font-medium text-muted-foreground">NENHUMA TRANSAÇÃO DE CASHBACK ENCONTRADA</span>
+				</div>
+			</SectionWrapper>
+		);
 	return (
 		<SectionWrapper title="TRANSAÇÕES DE CASHBACK" icon={<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-emerald-600 dark:text-emerald-400" />}>
 			<div className="w-full flex flex-col gap-3">
@@ -498,33 +524,88 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 				{/* Product Info */}
 				<div className="flex flex-col gap-0.5">
 					<h3 className="text-sm font-bold tracking-tight line-clamp-2">{item.produto?.descricao || "Produto"}</h3>
-					{item.produto?.codigo && <p className="text-[0.65rem] text-muted-foreground">Código: {item.produto.codigo}</p>}
-					{item.produtoVariante?.nome && <p className="text-[0.65rem] text-muted-foreground">Variante: {item.produtoVariante.nome}</p>}
-					<div className="flex items-center gap-2 text-[0.65rem] text-muted-foreground">
-						{item.produto?.grupo && <span>Grupo: {item.produto.grupo}</span>}
-						{item.produto?.grupo && item.produto?.unidade && <span>•</span>}
-						{item.produto?.unidade && <span>Un: {item.produto.unidade}</span>}
+					<div className="flex items-center flex-wrap gap-1.5">
+						{item.produto.unidade ? (
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div className="flex items-center gap-1.5 px-1 py-0.5">
+											<Package className="w-4 h-4 text-muted-foreground" />
+											<h3 className="text-xs tracking-tighter">{item.produto.unidade}</h3>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Unidade de medida</p>
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						) : null}
+						{item.produto?.codigo ? (
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div className="flex items-center gap-1.5 px-1 py-0.5">
+											<Code className="w-4 h-4 text-muted-foreground" />
+											<h3 className="text-xs tracking-tighter">{item.produto.codigo}</h3>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Código do produto</p>
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						) : null}
+						{item.produto?.grupo ? (
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div className="flex items-center gap-1.5 px-1 py-0.5">
+											<Diamond className="w-4 h-4 text-muted-foreground" />
+											<h3 className="text-xs tracking-tighter">{item.produto.grupo}</h3>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Grupo do produto</p>
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						) : null}
+						{item.produtoVariante?.nome ? (
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div className="flex items-center gap-1.5 px-1 py-0.5">
+											<Package className="w-4 h-4 text-muted-foreground" />
+											<h3 className="text-xs tracking-tighter">{item.produtoVariante.nome}</h3>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Variante do produto</p>
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						) : null}
 					</div>
 				</div>
 
 				{/* Pricing */}
 				<div className="flex flex-col gap-1 pt-2 border-t border-border/30">
 					<div className="flex items-center justify-between text-xs">
-						<span className="text-muted-foreground">Qtd:</span>
+						<span className="text-muted-foreground">QUANTIDADE:</span>
 						<span className="font-medium">{item.quantidade}</span>
 					</div>
 					<div className="flex items-center justify-between text-xs">
-						<span className="text-muted-foreground">Unitário:</span>
+						<span className="text-muted-foreground">UNITÁRIO:</span>
 						<span className="font-medium">{formatToMoney(item.valorVendaUnitario)}</span>
 					</div>
 					{item.valorTotalDesconto > 0 && (
 						<div className="flex items-center justify-between text-xs">
-							<span className="text-muted-foreground">Desconto:</span>
+							<span className="text-muted-foreground">DESCONTO:</span>
 							<span className="font-medium text-red-500">-{formatToMoney(item.valorTotalDesconto)}</span>
 						</div>
 					)}
 					<div className="flex items-center justify-between text-sm font-bold pt-1">
-						<span>Total:</span>
+						<span>TOTAL:</span>
 						<span className="text-primary">{formatToMoney(item.valorVendaTotalLiquido)}</span>
 					</div>
 				</div>
@@ -532,7 +613,7 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 				{/* Adicionais */}
 				{item.adicionais && item.adicionais.length > 0 && (
 					<div className="flex flex-col gap-1 pt-2 border-t border-border/30">
-						<span className="text-[0.65rem] font-semibold text-muted-foreground uppercase">Adicionais</span>
+						<span className="text-[0.65rem] font-semibold text-muted-foreground uppercase">ADICIONAIS</span>
 						{item.adicionais.map((adicional) => (
 							<div key={adicional.id} className="flex items-center justify-between text-xs">
 								<span className="text-muted-foreground">
