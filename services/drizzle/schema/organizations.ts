@@ -41,6 +41,9 @@ export const organizations = newTable("organizations", {
 	integracaoDataUltimaSincronizacao: timestamp("integracao_data_ultima_sincronizacao"),
 	periodoTesteInicio: timestamp("periodo_teste_inicio"),
 	periodoTesteFim: timestamp("periodo_teste_fim"),
+	// Custom Colors
+	corPrimaria: text("cor_primaria"), // Primary/brand color (hex format, e.g., #fead41)
+	corSecundaria: text("cor_secundaria"), // Secondary color (hex format, e.g., #15599a)
 	autorId: varchar("autor_id", { length: 255 }),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });

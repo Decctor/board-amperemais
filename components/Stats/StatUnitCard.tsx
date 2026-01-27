@@ -1,3 +1,6 @@
+"use client";
+
+import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { formatDecimalPlaces } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp } from "lucide-react";
@@ -28,6 +31,7 @@ export default function StatUnitCard({
 	className,
 	footer,
 }: StatUnitCardProps) {
+	const { colors } = useOrgColors();
 	const showComparison = !!previous;
 	function getChange(current: TStat, previous?: TStat) {
 		if (!previous) return 0;
@@ -66,7 +70,9 @@ export default function StatUnitCard({
 				</div>
 			</div>
 			<div className="flex w-full flex-col gap-1">
-				<div className="text-2xl font-bold text-[#15599a] dark:text-[#fead61]">{current.format(current.value)}</div>
+				<div className="text-2xl font-bold" style={{ color: colors.secondary }}>
+					{current.format(current.value)}
+				</div>
 				{showComparison ? (
 					<p className="text-muted-foreground text-xs tracking-tight">
 						{previousLabel}: {previous?.format(previous?.value || 0)}

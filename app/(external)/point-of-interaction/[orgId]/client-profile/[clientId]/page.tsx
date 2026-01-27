@@ -1,4 +1,5 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions } from "@/services/drizzle/schema";
 import { and, desc, eq, gt } from "drizzle-orm";
@@ -20,6 +21,8 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 			nome: true,
 			logoUrl: true,
 			telefone: true,
+			corPrimaria: true,
+			corSecundaria: true,
 		},
 	});
 
@@ -92,13 +95,15 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 	});
 
 	return (
-		<ClientProfileContent
-			orgId={orgId}
-			cashbackProgram={cashbackProgram}
-			client={client}
-			balance={balance}
-			rankingPosition={rankingPosition}
-			transactions={transactions}
-		/>
+		<OrgColorsProvider corPrimaria={org.corPrimaria} corSecundaria={org.corSecundaria}>
+			<ClientProfileContent
+				orgId={orgId}
+				cashbackProgram={cashbackProgram}
+				client={client}
+				balance={balance}
+				rankingPosition={rankingPosition}
+				transactions={transactions}
+			/>
+		</OrgColorsProvider>
 	);
 }

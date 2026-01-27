@@ -1,10 +1,10 @@
+import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { formatDateAsLocale, formatDecimalPlaces, formatLongString, formatNameAsInitials } from "@/lib/formatting";
 import { formatToMoney } from "@/lib/formatting";
 import { useGroupedSalesStats } from "@/lib/queries/stats/grouped";
 import type { TGroupedSalesStats } from "@/pages/api/stats/sales-grouped";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { useEffect, useMemo, useState } from "react";
-import { BsCart } from "react-icons/bs";
 import { useDebounce } from "use-debounce";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -228,6 +228,7 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 
 function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGrupo"] }) {
 	const [type, setType] = useState<"qtde" | "total">("total");
+	const { colors } = useOrgColors();
 
 	async function handleExportData(data: TGroupedSalesStats["porGrupo"] | undefined) {
 		try {
@@ -244,15 +245,18 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 			return toast.error(msg);
 		}
 	}
-	const Collors = ["#15599a", "#fead41", "#ff595e", "#8ac926", "#6a4c93", "#5adbff"];
+	const chartColorsList = useMemo(
+		() => [colors.secondary, colors.primary, "#ff595e", "#8ac926", "#6a4c93", "#5adbff"],
+		[colors]
+	);
 	const total = useMemo(() => data.reduce((acc, current) => (type === "total" ? acc + current.total : acc + current.qtde), 0), [data, type]);
 	const graphData = useMemo(
 		() =>
 			data
 				.filter((d) => d.qtde > 100)
 				.sort((a, b) => b.qtde - a.qtde)
-				.map((p, index) => ({ ...p, fill: Collors[index] || "#000" })),
-		[data],
+				.map((p, index) => ({ ...p, fill: chartColorsList[index] || "#000" })),
+		[data, chartColorsList],
 	);
 	const projectTypesChartConfig = { titulo: { label: "GRUPO" } };
 	return (
@@ -598,7 +602,7 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 }
 
 function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }) {
-	console.log("DATA ON BY MONTH DAY: ", data);
+	const { colors } = useOrgColors();
 	// Calculate color intensity based on performance ranking
 	const maxValue = Math.max(...data.map((item) => item.total), 0);
 	const minValue = Math.min(...data.map((item) => item.total), 0);
@@ -621,7 +625,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 	function DayCard({ index }: { index: number }) {
 		const result = getDayResult(index);
 		const intensity = result ? getColorIntensity(result.total) : 0;
-		const bgColor = result ? `rgba(254, 173, 0, ${intensity})` : "transparent";
+		const bgColor = result ? hexToRgba(colors.primary, intensity) : "transparent";
 		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
 
 		return (
@@ -704,7 +708,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 }
 
 function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
-	console.log("DATA ON BY MONTH: ", data);
+	const { colors } = useOrgColors();
 	const MONTH_MAP = {
 		1: "Janeiro",
 		2: "Fevereiro",
@@ -741,13 +745,8 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 
 	function MonthCard({ index }: { index: number }) {
 		const result = getMonthResult(index);
-		console.log("RESULT ON MONTH CARD: ", {
-			result,
-			index,
-			MONTH_MAP: MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP],
-		});
 		const intensity = result ? getColorIntensity(result.total) : 0;
-		const bgColor = result ? `rgba(254, 173, 0, ${intensity})` : "transparent";
+		const bgColor = result ? hexToRgba(colors.primary, intensity) : "transparent";
 		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
 
 		return (
@@ -831,6 +830,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 }
 
 function GroupedByWeekDay({ data }: { data: TGroupedSalesStats["porDiaDaSemana"] }) {
+	const { colors } = useOrgColors();
 	const WEEKDAY_MAP = {
 		0: "Domingo",
 		1: "Segunda",
@@ -863,7 +863,7 @@ function GroupedByWeekDay({ data }: { data: TGroupedSalesStats["porDiaDaSemana"]
 	function WeekDayCard({ index }: { index: number }) {
 		const result = getWeekDayResult(index);
 		const intensity = result ? getColorIntensity(result.total) : 0;
-		const bgColor = result ? `rgba(254, 173, 0, ${intensity})` : "transparent";
+		const bgColor = result ? hexToRgba(colors.primary, intensity) : "transparent";
 		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
 
 		return (
@@ -947,6 +947,7 @@ function GroupedByWeekDay({ data }: { data: TGroupedSalesStats["porDiaDaSemana"]
 
 function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] }) {
 	const [type, setType] = useState<"qtde" | "total">("total");
+	const { colors } = useOrgColors();
 
 	async function handleExportData(data: TGroupedSalesStats["porCanal"] | undefined) {
 		try {
@@ -963,11 +964,14 @@ function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] 
 			return toast.error(msg);
 		}
 	}
-	const Collors = ["#15599a", "#fead41", "#ff595e", "#8ac926", "#6a4c93", "#5adbff"];
+	const chartColorsList = useMemo(
+		() => [colors.secondary, colors.primary, "#ff595e", "#8ac926", "#6a4c93", "#5adbff"],
+		[colors]
+	);
 	const total = useMemo(() => data.reduce((acc, current) => (type === "total" ? acc + current.total : acc + current.qtde), 0), [data, type]);
 	const graphData = useMemo(
-		() => data.sort((a, b) => b.qtde - a.qtde).map((p, index) => ({ ...p, fill: Collors[index % Collors.length] || "#000" })),
-		[data],
+		() => data.sort((a, b) => b.qtde - a.qtde).map((p, index) => ({ ...p, fill: chartColorsList[index % chartColorsList.length] || "#000" })),
+		[data, chartColorsList],
 	);
 	const chartConfig = { titulo: { label: "CANAL" } };
 	return (
@@ -1036,6 +1040,7 @@ function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] 
 
 function ResultsByFulfillmentMethodGraph({ data }: { data: TGroupedSalesStats["porEntregaModalidade"] }) {
 	const [type, setType] = useState<"qtde" | "total">("total");
+	const { colors } = useOrgColors();
 
 	async function handleExportData(data: TGroupedSalesStats["porEntregaModalidade"] | undefined) {
 		try {
@@ -1052,11 +1057,14 @@ function ResultsByFulfillmentMethodGraph({ data }: { data: TGroupedSalesStats["p
 			return toast.error(msg);
 		}
 	}
-	const Collors = ["#15599a", "#fead41", "#ff595e", "#8ac926", "#6a4c93", "#5adbff"];
+	const chartColorsList = useMemo(
+		() => [colors.secondary, colors.primary, "#ff595e", "#8ac926", "#6a4c93", "#5adbff"],
+		[colors]
+	);
 	const total = useMemo(() => data.reduce((acc, current) => (type === "total" ? acc + current.total : acc + current.qtde), 0), [data, type]);
 	const graphData = useMemo(
-		() => data.sort((a, b) => b.qtde - a.qtde).map((p, index) => ({ ...p, fill: Collors[index % Collors.length] || "#000" })),
-		[data],
+		() => data.sort((a, b) => b.qtde - a.qtde).map((p, index) => ({ ...p, fill: chartColorsList[index % chartColorsList.length] || "#000" })),
+		[data, chartColorsList],
 	);
 	const chartConfig = { titulo: { label: "MODALIDADE" } };
 	return (

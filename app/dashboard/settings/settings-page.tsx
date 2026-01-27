@@ -1,5 +1,6 @@
 "use client";
 import SettingsMetaOAuth from "@/components/Settings/SettingsMetaOAuth";
+import SettingsOrgColors from "@/components/Settings/SettingsOrgColors";
 import SettingsSalesPromoCampaigns from "@/components/Settings/SettingsSalesPromoCampaigns";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
@@ -8,15 +9,14 @@ import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { copyToClipboard } from "@/lib/utils";
-import { Grid3x3, Key, MessageCircleIcon, Presentation, Trophy, UsersRound } from "lucide-react";
+import { Grid3x3, Key, MessageCircleIcon, Palette, Presentation, Trophy, UsersRound } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { useState } from "react";
 type SettingsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
 };
 export default function SettingsPage({ user, membership }: SettingsPageProps) {
-	const [view, setView] = useQueryState("view", parseAsStringEnum(["users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns"]));
+	const [view, setView] = useQueryState("view", parseAsStringEnum(["users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns", "org-colors"]));
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end">
@@ -78,6 +78,15 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						<Trophy className="w-4 h-4 min-w-4 min-h-4" />
 						CAMPANHAS DE PROMOÇÃO DE VENDAS
 					</Button>
+					<Button
+						variant={view === "org-colors" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("org-colors")}
+					>
+						<Palette className="w-4 h-4 min-w-4 min-h-4" />
+						CORES
+					</Button>
 				</div>
 			</div>
 			{!view || view === "users" ? membership.permissoes.usuarios.visualizar ? <SettingsUsers user={user} membership={membership} /> : <UnauthorizedPage /> : null}
@@ -85,6 +94,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 			{view === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} /> : null}
 			{view === "segments" ? <SettingsSegments user={user} /> : null}
 			{view === "sales-promo-campaigns" ? <SettingsSalesPromoCampaigns user={user} /> : null}
+			{view === "org-colors" ? <SettingsOrgColors user={user} membership={membership} /> : null}
 		</div>
 	);
 }

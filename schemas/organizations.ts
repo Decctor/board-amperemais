@@ -67,6 +67,19 @@ export const OrganizationSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
+
+	// Custom Colors
+	corPrimaria: z
+		.string({ invalid_type_error: "Tipo não válido para a cor primária." })
+		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor primária deve estar no formato hexadecimal (ex: #fead41)." })
+		.optional()
+		.nullable(),
+	corSecundaria: z
+		.string({ invalid_type_error: "Tipo não válido para a cor secundária." })
+		.regex(/^#[0-9A-Fa-f]{6}$/, { message: "A cor secundária deve estar no formato hexadecimal (ex: #15599a)." })
+		.optional()
+		.nullable(),
+
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção da organização." })
 		.datetime({ message: "Tipo não válido para a data de inserção da organização." })

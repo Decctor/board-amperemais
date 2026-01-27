@@ -86,6 +86,8 @@ export async function validateSession(token: string) {
 					cnpj: membership.organizacao.cnpj,
 					logoUrl: membership.organizacao.logoUrl,
 					assinaturaPlano: membership.organizacao.assinaturaPlano,
+					corPrimaria: membership.organizacao.corPrimaria,
+					corSecundaria: membership.organizacao.corSecundaria,
 				},
 				permissoes: membership.permissoes,
 			};
@@ -109,6 +111,8 @@ export async function validateSession(token: string) {
 					cnpj: mostRecentMembership.organizacao.cnpj,
 					logoUrl: mostRecentMembership.organizacao.logoUrl,
 					assinaturaPlano: mostRecentMembership.organizacao.assinaturaPlano,
+					corPrimaria: mostRecentMembership.organizacao.corPrimaria,
+					corSecundaria: mostRecentMembership.organizacao.corSecundaria,
 				},
 				permissoes: mostRecentMembership.permissoes,
 			};
