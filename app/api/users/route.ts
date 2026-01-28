@@ -4,14 +4,14 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { NewUserSchema } from "@/schemas/users";
 import { db } from "@/services/drizzle";
-import { users } from "@/services/drizzle/schema";
+import { organizationMembers, users } from "@/services/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 const CreateUserInputSchema = z.object({
-	user: NewUserSchema.omit({ dataInsercao: true }),
+	user: NewUserSchema.omit({ admin: true, dataInsercao: true }),
 });
 export type TCreateUserInput = z.infer<typeof CreateUserInputSchema>;
 
@@ -33,6 +33,11 @@ async function createUser({ input, session }: { input: TCreateUserInput; session
 	const insertedUserId = insertedUser[0]?.id;
 	if (!insertedUserId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar usuário.");
 
+	await db.insert(organizationMembers).values({
+		usuarioId: insertedUserId,
+		organizacaoId: userOrgId,
+		permissoes: input.user.permissoes,
+	});
 	return {
 		data: {
 			insertedId: insertedUserId,

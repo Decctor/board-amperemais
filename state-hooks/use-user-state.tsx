@@ -19,6 +19,7 @@ type TUserState = z.infer<typeof UserStateSchema>;
 export function useUserState() {
 	const initialState: TUserState = {
 		user: {
+			admin: false,
 			nome: "",
 			email: "",
 			telefone: "",
@@ -27,6 +28,10 @@ export function useUserState() {
 			usuario: "",
 			senha: "",
 			permissoes: {
+				empresa: {
+					visualizar: true,
+					editar: false,
+				},
 				resultados: {
 					visualizar: false,
 					criarMetas: false,
