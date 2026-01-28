@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { getErrorMessage } from "@/lib/errors";
 import { formatToCPForCNPJ, formatToMoney, formatToNumericPassword, formatToPhone } from "@/lib/formatting";
 import { createPointOfInteractionSale } from "@/lib/mutations/sales";
 import { useClientByLookup } from "@/lib/queries/clients";
@@ -50,7 +51,7 @@ type NewSaleContentProps = {
 };
 export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	const router = useRouter();
-	const queryClient = useQueryClient()
+	const queryClient = useQueryClient();
 	const { state, updateClient, updateSale, updateCashback, updateOperatorIdentifier, resetState } = usePointOfInteractionNewSaleState(org.id);
 
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
@@ -127,6 +128,9 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 			setSuccessData(data.data);
 			setCurrentStep(5);
 		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
 	});
 
 	const handleReset = () => {
@@ -145,7 +149,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	const maximumCashbackAllowed = getMaxCashbackToUse();
 	const isAttemptingToUseMoreCashbackThanAllowed = state.sale.cashback.aplicar && state.sale.cashback.valor > maximumCashbackAllowed;
 	return (
-		<div className="w-full min-h-screen bg-secondary p-6 md:p-10 flex flex-col items-center">
+		<div className="w-full min-h-screen p-6 md:p-10 flex flex-col items-center">
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header com Navegação */}
 				<div className="flex items-center gap-4">
@@ -422,7 +426,7 @@ function ClientStep({
 				<h2 className="text-xl font-black uppercase tracking-tight">Quem é o cliente?</h2>
 				<p className="text-muted-foreground">Digite o número de telefone para localizar o perfil.</p>
 			</div>
-			
+
 			{showInput ? (
 				<>
 					<div className="max-w-md mx-auto">
@@ -459,7 +463,7 @@ function ClientStep({
 						<p className="text-[0.6rem] font-bold opacity-80 uppercase tracking-widest">Saldo Disponível</p>
 						<p className="text-3xl font-black">{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}</p>
 					</div>
-					
+
 					{/* Progress bar and countdown */}
 					<div className="w-full flex flex-col gap-2">
 						<div className="w-full h-2 bg-green-200 rounded-full overflow-hidden">

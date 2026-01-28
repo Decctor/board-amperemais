@@ -8,8 +8,10 @@ import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatToMoney, formatToNumericPassword, formatToPhone } from "@/lib/formatting";
+import { getErrorMessage } from "@/lib/errors";
+import { formatToCPForCNPJ, formatToMoney, formatToNumericPassword, formatToPhone } from "@/lib/formatting";
 import { createCashbackProgramRedemption } from "@/lib/mutations/cashback-programs";
+import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TClientByLookupOutput } from "@/pages/api/clients/lookup";
@@ -26,7 +28,9 @@ import {
 	Lock,
 	PartyPopper,
 	Plus,
+	ShoppingCart,
 	Tag,
+	UserPlus,
 	UserRound,
 	Wallet,
 	X,
@@ -60,6 +64,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
 	const [successData, setSuccessData] = React.useState<Awaited<TCreateCashbackProgramRedemptionOutput>["data"] | null>(null);
+	const [isNewClientSignup, setIsNewClientSignup] = React.useState(false);
 	const {
 		data: client,
 		queryKey,
@@ -85,8 +90,9 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 
 	const handleNextStep = () => {
 		if (currentStep === 1) {
-			if (!state.client.id) {
-				return toast.error("Cliente não identificado. Busque um cliente existente.");
+			// Must have either an existing client or new client data
+			if (!state.client.id && (!state.client.nome || !state.client.telefone)) {
+				return toast.error("Complete os dados do cliente.");
 			}
 		}
 		if (currentStep === 2 && state.saleValue <= 0) {
@@ -96,8 +102,11 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 			if (state.redemptionValue <= 0) {
 				return toast.error("Digite o valor do resgate.");
 			}
-			if (state.redemptionValue > getAvailableCashback()) {
-				return toast.error("Saldo insuficiente para este resgate.");
+			// Only check balance if client exists
+			if (state.client.id) {
+				if (state.redemptionValue > getAvailableCashback()) {
+					return toast.error("Saldo insuficiente para este resgate.");
+				}
 			}
 			if (state.redemptionValue > getMaxCashbackToRedeem()) {
 				return toast.error("Valor excede o limite permitido para resgate.");
@@ -108,8 +117,13 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 	};
 
 	const getAvailableCashback = () => client?.saldos?.[0]?.saldoValorDisponivel ?? 0;
-	
+
 	const getMaxCashbackToRedeem = () => {
+		// For new clients (no ID yet), they can't redeem since they have no balance
+		if (!state.client.id) {
+			return 0;
+		}
+
 		const available = getAvailableCashback();
 		const saleValue = state.saleValue;
 
@@ -125,13 +139,31 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 		return Math.min(available, saleValue, maxByLimit);
 	};
 
+	const { mutate: createClientMutation, isPending: isCreatingClient } = useMutation({
+		mutationFn: createClientViaPointOfInteraction,
+		onSuccess: (data) => {
+			playSuccess();
+			toast.success("Cadastro criado com sucesso!");
+			setIsNewClientSignup(true);
+			setCurrentStep(5);
+		},
+		onError: (error: unknown) => {
+			const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Erro ao criar cadastro.";
+			toast.error(errorMessage);
+		},
+	});
+
 	const { mutate: createRedemptionMutation, isPending: isCreatingRedemption } = useMutation({
 		mutationFn: createCashbackProgramRedemption,
 		onSuccess: (data) => {
 			playSuccess();
 			toast.success(`Resgate realizado! Novo saldo: ${formatToMoney(data.data.newBalance)}`);
+			setIsNewClientSignup(false);
 			setSuccessData(data.data);
 			setCurrentStep(5);
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
 		},
 	});
 
@@ -139,6 +171,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 		resetState();
 		updateParams({ phone: "" });
 		setSuccessData(null);
+		setIsNewClientSignup(false);
 		setCurrentStep(1);
 	};
 
@@ -152,7 +185,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 	const isAttemptingToRedeemMoreThanAllowed = state.redemptionValue > maximumCashbackAllowed;
 
 	return (
-		<div className="w-full min-h-screen bg-secondary p-6 md:p-10 flex flex-col items-center">
+		<div className="w-full min-h-screen p-6 md:p-10 flex flex-col items-center">
 			<div className="w-full max-w-4xl flex flex-col gap-6">
 				{/* Header com Navegação */}
 				<div className="flex items-center gap-4">
@@ -206,7 +239,20 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 								phone={params.phone}
 								onPhoneChange={(v) => updateParams({ phone: formatToPhone(v) })}
 								onCancelSearch={handleCancelRedirect}
+								newClientData={state.client}
+								onNewClientChange={updateClient}
 								onSubmit={handleNextStep}
+								onCreateNewClient={() => {
+									createClientMutation({
+										orgId: org.id,
+										client: {
+											nome: state.client.nome,
+											telefone: state.client.telefone,
+											cpfCnpj: state.client.cpfCnpj || null,
+										},
+									});
+								}}
+								isCreatingClient={isCreatingClient}
 							/>
 						)}
 						{currentStep === 2 && <SaleValueStep value={state.saleValue} onChange={updateSaleValue} onSubmit={handleNextStep} />}
@@ -218,6 +264,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 								amount={state.redemptionValue}
 								isAttemptingToRedeemMoreThanAllowed={isAttemptingToRedeemMoreThanAllowed}
 								redemptionLimit={redemptionLimit}
+								isNewClient={!state.client.id}
 								onAmountChange={updateRedemptionValue}
 								onSubmit={handleNextStep}
 							/>
@@ -239,7 +286,15 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 								}
 							/>
 						)}
-						{currentStep === 5 && successData && (
+						{currentStep === 5 && isNewClientSignup && (
+							<NewClientSuccessStep
+								clientName={state.client.nome}
+								onReset={handleReset}
+								onGoHome={() => router.push(`/point-of-interaction/${org.id}`)}
+								onNewSale={() => router.push(`/point-of-interaction/${org.id}/new-sale`)}
+							/>
+						)}
+						{currentStep === 5 && !isNewClientSignup && successData && (
 							<SuccessStep
 								redeemedAmount={state.redemptionValue}
 								newBalance={successData.newBalance}
@@ -249,7 +304,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 						)}
 
 						{/* Botões de Ação */}
-						{currentStep < 5 && !(currentStep === 1 && client) && (
+						{currentStep < 5 && !(currentStep === 1 && client) && !(isSuccessClient && !client) ? (
 							<div className="flex gap-4 mt-10">
 								{currentStep > 1 && (
 									<Button onClick={() => setCurrentStep((p) => p - 1)} variant="outline" size="lg" className="flex-1 rounded-2xl h-16 text-lg font-bold">
@@ -257,14 +312,18 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 									</Button>
 								)}
 								<Button
-									onClick={currentStep === 4 ? () =>
-										createRedemptionMutation({
-											orgId: org.id,
-											clientId: state.client.id as string,
-											saleValue: state.saleValue,
-											redemptionValue: state.redemptionValue,
-											operatorIdentifier: state.operatorIdentifier,
-										}) : handleNextStep}
+									onClick={
+										currentStep === 4
+											? () =>
+													createRedemptionMutation({
+														orgId: org.id,
+														clientId: state.client.id as string,
+														saleValue: state.saleValue,
+														redemptionValue: state.redemptionValue,
+														operatorIdentifier: state.operatorIdentifier,
+													})
+											: handleNextStep
+									}
 									size="lg"
 									disabled={isCreatingRedemption || isAttemptingToRedeemMoreThanAllowed}
 									className={cn(
@@ -276,10 +335,76 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 									{currentStep === 4 ? <Check className="ml-2 w-6 h-6" /> : <ArrowRight className="ml-2 w-6 h-6" />}
 								</Button>
 							</div>
-						)}
+						) : null}
 					</div>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function NewClientSuccessStep({
+	clientName,
+	onReset,
+	onGoHome,
+	onNewSale,
+}: {
+	clientName: string;
+	onReset: () => void;
+	onGoHome: () => void;
+	onNewSale: () => void;
+}) {
+	return (
+		<div className="flex flex-col items-center text-center space-y-8 animate-in zoom-in duration-500">
+			<div className="relative">
+				<div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full scale-150 animate-pulse" />
+				<div className="relative bg-blue-600 p-8 rounded-full text-white shadow-2xl shadow-blue-600/30">
+					<UserPlus className="w-20 h-20" />
+				</div>
+				<div className="absolute -top-4 -right-4 bg-yellow-400 p-3 rounded-2xl text-yellow-900 shadow-lg animate-bounce">
+					<PartyPopper className="w-6 h-6" />
+				</div>
+			</div>
+
+			<div className="space-y-3">
+				<h2 className="text-4xl font-black uppercase tracking-tighter text-blue-700">BEM-VINDO!</h2>
+				<p className="text-2xl font-bold text-foreground">{clientName}</p>
+				<p className="text-muted-foreground font-medium text-lg max-w-md">Seu cadastro foi criado com sucesso!</p>
+			</div>
+
+			<div className="bg-linear-to-br from-blue-50 to-brand/5 border-2 border-blue-200 rounded-3xl p-8 shadow-lg max-w-xl w-full">
+				<div className="space-y-4">
+					<div className="flex items-start gap-4">
+						<div className="p-3 bg-brand rounded-xl text-brand-foreground">
+							<Wallet className="w-6 h-6" />
+						</div>
+						<div className="flex-1 text-left">
+							<h3 className="font-black text-lg uppercase tracking-tight mb-2">COMECE A ACUMULAR CASHBACK!</h3>
+							<p className="text-sm text-muted-foreground leading-relaxed">
+								Agora você faz parte do nosso programa de recompensas! A cada compra, você acumula cashback que pode ser usado em futuras transações.
+							</p>
+						</div>
+					</div>
+					<div className="bg-brand/10 rounded-2xl p-4 border-2 border-dashed border-brand/30">
+						<p className="text-sm font-bold text-brand text-center">💰 Faça sua primeira compra e comece a ganhar benefícios!</p>
+					</div>
+				</div>
+			</div>
+
+			<div className="flex flex-col sm:flex-row gap-4 w-full max-w-xl">
+				<Button
+					onClick={onGoHome}
+					variant="outline"
+					size="lg"
+					className="flex-1 rounded-2xl h-20 text-xl font-black border-4 hover:bg-muted uppercase tracking-wider"
+				>
+					VOLTAR AO INÍCIO
+				</Button>
+			</div>
+
+			<button type="button" onClick={onReset} className="text-sm text-muted-foreground hover:text-foreground underline transition-colors">
+				Cadastrar outro cliente
+			</button>
 		</div>
 	);
 }
@@ -346,18 +471,26 @@ function ClientStep({
 	client,
 	phone,
 	onPhoneChange,
+	newClientData,
+	onNewClientChange,
 	isLoadingClient,
 	isSuccessClient,
 	onSubmit,
 	onCancelSearch,
+	onCreateNewClient,
+	isCreatingClient,
 }: {
 	client: TClientByLookupOutput["data"];
 	phone: string;
 	onPhoneChange: (phone: string) => void;
+	newClientData: { id?: string | null; nome: string; cpfCnpj?: string | null; telefone: string };
+	onNewClientChange: (data: Partial<typeof newClientData>) => void;
 	isLoadingClient: boolean;
 	isSuccessClient: boolean;
 	onSubmit: () => void;
 	onCancelSearch: () => void;
+	onCreateNewClient: () => void;
+	isCreatingClient: boolean;
 }) {
 	// Auto-advance timer state
 	const ADVANCE_COUNTDOWN_SECONDS = 3;
@@ -406,24 +539,46 @@ function ClientStep({
 		onCancelSearch();
 	}
 
+	React.useEffect(() => {
+		// Keep phone in sync with lookup
+		if (phone && phone !== newClientData.telefone) {
+			onNewClientChange({ telefone: phone });
+		}
+	}, [phone, newClientData.telefone, onNewClientChange]);
+
 	// Show found client card with auto-advance
 	const showFoundClientCard = isSuccessClient && client && !isAdvancing && !wasCancelled;
 	// Show input only when not found or cancelled
 	const showInput = !showFoundClientCard && !isAdvancing;
+	// Check if we're creating a new client (no existing client found)
+	const isNewClient = isSuccessClient && !client;
+
+	const handleFormSubmit = () => {
+		if (isNewClient) {
+			// Validate new client data
+			if (!newClientData.nome || !newClientData.telefone) {
+				toast.error("Complete os dados do cliente.");
+				return;
+			}
+			onCreateNewClient();
+		} else {
+			onSubmit();
+		}
+	};
 
 	return (
 		<form
 			className="space-y-8 animate-in fade-in slide-in-from-bottom-4"
 			onSubmit={(e) => {
 				e.preventDefault();
-				onSubmit();
+				handleFormSubmit();
 			}}
 		>
 			<div className="text-center space-y-2">
 				<h2 className="text-xl font-black uppercase tracking-tight">Quem é o cliente?</h2>
 				<p className="text-muted-foreground">Digite o número de telefone para localizar o perfil.</p>
 			</div>
-			
+
 			{showInput ? (
 				<>
 					<div className="max-w-md mx-auto">
@@ -460,7 +615,7 @@ function ClientStep({
 						<p className="text-[0.6rem] font-bold opacity-80 uppercase tracking-widest">Saldo Disponível</p>
 						<p className="text-3xl font-black">{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}</p>
 					</div>
-					
+
 					{/* Progress bar and countdown */}
 					<div className="w-full flex flex-col gap-2">
 						<div className="w-full h-2 bg-green-200 rounded-full overflow-hidden">
@@ -494,15 +649,62 @@ function ClientStep({
 			) : null}
 
 			{isSuccessClient && !client && showInput ? (
-				<div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-6 animate-in zoom-in">
+				<div className="bg-blue-50 border-2 border-blue-200 rounded-3xl p-6 animate-in zoom-in">
 					<div className="flex items-center gap-3 mb-4">
-						<div className="p-2 bg-amber-600 rounded-lg text-white">
-							<AlertTriangle className="w-5 h-5" />
+						<div className="p-2 bg-blue-600 rounded-lg text-white">
+							<UserPlus className="w-5 h-5" />
 						</div>
 						<div>
-							<h3 className="font-black uppercase text-amber-900">CLIENTE NÃO ENCONTRADO</h3>
-							<p className="text-xs text-amber-600">Para realizar um resgate, o cliente precisa ter um cadastro existente.</p>
+							<h3 className="font-black uppercase text-blue-900">NOVO CLIENTE</h3>
+							<p className="text-xs text-blue-600">Complete os dados para criar o seu cadastro!</p>
 						</div>
+					</div>
+					<div className="w-full flex flex-col gap-4">
+						<div className="w-full flex flex-col gap-1.5">
+							<TextInput
+								label="NOME COMPLETO"
+								placeholder="Digite o nome do cliente"
+								value={newClientData.nome}
+								handleChange={(value) => onNewClientChange({ nome: value })}
+								onFocus={(e) => {
+									setTimeout(() => {
+										e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+									}, 300);
+								}}
+								width="100%"
+							/>
+							<TextInput
+								label="CPF/CNPJ (OPCIONAL)"
+								inputType="tel"
+								placeholder="Digite o CPF/CNPJ do cliente"
+								value={newClientData.cpfCnpj || ""}
+								handleChange={(value) => onNewClientChange({ cpfCnpj: formatToCPForCNPJ(value) })}
+								onFocus={(e) => {
+									setTimeout(() => {
+										e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+									}, 300);
+								}}
+								width="100%"
+							/>
+						</div>
+						<Button
+							type="submit"
+							size="lg"
+							disabled={isCreatingClient || !newClientData.nome || !newClientData.telefone}
+							className="w-full rounded-2xl h-16 text-lg font-bold shadow-lg shadow-blue-600/20 bg-blue-600 hover:bg-blue-700 uppercase tracking-widest"
+						>
+							{isCreatingClient ? (
+								<>
+									<Loader2 className="w-5 h-5 mr-2 animate-spin" />
+									CRIANDO CADASTRO...
+								</>
+							) : (
+								<>
+									<UserPlus className="w-5 h-5 mr-2" />
+									CRIAR CADASTRO
+								</>
+							)}
+						</Button>
 					</div>
 				</div>
 			) : null}
@@ -554,6 +756,7 @@ function RedemptionStep({
 	onAmountChange,
 	saleValue,
 	redemptionLimit,
+	isNewClient,
 	onSubmit,
 }: {
 	available: number;
@@ -563,6 +766,7 @@ function RedemptionStep({
 	onAmountChange: (amount: number) => void;
 	saleValue: number;
 	redemptionLimit: { tipo: string | null; valor: number | null } | null;
+	isNewClient: boolean;
 	onSubmit: () => void;
 }) {
 	const getLimitDescription = () => {
@@ -572,11 +776,11 @@ function RedemptionStep({
 		}
 		return `Limite máximo: ${redemptionLimit.valor}% do valor da compra`;
 	};
-	
+
 	const helpers = [10, 25, 50, 100];
 	const isOverBalance = amount > available;
 	const isOverLimit = amount > maxAllowed;
-	
+
 	return (
 		<form
 			className="space-y-4 animate-in fade-in slide-in-from-bottom-4"
@@ -588,6 +792,20 @@ function RedemptionStep({
 			<div className="text-center space-y-2">
 				<h2 className="text-xl font-black uppercase tracking-tight">Qual o valor do resgate?</h2>
 			</div>
+
+			{isNewClient && (
+				<div className="bg-blue-50 border-2 border-blue-200 rounded-3xl p-4 animate-in zoom-in">
+					<div className="flex items-center gap-3">
+						<div className="p-2 bg-blue-600 rounded-lg text-white">
+							<UserPlus className="w-5 h-5" />
+						</div>
+						<div>
+							<h3 className="font-black uppercase text-blue-900 text-sm">NOVO CLIENTE</h3>
+							<p className="text-xs text-blue-600">Este é um cliente novo. Após criar o cadastro, o saldo estará disponível em futuras transações.</p>
+						</div>
+					</div>
+				</div>
+			)}
 
 			<div className="relative max-w-md mx-auto">
 				<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
@@ -603,7 +821,7 @@ function RedemptionStep({
 					}}
 				/>
 			</div>
-			
+
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
 				{helpers.map((h) => (
 					<Button
@@ -632,11 +850,7 @@ function RedemptionStep({
 						<AlertTriangle className="w-4 h-4" />
 						<p className="text-xs font-medium text-center italic">Oops, saldo insuficiente para este resgate :(</p>
 					</div>
-					<button
-						type="button"
-						onClick={() => onAmountChange(available)}
-						className="px-2 py-1 rounded-xl bg-red-600 text-white text-xs font-medium"
-					>
+					<button type="button" onClick={() => onAmountChange(available)} className="px-2 py-1 rounded-xl bg-red-600 text-white text-xs font-medium">
 						USAR SALDO DISPONÍVEL
 					</button>
 				</div>
@@ -646,11 +860,7 @@ function RedemptionStep({
 						<AlertTriangle className="w-4 h-4" />
 						<p className="text-xs font-medium text-center italic">O valor do resgate não pode ser maior que o limite permitido.</p>
 					</div>
-					<button
-						type="button"
-						onClick={() => onAmountChange(maxAllowed)}
-						className="px-2 py-1 rounded-xl bg-red-600 text-white text-xs font-medium"
-					>
+					<button type="button" onClick={() => onAmountChange(maxAllowed)} className="px-2 py-1 rounded-xl bg-red-600 text-white text-xs font-medium">
 						USAR VALOR MÁXIMO
 					</button>
 				</div>

@@ -31,7 +31,7 @@ const RedemptionInputSchema = z.object({
 });
 export type TCreateCashbackProgramRedemptionInput = z.infer<typeof RedemptionInputSchema>;
 type RedemptionResponse = {
-	data: {
+	data: { 
 		transactionId: string;
 		newBalance: number;
 		newResgatadoTotal: number;
@@ -51,7 +51,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			throw new createHttpError.NotFound("Organização não encontrada.");
 		}
 
-		// 1. Validate operator
+		// 2. Validate operator
 		const operator = await tx.query.sellers.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
 			with: {
@@ -63,7 +63,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			throw new createHttpError.Unauthorized("Operador não encontrado ou não pertence a esta organização.");
 		}
 
-		// 2. Get cashback program
+		// 3. Get cashback program
 		const program = await tx.query.cashbackPrograms.findFirst({
 			where: eq(cashbackPrograms.organizacaoId, input.orgId),
 		});
@@ -72,7 +72,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 		}
 
-		// 2.1 Validate redemption limit
+		// 4. Validate redemption limit
 		if (program.resgateLimiteTipo && program.resgateLimiteValor !== null) {
 			let maxAllowedRedemption: number;
 
@@ -94,7 +94,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			}
 		}
 
-		// 3. Get balance
+		// 5. Get balance
 		const balance = await tx.query.cashbackProgramBalances.findFirst({
 			where: and(eq(cashbackProgramBalances.clienteId, input.clientId), eq(cashbackProgramBalances.organizacaoId, input.orgId)),
 		});
@@ -107,12 +107,12 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			throw new createHttpError.BadRequest("Saldo insuficiente.");
 		}
 
-		// 4. Calculate new balances
+		// 6. Calculate new balances
 		const previousBalance = balance.saldoValorDisponivel;
 		const newBalance = previousBalance - input.redemptionValue;
 		const newResgatadoTotal = balance.saldoValorResgatadoTotal + input.redemptionValue;
 
-		// 5. Create redemption transaction
+		// 7. Create redemption transaction
 		const transactionResult = await tx
 			.insert(cashbackProgramTransactions)
 			.values({
@@ -138,7 +138,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			throw new createHttpError.InternalServerError("Erro ao criar transação de resgate.");
 		}
 
-		// 6. Update balance
+		// 8. Update balance
 		await tx
 			.update(cashbackProgramBalances)
 			.set({

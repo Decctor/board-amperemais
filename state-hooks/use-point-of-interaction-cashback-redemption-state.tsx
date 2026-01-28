@@ -19,6 +19,12 @@ export const PointOfInteractionCashbackRedemptionStateSchema = z.object({
 			required_error: "Nome do cliente não informado.",
 			invalid_type_error: "Tipo não válido para nome do cliente.",
 		}),
+		cpfCnpj: z
+			.string({
+				invalid_type_error: "Tipo não válido para CPF/CNPJ.",
+			})
+			.optional()
+			.nullable(),
 		telefone: z.string({
 			required_error: "Telefone não informado.",
 			invalid_type_error: "Tipo não válido para telefone.",
@@ -48,7 +54,7 @@ export type TPointOfInteractionCashbackRedemptionState = z.infer<typeof PointOfI
 export function usePointOfInteractionCashbackRedemptionState(initialOrgId: string) {
 	const [state, setState] = useState<TPointOfInteractionCashbackRedemptionState>({
 		orgId: initialOrgId,
-		client: { id: null, nome: "", telefone: "" },
+		client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 		saleValue: 0,
 		redemptionValue: 0,
 		operatorIdentifier: "",
@@ -85,7 +91,7 @@ export function usePointOfInteractionCashbackRedemptionState(initialOrgId: strin
 	const resetState = useCallback(() => {
 		setState({
 			orgId: initialOrgId,
-			client: { id: null, nome: "", telefone: "" },
+			client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 			saleValue: 0,
 			redemptionValue: 0,
 			operatorIdentifier: "",
