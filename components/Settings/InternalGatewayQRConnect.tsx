@@ -1,21 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
-import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Loader2, QrCode, RefreshCw, Smartphone } from "lucide-react";
+import type { TGetInternalGatewayStatusOutput } from "@/app/api/whatsapp-connections/internal-gateway/[connectionId]/status/route";
+import type { TInitializeInternalGatewayInput, TInitializeInternalGatewayOutput } from "@/app/api/whatsapp-connections/internal-gateway/route";
+import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoadingButton } from "@/components/loading-button";
 import { getErrorMessage } from "@/lib/errors";
-import type {
-	TInitializeInternalGatewayInput,
-	TInitializeInternalGatewayOutput,
-} from "@/app/api/whatsapp-connections/internal-gateway/route";
-import type { TGetInternalGatewayStatusOutput } from "@/app/api/whatsapp-connections/internal-gateway/[connectionId]/status/route";
+import { initializeInternalGatewayConnection } from "@/lib/mutations/internal-gateway";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import { ArrowLeft, CheckCircle2, Loader2, QrCode, RefreshCw, Smartphone } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import TextInput from "../Inputs/TextInput";
 
 type Step = "form" | "qr" | "success";
 
@@ -33,14 +32,8 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 	const [qrCode, setQrCode] = useState<string | null>(null);
 
 	// Initialize connection mutation
-	const initializeMutation = useMutation({
-		mutationFn: async (input: TInitializeInternalGatewayInput) => {
-			const { data } = await axios.post<TInitializeInternalGatewayOutput>(
-				"/api/whatsapp-connections/internal-gateway",
-				input,
-			);
-			return data;
-		},
+	const { mutate: initializeInternalGatewayConnectionMutation, isPending: isInitializingInternalGatewayConnection } = useMutation({
+		mutationFn: initializeInternalGatewayConnection,
 		onSuccess: (data) => {
 			setConnectionId(data.data.connectionId);
 			setQrCode(data.data.qrCode || null);
@@ -57,9 +50,7 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 		queryKey: ["internal-gateway-status", connectionId],
 		queryFn: async () => {
 			if (!connectionId) throw new Error("No connection ID");
-			const { data } = await axios.get<TGetInternalGatewayStatusOutput>(
-				`/api/whatsapp-connections/internal-gateway/${connectionId}/status`,
-			);
+			const { data } = await axios.get<TGetInternalGatewayStatusOutput>(`/api/whatsapp-connections/internal-gateway/${connectionId}/status`);
 			return data;
 		},
 		enabled: !!connectionId && step === "qr",
@@ -91,18 +82,6 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 		}
 	}, [statusQuery.data, qrCode, queryClient]);
 
-	const handleSubmit = useCallback(
-		(e: React.FormEvent) => {
-			e.preventDefault();
-			if (!phoneName.trim() || !phoneNumber.trim()) {
-				toast.error("Preencha todos os campos");
-				return;
-			}
-			initializeMutation.mutate({ phoneName, phoneNumber });
-		},
-		[phoneName, phoneNumber, initializeMutation],
-	);
-
 	const handleSuccessClose = useCallback(() => {
 		onSuccess();
 	}, [onSuccess]);
@@ -118,43 +97,35 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 						</Button>
 						<div>
 							<CardTitle className="text-base">Conectar via QR Code</CardTitle>
-							<CardDescription className="text-xs">
-								Preencha as informações do telefone
-							</CardDescription>
+							<CardDescription className="text-xs">Preencha as informações do telefone</CardDescription>
 						</div>
 					</div>
 				</CardHeader>
 				<CardContent>
-					<form onSubmit={handleSubmit} className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="phoneName">Nome do telefone</Label>
-							<Input
-								id="phoneName"
-								placeholder="Ex: WhatsApp Principal"
-								value={phoneName}
-								onChange={(e) => setPhoneName(e.target.value)}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="phoneNumber">Número do telefone</Label>
-							<Input
-								id="phoneNumber"
-								placeholder="Ex: (11) 99999-9999"
-								value={phoneNumber}
-								onChange={(e) => setPhoneNumber(e.target.value)}
-							/>
-							<p className="text-xs text-muted-foreground">
-								Digite o número que será conectado
-							</p>
-						</div>
+					<div className="w-full flex flex-col gap-1.5">
+						<TextInput
+							label="Nome do telefone"
+							placeholder="Preencha o nome a ser dado à conexão..."
+							value={phoneName}
+							handleChange={(value) => setPhoneName(value)}
+							disabled={isInitializingInternalGatewayConnection}
+						/>
+						<TextInput
+							label="Número do telefone"
+							placeholder="Preencha o número do telefone a ser conectado..."
+							value={phoneNumber}
+							handleChange={(value) => setPhoneNumber(value)}
+							disabled={isInitializingInternalGatewayConnection}
+						/>
 						<LoadingButton
-							type="submit"
 							className="w-full"
-							loading={initializeMutation.isPending}
+							loading={isInitializingInternalGatewayConnection}
+							disabled={isInitializingInternalGatewayConnection || !phoneName.trim() || !phoneNumber.trim()}
+							onClick={() => initializeInternalGatewayConnectionMutation({ phoneName, phoneNumber })}
 						>
-							Gerar QR Code
+							GERAR QR CODE
 						</LoadingButton>
-					</form>
+					</div>
 				</CardContent>
 			</Card>
 		);
@@ -171,9 +142,7 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 						</Button>
 						<div>
 							<CardTitle className="text-base">Escaneie o QR Code</CardTitle>
-							<CardDescription className="text-xs">
-								Abra o WhatsApp no seu celular e escaneie
-							</CardDescription>
+							<CardDescription className="text-xs">Abra o WhatsApp no seu celular e escaneie</CardDescription>
 						</div>
 					</div>
 				</CardHeader>
@@ -181,11 +150,7 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 					{qrCode ? (
 						<div className="relative">
 							<div className="rounded-lg border bg-white p-4">
-								<img
-									src={qrCode}
-									alt="QR Code para conectar WhatsApp"
-									className="h-64 w-64"
-								/>
+								<img src={qrCode} alt="QR Code para conectar WhatsApp" className="h-64 w-64" />
 							</div>
 							{statusQuery.isFetching && (
 								<div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-lg">
@@ -212,12 +177,7 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 						<p>5. Aponte seu celular para esta tela</p>
 					</div>
 
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => statusQuery.refetch()}
-						disabled={statusQuery.isFetching}
-					>
+					<Button variant="outline" size="sm" onClick={() => statusQuery.refetch()} disabled={statusQuery.isFetching}>
 						<RefreshCw className={`h-4 w-4 mr-2 ${statusQuery.isFetching ? "animate-spin" : ""}`} />
 						Atualizar QR Code
 					</Button>
@@ -235,9 +195,7 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 				</div>
 				<div className="text-center">
 					<h3 className="font-semibold">Conexão estabelecida!</h3>
-					<p className="text-sm text-muted-foreground">
-						Seu WhatsApp foi conectado com sucesso.
-					</p>
+					<p className="text-sm text-muted-foreground">Seu WhatsApp foi conectado com sucesso.</p>
 				</div>
 				<Button onClick={handleSuccessClose}>Concluir</Button>
 			</CardContent>

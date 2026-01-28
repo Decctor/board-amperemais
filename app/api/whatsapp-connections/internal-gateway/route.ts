@@ -37,56 +37,59 @@ async function initializeInternalGatewayConnection({
 		throw new createHttpError.Unauthorized("Usuário não autenticado.");
 	}
 
-	// Check if organization already has a connection
-	const existingConnection = await db.query.whatsappConnections.findFirst({
-		where: (fields, { eq }) => eq(fields.organizacaoId, organizacaoId),
+	// Use a transaction to prevent race conditions
+	return await db.transaction(async (tx) => {
+		// Check if organization already has a connection
+		const existingConnection = await tx.query.whatsappConnections.findFirst({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organizacaoId),
+		});
+
+		if (existingConnection) {
+			throw new createHttpError.BadRequest("Sua organização já possui uma conexão WhatsApp ativa. Desconecte a conexão atual antes de criar uma nova.");
+		}
+
+		// Generate session ID
+		const sessionId = generateSessionId(organizacaoId);
+
+		// Initialize session with gateway
+		const gatewayResponse = await initSession(sessionId);
+
+		// Create whatsappConnections record
+		const [newConnection] = await tx
+			.insert(whatsappConnections)
+			.values({
+				organizacaoId,
+				tipoConexao: "INTERNAL_GATEWAY",
+				gatewaySessaoId: sessionId,
+				gatewayStatus: gatewayResponse.status,
+				autorId: userId,
+			})
+			.returning({ id: whatsappConnections.id });
+
+		// Create whatsappConnectionPhones record
+		const [newPhone] = await tx
+			.insert(whatsappConnectionPhones)
+			.values({
+				conexaoId: newConnection.id,
+				nome: input.phoneName,
+				numero: input.phoneNumber,
+				// Meta fields left null for Internal Gateway
+				whatsappBusinessAccountId: null,
+				whatsappTelefoneId: null,
+			})
+			.returning({ id: whatsappConnectionPhones.id });
+
+		return {
+			data: {
+				connectionId: newConnection.id,
+				phoneId: newPhone.id,
+				sessionId,
+				qrCode: gatewayResponse.qrCode,
+				status: gatewayResponse.status,
+			},
+			message: "Conexão iniciada. Escaneie o QR code com seu WhatsApp.",
+		};
 	});
-
-	if (existingConnection) {
-		throw new createHttpError.BadRequest("Sua organização já possui uma conexão WhatsApp ativa. Desconecte a conexão atual antes de criar uma nova.");
-	}
-
-	// Generate session ID
-	const sessionId = generateSessionId(organizacaoId);
-
-	// Initialize session with gateway
-	const gatewayResponse = await initSession(sessionId);
-
-	// Create whatsappConnections record
-	const [newConnection] = await db
-		.insert(whatsappConnections)
-		.values({
-			organizacaoId,
-			tipoConexao: "INTERNAL_GATEWAY",
-			gatewaySessaoId: sessionId,
-			gatewayStatus: gatewayResponse.status,
-			autorId: userId,
-		})
-		.returning({ id: whatsappConnections.id });
-
-	// Create whatsappConnectionPhones record
-	const [newPhone] = await db
-		.insert(whatsappConnectionPhones)
-		.values({
-			conexaoId: newConnection.id,
-			nome: input.phoneName,
-			numero: input.phoneNumber,
-			// Meta fields left null for Internal Gateway
-			whatsappBusinessAccountId: null,
-			whatsappTelefoneId: null,
-		})
-		.returning({ id: whatsappConnectionPhones.id });
-
-	return {
-		data: {
-			connectionId: newConnection.id,
-			phoneId: newPhone.id,
-			sessionId,
-			qrCode: gatewayResponse.qrCode,
-			status: gatewayResponse.status,
-		},
-		message: "Conexão iniciada. Escaneie o QR code com seu WhatsApp.",
-	};
 }
 
 export type TInitializeInternalGatewayOutput = Awaited<ReturnType<typeof initializeInternalGatewayConnection>>;

@@ -17,6 +17,7 @@ async function getConnectionStatus({
 	session: TAuthUserSession;
 	connectionId: string;
 }) {
+	console.log("[INFO] [GET CONNECTION STATUS] Getting connection status for connection ID:", connectionId);
 	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
