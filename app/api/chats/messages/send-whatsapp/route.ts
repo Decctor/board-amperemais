@@ -3,7 +3,8 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { SUPABASE_STORAGE_CHAT_MEDIA_BUCKET, getChatMediaUrl } from "@/lib/files-storage/chat-media";
 import { sendBasicWhatsappMessage, sendMediaWhatsappMessage, sendTemplateWhatsappMessage, uploadMediaToWhatsapp } from "@/lib/whatsapp";
-import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
+import { sendMessage as sendInternalGatewayMessage } from "@/lib/whatsapp/internal-gateway";
+import { formatPhoneAsWhatsappId, formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats } from "@/services/drizzle/schema/chats";
 import { supabaseClient } from "@/services/supabase";
@@ -66,6 +67,9 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 			whatsappConexao: {
 				columns: {
 					token: true,
+					tipoConexao: true,
+					gatewaySessaoId: true,
+					gatewayStatus: true,
 				},
 			},
 		},
@@ -75,27 +79,60 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 		throw new createHttpError.NotFound("Chat não encontrado.");
 	}
 
-	if (!chat.whatsappConexao?.token) {
+	if (!chat.whatsappConexao) {
 		throw new createHttpError.BadRequest("Conexão WhatsApp não configurada.");
+	}
+
+	const connectionType = chat.whatsappConexao.tipoConexao;
+
+	// Validate connection based on type
+	if (connectionType === "META_CLOUD_API" && !chat.whatsappConexao.token) {
+		throw new createHttpError.BadRequest("Token do WhatsApp não configurado.");
+	}
+
+	if (connectionType === "INTERNAL_GATEWAY") {
+		if (!chat.whatsappConexao.gatewaySessaoId) {
+			throw new createHttpError.BadRequest("Sessão do Gateway Interno não configurada.");
+		}
+		if (chat.whatsappConexao.gatewayStatus !== "connected") {
+			throw new createHttpError.BadRequest("Gateway Interno não está conectado. Reconecte escaneando o QR code.");
+		}
 	}
 
 	if (!chat.cliente?.telefone) {
 		throw new createHttpError.BadRequest("Cliente não possui telefone cadastrado.");
 	}
 
-	// Check if conversation is open (24h window)
-	if (chat.status !== "ABERTA" && input.type !== "template") {
+	// Check if conversation is open (24h window) - only applies to Meta Cloud API
+	if (connectionType === "META_CLOUD_API" && chat.status !== "ABERTA" && input.type !== "template") {
 		throw new createHttpError.BadRequest("Conversa expirada. Envie um template para reabrir.");
 	}
 
 	const whatsappToken = chat.whatsappConexao.token;
+	const gatewaySessaoId = chat.whatsappConexao.gatewaySessaoId;
 	const clientPhone = chat.cliente.telefone;
 	const fromPhoneNumberId = chat.whatsappTelefoneId;
 
 	let whatsappMessageId: string | null = null;
 
 	try {
-		if (input.type === "text") {
+		// Internal Gateway path
+		if (connectionType === "INTERNAL_GATEWAY") {
+			// Block media and templates for Internal Gateway
+			if (input.type !== "text") {
+				throw new createHttpError.BadRequest("Mídia e templates não são suportados para o Gateway Interno. Apenas mensagens de texto são permitidas.");
+			}
+
+			if (!message.conteudoTexto) {
+				throw new createHttpError.BadRequest("Mensagem não possui conteúdo de texto.");
+			}
+
+			const response = await sendInternalGatewayMessage(gatewaySessaoId!, formatPhoneForInternalGateway(clientPhone), message.conteudoTexto);
+
+			whatsappMessageId = response.messageId || null;
+		}
+		// Meta Cloud API path
+		else if (input.type === "text") {
 			// Send text message
 			if (!message.conteudoTexto) {
 				throw new createHttpError.BadRequest("Mensagem não possui conteúdo de texto.");
@@ -105,7 +142,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 				fromPhoneNumberId,
 				toPhoneNumber: formatPhoneAsWhatsappId(clientPhone),
 				content: message.conteudoTexto,
-				whatsappToken,
+				whatsappToken: whatsappToken!,
 			});
 
 			whatsappMessageId = response.whatsappMessageId;
@@ -135,7 +172,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 				fileBuffer,
 				mimeType: input.mimeType,
 				filename: input.filename || "arquivo",
-				whatsappToken,
+				whatsappToken: whatsappToken!,
 			});
 
 			// Determine WhatsApp media type
@@ -154,7 +191,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 				mediaType: whatsappMediaType,
 				caption: input.caption,
 				filename: input.filename,
-				whatsappToken,
+				whatsappToken: whatsappToken!,
 			});
 
 			whatsappMessageId = response.whatsappMessageId;
@@ -163,7 +200,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 			const response = await sendTemplateWhatsappMessage({
 				fromPhoneNumberId,
 				templatePayload: input.templatePayload,
-				whatsappToken,
+				whatsappToken: whatsappToken!,
 			});
 
 			whatsappMessageId = response.whatsappMessageId;

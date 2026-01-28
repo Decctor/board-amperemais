@@ -1,5 +1,5 @@
 "use client";
-import SettingsMetaOAuth from "@/components/Settings/SettingsMetaOAuth";
+import SettingsWhatsAppConnection from "@/components/Settings/SettingsWhatsAppConnection";
 import SettingsOrg from "@/components/Settings/SettingsOrg";
 import SettingsSalesPromoCampaigns from "@/components/Settings/SettingsSalesPromoCampaigns";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
@@ -49,7 +49,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						onClick={() => setView("meta-oauth")}
 					>
 						<Key className="w-4 h-4 min-w-4 min-h-4" />
-						CONEXÃO META
+						CONEXAO WHATSAPP
 					</Button>
 					<Button
 						variant={view === "whatsapp-templates" ? "secondary" : "ghost"}
@@ -90,7 +90,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 				</div>
 			</div>
 			{!view || view === "users" ? membership.permissoes.usuarios.visualizar ? <SettingsUsers user={user} membership={membership} /> : <UnauthorizedPage /> : null}
-			{view === "meta-oauth" ? <SettingsMetaOAuth user={user} /> : null}
+			{view === "meta-oauth" ? <SettingsWhatsAppConnection user={user} /> : null}
 			{view === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} /> : null}
 			{view === "segments" ? <SettingsSegments user={user} /> : null}
 			{view === "sales-promo-campaigns" ? <SettingsSalesPromoCampaigns user={user} /> : null}

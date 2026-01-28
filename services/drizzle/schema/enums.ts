@@ -61,3 +61,5 @@ export const chatMessageStatusEnum = pgEnum("chat_message_status", ["CANCELADO",
 export const chatMessageWhatsappStatusEnum = pgEnum("chat_message_whatsapp_status", ["PENDENTE", "ENVIADO", "ENTREGUE", "FALHOU"]);
 
 export const conversionTypeEnum = pgEnum("conversion_type", ["AQUISICAO", "REATIVACAO", "ACELERACAO", "REGULAR", "ATRASADA"]);
+
+export const whatsappConnectionTypeEnum = pgEnum("whatsapp_connection_type", ["META_CLOUD_API", "INTERNAL_GATEWAY"]);

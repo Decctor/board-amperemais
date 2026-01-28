@@ -206,7 +206,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 	}
 
 	const organizacaoId = connectionPhone.conexao.organizacaoId;
-	const whatsappToken = connectionPhone.conexao.token;
+	const whatsappToken = connectionPhone.conexao.token!; // Meta Cloud API connections always have token
 	const whatsappConexaoId = connectionPhone.conexaoId;
 	const whatsappConexaoTelefoneId = connectionPhone.id;
 	const allowsAIService = connectionPhone.permitirAtendimentoIa;
@@ -415,7 +415,7 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 	}
 
 	const organizacaoId = connectionPhone.conexao.organizacaoId;
-	const whatsappToken = connectionPhone.conexao.token;
+	const whatsappToken = connectionPhone.conexao.token!; // Meta Cloud API connections always have token
 	const whatsappConexaoId = connectionPhone.conexaoId;
 	const whatsappConexaoTelefoneId = connectionPhone.id;
 

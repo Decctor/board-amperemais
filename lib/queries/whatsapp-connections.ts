@@ -17,6 +17,17 @@ export function useWhatsappConnection() {
 		...useQuery({
 			queryKey: ["whatsapp-connection"],
 			queryFn: fetchWhatsappConnection,
+			// Poll for status updates when Internal Gateway is not connected
+			refetchInterval: (query) => {
+				const data = query.state.data;
+				if (
+					data?.tipoConexao === "INTERNAL_GATEWAY" &&
+					data?.gatewayStatus !== "connected"
+				) {
+					return 5000; // Poll every 5 seconds
+				}
+				return false; // No polling
+			},
 		}),
 		queryKey: ["whatsapp-connection"],
 	};
