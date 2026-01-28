@@ -50,9 +50,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		return res.status(405).json({ error: "Method not allowed" });
 	}
 
-	// Verify API secret
-	const authHeader = req.headers.authorization;
-	if (!authHeader || authHeader !== `Bearer ${API_SECRET}`) {
+	const authApiSecret = req.query.apiSecret;
+	if (!authApiSecret || authApiSecret !== API_SECRET) {
 		console.warn("[INTERNAL_WHATSAPP_WEBHOOK] Unauthorized request");
 		return res.status(401).json({ error: "Unauthorized" });
 	}
