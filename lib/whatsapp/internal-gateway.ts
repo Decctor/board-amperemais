@@ -28,6 +28,143 @@ export type SendMessageResponse = {
 	error?: string;
 };
 
+type TemplateParameter =
+	| {
+			type: "text";
+			text: string;
+	  }
+	| {
+			type: "image";
+			image: {
+				link: string;
+			};
+	  }
+	| {
+			type: "video";
+			video: {
+				link: string;
+			};
+	  }
+	| {
+			type: "document";
+			document: {
+				link: string;
+				filename?: string;
+			};
+	  }
+	| {
+			type: string;
+	  };
+
+type TemplateComponent = {
+	type: string;
+	parameters?: TemplateParameter[];
+	text?: string;
+	buttons?: Array<{ type?: string; text?: string }>;
+};
+
+export type TemplatePayload = {
+	messaging_product: string;
+	to: string;
+	type: "template";
+	template: {
+		name: string;
+		language: { code: string };
+		components?: TemplateComponent[];
+	};
+};
+
+export type SendMessageContent =
+	| {
+			type: "text";
+			text: string;
+	  }
+	| {
+			type: "image" | "video" | "audio" | "document" | "sticker";
+			text?: string;
+			mediaUrl: string;
+			mediaFileName?: string;
+			mediaMimeType?: string;
+			mediaIsVoiceNote?: boolean;
+	  };
+
+export type SendMessageInput = {
+	sessionId: string;
+	to: string;
+	content: SendMessageContent;
+};
+
+export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePayload, options?: { fallbackText?: string }): SendMessageContent {
+	const components = templatePayload.template.components ?? [];
+	const textParts: string[] = [];
+	let media:
+		| {
+				type: "image" | "video" | "document";
+				url: string;
+				filename?: string;
+		  }
+		| undefined;
+
+	const isTextParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "text" }> =>
+		param.type === "text" && typeof (param as { text?: unknown }).text === "string";
+	const isImageParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "image" }> => {
+		const image = (param as { image?: { link?: unknown } }).image;
+		return param.type === "image" && typeof image?.link === "string";
+	};
+	const isVideoParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "video" }> => {
+		const video = (param as { video?: { link?: unknown } }).video;
+		return param.type === "video" && typeof video?.link === "string";
+	};
+	const isDocumentParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "document" }> => {
+		const document = (param as { document?: { link?: unknown } }).document;
+		return param.type === "document" && typeof document?.link === "string";
+	};
+
+	for (const component of components) {
+		if (component.text) {
+			textParts.push(component.text);
+		}
+
+		if (component.buttons?.length) {
+			for (const button of component.buttons) {
+				if (button.text) {
+					textParts.push(button.text);
+				}
+			}
+		}
+
+		if (!component.parameters?.length) continue;
+		for (const param of component.parameters) {
+			if (isTextParam(param)) {
+				textParts.push(param.text);
+			} else if (!media && isImageParam(param)) {
+				media = { type: "image", url: param.image.link };
+			} else if (!media && isVideoParam(param)) {
+				media = { type: "video", url: param.video.link };
+			} else if (!media && isDocumentParam(param)) {
+				media = { type: "document", url: param.document.link, filename: param.document.filename };
+			}
+		}
+	}
+
+	const text = textParts.filter(Boolean).join("\n").trim();
+	const fallbackText = options?.fallbackText ?? templatePayload.template.name ?? "";
+
+	if (media) {
+		return {
+			type: media.type,
+			text: text || fallbackText || undefined,
+			mediaUrl: media.url,
+			mediaFileName: media.filename,
+		};
+	}
+
+	return {
+		type: "text",
+		text: text || fallbackText,
+	};
+}
+
 export type HealthCheckResponse = {
 	status: "ok" | "error";
 	version?: string;
@@ -66,11 +203,7 @@ export async function initSession(sessionId: string): Promise<InitSessionRespons
 	try {
 		console.log("[INTERNAL_GATEWAY] Initializing session:", sessionId);
 
-		const response = await axios.post<InitSessionResponse>(
-			`${GATEWAY_URL}/sessions/init`,
-			{ sessionId },
-			{ headers: getGatewayHeaders() },
-		);
+		const response = await axios.post<InitSessionResponse>(`${GATEWAY_URL}/sessions/init`, { sessionId }, { headers: getGatewayHeaders() });
 
 		console.log("[INTERNAL_GATEWAY] Session initialized:", response.data);
 		return response.data;
@@ -78,9 +211,7 @@ export async function initSession(sessionId: string): Promise<InitSessionRespons
 		console.error("[INTERNAL_GATEWAY] Error initializing session:", error);
 		if (axios.isAxiosError(error)) {
 			console.error("[INTERNAL_GATEWAY] Response:", error.response?.data);
-			throw new createHttpError.InternalServerError(
-				error.response?.data?.error || "Erro ao inicializar sessão do WhatsApp",
-			);
+			throw new createHttpError.InternalServerError(error.response?.data?.error || "Erro ao inicializar sessão do WhatsApp");
 		}
 		throw new createHttpError.InternalServerError("Erro ao conectar com o Gateway interno");
 	}
@@ -112,9 +243,7 @@ export async function getSessionStatus(sessionId: string): Promise<SessionInfo> 
 				};
 			}
 			console.error("[INTERNAL_GATEWAY] Response:", error.response?.data);
-			throw new createHttpError.InternalServerError(
-				error.response?.data?.error || "Erro ao obter status da sessão",
-			);
+			throw new createHttpError.InternalServerError(error.response?.data?.error || "Erro ao obter status da sessão");
 		}
 		throw new createHttpError.InternalServerError("Erro ao conectar com o Gateway interno");
 	}
@@ -143,9 +272,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
 				return;
 			}
 			console.error("[INTERNAL_GATEWAY] Response:", error.response?.data);
-			throw new createHttpError.InternalServerError(
-				error.response?.data?.error || "Erro ao desconectar sessão",
-			);
+			throw new createHttpError.InternalServerError(error.response?.data?.error || "Erro ao desconectar sessão");
 		}
 		throw new createHttpError.InternalServerError("Erro ao conectar com o Gateway interno");
 	}
@@ -154,22 +281,19 @@ export async function deleteSession(sessionId: string): Promise<void> {
 /**
  * Send a text message via Internal Gateway
  */
-export async function sendMessage(
-	sessionId: string,
-	to: string,
-	message: string,
-): Promise<SendMessageResponse> {
+export async function sendMessage(sessionId: string, to: string, content: SendMessageContent): Promise<SendMessageResponse> {
 	validateGatewayConfig();
 
 	try {
-		console.log("[INTERNAL_GATEWAY] Sending message:", { sessionId, to, messageLength: message.length });
+		const messageLength = content.type === "text" ? content.text.length : content.text?.length;
+		console.log("[INTERNAL_GATEWAY] Sending message:", { sessionId, to, messageLength });
 
 		const response = await axios.post<SendMessageResponse>(
 			`${GATEWAY_URL}/sessions/${sessionId}/messages`,
 			{
+				sessionId,
 				to,
-				type: "text",
-				text: message,
+				content,
 			},
 			{ headers: getGatewayHeaders() },
 		);
@@ -186,14 +310,10 @@ export async function sendMessage(
 				throw new createHttpError.BadRequest("Sessão do WhatsApp não encontrada ou desconectada");
 			}
 			if (error.response?.status === 400) {
-				throw new createHttpError.BadRequest(
-					error.response?.data?.error || "Erro ao enviar mensagem",
-				);
+				throw new createHttpError.BadRequest(error.response?.data?.error || "Erro ao enviar mensagem");
 			}
 
-			throw new createHttpError.InternalServerError(
-				error.response?.data?.error || "Erro ao enviar mensagem via Gateway",
-			);
+			throw new createHttpError.InternalServerError(error.response?.data?.error || "Erro ao enviar mensagem via Gateway");
 		}
 		throw new createHttpError.InternalServerError("Erro ao conectar com o Gateway interno");
 	}
@@ -221,9 +341,7 @@ export async function healthCheck(): Promise<HealthCheckResponse> {
 /**
  * Download media from Internal Gateway
  */
-export async function downloadMedia(
-	mediaUrl: string,
-): Promise<{ buffer: Buffer; mimeType: string }> {
+export async function downloadMedia(mediaUrl: string): Promise<{ buffer: Buffer; mimeType: string }> {
 	validateGatewayConfig();
 
 	try {

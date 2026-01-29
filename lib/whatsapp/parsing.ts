@@ -1,6 +1,6 @@
 import { formatWhatsappIdAsPhone } from "./utils";
 
-type WhatsAppMessageStatus = "sent" | "delivered" | "read" | "failed";
+type WhatsAppMessageStatus = "pending" | "sent" | "delivered" | "read" | "failed";
 
 type AppMessageStatus = "ENVIADO" | "RECEBIDO" | "LIDO";
 type AppWhatsappStatus = "PENDENTE" | "ENVIADO" | "ENTREGUE" | "FALHOU";
@@ -12,6 +12,11 @@ type StatusUpdateResult = {
 
 export function mapWhatsAppStatusToAppStatus(whatsappStatus: WhatsAppMessageStatus): StatusUpdateResult {
 	switch (whatsappStatus) {
+		case "pending":
+			return {
+				status: "ENVIADO",
+				whatsappStatus: "PENDENTE",
+			};
 		case "sent":
 			return {
 				status: "ENVIADO",

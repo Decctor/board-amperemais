@@ -3,6 +3,7 @@ import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProce
 import { uploadChatMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { downloadMedia, sendMessage as sendInternalGatewayMessage } from "@/lib/whatsapp/internal-gateway";
+import { mapWhatsAppStatusToAppStatus } from "@/lib/whatsapp/parsing";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import { db } from "@/services/drizzle";
 import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
@@ -14,35 +15,59 @@ import type { NextApiRequest, NextApiResponse } from "next";
 const API_SECRET = process.env.INTERNAL_WHATSAPP_GATEWAY_API_SECRET;
 const AI_RESPONSE_DELAY_MS = 5000;
 
-type WebhookEventType = "message.received" | "connection.update" | "message.sent" | "message.failed";
+type WebhookEventType = "message.received" | "connection.update" | "message.updated";
+type WebhookMediaType = "image" | "video" | "audio" | "document" | "sticker" | "unknown";
 
-type IncomingMediaData = {
-	url: string;
-	mimeType: string;
-	filename?: string;
+type WebhookMessageReceivedData = {
+	whatsappMessageId: string;
+	author: {
+		id: string;
+		name: string;
+		phoneNumber: string;
+	};
+	content: {
+		text: string;
+		mediaType: WebhookMediaType;
+		mediaUrl?: string;
+		mediaId?: string;
+		mediaSize?: number;
+	};
+	date: string;
+	echo: boolean;
 };
 
-type WebhookBody = {
-	event: WebhookEventType;
-	sessionId: string;
-	timestamp: string;
-	data: {
-		// For message.received
-		from?: string;
-		messageId?: string;
-		type?: "text" | "image" | "video" | "audio" | "document";
-		text?: string;
-		caption?: string;
-		media?: IncomingMediaData;
-		pushName?: string;
-		// For connection.update
-		status?: "connected" | "disconnected" | "qr";
-		qrCode?: string;
-		// For message.sent/failed
-		to?: string;
-		error?: string;
+type WebhookConnectionUpdateData = {
+	status: "connected" | "disconnected" | "connecting" | "qr";
+	qrCode?: string | null;
+};
+
+type WebhookMessageUpdatedData = {
+	whatsappMessageId: string;
+	status: "pending" | "sent" | "delivered" | "read" | "failed";
+	author: {
+		id: string;
+		name: string;
+		phoneNumber: string;
 	};
 };
+
+type WebhookBody =
+	| {
+			event: "message.received";
+			sessionId: string;
+			data: WebhookMessageReceivedData;
+	  }
+	| {
+			event: "connection.update";
+			sessionId: string;
+			timestamp: string;
+			data: WebhookConnectionUpdateData;
+	  }
+	| {
+			event: "message.updated";
+			sessionId: string;
+			data: WebhookMessageUpdatedData;
+	  };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 	// Only accept POST requests
@@ -79,18 +104,13 @@ async function processWebhookAsync(body: WebhookBody): Promise<void> {
 		case "connection.update":
 			await handleConnectionUpdate(body);
 			break;
-		case "message.sent":
-			console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message sent confirmation:", body.data.messageId);
+		case "message.updated":
+			await handleMessageUpdated(body);
 			break;
-		case "message.failed":
-			console.error("[INTERNAL_WHATSAPP_WEBHOOK] Message failed:", body.data.error);
-			break;
-		default:
-			console.log("[INTERNAL_WHATSAPP_WEBHOOK] Unknown event type:", body.event);
 	}
 }
 
-async function handleConnectionUpdate(body: WebhookBody): Promise<void> {
+async function handleConnectionUpdate(body: Extract<WebhookBody, { event: "connection.update" }>): Promise<void> {
 	const { sessionId, data } = body;
 
 	if (!data.status) return;
@@ -126,10 +146,10 @@ async function handleConnectionUpdate(body: WebhookBody): Promise<void> {
 	});
 }
 
-async function handleIncomingMessage(body: WebhookBody): Promise<void> {
+async function handleIncomingMessage(body: Extract<WebhookBody, { event: "message.received" }>): Promise<void> {
 	const { sessionId, data } = body;
 
-	if (!data.from || !data.messageId) {
+	if (!data.author?.phoneNumber || !data.whatsappMessageId) {
 		console.error("[INTERNAL_WHATSAPP_WEBHOOK] Missing required fields in message");
 		return;
 	}
@@ -158,7 +178,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 	const allowsAIService = connectionPhone.permitirAtendimentoIa;
 
 	// Find or create client
-	const phoneBase = formatPhoneAsBase(data.from);
+	const phoneBase = formatPhoneAsBase(data.author.phoneNumber);
 	let clientId: string | null = null;
 
 	const existingClient = await db.query.clients.findFirst({
@@ -172,8 +192,8 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 			.insert(clients)
 			.values({
 				organizacaoId,
-				nome: data.pushName || data.from,
-				telefone: data.from,
+				nome: data.author.name || data.author.phoneNumber,
+				telefone: data.author.phoneNumber,
 				telefoneBase: phoneBase,
 				canalAquisicao: "WHATSAPP",
 			})
@@ -249,15 +269,15 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		fileSize: number;
 	} | null = null;
 
-	if (data.media?.url && data.media?.mimeType) {
+	if (data.content.mediaUrl) {
 		try {
-			const downloaded = await downloadMedia(data.media.url);
+			const downloaded = await downloadMedia(data.content.mediaUrl);
 			const uploaded = await uploadChatMedia({
 				file: downloaded.buffer,
 				organizacaoId,
 				chatId,
-				mimeType: downloaded.mimeType || data.media.mimeType,
-				filename: data.media.filename,
+				mimeType: downloaded.mimeType,
+				filename: undefined,
 			});
 			mediaData = {
 				storageId: uploaded.storageId,
@@ -273,10 +293,10 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 
 	// Determine media type
 	let midiaTipo: "TEXTO" | "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" = "TEXTO";
-	if (data.type === "image") midiaTipo = "IMAGEM";
-	else if (data.type === "document") midiaTipo = "DOCUMENTO";
-	else if (data.type === "video") midiaTipo = "VIDEO";
-	else if (data.type === "audio") midiaTipo = "AUDIO";
+	if (data.content.mediaType === "image" || data.content.mediaType === "sticker") midiaTipo = "IMAGEM";
+	else if (data.content.mediaType === "document") midiaTipo = "DOCUMENTO";
+	else if (data.content.mediaType === "video") midiaTipo = "VIDEO";
+	else if (data.content.mediaType === "audio") midiaTipo = "AUDIO";
 
 	// Insert message
 	const [insertedMessage] = await db
@@ -286,14 +306,15 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 			chatId,
 			autorTipo: "CLIENTE",
 			autorClienteId: clientId,
-			conteudoTexto: data.text || data.caption || "",
+			conteudoTexto: data.content.text || "",
 			conteudoMidiaTipo: midiaTipo,
 			conteudoMidiaUrl: mediaData?.publicUrl,
 			conteudoMidiaStorageId: mediaData?.storageId,
 			conteudoMidiaMimeType: mediaData?.mimeType,
-			conteudoMidiaArquivoTamanho: mediaData?.fileSize,
+			conteudoMidiaArquivoTamanho: mediaData?.fileSize ?? data.content.mediaSize,
+			conteudoMidiaWhatsappId: data.content.mediaId,
 			status: "RECEBIDO",
-			whatsappMessageId: data.messageId,
+			whatsappMessageId: data.whatsappMessageId,
 			whatsappMessageStatus: "ENTREGUE",
 			servicoId: serviceId,
 		})
@@ -306,7 +327,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		.set({
 			ultimaMensagemId: insertedMessage.id,
 			ultimaMensagemData: insertedMessage.dataEnvio,
-			ultimaMensagemConteudoTexto: data.text || data.caption,
+			ultimaMensagemConteudoTexto: data.content.text || "",
 			ultimaMensagemConteudoTipo: midiaTipo,
 			mensagensNaoLidas: existingChat ? existingChat.mensagensNaoLidas + 1 : 1,
 			ultimaInteracaoClienteData: new Date(),
@@ -315,7 +336,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		})
 		.where(eq(chats.id, chatId));
 
-	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message created from:", data.from);
+	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message created from:", data.author.phoneNumber);
 
 	const requiresAiProcessing = serviceResponsibleType === "AI" || (mediaData && midiaTipo !== "TEXTO");
 
@@ -336,6 +357,27 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 				: null,
 		});
 	}
+}
+
+async function handleMessageUpdated(body: Extract<WebhookBody, { event: "message.updated" }>): Promise<void> {
+	const { data } = body;
+
+	if (!data.whatsappMessageId) {
+		console.warn("[INTERNAL_WHATSAPP_WEBHOOK] Missing whatsappMessageId in message update");
+		return;
+	}
+
+	const { status, whatsappStatus } = mapWhatsAppStatusToAppStatus(data.status);
+
+	await db
+		.update(chatMessages)
+		.set({ status, whatsappMessageStatus: whatsappStatus })
+		.where(eq(chatMessages.whatsappMessageId, data.whatsappMessageId));
+
+	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message updated:", {
+		whatsappMessageId: data.whatsappMessageId,
+		status: data.status,
+	});
 }
 
 type THandleAIProcessingParams = {
@@ -527,11 +569,10 @@ async function createAIMessage(
 	// Send via Internal Gateway
 	if (chat.whatsappConexao?.gatewaySessaoId && chat.whatsappConexao?.gatewayStatus === "connected" && chat.cliente?.telefone) {
 		try {
-			const response = await sendInternalGatewayMessage(
-				chat.whatsappConexao.gatewaySessaoId,
-				formatPhoneForInternalGateway(chat.cliente.telefone),
-				content,
-			);
+			const response = await sendInternalGatewayMessage(chat.whatsappConexao.gatewaySessaoId, formatPhoneForInternalGateway(chat.cliente.telefone), {
+				type: "text",
+				text: content,
+			});
 
 			await db
 				.update(chatMessages)
