@@ -110,6 +110,12 @@ function SalesPromoCampaignCard({ salesPromoCampaign, handleClick }: SalesPromoC
 						EDITAR
 					</Button>
 					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+						<Link href={`/sales-campaign/${salesPromoCampaign.id}/magazine`}>
+							<Megaphone className="w-3 min-w-3 h-3 min-h-3" />
+							REVISTA
+						</Link>
+					</Button>
+					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
 						<Link href={`/sales-campaign/${salesPromoCampaign.id}/tags?tagType=PROMO-A4`}>
 							<Megaphone className="w-3 min-w-3 h-3 min-h-3" />
 							ETIQUETAS FULL
