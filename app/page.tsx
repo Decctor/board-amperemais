@@ -3,9 +3,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AppSubscriptionPlans } from "@/config";
+import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import LogoCompleteHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg";
 import {
+	AlertTriangle,
 	ArrowRight,
 	ArrowUp,
 	BadgeDollarSign,
@@ -21,12 +24,14 @@ import {
 	Grid3X3,
 	Handshake,
 	LayoutDashboard,
+	Lightbulb,
 	MessageCircle,
 	MessageSquare,
 	Package,
 	PieChart,
 	Search,
 	ShoppingCart,
+	Sparkles,
 	Star,
 	TrendingUp,
 	Users,
@@ -110,6 +115,7 @@ const TESTIMONIALS = [
 
 export default function LandingPage() {
 	const [rankingTab, setRankingTab] = useState<"sellers" | "partners" | "products">("sellers");
+	const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
 
 	const currentRankingData = rankingTab === "sellers" ? MOCK_SELLERS : rankingTab === "partners" ? MOCK_PARTNERS : MOCK_PRODUCTS;
 
@@ -126,112 +132,116 @@ export default function LandingPage() {
 
 	return (
 		<div className="min-h-screen bg-black text-white antialiased">
-			{/* Banner Topo */}
-			<div className="bg-[#24549C] text-center py-2 px-4 text-sm font-medium text-white">
-				<span>RecompraCRM — Plataforma completa para o varejo </span>
-			</div>
 			{/* Navbar */}
-			<header className="sticky top-0 z-50 bg-black/95 backdrop-blur-sm border-b border-white/10">
+			<header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/5 transition-all duration-300">
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="flex items-center justify-between h-16">
+					<div className="flex items-center justify-between h-20">
 						{/* Logo */}
-						<Link href="/" className="flex items-center gap-3 group">
-							<Image src={LogoCompleteHorizontalColorful} alt="RecompraCRM" width={200} height={80} priority />
-							<ArrowUp className="w-3 h-3 text-[#FFB900] opacity-0 group-hover:opacity-100 transition-opacity" />
+						<Link href="/" className="flex items-center gap-2 group">
+							<div className="relative w-24 h-12">
+								<Image src={LogoCompleteHorizontalColorful} alt="RecompraCRM" fill className="object-contain" priority />
+							</div>
 						</Link>
 
-						{/* Menu Center - Hidden em mobile */}
+						{/* Menu Center */}
 						<nav className="hidden lg:flex items-center gap-8">
-							<Link href="#vendas" className="text-sm text-white/80 hover:text-white transition-colors">
+							<Link href="#vendas" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
 								PDV
 							</Link>
-							<Link href="#ia" className="text-sm text-white/80 hover:text-white transition-colors">
+							<Link href="#ia" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
 								IA
 							</Link>
-							<Link href="#automacao" className="text-sm text-white/80 hover:text-white transition-colors">
+							<Link href="#campanhas" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
 								Automação
 							</Link>
-							<Link href="#analytics" className="text-sm text-white/80 hover:text-white transition-colors">
+							<Link href="#analytics" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
 								Analytics
 							</Link>
-							<Link href="#depoimentos" className="text-sm text-white/80 hover:text-white transition-colors">
-								Depoimentos
+							<Link href="#pricing" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
+								Planos
 							</Link>
 						</nav>
 
-						{/* Botões à direita */}
-						<div className="flex items-center gap-3">
-							<Link href="/auth/signin" className="text-sm text-white/80 hover:text-white transition-colors mr-2">
+						{/* Right Actions */}
+						<div className="flex items-center gap-4">
+							<Link href="/auth/signin" className="text-sm font-medium text-white/70 hover:text-white transition-colors hidden sm:block">
 								Entrar
 							</Link>
 							<a
-								href="https://wa.me/553499480791?text=Gostaria%20de%20saber%20mais%20sobre%20o%20RecompraCRM%20!"
+								href="https://wa.me/553499480791?text=Gostaria%20de%20agendar%20uma%20demonstração%20do%20RecompraCRM!"
 								target="_blank"
 								rel="noopener noreferrer"
-								className="flex items-center justify-center h-9 w-9 rounded-full bg-green-500 hover:bg-green-600 transition-all hover:scale-110 shadow-lg shadow-green-500/20"
 							>
-								<FaWhatsapp className="w-5 h-5 text-white" />
-							</a>
-							<a href="https://wa.me/553499480791?text=Gostaria%20de%20saber%20mais%20sobre%20o%20RecompraCRM%20!" target="_blank" rel="noopener noreferrer">
-								<Button size="sm" className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white !border-0 !shadow-lg rounded-full px-5">
-									<span className="text-white">Agendar demonstração</span>
+								<Button
+									size="sm"
+									className="bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full font-medium px-6 h-10 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all hover:-translate-y-0.5"
+								>
+									Agendar demonstração
 								</Button>
 							</a>
 						</div>
 					</div>
 				</div>
 			</header>
+
 			{/* Hero Section */}
-			<section className="relative py-20 md:py-32 overflow-hidden">
-				{/* Background Gradient */}
-				<div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#1a0f08] to-[#0a0a0a]" />
-
-				{/* Decorative background */}
-				<div className="absolute inset-0 overflow-hidden pointer-events-none">
-					<div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-[#24549C]/20 blur-3xl rounded-full" />
-					<div className="absolute inset-0 opacity-[0.06] bg-[linear-gradient(to_right,rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[length:72px_72px]" />
-					<div className="absolute top-1/4 left-1/4 w-96 h-96 border border-[#24549C]/20 rounded-full blur-3xl" />
-					<div className="absolute bottom-1/4 right-1/4 w-96 h-96 border border-[#24549C]/20 rounded-full blur-3xl" />
+			<section className="relative min-h-[calc(100vh-5rem)] flex items-center justify-center py-20 overflow-hidden">
+				{/* Background Elements */}
+				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none">
+					{/* Main Glow */}
+					<div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#24549C]/20 rounded-full blur-[120px] opacity-40 mix-blend-screen animate-pulse-slow" />
+					{/* Secondary Accent */}
+					<div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[100px] opacity-30 mix-blend-screen" />
 				</div>
+				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+					<div className="text-center max-w-5xl mx-auto">
+						{/* Badge */}
+						<div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-10 backdrop-blur-md hover:bg-white/10 transition-colors cursor-default group">
+							<span className="relative flex h-2.5 w-2.5">
+								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFD600] opacity-75" />
+								<span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FFD600]" />
+							</span>
+							<span className="text-sm font-medium text-white/90 tracking-wide uppercase group-hover:text-white transition-colors">
+								Aumente suas vendas com Inteligência Artificial
+							</span>
+						</div>
 
-				<div className="relative container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center z-10">
-					<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white/80 mb-8 backdrop-blur-sm">
-						<span className="flex h-2 w-2 rounded-full bg-[#FFB900] animate-pulse" />
-						Aumente suas vendas com Inteligência Artificial
-					</div>
-					<h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight mb-8 text-white tracking-tight">
-						RecompraCRM é a inteligência
-						<br />
-						<span className="bg-gradient-to-r from-[#FFB900] via-[#FFD700] to-[#E7000B] bg-clip-text text-transparent">que o seu varejo precisa.</span>
-					</h1>
-					<p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
-						Uma plataforma completa que une Cashback, Automação de WhatsApp e Business Intelligence para transformar clientes pontuais em fãs leais.
-					</p>
+						{/* Headline */}
+						<h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white mb-8 leading-[1.05]">
+							RecompraCRM é a inteligência <br className="hidden md:block" />
+							<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF4D00] via-[#FF8700] to-[#E7000B] drop-shadow-sm">
+								que o seu varejo precisa.
+							</span>
+						</h1>
 
-					<div className="flex flex-col sm:flex-row justify-center gap-4">
-						<a
-							href="https://wa.me/553499480791?text=Gostaria%20de%20saber%20mais%20sobre%20o%20RecompraCRM%20!"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="w-full sm:w-auto"
-						>
-							<Button
-								size="lg"
-								className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white !border-0 !shadow-xl px-8 h-14 text-base font-semibold rounded-full w-full"
+						{/* Subheadline */}
+						<p className="text-lg md:text-2xl text-white/60 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
+							Uma plataforma completa que une <span className="text-white font-medium">Cashback</span>,{" "}
+							<span className="text-white font-medium">Automação de WhatsApp</span> e <span className="text-white font-medium">Business Intelligence</span>{" "}
+							para transformar clientes pontuais em fãs leais.
+						</p>
+
+						{/* CTA Buttons */}
+						<div className="flex flex-col sm:flex-row items-center justify-center gap-5">
+							<a
+								href="https://wa.me/553499480791?text=Gostaria%20de%20agendar%20uma%20demonstração%20do%20RecompraCRM!"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="w-full sm:w-auto"
 							>
-								<span className="text-white">Agendar demonstração</span>
-								<ArrowRight className="ml-2 w-5 h-5 text-white" />
-							</Button>
-						</a>
-						<Link href="/auth/signin">
-							<Button
-								size="lg"
-								variant="outline"
-								className="!border-[#24549C]/50 !text-white hover:!bg-[#24549C]/10 hover:!border-[#24549C] !bg-transparent px-8 h-14 text-base font-semibold rounded-full w-full sm:w-auto"
-							>
-								<span className="text-white">Acessar plataforma</span>
-							</Button>
-						</Link>
+								<Button className="w-full sm:w-auto bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full px-10 h-14 text-lg font-bold shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-1 transition-all duration-300">
+									Agendar demonstração <ArrowRight className="w-5 h-5 ml-2" />
+								</Button>
+							</a>
+							<Link href="/auth/signin" className="w-full sm:w-auto">
+								<Button
+									variant="outline"
+									className="w-full sm:w-auto border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-full px-10 h-14 text-lg font-semibold hover:border-white/20 hover:text-white transition-all duration-300"
+								>
+									Acessar plataforma
+								</Button>
+							</Link>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -267,8 +277,6 @@ export default function LandingPage() {
 									<p className="text-sm text-white/50">Entrada de vendas simplificada e resgate de pontos em segundos.</p>
 								</div>
 							</div>
-
-							<Button className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white rounded-full">Ver o POI em ação</Button>
 						</div>
 
 						<div className="relative">
@@ -385,7 +393,6 @@ export default function LandingPage() {
 									</div>
 								</div>
 							</div>
-							<Button className="!bg-white !text-black hover:!bg-white/90 rounded-full">Solicitar Acesso Beta</Button>
 						</div>
 
 						<div className="order-1 lg:order-2 relative">
@@ -435,6 +442,108 @@ export default function LandingPage() {
 								</div>
 							</div>
 							<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-green-500/10 blur-3xl -z-10 rounded-full" />
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* Feature: AI-Hints */}
+			<section className="py-24 bg-zinc-950 border-t border-white/5 relative overflow-hidden">
+				<div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/20 via-zinc-950/0 to-zinc-950/0" />
+
+				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+					<div className="text-center mb-16 max-w-3xl mx-auto">
+						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm font-medium mb-6">
+							<Lightbulb className="w-4 h-4" />
+							Insights Proativos
+						</div>
+						<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
+							Insights que geram <br />
+							<span className="text-white/50">lucro imediato.</span>
+						</h2>
+						<p className="text-lg text-white/60">
+							Nossa IA analisa seus dados sugere ações práticas. Não perca tempo analisando relatórios: receba a informação pronta para agir.
+						</p>
+					</div>
+
+					<div className="relative max-w-4xl mx-auto">
+						{/* Background Glow */}
+						<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-500/10 blur-3xl rounded-full -z-10" />
+
+						{/* Hints Grid */}
+						<div className="grid md:grid-cols-2 gap-6">
+							{/* Hint 1: Product Trend (was Stock) */}
+							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-red-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300">
+								<div className="flex items-start gap-4">
+									<div className="p-3 rounded-full bg-red-500/10">
+										<TrendingUp className="w-6 h-6 text-red-500 rotate-180" />
+									</div>
+									<div>
+										<h4 className="font-bold text-white mb-1">Queda de Vendas</h4>
+										<p className="text-sm text-white/70 leading-relaxed">
+											O produto <strong className="text-white">Shampoo X</strong> está com vendas <span className="text-red-400">40% abaixo</span> da média
+											histórica nesta semana.
+										</p>
+										<Button size="sm" variant="link" className="px-0 text-red-400 h-auto mt-2 hover:text-red-300">
+											Ver detalhes do produto →
+										</Button>
+									</div>
+								</div>
+							</div>
+
+							{/* Hint 2: Association Analysis (was Kit) */}
+							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-yellow-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300 md:translate-y-8">
+								<div className="flex items-start gap-4">
+									<div className="p-3 rounded-full bg-yellow-500/10">
+										<Lightbulb className="w-6 h-6 text-yellow-500" />
+									</div>
+									<div>
+										<h4 className="font-bold text-white mb-1">Padrão de Compra</h4>
+										<p className="text-sm text-white/70 leading-relaxed">
+											Análise de Cesta: 85% dos clientes que levam <strong>Condicionador Y</strong> acabam levando a<strong> Máscara Z</strong> em até 7 dias.
+										</p>
+										<Button size="sm" variant="link" className="px-0 text-yellow-400 h-auto mt-2 hover:text-yellow-300">
+											Ver dados de correlação →
+										</Button>
+									</div>
+								</div>
+							</div>
+
+							{/* Hint 3: Seller Performance (was Success) */}
+							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-purple-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300">
+								<div className="flex items-start gap-4">
+									<div className="p-3 rounded-full bg-purple-500/10">
+										<Users className="w-6 h-6 text-purple-500" />
+									</div>
+									<div>
+										<h4 className="font-bold text-white mb-1">Performance de Equipe</h4>
+										<p className="text-sm text-white/70 leading-relaxed">
+											Vendedores <strong>Ana e Carlos</strong> geralmente têm performance menor na 1ª quinzena. Considere uma campanha de incentivo.
+										</p>
+										<Button size="sm" variant="link" className="px-0 text-purple-400 h-auto mt-2 hover:text-purple-300">
+											Ver dados de performance →
+										</Button>
+									</div>
+								</div>
+							</div>
+
+							{/* Hint 4: Campaign Suggestion */}
+							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-blue-400 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300 md:translate-y-8">
+								<div className="flex items-start gap-4">
+									<div className="p-3 rounded-full bg-blue-400/10">
+										<Sparkles className="w-6 h-6 text-blue-400" />
+									</div>
+									<div>
+										<h4 className="font-bold text-white mb-1">Sugestão de Campanha</h4>
+										<p className="text-sm text-white/70 leading-relaxed">
+											Seus clientes VIPs não compram há 45 dias. No seu nicho, o risco de churn aumenta após 50 dias.
+										</p>
+										<Button size="sm" variant="link" className="px-0 text-blue-400 h-auto mt-2 hover:text-blue-300">
+											Criar campanha de reativação →
+										</Button>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -508,15 +617,13 @@ export default function LandingPage() {
 									<p className="text-sm text-white/60">Defina gatilhos, regras de cashback e mensagens para datas comemorativas e eventos.</p>
 								</div>
 							</div>
-
-							<Button className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white rounded-full">Ver Campanhas</Button>
 						</div>
 					</div>
 				</div>
 			</section>
 
-			{/* Feature 2: Loyalty (RFM + Cashback) */}
-			<section id="fidelizacao" className="py-20 bg-zinc-950 border-y border-white/5">
+			{/* Feature: BI - RFM */}
+			<section id="bi" className="py-20 bg-zinc-950 border-y border-white/5">
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 					<div className="grid lg:grid-cols-2 gap-16 items-center">
 						<div className="relative">
@@ -562,28 +669,28 @@ export default function LandingPage() {
 						<div>
 							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFB900]/10 border border-[#FFB900]/20 text-[#FFB900] text-sm font-medium mb-6">
 								<BadgePercent className="w-4 h-4" />
-								Fidelização e Retenção
+								Business Intelligence
 							</div>
 							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								Fidelize com inteligência <br />
-								<span className="text-white/50">de dados.</span>
+								Análise de Comportamento <br />
+								<span className="text-white/50">de Compra.</span>
 							</h2>
 							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								Transforme dados brutos em estratégias de lealdade. Utilize nossa análise RFM para identificar quem são seus melhores clientes e crie
-								programas de Cashback que incentivam o retorno imediato.
+								Entenda a jornada do seu cliente. Nossa Matriz RFM segmenta sua base automaticamente para que você possa agir com precisão, oferecendo os
+								incentivos certos para cada perfil.
 							</p>
 							<div className="grid sm:grid-cols-2 gap-6 mb-8">
 								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5">
 									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<Grid3X3 className="w-4 h-4 text-[#FFB900]" /> Análise RFM
+										<Grid3X3 className="w-4 h-4 text-[#FFB900]" /> Segmentação Automática
 									</h4>
-									<p className="text-sm text-white/60">Segmente clientes por Recência, Frequência e Valor Monetário automaticamente.</p>
+									<p className="text-sm text-white/60">Identifique clientes Campeões, Leais e Em Risco em tempo real.</p>
 								</div>
 								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5">
 									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<Wallet className="w-4 h-4 text-[#FFB900]" /> Cashback Flexível
+										<Wallet className="w-4 h-4 text-[#FFB900]" /> Ações Direcionadas
 									</h4>
-									<p className="text-sm text-white/60">Configure regras de acúmulo fixo ou percentual para diferentes perfis.</p>
+									<p className="text-sm text-white/60">Crie estratégias de Cashback específicas para reter e rentabilizar cada grupo.</p>
 								</div>
 							</div>
 						</div>
@@ -591,22 +698,22 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Feature 3: Analytics */}
-			<section id="analytics" className="py-20 bg-black overflow-hidden">
+			{/* Feature: BI - Performance */}
+			<section id="analytics" className="py-20 bg-black overflow-hidden start">
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 					<div className="grid lg:grid-cols-2 gap-16 items-center">
 						<div>
 							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6">
 								<BarChart3 className="w-4 h-4" />
-								Analytics Completo
+								Performance Comercial
 							</div>
 							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								Gestão comercial <br />
-								<span className="text-white/50">visível e acionável.</span>
+								Gestão de Vendedores <br />
+								<span className="text-white/50">e Parceiros.</span>
 							</h2>
 							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								Tenha o controle total da sua operação. Acompanhe rankings de vendedores, desempenho de parceiros (afiliados) e vendas de produtos em
-								dashboards intuitivos e detalhados.
+								Acompanhe rankings de vendedores, performance de afiliados e produtos mais vendidos em dashboards intuitivos. Tenha visibilidade total sobre
+								quem traz mais resultado para sua operação.
 							</p>
 							<div className="flex flex-col gap-4">
 								<div className="flex items-center gap-4 p-4 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 cursor-default">
@@ -614,7 +721,7 @@ export default function LandingPage() {
 										<Users className="w-6 h-6 text-blue-400" />
 									</div>
 									<div>
-										<h4 className="font-semibold text-white">Ranking de Vendedores</h4>
+										<h4 className="font-semibold text-white">Ranking de Vendedores e Parceiros</h4>
 										<p className="text-sm text-white/50">Gamificação e acompanhamento de metas em tempo real.</p>
 									</div>
 								</div>
@@ -623,7 +730,7 @@ export default function LandingPage() {
 										<PieChart className="w-6 h-6 text-purple-400" />
 									</div>
 									<div>
-										<h4 className="font-semibold text-white">Performance de Produtos</h4>
+										<h4 className="font-semibold text-white">Curva ABC de Produtos</h4>
 										<p className="text-sm text-white/50">Saiba exatamente quais itens geram maior margem e volume.</p>
 									</div>
 								</div>
@@ -752,78 +859,148 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Depoimentos */}
-			<section id="depoimentos" className="py-24 bg-black relative overflow-hidden border-t border-white/5">
+			{/* Feature: Pricing */}
+			<section id="pricing" className="py-24 bg-black relative overflow-hidden border-t border-white/5">
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
 					<div className="text-center mb-16 max-w-3xl mx-auto">
-						<span className="text-[#24549C] font-semibold text-sm tracking-wider uppercase mb-2 block">Depoimentos</span>
-						<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">Mais de 100+ empresas confiam</h2>
-						<p className="text-lg text-white/60">Veja como diferentes perfis do varejo utilizam nossas ferramentas para vender mais.</p>
+						<span className="text-[#24549C] font-semibold text-sm tracking-wider uppercase mb-2 block">Planos e Preços</span>
+						<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
+							Invista no crescimento <br />
+							<span className="text-white/50">do seu negócio.</span>
+						</h2>
+						<p className="text-lg text-white/60">Escolha o plano ideal para a sua fase atual. Upgrade ou downgrade a qualquer momento.</p>
 					</div>
 
-					<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-						{TESTIMONIALS.map((testimonial, index) => (
+					{/* Billing Toggle */}
+					<div className="flex justify-center mb-12">
+						<div className="relative flex items-center bg-zinc-900 border border-white/10 p-1.5 rounded-full">
+							<button
+								type="button"
+								onClick={() => setBillingInterval("monthly")}
+								className={cn(
+									"relative z-10 box-border w-32 rounded-full py-2.5 text-center text-sm font-bold transition-colors duration-300",
+									billingInterval === "monthly" ? "text-white" : "text-white/40 hover:text-white/60",
+								)}
+							>
+								MENSAL
+							</button>
+							<button
+								type="button"
+								onClick={() => setBillingInterval("yearly")}
+								className={cn(
+									"relative z-10 box-border w-32 rounded-full py-2.5 text-center text-sm font-bold transition-colors duration-300",
+									billingInterval === "yearly" ? "text-white" : "text-white/40 hover:text-white/60",
+								)}
+							>
+								ANUAL
+							</button>
 							<div
-								key={index.toString()}
-								className="bg-zinc-950/50 border border-white/10 p-6 rounded-xl hover:border-[#24549C]/30 transition-colors duration-300 flex flex-col gap-4"
+								className={cn(
+									"absolute top-1.5 bottom-1.5 w-32 rounded-full bg-[#24549C] shadow-lg shadow-blue-500/20 transition-all duration-300 ease-in-out",
+									billingInterval === "monthly" ? "left-1.5" : "left-[calc(100%-8.35rem)]",
+								)}
+							/>
+						</div>
+					</div>
+
+					{/* Plans Grid */}
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start max-w-7xl mx-auto">
+						{(Object.keys(AppSubscriptionPlans) as Array<keyof typeof AppSubscriptionPlans>).map((planKey) => {
+							const plan = AppSubscriptionPlans[planKey];
+							const pricing = plan.pricing[billingInterval];
+							const isPopular = planKey === "CRESCIMENTO";
+
+							// Calculate discount
+							const monthlyPrice = plan.pricing.monthly.price;
+							const yearlyPrice = plan.pricing.yearly.price;
+							const discountPercentage = Math.round(((monthlyPrice * 12 - yearlyPrice) / (monthlyPrice * 12)) * 100);
+
+							return (
+								<div
+									key={planKey}
+									className={cn(
+										"relative flex flex-col rounded-3xl p-8 transition-all duration-300 border bg-zinc-900/40 backdrop-blur-md",
+										isPopular ? "border-[#24549C] shadow-2xl shadow-blue-500/10 scale-105 z-10" : "border-white/5 hover:border-white/10 hover:bg-zinc-900/60",
+									)}
+								>
+									{isPopular && (
+										<div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#24549C] text-white px-4 py-1 rounded-full text-xs font-bold tracking-wide uppercase shadow-lg">
+											Mais Popular
+										</div>
+									)}
+
+									{/* Discount Badge for Yearly */}
+									{billingInterval === "yearly" && (
+										<div className="absolute top-4 right-4 bg-green-500/20 border border-green-500/30 text-green-400 px-2 py-1 rounded-md text-xs font-bold tracking-wide">
+											-{discountPercentage}% OFF
+										</div>
+									)}
+
+									{/* Header */}
+									<div className="mb-6">
+										<h3 className="font-bold text-2xl text-white mb-2">{plan.name}</h3>
+										<p className="text-white/50 text-sm leading-relaxed min-h-[40px]">{plan.description}</p>
+									</div>
+
+									{/* Pricing */}
+									<div className="mb-8 pb-8 border-b border-white/5">
+										<div className="flex items-baseline gap-1">
+											<span className="text-sm text-white/40 font-medium">R$</span>
+											<span className="font-bold text-4xl text-white tracking-tight">{formatToMoney(pricing.price).split(",")[0].replace("R$", "")}</span>
+											<span className="text-2xl font-bold text-white">,{formatToMoney(pricing.price).split(",")[1]}</span>
+											<span className="text-white/40 font-medium ml-2 text-sm">{billingInterval === "monthly" ? "/mês" : "/ano"}</span>
+										</div>
+										{billingInterval === "yearly" && (
+											<div className="mt-2 text-xs text-green-400 font-medium">Economize {formatToMoney(monthlyPrice * 12 - yearlyPrice)} por ano</div>
+										)}
+									</div>
+
+									{/* Features */}
+									<ul className="space-y-4 mb-8 flex-1">
+										{plan.pricingTableFeatures.map((feature, idx) => (
+											<li key={idx.toString()} className="flex items-start gap-3">
+												<div className={cn("mt-0.5 rounded-full p-0.5", feature.checked ? "bg-green-500/20 text-green-500" : "bg-white/5 text-white/20")}>
+													<CheckCircle2 className="h-3.5 w-3.5" />
+												</div>
+												<span className={cn("text-sm leading-snug", feature.checked ? "text-white/80" : "text-white/40 line-through")}>{feature.label}</span>
+											</li>
+										))}
+									</ul>
+
+									{/* CTA */}
+									<Link href="/auth/signup" className="mt-auto">
+										<Button
+											className={cn(
+												"w-full rounded-xl py-6 text-base font-bold transition-all duration-300",
+												isPopular
+													? "bg-[#24549C] hover:bg-[#1e4682] text-white shadow-lg shadow-blue-500/20"
+													: "bg-white/5 hover:bg-white/10 text-white border border-white/10",
+											)}
+										>
+											Começar Agora
+										</Button>
+									</Link>
+								</div>
+							);
+						})}
+					</div>
+
+					<div className="mt-16 text-center">
+						<p className="text-white/40 text-sm">
+							Precisa de um plano customizado para grandes redes?{" "}
+							<a
+								href="https://wa.me/553499480791"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-[#24549C] hover:text-blue-400 font-medium border-b border-[#24549C]/30 hover:border-blue-400 transition-colors"
 							>
-								{/* Stars */}
-								<div className="flex gap-1">
-									{[1, 2, 3, 4, 5].map((star) => (
-										<Star key={star} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-									))}
-								</div>
-
-								{/* Text */}
-								<p className="text-white/80 text-sm leading-relaxed flex-1">"{testimonial.text}"</p>
-
-								{/* User */}
-								<div className="flex items-center gap-3 pt-2">
-									<div
-										className={cn("w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br", testimonial.color)}
-									>
-										{testimonial.initials}
-									</div>
-									<div>
-										<h4 className="font-bold text-white text-sm">{testimonial.role}</h4>
-										<p className="text-xs text-white/40">Varejo & Atacado</p>
-									</div>
-								</div>
-							</div>
-						))}
+								Fale com nossos especialistas
+							</a>
+						</p>
 					</div>
 				</div>
 			</section>
-			{/* CTA Final */}
-			<section className="relative py-20 md:py-28 bg-gradient-to-b from-[#1a0f08] to-[#0a0a0a] overflow-hidden">
-				<div className="absolute inset-0 opacity-10">
-					<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-[#24549C]/20 rounded-full blur-3xl" />
-				</div>
-				<div className="relative container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center z-10">
-					<h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Pronto para crescer?</h2>
-					<p className="text-lg text-white/70 mb-10 max-w-2xl mx-auto">Experimente a plataforma que transforma a gestão comercial.</p>
 
-					<div className="flex flex-col sm:flex-row justify-center gap-4">
-						<a href="https://wa.me/553499480791?text=Gostaria%20de%20saber%20mais%20sobre%20o%20RecompraCRM%20!" target="_blank" rel="noopener noreferrer">
-							<Button
-								size="lg"
-								className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white !border-0 !shadow-xl px-8 h-14 text-base font-semibold rounded-full"
-							>
-								<span className="text-white">Agendar uma demo</span>
-							</Button>
-						</a>
-						<a href="https://wa.me/553499480791?text=Gostaria%20de%20saber%20mais%20sobre%20o%20RecompraCRM%20!" target="_blank" rel="noopener noreferrer">
-							<Button
-								size="lg"
-								variant="outline"
-								className="!border-[#24549C]/50 !text-white hover:!bg-[#24549C]/10 hover:!border-[#24549C] !bg-transparent px-8 h-14 text-base font-semibold rounded-full"
-							>
-								<span className="text-white">Abra sua conta</span>
-							</Button>
-						</a>
-					</div>
-				</div>
-			</section>
 			{/* Footer */}
 			<footer className="bg-black border-t border-white/10">
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">

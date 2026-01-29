@@ -150,10 +150,6 @@ export const AppSubscriptionPlans: {
 				label: "Business Intelligence Lite (campanhas, cashback e WhatsApp)",
 			},
 			{
-				checked: false,
-				label: "Business Intelligence completo (vendas, produtos, vendedores e parceiros)",
-			},
-			{
 				checked: true,
 				label: "Até 5 campanhas/jornadas ativas",
 			},
@@ -175,7 +171,7 @@ export const AppSubscriptionPlans: {
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESSENCIAL_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
-				price: 2199.9,
+				price: 1919.9,
 				currency: "BRL",
 				interval: "year",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESSENCIAL_YEARLY_PLAN_PRICE_ID as string,
@@ -273,11 +269,15 @@ export const AppSubscriptionPlans: {
 			},
 			{
 				checked: true,
-				label: "Ponto de Interação (tablet) para acumulação de cashback",
+				label: "Ponto de Interação personalizado para acumulação de cashback",
 			},
 			{
 				checked: true,
-				label: "AI-Hints (10/mês) + relatórios de vendas no WhatsApp",
+				label: "Dicas de IA personalizadas para o seu negócio",
+			},
+			{
+				checked: true,
+				label: "Relatórios de vendas direto no seu WhatsApp",
 			},
 		],
 		pricing: {
@@ -288,7 +288,7 @@ export const AppSubscriptionPlans: {
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_CRESCIMENTO_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
-				price: 4399.9,
+				price: 3839.9,
 				currency: "BRL",
 				interval: "year",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_CRESCIMENTO_YEARLY_PLAN_PRICE_ID as string,
@@ -386,11 +386,15 @@ export const AppSubscriptionPlans: {
 			},
 			{
 				checked: true,
-				label: "Ponto de Interação (tablet) para acumulação de cashback",
+				label: "Ponto de Interação personalizado para acumulação de cashback",
 			},
 			{
 				checked: true,
-				label: "AI-Hints (10/mês) + relatórios de vendas no WhatsApp",
+				label: "Dicas de IA personalizadas para o seu negócio",
+			},
+			{
+				checked: true,
+				label: "Relatórios de vendas direto no seu WhatsApp",
 			},
 			{
 				checked: true,
@@ -405,7 +409,7 @@ export const AppSubscriptionPlans: {
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESCALA_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
-				price: 9899.9,
+				price: 8639.9,
 				currency: "BRL",
 				interval: "year",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESCALA_YEARLY_PLAN_PRICE_ID as string,
