@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { index, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { doublePrecision, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { cashbackProgramBalances } from "./cashback-programs";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
@@ -39,6 +39,13 @@ export const clients = newTable(
 		analiseRFMNotasMonetario: text("analise_rfm_notas_monetario"),
 		analiseRFMUltimaAtualizacao: timestamp("analise_rfm_ultima_atualizacao"),
 		analiseRFMUltimaAlteracao: timestamp("analise_rfm_ultima_alteracao"),
+
+		// Client Metadata (computed by cron, used for campaign triggers)
+		metadataTotalCompras: integer("metadata_total_compras").default(0), // All-time purchase count
+		metadataValorTotalCompras: doublePrecision("metadata_valor_total_compras").default(0), // All-time total purchase value
+		metadataProdutoMaisCompradoId: varchar("metadata_produto_mais_comprado_id", { length: 255 }), // Most purchased product ID
+		metadataGrupoProdutoMaisComprado: text("metadata_grupo_produto_mais_comprado"), // Most purchased product group
+		metadataUltimaAtualizacao: timestamp("metadata_ultima_atualizacao"), // Last metadata update timestamp
 
 		dataNascimento: timestamp("data_nascimento"),
 		dataInsercao: timestamp("data_insercao").defaultNow(),

@@ -59,6 +59,25 @@ export const CampaignSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	// Specific for "QUANTIDADE-TOTAL-COMPRAS"
+	gatilhoQuantidadeTotalCompras: z
+		.number({
+			required_error: "Quantidade total de compras não informada.",
+			invalid_type_error: "Tipo não válido para a quantidade total de compras.",
+		})
+		.int("Quantidade total de compras deve ser um número inteiro.")
+		.positive("Quantidade total de compras deve ser positiva.")
+		.optional()
+		.nullable(),
+	// Specific for "VALOR-TOTAL-COMPRAS"
+	gatilhoValorTotalCompras: z
+		.number({
+			required_error: "Valor total de compras não informado.",
+			invalid_type_error: "Tipo não válido para o valor total de compras.",
+		})
+		.positive("Valor total de compras deve ser positivo.")
+		.optional()
+		.nullable(),
 
 	execucaoAgendadaMedida: TimeDurationUnitsEnum,
 	execucaoAgendadaValor: z.number({

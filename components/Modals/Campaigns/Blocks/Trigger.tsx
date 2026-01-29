@@ -77,6 +77,24 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 					width="100%"
 				/>
 			) : null}
+			{campaign.gatilhoTipo === "QUANTIDADE-TOTAL-COMPRAS" ? (
+				<NumberInput
+					label="QUANTIDADE TOTAL DE COMPRAS (GATILHO)"
+					value={campaign.gatilhoQuantidadeTotalCompras ?? null}
+					placeholder="Ex: 2 para segunda compra, 3 para terceira compra..."
+					handleChange={(value) => updateCampaign({ gatilhoQuantidadeTotalCompras: value })}
+					width="100%"
+				/>
+			) : null}
+			{campaign.gatilhoTipo === "VALOR-TOTAL-COMPRAS" ? (
+				<NumberInput
+					label="VALOR TOTAL DE COMPRAS (GATILHO)"
+					value={campaign.gatilhoValorTotalCompras ?? null}
+					placeholder="Ex: 1000 para disparar quando cliente atingir R$ 1.000 em compras..."
+					handleChange={(value) => updateCampaign({ gatilhoValorTotalCompras: value })}
+					width="100%"
+				/>
+			) : null}
 		</ResponsiveMenuSection>
 	);
 }

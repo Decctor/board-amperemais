@@ -34,6 +34,8 @@ export const CampaignTriggerTypeOptions: { id: number; label: string; value: TCa
 	{ id: 5, label: "CASHBACK ACUMULADO", value: "CASHBACK-ACUMULADO" },
 	{ id: 6, label: "CASHBACK EXPIRANDO", value: "CASHBACK-EXPIRANDO" },
 	{ id: 7, label: "ANIVERSÁRIO DO CLIENTE", value: "ANIVERSARIO_CLIENTE" },
+	{ id: 8, label: "QUANTIDADE TOTAL DE COMPRAS", value: "QUANTIDADE-TOTAL-COMPRAS" },
+	{ id: 9, label: "VALOR TOTAL DE COMPRAS", value: "VALOR-TOTAL-COMPRAS" },
 ];
 
 export const TimeDurationUnitsOptions: { id: number; label: string; value: TTimeDurationUnitsEnum }[] = [

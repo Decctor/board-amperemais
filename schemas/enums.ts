@@ -10,6 +10,8 @@ export const CampaignTriggerTypeEnum = z.enum([
 	"CASHBACK-ACUMULADO",
 	"CASHBACK-EXPIRANDO",
 	"ANIVERSARIO_CLIENTE",
+	"QUANTIDADE-TOTAL-COMPRAS",
+	"VALOR-TOTAL-COMPRAS",
 ]);
 export type TCampaignTriggerTypeEnum = z.infer<typeof CampaignTriggerTypeEnum>;
 export const TimeDurationUnitsEnum = z.enum(["DIAS", "SEMANAS", "MESES", "ANOS"]);

@@ -160,6 +160,8 @@ export async function POST(req: Request) {
 			let clientFirstSaleDate: Date | null = null;
 			let isNewClient = false;
 			let clientRfmTitle: string | null = "CLIENTES RECENTES";
+			let clientCurrentPurchaseCount = 0; // Client's current all-time purchase count (from metadata)
+			let clientCurrentPurchaseValue = 0; // Client's current all-time purchase value (from metadata)
 
 			if (!clientId) {
 				// Create new client
@@ -211,19 +213,28 @@ export async function POST(req: Request) {
 				clientFirstSaleId = client.primeiraCompraId;
 				clientFirstSaleDate = client.primeiraCompraData;
 				clientRfmTitle = client.analiseRFMTitulo ?? "CLIENTES RECENTES";
+				// Store current metadata for trigger evaluation
+				clientCurrentPurchaseCount = client.metadataTotalCompras ?? 0;
+				clientCurrentPurchaseValue = client.metadataValorTotalCompras ?? 0;
 			}
 
 			if (!program) {
 				throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 			}
 
-			// 4. Query campaigns for triggers (NOVA-COMPRA, PRIMEIRA-COMPRA, CASHBACK-ACUMULADO)
+			// 4. Query campaigns for triggers (NOVA-COMPRA, PRIMEIRA-COMPRA, CASHBACK-ACUMULADO, QUANTIDADE-TOTAL-COMPRAS, VALOR-TOTAL-COMPRAS)
 			const campaigns = await tx.query.campaigns.findMany({
 				where: (fields, { and, or, eq }) =>
 					and(
 						eq(fields.organizacaoId, input.orgId),
 						eq(fields.ativo, true),
-						or(eq(fields.gatilhoTipo, "NOVA-COMPRA"), eq(fields.gatilhoTipo, "PRIMEIRA-COMPRA"), eq(fields.gatilhoTipo, "CASHBACK-ACUMULADO")),
+						or(
+							eq(fields.gatilhoTipo, "NOVA-COMPRA"),
+							eq(fields.gatilhoTipo, "PRIMEIRA-COMPRA"),
+							eq(fields.gatilhoTipo, "CASHBACK-ACUMULADO"),
+							eq(fields.gatilhoTipo, "QUANTIDADE-TOTAL-COMPRAS"),
+							eq(fields.gatilhoTipo, "VALOR-TOTAL-COMPRAS"),
+						),
 					),
 				with: {
 					segmentacoes: true,
@@ -233,10 +244,12 @@ export async function POST(req: Request) {
 			const campaignsForNewPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "NOVA-COMPRA");
 			const campaignsForFirstPurchase = campaigns.filter((campaign) => campaign.gatilhoTipo === "PRIMEIRA-COMPRA");
 			const campaignsForCashbackAccumulation = campaigns.filter((campaign) => campaign.gatilhoTipo === "CASHBACK-ACUMULADO");
+			const campaignsForTotalPurchaseCount = campaigns.filter((campaign) => campaign.gatilhoTipo === "QUANTIDADE-TOTAL-COMPRAS");
+			const campaignsForTotalPurchaseValue = campaigns.filter((campaign) => campaign.gatilhoTipo === "VALOR-TOTAL-COMPRAS");
 
 			console.log(`[POI] [ORG: ${input.orgId}] [CAMPAIGNS] Total campaigns found: ${campaigns.length}`);
 			console.log(
-				`[POI] [ORG: ${input.orgId}] [CAMPAIGNS] NOVA-COMPRA: ${campaignsForNewPurchase.length}, PRIMEIRA-COMPRA: ${campaignsForFirstPurchase.length}, CASHBACK-ACUMULADO: ${campaignsForCashbackAccumulation.length}`,
+				`[POI] [ORG: ${input.orgId}] [CAMPAIGNS] NOVA-COMPRA: ${campaignsForNewPurchase.length}, PRIMEIRA-COMPRA: ${campaignsForFirstPurchase.length}, CASHBACK-ACUMULADO: ${campaignsForCashbackAccumulation.length}, QUANTIDADE-TOTAL-COMPRAS: ${campaignsForTotalPurchaseCount.length}, VALOR-TOTAL-COMPRAS: ${campaignsForTotalPurchaseValue.length}`,
 			);
 			console.log(`[POI] [ORG: ${input.orgId}] [CLIENT] isNewClient: ${isNewClient}, clientRfmTitle: ${clientRfmTitle}, clientId: ${clientId}`);
 
@@ -807,9 +820,221 @@ export async function POST(req: Request) {
 				}
 			}
 
+			// 9.1 Process QUANTIDADE-TOTAL-COMPRAS and VALOR-TOTAL-COMPRAS campaigns
+			const newTotalPurchaseCount = clientCurrentPurchaseCount + 1;
+			const newTotalPurchaseValue = clientCurrentPurchaseValue + input.sale.valor;
+
+			console.log(
+				`[POI] [ORG: ${input.orgId}] [PURCHASE-TOTALS] Previous: count=${clientCurrentPurchaseCount}, value=${clientCurrentPurchaseValue}. New: count=${newTotalPurchaseCount}, value=${newTotalPurchaseValue}`,
+			);
+
+			// Process QUANTIDADE-TOTAL-COMPRAS campaigns
+			if (campaignsForTotalPurchaseCount.length > 0) {
+				const applicableCampaigns = campaignsForTotalPurchaseCount.filter((campaign) => {
+					// Check if the client has reached or exceeded the threshold
+					const meetsThreshold =
+						campaign.gatilhoQuantidadeTotalCompras !== null &&
+						campaign.gatilhoQuantidadeTotalCompras !== undefined &&
+						newTotalPurchaseCount >= campaign.gatilhoQuantidadeTotalCompras;
+
+					// Check segmentation match
+					const meetsSegmentation = campaign.segmentacoes.length === 0 || campaign.segmentacoes.some((s) => s.segmentacao === clientRfmTitle);
+
+					return meetsThreshold && meetsSegmentation;
+				});
+
+				if (applicableCampaigns.length > 0) {
+					console.log(
+						`[POI] [ORG: ${input.orgId}] [QUANTIDADE-TOTAL-COMPRAS] ${applicableCampaigns.length} applicable campaigns found for client ${clientId}.`,
+					);
+
+					const clientData = await tx.query.clients.findFirst({
+						where: (fields, { eq }) => eq(fields.id, clientId),
+						columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+					});
+
+					for (const campaign of applicableCampaigns) {
+						const canSchedule = await canScheduleCampaignForClient(
+							tx,
+							clientId,
+							campaign.id,
+							campaign.permitirRecorrencia,
+							campaign.frequenciaIntervaloValor,
+							campaign.frequenciaIntervaloMedida,
+						);
+
+						if (!canSchedule) {
+							console.log(`[POI] [ORG: ${input.orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
+							continue;
+						}
+
+						const interactionScheduleDate = getPostponedDateFromReferenceDate({
+							date: dayjs().toDate(),
+							unit: campaign.execucaoAgendadaMedida,
+							value: campaign.execucaoAgendadaValor,
+						});
+
+						const [insertedInteraction] = await tx
+							.insert(interactions)
+							.values({
+								clienteId: clientId,
+								campanhaId: campaign.id,
+								organizacaoId: input.orgId,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: `Cliente atingiu ${newTotalPurchaseCount} compras totais (gatilho: ${campaign.gatilhoQuantidadeTotalCompras}).`,
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							})
+							.returning({ id: interactions.id });
+
+						const shouldProcessImmediately =
+							campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
+
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
+							immediateProcessingDataList.push({
+								interactionId: insertedInteraction.id,
+								organizationId: input.orgId,
+								client: {
+									id: clientData.id,
+									nome: clientData.nome,
+									telefone: clientData.telefone,
+									email: clientData.email,
+									analiseRFMTitulo: clientData.analiseRFMTitulo,
+								},
+								campaign: {
+									autorId: campaign.autorId,
+									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappTemplate: campaign.whatsappTemplate,
+								},
+								whatsappToken: whatsappConnection.token,
+							});
+						}
+
+						// Generate campaign cashback if configured
+						if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+							await generateCashbackForCampaign({
+								tx,
+								organizationId: input.orgId,
+								clientId: clientId,
+								campaignId: campaign.id,
+								cashbackType: campaign.cashbackGeracaoTipo,
+								cashbackValue: campaign.cashbackGeracaoValor,
+								saleId: saleId,
+								saleValue: input.sale.valor,
+								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+								expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+							});
+						}
+					}
+				}
+			}
+
+			// Process VALOR-TOTAL-COMPRAS campaigns
+			if (campaignsForTotalPurchaseValue.length > 0) {
+				const applicableCampaigns = campaignsForTotalPurchaseValue.filter((campaign) => {
+					// Check if the client has reached or exceeded the threshold
+					const meetsThreshold =
+						campaign.gatilhoValorTotalCompras !== null &&
+						campaign.gatilhoValorTotalCompras !== undefined &&
+						newTotalPurchaseValue >= campaign.gatilhoValorTotalCompras;
+
+					// Check segmentation match
+					const meetsSegmentation = campaign.segmentacoes.length === 0 || campaign.segmentacoes.some((s) => s.segmentacao === clientRfmTitle);
+
+					return meetsThreshold && meetsSegmentation;
+				});
+
+				if (applicableCampaigns.length > 0) {
+					console.log(
+						`[POI] [ORG: ${input.orgId}] [VALOR-TOTAL-COMPRAS] ${applicableCampaigns.length} applicable campaigns found for client ${clientId}.`,
+					);
+
+					const clientData = await tx.query.clients.findFirst({
+						where: (fields, { eq }) => eq(fields.id, clientId),
+						columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+					});
+
+					for (const campaign of applicableCampaigns) {
+						const canSchedule = await canScheduleCampaignForClient(
+							tx,
+							clientId,
+							campaign.id,
+							campaign.permitirRecorrencia,
+							campaign.frequenciaIntervaloValor,
+							campaign.frequenciaIntervaloMedida,
+						);
+
+						if (!canSchedule) {
+							console.log(`[POI] [ORG: ${input.orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
+							continue;
+						}
+
+						const interactionScheduleDate = getPostponedDateFromReferenceDate({
+							date: dayjs().toDate(),
+							unit: campaign.execucaoAgendadaMedida,
+							value: campaign.execucaoAgendadaValor,
+						});
+
+						const [insertedInteraction] = await tx
+							.insert(interactions)
+							.values({
+								clienteId: clientId,
+								campanhaId: campaign.id,
+								organizacaoId: input.orgId,
+								titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
+								tipo: "ENVIO-MENSAGEM",
+								descricao: `Cliente atingiu R$ ${newTotalPurchaseValue.toFixed(2)} em compras totais (gatilho: R$ ${campaign.gatilhoValorTotalCompras?.toFixed(2)}).`,
+								agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+								agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+							})
+							.returning({ id: interactions.id });
+
+						const shouldProcessImmediately =
+							campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
+
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
+							immediateProcessingDataList.push({
+								interactionId: insertedInteraction.id,
+								organizationId: input.orgId,
+								client: {
+									id: clientData.id,
+									nome: clientData.nome,
+									telefone: clientData.telefone,
+									email: clientData.email,
+									analiseRFMTitulo: clientData.analiseRFMTitulo,
+								},
+								campaign: {
+									autorId: campaign.autorId,
+									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappTemplate: campaign.whatsappTemplate,
+								},
+								whatsappToken: whatsappConnection.token,
+							});
+						}
+
+						// Generate campaign cashback if configured
+						if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
+							await generateCashbackForCampaign({
+								tx,
+								organizationId: input.orgId,
+								clientId: clientId,
+								campaignId: campaign.id,
+								cashbackType: campaign.cashbackGeracaoTipo,
+								cashbackValue: campaign.cashbackGeracaoValor,
+								saleId: saleId,
+								saleValue: input.sale.valor,
+								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
+								expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+							});
+						}
+					}
+				}
+			}
+
 			console.log(`[POI] [ORG: ${input.orgId}] [SUMMARY] Total immediate processing items: ${immediateProcessingDataList.length}`);
 
-			// 10. Update client last purchase
+			// 10. Update client last purchase and metadata
 			await tx
 				.update(clients)
 				.set({
@@ -817,6 +1042,9 @@ export async function POST(req: Request) {
 					primeiraCompraId: clientFirstSaleId,
 					ultimaCompraData: saleDate,
 					ultimaCompraId: saleId,
+					// Update client metadata with new totals (optimistic update until next RFM cron run)
+					metadataTotalCompras: newTotalPurchaseCount,
+					metadataValorTotalCompras: newTotalPurchaseValue,
 				})
 				.where(eq(clients.id, clientId));
 

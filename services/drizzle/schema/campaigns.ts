@@ -26,6 +26,12 @@ export const campaigns = newTable("campaigns", {
 	gatilhoNovoCashbackAcumuladoValorMinimo: integer("gatilho_cashback_acumulado_valor_minimo"), // defines the minimum required of new cashback accumulation for trigger to fire
 	gatilhoTotalCashbackAcumuladoValorMinimo: integer("gatilho_total_cashback_acumulado_valor_minimo"), // defines the minimum required of total cummulated cashback for trigger to fire
 
+	// specific for "QUANTIDADE-TOTAL-COMPRAS"
+	gatilhoQuantidadeTotalCompras: integer("gatilho_quantidade_total_compras"), // defines the minimum required all-time purchase count for trigger to fire
+
+	// specific for "VALOR-TOTAL-COMPRAS"
+	gatilhoValorTotalCompras: doublePrecision("gatilho_valor_total_compras"), // defines the minimum required all-time total purchase value for trigger to fire
+
 	execucaoAgendadaMedida: timeDurationUnitsEnum("execucao_agendada_medida").notNull().default("DIAS"),
 	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
 	execucaoAgendadaBloco: interactionsCronJobTimeBlocksEnum("execucao_agendada_bloco").notNull(),

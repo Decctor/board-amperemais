@@ -8,6 +8,8 @@ export const campaignTriggerTypeEnum = pgEnum("campaign_trigger_type", [
 	"CASHBACK-ACUMULADO",
 	"CASHBACK-EXPIRANDO",
 	"ANIVERSARIO_CLIENTE",
+	"QUANTIDADE-TOTAL-COMPRAS",
+	"VALOR-TOTAL-COMPRAS",
 ]);
 
 export const timeDurationUnitsEnum = pgEnum("time_duration_units", ["DIAS", "SEMANAS", "MESES", "ANOS"]);

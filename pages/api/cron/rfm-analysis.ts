@@ -8,7 +8,7 @@ import { type ImmediateProcessingData, delay, processSingleInteractionImmediatel
 import { TimeDurationUnitsEnum } from "@/schemas/enums";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { type TSaleEntity, clients, interactions, organizations, sales, utils } from "@/services/drizzle/schema";
+import { type TSaleEntity, clients, interactions, organizations, products, saleItems, sales, utils } from "@/services/drizzle/schema";
 import { type TRFMConfig, getRFMLabel } from "@/utils/rfm";
 import { and, eq, gt, gte, lte, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -130,6 +130,52 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 				)
 				.where(eq(clients.organizacaoId, organization.id))
 				.groupBy(clients.id);
+
+			// Query all-time totals for client metadata (no date filter)
+			const allTimeTotalsByClient = await db
+				.select({
+					clientId: clients.id,
+					allTimeTotalPurchases: sql<number>`COALESCE(sum(${sales.valorTotal}), 0)`,
+					allTimePurchaseCount: sql<number>`COALESCE(count(${sales.id}), 0)`,
+				})
+				.from(clients)
+				.leftJoin(
+					sales,
+					and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, organization.id), eq(sales.natureza, "SN01")),
+				)
+				.where(eq(clients.organizacaoId, organization.id))
+				.groupBy(clients.id);
+
+			// Create a map for quick lookup
+			const allTimeTotalsMap = new Map(allTimeTotalsByClient.map((r) => [r.clientId, r]));
+
+			// Query most purchased product per client (by quantity)
+			const mostPurchasedProductByClient = await db
+				.select({
+					clientId: saleItems.clienteId,
+					produtoId: saleItems.produtoId,
+					produtoGrupo: products.grupo,
+					totalQuantity: sql<number>`sum(${saleItems.quantidade})`,
+				})
+				.from(saleItems)
+				.innerJoin(products, eq(products.id, saleItems.produtoId))
+				.innerJoin(sales, and(eq(sales.id, saleItems.vendaId), eq(sales.natureza, "SN01")))
+				.where(eq(saleItems.organizacaoId, organization.id))
+				.groupBy(saleItems.clienteId, saleItems.produtoId, products.grupo)
+				.orderBy(sql`sum(${saleItems.quantidade}) DESC`);
+
+			// Get the most purchased product for each client
+			const mostPurchasedMap = new Map<string, { produtoId: string; produtoGrupo: string }>();
+			for (const row of mostPurchasedProductByClient) {
+				if (row.clientId && !mostPurchasedMap.has(row.clientId)) {
+					mostPurchasedMap.set(row.clientId, {
+						produtoId: row.produtoId,
+						produtoGrupo: row.produtoGrupo,
+					});
+				}
+			}
+
+			console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Computed all-time metadata for ${allTimeTotalsByClient.length} clients`);
 
 			const utilsRFMReturn = await db.query.utils.findFirst({
 				where: eq(utils.identificador, "CONFIG_RFM"),
@@ -393,6 +439,10 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 						}
 					}
 
+					// Get all-time metadata for this client
+					const allTimeData = allTimeTotalsMap.get(results.clientId);
+					const mostPurchasedData = mostPurchasedMap.get(results.clientId);
+
 					await tx
 						.update(clients)
 						.set({
@@ -402,6 +452,12 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 							analiseRFMNotasMonetario: monetaryScore.toString(),
 							analiseRFMUltimaAtualizacao: new Date(),
 							analiseRFMUltimaAlteracao: hasClientChangedRFMLabels ? new Date() : results.clientRFMLastLabelModification,
+							// Client metadata updates
+							metadataTotalCompras: allTimeData?.allTimePurchaseCount ?? 0,
+							metadataValorTotalCompras: allTimeData?.allTimeTotalPurchases ?? 0,
+							metadataProdutoMaisCompradoId: mostPurchasedData?.produtoId ?? null,
+							metadataGrupoProdutoMaisComprado: mostPurchasedData?.produtoGrupo ?? null,
+							metadataUltimaAtualizacao: new Date(),
 						})
 						.where(and(eq(clients.id, results.clientId), eq(clients.organizacaoId, organization.id)));
 				}
