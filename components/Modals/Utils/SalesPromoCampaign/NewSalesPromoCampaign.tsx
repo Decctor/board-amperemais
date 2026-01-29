@@ -22,6 +22,7 @@ type NewSalesPromoCampaignProps = {
 export default function NewSalesPromoCampaign({ callbacks, closeModal }: NewSalesPromoCampaignProps) {
 	const [infoHolder, setInfoHolder] = useState<TUtilsSalesPromoCampaignConfig>({
 		identificador: "SALES_PROMO_CAMPAIGN",
+		organizacaoId: "",
 		valor: {
 			identificador: "SALES_PROMO_CAMPAIGN",
 			dados: {

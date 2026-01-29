@@ -119,12 +119,17 @@ export default function SalesPromoCampaignItemsBlock({
 				const product = dataProducts.find((product) => product.codigo === item.CÓDIGO);
 				if (!product) return null;
 				return {
-					produtoId: product?.id,
-					produtoNome: product?.descricao,
+					produtos: [
+						{
+							id: product?.id,
+							codigo: product?.codigo,
+							nome: product?.descricao,
+						},
+					],
 					valorBase: item["VALOR BASE"],
 					valorPromocional: item["VALOR PROMOCIONAL"],
 					etiqueta: item.ETIQUETA,
-
+					titulo: product?.descricao,
 					...(item["CONDIÇÃO ESPECIAL - DATA"] && { anuncioData: item["CONDIÇÃO ESPECIAL - DATA"] }),
 					...(item["CONDIÇÃO ESPECIAL - VALOR"] && { anuncioValorPromocional: item["CONDIÇÃO ESPECIAL - VALOR"] }),
 				};
@@ -180,7 +185,7 @@ export default function SalesPromoCampaignItemsBlock({
 			{editingItem ? (
 				<EditItemMenu
 					initialItem={editingItem}
-					updateItem={(changes) => updateItem(editCompositionItemIndex!, changes)}
+					updateItem={(changes) => updateItem(editCompositionItemIndex as number, changes)}
 					closeMenu={() => setEditCompositionItemIndex(null)}
 				/>
 			) : null}
@@ -351,7 +356,7 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 						value: "PROMO-GRID-1/16",
 					},
 				]}
-				handleChange={(value) => setItemHolder((prev) => ({ ...prev, etiqueta: value }))}
+				handleChange={(value) => setItemHolder((prev) => ({ ...prev, etiqueta: value as "PROMO-A4" | "PROMO-GRID-1/16" }))}
 				onReset={() => setItemHolder((prev) => ({ ...prev, etiqueta: "PROMO-A4" }))}
 			/>
 			<div className="w-full flex flex-col gap-1">
@@ -496,8 +501,8 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 						value: "PROMO-GRID-1/16",
 					},
 				]}
-				handleChange={(value) => setItemHolder((prev) => ({ ...prev, etiqueta: value }))}
-				onReset={() => setItemHolder((prev) => ({ ...prev, etiqueta: "PROMO-A4" }))}
+				handleChange={(value) => setItemHolder((prev) => ({ ...prev, etiqueta: value as "PROMO-A4" | "PROMO-GRID-1/16" }))}
+				onReset={() => setItemHolder((prev) => ({ ...prev, etiqueta: "PROMO-A4" as "PROMO-A4" | "PROMO-GRID-1/16" }))}
 			/>
 			<div className="w-full flex flex-col gap-1">
 				<p className="w-full text-sm font-medium">CONDIÇÕES ESPECIAIS</p>

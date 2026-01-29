@@ -236,43 +236,43 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Feature: POS / Sales (NEW) */}
-			<section id="vendas" className="py-20 bg-zinc-950 border-y border-white/5 relative overflow-hidden">
+			{/* Feature: Cashback / POI */}
+			<section id="cashback" className="py-20 bg-zinc-950 border-y border-white/5 relative overflow-hidden">
 				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#24549C]/50 to-transparent" />
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 					<div className="grid lg:grid-cols-2 gap-16 items-center">
 						<div>
 							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6">
 								<ShoppingCart className="w-4 h-4" />
-								Frente de Caixa (PDV)
+								Programa de Cashback
 							</div>
 							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								Venda direto do CRM. <br />
-								<span className="text-white/50">Sem trocar de tela.</span>
+								Gestão completa de <br />
+								<span className="text-white/50">Cashback e Pontos.</span>
 							</h2>
 							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								Esqueça a troca de abas. O RecompraCRM possui um PDV completo integrado. Monte orçamentos, consulte estoque e finalize vendas enquanto analisa
-								o perfil do cliente.
+								Oferecemos uma plataforma robusta para gestão de programas de cashback com configuração flexível. Engaje seus clientes no ponto de venda com
+								nossa interface exclusiva para tablets.
 							</p>
 
 							<div className="grid sm:grid-cols-2 gap-4 mb-8">
 								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-[#24549C]/30 transition-colors">
 									<Search className="w-5 h-5 text-[#24549C] mb-2" />
-									<h4 className="font-semibold text-white">Busca Inteligente</h4>
-									<p className="text-sm text-white/50">Encontre produtos por nome, código ou grupo instantaneamente.</p>
+									<h4 className="font-semibold text-white">Point of Interaction (POI)</h4>
+									<p className="text-sm text-white/50">Interface "Kiosk" otimizada para tablets, ideal para balcão.</p>
 								</div>
 								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-[#24549C]/30 transition-colors">
 									<Box className="w-5 h-5 text-[#24549C] mb-2" />
-									<h4 className="font-semibold text-white">Construtor de Produtos</h4>
-									<p className="text-sm text-white/50">Configure itens complexos, grades e adicionais no momento da venda.</p>
+									<h4 className="font-semibold text-white">Vendas e Resgate</h4>
+									<p className="text-sm text-white/50">Entrada de vendas simplificada e resgate de pontos em segundos.</p>
 								</div>
 							</div>
 
-							<Button className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white rounded-full">Ver o PDV em ação</Button>
+							<Button className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white rounded-full">Ver o POI em ação</Button>
 						</div>
 
 						<div className="relative">
-							{/* Mock UI POS */}
+							{/* Mock UI POS/POI */}
 							<div className="bg-black border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 aspect-video relative overflow-hidden group">
 								<div className="absolute inset-x-0 top-0 h-10 bg-zinc-900 border-b border-white/5 flex items-center px-4 gap-2">
 									<div className="w-2 h-2 rounded-full bg-red-500/50" />
@@ -332,8 +332,8 @@ export default function LandingPage() {
 									<Zap className="w-4 h-4 text-green-500" />
 								</div>
 								<div>
-									<div className="text-xs text-white/50">Venda finalizada</div>
-									<div className="text-sm font-bold text-white">4.2s</div>
+									<div className="text-xs text-white/50">Cashback Gerado</div>
+									<div className="text-sm font-bold text-white">R$ 15,00</div>
 								</div>
 							</div>
 						</div>
@@ -341,46 +341,51 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Feature 1: Automation */}
-			<section className="py-20 bg-black relative overflow-hidden">
+			{/* Feature: Whatsapp Hub (Beta) */}
+			<section id="whatsapp-hub" className="py-20 bg-black relative overflow-hidden">
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 					<div className="grid lg:grid-cols-2 gap-16 items-center">
 						<div className="order-2 lg:order-1">
 							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium mb-6">
 								<Bot className="w-4 h-4" />
-								Triagem com Inteligência Artificial
+								Whatsapp Hub (Beta)
 							</div>
 							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								IA que filtra curiosos e <br />
-								<span className="text-white/50">entrega compradores.</span>
+								Gestão de atendimentos <br />
+								<span className="text-white/50">com Inteligência Artificial.</span>
 							</h2>
+							<div className="mb-6">
+								<span className="inline-flex items-center rounded-md bg-purple-400/10 px-2 py-1 text-xs font-medium text-purple-400 ring-1 ring-inset ring-purple-400/20">
+									Early Access
+								</span>
+							</div>
 							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								Sua equipe perde horas respondendo "tem disponível?" ou "qual o preço?". Nosso agente de IA assume a linha de frente: tira dúvidas técnicas,
-								consulta estoque em tempo real e transfere para o humano apenas quando o cliente demonstra real intenção de compra.
+								Centralize seus atendimentos. Conecte números via API Oficial ou Não Oficial (Coexistence). Nossa IA realiza a triagem inicial, qualifica o
+								lead e transfere para o vendedor ideal no momento certo.
 							</p>
 							<div className="space-y-4 mb-8">
 								<div className="flex items-start gap-4">
 									<div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0 border border-green-500/20">
-										<Brain className="w-5 h-5 text-green-500" />
+										<MessageCircle className="w-5 h-5 text-green-500" />
 									</div>
 									<div>
-										<h4 className="text-white font-semibold mb-1">Conhecimento Técnico</h4>
-										<p className="text-sm text-white/60">Treinada com seu catálogo, a IA responde dúvidas sobre voltagem, dimensões e compatibilidade.</p>
+										<h4 className="text-white font-semibold mb-1">Múltiplos Canais</h4>
+										<p className="text-sm text-white/60">Conecte toda sua equipe. Suporte a API Oficial (Meta) e API Não Oficial em implementação.</p>
 									</div>
 								</div>
 								<div className="flex items-start gap-4">
 									<div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0 border border-green-500/20">
-										<CheckCircle2 className="w-5 h-5 text-green-500" />
+										<Bot className="w-5 h-5 text-green-500" />
 									</div>
 									<div>
-										<h4 className="text-white font-semibold mb-1">Passagem de Bastão</h4>
+										<h4 className="text-white font-semibold mb-1">Triagem Automática</h4>
 										<p className="text-sm text-white/60">
 											Detectou interesse em fechar? A IA alerta seu vendedor e transfere o atendimento com todo o contexto.
 										</p>
 									</div>
 								</div>
 							</div>
-							<Button className="!bg-white !text-black hover:!bg-white/90 rounded-full">Conhecer a Triagem IA</Button>
+							<Button className="!bg-white !text-black hover:!bg-white/90 rounded-full">Solicitar Acesso Beta</Button>
 						</div>
 
 						<div className="order-1 lg:order-2 relative">
@@ -398,32 +403,32 @@ export default function LandingPage() {
 									<div className="space-y-4 font-sans text-sm">
 										{/* Customer Message */}
 										<div className="flex justify-end">
-											<div className="bg-[#24549C] text-white py-2 px-4 rounded-2xl rounded-tr-sm max-w-[85%]">Vocês tem disjuntor bipolar de 40A?</div>
+											<div className="bg-[#24549C] text-white py-2 px-4 rounded-2xl rounded-tr-sm max-w-[85%]">Quero saber sobre o status do meu pedido.</div>
 										</div>
 
 										{/* Bot Response */}
 										<div className="flex justify-start">
 											<div className="bg-zinc-800 text-white/90 py-2 px-4 rounded-2xl rounded-tl-sm max-w-[85%] border border-white/5">
-												Sim! Temos o modelo DIN da Siemens em estoque. Precisa de algo mais para o quadro? ⚡
+												Seu pedido #1234 está em separação! 📦 Posso ajudar com mais alguma coisa?
 											</div>
 										</div>
 
 										{/* Customer Message */}
 										<div className="flex justify-end">
-											<div className="bg-[#24549C] text-white py-2 px-4 rounded-2xl rounded-tr-sm max-w-[85%]">Qual o preço? Quero 10 unidades.</div>
+											<div className="bg-[#24549C] text-white py-2 px-4 rounded-2xl rounded-tr-sm max-w-[85%]">Quero falar com um atendente.</div>
 										</div>
 
 										{/* Bot Transfer */}
 										<div className="flex justify-start">
 											<div className="bg-zinc-800 text-white/90 py-2 px-4 rounded-2xl rounded-tl-sm max-w-[85%] border border-white/5">
-												Perfeito! Para cotações e negociações, vou chamar um especialista agora mesmo. Só um instante! 👨‍💼
+												Entendido. Transferindo para nossa equipe de suporte agora mesmo. 🎧
 											</div>
 										</div>
 
 										{/* System Message */}
 										<div className="flex justify-center my-4">
 											<span className="text-xs text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-												Transferido para: Roberto (Vendedor)
+												Transferido para: Julia (Suporte)
 											</span>
 										</div>
 									</div>
@@ -435,8 +440,8 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Feature 2: Active Automation */}
-			<section id="automacao" className="py-20 bg-zinc-950 border-y border-white/5 relative overflow-hidden">
+			{/* Feature: Campanhas */}
+			<section id="campanhas" className="py-20 bg-zinc-950 border-y border-white/5 relative overflow-hidden">
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 					<div className="grid lg:grid-cols-2 gap-16 items-center">
 						<div className="relative order-1">
@@ -446,10 +451,10 @@ export default function LandingPage() {
 									{/* Trigger Card */}
 									<div className="bg-zinc-900/80 border border-white/10 p-4 rounded-xl backdrop-blur-sm transform translate-x-4">
 										<div className="flex items-center justify-between mb-2">
-											<div className="text-xs font-bold text-blue-400 uppercase tracking-wider">Gatilho: Compra Realizada</div>
+											<div className="text-xs font-bold text-blue-400 uppercase tracking-wider">Gatilho: Cliente Inativo (30 dias)</div>
 											<Zap className="w-4 h-4 text-blue-400" />
 										</div>
-										<div className="text-sm text-white/60">Cliente João comprou R$ 1.200,00</div>
+										<div className="text-sm text-white/60">Cliente Maria não compra há 30 dias</div>
 									</div>
 
 									{/* Arrow */}
@@ -466,8 +471,8 @@ export default function LandingPage() {
 											<div className="text-sm font-medium text-white/80">Mensagem Enviada</div>
 										</div>
 										<p className="text-white text-lg font-medium leading-snug">
-											"Olá João! Parabéns pela compra. 🚀 Como você é um cliente VIP, liberamos <span className="text-yellow-300 font-bold">R$ 50,00</span> de
-											cashback para usar até semana que vem!"
+											"Oi Maria! 🌟 Sentimos sua falta. Estou liberando <span className="text-yellow-300 font-bold">R$ 25,00</span> de cashback extra para você
+											voltar!"
 										</p>
 									</div>
 								</div>
@@ -478,33 +483,33 @@ export default function LandingPage() {
 						<div className="order-2">
 							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6">
 								<Zap className="w-4 h-4" />
-								Automação Ativa e Fidelização
+								Campanhas de Engajamento
 							</div>
 							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								Fidelize no automático. <br />
-								<span className="text-white/50">Sem esforço manual.</span>
+								Crie interações automatizadas <br />
+								<span className="text-white/50">para WhatsApp.</span>
 							</h2>
 							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								Enquanto sua equipe foca em vender, nossa automação cuida do relacionamento. Crie réguas de comunicação personalizadas que reagem ao
-								comportamento de compra do cliente.
+								Configure campanhas para uma gama de eventos. Automatize a geração de cashback para estimular reativação e engajamento dos clientes. Suporte
+								para API Oficial e Não Oficial (em implementação).
 							</p>
 
 							<div className="grid gap-6 mb-8">
 								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-blue-500/30 transition-colors">
 									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<MessageSquare className="w-4 h-4 text-blue-400" /> Recuperação de Inativos
+										<MessageSquare className="w-4 h-4 text-blue-400" /> Reativação Automática
 									</h4>
-									<p className="text-sm text-white/60">O sistema identifica quem parou de comprar e envia ofertas automáticas para reativar o cliente.</p>
+									<p className="text-sm text-white/60">O sistema identifica inatividade e envia ofertas personalizadas para trazer o cliente de volta.</p>
 								</div>
 								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-blue-500/30 transition-colors">
 									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<Crown className="w-4 h-4 text-yellow-400" /> Pós-Venda Premium
+										<Crown className="w-4 h-4 text-yellow-400" /> Campanhas Configuráveis
 									</h4>
-									<p className="text-sm text-white/60">Mensagens de agradecimento, pesquisa de satisfação e avisos de cashback expirando.</p>
+									<p className="text-sm text-white/60">Defina gatilhos, regras de cashback e mensagens para datas comemorativas e eventos.</p>
 								</div>
 							</div>
 
-							<Button className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white rounded-full">Ver Automações</Button>
+							<Button className="!bg-[#24549C] hover:!bg-[#1e4682] !text-white rounded-full">Ver Campanhas</Button>
 						</div>
 					</div>
 				</div>

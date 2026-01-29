@@ -14,8 +14,16 @@ const CreateUtilInputSchema = z.object({
 });
 export type TCreateUtilInput = z.infer<typeof CreateUtilInputSchema>;
 
-async function createUtil({ input, session }: { input: TCreateUtilInput; session: TAuthUserSession["user"] }) {
-	const insertedUtil = await db.insert(utils).values(input.util).returning({ insertedId: utils.id });
+async function createUtil({ input, session }: { input: TCreateUtilInput; session: TAuthUserSession }) {
+	const userOrganizationId = session.membership?.organizacao?.id;
+	if (!userOrganizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const insertedUtil = await db
+		.insert(utils)
+		.values({
+			...input.util,
+			organizacaoId: userOrganizationId,
+		})
+		.returning({ insertedId: utils.id });
 	const insertedUtilId = insertedUtil[0]?.insertedId;
 	if (!insertedUtilId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar util.");
 	return {
@@ -32,7 +40,7 @@ const createUtilRoute = async (request: NextRequest) => {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const payload = await request.json();
 	const input = CreateUtilInputSchema.parse(payload);
-	const result = await createUtil({ input, session: session.user });
+	const result = await createUtil({ input, session });
 	return NextResponse.json(result, { status: 201 });
 };
 
@@ -47,11 +55,13 @@ const GetUtilsInputSchema = z.object({
 });
 export type TGetUtilsInput = z.infer<typeof GetUtilsInputSchema>;
 
-async function getUtils({ input, session }: { input: TGetUtilsInput; session: TAuthUserSession["user"] }) {
+async function getUtils({ input, session }: { input: TGetUtilsInput; session: TAuthUserSession }) {
+	const userOrganizationId = session.membership?.organizacao?.id;
+	if (!userOrganizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	if ("id" in input && input.id) {
 		const id = input.id;
 		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
-		const util = await db.query.utils.findFirst({ where: (fields, { eq }) => eq(fields.id, id) });
+		const util = await db.query.utils.findFirst({ where: (fields, { eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrganizationId)) });
 		if (!util) throw new createHttpError.NotFound("Util não encontrada.");
 		return {
 			data: {
@@ -66,7 +76,7 @@ async function getUtils({ input, session }: { input: TGetUtilsInput; session: TA
 	if ("identifier" in input && input.identifier) {
 		conditions.push(eq(utils.identificador, input.identifier));
 	}
-	const utilsResult = await db.query.utils.findMany({ where: and(...conditions) });
+	const utilsResult = await db.query.utils.findMany({ where: and(...conditions, eq(utils.organizacaoId, userOrganizationId)) });
 	return {
 		data: {
 			byId: null,
@@ -86,7 +96,7 @@ const getUtilsRoute = async (request: NextRequest) => {
 		id: searchParams.get("id") ?? undefined,
 		identifier: searchParams.get("identifier") ?? undefined,
 	});
-	const result = await getUtils({ input, session: session.user });
+	const result = await getUtils({ input, session });
 	return NextResponse.json(result, { status: 200 });
 };
 
@@ -100,8 +110,14 @@ const UpdateUtilInputSchema = z.object({
 });
 export type TUpdateUtilInput = z.infer<typeof UpdateUtilInputSchema>;
 
-async function updateUtil({ input, session }: { input: TUpdateUtilInput; session: TAuthUserSession["user"] }) {
-	const updatedUtil = await db.update(utils).set(input.util).where(eq(utils.id, input.utilId)).returning({ updatedId: utils.id });
+async function updateUtil({ input, session }: { input: TUpdateUtilInput; session: TAuthUserSession }) {
+	const userOrganizationId = session.membership?.organizacao?.id;
+	if (!userOrganizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const updatedUtil = await db
+		.update(utils)
+		.set({ ...input.util, organizacaoId: userOrganizationId })
+		.where(and(eq(utils.id, input.utilId), eq(utils.organizacaoId, userOrganizationId)))
+		.returning({ updatedId: utils.id });
 	const updatedUtilId = updatedUtil[0]?.updatedId;
 	if (!updatedUtilId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar util.");
 	return {
@@ -118,7 +134,7 @@ const updateUtilRoute = async (request: NextRequest) => {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const payload = await request.json();
 	const input = UpdateUtilInputSchema.parse(payload);
-	const result = await updateUtil({ input, session: session.user });
+	const result = await updateUtil({ input, session });
 	return NextResponse.json(result, { status: 200 });
 };
 

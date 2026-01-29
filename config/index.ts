@@ -2,8 +2,47 @@ export const SESSION_COOKIE_NAME = "syncrono-session";
 
 export const FREE_TRIAL_DURATION_DAYS = 15;
 
+export type TAppSubscriptionPlanKey = "ESSENCIAL" | "CRESCIMENTO" | "ESCALA";
+
+export type TAppSubscriptionPlanCapabilities = {
+	features: {
+		biLite: boolean;
+		biCompleto: boolean;
+		cashbackEPoi: boolean;
+		campanhas: boolean;
+		aiHints: boolean;
+		relatoriosVendasWhatsapp: boolean;
+		whatsappHub: boolean;
+		whatsappHubIa: boolean;
+	};
+	limits: {
+		/**
+		 * Número máximo de campanhas/jornadas ativas simultâneas.
+		 * null = ilimitado
+		 */
+		maxCampanhasAtivas: number | null;
+		/**
+		 * Créditos de AI-Hints por mês.
+		 * 0 = não incluso
+		 */
+		aiHintsPorMes: number;
+		/**
+		 * Quantidade máxima de números conectados no WhatsApp Hub.
+		 * 0 = não incluso
+		 * null = ilimitado (uso justo)
+		 */
+		hubMaxNumeros: number | null;
+		/**
+		 * Quantidade máxima de atendentes (assentos) no WhatsApp Hub.
+		 * 0 = não incluso
+		 * null = ilimitado (uso justo)
+		 */
+		hubMaxAtendentes: number | null;
+	};
+};
+
 export const AppSubscriptionPlans: {
-	[key in "ESSENCIAL" | "CRESCIMENTO" | "ESCALA"]: {
+	[key in TAppSubscriptionPlanKey]: {
 		name: string;
 		description: string;
 		routes: {
@@ -12,6 +51,7 @@ export const AppSubscriptionPlans: {
 				redirectTo: string | null;
 			};
 		};
+		capabilities: TAppSubscriptionPlanCapabilities;
 		stripeProdutoId: string;
 		pricingTableFeatures: {
 			checked: boolean;
@@ -35,7 +75,7 @@ export const AppSubscriptionPlans: {
 } = {
 	ESSENCIAL: {
 		name: "ESSENCIAL",
-		description: "Plano ideal para começar a implementar o RecompraCRM na sua empresa. Plug and Play (Sem integrações necessárias).",
+		description: "Plano ideal para começar a implementar o RecompraCRM na sua empresa. Plug and Play (sem integrações necessárias).",
 		routes: {
 			dashboard: {
 				accessible: false,
@@ -78,26 +118,44 @@ export const AppSubscriptionPlans: {
 				redirectTo: null,
 			},
 			"/dashboard/chats": {
-				accessible: true,
-				redirectTo: null,
+				accessible: false,
+				redirectTo: "/dashboard/commercial/campaigns",
 			},
 			"/dashboard/settings": {
 				accessible: true,
 				redirectTo: null,
 			},
 		},
+		capabilities: {
+			features: {
+				biLite: true,
+				biCompleto: false,
+				cashbackEPoi: true,
+				campanhas: true,
+				aiHints: false,
+				relatoriosVendasWhatsapp: false,
+				whatsappHub: false,
+				whatsappHubIa: false,
+			},
+			limits: {
+				maxCampanhasAtivas: 5,
+				aiHintsPorMes: 0,
+				hubMaxNumeros: 0,
+				hubMaxAtendentes: 0,
+			},
+		},
 		pricingTableFeatures: [
 			{
-				checked: false,
-				label: "Business Performance com gráficos e análises completas",
+				checked: true,
+				label: "Business Intelligence Lite (campanhas, cashback e WhatsApp)",
 			},
 			{
 				checked: false,
-				label: "Integrações com ERP (Sincronização de dados automática)",
+				label: "Business Intelligence completo (vendas, produtos, vendedores e parceiros)",
 			},
 			{
 				checked: true,
-				label: "Campanhas de reativação e relacionamento automáticas",
+				label: "Até 5 campanhas/jornadas ativas",
 			},
 			{
 				checked: true,
@@ -111,13 +169,13 @@ export const AppSubscriptionPlans: {
 		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_STARTER as string,
 		pricing: {
 			monthly: {
-				price: 499,
+				price: 199.9,
 				currency: "BRL",
 				interval: "month",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESSENCIAL_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
-				price: 5499,
+				price: 2199.9,
 				currency: "BRL",
 				interval: "year",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESSENCIAL_YEARLY_PLAN_PRICE_ID as string,
@@ -126,7 +184,7 @@ export const AppSubscriptionPlans: {
 	},
 	CRESCIMENTO: {
 		name: "CRESCIMENTO",
-		description: "Plano intermediário para usufruir do RecompraCRM na sua empresa junto com seu ERP.",
+		description: "Plano intermediário para usufruir do RecompraCRM com BI completo e otimizações com IA.",
 		routes: {
 			dashboard: {
 				accessible: true,
@@ -169,8 +227,8 @@ export const AppSubscriptionPlans: {
 				redirectTo: null,
 			},
 			"/dashboard/chats": {
-				accessible: true,
-				redirectTo: null,
+				accessible: false,
+				redirectTo: "/dashboard/commercial/campaigns",
 			},
 			"/dashboard/settings": {
 				accessible: true,
@@ -178,18 +236,36 @@ export const AppSubscriptionPlans: {
 			},
 		},
 		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_PLUS as string,
+		capabilities: {
+			features: {
+				biLite: true,
+				biCompleto: true,
+				cashbackEPoi: true,
+				campanhas: true,
+				aiHints: true,
+				relatoriosVendasWhatsapp: true,
+				whatsappHub: false,
+				whatsappHubIa: false,
+			},
+			limits: {
+				maxCampanhasAtivas: 10,
+				aiHintsPorMes: 10,
+				hubMaxNumeros: 0,
+				hubMaxAtendentes: 0,
+			},
+		},
 		pricingTableFeatures: [
 			{
-				checked: false,
-				label: "Business Performance com gráficos e análises completas",
+				checked: true,
+				label: "Business Intelligence completo (vendas, produtos, vendedores e parceiros)",
 			},
 			{
 				checked: true,
-				label: "Integrações com ERP (Sincronização de dados automática)",
+				label: "Integrações com ERP (sincronização de dados automática)",
 			},
 			{
 				checked: true,
-				label: "Campanhas de reativação e relacionamento automáticas",
+				label: "Até 10 campanhas/jornadas ativas",
 			},
 			{
 				checked: true,
@@ -199,16 +275,20 @@ export const AppSubscriptionPlans: {
 				checked: true,
 				label: "Ponto de Interação (tablet) para acumulação de cashback",
 			},
+			{
+				checked: true,
+				label: "AI-Hints (10/mês) + relatórios de vendas no WhatsApp",
+			},
 		],
 		pricing: {
 			monthly: {
-				price: 999,
+				price: 399.9,
 				currency: "BRL",
 				interval: "month",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_CRESCIMENTO_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
-				price: 9999,
+				price: 4399.9,
 				currency: "BRL",
 				interval: "year",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_CRESCIMENTO_YEARLY_PLAN_PRICE_ID as string,
@@ -217,7 +297,7 @@ export const AppSubscriptionPlans: {
 	},
 	ESCALA: {
 		name: "ESCALA",
-		description: "Plano completo com acesso ao módulo de IA.",
+		description: "Plano completo com WhatsApp Hub e atendimento com IA.",
 		routes: {
 			dashboard: {
 				accessible: true,
@@ -269,18 +349,36 @@ export const AppSubscriptionPlans: {
 			},
 		},
 		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_PLUS as string,
+		capabilities: {
+			features: {
+				biLite: true,
+				biCompleto: true,
+				cashbackEPoi: true,
+				campanhas: true,
+				aiHints: true,
+				relatoriosVendasWhatsapp: true,
+				whatsappHub: true,
+				whatsappHubIa: true,
+			},
+			limits: {
+				maxCampanhasAtivas: null,
+				aiHintsPorMes: 10,
+				hubMaxNumeros: 3,
+				hubMaxAtendentes: 10,
+			},
+		},
 		pricingTableFeatures: [
 			{
-				checked: false,
-				label: "Business Performance com gráficos e análises completas",
+				checked: true,
+				label: "Business Intelligence completo (vendas, produtos, vendedores e parceiros)",
 			},
 			{
 				checked: true,
-				label: "Integrações com ERP (Sincronização de dados automática)",
+				label: "Integrações com ERP (sincronização de dados automática)",
 			},
 			{
 				checked: true,
-				label: "Campanhas de reativação e relacionamento automáticas",
+				label: "Campanhas/jornadas ilimitadas (uso justo)",
 			},
 			{
 				checked: true,
@@ -290,16 +388,24 @@ export const AppSubscriptionPlans: {
 				checked: true,
 				label: "Ponto de Interação (tablet) para acumulação de cashback",
 			},
+			{
+				checked: true,
+				label: "AI-Hints (10/mês) + relatórios de vendas no WhatsApp",
+			},
+			{
+				checked: true,
+				label: "WhatsApp Hub com IA (até 3 números e 10 atendentes)",
+			},
 		],
 		pricing: {
 			monthly: {
-				price: 999,
+				price: 899.9,
 				currency: "BRL",
 				interval: "month",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESCALA_MONTHLY_PLAN_PRICE_ID as string,
 			},
 			yearly: {
-				price: 9999,
+				price: 9899.9,
 				currency: "BRL",
 				interval: "year",
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESCALA_YEARLY_PLAN_PRICE_ID as string,

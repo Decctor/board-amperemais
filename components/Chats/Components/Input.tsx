@@ -265,26 +265,13 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 						)}
 					>
 						<Clock
-							className={cn(
-								"w-4 h-4 shrink-0",
-								expirationInfo.isCritical ? "text-red-600 dark:text-red-500" : "text-amber-600 dark:text-amber-500",
-							)}
+							className={cn("w-4 h-4 shrink-0", expirationInfo.isCritical ? "text-red-600 dark:text-red-500" : "text-amber-600 dark:text-amber-500")}
 						/>
 						<div className="flex-1 min-w-0">
-							<p
-								className={cn(
-									"text-xs font-medium",
-									expirationInfo.isCritical ? "text-red-800 dark:text-red-200" : "text-amber-800 dark:text-amber-200",
-								)}
-							>
+							<p className={cn("text-xs font-medium", expirationInfo.isCritical ? "text-red-800 dark:text-red-200" : "text-amber-800 dark:text-amber-200")}>
 								{expirationInfo.isCritical ? "Janela de conversação expira em breve!" : "Janela de conversação se aproximando do fim"}
 							</p>
-							<p
-								className={cn(
-									"text-xs",
-									expirationInfo.isCritical ? "text-red-700 dark:text-red-300/80" : "text-amber-700 dark:text-amber-300/80",
-								)}
-							>
+							<p className={cn("text-xs", expirationInfo.isCritical ? "text-red-700 dark:text-red-300/80" : "text-amber-700 dark:text-amber-300/80")}>
 								Tempo restante: {expirationInfo.remainingHours}h {expirationInfo.remainingMinutes}min - Após expirar, será necessário enviar um template.
 							</p>
 						</div>
@@ -418,7 +405,7 @@ function TemplateSelectorContent({ onSelectTemplate, onClose, isSending }: Templ
 	return (
 		<>
 			{/* Template Header */}
-			<div className="flex items-center justify-between p-4 border-b border-primary/10 bg-gradient-to-r from-primary/5 to-transparent">
+			<div className="flex items-center justify-between p-4 border-b border-primary/10 bg-linear-to-r dark:from-primary/5 to-transparent">
 				<div className="flex items-center gap-2">
 					<FileText className="w-4 h-4 text-primary" />
 					<h3 className="font-semibold text-sm">Templates WhatsApp</h3>
