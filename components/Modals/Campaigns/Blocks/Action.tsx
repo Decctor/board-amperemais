@@ -31,7 +31,11 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 	}, [selectedPhoneInternalId, updateParams]);
 
 	const whatsappConnectionPhones =
-		whatsappConnection?.telefones.map((v) => ({ id: v.whatsappTelefoneId, label: `(${v.numero}) - ${v.nome}`, value: v.whatsappTelefoneId })) ?? [];
+		whatsappConnection?.telefones.map((v) => ({
+			id: v.whatsappTelefoneId ?? v.numero,
+			label: `(${v.numero}) - ${v.nome}`,
+			value: v.whatsappTelefoneId ?? v.numero,
+		})) ?? [];
 	const whatsappTemplates = whatsappTemplatesResult?.whatsappTemplates ?? [];
 
 	return (

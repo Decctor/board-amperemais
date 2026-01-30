@@ -145,12 +145,15 @@ export async function POST(req: Request) {
 			// 1. Validate operator
 			const operator = await tx.query.sellers.findFirst({
 				where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
+			});
+			if (!operator) throw new createHttpError.Unauthorized("Operador não encontrado.");
+			const membershipForSeller = await tx.query.organizationMembers.findFirst({
+				where: (fields, { and, eq }) => and(eq(fields.usuarioVendedorId, operator.id), eq(fields.organizacaoId, input.orgId)),
 				with: {
 					usuario: true,
 				},
 			});
-
-			if (!operator || !operator.usuario) {
+			if (!membershipForSeller || !membershipForSeller.usuario) {
 				throw new createHttpError.Unauthorized("Operador não encontrado ou não pertence a esta organização.");
 			}
 
@@ -655,7 +658,7 @@ export async function POST(req: Request) {
 					saldoValorAnterior: currentBalance + input.sale.cashback.valor,
 					saldoValorPosterior: currentBalance,
 					expiracaoData: null,
-					operadorId: operator.usuario.id,
+					operadorId: membershipForSeller.usuario.id,
 				});
 			}
 
@@ -710,7 +713,7 @@ export async function POST(req: Request) {
 					saldoValorPosterior: newOverallAvailableBalance,
 					expiracaoData: dayjs().add(program.expiracaoRegraValidadeValor, "day").toDate(),
 					dataInsercao: saleDate,
-					operadorId: operator.usuario.id,
+					operadorId: membershipForSeller.usuario.id,
 				});
 
 				// 9. Check for applicable cashback accumulation campaigns

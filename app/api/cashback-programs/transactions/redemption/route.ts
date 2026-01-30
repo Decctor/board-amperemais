@@ -31,7 +31,7 @@ const RedemptionInputSchema = z.object({
 });
 export type TCreateCashbackProgramRedemptionInput = z.infer<typeof RedemptionInputSchema>;
 type RedemptionResponse = {
-	data: { 
+	data: {
 		transactionId: string;
 		newBalance: number;
 		newResgatadoTotal: number;
@@ -54,12 +54,16 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 		// 2. Validate operator
 		const operator = await tx.query.sellers.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
+		});
+
+		if (!operator) throw new createHttpError.Unauthorized("Operador não encontrado.");
+		const membershipForSeller = await tx.query.organizationMembers.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.usuarioVendedorId, operator.id), eq(fields.organizacaoId, input.orgId)),
 			with: {
 				usuario: true,
 			},
 		});
-
-		if (!operator || !operator.usuario) {
+		if (!membershipForSeller || !membershipForSeller.usuario) {
 			throw new createHttpError.Unauthorized("Operador não encontrado ou não pertence a esta organização.");
 		}
 
@@ -88,9 +92,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			}
 
 			if (input.redemptionValue > maxAllowedRedemption) {
-				throw new createHttpError.BadRequest(
-					`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`
-				);
+				throw new createHttpError.BadRequest(`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`);
 			}
 		}
 
@@ -128,7 +130,7 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 				saldoValorAnterior: previousBalance,
 				saldoValorPosterior: newBalance,
 				expiracaoData: null,
-				operadorId: operator.usuario.id,
+				operadorId: membershipForSeller.usuario.id,
 			})
 			.returning({ id: cashbackProgramTransactions.id });
 

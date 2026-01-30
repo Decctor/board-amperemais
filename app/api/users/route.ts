@@ -96,7 +96,7 @@ async function getUsers({ input, session }: { input: TGetUsersInput; session: TA
 		const id = input.id;
 		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
 		const user = await db.query.users.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
+			where: (fields, { and, eq }) => and(eq(fields.id, id)),
 		});
 		if (!user) throw new createHttpError.NotFound("Usuário não encontrado.");
 
