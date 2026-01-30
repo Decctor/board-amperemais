@@ -428,21 +428,31 @@ export async function POST(req: Request) {
 							HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
 							HAS_WHATSAPP_CONNECTION: !!whatsappConnection,
 						});
-						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection) {
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+							const clientData = await tx.query.clients.findFirst({
+								where: (fields, { eq }) => eq(fields.id, clientId),
+								columns: {
+									id: true,
+									nome: true,
+									telefone: true,
+									email: true,
+									analiseRFMTitulo: true,
+									metadataProdutoMaisCompradoId: true,
+									metadataGrupoProdutoMaisComprado: true,
+								},
+							});
+
+							if (!clientData) {
+								throw new createHttpError.NotFound("Cliente não encontrado.");
+							}
 							console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] Adding to immediate processing list`);
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
-								client: {
-									id: clientId,
-									nome: input.client.nome,
-									telefone: input.client.telefone,
-									email: null,
-									analiseRFMTitulo: clientRfmTitle,
-								},
+								client: clientData,
 								campaign: {
 									autorId: campaign.autorId,
-									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
 								whatsappToken: whatsappConnection.token ?? undefined,
@@ -595,21 +605,32 @@ export async function POST(req: Request) {
 							HAS_WHATSAPP_CONNECTION: !!whatsappConnection,
 							HAS_CLIENT_DATA: !!clientData,
 						});
-						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData && campaign.whatsappConexaoTelefoneId) {
 							console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] Adding to immediate processing list`);
+							const clientData = await tx.query.clients.findFirst({
+								where: (fields, { eq }) => eq(fields.id, clientId),
+								columns: {
+									id: true,
+									nome: true,
+									telefone: true,
+									email: true,
+									analiseRFMTitulo: true,
+									metadataProdutoMaisCompradoId: true,
+									metadataGrupoProdutoMaisComprado: true,
+								},
+							});
+
+							if (!clientData) {
+								throw new createHttpError.NotFound("Cliente não encontrado.");
+							}
+
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
-								client: {
-									id: clientData.id,
-									nome: clientData.nome,
-									telefone: clientData.telefone,
-									email: clientData.email,
-									analiseRFMTitulo: clientData.analiseRFMTitulo,
-								},
+								client: clientData,
 								campaign: {
 									autorId: campaign.autorId,
-									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
 								whatsappToken: whatsappConnection.token ?? undefined,
@@ -748,6 +769,8 @@ export async function POST(req: Request) {
 							telefone: true,
 							email: true,
 							analiseRFMTitulo: true,
+							metadataProdutoMaisCompradoId: true,
+							metadataGrupoProdutoMaisComprado: true,
 						},
 					});
 
@@ -801,21 +824,16 @@ export async function POST(req: Request) {
 							HAS_WHATSAPP_CONNECTION: !!whatsappConnection,
 							HAS_CLIENT_DATA: !!clientData,
 						});
-						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData && campaign.whatsappConexaoTelefoneId) {
 							console.log(`[POI] [ORG: ${input.orgId}] [CASHBACK-ACUMULADO] Adding to immediate processing list`);
+
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
-								client: {
-									id: clientData.id,
-									nome: clientData.nome,
-									telefone: clientData.telefone,
-									email: clientData.email,
-									analiseRFMTitulo: clientData.analiseRFMTitulo,
-								},
+								client: clientData,
 								campaign: {
 									autorId: campaign.autorId,
-									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
 								whatsappToken: whatsappConnection.token ?? undefined,
@@ -856,7 +874,15 @@ export async function POST(req: Request) {
 
 					const clientData = await tx.query.clients.findFirst({
 						where: (fields, { eq }) => eq(fields.id, clientId),
-						columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+						columns: {
+							id: true,
+							nome: true,
+							telefone: true,
+							email: true,
+							analiseRFMTitulo: true,
+							metadataProdutoMaisCompradoId: true,
+							metadataGrupoProdutoMaisComprado: true,
+						},
 					});
 
 					for (const campaign of applicableCampaigns) {
@@ -899,20 +925,14 @@ export async function POST(req: Request) {
 						const shouldProcessImmediately =
 							campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
 
-						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData && campaign.whatsappConexaoTelefoneId) {
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
-								client: {
-									id: clientData.id,
-									nome: clientData.nome,
-									telefone: clientData.telefone,
-									email: clientData.email,
-									analiseRFMTitulo: clientData.analiseRFMTitulo,
-								},
+								client: clientData,
 								campaign: {
 									autorId: campaign.autorId,
-									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
 								whatsappToken: whatsappConnection.token ?? undefined,
@@ -961,7 +981,15 @@ export async function POST(req: Request) {
 
 					const clientData = await tx.query.clients.findFirst({
 						where: (fields, { eq }) => eq(fields.id, clientId),
-						columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+						columns: {
+							id: true,
+							nome: true,
+							telefone: true,
+							email: true,
+							analiseRFMTitulo: true,
+							metadataProdutoMaisCompradoId: true,
+							metadataGrupoProdutoMaisComprado: true,
+						},
 					});
 
 					for (const campaign of applicableCampaigns) {
@@ -1004,20 +1032,14 @@ export async function POST(req: Request) {
 						const shouldProcessImmediately =
 							campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
 
-						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData) {
+						if (shouldProcessImmediately && campaign.whatsappTemplate && whatsappConnection && clientData && campaign.whatsappConexaoTelefoneId) {
 							immediateProcessingDataList.push({
 								interactionId: insertedInteraction.id,
 								organizationId: input.orgId,
-								client: {
-									id: clientData.id,
-									nome: clientData.nome,
-									telefone: clientData.telefone,
-									email: clientData.email,
-									analiseRFMTitulo: clientData.analiseRFMTitulo,
-								},
+								client: clientData,
 								campaign: {
 									autorId: campaign.autorId,
-									whatsappTelefoneId: campaign.whatsappTelefoneId,
+									whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
 								whatsappToken: whatsappConnection.token ?? undefined,

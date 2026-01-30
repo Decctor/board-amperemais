@@ -546,10 +546,18 @@ async function handleCardapioWebImportation(
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, saleClientId),
-								columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+								columns: {
+									id: true,
+									nome: true,
+									telefone: true,
+									email: true,
+									analiseRFMTitulo: true,
+									metadataProdutoMaisCompradoId: true,
+									metadataGrupoProdutoMaisComprado: true,
+								},
 							});
 							if (clientData) {
 								immediateProcessingDataList.push({
@@ -558,7 +566,7 @@ async function handleCardapioWebImportation(
 									client: clientData,
 									campaign: {
 										autorId: campaign.autorId,
-										whatsappTelefoneId: campaign.whatsappTelefoneId,
+										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
 									whatsappToken: whatsappConnection.token ?? undefined,
@@ -639,10 +647,18 @@ async function handleCardapioWebImportation(
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, saleClientId),
-								columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+								columns: {
+									id: true,
+									nome: true,
+									telefone: true,
+									email: true,
+									analiseRFMTitulo: true,
+									metadataProdutoMaisCompradoId: true,
+									metadataGrupoProdutoMaisComprado: true,
+								},
 							});
 							if (clientData) {
 								immediateProcessingDataList.push({
@@ -651,7 +667,7 @@ async function handleCardapioWebImportation(
 									client: clientData,
 									campaign: {
 										autorId: campaign.autorId,
-										whatsappTelefoneId: campaign.whatsappTelefoneId,
+										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
 									whatsappToken: whatsappConnection.token ?? undefined,
@@ -785,10 +801,18 @@ async function handleCardapioWebImportation(
 									})
 									.returning({ id: interactions.id });
 
-								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, saleClientId),
-										columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+										columns: {
+											id: true,
+											nome: true,
+											telefone: true,
+											email: true,
+											analiseRFMTitulo: true,
+											metadataProdutoMaisCompradoId: true,
+											metadataGrupoProdutoMaisComprado: true,
+										},
 									});
 									if (clientData) {
 										immediateProcessingDataList.push({
@@ -797,7 +821,7 @@ async function handleCardapioWebImportation(
 											client: clientData,
 											campaign: {
 												autorId: campaign.autorId,
-												whatsappTelefoneId: campaign.whatsappTelefoneId,
+												whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
 											whatsappToken: whatsappConnection.token ?? undefined,
@@ -1474,7 +1498,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									.returning({ id: interactions.id });
 
 								// Check for immediate processing (execucaoAgendadaValor === 0)
-								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 									// Query client data for immediate processing
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, saleClientId),
@@ -1484,6 +1508,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 											telefone: true,
 											email: true,
 											analiseRFMTitulo: true,
+											metadataProdutoMaisCompradoId: true,
+											metadataGrupoProdutoMaisComprado: true,
 										},
 									});
 
@@ -1497,10 +1523,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												telefone: clientData.telefone,
 												email: clientData.email,
 												analiseRFMTitulo: clientData.analiseRFMTitulo,
+												metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
+												metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
 											},
 											campaign: {
 												autorId: campaign.autorId,
-												whatsappTelefoneId: campaign.whatsappTelefoneId,
+												whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
 											whatsappToken: whatsappConnection.token ?? undefined,
@@ -1596,7 +1624,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									.returning({ id: interactions.id });
 
 								// Check for immediate processing (execucaoAgendadaValor === 0)
-								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 									// Query client data for immediate processing
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, saleClientId),
@@ -1606,6 +1634,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 											telefone: true,
 											email: true,
 											analiseRFMTitulo: true,
+											metadataProdutoMaisCompradoId: true,
+											metadataGrupoProdutoMaisComprado: true,
 										},
 									});
 
@@ -1619,10 +1649,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												telefone: clientData.telefone,
 												email: clientData.email,
 												analiseRFMTitulo: clientData.analiseRFMTitulo,
+												metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
+												metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
 											},
 											campaign: {
 												autorId: campaign.autorId,
-												whatsappTelefoneId: campaign.whatsappTelefoneId,
+												whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
 											whatsappToken: whatsappConnection.token ?? undefined,
@@ -1718,10 +1750,18 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 										})
 										.returning({ id: interactions.id });
 
-									if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+									if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 										const clientDetails = await tx.query.clients.findFirst({
 											where: (fields, { eq }) => eq(fields.id, saleClientId),
-											columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+											columns: {
+												id: true,
+												nome: true,
+												telefone: true,
+												email: true,
+												analiseRFMTitulo: true,
+												metadataProdutoMaisCompradoId: true,
+												metadataGrupoProdutoMaisComprado: true,
+											},
 										});
 										if (clientDetails) {
 											immediateProcessingDataList.push({
@@ -1730,7 +1770,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												client: clientDetails,
 												campaign: {
 													autorId: campaign.autorId,
-													whatsappTelefoneId: campaign.whatsappTelefoneId,
+													whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 													whatsappTemplate: campaign.whatsappTemplate,
 												},
 												whatsappToken: whatsappConnection.token ?? undefined,
@@ -1812,10 +1852,18 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 										})
 										.returning({ id: interactions.id });
 
-									if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+									if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 										const clientDetails = await tx.query.clients.findFirst({
 											where: (fields, { eq }) => eq(fields.id, saleClientId),
-											columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+											columns: {
+												id: true,
+												nome: true,
+												telefone: true,
+												email: true,
+												analiseRFMTitulo: true,
+												metadataProdutoMaisCompradoId: true,
+												metadataGrupoProdutoMaisComprado: true,
+											},
 										});
 										if (clientDetails) {
 											immediateProcessingDataList.push({
@@ -1824,7 +1872,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												client: clientDetails,
 												campaign: {
 													autorId: campaign.autorId,
-													whatsappTelefoneId: campaign.whatsappTelefoneId,
+													whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 													whatsappTemplate: campaign.whatsappTemplate,
 												},
 												whatsappToken: whatsappConnection.token ?? undefined,
@@ -2005,7 +2053,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 											.returning({ id: interactions.id });
 
 										// Check for immediate processing (execucaoAgendadaValor === 0)
-										if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+										if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 											// Query client data for immediate processing
 											const clientData = await tx.query.clients.findFirst({
 												where: (fields, { eq }) => eq(fields.id, saleClientId),
@@ -2015,6 +2063,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 													telefone: true,
 													email: true,
 													analiseRFMTitulo: true,
+													metadataProdutoMaisCompradoId: true,
+													metadataGrupoProdutoMaisComprado: true,
 												},
 											});
 
@@ -2028,10 +2078,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 														telefone: clientData.telefone,
 														email: clientData.email,
 														analiseRFMTitulo: clientData.analiseRFMTitulo,
+														metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
+														metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
 													},
 													campaign: {
 														autorId: campaign.autorId,
-														whatsappTelefoneId: campaign.whatsappTelefoneId,
+														whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 														whatsappTemplate: campaign.whatsappTemplate,
 													},
 													whatsappToken: whatsappConnection.token ?? undefined,

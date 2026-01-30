@@ -32,7 +32,7 @@ export const chats = newTable("chats", {
 	whatsappConexaoTelefoneId: varchar("whatsapp_conexao_telefone_id", { length: 255 }).references(() => whatsappConnectionPhones.id, {
 		onDelete: "set null",
 	}),
-	whatsappTelefoneId: varchar("whatsapp_telefone_id", { length: 255 }).notNull(),
+	whatsappTelefoneId: varchar("whatsapp_telefone_id", { length: 255 }),
 	mensagensNaoLidas: integer("mensagens_nao_lidas").notNull().default(0),
 	ultimaMensagemId: varchar("ultima_mensagem_id", { length: 255 }),
 	ultimaMensagemData: timestamp("ultima_mensagem_data").notNull(),

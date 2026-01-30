@@ -1,5 +1,6 @@
 import axios from "axios";
 import createHttpError from "http-errors";
+import type { TemplateParameter, TemplatePayload } from "@/lib/whatsapp/templates";
 
 // Environment variables
 const GATEWAY_URL = process.env.INTERNAL_WHATSAPP_GATEWAY_URL;
@@ -26,52 +27,6 @@ export type SendMessageResponse = {
 	success: boolean;
 	messageId?: string;
 	error?: string;
-};
-
-type TemplateParameter =
-	| {
-			type: "text";
-			text: string;
-	  }
-	| {
-			type: "image";
-			image: {
-				link: string;
-			};
-	  }
-	| {
-			type: "video";
-			video: {
-				link: string;
-			};
-	  }
-	| {
-			type: "document";
-			document: {
-				link: string;
-				filename?: string;
-			};
-	  }
-	| {
-			type: string;
-	  };
-
-type TemplateComponent = {
-	type: string;
-	parameters?: TemplateParameter[];
-	text?: string;
-	buttons?: Array<{ type?: string; text?: string }>;
-};
-
-export type TemplatePayload = {
-	messaging_product: string;
-	to: string;
-	type: "template";
-	template: {
-		name: string;
-		language: { code: string };
-		components?: TemplateComponent[];
-	};
 };
 
 export type SendMessageContent =

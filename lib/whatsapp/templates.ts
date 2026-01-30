@@ -3,6 +3,57 @@ import type { TWhatsappTemplate } from "../../schemas/whatsapp-templates";
 import type { TWhatsappTemplateVariables } from "./template-variables";
 import { formatPhoneAsWhatsappId, sanitizeTemplateParameter } from "./utils";
 
+export type TemplateParameter =
+	| {
+			type: "text";
+			text: string;
+	  }
+	| {
+			type: "image";
+			image: {
+				link: string;
+			};
+	  }
+	| {
+			type: "video";
+			video: {
+				link: string;
+			};
+	  }
+	| {
+			type: "document";
+			document: {
+				link: string;
+				filename?: string;
+			};
+	  }
+	| {
+			type: string;
+	  };
+
+export type TemplateComponent = {
+	type: string;
+	parameters?: TemplateParameter[];
+	text?: string;
+	buttons?: Array<{ type?: string; text?: string }>;
+};
+
+export type TemplatePayload = {
+	messaging_product: string;
+	to: string;
+	type: "template";
+	template: {
+		name: string;
+		language: { code: string };
+		components?: TemplateComponent[];
+	};
+};
+
+export type WhatsappTemplatePayloadResult = {
+	content: string;
+	data: TemplatePayload;
+};
+
 const DefaultTemplatePayloadSchema = z.object({
 	toPhoneNumber: z.string({
 		required_error: "Número de telefone não informado.",
@@ -575,7 +626,11 @@ type getWhatsappTemplatePayloadParams = {
 	};
 	variables: Record<keyof TWhatsappTemplateVariables, string>;
 };
-export function getWhatsappTemplatePayload({ toPhoneNumber, template, variables }: getWhatsappTemplatePayloadParams) {
+export function getWhatsappTemplatePayload({
+	toPhoneNumber,
+	template,
+	variables,
+}: getWhatsappTemplatePayloadParams): WhatsappTemplatePayloadResult {
 	const components = [];
 
 	if (template.components.corpo.parametros.length > 0) {

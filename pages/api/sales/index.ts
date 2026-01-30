@@ -673,6 +673,8 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 						telefone: true,
 						email: true,
 						analiseRFMTitulo: true,
+						metadataProdutoMaisCompradoId: true,
+						metadataGrupoProdutoMaisComprado: true,
 					},
 				});
 
@@ -720,7 +722,13 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 						.returning({ id: interactions.id });
 
 					// Check for immediate processing (execucaoAgendadaValor === 0)
-					if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && clientData) {
+					if (
+						campaign.execucaoAgendadaValor === 0 &&
+						campaign.whatsappTemplate &&
+						whatsappConnection &&
+						clientData &&
+						campaign.whatsappConexaoTelefoneId
+					) {
 						immediateProcessingDataList.push({
 							interactionId: insertedInteraction.id,
 							organizationId: input.orgId,
@@ -730,13 +738,16 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 								telefone: clientData.telefone,
 								email: clientData.email,
 								analiseRFMTitulo: clientData.analiseRFMTitulo,
+								metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
+								metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
 							},
 							campaign: {
 								autorId: campaign.autorId,
-								whatsappTelefoneId: campaign.whatsappTelefoneId,
+								whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 								whatsappTemplate: campaign.whatsappTemplate,
 							},
-							whatsappToken: whatsappConnection.token,
+							whatsappToken: whatsappConnection.token ?? undefined,
+							whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 						});
 					}
 				}

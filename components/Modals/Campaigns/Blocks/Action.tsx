@@ -14,27 +14,15 @@ type CampaignsActionBlockProps = {
 export default function CampaignsActionBlock({ organizationId, campaign, updateCampaign }: CampaignsActionBlockProps) {
 	const { data: whatsappConnection } = useWhatsappConnection();
 
-	// Map whatsappTelefoneId (Meta's ID) to internal telefoneId for template filtering
-	const selectedPhoneInternalId = useMemo(() => {
-		if (!campaign.whatsappTelefoneId || !whatsappConnection?.telefones) return undefined;
-		const phone = whatsappConnection.telefones.find((t) => t.whatsappTelefoneId === campaign.whatsappTelefoneId);
-		return phone?.id;
-	}, [campaign.whatsappTelefoneId, whatsappConnection?.telefones]);
-
 	const { data: whatsappTemplatesResult, updateParams } = useWhatsappTemplates({
-		initialParams: { page: 1, search: "", whatsappConnectionPhoneId: selectedPhoneInternalId },
+		initialParams: { page: 1, search: "", whatsappConnectionPhoneId: campaign.whatsappConexaoTelefoneId },
 	});
-
-	// Update template query when phone selection changes
-	useEffect(() => {
-		updateParams({ whatsappConnectionPhoneId: selectedPhoneInternalId });
-	}, [selectedPhoneInternalId, updateParams]);
 
 	const whatsappConnectionPhones =
 		whatsappConnection?.telefones.map((v) => ({
-			id: v.whatsappTelefoneId ?? v.numero,
+			id: v.id,
 			label: `(${v.numero}) - ${v.nome}`,
-			value: v.whatsappTelefoneId ?? v.numero,
+			value: v.id,
 		})) ?? [];
 	const whatsappTemplates = whatsappTemplatesResult?.whatsappTemplates ?? [];
 
@@ -44,20 +32,24 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 				<p className="text-center text-sm tracking-tigh text-muted-foreground">Defina o template do WhatsApp que deve ser enviado.</p>
 				<SelectInput
 					label="TELEFONE DO WHATSAPP"
-					value={campaign.whatsappTelefoneId}
+					value={campaign.whatsappConexaoTelefoneId}
 					resetOptionLabel="SELECIONE O TELEFONE"
 					options={whatsappConnectionPhones}
 					handleChange={(value) => {
-						updateCampaign({ whatsappTelefoneId: value, whatsappTemplateId: "" });
+						updateCampaign({ whatsappConexaoTelefoneId: value, whatsappTemplateId: "" });
+						updateParams({ whatsappConnectionPhoneId: value });
 					}}
-					onReset={() => updateCampaign({ whatsappTelefoneId: "", whatsappTemplateId: "" })}
+					onReset={() => {
+						updateCampaign({ whatsappConexaoTelefoneId: "", whatsappTemplateId: "" });
+						updateParams({ whatsappConnectionPhoneId: undefined });
+					}}
 					width="100%"
 				/>
 				<SelectInput
 					label="TEMPLATE DO WHATSAPP"
 					value={campaign.whatsappTemplateId}
-					editable={!!campaign.whatsappTelefoneId}
-					resetOptionLabel={campaign.whatsappTelefoneId ? "SELECIONE O TEMPLATE" : "SELECIONE UM TELEFONE PRIMEIRO"}
+					editable={!!campaign.whatsappTemplateId}
+					resetOptionLabel={campaign.whatsappTemplateId ? "SELECIONE O TEMPLATE" : "SELECIONE UM TELEFONE PRIMEIRO"}
 					options={whatsappTemplates.map((template) => ({ id: template.id, label: template.nome, value: template.id }))}
 					handleChange={(value) => updateCampaign({ whatsappTemplateId: value })}
 					onReset={() => updateCampaign({ whatsappTemplateId: "" })}

@@ -1,7 +1,7 @@
 import type { TAttributionModelEnum } from "@/schemas/enums";
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { newTable, users, whatsappTemplates } from ".";
+import { newTable, users, whatsappConnectionPhones, whatsappTemplates } from ".";
 import { campaignTriggerTypeEnum, cashbackProgramAccumulationTypeEnum, interactionsCronJobTimeBlocksEnum, timeDurationUnitsEnum } from "./enums";
 import { organizations } from "./organizations";
 
@@ -44,7 +44,9 @@ export const campaigns = newTable("campaigns", {
 	frequenciaIntervaloMedida: timeDurationUnitsEnum("frequencia_intervalo_medida").default("DIAS"),
 
 	// Whatsapp specific
-	whatsappTelefoneId: varchar("whatsapp_telefone_id", { length: 255 }).notNull(),
+	whatsappConexaoTelefoneId: varchar("whatsapp_conexao_telefone_id", { length: 255 }).references(() => whatsappConnectionPhones.id, {
+		onDelete: "set null",
+	}),
 	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 })
 		.references(() => whatsappTemplates.id)
 		.notNull(),

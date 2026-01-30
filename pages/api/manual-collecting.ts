@@ -524,10 +524,18 @@ async function handleCardapioWebImportation(
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, saleClientId),
-								columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+								columns: {
+									id: true,
+									nome: true,
+									telefone: true,
+									email: true,
+									analiseRFMTitulo: true,
+									metadataProdutoMaisCompradoId: true,
+									metadataGrupoProdutoMaisComprado: true,
+								},
 							});
 							if (clientData) {
 								immediateProcessingDataList.push({
@@ -536,10 +544,11 @@ async function handleCardapioWebImportation(
 									client: clientData,
 									campaign: {
 										autorId: campaign.autorId,
-										whatsappTelefoneId: campaign.whatsappTelefoneId,
+										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token,
+									whatsappToken: whatsappConnection.token ?? undefined,
+									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 								});
 							}
 						}
@@ -616,10 +625,18 @@ async function handleCardapioWebImportation(
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, saleClientId),
-								columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+								columns: {
+									id: true,
+									nome: true,
+									telefone: true,
+									email: true,
+									analiseRFMTitulo: true,
+									metadataProdutoMaisCompradoId: true,
+									metadataGrupoProdutoMaisComprado: true,
+								},
 							});
 							if (clientData) {
 								immediateProcessingDataList.push({
@@ -628,10 +645,11 @@ async function handleCardapioWebImportation(
 									client: clientData,
 									campaign: {
 										autorId: campaign.autorId,
-										whatsappTelefoneId: campaign.whatsappTelefoneId,
+										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token,
+									whatsappToken: whatsappConnection.token ?? undefined,
+									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 								});
 							}
 						}
@@ -761,10 +779,18 @@ async function handleCardapioWebImportation(
 									})
 									.returning({ id: interactions.id });
 
-								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, saleClientId),
-										columns: { id: true, nome: true, telefone: true, email: true, analiseRFMTitulo: true },
+										columns: {
+											id: true,
+											nome: true,
+											telefone: true,
+											email: true,
+											analiseRFMTitulo: true,
+											metadataProdutoMaisCompradoId: true,
+											metadataGrupoProdutoMaisComprado: true,
+										},
 									});
 									if (clientData) {
 										immediateProcessingDataList.push({
@@ -773,10 +799,11 @@ async function handleCardapioWebImportation(
 											client: clientData,
 											campaign: {
 												autorId: campaign.autorId,
-												whatsappTelefoneId: campaign.whatsappTelefoneId,
+												whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
-											whatsappToken: whatsappConnection.token,
+											whatsappToken: whatsappConnection.token ?? undefined,
+											whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 										});
 									}
 								}

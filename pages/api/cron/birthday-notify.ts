@@ -138,7 +138,7 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, client.id),
@@ -148,6 +148,8 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 										telefone: true,
 										email: true,
 										analiseRFMTitulo: true,
+										metadataProdutoMaisCompradoId: true,
+										metadataGrupoProdutoMaisComprado: true,
 									},
 								});
 
@@ -161,13 +163,16 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 											telefone: clientData.telefone,
 											email: clientData.email,
 											analiseRFMTitulo: clientData.analiseRFMTitulo,
+											metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
+											metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
 										},
 										campaign: {
 											autorId: campaign.autorId,
-											whatsappTelefoneId: campaign.whatsappTelefoneId,
+											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
-										whatsappToken: whatsappConnection.token,
+										whatsappToken: whatsappConnection.token ?? undefined,
+										whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 									});
 								}
 							}

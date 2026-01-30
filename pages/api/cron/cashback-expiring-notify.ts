@@ -147,7 +147,7 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, clienteId),
@@ -157,6 +157,8 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 										telefone: true,
 										email: true,
 										analiseRFMTitulo: true,
+										metadataProdutoMaisCompradoId: true,
+										metadataGrupoProdutoMaisComprado: true,
 									},
 								});
 
@@ -164,19 +166,14 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 									immediateProcessingDataList.push({
 										interactionId: insertedInteraction.id,
 										organizationId: organization.id,
-										client: {
-											id: clientData.id,
-											nome: clientData.nome,
-											telefone: clientData.telefone,
-											email: clientData.email,
-											analiseRFMTitulo: clientData.analiseRFMTitulo,
-										},
+										client: clientData,
 										campaign: {
 											autorId: campaign.autorId,
-											whatsappTelefoneId: campaign.whatsappTelefoneId,
+											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
-										whatsappToken: whatsappConnection.token,
+										whatsappToken: whatsappConnection.token ?? undefined,
+										whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 									});
 								}
 							}

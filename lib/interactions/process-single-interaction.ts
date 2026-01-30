@@ -3,7 +3,7 @@ import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variabl
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import type { TWhatsappTemplate } from "@/schemas/whatsapp-templates";
 import { db } from "@/services/drizzle";
-import { chatMessages, chats, interactions } from "@/services/drizzle/schema";
+import { type TClientEntity, chatMessages, chats, interactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "../whatsapp/internal-gateway";
 import { formatPhoneForInternalGateway } from "../whatsapp/utils";
@@ -17,10 +17,12 @@ export type ImmediateProcessingData = {
 		telefone: string;
 		email: string | null;
 		analiseRFMTitulo: string | null;
+		metadataProdutoMaisCompradoId: TClientEntity["metadataProdutoMaisCompradoId"];
+		metadataGrupoProdutoMaisComprado: TClientEntity["metadataGrupoProdutoMaisComprado"];
 	};
 	campaign: {
 		autorId: string;
-		whatsappTelefoneId: string;
+		whatsappConexaoTelefoneId: string;
 		whatsappTemplate: TWhatsappTemplate;
 	};
 	whatsappToken?: string;
@@ -48,14 +50,21 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 	try {
 		console.log(`[IMMEDIATE_PROCESS] Processing interaction ${interactionId} for org ${organizationId}`);
 
+		const clientFavoriteProduct = client.metadataProdutoMaisCompradoId
+			? (
+					await db.query.products.findFirst({
+						where: (fields, { eq }) => eq(fields.id, client.metadataProdutoMaisCompradoId as string),
+					})
+				)?.descricao
+			: null;
 		// Build WhatsApp template payload
 		const whatsappTemplateVariablesValuesMap: Record<keyof TWhatsappTemplateVariables, string> = {
 			clientEmail: client.email ?? "",
 			clientName: client.nome,
 			clientPhoneNumber: client.telefone,
 			clientSegmentation: client.analiseRFMTitulo ?? "",
-			clientFavoriteProduct: "",
-			clientFavoriteProductGroup: "",
+			clientFavoriteProduct: clientFavoriteProduct ?? "",
+			clientFavoriteProductGroup: client.metadataGrupoProdutoMaisComprado ?? "",
 			clientSuggestedProduct: "",
 		};
 
@@ -75,7 +84,11 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 		let chatId: string | null = null;
 		const existingChat = await db.query.chats.findFirst({
 			where: (fields, { and, eq }) =>
-				and(eq(fields.organizacaoId, organizationId), eq(fields.clienteId, client.id), eq(fields.whatsappTelefoneId, campaign.whatsappTelefoneId)),
+				and(
+					eq(fields.organizacaoId, organizationId),
+					eq(fields.clienteId, client.id),
+					eq(fields.whatsappConexaoTelefoneId, campaign.whatsappConexaoTelefoneId),
+				),
 		});
 
 		if (existingChat) {
@@ -86,7 +99,7 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 				.values({
 					organizacaoId: organizationId,
 					clienteId: client.id,
-					whatsappTelefoneId: campaign.whatsappTelefoneId,
+					whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 					ultimaMensagemData: new Date(),
 					ultimaMensagemConteudoTipo: "TEXTO",
 				})
@@ -118,7 +131,7 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 			let sentWhatsappTemplateResponse = null;
 			if (whatsappToken) {
 				sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
-					fromPhoneNumberId: campaign.whatsappTelefoneId,
+					fromPhoneNumberId: campaign.whatsappConexaoTelefoneId,
 					templatePayload: payload.data,
 					whatsappToken: whatsappToken,
 				});
@@ -142,16 +155,11 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 
 				console.log(`[IMMEDIATE_PROCESS] Successfully processed interaction ${interactionId}`);
 			} else if (whatsappSessionId) {
-				const templateContent = parseTemplatePayloadToGatewayContent({
-					type: "template",
-					template: {
-						name: campaign.whatsappTemplate.nome,
-						language: { code: "pt_BR" },
-						components: campaign.whatsappTemplate.componentes,
-					},
-					messaging_product: "whatsapp",
+				const gatewayPayload = {
+					...payload.data,
 					to: formatPhoneForInternalGateway(client.telefone),
-				});
+				};
+				const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload);
 				sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(client.telefone), templateContent);
 				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
 				// Update chat message with WhatsApp message ID

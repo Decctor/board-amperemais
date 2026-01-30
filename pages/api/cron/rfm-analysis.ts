@@ -260,7 +260,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, results.clientId),
@@ -270,6 +270,8 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 										telefone: true,
 										email: true,
 										analiseRFMTitulo: true,
+										metadataProdutoMaisCompradoId: true,
+										metadataGrupoProdutoMaisComprado: true,
 									},
 								});
 
@@ -283,10 +285,12 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 											telefone: clientData.telefone,
 											email: clientData.email,
 											analiseRFMTitulo: clientData.analiseRFMTitulo,
+											metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
+											metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
 										},
 										campaign: {
 											autorId: campaign.autorId,
-											whatsappTelefoneId: campaign.whatsappTelefoneId,
+											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
 										whatsappToken: whatsappConnection.token ?? undefined,
@@ -385,7 +389,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection) {
+							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, results.clientId),
@@ -395,6 +399,8 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 										telefone: true,
 										email: true,
 										analiseRFMTitulo: true,
+										metadataProdutoMaisCompradoId: true,
+										metadataGrupoProdutoMaisComprado: true,
 									},
 								});
 
@@ -408,10 +414,12 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 											telefone: clientData.telefone,
 											email: clientData.email,
 											analiseRFMTitulo: clientData.analiseRFMTitulo,
+											metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
+											metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
 										},
 										campaign: {
 											autorId: campaign.autorId,
-											whatsappTelefoneId: campaign.whatsappTelefoneId,
+											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
 										whatsappToken: whatsappConnection.token ?? undefined,
