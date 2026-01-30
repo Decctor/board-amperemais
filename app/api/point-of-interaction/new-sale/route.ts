@@ -442,7 +442,8 @@ export async function POST(req: Request) {
 									whatsappTelefoneId: campaign.whatsappTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
-								whatsappToken: whatsappConnection.token,
+								whatsappToken: whatsappConnection.token ?? undefined,
+								whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 							});
 						} else {
 							console.log(`[POI] [ORG: ${input.orgId}] [PRIMEIRA-COMPRA] NOT adding to immediate processing - conditions not met`);
@@ -608,7 +609,8 @@ export async function POST(req: Request) {
 									whatsappTelefoneId: campaign.whatsappTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
-								whatsappToken: whatsappConnection.token,
+								whatsappToken: whatsappConnection.token ?? undefined,
+								whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 							});
 						} else {
 							console.log(`[POI] [ORG: ${input.orgId}] [NOVA-COMPRA] NOT adding to immediate processing - conditions not met`);
@@ -813,7 +815,8 @@ export async function POST(req: Request) {
 									whatsappTelefoneId: campaign.whatsappTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
-								whatsappToken: whatsappConnection.token,
+								whatsappToken: whatsappConnection.token ?? undefined,
+								whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 							});
 						}
 					}
@@ -864,7 +867,9 @@ export async function POST(req: Request) {
 						);
 
 						if (!canSchedule) {
-							console.log(`[POI] [ORG: ${input.orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
+							console.log(
+								`[POI] [ORG: ${input.orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`,
+							);
 							continue;
 						}
 
@@ -907,7 +912,8 @@ export async function POST(req: Request) {
 									whatsappTelefoneId: campaign.whatsappTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
-								whatsappToken: whatsappConnection.token,
+								whatsappToken: whatsappConnection.token ?? undefined,
+								whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 							});
 						}
 
@@ -966,7 +972,9 @@ export async function POST(req: Request) {
 						);
 
 						if (!canSchedule) {
-							console.log(`[POI] [ORG: ${input.orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
+							console.log(
+								`[POI] [ORG: ${input.orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`,
+							);
 							continue;
 						}
 
@@ -1009,7 +1017,8 @@ export async function POST(req: Request) {
 									whatsappTelefoneId: campaign.whatsappTelefoneId,
 									whatsappTemplate: campaign.whatsappTemplate,
 								},
-								whatsappToken: whatsappConnection.token,
+								whatsappToken: whatsappConnection.token ?? undefined,
+								whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 							});
 						}
 

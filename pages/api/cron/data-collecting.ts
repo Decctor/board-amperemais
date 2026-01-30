@@ -210,7 +210,15 @@ async function handleCardapioWebImportation(
 
 		const existingClients = await tx.query.clients.findMany({
 			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
-			columns: { id: true, nome: true, primeiraCompraData: true, ultimaCompraData: true, analiseRFMTitulo: true, metadataTotalCompras: true, metadataValorTotalCompras: true },
+			columns: {
+				id: true,
+				nome: true,
+				primeiraCompraData: true,
+				ultimaCompraData: true,
+				analiseRFMTitulo: true,
+				metadataTotalCompras: true,
+				metadataValorTotalCompras: true,
+			},
 		});
 
 		const existingProducts = await tx.query.products.findMany({
@@ -375,6 +383,8 @@ async function handleCardapioWebImportation(
 					firstPurchaseDate: isValidSale ? saleDate : null,
 					lastPurchaseDate: isValidSale ? saleDate : null,
 					rfmTitle: "CLIENTES RECENTES",
+					metadataTotalCompras: 0,
+					metadataValorTotalCompras: 0,
 				});
 
 				if (cashbackProgram) {
@@ -551,7 +561,8 @@ async function handleCardapioWebImportation(
 										whatsappTelefoneId: campaign.whatsappTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token,
+									whatsappToken: whatsappConnection.token ?? undefined,
+									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 								});
 							}
 						}
@@ -643,7 +654,8 @@ async function handleCardapioWebImportation(
 										whatsappTelefoneId: campaign.whatsappTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token,
+									whatsappToken: whatsappConnection.token ?? undefined,
+									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 								});
 							}
 						}
@@ -788,7 +800,8 @@ async function handleCardapioWebImportation(
 												whatsappTelefoneId: campaign.whatsappTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
-											whatsappToken: whatsappConnection.token,
+											whatsappToken: whatsappConnection.token ?? undefined,
+											whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 										});
 									}
 								}
@@ -1100,6 +1113,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 							firstPurchaseDate: isValidSale ? saleDate : null,
 							lastPurchaseDate: isValidSale ? saleDate : null,
 							rfmTitle: "CLIENTES RECENTES",
+							metadataTotalCompras: 0,
+							metadataValorTotalCompras: 0,
 						});
 
 						if (cashbackProgram) {
@@ -1488,7 +1503,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												whatsappTelefoneId: campaign.whatsappTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
-											whatsappToken: whatsappConnection.token,
+											whatsappToken: whatsappConnection.token ?? undefined,
+											whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 										});
 									}
 								}
@@ -1609,7 +1625,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												whatsappTelefoneId: campaign.whatsappTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
-											whatsappToken: whatsappConnection.token,
+											whatsappToken: whatsappConnection.token ?? undefined,
+											whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 										});
 									}
 								}
@@ -1716,7 +1733,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 													whatsappTelefoneId: campaign.whatsappTelefoneId,
 													whatsappTemplate: campaign.whatsappTemplate,
 												},
-												whatsappToken: whatsappConnection.token,
+												whatsappToken: whatsappConnection.token ?? undefined,
+												whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 											});
 										}
 									}
@@ -1809,7 +1827,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 													whatsappTelefoneId: campaign.whatsappTelefoneId,
 													whatsappTemplate: campaign.whatsappTemplate,
 												},
-												whatsappToken: whatsappConnection.token,
+												whatsappToken: whatsappConnection.token ?? undefined,
+												whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 											});
 										}
 									}
@@ -2015,7 +2034,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 														whatsappTelefoneId: campaign.whatsappTelefoneId,
 														whatsappTemplate: campaign.whatsappTemplate,
 													},
-													whatsappToken: whatsappConnection.token,
+													whatsappToken: whatsappConnection.token ?? undefined,
+													whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 												});
 											}
 										}

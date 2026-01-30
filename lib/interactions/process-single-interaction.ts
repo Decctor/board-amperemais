@@ -5,6 +5,8 @@ import type { TWhatsappTemplate } from "@/schemas/whatsapp-templates";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats, interactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
+import { parseTemplatePayloadToGatewayContent, sendMessage } from "../whatsapp/internal-gateway";
+import { formatPhoneForInternalGateway } from "../whatsapp/utils";
 
 export type ImmediateProcessingData = {
 	interactionId: string;
@@ -21,7 +23,8 @@ export type ImmediateProcessingData = {
 		whatsappTelefoneId: string;
 		whatsappTemplate: TWhatsappTemplate;
 	};
-	whatsappToken: string;
+	whatsappToken?: string;
+	whatsappSessionId?: string;
 };
 
 export type ProcessSingleInteractionResult = {
@@ -40,7 +43,7 @@ export type ProcessSingleInteractionResult = {
  * 6. Error handling (marks message as "FALHOU", doesn't mark interaction as executed)
  */
 export async function processSingleInteractionImmediately(params: ImmediateProcessingData): Promise<ProcessSingleInteractionResult> {
-	const { interactionId, organizationId, client, campaign, whatsappToken } = params;
+	const { interactionId, organizationId, client, campaign, whatsappToken, whatsappSessionId } = params;
 
 	try {
 		console.log(`[IMMEDIATE_PROCESS] Processing interaction ${interactionId} for org ${organizationId}`);
@@ -112,30 +115,66 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 
 		try {
 			// Send WhatsApp message
-			const sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
-				fromPhoneNumberId: campaign.whatsappTelefoneId,
-				templatePayload: payload.data,
-				whatsappToken: whatsappToken,
-			});
-			console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
-			// Update chat message with WhatsApp message ID
-			await db
-				.update(chatMessages)
-				.set({
-					whatsappMessageId: sentWhatsappTemplateResponse.whatsappMessageId,
-					whatsappMessageStatus: "ENVIADO",
-				})
-				.where(eq(chatMessages.id, insertedChatMessageId));
+			let sentWhatsappTemplateResponse = null;
+			if (whatsappToken) {
+				sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
+					fromPhoneNumberId: campaign.whatsappTelefoneId,
+					templatePayload: payload.data,
+					whatsappToken: whatsappToken,
+				});
+				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
+				// Update chat message with WhatsApp message ID
+				await db
+					.update(chatMessages)
+					.set({
+						whatsappMessageId: sentWhatsappTemplateResponse.whatsappMessageId,
+						whatsappMessageStatus: "ENVIADO",
+					})
+					.where(eq(chatMessages.id, insertedChatMessageId));
 
-			// Mark interaction as executed
-			await db
-				.update(interactions)
-				.set({
-					dataExecucao: new Date(),
-				})
-				.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
+				// Mark interaction as executed
+				await db
+					.update(interactions)
+					.set({
+						dataExecucao: new Date(),
+					})
+					.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
 
-			console.log(`[IMMEDIATE_PROCESS] Successfully processed interaction ${interactionId}`);
+				console.log(`[IMMEDIATE_PROCESS] Successfully processed interaction ${interactionId}`);
+			} else if (whatsappSessionId) {
+				const templateContent = parseTemplatePayloadToGatewayContent({
+					type: "template",
+					template: {
+						name: campaign.whatsappTemplate.nome,
+						language: { code: "pt_BR" },
+						components: campaign.whatsappTemplate.componentes,
+					},
+					messaging_product: "whatsapp",
+					to: formatPhoneForInternalGateway(client.telefone),
+				});
+				sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(client.telefone), templateContent);
+				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
+				// Update chat message with WhatsApp message ID
+				await db
+					.update(chatMessages)
+					.set({
+						whatsappMessageId: sentWhatsappTemplateResponse.messageId,
+						whatsappMessageStatus: "ENVIADO",
+					})
+					.where(eq(chatMessages.id, insertedChatMessageId));
+
+				// Mark interaction as executed
+				await db
+					.update(interactions)
+					.set({
+						dataExecucao: new Date(),
+					})
+					.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
+
+				console.log(`[IMMEDIATE_PROCESS] Successfully processed interaction ${interactionId}`);
+			} else {
+				throw new Error("WhatsApp token or session ID is required");
+			}
 
 			return { success: true };
 		} catch (sendError) {

@@ -139,10 +139,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 					allTimePurchaseCount: sql<number>`COALESCE(count(${sales.id}), 0)`,
 				})
 				.from(clients)
-				.leftJoin(
-					sales,
-					and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, organization.id), eq(sales.natureza, "SN01")),
-				)
+				.leftJoin(sales, and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, organization.id), eq(sales.natureza, "SN01")))
 				.where(eq(clients.organizacaoId, organization.id))
 				.groupBy(clients.id);
 
@@ -292,7 +289,8 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 											whatsappTelefoneId: campaign.whatsappTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
-										whatsappToken: whatsappConnection.token,
+										whatsappToken: whatsappConnection.token ?? undefined,
+										whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 									});
 								}
 							}
@@ -416,7 +414,8 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 											whatsappTelefoneId: campaign.whatsappTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
-										whatsappToken: whatsappConnection.token,
+										whatsappToken: whatsappConnection.token ?? undefined,
+										whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
 									});
 								}
 							}
