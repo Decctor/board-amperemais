@@ -2,7 +2,7 @@ import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
 import type { TUserPermissions } from "@/schemas/users";
 import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { newTable, organizationIntegrationTypeEnum, users } from ".";
+import { newTable, organizationIntegrationTypeEnum, sellers, users } from ".";
 
 export const organizations = newTable("organizations", {
 	id: varchar("id", { length: 255 })
@@ -67,6 +67,7 @@ export const organizationMembers = newTable("organization_members", {
 		.references(() => organizations.id)
 		.notNull(),
 	usuarioId: varchar("usuario_id", { length: 255 }).references(() => users.id),
+	usuarioVendedorId: varchar("usuario_vendedor_id", { length: 255 }).references(() => sellers.id),
 	permissoes: jsonb("permissoes").$type<TUserPermissions>().notNull(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
@@ -79,6 +80,27 @@ export const organizationMembersRelations = relations(organizationMembers, ({ on
 		fields: [organizationMembers.usuarioId],
 		references: [users.id],
 	}),
+	vendedor: one(sellers, {
+		fields: [organizationMembers.usuarioVendedorId],
+		references: [sellers.id],
+	}),
 }));
 export type TOrganizationMemberEntity = typeof organizationMembers.$inferSelect;
 export type TNewOrganizationMemberEntity = typeof organizationMembers.$inferInsert;
+
+export const organizationMembershipInvitations = newTable("organization_membership_invitations", {
+	id: varchar("id", { length: 255 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 })
+		.references(() => organizations.id)
+		.notNull(),
+	nome: text("nome").notNull(),
+	email: text("email").notNull(),
+	permissoes: jsonb("permissoes").$type<TUserPermissions>().notNull(),
+	autorId: varchar("autor_id", { length: 255 }).references(() => users.id),
+	dataEfetivacao: timestamp("data_efetivacao"),
+	dataExpiracao: timestamp("data_expiracao").notNull(),
+});
+export type TOrganizationMembershipInvitationEntity = typeof organizationMembershipInvitations.$inferSelect;
+export type TNewOrganizationMembershipInvitationEntity = typeof organizationMembershipInvitations.$inferInsert;

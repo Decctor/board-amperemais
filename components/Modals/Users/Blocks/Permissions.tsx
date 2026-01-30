@@ -8,26 +8,26 @@ import PermissionsScope from "./Utils/PermissionsScope";
 
 type UsersPermissionsBlockProps = {
 	userId?: string;
-	infoHolder: TUseUserState["state"]["user"];
-	updateUserPermissions: TUseUserState["updateUserPermissions"];
+	permissionsHolder: TUseUserState["state"]["membership"]["permissoes"];
+	updateUserPermissions: TUseUserState["updateMembershipPermissions"];
 };
-export default function UsersPermissionsBlock({ userId, infoHolder, updateUserPermissions }: UsersPermissionsBlockProps) {
+export default function UsersPermissionsBlock({ userId, permissionsHolder, updateUserPermissions }: UsersPermissionsBlockProps) {
 	return (
 		<ResponsiveMenuSection title="PERMISSÕES" icon={<Shield className="h-4 min-h-4 w-4 min-w-4" />}>
-			<CompanyPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
-			<ResultsPermissions userId={userId} infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
-			<GoalsPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
-			<UsersPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
-			<ChatServicesPermissions infoHolder={infoHolder} updateUserPermissions={updateUserPermissions} />
+			<CompanyPermissions permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
+			<ResultsPermissions userId={userId} permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
+			<GoalsPermissions permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
+			<UsersPermissions permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
+			<ChatServicesPermissions permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
 		</ResponsiveMenuSection>
 	);
 }
 
 type CompanyPermissionsProps = {
-	infoHolder: TUseUserState["state"]["user"];
-	updateUserPermissions: TUseUserState["updateUserPermissions"];
+	permissionsHolder: TUseUserState["state"]["membership"]["permissoes"];
+	updateUserPermissions: TUseUserState["updateMembershipPermissions"];
 };
-function CompanyPermissions({ infoHolder, updateUserPermissions }: CompanyPermissionsProps) {
+function CompanyPermissions({ permissionsHolder, updateUserPermissions }: CompanyPermissionsProps) {
 	return (
 		<div className="w-full flex flex-col gap-1">
 			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE EMPRESA</h2>
@@ -35,14 +35,14 @@ function CompanyPermissions({ infoHolder, updateUserPermissions }: CompanyPermis
 				<CheckboxInput
 					labelTrue="APTO A VISUALIZAR EMPRESA"
 					labelFalse="APTO A VISUALIZAR EMPRESA"
-					checked={infoHolder.permissoes.empresa.visualizar}
-					handleChange={(value) => updateUserPermissions({ empresa: { ...infoHolder.permissoes.empresa, visualizar: value } })}
+					checked={permissionsHolder.empresa.visualizar}
+					handleChange={(value) => updateUserPermissions({ empresa: { ...permissionsHolder.empresa, visualizar: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A EDITAR EMPRESA"
 					labelFalse="APTO A EDITAR EMPRESA"
-					checked={infoHolder.permissoes.empresa.editar}
-					handleChange={(value) => updateUserPermissions({ empresa: { ...infoHolder.permissoes.empresa, editar: value } })}
+					checked={permissionsHolder.empresa.editar}
+					handleChange={(value) => updateUserPermissions({ empresa: { ...permissionsHolder.empresa, editar: value } })}
 				/>
 			</div>
 		</div>
@@ -50,28 +50,28 @@ function CompanyPermissions({ infoHolder, updateUserPermissions }: CompanyPermis
 }
 type ResultsPermissionsProps = {
 	userId?: string;
-	infoHolder: TUseUserState["state"]["user"];
-	updateUserPermissions: TUseUserState["updateUserPermissions"];
+	permissionsHolder: TUseUserState["state"]["membership"]["permissoes"];
+	updateUserPermissions: TUseUserState["updateMembershipPermissions"];
 };
-function ResultsPermissions({ userId, infoHolder, updateUserPermissions }: ResultsPermissionsProps) {
+function ResultsPermissions({ userId, permissionsHolder, updateUserPermissions }: ResultsPermissionsProps) {
 	const { data: users } = useUsers({ initialFilters: {} });
 	return (
 		<div className="w-full flex flex-col gap-1">
-			<div className="w-full flex items-center justify-between gap-2">
+			<div className="w-full flex flex-col items-start gap-1">
 				<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE RESULTADOS</h2>
 				<PermissionsScope
 					referenceId={userId || null}
 					options={users?.map((user) => ({ id: user.id, label: user.nome, value: user.id })) || []}
-					selected={infoHolder.permissoes.resultados.escopo ?? null}
-					handleScopeSelection={(value) => updateUserPermissions({ resultados: { ...infoHolder.permissoes.resultados, escopo: value as string[] } })}
+					selected={permissionsHolder.resultados.escopo ?? null}
+					handleScopeSelection={(value) => updateUserPermissions({ resultados: { ...permissionsHolder.resultados, escopo: value as string[] } })}
 				/>
 			</div>
 			<div className="w-full flex flex-col gap-2">
 				<CheckboxInput
 					labelTrue="APTO A VISUALIZAR RESULTADOS"
 					labelFalse="APTO A VISUALIZAR RESULTADOS"
-					checked={infoHolder.permissoes.resultados.visualizar}
-					handleChange={(value) => updateUserPermissions({ resultados: { ...infoHolder.permissoes.resultados, visualizar: value } })}
+					checked={permissionsHolder.resultados.visualizar}
+					handleChange={(value) => updateUserPermissions({ resultados: { ...permissionsHolder.resultados, visualizar: value } })}
 				/>
 			</div>
 		</div>
@@ -79,10 +79,10 @@ function ResultsPermissions({ userId, infoHolder, updateUserPermissions }: Resul
 }
 
 type GoalsPermissionsProps = {
-	infoHolder: TUseUserState["state"]["user"];
-	updateUserPermissions: TUseUserState["updateUserPermissions"];
+	permissionsHolder: TUseUserState["state"]["membership"]["permissoes"];
+	updateUserPermissions: TUseUserState["updateMembershipPermissions"];
 };
-function GoalsPermissions({ infoHolder, updateUserPermissions }: GoalsPermissionsProps) {
+function GoalsPermissions({ permissionsHolder, updateUserPermissions }: GoalsPermissionsProps) {
 	return (
 		<div className="w-full flex flex-col gap-1">
 			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE METAS</h2>
@@ -90,26 +90,26 @@ function GoalsPermissions({ infoHolder, updateUserPermissions }: GoalsPermission
 				<CheckboxInput
 					labelTrue="APTO A CRIAR METAS"
 					labelFalse="APTO A CRIAR METAS"
-					checked={infoHolder.permissoes.resultados.criarMetas}
-					handleChange={(value) => updateUserPermissions({ resultados: { ...infoHolder.permissoes.resultados, criarMetas: value } })}
+					checked={permissionsHolder.resultados.criarMetas}
+					handleChange={(value) => updateUserPermissions({ resultados: { ...permissionsHolder.resultados, criarMetas: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A VISUALIZAR METAS"
 					labelFalse="APTO A VISUALIZAR METAS"
-					checked={infoHolder.permissoes.resultados.visualizarMetas}
-					handleChange={(value) => updateUserPermissions({ resultados: { ...infoHolder.permissoes.resultados, visualizarMetas: value } })}
+					checked={permissionsHolder.resultados.visualizarMetas}
+					handleChange={(value) => updateUserPermissions({ resultados: { ...permissionsHolder.resultados, visualizarMetas: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A EDITAR METAS"
 					labelFalse="APTO A EDITAR METAS"
-					checked={infoHolder.permissoes.resultados.editarMetas}
-					handleChange={(value) => updateUserPermissions({ resultados: { ...infoHolder.permissoes.resultados, editarMetas: value } })}
+					checked={permissionsHolder.resultados.editarMetas}
+					handleChange={(value) => updateUserPermissions({ resultados: { ...permissionsHolder.resultados, editarMetas: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A EXCLUIR METAS"
 					labelFalse="APTO A EXCLUIR METAS"
-					checked={infoHolder.permissoes.resultados.excluirMetas}
-					handleChange={(value) => updateUserPermissions({ resultados: { ...infoHolder.permissoes.resultados, excluirMetas: value } })}
+					checked={permissionsHolder.resultados.excluirMetas}
+					handleChange={(value) => updateUserPermissions({ resultados: { ...permissionsHolder.resultados, excluirMetas: value } })}
 				/>
 			</div>
 		</div>
@@ -117,10 +117,10 @@ function GoalsPermissions({ infoHolder, updateUserPermissions }: GoalsPermission
 }
 
 type UsersPermissionsProps = {
-	infoHolder: TUseUserState["state"]["user"];
-	updateUserPermissions: TUseUserState["updateUserPermissions"];
+	permissionsHolder: TUseUserState["state"]["membership"]["permissoes"];
+	updateUserPermissions: TUseUserState["updateMembershipPermissions"];
 };
-function UsersPermissions({ infoHolder, updateUserPermissions }: UsersPermissionsProps) {
+function UsersPermissions({ permissionsHolder, updateUserPermissions }: UsersPermissionsProps) {
 	return (
 		<div className="w-full flex flex-col gap-1">
 			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE USUÁRIOS</h2>
@@ -128,26 +128,26 @@ function UsersPermissions({ infoHolder, updateUserPermissions }: UsersPermission
 				<CheckboxInput
 					labelTrue="APTO A VISUALIZAR USUÁRIOS"
 					labelFalse="APTO A VISUALIZAR USUÁRIOS"
-					checked={infoHolder.permissoes.usuarios.visualizar}
-					handleChange={(value) => updateUserPermissions({ usuarios: { ...infoHolder.permissoes.usuarios, visualizar: value } })}
+					checked={permissionsHolder.usuarios.visualizar}
+					handleChange={(value) => updateUserPermissions({ usuarios: { ...permissionsHolder.usuarios, visualizar: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A CRIAR USUÁRIOS"
 					labelFalse="APTO A CRIAR USUÁRIOS"
-					checked={infoHolder.permissoes.usuarios.criar}
-					handleChange={(value) => updateUserPermissions({ usuarios: { ...infoHolder.permissoes.usuarios, criar: value } })}
+					checked={permissionsHolder.usuarios.criar}
+					handleChange={(value) => updateUserPermissions({ usuarios: { ...permissionsHolder.usuarios, criar: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A EDITAR USUÁRIOS"
 					labelFalse="APTO A EDITAR USUÁRIOS"
-					checked={infoHolder.permissoes.usuarios.editar}
-					handleChange={(value) => updateUserPermissions({ usuarios: { ...infoHolder.permissoes.usuarios, editar: value } })}
+					checked={permissionsHolder.usuarios.editar}
+					handleChange={(value) => updateUserPermissions({ usuarios: { ...permissionsHolder.usuarios, editar: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A EXCLUIR USUÁRIOS"
 					labelFalse="APTO A EXCLUIR USUÁRIOS"
-					checked={infoHolder.permissoes.usuarios.excluir}
-					handleChange={(value) => updateUserPermissions({ usuarios: { ...infoHolder.permissoes.usuarios, excluir: value } })}
+					checked={permissionsHolder.usuarios.excluir}
+					handleChange={(value) => updateUserPermissions({ usuarios: { ...permissionsHolder.usuarios, excluir: value } })}
 				/>
 			</div>
 		</div>
@@ -155,10 +155,10 @@ function UsersPermissions({ infoHolder, updateUserPermissions }: UsersPermission
 }
 
 type ChatServicesPermissionsProps = {
-	infoHolder: TUseUserState["state"]["user"];
-	updateUserPermissions: TUseUserState["updateUserPermissions"];
+	permissionsHolder: TUseUserState["state"]["membership"]["permissoes"];
+	updateUserPermissions: TUseUserState["updateMembershipPermissions"];
 };
-function ChatServicesPermissions({ infoHolder, updateUserPermissions }: ChatServicesPermissionsProps) {
+function ChatServicesPermissions({ permissionsHolder, updateUserPermissions }: ChatServicesPermissionsProps) {
 	return (
 		<div className="w-full flex flex-col gap-1">
 			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE ATENDIMENTOS</h2>
@@ -166,32 +166,32 @@ function ChatServicesPermissions({ infoHolder, updateUserPermissions }: ChatServ
 				<CheckboxInput
 					labelTrue="APTO A VISUALIZAR ATENDIMENTOS"
 					labelFalse="APTO A VISUALIZAR ATENDIMENTOS"
-					checked={infoHolder.permissoes.atendimentos.visualizar}
-					handleChange={(value) => updateUserPermissions({ atendimentos: { ...infoHolder.permissoes.atendimentos, visualizar: value } })}
+					checked={permissionsHolder.atendimentos.visualizar}
+					handleChange={(value) => updateUserPermissions({ atendimentos: { ...permissionsHolder.atendimentos, visualizar: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A INICIAR ATENDIMENTOS"
 					labelFalse="APTO A INICIAR ATENDIMENTOS"
-					checked={infoHolder.permissoes.atendimentos.iniciar}
-					handleChange={(value) => updateUserPermissions({ atendimentos: { ...infoHolder.permissoes.atendimentos, iniciar: value } })}
+					checked={permissionsHolder.atendimentos.iniciar}
+					handleChange={(value) => updateUserPermissions({ atendimentos: { ...permissionsHolder.atendimentos, iniciar: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A RESPONDER ATENDIMENTOS"
 					labelFalse="APTO A RESPONDER ATENDIMENTOS"
-					checked={infoHolder.permissoes.atendimentos.responder}
-					handleChange={(value) => updateUserPermissions({ atendimentos: { ...infoHolder.permissoes.atendimentos, responder: value } })}
+					checked={permissionsHolder.atendimentos.responder}
+					handleChange={(value) => updateUserPermissions({ atendimentos: { ...permissionsHolder.atendimentos, responder: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A FINALIZAR ATENDIMENTOS"
 					labelFalse="APTO A FINALIZAR ATENDIMENTOS"
-					checked={infoHolder.permissoes.atendimentos.finalizar}
-					handleChange={(value) => updateUserPermissions({ atendimentos: { ...infoHolder.permissoes.atendimentos, finalizar: value } })}
+					checked={permissionsHolder.atendimentos.finalizar}
+					handleChange={(value) => updateUserPermissions({ atendimentos: { ...permissionsHolder.atendimentos, finalizar: value } })}
 				/>
 				<CheckboxInput
 					labelTrue="APTO A RECEBER TRANSFERÊNCIAS DE ATENDIMENTOS"
 					labelFalse="APTO A RECEBER TRANSFERÊNCIAS DE ATENDIMENTOS"
-					checked={!!infoHolder.permissoes.atendimentos.receberTransferencias}
-					handleChange={(value) => updateUserPermissions({ atendimentos: { ...infoHolder.permissoes.atendimentos, receberTransferencias: value } })}
+					checked={!!permissionsHolder.atendimentos.receberTransferencias}
+					handleChange={(value) => updateUserPermissions({ atendimentos: { ...permissionsHolder.atendimentos, receberTransferencias: value } })}
 				/>
 			</div>
 		</div>

@@ -2,8 +2,7 @@ import type { TUserPermissions } from "@/schemas/users";
 import { relations } from "drizzle-orm";
 import { boolean, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
-import { organizations } from "./organizations";
-import { sellers } from "./sellers";
+import { organizationMembers, organizations } from "./organizations";
 
 export const users = newTable("users", {
 	id: varchar("id", { length: 255 })
@@ -28,24 +27,19 @@ export const users = newTable("users", {
 	// Auth related
 	usuario: text("usuario").notNull(),
 	senha: text("senha").notNull(),
-	permissoes: jsonb("permissoes").$type<TUserPermissions>().notNull(),
 	googleId: text("google_id"),
 	googleRefreshToken: text("google_refresh_token"),
 	googleAccessToken: text("google_access_token"),
 	// Others
 	dataNascimento: timestamp("data_nascimento"),
-	vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
-export const usersRelations = relations(users, ({ one }) => ({
-	vendedor: one(sellers, {
-		fields: [users.vendedorId],
-		references: [sellers.id],
-	}),
+export const usersRelations = relations(users, ({ one, many }) => ({
 	organizacao: one(organizations, {
 		fields: [users.organizacaoId],
 		references: [organizations.id],
 	}),
+	associacoes: many(organizationMembers),
 }));
 export type TUserEntity = typeof users.$inferSelect;
 export type TNewUserEntity = typeof users.$inferInsert;

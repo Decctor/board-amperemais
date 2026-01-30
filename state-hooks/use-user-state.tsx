@@ -1,9 +1,11 @@
+import { OrganizationMemberPermissionsSchema, OrganizationMemberSchema } from "@/schemas/organizations";
 import { NewUserSchema, UserSchema } from "@/schemas/users";
 import { useCallback, useState } from "react";
 import z from "zod";
 
 const UserStateSchema = z.object({
-	user: NewUserSchema.omit({ dataInsercao: true }),
+	user: UserSchema.omit({ dataInsercao: true, organizacaoId: true }),
+	membership: OrganizationMemberSchema.omit({ organizacaoId: true, usuarioId: true, dataInsercao: true }),
 	avatarHolder: z.object({
 		file: z.instanceof(File).optional().nullable(),
 		previewUrl: z
@@ -27,6 +29,13 @@ export function useUserState() {
 			dataNascimento: null,
 			usuario: "",
 			senha: "",
+		},
+		avatarHolder: {
+			file: null,
+			previewUrl: null,
+		},
+		membership: {
+			usuarioVendedorId: "",
 			permissoes: {
 				empresa: {
 					visualizar: true,
@@ -54,10 +63,6 @@ export function useUserState() {
 				},
 			},
 		},
-		avatarHolder: {
-			file: null,
-			previewUrl: null,
-		},
 	};
 	const [state, setState] = useState<TUserState>(initialState);
 
@@ -81,12 +86,24 @@ export function useUserState() {
 		}));
 	}, []);
 
-	const updateUserPermissions = useCallback((permissoes: Partial<TUserState["user"]["permissoes"]>) => {
+	const updateMembership = useCallback((membership: Partial<TUserState["membership"]>) => {
 		setState((prev) => ({
 			...prev,
-			user: {
-				...prev.user,
-				permissoes: { ...prev.user.permissoes, ...permissoes },
+			membership: {
+				...prev.membership,
+				...membership,
+			},
+		}));
+	}, []);
+	const updateMembershipPermissions = useCallback((permissoes: Partial<TUserState["membership"]["permissoes"]>) => {
+		setState((prev) => ({
+			...prev,
+			membership: {
+				...prev.membership,
+				permissoes: {
+					...prev.membership.permissoes,
+					...permissoes,
+				},
 			},
 		}));
 	}, []);
@@ -100,8 +117,9 @@ export function useUserState() {
 	return {
 		state,
 		updateUser,
+		updateMembership,
 		updateAvatarHolder,
-		updateUserPermissions,
+		updateMembershipPermissions,
 		resetState,
 		redefineState,
 	};

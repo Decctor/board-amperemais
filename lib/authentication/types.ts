@@ -18,10 +18,10 @@ export type TAuthUserSession = {
 		telefone: TUserEntity["telefone"];
 		email: TUserEntity["email"];
 		avatarUrl: TUserEntity["avatarUrl"];
-		vendedorId: TUserEntity["vendedorId"];
 	};
 	membership: {
 		id: TOrganizationMemberEntity["id"];
+		usuarioVendedorId: TOrganizationMemberEntity["usuarioVendedorId"];
 		organizacao: {
 			id: TOrganizationEntity["id"];
 			nome: TOrganizationEntity["nome"];

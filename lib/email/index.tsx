@@ -1,13 +1,16 @@
 import { resend } from "@/services/resend";
 import MagicLinkTemplate from "@/services/resend/templates/MagicLink";
+import OrganizationInviteTemplate from "@/services/resend/templates/OrganizationInvite";
 import type { ComponentProps } from "react";
 
 export enum EmailTemplate {
 	AuthMagicLink = "AuthMagicLink",
+	OrganizationInvite = "OrganizationInvite",
 }
 
 export type PropsMap = {
 	[EmailTemplate.AuthMagicLink]: ComponentProps<typeof MagicLinkTemplate>;
+	[EmailTemplate.OrganizationInvite]: ComponentProps<typeof OrganizationInviteTemplate>;
 	// [EmailTemplate.PasswordReset]: ComponentProps<typeof ResetPasswordTemplate>;
 };
 
@@ -18,6 +21,11 @@ function getReactEmailTemplateAndSubject<T extends EmailTemplate>(template: T, p
 			return {
 				templateComponent: <MagicLinkTemplate {...(props as PropsMap[EmailTemplate.AuthMagicLink])} />,
 				subject: "Aqui está seu link de acesso ao RecompraCRM.",
+			};
+		case EmailTemplate.OrganizationInvite:
+			return {
+				templateComponent: <OrganizationInviteTemplate {...(props as PropsMap[EmailTemplate.OrganizationInvite])} />,
+				subject: "Você recebeu um convite para acessar o RecompraCRM.",
 			};
 		default:
 			throw new Error("Template de email inválido.");

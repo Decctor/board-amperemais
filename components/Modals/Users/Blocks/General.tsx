@@ -4,7 +4,7 @@ import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { formatDateForInputValue, formatDateOnInputChange, formatToCPF, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import type { TUser } from "@/schemas/users";
 import type { TUseUserState } from "@/state-hooks/use-user-state";
-import { ImageIcon, LayoutGrid } from "lucide-react";
+import { Calendar, ImageIcon, LayoutGrid, Mail, Phone, UserRound } from "lucide-react";
 import Image from "next/image";
 
 type UsersGeneralBlockProps = {
@@ -16,44 +16,29 @@ type UsersGeneralBlockProps = {
 export default function UsersGeneralBlock({ infoHolder, updateInfoHolder, avatarHolder, updateAvatarHolder }: UsersGeneralBlockProps) {
 	return (
 		<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
-			<div className="w-full flex items-center lg:items-start flex-col lg:flex-row gap-2">
-				<UsersGeneralBlockAvatar imageUrl={infoHolder.avatarUrl} imageHolder={avatarHolder} updateImageHolder={updateAvatarHolder} />
-				<div className="h-full w-full lg:grow flex flex-col items-center gap-2">
-					<TextInput
-						label="NOME (*)"
-						value={infoHolder.nome}
-						placeholder="Preencha aqui o nome do cliente."
-						handleChange={(value) => updateInfoHolder({ nome: value })}
-						width="100%"
-					/>
-					<DateInput
-						label={"DATA DE NASCIMENTO"}
-						editable={true}
-						value={infoHolder.dataNascimento ? formatDateForInputValue(infoHolder.dataNascimento) : undefined}
-						handleChange={(value) => updateInfoHolder({ dataNascimento: formatDateOnInputChange(value, "date") })}
-						width={"100%"}
-					/>
+			<UsersGeneralBlockAvatar imageUrl={infoHolder.avatarUrl} imageHolder={avatarHolder} updateImageHolder={updateAvatarHolder} />
+			<div className="w-full flex items-center flex-col  gap-2">
+				<div className="w-full flex items-center gap-1.5">
+					<UserRound className="h-4 min-h-4 w-4 min-w-4" />
+					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">NOME</h3>
+					<h3 className="text-sm font-semibold tracking-tight">{infoHolder.nome}</h3>
 				</div>
-			</div>
-
-			<div className="flex w-full flex-col items-center gap-2 lg:flex-row">
-				<div className="w-full lg:w-1/2">
-					<TextInput
-						label="TELEFONE"
-						value={infoHolder.telefone ?? ""}
-						placeholder="Preencha aqui o telefone do usuário."
-						handleChange={(value) => updateInfoHolder({ telefone: formatToPhone(value) })}
-						width="100%"
-					/>
+				<div className="w-full flex items-center gap-1.5">
+					<Mail className="h-4 min-h-4 w-4 min-w-4" />
+					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">EMAIL</h3>
+					<h3 className="text-sm font-semibold tracking-tight">{infoHolder.email}</h3>
 				</div>
-				<div className="w-full lg:w-1/2">
-					<TextInput
-						label="EMAIL"
-						value={infoHolder.email ?? ""}
-						placeholder="Preencha aqui o email do usuário."
-						handleChange={(value) => updateInfoHolder({ email: value })}
-						width="100%"
-					/>
+				<div className="w-full flex items-center gap-1.5">
+					<Phone className="h-4 min-h-4 w-4 min-w-4" />
+					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">TELEFONE</h3>
+					<h3 className="text-sm font-semibold tracking-tight">{infoHolder.telefone}</h3>
+				</div>
+				<div className="w-full flex items-center gap-1.5">
+					<Calendar className="h-4 min-h-4 w-4 min-w-4" />
+					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">DATA DE NASCIMENTO</h3>
+					<h3 className="text-sm font-semibold tracking-tight">
+						{infoHolder.dataNascimento ? formatDateForInputValue(infoHolder.dataNascimento) : "NÃO INFORMADO"}
+					</h3>
 				</div>
 			</div>
 		</ResponsiveMenuSection>

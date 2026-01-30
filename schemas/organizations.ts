@@ -96,3 +96,122 @@ export const OrganizationSchema = z.object({
 		.default(new Date().toISOString())
 		.transform((val) => new Date(val)),
 });
+
+export const OrganizationMemberPermissionsSchema = z.object({
+	empresa: z.object({
+		visualizar: z.boolean({
+			required_error: "Permissão de visualização das configurações da empresa não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização das configurações da empresa.",
+		}),
+		editar: z.boolean({
+			required_error: "Permissão de edição das configurações da empresa não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de edição das configurações da empresa.",
+		}),
+	}),
+	resultados: z.object({
+		escopo: z
+			.array(z.string({ required_error: "Escopo de resultados não informado.", invalid_type_error: "Tipo não válido para o escopo de resultados." }))
+			.optional()
+			.nullable(),
+		visualizar: z.boolean({
+			required_error: "Permissão de visualização de resultados não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização de resultados.",
+		}),
+		// Goals
+		criarMetas: z.boolean({
+			required_error: "Permissão de criação de metas não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de criação de metas.",
+		}),
+		visualizarMetas: z.boolean({
+			required_error: "Permissão de visualização de metas não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização de metas.",
+		}),
+		editarMetas: z.boolean({
+			required_error: "Permissão de edição de metas não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de edição de metas.",
+		}),
+		excluirMetas: z.boolean({
+			required_error: "Permissão de exclusão de metas não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de exclusão de metas.",
+		}),
+	}),
+	usuarios: z.object({
+		visualizar: z.boolean({
+			required_error: "Permissão de visualização de usuários não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização de usuários.",
+		}),
+		criar: z.boolean({
+			required_error: "Permissão de criação de usuários não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de criação de usuários.",
+		}),
+		editar: z.boolean({
+			required_error: "Permissão de edição de usuários não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de edição de usuários.",
+		}),
+		excluir: z.boolean({
+			required_error: "Permissão de exclusão de usuários não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de exclusão de usuários.",
+		}),
+	}),
+	atendimentos: z.object({
+		visualizar: z.boolean({
+			required_error: "Permissão de visualização de atendimentos não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização de atendimentos.",
+		}),
+		iniciar: z.boolean({
+			required_error: "Permissão de início de atendimentos não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de início de atendimentos.",
+		}),
+		responder: z.boolean({
+			required_error: "Permissão de resposta de atendimentos não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de resposta de atendimentos.",
+		}),
+		finalizar: z.boolean({
+			required_error: "Permissão de finalização de atendimentos não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de finalização de atendimentos.",
+		}),
+		receberTransferencias: z
+			.boolean({
+				required_error: "Permissão de recebimento de transferências de atendimentos não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de recebimento de transferências de atendimentos.",
+			})
+			.optional()
+			.nullable(),
+	}),
+});
+export type TOrganizationMemberPermissions = z.infer<typeof OrganizationMemberPermissionsSchema>;
+
+export const OrganizationMemberSchema = z.object({
+	organizacaoId: z.string({ invalid_type_error: "Tipo não válido para o ID da organização." }),
+	usuarioId: z.string({ invalid_type_error: "Tipo não válido para o ID do usuário." }),
+	usuarioVendedorId: z.string({ invalid_type_error: "Tipo não válido para o ID do vendedor do usuário." }).optional().nullable(),
+	permissoes: OrganizationMemberPermissionsSchema,
+	dataInsercao: z
+		.string({ invalid_type_error: "Tipo não válido para a data de inserção da organização." })
+		.datetime({ message: "Tipo não válido para a data de inserção da organização." })
+		.default(new Date().toISOString())
+		.transform((val) => new Date(val)),
+});
+
+export const OrganizationMembershipInvitationSchema = z.object({
+	organizacaoId: z.string({ invalid_type_error: "Tipo não válido para o ID da organização." }),
+	nome: z.string({ invalid_type_error: "Tipo não válido para o nome da convite de membro da organização." }),
+	email: z.string({ invalid_type_error: "Tipo não válido para o email da convite de membro da organização." }),
+	permissoes: OrganizationMemberPermissionsSchema,
+	autorId: z.string({ invalid_type_error: "Tipo não válido para o ID do autor da convite de membro da organização." }),
+	dataEfetivacao: z
+		.string({ invalid_type_error: "Tipo não válido para a data de efetivação da convite de membro da organização." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	dataExpiracao: z
+		.string({ invalid_type_error: "Tipo não válido para a data de expiração da convite de membro da organização." })
+		.datetime({ message: "Tipo não válido para a data de expiração da convite de membro da organização." })
+		.transform((val) => new Date(val)),
+});
+export type TOrganizationMembershipInvitation = z.infer<typeof OrganizationMembershipInvitationSchema>;
+
+export const OrganizationMembershipInvitationStateSchema = z.object({
+	invitation: OrganizationMembershipInvitationSchema.omit({ dataExpiracao: true, autorId: true, organizacaoId: true, dataEfetivacao: true }),
+});
+export type TOrganizationMembershipInvitationState = z.infer<typeof OrganizationMembershipInvitationStateSchema>;

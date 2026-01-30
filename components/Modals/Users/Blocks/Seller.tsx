@@ -5,22 +5,22 @@ import type { TUseUserState } from "@/state-hooks/use-user-state";
 import { UsersRound } from "lucide-react";
 
 type UsersSellerBlockProps = {
-	infoHolder: TUseUserState["state"]["user"];
-	updateInfoHolder: TUseUserState["updateUser"];
+	membershipHolder: TUseUserState["state"]["membership"];
+	updateMembership: TUseUserState["updateMembership"];
 };
 
-export default function UsersSellerBlock({ infoHolder, updateInfoHolder }: UsersSellerBlockProps) {
+export default function UsersSellerBlock({ membershipHolder, updateMembership }: UsersSellerBlockProps) {
 	const { data: sellers } = useSellers({ initialFilters: { search: "" } });
 	const sellersOptions = sellers?.sellers.map((seller) => ({ id: seller.id, label: seller.nome, value: seller.id })) || [];
 	return (
 		<ResponsiveMenuSection title="VENDEDOR" icon={<UsersRound className="h-4 min-h-4 w-4 min-w-4" />}>
 			<SelectInput
-				value={infoHolder.vendedorId}
+				value={membershipHolder.usuarioVendedorId}
 				options={sellersOptions}
 				label="VENDEDOR VINCULADO"
 				resetOptionLabel="NÃO DEFINIDO"
-				onReset={() => updateInfoHolder({ vendedorId: "" })}
-				handleChange={(value) => updateInfoHolder({ vendedorId: value })}
+				onReset={() => updateMembership({ usuarioVendedorId: "" })}
+				handleChange={(value) => updateMembership({ usuarioVendedorId: value })}
 				width="100%"
 			/>
 		</ResponsiveMenuSection>

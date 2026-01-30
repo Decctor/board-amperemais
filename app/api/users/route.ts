@@ -2,10 +2,11 @@ import { apiHandler } from "@/lib/api";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { NewUserSchema } from "@/schemas/users";
+import { OrganizationMemberSchema } from "@/schemas/organizations";
+import { NewUserSchema, UserSchema } from "@/schemas/users";
 import { db } from "@/services/drizzle";
 import { organizationMembers, users } from "@/services/drizzle/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -98,23 +99,38 @@ async function getUsers({ input, session }: { input: TGetUsersInput; session: TA
 			where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
 		});
 		if (!user) throw new createHttpError.NotFound("Usuário não encontrado.");
+
+		const membership = await db.query.organizationMembers.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.usuarioId, id), eq(fields.organizacaoId, userOrgId)),
+		});
+		if (!membership) throw new createHttpError.NotFound("Membro da organização não encontrado.");
 		return {
 			data: {
-				byId: user,
+				byId: { ...user, associacao: membership },
 				default: null,
 			},
 			message: "Usuário encontrado com sucesso.",
 		};
 	}
 
-	const conditions = [];
+	const conditions = [
+		inArray(
+			users.id,
+			db
+				.select({
+					id: organizationMembers.usuarioId,
+				})
+				.from(organizationMembers)
+				.where(eq(organizationMembers.organizacaoId, userOrgId)),
+		),
+	];
 	if (input.search)
 		conditions.push(
 			sql`(to_tsvector('portuguese', ${users.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${users.nome} ILIKE '%' || ${input.search} || '%')`,
 		);
 
 	const usersResult = await db.query.users.findMany({
-		where: and(...conditions, eq(users.organizacaoId, userOrgId)),
+		where: and(...conditions),
 		orderBy: (fields, { asc }) => asc(fields.nome),
 	});
 	return {
@@ -153,7 +169,8 @@ const UpdateUserInputSchema = z.object({
 		required_error: "ID do usuário não informado.",
 		invalid_type_error: "Tipo inválido para ID do usuário.",
 	}),
-	user: NewUserSchema.omit({ dataInsercao: true }),
+	user: UserSchema.omit({ nome: true, telefone: true, email: true, dataInsercao: true, organizacaoId: true }),
+	membership: OrganizationMemberSchema.omit({ organizacaoId: true, usuarioId: true, dataInsercao: true }),
 });
 export type TUpdateUserInput = z.infer<typeof UpdateUserInputSchema>;
 
@@ -163,21 +180,36 @@ async function updateUser({ input, session }: { input: TUpdateUserInput; session
 	const sessionUserHasPermission = session.membership?.permissoes.usuarios.editar;
 	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
 
+	// Checking if the user to update has a membership
+	const userToUpdateMembership = await db.query.organizationMembers.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.usuarioId, input.id), eq(fields.organizacaoId, userOrgId)),
+	});
+	if (!userToUpdateMembership) throw new createHttpError.NotFound("Membro da organização não encontrado.");
+
+	// Now, updating the user
 	const updatedUser = await db
 		.update(users)
 		.set({
 			...input.user,
-			organizacaoId: userOrgId,
 		})
-		.where(and(eq(users.id, input.id), eq(users.organizacaoId, userOrgId)))
+		.where(and(eq(users.id, input.id)))
 		.returning({
 			id: users.id,
 		});
 	const updatedUserId = updatedUser[0]?.id;
 	if (!updatedUserId) throw new createHttpError.NotFound("Usuário não encontrado.");
+
+	// Now, updating the membership
+	await db
+		.update(organizationMembers)
+		.set({
+			...input.membership,
+		})
+		.where(and(eq(organizationMembers.usuarioId, input.id), eq(organizationMembers.organizacaoId, userOrgId)));
 	return {
 		data: {
 			updatedId: updatedUserId,
+			updatedMembershipId: userToUpdateMembership.id,
 		},
 		message: "Usuário atualizado com sucesso.",
 	};

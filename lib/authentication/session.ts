@@ -80,6 +80,7 @@ export async function validateSession(token: string) {
 		if (membership) {
 			sessionUserActiveOrganizationMembership = {
 				id: membership.id,
+				usuarioVendedorId: membership.usuarioVendedorId,
 				organizacao: {
 					id: membership.organizacao.id,
 					nome: membership.organizacao.nome,
@@ -107,6 +108,7 @@ export async function validateSession(token: string) {
 		if (mostRecentMembership) {
 			sessionUserActiveOrganizationMembership = {
 				id: mostRecentMembership.id,
+				usuarioVendedorId: mostRecentMembership.usuarioVendedorId,
 				organizacao: {
 					id: mostRecentMembership.organizacao.id,
 					nome: mostRecentMembership.organizacao.nome,
@@ -140,7 +142,6 @@ export async function validateSession(token: string) {
 			telefone: user.telefone,
 			avatarUrl: user.avatarUrl,
 			email: user.email,
-			vendedorId: user.vendedorId,
 		},
 		membership: sessionUserActiveOrganizationMembership,
 	};

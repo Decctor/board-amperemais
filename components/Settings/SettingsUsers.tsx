@@ -2,6 +2,7 @@ import type { TGetUsersOutputDefault } from "@/app/api/users/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDateBirthdayAsLocale, formatNameAsInitials } from "@/lib/formatting";
+import { useOrganizationMembershipInvitations } from "@/lib/queries/organizations";
 import { useUsers } from "@/lib/queries/users";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import Image from "next/image";
 import { useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
+import NewOrganizationMembershipInvitation from "../Modals/OrganizationsMembershipInvitations/NewOrganizationMembershipInvitation";
 import EditUser from "../Modals/Users/EditUser";
 import NewUser from "../Modals/Users/NewUser";
 import { Button } from "../ui/button";
@@ -21,6 +23,12 @@ type SettingsUsersProps = {
 export default function SettingsUsers({ user, membership }: SettingsUsersProps) {
 	const queryClient = useQueryClient();
 	const { data: users, queryKey, isLoading, isError, isSuccess, error } = useUsers({ initialFilters: { search: "" } });
+	const {
+		data: pendingInvitations,
+		isLoading: isLoadingInvitations,
+		isError: isInvitationsError,
+		error: invitationsError,
+	} = useOrganizationMembershipInvitations({ pendingOnly: true });
 	const [newUserModalIsOpen, setNewUserModalIsOpen] = useState(false);
 	const [editUserModalId, setEditUserModalId] = useState<string | null>(null);
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
@@ -36,11 +44,38 @@ export default function SettingsUsers({ user, membership }: SettingsUsersProps) 
 					{sessionUserHasCreatePermission ? (
 						<Button size="sm" className="flex items-center gap-2" onClick={() => setNewUserModalIsOpen(true)}>
 							<Plus className="w-4 h-4 min-w-4 min-h-4" />
-							NOVO USUÁRIO
+							NOVO CONVITE
 						</Button>
 					) : null}
 				</div>
 			</div>
+			{pendingInvitations && pendingInvitations.length > 0 ? (
+				<div className="w-full flex flex-col gap-2 p-3 bg-card border-primary/20 border rounded-xl">
+					<div className="flex items-center gap-2">
+						<h2 className="text-xs font-bold tracking-tight uppercase text-muted-foreground">CONVITES PENDENTES</h2>
+					</div>
+
+					<div className="flex flex-col gap-2">
+						{pendingInvitations.map((invitation) => (
+							<div key={invitation.id} className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
+										<Mail className="h-4 w-4" />
+									</div>
+									<div className="flex flex-col">
+										<span className="text-sm font-semibold">{invitation.nome}</span>
+										<span className="text-xs text-muted-foreground">{invitation.email}</span>
+									</div>
+								</div>
+								<span className="bg-yellow-100 text-yellow-800 border-yellow-200 border px-2 py-1 rounded-full text-[0.6rem] font-bold tracking-widest">
+									PENDENTE
+								</span>
+							</div>
+						))}
+					</div>
+				</div>
+			) : null}
+
 			<div className="w-full flex flex-col gap-1.5">
 				{isLoading ? <LoadingComponent /> : null}
 				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
@@ -51,7 +86,11 @@ export default function SettingsUsers({ user, membership }: SettingsUsersProps) 
 					: null}
 			</div>
 			{newUserModalIsOpen ? (
-				<NewUser session={user} closeModal={() => setNewUserModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
+				<NewOrganizationMembershipInvitation
+					sessionUserId={user.id}
+					closeModal={() => setNewUserModalIsOpen(false)}
+					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+				/>
 			) : null}
 			{editUserModalId ? (
 				<EditUser

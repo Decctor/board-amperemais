@@ -25,7 +25,7 @@ type EditUserProps = {
 };
 function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 	const queryClient = useQueryClient();
-	const { state, updateUser, updateAvatarHolder, updateUserPermissions, redefineState } = useUserState();
+	const { state, updateUser, updateAvatarHolder, updateMembership, updateMembershipPermissions, redefineState } = useUserState();
 	const { data: user, queryKey, isLoading, isError, isSuccess, error } = useUserById(userId);
 
 	async function handleUpdateUserMutation(state: TUseUserState["state"]) {
@@ -34,7 +34,7 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 			const { url, format, size } = await uploadFile({ file: state.avatarHolder.file, fileName: state.user.nome, prefix: "avatars" });
 			userAvatarUrl = url;
 		}
-		return await updateUserMutation({ id: userId, user: { ...state.user, avatarUrl: userAvatarUrl } });
+		return await updateUserMutation({ id: userId, user: { ...state.user, avatarUrl: userAvatarUrl }, membership: state.membership });
 	}
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["create-user"],
@@ -60,10 +60,9 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 	});
 
 	useEffect(() => {
-		if (user) redefineState({ user: user, avatarHolder: { file: null, previewUrl: null } });
+		if (user) redefineState({ user: user, membership: user.associacao, avatarHolder: { file: null, previewUrl: null } });
 	}, [user, redefineState]);
-
-	console.log("[INFO] [EDIT USER] State:", state);
+	console.log(state);
 	return (
 		<ResponsiveMenu
 			menuTitle="EDITAR USUÁRIO"
@@ -75,7 +74,6 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 			stateIsLoading={isLoading}
 			stateError={error ? getErrorMessage(error) : null}
 			closeMenu={closeModal}
-			dialogVariant="md"
 		>
 			<UsersGeneralBlock
 				infoHolder={state.user}
@@ -83,9 +81,8 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 				avatarHolder={state.avatarHolder}
 				updateAvatarHolder={updateAvatarHolder}
 			/>
-			<UsersCredentialsBlock infoHolder={state.user} updateInfoHolder={updateUser} />
-			<UsersSellerBlock infoHolder={state.user} updateInfoHolder={updateUser} />
-			<UsersPermissionsBlock userId={userId} infoHolder={state.user} updateUserPermissions={updateUserPermissions} />
+			<UsersSellerBlock membershipHolder={state.membership} updateMembership={updateMembership} />
+			<UsersPermissionsBlock userId={userId} permissionsHolder={state.membership.permissoes} updateUserPermissions={updateMembershipPermissions} />
 		</ResponsiveMenu>
 	);
 }

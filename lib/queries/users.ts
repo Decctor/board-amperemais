@@ -47,6 +47,7 @@ export function useUserById(id: string) {
 		...useQuery({
 			queryKey: ["user-by-id", id],
 			queryFn: async () => await fetchUserById(id),
+			refetchOnWindowFocus: false,
 		}),
 		queryKey: ["user-by-id", id],
 	};
