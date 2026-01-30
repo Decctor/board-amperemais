@@ -28,6 +28,7 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 	if (!orgWhatsappConnection) throw new createHttpError.NotFound("Conexão WhatsApp não encontrada.");
 	if (orgWhatsappConnection.telefones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
+	const whatsappConnectionType = orgWhatsappConnection.tipoConexao;
 	const whatsappToken = orgWhatsappConnection.token;
 
 	// 1. Insert parent template first
@@ -42,45 +43,47 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 		})
 		.returning({ id: whatsappTemplates.id });
 
-	// 2. Create template in Meta API for each phone and insert child records
 	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; error?: string }> = [];
 
-	for (const telefone of orgWhatsappConnection.telefones) {
-		try {
-			const metaResponse = await createWhatsappTemplateInMeta({
-				whatsappToken,
-				whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
-				template: input.template,
-			});
+	if (whatsappConnectionType === "META_CLOUD_API" && whatsappToken) {
+		// 2. Create template in Meta API for each phone and insert child records
 
-			// Insert child record with the whatsappTemplateId from Meta
-			await db.insert(whatsappTemplatePhones).values({
-				templateId: insertedTemplate.id,
-				telefoneId: telefone.id,
-				whatsappTemplateId: metaResponse.whatsappTemplateId,
-				status: "PENDENTE",
-				qualidade: "PENDENTE",
-			});
+		for (const telefone of orgWhatsappConnection.telefones) {
+			if (!telefone.whatsappBusinessAccountId) continue;
+			try {
+				const metaResponse = await createWhatsappTemplateInMeta({
+					whatsappToken,
+					whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
+					template: input.template,
+				});
 
-			phoneResults.push({
-				telefoneId: telefone.id,
-				whatsappTemplateId: metaResponse.whatsappTemplateId,
-			});
+				// Insert child record with the whatsappTemplateId from Meta
+				await db.insert(whatsappTemplatePhones).values({
+					templateId: insertedTemplate.id,
+					telefoneId: telefone.id,
+					whatsappTemplateId: metaResponse.whatsappTemplateId,
+					status: "PENDENTE",
+					qualidade: "PENDENTE",
+				});
 
-			console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Created template for phone ${telefone.numero}: ${metaResponse.whatsappTemplateId}`);
-		} catch (error) {
-			console.error(`[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to create template for phone ${telefone.numero}:`, error);
-			phoneResults.push({
-				telefoneId: telefone.id,
-				whatsappTemplateId: null,
-				error: error instanceof Error ? error.message : "Erro desconhecido",
-			});
+				phoneResults.push({
+					telefoneId: telefone.id,
+					whatsappTemplateId: metaResponse.whatsappTemplateId,
+				});
+
+				console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Created template for phone ${telefone.numero}: ${metaResponse.whatsappTemplateId}`);
+			} catch (error) {
+				console.error(`[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to create template for phone ${telefone.numero}:`, error);
+				phoneResults.push({
+					telefoneId: telefone.id,
+					whatsappTemplateId: null,
+					error: error instanceof Error ? error.message : "Erro desconhecido",
+				});
+			}
 		}
 	}
-
 	const successfulPhones = phoneResults.filter((r) => r.whatsappTemplateId !== null);
 	const failedPhones = phoneResults.filter((r) => r.whatsappTemplateId === null);
-
 	return {
 		data: {
 			insertedId: insertedTemplate.id,
