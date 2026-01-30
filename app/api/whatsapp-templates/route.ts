@@ -45,41 +45,44 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 
 	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; error?: string }> = [];
 
-	if (whatsappConnectionType === "META_CLOUD_API" && whatsappToken) {
-		// 2. Create template in Meta API for each phone and insert child records
+	// 2. Create template in Meta API for each phone and insert child records
 
-		for (const telefone of orgWhatsappConnection.telefones) {
-			if (!telefone.whatsappBusinessAccountId) continue;
-			try {
+	for (const telefone of orgWhatsappConnection.telefones) {
+		try {
+			let metaWhatsappTemplateId: string | null = null;
+			if (whatsappConnectionType === "META_CLOUD_API" && whatsappToken) {
+				if (!telefone.whatsappBusinessAccountId) continue;
+
 				const metaResponse = await createWhatsappTemplateInMeta({
 					whatsappToken,
 					whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
 					template: input.template,
 				});
-
-				// Insert child record with the whatsappTemplateId from Meta
-				await db.insert(whatsappTemplatePhones).values({
-					templateId: insertedTemplate.id,
-					telefoneId: telefone.id,
-					whatsappTemplateId: metaResponse.whatsappTemplateId,
-					status: "PENDENTE",
-					qualidade: "PENDENTE",
-				});
-
-				phoneResults.push({
-					telefoneId: telefone.id,
-					whatsappTemplateId: metaResponse.whatsappTemplateId,
-				});
-
-				console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Created template for phone ${telefone.numero}: ${metaResponse.whatsappTemplateId}`);
-			} catch (error) {
-				console.error(`[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to create template for phone ${telefone.numero}:`, error);
-				phoneResults.push({
-					telefoneId: telefone.id,
-					whatsappTemplateId: null,
-					error: error instanceof Error ? error.message : "Erro desconhecido",
-				});
+				metaWhatsappTemplateId = metaResponse.whatsappTemplateId;
 			}
+
+			// Insert child record with the whatsappTemplateId from Meta
+			await db.insert(whatsappTemplatePhones).values({
+				templateId: insertedTemplate.id,
+				telefoneId: telefone.id,
+				whatsappTemplateId: metaWhatsappTemplateId,
+				status: metaWhatsappTemplateId ? "PENDENTE" : "APROVADO",
+				qualidade: metaWhatsappTemplateId ? "PENDENTE" : "ALTA",
+			});
+
+			phoneResults.push({
+				telefoneId: telefone.id,
+				whatsappTemplateId: metaWhatsappTemplateId,
+			});
+
+			console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Created template for phone ${telefone.numero}: ${metaWhatsappTemplateId}`);
+		} catch (error) {
+			console.error(`[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to create template for phone ${telefone.numero}:`, error);
+			phoneResults.push({
+				telefoneId: telefone.id,
+				whatsappTemplateId: null,
+				error: error instanceof Error ? error.message : "Erro desconhecido",
+			});
 		}
 	}
 	const successfulPhones = phoneResults.filter((r) => r.whatsappTemplateId !== null);

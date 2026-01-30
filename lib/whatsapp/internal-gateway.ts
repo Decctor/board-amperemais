@@ -244,7 +244,7 @@ export async function sendMessage(sessionId: string, to: string, content: SendMe
 		console.log("[INTERNAL_GATEWAY] Sending message:", { sessionId, to, messageLength });
 
 		const response = await axios.post<SendMessageResponse>(
-			`${GATEWAY_URL}/sessions/${sessionId}/messages`,
+			`${GATEWAY_URL}/messages/send`,
 			{
 				sessionId,
 				to,

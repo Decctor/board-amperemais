@@ -13,7 +13,7 @@ type CampaignsActionBlockProps = {
 };
 export default function CampaignsActionBlock({ organizationId, campaign, updateCampaign }: CampaignsActionBlockProps) {
 	const { data: whatsappConnection } = useWhatsappConnection();
-
+	console.log("campaign.whatsappConexaoTelefoneId", campaign.whatsappConexaoTelefoneId);
 	const { data: whatsappTemplatesResult, updateParams } = useWhatsappTemplates({
 		initialParams: { page: 1, search: "", whatsappConnectionPhoneId: campaign.whatsappConexaoTelefoneId },
 	});
@@ -48,8 +48,8 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 				<SelectInput
 					label="TEMPLATE DO WHATSAPP"
 					value={campaign.whatsappTemplateId}
-					editable={!!campaign.whatsappTemplateId}
-					resetOptionLabel={campaign.whatsappTemplateId ? "SELECIONE O TEMPLATE" : "SELECIONE UM TELEFONE PRIMEIRO"}
+					editable={!!campaign.whatsappConexaoTelefoneId}
+					resetOptionLabel={campaign.whatsappConexaoTelefoneId ? "SELECIONE O TEMPLATE" : "SELECIONE UM TELEFONE PRIMEIRO"}
 					options={whatsappTemplates.map((template) => ({ id: template.id, label: template.nome, value: template.id }))}
 					handleChange={(value) => updateCampaign({ whatsappTemplateId: value })}
 					onReset={() => updateCampaign({ whatsappTemplateId: "" })}

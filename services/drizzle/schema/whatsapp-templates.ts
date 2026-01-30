@@ -39,7 +39,7 @@ export const whatsappTemplatePhones = newTable(
 		telefoneId: varchar("telefone_id", { length: 255 })
 			.references(() => whatsappConnectionPhones.id, { onDelete: "cascade" })
 			.notNull(),
-		whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }).notNull(),
+		whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }),
 		status: whatsappTemplateStatusEnum("status").notNull().default("PENDENTE"),
 		qualidade: whatsappTemplateQualityEnum("qualidade").notNull().default("PENDENTE"),
 		rejeicao: text("rejeicao"),
