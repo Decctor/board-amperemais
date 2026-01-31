@@ -40,7 +40,7 @@ async function getChats({ session, input }: { session: TAuthUserSession; input: 
 	// Build base query conditions
 	const baseConditions = and(
 		eq(chats.organizacaoId, organizacaoId),
-		eq(chats.whatsappTelefoneId, whatsappPhoneId),
+		eq(chats.whatsappConexaoTelefoneId, whatsappPhoneId),
 		cursorTimestamp
 			? or(lt(chats.ultimaMensagemData, cursorTimestamp), and(eq(chats.ultimaMensagemData, cursorTimestamp), lt(chats.id, cursorId!)))
 			: undefined,

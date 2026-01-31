@@ -162,7 +162,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 			}
 		}
 		// Meta Cloud API path
-		else if (input.type === "text") {
+		else if (input.type === "text" && fromPhoneNumberId) {
 			// Send text message
 			if (!message.conteudoTexto) {
 				throw new createHttpError.BadRequest("Mensagem não possui conteúdo de texto.");
@@ -180,7 +180,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 			});
 
 			whatsappMessageId = response.whatsappMessageId;
-		} else if (input.type === "media") {
+		} else if (input.type === "media" && fromPhoneNumberId) {
 			if (!message.conteudoMidiaStorageId) {
 				throw new createHttpError.BadRequest("Mensagem não possui storage ID do arquivo.");
 			}
@@ -233,7 +233,7 @@ async function sendWhatsappMessage({ session, input }: { session: TAuthUserSessi
 			});
 
 			whatsappMessageId = response.whatsappMessageId;
-		} else if (input.type === "template") {
+		} else if (input.type === "template" && fromPhoneNumberId) {
 			// Send template message
 			if (!whatsappToken) {
 				throw new createHttpError.BadRequest("Token do WhatsApp não configurado.");

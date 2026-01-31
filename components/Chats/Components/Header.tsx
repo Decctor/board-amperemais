@@ -43,10 +43,7 @@ export function Header({
 	const { selectedPhoneNumber, setSelectedPhoneNumber, user } = useChatHub();
 	const phoneNumbers = whatsappConnection?.telefones ?? [];
 
-	const selectedPhoneNumberData = useMemo(
-		() => phoneNumbers.find((phone) => phone.whatsappTelefoneId === selectedPhoneNumber),
-		[phoneNumbers, selectedPhoneNumber],
-	);
+	const selectedPhoneNumberData = useMemo(() => phoneNumbers.find((phone) => phone.id === selectedPhoneNumber), [phoneNumbers, selectedPhoneNumber]);
 
 	return (
 		<div className={cn("w-full flex flex-col gap-3 px-4 py-3", "border-b border-primary/20 bg-card/50 backdrop-blur-sm", className)}>
@@ -66,7 +63,7 @@ export function Header({
 							<DropdownMenuSeparator />
 							<DropdownMenuGroup>
 								{phoneNumbers.map((phone) => (
-									<button key={phone.whatsappTelefoneId} type="button" className="w-full" onClick={() => setSelectedPhoneNumber(phone.whatsappTelefoneId)}>
+									<button key={phone.id} type="button" className="w-full" onClick={() => setSelectedPhoneNumber(phone.id)}>
 										<DropdownMenuItem className="flex items-center justify-between">
 											<div className="flex items-center gap-1">
 												<h1>{phone.nome}</h1>

@@ -57,6 +57,12 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 					})
 				)?.descricao
 			: null;
+		const whatsappConnectionPhone = await db.query.whatsappConnectionPhones.findFirst({
+			where: (fields, { eq }) => eq(fields.id, campaign.whatsappConexaoTelefoneId),
+		});
+		if (!whatsappConnectionPhone) {
+			throw new Error("WhatsApp connection phone not found");
+		}
 		// Build WhatsApp template payload
 		const whatsappTemplateVariablesValuesMap: Record<keyof TWhatsappTemplateVariables, string> = {
 			clientEmail: client.email ?? "",
@@ -99,6 +105,7 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 				.values({
 					organizacaoId: organizationId,
 					clienteId: client.id,
+					whatsappTelefoneId: whatsappConnectionPhone.whatsappTelefoneId,
 					whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 					ultimaMensagemData: new Date(),
 					ultimaMensagemConteudoTipo: "TEXTO",
@@ -129,9 +136,9 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 		try {
 			// Send WhatsApp message
 			let sentWhatsappTemplateResponse = null;
-			if (whatsappToken) {
+			if (whatsappToken && whatsappConnectionPhone.whatsappTelefoneId) {
 				sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
-					fromPhoneNumberId: campaign.whatsappConexaoTelefoneId,
+					fromPhoneNumberId: whatsappConnectionPhone.whatsappTelefoneId,
 					templatePayload: payload.data,
 					whatsappToken: whatsappToken,
 				});
@@ -155,13 +162,13 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 
 				console.log(`[IMMEDIATE_PROCESS] Successfully processed interaction ${interactionId}`);
 			} else if (whatsappSessionId) {
-			const gatewayPayload = {
-				...payload.data,
-				to: formatPhoneForInternalGateway(client.telefone),
-			};
-			const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload, {
-				fallbackText: payload.content,
-			});
+				const gatewayPayload = {
+					...payload.data,
+					to: formatPhoneForInternalGateway(client.telefone),
+				};
+				const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload, {
+					fallbackText: payload.content,
+				});
 				console.log("[IMMEDIATE_PROCESS] Template content", templateContent);
 				sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(client.telefone), templateContent);
 				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);

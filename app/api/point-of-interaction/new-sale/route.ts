@@ -15,6 +15,7 @@ import {
 	sales,
 	users,
 } from "@/services/drizzle/schema";
+import { waitUntil } from "@vercel/functions";
 import dayjs from "dayjs";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -1090,24 +1091,29 @@ export async function POST(req: Request) {
 			};
 		});
 
-		// Process interactions immediately after transaction (fire-and-forget)
+		// Process interactions immediately after transaction using waitUntil
+		// This ensures Vercel keeps the function alive until the background work completes
 		console.log(`[POI] [IMMEDIATE_PROCESS] Interactions to process immediately: ${result.immediateProcessingDataList?.length || 0}`);
 
 		if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
-			for (const processingData of result.immediateProcessingDataList) {
+			// Create all processing promises
+			const processingPromises = result.immediateProcessingDataList.map(async (processingData) => {
 				console.log(`[POI] [IMMEDIATE_PROCESS] Processing interaction ${processingData.interactionId} for client ${processingData.client.id}`);
 				console.log(
 					`[POI] [IMMEDIATE_PROCESS] Client phone: ${processingData.client.telefone}, Template: ${processingData.campaign.whatsappTemplate?.nome || "unknown"}`,
 				);
 
-				processSingleInteractionImmediately(processingData)
-					.then(() => {
-						console.log(`[POI] [IMMEDIATE_PROCESS] Successfully processed interaction ${processingData.interactionId}`);
-					})
-					.catch((err) => {
-						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
-					});
-			}
+				try {
+					await processSingleInteractionImmediately(processingData);
+					console.log(`[POI] [IMMEDIATE_PROCESS] Successfully processed interaction ${processingData.interactionId}`);
+				} catch (err) {
+					console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
+				}
+			});
+
+			// Use waitUntil to keep the function alive until all processing is complete
+			// This allows us to return the response immediately while ensuring the background work finishes
+			waitUntil(Promise.all(processingPromises));
 		} else {
 			console.log("[POI] [IMMEDIATE_PROCESS] No interactions to process immediately");
 		}

@@ -100,7 +100,7 @@ export async function transferServiceToHuman({
 			.where(eq(chatServices.id, existingService.id));
 
 		// Send WhatsApp notification if user has phone
-		if (randomUser.telefone && chat.whatsappConexaoTelefone) {
+		if (randomUser.telefone && chat.whatsappConexaoTelefone && chat.whatsappConexaoTelefone.whatsappTelefoneId) {
 			// Get client info
 			const client = await db.query.clients.findFirst({
 				where: eq(clients.id, existingService.clienteId),
@@ -187,7 +187,7 @@ export async function transferServiceToHuman({
 	console.log("[INFO] [SERVICES] [TRANSFER_TO_HUMAN] Created new service:", newService.id);
 
 	// Send WhatsApp notification if user has phone
-	if (randomUser.telefone && chat.whatsappConexaoTelefone) {
+	if (randomUser.telefone && chat.whatsappConexaoTelefone && chat.whatsappConexaoTelefone.whatsappTelefoneId) {
 		const userWithPhone = await db.query.users.findFirst({
 			where: eq(users.id, randomUser.id),
 			columns: {

@@ -1,6 +1,8 @@
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
+import { parseTemplatePayloadToGatewayContent, sendMessage } from "@/lib/whatsapp/internal-gateway";
 import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
+import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import type { TInteractionsCronJobTimeBlocksEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats, interactions, organizations } from "@/services/drizzle/schema";
@@ -82,12 +84,29 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 								analiseRFMTitulo: true,
 							},
 						},
-						campanha: {
-							columns: {
-								autorId: true,
-								whatsappTelefoneId: true,
+					campanha: {
+						columns: {
+							autorId: true,
+							whatsappConexaoTelefoneId: true,
+						},
+						with: {
+							whatsappConexaoTelefone: {
+								columns: {
+									id: true,
+									whatsappTelefoneId: true,
+								},
+								with: {
+									conexao: {
+										columns: {
+											tipoConexao: true,
+											token: true,
+											gatewaySessaoId: true,
+										},
+									},
+								},
 							},
 						},
+					},
 					},
 				});
 
@@ -101,13 +120,6 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 						whatsappTemplate: true,
 					},
 				});
-				const whatsappConnection = await db.query.whatsappConnections.findFirst({
-					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
-					with: {
-						telefones: true,
-					},
-				});
-				if (!whatsappConnection) continue;
 
 				for (const [index, interaction] of interactionsResult.entries()) {
 					if ((index + 1) % 10 === 0) {
@@ -116,6 +128,18 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
 					const interactionCampaign = interaction.campanha;
 					if (!campaign || !interactionCampaign) continue;
+
+					const whatsappConnectionPhone = interactionCampaign.whatsappConexaoTelefone;
+					if (!whatsappConnectionPhone) {
+						console.warn(`[ORG: ${organization.id}] [WARN] [PROCESS_INTERACTIONS] No WhatsApp connection phone for interaction ${interaction.id}`);
+						continue;
+					}
+
+					const whatsappConnection = whatsappConnectionPhone.conexao;
+					if (!whatsappConnection) {
+						console.warn(`[ORG: ${organization.id}] [WARN] [PROCESS_INTERACTIONS] No WhatsApp connection for interaction ${interaction.id}`);
+						continue;
+					}
 
 					const whatsappTemplate = campaign.whatsappTemplate;
 					if (!whatsappTemplate) continue;
@@ -146,7 +170,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 							and(
 								eq(fields.organizacaoId, organization.id),
 								eq(fields.clienteId, interaction.clienteId),
-								eq(fields.whatsappTelefoneId, interactionCampaign.whatsappTelefoneId),
+								eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhone.id),
 							),
 					});
 					if (existingChat) {
@@ -157,7 +181,8 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 							.values({
 								organizacaoId: organization.id,
 								clienteId: interaction.clienteId,
-								whatsappTelefoneId: interactionCampaign.whatsappTelefoneId,
+								whatsappTelefoneId: whatsappConnectionPhone.whatsappTelefoneId,
+								whatsappConexaoTelefoneId: whatsappConnectionPhone.id,
 								ultimaMensagemData: new Date(),
 								ultimaMensagemConteudoTipo: "TEXTO",
 							})
@@ -182,16 +207,50 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					if (!insertedChatMessageId) throw new Error("Failed to insert chat message");
 
 					try {
-						const sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
-							fromPhoneNumberId: interactionCampaign.whatsappTelefoneId,
-							templatePayload: payload.data,
-							whatsappToken: whatsappConnection.token,
-						});
+						let whatsappMessageId: string | undefined;
+
+						// Handle different WhatsApp connection types
+						if (whatsappConnection.tipoConexao === "META_CLOUD_API") {
+							// Cloud API - use Meta's official API
+							if (!whatsappConnection.token || !whatsappConnectionPhone.whatsappTelefoneId) {
+								throw new Error("WhatsApp Cloud API token or phone ID is missing");
+							}
+
+							const sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
+								fromPhoneNumberId: whatsappConnectionPhone.whatsappTelefoneId,
+								templatePayload: payload.data,
+								whatsappToken: whatsappConnection.token,
+							});
+							whatsappMessageId = sentWhatsappTemplateResponse.whatsappMessageId;
+							console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Sent via Cloud API:`, whatsappMessageId);
+						} else if (whatsappConnection.tipoConexao === "INTERNAL_GATEWAY") {
+							// Internal Gateway - use our internal WhatsApp gateway
+							if (!whatsappConnection.gatewaySessaoId) {
+								throw new Error("WhatsApp Gateway session ID is missing");
+							}
+
+							const gatewayPayload = {
+								...payload.data,
+								to: formatPhoneForInternalGateway(interaction.cliente.telefone),
+							};
+							const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload, {
+								fallbackText: payload.content,
+							});
+							const sentWhatsappTemplateResponse = await sendMessage(
+								whatsappConnection.gatewaySessaoId,
+								formatPhoneForInternalGateway(interaction.cliente.telefone),
+								templateContent,
+							);
+							whatsappMessageId = sentWhatsappTemplateResponse.messageId;
+							console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Sent via Internal Gateway:`, whatsappMessageId);
+						} else {
+							throw new Error(`Unknown WhatsApp connection type: ${whatsappConnection.tipoConexao}`);
+						}
 
 						await db
 							.update(chatMessages)
 							.set({
-								whatsappMessageId: sentWhatsappTemplateResponse.whatsappMessageId,
+								whatsappMessageId: whatsappMessageId,
 								whatsappMessageStatus: "ENVIADO",
 							})
 							.where(eq(chatMessages.id, insertedChatMessageId));

@@ -31,7 +31,7 @@ type UseSupabaseRealtimeOptions<T> = {
  * // Subscribe to all changes on chats table
  * useSupabaseRealtime({
  *   table: 'chats',
- *   filter: { column: 'whatsapp_telefone_id', value: phoneId },
+ *   filter: { column: 'whatsapp_conexao_telefone_id', value: phoneId },
  *   invalidateQueries: [['chats']],
  * });
  *
@@ -182,7 +182,7 @@ export function useChatsRealtime({
 	enabled?: boolean;
 }) {
 	// Memoize filter and invalidateQueries to prevent unnecessary re-subscriptions
-	const filter = useMemo(() => (whatsappPhoneId ? { column: "whatsapp_telefone_id", value: whatsappPhoneId } : undefined), [whatsappPhoneId]);
+	const filter = useMemo(() => (whatsappPhoneId ? { column: "whatsapp_conexao_telefone_id", value: whatsappPhoneId } : undefined), [whatsappPhoneId]);
 	const invalidateQueries = useMemo(() => [["chats"]], []);
 
 	return useSupabaseRealtime({

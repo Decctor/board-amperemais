@@ -743,7 +743,7 @@ async function createAIMessage(
 		.where(eq(chats.id, chatId));
 
 	// Send via WhatsApp
-	if (chat.whatsappConexao?.token && chat.cliente?.telefone) {
+	if (chat.whatsappConexao?.token && chat.cliente?.telefone && chat.whatsappTelefoneId) {
 		try {
 			const { sendBasicWhatsappMessage } = await import("@/lib/whatsapp");
 			const response = await sendBasicWhatsappMessage({

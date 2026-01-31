@@ -72,6 +72,10 @@ export const campaignRelations = relations(campaigns, ({ many, one }) => ({
 		fields: [campaigns.whatsappTemplateId],
 		references: [whatsappTemplates.id],
 	}),
+	whatsappConexaoTelefone: one(whatsappConnectionPhones, {
+		fields: [campaigns.whatsappConexaoTelefoneId],
+		references: [whatsappConnectionPhones.id],
+	}),
 	autor: one(users, {
 		fields: [campaigns.autorId],
 		references: [users.id],

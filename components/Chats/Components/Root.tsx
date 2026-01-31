@@ -17,13 +17,19 @@ export type ChatHubRootProps = {
 	defaultPhoneNumber?: string;
 };
 
-export function Root({ children, user, organizationId, userHasMessageSendingPermission, whatsappConnection, className, defaultPhoneNumber }: ChatHubRootProps) {
+export function Root({
+	children,
+	user,
+	organizationId,
+	userHasMessageSendingPermission,
+	whatsappConnection,
+	className,
+	defaultPhoneNumber,
+}: ChatHubRootProps) {
 	const isDesktop = useMediaQuery("(min-width: 1024px)");
 
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-	const [selectedPhoneNumber, setSelectedPhoneNumber] = useState<string | null>(
-		defaultPhoneNumber ?? whatsappConnection?.telefones?.[0]?.whatsappTelefoneId ?? null,
-	);
+	const [selectedPhoneNumber, setSelectedPhoneNumber] = useState<string | null>(defaultPhoneNumber ?? whatsappConnection?.telefones?.[0]?.id ?? null);
 
 	const contextValue = {
 		selectedChatId,
