@@ -1,4 +1,4 @@
-import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
+import type { TOrganizationConfiguration, TOrganizationIntegrationConfig } from "@/schemas/organizations";
 import type { TUserPermissions } from "@/schemas/users";
 import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
@@ -46,6 +46,7 @@ export const organizations = newTable("organizations", {
 	corPrimariaForeground: text("cor_primaria_foreground"), // Foreground for primary color (hex, e.g., #000000)
 	corSecundaria: text("cor_secundaria"), // Secondary color (hex format, e.g., #15599a)
 	corSecundariaForeground: text("cor_secundaria_foreground"), // Foreground for secondary color (hex, e.g., #FFFFFF)
+	configuracao: jsonb("configuracao").$type<TOrganizationConfiguration>().notNull(),
 	autorId: varchar("autor_id", { length: 255 }),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });

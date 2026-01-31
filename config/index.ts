@@ -1,44 +1,41 @@
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
+
 export const SESSION_COOKIE_NAME = "syncrono-session";
 
 export const FREE_TRIAL_DURATION_DAYS = 15;
 
 export type TAppSubscriptionPlanKey = "ESSENCIAL" | "CRESCIMENTO" | "ESCALA";
 
-export type TAppSubscriptionPlanCapabilities = {
-	features: {
-		biLite: boolean;
-		biCompleto: boolean;
-		cashbackEPoi: boolean;
-		campanhas: boolean;
-		aiHints: boolean;
-		relatoriosVendasWhatsapp: boolean;
-		whatsappHub: boolean;
-		whatsappHubIa: boolean;
-	};
-	limits: {
-		/**
-		 * Número máximo de campanhas/jornadas ativas simultâneas.
-		 * null = ilimitado
-		 */
-		maxCampanhasAtivas: number | null;
-		/**
-		 * Créditos de AI-Hints por mês.
-		 * 0 = não incluso
-		 */
-		aiHintsPorMes: number;
-		/**
-		 * Quantidade máxima de números conectados no WhatsApp Hub.
-		 * 0 = não incluso
-		 * null = ilimitado (uso justo)
-		 */
-		hubMaxNumeros: number | null;
-		/**
-		 * Quantidade máxima de atendentes (assentos) no WhatsApp Hub.
-		 * 0 = não incluso
-		 * null = ilimitado (uso justo)
-		 */
-		hubMaxAtendentes: number | null;
-	};
+export const DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES: TOrganizationConfiguration["recursos"] = {
+	analytics: {
+		acesso: true,
+	},
+	campanhas: {
+		acesso: false,
+		limiteAtivas: 0,
+	},
+	programasCashback: {
+		acesso: true,
+	},
+	hubAtendimentos: {
+		acesso: false,
+		limiteAtendentes: 0,
+	},
+	integracoes: {
+		acesso: false,
+		limiteAtivas: 0,
+	},
+	iaDicas: {
+		acesso: false,
+		limiteSemanal: 0,
+	},
+	iaAtendimento: {
+		acesso: false,
+		limiteCreditos: 0,
+	},
+	relatoriosWhatsapp: {
+		acesso: false,
+	},
 };
 
 export const AppSubscriptionPlans: {
@@ -51,7 +48,7 @@ export const AppSubscriptionPlans: {
 				redirectTo: string | null;
 			};
 		};
-		capabilities: TAppSubscriptionPlanCapabilities;
+		capabilities: TOrganizationConfiguration["recursos"];
 		stripeProdutoId: string;
 		pricingTableFeatures: {
 			checked: boolean;
@@ -127,27 +124,40 @@ export const AppSubscriptionPlans: {
 			},
 		},
 		capabilities: {
-			features: {
-				biLite: true,
-				biCompleto: false,
-				cashbackEPoi: true,
-				campanhas: true,
-				aiHints: false,
-				relatoriosVendasWhatsapp: false,
-				whatsappHub: false,
-				whatsappHubIa: false,
+			analytics: {
+				acesso: true,
 			},
-			limits: {
-				maxCampanhasAtivas: 5,
-				aiHintsPorMes: 0,
-				hubMaxNumeros: 0,
-				hubMaxAtendentes: 0,
+			campanhas: {
+				acesso: true,
+				limiteAtivas: 5,
+			},
+			programasCashback: {
+				acesso: true,
+			},
+			hubAtendimentos: {
+				acesso: false,
+				limiteAtendentes: 0,
+			},
+			integracoes: {
+				acesso: false,
+				limiteAtivas: 0,
+			},
+			iaDicas: {
+				acesso: false,
+				limiteSemanal: 0,
+			},
+			iaAtendimento: {
+				acesso: false,
+				limiteCreditos: 0,
+			},
+			relatoriosWhatsapp: {
+				acesso: false,
 			},
 		},
 		pricingTableFeatures: [
 			{
 				checked: true,
-				label: "Business Intelligence Lite (campanhas, cashback e WhatsApp)",
+				label: "Business Intelligence",
 			},
 			{
 				checked: true,
@@ -233,21 +243,34 @@ export const AppSubscriptionPlans: {
 		},
 		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_PLUS as string,
 		capabilities: {
-			features: {
-				biLite: true,
-				biCompleto: true,
-				cashbackEPoi: true,
-				campanhas: true,
-				aiHints: true,
-				relatoriosVendasWhatsapp: true,
-				whatsappHub: false,
-				whatsappHubIa: false,
+			analytics: {
+				acesso: true,
 			},
-			limits: {
-				maxCampanhasAtivas: 10,
-				aiHintsPorMes: 10,
-				hubMaxNumeros: 0,
-				hubMaxAtendentes: 0,
+			campanhas: {
+				acesso: true,
+				limiteAtivas: 10,
+			},
+			programasCashback: {
+				acesso: true,
+			},
+			integracoes: {
+				acesso: true,
+				limiteAtivas: null,
+			},
+			relatoriosWhatsapp: {
+				acesso: true,
+			},
+			hubAtendimentos: {
+				acesso: false,
+				limiteAtendentes: 0,
+			},
+			iaAtendimento: {
+				acesso: true,
+				limiteCreditos: null,
+			},
+			iaDicas: {
+				acesso: true,
+				limiteSemanal: null,
 			},
 		},
 		pricingTableFeatures: [
@@ -257,7 +280,7 @@ export const AppSubscriptionPlans: {
 			},
 			{
 				checked: true,
-				label: "Integrações com ERP (sincronização de dados automática)",
+				label: "Integrações com ERPs (sincronização de dados automática)",
 			},
 			{
 				checked: true,
@@ -350,21 +373,34 @@ export const AppSubscriptionPlans: {
 		},
 		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_PLUS as string,
 		capabilities: {
-			features: {
-				biLite: true,
-				biCompleto: true,
-				cashbackEPoi: true,
-				campanhas: true,
-				aiHints: true,
-				relatoriosVendasWhatsapp: true,
-				whatsappHub: true,
-				whatsappHubIa: true,
+			analytics: {
+				acesso: true,
 			},
-			limits: {
-				maxCampanhasAtivas: null,
-				aiHintsPorMes: 10,
-				hubMaxNumeros: 3,
-				hubMaxAtendentes: 10,
+			campanhas: {
+				acesso: true,
+				limiteAtivas: null,
+			},
+			programasCashback: {
+				acesso: true,
+			},
+			integracoes: {
+				acesso: true,
+				limiteAtivas: null,
+			},
+			relatoriosWhatsapp: {
+				acesso: true,
+			},
+			hubAtendimentos: {
+				acesso: true,
+				limiteAtendentes: 5,
+			},
+			iaDicas: {
+				acesso: true,
+				limiteSemanal: null,
+			},
+			iaAtendimento: {
+				acesso: true,
+				limiteCreditos: null,
 			},
 		},
 		pricingTableFeatures: [
@@ -398,7 +434,11 @@ export const AppSubscriptionPlans: {
 			},
 			{
 				checked: true,
-				label: "WhatsApp Hub com IA (até 3 números e 10 atendentes)",
+				label: "Hub de Atendimentos (até 10 atendentes)",
+			},
+			{
+				checked: true,
+				label: "Atendimento com IA",
 			},
 		],
 		pricing: {

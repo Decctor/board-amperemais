@@ -12,10 +12,11 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/c
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { switchOrganization } from "@/lib/mutations/organizations";
 import { useUserMemberships } from "@/lib/queries/organizations";
-import { useMutation } from "@tanstack/react-query";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import Image from "next/image";
 import LogoIcon from "@/utils/images/logo-icon.png";
+import { useMutation } from "@tanstack/react-query";
+import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 type AppSidebarHeaderProps = {
 	sessionUserOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"] | null;
@@ -73,21 +74,14 @@ export default function AppSidebarHeader({ sessionUserOrg }: AppSidebarHeaderPro
 			<SidebarMenuItem>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
-							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-						>
+						<SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
 							<div className="relative w-8 h-8 min-w-8 min-h-8 max-w-8 max-h-8 rounded-lg overflow-hidden">
 								<Image src={currentOrg?.logoUrl ?? LogoIcon} alt={currentOrg?.nome ?? "Organização"} fill />
 							</div>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-medium">{currentOrg?.nome ?? "Selecionar organização"}</span>
 							</div>
-							{switchOrgMutation.isPending ? (
-								<Loader2 className="ml-auto size-4 animate-spin" />
-							) : (
-								<ChevronsUpDown className="ml-auto size-4" />
-							)}
+							{switchOrgMutation.isPending ? <Loader2 className="ml-auto size-4 animate-spin" /> : <ChevronsUpDown className="ml-auto size-4" />}
 						</SidebarMenuButton>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
@@ -113,11 +107,7 @@ export default function AppSidebarHeader({ sessionUserOrg }: AppSidebarHeaderPro
 								>
 									<div className="flex items-center gap-2 w-full">
 										<div className="relative w-6 h-6 min-w-6 min-h-6 rounded-md overflow-hidden">
-											<Image
-												src={membership.organizacao.logoUrl ?? LogoIcon}
-												alt={membership.organizacao.nome}
-												fill
-											/>
+											<Image src={membership.organizacao.logoUrl ?? LogoIcon} alt={membership.organizacao.nome} fill />
 										</div>
 										<span className="flex-1 truncate">{membership.organizacao.nome}</span>
 										{isActive && <Check className="size-4 text-primary" />}
@@ -125,6 +115,15 @@ export default function AppSidebarHeader({ sessionUserOrg }: AppSidebarHeaderPro
 								</DropdownMenuItem>
 							);
 						})}
+						<DropdownMenuSeparator />
+						<DropdownMenuItem asChild className="cursor-pointer">
+							<Link href="/onboarding">
+								<div className="flex items-center justify-center gap-2 w-full">
+									<Plus className="w-4 h-4 min-w-4 min-h-4" />
+									<span className="flex-1 truncate">NOVA ORGANIZAÇÃO</span>
+								</div>
+							</Link>
+						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>

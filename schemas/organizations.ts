@@ -13,6 +13,42 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 	}),
 ]);
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
+
+export const OrganizationConfigurationSchema = z.object({
+	recursos: z.object({
+		analytics: z.object({
+			acesso: z.boolean({ invalid_type_error: "Tipo não válido para o acesso aos recursos de análise de dados." }),
+		}),
+		campanhas: z.object({
+			acesso: z.boolean({ invalid_type_error: "Tipo não válido para o acesso aos recursos de campanhas." }),
+			limiteAtivas: z.number({ invalid_type_error: "Tipo não válido para o limite de campanhas ativas." }).nullable(),
+		}),
+		programasCashback: z.object({
+			acesso: z.boolean({ invalid_type_error: "Tipo não válido para o acesso aos recursos de programas de cashback." }),
+		}),
+		hubAtendimentos: z.object({
+			acesso: z.boolean({ invalid_type_error: "Tipo não válido para o acesso aos recursos de atendimentos via WhatsApp Hub." }),
+			limiteAtendentes: z.number({ invalid_type_error: "Tipo não válido para o limite de atendentes (assentos) simultâneos." }).nullable(),
+		}),
+		integracoes: z.object({
+			acesso: z.boolean({ invalid_type_error: "Tipo não válido para o acesso aos recursos de integrações." }),
+			limiteAtivas: z.number({ invalid_type_error: "Tipo não válido para o limite de integrações ativas simultâneas." }).nullable(),
+		}),
+		relatoriosWhatsapp: z.object({
+			acesso: z.boolean({ invalid_type_error: "Tipo não válido para o acesso aos recursos de relatórios via WhatsApp." }),
+		}),
+		iaDicas: z.object({
+			acesso: z.boolean({ invalid_type_error: "Tipo não válido para o acesso aos recursos de dicas de IA." }),
+			limiteSemanal: z.number({ invalid_type_error: "Tipo não válido para o limite de dicas de IA por semana." }).nullable(),
+		}),
+		iaAtendimento: z.object({
+			acesso: z.boolean({ invalid_type_error: "Tipo não válido para o acesso aos recursos de atendimento via IA." }),
+			limiteCreditos: z.number({ invalid_type_error: "Tipo não válido para o limite de créditos de IA por atendimento." }).nullable(),
+		}),
+	}),
+});
+export type TOrganizationConfiguration = z.infer<typeof OrganizationConfigurationSchema>;
+
 export const OrganizationSchema = z.object({
 	nome: z.string({
 		required_error: "Nome da organização não informado.",
@@ -90,6 +126,8 @@ export const OrganizationSchema = z.object({
 		.optional()
 		.nullable(),
 
+	configuracao: OrganizationConfigurationSchema,
+	autorId: z.string({ invalid_type_error: "Tipo não válido para o ID do autor da organização." }),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção da organização." })
 		.datetime({ message: "Tipo não válido para a data de inserção da organização." })

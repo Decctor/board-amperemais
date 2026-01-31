@@ -7,6 +7,5 @@ export default async function Onboarding() {
 	const authSession = await getCurrentSession();
 	if (!authSession) redirect("/auth/signin");
 	// if user has organization defined, redirect to dashboard
-	if (authSession.membership?.organizacao) redirect("/dashboard");
 	return <OnboardingPage user={authSession.user} />;
 }

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const OrganizationOnboardingStateSchema = z.object({
 	stage: z.enum(["organization-general-info", "organization-niche-origin", "organization-actuation", "subscription-plans-section"]),
-	organization: OrganizationSchema.omit({ dataInsercao: true }),
+	organization: OrganizationSchema.omit({ dataInsercao: true, autorId: true, configuracao: true }),
 	organizationLogoHolder: z.object({
 		file: z.instanceof(File).optional().nullable(),
 		previewUrl: z.string({ invalid_type_error: "Tipo não válido para a url do preview do logo da organização." }).optional().nullable(),

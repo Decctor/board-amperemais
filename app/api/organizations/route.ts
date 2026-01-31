@@ -1,10 +1,10 @@
-import { AppSubscriptionPlans, FREE_TRIAL_DURATION_DAYS } from "@/config";
+import { AppSubscriptionPlans, DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES, FREE_TRIAL_DURATION_DAYS } from "@/config";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { OrganizationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
-import { organizations, users } from "@/services/drizzle/schema";
+import { authSessions, organizations, users } from "@/services/drizzle/schema";
 import { stripe } from "@/services/stripe";
 import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -12,7 +12,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 export const CreateOrganizationInputSchema = z.object({
-	organization: OrganizationSchema.omit({ dataInsercao: true }),
+	organization: OrganizationSchema.omit({ dataInsercao: true, autorId: true, configuracao: true }),
 	subscription: z
 		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL"])
 		.optional()
@@ -35,6 +35,10 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 		.insert(organizations)
 		.values({
 			...organization,
+			configuracao: {
+				recursos: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
+			},
+			autorId: sessionUser.id,
 		})
 		.returning({ id: organizations.id });
 
@@ -56,13 +60,25 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 		const periodoTesteFim = new Date();
 		periodoTesteFim.setDate(periodoTesteFim.getDate() + FREE_TRIAL_DURATION_DAYS);
 
+		const freeTrialConfig = AppSubscriptionPlans.CRESCIMENTO.capabilities;
 		await db
 			.update(organizations)
 			.set({
+				configuracao: {
+					recursos: freeTrialConfig,
+				},
 				periodoTesteInicio,
 				periodoTesteFim,
 			})
 			.where(eq(organizations.id, insertedOrgId));
+
+		// Changing the active auth session organization
+		await db
+			.update(authSessions)
+			.set({
+				organizacaoAtivaId: insertedOrgId,
+			})
+			.where(eq(authSessions.id, session.session.id));
 
 		console.log("[INFO] [CREATE_ORGANIZATION] Free trial period defined successfully.");
 		return {
@@ -105,6 +121,9 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 	await db
 		.update(organizations)
 		.set({
+			configuracao: {
+				recursos: plan.capabilities,
+			},
 			stripeCustomerId: stripeCustomer.id,
 			assinaturaPlano: planName,
 		})
@@ -132,6 +151,14 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 	if (!checkoutSession.url) throw new createHttpError.InternalServerError("Erro ao criar sessão de checkout.");
 	console.log("[INFO] [CREATE_ORGANIZATION] Stripe checkout session created successfully with URL:", checkoutSession.url);
 
+	// Changing the active auth session organization
+	await db
+		.update(authSessions)
+		.set({
+			organizacaoAtivaId: insertedOrgId,
+		})
+		.where(eq(authSessions.id, session.session.id));
+
 	return {
 		data: {
 			insertedId: insertedOrgId,
@@ -156,7 +183,14 @@ async function createOrganizationRoute(request: NextRequest) {
 }
 
 const UpdateOrganizationInputSchema = z.object({
-	organization: OrganizationSchema.omit({ dataInsercao: true, assinaturaPlano: true, periodoTesteFim: true, periodoTesteInicio: true }).partial(),
+	organization: OrganizationSchema.omit({
+		dataInsercao: true,
+		assinaturaPlano: true,
+		periodoTesteFim: true,
+		periodoTesteInicio: true,
+		configuracao: true,
+		autorId: true,
+	}).partial(),
 });
 export type TUpdateOrganizationInput = z.infer<typeof UpdateOrganizationInputSchema>;
 
