@@ -155,11 +155,14 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 
 				console.log(`[IMMEDIATE_PROCESS] Successfully processed interaction ${interactionId}`);
 			} else if (whatsappSessionId) {
-				const gatewayPayload = {
-					...payload.data,
-					to: formatPhoneForInternalGateway(client.telefone),
-				};
-				const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload);
+			const gatewayPayload = {
+				...payload.data,
+				to: formatPhoneForInternalGateway(client.telefone),
+			};
+			const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload, {
+				fallbackText: payload.content,
+			});
+				console.log("[IMMEDIATE_PROCESS] Template content", templateContent);
 				sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(client.telefone), templateContent);
 				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
 				// Update chat message with WhatsApp message ID

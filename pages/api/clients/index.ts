@@ -2,6 +2,7 @@ import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatPhoneAsBase } from "@/lib/formatting";
+import { createSimplifiedEmailSearchCondition, createSimplifiedPhoneSearchCondition, createSimplifiedSearchCondition } from "@/lib/search";
 import { ClientSchema } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
@@ -73,20 +74,6 @@ const GetClientsInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((v) => (v ? v.split(",") : [])),
-	statsTotalMin: z
-		.string({
-			invalid_type_error: "Tipo não válido para valor mínimo da venda.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? Number(val) : null)),
-	statsTotalMax: z
-		.string({
-			invalid_type_error: "Tipo não válido para valor máximo da venda.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? Number(val) : null)),
 });
 export type TGetClientsInput = z.infer<typeof GetClientsInputSchema>;
 
@@ -116,10 +103,9 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 
 	if (input.search && input.search.trim().length > 0) {
 		const searchCondition = or(
-			sql`(to_tsvector('portuguese', ${clients.nome}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.nome} ILIKE '%' || ${input.search} || '%')`,
-			sql`(to_tsvector('portuguese', ${clients.email}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.email} ILIKE '%' || ${input.search} || '%')`,
-			sql`(to_tsvector('portuguese', ${clients.telefone}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.telefone} ILIKE '%' || ${input.search} || '%')`,
-			sql`(to_tsvector('portuguese', ${clients.telefoneBase}) @@ plainto_tsquery('portuguese', ${input.search}) OR ${clients.telefoneBase} ILIKE '%' || ${input.search} || '%')`,
+			createSimplifiedSearchCondition(clients.nome, input.search),
+			createSimplifiedPhoneSearchCondition(clients.telefone, input.search),
+			createSimplifiedEmailSearchCondition(clients.email, input.search),
 		);
 		if (searchCondition) {
 			clientConditions.push(searchCondition);
@@ -131,18 +117,32 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	if (input.segmentationTitles && input.segmentationTitles.length > 0) {
 		clientConditions.push(inArray(clients.analiseRFMTitulo, input.segmentationTitles));
 	}
-	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
-	if (input.statsPeriodAfter) statsConditions.push(gte(clients.dataInsercao, input.statsPeriodAfter));
-	if (input.statsPeriodBefore) statsConditions.push(lte(clients.dataInsercao, input.statsPeriodBefore));
-	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
-	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
-
-	const havingConditions = [];
-	if (input.statsTotalMin) havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
-	if (input.statsTotalMax) havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
-
 	const PAGE_SIZE = 25;
 	const skip = PAGE_SIZE * (input.page - 1);
+
+	const clientsFoundResult = await db
+		.select({
+			id: clients.id,
+		})
+		.from(clients)
+		.where(and(...clientConditions));
+
+	const totalPages = Math.ceil(clientsFoundResult.length / PAGE_SIZE);
+	const clientsResult = await db.query.clients.findMany({
+		where: and(...clientConditions),
+		with: {
+			saldos: true,
+		},
+		limit: PAGE_SIZE,
+		offset: skip,
+	});
+	const clientIds = clientsResult.map((client) => client.id);
+
+	const statsConditions = [eq(sales.organizacaoId, userOrgId), inArray(sales.clienteId, clientIds)];
+	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
+	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
+	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
+	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 
 	const matchedSubquery = db
 		.select({
@@ -152,10 +152,6 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 		.leftJoin(sales, eq(clients.id, sales.clienteId))
 		.where(and(...clientConditions, ...statsConditions))
 		.groupBy(clients.id);
-
-	if (havingConditions.length > 0) {
-		matchedSubquery.having(and(...havingConditions));
-	}
 
 	const statsByClientMatchedCountResult = await db.select({ count: count() }).from(matchedSubquery.as("sq"));
 	const statsByClientMatchedCount = statsByClientMatchedCountResult[0]?.count ?? 0;
@@ -170,20 +166,9 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 		})
 		.from(clients)
 		.leftJoin(sales, eq(clients.id, sales.clienteId))
-		.where(and(...clientConditions, ...statsConditions))
-		.having(and(...havingConditions))
+		.where(and(...statsConditions))
 		.groupBy(clients.id)
-		.orderBy(sql`${clients.nome} asc`)
-		.offset(skip)
-		.limit(PAGE_SIZE);
-
-	const clientIds = statsByClientResult.map((client) => client.clientId);
-	const clientsResult = await db.query.clients.findMany({
-		where: and(eq(clients.organizacaoId, userOrgId), inArray(clients.id, clientIds)),
-		with: {
-			saldos: true,
-		},
-	});
+		.orderBy(sql`${clients.nome} asc`);
 
 	const clientsWithStats = clientsResult.map((client) => {
 		const stats = statsByClientResult.find((s) => s.clientId === client.id);
@@ -203,7 +188,7 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 			default: {
 				clients: clientsWithStats,
 				clientsMatched: statsByClientMatchedCount,
-				totalPages: Math.ceil(statsByClientMatchedCount / PAGE_SIZE),
+				totalPages,
 			},
 		},
 	};

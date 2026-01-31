@@ -58,23 +58,6 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO DAS ESTASTÍCAS POR TOTAIS DE COMPRAS</h1>
-							<NumberInput
-								label="VALOR > QUE"
-								placeholder="Preencha aqui o valor para o filtro de mais compras que..."
-								value={filtersHolder.statsTotalMin ?? null}
-								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, statsTotalMin: value }))}
-								width="100%"
-							/>
-							<NumberInput
-								label="VALOR < QUE"
-								placeholder="Preencha aqui o valor para o filtro de menos compras que..."
-								value={filtersHolder.statsTotalMax ?? null}
-								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, statsTotalMax: value }))}
-								width="100%"
-							/>
-						</div>
-						<div className="flex w-full flex-col gap-2">
 							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">OUTROS FILTROS DAS ESTASTÍCAS</h1>
 
 							<MultipleSelectInput

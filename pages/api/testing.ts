@@ -1,6 +1,14 @@
 import { db } from "@/services/drizzle";
-import { organizationMembers, sales } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
+import {
+	campaignConversions,
+	cashbackProgramBalances,
+	cashbackProgramTransactions,
+	clients,
+	interactions,
+	organizationMembers,
+	sales,
+} from "@/services/drizzle/schema";
+import { eq, sql } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // Configurações
@@ -116,25 +124,197 @@ async function processBatch(
 	return { successful, failed };
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-	const startTime = Date.now();
-	const memberships = await db.query.organizationMembers.findMany({});
+type HandleFixingClientDuplicatesParams = {
+	clientsToDeleteIds: string[];
+	clientToKeepId: string;
+};
+async function handleFixingClientDuplicates({ clientsToDeleteIds, clientToKeepId }: HandleFixingClientDuplicatesParams) {
+	for (const clientToDeleteId of clientsToDeleteIds) {
+		await db.transaction(async (tx) => {
+			// First, moving all sales to the client to keep
+			await tx.update(sales).set({ clienteId: clientToKeepId }).where(eq(sales.clienteId, clientToDeleteId));
+			// Then, moving all cashback program transactions to the client to keep
+			await tx.update(cashbackProgramTransactions).set({ clienteId: clientToKeepId }).where(eq(cashbackProgramTransactions.clienteId, clientToDeleteId));
+			// Then, moving the cashback program balance to the client to keep
+			const duplicateBalance = await tx.query.cashbackProgramBalances.findFirst({
+				where: eq(cashbackProgramBalances.clienteId, clientToDeleteId),
+			});
+			if (duplicateBalance) {
+				// Check if client to keep has a balance
+				const keeperBalance = await tx.query.cashbackProgramBalances.findFirst({
+					where: eq(cashbackProgramBalances.clienteId, clientToKeepId),
+				});
 
-	for (const membership of memberships) {
-		await db
-			.update(organizationMembers)
-			.set({
-				permissoes: {
-					...membership.permissoes,
-					empresa: {
-						visualizar: true,
-						editar: true,
-					},
-				},
-			})
-			.where(eq(organizationMembers.id, membership.id));
+				if (keeperBalance) {
+					// Merge balances: add duplicate's balance to keeper's balance
+					await tx
+						.update(cashbackProgramBalances)
+						.set({
+							saldoValorDisponivel: sql`${cashbackProgramBalances.saldoValorDisponivel} + ${duplicateBalance.saldoValorDisponivel}`,
+							saldoValorAcumuladoTotal: sql`${cashbackProgramBalances.saldoValorAcumuladoTotal} + ${duplicateBalance.saldoValorAcumuladoTotal}`,
+							saldoValorResgatadoTotal: sql`${cashbackProgramBalances.saldoValorResgatadoTotal} + ${duplicateBalance.saldoValorResgatadoTotal}`,
+						})
+						.where(eq(cashbackProgramBalances.clienteId, clientToKeepId));
+				} else {
+					// Transfer balance: just update clienteId to the keeper
+					await tx.update(cashbackProgramBalances).set({ clienteId: clientToKeepId }).where(eq(cashbackProgramBalances.clienteId, clientToDeleteId));
+				}
+
+				// Only delete if we merged (not transferred)
+				if (keeperBalance) {
+					await tx.delete(cashbackProgramBalances).where(eq(cashbackProgramBalances.clienteId, clientToDeleteId));
+				}
+			}
+			// Updating all campaign conversions to the client to keep
+			await tx.update(campaignConversions).set({ clienteId: clientToKeepId }).where(eq(campaignConversions.clienteId, clientToDeleteId));
+			// Updating all campaign interactions to the client to keep
+			await tx.update(interactions).set({ clienteId: clientToKeepId }).where(eq(interactions.clienteId, clientToDeleteId));
+			// Deleting the client to delete
+			await tx.delete(clients).where(eq(clients.id, clientToDeleteId));
+		});
+		console.log(`[INFO] Finished processing duplicate client ${clientToDeleteId} -> merged into ${clientToKeepId}`);
 	}
-	return res.status(200).json({ message: "Processo concluído com sucesso" });
+}
+
+type DuplicateGroup = {
+	nome: string | null;
+	telefoneBase: string | null;
+	clientIds: string[];
+	clientToKeepId: string;
+	clientsToDeleteIds: string[];
+};
+
+async function findDuplicateClients(organizacaoId: string): Promise<DuplicateGroup[]> {
+	// First, find all clients for this organization
+	const allClients = await db.query.clients.findMany({
+		where: eq(clients.organizacaoId, organizacaoId),
+		columns: {
+			id: true,
+			nome: true,
+			telefoneBase: true,
+			dataInsercao: true,
+		},
+		orderBy: (fields, { asc }) => [asc(fields.dataInsercao)],
+	});
+
+	// Group by nome + telefoneBase
+	const groupedClients = new Map<string, typeof allClients>();
+	for (const client of allClients) {
+		const key = `${client.nome ?? ""}|${client.telefoneBase ?? ""}`;
+		const existing = groupedClients.get(key);
+		if (existing) {
+			existing.push(client);
+		} else {
+			groupedClients.set(key, [client]);
+		}
+	}
+
+	// Filter only groups with duplicates (more than 1 client)
+	const duplicateGroups: DuplicateGroup[] = [];
+	for (const [key, clientsInGroup] of groupedClients) {
+		if (clientsInGroup.length > 1) {
+			// The first one (oldest) is the one to keep
+			const [clientToKeep, ...clientsToDelete] = clientsInGroup;
+			duplicateGroups.push({
+				nome: clientToKeep.nome,
+				telefoneBase: clientToKeep.telefoneBase,
+				clientIds: clientsInGroup.map((c) => c.id),
+				clientToKeepId: clientToKeep.id,
+				clientsToDeleteIds: clientsToDelete.map((c) => c.id),
+			});
+		}
+	}
+
+	return duplicateGroups;
+}
+
+async function fixAllDuplicates(organizacaoId: string) {
+	console.log(`[INFO] Starting duplicate fix for organization ${organizacaoId}...`);
+
+	const duplicateGroups = await findDuplicateClients(organizacaoId);
+	console.log(`[INFO] Found ${duplicateGroups.length} duplicate groups to fix`);
+
+	if (duplicateGroups.length === 0) {
+		return { totalGroups: 0, totalClientsDeleted: 0, errors: [] };
+	}
+
+	const errors: Array<{ group: DuplicateGroup; error: string }> = [];
+	let totalClientsDeleted = 0;
+
+	// Process in batches to avoid overwhelming the database
+	const batches = chunkArray(duplicateGroups, CONFIG.BATCH_SIZE);
+	console.log(`[INFO] Processing ${batches.length} batches of up to ${CONFIG.BATCH_SIZE} groups each`);
+
+	for (const [batchIndex, batch] of batches.entries()) {
+		console.log(`[INFO] Processing batch ${batchIndex + 1}/${batches.length}...`);
+
+		for (const group of batch) {
+			try {
+				await handleFixingClientDuplicates({
+					clientsToDeleteIds: group.clientsToDeleteIds,
+					clientToKeepId: group.clientToKeepId,
+				});
+				totalClientsDeleted += group.clientsToDeleteIds.length;
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				console.error(`[ERROR] Failed to fix group ${group.nome}|${group.telefoneBase}: ${errorMessage}`);
+				errors.push({ group, error: errorMessage });
+			}
+		}
+
+		console.log(`[INFO] Batch ${batchIndex + 1}/${batches.length} completed`);
+	}
+
+	console.log(`[INFO] Duplicate fix completed. Deleted ${totalClientsDeleted} clients with ${errors.length} errors`);
+	return { totalGroups: duplicateGroups.length, totalClientsDeleted, errors };
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+	return res.status(200).json({ message: "Hello, world!" });
+	// const organizacaoId = "4a4e8578-63f0-4119-9695-a2cc068de8d6";
+
+	// // Query param to switch between preview and fix mode
+	// const mode = req.query.mode as string | undefined;
+
+	// if (mode === "fix") {
+	// 	// Actually fix the duplicates
+	// 	const startTime = Date.now();
+	// 	try {
+	// 		const result = await fixAllDuplicates(organizacaoId);
+	// 		const durationMs = Date.now() - startTime;
+
+	// 		return res.status(200).json({
+	// 			message: result.errors.length === 0 ? "Todos os duplicados corrigidos com sucesso" : "Processo concluído com alguns erros",
+	// 			stats: {
+	// 				totalGroups: result.totalGroups,
+	// 				totalClientsDeleted: result.totalClientsDeleted,
+	// 				errorsCount: result.errors.length,
+	// 			},
+	// 			errors: result.errors.length > 0 ? result.errors.map((e) => ({ nome: e.group.nome, telefone: e.group.telefoneBase, error: e.error })) : undefined,
+	// 			durationMs,
+	// 			durationSeconds: `${(durationMs / 1000).toFixed(2)}s`,
+	// 		});
+	// 	} catch (error) {
+	// 		const errorMessage = error instanceof Error ? error.message : String(error);
+	// 		return res.status(500).json({ message: "Erro fatal", error: errorMessage });
+	// 	}
+	// }
+
+	// // Default: preview mode - just show the duplicates
+	// const duplicateGroups = await findDuplicateClients(organizacaoId);
+
+	// return res.status(200).json({
+	// 	message: "Preview dos duplicados encontrados. Use ?mode=fix para corrigir.",
+	// 	totalGroups: duplicateGroups.length,
+	// 	totalClientsToDelete: duplicateGroups.reduce((acc, g) => acc + g.clientsToDeleteIds.length, 0),
+	// 	duplicates: duplicateGroups.map((g) => ({
+	// 		nome: g.nome,
+	// 		telefoneBase: g.telefoneBase,
+	// 		totalClients: g.clientIds.length,
+	// 		clientToKeepId: g.clientToKeepId,
+	// 		clientToDeleteIds: g.clientsToDeleteIds,
+	// 	})),
+	// });
 	// try {
 	// 	console.log("[INFO] [TESTING] Iniciando processo de correção de vendas...");
 	// 	// Busca registros que precisam ser corrigidos

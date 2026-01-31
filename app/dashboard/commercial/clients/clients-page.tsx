@@ -19,7 +19,21 @@ import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/cli
 import type { TGetClientsBySearchOutput } from "@/pages/api/clients/search";
 import type { TGetClientsOverallStatsInput } from "@/pages/api/clients/stats/overall";
 import dayjs from "dayjs";
-import { BadgeDollarSign, BadgePercent, CirclePlus, Info, ListFilter, Mail, Megaphone, Phone, TrendingUp, UserPlus, UserRoundX, Users, X } from "lucide-react";
+import {
+	BadgeDollarSign,
+	BadgePercent,
+	CirclePlus,
+	Info,
+	ListFilter,
+	Mail,
+	Megaphone,
+	Phone,
+	TrendingUp,
+	UserPlus,
+	UserRoundX,
+	Users,
+	X,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
@@ -29,29 +43,6 @@ type ClientsPageProps = {
 };
 export default function ClientsPage({ user }: ClientsPageProps) {
 	const [viewMode, setViewMode] = useState<"stats" | "database">("stats");
-	const [newMainEntityModalIsOpen, setNewMainEntityModalIsOpen] = useState<boolean>(false);
-	const [editMainEntityModal, setEditMainEntityModal] = useState<{ id: string | null; isOpen: boolean }>({ id: null, isOpen: false });
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
-	const {
-		data: clientsResult,
-		queryKey,
-		isLoading,
-		isError,
-		isSuccess,
-		error,
-		filters,
-		updateFilters,
-	} = useClients({
-		initialFilters: {
-			statsPeriodAfter: dayjs().startOf("month").toDate(),
-			statsPeriodBefore: dayjs().endOf("month").toDate(),
-		},
-	});
-
-	const clients = clientsResult?.clients;
-	const clientsShowing = clients ? clients.length : 0;
-	const clientsMatched = clientsResult?.clientsMatched || 0;
-	const totalPages = clientsResult?.totalPages;
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<Tabs value={viewMode} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
@@ -455,13 +446,6 @@ function ClientPageFilterShowcase({ queryParams, updateQueryParams }: ClientPage
 					label="TÍTULOS DE SEGMENTAÇÃO"
 					value={queryParams.segmentationTitles.map((title) => title).join(", ")}
 					onRemove={() => updateQueryParams({ segmentationTitles: [] })}
-				/>
-			) : null}
-			{queryParams.statsTotalMin || queryParams.statsTotalMax ? (
-				<FilterTag
-					label="VALOR"
-					value={`${queryParams.statsTotalMin ? `> R$ ${queryParams.statsTotalMin}` : ""}${queryParams.statsTotalMin && queryParams.statsTotalMax ? " & " : ""}${queryParams.statsTotalMax ? `< R$ ${queryParams.statsTotalMax}` : ""}`}
-					onRemove={() => updateQueryParams({ statsTotalMin: null, statsTotalMax: null })}
 				/>
 			) : null}
 		</div>

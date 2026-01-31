@@ -1,6 +1,6 @@
+import type { TemplateParameter, TemplatePayload } from "@/lib/whatsapp/templates";
 import axios from "axios";
 import createHttpError from "http-errors";
-import type { TemplateParameter, TemplatePayload } from "@/lib/whatsapp/templates";
 
 // Environment variables
 const GATEWAY_URL = process.env.INTERNAL_WHATSAPP_GATEWAY_URL;
@@ -50,8 +50,8 @@ export type SendMessageInput = {
 };
 
 export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePayload, options?: { fallbackText?: string }): SendMessageContent {
+	console.log("[INTERNAL_GATEWAY] Template payload", JSON.stringify(templatePayload, null, 2));
 	const components = templatePayload.template.components ?? [];
-	const textParts: string[] = [];
 	let media:
 		| {
 				type: "image" | "video" | "document";
@@ -60,8 +60,6 @@ export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePa
 		  }
 		| undefined;
 
-	const isTextParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "text" }> =>
-		param.type === "text" && typeof (param as { text?: unknown }).text === "string";
 	const isImageParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "image" }> => {
 		const image = (param as { image?: { link?: unknown } }).image;
 		return param.type === "image" && typeof image?.link === "string";
@@ -75,24 +73,11 @@ export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePa
 		return param.type === "document" && typeof document?.link === "string";
 	};
 
+	// Extract media from parameters if present
 	for (const component of components) {
-		if (component.text) {
-			textParts.push(component.text);
-		}
-
-		if (component.buttons?.length) {
-			for (const button of component.buttons) {
-				if (button.text) {
-					textParts.push(button.text);
-				}
-			}
-		}
-
 		if (!component.parameters?.length) continue;
 		for (const param of component.parameters) {
-			if (isTextParam(param)) {
-				textParts.push(param.text);
-			} else if (!media && isImageParam(param)) {
+			if (!media && isImageParam(param)) {
 				media = { type: "image", url: param.image.link };
 			} else if (!media && isVideoParam(param)) {
 				media = { type: "video", url: param.video.link };
@@ -102,13 +87,14 @@ export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePa
 		}
 	}
 
-	const text = textParts.filter(Boolean).join("\n").trim();
-	const fallbackText = options?.fallbackText ?? templatePayload.template.name ?? "";
+	// For internal gateway, use the pre-formatted template text (fallbackText) as the main content
+	// The official WhatsApp API payload only contains parameters, not the full text
+	const text = options?.fallbackText ?? templatePayload.template.name ?? "";
 
 	if (media) {
 		return {
 			type: media.type,
-			text: text || fallbackText || undefined,
+			text: text || undefined,
 			mediaUrl: media.url,
 			mediaFileName: media.filename,
 		};
@@ -116,7 +102,7 @@ export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePa
 
 	return {
 		type: "text",
-		text: text || fallbackText,
+		text,
 	};
 }
 

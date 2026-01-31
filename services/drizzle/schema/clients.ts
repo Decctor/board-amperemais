@@ -52,7 +52,9 @@ export const clients = newTable(
 	},
 	(table) => ({
 		// ...existing indices...
-		nomeIndex: index("idx_clients_nome").using("gin", sql`to_tsvector('portuguese', ${table.nome})`),
+		nomeIndex: index("idx_clients_nome").using("gist", sql`unaccent_immutable(lower(${table.nome})) gist_trgm_ops`),
+		telefoneIndex: index("idx_clients_telefone").using("gist", sql`${table.telefoneBase} gist_trgm_ops`),
+		emailIndex: index("idx_clients_email").using("gist", sql`lower(${table.email}) gist_trgm_ops`),
 		rfmTituloIdx: index("idx_clients_rfm_titulo").on(table.analiseRFMTitulo),
 	}),
 );
