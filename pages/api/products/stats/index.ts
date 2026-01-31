@@ -127,19 +127,19 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 	const ticketMedio = vendasCount > 0 ? faturamentoLiquidoTotal / vendasCount : 0;
 	const percentualDescontoMedio = faturamentoBrutoTotal > 0 ? (descontoTotal / faturamentoBrutoTotal) * 100 : 0;
 
-	// First and last sale dates
+	// First and last sale dates (respecting filters)
 	const firstSaleResult = await db
 		.select({ data: sales.dataVenda })
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)))
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere))
 		.orderBy(sql`${sales.dataVenda} asc`)
 		.limit(1);
 	const lastSaleResult = await db
 		.select({ data: sales.dataVenda })
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)))
+		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(sales.organizacaoId, userOrgId), saleItemWhere))
 		.orderBy(sql`${sales.dataVenda} desc`)
 		.limit(1);
 

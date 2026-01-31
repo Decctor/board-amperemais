@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
 import { db } from "@/services/drizzle";
 import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products, saleItems, sales } from "@/services/drizzle/schema";
-import { and, asc, count, desc, eq, gte, inArray, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, gte, inArray, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
@@ -211,7 +211,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			orderByClause = direction(sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`);
 			break;
 		case "vendasQtdeTotal":
-			orderByClause = direction(count(sales.id));
+			orderByClause = direction(sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END), 0)`);
 			break;
 		case "quantidade":
 			orderByClause = direction(sql`COALESCE(${products.quantidade}, 0)`);
@@ -247,7 +247,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			dataUltimaSincronizacao: products.dataUltimaSincronizacao,
 			// Campos de stats - só considera valores quando a venda passa nos filtros
 			totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`,
-			totalSalesQty: count(sales.id),
+			totalSalesQty: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END)`,
 			firstSaleDate: min(sales.dataVenda),
 			lastSaleDate: max(sales.dataVenda),
 			// Curva ABC - calculamos via window functions
