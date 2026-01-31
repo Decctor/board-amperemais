@@ -144,7 +144,6 @@ async function getProducts({ input, session }: GetProductsParams) {
 	}
 
 	const productQueryConditions = [eq(products.organizacaoId, userOrgId)];
-	let applyRestrictiveSalesFilters = false;
 
 	if (input.search) {
 		productQueryConditions.push(
@@ -182,7 +181,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 		productQueryConditions.push(lte(products.precoVenda, input.priceMax));
 	}
 
-	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
+	const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
 	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
 	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
@@ -191,11 +190,9 @@ async function getProducts({ input, session }: GetProductsParams) {
 	const havingConditions = [];
 	if (input.statsTotalMin) {
 		havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
-		applyRestrictiveSalesFilters = true;
 	}
 	if (input.statsTotalMax) {
 		havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
-		applyRestrictiveSalesFilters = true;
 	}
 
 	let orderByClause = asc(products.descricao);
@@ -211,7 +208,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			orderByClause = direction(products.grupo);
 			break;
 		case "vendasValorTotal":
-			orderByClause = direction(sql`COALESCE(sum(${saleItems.valorVendaTotalLiquido}), 0)`);
+			orderByClause = direction(sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`);
 			break;
 		case "vendasQtdeTotal":
 			orderByClause = direction(count(sales.id));
@@ -227,93 +224,92 @@ async function getProducts({ input, session }: GetProductsParams) {
 	const PAGE_SIZE = 25;
 	const skip = PAGE_SIZE * (input.page - 1);
 
-	const matchedSubquery = db
+	// Fragmento SQL reutilizável para o valor total (só considera quando a venda passa nos filtros)
+	const totalSalesSql = sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`;
+
+	// Query única que retorna produtos + stats já ordenados e paginados
+	// Usa LEFT JOINs condicionais para aplicar filtros de stats apenas quando necessário
+	const baseQuery = db
 		.select({
+			// Campos do produto
 			productId: products.id,
-		})
-		.from(products)
-		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
-		.leftJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(and(eq(saleItems.organizacaoId, userOrgId), ...productQueryConditions, ...statsConditions))
-		.groupBy(products.id);
-
-	if (havingConditions.length > 0) {
-		matchedSubquery.having(and(...havingConditions));
-	}
-	const statsByProductMatchedCountResult = await db.select({ count: count() }).from(matchedSubquery.as("sq"));
-	const statsByProductMatchedCount = statsByProductMatchedCountResult[0]?.count ?? 0;
-
-	// Crie um fragmento SQL reutilizável para o valor total (trata NULL como 0)
-	const totalSalesSql = sql`COALESCE(sum(${saleItems.valorVendaTotalLiquido}), 0)`;
-
-	console.log("STATSCONDITIONS LENGTH:", statsConditions.length);
-	const statsByProductResult = await db
-		.select({
-			productId: products.id,
-			totalSalesValue: sum(saleItems.valorVendaTotalLiquido),
+			codigo: products.codigo,
+			descricao: products.descricao,
+			unidade: products.unidade,
+			ncm: products.ncm,
+			tipo: products.tipo,
+			grupo: products.grupo,
+			imagemCapaUrl: products.imagemCapaUrl,
+			precoVenda: products.precoVenda,
+			precoCusto: products.precoCusto,
+			quantidade: products.quantidade,
+			organizacaoId: products.organizacaoId,
+			dataUltimaSincronizacao: products.dataUltimaSincronizacao,
+			// Campos de stats - só considera valores quando a venda passa nos filtros
+			totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`,
 			totalSalesQty: count(sales.id),
 			firstSaleDate: min(sales.dataVenda),
 			lastSaleDate: max(sales.dataVenda),
-			// Calcula o acumulado ordenado por valor decrescente
+			// Curva ABC - calculamos via window functions
 			accumulatedSales: sql<number>`sum(${totalSalesSql}) OVER (ORDER BY ${totalSalesSql} DESC)`,
-			// Calcula o total geral do conjunto filtrado
 			totalSalesGlobal: sql<number>`sum(${totalSalesSql}) OVER ()`,
 		})
 		.from(products)
 		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
-		.leftJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(and(eq(saleItems.organizacaoId, userOrgId), ...productQueryConditions, ...statsConditions))
-		.having(and(...havingConditions))
-		.groupBy(products.id)
-		.orderBy(orderByClause)
-		.offset(skip)
-		.limit(PAGE_SIZE);
+		.leftJoin(sales, and(eq(saleItems.vendaId, sales.id), ...statsConditions))
+		.where(and(...productQueryConditions))
+		.groupBy(products.id);
 
-	const productIds = statsByProductResult.map((product) => product.productId);
-	const productsResult = await db.query.products.findMany({
-		where: and(
-			eq(products.organizacaoId, userOrgId),
-			...productQueryConditions,
-			applyRestrictiveSalesFilters ? inArray(products.id, productIds) : undefined,
-		),
-		limit: PAGE_SIZE,
-		offset: skip,
+	if (havingConditions.length > 0) {
+		baseQuery.having(and(...havingConditions));
+	}
+
+	// Conta total de produtos que correspondem aos filtros
+	const matchedCountResult = await db.select({ count: count() }).from(baseQuery.as("sq"));
+	const statsByProductMatchedCount = matchedCountResult[0]?.count ?? 0;
+
+	// Aplica ordenação e paginação
+	const productsWithStatsResult = await baseQuery.orderBy(orderByClause).offset(skip).limit(PAGE_SIZE);
+
+	// Mapeia os resultados para o formato final
+	const productsWithStats = productsWithStatsResult.map((row) => {
+		const totalSales = row.totalSalesValue ? Number(row.totalSalesValue) : 0;
+		const accumulated = row.accumulatedSales ? Number(row.accumulatedSales) : 0;
+		const globalTotal = row.totalSalesGlobal ? Number(row.totalSalesGlobal) : 0;
+
+		// Lógica da Curva ABC
+		let curvaABC = "C";
+		if (globalTotal > 0) {
+			const prevAccumulated = accumulated - totalSales;
+			const prevPercentage = prevAccumulated / globalTotal;
+
+			if (prevPercentage < 0.8) curvaABC = "A";
+			else if (prevPercentage < 0.95) curvaABC = "B";
+		}
+
+		return {
+			id: row.productId,
+			codigo: row.codigo,
+			descricao: row.descricao,
+			unidade: row.unidade,
+			ncm: row.ncm,
+			tipo: row.tipo,
+			grupo: row.grupo,
+			imagemCapaUrl: row.imagemCapaUrl,
+			precoVenda: row.precoVenda,
+			precoCusto: row.precoCusto,
+			quantidade: row.quantidade,
+			organizacaoId: row.organizacaoId,
+			dataUltimaSincronizacao: row.dataUltimaSincronizacao,
+			estatisticas: {
+				vendasValorTotal: totalSales,
+				vendasQtdeTotal: row.totalSalesQty ? Number(row.totalSalesQty) : 0,
+				dataPrimeiraVenda: row.firstSaleDate ?? null,
+				dataUltimaVenda: row.lastSaleDate ?? null,
+				curvaABC: curvaABC,
+			},
+		};
 	});
-
-	const productsMap = new Map(productsResult.map((p) => [p.id, p]));
-	const statsByProductMap = new Map(statsByProductResult.map((s) => [s.productId, s]));
-	const productsWithStats = productsResult
-		.map((product) => {
-			const stats = statsByProductMap.get(product.id);
-
-			// Lógica da Curva ABC
-			const totalSales = stats?.totalSalesValue ? Number(stats.totalSalesValue) : 0;
-			const accumulated = stats?.accumulatedSales ? Number(stats.accumulatedSales) : 0;
-			const globalTotal = stats?.totalSalesGlobal ? Number(stats.totalSalesGlobal) : 0;
-
-			let curvaABC = "C";
-			if (globalTotal > 0) {
-				// Descobre onde este item "começa" na curva acumulada
-				// Se o item anterior terminou em 79%, e este vai até 82%, ele ainda entra como A (crossover)
-				const prevAccumulated = accumulated - totalSales;
-				const prevPercentage = prevAccumulated / globalTotal;
-
-				if (prevPercentage < 0.8) curvaABC = "A";
-				else if (prevPercentage < 0.95) curvaABC = "B";
-			}
-
-			return {
-				...product,
-				estatisticas: {
-					vendasValorTotal: totalSales,
-					vendasQtdeTotal: stats?.totalSalesQty ? Number(stats.totalSalesQty) : 0,
-					dataPrimeiraVenda: stats?.firstSaleDate ? stats.firstSaleDate : null,
-					dataUltimaVenda: stats?.lastSaleDate ? stats.lastSaleDate : null,
-					curvaABC: curvaABC, // Novo campo
-				},
-			};
-		})
-		.filter((item): item is NonNullable<typeof item> => item !== null);
 	return {
 		data: {
 			default: {
