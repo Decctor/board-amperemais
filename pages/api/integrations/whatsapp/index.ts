@@ -3,6 +3,7 @@ import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProce
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import {
+	type AppWhatsappStatus,
 	isMessageEchoEvent,
 	isMessageEvent,
 	isStatusUpdate,
@@ -16,12 +17,15 @@ import {
 	parseWebhookMessageEcho,
 } from "@/lib/whatsapp/parsing";
 import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
+import { InteractionsStatusEnum } from "@/schemas/interactions";
+import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
+import { interactions } from "@/services/drizzle/schema/interactions";
 import { whatsappTemplatePhones } from "@/services/drizzle/schema/whatsapp-templates";
 import { supabaseClient } from "@/services/supabase";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
@@ -164,6 +168,12 @@ async function handleTemplateEvent(body: WebhookBody): Promise<void> {
 	}
 }
 
+const INTERACTION_STATUS_MAPPING: Record<AppWhatsappStatus, TInteractionsStatusEnum> = {
+	PENDENTE: "PENDENTE",
+	ENVIADO: "ENVIADO",
+	ENTREGUE: "ENTREGUE",
+	FALHOU: "FALHOU",
+};
 /**
  * Handle message status updates (sent, delivered, read, failed)
  */
@@ -178,6 +188,15 @@ async function handleStatusUpdate(body: WebhookBody): Promise<void> {
 		.set({ status, whatsappMessageStatus: whatsappStatus })
 		.where(eq(chatMessages.whatsappMessageId, statusUpdate.whatsappMessageId));
 
+	await db
+		.update(interactions)
+		.set({
+			statusEnvio: INTERACTION_STATUS_MAPPING[whatsappStatus],
+			metadados: {
+				whatsappMessageId: statusUpdate.whatsappMessageId,
+			},
+		})
+		.where(sql`${interactions.metadados}->>'whatsappMessageId' = ${statusUpdate.whatsappMessageId}`);
 	console.log("[WHATSAPP_WEBHOOK] Status updated for message:", statusUpdate.whatsappMessageId);
 }
 

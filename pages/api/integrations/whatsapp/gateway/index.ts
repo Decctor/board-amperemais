@@ -3,13 +3,15 @@ import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProce
 import { uploadChatMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { downloadMedia, sendMessage as sendInternalGatewayMessage } from "@/lib/whatsapp/internal-gateway";
-import { mapWhatsAppStatusToAppStatus } from "@/lib/whatsapp/parsing";
+import { type AppWhatsappStatus, mapWhatsAppStatusToAppStatus } from "@/lib/whatsapp/parsing";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
+import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
+import { interactions } from "@/services/drizzle/schema/interactions";
 import { supabaseClient } from "@/services/supabase";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const API_SECRET = process.env.INTERNAL_WHATSAPP_GATEWAY_API_SECRET;
@@ -359,6 +361,12 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 	}
 }
 
+const INTERACTION_STATUS_MAPPING: Record<AppWhatsappStatus, TInteractionsStatusEnum> = {
+	PENDENTE: "PENDENTE",
+	ENVIADO: "ENVIADO",
+	ENTREGUE: "ENTREGUE",
+	FALHOU: "FALHOU",
+};
 async function handleMessageUpdated(body: Extract<WebhookBody, { event: "message.updated" }>): Promise<void> {
 	const { data } = body;
 
@@ -373,6 +381,11 @@ async function handleMessageUpdated(body: Extract<WebhookBody, { event: "message
 		.update(chatMessages)
 		.set({ status, whatsappMessageStatus: whatsappStatus })
 		.where(eq(chatMessages.whatsappMessageId, data.whatsappMessageId));
+
+	await db
+		.update(interactions)
+		.set({ statusEnvio: INTERACTION_STATUS_MAPPING[whatsappStatus] })
+		.where(sql`${interactions.metadados}->>'whatsappMessageId' = ${data.whatsappMessageId}`);
 
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message updated:", {
 		whatsappMessageId: data.whatsappMessageId,

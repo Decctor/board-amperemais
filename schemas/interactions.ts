@@ -1,6 +1,8 @@
 import z from "zod";
 import { InteractionTypeEnum, InteractionsCronJobTimeBlocksEnum } from "./enums";
 
+export const InteractionsStatusEnum = z.enum(["PENDENTE", "ENVIADO", "ENTREGUE", "FALHOU"]);
+export type TInteractionsStatusEnum = z.infer<typeof InteractionsStatusEnum>;
 export const InteractionSchema = z.object({
 	clienteId: z.string({
 		required_error: "ID do cliente não informado.",

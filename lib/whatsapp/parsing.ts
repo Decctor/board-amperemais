@@ -3,7 +3,7 @@ import { formatWhatsappIdAsPhone } from "./utils";
 type WhatsAppMessageStatus = "pending" | "sent" | "delivered" | "read" | "failed";
 
 type AppMessageStatus = "ENVIADO" | "RECEBIDO" | "LIDO";
-type AppWhatsappStatus = "PENDENTE" | "ENVIADO" | "ENTREGUE" | "FALHOU";
+export type AppWhatsappStatus = "PENDENTE" | "ENVIADO" | "ENTREGUE" | "FALHOU";
 
 type StatusUpdateResult = {
 	status: AppMessageStatus;
