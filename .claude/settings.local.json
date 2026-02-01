@@ -6,7 +6,8 @@
       "WebSearch",
       "Bash(npx next lint:*)",
       "Bash(ls:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(grep:*)"
     ]
   }
 }

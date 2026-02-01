@@ -211,16 +211,29 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		return;
 	}
 
-	// Find WhatsApp connection by phone number ID
+	// Find WhatsApp connection by phone number ID (including organization config)
 	const connectionPhone = await db.query.whatsappConnectionPhones.findFirst({
 		where: (fields, { eq }) => eq(fields.whatsappTelefoneId, incomingMessage.whatsappPhoneNumberId),
 		with: {
-			conexao: true,
+			conexao: {
+				with: {
+					organizacao: {
+						columns: { configuracao: true },
+					},
+				},
+			},
 		},
 	});
 
 	if (!connectionPhone?.conexao) {
 		console.warn("[WHATSAPP_WEBHOOK] No WhatsApp connection found for:", incomingMessage.whatsappPhoneNumberId);
+		return;
+	}
+
+	// Check if hubAtendimentos access is enabled
+	const hasHubAccess = connectionPhone.conexao.organizacao?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
+	if (!hasHubAccess) {
+		console.log("[WHATSAPP_WEBHOOK] hubAtendimentos disabled, skipping message insertion for:", incomingMessage.whatsappPhoneNumberId);
 		return;
 	}
 
@@ -420,16 +433,29 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 		return;
 	}
 
-	// Find WhatsApp connection
+	// Find WhatsApp connection (including organization config)
 	const connectionPhone = await db.query.whatsappConnectionPhones.findFirst({
 		where: (fields, { eq }) => eq(fields.whatsappTelefoneId, messageEcho.whatsappPhoneNumberId),
 		with: {
-			conexao: true,
+			conexao: {
+				with: {
+					organizacao: {
+						columns: { configuracao: true },
+					},
+				},
+			},
 		},
 	});
 
 	if (!connectionPhone?.conexao) {
 		console.warn("[WHATSAPP_WEBHOOK] [ECHO] No WhatsApp connection found");
+		return;
+	}
+
+	// Check if hubAtendimentos access is enabled
+	const hasHubAccess = connectionPhone.conexao.organizacao?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
+	if (!hasHubAccess) {
+		console.log("[WHATSAPP_WEBHOOK] [ECHO] hubAtendimentos disabled, skipping message echo insertion");
 		return;
 	}
 

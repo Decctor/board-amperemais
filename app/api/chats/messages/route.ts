@@ -163,6 +163,12 @@ async function createMessage({ session, input }: { session: TAuthUserSession; in
 		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
 	}
 
+	// Check if hubAtendimentos access is enabled
+	const hasHubAccess = session.membership?.organizacao.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
+	if (!hasHubAccess) {
+		throw new createHttpError.Forbidden("Acesso ao hub de atendimentos não está habilitado para esta organização.");
+	}
+
 	// Get chat with connection info
 	const chat = await db.query.chats.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, input.chatId), eq(fields.organizacaoId, organizacaoId)),

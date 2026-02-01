@@ -28,8 +28,12 @@ export const whatsappConnections = newTable("whatsapp_connections", {
 		.notNull(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
-export const whatsappConnectionsRelations = relations(whatsappConnections, ({ many }) => ({
+export const whatsappConnectionsRelations = relations(whatsappConnections, ({ one, many }) => ({
 	telefones: many(whatsappConnectionPhones),
+	organizacao: one(organizations, {
+		fields: [whatsappConnections.organizacaoId],
+		references: [organizations.id],
+	}),
 }));
 export type TWhatsappConnection = typeof whatsappConnections.$inferSelect;
 export type TNewWhatsappConnection = typeof whatsappConnections.$inferInsert;

@@ -156,16 +156,26 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 		return;
 	}
 
-	// Find connection by session ID
+	// Find connection by session ID (including organization config)
 	const connection = await db.query.whatsappConnections.findFirst({
 		where: (fields, { eq }) => eq(fields.gatewaySessaoId, sessionId),
 		with: {
 			telefones: true,
+			organizacao: {
+				columns: { configuracao: true },
+			},
 		},
 	});
 
 	if (!connection) {
 		console.warn("[INTERNAL_WHATSAPP_WEBHOOK] Connection not found for session:", sessionId);
+		return;
+	}
+
+	// Check if hubAtendimentos access is enabled
+	const hasHubAccess = connection.organizacao?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
+	if (!hasHubAccess) {
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] hubAtendimentos disabled, skipping message insertion for session:", sessionId);
 		return;
 	}
 

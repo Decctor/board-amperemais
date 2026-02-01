@@ -2,7 +2,7 @@ import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import { db } from "@/services/drizzle";
-import { type TClientEntity, type TWhatsappTemplate, chatMessages, chats, interactions } from "@/services/drizzle/schema";
+import { type TClientEntity, type TWhatsappTemplate, chatMessages, chats, interactions, organizations } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "../whatsapp/internal-gateway";
 import { formatPhoneForInternalGateway } from "../whatsapp/utils";
@@ -49,6 +49,13 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 	try {
 		console.log(`[IMMEDIATE_PROCESS] Processing interaction ${interactionId} for org ${organizationId}`);
 
+		// Check if hubAtendimentos access is enabled for this organization
+		const organization = await db.query.organizations.findFirst({
+			where: (fields, { eq }) => eq(fields.id, organizationId),
+			columns: { configuracao: true },
+		});
+		const hasHubAccess = organization?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
+
 		const clientFavoriteProduct = client.metadataProdutoMaisCompradoId
 			? (
 					await db.query.products.findFirst({
@@ -85,51 +92,57 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 
 		console.log(`[IMMEDIATE_PROCESS] Creating template message for interaction ${interactionId}`);
 
-		// Find or create chat
-		let chatId: string | null = null;
-		const existingChat = await db.query.chats.findFirst({
-			where: (fields, { and, eq }) =>
-				and(
-					eq(fields.organizacaoId, organizationId),
-					eq(fields.clienteId, client.id),
-					eq(fields.whatsappConexaoTelefoneId, campaign.whatsappConexaoTelefoneId),
-				),
-		});
+		// Only create chat and insert message if hubAtendimentos access is enabled
+		let insertedChatMessageId: string | null = null;
+		if (hasHubAccess) {
+			// Find or create chat
+			let chatId: string | null = null;
+			const existingChat = await db.query.chats.findFirst({
+				where: (fields, { and, eq }) =>
+					and(
+						eq(fields.organizacaoId, organizationId),
+						eq(fields.clienteId, client.id),
+						eq(fields.whatsappConexaoTelefoneId, campaign.whatsappConexaoTelefoneId),
+					),
+			});
 
-		if (existingChat) {
-			chatId = existingChat.id;
-		} else {
-			const [newChat] = await db
-				.insert(chats)
+			if (existingChat) {
+				chatId = existingChat.id;
+			} else {
+				const [newChat] = await db
+					.insert(chats)
+					.values({
+						organizacaoId: organizationId,
+						clienteId: client.id,
+						whatsappTelefoneId: whatsappConnectionPhone.whatsappTelefoneId,
+						whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
+						ultimaMensagemData: new Date(),
+						ultimaMensagemConteudoTipo: "TEXTO",
+					})
+					.returning({ id: chats.id });
+				chatId = newChat.id;
+			}
+
+			// Insert chat message
+			const insertedChatMessageResponse = await db
+				.insert(chatMessages)
 				.values({
 					organizacaoId: organizationId,
-					clienteId: client.id,
-					whatsappTelefoneId: whatsappConnectionPhone.whatsappTelefoneId,
-					whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
-					ultimaMensagemData: new Date(),
-					ultimaMensagemConteudoTipo: "TEXTO",
+					chatId: chatId,
+					autorTipo: "USUÁRIO",
+					autorUsuarioId: campaign.autorId,
+					conteudoTexto: payload.content,
+					conteudoMidiaTipo: "TEXTO",
 				})
-				.returning({ id: chats.id });
-			chatId = newChat.id;
-		}
+				.returning({ id: chatMessages.id });
 
-		// Insert chat message
-		const insertedChatMessageResponse = await db
-			.insert(chatMessages)
-			.values({
-				organizacaoId: organizationId,
-				chatId: chatId,
-				autorTipo: "USUÁRIO",
-				autorUsuarioId: campaign.autorId,
-				conteudoTexto: payload.content,
-				conteudoMidiaTipo: "TEXTO",
-			})
-			.returning({ id: chatMessages.id });
+			insertedChatMessageId = insertedChatMessageResponse[0]?.id ?? null;
 
-		const insertedChatMessageId = insertedChatMessageResponse[0]?.id;
-
-		if (!insertedChatMessageId) {
-			throw new Error("Failed to insert chat message");
+			if (!insertedChatMessageId) {
+				throw new Error("Failed to insert chat message");
+			}
+		} else {
+			console.log(`[IMMEDIATE_PROCESS] hubAtendimentos disabled, skipping chat message insertion for interaction ${interactionId}`);
 		}
 
 		try {
@@ -142,14 +155,17 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 					whatsappToken: whatsappToken,
 				});
 				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
-				// Update chat message with WhatsApp message ID
-				await db
-					.update(chatMessages)
-					.set({
-						whatsappMessageId: sentWhatsappTemplateResponse.whatsappMessageId,
-						whatsappMessageStatus: "ENVIADO",
-					})
-					.where(eq(chatMessages.id, insertedChatMessageId));
+
+				// Update chat message with WhatsApp message ID (only if hub access enabled)
+				if (hasHubAccess && insertedChatMessageId) {
+					await db
+						.update(chatMessages)
+						.set({
+							whatsappMessageId: sentWhatsappTemplateResponse.whatsappMessageId,
+							whatsappMessageStatus: "ENVIADO",
+						})
+						.where(eq(chatMessages.id, insertedChatMessageId));
+				}
 
 				// Mark interaction as executed
 				await db
@@ -175,14 +191,17 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 				console.log("[IMMEDIATE_PROCESS] Template content", templateContent);
 				sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(client.telefone), templateContent);
 				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
-				// Update chat message with WhatsApp message ID
-				await db
-					.update(chatMessages)
-					.set({
-						whatsappMessageId: sentWhatsappTemplateResponse.messageId,
-						whatsappMessageStatus: "ENVIADO",
-					})
-					.where(eq(chatMessages.id, insertedChatMessageId));
+
+				// Update chat message with WhatsApp message ID (only if hub access enabled)
+				if (hasHubAccess && insertedChatMessageId) {
+					await db
+						.update(chatMessages)
+						.set({
+							whatsappMessageId: sentWhatsappTemplateResponse.messageId,
+							whatsappMessageStatus: "ENVIADO",
+						})
+						.where(eq(chatMessages.id, insertedChatMessageId));
+				}
 
 				// Mark interaction as executed
 				await db
@@ -205,13 +224,15 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 		} catch (sendError) {
 			console.error(`[IMMEDIATE_PROCESS] Failed to send WhatsApp message for interaction ${interactionId}:`, sendError);
 
-			// Mark message as failed
-			await db
-				.update(chatMessages)
-				.set({
-					whatsappMessageStatus: "FALHOU",
-				})
-				.where(eq(chatMessages.id, insertedChatMessageId));
+			// Mark message as failed (only if hub access enabled)
+			if (hasHubAccess && insertedChatMessageId) {
+				await db
+					.update(chatMessages)
+					.set({
+						whatsappMessageStatus: "FALHOU",
+					})
+					.where(eq(chatMessages.id, insertedChatMessageId));
+			}
 
 			// Don't mark interaction as executed, so it can be retried by cron job
 			return {

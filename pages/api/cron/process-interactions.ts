@@ -53,9 +53,9 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 			currentTimeBlock,
 		});
 
-		// Buscar todas as organizacoes
+		// Buscar todas as organizacoes com configuracao
 		const organizationsList = await db.query.organizations.findMany({
-			columns: { id: true },
+			columns: { id: true, configuracao: true },
 		});
 
 		console.log(`[INFO] [PROCESS_INTERACTIONS] Processing ${organizationsList.length} organizations`);
@@ -63,6 +63,9 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 		for (const organization of organizationsList) {
 			try {
 				console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Processing interactions`);
+
+				// Check if hubAtendimentos access is enabled for this organization
+				const hasHubAccess = organization.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
 
 				const interactionsResult = await db.query.interactions.findMany({
 					where: (fields, { and, eq, isNull, isNotNull }) =>
@@ -164,47 +167,53 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					});
 					console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Creating template message:`, JSON.stringify(payload, null, 2));
 
-					let chatId: string | null = null;
-					const existingChat = await db.query.chats.findFirst({
-						where: (fields, { and, eq }) =>
-							and(
-								eq(fields.organizacaoId, organization.id),
-								eq(fields.clienteId, interaction.clienteId),
-								eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhone.id),
-							),
-					});
-					if (existingChat) {
-						chatId = existingChat.id;
-					} else {
-						const [newChat] = await db
-							.insert(chats)
+					// Only create chat and insert message if hubAtendimentos access is enabled
+					let insertedChatMessageId: string | null = null;
+					if (hasHubAccess) {
+						let chatId: string | null = null;
+						const existingChat = await db.query.chats.findFirst({
+							where: (fields, { and, eq }) =>
+								and(
+									eq(fields.organizacaoId, organization.id),
+									eq(fields.clienteId, interaction.clienteId),
+									eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhone.id),
+								),
+						});
+						if (existingChat) {
+							chatId = existingChat.id;
+						} else {
+							const [newChat] = await db
+								.insert(chats)
+								.values({
+									organizacaoId: organization.id,
+									clienteId: interaction.clienteId,
+									whatsappTelefoneId: whatsappConnectionPhone.whatsappTelefoneId,
+									whatsappConexaoTelefoneId: whatsappConnectionPhone.id,
+									ultimaMensagemData: new Date(),
+									ultimaMensagemConteudoTipo: "TEXTO",
+								})
+								.returning({ id: chats.id });
+							chatId = newChat.id;
+						}
+						// Inserting message in db
+						const insertedChatMessageResponse = await db
+							.insert(chatMessages)
 							.values({
 								organizacaoId: organization.id,
-								clienteId: interaction.clienteId,
-								whatsappTelefoneId: whatsappConnectionPhone.whatsappTelefoneId,
-								whatsappConexaoTelefoneId: whatsappConnectionPhone.id,
-								ultimaMensagemData: new Date(),
-								ultimaMensagemConteudoTipo: "TEXTO",
+								chatId: chatId,
+								autorTipo: "USUÁRIO",
+								autorUsuarioId: interactionCampaign.autorId,
+								conteudoTexto: payload.content,
+								conteudoMidiaTipo: "TEXTO",
 							})
-							.returning({ id: chats.id });
-						chatId = newChat.id;
+							.returning({ id: chatMessages.id });
+
+						insertedChatMessageId = insertedChatMessageResponse[0]?.id ?? null;
+
+						if (!insertedChatMessageId) throw new Error("Failed to insert chat message");
+					} else {
+						console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] hubAtendimentos disabled, skipping chat message insertion`);
 					}
-					// Inserting message in db
-					const insertedChatMessageResponse = await db
-						.insert(chatMessages)
-						.values({
-							organizacaoId: organization.id,
-							chatId: chatId,
-							autorTipo: "USUÁRIO",
-							autorUsuarioId: interactionCampaign.autorId,
-							conteudoTexto: payload.content,
-							conteudoMidiaTipo: "TEXTO",
-						})
-						.returning({ id: chatMessages.id });
-
-					const insertedChatMessageId = insertedChatMessageResponse[0]?.id;
-
-					if (!insertedChatMessageId) throw new Error("Failed to insert chat message");
 
 					try {
 						let whatsappMessageId: string | undefined;
@@ -247,13 +256,16 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 							throw new Error(`Unknown WhatsApp connection type: ${whatsappConnection.tipoConexao}`);
 						}
 
-						await db
-							.update(chatMessages)
-							.set({
-								whatsappMessageId: whatsappMessageId,
-								whatsappMessageStatus: "ENVIADO",
-							})
-							.where(eq(chatMessages.id, insertedChatMessageId));
+						// Update chat message with WhatsApp message ID (only if hub access enabled)
+						if (hasHubAccess && insertedChatMessageId) {
+							await db
+								.update(chatMessages)
+								.set({
+									whatsappMessageId: whatsappMessageId,
+									whatsappMessageStatus: "ENVIADO",
+								})
+								.where(eq(chatMessages.id, insertedChatMessageId));
+						}
 
 						await db
 							.update(interactions)
@@ -271,13 +283,15 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 							error,
 						);
 
-						// Mark message as failed
-						await db
-							.update(chatMessages)
-							.set({
-								whatsappMessageStatus: "FALHOU",
-							})
-							.where(eq(chatMessages.id, insertedChatMessageId));
+						// Mark message as failed (only if hub access enabled)
+						if (hasHubAccess && insertedChatMessageId) {
+							await db
+								.update(chatMessages)
+								.set({
+									whatsappMessageStatus: "FALHOU",
+								})
+								.where(eq(chatMessages.id, insertedChatMessageId));
+						}
 
 						// Don't mark interaction as executed, so it can be retried
 						// Continue processing other interactions
