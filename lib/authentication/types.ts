@@ -32,6 +32,10 @@ export type TAuthUserSession = {
 			corPrimariaForeground: TOrganizationEntity["corPrimariaForeground"];
 			corSecundaria: TOrganizationEntity["corSecundaria"];
 			corSecundariaForeground: TOrganizationEntity["corSecundariaForeground"];
+			configuracao: TOrganizationEntity["configuracao"];
+			integracaoTipo: TOrganizationEntity["integracaoTipo"];
+			integracaoConfiguracao: TOrganizationEntity["integracaoConfiguracao"];
+			integracaoDataUltimaSincronizacao: TOrganizationEntity["integracaoDataUltimaSincronizacao"];
 		};
 		permissoes: TOrganizationMemberEntity["permissoes"];
 	} | null;

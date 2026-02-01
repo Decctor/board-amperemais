@@ -91,6 +91,10 @@ export async function validateSession(token: string) {
 					corPrimariaForeground: membership.organizacao.corPrimariaForeground,
 					corSecundaria: membership.organizacao.corSecundaria,
 					corSecundariaForeground: membership.organizacao.corSecundariaForeground,
+					configuracao: membership.organizacao.configuracao,
+					integracaoTipo: membership.organizacao.integracaoTipo,
+					integracaoConfiguracao: membership.organizacao.integracaoConfiguracao,
+					integracaoDataUltimaSincronizacao: membership.organizacao.integracaoDataUltimaSincronizacao,
 				},
 				permissoes: membership.permissoes,
 			};
@@ -119,6 +123,10 @@ export async function validateSession(token: string) {
 					corPrimariaForeground: mostRecentMembership.organizacao.corPrimariaForeground,
 					corSecundaria: mostRecentMembership.organizacao.corSecundaria,
 					corSecundariaForeground: mostRecentMembership.organizacao.corSecundariaForeground,
+					configuracao: mostRecentMembership.organizacao.configuracao,
+					integracaoTipo: mostRecentMembership.organizacao.integracaoTipo,
+					integracaoConfiguracao: mostRecentMembership.organizacao.integracaoConfiguracao,
+					integracaoDataUltimaSincronizacao: mostRecentMembership.organizacao.integracaoDataUltimaSincronizacao,
 				},
 				permissoes: mostRecentMembership.permissoes,
 			};

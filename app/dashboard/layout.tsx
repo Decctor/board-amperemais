@@ -1,5 +1,6 @@
 import AppHeader from "@/components/Layouts/HeaderApp";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { OnboardingQualityBubble } from "@/components/Onboarding";
 import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
 import { SidebarInset } from "@/components/ui/sidebar";
@@ -24,6 +25,7 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 					>
 						<AppHeader />
 						{children}
+						<OnboardingQualityBubble />
 					</OrgColorsProvider>
 				</SidebarInset>
 			</Suspense>
