@@ -178,52 +178,50 @@ export default function LandingPage() {
 	return (
 		<div className="min-h-screen bg-black text-white antialiased">
 			{/* Navbar */}
-			<header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/5 transition-all duration-300">
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="flex items-center justify-between h-20">
-						{/* Logo */}
-						<Link href="/" className="flex items-center gap-2 group">
-							<div className="relative w-24 h-12">
-								<Image src={LogoCompleteHorizontalColorful} alt="RecompraCRM" fill className="object-contain" priority />
-							</div>
-						</Link>
-
-						{/* Menu Center */}
-						<nav className="hidden lg:flex items-center gap-8">
-							<Link href="#cashback" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
-								Cashback
-							</Link>
-							<Link href="#campanhas" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
-								Automação
-							</Link>
-							<Link href="#analytics" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
-								Analytics
-							</Link>
-							<Link href="#pricing" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
-								Planos
-							</Link>
-						</nav>
-
-						{/* Right Actions */}
-						<div className="flex items-center gap-4">
-							<Link href="/auth/signin" className="text-sm font-medium text-white/70 hover:text-white transition-colors hidden sm:block">
-								Entrar
-							</Link>
-							<Link href="/auth/signin" target="_blank" rel="noopener noreferrer">
-								<Button
-									size="sm"
-									className="bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full font-medium px-6 h-10 shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/40 transition-all hover:-translate-y-0.5"
-								>
-									Ver como funciona (15 min)
-								</Button>
-							</Link>
+			<header className="h-[10vh] sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/5 transition-all duration-300">
+				<div className="flex items-center justify-between container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-full">
+					{/* Logo */}
+					<Link href="/" className="flex items-center gap-2 group">
+						<div className="relative w-36 h-12">
+							<Image src={LogoCompleteHorizontalColorful} alt="RecompraCRM" fill className="object-contain" priority />
 						</div>
+					</Link>
+
+					{/* Menu Center */}
+					<nav className="hidden lg:flex items-center gap-8">
+						<Link href="#cashback" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
+							Cashback
+						</Link>
+						<Link href="#campanhas" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
+							Automação
+						</Link>
+						<Link href="#analytics" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
+							Analytics
+						</Link>
+						<Link href="#pricing" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
+							Planos
+						</Link>
+					</nav>
+
+					{/* Right Actions */}
+					<div className="flex items-center gap-4">
+						<Link href="/auth/signin" className="text-sm font-medium text-white/70 hover:text-white transition-colors hidden sm:block">
+							Entrar
+						</Link>
+						<Link href="/auth/signup" target="_blank" rel="noopener noreferrer">
+							<Button
+								size="sm"
+								className="bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full font-medium px-6 h-10 shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/40 transition-all hover:-translate-y-0.5"
+							>
+								Cadastrar
+							</Button>
+						</Link>
 					</div>
 				</div>
 			</header>
 
 			{/* Hero Section */}
-			<section className="relative min-h-[85vh] flex items-center justify-center py-20 overflow-hidden">
+			<section className="min-h-[90vh] relative flex items-center justify-center py-6 md:py-8 lg:py-12 xl:py-16 overflow-hidden">
 				{/* Background Elements */}
 				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none">
 					{/* Main Glow - removed animate-pulse-slow */}
@@ -234,42 +232,42 @@ export default function LandingPage() {
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
 					<div className="text-center max-w-5xl mx-auto">
 						{/* Badge */}
-						<div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-10 backdrop-blur-md hover:bg-white/10 transition-colors cursor-default group">
-							<span className="relative flex h-2.5 w-2.5">
+						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-3 md:mb-4 lg:mb-6 backdrop-blur-md hover:bg-white/10 transition-colors cursor-default group">
+							<span className="relative flex h-2 w-2">
 								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFD600] opacity-75" />
-								<span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FFD600]" />
+								<span className="relative inline-flex rounded-full h-2 w-2 bg-[#FFD600]" />
 							</span>
-							<span className="text-sm font-medium text-white/90 tracking-wide">Cashback + WhatsApp + BI em uma só plataforma</span>
+							<span className="text-xs font-medium text-white/90 tracking-wide">CASHBACK + WHATSAPP + BI EM UM SÓ LUGAR</span>
 						</div>
 
 						{/* Headline */}
-						<h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white mb-8 leading-[1.05]">
+						<h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold tracking-tight text-white mb-2 md:mb-3 lg:mb-4 leading-[1.2] md:leading-[1.15]">
 							Traga de volta o cliente <br className="hidden md:block" />
 							<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF4D00] via-[#FF8700] to-[#E7000B] drop-shadow-sm">que sumiu.</span>
 						</h1>
 
 						{/* Subheadline */}
-						<p className="text-lg md:text-2xl text-white/60 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
+						<p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-white/60 mb-4 md:mb-5 lg:mb-8 max-w-3xl mx-auto leading-relaxed font-light">
 							Identifique quem parou de comprar, envie <span className="text-white font-medium">cashback automático</span> pelo WhatsApp e acompanhe tudo em
 							um dashboard. <span className="text-white/80">Sem planilhas, sem trabalho manual.</span>
 						</p>
 
 						{/* CTA Buttons */}
-						<div className="flex flex-col sm:flex-row items-center justify-center gap-5">
+						<div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-3">
 							<a
 								href="https://wa.me/553499480791?text=Gostaria%20de%20ver%20como%20o%20RecompraCRM%20funciona!"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="w-full sm:w-auto"
 							>
-								<Button className="w-full sm:w-auto bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full px-10 h-14 text-lg font-bold shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-1 transition-all duration-300">
-									Ver como funciona (15 min) <ArrowRight className="w-5 h-5 ml-2" />
+								<Button className="w-full sm:w-auto bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full px-4 md:px-5 lg:px-6 h-9 md:h-10 lg:h-11 xl:h-12 text-xs md:text-sm lg:text-base font-bold shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-1 transition-all duration-300">
+									Ver como funciona (15 min) <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5" />
 								</Button>
 							</a>
 							<Link href="/auth/signin" className="w-full sm:w-auto">
 								<Button
 									variant="outline"
-									className="w-full sm:w-auto border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-full px-10 h-14 text-lg font-semibold hover:border-white/20 hover:text-white transition-all duration-300"
+									className="w-full sm:w-auto border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-full px-4 md:px-5 lg:px-6 h-9 md:h-10 lg:h-11 xl:h-12 text-xs md:text-sm lg:text-base font-semibold hover:border-white/20 hover:text-white transition-all duration-300"
 								>
 									Acessar plataforma
 								</Button>
