@@ -14,6 +14,7 @@ const CashbackProgramTransactionsInputSchema = z.object({
 	period: PeriodQueryParamSchema.optional(),
 	page: z.number().int().positive().default(1),
 	limit: z.number().int().positive().default(10),
+	type: z.enum(["ACÚMULO", "RESGATE", "EXPIRAÇÃO"]).optional(),
 });
 export type TCashbackProgramTransactionsInput = z.infer<typeof CashbackProgramTransactionsInputSchema>;
 
@@ -30,6 +31,17 @@ type TTransaction = {
 	};
 	venda: {
 		id: string;
+		valorTotal: number;
+		canal: string | null;
+		entregaModalidade: string | null;
+		vendedor: {
+			id: string;
+			nome: string;
+		} | null;
+		parceiro: {
+			id: string;
+			nome: string;
+		} | null;
 	} | null;
 };
 
@@ -65,6 +77,10 @@ async function getCashbackProgramTransactions({
 		conditions.push(lte(cashbackProgramTransactions.dataInsercao, ajustedBefore));
 	}
 
+	if (input.type) {
+		conditions.push(eq(cashbackProgramTransactions.tipo, input.type));
+	}
+
 	// Get total count
 	const totalCountResult = await db
 		.select({ count: count() })
@@ -91,7 +107,24 @@ async function getCashbackProgramTransactions({
 			venda: {
 				columns: {
 					id: true,
+					valorTotal:true,
+					canal:true, 
+					entregaModalidade:true,
 				},
+				with: {
+					vendedor: {
+						columns: {
+							id:true,
+							nome:true,
+						}
+					},
+					parceiro: {
+						columns: {
+							id:true,
+							nome:true,
+						}
+					}
+				}
 			},
 		},
 	});
@@ -112,6 +145,21 @@ async function getCashbackProgramTransactions({
 				venda: t.venda
 					? {
 							id: t.venda.id,
+							valorTotal: Number(t.venda.valorTotal),
+							canal: t.venda.canal,
+							entregaModalidade: t.venda.entregaModalidade,
+							vendedor: t.venda.vendedor
+								? {
+										id: t.venda.vendedor.id,
+										nome: t.venda.vendedor.nome,
+								  }
+								: null,
+							parceiro: t.venda.parceiro
+								? {
+										id: t.venda.parceiro.id,
+										nome: t.venda.parceiro.nome,
+								  }
+								: null,
 						}
 					: null,
 			})),
