@@ -7,7 +7,8 @@
       "Bash(npx next lint:*)",
       "Bash(ls:*)",
       "Bash(xargs:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ]
   }
 }

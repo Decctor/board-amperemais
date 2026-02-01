@@ -72,7 +72,7 @@ export const AppSubscriptionPlans: {
 } = {
 	ESSENCIAL: {
 		name: "ESSENCIAL",
-		description: "Plano ideal para começar a implementar o RecompraCRM na sua empresa. Plug and Play (sem integrações necessárias).",
+		description: "Comece hoje. Cashback + PDV em tablet + campanhas básicas. Sem integração obrigatória.",
 		routes: {
 			dashboard: {
 				accessible: false,
@@ -190,7 +190,7 @@ export const AppSubscriptionPlans: {
 	},
 	CRESCIMENTO: {
 		name: "CRESCIMENTO",
-		description: "Plano intermediário para usufruir do RecompraCRM com BI completo e otimizações com IA.",
+		description: "BI completo + IA que sugere ações + integração com ERP. O mais escolhido.",
 		routes: {
 			dashboard: {
 				accessible: true,
@@ -320,7 +320,7 @@ export const AppSubscriptionPlans: {
 	},
 	ESCALA: {
 		name: "ESCALA",
-		description: "Plano completo com WhatsApp Hub e atendimento com IA.",
+		description: "Tudo do Crescimento + Hub de atendimentos + IA que responde clientes 24/7.",
 		routes: {
 			dashboard: {
 				accessible: true,
