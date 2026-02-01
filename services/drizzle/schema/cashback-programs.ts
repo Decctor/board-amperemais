@@ -18,7 +18,9 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
-	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
+	organizacaoId: varchar("organizacao_id", { length: 255 })
+		.references(() => organizations.id)
+		.notNull(),
 	ativo: boolean("ativo").notNull().default(true),
 	titulo: text("titulo").notNull(),
 	descricao: text("descricao"),
@@ -34,7 +36,11 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
 });
-export const cashbackProgramRelations = relations(cashbackPrograms, ({ many }) => ({
+export const cashbackProgramRelations = relations(cashbackPrograms, ({ one, many }) => ({
+	organizacao: one(organizations, {
+		fields: [cashbackPrograms.organizacaoId],
+		references: [organizations.id],
+	}),
 	saldos: many(cashbackProgramBalances),
 	transacoes: many(cashbackProgramTransactions),
 }));

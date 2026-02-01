@@ -19,7 +19,7 @@ export type TCashbackProgramTransactionsInput = z.infer<typeof CashbackProgramTr
 
 type TTransaction = {
 	id: string;
-	tipo: "ACÚMULO" | "RESGATE" | "EXPIRAÇÃO";
+	tipo: "ACÚMULO" | "RESGATE" | "EXPIRAÇÃO" | "CANCELAMENTO";
 	status: "ATIVO" | "CONSUMIDO" | "EXPIRADO";
 	valor: number;
 	dataInsercao: Date;

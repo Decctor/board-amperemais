@@ -35,6 +35,19 @@ export const CashbackProgramSchema = z.object({
 			invalid_type_error: "Tipo não válido para o valor mínimo de acumulação do programa de cashback.",
 		})
 		.default(0),
+	// Configurations for accumulation source
+	acumuloPermitirViaIntegracao: z
+		.boolean({
+			required_error: "Permissão de acumulação via integração não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de acumulação via integração.",
+		})
+		.default(false),
+	acumuloPermitirViaPontoIntegracao: z
+		.boolean({
+			required_error: "Permissão de acumulação via ponto de integração não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de acumulação via ponto de integração.",
+		})
+		.default(false),
 	expiracaoRegraValidadeValor: z
 		.number({
 			required_error: "Valor de validade do saldo do programa de cashback não informado.",

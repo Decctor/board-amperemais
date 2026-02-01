@@ -9,12 +9,12 @@ export default async function CashbackPrograms() {
 	const sessionUser = await getCurrentSession();
 	if (!sessionUser) redirect("/auth/signin");
 
-	const userOrgId = sessionUser.membership?.organizacao.id;
-	if (!userOrgId) redirect("/dashboard/commercial");
+	const userOrg = sessionUser.membership?.organizacao;
+	if (!userOrg) redirect("/dashboard/commercial");
 
 	const cashbackProgram = await db.query.cashbackPrograms.findFirst({
-		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
+		where: (fields, { eq }) => eq(fields.organizacaoId, userOrg.id),
 	});
-	if (!cashbackProgram) return <NewCashbackProgramsPage user={sessionUser.user} />;
-	return <CashbackProgramsPage user={sessionUser.user} cashbackProgram={cashbackProgram} organizationId={userOrgId} />;
+	if (!cashbackProgram) return <NewCashbackProgramsPage user={sessionUser.user} userOrg={userOrg} />;
+	return <CashbackProgramsPage user={sessionUser.user} userOrg={userOrg} cashbackProgram={cashbackProgram} organizationId={userOrg.id} />;
 }

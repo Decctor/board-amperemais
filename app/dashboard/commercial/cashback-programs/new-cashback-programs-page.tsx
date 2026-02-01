@@ -8,9 +8,10 @@ import { useState } from "react";
 
 type NewCashbackProgramsPageProps = {
 	user: TAuthUserSession["user"];
+	userOrg: Exclude<TAuthUserSession["membership"], null>["organizacao"];
 };
 
-export default function NewCashbackProgramsPage({ user }: NewCashbackProgramsPageProps) {
+export default function NewCashbackProgramsPage({ user, userOrg }: NewCashbackProgramsPageProps) {
 	const [newCashbackProgramModalIsOpen, setNewCashbackProgramModalIsOpen] = useState<boolean>(false);
 
 	return (
@@ -38,6 +39,7 @@ export default function NewCashbackProgramsPage({ user }: NewCashbackProgramsPag
 			{newCashbackProgramModalIsOpen ? (
 				<NewCashbackProgram
 					user={user}
+					userOrg={userOrg}
 					closeModal={() => setNewCashbackProgramModalIsOpen(false)}
 					callbacks={{
 						onSettled: () => window.location.reload(),

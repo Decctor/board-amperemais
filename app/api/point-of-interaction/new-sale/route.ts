@@ -136,6 +136,14 @@ export async function POST(req: Request) {
 		const result = await db.transaction(async (tx) => {
 			const program = await tx.query.cashbackPrograms.findFirst({
 				where: eq(cashbackPrograms.organizacaoId, input.orgId),
+				with: {
+					organizacao: {
+						columns: {
+							id: true,
+							integracaoTipo: true,
+						},
+					},
+				},
 			});
 			if (!program) {
 				throw new createHttpError.NotFound("Programa de cashback não encontrado.");
@@ -143,6 +151,9 @@ export async function POST(req: Request) {
 			if (!program.acumuloPermitirViaPontoIntegracao) {
 				throw new createHttpError.BadRequest("Programa de cashback não permite acumulação via Ponto de Interação.");
 			}
+			const programOrganization = program.organizacao;
+
+			const programOrganizationHasIntegration = !!programOrganization.integracaoTipo;
 			// 1. Validate operator
 			const operator = await tx.query.sellers.findFirst({
 				where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
@@ -316,41 +327,44 @@ export async function POST(req: Request) {
 				currentBalance = newBalanceAfterRedemption;
 			}
 
-			// 6. Create sale record
-			const valorFinalVenda = input.sale.valor - input.sale.cashback.valor;
+			// 6. Create sale record (if org has no integration)
+			let saleId: string | null = null;
 			const saleDate = new Date();
-			const insertedSaleResponse = await tx
-				.insert(sales)
-				.values({
-					organizacaoId: input.orgId,
-					clienteId: clientId,
-					idExterno: `POI-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-					valorTotal: valorFinalVenda,
-					custoTotal: 0,
-					vendedorNome: operator.nome,
-					vendedorId: operator.id,
-					parceiro: "N/A",
-					parceiroId: null,
-					chave: "N/A",
-					documento: "N/A",
-					modelo: "DV",
-					movimento: "RECEITAS",
-					natureza: "SN01",
-					serie: "0",
-					situacao: "00",
-					tipo: "Venda de produtos",
-					dataVenda: saleDate,
-				})
-				.returning({ id: sales.id });
+			if (!programOrganizationHasIntegration) {
+				const saleFinalValue = input.sale.valor - input.sale.cashback.valor;
+				const insertedSaleResponse = await tx
+					.insert(sales)
+					.values({
+						organizacaoId: input.orgId,
+						clienteId: clientId,
+						idExterno: `POI-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+						valorTotal: saleFinalValue,
+						custoTotal: 0,
+						vendedorNome: operator.nome,
+						vendedorId: operator.id,
+						parceiro: "N/A",
+						parceiroId: null,
+						chave: "N/A",
+						documento: "N/A",
+						modelo: "DV",
+						movimento: "RECEITAS",
+						natureza: "SN01",
+						serie: "0",
+						situacao: "00",
+						tipo: "Venda de produtos",
+						dataVenda: saleDate,
+					})
+					.returning({ id: sales.id });
 
-			const saleId = insertedSaleResponse[0]?.id;
-			if (!saleId) {
-				throw new createHttpError.InternalServerError("Erro ao criar venda.");
-			}
-			const isFirstPurchase = !clientFirstSaleId && !clientFirstSaleDate;
-			if (isFirstPurchase) {
-				clientFirstSaleId = saleId;
-				clientFirstSaleDate = saleDate;
+				saleId = insertedSaleResponse[0]?.id;
+				if (!saleId) {
+					throw new createHttpError.InternalServerError("Erro ao criar venda.");
+				}
+				const isFirstPurchase = !clientFirstSaleId && !clientFirstSaleDate;
+				if (isFirstPurchase) {
+					clientFirstSaleId = saleId;
+					clientFirstSaleDate = saleDate;
+				}
 			}
 
 			// Collect data for immediate processing

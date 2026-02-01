@@ -17,11 +17,12 @@ import TopClientsBlock from "./TopClientsBlock";
 
 type CashbackProgramsPageProps = {
 	user: TAuthUserSession["user"];
+	userOrg: Exclude<TAuthUserSession["membership"], null>["organizacao"];
 	cashbackProgram: Exclude<TGetCashbackProgramOutput["data"], null>;
 	organizationId: string;
 };
 
-export default function CashbackProgramsPage({ user, cashbackProgram, organizationId }: CashbackProgramsPageProps) {
+export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, organizationId }: CashbackProgramsPageProps) {
 	// Initialize with current month
 	const [period, setPeriod] = useState<{ after?: Date; before?: Date }>({
 		after: dayjs().startOf("month").toDate(),
@@ -122,6 +123,7 @@ export default function CashbackProgramsPage({ user, cashbackProgram, organizati
 			{editCashbackProgramModalIsOpen ? (
 				<EditCashbackProgram
 					user={user}
+					userOrg={userOrg}
 					cashbackProgram={cashbackProgram}
 					closeModal={() => setEditCashbackProgramModalIsOpen(false)}
 					callbacks={{

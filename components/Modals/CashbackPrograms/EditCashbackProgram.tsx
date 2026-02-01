@@ -14,6 +14,7 @@ import CashbackProgramsRedemptionLimitBlock from "./Blocks/RedemptionLimit";
 
 type EditCashbackProgramProps = {
 	user: TAuthUserSession["user"];
+	userOrg: Exclude<TAuthUserSession["membership"], null>["organizacao"];
 	cashbackProgram: Exclude<TGetCashbackProgramOutput["data"], null>;
 	closeModal: () => void;
 	callbacks?: {
@@ -24,8 +25,8 @@ type EditCashbackProgramProps = {
 	};
 };
 
-export default function EditCashbackProgram({ user, cashbackProgram, closeModal, callbacks }: EditCashbackProgramProps) {
-	const { state, updateCashbackProgram: updateState, redefineState } = useCashbackProgramState();
+export default function EditCashbackProgram({ user, userOrg, cashbackProgram, closeModal, callbacks }: EditCashbackProgramProps) {
+	const { state, updateCashbackProgram: updateState, redefineState } = useCashbackProgramState({});
 
 	useEffect(() => {
 		if (cashbackProgram) {
@@ -37,6 +38,8 @@ export default function EditCashbackProgram({ user, cashbackProgram, closeModal,
 					acumuloTipo: cashbackProgram.acumuloTipo,
 					acumuloValor: cashbackProgram.acumuloValor,
 					acumuloRegraValorMinimo: cashbackProgram.acumuloRegraValorMinimo,
+					acumuloPermitirViaIntegracao: cashbackProgram.acumuloPermitirViaIntegracao,
+					acumuloPermitirViaPontoIntegracao: cashbackProgram.acumuloPermitirViaPontoIntegracao,
 					expiracaoRegraValidadeValor: cashbackProgram.expiracaoRegraValidadeValor,
 					resgateLimiteTipo: cashbackProgram.resgateLimiteTipo,
 					resgateLimiteValor: cashbackProgram.resgateLimiteValor,
@@ -84,7 +87,11 @@ export default function EditCashbackProgram({ user, cashbackProgram, closeModal,
 			stateError={null}
 		>
 			<CashbackProgramsGeneralBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
-			<CashbackProgramsAccumulationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
+			<CashbackProgramsAccumulationBlock
+				userOrgHasIntegration={!!userOrg.integracaoTipo}
+				cashbackProgram={state.cashbackProgram}
+				updateCashbackProgram={updateState}
+			/>
 			<CashbackProgramsExpirationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 			<CashbackProgramsRedemptionLimitBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 		</ResponsiveMenu>

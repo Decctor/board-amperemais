@@ -1,5 +1,5 @@
 import { CashbackProgramSchema } from "@/schemas/cashback-programs";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import z from "zod";
 
 const CashbackProgramStateSchema = z.object({
@@ -7,20 +7,28 @@ const CashbackProgramStateSchema = z.object({
 });
 type TCashbackProgramState = z.infer<typeof CashbackProgramStateSchema>;
 
-export function useCashbackProgramState() {
-	const [state, setState] = useState<TCashbackProgramState>({
-		cashbackProgram: {
-			ativo: true,
-			titulo: "",
-			descricao: "",
-			acumuloTipo: "FIXO",
-			acumuloValor: 0,
-			acumuloRegraValorMinimo: 0,
-			expiracaoRegraValidadeValor: 0,
-			resgateLimiteTipo: null,
-			resgateLimiteValor: null,
-		},
-	});
+type TUseCashbackProgramStateProps = {
+	initialState?: Partial<TCashbackProgramState>;
+};
+export function useCashbackProgramState({ initialState }: TUseCashbackProgramStateProps) {
+	const initialStateHolder = useMemo(() => {
+		return {
+			cashbackProgram: {
+				ativo: initialState?.cashbackProgram?.ativo ?? true,
+				titulo: initialState?.cashbackProgram?.titulo ?? "",
+				descricao: initialState?.cashbackProgram?.descricao ?? "",
+				acumuloTipo: initialState?.cashbackProgram?.acumuloTipo ?? "FIXO",
+				acumuloValor: initialState?.cashbackProgram?.acumuloValor ?? 0,
+				acumuloRegraValorMinimo: initialState?.cashbackProgram?.acumuloRegraValorMinimo ?? 0,
+				acumuloPermitirViaIntegracao: initialState?.cashbackProgram?.acumuloPermitirViaIntegracao ?? false,
+				acumuloPermitirViaPontoIntegracao: initialState?.cashbackProgram?.acumuloPermitirViaPontoIntegracao ?? false,
+				expiracaoRegraValidadeValor: initialState?.cashbackProgram?.expiracaoRegraValidadeValor ?? 0,
+				resgateLimiteTipo: initialState?.cashbackProgram?.resgateLimiteTipo ?? null,
+				resgateLimiteValor: initialState?.cashbackProgram?.resgateLimiteValor ?? null,
+			},
+		};
+	}, []);
+	const [state, setState] = useState<TCashbackProgramState>(initialStateHolder);
 
 	const updateCashbackProgram = useCallback((cashbackProgram: Partial<TCashbackProgramState["cashbackProgram"]>) => {
 		setState((prev) => ({
@@ -30,20 +38,8 @@ export function useCashbackProgramState() {
 	}, []);
 
 	const resetState = useCallback(() => {
-		setState({
-			cashbackProgram: {
-				ativo: true,
-				titulo: "",
-				descricao: "",
-				acumuloTipo: "FIXO",
-				acumuloValor: 0,
-				acumuloRegraValorMinimo: 0,
-				expiracaoRegraValidadeValor: 0,
-				resgateLimiteTipo: null,
-				resgateLimiteValor: null,
-			},
-		});
-	}, []);
+		setState(initialStateHolder);
+	}, [initialStateHolder]);
 
 	const redefineState = useCallback((state: TCashbackProgramState) => {
 		setState(state);
