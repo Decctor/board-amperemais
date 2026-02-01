@@ -84,29 +84,29 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 								analiseRFMTitulo: true,
 							},
 						},
-					campanha: {
-						columns: {
-							autorId: true,
-							whatsappConexaoTelefoneId: true,
-						},
-						with: {
-							whatsappConexaoTelefone: {
-								columns: {
-									id: true,
-									whatsappTelefoneId: true,
-								},
-								with: {
-									conexao: {
-										columns: {
-											tipoConexao: true,
-											token: true,
-											gatewaySessaoId: true,
+						campanha: {
+							columns: {
+								autorId: true,
+								whatsappConexaoTelefoneId: true,
+							},
+							with: {
+								whatsappConexaoTelefone: {
+									columns: {
+										id: true,
+										whatsappTelefoneId: true,
+									},
+									with: {
+										conexao: {
+											columns: {
+												tipoConexao: true,
+												token: true,
+												gatewaySessaoId: true,
+											},
 										},
 									},
 								},
 							},
 						},
-					},
 					},
 				});
 
@@ -259,6 +259,10 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 							.update(interactions)
 							.set({
 								dataExecucao: new Date(),
+								metadados: {
+									whatsappMessageId: whatsappMessageId,
+									whatsappTemplateId: campaign.whatsappTemplate.id,
+								},
 							})
 							.where(and(eq(interactions.id, interaction.id), eq(interactions.organizacaoId, organization.id)));
 					} catch (error) {

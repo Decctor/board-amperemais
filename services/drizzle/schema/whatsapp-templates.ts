@@ -26,6 +26,8 @@ export const whatsappTemplateRelations = relations(whatsappTemplates, ({ one, ma
 	}),
 	telefones: many(whatsappTemplatePhones),
 }));
+export type TWhatsappTemplate = typeof whatsappTemplates.$inferSelect;
+export type TNewWhatsappTemplate = typeof whatsappTemplates.$inferInsert;
 
 export const whatsappTemplatePhones = newTable(
 	"whatsapp_template_phones",

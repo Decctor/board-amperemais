@@ -1,9 +1,8 @@
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import type { TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
-import type { TWhatsappTemplate } from "@/schemas/whatsapp-templates";
 import { db } from "@/services/drizzle";
-import { type TClientEntity, chatMessages, chats, interactions } from "@/services/drizzle/schema";
+import { type TClientEntity, type TWhatsappTemplate, chatMessages, chats, interactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "../whatsapp/internal-gateway";
 import { formatPhoneForInternalGateway } from "../whatsapp/utils";
@@ -157,6 +156,10 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 					.update(interactions)
 					.set({
 						dataExecucao: new Date(),
+						metadados: {
+							whatsappMessageId: sentWhatsappTemplateResponse.whatsappMessageId,
+							whatsappTemplateId: campaign.whatsappTemplate.id,
+						},
 					})
 					.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
 
@@ -186,6 +189,10 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 					.update(interactions)
 					.set({
 						dataExecucao: new Date(),
+						metadados: {
+							whatsappMessageId: sentWhatsappTemplateResponse.messageId,
+							whatsappTemplateId: campaign.whatsappTemplate.id,
+						},
 					})
 					.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
 
