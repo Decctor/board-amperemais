@@ -97,7 +97,6 @@ function MultipleSalesSelectInput<T>({
 			type="button"
 			disabled={!editable}
 			variant="outline"
-			role="combobox"
 			aria-expanded={isOpen}
 			className={cn("w-full justify-between truncate border-primary/20", holderClassName)}
 		>

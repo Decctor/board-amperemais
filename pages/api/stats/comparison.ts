@@ -38,18 +38,6 @@ const StatsComparisonInputSchema = z.object({
 			})
 			.datetime({ message: "Tipo inválido para parâmetro do segundo período." }),
 	}),
-	total: z.object({
-		min: z.number({ invalid_type_error: "Tipo não válido para valor mínimo da venda." }).optional().nullable(),
-		max: z.number({ invalid_type_error: "Tipo não válido para valor máximo da venda." }).optional().nullable(),
-	}),
-	sellers: z.array(z.string({ required_error: "Nome do vendedor não informado.", invalid_type_error: "Tipo não válido para o nome do vendedor." })),
-	saleNatures: z.array(
-		z.enum(["SN08", "SN03", "SN11", "SN20", "SN04", "SN09", "SN02", "COND", "SN99", "SN01", "SN05"], {
-			required_error: "Natureza de venda não informado.",
-			invalid_type_error: "Tipo não válido para natureza de venda.",
-		}),
-	),
-	excludedSalesIds: z.array(z.string({ required_error: "ID da venda não informado.", invalid_type_error: "Tipo não válido para o ID da venda." })),
 });
 export type TStatsComparisonInput = z.infer<typeof StatsComparisonInputSchema>;
 
@@ -187,13 +175,7 @@ async function fetchStatsComparison(req: NextApiRequest, organizacaoId: string) 
 		before: new Date(filters.secondPeriod.before),
 	};
 
-	const conditions = [eq(sales.organizacaoId, organizacaoId)];
-
-	if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
-	if (filters.total.max) conditions.push(lte(sales.valorTotal, filters.total.max));
-	if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
-	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
-	if (filters.excludedSalesIds.length > 0) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
+	const conditions = [eq(sales.organizacaoId, organizacaoId), eq(sales.natureza, "SN01")];
 
 	const { points: bestNumberOfPointsForFirstPeriodDates } = getBestNumberOfPointsBetweenDates({
 		startDate: firstPeriodAjusted.after,

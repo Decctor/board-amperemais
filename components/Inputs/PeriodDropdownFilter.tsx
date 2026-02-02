@@ -57,12 +57,13 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
 	}
 	return (
 		<div ref={ref} className="relative flex h-[46.6px] w-[46.6px] justify-end">
-			<div
+			<button
+				type="button"
 				onClick={() => setDropdownIsOpen((prev) => !prev)}
 				className="flex w-[46.6px] cursor-pointer items-center justify-center rounded bg-[#fead61] p-2 shadow-xs duration-300 ease-in-out hover:scale-105 hover:bg-[#eb8423] hover:text-white"
 			>
 				<IoIosCalendar />
-			</div>
+			</button>
 			{dropdownIsOpen ? (
 				<div className="absolute -right-[400%] top-[45px] z-100 flex h-[115px] w-[350px] flex-col self-center rounded-md border border-gray-200 bg-white p-2 shadow-xs">
 					<h1 className="text-center text-sm font-medium text-gray-700">SELECIONE UM PERÍODO DE FILTRO</h1>
@@ -76,7 +77,7 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
 								onChange={(e) =>
 									setDateFilter((prev) => ({
 										...prev,
-										after: e.target.value != "" ? new Date(e.target.value).toISOString() : undefined,
+										after: e.target.value !== "" ? new Date(e.target.value).toISOString() : undefined,
 									}))
 								}
 							/>
@@ -90,15 +91,16 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
 								onChange={(e) =>
 									setDateFilter((prev) => ({
 										...prev,
-										before: e.target.value != "" ? new Date(e.target.value).toISOString() : undefined,
+										before: e.target.value !== "" ? new Date(e.target.value).toISOString() : undefined,
 									}))
 								}
 							/>
 						</div>
 					</div>
 					<div className="mt-2 flex w-full justify-between">
-						{msg.text ? <p className={`text-xs ${msg.color} italic`}>{msg.text}</p> : <div></div>}
+						{msg.text ? <p className={`text-xs ${msg.color} italic`}>{msg.text}</p> : <div />}
 						<button
+							type="button"
 							onClick={handleFilter}
 							className="rounded bg-[#fead61] p-1 text-[#15599a] duration-300 ease-in-out hover:scale-105 hover:bg-[#15599a] hover:text-white"
 						>

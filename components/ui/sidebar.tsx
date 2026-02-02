@@ -1,16 +1,16 @@
 "use client";
-import * as React from "react";
-import { Slot as SlotPrimitive } from "radix-ui";
-import { cva, type VariantProps } from "class-variance-authority";
-import { useIsMobile } from "@/lib/hooks/use-mobile";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/lib/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { ViewVerticalIcon } from "@radix-ui/react-icons";
+import { type VariantProps, cva } from "class-variance-authority";
+import { Slot as SlotPrimitive } from "radix-ui";
+import * as React from "react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -316,7 +316,10 @@ const SidebarContent = React.forwardRef<HTMLDivElement, React.ComponentProps<"di
 		<div
 			ref={ref}
 			data-sidebar="content"
-			className={cn("flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden", className)}
+			className={cn(
+				"flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/20 scrollbar-track-primary/10",
+				className,
+			)}
 			{...props}
 		/>
 	);

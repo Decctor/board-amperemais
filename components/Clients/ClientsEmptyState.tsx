@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, CheckCircle2, CloudUpload, FileSpreadsheet, FileText, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { FaWhatsapp } from "react-icons/fa6";
 import { toast } from "sonner";
 import z from "zod";
 
@@ -320,100 +321,113 @@ export default function ClientsEmptyState() {
 	if (importState === "idle") {
 		return (
 			<motion.div
-				className="w-full min-h-[600px] flex flex-col items-center justify-center p-8 bg-linear-to-b from-transparent to-muted/20 rounded-2xl border border-dashed border-muted-foreground/10"
+				className="w-full h-full flex flex-col items-center justify-center gap-6 py-8"
 				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
 				exit={{ opacity: 0 }}
 			>
-				<div className="w-full max-w-2xl flex flex-col items-center gap-8">
-					{/* Header Section */}
-					<div className="text-center space-y-4">
-						<motion.div
-							initial={{ scale: 0.9, opacity: 0 }}
-							animate={{ scale: 1, opacity: 1 }}
-							transition={{ type: "spring", duration: 0.6 }}
-							className="relative w-24 h-24 mx-auto mb-6"
-						>
-							<div className="absolute inset-0 bg-brand rounded-full blur animate-pulse" />
-							<div className="relative w-full h-full bg-linear-to-br from-brand/10 to-brand/5 rounded-full flex items-center justify-center border border-brand/20 shadow-lg shadow-brand/5 ring-4 ring-background">
-								<Sparkles className="w-10 h-10 text-black" />
-							</div>
-						</motion.div>
-
-						<h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-linear-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
-							Comece sua jornada
-						</h1>
-						<p className="text-lg text-muted-foreground max-w-[480px] mx-auto leading-relaxed">
-							Importe sua base de clientes para desbloquear todo o potencial da plataforma. É rápido, fácil e seguro.
-						</p>
+				<div className="flex flex-col items-center gap-3 text-center max-w-lg">
+					<div className="relative w-20 h-20 mb-2">
+						<div className="absolute inset-0 rounded-full blur-xl opacity-50" style={{ backgroundColor: "#24549C40" }} />
+						<div className="relative w-full h-full rounded-full flex items-center justify-center border shadow-lg ring-4 ring-background bg-[#24549C10] border-[#24549C20]">
+							<CloudUpload className="w-10 h-10 text-[#24549C]" />
+						</div>
+						<div className="absolute -right-1 -top-1 bg-[#FFB900] rounded-full p-1.5 shadow-md">
+							<Sparkles className="w-4 h-4 text-white fill-white" />
+						</div>
 					</div>
+					<h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
+						Importe seus clientes
+					</h1>
+					<p className="text-muted-foreground text-lg">Desbloqueie todo o potencial da plataforma importando sua base de clientes.</p>
+				</div>
 
-					{/* Import Card */}
-					<motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="w-full">
-						<Card className="overflow-hidden border-muted/60 shadow-xl shadow-muted/10 bg-background/60 backdrop-blur-sm">
-							<CardContent className="p-0">
+				{/* Import Card */}
+				<motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="w-full max-w-xl">
+					<Card className="overflow-hidden border-muted/60 shadow-lg shadow-muted/5 bg-background/60 backdrop-blur-sm">
+						<CardContent className="p-0">
+							<div
+								onDragOver={handleDragOver}
+								onDragLeave={handleDragLeave}
+								onDrop={handleDrop}
+								className={cn(
+									"relative group flex flex-col items-center justify-center gap-3 py-10 px-6 transition-all duration-300 cursor-pointer",
+									isDragging ? "bg-primary/5 scale-[0.99]" : "hover:bg-muted/30",
+								)}
+							>
+								<input
+									type="file"
+									accept=".xlsx,.xls,.csv"
+									onChange={handleFileInputChange}
+									className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+								/>
+
 								<div
-									onDragOver={handleDragOver}
-									onDragLeave={handleDragLeave}
-									onDrop={handleDrop}
 									className={cn(
-										"relative group flex flex-col items-center justify-center gap-4 py-16 px-8 transition-all duration-300 cursor-pointer",
-										isDragging ? "bg-primary/5 scale-[0.99]" : "hover:bg-muted/30",
+										"w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm",
+										isDragging
+											? "bg-[#24549C]/20 scale-110 rotate-3"
+											: "bg-[#24549C]/10 group-hover:scale-110 group-hover:-rotate-3 group-hover:bg-[#24549C]/20",
 									)}
 								>
-									<input
-										type="file"
-										accept=".xlsx,.xls,.csv"
-										onChange={handleFileInputChange}
-										className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-									/>
-
-									<div
-										className={cn(
-											"w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm",
-											isDragging ? "bg-primary/20 scale-110 rotate-3" : "bg-muted group-hover:scale-110 group-hover:-rotate-3 group-hover:bg-primary/10",
-										)}
-									>
-										<CloudUpload
-											className={cn("w-10 h-10 transition-colors", isDragging ? "text-primary" : "text-muted-foreground group-hover:text-primary")}
-										/>
-									</div>
-
-									<div className="text-center space-y-1 z-10">
-										<p className="text-xl font-medium text-foreground">Arraste seu arquivo aqui</p>
-										<p className="text-sm text-muted-foreground">Ou clique para selecionar do seu computador</p>
-									</div>
-
-									<div className="flex gap-2 mt-4">
-										<span className="text-xs font-mono bg-muted px-2 py-1 rounded text-muted-foreground border">.XLSX</span>
-										<span className="text-xs font-mono bg-muted px-2 py-1 rounded text-muted-foreground border">.CSV</span>
-									</div>
-								</div>
-							</CardContent>
-
-							{/* Bottom helpers */}
-							<div className="bg-muted/30 p-4 border-t border-muted/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-								<div className="flex gap-6">
-									<div className="flex items-center gap-1.5">
-										<CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-										<span>Validação automática</span>
-									</div>
-									<div className="flex items-center gap-1.5">
-										<CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-										<span>Até 10k registros</span>
-									</div>
+									<Upload className={cn("w-7 h-7 transition-colors", isDragging ? "text-[#24549C]" : "text-[#24549C] group-hover:text-[#24549C]")} />
 								</div>
 
-								<Button variant="link" size="sm" asChild className="h-auto p-0 text-primary underline-offset-4 hover:text-primary/80">
-									<a href="/bulk-insert-clients.xlsx" download>
-										<FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-										Baixar modelo de planilha
-									</a>
-								</Button>
+								<div className="text-center space-y-0.5 z-10">
+									<p className="text-base font-medium text-foreground">Arraste seu arquivo aqui</p>
+									<p className="text-sm text-muted-foreground">Ou clique para selecionar</p>
+								</div>
+
+								<div className="flex gap-2 mt-2">
+									<span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground border">.XLSX</span>
+									<span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground border">.CSV</span>
+								</div>
 							</div>
-						</Card>
-					</motion.div>
-				</div>
+						</CardContent>
+
+						{/* Bottom helpers */}
+						<div className="bg-muted/30 p-3 border-t border-muted/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+							<div className="flex gap-4">
+								<div className="flex items-center gap-1.5">
+									<CheckCircle2 className="w-3.5 h-3.5 text-[#24549C]" />
+									<span>Validação automática</span>
+								</div>
+								<div className="flex items-center gap-1.5">
+									<CheckCircle2 className="w-3.5 h-3.5 text-[#24549C]" />
+									<span>Até 10k registros</span>
+								</div>
+							</div>
+
+							<Button variant="link" size="sm" asChild className="h-auto p-0 text-[#24549C] underline-offset-4 hover:text-[#24549C]/80">
+								<a href="/bulk-insert-clients.xlsx" download>
+									<FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
+									Baixar modelo
+								</a>
+							</Button>
+						</div>
+					</Card>
+				</motion.div>
+				<motion.div
+					className="flex items-center gap-2 text-center w-fit self-center px-4 py-2 rounded-lg bg-green-50"
+					variants={{
+						hidden: { opacity: 0, y: 20 },
+						visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+					}}
+				>
+					<FaWhatsapp className="w-4 h-4" />
+					<p className="text-sm">
+						Precisa de ajuda para começar?{" "}
+						<a
+							href="https://wa.me/5534996626855?text=Gostaria%20de%20receber%20suporte%20direto%20no%20WhatsApp."
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-medium hover:underline transition-colors"
+							style={{ color: "#24549C" }}
+						>
+							Fale conosco no WhatsApp
+						</a>
+					</p>
+				</motion.div>
 			</motion.div>
 		);
 	}

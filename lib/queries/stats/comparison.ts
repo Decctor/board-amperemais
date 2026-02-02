@@ -36,10 +36,6 @@ export function useStatsComparison({ initialFilters }: UseStatsComparisonParams)
 			after: initialFilters.secondPeriod?.after || initialSecondPeriod.after,
 			before: initialFilters.secondPeriod?.before || initialSecondPeriod.before,
 		},
-		total: {},
-		saleNatures: [],
-		sellers: [],
-		excludedSalesIds: [],
 	});
 
 	function updateFilters(newFilters: Partial<TStatsComparisonInput>) {

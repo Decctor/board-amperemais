@@ -193,210 +193,142 @@ function StatsPeriodComparisonMenuData() {
 					</div>
 				</div>
 			</div>
-			<div className="w-full flex items-center">
-				<Button onClick={() => setShowAdditionalFiltersMenu((prev) => !prev)} variant="ghost" size="xs" className="flex gap-2">
-					{!showAdditionalFiltersMenu ? <ChevronDown width={14} height={14} /> : <ChevronUp width={14} height={14} />}
-					MOSTRAR FILTROS ADICIONAIS
-				</Button>
-			</div>
-			<AnimatePresence>
-				{showAdditionalFiltersMenu ? (
-					<>
-						<motion.div
-							key={"additional-info"}
-							variants={SlideMotionVariants}
-							initial="initial"
-							animate="animate"
-							exit="exit"
-							className="flex w-full flex-col gap-2 "
-						>
-							<MultipleSelectInput
-								label="VENDEDORES"
-								labelClassName="text-[0.6rem]"
-								holderClassName="text-xs p-2 min-h-[34px]"
-								selected={filters.sellers}
-								options={filterOptions?.sellers || []}
-								handleChange={(value) =>
-									updateFilters({
-										sellers: value as string[],
-									})
-								}
-								resetOptionLabel="VENDEDOR"
-								onReset={() => updateFilters({ sellers: [] })}
-								width="100%"
-							/>
-							<MultipleSalesSelectInput
-								label="VENDAS EXCLUÍDAS"
-								labelClassName="text-[0.6rem]"
-								holderClassName="text-xs p-2 min-h-[34px]"
-								selected={filters.excludedSalesIds}
-								handleChange={(value) =>
-									updateFilters({
-										excludedSalesIds: value as string[],
-									})
-								}
-								resetOptionLabel="VENDAS EXCLUÍDAS"
-								onReset={() => updateFilters({ excludedSalesIds: [] })}
-								width="100%"
-							/>
-							<MultipleSelectInput
-								label="NATUREZA DA VENDA"
-								labelClassName="text-[0.6rem]"
-								holderClassName="text-xs p-2 min-h-[34px]"
-								selected={filters.saleNatures}
-								options={filterOptions?.saleNatures || []}
-								handleChange={(value) =>
-									updateFilters({
-										saleNatures: value as TSale["natureza"][],
-									})
-								}
-								resetOptionLabel="NATUREZA DA VENDA"
-								onReset={() => updateFilters({ saleNatures: [] })}
-								width="100%"
-							/>
-							<div className="flex w-full flex-col gap-2">
-								<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO POR INTERVALO DE QUANTIDADE</h1>
-								<div className="flex w-full flex-col items-center gap-2 lg:flex-row">
-									<div className="w-full lg:w-1/2">
-										<NumberInput
-											label="VALOR > QUE"
-											labelClassName="text-[0.6rem]"
-											holderClassName="text-xs p-2 min-h-[34px]"
-											value={filters.total.min || null}
-											handleChange={(value) => updateFilters({ total: { ...filters.total, min: value } })}
-											placeholder="Preencha aqui o valor para o filtro de mais quantidade que..."
-											width="100%"
-										/>
-									</div>
-									<div className="w-full lg:w-1/2">
-										<NumberInput
-											label="VALOR < QUE"
-											labelClassName="text-[0.6rem]"
-											holderClassName="text-xs p-2 min-h-[34px]"
-											value={filters.total.max || null}
-											handleChange={(value) => updateFilters({ total: { ...filters.total, max: value } })}
-											placeholder="Preencha aqui o valor para o filtro de menos quantidade que..."
-											width="100%"
-										/>
-									</div>
-								</div>
-							</div>
-						</motion.div>
-					</>
-				) : null}
-			</AnimatePresence>
 			{/** GENERAL STATS */}
 			<div className="w-full flex flex-col gap-4">
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
-							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">FATURAMENTO BRUTO</h1>
-							<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+						<div className="flex items-center justify-between">
+							<h1 className="text-xs font-medium tracking-tight uppercase">FATURAMENTO BRUTO</h1>
+							<BsFileEarmarkText className="w-4 h-4 text-primary/60" />
 						</div>
-						<div className="px-6 py-2 flex w-full flex-col">
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#15599a]">{formatToMoney(stats?.faturamentoBruto.primeiroPeriodo || 0)}</h1>
-								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
+						<div className="flex flex-col gap-2 mt-1">
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold leading-none">{formatToMoney(stats?.faturamentoBruto.primeiroPeriodo || 0)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">1º PERÍODO</span>
+								</div>
 							</div>
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#FFB900]">{formatToMoney(stats?.faturamentoBruto.segundoPeriodo || 0)}</h1>
-								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
-							</div>
-						</div>
-					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
-							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">FATURAMENTO LÍQUIDO</h1>
-							<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />
-						</div>
-						<div className="px-6 py-2 flex w-full flex-col">
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#15599a]">{formatToMoney(stats?.faturamentoLiquido.primeiroPeriodo || 0)}</h1>
-								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
-							</div>
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#FFB900]">{formatToMoney(stats?.faturamentoLiquido.segundoPeriodo || 0)}</h1>
-								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#FFB900] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold text-[#FFB900] leading-none">{formatToMoney(stats?.faturamentoBruto.segundoPeriodo || 0)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">2º PERÍODO</span>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
-							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">Número de Vendas</h1>
-							<VscDiffAdded className="w-4 h-4 min-w-4 min-h-4" />
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+						<div className="flex items-center justify-between">
+							<h1 className="text-xs font-medium tracking-tight uppercase">FATURAMENTO LÍQUIDO</h1>
+							<BsFileEarmarkText className="w-4 h-4 text-primary/60" />
 						</div>
-						<div className="px-6 py-2 flex w-full flex-col">
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#15599a]">{stats?.qtdeVendas.primeiroPeriodo}</h1>
-								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
+						<div className="flex flex-col gap-2 mt-1">
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold leading-none">{formatToMoney(stats?.faturamentoLiquido.primeiroPeriodo || 0)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">1º PERÍODO</span>
+								</div>
 							</div>
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#FFB900]">{stats?.qtdeVendas.segundoPeriodo}</h1>
-								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
-							</div>
-						</div>
-					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
-							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">TICKET MÉDIO</h1>
-							<BsTicketPerforated className="w-4 h-4 min-w-4 min-h-4" />
-						</div>
-						<div className="px-6 py-2 flex w-full flex-col">
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#15599a]">{formatToMoney(stats?.ticketMedio.primeiroPeriodo || 0)}</h1>
-								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
-							</div>
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#FFB900]">{formatToMoney(stats?.ticketMedio.segundoPeriodo || 0)}</h1>
-								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#FFB900] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold text-[#FFB900] leading-none">{formatToMoney(stats?.faturamentoLiquido.segundoPeriodo || 0)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">2º PERÍODO</span>
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
-							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">VALOR DIÁRIO</h1>
-							<BsCart className="w-4 h-4 min-w-4 min-h-4" />
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+						<div className="flex items-center justify-between">
+							<h1 className="text-xs font-medium tracking-tight uppercase">Número de Vendas</h1>
+							<VscDiffAdded className="w-4 h-4 text-primary/60" />
 						</div>
-						<div className="px-6 py-2 flex w-full flex-col">
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#15599a]">{formatToMoney(stats?.valorDiarioVendido.primeiroPeriodo || 0)}</h1>
-								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
+						<div className="flex flex-col gap-2 mt-1">
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold leading-none">{stats?.qtdeVendas.primeiroPeriodo}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">1º PERÍODO</span>
+								</div>
 							</div>
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#FFB900]">{formatToMoney(stats?.valorDiarioVendido.segundoPeriodo || 0)}</h1>
-								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#FFB900] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold text-[#FFB900] leading-none">{stats?.qtdeVendas.segundoPeriodo}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">2º PERÍODO</span>
+								</div>
 							</div>
 						</div>
 					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-						<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-primary text-primary-foreground">
-							<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">MÉDIA DE ITENS POR VENDA</h1>
-							<ShoppingBag className="w-4 h-4 min-w-4 min-h-4" />
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+						<div className="flex items-center justify-between">
+							<h1 className="text-xs font-medium tracking-tight uppercase">TICKET MÉDIO</h1>
+							<BsTicketPerforated className="w-4 h-4 text-primary/60" />
 						</div>
-						<div className="px-6 py-2 flex w-full flex-col">
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#15599a]">{formatDecimalPlaces(stats?.itensPorVendaMedio.primeiroPeriodo || 0, 1, 1)}</h1>
-								<h1 className="text-xs text-primary font-medium">1º PERÍODO</h1>
+						<div className="flex flex-col gap-2 mt-1">
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold leading-none">{formatToMoney(stats?.ticketMedio.primeiroPeriodo || 0)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">1º PERÍODO</span>
+								</div>
 							</div>
-							<div className="w-full flex items-center justify-between gap-2">
-								<h1 className="text-sm font-black text-[#FFB900]">{formatDecimalPlaces(stats?.itensPorVendaMedio.segundoPeriodo || 0, 1, 1)}</h1>
-								<h1 className="text-xs text-primary font-medium">2º PERÍODO</h1>
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#FFB900] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold text-[#FFB900] leading-none">{formatToMoney(stats?.ticketMedio.segundoPeriodo || 0)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">2º PERÍODO</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+						<div className="flex items-center justify-between">
+							<h1 className="text-xs font-medium tracking-tight uppercase">VALOR DIÁRIO</h1>
+							<BsCart className="w-4 h-4 text-primary/60" />
+						</div>
+						<div className="flex flex-col gap-2 mt-1">
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold leading-none">{formatToMoney(stats?.valorDiarioVendido.primeiroPeriodo || 0)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">1º PERÍODO</span>
+								</div>
+							</div>
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#FFB900] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold text-[#FFB900] leading-none">{formatToMoney(stats?.valorDiarioVendido.segundoPeriodo || 0)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">2º PERÍODO</span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+						<div className="flex items-center justify-between">
+							<h1 className="text-xs font-medium tracking-tight uppercase">MÉDIA DE ITENS POR VENDA</h1>
+							<ShoppingBag className="w-4 h-4 text-primary/60" />
+						</div>
+						<div className="flex flex-col gap-2 mt-1">
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold leading-none">{formatDecimalPlaces(stats?.itensPorVendaMedio.primeiroPeriodo || 0, 1, 1)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">1º PERÍODO</span>
+								</div>
+							</div>
+							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#FFB900] pl-2 py-0.5">
+								<div className="flex flex-col">
+									<h2 className="text-lg font-bold text-[#FFB900] leading-none">{formatDecimalPlaces(stats?.itensPorVendaMedio.segundoPeriodo || 0, 1, 1)}</h2>
+									<span className="text-[0.6rem] text-muted-foreground uppercase font-medium">2º PERÍODO</span>
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 			<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
-						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS DO PRIMEIRO PERÍODO</h1>
-						<BsCart className="w-4 h-4 min-w-4 min-h-4" />
+				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card shadow-2xs overflow-hidden">
+					<div className="py-2 px-4 flex items-center justify-between w-full border-b border-primary/10">
+						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS (1º PERÍODO)</h1>
+						<BsCart className="w-4 h-4" />
 					</div>
-					<div className="w-full min-h-[400px] lg:min-h-[350px] max-h-[400px] lg:max-h-[350px] flex items-center justify-center">
+					<div className="w-full min-h-[400px] lg:min-h-[350px] max-h-[400px] lg:max-h-[350px] flex items-center justify-center p-4">
 						<ChartContainer config={firstPeriodChartConfig} className="aspect-auto h-[350px] lg:h-[250px] w-full">
 							<ComposedChart
 								data={stats?.diario.primeiroPeriodo || []}
@@ -469,12 +401,12 @@ function StatsPeriodComparisonMenuData() {
 						</ChartContainer>
 					</div>
 				</div>
-				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-					<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#FFB900] text-white">
-						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS DO SEGUNDO PERÍODO</h1>
-						<BsCart className="w-4 h-4 min-w-4 min-h-4" />
+				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card shadow-2xs overflow-hidden">
+					<div className="py-2 px-4 flex items-center justify-between w-full border-b border-primary/10">
+						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS (2º PERÍODO)</h1>
+						<BsCart className="w-4 h-4" />
 					</div>
-					<div className="w-full min-h-[400px] lg:min-h-[350px] max-h-[400px] lg:max-h-[350px] flex items-center justify-center">
+					<div className="w-full min-h-[400px] lg:min-h-[350px] max-h-[400px] lg:max-h-[350px] flex items-center justify-center p-4">
 						<ChartContainer config={secondPeriodChartConfig} className="aspect-auto h-[350px] lg:h-[250px] w-full">
 							<ComposedChart
 								data={stats?.diario.segundoPeriodo || []}
@@ -595,110 +527,103 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 		return (
 			<div
 				key={seller.titulo}
-				className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-xs rounded-lg hover:bg-primary/10 transition-colors"
+				className="w-full flex flex-col gap-3 px-4 py-3 border border-primary/20 bg-card shadow-2xs rounded-xl hover:bg-primary/5 transition-colors"
 			>
-				{/* Left side - Title and Ranking */}
+				{/* Top side - Title and Ranking */}
 				<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
 					<div className="flex items-center gap-2">
-						<div className="rounded-full p-1 flex items-center justify-center text-[0.55rem] bg-primary text-primary-foreground font-bold w-6 h-6 min-w-6 min-h-6">
+						<div className="rounded-full flex items-center justify-center text-[0.6rem] bg-primary text-primary-foreground font-bold w-6 h-6 min-w-6 min-h-6">
 							{index + 1}º
 						</div>
-						<h1 className="hidden lg:block text-[0.7rem] lg:text-sm tracking-tight font-medium">{seller.titulo.toUpperCase()}</h1>
-						<h1 className="block lg:hidden text-[0.7rem] lg:text-sm tracking-tight font-medium">{formatLongString(seller.titulo, 25).toUpperCase()}</h1>
+						<h1 className="hidden lg:block text-sm tracking-tight font-bold text-primary/80">{seller.titulo.toUpperCase()}</h1>
+						<h1 className="block lg:hidden text-xs tracking-tight font-bold text-primary/80">{formatLongString(seller.titulo, 25).toUpperCase()}</h1>
 					</div>
 					<div className="flex items-center gap-2">
-						<h1
-							className={cn("rounded-lg bg-secondary px-2 py-0.5 text-center text-[0.6rem] font-bold italic text-primary/80", {
-								"bg-green-100 text-green-800": salesHintDirection === "positive",
-								"bg-red-100 text-red-800": salesHintDirection === "negative",
+						<div
+							className={cn("rounded-md px-2 py-0.5 text-center text-[0.65rem] font-bold uppercase", {
+								"bg-green-100 text-green-700": salesHintDirection === "positive",
+								"bg-red-100 text-red-700": salesHintDirection === "negative",
 							})}
 						>
 							{salesHintText}
-						</h1>
-						<h1
-							className={cn("rounded-lg bg-secondary px-2 py-0.5 text-center text-[0.6rem] font-bold italic text-primary/80", {
-								"bg-green-100 text-green-800": totalHintDirection === "positive",
-								"bg-red-100 text-red-800": totalHintDirection === "negative",
+						</div>
+						<div
+							className={cn("rounded-md px-2 py-0.5 text-center text-[0.65rem] font-bold uppercase", {
+								"bg-green-100 text-green-700": totalHintDirection === "positive",
+								"bg-red-100 text-red-700": totalHintDirection === "negative",
 							})}
 						>
 							{totalHintText}
-						</h1>
+						</div>
 					</div>
 				</div>
 
-				{/* Right side - Stats */}
-				<div className="flex items-start gap-4 w-full">
+				{/* Bottom side - Stats */}
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
 					{/* Sales Count Comparison */}
-					<div className="flex flex-col gap-1 w-1/2">
-						<div className="flex items-center gap-1 mb-1">
-							<ShoppingCart className="w-4 h-4" />
-							<span className="text-[0.65rem] font-medium text-primary/80">VENDAS</span>
+					<div className="flex flex-col gap-2">
+						<div className="flex items-center gap-1.5 opacity-70">
+							<ShoppingCart className="w-3.5 h-3.5" />
+							<span className="text-[0.6rem] font-bold uppercase tracking-wider">VENDAS</span>
 						</div>
-						<div className="flex flex-col gap-1 w-full">
+						<div className="flex flex-col gap-1.5 w-full">
 							{/* First Period */}
-							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-primary/10">
+							<div className="flex items-center gap-3">
+								<div className="flex-1 h-1.5 rounded-full bg-primary/5 overflow-hidden">
 									<div
-										className="h-full bg-[#15599a] rounded-full"
+										className="h-full bg-[#15599a]"
 										style={{
 											width: `${(seller.primeiroPeriodo.qtdeVendas / Math.max(seller.primeiroPeriodo.qtdeVendas, seller.segundoPeriodo.qtdeVendas)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="w-fit text-[0.7rem] font-bold text-[#15599a]">{seller.primeiroPeriodo.qtdeVendas}</span>
+								<span className="min-w-[40px] text-right text-xs font-bold">{seller.primeiroPeriodo.qtdeVendas}</span>
 							</div>
 							{/* Second Period */}
-							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-primary/10">
+							<div className="flex items-center gap-3">
+								<div className="flex-1 h-1.5 rounded-full bg-primary/5 overflow-hidden">
 									<div
-										className="h-full bg-[#FFB900] rounded-full"
+										className="h-full bg-[#FFB900]"
 										style={{
 											width: `${(seller.segundoPeriodo.qtdeVendas / Math.max(seller.primeiroPeriodo.qtdeVendas, seller.segundoPeriodo.qtdeVendas)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="text-[0.7rem] w-fit font-bold text-[#FFB900]">{seller.segundoPeriodo.qtdeVendas}</span>
+								<span className="min-w-[40px] text-right text-xs font-bold text-[#FFB900]">{seller.segundoPeriodo.qtdeVendas}</span>
 							</div>
-							{/* <div
-										className={`flex-0 text-[0.65rem] font-medium ${
-											seller.segundoPeriodo.totalVendido > seller.primeiroPeriodo.totalVendido ? "text-green-600" : "text-red-600"
-										}`}
-									>
-										{(((seller.segundoPeriodo.totalVendido - seller.primeiroPeriodo.totalVendido) / seller.primeiroPeriodo.totalVendido) * 100).toFixed(1)}%
-									</div> */}
 						</div>
 					</div>
 
 					{/* Total Value Comparison */}
-					<div className="flex flex-col gap-1 w-1/2">
-						<div className="flex items-center gap-1 mb-1">
-							<BadgeDollarSign className="w-4 h-4" />
-							<span className="text-[0.65rem] font-medium text-primary/80">VALOR</span>
+					<div className="flex flex-col gap-2">
+						<div className="flex items-center gap-1.5 opacity-70">
+							<BadgeDollarSign className="w-3.5 h-3.5" />
+							<span className="text-[0.6rem] font-bold uppercase tracking-wider">VALOR TOTAL</span>
 						</div>
-						<div className="flex flex-col gap-1 w-full">
+						<div className="flex flex-col gap-1.5 w-full">
 							{/* First Period */}
-							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-primary/10">
+							<div className="flex items-center gap-3">
+								<div className="flex-1 h-1.5 rounded-full bg-primary/5 overflow-hidden">
 									<div
-										className="h-full bg-[#15599a] rounded-full"
+										className="h-full bg-[#15599a]"
 										style={{
 											width: `${(seller.primeiroPeriodo.totalVendido / Math.max(seller.primeiroPeriodo.totalVendido, seller.segundoPeriodo.totalVendido)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="w-fit text-[0.7rem] font-bold text-[#15599a]">{formatToMoney(seller.primeiroPeriodo.totalVendido)}</span>
+								<span className="min-w-[80px] text-right text-xs font-bold">{formatToMoney(seller.primeiroPeriodo.totalVendido)}</span>
 							</div>
 							{/* Second Period */}
-							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-primary/10">
+							<div className="flex items-center gap-3">
+								<div className="flex-1 h-1.5 rounded-full bg-primary/5 overflow-hidden">
 									<div
-										className="h-full bg-[#FFB900] rounded-full"
+										className="h-full bg-[#FFB900]"
 										style={{
 											width: `${(seller.segundoPeriodo.totalVendido / Math.max(seller.primeiroPeriodo.totalVendido, seller.segundoPeriodo.totalVendido)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="text-[0.7rem] w-fit font-bold text-[#FFB900]">{formatToMoney(seller.segundoPeriodo.totalVendido)}</span>
+								<span className="min-w-[80px] text-right text-xs font-bold text-[#FFB900]">{formatToMoney(seller.segundoPeriodo.totalVendido)}</span>
 							</div>
 						</div>
 					</div>
@@ -708,10 +633,10 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 	}
 
 	return (
-		<div className="flex w-full flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-			<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
+		<div className="flex w-full flex-col rounded-xl border border-primary/20 bg-card shadow-2xs overflow-hidden">
+			<div className="py-2 px-4 flex items-center justify-between w-full border-b border-primary/10">
 				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RESULTADO POR VENDEDORES</h1>
-				<UserRound className="w-4 h-4 min-w-4 min-h-4" />
+				<UserRound className="w-4 h-4" />
 			</div>
 			<div className="w-full flex items-center justify-end gap-2 flex-wrap py-1 px-4">
 				<button
@@ -803,109 +728,102 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 		}
 		const { salesHintDirection, salesHintText, totalHintDirection, totalHintText } = getHints(product);
 		return (
-			<div className="w-full flex flex-col gap-2 px-3 py-2 border border-primary/30 shadow-xs rounded-lg hover:bg-primary/10 transition-colors">
-				{/* Left side - Title and Ranking */}
+			<div className="w-full flex flex-col gap-3 px-4 py-3 border border-primary/20 bg-card shadow-2xs rounded-xl hover:bg-primary/5 transition-colors">
+				{/* Top side - Title and Ranking */}
 				<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
 					<div className="flex items-center gap-2">
-						<div className="rounded-full p-1 flex items-center justify-center text-[0.55rem] bg-primary text-primary-foreground font-bold w-6 h-6 min-w-6 min-h-6">
+						<div className="rounded-full flex items-center justify-center text-[0.6rem] bg-primary text-primary-foreground font-bold w-6 h-6 min-w-6 min-h-6">
 							{index + 1}º
 						</div>
-						<h1 className="hidden lg:block text-[0.7rem] lg:text-sm tracking-tight font-medium">{product.titulo.toUpperCase()}</h1>
-						<h1 className="block lg:hidden text-[0.7rem] lg:text-sm tracking-tight font-medium">{formatLongString(product.titulo, 25).toUpperCase()}</h1>
+						<h1 className="hidden lg:block text-sm tracking-tight font-bold text-primary/80">{product.titulo.toUpperCase()}</h1>
+						<h1 className="block lg:hidden text-xs tracking-tight font-bold text-primary/80">{formatLongString(product.titulo, 25).toUpperCase()}</h1>
 					</div>
 					<div className="flex items-center gap-2">
-						<h1
-							className={cn("rounded-lg bg-secondary px-2 py-0.5 text-center text-[0.6rem] font-bold italic text-primary/80", {
-								"bg-green-100 text-green-800": salesHintDirection === "positive",
-								"bg-red-100 text-red-800": salesHintDirection === "negative",
+						<div
+							className={cn("rounded-md px-2 py-0.5 text-center text-[0.65rem] font-bold uppercase", {
+								"bg-green-100 text-green-700": salesHintDirection === "positive",
+								"bg-red-100 text-red-700": salesHintDirection === "negative",
 							})}
 						>
 							{salesHintText}
-						</h1>
-						<h1
-							className={cn("rounded-lg bg-secondary px-2 py-0.5 text-center text-[0.6rem] font-bold italic text-primary/80", {
-								"bg-green-100 text-green-800": totalHintDirection === "positive",
-								"bg-red-100 text-red-800": totalHintDirection === "negative",
+						</div>
+						<div
+							className={cn("rounded-md px-2 py-0.5 text-center text-[0.65rem] font-bold uppercase", {
+								"bg-green-100 text-green-700": totalHintDirection === "positive",
+								"bg-red-100 text-red-700": totalHintDirection === "negative",
 							})}
 						>
 							{totalHintText}
-						</h1>
+						</div>
 					</div>
 				</div>
 
-				{/* Right side - Stats */}
-				<div className="flex items-start gap-4 w-full">
+				{/* Bottom side - Stats */}
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
 					{/* Sales Count Comparison */}
-					<div className="flex flex-col gap-1 w-1/2">
-						<div className="flex items-center gap-1 mb-1">
-							<ShoppingCart className="w-4 h-4" />
-							<span className="text-[0.65rem] font-medium text-primary/80">VENDAS</span>
+					<div className="flex flex-col gap-2">
+						<div className="flex items-center gap-1.5 opacity-70">
+							<ShoppingCart className="w-3.5 h-3.5" />
+							<span className="text-[0.6rem] font-bold uppercase tracking-wider">VENDAS</span>
 						</div>
-						<div className="flex flex-col gap-1 w-full">
+						<div className="flex flex-col gap-1.5 w-full">
 							{/* First Period */}
-							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-primary/10">
+							<div className="flex items-center gap-3">
+								<div className="flex-1 h-1.5 rounded-full bg-primary/5 overflow-hidden">
 									<div
-										className="h-full bg-[#15599a] rounded-full"
+										className="h-full bg-[#15599a]"
 										style={{
 											width: `${(product.primeiroPeriodo.qtdeVendas / Math.max(product.primeiroPeriodo.qtdeVendas, product.segundoPeriodo.qtdeVendas)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="w-fit text-[0.7rem] font-bold text-[#15599a]">{product.primeiroPeriodo.qtdeVendas}</span>
+								<span className="min-w-[40px] text-right text-xs font-bold">{product.primeiroPeriodo.qtdeVendas}</span>
 							</div>
 							{/* Second Period */}
-							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-primary/10">
+							<div className="flex items-center gap-3">
+								<div className="flex-1 h-1.5 rounded-full bg-primary/5 overflow-hidden">
 									<div
-										className="h-full bg-[#FFB900] rounded-full"
+										className="h-full bg-[#FFB900]"
 										style={{
 											width: `${(product.segundoPeriodo.qtdeVendas / Math.max(product.primeiroPeriodo.qtdeVendas, product.segundoPeriodo.qtdeVendas)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="text-[0.7rem] w-fit font-bold text-[#FFB900]">{product.segundoPeriodo.qtdeVendas}</span>
+								<span className="min-w-[40px] text-right text-xs font-bold text-[#FFB900]">{product.segundoPeriodo.qtdeVendas}</span>
 							</div>
-							{/* <div
-										className={`flex-0 text-[0.65rem] font-medium ${
-											seller.segundoPeriodo.totalVendido > seller.primeiroPeriodo.totalVendido ? "text-green-600" : "text-red-600"
-										}`}
-									>
-										{(((seller.segundoPeriodo.totalVendido - seller.primeiroPeriodo.totalVendido) / seller.primeiroPeriodo.totalVendido) * 100).toFixed(1)}%
-									</div> */}
 						</div>
 					</div>
 
 					{/* Total Value Comparison */}
-					<div className="flex flex-col gap-1 w-1/2">
-						<div className="flex items-center gap-1 mb-1">
-							<BadgeDollarSign className="w-4 h-4" />
-							<span className="text-[0.65rem] font-medium text-primary/80">VALOR</span>
+					<div className="flex flex-col gap-2">
+						<div className="flex items-center gap-1.5 opacity-70">
+							<BadgeDollarSign className="w-3.5 h-3.5" />
+							<span className="text-[0.6rem] font-bold uppercase tracking-wider">VALOR TOTAL</span>
 						</div>
-						<div className="flex flex-col gap-1 w-full">
+						<div className="flex flex-col gap-1.5 w-full">
 							{/* First Period */}
-							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-primary/10">
+							<div className="flex items-center gap-3">
+								<div className="flex-1 h-1.5 rounded-full bg-primary/5 overflow-hidden">
 									<div
-										className="h-full bg-[#15599a] rounded-full"
+										className="h-full bg-[#15599a]"
 										style={{
 											width: `${(product.primeiroPeriodo.totalVendido / Math.max(product.primeiroPeriodo.totalVendido, product.segundoPeriodo.totalVendido)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="w-fit text-[0.7rem] font-bold text-[#15599a]">{formatToMoney(product.primeiroPeriodo.totalVendido)}</span>
+								<span className="min-w-[80px] text-right text-xs font-bold">{formatToMoney(product.primeiroPeriodo.totalVendido)}</span>
 							</div>
 							{/* Second Period */}
-							<div className="flex items-center gap-2 grow">
-								<div className="grow h-2 rounded-full bg-primary/10">
+							<div className="flex items-center gap-3">
+								<div className="flex-1 h-1.5 rounded-full bg-primary/5 overflow-hidden">
 									<div
-										className="h-full bg-[#FFB900] rounded-full"
+										className="h-full bg-[#FFB900]"
 										style={{
 											width: `${(product.segundoPeriodo.totalVendido / Math.max(product.primeiroPeriodo.totalVendido, product.segundoPeriodo.totalVendido)) * 100}%`,
 										}}
 									/>
 								</div>
-								<span className="text-[0.7rem] w-fit font-bold text-[#FFB900]">{formatToMoney(product.segundoPeriodo.totalVendido)}</span>
+								<span className="min-w-[80px] text-right text-xs font-bold text-[#FFB900]">{formatToMoney(product.segundoPeriodo.totalVendido)}</span>
 							</div>
 						</div>
 					</div>
@@ -915,10 +833,10 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 	}
 
 	return (
-		<div className="flex w-full flex-col rounded-xl border border-primary shadow-xs overflow-hidden">
-			<div className="py-1 px-4 rounded-bl-none rounded-br-none flex items-center justify-between w-full bg-[#15599a] text-white">
+		<div className="flex w-full flex-col rounded-xl border border-primary/20 bg-card shadow-2xs overflow-hidden">
+			<div className="py-2 px-4 flex items-center justify-between w-full border-b border-primary/10">
 				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RESULTADO POR PRODUTOS</h1>
-				<Box className="w-4 h-4 min-w-4 min-h-4" />
+				<Box className="w-4 h-4" />
 			</div>
 			<div className="w-full flex items-center justify-end gap-2 flex-wrap py-1 px-4">
 				<button

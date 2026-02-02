@@ -1,16 +1,12 @@
-import { TRFMLabelledStats } from '@/pages/api/stats/sales-rfm-labelled'
-import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
+import type { TRFMLabelledStats } from "@/pages/api/stats/sales-rfm-labelled";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
 async function fetchRFMLabelledStats() {
-  try {
-    const { data } = await axios.get('/api/stats/sales-rfm-labelled')
-    return data.data as TRFMLabelledStats
-  } catch (error) {
-    throw error
-  }
+	const { data } = await axios.get("/api/stats/sales-rfm-labelled");
+	return data.data as TRFMLabelledStats;
 }
 
 export function useRFMLabelledStats() {
-  return useQuery({ queryKey: ['rfm-labelled-stats'], queryFn: fetchRFMLabelledStats })
+	return useQuery({ queryKey: ["rfm-labelled-stats"], queryFn: fetchRFMLabelledStats });
 }

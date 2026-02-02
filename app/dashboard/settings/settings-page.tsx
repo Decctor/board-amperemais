@@ -36,7 +36,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 				</Button>
 			</div>
 
-			<div className="w-full overflow-x-auto overflow-y-hidden scroll-smooth">
+			<div className="w-full overflow-x-auto overflow-y-hidden scroll-smooth scrollbar-thin scrollbar-thumb-primary/5 scrollbar-track-transparent pb-4 mb-1">
 				<div className="flex items-center justify-start gap-2 min-w-max">
 					<Button
 						variant={!view || view === "profile" ? "secondary" : "ghost"}
