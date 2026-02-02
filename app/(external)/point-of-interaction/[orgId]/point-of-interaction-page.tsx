@@ -155,6 +155,9 @@ export default function PointOfInteractionContent({
 				<PointerOfInteractionWithoutAccumulationViaPDI
 					org={org}
 					router={router}
+					handlePlayAction={() => {
+						playAction();
+					}}
 				/>
 			)}
 
@@ -561,17 +564,21 @@ type PointOfInteractionWithoutAccumulationViaPDIProps = {
 		logoUrl: TOrganizationEntity["logoUrl"];
 		telefone: TOrganizationEntity["telefone"];
 	};
+	handlePlayAction: () => void;
 	router: ReturnType<typeof useRouter>;
 };
-function PointerOfInteractionWithoutAccumulationViaPDI({ org, router }: PointOfInteractionWithoutAccumulationViaPDIProps) {
+function PointerOfInteractionWithoutAccumulationViaPDI({ org, handlePlayAction, router }: PointOfInteractionWithoutAccumulationViaPDIProps) {
 	return (
 		<main className="w-full max-w-5xl flex-1 flex flex-col">
 			{/* GRID DE AÇÕES: 2 colunas no tablet */}
 			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
-					<div className="w-full md:w-1/2 flex flex-col gap-6">
+				<div className="w-full md:w-1/2 flex flex-col gap-6">
 					{/* CARD PRINCIPAL: RESGATAR CASHBACK (MAIOR DESTAQUE) */}
 					<Button
-						onClick={() => router.push(`/point-of-interaction/${org.id}/new-cashback-redemption`)}
+						onClick={() => {
+							handlePlayAction();
+							router.push(`/point-of-interaction/${org.id}/new-cashback-redemption`);
+						}}
 						variant="default"
 						className="group relative flex flex-col items-center justify-center gap-4 h-auto flex-1 rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
 					>
