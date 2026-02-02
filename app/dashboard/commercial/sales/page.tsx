@@ -23,7 +23,7 @@ export default async function Sales() {
 	const hasSales = !!firstSale;
 
 	if (!hasSales) {
-		return <SalesEmptyState organizationConfig={organizationConfig} />;
+		return <SalesEmptyState organizationId={orgId} organizationConfig={organizationConfig} />;
 	}
 
 	return <SalesPage user={sessionUser.user} />;
