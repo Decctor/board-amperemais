@@ -3,6 +3,7 @@ import { SaleNatureEnum } from "./enums";
 import type { TSale } from "./sales";
 
 export const ClientSchema = z.object({
+	idExterno: z.string({ invalid_type_error: "Tipo não válido para ID externo." }).optional().nullable(),
 	nome: z.string({
 		required_error: "Nome do cliente não informado.",
 		invalid_type_error: "Tipo não válido para o nome do cliente.",
@@ -164,12 +165,7 @@ export const BulkClientImportRowSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => val?.replace(/\D/g, "") || null),
-	email: z
-		.string({ invalid_type_error: "Email deve ser um texto." })
-		.email("Email inválido.")
-		.optional()
-		.nullable()
-		.or(z.literal("")),
+	email: z.string({ invalid_type_error: "Email deve ser um texto." }).email("Email inválido.").optional().nullable().or(z.literal("")),
 	dataNascimento: z
 		.string({ invalid_type_error: "Data de nascimento deve ser um texto." })
 		.optional()

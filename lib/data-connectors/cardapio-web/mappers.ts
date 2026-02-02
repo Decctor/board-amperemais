@@ -316,6 +316,7 @@ export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): Ma
 		onsite: "PRESENCIAL",
 		closed_table: "COMANDA",
 	};
+	const client = mapCardapioWebClient(order.customer);
 	return {
 		idExterno: order.id.toString(),
 		displayId: order.display_id.toString(),
@@ -333,7 +334,7 @@ export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): Ma
 		documento: order.fiscal_document,
 		observacao: order.observation,
 		dataVenda: new Date(order.created_at),
-		cliente: mapCardapioWebClient(order.customer),
+		cliente: client,
 		parceiro: mapCardapioWebPartner(order),
 		itens: order.items.filter((item) => item.status !== "canceled").map(mapCardapioWebSaleItem),
 		isValidSale,

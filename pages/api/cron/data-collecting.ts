@@ -212,6 +212,7 @@ async function handleCardapioWebImportation(
 			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
 			columns: {
 				id: true,
+				idExterno: true,
 				nome: true,
 				primeiraCompraData: true,
 				ultimaCompraData: true,
@@ -255,6 +256,7 @@ async function handleCardapioWebImportation(
 				client.nome,
 				{
 					id: client.id,
+					externalId: client.idExterno,
 					firstPurchaseDate: client.primeiraCompraData,
 					lastPurchaseDate: client.ultimaCompraData,
 					rfmTitle: client.analiseRFMTitulo,
@@ -366,6 +368,7 @@ async function handleCardapioWebImportation(
 				const [insertedClient] = await tx
 					.insert(clients)
 					.values({
+						idExterno: cardapioWebSale.cliente.idExterno,
 						nome: clientName,
 						organizacaoId: organizationId,
 						telefone: cardapioWebSale.cliente.telefone,
@@ -380,6 +383,7 @@ async function handleCardapioWebImportation(
 				isNewClient = true;
 				existingClientsMap.set(clientName, {
 					id: insertedClient.id,
+					externalId: cardapioWebSale.cliente.idExterno,
 					firstPurchaseDate: isValidSale ? saleDate : null,
 					lastPurchaseDate: isValidSale ? saleDate : null,
 					rfmTitle: "CLIENTES RECENTES",
