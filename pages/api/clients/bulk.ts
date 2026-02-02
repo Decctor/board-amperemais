@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { BulkClientImportInputSchema, type TBulkClientImportInput } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
-import { type TNewClientEntity, clients } from "@/services/drizzle/schema";
+import { type TNewClientEntity, cashbackProgramBalances, clients } from "@/services/drizzle/schema";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import type z from "zod";
@@ -89,13 +89,38 @@ async function bulkCreateClients({ input, sessionUser }: { input: TBulkCreateCli
 
 	let insertedCount = 0;
 	if (clientsToInsert.length > 0) {
-		// Insert in batches of 100 to avoid database limits
-		const BATCH_SIZE = 100;
-		for (let i = 0; i < clientsToInsert.length; i += BATCH_SIZE) {
-			const batch = clientsToInsert.slice(i, i + BATCH_SIZE);
-			await db.insert(clients).values(batch);
-			insertedCount += batch.length;
-		}
+		await db.transaction(async (tx) => {
+			// Check if a cashback program exists for this organization
+			const existingCashbackProgram = await tx.query.cashbackPrograms.findFirst({
+				where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
+				columns: { id: true },
+			});
+
+			// Insert clients in batches of 100 to avoid database limits
+			const BATCH_SIZE = 100;
+			const insertedClientIds: string[] = [];
+
+			for (let i = 0; i < clientsToInsert.length; i += BATCH_SIZE) {
+				const batch = clientsToInsert.slice(i, i + BATCH_SIZE);
+				const inserted = await tx.insert(clients).values(batch).returning({ id: clients.id });
+				insertedClientIds.push(...inserted.map((c) => c.id));
+				insertedCount += batch.length;
+			}
+
+			// If a cashback program exists, create balances for all newly inserted clients
+			if (existingCashbackProgram && insertedClientIds.length > 0) {
+				const balancesToInsert = insertedClientIds.map((clientId) => ({
+					organizacaoId: userOrgId,
+					clienteId: clientId,
+					programaId: existingCashbackProgram.id,
+				}));
+
+				for (let i = 0; i < balancesToInsert.length; i += BATCH_SIZE) {
+					const batch = balancesToInsert.slice(i, i + BATCH_SIZE);
+					await tx.insert(cashbackProgramBalances).values(batch);
+				}
+			}
+		});
 	}
 
 	return {

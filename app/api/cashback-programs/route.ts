@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CashbackProgramSchema } from "@/schemas/cashback-programs";
 import { db } from "@/services/drizzle";
-import { cashbackPrograms } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, cashbackPrograms } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -41,12 +41,56 @@ export type TCreateCashbackProgramInput = z.infer<typeof CreateCashbackProgramIn
 async function createCashbackProgram({ input, session }: { input: TCreateCashbackProgramInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const insertedCashbackProgram = await db
-		.insert(cashbackPrograms)
-		.values({ ...input.cashbackProgram, organizacaoId: userOrgId })
-		.returning({ id: cashbackPrograms.id });
-	const insertedCashbackProgramId = insertedCashbackProgram[0]?.id;
-	if (!insertedCashbackProgramId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar programa de cashback.");
+
+	const existingCashbackProgram = await db.query.cashbackPrograms.findFirst({
+		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
+	});
+	if (existingCashbackProgram) throw new createHttpError.BadRequest("Programa de cashback já existe.");
+
+	const insertedCashbackProgramId = await db.transaction(async (tx) => {
+		// Insert the cashback program
+		const insertedCashbackProgram = await tx
+			.insert(cashbackPrograms)
+			.values({ ...input.cashbackProgram, organizacaoId: userOrgId })
+			.returning({ id: cashbackPrograms.id });
+		const programId = insertedCashbackProgram[0]?.id;
+		if (!programId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar programa de cashback.");
+
+		// Find all clients in the organization that don't have a balance for this program
+		const existingBalanceClientIds = await tx.query.cashbackProgramBalances
+			.findMany({
+				where: (fields, { eq }) => eq(fields.programaId, programId),
+				columns: { clienteId: true },
+			})
+			.then((balances) => balances.map((b) => b.clienteId));
+
+		const clientsWithoutBalance = await tx.query.clients.findMany({
+			where: (fields, { eq, notInArray, and }) =>
+				existingBalanceClientIds.length > 0
+					? and(eq(fields.organizacaoId, userOrgId), notInArray(fields.id, existingBalanceClientIds))
+					: eq(fields.organizacaoId, userOrgId),
+			columns: { id: true },
+		});
+
+		// Create balances for all clients without one
+		if (clientsWithoutBalance.length > 0) {
+			const balancesToInsert = clientsWithoutBalance.map((client) => ({
+				organizacaoId: userOrgId,
+				clienteId: client.id,
+				programaId: programId,
+			}));
+
+			// Insert in batches to avoid database limits
+			const BATCH_SIZE = 100;
+			for (let i = 0; i < balancesToInsert.length; i += BATCH_SIZE) {
+				const batch = balancesToInsert.slice(i, i + BATCH_SIZE);
+				await tx.insert(cashbackProgramBalances).values(batch);
+			}
+		}
+
+		return programId;
+	});
+
 	return {
 		data: {
 			insertedId: insertedCashbackProgramId,
