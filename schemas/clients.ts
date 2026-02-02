@@ -150,3 +150,44 @@ export const ClientSearchQueryParams = z.object({
 });
 
 export type TClientSearchQueryParams = z.infer<typeof ClientSearchQueryParams>;
+
+// Bulk Import Schema - for importing clients from .xlsx or .csv files
+export const BulkClientImportRowSchema = z.object({
+	nome: z
+		.string({
+			required_error: "Nome do cliente é obrigatório.",
+			invalid_type_error: "Nome do cliente deve ser um texto.",
+		})
+		.min(1, "Nome do cliente é obrigatório."),
+	telefone: z
+		.string({ invalid_type_error: "Telefone deve ser um texto." })
+		.optional()
+		.nullable()
+		.transform((val) => val?.replace(/\D/g, "") || null),
+	email: z
+		.string({ invalid_type_error: "Email deve ser um texto." })
+		.email("Email inválido.")
+		.optional()
+		.nullable()
+		.or(z.literal("")),
+	dataNascimento: z
+		.string({ invalid_type_error: "Data de nascimento deve ser um texto." })
+		.optional()
+		.nullable()
+		.transform((val) => {
+			if (!val || val.trim() === "") return null;
+			const date = new Date(val);
+			return Number.isNaN(date.getTime()) ? null : date;
+		}),
+	canalAquisicao: z.string({ invalid_type_error: "Canal de aquisição deve ser um texto." }).optional().nullable(),
+	localizacaoCidade: z.string({ invalid_type_error: "Cidade deve ser um texto." }).optional().nullable(),
+	localizacaoEstado: z.string({ invalid_type_error: "Estado deve ser um texto." }).optional().nullable(),
+	localizacaoBairro: z.string({ invalid_type_error: "Bairro deve ser um texto." }).optional().nullable(),
+	localizacaoCep: z.string({ invalid_type_error: "CEP deve ser um texto." }).optional().nullable(),
+});
+export type TBulkClientImportRow = z.infer<typeof BulkClientImportRowSchema>;
+
+export const BulkClientImportInputSchema = z.object({
+	clients: z.array(BulkClientImportRowSchema).min(1, "É necessário pelo menos 1 cliente para importar."),
+});
+export type TBulkClientImportInput = z.infer<typeof BulkClientImportInputSchema>;
