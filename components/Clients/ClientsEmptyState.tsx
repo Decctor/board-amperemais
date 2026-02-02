@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { getFixedDateFromExcel, getJSONFromExcelFile } from "@/lib/excel-utils";
+import { formatToPhone } from "@/lib/formatting";
+import { bulkCreateClients } from "@/lib/mutations/clients";
 import { cn } from "@/lib/utils";
 import type { TBulkClientImportRow } from "@/schemas/clients";
 import axios from "axios";
@@ -33,10 +35,12 @@ const ClientsImportSchema = z.object({
 		required_error: "Nome não informado.",
 		invalid_type_error: "Tipo não válido para o nome.",
 	}),
-	TELEFONE: z.string({
-		required_error: "Telefone não informado.",
-		invalid_type_error: "Tipo não válido para o telefone.",
-	}),
+	TELEFONE: z
+		.string({
+			required_error: "Telefone não informado.",
+			invalid_type_error: "Tipo não válido para o telefone.",
+		})
+		.transform((v) => formatToPhone(v)),
 	EMAIL: z
 		.string({
 			required_error: "Email não informado.",
@@ -275,22 +279,11 @@ export default function ClientsEmptyState() {
 			// Remove _rowIndex before sending to API
 			const clientsToSend = parsedClients.map(({ _rowIndex, ...client }) => client);
 
-			const response = await axios.post<{ data: ImportResult; message: string }>(
-				"/api/clients/bulk",
-				{ clients: clientsToSend },
-				{
-					onUploadProgress: (progressEvent) => {
-						if (progressEvent.total) {
-							const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-							setUploadProgress(progress);
-						}
-					},
-				},
-			);
+			const response = await bulkCreateClients({ clients: clientsToSend }, (progress) => setUploadProgress(progress));
 
-			setImportResult(response.data.data);
+			setImportResult(response.data);
 			setImportState("success");
-			toast.success(response.data.message);
+			toast.success(response.message);
 		} catch (error) {
 			console.error("Error importing clients:", error);
 			setImportState("error");
@@ -449,7 +442,7 @@ export default function ClientsEmptyState() {
 							<div className="space-y-1">
 								<h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
 									<FileText className="w-6 h-6 text-primary" />
-									Revisar Importação
+									REVISÃO DA IMPORTAÇÃO
 								</h2>
 								<div className="flex items-center gap-2 text-muted-foreground text-sm">
 									<span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{parsedClients.length} clientes</span>
@@ -458,11 +451,11 @@ export default function ClientsEmptyState() {
 							</div>
 							<div className="flex items-center gap-3 w-full md:w-auto">
 								<Button variant="ghost" onClick={handleReset} className="flex-1 md:flex-none">
-									Cancelar
+									CANCELAR
 								</Button>
 								<Button onClick={handleImport} className="flex-1 md:flex-none gap-2 shadow-lg shadow-primary/20">
 									<Upload className="w-4 h-4" />
-									Confirmar Importação
+									CONFIRMAR IMPORTAÇÃO
 								</Button>
 							</div>
 						</div>

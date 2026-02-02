@@ -2,6 +2,7 @@ import type {
 	TCreateClientViaPointOfInteractionInput,
 	TCreateClientViaPointOfInteractionOutput,
 } from "@/app/api/point-of-interaction/new-client/route";
+import type { TBulkCreateClientsInput, TBulkCreateClientsOutput } from "@/pages/api/clients/bulk";
 import type { TClient } from "@/schemas/clients";
 import axios from "axios";
 
@@ -9,6 +10,13 @@ export async function createClient(info: TClient) {
 	const { data } = await axios.post("/api/clients", info);
 	if (typeof data.message !== "string") return "Cliente criado com sucesso !";
 	return data.message as string;
+}
+
+export async function bulkCreateClients(info: TBulkCreateClientsInput, onUploadProgress?: (progress: number) => void) {
+	const { data } = await axios.post<TBulkCreateClientsOutput>("/api/clients/bulk", info, {
+		onUploadProgress: (progressEvent) => onUploadProgress?.(Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? 1))),
+	});
+	return data;
 }
 
 export async function createClientViaPointOfInteraction(info: TCreateClientViaPointOfInteractionInput) {

@@ -1,11 +1,13 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { BulkClientImportInputSchema, type TBulkClientImportInput } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
-import { clients } from "@/services/drizzle/schema";
+import { type TNewClientEntity, clients } from "@/services/drizzle/schema";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
+import type z from "zod";
 
 type PostResponse = {
 	data: {
@@ -15,28 +17,25 @@ type PostResponse = {
 	};
 	message: string;
 };
+export type TBulkCreateClientsInput = z.infer<typeof BulkClientImportInputSchema>;
 
-const bulkCreateClientsRoute: NextApiHandler<PostResponse> = async (req, res) => {
-	const sessionUser = await getCurrentSessionUncached(req.cookies);
-	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-
+async function bulkCreateClients({ input, sessionUser }: { input: TBulkCreateClientsInput; sessionUser: TAuthUserSession }) {
 	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const input = BulkClientImportInputSchema.parse(req.body) as TBulkClientImportInput;
-
 	const clientsToInsert: Array<{
-		organizacaoId: string;
-		nome: string;
-		telefone: string;
-		telefoneBase: string;
-		email: string | null;
-		dataNascimento: Date | null;
-		canalAquisicao: string | null;
-		localizacaoCidade: string | null;
-		localizacaoEstado: string | null;
-		localizacaoBairro: string | null;
-		localizacaoCep: string | null;
+		organizacaoId: TNewClientEntity["organizacaoId"];
+		nome: TNewClientEntity["nome"];
+		telefone: TNewClientEntity["telefone"];
+		telefoneBase: TNewClientEntity["telefoneBase"];
+		email: TNewClientEntity["email"];
+		dataNascimento: TNewClientEntity["dataNascimento"];
+		canalAquisicao: TNewClientEntity["canalAquisicao"];
+		localizacaoCidade: TNewClientEntity["localizacaoCidade"];
+		localizacaoEstado: TNewClientEntity["localizacaoEstado"];
+		localizacaoBairro: TNewClientEntity["localizacaoBairro"];
+		localizacaoCep: TNewClientEntity["localizacaoCep"];
+		dataInsercao: TNewClientEntity["dataInsercao"];
 	}> = [];
 	const errors: Array<{ row: number; message: string }> = [];
 	let skippedCount = 0;
@@ -74,7 +73,7 @@ const bulkCreateClientsRoute: NextApiHandler<PostResponse> = async (req, res) =>
 
 		clientsToInsert.push({
 			organizacaoId: userOrgId,
-			nome: client.nome.trim(),
+			nome: client.nome,
 			telefone: client.telefone ?? "",
 			telefoneBase: telefoneBase,
 			email: client.email && client.email.trim().length > 0 ? client.email.trim() : null,
@@ -84,6 +83,7 @@ const bulkCreateClientsRoute: NextApiHandler<PostResponse> = async (req, res) =>
 			localizacaoEstado: client.localizacaoEstado ?? null,
 			localizacaoBairro: client.localizacaoBairro ?? null,
 			localizacaoCep: client.localizacaoCep ?? null,
+			dataInsercao: new Date(),
 		});
 	}
 
@@ -98,7 +98,7 @@ const bulkCreateClientsRoute: NextApiHandler<PostResponse> = async (req, res) =>
 		}
 	}
 
-	return res.status(201).json({
+	return {
 		data: {
 			insertedCount,
 			skippedCount,
@@ -108,7 +108,21 @@ const bulkCreateClientsRoute: NextApiHandler<PostResponse> = async (req, res) =>
 			insertedCount > 0
 				? `${insertedCount} cliente(s) importado(s) com sucesso.${skippedCount > 0 ? ` ${skippedCount} registro(s) ignorado(s).` : ""}`
 				: "Nenhum cliente foi importado.",
-	});
+	};
+}
+export type TBulkCreateClientsOutput = Awaited<ReturnType<typeof bulkCreateClients>>;
+const bulkCreateClientsRoute: NextApiHandler<PostResponse> = async (req, res) => {
+	const sessionUser = await getCurrentSessionUncached(req.cookies);
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const userOrgId = sessionUser.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const input = BulkClientImportInputSchema.parse(req.body) as TBulkClientImportInput;
+
+	const response = await bulkCreateClients({ input, sessionUser });
+
+	return res.status(201).json(response);
 };
 
 export default apiHandler({ POST: bulkCreateClientsRoute });
