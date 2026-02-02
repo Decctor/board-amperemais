@@ -23,9 +23,6 @@ export type TCreateOrganizationInputSchema = z.infer<typeof CreateOrganizationIn
 
 // This route must be called at the end of the onboarding process
 async function createOrganization({ input, session }: { input: TCreateOrganizationInputSchema; session: TAuthUserSession }) {
-	const userHasOrgAlready = !!session.membership?.organizacao.id;
-	if (userHasOrgAlready) throw new createHttpError.BadRequest("Você já está vinculado a uma organização.");
-
 	const { organization, subscription } = input;
 	const sessionUser = session.user;
 
