@@ -89,6 +89,11 @@ const GetSellersDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? val === "true" : null)),
+	simplified: z
+		.string({ invalid_type_error: "Tipo não válido para simplificado." })
+		.optional()
+		.nullable()
+		.transform((val) => val === "true"),
 });
 export type TGetSellersDefaultInput = z.infer<typeof GetSellersDefaultInputSchema>;
 const GetSellersByIdInputSchema = z.object({
@@ -123,6 +128,20 @@ async function getSellers({ input, session }: GetSellersParams) {
 			data: {
 				byId: seller,
 				default: undefined,
+				simplified: undefined,
+			},
+		};
+	}
+	if (input.simplified) {
+		const sellers = await db.query.sellers.findMany({
+			where: (fields, { and, eq }) => and(eq(fields.ativo, true), eq(fields.organizacaoId, userOrgId)),
+		});
+
+		return {
+			data: {
+				default: undefined,
+				byId: undefined,
+				simplified: sellers,
 			},
 		};
 	}
@@ -235,6 +254,7 @@ async function getSellers({ input, session }: GetSellersParams) {
 				sellersMatched: statsBySellerMatchedCount,
 				totalPages: Math.ceil(statsBySellerMatchedCount / PAGE_SIZE),
 			},
+			simplified: undefined,
 			byId: undefined,
 		},
 	};
@@ -254,6 +274,13 @@ const getSellersHandler: NextApiHandler<TGetSellersOutput> = async (req, res) =>
 		statsPeriodBefore: req.query.statsPeriodBefore as string | undefined,
 		orderByField: req.query.orderByField as string | undefined,
 		orderByDirection: req.query.orderByDirection as string | undefined,
+		simplified: req.query.simplified as string | undefined,
+		sellersIds: req.query.sellersIds as string | undefined,
+		activeOnly: req.query.activeOnly as string | undefined,
+		statsSaleNatures: req.query.statsSaleNatures as string | undefined,
+		statsExcludedSalesIds: req.query.statsExcludedSalesIds as string | undefined,
+		statsTotalMin: req.query.statsTotalMin as string | undefined,
+		statsTotalMax: req.query.statsTotalMax as string | undefined,
 	});
 	const data = await getSellers({ input, session: sessionUser });
 	return res.status(200).json(data);

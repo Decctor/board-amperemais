@@ -1,9 +1,9 @@
 import { createSession, deleteSession, deleteSessionTokenCookie, generateSessionToken, setSetSessionCookie } from "@/lib/authentication/session";
 import { formatAsSlug } from "@/lib/formatting";
 import { db } from "@/services/drizzle";
-import { organizationMembers, organizationMembershipInvitations, users } from "@/services/drizzle/schema";
+import { organizationMembers, organizationMembershipInvitations, sellers, users } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
 				email: invitation.email,
 				telefone: "",
 				usuario: formatAsSlug(invitation.nome),
-				permissoes: invitation.permissoes,
 				senha: "",
 			})
 			.returning({ id: users.id });
@@ -84,6 +83,28 @@ export async function GET(request: NextRequest) {
 		.set({ dataEfetivacao: now.toDate() })
 		.where(eq(organizationMembershipInvitations.id, invitation.id));
 
+	// Handling seller attribution
+	if (invitation.vendedorAplicavel) {
+		if (invitation.vendedorId) {
+			await db
+				.update(organizationMembers)
+				.set({ usuarioVendedorId: invitation.vendedorId })
+				.where(and(eq(organizationMembers.usuarioId, invitedUserId), eq(organizationMembers.organizacaoId, invitation.organizacaoId)));
+		} else {
+			const currentSellersCountResult = await db
+				.select({ count: count(sellers.id) })
+				.from(sellers)
+				.where(eq(sellers.organizacaoId, invitation.organizacaoId));
+			const newSellersCount = (currentSellersCountResult[0]?.count ?? 0) + 1;
+			const newSellerOperatorPassword = `${newSellersCount.toString().padStart(5, "0")}`;
+			await db.insert(sellers).values({
+				organizacaoId: invitation.organizacaoId,
+				nome: invitation.nome,
+				identificador: invitation.nome,
+				senhaOperador: newSellerOperatorPassword,
+			});
+		}
+	}
 	await deleteSessionTokenCookie();
 	const sessionToken = await generateSessionToken();
 	const session = await createSession({

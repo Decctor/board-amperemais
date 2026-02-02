@@ -72,6 +72,7 @@ export function useSellers({ initialFilters }: UseSellersParams) {
 		orderByField: initialFilters?.orderByField || "nome",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
 		activeOnly: initialFilters?.activeOnly || true,
+		simplified: false,
 	});
 	function updateFilters(newParams: Partial<TGetSellersDefaultInput>) {
 		setFilters((prevFilters) => ({ ...prevFilters, ...newParams }));
@@ -86,6 +87,23 @@ export function useSellers({ initialFilters }: UseSellersParams) {
 		queryKey: ["sellers", debouncedFilters],
 		filters,
 		updateFilters,
+	};
+}
+
+async function fetchSellersSimplified() {
+	const { data } = await axios.get<TGetSellersOutput>("/api/sellers?simplified=true");
+	const result = data.data.simplified;
+	if (!result) throw new Error("Vendedores não encontrados.");
+	return result;
+}
+
+export function useSellersSimplified() {
+	return {
+		...useQuery({
+			queryKey: ["sellers-simplified"],
+			queryFn: () => fetchSellersSimplified(),
+		}),
+		queryKey: ["sellers-simplified"],
 	};
 }
 

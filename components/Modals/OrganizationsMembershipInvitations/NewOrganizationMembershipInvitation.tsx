@@ -9,6 +9,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import OrganizationsMembershipInvitationsGeneralBlock from "./Blocks/General";
 import OrganizationsMembershipInvitationsPermissionsBlock from "./Blocks/Permissions";
+import OrganizationsMembershipInvitationsSellerBlock from "./Blocks/Seller";
 
 type NewOrganizationMembershipInvitationProps = {
 	sessionUserId: string;
@@ -70,7 +71,7 @@ export default function NewOrganizationMembershipInvitation({ sessionUserId, clo
 
 	return (
 		<ResponsiveMenuV2
-			menuTitle={successInvitationId ? "" : "NOVO CONVITE DE MEMBRO DA ORGANIZAÇÃO"}
+			menuTitle={successInvitationId ? "" : "NOVO CONVITE DE MEMBRO"}
 			menuDescription={successInvitationId ? "" : "Preencha os campos abaixo para criar um novo convite de membro da organização"}
 			menuActionButtonText="CRIAR CONVITE"
 			menuCancelButtonText="CANCELAR"
@@ -84,6 +85,7 @@ export default function NewOrganizationMembershipInvitation({ sessionUserId, clo
 			drawerShowFooter={!successInvitationId}
 		>
 			<OrganizationsMembershipInvitationsGeneralBlock invitation={state.invitation} updateInvitation={updateInvitation} />
+			<OrganizationsMembershipInvitationsSellerBlock invitation={state.invitation} updateInvitation={updateInvitation} />
 			<OrganizationsMembershipInvitationsPermissionsBlock
 				permissions={state.invitation.permissoes}
 				updateInvitationPermissions={updateInvitationPermissions}

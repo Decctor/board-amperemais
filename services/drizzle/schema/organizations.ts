@@ -100,6 +100,8 @@ export const organizationMembershipInvitations = newTable("organization_membersh
 		.notNull(),
 	nome: text("nome").notNull(),
 	email: text("email").notNull(),
+	vendedorAplicavel: boolean("vendedor_aplicavel").notNull().default(false), // defines whether or not the new user should be attributed to a seller
+	vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id),
 	permissoes: jsonb("permissoes").$type<TUserPermissions>().notNull(),
 	autorId: varchar("autor_id", { length: 255 }).references(() => users.id),
 	dataEfetivacao: timestamp("data_efetivacao"),

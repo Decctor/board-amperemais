@@ -38,11 +38,11 @@ const responsiveMenuV2Variants = cva("flex flex-col", {
 const drawerVariants = cva("flex flex-col", {
 	variants: {
 		drawerVariant: {
-			fit: "flex flex-col h-fit max-h-[90vh]",
-			sm: "flex flex-col h-fit max-h-[70vh]",
-			md: "flex flex-col h-fit max-h-[80vh]",
-			lg: "flex flex-col h-fit max-h-[90vh]",
-			xl: "flex flex-col h-fit max-h-[95vh]",
+			fit: "flex flex-col min-h-fit h-fit max-h-[90vh]",
+			sm: "flex flex-col min-h-fit h-fit max-h-[70vh]",
+			md: "flex flex-col min-h-fit h-fit max-h-[80vh]",
+			lg: "flex flex-col min-h-fit h-fit max-h-[90vh]",
+			xl: "flex flex-col min-h-fit h-fit max-h-[95vh]",
 		},
 	},
 	defaultVariants: {
