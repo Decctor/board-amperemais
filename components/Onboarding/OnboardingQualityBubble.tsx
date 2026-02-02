@@ -1,13 +1,14 @@
 "use client";
 
-import { useOnboardingQuality } from "@/lib/queries/onboarding";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
-import { Circle, Sparkles, X, ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
-import { OnboardingQualityStep } from "./OnboardingQualityStep";
+import { useOnboardingQuality } from "@/lib/queries/onboarding";
 import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronUp, Circle, Sparkles, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { FaWhatsapp } from "react-icons/fa6";
+import { OnboardingQualityStep } from "./OnboardingQualityStep";
 
 const DISMISS_KEY = "onboarding-quality-dismissed-at";
 const DISMISS_DURATION_MS = 24 * 60 * 60 * 1000; // 1 day (Agrosyer) or keep 7 days as needed. Keeping logic same for now.
@@ -135,12 +136,7 @@ export function OnboardingQualityBubble() {
 								>
 									<ChevronDown className="h-4 w-4" />
 								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="h-6 w-6 rounded-full hover:bg-secondary text-muted-foreground"
-									onClick={handleDismiss}
-								>
+								<Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-secondary text-muted-foreground" onClick={handleDismiss}>
 									<X className="h-4 w-4" />
 								</Button>
 							</div>
@@ -159,13 +155,19 @@ export function OnboardingQualityBubble() {
 					{/* Steps List */}
 					<div className="flex flex-col gap-1 px-2 pb-4 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-secondary scrollbar-track-transparent">
 						{steps.map((step, index) => (
-							<OnboardingQualityStep
-								key={step.id}
-								step={step}
-								isActive={index === activeStepIndex}
-								onActionClick={handleActionClick}
-							/>
+							<OnboardingQualityStep key={step.id} step={step} isActive={index === activeStepIndex} onActionClick={handleActionClick} />
 						))}
+					</div>
+					<div className="w-full flex items-center justify-center bg-green-50 px-4 py-3">
+						<a
+							href="https://wa.me/5534996626855?text=Gostaria%20de%20receber%20suporte%20direto%20no%20WhatsApp."
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex items-center gap-1.5"
+						>
+							<FaWhatsapp className="w-6 h-6 text-green-500" />
+							<p className="text-sm text-black">Alguma dúvida? Receba suporte direto no WhatsApp.</p>
+						</a>
 					</div>
 				</PopoverContent>
 			</Popover>

@@ -66,6 +66,6 @@ export type TSwitchOrganizationOutput = {
 	message: string;
 };
 
-const SwitchOrganizationRoute = appApiHandler({
+export const PUT = appApiHandler({
 	PUT: switchOrganization,
 });
