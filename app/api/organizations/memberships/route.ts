@@ -1,8 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { OrganizationMemberSchema } from "@/schemas/organizations";
+import { UserSchema } from "@/schemas/users";
 import { db } from "@/services/drizzle";
-import { authSessions, organizationMembers } from "@/services/drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { authSessions, organizationMembers, users } from "@/services/drizzle/schema";
+import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -56,75 +59,76 @@ export type TGetUserMembershipsOutput = {
 };
 
 // PUT - Switch active organization
-const SwitchOrganizationInputSchema = z.object({
-	organizationId: z.string(),
+const UpdateOrganizationMembershipInputSchema = z.object({
+	id: z.string({
+		required_error: "ID do usuário não informado.",
+		invalid_type_error: "Tipo inválido para ID do usuário.",
+	}),
+	user: UserSchema.omit({ nome: true, telefone: true, email: true, dataInsercao: true, admin: true }),
+	membership: OrganizationMemberSchema.omit({ organizacaoId: true, usuarioId: true, dataInsercao: true }),
 });
 
-export type TSwitchOrganizationInput = z.infer<typeof SwitchOrganizationInputSchema>;
+export type TUpdateOrganizationMembershipInput = z.infer<typeof UpdateOrganizationMembershipInputSchema>;
 
-async function switchOrganization(request: NextRequest) {
+async function updateOrganizationMembership({ input, session }: { input: TUpdateOrganizationMembershipInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const sessionUserHasPermission = session.membership?.permissoes.usuarios.editar;
+	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
+
+	// Checking if the user to update has a membership
+	const userToUpdateMembership = await db.query.organizationMembers.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.usuarioId, input.id), eq(fields.organizacaoId, userOrgId)),
+	});
+	if (!userToUpdateMembership) throw new createHttpError.NotFound("Membro da organização não encontrado.");
+
+	// Now, updating the user
+	const updatedUser = await db
+		.update(users)
+		.set({
+			...input.user,
+		})
+		.where(and(eq(users.id, input.id)))
+		.returning({
+			id: users.id,
+		});
+	const updatedUserId = updatedUser[0]?.id;
+	if (!updatedUserId) throw new createHttpError.NotFound("Usuário não encontrado.");
+
+	// Now, updating the membership
+	await db
+		.update(organizationMembers)
+		.set({
+			...input.membership,
+		})
+		.where(and(eq(organizationMembers.usuarioId, input.id), eq(organizationMembers.organizacaoId, userOrgId)));
+	return {
+		data: {
+			updatedId: updatedUserId,
+			updatedMembershipId: userToUpdateMembership.id,
+		},
+		message: "Usuário atualizado com sucesso.",
+	};
+}
+
+export type TUpdateOrganizationMembershipOutput = Awaited<ReturnType<typeof updateOrganizationMembership>>;
+
+async function updateOrganizationMembershipRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const payload = await request.json();
-	const input = SwitchOrganizationInputSchema.parse(payload);
+	const input = UpdateOrganizationMembershipInputSchema.parse(payload);
 
-	// Validate user has membership in target organization
-	const membership = await db.query.organizationMembers.findFirst({
-		where: (fields, { and, eq }) =>
-			and(eq(fields.usuarioId, session.user.id), eq(fields.organizacaoId, input.organizationId)),
-		with: {
-			organizacao: true,
-		},
-	});
+	const result = await updateOrganizationMembership({ input, session });
 
-	if (!membership) {
-		throw new createHttpError.Forbidden("Você não tem acesso a esta organização.");
-	}
-
-	// Update active organization in session
-	await db
-		.update(authSessions)
-		.set({ organizacaoAtivaId: input.organizationId })
-		.where(eq(authSessions.id, session.session.id));
-
-	return NextResponse.json({
-		data: {
-			newActiveOrganization: {
-				id: membership.organizacao.id,
-				nome: membership.organizacao.nome,
-				cnpj: membership.organizacao.cnpj,
-				logoUrl: membership.organizacao.logoUrl,
-			},
-			membership: {
-				id: membership.id,
-				permissoes: membership.permissoes,
-			},
-		},
-		message: "Organização alterada com sucesso.",
-	});
+	return NextResponse.json(result);
 }
-
-export type TSwitchOrganizationOutput = {
-	data: {
-		newActiveOrganization: {
-			id: string;
-			nome: string;
-			cnpj: string;
-			logoUrl: string | null;
-		};
-		membership: {
-			id: string;
-			permissoes: unknown;
-		};
-	};
-	message: string;
-};
 
 export const GET = appApiHandler({
 	GET: getUserMemberships,
 });
 
 export const PUT = appApiHandler({
-	PUT: switchOrganization,
+	PUT: updateOrganizationMembershipRoute,
 });

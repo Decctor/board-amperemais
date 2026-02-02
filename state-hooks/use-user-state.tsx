@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import z from "zod";
 
 const UserStateSchema = z.object({
-	user: UserSchema.omit({ dataInsercao: true, organizacaoId: true }),
+	user: UserSchema.omit({ dataInsercao: true, admin: true }),
 	membership: OrganizationMemberSchema.omit({ organizacaoId: true, usuarioId: true, dataInsercao: true }),
 	avatarHolder: z.object({
 		file: z.instanceof(File).optional().nullable(),
@@ -21,7 +21,6 @@ type TUserState = z.infer<typeof UserStateSchema>;
 export function useUserState() {
 	const initialState: TUserState = {
 		user: {
-			admin: false,
 			nome: "",
 			email: "",
 			telefone: "",

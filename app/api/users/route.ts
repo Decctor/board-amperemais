@@ -26,7 +26,6 @@ async function createUser({ input, session }: { input: TCreateUserInput; session
 		.insert(users)
 		.values({
 			...input.user,
-			organizacaoId: userOrgId,
 		})
 		.returning({
 			id: users.id,
@@ -165,51 +164,27 @@ export const GET = appApiHandler({
 });
 
 const UpdateUserInputSchema = z.object({
-	id: z.string({
-		required_error: "ID do usuário não informado.",
-		invalid_type_error: "Tipo inválido para ID do usuário.",
+	user: UserSchema.omit({
+		admin: true,
+		dataInsercao: true,
+		senha: true,
 	}),
-	user: UserSchema.omit({ nome: true, telefone: true, email: true, dataInsercao: true, organizacaoId: true }),
-	membership: OrganizationMemberSchema.omit({ organizacaoId: true, usuarioId: true, dataInsercao: true }),
 });
 export type TUpdateUserInput = z.infer<typeof UpdateUserInputSchema>;
 
 async function updateUser({ input, session }: { input: TUpdateUserInput; session: TAuthUserSession }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const sessionUserHasPermission = session.membership?.permissoes.usuarios.editar;
-	if (!sessionUserHasPermission) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
+	const userId = session.user.id;
 
-	// Checking if the user to update has a membership
-	const userToUpdateMembership = await db.query.organizationMembers.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.usuarioId, input.id), eq(fields.organizacaoId, userOrgId)),
-	});
-	if (!userToUpdateMembership) throw new createHttpError.NotFound("Membro da organização não encontrado.");
-
-	// Now, updating the user
-	const updatedUser = await db
+	// Updating own user information
+	await db
 		.update(users)
 		.set({
 			...input.user,
 		})
-		.where(and(eq(users.id, input.id)))
-		.returning({
-			id: users.id,
-		});
-	const updatedUserId = updatedUser[0]?.id;
-	if (!updatedUserId) throw new createHttpError.NotFound("Usuário não encontrado.");
-
-	// Now, updating the membership
-	await db
-		.update(organizationMembers)
-		.set({
-			...input.membership,
-		})
-		.where(and(eq(organizationMembers.usuarioId, input.id), eq(organizationMembers.organizacaoId, userOrgId)));
+		.where(eq(users.id, userId));
 	return {
 		data: {
-			updatedId: updatedUserId,
-			updatedMembershipId: userToUpdateMembership.id,
+			updatedId: userId,
 		},
 		message: "Usuário atualizado com sucesso.",
 	};

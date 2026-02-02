@@ -1,23 +1,27 @@
 "use client";
 import SettingsIntegration from "@/components/Settings/SettingsIntegration";
-import SettingsWhatsAppConnection from "@/components/Settings/SettingsWhatsAppConnection";
 import SettingsOrg from "@/components/Settings/SettingsOrg";
+import SettingsProfile from "@/components/Settings/SettingsProfile";
 import SettingsSalesPromoCampaigns from "@/components/Settings/SettingsSalesPromoCampaigns";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
+import SettingsWhatsAppConnection from "@/components/Settings/SettingsWhatsAppConnection";
 import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTemplates";
 import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { copyToClipboard } from "@/lib/utils";
-import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, Trophy, UsersRound } from "lucide-react";
+import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, Trophy, User, UsersRound } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 type SettingsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
 };
 export default function SettingsPage({ user, membership }: SettingsPageProps) {
-	const [view, setView] = useQueryState("view", parseAsStringEnum(["users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns", "organization", "integration"]));
+	const [view, setView] = useQueryState(
+		"view",
+		parseAsStringEnum(["profile", "users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns", "organization", "integration"]),
+	);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end">
@@ -35,6 +39,15 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 			<div className="w-full overflow-x-auto overflow-y-hidden scroll-smooth">
 				<div className="flex items-center justify-start gap-2 min-w-max">
 					<Button
+						variant={!view || view === "profile" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("profile")}
+					>
+						<User className="w-4 h-4 min-w-4 min-h-4" />
+						MEU PERFIL
+					</Button>
+					<Button
 						variant={view === "organization" ? "secondary" : "ghost"}
 						className="flex items-center gap-2 whitespace-nowrap"
 						size="sm"
@@ -43,6 +56,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						<Building2 className="w-4 h-4 min-w-4 min-h-4" />
 						ORGANIZAÇÃO
 					</Button>
+
 					<Button
 						variant={view === "integration" ? "secondary" : "ghost"}
 						className="flex items-center gap-2 whitespace-nowrap"
@@ -53,7 +67,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						INTEGRAÇÃO
 					</Button>
 					<Button
-						variant={!view || view === "users" ? "secondary" : "ghost"}
+						variant={view === "users" ? "secondary" : "ghost"}
 						className="flex items-center gap-2 whitespace-nowrap"
 						size="sm"
 						onClick={() => setView("users")}
@@ -97,10 +111,16 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						<Trophy className="w-4 h-4 min-w-4 min-h-4" />
 						CAMPANHAS DE PROMOÇÃO DE VENDAS
 					</Button>
-					
 				</div>
 			</div>
-			{!view || view === "users" ? membership.permissoes.usuarios.visualizar ? <SettingsUsers user={user} membership={membership} /> : <UnauthorizedPage /> : null}
+			{!view || view === "profile" ? <SettingsProfile sessionUser={user} /> : null}
+			{view === "users" ? (
+				membership.permissoes.usuarios.visualizar ? (
+					<SettingsUsers user={user} membership={membership} />
+				) : (
+					<UnauthorizedPage />
+				)
+			) : null}
 			{view === "meta-oauth" ? <SettingsWhatsAppConnection user={user} /> : null}
 			{view === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} /> : null}
 			{view === "segments" ? <SettingsSegments user={user} /> : null}

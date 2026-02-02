@@ -6,7 +6,7 @@ export async function createUser(input: TCreateUserInput) {
 	return data;
 }
 
-export async function updateUser(input: TUpdateUserInput) {
-	const { data } = await axios.put<TUpdateUserOutput>(`/api/users?id=${input.id}`, input);
+export async function updateProfile(input: TUpdateUserInput) {
+	const { data } = await axios.put<TUpdateUserOutput>("/api/users", input);
 	return data;
 }

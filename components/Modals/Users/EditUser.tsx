@@ -2,7 +2,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
-import { updateUser as updateUserMutation } from "@/lib/mutations/users";
+import { updateOrganizationMembership } from "@/lib/mutations/organizations";
 import { useUserById } from "@/lib/queries/users";
 import { type TUseUserState, useUserState } from "@/state-hooks/use-user-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,17 +28,17 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 	const { state, updateUser, updateAvatarHolder, updateMembership, updateMembershipPermissions, redefineState } = useUserState();
 	const { data: user, queryKey, isLoading, isError, isSuccess, error } = useUserById(userId);
 
-	async function handleUpdateUserMutation(state: TUseUserState["state"]) {
+	async function handleUpdateOrganizationMembershipMutation(state: TUseUserState["state"]) {
 		let userAvatarUrl = state.user.avatarUrl;
 		if (state.avatarHolder.file) {
 			const { url, format, size } = await uploadFile({ file: state.avatarHolder.file, fileName: state.user.nome, prefix: "avatars" });
 			userAvatarUrl = url;
 		}
-		return await updateUserMutation({ id: userId, user: { ...state.user, avatarUrl: userAvatarUrl }, membership: state.membership });
+		return await updateOrganizationMembership({ id: userId, user: { ...state.user, avatarUrl: userAvatarUrl }, membership: state.membership });
 	}
 	const { mutate, isPending } = useMutation({
-		mutationKey: ["create-user"],
-		mutationFn: handleUpdateUserMutation,
+		mutationKey: ["update-organization-membership", userId],
+		mutationFn: handleUpdateOrganizationMembershipMutation,
 		onMutate: async () => {
 			await queryClient.cancelQueries({ queryKey });
 			if (callbacks?.onMutate) callbacks.onMutate();
