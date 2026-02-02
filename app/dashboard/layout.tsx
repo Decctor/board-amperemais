@@ -11,7 +11,8 @@ import { type ReactNode, Suspense } from "react";
 
 const MainLayout = async ({ children }: { children: ReactNode }) => {
 	const user = await getCurrentSession();
-	if (!user || !user.membership) redirect("/auth/signin");
+	if (!user) redirect("/auth/signin");
+	if (!user.membership) redirect("/onboarding");
 	return (
 		<SidebarProvider className="font-raleway">
 			<AppSidebar user={user.user} organization={user.membership.organizacao} />

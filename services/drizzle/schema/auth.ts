@@ -13,7 +13,7 @@ export const authSessions = newTable("auth_sessions", {
 	usuarioDispositivo: text("usuario_dispositivo"),
 	usuarioNavegador: text("usuario_navegador"),
 	usuarioEnderecoIp: text("usuario_endereco_ip"),
-	organizacaoAtivaId: varchar("organizacao_ativa_id", { length: 255 }).references(() => organizations.id),
+	organizacaoAtivaId: varchar("organizacao_ativa_id", { length: 255 }).references(() => organizations.id, { onDelete: "set null" }),
 	dataExpiracao: timestamp("data_expiracao").notNull(),
 });
 export const authSessionsRelations = relations(authSessions, ({ one }) => ({

@@ -9,7 +9,6 @@ export const users = newTable("users", {
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
 	admin: boolean("admin").notNull().default(false),
-	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id),
 	nome: text("nome").notNull(),
 	email: text("email").notNull(),
 	telefone: text("telefone").notNull(),
@@ -35,10 +34,6 @@ export const users = newTable("users", {
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
 export const usersRelations = relations(users, ({ one, many }) => ({
-	organizacao: one(organizations, {
-		fields: [users.organizacaoId],
-		references: [organizations.id],
-	}),
 	associacoes: many(organizationMembers),
 }));
 export type TUserEntity = typeof users.$inferSelect;

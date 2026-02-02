@@ -1,6 +1,35 @@
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
+import type { TUserPermissions } from "@/schemas/users";
 
 export const SESSION_COOKIE_NAME = "syncrono-session";
+
+export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
+	usuarios: {
+		visualizar: true,
+		criar: true,
+		editar: true,
+		excluir: true,
+	},
+	resultados: {
+		escopo: null,
+		visualizar: true,
+		criarMetas: true,
+		visualizarMetas: true,
+		editarMetas: true,
+		excluirMetas: true,
+	},
+	atendimentos: {
+		iniciar: true,
+		visualizar: true,
+		responder: true,
+		finalizar: true,
+		receberTransferencias: true,
+	},
+	empresa: {
+		visualizar: true,
+		editar: true,
+	},
+};
 
 export const FREE_TRIAL_DURATION_DAYS = 15;
 

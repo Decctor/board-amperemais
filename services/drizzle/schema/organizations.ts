@@ -47,7 +47,9 @@ export const organizations = newTable("organizations", {
 	corSecundaria: text("cor_secundaria"), // Secondary color (hex format, e.g., #15599a)
 	corSecundariaForeground: text("cor_secundaria_foreground"), // Foreground for secondary color (hex, e.g., #FFFFFF)
 	configuracao: jsonb("configuracao").$type<TOrganizationConfiguration>().notNull(),
-	autorId: varchar("autor_id", { length: 255 }),
+	autorId: varchar("autor_id", { length: 255 })
+		.references(() => users.id)
+		.notNull(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({

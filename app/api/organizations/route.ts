@@ -1,10 +1,15 @@
-import { AppSubscriptionPlans, DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES, FREE_TRIAL_DURATION_DAYS } from "@/config";
+import {
+	AppSubscriptionPlans,
+	DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
+	DEFAULT_ORGANIZATION_OWNER_PERMISSIONS,
+	FREE_TRIAL_DURATION_DAYS,
+} from "@/config";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { OrganizationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
-import { authSessions, organizations, users } from "@/services/drizzle/schema";
+import { authSessions, organizationMembers, organizations, users } from "@/services/drizzle/schema";
 import { stripe } from "@/services/stripe";
 import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -21,6 +26,50 @@ export const CreateOrganizationInputSchema = z.object({
 
 export type TCreateOrganizationInputSchema = z.infer<typeof CreateOrganizationInputSchema>;
 
+async function getOrganization({ session }: { session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const organization = await db.query.organizations.findFirst({
+		where: (fields, { eq }) => eq(fields.id, userOrgId),
+		with: {
+			autor: {
+				columns: {
+					id: true,
+					nome: true,
+					avatarUrl: true,
+				},
+			},
+			membros: {
+				with: {
+					usuario: {
+						columns: {
+							id: true,
+							nome: true,
+							avatarUrl: true,
+						},
+					},
+				},
+			},
+		},
+	});
+	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
+	return {
+		data: organization,
+		message: "Organização encontrada com sucesso.",
+	};
+}
+export type TGetOrganizationOutput = Awaited<ReturnType<typeof getOrganization>>;
+
+async function getOrganizationRoute(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const result = await getOrganization({ session: session });
+	return NextResponse.json(result);
+}
+export const GET = appApiHandler({
+	GET: getOrganizationRoute,
+});
 // This route must be called at the end of the onboarding process
 async function createOrganization({ input, session }: { input: TCreateOrganizationInputSchema; session: TAuthUserSession }) {
 	const { organization, subscription } = input;
@@ -43,12 +92,12 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 	if (!insertedOrgId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar organização.");
 	console.log("[INFO] [CREATE_ORGANIZATION] Organization created successfully with ID:", insertedOrgId);
 
-	await db
-		.update(users)
-		.set({
-			organizacaoId: insertedOrgId,
-		})
-		.where(eq(users.id, sessionUser.id));
+	// 2. Inserting the organization member
+	await db.insert(organizationMembers).values({
+		usuarioId: sessionUser.id,
+		organizacaoId: insertedOrgId,
+		permissoes: DEFAULT_ORGANIZATION_OWNER_PERMISSIONS,
+	});
 	// 2. Process subscription
 	if (!subscription || subscription === "FREE-TRIAL") {
 		console.log("[INFO] [CREATE_ORGANIZATION] Free trial selected. Defining free trial period.");
@@ -195,7 +244,7 @@ async function updateOrganization({ input, session }: { input: TUpdateOrganizati
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const { organization } = input;
-
+	console.log("[INFO] [UPDATE_ORGANIZATION] Updating organization:", JSON.stringify(organization, null, 2));
 	const updatedOrganization = await db
 		.update(organizations)
 		.set({

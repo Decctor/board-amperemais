@@ -5,6 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator";
 import { getErrorMessage } from "@/lib/errors";
 import { createOrganization } from "@/lib/mutations/organizations";
+import { isValidCNPJ } from "@/lib/validation";
 import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
@@ -34,14 +35,14 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 		},
 	});
 
-	const handleSubmit = () => {
-		mutation.mutate({
-			organization: state.organization,
-			subscription: state.subscription,
-		});
-	};
-
 	const handleNext = () => {
+		if (state.stage === "organization-general-info") {
+			if (!state.organization.nome) return toast.error("Por favor, preencha o nome da empresa.");
+			if (isValidCNPJ(state.organization.cnpj)) return toast.error("O CNPJ da empresa é inválido.");
+			if (!state.organization.email) return toast.error("Por favor, preencha o email corporativo da empresa.");
+			if (!state.organization.telefone) return toast.error("Por favor, preencha o telefone/whatsapp da empresa.");
+			goToNextStage();
+		}
 		if (state.stage === "subscription-plans-section") {
 			console.log("Onboarding Complete:", state);
 			// Submit logic would go here

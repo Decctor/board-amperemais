@@ -3,8 +3,23 @@ import type {
 	TGetOrganizationMembershipInvitationsOutput,
 } from "@/app/api/organizations/memberships/invitations/route";
 import type { TGetUserMembershipsOutput } from "@/app/api/organizations/memberships/route";
+import type { TGetOrganizationOutput } from "@/app/api/organizations/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+
+async function fetchOrganization() {
+	const { data } = await axios.get<TGetOrganizationOutput>("/api/organizations");
+	return data.data;
+}
+export function useOrganization() {
+	return {
+		...useQuery({
+			queryKey: ["organization"],
+			queryFn: fetchOrganization,
+		}),
+		queryKey: ["organization"],
+	};
+}
 
 async function fetchUserMemberships() {
 	const { data } = await axios.get<TGetUserMembershipsOutput>("/api/organizations/memberships");
