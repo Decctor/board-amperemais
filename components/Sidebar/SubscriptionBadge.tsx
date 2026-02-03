@@ -52,7 +52,7 @@ export default function SubscriptionBadge({ organization }: TSubscriptionBadgePr
 			>
 				<Link href="/dashboard/settings?tab=subscription">
 					<RecompraCRMIcon className="h-4 w-4 shrink-0 text-white" />
-					{open && <span className="truncate font-bold text-xs tracking-wide text-white drop-shadow-sm">{displayName}</span>}
+					{open && <span className="truncate font-bold text-xs tracking-wide text-white drop-shadow-sm">PLANO {displayName}</span>}
 				</Link>
 			</SidebarMenuButton>
 		);
@@ -65,7 +65,7 @@ export default function SubscriptionBadge({ organization }: TSubscriptionBadgePr
 					<Tooltip>
 						<TooltipTrigger asChild>{badgeContent}</TooltipTrigger>
 						<TooltipContent side="right" sideOffset={8}>
-							{displayName}
+							Sua organização faz parte do plano RecompraCRM {displayName}
 						</TooltipContent>
 					</Tooltip>
 				)}
@@ -77,7 +77,7 @@ export default function SubscriptionBadge({ organization }: TSubscriptionBadgePr
 	const acquireContent = (
 		<SidebarMenuButton
 			onClick={() => setShowPlansMenu(true)}
-			className="h-10 flex items-center gap-2 justify-center transition-all duration-200 bg-gradient-to-r from-[#ffb900] to-[#ffb900]/90 text-white hover:text-white hover:from-[#ffb900]/80 hover:to-[#ffb900]/90 rounded-4xl shadow-md border-0"
+			className="h-10 flex items-center gap-2 justify-center transition-all duration-200 bg-linear-to-r from-[#ffb900] to-[#ffb900]/90 text-white hover:text-white hover:from-[#ffb900]/80 hover:to-[#ffb900]/90 rounded-4xl shadow-md border-0"
 		>
 			<Sparkles className="h-4 w-4 shrink-0" />
 			{open && <span className="truncate font-bold text-xs tracking-wide">ADQUIRIR PLANO</span>}
@@ -204,7 +204,7 @@ function PlanSelectionMenu({ organization, closeMenu }: PlanSelectionMenuProps) 
 						>
 							{/* Discount Badge */}
 							{billingInterval === "yearly" && (
-								<div className="absolute -top-2 -right-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">
+								<div className="absolute -top-2 -right-2 bg-linear-to-r from-emerald-500 to-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">
 									-{discountPercentage}%
 								</div>
 							)}
