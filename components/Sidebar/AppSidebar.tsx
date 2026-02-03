@@ -139,7 +139,7 @@ export function AppSidebar({
 				))}
 			</SidebarContent>
 			<SidebarFooter>
-				<AppSidebarFooter user={user} />
+				<AppSidebarFooter user={user} organization={organization} />
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>

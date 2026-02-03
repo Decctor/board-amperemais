@@ -1,5 +1,5 @@
 "use server";
-import { SESSION_COOKIE_NAME } from "@/config";
+import { SESSION_COOKIE_NAME, checkSubscriptionStatus } from "@/config";
 import { db } from "@/services/drizzle";
 import { type TAuthSessionEntity, authSessions } from "@/services/drizzle/schema";
 import { sha256 } from "@oslojs/crypto/sha2";
@@ -86,6 +86,11 @@ export async function validateSession(token: string) {
 					nome: membership.organizacao.nome,
 					cnpj: membership.organizacao.cnpj,
 					logoUrl: membership.organizacao.logoUrl,
+					assinaturaAtiva: checkSubscriptionStatus({
+						stripeStatus: membership.organizacao.stripeSubscriptionStatus,
+						trialPeriodStart: membership.organizacao.periodoTesteInicio,
+						trialPeriodEnd: membership.organizacao.periodoTesteFim,
+					}),
 					assinaturaPlano: membership.organizacao.assinaturaPlano,
 					corPrimaria: membership.organizacao.corPrimaria,
 					corPrimariaForeground: membership.organizacao.corPrimariaForeground,
@@ -118,6 +123,11 @@ export async function validateSession(token: string) {
 					nome: mostRecentMembership.organizacao.nome,
 					cnpj: mostRecentMembership.organizacao.cnpj,
 					logoUrl: mostRecentMembership.organizacao.logoUrl,
+					assinaturaAtiva: checkSubscriptionStatus({
+						stripeStatus: mostRecentMembership.organizacao.stripeSubscriptionStatus,
+						trialPeriodStart: mostRecentMembership.organizacao.periodoTesteInicio,
+						trialPeriodEnd: mostRecentMembership.organizacao.periodoTesteFim,
+					}),
 					assinaturaPlano: mostRecentMembership.organizacao.assinaturaPlano,
 					corPrimaria: mostRecentMembership.organizacao.corPrimaria,
 					corPrimariaForeground: mostRecentMembership.organizacao.corPrimariaForeground,

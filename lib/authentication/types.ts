@@ -27,6 +27,7 @@ export type TAuthUserSession = {
 			nome: TOrganizationEntity["nome"];
 			cnpj: TOrganizationEntity["cnpj"];
 			logoUrl: TOrganizationEntity["logoUrl"];
+			assinaturaAtiva: boolean;
 			assinaturaPlano: TOrganizationEntity["assinaturaPlano"];
 			corPrimaria: TOrganizationEntity["corPrimaria"];
 			corPrimariaForeground: TOrganizationEntity["corPrimariaForeground"];

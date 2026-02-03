@@ -15,16 +15,21 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { ChevronsUpDown, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
+import SubscriptionBadge from "./SubscriptionBadge";
 
 export default function AppSidebarFooter({
 	user,
+	organization,
 }: {
 	user: TAuthUserSession["user"];
+	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 }) {
 	const { isMobile } = useSidebar();
 
 	return (
 		<SidebarMenu>
+			<SubscriptionBadge organization={organization} />
+
 			<SidebarMenuItem>
 				<ThemeToggle />
 			</SidebarMenuItem>

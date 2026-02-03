@@ -1,5 +1,6 @@
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TUserPermissions } from "@/schemas/users";
+import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
 export const SESSION_COOKIE_NAME = "syncrono-session";
 
@@ -141,6 +142,8 @@ export const AppSubscriptionPlans: {
 	[key in TAppSubscriptionPlanKey]: {
 		name: string;
 		description: string;
+		badgeColor: string;
+		badgeForeground: string;
 		routes: {
 			[key: string]: {
 				accessible: boolean;
@@ -167,11 +170,14 @@ export const AppSubscriptionPlans: {
 				stripePriceId: string;
 			};
 		};
+		color: string;
 	};
 } = {
 	ESSENCIAL: {
 		name: "ESSENCIAL",
 		description: "Comece hoje. Cashback + PDV em tablet + campanhas básicas. Sem integração obrigatória.",
+		badgeColor: "hsl(357 100% 45%)",
+		badgeForeground: "hsl(222.2 47.4% 11.2%)",
 		routes: {
 			dashboard: {
 				accessible: false,
@@ -286,10 +292,13 @@ export const AppSubscriptionPlans: {
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESSENCIAL_YEARLY_PLAN_PRICE_ID as string,
 			},
 		},
+		color: "#E7000B",
 	},
 	CRESCIMENTO: {
 		name: "CRESCIMENTO",
 		description: "BI completo + IA que sugere ações + integração com ERP. O mais escolhido.",
+		badgeColor: "hsl(216 62% 38%)",
+		badgeForeground: "hsl(355.7 100% 97.3%)",
 		routes: {
 			dashboard: {
 				accessible: true,
@@ -416,10 +425,13 @@ export const AppSubscriptionPlans: {
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_CRESCIMENTO_YEARLY_PLAN_PRICE_ID as string,
 			},
 		},
+		color: "#24549C",
 	},
 	ESCALA: {
 		name: "ESCALA",
 		description: "Tudo do Crescimento + Hub de atendimentos + IA que responde clientes 24/7.",
+		badgeColor: "hsl(44 100% 50%)",
+		badgeForeground: "hsl(210 40% 98%)",
 		routes: {
 			dashboard: {
 				accessible: true,
@@ -554,6 +566,7 @@ export const AppSubscriptionPlans: {
 				stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESCALA_YEARLY_PLAN_PRICE_ID as string,
 			},
 		},
+		color: "#FFB900",
 	},
 };
 
@@ -617,4 +630,17 @@ export const AppRoutes = [
 export function getAppRouteTitle(path: string) {
 	const route = AppRoutes.find((route) => route.path === path);
 	return route?.title || "";
+}
+
+type TCheckSubscriptionStatus = {
+	stripeStatus: TOrganizationEntity["stripeSubscriptionStatus"];
+	trialPeriodStart: TOrganizationEntity["periodoTesteInicio"];
+	trialPeriodEnd: TOrganizationEntity["periodoTesteFim"];
+};
+export function checkSubscriptionStatus({ stripeStatus, trialPeriodStart, trialPeriodEnd }: TCheckSubscriptionStatus) {
+	if (stripeStatus === "active") return true;
+	if (!trialPeriodStart || !trialPeriodEnd) return false;
+	const now = new Date();
+	const trialEnd = new Date(trialPeriodEnd);
+	return now < trialEnd;
 }

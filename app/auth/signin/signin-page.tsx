@@ -58,11 +58,7 @@ function SignInPage() {
 								</FieldGroup>
 							</form>
 							<div className="bg-[#24549C] relative hidden md:block">
-								<Image
-									src={RecompraCRMLogo}
-									alt="Logo da RecompraCRM"
-									className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale p-12"
-								/>
+								<Image src={RecompraCRMLogo} alt="Logo da RecompraCRM" fill className="p-12" />
 							</div>
 						</CardContent>
 					</Card>

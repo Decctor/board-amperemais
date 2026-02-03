@@ -69,3 +69,15 @@ export {
 	DotsHorizontalIcon,
 	ArrowLeftIcon,
 } from "@radix-ui/react-icons";
+
+export const RecompraCRMIcon = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(({ className, ...props }, ref) => (
+	<svg ref={ref} {...props} className={cn(className)} viewBox="0 0 238 144" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+		<title>RecompraCRM</title>
+		<rect y="41.0068" width="41.0062" height="61.5094" rx="20.5031" />
+		<rect x="49.2078" width="41.0062" height="143.522" rx="20.5031" />
+		<rect x="98.4153" y="30.7549" width="41.0062" height="82.0125" rx="20.5031" />
+		<rect x="147.623" width="41.0062" height="143.522" rx="20.5031" />
+		<rect x="196.83" y="41.0068" width="41.0062" height="61.5094" rx="20.5031" />
+	</svg>
+));
+RecompraCRMIcon.displayName = "RecompraCRMIcon";
