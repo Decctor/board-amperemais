@@ -28,6 +28,7 @@ const OnboardingFirstStageValidationSchema = z.object({
 		.refine(isValidCNPJ, "Por favor, preencha um CNPJ válido."),
 	email: z.string({ invalid_type_error: "Tipo não válido para o email da empresa." }).email("Por favor, preencha um email válido."),
 	telefone: z.string({ invalid_type_error: "Tipo não válido para o telefone/whatsapp." }).min(1, "Por favor, preencha o telefone/whatsapp."),
+	termsAccepted: z.literal(true, { message: "Por favor, aceite os Termos de Uso e Política de Privacidade para continuar." }),
 });
 export function OnboardingPage({ user }: OnboardingPageProps) {
 	const { state, updateOrganization, updateOrganizationLogoHolder, updateOrganizationOnboarding, goToNextStage, goToPreviousStage } =
@@ -46,7 +47,10 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 
 	const handleNext = () => {
 		if (state.stage === "organization-general-info") {
-			const firstStageValidation = OnboardingFirstStageValidationSchema.safeParse(state.organization);
+			const firstStageValidation = OnboardingFirstStageValidationSchema.safeParse({
+				...state.organization,
+				termsAccepted: state.termsAccepted,
+			});
 			console.log(firstStageValidation);
 			if (!firstStageValidation.success) {
 				const firstIssue = firstStageValidation.error.issues?.[0];
@@ -69,7 +73,14 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 	const renderStageContent = () => {
 		switch (state.stage) {
 			case "organization-general-info":
-				return <GeneralInfoStage state={state} updateOrganization={updateOrganization} updateOrganizationLogoHolder={updateOrganizationLogoHolder} />;
+				return (
+					<GeneralInfoStage
+						state={state}
+						updateOrganization={updateOrganization}
+						updateOrganizationLogoHolder={updateOrganizationLogoHolder}
+						updateOrganizationOnboarding={updateOrganizationOnboarding}
+					/>
+				);
 			case "organization-niche-origin":
 				return <NicheOriginStage state={state} updateOrganization={updateOrganization} />;
 			case "organization-actuation":

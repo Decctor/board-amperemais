@@ -1,56 +1,82 @@
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatPhoneAsBase, formatToCEP, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import type { TUseOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, ShieldCheck } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { MdAttachFile } from "react-icons/md";
 
 type GeneralInfoStageProps = {
 	state: TUseOrganizationOnboardingState["state"];
 	updateOrganization: TUseOrganizationOnboardingState["updateOrganization"];
 	updateOrganizationLogoHolder: TUseOrganizationOnboardingState["updateOrganizationLogoHolder"];
+	updateOrganizationOnboarding: TUseOrganizationOnboardingState["updateOrganizationOnboarding"];
 };
 
-export function GeneralInfoStage({ state, updateOrganization, updateOrganizationLogoHolder }: GeneralInfoStageProps) {
+export function GeneralInfoStage({ state, updateOrganization, updateOrganizationLogoHolder, updateOrganizationOnboarding }: GeneralInfoStageProps) {
 	return (
-		<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
-			<div className="w-full flex items-center lg:items-start flex-col lg:flex-row gap-x-6 gap-y-3">
-				<ImageContent imageUrl={state.organization.logoUrl} imageHolder={state.organizationLogoHolder} updateImageHolder={updateOrganizationLogoHolder} />
-				<div className="h-full w-full lg:grow flex flex-col items-center gap-2">
-					<TextInput
-						value={state.organization.nome}
-						label="NOME DA EMPRESA"
-						placeholder="Preencha aqui o nome da sua empresa..."
-						handleChange={(value) => updateOrganization({ nome: value })}
-						width="100%"
-						required
+		<>
+			<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
+				<div className="w-full flex items-center lg:items-start flex-col lg:flex-row gap-x-6 gap-y-3">
+					<ImageContent
+						imageUrl={state.organization.logoUrl}
+						imageHolder={state.organizationLogoHolder}
+						updateImageHolder={updateOrganizationLogoHolder}
 					/>
-					<TextInput
-						value={state.organization.cnpj || ""}
-						label="CNPJ DA EMPRESA"
-						placeholder="Preencha aqui o CNPJ da sua empresa..."
-						handleChange={(value) => updateOrganization({ cnpj: formatToCPForCNPJ(value) })}
-						width="100%"
-						required
-					/>
-					<TextInput
-						value={state.organization.email || ""}
-						label="EMAIL CORPORATIVO"
-						placeholder="Preencha aqui o email corporativo da sua empresa..."
-						handleChange={(value) => updateOrganization({ email: value })}
-						width="100%"
-					/>
-					<TextInput
-						value={state.organization.telefone || ""}
-						label="TELEFONE / WHATSAPP"
-						placeholder="Preencha aqui o telefone/whatsapp da sua empresa..."
-						handleChange={(value) => updateOrganization({ telefone: formatToPhone(value) })}
-						width="100%"
-					/>
+					<div className="h-full w-full lg:grow flex flex-col items-center gap-2">
+						<TextInput
+							value={state.organization.nome}
+							label="NOME DA EMPRESA"
+							placeholder="Preencha aqui o nome da sua empresa..."
+							handleChange={(value) => updateOrganization({ nome: value })}
+							width="100%"
+							required
+						/>
+						<TextInput
+							value={state.organization.cnpj || ""}
+							label="CNPJ DA EMPRESA"
+							placeholder="Preencha aqui o CNPJ da sua empresa..."
+							handleChange={(value) => updateOrganization({ cnpj: formatToCPForCNPJ(value) })}
+							width="100%"
+							required
+						/>
+						<TextInput
+							value={state.organization.email || ""}
+							label="EMAIL CORPORATIVO"
+							placeholder="Preencha aqui o email corporativo da sua empresa..."
+							handleChange={(value) => updateOrganization({ email: value })}
+							width="100%"
+						/>
+						<TextInput
+							value={state.organization.telefone || ""}
+							label="TELEFONE / WHATSAPP"
+							placeholder="Preencha aqui o telefone/whatsapp da sua empresa..."
+							handleChange={(value) => updateOrganization({ telefone: formatToPhone(value) })}
+							width="100%"
+						/>
+					</div>
 				</div>
-			</div>
-		</ResponsiveMenuSection>
+			</ResponsiveMenuSection>
+			<ResponsiveMenuSection title="TERMOS E CONDIÇÕES" icon={<ShieldCheck className="h-4 min-h-4 w-4 min-w-4" />}>
+				<div className="flex items-start gap-1.5">
+					<Checkbox
+						id="terms-consent"
+						checked={state.termsAccepted}
+						onCheckedChange={(checked) => updateOrganizationOnboarding({ termsAccepted: checked === true })}
+						className="mt-0.5"
+					/>
+					<label htmlFor="terms-consent" className="text-sm text-gray-700 leading-relaxed cursor-pointer">
+						Li e concordo com os{" "}
+						<Link href="/legal" target="_blank" className="text-primary font-medium underline hover:text-primary/80 transition-colors">
+							Termos de Uso e Política de Privacidade
+						</Link>{" "}
+						da plataforma RecompraCRM.
+					</label>
+				</div>
+			</ResponsiveMenuSection>
+		</>
 	);
 }
 
