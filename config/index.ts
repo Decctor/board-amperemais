@@ -31,6 +31,76 @@ export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 	},
 };
 
+export const DEFAULT_ORGANIZATION_RFM_CONFIG = {
+	recencia: {
+		"1": {
+			max: 999,
+			min: 271,
+		},
+		"2": {
+			max: 270,
+			min: 181,
+		},
+		"3": {
+			max: 180,
+			min: 91,
+		},
+		"4": {
+			max: 90,
+			min: 31,
+		},
+		"5": {
+			max: 30,
+			min: 0,
+		},
+	},
+	monetario: {
+		"1": {
+			max: 100,
+			min: 1,
+		},
+		"2": {
+			max: 300,
+			min: 101,
+		},
+		"3": {
+			max: 750,
+			min: 301,
+		},
+		"4": {
+			max: 2000,
+			min: 751,
+		},
+		"5": {
+			max: 99999999,
+			min: 2001,
+		},
+	},
+	frequencia: {
+		"1": {
+			max: 1,
+			min: 1,
+		},
+		"2": {
+			max: 2,
+			min: 2,
+		},
+		"3": {
+			max: 5,
+			min: 3,
+		},
+		"4": {
+			max: 10,
+			min: 6,
+		},
+		"5": {
+			max: 999999,
+			min: 11,
+		},
+	},
+	identificador: "CONFIG_RFM" as const,
+};
+
 export const FREE_TRIAL_DURATION_DAYS = 15;
 
 export type TAppSubscriptionPlanKey = "ESSENCIAL" | "CRESCIMENTO" | "ESCALA";

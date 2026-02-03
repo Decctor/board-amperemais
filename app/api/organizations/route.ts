@@ -2,6 +2,7 @@ import {
 	AppSubscriptionPlans,
 	DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
 	DEFAULT_ORGANIZATION_OWNER_PERMISSIONS,
+	DEFAULT_ORGANIZATION_RFM_CONFIG,
 	FREE_TRIAL_DURATION_DAYS,
 } from "@/config";
 import { appApiHandler } from "@/lib/app-api";
@@ -9,7 +10,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { OrganizationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
-import { authSessions, organizationMembers, organizations, users } from "@/services/drizzle/schema";
+import { authSessions, organizationMembers, organizations, users, utils } from "@/services/drizzle/schema";
 import { stripe } from "@/services/stripe";
 import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -97,6 +98,13 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 		usuarioId: sessionUser.id,
 		organizacaoId: insertedOrgId,
 		permissoes: DEFAULT_ORGANIZATION_OWNER_PERMISSIONS,
+	});
+
+	// 3. Inserting org default RFM Config to avoid "blank canvas" paralysis
+	await db.insert(utils).values({
+		organizacaoId: insertedOrgId,
+		identificador: "CONFIG_RFM",
+		valor: DEFAULT_ORGANIZATION_RFM_CONFIG,
 	});
 	// 2. Process subscription
 	if (!subscription || subscription === "FREE-TRIAL") {
