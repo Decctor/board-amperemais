@@ -97,12 +97,31 @@ export default function LegalPage() {
 							</div>
 
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">2.4. Disponibilidade e Suporte</h3>
-								<p className="text-gray-700 leading-relaxed">
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">2.4. Disponibilidade e Suporte (SLA)</h3>
+								<p className="text-gray-700 leading-relaxed mb-2">
 									Comprometemo-nos a manter a plataforma disponível 24/7, com disponibilidade mínima de 99,5% ao mês, excluindo-se períodos de manutenção
 									programada. Manutenções serão comunicadas com antecedência mínima de 48 horas. O suporte técnico está disponível em horário comercial
 									(segunda a sexta, das 9h às 18h) via e-mail e sistema de tickets.
 								</p>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Acordo de Nível de Serviço (SLA):</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
+									<li>
+										<strong>Compromisso de Disponibilidade:</strong> 99,5% de uptime mensal;
+									</li>
+									<li>
+										<strong>Medição:</strong> Monitoramento contínuo através de ferramentas especializadas;
+									</li>
+									<li>
+										<strong>Exclusões:</strong> Manutenções programadas, indisponibilidade de serviços de terceiros (WhatsApp, provedores de cloud), força
+										maior;
+									</li>
+									<li>
+										<strong>Compensação:</strong> Em caso de indisponibilidade acima do acordado, o cliente poderá solicitar créditos de serviço proporcionais
+										ao período de indisponibilidade.
+									</li>
+								</ul>
 							</div>
 
 							<div>
@@ -115,16 +134,52 @@ export default function LegalPage() {
 							</div>
 
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">2.6. Propriedade dos Dados</h3>
-								<p className="text-gray-700 leading-relaxed">
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">2.6. Propriedade dos Dados e Exportação</h3>
+								<p className="text-gray-700 leading-relaxed mb-2">
 									<strong>O cliente mantém total propriedade sobre seus dados e os dados de seus clientes finais.</strong> Atuamos como processadores de dados
-									em nome do cliente. Os dashboards, relatórios e análises gerados a partir dos dados do cliente também pertencem ao cliente. Garantimos o
-									direito de exportação completa dos dados a qualquer momento.
+									em nome do cliente. Os dashboards, relatórios e análises gerados a partir dos dados do cliente também pertencem ao cliente.
 								</p>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Exportação e Portabilidade de Dados:</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
+									<li>
+										<strong>Formatos Disponíveis:</strong> Clientes, vendas e produtos podem ser exportados em CSV e Excel (.xlsx); relatórios em PDF e Excel;
+									</li>
+									<li>
+										<strong>Acesso à Exportação:</strong> Disponível diretamente na plataforma a qualquer momento;
+									</li>
+									<li>
+										<strong>Exportação Completa (Backup):</strong> Para exportações completas de todos os dados, contatar o suporte técnico. Prazo de
+										processamento: até 72 horas para bases grandes;
+									</li>
+									<li>
+										<strong>Ao Encerramento do Contrato:</strong> Os dados são mantidos por 90 dias após cancelamento. O cliente pode solicitar exportação
+										completa neste período. Após 90 dias, os dados são permanentemente excluídos.
+									</li>
+								</ul>
 							</div>
 
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">2.7. Pagamento e Faturamento</h3>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">2.7. Planos de Assinatura e Faturamento</h3>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Funcionalidades por Plano:</strong> Os planos de assinatura incluem diferentes níveis de acesso a:
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>Limite de campanhas de marketing ativas simultâneas;</li>
+									<li>Limite de atendentes (assentos) no hub de atendimentos via WhatsApp;</li>
+									<li>Limite de integrações ativas com sistemas externos;</li>
+									<li>Acesso a dicas de IA e limite semanal de consultas;</li>
+									<li>Créditos de IA para atendimento automático;</li>
+									<li>Relatórios automáticos via WhatsApp.</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Período de Teste:</strong> Oferecemos período de teste gratuito de 14 dias. Durante o período de teste, todas as funcionalidades
+									estão disponíveis. Ao término do período de teste, o acesso é suspenso até contratação de plano pago.
+								</p>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Faturamento:</strong>
+								</p>
 								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
 									<li>Os planos de assinatura são cobrados mensalmente ou anualmente, conforme escolha do cliente;</li>
 									<li>O pagamento deve ser realizado via boleto bancário, cartão de crédito ou transferência bancária;</li>
@@ -196,7 +251,15 @@ export default function LegalPage() {
 									<li>
 										<strong>Dados Técnicos:</strong> Cookies de sessão, tokens de autenticação, preferências de configuração.
 									</li>
+									<li>
+										<strong>Dados de Vendedores:</strong> Nome do vendedor, identificador externo, desempenho de vendas e metas associadas.
+									</li>
 								</ul>
+								<p className="text-gray-700 leading-relaxed mt-4">
+									<strong>Responsabilidade sobre Dados de Vendedores:</strong> O cliente é controlador dos dados de vendedores de sua equipe e deve garantir
+									comunicação adequada sobre o tratamento desses dados, base legal para monitoramento de desempenho, e acesso restrito às informações de metas
+									e comissões individuais.
+								</p>
 							</div>
 
 							<div>
@@ -212,8 +275,15 @@ export default function LegalPage() {
 									<li>Prestar suporte técnico e atendimento ao cliente;</li>
 									<li>Cumprir obrigações legais e regulatórias;</li>
 									<li>Garantir segurança, prevenir fraudes e proteger direitos;</li>
-									<li>Realizar análises estatísticas agregadas e anônimas para melhoria do serviço.</li>
+									<li>Realizar análises estatísticas agregadas e anônimas para melhoria do serviço;</li>
+									<li>Realizar análise comportamental de clientes (RFM) para segmentação e personalização.</li>
 								</ul>
+								<p className="text-gray-700 leading-relaxed mt-4">
+									<strong>Análise Comportamental de Clientes (RFM):</strong> Realizamos análise RFM (Recência, Frequência, Monetário) dos clientes finais para
+									segmentação automática em perfis (Campeões, Leais, Em Risco, etc.), personalização de campanhas de marketing, e geração de insights
+									estratégicos. A análise considera: tempo desde a última compra, quantidade de compras no período, e valor total gasto. O cliente controla a
+									configuração dos parâmetros de análise RFM na plataforma.
+								</p>
 							</div>
 
 							<div>
@@ -456,15 +526,174 @@ export default function LegalPage() {
 									<li>A disponibilidade do serviço WhatsApp está sujeita aos servidores e políticas da Meta.</li>
 								</ul>
 							</div>
+
+							<div>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">4.7. Bloqueio de Número WhatsApp</h3>
+								<div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+									<p className="text-gray-700 leading-relaxed mb-2">
+										<strong>Isenção de Responsabilidade:</strong>
+									</p>
+									<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
+										<li>
+											<strong>Conexões Oficiais (WhatsApp Business API):</strong> Bloqueios podem ocorrer por violação de políticas da Meta. A RecompraCRM não se
+											responsabiliza por bloqueios decorrentes de uso inadequado pelo cliente, envio de spam, conteúdo impróprio, ou violação das políticas de
+											uso da Meta;
+										</li>
+										<li>
+											<strong>Conexões Não-Oficiais:</strong> Para conexões via métodos não-oficiais (como conexões baseadas em WhatsApp Web ou QR Code), a
+											RecompraCRM NÃO se responsabiliza por: banimentos temporários ou permanentes do número, suspensão da conta WhatsApp, perda de acesso ao
+											número, ou quaisquer outras restrições impostas pela Meta. O uso de métodos não-oficiais é de inteira responsabilidade do cliente;
+										</li>
+										<li>
+											Independentemente do tipo de conexão, o cliente é responsável por manter práticas adequadas de comunicação e respeitar os limites de envio
+											e qualidade de mensagens;
+										</li>
+										<li>
+											Não oferecemos garantias de recuperação de números bloqueados ou de continuidade do serviço WhatsApp, uma vez que este depende de terceiros
+											(Meta).
+										</li>
+									</ul>
+								</div>
+							</div>
+
+							<div>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">4.8. Comunicações Automatizadas</h3>
+								<p className="text-gray-700 leading-relaxed mb-2">A plataforma possibilita o envio de comunicações automatizadas via WhatsApp:</p>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Para Clientes Finais (consumidores):</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>Notificações de aniversário (quando configurado);</li>
+									<li>Alertas de cashback próximo de expirar;</li>
+									<li>Mensagens de campanhas de marketing automatizadas.</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Para Usuários da Plataforma:</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>Relatórios diários de vendas;</li>
+									<li>Relatórios semanais de performance;</li>
+									<li>Relatórios mensais consolidados;</li>
+									<li>Alertas de metas atingidas.</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed">
+									<strong>Controle:</strong> O cliente pode configurar quais comunicações automatizadas deseja ativar. Clientes finais podem solicitar opt-out
+									diretamente ao varejista. Comunicações de marketing requerem consentimento prévio do destinatário.
+								</p>
+							</div>
+						</div>
+					</section>
+
+					{/* Funcionalidades e Recursos */}
+					<section>
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">5. Funcionalidades e Recursos da Plataforma</h2>
+						<div className="space-y-4">
+							<div>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.1. Uso de Inteligência Artificial (IA)</h3>
+								<p className="text-gray-700 leading-relaxed mb-2">A plataforma utiliza recursos de Inteligência Artificial para:</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>Geração de respostas automáticas de atendimento via WhatsApp;</li>
+									<li>Processamento e transcrição de mídias (áudios, imagens, documentos);</li>
+									<li>Análise comportamental de clientes (análise RFM);</li>
+									<li>Sugestões e dicas personalizadas para o negócio.</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Limitações da IA:</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>A IA pode gerar respostas imprecisas ou inadequadas;</li>
+									<li>O cliente é responsável por revisar conteúdos gerados pela IA antes de enviá-los aos clientes finais;</li>
+									<li>Utilizamos modelos de IA de terceiros (OpenAI) que possuem suas próprias políticas de privacidade;</li>
+									<li>O uso de IA está sujeito aos limites configurados por plano de assinatura.</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed">
+									<strong>Tratamento de Dados pela IA:</strong> Dados enviados para processamento por IA podem ser transmitidos a provedores terceiros. Não
+									utilizamos dados do cliente para treinar modelos de IA.
+								</p>
+							</div>
+
+							<div>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.2. Ponto de Interação (PDI)</h3>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									O módulo PDI é uma interface de consulta para clientes finais em pontos de venda físicos, permitindo:
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>Identificação de clientes por telefone ou CPF;</li>
+									<li>Consulta de saldo de cashback e histórico de transações;</li>
+									<li>Registro de novas vendas e resgate de cashback;</li>
+									<li>Exibição de rankings de clientes.</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Considerações de Privacidade e Segurança:</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
+									<li>O PDI é acessível publicamente via URL específica da organização;</li>
+									<li>Dados sensíveis são mascarados na interface (telefone, CPF);</li>
+									<li>O cliente é responsável pela segurança física do dispositivo onde o PDI é acessado;</li>
+									<li>Recomendamos uso de dispositivos dedicados para o PDI em ambientes de varejo.</li>
+								</ul>
+							</div>
+
+							<div>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.3. Programas de Cashback</h3>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Regras de Acumulação:</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>O cashback pode ser acumulado via vendas registradas por integração, vendas manuais, ou ponto de interação;</li>
+									<li>Cada programa define regras específicas de valor mínimo para acumulação;</li>
+									<li>A acumulação pode ser por porcentagem do valor da compra ou valor fixo.</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Regras de Expiração:</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>O cashback acumulado possui prazo de validade definido por programa;</li>
+									<li>Cashback expirado não pode ser recuperado;</li>
+									<li>Clientes são notificados sobre cashback próximo de expirar (quando configurado).</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Regras de Resgate:</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
+									<li>O resgate pode ter limite mínimo ou máximo por transação;</li>
+									<li>O resgate é aplicado como desconto em novas compras;</li>
+									<li>O cliente final não pode transferir cashback para terceiros ou converter em dinheiro.</li>
+								</ul>
+							</div>
+
+							<div>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.4. Integrações com Sistemas Terceiros</h3>
+								<p className="text-gray-700 leading-relaxed mb-2">A plataforma integra-se com os seguintes tipos de sistemas:</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4 mb-4">
+									<li>
+										<strong>Sistemas ERP:</strong> Sincronização de dados de vendas, produtos e clientes (ex: Online Software, Cardápio Web);
+									</li>
+									<li>
+										<strong>Sistemas de PDV:</strong> Importação de transações via API;
+									</li>
+									<li>
+										<strong>WhatsApp Business API (Meta):</strong> Comunicação automatizada com clientes.
+									</li>
+								</ul>
+								<p className="text-gray-700 leading-relaxed mb-2">
+									<strong>Responsabilidades sobre Integrações:</strong>
+								</p>
+								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
+									<li>O cliente é responsável por configurar corretamente suas credenciais de integração;</li>
+									<li>Atrasos ou falhas na sincronização podem ocorrer por indisponibilidade de sistemas terceiros;</li>
+									<li>Não nos responsabilizamos por dados inconsistentes originados de sistemas integrados.</li>
+								</ul>
+							</div>
 						</div>
 					</section>
 
 					{/* DPA */}
 					<section>
-						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">5. Acordo de Processamento de Dados (DPA)</h2>
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">6. Acordo de Processamento de Dados (DPA)</h2>
 						<div className="space-y-4">
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.1. Relação Controlador-Operador</h3>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">6.1. Relação Controlador-Operador</h3>
 								<p className="text-gray-700 leading-relaxed">Para fins de conformidade com a LGPD, estabelecemos os seguintes papéis:</p>
 								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
 									<li>
@@ -482,7 +711,7 @@ export default function LegalPage() {
 							</div>
 
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.2. Obrigações como Operador</h3>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">6.2. Obrigações como Operador</h3>
 								<p className="text-gray-700 leading-relaxed mb-2">Como operadores de dados, comprometemo-nos a:</p>
 								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
 									<li>Processar dados exclusivamente conforme instruções documentadas do cliente;</li>
@@ -497,7 +726,7 @@ export default function LegalPage() {
 							</div>
 
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.3. Responsabilidades do Cliente (Controlador)</h3>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">6.3. Responsabilidades do Cliente (Controlador)</h3>
 								<p className="text-gray-700 leading-relaxed mb-2">O cliente, como controlador de dados, é responsável por:</p>
 								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
 									<li>Garantir que possui base legal adequada para coleta e processamento dos dados;</li>
@@ -512,7 +741,7 @@ export default function LegalPage() {
 							</div>
 
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.4. Suboperadores</h3>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">6.4. Suboperadores</h3>
 								<p className="text-gray-700 leading-relaxed mb-2">
 									Podemos contratar suboperadores (subprocessadores) para auxiliar na prestação dos serviços. Suboperadores atuais incluem:
 								</p>
@@ -529,7 +758,7 @@ export default function LegalPage() {
 							</div>
 
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">5.5. Incidentes de Segurança</h3>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">6.5. Incidentes de Segurança</h3>
 								<p className="text-gray-700 leading-relaxed">
 									Em caso de incidente de segurança que resulte em destruição, perda, alteração, divulgação não autorizada ou acesso a dados pessoais,
 									notificaremos o cliente em até 72 horas após tomarmos conhecimento do incidente. A notificação incluirá natureza do incidente, dados
@@ -541,13 +770,13 @@ export default function LegalPage() {
 
 					{/* Cookies */}
 					<section>
-						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">6. Cookies e Tecnologias Similares</h2>
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">7. Cookies e Tecnologias Similares</h2>
 						<p className="text-gray-700 leading-relaxed mb-4">
 							A plataforma utiliza cookies e tecnologias similares para garantir seu funcionamento adequado e melhorar a experiência do usuário.
 						</p>
 						<div className="space-y-4">
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">6.1. Tipos de Cookies Utilizados</h3>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">7.1. Tipos de Cookies Utilizados</h3>
 								<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
 									<li>
 										<strong>Cookies Essenciais:</strong> Necessários para autenticação, sessão do usuário e funcionalidades básicas da plataforma. Não podem ser
@@ -570,7 +799,7 @@ export default function LegalPage() {
 							</div>
 
 							<div>
-								<h3 className="text-xl font-semibold text-gray-800 mb-2">6.2. Gestão de Cookies</h3>
+								<h3 className="text-xl font-semibold text-gray-800 mb-2">7.2. Gestão de Cookies</h3>
 								<p className="text-gray-700 leading-relaxed">
 									Você pode gerenciar cookies através das configurações do seu navegador. Note que a desativação de cookies essenciais impedirá o uso adequado
 									da plataforma. Cookies de sessão são automaticamente excluídos ao fechar o navegador.
@@ -581,7 +810,7 @@ export default function LegalPage() {
 
 					{/* Transferência Internacional */}
 					<section>
-						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">7. Transferência Internacional de Dados</h2>
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">8. Transferência Internacional de Dados</h2>
 						<p className="text-gray-700 leading-relaxed mb-4">
 							Alguns dados podem ser armazenados e processados em servidores localizados fora do Brasil, especialmente através de provedores de cloud
 							computing (AWS, Google Cloud, Azure) que operam data centers internacionais.
@@ -601,7 +830,7 @@ export default function LegalPage() {
 
 					{/* Alterações */}
 					<section>
-						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">8. Alterações nos Termos</h2>
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">9. Alterações nos Termos</h2>
 						<p className="text-gray-700 leading-relaxed">
 							Reservamo-nos o direito de modificar estes Termos de Uso e Política de Privacidade a qualquer momento para refletir mudanças em nossos
 							serviços, práticas de dados, ou requisitos legais. As alterações entrarão em vigor imediatamente após sua publicação na plataforma.
@@ -615,7 +844,7 @@ export default function LegalPage() {
 
 					{/* Legislação Aplicável */}
 					<section>
-						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">9. Legislação Aplicável e Foro</h2>
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">10. Legislação Aplicável e Foro</h2>
 						<p className="text-gray-700 leading-relaxed mb-4">Estes termos são regidos pela legislação brasileira, especialmente:</p>
 						<ul className="list-disc list-inside text-gray-700 leading-relaxed space-y-2 ml-4">
 							<li>
@@ -638,7 +867,7 @@ export default function LegalPage() {
 
 					{/* Contato */}
 					<section>
-						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">10. Contato e Encarregado de Dados</h2>
+						<h2 className="text-2xl font-bold text-gray-900 mb-4 border-t pt-6">11. Contato e Encarregado de Dados</h2>
 						<div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
 							<p className="text-gray-700 leading-relaxed mb-4">
 								<strong>Encarregado de Proteção de Dados (DPO):</strong>
