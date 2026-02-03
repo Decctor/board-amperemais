@@ -54,10 +54,24 @@ const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const userOrgId = sessionUser.membership?.organizacao.id;
+	const userOrgMembership = sessionUser.membership;
+	const userOrgId = userOrgMembership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
+
+	const sessionUserResultsScope = userOrgMembership.permissoes.resultados.escopo;
+	if (sessionUserResultsScope) {
+		const scopeUsers = await db.query.organizationMembers.findMany({
+			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, userOrgId), inArray(fields.usuarioId, sessionUserResultsScope)),
+			columns: { usuarioVendedorId: true },
+		});
+		const scopeUserSellerIds = scopeUsers.map((user) => user.usuarioVendedorId);
+
+		// Checking if user is filtering for sellers outside his scope
+		const isAttempingUnauthorizedScope = filters.sellers.some((sellerId) => !scopeUserSellerIds.includes(sellerId)) || filters.sellers.length === 0;
+		if (isAttempingUnauthorizedScope) throw new createHttpError.Unauthorized("Você não tem permissão para acessar esse recurso.");
+	}
 	console.log("[INFO] [GET_SALES_OVERALL_STATS] Filters payload: ", filters);
 
 	// const sales = await getSales({ filters });
@@ -108,89 +122,6 @@ const getSalesOverallStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 export default apiHandler({
 	POST: getSalesOverallStatsRoute,
 });
-
-type GetSalesParams = {
-	filters: TSaleStatsGeneralQueryParams;
-};
-async function getSales({ filters }: GetSalesParams) {
-	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
-	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
-
-	try {
-		const conditions = [];
-
-		if (ajustedAfter) conditions.push(gte(sales.dataVenda, ajustedAfter));
-		if (ajustedBefore) conditions.push(lte(sales.dataVenda, ajustedBefore));
-		if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
-		if (filters.total.max) conditions.push(gte(sales.valorTotal, filters.total.max));
-
-		if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
-
-		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
-
-		if (filters.clientRFMTitles.length > 0)
-			exists(
-				db
-					.select({ id: clients.id })
-					.from(clients)
-					.where(and(eq(clients.id, sales.clienteId), inArray(clients.analiseRFMTitulo, filters.clientRFMTitles))),
-			);
-		// How to apply filter for product groups present in sale ???
-
-		// if (filters.productGroups.length > 0) {
-		// 	conditions.push(
-		// 		exists(
-		// 			db
-		// 				.select({ id: saleItems.id })
-		// 				.from(saleItems)
-		// 				.innerJoin(products, eq(saleItems.produtoId, products.id))
-		// 				.where(
-		// 					and(
-		// 						// Aqui está a correção - correlacionando com a tabela externa
-		// 						sql`${saleItems.vendaId} = ${sales.id}`,
-		// 						inArray(products.grupo, filters.productGroups),
-		// 					),
-		// 				),
-		// 		),
-		// 	);
-		// }
-
-		if (filters.excludedSalesIds) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
-
-		const salesResult = await db.query.sales.findMany({
-			where: and(...conditions),
-			columns: {
-				id: true,
-			},
-			with: {
-				cliente: {
-					columns: {
-						nome: true,
-					},
-				},
-				itens: {
-					columns: {
-						quantidade: true,
-						valorVendaTotalLiquido: true,
-						valorCustoTotal: true,
-					},
-					with: {
-						produto: {
-							columns: {
-								descricao: true,
-								grupo: true,
-							},
-						},
-					},
-				},
-			},
-		});
-		return salesResult;
-	} catch (error) {
-		console.log("Error getting sales", error);
-		throw error;
-	}
-}
 
 type GetOverallSaleGoalProps = {
 	after: string;

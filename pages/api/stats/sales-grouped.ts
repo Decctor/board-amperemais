@@ -100,10 +100,24 @@ const getSalesGroupedStatsRoute: NextApiHandler<GetResponse> = async (req, res) 
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const userOrgId = sessionUser.membership?.organizacao.id;
+	const userOrgMembership = sessionUser.membership;
+	const userOrgId = userOrgMembership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
+
+	const sessionUserResultsScope = userOrgMembership.permissoes.resultados.escopo;
+	if (sessionUserResultsScope) {
+		const scopeUsers = await db.query.organizationMembers.findMany({
+			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, userOrgId), inArray(fields.usuarioId, sessionUserResultsScope)),
+			columns: { usuarioVendedorId: true },
+		});
+		const scopeUserSellerIds = scopeUsers.map((user) => user.usuarioVendedorId);
+
+		// Checking if user is filtering for sellers outside his scope
+		const isAttempingUnauthorizedScope = filters.sellers.some((sellerId) => !scopeUserSellerIds.includes(sellerId)) || filters.sellers.length === 0;
+		if (isAttempingUnauthorizedScope) throw new createHttpError.Unauthorized("Você não tem permissão para acessar esse recurso.");
+	}
 
 	const stats = await getSalesGroupedStats({ filters, organizacaoId: userOrgId });
 

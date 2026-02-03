@@ -162,9 +162,7 @@ export type TStatsComparisonOutput = {
 		};
 	}[];
 };
-async function fetchStatsComparison(req: NextApiRequest, organizacaoId: string) {
-	const filters = StatsComparisonInputSchema.parse(req.body);
-
+async function fetchStatsComparison(filters: TStatsComparisonInput, organizacaoId: string) {
 	const firstPeriodAjusted = {
 		after: new Date(filters.firstPeriod.after),
 		before: new Date(filters.firstPeriod.before),
@@ -484,10 +482,17 @@ const handleGetStatsComparison: NextApiHandler<{
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const userOrgId = sessionUser.membership?.organizacao.id;
+	const userOrgMembership = sessionUser.membership;
+	const userOrgId = userOrgMembership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const statsComparisonResult = await fetchStatsComparison(req, userOrgId);
+	// Users with results scope restrictions cannot access unrestricted comparison stats (exposes all sellers data)
+	const sessionUserResultsScope = userOrgMembership.permissoes.resultados.escopo;
+	if (sessionUserResultsScope) {
+		throw new createHttpError.Unauthorized("Você não tem permissão para acessar esse recurso.");
+	}
+	const filters = StatsComparisonInputSchema.parse(req.body);
+	const statsComparisonResult = await fetchStatsComparison(filters, userOrgId);
 
 	return res.status(200).json({
 		data: statsComparisonResult,
