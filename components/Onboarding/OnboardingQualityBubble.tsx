@@ -126,11 +126,11 @@ export function OnboardingQualityBubble() {
 				<PopoverContent
 					align="end"
 					side="top"
-					className="w-[380px] p-0 border-0 shadow-2xl rounded-2xl overflow-hidden bg-white dark:bg-zinc-900"
+					className="w-[380px] max-h-[calc(100dvh-120px)] p-0 border-0 shadow-2xl rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 flex flex-col"
 					sideOffset={16}
 				>
 					{/* Header Section */}
-					<div className="p-5 pb-2">
+					<div className="p-5 pb-2 flex-shrink-0">
 						<div className="flex items-start justify-between mb-4">
 							<div>
 								<h3 className="text-lg font-bold text-foreground flex items-center gap-2">
@@ -167,7 +167,7 @@ export function OnboardingQualityBubble() {
 					</div>
 
 					{/* Steps List */}
-					<div className="flex flex-col gap-1 px-2 pb-4 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-secondary scrollbar-track-transparent">
+					<div className="flex flex-col gap-1 px-2 pb-4 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-secondary scrollbar-track-transparent">
 						{steps.map((step, index) => (
 							<OnboardingQualityStep
 								key={step.id}

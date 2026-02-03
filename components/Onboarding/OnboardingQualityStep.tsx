@@ -1,6 +1,7 @@
 import type { TOnboardingQualityStep } from "@/app/api/organizations/onboarding-quality/route";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CheckboxIcon } from "@radix-ui/react-icons";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
@@ -50,7 +51,7 @@ export function OnboardingQualityStep({ step, isActive, isOpened, onClick, onAct
 					className={cn(
 						"text-sm font-semibold leading-none transition-colors uppercase",
 						step.completed ? "text-foreground/80 line-through decoration-muted-foreground" : "text-foreground",
-						isActive && "text-brand-foreground/90",
+						isActive && "text-primary",
 					)}
 				>
 					{step.title}
@@ -67,21 +68,28 @@ export function OnboardingQualityStep({ step, isActive, isOpened, onClick, onAct
 						>
 							<div className="space-y-3">
 								<p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
-								<Button
-									asChild
-									size="sm"
-									variant="default"
-									className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
-									onClick={(e) => {
-										e.stopPropagation();
-										onActionClick?.();
-									}}
-								>
-									<Link href={step.actionUrl} className="flex items-center gap-1.5">
-										{step.actionLabel}
-										<ArrowRight className="w-3 h-3 text-brand-foreground/70" />
-									</Link>
-								</Button>
+								{step.completed ? (
+									<div className="w-fit h-8 px-4 text-xs font-semibold rounded-full bg-green-500 text-white transition-all flex items-center gap-1.5">
+										<CheckboxIcon className="h-4 w-4" />
+										<p>Concluído</p>
+									</div>
+								) : (
+									<Button
+										asChild
+										size="sm"
+										variant="default"
+										className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
+										onClick={(e) => {
+											e.stopPropagation();
+											onActionClick?.();
+										}}
+									>
+										<Link href={step.actionUrl} className="flex items-center gap-1.5">
+											{step.actionLabel}
+											<ArrowRight className="w-3 h-3 text-brand-foreground/70" />
+										</Link>
+									</Button>
+								)}
 							</div>
 						</motion.div>
 					)}
