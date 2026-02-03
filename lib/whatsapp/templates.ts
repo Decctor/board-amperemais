@@ -631,7 +631,45 @@ export function getWhatsappTemplatePayload({
 	template,
 	variables,
 }: getWhatsappTemplatePayloadParams): WhatsappTemplatePayloadResult {
-	const components = [];
+	const components: TemplateComponent[] = [];
+
+	// Add header component if template has a media header with content
+	if (template.components.cabecalho) {
+		const header = template.components.cabecalho;
+		const isMediaHeader = ["image", "video", "document"].includes(header.tipo);
+
+		if (isMediaHeader && header.conteudo) {
+			const headerComponent: TemplateComponent = {
+				type: "header",
+				parameters: [],
+			};
+
+			if (header.tipo === "image") {
+				headerComponent.parameters = [
+					{
+						type: "image",
+						image: { link: header.conteudo },
+					},
+				];
+			} else if (header.tipo === "video") {
+				headerComponent.parameters = [
+					{
+						type: "video",
+						video: { link: header.conteudo },
+					},
+				];
+			} else if (header.tipo === "document") {
+				headerComponent.parameters = [
+					{
+						type: "document",
+						document: { link: header.conteudo },
+					},
+				];
+			}
+
+			components.push(headerComponent);
+		}
+	}
 
 	if (template.components.corpo.parametros.length > 0) {
 		components.push({

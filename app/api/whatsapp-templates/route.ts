@@ -1,7 +1,9 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { fetchAndUploadToMeta, isMediaHeaderType } from "@/lib/whatsapp/media-upload";
 import { createWhatsappTemplate as createWhatsappTemplateInMeta } from "@/lib/whatsapp/template-management";
+import type { TWhatsappTemplate } from "@/schemas/whatsapp-templates";
 import { WhatsappTemplateSchema } from "@/schemas/whatsapp-templates";
 import { db } from "@/services/drizzle";
 import { whatsappTemplatePhones, whatsappTemplates } from "@/services/drizzle/schema";
@@ -53,10 +55,47 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 			if (whatsappConnectionType === "META_CLOUD_API" && whatsappToken) {
 				if (!telefone.whatsappBusinessAccountId) continue;
 
+				// Process template to upload media header if needed
+				let templateToCreate: Omit<TWhatsappTemplate, "autorId" | "dataInsercao"> = input.template;
+
+				if (input.template.componentes.cabecalho) {
+					const header = input.template.componentes.cabecalho;
+
+					if (isMediaHeaderType(header.tipo) && header.conteudo) {
+						try {
+							// Upload media to Meta and get header_handle
+							const { headerHandle } = await fetchAndUploadToMeta({
+								fileUrl: header.conteudo,
+								appId: process.env.NEXT_PUBLIC_META_APP_ID!,
+								accessToken: whatsappToken,
+							});
+
+							// Create a copy of the template with the header_handle in exemplo field
+							templateToCreate = {
+								...input.template,
+								componentes: {
+									...input.template.componentes,
+									cabecalho: {
+										...header,
+										exemplo: headerHandle,
+									},
+								},
+							};
+
+							console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Media uploaded successfully. Header handle: ${headerHandle}`);
+						} catch (uploadError) {
+							console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to upload media to Meta:", uploadError);
+							throw new createHttpError.BadRequest(
+								`Erro ao fazer upload da mídia para o WhatsApp: ${uploadError instanceof Error ? uploadError.message : "Erro desconhecido"}`,
+							);
+						}
+					}
+				}
+
 				const metaResponse = await createWhatsappTemplateInMeta({
 					whatsappToken,
 					whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
-					template: input.template,
+					template: templateToCreate,
 				});
 				metaWhatsappTemplateId = metaResponse.whatsappTemplateId;
 			}

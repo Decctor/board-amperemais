@@ -122,7 +122,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 				)
 			) : null}
 			{view === "meta-oauth" ? <SettingsWhatsAppConnection user={user} /> : null}
-			{view === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} /> : null}
+			{view === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} membership={membership} /> : null}
 			{view === "segments" ? <SettingsSegments user={user} /> : null}
 			{view === "sales-promo-campaigns" ? <SettingsSalesPromoCampaigns user={user} /> : null}
 			{view === "organization" ? <SettingsOrg user={user} membership={membership} /> : null}

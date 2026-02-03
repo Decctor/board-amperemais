@@ -13,6 +13,7 @@ import TemplateHeaderConfig from "./Blocks/TemplateHeaderConfig";
 import TemplatePreview from "./Blocks/TemplatePreview";
 type NewWhatsappTemplateProps = {
 	user: TAuthUserSession["user"];
+	organizacaoId: string;
 	callbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -22,7 +23,7 @@ type NewWhatsappTemplateProps = {
 	closeMenu: () => void;
 };
 
-function NewWhatsappTemplate({ user, closeMenu, callbacks }: NewWhatsappTemplateProps) {
+function NewWhatsappTemplate({ user, organizacaoId, closeMenu, callbacks }: NewWhatsappTemplateProps) {
 	const { state, updateTemplate, updateComponents, updateBodyParameters, resetState } = useWhatsappTemplateState({
 		initialState: {},
 	});
@@ -74,6 +75,7 @@ function NewWhatsappTemplate({ user, closeMenu, callbacks }: NewWhatsappTemplate
 					<TemplateHeaderConfig
 						header={state.whatsappTemplate.componentes.cabecalho ?? null}
 						onHeaderChange={(header) => updateComponents({ cabecalho: header })}
+						organizacaoId={organizacaoId}
 					/>
 
 					<TemplateBodyEditor

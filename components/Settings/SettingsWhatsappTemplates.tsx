@@ -16,8 +16,9 @@ import { Button } from "../ui/button";
 
 type SettingsWhatsappTemplatesProps = {
 	user: TAuthUserSession["user"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
 };
-export default function SettingsWhatsappTemplates({ user }: SettingsWhatsappTemplatesProps) {
+export default function SettingsWhatsappTemplates({ user, membership }: SettingsWhatsappTemplatesProps) {
 	const queryClient = useQueryClient();
 	const [newWhatsappTemplateModalIsOpen, setNewWhatsappTemplateModalIsOpen] = useState(false);
 
@@ -101,6 +102,7 @@ export default function SettingsWhatsappTemplates({ user }: SettingsWhatsappTemp
 			{newWhatsappTemplateModalIsOpen ? (
 				<NewWhatsappTemplate
 					user={user}
+					organizacaoId={membership.organizacao.id}
 					closeMenu={() => setNewWhatsappTemplateModalIsOpen(false)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>

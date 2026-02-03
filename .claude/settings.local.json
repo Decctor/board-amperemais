@@ -8,7 +8,11 @@
       "Bash(ls:*)",
       "Bash(xargs:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:developers.facebook.com)",
+      "WebFetch(domain:turivishal.medium.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.postman.com)"
     ]
   }
 }

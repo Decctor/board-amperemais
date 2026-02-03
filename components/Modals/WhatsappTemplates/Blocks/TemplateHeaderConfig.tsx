@@ -6,6 +6,7 @@ import { TemplateHeaderTypeOptions } from "@/lib/whatsapp/templates";
 import type { TWhatsappTemplateHeader } from "@/schemas/whatsapp-templates";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileTextIcon, ImageIcon, PlusIcon, TextIcon, VideoIcon, X } from "lucide-react";
+import TemplateMediaUpload from "./TemplateMediaUpload";
 
 const HeaderTypeIconsMap = {
 	text: <TextIcon className="w-4 h-4" />,
@@ -16,9 +17,10 @@ const HeaderTypeIconsMap = {
 type TemplateHeaderConfigProps = {
 	header: TWhatsappTemplateHeader | null;
 	onHeaderChange: (header: TWhatsappTemplateHeader | null) => void;
+	organizacaoId: string;
 };
 
-function TemplateHeaderConfig({ header, onHeaderChange }: TemplateHeaderConfigProps) {
+function TemplateHeaderConfig({ header, onHeaderChange, organizacaoId }: TemplateHeaderConfigProps) {
 	const handleAddHeader = () => {
 		onHeaderChange({
 			tipo: "text",
@@ -79,9 +81,33 @@ function TemplateHeaderConfig({ header, onHeaderChange }: TemplateHeaderConfigPr
 							))}
 						</div>
 						{header.tipo === "text" && <TemplateHeaderConfigText header={header} onHeaderChange={onHeaderChange} />}
-						{header.tipo === "image" && <TemplateHeaderConfigMidia header={header} onHeaderChange={onHeaderChange} />}
-						{header.tipo === "video" && <TemplateHeaderConfigMidia header={header} onHeaderChange={onHeaderChange} />}
-						{header.tipo === "document" && <TemplateHeaderConfigMidia header={header} onHeaderChange={onHeaderChange} />}
+						{header.tipo === "image" && (
+							<TemplateMediaUpload
+								headerType="image"
+								currentUrl={header.conteudo || null}
+								onMediaUploaded={(url) => onHeaderChange({ ...header, conteudo: url })}
+								onMediaRemoved={() => onHeaderChange({ ...header, conteudo: "" })}
+								organizacaoId={organizacaoId}
+							/>
+						)}
+						{header.tipo === "video" && (
+							<TemplateMediaUpload
+								headerType="video"
+								currentUrl={header.conteudo || null}
+								onMediaUploaded={(url) => onHeaderChange({ ...header, conteudo: url })}
+								onMediaRemoved={() => onHeaderChange({ ...header, conteudo: "" })}
+								organizacaoId={organizacaoId}
+							/>
+						)}
+						{header.tipo === "document" && (
+							<TemplateMediaUpload
+								headerType="document"
+								currentUrl={header.conteudo || null}
+								onMediaUploaded={(url) => onHeaderChange({ ...header, conteudo: url })}
+								onMediaRemoved={() => onHeaderChange({ ...header, conteudo: "" })}
+								organizacaoId={organizacaoId}
+							/>
+						)}
 
 						{header.tipo === "text" && header.conteudo.length > 60 && (
 							<p className="w-fit self-center bg-orange-100 text-orange-500 text-xs rounded-lg px-2 py-1">
@@ -113,20 +139,3 @@ function TemplateHeaderConfigText({ header, onHeaderChange }: TemplateHeaderConf
 	);
 }
 
-type TemplateHeaderConfigMidiaProps = {
-	header: Exclude<TWhatsappTemplateHeader, null>;
-	onHeaderChange: (header: Exclude<TWhatsappTemplateHeader, null>) => void;
-};
-function TemplateHeaderConfigMidia({ header, onHeaderChange }: TemplateHeaderConfigMidiaProps) {
-	return (
-		<>
-			<TextInput
-				label="URL DA MÍDIA"
-				value={header.conteudo}
-				placeholder="URL pública da mídia (será usado como padrão)"
-				handleChange={(value) => onHeaderChange({ ...header, conteudo: value })}
-				width="100%"
-			/>
-		</>
-	);
-}

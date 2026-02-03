@@ -49,13 +49,30 @@ function TemplatePreview({ components }: TemplatePreviewProps) {
 											<p className="font-semibold text-sm text-gray-900">{cabecalho.conteudo || "Texto do cabeçalho"}</p>
 										</div>
 									) : cabecalho.tipo === "image" ? (
-										<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
-											<ImageIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
-										</div>
+										cabecalho.conteudo ? (
+											<img
+												src={cabecalho.conteudo}
+												alt="Header preview"
+												className="w-full aspect-video object-cover"
+											/>
+										) : (
+											<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
+												<ImageIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
+											</div>
+										)
 									) : cabecalho.tipo === "video" ? (
-										<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
-											<VideoIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
-										</div>
+										cabecalho.conteudo ? (
+											<video
+												src={cabecalho.conteudo}
+												className="w-full aspect-video object-cover"
+												controls
+												muted
+											/>
+										) : (
+											<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
+												<VideoIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
+											</div>
+										)
 									) : cabecalho.tipo === "document" ? (
 										<div className="px-3 pt-3">
 											<div className="flex items-center gap-2 p-2 bg-gray-500 rounded">
