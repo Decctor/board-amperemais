@@ -6,6 +6,7 @@ export function useOrganizationMembershipInvitationState() {
 		invitation: {
 			nome: "",
 			email: "",
+			vendedorAplicavel: false,
 			permissoes: {
 				empresa: {
 					visualizar: true,

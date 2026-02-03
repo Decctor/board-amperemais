@@ -105,6 +105,15 @@ export async function GET(request: NextRequest) {
 			});
 		}
 	}
+	// Checking for possible permission "resultados.escopo" ajustments
+	if (invitation.permissoes.resultados.escopo && invitation.permissoes.resultados.escopo.length === 0) {
+		// In cases where scope was defined as an empty array, that means the user has access only to him self, so we should use his ids as the solo item
+
+		await db
+			.update(organizationMembers)
+			.set({ permissoes: { ...invitation.permissoes, resultados: { ...invitation.permissoes.resultados, escopo: [invitedUserId] } } })
+			.where(and(eq(organizationMembers.usuarioId, invitedUserId), eq(organizationMembers.organizacaoId, invitation.organizacaoId)));
+	}
 	await deleteSessionTokenCookie();
 	const sessionToken = await generateSessionToken();
 	const session = await createSession({
