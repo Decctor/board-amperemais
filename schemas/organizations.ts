@@ -234,7 +234,9 @@ export const OrganizationMemberSchema = z.object({
 export const OrganizationMembershipInvitationSchema = z.object({
 	organizacaoId: z.string({ invalid_type_error: "Tipo não válido para o ID da organização." }),
 	nome: z.string({ invalid_type_error: "Tipo não válido para o nome da convite de membro da organização." }),
-	email: z.string({ invalid_type_error: "Tipo não válido para o email da convite de membro da organização." }),
+	email: z.string({ invalid_type_error: "Tipo não válido para o email da convite de membro da organização." }).email({
+		message: "Email inválido para o convite.",
+	}),
 	vendedorAplicavel: z
 		.boolean({ invalid_type_error: "Tipo não válido para se o vendedor deve ser aplicado ao convite de membro da organização." })
 		.default(false),

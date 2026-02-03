@@ -18,6 +18,8 @@ const BASE_SIZE_OPTIONS = [
 ];
 
 const ERP_OPTIONS = [
+	{ id: "online-software", label: "Online Software", value: "ONLINE_SOFTWARE" },
+	{ id: "cardapio-web", label: "Cardápio Web", value: "CARDAPIO_WEB" },
 	{ id: "bling", label: "Bling", value: "BLING" },
 	{ id: "tiny", label: "Tiny", value: "TINY" },
 	{ id: "omie", label: "Omie", value: "OMIE" },

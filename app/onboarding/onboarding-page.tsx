@@ -86,6 +86,7 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 							});
 						}}
 						isMutationPending={mutation.isPending}
+						goToPreviousStage={handleBack}
 					/>
 				);
 			default:
