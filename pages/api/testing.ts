@@ -7,8 +7,9 @@ import {
 	interactions,
 	organizationMembers,
 	sales,
+	utils,
 } from "@/services/drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // Configurações
@@ -270,6 +271,14 @@ async function fixAllDuplicates(organizacaoId: string) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+	// const deletedResult = await db
+	// 	.delete(utils)
+	// 	.where(inArray(utils.identificador, ["ONLINE_IMPORTATION", "CARDAPIO_WEB_IMPORTATION", "CARDAPIO_WEB_CATALOG_SYNC"]))
+	// 	.returning({
+	// 		id: utils.id,
+	// 	});
+
+	// const deletedCount = deletedResult.length;
 	return res.status(200).json({ message: "Hello, world!" });
 	// const organizacaoId = "4a4e8578-63f0-4119-9695-a2cc068de8d6";
 

@@ -156,21 +156,21 @@ async function handleCardapioWebImportation(
 	}
 
 	// Log the raw response for debugging
-	await db
-		.insert(utils)
-		.values({
-			organizacaoId: organizationId,
-			identificador: "CARDAPIO_WEB_IMPORTATION" as const,
-			valor: {
-				identificador: "CARDAPIO_WEB_IMPORTATION" as const,
-				dados: {
-					organizacaoId: organizationId,
-					data: dayjs().format("YYYY-MM-DD"),
-					conteudo: orderDetails,
-				},
-			},
-		})
-		.returning({ id: utils.id });
+	// await db
+	// 	.insert(utils)
+	// 	.values({
+	// 		organizacaoId: organizationId,
+	// 		identificador: "CARDAPIO_WEB_IMPORTATION" as const,
+	// 		valor: {
+	// 			identificador: "CARDAPIO_WEB_IMPORTATION" as const,
+	// 			dados: {
+	// 				organizacaoId: organizationId,
+	// 				data: dayjs().format("YYYY-MM-DD"),
+	// 				conteudo: orderDetails,
+	// 			},
+	// 		},
+	// 	})
+	// 	.returning({ id: utils.id });
 
 	// Extract and map all data
 	const {
@@ -954,22 +954,22 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 				);
 			} catch (error) {
 				console.error(`[ORG: ${organization.id}] [ERROR] CARDAPIO-WEB integration error`, error);
-				await db
-					.insert(utils)
-					.values({
-						organizacaoId: organization.id,
-						identificador: "CARDAPIO_WEB_IMPORTATION" as const,
-						valor: {
-							identificador: "CARDAPIO_WEB_IMPORTATION" as const,
-							dados: {
-								organizacaoId: organization.id,
-								data: dayjs().format("YYYY-MM-DD"),
-								erro: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-								descricao: "Tentativa de importação de pedidos do CardapioWeb.",
-							},
-						},
-					})
-					.returning({ id: utils.id });
+				// await db
+				// 	.insert(utils)
+				// 	.values({
+				// 		organizacaoId: organization.id,
+				// 		identificador: "CARDAPIO_WEB_IMPORTATION" as const,
+				// 		valor: {
+				// 			identificador: "CARDAPIO_WEB_IMPORTATION" as const,
+				// 			dados: {
+				// 				organizacaoId: organization.id,
+				// 				data: dayjs().format("YYYY-MM-DD"),
+				// 				erro: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+				// 				descricao: "Tentativa de importação de pedidos do CardapioWeb.",
+				// 			},
+				// 		},
+				// 	})
+				// 	.returning({ id: utils.id });
 			}
 			continue;
 		}
@@ -988,21 +988,21 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 				dtinicio: currentDateFormatted,
 				dtfim: currentDateFormatted,
 			});
-			await db
-				.insert(utils)
-				.values({
-					organizacaoId: organization.id,
-					identificador: "ONLINE_IMPORTATION",
-					valor: {
-						identificador: "ONLINE_IMPORTATION",
-						dados: {
-							organizacaoId: organization.id,
-							data: currentDateFormatted,
-							conteudo: onlineAPIResponse,
-						},
-					},
-				})
-				.returning({ id: utils.id });
+			// await db
+			// 	.insert(utils)
+			// 	.values({
+			// 		organizacaoId: organization.id,
+			// 		identificador: "ONLINE_IMPORTATION",
+			// 		valor: {
+			// 			identificador: "ONLINE_IMPORTATION",
+			// 			dados: {
+			// 				organizacaoId: organization.id,
+			// 				data: currentDateFormatted,
+			// 				conteudo: onlineAPIResponse,
+			// 			},
+			// 		},
+			// 	})
+			// 	.returning({ id: utils.id });
 			const OnlineSoftwareSales = z
 				.array(OnlineSoftwareSaleImportationSchema, {
 					required_error: "Payload da Online não é uma lista.",
