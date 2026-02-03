@@ -10,6 +10,7 @@ import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-o
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { toast } from "sonner";
+import z from "zod";
 import { ActuationStage } from "./components/ActuationStage";
 import { GeneralInfoStage } from "./components/GeneralInfoStage";
 import { NicheOriginStage } from "./components/NicheOriginStage";
@@ -19,7 +20,15 @@ import { SubscriptionPlansStage } from "./components/SubscriptionPlansStage";
 type OnboardingPageProps = {
 	user: unknown; // We might need this later, keeping prop signature
 };
-
+const OnboardingFirstStageValidationSchema = z.object({
+	nome: z.string({ invalid_type_error: "Tipo não válido para o nome da empresa." }).min(1, "Por favor, preencha o nome da empresa."),
+	cnpj: z
+		.string({ invalid_type_error: "Tipo não válido para o CNPJ da empresa." })
+		.min(1, "Por favor, preencha o CNPJ da empresa.")
+		.refine(isValidCNPJ, "Por favor, preencha um CNPJ válido."),
+	email: z.string({ invalid_type_error: "Tipo não válido para o email da empresa." }).email("Por favor, preencha um email válido."),
+	telefone: z.string({ invalid_type_error: "Tipo não válido para o telefone/whatsapp." }).min(1, "Por favor, preencha o telefone/whatsapp."),
+});
 export function OnboardingPage({ user }: OnboardingPageProps) {
 	const { state, updateOrganization, updateOrganizationLogoHolder, updateOrganizationOnboarding, goToNextStage, goToPreviousStage } =
 		useOrganizationOnboardingState({});
@@ -37,10 +46,12 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 
 	const handleNext = () => {
 		if (state.stage === "organization-general-info") {
-			if (!state.organization.nome) return toast.error("Por favor, preencha o nome da empresa.");
-			if (isValidCNPJ(state.organization.cnpj)) return toast.error("O CNPJ da empresa é inválido.");
-			if (!state.organization.email) return toast.error("Por favor, preencha o email corporativo da empresa.");
-			if (!state.organization.telefone) return toast.error("Por favor, preencha o telefone/whatsapp da empresa.");
+			const firstStageValidation = OnboardingFirstStageValidationSchema.safeParse(state.organization);
+			console.log(firstStageValidation);
+			if (!firstStageValidation.success) {
+				const firstIssue = firstStageValidation.error.issues?.[0];
+				return toast.error(firstIssue?.message ?? "Ocorreu um erro de validação.");
+			}
 			goToNextStage();
 		}
 		if (state.stage === "subscription-plans-section") {
