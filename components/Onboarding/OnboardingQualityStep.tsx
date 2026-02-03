@@ -1,23 +1,35 @@
 import type { TOnboardingQualityStep } from "@/app/api/organizations/onboarding-quality/route";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Check, ArrowRight } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 
 type OnboardingQualityStepProps = {
 	step: TOnboardingQualityStep;
 	isActive: boolean;
+	isOpened: boolean;
+	onClick?: () => void;
 	onActionClick?: () => void;
 };
 
-export function OnboardingQualityStep({ step, isActive, onActionClick }: OnboardingQualityStepProps) {
+export function OnboardingQualityStep({ step, isActive, isOpened, onClick, onActionClick }: OnboardingQualityStepProps) {
 	return (
 		<div
 			className={cn(
-				"group flex items-start gap-4 p-3 transition-all duration-300 rounded-xl border border-transparent",
-				isActive && "bg-secondary/40 border-border/40",
-				!isActive && !step.completed && "opacity-60 hover:opacity-100",
+				"group flex items-start gap-4 p-3 transition-all duration-300 rounded-xl border border-transparent cursor-pointer",
+				isOpened && "bg-secondary/40 border-border/40",
+				!isOpened && !step.completed && "opacity-60 hover:opacity-100",
 			)}
+			onClick={onClick}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					onClick?.();
+				}
+			}}
+			role="button"
+			tabIndex={0}
 		>
 			<div className="flex-shrink-0">
 				{step.completed ? (
@@ -44,23 +56,36 @@ export function OnboardingQualityStep({ step, isActive, onActionClick }: Onboard
 					{step.title}
 				</p>
 
-				{isActive && (
-					<div className=" space-y-3 animate-in fade-in slide-in-from-top-1 duration-300">
-						<p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
-						<Button
-							asChild
-							size="sm"
-							variant="default"
-							className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
-							onClick={onActionClick}
+				<AnimatePresence initial={false}>
+					{isOpened && (
+						<motion.div
+							initial={{ height: 0, opacity: 0, marginTop: 0 }}
+							animate={{ height: "auto", opacity: 1, marginTop: 12 }}
+							exit={{ height: 0, opacity: 0, marginTop: 0 }}
+							transition={{ duration: 0.25, ease: "easeOut" }}
+							className="overflow-hidden"
 						>
-							<Link href={step.actionUrl} className="flex items-center gap-1.5">
-								{step.actionLabel}
-								<ArrowRight className="w-3 h-3 text-brand-foreground/70" />
-							</Link>
-						</Button>
-					</div>
-				)}
+							<div className="space-y-3">
+								<p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
+								<Button
+									asChild
+									size="sm"
+									variant="default"
+									className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
+									onClick={(e) => {
+										e.stopPropagation();
+										onActionClick?.();
+									}}
+								>
+									<Link href={step.actionUrl} className="flex items-center gap-1.5">
+										{step.actionLabel}
+										<ArrowRight className="w-3 h-3 text-brand-foreground/70" />
+									</Link>
+								</Button>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>
 			</div>
 		</div>
 	);

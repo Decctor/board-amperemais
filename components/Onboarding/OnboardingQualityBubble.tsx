@@ -75,6 +75,20 @@ export function OnboardingQualityBubble() {
 		return data.steps.findIndex((step) => !step.completed);
 	}, [data?.steps]);
 
+	// User-controllable opened step - initializes with active step
+	const [openedStepIndex, setOpenedStepIndex] = useState<number | null>(null);
+
+	// Sync openedStepIndex with activeStepIndex when it changes (e.g., on initial load)
+	useEffect(() => {
+		if (activeStepIndex !== -1 && openedStepIndex === null) {
+			setOpenedStepIndex(activeStepIndex);
+		}
+	}, [activeStepIndex, openedStepIndex]);
+
+	const handleStepClick = (index: number) => {
+		setOpenedStepIndex((prev) => (prev === index ? null : index));
+	};
+
 	if (isLoading || isDismissed || data?.allCompleted) {
 		return null;
 	}
@@ -155,7 +169,14 @@ export function OnboardingQualityBubble() {
 					{/* Steps List */}
 					<div className="flex flex-col gap-1 px-2 pb-4 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-secondary scrollbar-track-transparent">
 						{steps.map((step, index) => (
-							<OnboardingQualityStep key={step.id} step={step} isActive={index === activeStepIndex} onActionClick={handleActionClick} />
+							<OnboardingQualityStep
+								key={step.id}
+								step={step}
+								isActive={index === activeStepIndex}
+								isOpened={index === openedStepIndex}
+								onClick={() => handleStepClick(index)}
+								onActionClick={handleActionClick}
+							/>
 						))}
 					</div>
 					<div className="w-full flex items-center justify-center bg-green-50 px-4 py-3">
