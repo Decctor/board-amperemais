@@ -1,4 +1,5 @@
 "use client";
+import CampaignSection from "@/app/_components/CampaignSection";
 import CashbackSection from "@/app/_components/CashbackSection";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -20,14 +21,12 @@ import {
 	ChevronDown,
 	CirclePlus,
 	Clock,
-	Crown,
 	FileSpreadsheet,
 	Grid3X3,
 	Handshake,
 	Lightbulb,
 	Lock,
 	MessageCircle,
-	MessageSquare,
 	Package,
 	PieChart,
 	Shield,
@@ -249,46 +248,7 @@ export default function LandingPage() {
 			<CashbackSection />
 
 			{/* Feature: Campanhas */}
-			<section id="campanhas" className="py-20 bg-zinc-950 border-y border-white/5 relative overflow-hidden">
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="grid lg:grid-cols-2 gap-16 items-center">
-						<div className="relative order-1">
-							<AnimatedCampaignWireframe />
-							<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-blue-500/10 blur-3xl -z-10 rounded-full" />
-						</div>
-
-						<div className="order-2">
-							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6 backdrop-blur-sm">
-								<Zap className="w-4 h-4" />
-								Campanhas de Reativação
-							</div>
-							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								Cliente sumiu? <br />
-								<span className="text-white/50">O sistema traz de volta.</span>
-							</h2>
-							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								Defina: "cliente inativo há 30 dias recebe R$ 15 de cashback + mensagem no WhatsApp". O resto é automático. Você configura uma vez e funciona
-								para sempre.
-							</p>
-
-							<div className="grid gap-6 mb-8">
-								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-blue-500/40 transition-colors">
-									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<MessageSquare className="w-4 h-4 text-blue-400" /> Reativação Automática
-									</h4>
-									<p className="text-sm text-white/60">O sistema identifica quem parou de comprar e dispara cashback + mensagem. Sem você precisar lembrar.</p>
-								</div>
-								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-blue-500/40 transition-colors">
-									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<Crown className="w-4 h-4 text-yellow-400" /> Datas Comemorativas
-									</h4>
-									<p className="text-sm text-white/60">Aniversário do cliente, Black Friday, datas especiais. Configure uma vez, roda todo ano.</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
+			<CampaignSection />
 
 			{/* Feature: Whatsapp Hub */}
 			<section id="whatsapp-hub" className="py-20 bg-black relative overflow-hidden">
@@ -1222,104 +1182,6 @@ function AnimatedRFMWireframe() {
 }
 
 
-// Animated Campaign Flow Wireframe
-function AnimatedCampaignWireframe() {
-	const containerRef = useRef<HTMLDivElement>(null);
-	const [step, setStep] = useState(0);
-	const [typedText, setTypedText] = useState("");
-	const fullMessage = '"Oi Maria! 🌟 Sentimos sua falta. Estou liberando R$ 25,00 de cashback extra para você voltar!"';
-
-	useGSAP(
-		() => {
-			gsap.ticker.lagSmoothing(1000, 16);
-
-			const runAnimation = () => {
-				setStep(0);
-				setTypedText("");
-
-				const tl = gsap.timeline({ onComplete: () => setTimeout(runAnimation, 3000) });
-
-				// Trigger card pulses
-				tl.to(".trigger-card", { borderColor: "rgba(59, 130, 246, 0.5)", duration: 0.5, repeat: 2, yoyo: true, ease: "sine.inOut" });
-
-				// Arrow draws
-				tl.call(() => setStep(1));
-				tl.fromTo(".flow-arrow", { scaleY: 0, transformOrigin: "top" }, { scaleY: 1, duration: 0.4, ease: "power2.out", force3D: true }, "+=0.2");
-
-				// Message card appears
-				tl.call(() => setStep(2));
-				tl.fromTo(
-					".message-card",
-					{ opacity: 0, y: 20, scale: 0.9, rotate: -3 },
-					{ opacity: 1, y: 0, scale: 1, rotate: -1, duration: 0.5, ease: "back.out(1.7)", force3D: true },
-					"+=0.2",
-				);
-
-				// Typewriter effect
-				tl.call(() => {
-					let i = 0;
-					const typeInterval = setInterval(() => {
-						if (i < fullMessage.length) {
-							setTypedText(fullMessage.slice(0, i + 1));
-							i++;
-						} else {
-							clearInterval(typeInterval);
-						}
-					}, 30);
-				});
-
-				tl.to({}, { duration: fullMessage.length * 0.03 + 0.5 });
-				tl.to({}, { duration: 2 });
-			};
-
-			runAnimation();
-		},
-		{ scope: containerRef },
-	);
-
-	return (
-		<div ref={containerRef} className="relative z-10 w-full max-w-md mx-auto">
-			<div className="flex flex-col gap-4">
-				<div
-					className="trigger-card bg-zinc-900/80 border border-white/10 p-4 rounded-xl backdrop-blur-sm transform translate-x-4 transition-all"
-					style={{ willChange: "border-color" }}
-				>
-					<div className="flex items-center justify-between mb-2">
-						<div className="text-xs font-bold text-blue-400 uppercase tracking-wider">Gatilho: Cliente Inativo (30 dias)</div>
-						<Zap className={cn("w-4 h-4 text-blue-400 transition-opacity", step >= 1 ? "opacity-100" : "opacity-50")} />
-					</div>
-					<div className="text-sm text-white/60">Cliente Maria não compra há 30 dias</div>
-				</div>
-
-				<div className="flex justify-center -my-2 z-0">
-					<div
-						className="flow-arrow h-8 w-px bg-gradient-to-b from-white/40 to-white/10"
-						style={{ willChange: "transform", transform: step >= 1 ? "scaleY(1)" : "scaleY(0)" }}
-					/>
-				</div>
-
-				<div
-					className={cn(
-						"message-card bg-[#24549C] p-6 rounded-2xl shadow-2xl transform transition-all duration-300",
-						step >= 2 ? "opacity-100" : "opacity-0",
-					)}
-					style={{ willChange: "transform, opacity", rotate: "-1deg" }}
-				>
-					<div className="flex items-center gap-3 mb-4">
-						<div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-							<MessageCircle className="w-4 h-4 text-white" />
-						</div>
-						<div className="text-sm font-medium text-white/80">Mensagem Enviada</div>
-					</div>
-					<p className="text-white text-lg font-medium leading-snug min-h-[4.5rem]">
-						{typedText || " "}
-						{step >= 2 && typedText.length < fullMessage.length && <span className="animate-pulse">|</span>}
-					</p>
-				</div>
-			</div>
-		</div>
-	);
-}
 
 // Animated WhatsApp Chat Wireframe
 function AnimatedChatWireframe() {
