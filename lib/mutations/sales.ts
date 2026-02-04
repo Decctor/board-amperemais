@@ -1,4 +1,7 @@
-import type { TCreatePointOfInteractionNewSaleInput, TCreatePointOfInteractionNewSaleOutput } from "@/app/api/point-of-interaction/new-sale/route";
+import type {
+	TCreatePointOfInteractionTransactionInput,
+	TCreatePointOfInteractionTransactionOutput,
+} from "@/app/api/point-of-interaction/new-transaction/route";
 import type { TCreateSaleInput, TCreateSaleOutput } from "@/pages/api/sales";
 import axios from "axios";
 
@@ -25,7 +28,7 @@ export async function createSale(input: TCreateSaleInput) {
 	}
 }
 
-export async function createPointOfInteractionSale(input: TCreatePointOfInteractionNewSaleInput) {
+export async function createPointOfInteractionSale(input: TCreatePointOfInteractionTransactionInput) {
 	try {
 		// Client side checkings
 		if (!input.orgId) {
@@ -43,7 +46,7 @@ export async function createPointOfInteractionSale(input: TCreatePointOfInteract
 		if (!input.operatorIdentifier) {
 			throw new Error("Identificador do operador não informado.");
 		}
-		const { data } = await axios.post<TCreatePointOfInteractionNewSaleOutput>("/api/point-of-interaction/new-sale", input);
+		const { data } = await axios.post<TCreatePointOfInteractionTransactionOutput>("/api/point-of-interaction/new-transaction", input);
 		return data;
 	} catch (error) {
 		console.log("Error running createPointOfInteractionSale", error);

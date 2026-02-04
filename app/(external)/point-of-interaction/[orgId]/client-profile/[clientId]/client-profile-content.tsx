@@ -1,46 +1,34 @@
 "use client";
 
-import type {
-	TCreateCashbackProgramRedemptionInput,
-	TCreateCashbackProgramRedemptionOutput,
-} from "@/app/api/cashback-programs/transactions/redemption/route";
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
-import { LoadingButton } from "@/components/loading-button";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatToMoney, formatToNumericPassword, formatToPhone } from "@/lib/formatting";
-import { createCashbackProgramRedemption } from "@/lib/mutations/cashback-programs";
-import { cn } from "@/lib/utils";
-import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
-import { useMutation } from "@tanstack/react-query";
 import {
-	AlertTriangle,
 	ArrowLeft,
 	ArrowRight,
 	Award,
-	CheckCircle2,
+	Banknote,
+	Calendar,
+	Clock,
 	History,
-	LockIcon,
-	PartyPopper,
-	Plus,
+	ShoppingBag,
 	ShoppingCart,
+	TrendingDown,
 	TrendingUp,
+	UserRound,
 	Wallet,
-	X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { toast } from "sonner";
-import useSound from "use-sound";
+
+import { Button } from "@/components/ui/button";
+import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { cn } from "@/lib/utils";
+import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
 
 // --- Tipagens ---
 
 type Transaction = {
 	id: string;
-	tipo: "ACÚMULO" | "RESGATE" | "EXPIRAÇÃO";
+	tipo: "ACÚMULO" | "RESGATE" | "EXPIRAÇÃO" | "CANCELAMENTO";
 	status: "ATIVO" | "CONSUMIDO" | "EXPIRADO";
 	valor: number;
 	dataInsercao: Date;
@@ -55,6 +43,10 @@ type ClientProfileContentProps = {
 		nome: string;
 		telefone: string;
 		email: string | null;
+		dataInsercao: Date | null;
+		metadataTotalCompras: number | null;
+		metadataValorTotalCompras: number | null;
+		ultimaCompraData: Date | null;
 	};
 	balance: {
 		saldoValorDisponivel: number;
@@ -69,33 +61,32 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 	const router = useRouter();
 
 	const allowAccumulation = cashbackProgram.acumuloPermitirViaPontoIntegracao;
-	// Estados para o fluxo de resgate
-	const [showRedemptionMenu, setShowRedemptionMenu] = useState(false);
-	const [selectedRedemptionValue, setSelectedRedemptionValue] = useState<number>(0);
-	const [operatorPassword, setOperatorPassword] = useState("");
-	const [redemptionIsLoading, setRedemptionIsLoading] = useState(false);
-
-	// --- Handlers de Lógica ---
-
-	const handleRedemptionClick = (value: number) => {
-		if (balance.saldoValorDisponivel < value) {
-			toast.error("Saldo insuficiente para este resgate.");
-			return;
-		}
-		setSelectedRedemptionValue(value);
-		setShowRedemptionMenu(true);
-	};
-
-	const handleCloseRedemptionMenu = () => {
-		setShowRedemptionMenu(false);
-		setSelectedRedemptionValue(0);
-	};
 
 	const clientHasNoAvailableBalance = balance.saldoValorDisponivel <= 0;
+
+	const daysSinceCreation = client.dataInsercao
+		? Math.floor((new Date().getTime() - new Date(client.dataInsercao).getTime()) / (1000 * 60 * 60 * 24))
+		: 0;
+
+	const daysSinceLastPurchase = client.ultimaCompraData
+		? Math.floor((new Date().getTime() - new Date(client.ultimaCompraData).getTime()) / (1000 * 60 * 60 * 24))
+		: null;
+
+	const formatRecency = (days: number | null) => {
+		if (days === null) return <span className="text-sm text-muted-foreground font-bold italic">Nunca comprou</span>;
+		if (days === 0) return "Hoje";
+		if (days === 1) return "Ontem";
+		if (days < 30) return `${days} dias atrás`;
+		if (days < 60) return "1 mês atrás";
+		if (days < 365) return `${Math.floor(days / 30)} meses atrás`;
+		if (days < 730) return "1 ano atrás";
+		return `${Math.floor(days / 365)} anos atrás`;
+	};
+
 	return (
 		<div className="h-full bg-slate-50 p-4 md:p-6 flex flex-col items-center overflow-hidden">
 			<div className="w-full max-w-6xl flex flex-col gap-4 h-full min-h-0">
-				{/* 1. HEADER: Informações e Status (Conforme Rascunho) */}
+				{/* 1. HEADER: Informações e Status */}
 				<header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-4 rounded-4xl shadow-sm border border-slate-100 shrink-0">
 					<div className="flex items-center gap-3">
 						<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2">
@@ -125,25 +116,24 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 						</div>
 					</div>
 				</header>
-				{/* 2. BOTÃO CENTRAL: Ação de Nova Compra */}
 
-				{allowAccumulation ? (
-					<Button
-						onClick={() => router.push(`/point-of-interaction/${orgId}/new-sale?clientId=${client.id}`)}
-						className="w-full h-16 rounded-2xl shadow-lg shadow-brand/20 group transition-all border-none bg-brand text-brand-foreground hover:bg-brand/90 shrink-0"
-					>
-						<div className="flex items-center gap-3 text-left">
-							<div className="bg-brand-foreground p-2 rounded-xl group-hover:scale-110 transition-transform">
-								<ShoppingCart className="w-6 h-6 text-brand" />
-							</div>
-							<div>
-								<span className="block text-xl font-black text-brand-foreground italic leading-none uppercase">Nova Compra</span>
-								<span className="text-[0.65rem] font-bold text-muted-foreground uppercase tracking-widest">Registre pontos e acumule cashback</span>
-							</div>
+				{/* 2. BOTÃO CENTRAL: Ação de Nova Compra */}
+				<Button
+					onClick={() => router.push(`/point-of-interaction/${orgId}/new-sale?clientId=${client.id}`)}
+					className="w-full h-16 rounded-2xl shadow-lg shadow-brand/20 group transition-all border-none bg-brand text-brand-foreground hover:bg-brand/90 shrink-0"
+				>
+					<div className="flex items-center gap-3 text-left">
+						<div className="bg-brand-foreground p-2 rounded-xl group-hover:scale-110 transition-transform">
+							<ShoppingCart className="w-6 h-6 text-brand" />
 						</div>
-						<ArrowRight className="ml-auto mr-3 w-6 h-6 text-brand-foreground opacity-50 group-hover:translate-x-2 transition-transform" />
-					</Button>
-				) : null}
+						<div>
+							<span className="block text-xl font-black text-brand-foreground italic leading-none uppercase">Nova Compra</span>
+							<span className="text-[0.65rem] font-bold text-muted-foreground uppercase tracking-widest">Registre pontos e acumule cashback</span>
+						</div>
+					</div>
+					<ArrowRight className="ml-auto mr-3 w-6 h-6 text-brand-foreground opacity-50 group-hover:translate-x-2 transition-transform" />
+				</Button>
+
 				{/* Banner de saldo zerado */}
 				{clientHasNoAvailableBalance && (
 					<div className="mb-6 p-5 bg-linear-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl shadow-sm shrink-0 relative overflow-hidden">
@@ -161,62 +151,95 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 						</div>
 					</div>
 				)}
+
 				{/* 3. GRID INFERIOR: Resgates e Histórico */}
 				<div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch flex-1 min-h-0">
-					{/* Seção de Resgate Rápido (Lado Esquerdo) */}
-					<section className="md:col-span-5 bg-card rounded-4xl p-6 shadow-sm border border-brand/20 flex flex-col min-h-0 overflow-hidden">
-						<div className="flex items-center gap-3 mb-4 shrink-0">
-							<div className="p-2 bg-green-50 rounded-lg text-green-600">
-								<TrendingUp className="w-5 h-5" />
+					{/* Seção de Resumo (Lado Esquerdo) */}
+					<section className="md:col-span-5 bg-white rounded-4xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-hidden">
+						<div className="flex items-center gap-3 mb-6 shrink-0">
+							<div className="p-2 bg-brand/5 rounded-lg text-brand">
+								<UserRound className="w-5 h-5" />
 							</div>
-							<h2 className="text-lg font-black text-black uppercase italic">PAINEL DE RESGATES</h2>
+							<h2 className="text-lg font-black text-black uppercase italic">SOBRE VOCÊ</h2>
 						</div>
 
-						<div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1">
-							<Button
-								onClick={() => handleRedemptionClick(balance.saldoValorDisponivel)}
-								disabled={clientHasNoAvailableBalance}
-								variant="outline"
-								className={cn(
-									"h-14 rounded-xl border-2 font-black text-lg flex justify-between items-center px-4 transition-all duration-300 shrink-0",
-									!clientHasNoAvailableBalance
-										? "bg-brand hover:bg-green-600 hover:text-white text-white"
-										: "opacity-50 bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed",
-								)}
-							>
-								<span className="flex items-center gap-2">
-									{clientHasNoAvailableBalance && <LockIcon className="w-4 h-4 text-slate-400" />}
-									<span>RESGATE PERSONALIZADO</span>
+						<div className="grid grid-cols-2 gap-4">
+							{/* Card 1: Total Acumulado */}
+							<div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col gap-1">
+								<div className="flex items-center gap-2 mb-1">
+									<div className="p-1.5 rounded-md bg-green-100 text-green-700">
+										<TrendingUp className="w-3.5 h-3.5" />
+									</div>
+									<span className="text-[0.6rem] font-bold text-muted-foreground uppercase tracking-wider">Total Acumulado</span>
+								</div>
+								<span className="text-xl font-black text-green-700">{formatToMoney(balance.saldoValorAcumuladoTotal)}</span>
+							</div>
+
+							{/* Card 2: Total Resgatado */}
+							<div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col gap-1">
+								<div className="flex items-center gap-2 mb-1">
+									<div className="p-1.5 rounded-md bg-orange-100 text-orange-700">
+										<TrendingDown className="w-3.5 h-3.5" />
+									</div>
+									<span className="text-[0.6rem] font-bold text-muted-foreground uppercase tracking-wider">Total Utilizado</span>
+								</div>
+								<span className="text-xl font-black text-orange-700">{formatToMoney(balance.saldoValorResgatadoTotal)}</span>
+							</div>
+
+							{/* Card 3: Total Compras */}
+							<div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col gap-1">
+								<div className="flex items-center gap-2 mb-1">
+									<div className="p-1.5 rounded-md bg-blue-100 text-blue-700">
+										<ShoppingBag className="w-3.5 h-3.5" />
+									</div>
+									<span className="text-[0.6rem] font-bold text-muted-foreground uppercase tracking-wider">Total Compras</span>
+								</div>
+								<span className="text-xl font-black text-slate-800">{client.metadataTotalCompras ?? 0}</span>
+							</div>
+
+							{/* Card 4: Total Investido (LTV) */}
+							<div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col gap-1">
+								<div className="flex items-center gap-2 mb-1">
+									<div className="p-1.5 rounded-md bg-emerald-100 text-emerald-700">
+										<Banknote className="w-3.5 h-3.5" />
+									</div>
+									<span className="text-[0.6rem] font-bold text-muted-foreground uppercase tracking-wider">Total Investido</span>
+								</div>
+								<span className="text-xl font-black text-emerald-700">{formatToMoney(client.metadataValorTotalCompras ?? 0)}</span>
+							</div>
+
+							{/* Card 5: Última Compra (Recência) */}
+							<div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col gap-1">
+								<div className="flex items-center gap-2 mb-1">
+									<div className="p-1.5 rounded-md bg-amber-100 text-amber-700">
+										<Clock className="w-3.5 h-3.5" />
+									</div>
+									<span className="text-[0.6rem] font-bold text-muted-foreground uppercase tracking-wider">Última Compra</span>
+								</div>
+								<span className="text-xl font-black text-slate-800">{formatRecency(daysSinceLastPurchase)}</span>
+							</div>
+
+							{/* Card 6: Dias como membro */}
+							<div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col gap-1">
+								<div className="flex items-center gap-2 mb-1">
+									<div className="p-1.5 rounded-md bg-purple-100 text-purple-700">
+										<Calendar className="w-3.5 h-3.5" />
+									</div>
+									<span className="text-[0.6rem] font-bold text-muted-foreground uppercase tracking-wider">Fidelidade</span>
+								</div>
+								<span className="text-xl font-black text-slate-800">
+									{daysSinceCreation} <span className="text-xs font-bold text-muted-foreground">dias</span>
 								</span>
-							</Button>
-							{[10, 20, 30, 50].map((value) => {
-								const isDisabled = balance.saldoValorDisponivel < value;
-								return (
-									<Button
-										key={value}
-										onClick={() => handleRedemptionClick(value)}
-										disabled={isDisabled}
-										variant="outline"
-										className={cn(
-											"h-14 rounded-xl border-2 font-black text-lg flex justify-between items-center px-4 transition-all duration-300 shrink-0",
-											!isDisabled
-												? "bg-brand hover:bg-green-600 hover:text-white text-white"
-												: "opacity-50 bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed",
-										)}
-									>
-										<span className="flex items-center gap-2">
-											{isDisabled && <LockIcon className="w-4 h-4 text-slate-400" />}
-											<span>RESGATE {value}</span>
-										</span>
-										<span>{formatToMoney(value)}</span>
-									</Button>
-								);
-							})}
+							</div>
 						</div>
-						<div className="mt-4 p-3 bg-brand/5 rounded-xl border border-brand/20 text-center shrink-0">
-							<p className="text-[0.6rem] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
-								Atenção: Todos os resgates devem ser <br /> validados pelo operador da loja.
-							</p>
+
+						<div className="mt-auto pt-6">
+							<div className="p-4 bg-brand/5 rounded-2xl border border-brand/10">
+								<p className="text-xs text-center font-medium text-muted-foreground leading-relaxed">
+									Você já faz parte do programa há <span className="font-bold text-brand">{daysSinceCreation} dias</span> e já realizou{" "}
+									<span className="font-bold text-brand">{client.metadataTotalCompras ?? 0} compras</span> conosco.
+								</p>
+							</div>
 						</div>
 					</section>
 
@@ -262,404 +285,6 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 					</section>
 				</div>
 			</div>
-
-			{/* 4. MODAL DE CONFIRMAÇÃO DE RESGATE */}
-			{showRedemptionMenu && (
-				<NewCashbackProgramRedemption
-					orgId={orgId}
-					clientId={client.id}
-					clientAvailableBalance={balance.saldoValorDisponivel}
-					initialRedemptionValue={selectedRedemptionValue}
-					redemptionLimit={{
-						tipo: cashbackProgram.resgateLimiteTipo ?? null,
-						valor: cashbackProgram.resgateLimiteValor ?? null,
-					}}
-					callbacks={{
-						onSuccess() {
-							handleCloseRedemptionMenu();
-							router.refresh();
-						},
-					}}
-					closeMenu={handleCloseRedemptionMenu}
-				/>
-			)}
 		</div>
-	);
-}
-
-type NewCashbackProgramRedemptionProps = {
-	orgId: string;
-	clientId: string;
-	clientAvailableBalance: number;
-	initialRedemptionValue: number;
-	redemptionLimit: {
-		tipo: string | null;
-		valor: number | null;
-	};
-	callbacks: {
-		onMutate?: () => void;
-		onSuccess?: () => void;
-		onError?: () => void;
-		onSettled?: () => void;
-	};
-	closeMenu: () => void;
-};
-function NewCashbackProgramRedemption({
-	orgId,
-	clientId,
-	clientAvailableBalance,
-	initialRedemptionValue,
-	redemptionLimit,
-	callbacks,
-	closeMenu,
-}: NewCashbackProgramRedemptionProps) {
-	const [infoHolder, setInfoHolder] = useState<TCreateCashbackProgramRedemptionInput>({
-		orgId,
-		clientId,
-		saleValue: 0,
-		redemptionValue: initialRedemptionValue,
-		operatorIdentifier: "",
-	});
-	const [successData, setSuccessData] = useState<Awaited<TCreateCashbackProgramRedemptionOutput>["data"] | null>(null);
-	const [step, setStep] = useState<1 | 2 | 3>(1);
-
-	const [playSuccess] = useSound("/sounds/success.mp3");
-
-	// Calculate max allowed redemption based on limit config
-	const getMaxAllowedRedemption = () => {
-		let maxByLimit = Number.MAX_SAFE_INTEGER; // No limit by default
-		if (redemptionLimit.tipo && redemptionLimit.valor !== null) {
-			if (redemptionLimit.tipo === "FIXO") {
-				maxByLimit = redemptionLimit.valor;
-			} else if (redemptionLimit.tipo === "PERCENTUAL" && infoHolder.saleValue > 0) {
-				maxByLimit = (infoHolder.saleValue * redemptionLimit.valor) / 100;
-			}
-		}
-		return Math.min(clientAvailableBalance, maxByLimit);
-	};
-
-	const getLimitDescription = () => {
-		if (!redemptionLimit.tipo || redemptionLimit.valor === null) return null;
-		if (redemptionLimit.tipo === "FIXO") {
-			return `Limite máximo: ${formatToMoney(redemptionLimit.valor)}`;
-		}
-		return `Limite máximo: ${redemptionLimit.valor}% do valor da compra`;
-	};
-
-	const isExceedingLimit = () => {
-		const maxAllowed = getMaxAllowedRedemption();
-		return infoHolder.redemptionValue > maxAllowed;
-	};
-
-	function updateInfoHolder(changes: Partial<TCreateCashbackProgramRedemptionInput>) {
-		setInfoHolder((prev) => ({ ...prev, ...changes }));
-	}
-
-	const { mutate: handleCreateCashbackProgramRedemptionMutation, isPending: isCreatingCashbackProgramRedemption } = useMutation({
-		mutationKey: ["create-cashback-program-redemption"],
-		mutationFn: createCashbackProgramRedemption,
-		onMutate: async () => {
-			if (callbacks?.onMutate) callbacks.onMutate();
-			return;
-		},
-		onSuccess: async (data) => {
-			playSuccess();
-			setSuccessData(data.data);
-			toast.success(data.message);
-			return;
-		},
-		onError: async (error) => {
-			if (callbacks?.onError) callbacks.onError();
-			return toast.error(getErrorMessage(error));
-		},
-		onSettled: async () => {
-			if (callbacks?.onSettled) callbacks.onSettled();
-			return;
-		},
-	});
-	const valueHelpers = [10, 25, 50, 100];
-	const saleValueIsValid = infoHolder.saleValue > 0;
-	const redemptionIsOverBalance = infoHolder.redemptionValue > clientAvailableBalance;
-	const redemptionIsOverLimit = isExceedingLimit();
-	const redemptionIsValid = infoHolder.redemptionValue > 0 && !redemptionIsOverBalance && !redemptionIsOverLimit;
-	const operatorPasswordIsValid = infoHolder.operatorIdentifier.length > 0;
-	const maxAllowedRedemption = getMaxAllowedRedemption();
-	return (
-		<ResponsiveMenuV2
-			menuTitle={successData ? "" : "VALIDAR RESGATE"}
-			menuDescription={successData ? "" : `Confirme o resgate de ${formatToMoney(infoHolder.redemptionValue)} para este cliente.`}
-			menuActionButtonText="CONFIRMAR E BAIXAR"
-			menuCancelButtonText="CANCELAR"
-			closeMenu={closeMenu}
-			actionFunction={() => handleCreateCashbackProgramRedemptionMutation(infoHolder)}
-			actionIsLoading={isCreatingCashbackProgramRedemption}
-			stateIsLoading={false}
-			stateError={null}
-			dialogVariant="sm"
-			dialogShowFooter={false}
-			drawerShowFooter={false}
-			successContent={
-				successData ? (
-					<div className="flex flex-col items-center text-center space-y-6 animate-in zoom-in duration-300">
-						<div className="relative">
-							<div className="absolute inset-0 bg-green-500/20 blur-2xl rounded-full scale-125 animate-pulse" />
-							<div className="relative bg-green-600 p-6 rounded-full text-white shadow-xl shadow-green-600/20">
-								<CheckCircle2 className="w-12 h-12" />
-							</div>
-							<div className="absolute -top-2 -right-2 bg-yellow-400 p-2 rounded-xl text-yellow-900 shadow-md">
-								<PartyPopper className="w-4 h-4" />
-							</div>
-						</div>
-
-						<div className="space-y-1">
-							<h3 className="text-2xl font-black uppercase tracking-tight text-green-700">RESGATE REALIZADO!</h3>
-							<p className="text-muted-foreground font-bold text-sm">O saldo foi baixado com sucesso.</p>
-						</div>
-
-						<div className="w-full flex items-center gap-3">
-							<div className="w-1/2 bg-green-50 border-2 border-green-200 rounded-2xl p-4">
-								<p className="text-[0.6rem] font-black text-green-600 uppercase tracking-widest mb-1">VALOR RESGATADO</p>
-								<p className="text-3xl font-black text-green-700">{formatToMoney(infoHolder.redemptionValue)}</p>
-							</div>
-							<div className="w-1/2 bg-brand/5 border-2 border-brand/20 rounded-2xl p-4">
-								<p className="text-[0.6rem] font-black text-brand uppercase tracking-widest mb-1">SALDO DISPONÍVEL</p>
-								<p className="text-3xl font-black text-brand">{formatToMoney(successData.newBalance)}</p>
-							</div>
-						</div>
-
-						<Button
-							onClick={() => {
-								if (callbacks?.onSuccess) callbacks.onSuccess();
-								closeMenu();
-							}}
-							size="lg"
-							className="w-full rounded-2xl h-16 text-lg font-black shadow-lg uppercase tracking-wider"
-						>
-							VOLTAR AO PERFIL
-						</Button>
-					</div>
-				) : null
-			}
-		>
-			<form
-				className="w-full flex flex-col gap-3"
-				onSubmit={(e) => {
-					e.preventDefault();
-					if (step === 1 && saleValueIsValid) {
-						setStep(2);
-						return;
-					}
-					if (step === 2 && redemptionIsValid) {
-						setStep(3);
-						return;
-					}
-					if (step === 3 && operatorPasswordIsValid) {
-						handleCreateCashbackProgramRedemptionMutation(infoHolder);
-					}
-				}}
-			>
-				<button type="submit" className="hidden" />
-				<div className="w-full flex items-center justify-between mb-2">
-					{[1, 2, 3].map((s) => (
-						<div
-							key={s}
-							className={cn(
-								"flex flex-col items-center gap-1 w-full relative",
-								s < 3 &&
-									"after:content-[''] after:w-[calc(100%-2rem)] after:h-1 after:bg-slate-100 after:absolute after:top-3 after:left-[calc(50%+1rem)] after:-z-10",
-								s < step && "after:bg-brand/20",
-							)}
-						>
-							<div
-								className={cn(
-									"w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
-									s === step ? "bg-brand text-white" : s < step ? "bg-brand/20 text-brand" : "bg-slate-100 text-slate-400",
-								)}
-							>
-								{s < step ? <CheckCircle2 className="w-4 h-4" /> : s}
-							</div>
-							<span
-								className={cn("text-[0.6rem] uppercase font-bold tracking-wider", s === step ? "text-brand" : s < step ? "text-brand/60" : "text-slate-300")}
-							>
-								{s === 1 ? "Venda" : s === 2 ? "Resgate" : "Senha"}
-							</span>
-						</div>
-					))}
-				</div>
-				{step === 1 && (
-					<div className="w-full flex flex-col gap-4">
-						<div className="w-full flex flex-col gap-1.5">
-							<h2 className="text-xl font-medium uppercase tracking-tight text-center">Qual o valor da compra?</h2>
-							<div className="relative max-w-md mx-auto">
-								<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
-								<Input
-									type="number"
-									value={infoHolder.saleValue.toString()}
-									onChange={(e) => updateInfoHolder({ saleValue: Number(e.target.value) })}
-									className="h-16 text-3xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
-									onFocus={(e) => {
-										setTimeout(() => {
-											e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-										}, 300);
-									}}
-								/>
-							</div>
-							<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
-								{valueHelpers.map((h) => (
-									<Button
-										type="button"
-										key={h}
-										variant="secondary"
-										onClick={() => updateInfoHolder({ saleValue: infoHolder.saleValue + h })}
-										className="h-14 rounded-xl font-black text-lg"
-									>
-										<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
-									</Button>
-								))}
-								<Button
-									type="button"
-									variant="ghost"
-									onClick={() => updateInfoHolder({ saleValue: 0 })}
-									className="h-10 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
-								>
-									<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
-								</Button>
-							</div>
-						</div>
-						<div className="mt-2 flex w-full gap-3">
-							<Button type="button" variant="outline" onClick={closeMenu} className="h-12 flex-1 font-bold">
-								CANCELAR
-							</Button>
-							<Button type="button" onClick={() => setStep(2)} disabled={!saleValueIsValid} className="h-12 flex-1 font-bold">
-								AVANÇAR <ArrowRight className="w-4 h-4 ml-2" />
-							</Button>
-						</div>
-					</div>
-				)}
-				{step === 2 && (
-					<div className="w-full flex flex-col gap-4">
-						<div className="w-full flex flex-col gap-1.5">
-							<h2 className="text-xl font-medium uppercase tracking-tight text-center">Qual o valor do resgate?</h2>
-							<div className="relative max-w-md mx-auto">
-								<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
-								<Input
-									type="number"
-									value={infoHolder.redemptionValue.toString()}
-									onChange={(e) => updateInfoHolder({ redemptionValue: Number(e.target.value) })}
-									className="h-16 text-3xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
-									onFocus={(e) => {
-										setTimeout(() => {
-											e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-										}, 300);
-									}}
-								/>
-							</div>
-							<div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto">
-								{valueHelpers.map((h) => (
-									<Button
-										type="button"
-										key={h}
-										variant="secondary"
-										onClick={() =>
-											updateInfoHolder({ redemptionValue: Math.min(infoHolder.redemptionValue + h, clientAvailableBalance, maxAllowedRedemption) })
-										}
-										className="h-14 rounded-xl font-black text-lg"
-									>
-										<Plus className="w-4 h-4 mr-1 text-brand" /> {h}
-									</Button>
-								))}
-								<Button
-									type="button"
-									variant="ghost"
-									onClick={() => updateInfoHolder({ redemptionValue: 0 })}
-									className="h-10 rounded-xl font-bold text-muted-foreground col-span-2 md:col-span-4 italic"
-								>
-									<X className="w-4 h-4 mr-1" /> LIMPAR VALOR
-								</Button>
-							</div>
-						</div>
-						{redemptionIsOverBalance ? (
-							<div className="w-full flex items-center justify-center flex-col px-1.5 py-3 bg-red-200 text-red-600 rounded-2xl gap-1.5">
-								<div className="w-fit self-center flex items-center justify-center gap-1.5">
-									<AlertTriangle className="w-4 h-4" />
-									<p className="text-xs font-medium text-center italic">Oops, saldo insuficiente para este resgate :(</p>
-								</div>
-								<button
-									type="button"
-									onClick={() => updateInfoHolder({ redemptionValue: clientAvailableBalance })}
-									className="px-2 py-1 rounded-xl bg-red-600 text-white text-xs font-medium"
-								>
-									USAR SALDO DISPONÍVEL
-								</button>
-							</div>
-						) : redemptionIsOverLimit ? (
-							<div className="w-full flex items-center justify-center flex-col px-1.5 py-3 bg-red-200 text-red-600 rounded-2xl gap-1.5">
-								<div className="w-fit self-center flex items-center justify-center gap-1.5">
-									<AlertTriangle className="w-4 h-4" />
-									<p className="text-xs font-medium text-center italic">O valor do cashback não pode ser maior que o valor máximo permitido.</p>
-								</div>
-								<button
-									type="button"
-									onClick={() => updateInfoHolder({ redemptionValue: getMaxAllowedRedemption() })}
-									className="px-2 py-1 rounded-xl bg-red-600 text-white text-xs font-medium"
-								>
-									USAR VALOR MÁXIMO
-								</button>
-							</div>
-						) : null}
-						{getLimitDescription() && (
-							<p className="text-[0.65rem] font-medium text-muted-foreground text-center italic">
-								{getLimitDescription()}
-								{infoHolder.saleValue > 0 && redemptionLimit.tipo === "PERCENTUAL" && <> (Máx: {formatToMoney(getMaxAllowedRedemption())})</>}
-							</p>
-						)}
-						<div className="mt-2 flex w-full gap-3">
-							<Button type="button" variant="outline" onClick={() => setStep(1)} className="h-12 flex-1 font-bold">
-								<ArrowLeft className="w-4 h-4 mr-2" /> VOLTAR
-							</Button>
-							<Button type="button" onClick={() => setStep(3)} disabled={!redemptionIsValid} className="h-12 flex-1 font-bold">
-								AVANÇAR <ArrowRight className="w-4 h-4 ml-2" />
-							</Button>
-						</div>
-					</div>
-				)}
-				{step === 3 && (
-					<div className="w-full flex flex-col gap-4">
-						<div className="w-full flex flex-col gap-1.5">
-							<h2 className="text-xl font-medium uppercase tracking-tight text-center">Senha do Operador</h2>
-							<div className="relative max-w-md mx-auto">
-								<LockIcon className="w-4 h-4 absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground" />
-								<Input
-									type="number"
-									value={infoHolder.operatorIdentifier}
-									onChange={(e) => updateInfoHolder({ operatorIdentifier: formatToNumericPassword(e.target.value) })}
-									placeholder="*****"
-									className="h-16 text-3xl font-black text-center rounded-3xl border-4 border-brand/20 focus:border-brand px-12"
-									onFocus={(e) => {
-										setTimeout(() => {
-											e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-										}, 300);
-									}}
-								/>
-							</div>
-						</div>
-						<div className="mt-2 flex w-full gap-3">
-							<Button type="button" variant="outline" onClick={() => setStep(2)} className="h-12 flex-1 font-bold">
-								<ArrowLeft className="w-4 h-4 mr-2" /> VOLTAR
-							</Button>
-							<LoadingButton
-								type="button"
-								loading={isCreatingCashbackProgramRedemption}
-								disabled={!operatorPasswordIsValid}
-								onClick={() => handleCreateCashbackProgramRedemptionMutation(infoHolder)}
-								className="h-12 flex-1 font-bold"
-							>
-								CONFIRMAR E BAIXAR
-							</LoadingButton>
-						</div>
-					</div>
-				)}
-			</form>
-		</ResponsiveMenuV2>
 	);
 }

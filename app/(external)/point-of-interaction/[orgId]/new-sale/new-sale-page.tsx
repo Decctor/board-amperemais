@@ -1,6 +1,6 @@
 "use client";
 
-import type { TCreatePointOfInteractionNewSaleOutput } from "@/app/api/point-of-interaction/new-sale/route";
+import type { TCreatePointOfInteractionTransactionOutput } from "@/app/api/point-of-interaction/new-transaction/route";
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,7 +55,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 	const { state, updateClient, updateSale, updateCashback, updateOperatorIdentifier, resetState } = usePointOfInteractionNewSaleState(org.id);
 
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
-	const [successData, setSuccessData] = React.useState<TCreatePointOfInteractionNewSaleOutput["data"] | null>(null);
+	const [successData, setSuccessData] = React.useState<TCreatePointOfInteractionTransactionOutput["data"] | null>(null);
 	const {
 		data: client,
 		queryKey,
@@ -124,7 +124,7 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 		mutationFn: createPointOfInteractionSale,
 		onSuccess: (data) => {
 			playSuccess();
-			toast.success(`Venda finalizada! Saldo: ${formatToMoney(data.data.cashbackAcumulado)}`);
+			toast.success(`Venda finalizada! Saldo: ${formatToMoney(data.data.clientAccumulatedCashbackValue)}`);
 			setSuccessData(data.data);
 			setCurrentStep(5);
 		},
@@ -240,8 +240,8 @@ export default function NewSaleContent({ org, clientId }: NewSaleContentProps) {
 						)}
 						{currentStep === 5 && successData && (
 							<SuccessStep
-								cashbackEarned={successData.cashbackAcumulado}
-								newBalance={successData.newBalance}
+								cashbackEarned={successData.clientAccumulatedCashbackValue}
+								newBalance={successData.clientNewOverallAvailableBalance ?? 0}
 								onReset={handleReset}
 								onGoHome={() => router.push(`/point-of-interaction/${org.id}`)}
 							/>

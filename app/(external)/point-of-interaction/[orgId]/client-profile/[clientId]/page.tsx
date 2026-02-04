@@ -46,6 +46,10 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 			nome: true,
 			telefone: true,
 			email: true,
+			dataInsercao: true,
+			metadataTotalCompras: true,
+			metadataValorTotalCompras: true,
+			ultimaCompraData: true,
 		},
 	});
 
@@ -97,8 +101,8 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 	});
 
 	return (
-		<OrgColorsProvider 
-			corPrimaria={org.corPrimaria} 
+		<OrgColorsProvider
+			corPrimaria={org.corPrimaria}
 			corPrimariaForeground={org.corPrimariaForeground}
 			corSecundaria={org.corSecundaria}
 			corSecundariaForeground={org.corSecundariaForeground}

@@ -6,6 +6,8 @@ import { AppSubscriptionPlans } from "@/config";
 import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import LogoCompleteHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
 import {
 	ArrowRight,
 	BadgeDollarSign,
@@ -41,7 +43,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 // Mock data for the analytics section
 const MOCK_SELLERS = [
@@ -221,61 +223,7 @@ export default function LandingPage() {
 			</header>
 
 			{/* Hero Section */}
-			<section className="min-h-[90vh] relative flex items-center justify-center py-6 md:py-8 lg:py-12 xl:py-16 overflow-hidden">
-				{/* Background Elements */}
-				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none">
-					{/* Main Glow - removed animate-pulse-slow */}
-					<div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#24549C]/20 rounded-full blur-[120px] opacity-40 mix-blend-screen" />
-					{/* Secondary Accent */}
-					<div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[100px] opacity-30 mix-blend-screen" />
-				</div>
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-					<div className="text-center max-w-5xl mx-auto">
-						{/* Badge */}
-						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-3 md:mb-4 lg:mb-6 backdrop-blur-md hover:bg-white/10 transition-colors cursor-default group">
-							<span className="relative flex h-2 w-2">
-								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFD600] opacity-75" />
-								<span className="relative inline-flex rounded-full h-2 w-2 bg-[#FFD600]" />
-							</span>
-							<span className="text-xs font-medium text-white/90 tracking-wide">CASHBACK + WHATSAPP + BI EM UM SÓ LUGAR</span>
-						</div>
-
-						{/* Headline */}
-						<h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold tracking-tight text-white mb-2 md:mb-3 lg:mb-4 leading-[1.2] md:leading-[1.15]">
-							Traga de volta o cliente <br className="hidden md:block" />
-							<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF4D00] via-[#FF8700] to-[#E7000B] drop-shadow-sm">que sumiu.</span>
-						</h1>
-
-						{/* Subheadline */}
-						<p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-white/60 mb-4 md:mb-5 lg:mb-8 max-w-3xl mx-auto leading-relaxed font-light">
-							Identifique quem parou de comprar, envie <span className="text-white font-medium">cashback automático</span> pelo WhatsApp e acompanhe tudo em
-							um dashboard. <span className="text-white/80">Sem planilhas, sem trabalho manual.</span>
-						</p>
-
-						{/* CTA Buttons */}
-						<div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-3">
-							<a
-								href="https://wa.me/553499480791?text=Gostaria%20de%20ver%20como%20o%20RecompraCRM%20funciona!"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="w-full sm:w-auto"
-							>
-								<Button className="w-full sm:w-auto bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full px-4 md:px-5 lg:px-6 h-9 md:h-10 lg:h-11 xl:h-12 text-xs md:text-sm lg:text-base font-bold shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-1 transition-all duration-300">
-									Ver como funciona (15 min) <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5" />
-								</Button>
-							</a>
-							<Link href="/auth/signin" className="w-full sm:w-auto">
-								<Button
-									variant="outline"
-									className="w-full sm:w-auto border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-full px-4 md:px-5 lg:px-6 h-9 md:h-10 lg:h-11 xl:h-12 text-xs md:text-sm lg:text-base font-semibold hover:border-white/20 hover:text-white transition-all duration-300"
-								>
-									Acessar plataforma
-								</Button>
-							</Link>
-						</div>
-					</div>
-				</div>
-			</section>
+			<HeroSection />
 
 			{/* Problem Section (NEW) */}
 			<section className="py-20 bg-zinc-950 border-y border-white/5">
@@ -332,72 +280,7 @@ export default function LandingPage() {
 							</div>
 						</div>
 
-						<div className="relative">
-							{/* Mock UI POS/POI */}
-							<div className="bg-black border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 aspect-video relative overflow-hidden group">
-								<div className="absolute inset-x-0 top-0 h-10 bg-zinc-900 border-b border-white/5 flex items-center px-4 gap-2">
-									<div className="w-2 h-2 rounded-full bg-red-500/50" />
-									<div className="w-2 h-2 rounded-full bg-yellow-500/50" />
-									<div className="w-2 h-2 rounded-full bg-green-500/50" />
-									<div className="ml-4 h-4 w-32 bg-white/10 rounded-full" />
-								</div>
-
-								<div className="mt-8 flex gap-4 h-full">
-									{/* Sidebar Groups */}
-									<div className="w-1/4 h-full space-y-2 hidden sm:block">
-										<div className="h-8 bg-white/5 rounded w-full" />
-										<div className="h-8 bg-[#24549C]/20 border border-[#24549C]/30 rounded w-full" />
-										<div className="h-8 bg-white/5 rounded w-full" />
-										<div className="h-8 bg-white/5 rounded w-full" />
-									</div>
-
-									{/* Grid */}
-									<div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2">
-										{[1, 2, 3, 4, 5, 6].map((i) => (
-											<div
-												key={i}
-												className="aspect-square bg-zinc-900 rounded-lg border border-white/5 p-2 flex flex-col justify-between hover:border-[#24549C]/50 transition-colors"
-											>
-												<div className="w-full aspect-video bg-white/5 rounded" />
-												<div className="h-2 w-2/3 bg-white/10 rounded" />
-											</div>
-										))}
-									</div>
-
-									{/* Cart */}
-									<div className="w-1/3 h-full bg-zinc-900 rounded-lg border border-white/5 p-3 flex flex-col">
-										<div className="flex-1 space-y-2">
-											<div className="h-10 bg-white/5 rounded flex items-center p-2 gap-2">
-												<div className="w-6 h-6 bg-white/10 rounded" />
-												<div className="flex-1 h-2 bg-white/10 rounded" />
-											</div>
-											<div className="h-10 bg-white/5 rounded flex items-center p-2 gap-2">
-												<div className="w-6 h-6 bg-white/10 rounded" />
-												<div className="flex-1 h-2 bg-white/10 rounded" />
-											</div>
-										</div>
-										<div className="mt-auto pt-2 border-t border-white/5">
-											<div className="flex justify-between mb-2">
-												<div className="h-2 w-10 bg-white/20 rounded" />
-												<div className="h-2 w-10 bg-white/20 rounded" />
-											</div>
-											<div className="h-8 bg-green-600 rounded w-full" />
-										</div>
-									</div>
-								</div>
-							</div>
-
-							{/* Floating Badge - removed animate-bounce */}
-							<div className="absolute -right-4 top-10 bg-zinc-900 border border-white/10 p-3 rounded-lg shadow-xl flex items-center gap-3 backdrop-blur-sm">
-								<div className="bg-green-500/20 p-2 rounded-full">
-									<Zap className="w-4 h-4 text-green-500" />
-								</div>
-								<div>
-									<div className="text-xs text-white/50">Cashback Gerado</div>
-									<div className="text-sm font-bold text-white">R$ 15,00</div>
-								</div>
-							</div>
-						</div>
+						<AnimatedCashbackWireframe />
 					</div>
 				</div>
 			</section>
@@ -407,38 +290,7 @@ export default function LandingPage() {
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 					<div className="grid lg:grid-cols-2 gap-16 items-center">
 						<div className="relative order-1">
-							<div className="relative z-10 w-full max-w-md mx-auto">
-								{/* Automation Flow Visual */}
-								<div className="flex flex-col gap-4">
-									{/* Trigger Card */}
-									<div className="bg-zinc-900/80 border border-white/10 p-4 rounded-xl backdrop-blur-sm transform translate-x-4">
-										<div className="flex items-center justify-between mb-2">
-											<div className="text-xs font-bold text-blue-400 uppercase tracking-wider">Gatilho: Cliente Inativo (30 dias)</div>
-											<Zap className="w-4 h-4 text-blue-400" />
-										</div>
-										<div className="text-sm text-white/60">Cliente Maria não compra há 30 dias</div>
-									</div>
-
-									{/* Arrow */}
-									<div className="flex justify-center -my-2 z-0">
-										<div className="h-8 w-px bg-gradient-to-b from-white/20 to-white/0" />
-									</div>
-
-									{/* Action Card */}
-									<div className="bg-[#24549C] p-6 rounded-2xl shadow-2xl transform -rotate-1 hover:rotate-0 transition-transform duration-300">
-										<div className="flex items-center gap-3 mb-4">
-											<div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-												<MessageCircle className="w-4 h-4 text-white" />
-											</div>
-											<div className="text-sm font-medium text-white/80">Mensagem Enviada</div>
-										</div>
-										<p className="text-white text-lg font-medium leading-snug">
-											"Oi Maria! 🌟 Sentimos sua falta. Estou liberando <span className="text-yellow-300 font-bold">R$ 25,00</span> de cashback extra para você
-											voltar!"
-										</p>
-									</div>
-								</div>
-							</div>
+							<AnimatedCampaignWireframe />
 							<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-blue-500/10 blur-3xl -z-10 rounded-full" />
 						</div>
 
@@ -520,51 +372,7 @@ export default function LandingPage() {
 						</div>
 
 						<div className="order-1 lg:order-2 relative">
-							<div className="relative z-10 w-full max-w-md mx-auto">
-								<div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-2xl">
-									<div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
-										<div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-											<Bot className="w-5 h-5 text-green-500" />
-										</div>
-										<div>
-											<div className="font-semibold text-white">Assistente Virtual</div>
-											<div className="text-xs text-white/40">Triagem Automática</div>
-										</div>
-									</div>
-									<div className="space-y-4 font-sans text-sm">
-										{/* Customer Message */}
-										<div className="flex justify-end">
-											<div className="bg-[#24549C] text-white py-2 px-4 rounded-2xl rounded-tr-sm max-w-[85%]">Qual a voltagem do ventilador?</div>
-										</div>
-
-										{/* Bot Response */}
-										<div className="flex justify-start">
-											<div className="bg-zinc-800 text-white/90 py-2 px-4 rounded-2xl rounded-tl-sm max-w-[85%] border border-white/5">
-												O Ventilador Turbo está disponível em 110V e 220V! Qual você precisa? 🌀
-											</div>
-										</div>
-
-										{/* Customer Message */}
-										<div className="flex justify-end">
-											<div className="bg-[#24549C] text-white py-2 px-4 rounded-2xl rounded-tr-sm max-w-[85%]">220V. Quero comprar.</div>
-										</div>
-
-										{/* Bot Transfer */}
-										<div className="flex justify-start">
-											<div className="bg-zinc-800 text-white/90 py-2 px-4 rounded-2xl rounded-tl-sm max-w-[85%] border border-white/5">
-												Perfeito! Vou chamar um de nossos atendentes para finalizar sua compra. 🎯
-											</div>
-										</div>
-
-										{/* System Message */}
-										<div className="flex justify-center my-4">
-											<span className="text-xs text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-												⚡ Transferido para: Carlos (Vendas)
-											</span>
-										</div>
-									</div>
-								</div>
-							</div>
+							<AnimatedChatWireframe />
 							<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-green-500/10 blur-3xl -z-10 rounded-full" />
 						</div>
 					</div>
@@ -634,73 +442,7 @@ export default function LandingPage() {
 				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 					<div className="grid lg:grid-cols-2 gap-16 items-center">
 						<div className="relative">
-							{/* Mock UI RFM */}
-							<div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
-								<div className="flex items-center gap-4 mb-8">
-									<div className="p-3 bg-zinc-800 rounded-lg border border-white/10">
-										<Grid3X3 className="w-6 h-6 text-[#FFB900]" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white text-lg">Matriz RFM em Tempo Real</h4>
-										<p className="text-sm text-white/40">Segmentação automática da sua base</p>
-									</div>
-								</div>
-								<TooltipProvider>
-									<div className="grid grid-cols-2 gap-3">
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<div className="bg-zinc-800/50 p-4 rounded-xl border border-white/5 text-center hover:border-[#FFB900]/50 transition-colors cursor-pointer group">
-													<div className="text-2xl font-bold text-white mb-1 group-hover:text-[#FFB900]">128</div>
-													<div className="text-xs font-semibold text-green-400 bg-green-400/10 py-1 px-2 rounded-full inline-block">CAMPEÕES</div>
-												</div>
-											</TooltipTrigger>
-											<TooltipContent side="top" className="max-w-xs">
-												<p>{RFM_TOOLTIPS.campeoes}</p>
-											</TooltipContent>
-										</Tooltip>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<div className="bg-zinc-800/50 p-4 rounded-xl border border-white/5 text-center hover:border-[#FFB900]/50 transition-colors cursor-pointer group">
-													<div className="text-2xl font-bold text-white mb-1 group-hover:text-[#FFB900]">450</div>
-													<div className="text-xs font-semibold text-blue-400 bg-blue-400/10 py-1 px-2 rounded-full inline-block">LEAIS</div>
-												</div>
-											</TooltipTrigger>
-											<TooltipContent side="top" className="max-w-xs">
-												<p>{RFM_TOOLTIPS.leais}</p>
-											</TooltipContent>
-										</Tooltip>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<div className="bg-zinc-800/50 p-4 rounded-xl border border-white/5 text-center hover:border-[#FFB900]/50 transition-colors cursor-pointer group">
-													<div className="text-2xl font-bold text-white mb-1 group-hover:text-[#FFB900]">89</div>
-													<div className="text-xs font-semibold text-yellow-400 bg-yellow-400/10 py-1 px-2 rounded-full inline-block">EM RISCO</div>
-												</div>
-											</TooltipTrigger>
-											<TooltipContent side="top" className="max-w-xs">
-												<p>{RFM_TOOLTIPS.em_risco}</p>
-											</TooltipContent>
-										</Tooltip>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<div className="bg-zinc-800/50 p-4 rounded-xl border border-white/5 text-center hover:border-[#FFB900]/50 transition-colors cursor-pointer group">
-													<div className="text-2xl font-bold text-white mb-1 group-hover:text-[#FFB900]">312</div>
-													<div className="text-xs font-semibold text-purple-400 bg-purple-400/10 py-1 px-2 rounded-full inline-block">NOVOS</div>
-												</div>
-											</TooltipTrigger>
-											<TooltipContent side="top" className="max-w-xs">
-												<p>{RFM_TOOLTIPS.novos}</p>
-											</TooltipContent>
-										</Tooltip>
-									</div>
-								</TooltipProvider>
-								<div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
-									<div className="flex items-center gap-2 text-sm text-white/60">
-										<Zap className="w-4 h-4 text-[#FFB900]" />
-										<span>Clique em um segmento para criar campanha</span>
-									</div>
-									<ArrowRight className="w-4 h-4 text-white/40" />
-								</div>
-							</div>
+							<AnimatedRFMWireframe />
 						</div>
 
 						<div>
@@ -885,121 +627,7 @@ export default function LandingPage() {
 						</div>
 
 						<div className="relative">
-							{/* Mock UI Analytics */}
-							<div className="bg-zinc-900 border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4">
-								<div className="flex flex-wrap items-center justify-between gap-4">
-									<h4 className="font-bold text-white">{getRankingLabel()}</h4>
-									<div className="flex bg-zinc-800 rounded-lg p-1 gap-1">
-										<TooltipProvider>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<Button
-														variant={rankingTab === "sellers" ? "default" : "ghost"}
-														size="icon"
-														className={cn(
-															"h-8 w-8 rounded-md",
-															rankingTab === "sellers" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
-														)}
-														onClick={() => setRankingTab("sellers")}
-													>
-														<Users className="w-4 h-4" />
-													</Button>
-												</TooltipTrigger>
-												<TooltipContent>
-													<p>Vendedores</p>
-												</TooltipContent>
-											</Tooltip>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<Button
-														variant={rankingTab === "partners" ? "default" : "ghost"}
-														size="icon"
-														className={cn(
-															"h-8 w-8 rounded-md",
-															rankingTab === "partners" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
-														)}
-														onClick={() => setRankingTab("partners")}
-													>
-														<Handshake className="w-4 h-4" />
-													</Button>
-												</TooltipTrigger>
-												<TooltipContent>
-													<p>Parceiros</p>
-												</TooltipContent>
-											</Tooltip>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<Button
-														variant={rankingTab === "products" ? "default" : "ghost"}
-														size="icon"
-														className={cn(
-															"h-8 w-8 rounded-md",
-															rankingTab === "products" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
-														)}
-														onClick={() => setRankingTab("products")}
-													>
-														<Package className="w-4 h-4" />
-													</Button>
-												</TooltipTrigger>
-												<TooltipContent>
-													<p>Produtos</p>
-												</TooltipContent>
-											</Tooltip>
-										</TooltipProvider>
-									</div>
-								</div>
-
-								<div className="flex flex-col gap-2 max-h-[360px] overflow-auto scrollbar-none">
-									{currentRankingData.map((item) => (
-										<div
-											key={item.rank}
-											className={cn(
-												"bg-black/40 border border-white/5 flex w-full flex-col sm:flex-row gap-2 rounded-xl px-3 py-3 items-center",
-												item.rank === 1 && "border-yellow-500/20 bg-yellow-500/5",
-												item.rank === 2 && "border-gray-400/20 bg-gray-400/5",
-												item.rank === 3 && "border-orange-600/20 bg-orange-600/5",
-											)}
-										>
-											<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-												<div className="flex items-center gap-3">
-													{item.rank <= 3 ? (
-														<Crown
-															className={cn(
-																"w-5 h-5 min-w-5 min-h-5",
-																item.rank === 1 && "text-yellow-500",
-																item.rank === 2 && "text-gray-400",
-																item.rank === 3 && "text-orange-600",
-															)}
-														/>
-													) : (
-														<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-white/10 flex items-center justify-center">
-															<span className="text-xs font-bold text-white/60">{item.rank}</span>
-														</div>
-													)}
-													<Avatar className="w-8 h-8 min-w-8 min-h-8 hidden lg:block border border-white/10">
-														<AvatarFallback className="bg-zinc-800 text-xs text-white">{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-													</Avatar>
-													<div className="flex items-start flex-col">
-														<h1 className="text-sm font-bold tracking-tight text-white">{item.name}</h1>
-													</div>
-												</div>
-												<div className="flex items-center gap-2">
-													<div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-[#24549C]/10 text-[#24549C] border border-[#24549C]/20">
-														<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
-														<p className="text-xs font-bold tracking-tight uppercase text-white">{item.revenue}</p>
-													</div>
-													{rankingTab !== "products" && (
-														<div className="hidden sm:flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-zinc-800/50 text-white/60 border border-white/5">
-															<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
-															<p className="text-xs font-bold tracking-tight uppercase">{item.sales}</p>
-														</div>
-													)}
-												</div>
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
+							<AnimatedRankingWireframe />
 							<div className="absolute -inset-4 bg-[#24549C]/20 blur-3xl -z-10 rounded-full opacity-30" />
 						</div>
 					</div>
@@ -1281,6 +909,794 @@ export default function LandingPage() {
 					</div>
 				</div>
 			</footer>
+		</div>
+	);
+}
+
+const RotatingText = () => {
+	const words = ["sumiu.", "esfriou.", "parou.", "esqueceu."];
+	const containerRef = useRef<HTMLSpanElement>(null);
+	// We use a fixed width container to prevent layout shifts during rotation
+	// Adjust min-w-[...] based on your longest word if needed
+
+	useGSAP(
+		() => {
+			// Enable lag smoothing for better performance
+			gsap.ticker.lagSmoothing(1000, 16);
+
+			const tl = gsap.timeline({ repeat: -1 });
+			const wordElements = containerRef.current?.children;
+
+			if (wordElements) {
+				// Set initial state for all except first - using scale instead of blur for GPU acceleration
+				gsap.set(wordElements, { y: 20, opacity: 0, scale: 0.95, position: "absolute", force3D: true });
+				gsap.set(wordElements[0], { y: 0, opacity: 1, scale: 1, position: "relative", force3D: true });
+
+				// Create the loop
+				words.forEach((_, index) => {
+					const current = wordElements[index];
+					const next = wordElements[(index + 1) % words.length];
+
+					tl
+						.to(current, {
+							y: -20,
+							opacity: 0,
+							scale: 0.95,
+							duration: 0.5,
+							ease: "power2.in",
+							force3D: true,
+							delay: 1.5, // How long the word stays visible
+							onComplete: () => {
+								// Reset position for next cycle, keep it absolute to not break flow
+								gsap.set(current, { position: "absolute" });
+							},
+						})
+						.to(
+							next,
+							{
+								y: 0,
+								opacity: 1,
+								scale: 1,
+								duration: 0.6,
+								ease: "power2.out",
+								force3D: true,
+								onStart: () => {
+									// Make relative so it takes up space in the DOM flow
+									gsap.set(next, { position: "relative" });
+								},
+							},
+							"<0.1",
+						); // slight overlap for smooth transition
+				});
+			}
+		},
+		{ scope: containerRef },
+	);
+
+	return (
+		<span
+			ref={containerRef}
+			className="relative inline-flex flex-col items-center justify-center h-[1.2em] overflow-hidden align-bottom min-w-[180px] sm:min-w-[220px] text-left"
+			style={{ willChange: "transform" }}
+		>
+			{words.map((word, i) => (
+				<span
+					key={i.toString()}
+					className={`block text-transparent bg-clip-text bg-gradient-to-r from-[#FF4D00] via-[#FF8700] to-[#E7000B] ${i === 0 ? "relative" : "absolute top-0 left-0"}`}
+					style={{ willChange: "transform, opacity" }}
+				>
+					{word}
+				</span>
+			))}
+		</span>
+	);
+};
+function HeroSection() {
+	const container = useRef(null);
+
+	useGSAP(
+		() => {
+			// Master timeline for the entrance animation with GPU acceleration
+			const tl = gsap.timeline({ defaults: { ease: "power3.out", force3D: true } });
+
+			tl
+				.from(".hero-badge", {
+					y: -20,
+					opacity: 0,
+					duration: 0.8,
+				})
+				.from(
+					".hero-headline-static",
+					{
+						y: 30,
+						opacity: 0,
+						duration: 1,
+						stagger: 0.1, // Stagger lines if broken
+					},
+					"-=0.4",
+				)
+				.from(
+					".hero-subtext",
+					{
+						y: 20,
+						opacity: 0,
+						duration: 0.8,
+					},
+					"-=0.6",
+				)
+				.from(
+					".hero-cta",
+					{
+						y: 20,
+						opacity: 0,
+						duration: 0.8,
+						stagger: 0.1,
+					},
+					"-=0.6",
+				);
+
+			// Simplified pulse using opacity only (no expensive textShadow)
+			gsap.to(".subtext-highlight", {
+				opacity: 0.85,
+				repeat: -1,
+				yoyo: true,
+				duration: 2,
+				delay: 2,
+				ease: "sine.inOut",
+			});
+		},
+		{ scope: container },
+	);
+
+	return (
+		<section ref={container} className="min-h-[90vh] relative flex items-center justify-center py-6 md:py-8 lg:py-12 xl:py-16 overflow-hidden">
+			{/* Background Elements - optimized with reduced blur and GPU layer hints */}
+			<div
+				className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none"
+				style={{ transform: "translateX(-50%) translateZ(0)" }}
+			>
+				<div
+					className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#24549C]/20 rounded-full blur-[80px] opacity-40"
+					style={{ transform: "translateX(-50%) translateZ(0)" }}
+				/>
+				<div
+					className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[60px] opacity-30"
+					style={{ transform: "translateZ(0)" }}
+				/>
+			</div>
+
+			<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+				<div className="text-center max-w-5xl mx-auto">
+					{/* Badge */}
+					<div className="hero-badge inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-3 md:mb-4 lg:mb-6 backdrop-blur-md hover:bg-white/10 transition-colors cursor-default group opacity-100">
+						<span className="relative flex h-2 w-2">
+							<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFD600] opacity-75" />
+							<span className="relative inline-flex rounded-full h-2 w-2 bg-[#FFD600]" />
+						</span>
+						<span className="text-xs font-medium text-white/90 tracking-wide">CASHBACK + WHATSAPP + BI EM UM SÓ LUGAR</span>
+					</div>
+
+					{/* Headline */}
+					<h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold tracking-tight text-white mb-2 md:mb-3 lg:mb-4 leading-[1.2] md:leading-[1.15]">
+						<span className="hero-headline-static block">Traga de volta o cliente que</span>
+						<div className="hero-headline-static mt-1 md:mt-2">
+							<RotatingText />
+						</div>
+					</h1>
+
+					{/* Subheadline */}
+					<p className="hero-subtext text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-white/60 mb-4 md:mb-5 lg:mb-8 max-w-3xl mx-auto leading-relaxed font-light">
+						Identifique quem parou de comprar, envie <span className="subtext-highlight text-white font-medium">cashback automático</span> pelo WhatsApp e
+						acompanhe tudo em um dashboard. <span className="text-white/80">Sem planilhas, sem trabalho manual.</span>
+					</p>
+
+					{/* CTA Buttons */}
+					<div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-3">
+						<a
+							href="https://wa.me/553499480791?text=Gostaria%20de%20ver%20como%20o%20RecompraCRM%20funciona!"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="hero-cta w-full sm:w-auto"
+						>
+							<Button className="w-full sm:w-auto bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full px-4 md:px-5 lg:px-6 h-9 md:h-10 lg:h-11 xl:h-12 text-xs md:text-sm lg:text-base font-bold shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-1 transition-all duration-300">
+								Ver como funciona (15 min) <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 inline" />
+							</Button>
+						</a>
+						<Link href="/auth/signin" className="hero-cta w-full sm:w-auto">
+							<Button
+								variant="outline"
+								className="w-full sm:w-auto border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-full px-4 md:px-5 lg:px-6 h-9 md:h-10 lg:h-11 xl:h-12 text-xs md:text-sm lg:text-base font-semibold hover:border-white/20 hover:text-white transition-all duration-300"
+							>
+								Acessar plataforma
+							</Button>
+						</Link>
+					</div>
+				</div>
+			</div>
+		</section>
+	);
+}
+
+// ==========================================
+// ANIMATED WIREFRAME COMPONENTS
+// ==========================================
+
+// Animated RFM Matrix Wireframe
+const RFM_SEGMENTS_ANIMATED = [
+	{ id: "campeoes", label: "CAMPEÕES", value: 128, color: "green" },
+	{ id: "leais", label: "LEAIS", value: 450, color: "blue" },
+	{ id: "em_risco", label: "EM RISCO", value: 89, color: "yellow" },
+	{ id: "novos", label: "NOVOS", value: 312, color: "purple" },
+];
+
+function AnimatedRFMWireframe() {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [displayValues, setDisplayValues] = useState<{ [key: string]: number }>({
+		campeoes: 0,
+		leais: 0,
+		em_risco: 0,
+		novos: 0,
+	});
+	const [activeSegment, setActiveSegment] = useState<string | null>(null);
+
+	useGSAP(
+		() => {
+			gsap.ticker.lagSmoothing(1000, 16);
+			const segments = containerRef.current?.querySelectorAll(".rfm-segment");
+			if (!segments) return;
+
+			// Initial entrance animation
+			const tl = gsap.timeline();
+			tl.fromTo(
+				segments,
+				{ opacity: 0, y: 20, scale: 0.9 },
+				{
+					opacity: 1,
+					y: 0,
+					scale: 1,
+					duration: 0.6,
+					stagger: 0.15,
+					ease: "power2.out",
+					force3D: true,
+				},
+			);
+
+			// Animate numbers counting up
+			RFM_SEGMENTS_ANIMATED.forEach((segment) => {
+				const obj = { value: 0 };
+				gsap.to(obj, {
+					value: segment.value,
+					duration: 2,
+					delay: 0.5,
+					ease: "power2.out",
+					onUpdate: () => {
+						setDisplayValues((prev) => ({
+							...prev,
+							[segment.id]: Math.round(obj.value),
+						}));
+					},
+				});
+			});
+
+			// Pulsing "at risk" segment to draw attention
+			const atRiskEl = containerRef.current?.querySelector(".rfm-at-risk");
+			if (atRiskEl) {
+				gsap.to(atRiskEl, {
+					borderColor: "rgba(250, 204, 21, 0.5)",
+					duration: 1,
+					repeat: -1,
+					yoyo: true,
+					delay: 3,
+					ease: "sine.inOut",
+				});
+			}
+
+			// Auto-highlight segments in sequence
+			const segmentIds = ["campeoes", "leais", "em_risco", "novos"];
+			let currentIndex = 0;
+			const highlightInterval = setInterval(() => {
+				setActiveSegment(segmentIds[currentIndex]);
+				currentIndex = (currentIndex + 1) % segmentIds.length;
+			}, 2500);
+
+			return () => clearInterval(highlightInterval);
+		},
+		{ scope: containerRef },
+	);
+
+	const getColorClasses = (color: string, isActive: boolean) => {
+		const base = {
+			green: { text: "text-green-400", bg: "bg-green-400/10", border: isActive ? "border-green-400/50" : "border-white/5" },
+			blue: { text: "text-blue-400", bg: "bg-blue-400/10", border: isActive ? "border-blue-400/50" : "border-white/5" },
+			yellow: { text: "text-yellow-400", bg: "bg-yellow-400/10", border: isActive ? "border-yellow-400/50" : "border-white/5" },
+			purple: { text: "text-purple-400", bg: "bg-purple-400/10", border: isActive ? "border-purple-400/50" : "border-white/5" },
+		};
+		return base[color as keyof typeof base] || base.green;
+	};
+
+	return (
+		<div ref={containerRef} className="bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
+			<div className="flex items-center gap-4 mb-8">
+				<div className="p-3 bg-zinc-800 rounded-lg border border-white/10">
+					<Grid3X3 className="w-6 h-6 text-[#FFB900]" />
+				</div>
+				<div>
+					<h4 className="font-bold text-white text-lg">Matriz RFM em Tempo Real</h4>
+					<p className="text-sm text-white/40">Segmentação automática da sua base</p>
+				</div>
+			</div>
+			<div className="grid grid-cols-2 gap-3">
+				{RFM_SEGMENTS_ANIMATED.map((segment) => {
+					const colors = getColorClasses(segment.color, activeSegment === segment.id);
+					return (
+						<div
+							key={segment.id}
+							className={cn(
+								"rfm-segment bg-zinc-800/50 p-4 rounded-xl border text-center transition-all duration-300 cursor-pointer group",
+								colors.border,
+								segment.id === "em_risco" && "rfm-at-risk",
+								activeSegment === segment.id && "scale-[1.02]",
+							)}
+							style={{ willChange: "transform, opacity" }}
+						>
+							<div className={cn("text-2xl font-bold text-white mb-1 transition-colors", activeSegment === segment.id && "text-[#FFB900]")}>
+								{displayValues[segment.id]}
+							</div>
+							<div className={cn("text-xs font-semibold py-1 px-2 rounded-full inline-block", colors.text, colors.bg)}>{segment.label}</div>
+						</div>
+					);
+				})}
+			</div>
+			<div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
+				<div className="flex items-center gap-2 text-sm text-white/60">
+					<Zap className="w-4 h-4 text-[#FFB900]" />
+					<span>Clique em um segmento para criar campanha</span>
+				</div>
+				<ArrowRight className="w-4 h-4 text-white/40" />
+			</div>
+		</div>
+	);
+}
+
+// Animated Cashback/POI Wireframe
+function AnimatedCashbackWireframe() {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [cartItems, setCartItems] = useState<number[]>([]);
+	const [showBadge, setShowBadge] = useState(false);
+	const [cashbackAmount, setCashbackAmount] = useState(0);
+
+	useGSAP(
+		() => {
+			gsap.ticker.lagSmoothing(1000, 16);
+
+			const runAnimation = () => {
+				setCartItems([]);
+				setShowBadge(false);
+				setCashbackAmount(0);
+
+				const tl = gsap.timeline({
+					onComplete: () => setTimeout(runAnimation, 2000),
+				});
+
+				// Add products to cart one by one
+				[0, 1, 2].forEach((index, i) => {
+					tl.call(() => setCartItems((prev) => [...prev, index]), [], i * 0.8);
+				});
+
+				// Animate button pulse
+				tl.to(".checkout-btn", { scale: 1.05, duration: 0.3, yoyo: true, repeat: 1, ease: "power2.inOut", force3D: true }, "+=0.5");
+
+				// Show cashback badge
+				tl.call(() => setShowBadge(true));
+				tl.fromTo(
+					".cashback-badge",
+					{ x: 50, opacity: 0, scale: 0.8 },
+					{ x: 0, opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.7)", force3D: true },
+				);
+
+				// Animate cashback amount counting
+				tl.call(() => {
+					const obj = { value: 0 };
+					gsap.to(obj, { value: 15, duration: 0.8, ease: "power2.out", onUpdate: () => setCashbackAmount(obj.value) });
+				});
+
+				tl.to({}, { duration: 2 });
+			};
+
+			runAnimation();
+		},
+		{ scope: containerRef },
+	);
+
+	return (
+		<div ref={containerRef} className="relative">
+			<div className="bg-black border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 aspect-video relative overflow-hidden group">
+				<div className="absolute inset-x-0 top-0 h-10 bg-zinc-900 border-b border-white/5 flex items-center px-4 gap-2">
+					<div className="w-2 h-2 rounded-full bg-red-500/50" />
+					<div className="w-2 h-2 rounded-full bg-yellow-500/50" />
+					<div className="w-2 h-2 rounded-full bg-green-500/50" />
+					<div className="ml-4 h-4 w-32 bg-white/10 rounded-full" />
+				</div>
+
+				<div className="mt-8 flex gap-4 h-full">
+					<div className="w-1/4 h-full space-y-2 hidden sm:block">
+						<div className="h-8 bg-white/5 rounded w-full" />
+						<div className="h-8 bg-[#24549C]/20 border border-[#24549C]/30 rounded w-full" />
+						<div className="h-8 bg-white/5 rounded w-full" />
+						<div className="h-8 bg-white/5 rounded w-full" />
+					</div>
+
+					<div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2">
+						{[1, 2, 3, 4, 5, 6].map((i) => (
+							<div
+								key={i}
+								className={cn(
+									"product-item aspect-square bg-zinc-900 rounded-lg border p-2 flex flex-col justify-between transition-all duration-300",
+									cartItems.includes(i - 1) ? "border-[#24549C]/50 bg-[#24549C]/10" : "border-white/5",
+								)}
+								style={{ willChange: "transform, opacity" }}
+							>
+								<div className="w-full aspect-video bg-white/5 rounded" />
+								<div className="h-2 w-2/3 bg-white/10 rounded" />
+							</div>
+						))}
+					</div>
+
+					<div className="w-1/3 h-full bg-zinc-900 rounded-lg border border-white/5 p-3 flex flex-col">
+						<div className="flex-1 space-y-2 overflow-hidden">
+							{cartItems.map((itemIndex) => (
+								<div key={itemIndex} className="cart-item h-10 bg-white/5 rounded flex items-center p-2 gap-2" style={{ willChange: "transform, opacity" }}>
+									<div className="w-6 h-6 bg-[#24549C]/30 rounded" />
+									<div className="flex-1 h-2 bg-white/10 rounded" />
+								</div>
+							))}
+						</div>
+						<div className="mt-auto pt-2 border-t border-white/5">
+							<div className="flex justify-between mb-2">
+								<div className="h-2 w-10 bg-white/20 rounded" />
+								<div className="h-2 w-10 bg-white/20 rounded" />
+							</div>
+							<div className="checkout-btn h-8 bg-green-600 rounded w-full" style={{ willChange: "transform" }} />
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{showBadge && (
+				<div className="cashback-badge absolute -right-4 top-10 bg-zinc-900 border border-white/10 p-3 rounded-lg shadow-xl flex items-center gap-3 backdrop-blur-sm">
+					<div className="bg-green-500/20 p-2 rounded-full">
+						<Zap className="w-4 h-4 text-green-500" />
+					</div>
+					<div>
+						<div className="text-xs text-white/50">Cashback Gerado</div>
+						<div className="text-sm font-bold text-white">R$ {cashbackAmount.toFixed(2).replace(".", ",")}</div>
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
+
+// Animated Campaign Flow Wireframe
+function AnimatedCampaignWireframe() {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [step, setStep] = useState(0);
+	const [typedText, setTypedText] = useState("");
+	const fullMessage = '"Oi Maria! 🌟 Sentimos sua falta. Estou liberando R$ 25,00 de cashback extra para você voltar!"';
+
+	useGSAP(
+		() => {
+			gsap.ticker.lagSmoothing(1000, 16);
+
+			const runAnimation = () => {
+				setStep(0);
+				setTypedText("");
+
+				const tl = gsap.timeline({ onComplete: () => setTimeout(runAnimation, 3000) });
+
+				// Trigger card pulses
+				tl.to(".trigger-card", { borderColor: "rgba(59, 130, 246, 0.5)", duration: 0.5, repeat: 2, yoyo: true, ease: "sine.inOut" });
+
+				// Arrow draws
+				tl.call(() => setStep(1));
+				tl.fromTo(".flow-arrow", { scaleY: 0, transformOrigin: "top" }, { scaleY: 1, duration: 0.4, ease: "power2.out", force3D: true }, "+=0.2");
+
+				// Message card appears
+				tl.call(() => setStep(2));
+				tl.fromTo(
+					".message-card",
+					{ opacity: 0, y: 20, scale: 0.9, rotate: -3 },
+					{ opacity: 1, y: 0, scale: 1, rotate: -1, duration: 0.5, ease: "back.out(1.7)", force3D: true },
+					"+=0.2",
+				);
+
+				// Typewriter effect
+				tl.call(() => {
+					let i = 0;
+					const typeInterval = setInterval(() => {
+						if (i < fullMessage.length) {
+							setTypedText(fullMessage.slice(0, i + 1));
+							i++;
+						} else {
+							clearInterval(typeInterval);
+						}
+					}, 30);
+				});
+
+				tl.to({}, { duration: fullMessage.length * 0.03 + 0.5 });
+				tl.to({}, { duration: 2 });
+			};
+
+			runAnimation();
+		},
+		{ scope: containerRef },
+	);
+
+	return (
+		<div ref={containerRef} className="relative z-10 w-full max-w-md mx-auto">
+			<div className="flex flex-col gap-4">
+				<div
+					className="trigger-card bg-zinc-900/80 border border-white/10 p-4 rounded-xl backdrop-blur-sm transform translate-x-4 transition-all"
+					style={{ willChange: "border-color" }}
+				>
+					<div className="flex items-center justify-between mb-2">
+						<div className="text-xs font-bold text-blue-400 uppercase tracking-wider">Gatilho: Cliente Inativo (30 dias)</div>
+						<Zap className={cn("w-4 h-4 text-blue-400 transition-opacity", step >= 1 ? "opacity-100" : "opacity-50")} />
+					</div>
+					<div className="text-sm text-white/60">Cliente Maria não compra há 30 dias</div>
+				</div>
+
+				<div className="flex justify-center -my-2 z-0">
+					<div
+						className="flow-arrow h-8 w-px bg-gradient-to-b from-white/40 to-white/10"
+						style={{ willChange: "transform", transform: step >= 1 ? "scaleY(1)" : "scaleY(0)" }}
+					/>
+				</div>
+
+				<div
+					className={cn(
+						"message-card bg-[#24549C] p-6 rounded-2xl shadow-2xl transform transition-all duration-300",
+						step >= 2 ? "opacity-100" : "opacity-0",
+					)}
+					style={{ willChange: "transform, opacity", rotate: "-1deg" }}
+				>
+					<div className="flex items-center gap-3 mb-4">
+						<div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+							<MessageCircle className="w-4 h-4 text-white" />
+						</div>
+						<div className="text-sm font-medium text-white/80">Mensagem Enviada</div>
+					</div>
+					<p className="text-white text-lg font-medium leading-snug min-h-[4.5rem]">
+						{typedText || " "}
+						{step >= 2 && typedText.length < fullMessage.length && <span className="animate-pulse">|</span>}
+					</p>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// Animated WhatsApp Chat Wireframe
+function AnimatedChatWireframe() {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [visibleMessages, setVisibleMessages] = useState(0);
+	const [showTyping, setShowTyping] = useState(false);
+
+	const messages = [
+		{ id: 1, type: "user", text: "Qual a voltagem do ventilador?" },
+		{ id: 2, type: "bot", text: "O Ventilador Turbo está disponível em 110V e 220V! Qual você precisa? 🌀" },
+		{ id: 3, type: "user", text: "220V. Quero comprar." },
+		{ id: 4, type: "bot", text: "Perfeito! Vou chamar um de nossos atendentes para finalizar sua compra. 🎯" },
+		{ id: 5, type: "system", text: "⚡ Transferido para: Carlos (Vendas)" },
+	];
+
+	useGSAP(
+		() => {
+			gsap.ticker.lagSmoothing(1000, 16);
+
+			const runAnimation = () => {
+				setVisibleMessages(0);
+				setShowTyping(false);
+
+				const tl = gsap.timeline({ onComplete: () => setTimeout(runAnimation, 4000) });
+
+				messages.forEach((msg, index) => {
+					if (msg.type === "bot") {
+						tl.call(() => setShowTyping(true));
+						tl.to({}, { duration: 1 });
+						tl.call(() => setShowTyping(false));
+					}
+					tl.call(() => setVisibleMessages(index + 1));
+					tl.to({}, { duration: 0.8 });
+				});
+
+				tl.to({}, { duration: 2 });
+			};
+
+			runAnimation();
+		},
+		{ scope: containerRef },
+	);
+
+	return (
+		<div ref={containerRef} className="relative z-10 w-full max-w-md mx-auto">
+			<div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-2xl">
+				<div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+					<div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+						<Bot className="w-5 h-5 text-green-500" />
+					</div>
+					<div>
+						<div className="font-semibold text-white">Assistente Virtual</div>
+						<div className="text-xs text-white/40">Triagem Automática</div>
+					</div>
+				</div>
+
+				<div className="space-y-4 font-sans text-sm min-h-[200px]">
+					{messages.slice(0, visibleMessages).map((msg) => (
+						<div
+							key={msg.id}
+							className={cn("flex", msg.type === "user" ? "justify-end" : msg.type === "system" ? "justify-center" : "justify-start")}
+							style={{ willChange: "transform, opacity" }}
+						>
+							{msg.type === "system" ? (
+								<span className="text-xs text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">{msg.text}</span>
+							) : (
+								<div
+									className={cn(
+										"py-2 px-4 rounded-2xl max-w-[85%]",
+										msg.type === "user" ? "bg-[#24549C] text-white rounded-tr-sm" : "bg-zinc-800 text-white/90 rounded-tl-sm border border-white/5",
+									)}
+								>
+									{msg.text}
+								</div>
+							)}
+						</div>
+					))}
+
+					{showTyping && (
+						<div className="flex justify-start">
+							<div className="bg-zinc-800 text-white/90 py-3 px-4 rounded-2xl rounded-tl-sm border border-white/5">
+								<div className="flex gap-1">
+									<span className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+									<span className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+									<span className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+								</div>
+							</div>
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// Animated Ranking Wireframe
+function AnimatedRankingWireframe() {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [activeTab, setActiveTab] = useState<"sellers" | "partners" | "products">("sellers");
+
+	const tabs: Array<"sellers" | "partners" | "products"> = ["sellers", "partners", "products"];
+	const data = { sellers: MOCK_SELLERS, partners: MOCK_PARTNERS, products: MOCK_PRODUCTS };
+
+	const getLabel = () => {
+		switch (activeTab) {
+			case "sellers":
+				return "Top Vendedores";
+			case "partners":
+				return "Top Parceiros";
+			case "products":
+				return "Top Produtos";
+		}
+	};
+
+	useGSAP(
+		() => {
+			gsap.ticker.lagSmoothing(1000, 16);
+
+			let tabIndex = 0;
+			const tabInterval = setInterval(() => {
+				tabIndex = (tabIndex + 1) % tabs.length;
+				setActiveTab(tabs[tabIndex]);
+			}, 4000);
+
+			return () => clearInterval(tabInterval);
+		},
+		{ scope: containerRef },
+	);
+
+	useGSAP(
+		() => {
+			const items = containerRef.current?.querySelectorAll(".ranking-item");
+			if (!items) return;
+
+			gsap.fromTo(items, { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.4, stagger: 0.1, ease: "power2.out", force3D: true });
+		},
+		{ scope: containerRef, dependencies: [activeTab] },
+	);
+
+	return (
+		<div ref={containerRef} className="bg-zinc-900 border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4">
+			<div className="flex flex-wrap items-center justify-between gap-4">
+				<h4 className="font-bold text-white">{getLabel()}</h4>
+				<div className="flex bg-zinc-800 rounded-lg p-1 gap-1">
+					<Button
+						variant={activeTab === "sellers" ? "default" : "ghost"}
+						size="icon"
+						className={cn("h-8 w-8 rounded-md", activeTab === "sellers" ? "bg-[#24549C] text-white" : "text-white/60")}
+						onClick={() => setActiveTab("sellers")}
+					>
+						<Users className="w-4 h-4" />
+					</Button>
+					<Button
+						variant={activeTab === "partners" ? "default" : "ghost"}
+						size="icon"
+						className={cn("h-8 w-8 rounded-md", activeTab === "partners" ? "bg-[#24549C] text-white" : "text-white/60")}
+						onClick={() => setActiveTab("partners")}
+					>
+						<Handshake className="w-4 h-4" />
+					</Button>
+					<Button
+						variant={activeTab === "products" ? "default" : "ghost"}
+						size="icon"
+						className={cn("h-8 w-8 rounded-md", activeTab === "products" ? "bg-[#24549C] text-white" : "text-white/60")}
+						onClick={() => setActiveTab("products")}
+					>
+						<Package className="w-4 h-4" />
+					</Button>
+				</div>
+			</div>
+
+			<div className="flex flex-col gap-2 max-h-[360px] overflow-auto scrollbar-none">
+				{data[activeTab].map((item) => (
+					<div
+						key={`${activeTab}-${item.rank}`}
+						className={cn(
+							"ranking-item bg-black/40 border border-white/5 flex w-full flex-col sm:flex-row gap-2 rounded-xl px-3 py-3 items-center",
+							item.rank === 1 && "border-yellow-500/20 bg-yellow-500/5",
+							item.rank === 2 && "border-gray-400/20 bg-gray-400/5",
+							item.rank === 3 && "border-orange-600/20 bg-orange-600/5",
+						)}
+						style={{ willChange: "transform, opacity" }}
+					>
+						<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+							<div className="flex items-center gap-3">
+								{item.rank <= 3 ? (
+									<Crown
+										className={cn(
+											"w-5 h-5 min-w-5 min-h-5",
+											item.rank === 1 && "text-yellow-500",
+											item.rank === 2 && "text-gray-400",
+											item.rank === 3 && "text-orange-600",
+										)}
+									/>
+								) : (
+									<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-white/10 flex items-center justify-center">
+										<span className="text-xs font-bold text-white/60">{item.rank}</span>
+									</div>
+								)}
+								<Avatar className="w-8 h-8 min-w-8 min-h-8 hidden lg:block border border-white/10">
+									<AvatarFallback className="bg-zinc-800 text-xs text-white">{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+								</Avatar>
+								<div className="flex items-start flex-col">
+									<h1 className="text-sm font-bold tracking-tight text-white">{item.name}</h1>
+								</div>
+							</div>
+							<div className="flex items-center gap-2">
+								<div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-[#24549C]/10 text-[#24549C] border border-[#24549C]/20">
+									<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
+									<p className="text-xs font-bold tracking-tight uppercase text-white">{item.revenue}</p>
+								</div>
+								{activeTab !== "products" && (
+									<div className="hidden sm:flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-zinc-800/50 text-white/60 border border-white/5">
+										<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
+										<p className="text-xs font-bold tracking-tight uppercase">{item.sales}</p>
+									</div>
+								)}
+							</div>
+						</div>
+					</div>
+				))}
+			</div>
 		</div>
 	);
 }

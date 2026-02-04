@@ -1,6 +1,6 @@
 "use client";
 
-import type { TCreatePointOfInteractionNewSaleInput } from "@/app/api/point-of-interaction/new-sale/route";
+import type { TCreatePointOfInteractionTransactionInput } from "@/app/api/point-of-interaction/new-transaction/route";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { LoadingButton } from "@/components/loading-button";
@@ -112,11 +112,9 @@ export default function PointOfInteractionContent({
 	const router = useRouter();
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
 	const [playAction] = useSound("/sounds/action-completed.mp3");
-	const allowAccumulation = cashbackProgram.acumuloPermitirViaPontoIntegracao ?? true;
 
 	return (
 		<div className="grow bg-background p-6 md:p-10 flex flex-col items-center gap-6">
-			{/* HEADER SIMPLIFICADO: Foco na Marca */}
 			{/* HEADER HORIZONTAL: Logo + Info + Regras */}
 			<header className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 bg-white/50 backdrop-blur-sm px-4 py-2 md:px-6 md:py-4 rounded-[2rem] border border-white/40 shadow-sm">
 				<div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
@@ -138,30 +136,18 @@ export default function PointOfInteractionContent({
 				<AlternatingCashbackBadge cashbackProgram={cashbackProgram} />
 			</header>
 
-			{allowAccumulation ? (
-				<PointOfInteractionWithAccumulationViaPDI
-					org={org}
-					cashbackProgram={cashbackProgram}
-					router={router}
-					handleOpenProfileMenu={() => {
-						setShowProfileMenu(true);
-						playAction();
-					}}
-					handlePlayAction={() => {
-						playAction();
-					}}
-				/>
-			) : (
-				<PointerOfInteractionWithoutAccumulationViaPDI
-					org={org}
-					router={router}
-					handlePlayAction={() => {
-						playAction();
-					}}
-				/>
-			)}
+			{/* MAIN CONTENT - Unified Flow */}
+			<PointOfInteractionActions
+				org={org}
+				router={router}
+				handleOpenProfileMenu={() => {
+					setShowProfileMenu(true);
+					playAction();
+				}}
+				handlePlayAction={() => playAction()}
+			/>
 
-			{/* MODAL DE BUSCA (Mantém a lógica, mas com ajuste visual no input) */}
+			{/* MODAL DE BUSCA */}
 			{showProfileMenu ? <IdentificationMenu orgId={org.id} closeMenu={() => setShowProfileMenu(false)} /> : null}
 		</div>
 	);
@@ -410,7 +396,7 @@ type NewClientFormProps = {
 };
 function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProps) {
 	const router = useRouter();
-	const [infoHolder, setInfoHolder] = useState<Omit<TCreatePointOfInteractionNewSaleInput["client"], "telefone">>({
+	const [infoHolder, setInfoHolder] = useState<Omit<TCreatePointOfInteractionTransactionInput["client"], "telefone">>({
 		nome: "",
 		cpfCnpj: null,
 	});
@@ -477,7 +463,8 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 		</form>
 	);
 }
-type PointOfInteractionWithAccumulationViaPDIProps = {
+// Unified action buttons component for Point of Interaction
+type PointOfInteractionActionsProps = {
 	org: {
 		id: TOrganizationEntity["id"];
 		cnpj: TOrganizationEntity["cnpj"];
@@ -485,21 +472,16 @@ type PointOfInteractionWithAccumulationViaPDIProps = {
 		logoUrl: TOrganizationEntity["logoUrl"];
 		telefone: TOrganizationEntity["telefone"];
 	};
-	cashbackProgram: TCashbackProgramEntity;
 	router: ReturnType<typeof useRouter>;
 	handleOpenProfileMenu: () => void;
 	handlePlayAction: () => void;
 };
-function PointOfInteractionWithAccumulationViaPDI({
-	org,
-	cashbackProgram,
-	router,
-	handleOpenProfileMenu,
-	handlePlayAction,
-}: PointOfInteractionWithAccumulationViaPDIProps) {
+
+function PointOfInteractionActions({ org, router, handleOpenProfileMenu, handlePlayAction }: PointOfInteractionActionsProps) {
 	return (
 		<main className="w-full max-w-5xl flex-1 flex flex-col">
 			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
+				{/* LEFT COLUMN: Main Action - New Transaction */}
 				<div className="w-full md:w-1/2 flex flex-col gap-6">
 					<Button
 						onClick={() => {
@@ -513,16 +495,18 @@ function PointOfInteractionWithAccumulationViaPDI({
 							<ShoppingCart className="w-16 h-16 md:w-20 md:h-20" />
 						</div>
 						<div className="text-center">
-							<h3 className="text-2xl md:text-3xl font-black tracking-tight">GANHAR CASHBACK</h3>
+							<h3 className="text-2xl md:text-3xl font-black tracking-tight">REGISTRAR COMPRA</h3>
 							<p className="text-sm md:text-base opacity-90 mt-2 font-medium text-wrap whitespace-pre-wrap">
-								Registre sua compra agora e <br className="hidden md:block" /> acumule saldo para usar depois.
+								Ganhe ou resgate cashback <br className="hidden md:block" /> em suas compras.
 							</p>
 						</div>
 						<ArrowRight className="absolute bottom-8 right-8 w-8 h-8 opacity-50" />
 					</Button>
 				</div>
+
+				{/* RIGHT COLUMN: Secondary Actions */}
 				<div className="w-full md:w-1/2 flex flex-col gap-6">
-					{/* MEU SALDO / RESGATAR CASHBACK */}
+					{/* MEU SALDO */}
 					<Button
 						onClick={handleOpenProfileMenu}
 						variant="outline"
@@ -532,7 +516,7 @@ function PointOfInteractionWithAccumulationViaPDI({
 						<Coins className="w-10 h-10" />
 						<div className="text-center">
 							<h3 className="text-base font-bold uppercase">MEU SALDO</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Consulte seu extrato</p>
+							<p className="text-xs md:text-sm opacity-80 font-medium">Veja sua posição no ranking, seus resgates e seus acumulos</p>
 						</div>
 					</Button>
 
@@ -546,66 +530,6 @@ function PointOfInteractionWithAccumulationViaPDI({
 						<Trophy className="w-10 h-10" />
 						<div className="text-center">
 							<h3 className="text-base font-bold uppercase">RANKING DE VENDEDORES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Acompanhe a competição entre os vendedores</p>
-						</div>
-					</Button>
-				</div>
-			</div>
-			{/* GRID DE AÇÕES: 2 colunas no tablet */}
-		</main>
-	);
-}
-
-type PointOfInteractionWithoutAccumulationViaPDIProps = {
-	org: {
-		id: TOrganizationEntity["id"];
-		cnpj: TOrganizationEntity["cnpj"];
-		nome: TOrganizationEntity["nome"];
-		logoUrl: TOrganizationEntity["logoUrl"];
-		telefone: TOrganizationEntity["telefone"];
-	};
-	handlePlayAction: () => void;
-	router: ReturnType<typeof useRouter>;
-};
-function PointerOfInteractionWithoutAccumulationViaPDI({ org, handlePlayAction, router }: PointOfInteractionWithoutAccumulationViaPDIProps) {
-	return (
-		<main className="w-full max-w-5xl flex-1 flex flex-col">
-			{/* GRID DE AÇÕES: 2 colunas no tablet */}
-			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
-				<div className="w-full md:w-1/2 flex flex-col gap-6">
-					{/* CARD PRINCIPAL: RESGATAR CASHBACK (MAIOR DESTAQUE) */}
-					<Button
-						onClick={() => {
-							handlePlayAction();
-							router.push(`/point-of-interaction/${org.id}/new-cashback-redemption`);
-						}}
-						variant="default"
-						className="group relative flex flex-col items-center justify-center gap-4 h-auto flex-1 rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
-					>
-						<div className="bg-white/20 p-6 rounded-3xl group-hover:scale-110 transition-transform">
-							<Wallet className="w-16 h-16 md:w-20 md:h-20" />
-						</div>
-						<div className="text-center">
-							<h3 className="text-2xl md:text-3xl font-black tracking-tight">RESGATAR CASHBACK</h3>
-							<p className="text-sm md:text-base opacity-90 mt-2 font-medium text-wrap whitespace-pre-wrap">
-								Use seu saldo acumulado <br className="hidden md:block" /> para pagar suas compras.
-							</p>
-						</div>
-						<ArrowRight className="absolute bottom-8 right-8 w-8 h-8 opacity-50" />
-					</Button>
-				</div>
-
-				<div className="w-full md:w-1/2 flex flex-col gap-6">
-					{/* RANKING VENDEDORES */}
-					<Button
-						onClick={() => router.push(`/point-of-interaction/${org.id}/sellers-ranking`)}
-						variant="outline"
-						size={"fit"}
-						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full"
-					>
-						<Trophy className="w-10 h-10" />
-						<div className="text-center">
-							<h3 className="text-lg font-bold uppercase">RANKING DE VENDEDORES</h3>
 							<p className="text-xs md:text-sm opacity-80 font-medium">Acompanhe a competição entre os vendedores</p>
 						</div>
 					</Button>
