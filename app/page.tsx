@@ -1,4 +1,5 @@
 "use client";
+import AnalyticsSection from "@/app/_components/AnalyticsSection";
 import CampaignSection from "@/app/_components/CampaignSection";
 import CashbackSection from "@/app/_components/CashbackSection";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -302,63 +303,8 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Analytics Deep Dive Section (NEW) */}
-			<section className="py-24 bg-zinc-950 border-y border-white/5 relative overflow-hidden">
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-					<div className="text-center mb-16 max-w-3xl mx-auto">
-						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-6 backdrop-blur-sm">
-							<BarChart3 className="w-4 h-4" />
-							Analytics em Profundidade
-						</div>
-						<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-							Decisões baseadas em dados. <br />
-							<span className="text-white/50">Não em achismo.</span>
-						</h2>
-						<p className="text-lg text-white/60">Pare de abrir 5 planilhas. Um dashboard mostra tudo.</p>
-					</div>
-
-					{/* Metrics Grid */}
-					<div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
-						<div className="bg-zinc-900/50 border border-white/5 rounded-xl p-6 hover:border-purple-500/40 transition-colors">
-							<div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4">
-								<TrendingUp className="w-5 h-5 text-blue-400" />
-							</div>
-							<h3 className="font-semibold text-white mb-2">Vendas em Tempo Real</h3>
-							<p className="text-sm text-white/60">Acompanhe o faturamento do dia sem esperar o fechamento do caixa.</p>
-						</div>
-						<div className="bg-zinc-900/50 border border-white/5 rounded-xl p-6 hover:border-purple-500/40 transition-colors">
-							<div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-4">
-								<BarChart3 className="w-5 h-5 text-yellow-400" />
-							</div>
-							<h3 className="font-semibold text-white mb-2">Ticket Médio por Período</h3>
-							<p className="text-sm text-white/60">Detecte quedas antes que virem problema. Compare semanas e meses.</p>
-						</div>
-						<div className="bg-zinc-900/50 border border-white/5 rounded-xl p-6 hover:border-purple-500/40 transition-colors">
-							<div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-4">
-								<PieChart className="w-5 h-5 text-green-400" />
-							</div>
-							<h3 className="font-semibold text-white mb-2">Curva ABC de Produtos</h3>
-							<p className="text-sm text-white/60">Saiba quais 20% dos produtos geram 80% do faturamento.</p>
-						</div>
-						<div className="bg-zinc-900/50 border border-white/5 rounded-xl p-6 hover:border-purple-500/40 transition-colors">
-							<div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
-								<Users className="w-5 h-5 text-purple-400" />
-							</div>
-							<h3 className="font-semibold text-white mb-2">Performance da Equipe</h3>
-							<p className="text-sm text-white/60">Veja quem bateu a meta e quem precisa de apoio.</p>
-						</div>
-					</div>
-
-					{/* Impact Statement */}
-					<div className="max-w-2xl mx-auto">
-						<div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-white/10 rounded-2xl p-8 text-center">
-							<p className="text-lg text-white/80 font-medium">
-								Todas as informações que você precisa para decidir rápido. <span className="text-white">Em uma tela só.</span>
-							</p>
-						</div>
-					</div>
-				</div>
-			</section>
+			{/* Analytics Deep Dive Section */}
+			<AnalyticsSection />
 
 			{/* Feature: BI - RFM */}
 			<section id="bi" className="py-20 bg-black border-y border-white/5">
