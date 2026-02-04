@@ -1,4 +1,5 @@
 "use client";
+import CashbackSection from "@/app/_components/CashbackSection";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -14,7 +15,6 @@ import {
 	BadgePercent,
 	BarChart3,
 	Bot,
-	Box,
 	Brain,
 	CheckCircle2,
 	ChevronDown,
@@ -30,9 +30,7 @@ import {
 	MessageSquare,
 	Package,
 	PieChart,
-	Search,
 	Shield,
-	ShoppingCart,
 	Smartphone,
 	Sparkles,
 	TrendingUp,
@@ -248,42 +246,7 @@ export default function LandingPage() {
 			</section>
 
 			{/* Feature: Cashback / POI */}
-			<section id="cashback" className="py-20 bg-black relative overflow-hidden">
-				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#24549C]/50 to-transparent" />
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="grid lg:grid-cols-2 gap-16 items-center">
-						<div>
-							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6 backdrop-blur-sm">
-								<ShoppingCart className="w-4 h-4" />
-								Programa de Cashback
-							</div>
-							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								Cashback que você controla. <br />
-								<span className="text-white/50">Até o centavo.</span>
-							</h2>
-							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								Configure quanto devolver (2%, 5%, 10%), defina validade (30, 60, 90 dias) e acompanhe em tempo real quem resgatou. Tudo em uma interface
-								simples.
-							</p>
-
-							<div className="grid sm:grid-cols-2 gap-4 mb-8">
-								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-[#24549C]/40 transition-colors">
-									<Search className="w-5 h-5 text-[#24549C] mb-2" />
-									<h4 className="font-semibold text-white">Tablet no balcão</h4>
-									<p className="text-sm text-white/50">Cliente vê o saldo na hora da compra. Interface Kiosk inclusa.</p>
-								</div>
-								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5 hover:border-[#24549C]/40 transition-colors">
-									<Box className="w-5 h-5 text-[#24549C] mb-2" />
-									<h4 className="font-semibold text-white">Resgate instantâneo</h4>
-									<p className="text-sm text-white/50">Entrada de venda em poucos cliques. Resgate com CPF na hora.</p>
-								</div>
-							</div>
-						</div>
-
-						<AnimatedCashbackWireframe />
-					</div>
-				</div>
-			</section>
+			<CashbackSection />
 
 			{/* Feature: Campanhas */}
 			<section id="campanhas" className="py-20 bg-zinc-950 border-y border-white/5 relative overflow-hidden">
@@ -1258,124 +1221,6 @@ function AnimatedRFMWireframe() {
 	);
 }
 
-// Animated Cashback/POI Wireframe
-function AnimatedCashbackWireframe() {
-	const containerRef = useRef<HTMLDivElement>(null);
-	const [cartItems, setCartItems] = useState<number[]>([]);
-	const [showBadge, setShowBadge] = useState(false);
-	const [cashbackAmount, setCashbackAmount] = useState(0);
-
-	useGSAP(
-		() => {
-			gsap.ticker.lagSmoothing(1000, 16);
-
-			const runAnimation = () => {
-				setCartItems([]);
-				setShowBadge(false);
-				setCashbackAmount(0);
-
-				const tl = gsap.timeline({
-					onComplete: () => setTimeout(runAnimation, 2000),
-				});
-
-				// Add products to cart one by one
-				[0, 1, 2].forEach((index, i) => {
-					tl.call(() => setCartItems((prev) => [...prev, index]), [], i * 0.8);
-				});
-
-				// Animate button pulse
-				tl.to(".checkout-btn", { scale: 1.05, duration: 0.3, yoyo: true, repeat: 1, ease: "power2.inOut", force3D: true }, "+=0.5");
-
-				// Show cashback badge
-				tl.call(() => setShowBadge(true));
-				tl.fromTo(
-					".cashback-badge",
-					{ x: 50, opacity: 0, scale: 0.8 },
-					{ x: 0, opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.7)", force3D: true },
-				);
-
-				// Animate cashback amount counting
-				tl.call(() => {
-					const obj = { value: 0 };
-					gsap.to(obj, { value: 15, duration: 0.8, ease: "power2.out", onUpdate: () => setCashbackAmount(obj.value) });
-				});
-
-				tl.to({}, { duration: 2 });
-			};
-
-			runAnimation();
-		},
-		{ scope: containerRef },
-	);
-
-	return (
-		<div ref={containerRef} className="relative">
-			<div className="bg-black border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 aspect-video relative overflow-hidden group">
-				<div className="absolute inset-x-0 top-0 h-10 bg-zinc-900 border-b border-white/5 flex items-center px-4 gap-2">
-					<div className="w-2 h-2 rounded-full bg-red-500/50" />
-					<div className="w-2 h-2 rounded-full bg-yellow-500/50" />
-					<div className="w-2 h-2 rounded-full bg-green-500/50" />
-					<div className="ml-4 h-4 w-32 bg-white/10 rounded-full" />
-				</div>
-
-				<div className="mt-8 flex gap-4 h-full">
-					<div className="w-1/4 h-full space-y-2 hidden sm:block">
-						<div className="h-8 bg-white/5 rounded w-full" />
-						<div className="h-8 bg-[#24549C]/20 border border-[#24549C]/30 rounded w-full" />
-						<div className="h-8 bg-white/5 rounded w-full" />
-						<div className="h-8 bg-white/5 rounded w-full" />
-					</div>
-
-					<div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2">
-						{[1, 2, 3, 4, 5, 6].map((i) => (
-							<div
-								key={i}
-								className={cn(
-									"product-item aspect-square bg-zinc-900 rounded-lg border p-2 flex flex-col justify-between transition-all duration-300",
-									cartItems.includes(i - 1) ? "border-[#24549C]/50 bg-[#24549C]/10" : "border-white/5",
-								)}
-								style={{ willChange: "transform, opacity" }}
-							>
-								<div className="w-full aspect-video bg-white/5 rounded" />
-								<div className="h-2 w-2/3 bg-white/10 rounded" />
-							</div>
-						))}
-					</div>
-
-					<div className="w-1/3 h-full bg-zinc-900 rounded-lg border border-white/5 p-3 flex flex-col">
-						<div className="flex-1 space-y-2 overflow-hidden">
-							{cartItems.map((itemIndex) => (
-								<div key={itemIndex} className="cart-item h-10 bg-white/5 rounded flex items-center p-2 gap-2" style={{ willChange: "transform, opacity" }}>
-									<div className="w-6 h-6 bg-[#24549C]/30 rounded" />
-									<div className="flex-1 h-2 bg-white/10 rounded" />
-								</div>
-							))}
-						</div>
-						<div className="mt-auto pt-2 border-t border-white/5">
-							<div className="flex justify-between mb-2">
-								<div className="h-2 w-10 bg-white/20 rounded" />
-								<div className="h-2 w-10 bg-white/20 rounded" />
-							</div>
-							<div className="checkout-btn h-8 bg-green-600 rounded w-full" style={{ willChange: "transform" }} />
-						</div>
-					</div>
-				</div>
-			</div>
-
-			{showBadge && (
-				<div className="cashback-badge absolute -right-4 top-10 bg-zinc-900 border border-white/10 p-3 rounded-lg shadow-xl flex items-center gap-3 backdrop-blur-sm">
-					<div className="bg-green-500/20 p-2 rounded-full">
-						<Zap className="w-4 h-4 text-green-500" />
-					</div>
-					<div>
-						<div className="text-xs text-white/50">Cashback Gerado</div>
-						<div className="text-sm font-bold text-white">R$ {cashbackAmount.toFixed(2).replace(".", ",")}</div>
-					</div>
-				</div>
-			)}
-		</div>
-	);
-}
 
 // Animated Campaign Flow Wireframe
 function AnimatedCampaignWireframe() {
