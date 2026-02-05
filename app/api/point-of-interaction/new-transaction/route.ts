@@ -507,8 +507,9 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 					clientId: clientId,
 					clientRFMTitle: clientRfmTitle,
 				});
-			// Processing NOVA-COMPRA campaign for existing clients
-			if (!clientIsNew)
+			const wouldCauseDoubleInteraction = clientIsNew && campaignsForFirstPurchase.length > 0 && campaignsForNewPurchase.length > 0;
+			// Processing NOVA-COMPRA campaign for existing clients or new clients (if no double interaction would occur)
+			if (!wouldCauseDoubleInteraction)
 				await handleCampaignProcessingForNewPurchase({
 					tx,
 					orgId: input.orgId,
