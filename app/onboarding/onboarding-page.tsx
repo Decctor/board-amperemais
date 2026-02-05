@@ -56,7 +56,6 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 				const firstIssue = firstStageValidation.error.issues?.[0];
 				return toast.error(firstIssue?.message ?? "Ocorreu um erro de validação.");
 			}
-			goToNextStage();
 		}
 		if (state.stage === "subscription-plans-section") {
 			console.log("Onboarding Complete:", state);
