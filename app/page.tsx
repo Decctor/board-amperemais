@@ -2,6 +2,7 @@
 import AnalyticsSection from "@/app/_components/AnalyticsSection";
 import CampaignSection from "@/app/_components/CampaignSection";
 import CashbackSection from "@/app/_components/CashbackSection";
+import InsightsSection from "@/app/_components/InsightsSection";
 import RFMSection from "@/app/_components/RFMSection";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -25,15 +26,12 @@ import {
 	Crown,
 	FileSpreadsheet,
 	Handshake,
-	Lightbulb,
 	Lock,
 	MessageCircle,
 	Package,
 	PieChart,
 	Shield,
 	Smartphone,
-	Sparkles,
-	TrendingUp,
 	UserX,
 	Users,
 	Zap,
@@ -309,115 +307,7 @@ export default function LandingPage() {
 			<RFMSection />
 
 			{/* Feature: AI-Hints */}
-			<section className="py-24 bg-zinc-950 border-t border-white/5 relative overflow-hidden">
-				<div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/20 via-zinc-950/0 to-zinc-950/0" />
-
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-					<div className="text-center mb-16 max-w-3xl mx-auto">
-						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm font-medium mb-6 backdrop-blur-sm">
-							<Lightbulb className="w-4 h-4" />
-							Insights Proativos
-						</div>
-						<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-							A IA avisa. Você age. <br />
-							<span className="text-white/50">O caixa sente.</span>
-						</h2>
-						<p className="text-lg text-white/60">
-							Receba alertas práticos baseados nos seus dados. Não perca tempo analisando relatórios: a informação chega pronta para agir.
-						</p>
-					</div>
-
-					<div className="relative max-w-4xl mx-auto">
-						{/* Background Glow */}
-						<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-500/5 blur-3xl rounded-full -z-10" />
-
-						{/* Hints Grid */}
-						<div className="grid md:grid-cols-2 gap-6">
-							{/* Hint 1: Product Trend */}
-							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-red-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300">
-								<div className="flex items-start gap-4">
-									<div className="p-3 rounded-full bg-red-500/10">
-										<TrendingUp className="w-6 h-6 text-red-500 rotate-180" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white mb-1">Queda de Vendas</h4>
-										<p className="text-sm text-white/70 leading-relaxed mb-3">
-											O produto <strong className="text-white">Shampoo X</strong> está com vendas <span className="text-red-400">40% abaixo</span> da média
-											histórica nesta semana.
-										</p>
-										<div className="bg-red-500/10 rounded-lg p-2 border border-red-500/20">
-											<p className="text-xs text-red-300">
-												<strong>Ação sugerida:</strong> Verificar estoque e considerar promoção relâmpago.
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							{/* Hint 2: Association Analysis */}
-							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-yellow-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300 md:translate-y-8">
-								<div className="flex items-start gap-4">
-									<div className="p-3 rounded-full bg-yellow-500/10">
-										<Lightbulb className="w-6 h-6 text-yellow-500" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white mb-1">Padrão de Compra</h4>
-										<p className="text-sm text-white/70 leading-relaxed mb-3">
-											85% dos clientes que levam <strong className="text-white">Condicionador Y</strong> acabam levando a
-											<strong className="text-white"> Máscara Z</strong> em até 7 dias.
-										</p>
-										<div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20">
-											<p className="text-xs text-yellow-300">
-												<strong>Ação sugerida:</strong> Criar kit combo ou sugerir na venda do condicionador.
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							{/* Hint 3: Seller Performance */}
-							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-purple-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300">
-								<div className="flex items-start gap-4">
-									<div className="p-3 rounded-full bg-purple-500/10">
-										<Users className="w-6 h-6 text-purple-500" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white mb-1">Performance de Equipe</h4>
-										<p className="text-sm text-white/70 leading-relaxed mb-3">
-											Vendedores <strong className="text-white">Ana e Carlos</strong> geralmente têm performance menor na 1ª quinzena.
-										</p>
-										<div className="bg-purple-500/10 rounded-lg p-2 border border-purple-500/20">
-											<p className="text-xs text-purple-300">
-												<strong>Ação sugerida:</strong> Criar mini-campanha de incentivo no início do mês.
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							{/* Hint 4: Campaign Suggestion */}
-							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-blue-400 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300 md:translate-y-8">
-								<div className="flex items-start gap-4">
-									<div className="p-3 rounded-full bg-blue-400/10">
-										<Sparkles className="w-6 h-6 text-blue-400" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white mb-1">Reativação Urgente</h4>
-										<p className="text-sm text-white/70 leading-relaxed mb-3">
-											Seus clientes VIPs não compram há <strong className="text-white">45 dias</strong>. No seu nicho, o risco de churn aumenta após 50 dias.
-										</p>
-										<div className="bg-blue-400/10 rounded-lg p-2 border border-blue-400/20">
-											<p className="text-xs text-blue-300">
-												<strong>Ação sugerida:</strong> Enviar R$ 20 de cashback antes que virem inativos.
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
+			<InsightsSection />
 
 			{/* Feature: BI - Performance */}
 			<section id="analytics" className="py-20 bg-black overflow-hidden">
