@@ -1,5 +1,6 @@
 "use client";
 import AnalyticsSection from "@/app/_components/AnalyticsSection";
+import BenefitsSection from "@/app/_components/BenefitsSection";
 import CampaignSection from "@/app/_components/CampaignSection";
 import CashbackSection from "@/app/_components/CashbackSection";
 import InsightsSection from "@/app/_components/InsightsSection";
@@ -18,7 +19,6 @@ import {
 	BadgeDollarSign,
 	BarChart3,
 	Bot,
-	Brain,
 	CheckCircle2,
 	ChevronDown,
 	CirclePlus,
@@ -31,10 +31,8 @@ import {
 	Package,
 	PieChart,
 	Shield,
-	Smartphone,
 	UserX,
 	Users,
-	Zap,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -81,40 +79,6 @@ const PROBLEM_CARDS = [
 		icon: FileSpreadsheet,
 		title: "Dados espalhados em 5 planilhas diferentes",
 		description: "Vendas aqui, clientes ali, cashback em outro lugar. Impossível ter visão do todo.",
-	},
-];
-
-// Benefits data for "Por que RecompraCRM?" section
-const BENEFITS = [
-	{
-		icon: Zap,
-		title: "Comece em minutos",
-		description: "Sem integração obrigatória. Cadastre sua primeira venda hoje.",
-	},
-	{
-		icon: Smartphone,
-		title: "Tablet no balcão",
-		description: "Interface de Ponto de Interação inclusa. Cliente vê o saldo na hora.",
-	},
-	{
-		icon: MessageCircle,
-		title: "WhatsApp automático",
-		description: "Campanhas de reativação que rodam sozinhas.",
-	},
-	{
-		icon: Brain,
-		title: "IA que sugere ações",
-		description: "Receba dicas baseadas nos seus dados. Não em achismo.",
-	},
-	{
-		icon: BarChart3,
-		title: "Dashboard completo",
-		description: "Vendas, produtos, vendedores. Tudo em uma tela.",
-	},
-	{
-		icon: Shield,
-		title: "Sem surpresas",
-		description: "Preço fixo mensal. Cancele quando quiser.",
 	},
 ];
 
@@ -355,26 +319,8 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Why RecompraCRM Section (replaces testimonials) */}
-			<section className="py-20 bg-zinc-950 border-y border-white/5">
-				<div className="container mx-auto max-w-6xl px-4">
-					<div className="text-center mb-16">
-						<h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Por que escolher o RecompraCRM?</h2>
-						<p className="text-lg text-white/60">Tudo que você precisa para aumentar recompra. Em uma só plataforma.</p>
-					</div>
-					<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-						{BENEFITS.map((benefit, idx) => (
-							<div key={idx.toString()} className="bg-zinc-900/50 border border-white/5 rounded-xl p-6 hover:border-[#24549C]/40 transition-colors">
-								<div className="w-10 h-10 rounded-lg bg-[#24549C]/10 flex items-center justify-center mb-4">
-									<benefit.icon className="w-5 h-5 text-[#24549C]" />
-								</div>
-								<h3 className="font-semibold text-white mb-2">{benefit.title}</h3>
-								<p className="text-sm text-white/60">{benefit.description}</p>
-							</div>
-						))}
-					</div>
-				</div>
-			</section>
+			{/* Why RecompraCRM Section */}
+			<BenefitsSection />
 
 			{/* Feature: Pricing */}
 			<section id="pricing" className="py-24 bg-black relative overflow-hidden border-t border-white/5">
