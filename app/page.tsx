@@ -2,6 +2,7 @@
 import AnalyticsSection from "@/app/_components/AnalyticsSection";
 import CampaignSection from "@/app/_components/CampaignSection";
 import CashbackSection from "@/app/_components/CashbackSection";
+import RFMSection from "@/app/_components/RFMSection";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -14,7 +15,6 @@ import gsap from "gsap";
 import {
 	ArrowRight,
 	BadgeDollarSign,
-	BadgePercent,
 	BarChart3,
 	Bot,
 	Brain,
@@ -24,7 +24,6 @@ import {
 	Clock,
 	Crown,
 	FileSpreadsheet,
-	Grid3X3,
 	Handshake,
 	Lightbulb,
 	Lock,
@@ -37,7 +36,6 @@ import {
 	TrendingUp,
 	UserX,
 	Users,
-	Wallet,
 	Zap,
 } from "lucide-react";
 import Image from "next/image";
@@ -308,44 +306,7 @@ export default function LandingPage() {
 			<AnalyticsSection />
 
 			{/* Feature: BI - RFM */}
-			<section id="bi" className="py-20 bg-black border-y border-white/5">
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="grid lg:grid-cols-2 gap-16 items-center">
-						<div className="relative">
-							<AnimatedRFMWireframe />
-						</div>
-
-						<div>
-							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFB900]/10 border border-[#FFB900]/20 text-[#FFB900] text-sm font-medium mb-6 backdrop-blur-sm">
-								<BadgePercent className="w-4 h-4" />
-								Business Intelligence
-							</div>
-							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								Saiba exatamente quem <br />
-								<span className="text-white/50">merece seu tempo.</span>
-							</h2>
-							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								A Matriz RFM classifica sua base automaticamente. Você vê quem são seus campeões (cuide bem deles), quem está em risco (hora de reativar) e
-								quem é novo (crie relacionamento).
-							</p>
-							<div className="grid sm:grid-cols-2 gap-6 mb-8">
-								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5">
-									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<Grid3X3 className="w-4 h-4 text-[#FFB900]" /> Segmentação Automática
-									</h4>
-									<p className="text-sm text-white/60">Sem fórmulas. Sem planilhas. A análise roda sozinha.</p>
-								</div>
-								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5">
-									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<Wallet className="w-4 h-4 text-[#FFB900]" /> Ação com 1 Clique
-									</h4>
-									<p className="text-sm text-white/60">Viu 89 clientes em risco? Crie uma campanha direto da tela.</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
+			<RFMSection />
 
 			{/* Feature: AI-Hints */}
 			<section className="py-24 bg-zinc-950 border-t border-white/5 relative overflow-hidden">
@@ -991,142 +952,6 @@ function HeroSection() {
 // ANIMATED WIREFRAME COMPONENTS
 // ==========================================
 
-// Animated RFM Matrix Wireframe
-const RFM_SEGMENTS_ANIMATED = [
-	{ id: "campeoes", label: "CAMPEÕES", value: 128, color: "green" },
-	{ id: "leais", label: "LEAIS", value: 450, color: "blue" },
-	{ id: "em_risco", label: "EM RISCO", value: 89, color: "yellow" },
-	{ id: "novos", label: "NOVOS", value: 312, color: "purple" },
-];
-
-function AnimatedRFMWireframe() {
-	const containerRef = useRef<HTMLDivElement>(null);
-	const [displayValues, setDisplayValues] = useState<{ [key: string]: number }>({
-		campeoes: 0,
-		leais: 0,
-		em_risco: 0,
-		novos: 0,
-	});
-	const [activeSegment, setActiveSegment] = useState<string | null>(null);
-
-	useGSAP(
-		() => {
-			gsap.ticker.lagSmoothing(1000, 16);
-			const segments = containerRef.current?.querySelectorAll(".rfm-segment");
-			if (!segments) return;
-
-			// Initial entrance animation
-			const tl = gsap.timeline();
-			tl.fromTo(
-				segments,
-				{ opacity: 0, y: 20, scale: 0.9 },
-				{
-					opacity: 1,
-					y: 0,
-					scale: 1,
-					duration: 0.6,
-					stagger: 0.15,
-					ease: "power2.out",
-					force3D: true,
-				},
-			);
-
-			// Animate numbers counting up
-			RFM_SEGMENTS_ANIMATED.forEach((segment) => {
-				const obj = { value: 0 };
-				gsap.to(obj, {
-					value: segment.value,
-					duration: 2,
-					delay: 0.5,
-					ease: "power2.out",
-					onUpdate: () => {
-						setDisplayValues((prev) => ({
-							...prev,
-							[segment.id]: Math.round(obj.value),
-						}));
-					},
-				});
-			});
-
-			// Pulsing "at risk" segment to draw attention
-			const atRiskEl = containerRef.current?.querySelector(".rfm-at-risk");
-			if (atRiskEl) {
-				gsap.to(atRiskEl, {
-					borderColor: "rgba(250, 204, 21, 0.5)",
-					duration: 1,
-					repeat: -1,
-					yoyo: true,
-					delay: 3,
-					ease: "sine.inOut",
-				});
-			}
-
-			// Auto-highlight segments in sequence
-			const segmentIds = ["campeoes", "leais", "em_risco", "novos"];
-			let currentIndex = 0;
-			const highlightInterval = setInterval(() => {
-				setActiveSegment(segmentIds[currentIndex]);
-				currentIndex = (currentIndex + 1) % segmentIds.length;
-			}, 2500);
-
-			return () => clearInterval(highlightInterval);
-		},
-		{ scope: containerRef },
-	);
-
-	const getColorClasses = (color: string, isActive: boolean) => {
-		const base = {
-			green: { text: "text-green-400", bg: "bg-green-400/10", border: isActive ? "border-green-400/50" : "border-white/5" },
-			blue: { text: "text-blue-400", bg: "bg-blue-400/10", border: isActive ? "border-blue-400/50" : "border-white/5" },
-			yellow: { text: "text-yellow-400", bg: "bg-yellow-400/10", border: isActive ? "border-yellow-400/50" : "border-white/5" },
-			purple: { text: "text-purple-400", bg: "bg-purple-400/10", border: isActive ? "border-purple-400/50" : "border-white/5" },
-		};
-		return base[color as keyof typeof base] || base.green;
-	};
-
-	return (
-		<div ref={containerRef} className="bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
-			<div className="flex items-center gap-4 mb-8">
-				<div className="p-3 bg-zinc-800 rounded-lg border border-white/10">
-					<Grid3X3 className="w-6 h-6 text-[#FFB900]" />
-				</div>
-				<div>
-					<h4 className="font-bold text-white text-lg">Matriz RFM em Tempo Real</h4>
-					<p className="text-sm text-white/40">Segmentação automática da sua base</p>
-				</div>
-			</div>
-			<div className="grid grid-cols-2 gap-3">
-				{RFM_SEGMENTS_ANIMATED.map((segment) => {
-					const colors = getColorClasses(segment.color, activeSegment === segment.id);
-					return (
-						<div
-							key={segment.id}
-							className={cn(
-								"rfm-segment bg-zinc-800/50 p-4 rounded-xl border text-center transition-all duration-300 cursor-pointer group",
-								colors.border,
-								segment.id === "em_risco" && "rfm-at-risk",
-								activeSegment === segment.id && "scale-[1.02]",
-							)}
-							style={{ willChange: "transform, opacity" }}
-						>
-							<div className={cn("text-2xl font-bold text-white mb-1 transition-colors", activeSegment === segment.id && "text-[#FFB900]")}>
-								{displayValues[segment.id]}
-							</div>
-							<div className={cn("text-xs font-semibold py-1 px-2 rounded-full inline-block", colors.text, colors.bg)}>{segment.label}</div>
-						</div>
-					);
-				})}
-			</div>
-			<div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
-				<div className="flex items-center gap-2 text-sm text-white/60">
-					<Zap className="w-4 h-4 text-[#FFB900]" />
-					<span>Clique em um segmento para criar campanha</span>
-				</div>
-				<ArrowRight className="w-4 h-4 text-white/40" />
-			</div>
-		</div>
-	);
-}
 
 
 
