@@ -1,7 +1,10 @@
 "use client";
 import AnalyticsSection from "@/app/_components/AnalyticsSection";
+import BenefitsSection from "@/app/_components/BenefitsSection";
 import CampaignSection from "@/app/_components/CampaignSection";
 import CashbackSection from "@/app/_components/CashbackSection";
+import InsightsSection from "@/app/_components/InsightsSection";
+import RFMSection from "@/app/_components/RFMSection";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -14,31 +17,22 @@ import gsap from "gsap";
 import {
 	ArrowRight,
 	BadgeDollarSign,
-	BadgePercent,
 	BarChart3,
 	Bot,
-	Brain,
 	CheckCircle2,
 	ChevronDown,
 	CirclePlus,
 	Clock,
 	Crown,
 	FileSpreadsheet,
-	Grid3X3,
 	Handshake,
-	Lightbulb,
 	Lock,
 	MessageCircle,
 	Package,
 	PieChart,
 	Shield,
-	Smartphone,
-	Sparkles,
-	TrendingUp,
 	UserX,
 	Users,
-	Wallet,
-	Zap,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -85,40 +79,6 @@ const PROBLEM_CARDS = [
 		icon: FileSpreadsheet,
 		title: "Dados espalhados em 5 planilhas diferentes",
 		description: "Vendas aqui, clientes ali, cashback em outro lugar. Impossível ter visão do todo.",
-	},
-];
-
-// Benefits data for "Por que RecompraCRM?" section
-const BENEFITS = [
-	{
-		icon: Zap,
-		title: "Comece em minutos",
-		description: "Sem integração obrigatória. Cadastre sua primeira venda hoje.",
-	},
-	{
-		icon: Smartphone,
-		title: "Tablet no balcão",
-		description: "Interface de Ponto de Interação inclusa. Cliente vê o saldo na hora.",
-	},
-	{
-		icon: MessageCircle,
-		title: "WhatsApp automático",
-		description: "Campanhas de reativação que rodam sozinhas.",
-	},
-	{
-		icon: Brain,
-		title: "IA que sugere ações",
-		description: "Receba dicas baseadas nos seus dados. Não em achismo.",
-	},
-	{
-		icon: BarChart3,
-		title: "Dashboard completo",
-		description: "Vendas, produtos, vendedores. Tudo em uma tela.",
-	},
-	{
-		icon: Shield,
-		title: "Sem surpresas",
-		description: "Preço fixo mensal. Cancele quando quiser.",
 	},
 ];
 
@@ -308,155 +268,10 @@ export default function LandingPage() {
 			<AnalyticsSection />
 
 			{/* Feature: BI - RFM */}
-			<section id="bi" className="py-20 bg-black border-y border-white/5">
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="grid lg:grid-cols-2 gap-16 items-center">
-						<div className="relative">
-							<AnimatedRFMWireframe />
-						</div>
-
-						<div>
-							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFB900]/10 border border-[#FFB900]/20 text-[#FFB900] text-sm font-medium mb-6 backdrop-blur-sm">
-								<BadgePercent className="w-4 h-4" />
-								Business Intelligence
-							</div>
-							<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-								Saiba exatamente quem <br />
-								<span className="text-white/50">merece seu tempo.</span>
-							</h2>
-							<p className="text-lg text-white/60 mb-8 leading-relaxed">
-								A Matriz RFM classifica sua base automaticamente. Você vê quem são seus campeões (cuide bem deles), quem está em risco (hora de reativar) e
-								quem é novo (crie relacionamento).
-							</p>
-							<div className="grid sm:grid-cols-2 gap-6 mb-8">
-								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5">
-									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<Grid3X3 className="w-4 h-4 text-[#FFB900]" /> Segmentação Automática
-									</h4>
-									<p className="text-sm text-white/60">Sem fórmulas. Sem planilhas. A análise roda sozinha.</p>
-								</div>
-								<div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5">
-									<h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-										<Wallet className="w-4 h-4 text-[#FFB900]" /> Ação com 1 Clique
-									</h4>
-									<p className="text-sm text-white/60">Viu 89 clientes em risco? Crie uma campanha direto da tela.</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
+			<RFMSection />
 
 			{/* Feature: AI-Hints */}
-			<section className="py-24 bg-zinc-950 border-t border-white/5 relative overflow-hidden">
-				<div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/20 via-zinc-950/0 to-zinc-950/0" />
-
-				<div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-					<div className="text-center mb-16 max-w-3xl mx-auto">
-						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm font-medium mb-6 backdrop-blur-sm">
-							<Lightbulb className="w-4 h-4" />
-							Insights Proativos
-						</div>
-						<h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-							A IA avisa. Você age. <br />
-							<span className="text-white/50">O caixa sente.</span>
-						</h2>
-						<p className="text-lg text-white/60">
-							Receba alertas práticos baseados nos seus dados. Não perca tempo analisando relatórios: a informação chega pronta para agir.
-						</p>
-					</div>
-
-					<div className="relative max-w-4xl mx-auto">
-						{/* Background Glow */}
-						<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-500/5 blur-3xl rounded-full -z-10" />
-
-						{/* Hints Grid */}
-						<div className="grid md:grid-cols-2 gap-6">
-							{/* Hint 1: Product Trend */}
-							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-red-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300">
-								<div className="flex items-start gap-4">
-									<div className="p-3 rounded-full bg-red-500/10">
-										<TrendingUp className="w-6 h-6 text-red-500 rotate-180" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white mb-1">Queda de Vendas</h4>
-										<p className="text-sm text-white/70 leading-relaxed mb-3">
-											O produto <strong className="text-white">Shampoo X</strong> está com vendas <span className="text-red-400">40% abaixo</span> da média
-											histórica nesta semana.
-										</p>
-										<div className="bg-red-500/10 rounded-lg p-2 border border-red-500/20">
-											<p className="text-xs text-red-300">
-												<strong>Ação sugerida:</strong> Verificar estoque e considerar promoção relâmpago.
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							{/* Hint 2: Association Analysis */}
-							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-yellow-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300 md:translate-y-8">
-								<div className="flex items-start gap-4">
-									<div className="p-3 rounded-full bg-yellow-500/10">
-										<Lightbulb className="w-6 h-6 text-yellow-500" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white mb-1">Padrão de Compra</h4>
-										<p className="text-sm text-white/70 leading-relaxed mb-3">
-											85% dos clientes que levam <strong className="text-white">Condicionador Y</strong> acabam levando a
-											<strong className="text-white"> Máscara Z</strong> em até 7 dias.
-										</p>
-										<div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20">
-											<p className="text-xs text-yellow-300">
-												<strong>Ação sugerida:</strong> Criar kit combo ou sugerir na venda do condicionador.
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							{/* Hint 3: Seller Performance */}
-							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-purple-500 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300">
-								<div className="flex items-start gap-4">
-									<div className="p-3 rounded-full bg-purple-500/10">
-										<Users className="w-6 h-6 text-purple-500" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white mb-1">Performance de Equipe</h4>
-										<p className="text-sm text-white/70 leading-relaxed mb-3">
-											Vendedores <strong className="text-white">Ana e Carlos</strong> geralmente têm performance menor na 1ª quinzena.
-										</p>
-										<div className="bg-purple-500/10 rounded-lg p-2 border border-purple-500/20">
-											<p className="text-xs text-purple-300">
-												<strong>Ação sugerida:</strong> Criar mini-campanha de incentivo no início do mês.
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							{/* Hint 4: Campaign Suggestion */}
-							<div className="bg-zinc-900/80 backdrop-blur-md border-l-4 border-l-blue-400 border-y border-r border-[#ffffff1a] p-6 rounded-r-xl shadow-lg transform hover:-translate-y-1 transition-transform duration-300 md:translate-y-8">
-								<div className="flex items-start gap-4">
-									<div className="p-3 rounded-full bg-blue-400/10">
-										<Sparkles className="w-6 h-6 text-blue-400" />
-									</div>
-									<div>
-										<h4 className="font-bold text-white mb-1">Reativação Urgente</h4>
-										<p className="text-sm text-white/70 leading-relaxed mb-3">
-											Seus clientes VIPs não compram há <strong className="text-white">45 dias</strong>. No seu nicho, o risco de churn aumenta após 50 dias.
-										</p>
-										<div className="bg-blue-400/10 rounded-lg p-2 border border-blue-400/20">
-											<p className="text-xs text-blue-300">
-												<strong>Ação sugerida:</strong> Enviar R$ 20 de cashback antes que virem inativos.
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
+			<InsightsSection />
 
 			{/* Feature: BI - Performance */}
 			<section id="analytics" className="py-20 bg-black overflow-hidden">
@@ -504,26 +319,8 @@ export default function LandingPage() {
 				</div>
 			</section>
 
-			{/* Why RecompraCRM Section (replaces testimonials) */}
-			<section className="py-20 bg-zinc-950 border-y border-white/5">
-				<div className="container mx-auto max-w-6xl px-4">
-					<div className="text-center mb-16">
-						<h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Por que escolher o RecompraCRM?</h2>
-						<p className="text-lg text-white/60">Tudo que você precisa para aumentar recompra. Em uma só plataforma.</p>
-					</div>
-					<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-						{BENEFITS.map((benefit, idx) => (
-							<div key={idx.toString()} className="bg-zinc-900/50 border border-white/5 rounded-xl p-6 hover:border-[#24549C]/40 transition-colors">
-								<div className="w-10 h-10 rounded-lg bg-[#24549C]/10 flex items-center justify-center mb-4">
-									<benefit.icon className="w-5 h-5 text-[#24549C]" />
-								</div>
-								<h3 className="font-semibold text-white mb-2">{benefit.title}</h3>
-								<p className="text-sm text-white/60">{benefit.description}</p>
-							</div>
-						))}
-					</div>
-				</div>
-			</section>
+			{/* Why RecompraCRM Section */}
+			<BenefitsSection />
 
 			{/* Feature: Pricing */}
 			<section id="pricing" className="py-24 bg-black relative overflow-hidden border-t border-white/5">
@@ -991,142 +788,6 @@ function HeroSection() {
 // ANIMATED WIREFRAME COMPONENTS
 // ==========================================
 
-// Animated RFM Matrix Wireframe
-const RFM_SEGMENTS_ANIMATED = [
-	{ id: "campeoes", label: "CAMPEÕES", value: 128, color: "green" },
-	{ id: "leais", label: "LEAIS", value: 450, color: "blue" },
-	{ id: "em_risco", label: "EM RISCO", value: 89, color: "yellow" },
-	{ id: "novos", label: "NOVOS", value: 312, color: "purple" },
-];
-
-function AnimatedRFMWireframe() {
-	const containerRef = useRef<HTMLDivElement>(null);
-	const [displayValues, setDisplayValues] = useState<{ [key: string]: number }>({
-		campeoes: 0,
-		leais: 0,
-		em_risco: 0,
-		novos: 0,
-	});
-	const [activeSegment, setActiveSegment] = useState<string | null>(null);
-
-	useGSAP(
-		() => {
-			gsap.ticker.lagSmoothing(1000, 16);
-			const segments = containerRef.current?.querySelectorAll(".rfm-segment");
-			if (!segments) return;
-
-			// Initial entrance animation
-			const tl = gsap.timeline();
-			tl.fromTo(
-				segments,
-				{ opacity: 0, y: 20, scale: 0.9 },
-				{
-					opacity: 1,
-					y: 0,
-					scale: 1,
-					duration: 0.6,
-					stagger: 0.15,
-					ease: "power2.out",
-					force3D: true,
-				},
-			);
-
-			// Animate numbers counting up
-			RFM_SEGMENTS_ANIMATED.forEach((segment) => {
-				const obj = { value: 0 };
-				gsap.to(obj, {
-					value: segment.value,
-					duration: 2,
-					delay: 0.5,
-					ease: "power2.out",
-					onUpdate: () => {
-						setDisplayValues((prev) => ({
-							...prev,
-							[segment.id]: Math.round(obj.value),
-						}));
-					},
-				});
-			});
-
-			// Pulsing "at risk" segment to draw attention
-			const atRiskEl = containerRef.current?.querySelector(".rfm-at-risk");
-			if (atRiskEl) {
-				gsap.to(atRiskEl, {
-					borderColor: "rgba(250, 204, 21, 0.5)",
-					duration: 1,
-					repeat: -1,
-					yoyo: true,
-					delay: 3,
-					ease: "sine.inOut",
-				});
-			}
-
-			// Auto-highlight segments in sequence
-			const segmentIds = ["campeoes", "leais", "em_risco", "novos"];
-			let currentIndex = 0;
-			const highlightInterval = setInterval(() => {
-				setActiveSegment(segmentIds[currentIndex]);
-				currentIndex = (currentIndex + 1) % segmentIds.length;
-			}, 2500);
-
-			return () => clearInterval(highlightInterval);
-		},
-		{ scope: containerRef },
-	);
-
-	const getColorClasses = (color: string, isActive: boolean) => {
-		const base = {
-			green: { text: "text-green-400", bg: "bg-green-400/10", border: isActive ? "border-green-400/50" : "border-white/5" },
-			blue: { text: "text-blue-400", bg: "bg-blue-400/10", border: isActive ? "border-blue-400/50" : "border-white/5" },
-			yellow: { text: "text-yellow-400", bg: "bg-yellow-400/10", border: isActive ? "border-yellow-400/50" : "border-white/5" },
-			purple: { text: "text-purple-400", bg: "bg-purple-400/10", border: isActive ? "border-purple-400/50" : "border-white/5" },
-		};
-		return base[color as keyof typeof base] || base.green;
-	};
-
-	return (
-		<div ref={containerRef} className="bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
-			<div className="flex items-center gap-4 mb-8">
-				<div className="p-3 bg-zinc-800 rounded-lg border border-white/10">
-					<Grid3X3 className="w-6 h-6 text-[#FFB900]" />
-				</div>
-				<div>
-					<h4 className="font-bold text-white text-lg">Matriz RFM em Tempo Real</h4>
-					<p className="text-sm text-white/40">Segmentação automática da sua base</p>
-				</div>
-			</div>
-			<div className="grid grid-cols-2 gap-3">
-				{RFM_SEGMENTS_ANIMATED.map((segment) => {
-					const colors = getColorClasses(segment.color, activeSegment === segment.id);
-					return (
-						<div
-							key={segment.id}
-							className={cn(
-								"rfm-segment bg-zinc-800/50 p-4 rounded-xl border text-center transition-all duration-300 cursor-pointer group",
-								colors.border,
-								segment.id === "em_risco" && "rfm-at-risk",
-								activeSegment === segment.id && "scale-[1.02]",
-							)}
-							style={{ willChange: "transform, opacity" }}
-						>
-							<div className={cn("text-2xl font-bold text-white mb-1 transition-colors", activeSegment === segment.id && "text-[#FFB900]")}>
-								{displayValues[segment.id]}
-							</div>
-							<div className={cn("text-xs font-semibold py-1 px-2 rounded-full inline-block", colors.text, colors.bg)}>{segment.label}</div>
-						</div>
-					);
-				})}
-			</div>
-			<div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
-				<div className="flex items-center gap-2 text-sm text-white/60">
-					<Zap className="w-4 h-4 text-[#FFB900]" />
-					<span>Clique em um segmento para criar campanha</span>
-				</div>
-				<ArrowRight className="w-4 h-4 text-white/40" />
-			</div>
-		</div>
-	);
-}
 
 
 
