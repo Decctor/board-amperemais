@@ -766,7 +766,7 @@ function HeroSection() {
 							className="hero-cta w-full sm:w-auto"
 						>
 							<Button className="w-full sm:w-auto bg-[#24549C] hover:bg-[#1e4682] text-white rounded-full px-4 md:px-5 lg:px-6 h-9 md:h-10 lg:h-11 xl:h-12 text-xs md:text-sm lg:text-base font-bold shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-1 transition-all duration-300">
-								Ver como funciona (15 min) <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 inline" />
+								Teste Gratuitamente <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 inline" />
 							</Button>
 						</a>
 						<Link href="/auth/signin" className="hero-cta w-full sm:w-auto">
@@ -778,6 +778,7 @@ function HeroSection() {
 							</Button>
 						</Link>
 					</div>
+					<p class="text-white/60 text-base font-medium">Teste por 15 dias grátis. Sem cartão de crédito.</p>
 				</div>
 			</div>
 		</section>
