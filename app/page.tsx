@@ -22,6 +22,7 @@ import {
 	ChevronDown,
 	CirclePlus,
 	Clock,
+	Crown,
 	FileSpreadsheet,
 	Grid3X3,
 	Handshake,
