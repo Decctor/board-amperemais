@@ -760,7 +760,7 @@ function HeroSection() {
 					{/* CTA Buttons */}
 					<div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-3">
 						<a
-							href="https://wa.me/553499480791?text=Gostaria%20de%20ver%20como%20o%20RecompraCRM%20funciona!"
+							href="/auth/signup"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="hero-cta w-full sm:w-auto"
