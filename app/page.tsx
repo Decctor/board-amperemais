@@ -778,7 +778,7 @@ function HeroSection() {
 							</Button>
 						</Link>
 					</div>
-					<p class="text-white/60 text-base font-medium">Teste por 15 dias grátis. Sem cartão de crédito.</p>
+					<p class="mt-2 text-white/60 text-base font-medium">Teste por 15 dias grátis. Sem cartão de crédito.</p>
 				</div>
 			</div>
 		</section>
