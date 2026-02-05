@@ -7,17 +7,14 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	BadgePercent,
-	Check,
 	CheckCircle2,
 	ChevronRight,
 	Clock,
 	Grid3X3,
 	MessageCircle,
-	Phone,
 	Send,
 	Sparkles,
 	UserRound,
-	Users,
 	Wallet,
 	Zap,
 } from "lucide-react";
@@ -213,13 +210,11 @@ function OverviewView({ active }: { active: boolean }) {
 
 function SegmentDetailView({ active }: { active: boolean }) {
 	const [visibleClients, setVisibleClients] = useState(0);
-	const [selectedClients, setSelectedClients] = useState<number[]>([]);
 	const [showActionButton, setShowActionButton] = useState(false);
 
 	useEffect(() => {
 		if (!active) {
 			setVisibleClients(0);
-			setSelectedClients([]);
 			setShowActionButton(false);
 			return;
 		}
@@ -235,19 +230,13 @@ function SegmentDetailView({ active }: { active: boolean }) {
 			}
 		}, 350);
 
-		// Start selecting clients
-		const selectTimer = setTimeout(() => {
-			setSelectedClients([0, 1, 2]);
-		}, 2800);
-
-		// Show action button
+		// Show action button after clients are visible
 		const actionTimer = setTimeout(() => {
 			setShowActionButton(true);
-		}, 3800);
+		}, 2500);
 
 		return () => {
 			clearInterval(interval);
-			clearTimeout(selectTimer);
 			clearTimeout(actionTimer);
 		};
 	}, [active]);
@@ -266,52 +255,35 @@ function SegmentDetailView({ active }: { active: boolean }) {
 
 			{/* Client list */}
 			<div className="flex-1 flex flex-col gap-1 px-1 overflow-hidden">
-				{AT_RISK_CLIENTS.slice(0, visibleClients).map((client, idx) => {
-					const isSelected = selectedClients.includes(idx);
+				{AT_RISK_CLIENTS.slice(0, visibleClients).map((client) => (
+					<motion.div
+						key={client.name}
+						initial={{ opacity: 0, x: -10 }}
+						animate={{ opacity: 1, x: 0 }}
+						transition={{ type: "spring", stiffness: 400, damping: 30 }}
+						className="flex items-center gap-2 p-1.5 rounded-lg border bg-white/[0.02] border-white/5"
+					>
+						{/* Avatar */}
+						<div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+							<UserRound className="w-2.5 h-2.5 text-white/50" />
+						</div>
 
-					return (
-						<motion.div
-							key={client.name}
-							initial={{ opacity: 0, x: -10 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{ type: "spring", stiffness: 400, damping: 30 }}
-							className={cn(
-								"flex items-center gap-2 p-1.5 rounded-lg border transition-all duration-300",
-								isSelected ? "bg-yellow-500/10 border-yellow-500/30" : "bg-white/[0.02] border-white/5",
-							)}
-						>
-							{/* Checkbox */}
-							<div
-								className={cn(
-									"w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 transition-all",
-									isSelected ? "bg-yellow-400 border-yellow-400" : "border-white/20",
-								)}
-							>
-								{isSelected && <Check className="w-2 h-2 text-black" />}
+						{/* Info */}
+						<div className="flex-1 min-w-0">
+							<div className="text-[0.45rem] text-white/80 font-medium truncate">{client.name}</div>
+							<div className="text-[0.35rem] text-white/40 flex items-center gap-1">
+								<Clock className="w-2 h-2" />
+								{client.days}d sem comprar
 							</div>
+						</div>
 
-							{/* Avatar */}
-							<div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-								<UserRound className="w-2.5 h-2.5 text-white/50" />
-							</div>
-
-							{/* Info */}
-							<div className="flex-1 min-w-0">
-								<div className="text-[0.45rem] text-white/80 font-medium truncate">{client.name}</div>
-								<div className="text-[0.35rem] text-white/40 flex items-center gap-1">
-									<Clock className="w-2 h-2" />
-									{client.days}d sem comprar
-								</div>
-							</div>
-
-							{/* Last value */}
-							<div className="text-right shrink-0">
-								<div className="text-[0.4rem] text-white/50">Última</div>
-								<div className="text-[0.45rem] font-bold text-white/70">R$ {client.lastValue}</div>
-							</div>
-						</motion.div>
-					);
-				})}
+						{/* Last value */}
+						<div className="text-right shrink-0">
+							<div className="text-[0.4rem] text-white/50">Última</div>
+							<div className="text-[0.45rem] font-bold text-white/70">R$ {client.lastValue}</div>
+						</div>
+					</motion.div>
+				))}
 			</div>
 
 			{/* Action button */}
@@ -329,7 +301,7 @@ function SegmentDetailView({ active }: { active: boolean }) {
 							transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
 						>
 							<Zap className="w-3 h-3 text-black" />
-							<span className="text-[0.5rem] font-black text-black uppercase tracking-wide">Criar Campanha (3)</span>
+							<span className="text-[0.5rem] font-black text-black uppercase tracking-wide">Criar Campanha (89)</span>
 						</motion.div>
 					</motion.div>
 				)}
@@ -398,17 +370,17 @@ function ActionView({ active }: { active: boolean }) {
 
 				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-center">
 					<div className="text-[0.6rem] font-black text-green-400 uppercase tracking-tight">Campanha Criada!</div>
-					<div className="text-[0.4rem] text-white/50 mt-0.5">3 clientes serão notificados</div>
+					<div className="text-[0.4rem] text-white/50 mt-0.5">89 clientes serão notificados</div>
 				</motion.div>
 
 				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="grid grid-cols-2 gap-2 w-full max-w-[180px]">
 					<div className="bg-green-500/10 border border-green-500/20 rounded-lg p-2 text-center">
 						<div className="text-[0.35rem] text-green-400/60 uppercase font-bold">Cashback</div>
-						<div className="text-[0.6rem] font-black text-green-400">R$ 75</div>
+						<div className="text-[0.6rem] font-black text-green-400">R$ 2.225</div>
 					</div>
 					<div className="bg-[#FFB900]/10 border border-[#FFB900]/20 rounded-lg p-2 text-center">
 						<div className="text-[0.35rem] text-[#FFB900]/60 uppercase font-bold">Clientes</div>
-						<div className="text-[0.6rem] font-black text-[#FFB900]">3</div>
+						<div className="text-[0.6rem] font-black text-[#FFB900]">89</div>
 					</div>
 				</motion.div>
 			</div>
@@ -425,18 +397,14 @@ function ActionView({ active }: { active: boolean }) {
 			</div>
 
 			<div className="flex-1 flex flex-col gap-2 px-1">
-				{/* Selected clients summary */}
-				<div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 flex items-center gap-2">
-					<div className="flex -space-x-1.5">
-						{[0, 1, 2].map((i) => (
-							<div key={i} className="w-5 h-5 rounded-full bg-yellow-400/20 border-2 border-zinc-900 flex items-center justify-center">
-								<UserRound className="w-2.5 h-2.5 text-yellow-400" />
-							</div>
-						))}
+				{/* Segment summary */}
+				<div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-2 flex items-center gap-2">
+					<div className="w-7 h-7 rounded-full bg-yellow-400/20 flex items-center justify-center shrink-0">
+						<AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
 					</div>
 					<div className="flex-1">
-						<div className="text-[0.45rem] font-bold text-white/80">3 clientes selecionados</div>
-						<div className="text-[0.35rem] text-white/40">Segmento: Em Risco</div>
+						<div className="text-[0.45rem] font-bold text-yellow-400">Segmento: Em Risco</div>
+						<div className="text-[0.35rem] text-white/50">89 clientes receberão a campanha</div>
 					</div>
 				</div>
 
