@@ -1,16 +1,37 @@
+import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import type { TCampaignState } from "@/schemas/campaigns";
-import type { TCampaignTriggerTypeEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
-import { CampaignTriggerTypeOptions, TimeDurationUnitsOptions } from "@/utils/select-options";
+import type { TCampaignTriggerTypeEnum, TRecurrenceFrequencyEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
+import { CampaignTriggerTypeOptions, DaysOfWeekOptions, RecurrenceFrequencyOptions, TimeDurationUnitsOptions } from "@/utils/select-options";
 import { SparklesIcon } from "lucide-react";
+import { useMemo } from "react";
+
+const DaysOfMonthOptions = Array.from({ length: 31 }, (_, i) => ({
+	id: i + 1,
+	label: String(i + 1),
+	value: String(i + 1),
+}));
+
+function parseDaysJson(value: string | null | undefined): string[] {
+	if (!value) return [];
+	try {
+		const parsed = JSON.parse(value);
+		return Array.isArray(parsed) ? parsed.map(String) : [];
+	} catch {
+		return [];
+	}
+}
 
 type CampaignsTriggerBlockProps = {
 	campaign: TCampaignState["campaign"];
 	updateCampaign: (changes: Partial<TCampaignState["campaign"]>) => void;
 };
 export default function CampaignsTriggerBlock({ campaign, updateCampaign }: CampaignsTriggerBlockProps) {
+	const selectedDiasSemana = useMemo(() => parseDaysJson(campaign.recorrenciaDiasSemana), [campaign.recorrenciaDiasSemana]);
+	const selectedDiasMes = useMemo(() => parseDaysJson(campaign.recorrenciaDiasMes), [campaign.recorrenciaDiasMes]);
+
 	return (
 		<ResponsiveMenuSection title="TRIGGER" icon={<SparklesIcon className="h-4 min-h-4 w-4 min-w-4" />}>
 			<SelectInput
@@ -22,6 +43,51 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 				onReset={() => updateCampaign({ gatilhoTipo: "NOVA-COMPRA" })}
 				width="100%"
 			/>
+			{campaign.gatilhoTipo === "RECORRENTE" ? (
+				<div className="w-full flex flex-col gap-2">
+					<p className="text-center text-sm tracking-tight text-muted-foreground">
+						Configure o agendamento recorrente da campanha.
+					</p>
+					<SelectInput
+						label="FREQUÊNCIA"
+						value={campaign.recorrenciaTipo}
+						resetOptionLabel="SELECIONE A FREQUÊNCIA"
+						options={RecurrenceFrequencyOptions}
+						handleChange={(value) => updateCampaign({ recorrenciaTipo: value as TRecurrenceFrequencyEnum })}
+						onReset={() => updateCampaign({ recorrenciaTipo: null })}
+						width="100%"
+					/>
+					<NumberInput
+						label={`A CADA (${campaign.recorrenciaTipo === "DIARIO" ? "DIAS" : campaign.recorrenciaTipo === "SEMANAL" ? "SEMANAS" : campaign.recorrenciaTipo === "MENSAL" ? "MESES" : "UNIDADES"})`}
+						value={campaign.recorrenciaIntervalo ?? 1}
+						placeholder="Ex: 1 para toda semana, 2 para a cada 2 semanas..."
+						handleChange={(value) => updateCampaign({ recorrenciaIntervalo: value })}
+						width="100%"
+					/>
+					{campaign.recorrenciaTipo === "SEMANAL" ? (
+						<MultipleSelectInput
+							label="DIAS DA SEMANA"
+							selected={selectedDiasSemana}
+							resetOptionLabel="SELECIONE OS DIAS"
+							options={DaysOfWeekOptions.map((o) => ({ ...o, value: String(o.value) }))}
+							handleChange={(values) => updateCampaign({ recorrenciaDiasSemana: JSON.stringify(values.map(Number)) })}
+							onReset={() => updateCampaign({ recorrenciaDiasSemana: null })}
+							width="100%"
+						/>
+					) : null}
+					{campaign.recorrenciaTipo === "MENSAL" ? (
+						<MultipleSelectInput
+							label="DIAS DO MÊS"
+							selected={selectedDiasMes}
+							resetOptionLabel="SELECIONE OS DIAS"
+							options={DaysOfMonthOptions}
+							handleChange={(values) => updateCampaign({ recorrenciaDiasMes: JSON.stringify(values.map(Number)) })}
+							onReset={() => updateCampaign({ recorrenciaDiasMes: null })}
+							width="100%"
+						/>
+					) : null}
+				</div>
+			) : null}
 			{campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO" ? (
 				<div className="w-full flex flex-col gap-2 items-center lg:flex-row">
 					<div className="w-full lg:w-1/2">

@@ -10,7 +10,10 @@ export const campaignTriggerTypeEnum = pgEnum("campaign_trigger_type", [
 	"ANIVERSARIO_CLIENTE",
 	"QUANTIDADE-TOTAL-COMPRAS",
 	"VALOR-TOTAL-COMPRAS",
+	"RECORRENTE",
 ]);
+
+export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", ["DIARIO", "SEMANAL", "MENSAL"]);
 
 export const timeDurationUnitsEnum = pgEnum("time_duration_units", ["DIAS", "SEMANAS", "MESES", "ANOS"]);
 

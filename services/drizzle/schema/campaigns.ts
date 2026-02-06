@@ -2,7 +2,13 @@ import type { TAttributionModelEnum } from "@/schemas/enums";
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users, whatsappConnectionPhones, whatsappTemplates } from ".";
-import { campaignTriggerTypeEnum, cashbackProgramAccumulationTypeEnum, interactionsCronJobTimeBlocksEnum, timeDurationUnitsEnum } from "./enums";
+import {
+	campaignTriggerTypeEnum,
+	cashbackProgramAccumulationTypeEnum,
+	interactionsCronJobTimeBlocksEnum,
+	recurrenceFrequencyEnum,
+	timeDurationUnitsEnum,
+} from "./enums";
 import { organizations } from "./organizations";
 
 export const campaigns = newTable("campaigns", {
@@ -59,6 +65,12 @@ export const campaigns = newTable("campaigns", {
 	atribuicaoModelo: text("atribuicao_modelo").$type<TAttributionModelEnum>().default("LAST_TOUCH").notNull(), // LAST_TOUCH, FIRST_TOUCH, LINEAR
 	atribuicaoJanelaDias: integer("atribuicao_janela_dias").default(14).notNull(),
 
+	// Recurrent campaign schedule configuration (only used when gatilhoTipo === "RECORRENTE")
+	recorrenciaTipo: recurrenceFrequencyEnum("recorrencia_tipo"), // DIARIO, SEMANAL, MENSAL
+	recorrenciaIntervalo: integer("recorrencia_intervalo").default(1), // every N units (e.g., every 2 weeks)
+	recorrenciaDiasSemana: text("recorrencia_dias_semana"), // JSON array of day numbers [0-6] (0=Sunday, 6=Saturday)
+	recorrenciaDiasMes: text("recorrencia_dias_mes"), // JSON array of day numbers [1-31]
+
 	// Cashback generation configuration
 	cashbackGeracaoAtivo: boolean("cashback_geracao_ativo").notNull().default(false),
 	cashbackGeracaoTipo: cashbackProgramAccumulationTypeEnum("cashback_geracao_tipo"), // FIXO or PERCENTUAL
@@ -81,7 +93,8 @@ export const campaignRelations = relations(campaigns, ({ many, one }) => ({
 		references: [users.id],
 	}),
 }));
-
+export type TCampaignEntity = typeof campaigns.$inferSelect;
+export type TNewCampaignEntity = typeof campaigns.$inferInsert;
 export const campaignSegmentations = newTable("campaign_segmentations", {
 	id: varchar("id", { length: 255 })
 		.primaryKey()

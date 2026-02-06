@@ -12,8 +12,11 @@ export const CampaignTriggerTypeEnum = z.enum([
 	"ANIVERSARIO_CLIENTE",
 	"QUANTIDADE-TOTAL-COMPRAS",
 	"VALOR-TOTAL-COMPRAS",
+	"RECORRENTE",
 ]);
 export type TCampaignTriggerTypeEnum = z.infer<typeof CampaignTriggerTypeEnum>;
+export const RecurrenceFrequencyEnum = z.enum(["DIARIO", "SEMANAL", "MENSAL"]);
+export type TRecurrenceFrequencyEnum = z.infer<typeof RecurrenceFrequencyEnum>;
 export const TimeDurationUnitsEnum = z.enum(["DIAS", "SEMANAS", "MESES", "ANOS"]);
 export type TTimeDurationUnitsEnum = z.infer<typeof TimeDurationUnitsEnum>;
 export const InteractionTypeEnum = z.enum(["ENVIO-MENSAGEM", "ENVIO-EMAIL", "LIGAÇÃO", "ATENDIMENTO"]);

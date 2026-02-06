@@ -46,3 +46,5 @@ export const interactionRelations = relations(interactions, ({ one }) => ({
 		references: [users.id],
 	}),
 }));
+export type TInteractionEntity = typeof interactions.$inferSelect;
+export type TNewInteractionEntity = typeof interactions.$inferInsert;

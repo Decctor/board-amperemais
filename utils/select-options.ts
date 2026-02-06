@@ -4,6 +4,7 @@ import type {
 	TCashbackProgramAccumulationTypeEnum,
 	TCashbackProgramRedemptionLimitTypeEnum,
 	TInteractionsCronJobTimeBlocksEnum,
+	TRecurrenceFrequencyEnum,
 	TTimeDurationUnitsEnum,
 } from "@/schemas/enums";
 
@@ -36,6 +37,23 @@ export const CampaignTriggerTypeOptions: { id: number; label: string; value: TCa
 	{ id: 7, label: "ANIVERSÁRIO DO CLIENTE", value: "ANIVERSARIO_CLIENTE" },
 	{ id: 8, label: "QUANTIDADE TOTAL DE COMPRAS", value: "QUANTIDADE-TOTAL-COMPRAS" },
 	{ id: 9, label: "VALOR TOTAL DE COMPRAS", value: "VALOR-TOTAL-COMPRAS" },
+	{ id: 10, label: "RECORRENTE (AGENDAMENTO)", value: "RECORRENTE" },
+];
+
+export const RecurrenceFrequencyOptions: { id: number; label: string; value: TRecurrenceFrequencyEnum }[] = [
+	{ id: 1, label: "DIÁRIO", value: "DIARIO" },
+	{ id: 2, label: "SEMANAL", value: "SEMANAL" },
+	{ id: 3, label: "MENSAL", value: "MENSAL" },
+];
+
+export const DaysOfWeekOptions: { id: number; label: string; value: number }[] = [
+	{ id: 0, label: "DOMINGO", value: 0 },
+	{ id: 1, label: "SEGUNDA", value: 1 },
+	{ id: 2, label: "TERÇA", value: 2 },
+	{ id: 3, label: "QUARTA", value: 3 },
+	{ id: 4, label: "QUINTA", value: 4 },
+	{ id: 5, label: "SEXTA", value: 5 },
+	{ id: 6, label: "SÁBADO", value: 6 },
 ];
 
 export const TimeDurationUnitsOptions: { id: number; label: string; value: TTimeDurationUnitsEnum }[] = [

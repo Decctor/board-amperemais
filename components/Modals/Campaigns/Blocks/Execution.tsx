@@ -11,37 +11,44 @@ type CampaignsExecutionBlockProps = {
 	campaignSegmentations: TUseCampaignState["state"]["segmentations"];
 };
 export default function CampaignsExecutionBlock({ campaign, updateCampaign, campaignSegmentations }: CampaignsExecutionBlockProps) {
+	const isRecorrente = campaign.gatilhoTipo === "RECORRENTE";
 	return (
 		<ResponsiveMenuSection title="EXECUÇÃO" icon={<PlayIcon className="h-4 min-h-4 w-4 min-w-4" />}>
-			<div className="w-full flex flex-col gap-1">
-				<p className="text-center text-sm tracking-tigh text-muted-foreground">
-					Defina em quanto tempo deve ser executada a automação depois do gatilho ser ativado.
-				</p>
-				<div className="w-full flex items-center gap-2 flex-col lg:flex-row">
-					<div className="w-full lg:w-1/2">
-						<SelectInput
-							label="MEDIDA"
-							value={campaign.execucaoAgendadaMedida}
-							resetOptionLabel="SELECIONE A MEDIDA"
-							options={TimeDurationUnitsOptions}
-							handleChange={(value) => updateCampaign({ execucaoAgendadaMedida: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaMedida"] })}
-							onReset={() => updateCampaign({ execucaoAgendadaMedida: "DIAS" })}
-							width="100%"
-						/>
-					</div>
-					<div className="w-full lg:w-1/2">
-						<NumberInput
-							label="VALOR"
-							value={campaign.execucaoAgendadaValor}
-							placeholder="Preencha aqui o valor do tempo de execução..."
-							handleChange={(value) => updateCampaign({ execucaoAgendadaValor: value })}
-							width="100%"
-						/>
+			{!isRecorrente ? (
+				<div className="w-full flex flex-col gap-1">
+					<p className="text-center text-sm tracking-tigh text-muted-foreground">
+						Defina em quanto tempo deve ser executada a automação depois do gatilho ser ativado.
+					</p>
+					<div className="w-full flex items-center gap-2 flex-col lg:flex-row">
+						<div className="w-full lg:w-1/2">
+							<SelectInput
+								label="MEDIDA"
+								value={campaign.execucaoAgendadaMedida}
+								resetOptionLabel="SELECIONE A MEDIDA"
+								options={TimeDurationUnitsOptions}
+								handleChange={(value) => updateCampaign({ execucaoAgendadaMedida: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaMedida"] })}
+								onReset={() => updateCampaign({ execucaoAgendadaMedida: "DIAS" })}
+								width="100%"
+							/>
+						</div>
+						<div className="w-full lg:w-1/2">
+							<NumberInput
+								label="VALOR"
+								value={campaign.execucaoAgendadaValor}
+								placeholder="Preencha aqui o valor do tempo de execução..."
+								handleChange={(value) => updateCampaign({ execucaoAgendadaValor: value })}
+								width="100%"
+							/>
+						</div>
 					</div>
 				</div>
-			</div>
+			) : null}
 			<div className="w-full flex flex-col gap-1">
-				<p className="text-center text-sm tracking-tigh text-muted-foreground">Defina em qual bloco de horário deve ser executada a automação.</p>
+				<p className="text-center text-sm tracking-tigh text-muted-foreground">
+					{isRecorrente
+						? "Defina em qual bloco de horário a campanha recorrente será executada."
+						: "Defina em qual bloco de horário deve ser executada a automação."}
+				</p>
 				<SelectInput
 					label="BLOCO DE HORÁRIO"
 					value={campaign.execucaoAgendadaBloco}

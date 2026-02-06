@@ -4,6 +4,7 @@ import {
 	CampaignTriggerTypeEnum,
 	CashbackProgramAccumulationTypeEnum,
 	InteractionsCronJobTimeBlocksEnum,
+	RecurrenceFrequencyEnum,
 	TimeDurationUnitsEnum,
 } from "./enums";
 
@@ -78,6 +79,20 @@ export const CampaignSchema = z.object({
 		.positive("Valor total de compras deve ser positivo.")
 		.optional()
 		.nullable(),
+
+	// Recurrent campaign schedule configuration (only used when gatilhoTipo === "RECORRENTE")
+	recorrenciaTipo: RecurrenceFrequencyEnum.optional().nullable(),
+	recorrenciaIntervalo: z
+		.number({
+			invalid_type_error: "Tipo não válido para o intervalo de recorrência.",
+		})
+		.int("Intervalo de recorrência deve ser um número inteiro.")
+		.positive("Intervalo de recorrência deve ser positivo.")
+		.optional()
+		.nullable()
+		.default(1),
+	recorrenciaDiasSemana: z.string().optional().nullable(), // JSON array string of day numbers [0-6]
+	recorrenciaDiasMes: z.string().optional().nullable(), // JSON array string of day numbers [1-31]
 
 	execucaoAgendadaMedida: TimeDurationUnitsEnum,
 	execucaoAgendadaValor: z.number({

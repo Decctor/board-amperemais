@@ -13,8 +13,8 @@ import {
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import type { TSidebarConfigItem, TSidebarItem } from "./AppSidebar";
 import Link from "next/link";
+import type { TSidebarConfigItem, TSidebarItem } from "./AppSidebar";
 
 function AppSidebarContentGroup({
 	group,
@@ -34,7 +34,10 @@ function AppSidebarContentGroup({
 }
 export default AppSidebarContentGroup;
 
-function AppSidebarContentGroupItem({ item }: { item: TSidebarItem }) {
+type AppSidebarContentGroupItemProps = {
+	item: TSidebarItem;
+};
+function AppSidebarContentGroupItem({ item }: AppSidebarContentGroupItemProps) {
 	if (item.items && item.items.length > 0)
 		return (
 			<Collapsible asChild defaultOpen={false} className="group/collapsible">

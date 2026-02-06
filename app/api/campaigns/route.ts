@@ -10,6 +10,34 @@ import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
+function validateRecurrentCampaign(campaign: z.infer<typeof CampaignSchema>) {
+	if (campaign.gatilhoTipo !== "RECORRENTE") return;
+
+	if (!campaign.recorrenciaTipo) {
+		throw new createHttpError.BadRequest("Selecione a frequência de recorrência (DIARIO, SEMANAL ou MENSAL).");
+	}
+
+	if (campaign.recorrenciaTipo === "SEMANAL") {
+		if (!campaign.recorrenciaDiasSemana) {
+			throw new createHttpError.BadRequest("Selecione pelo menos um dia da semana para a campanha recorrente semanal.");
+		}
+		const dias: number[] = JSON.parse(campaign.recorrenciaDiasSemana);
+		if (!Array.isArray(dias) || dias.length === 0 || dias.some((d) => d < 0 || d > 6)) {
+			throw new createHttpError.BadRequest("Dias da semana inválidos. Use valores entre 0 (Domingo) e 6 (Sábado).");
+		}
+	}
+
+	if (campaign.recorrenciaTipo === "MENSAL") {
+		if (!campaign.recorrenciaDiasMes) {
+			throw new createHttpError.BadRequest("Selecione pelo menos um dia do mês para a campanha recorrente mensal.");
+		}
+		const dias: number[] = JSON.parse(campaign.recorrenciaDiasMes);
+		if (!Array.isArray(dias) || dias.length === 0 || dias.some((d) => d < 1 || d > 31)) {
+			throw new createHttpError.BadRequest("Dias do mês inválidos. Use valores entre 1 e 31.");
+		}
+	}
+}
+
 const CreateCampaignInputSchema = z.object({
 	campaign: CampaignSchema.omit({ dataInsercao: true, autorId: true }),
 	segmentations: z.array(CampaignSegmentationSchema.omit({ campanhaId: true })),
@@ -26,6 +54,9 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 	) {
 		throw new createHttpError.BadRequest("Define um tempo de permanência para a segmentação.");
 	}
+
+	// Validate recurrent campaign settings
+	validateRecurrentCampaign(input.campaign as z.infer<typeof CampaignSchema>);
 
 	// Validate cashback generation settings
 	if (input.campaign.cashbackGeracaoAtivo) {
@@ -51,9 +82,11 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 
 	const insertedCampaignId = insertedCampaignResponse[0]?.id;
 	if (!insertedCampaignId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar campanha.");
-	await db
-		.insert(campaignSegmentations)
-		.values(input.segmentations.map((segmentation) => ({ ...segmentation, campanhaId: insertedCampaignId, organizacaoId: userOrgId })));
+
+	if (input.segmentations.length > 0)
+		await db
+			.insert(campaignSegmentations)
+			.values(input.segmentations.map((segmentation) => ({ ...segmentation, campanhaId: insertedCampaignId, organizacaoId: userOrgId })));
 
 	return {
 		data: {
@@ -209,6 +242,9 @@ async function updateCampaign({ input, session }: { input: TUpdateCampaignInput;
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const campaignId = input.campaignId;
+
+	// Validate recurrent campaign settings
+	validateRecurrentCampaign(input.campaign as z.infer<typeof CampaignSchema>);
 
 	// Validate cashback generation settings
 	if (input.campaign.cashbackGeracaoAtivo) {
