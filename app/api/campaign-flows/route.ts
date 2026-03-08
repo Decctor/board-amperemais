@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { handleAdminSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { CampaignFlowStateSchema } from "@/schemas/campaign-flows";
 import { db } from "@/services/drizzle";
 import { campaignFlowEdges, campaignFlowNodes, campaignFlows } from "@/services/drizzle/schema";
@@ -66,14 +66,10 @@ async function getCampaignFlows({ input, session }: { input: TGetCampaignFlowsIn
 		);
 	}
 	if (input.status && input.status.length > 0) {
-		conditions.push(
-			sql`${campaignFlows.status} IN ${input.status}`,
-		);
+		conditions.push(sql`${campaignFlows.status} IN ${input.status}`);
 	}
 	if (input.tipo && input.tipo.length > 0) {
-		conditions.push(
-			sql`${campaignFlows.tipo} IN ${input.tipo}`,
-		);
+		conditions.push(sql`${campaignFlows.tipo} IN ${input.tipo}`);
 	}
 
 	const [{ matched }] = await db
@@ -160,11 +156,13 @@ async function createCampaignFlow({ input, session }: { input: TCreateCampaignFl
 	if (!insertedId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar fluxo de campanha.");
 
 	// Insert nodes with temporary→real ID mapping for edges
+	// Match client logic: filter deletar, use temp-{index} when node has no id (stateNodesToFlowNodes)
 	const nodeIdMap = new Map<string, string>();
+	const visibleNodes = input.nos.filter((n) => !n.deletar);
 
-	if (input.nos.length > 0) {
-		const nodesToInsert = input.nos.map((no) => {
-			const tempId = no.id || crypto.randomUUID();
+	if (visibleNodes.length > 0) {
+		const nodesToInsert = visibleNodes.map((no, index) => {
+			const tempId = no.id ?? `temp-${index}`;
 			const realId = crypto.randomUUID();
 			nodeIdMap.set(tempId, realId);
 			return {
@@ -181,14 +179,24 @@ async function createCampaignFlow({ input, session }: { input: TCreateCampaignFl
 		await db.insert(campaignFlowNodes).values(nodesToInsert);
 	}
 
-	if (input.arestas.length > 0) {
-		const edgesToInsert = input.arestas.map((aresta) => ({
-			campanhaId: insertedId,
-			noOrigemId: nodeIdMap.get(aresta.noOrigemId) ?? aresta.noOrigemId,
-			noDestinoId: nodeIdMap.get(aresta.noDestinoId) ?? aresta.noDestinoId,
-			condicaoLabel: aresta.condicaoLabel,
-			ordem: aresta.ordem,
-		}));
+	const visibleEdges = input.arestas.filter((a) => !a.deletar);
+	if (visibleEdges.length > 0) {
+		const edgesToInsert = visibleEdges.map((aresta) => {
+			const realOrigemId = nodeIdMap.get(aresta.noOrigemId);
+			const realDestinoId = nodeIdMap.get(aresta.noDestinoId);
+			if (!realOrigemId || !realDestinoId) {
+				throw new createHttpError.BadRequest(
+					`Aresta inválida: nó de origem ou destino não encontrado (origem: ${aresta.noOrigemId}, destino: ${aresta.noDestinoId}).`,
+				);
+			}
+			return {
+				campanhaId: insertedId,
+				noOrigemId: realOrigemId,
+				noDestinoId: realDestinoId,
+				condicaoLabel: aresta.condicaoLabel,
+				ordem: aresta.ordem,
+			};
+		});
 		await db.insert(campaignFlowEdges).values(edgesToInsert);
 	}
 
@@ -238,20 +246,22 @@ async function updateCampaignFlow({ input, session }: { input: TUpdateCampaignFl
 		const updatedId = updated?.id;
 		if (!updatedId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar fluxo de campanha.");
 
-		await handleAdminSimpleChildRowsProcessing({
+		await handleSimpleChildRowsProcessing({
 			trx: tx,
 			table: campaignFlowNodes,
 			entities: input.nos,
 			fatherEntityKey: "campanhaId",
 			fatherEntityId: updatedId,
+			organizacaoId: userOrgId,
 		});
 
-		await handleAdminSimpleChildRowsProcessing({
+		await handleSimpleChildRowsProcessing({
 			trx: tx,
 			table: campaignFlowEdges,
 			entities: input.arestas,
 			fatherEntityKey: "campanhaId",
 			fatherEntityId: updatedId,
+			organizacaoId: userOrgId,
 		});
 
 		return {

@@ -3,20 +3,27 @@ import { ConditionConfig } from "./ConditionConfig";
 import { DelayConfig } from "./DelayConfig";
 import { FilterConfig } from "./FilterConfig";
 import { TriggerConfig } from "./TriggerConfig";
-import type { TNodeConfigComponentProps } from "./types";
+import type {
+	TActionNodeConfigComponentProps,
+	TAnyNodeConfigComponentProps,
+	TConditionNodeConfigComponentProps,
+	TDelayNodeConfigComponentProps,
+	TFilterNodeConfigComponentProps,
+	TTriggerNodeConfigComponentProps,
+} from "./types";
 
-export function NodeConfigRenderer(props: TNodeConfigComponentProps) {
+export function NodeConfigRenderer(props: TAnyNodeConfigComponentProps) {
 	switch (props.node.tipo) {
 		case "GATILHO":
-			return <TriggerConfig {...props} />;
+			return <TriggerConfig {...(props as TTriggerNodeConfigComponentProps)} />;
 		case "ACAO":
-			return <ActionConfig {...props} />;
+			return <ActionConfig {...(props as TActionNodeConfigComponentProps)} />;
 		case "DELAY":
-			return <DelayConfig {...props} />;
+			return <DelayConfig {...(props as TDelayNodeConfigComponentProps)} />;
 		case "CONDICAO":
-			return <ConditionConfig {...props} />;
+			return <ConditionConfig {...(props as TConditionNodeConfigComponentProps)} />;
 		case "FILTRO":
-			return <FilterConfig {...props} />;
+			return <FilterConfig {...(props as TFilterNodeConfigComponentProps)} />;
 		default:
 			return <p className="text-xs text-muted-foreground italic">Configuracao automatica para este tipo de no.</p>;
 	}

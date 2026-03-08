@@ -7,7 +7,7 @@ import type { TFilterTree } from "@/schemas/campaign-audiences";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import type { TNodeConfigComponentProps } from "./types";
+import type { TFilterNodeConfigComponentProps } from "./types";
 
 const DEFAULT_FILTER_TREE: TFilterTree = {
 	logica: "AND",
@@ -15,14 +15,14 @@ const DEFAULT_FILTER_TREE: TFilterTree = {
 	grupos: [],
 };
 
-export function FilterConfig({ node, config, updateConfig }: TNodeConfigComponentProps) {
+export function FilterConfig({ node, updateConfig }: TFilterNodeConfigComponentProps) {
 	switch (node.subtipo) {
 		case "FILTRAR-POR-PUBLICO":
-			return <FilterByAudienceConfig config={config} updateConfig={updateConfig} />;
+			return <FilterByAudienceConfig node={node} updateConfig={updateConfig} />;
 
 		case "FILTRAR-INLINE": {
-			const filtros = (config.filtros as TFilterTree | undefined) ?? DEFAULT_FILTER_TREE;
-			return <FiltersBlock filtros={filtros} setFilters={(value) => updateConfig("filtros", value)} />;
+			const filtros = node.configuracao.filtros ?? DEFAULT_FILTER_TREE;
+			return <FiltersBlock filtros={filtros} setFilters={(value) => updateConfig({ filtros: value })} />;
 		}
 
 		default:
@@ -31,9 +31,12 @@ export function FilterConfig({ node, config, updateConfig }: TNodeConfigComponen
 }
 
 function FilterByAudienceConfig({
-	config,
+	node,
 	updateConfig,
-}: { config: Record<string, unknown>; updateConfig: TNodeConfigComponentProps["updateConfig"] }) {
+}: {
+	node: Extract<TFilterNodeConfigComponentProps["node"], { subtipo: "FILTRAR-POR-PUBLICO" }>;
+	updateConfig: TFilterNodeConfigComponentProps["updateConfig"];
+}) {
 	const queryClient = useQueryClient();
 	const [showCreateAudience, setShowCreateAudience] = useState(false);
 
@@ -52,7 +55,7 @@ function FilterByAudienceConfig({
 					closeModal={() => setShowCreateAudience(false)}
 					callbacks={{
 						onSuccess: ({ insertedId }) => {
-							if (insertedId) updateConfig("publicoId", insertedId);
+							if (insertedId) updateConfig({ publicoId: insertedId });
 						},
 						onSettled: () => {
 							queryClient.invalidateQueries({ queryKey });
@@ -66,9 +69,9 @@ function FilterByAudienceConfig({
 					<div className="flex-1 min-w-0">
 						<SelectInput
 							label="PUBLICO"
-							value={(config.publicoId as string | undefined) ?? undefined}
-							handleChange={(value) => updateConfig("publicoId", value)}
-							onReset={() => updateConfig("publicoId", "")}
+							value={node.configuracao.publicoId}
+							handleChange={(value) => updateConfig({ publicoId: value })}
+							onReset={() => updateConfig({ publicoId: "" })}
 							resetOptionLabel="SELECIONE O PUBLICO"
 							options={options}
 						/>

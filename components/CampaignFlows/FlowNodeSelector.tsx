@@ -1,24 +1,17 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-	ACTION_SUBTYPES,
-	CONDITION_SUBTYPES,
-	DELAY_SUBTYPES,
-	FILTER_SUBTYPES,
-	NODE_TYPE_COLORS,
-	TRIGGER_SUBTYPES,
-	type TFlowNodeSubtype,
-} from "./flow-node-types";
+import { cn } from "@/lib/utils";
 import {
 	BadgePercent,
 	Bell,
 	Cake,
 	Calendar,
 	Clock,
+	Clock3,
 	Coins,
 	Filter,
+	GitBranch,
 	Grid3X3,
 	Hash,
 	MessageCircle,
@@ -27,6 +20,7 @@ import {
 	ShoppingBag,
 	ShoppingCart,
 	SlidersHorizontal,
+	SlidersVertical,
 	Timer,
 	TrendingUp,
 	UserCheck,
@@ -35,11 +29,17 @@ import {
 	Wallet,
 	X,
 	Zap,
-	GitBranch,
-	Clock3,
-	SlidersVertical,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import {
+	ACTION_SUBTYPES,
+	CONDITION_SUBTYPES,
+	DELAY_SUBTYPES,
+	FILTER_SUBTYPES,
+	NODE_TYPE_COLORS,
+	type TFlowNodeSubtype,
+	TRIGGER_SUBTYPES,
+} from "./flow-node-types";
 
 const ICON_MAP: Record<string, ReactNode> = {
 	ShoppingCart: <ShoppingCart className="w-4 h-4" />,
@@ -90,13 +90,13 @@ export function FlowNodeSelector({ onSelectNode, onClose, hasTrigger }: FlowNode
 	return (
 		<div className="w-[320px] bg-card border rounded-xl shadow-lg flex flex-col max-h-[80vh] overflow-hidden">
 			<div className="flex items-center justify-between px-4 py-3 border-b">
-				<h3 className="text-sm font-bold tracking-tight">ADICIONAR NO</h3>
+				<h3 className="text-sm font-bold tracking-tight">ADICIONAR NÓ</h3>
 				<Button variant="ghost" size="icon" className="w-7 h-7" onClick={onClose}>
 					<X className="w-4 h-4" />
 				</Button>
 			</div>
 
-			<div className="overflow-y-auto flex-1 p-3 flex flex-col gap-4">
+			<div className="overflow-y-auto flex-1 p-3 mb-3 flex flex-col gap-4 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 				{NODE_SECTIONS.map((section) => {
 					const colors = NODE_TYPE_COLORS[section.tipo];
 					const isDisabled = section.tipo === "GATILHO" && hasTrigger;
@@ -108,9 +108,7 @@ export function FlowNodeSelector({ onSelectNode, onClose, hasTrigger }: FlowNode
 									{section.icon}
 									{section.label}
 								</span>
-								{isDisabled && (
-									<span className="text-[0.6rem] text-muted-foreground italic">(max 1)</span>
-								)}
+								{isDisabled && <span className="text-[0.6rem] text-muted-foreground italic">(max 1)</span>}
 							</div>
 							<div className="flex flex-col gap-1">
 								{section.subtypes.map((subtype) => (
@@ -125,9 +123,7 @@ export function FlowNodeSelector({ onSelectNode, onClose, hasTrigger }: FlowNode
 											isDisabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
 										)}
 									>
-										<div className={cn("flex items-center justify-center w-7 h-7 rounded-md shrink-0", colors?.badge)}>
-											{ICON_MAP[subtype.icon]}
-										</div>
+										<div className={cn("flex items-center justify-center w-7 h-7 rounded-md shrink-0", colors?.badge)}>{ICON_MAP[subtype.icon]}</div>
 										<div className="flex flex-col gap-0 min-w-0">
 											<p className="text-xs font-medium truncate">{subtype.rotulo}</p>
 											<p className="text-[0.6rem] text-muted-foreground truncate">{subtype.descricao}</p>

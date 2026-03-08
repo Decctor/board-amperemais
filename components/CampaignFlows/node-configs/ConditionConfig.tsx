@@ -3,7 +3,7 @@ import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import { RFM_SEGMENT_OPTIONS, WHATSAPP_STATUS_OPTIONS } from "./shared";
-import type { TNodeConfigComponentProps } from "./types";
+import type { TConditionNodeConfigComponentProps } from "./types";
 
 type TAttributeField = {
 	id: string;
@@ -48,24 +48,24 @@ const OPERATOR_LABELS: Record<string, string> = {
 	CONTEM: "CONTEM",
 };
 
-export function ConditionConfig({ node, config, updateConfig }: TNodeConfigComponentProps) {
+export function ConditionConfig({ node, updateConfig }: TConditionNodeConfigComponentProps) {
 	switch (node.subtipo) {
 		case "VERIFICAR-ATRIBUTO-CLIENTE":
-			return <VerifyClientAttributeConfig config={config} updateConfig={updateConfig} />;
+			return <VerifyClientAttributeConfig node={node} updateConfig={updateConfig} />;
 
 		case "VERIFICAR-COMPRA-RECENTE":
 			return (
 				<div className="flex flex-col gap-2">
 					<NumberInput
 						label="DIAS ATRAS"
-						value={config.diasAtras as number | null | undefined}
-						handleChange={(value) => updateConfig("diasAtras", Number(value) || 30)}
+						value={node.configuracao.diasAtras}
+						handleChange={(value) => updateConfig({ diasAtras: Number(value) || 30 })}
 						placeholder="30"
 					/>
 					<NumberInput
 						label="VALOR MINIMO"
-						value={config.valorMinimo as number | null | undefined}
-						handleChange={(value) => updateConfig("valorMinimo", value)}
+						value={node.configuracao.valorMinimo}
+						handleChange={(value) => updateConfig({ valorMinimo: value })}
 						placeholder="0.00"
 					/>
 				</div>
@@ -75,9 +75,9 @@ export function ConditionConfig({ node, config, updateConfig }: TNodeConfigCompo
 			return (
 				<SelectInput
 					label="STATUS ESPERADO"
-					value={(config.statusEsperado as string | undefined) ?? undefined}
-					handleChange={(value) => updateConfig("statusEsperado", value)}
-					onReset={() => updateConfig("statusEsperado", "ENVIADO")}
+					value={node.configuracao.statusEsperado}
+					handleChange={(value) => updateConfig({ statusEsperado: value as "ENTREGUE" | "LIDO" | "FALHOU" })}
+					onReset={() => updateConfig({ statusEsperado: "ENTREGUE" })}
 					resetOptionLabel="SELECIONE O STATUS"
 					options={WHATSAPP_STATUS_OPTIONS}
 				/>
@@ -87,11 +87,11 @@ export function ConditionConfig({ node, config, updateConfig }: TNodeConfigCompo
 			return (
 				<MultipleSelectInput
 					label="SEGMENTOS"
-					selected={(config.segmentos as string[] | undefined) ?? []}
-					handleChange={(values) => updateConfig("segmentos", values)}
+					selected={node.configuracao.segmentos ?? []}
+					handleChange={(values) => updateConfig({ segmentos: values })}
 					options={RFM_SEGMENT_OPTIONS}
 					resetOptionLabel="Nenhum segmento"
-					onReset={() => updateConfig("segmentos", [])}
+					onReset={() => updateConfig({ segmentos: [] })}
 				/>
 			);
 
@@ -99,8 +99,8 @@ export function ConditionConfig({ node, config, updateConfig }: TNodeConfigCompo
 			return (
 				<NumberInput
 					label="VALOR MINIMO"
-					value={config.valorMinimo as number | null | undefined}
-					handleChange={(value) => updateConfig("valorMinimo", value)}
+					value={node.configuracao.valorMinimo}
+					handleChange={(value) => updateConfig({ valorMinimo: value })}
 					placeholder="0.00"
 				/>
 			);
@@ -111,10 +111,13 @@ export function ConditionConfig({ node, config, updateConfig }: TNodeConfigCompo
 }
 
 function VerifyClientAttributeConfig({
-	config,
+	node,
 	updateConfig,
-}: { config: Record<string, unknown>; updateConfig: TNodeConfigComponentProps["updateConfig"] }) {
-	const selectedField = ATTRIBUTE_FIELDS.find((field) => field.value === (config.campo as string));
+}: {
+	node: Extract<TConditionNodeConfigComponentProps["node"], { subtipo: "VERIFICAR-ATRIBUTO-CLIENTE" }>;
+	updateConfig: TConditionNodeConfigComponentProps["updateConfig"];
+}) {
+	const selectedField = ATTRIBUTE_FIELDS.find((field) => field.value === node.configuracao.campo);
 	const operators = (selectedField?.operators ?? ["IGUAL", "DIFERENTE", "MAIOR", "MENOR", "CONTEM"]).map((operator, index) => ({
 		id: index + 1,
 		value: operator,
@@ -125,14 +128,18 @@ function VerifyClientAttributeConfig({
 		<div className="flex flex-col gap-2">
 			<SelectInput
 				label="CAMPO"
-				value={(config.campo as string | undefined) ?? undefined}
+				value={node.configuracao.campo || undefined}
 				handleChange={(value) => {
-					updateConfig("campo", value);
-					updateConfig("valor", "");
+					updateConfig({
+						campo: value,
+						valor: "",
+					});
 				}}
 				onReset={() => {
-					updateConfig("campo", "");
-					updateConfig("valor", "");
+					updateConfig({
+						campo: "",
+						valor: "",
+					});
 				}}
 				resetOptionLabel="SELECIONE O CAMPO"
 				options={ATTRIBUTE_FIELDS}
@@ -140,9 +147,9 @@ function VerifyClientAttributeConfig({
 
 			<SelectInput
 				label="OPERADOR"
-				value={(config.operador as string | undefined) ?? "IGUAL"}
-				handleChange={(value) => updateConfig("operador", value)}
-				onReset={() => updateConfig("operador", "IGUAL")}
+				value={node.configuracao.operador ?? "IGUAL"}
+				handleChange={(value) => updateConfig({ operador: value as "IGUAL" | "DIFERENTE" | "MAIOR" | "MENOR" | "CONTEM" })}
+				onReset={() => updateConfig({ operador: "IGUAL" })}
 				resetOptionLabel="SELECIONE O OPERADOR"
 				options={operators}
 			/>
@@ -150,8 +157,8 @@ function VerifyClientAttributeConfig({
 			{selectedField?.type === "number" ? (
 				<NumberInput
 					label="VALOR"
-					value={typeof config.valor === "number" ? config.valor : null}
-					handleChange={(value) => updateConfig("valor", value)}
+					value={typeof node.configuracao.valor === "number" ? node.configuracao.valor : null}
+					handleChange={(value) => updateConfig({ valor: value })}
 					placeholder="Preencha o valor"
 				/>
 			) : null}
@@ -159,9 +166,9 @@ function VerifyClientAttributeConfig({
 			{selectedField?.type === "rfm" ? (
 				<SelectInput
 					label="VALOR"
-					value={(config.valor as string | undefined) ?? undefined}
-					handleChange={(value) => updateConfig("valor", value)}
-					onReset={() => updateConfig("valor", "")}
+					value={typeof node.configuracao.valor === "string" ? node.configuracao.valor : undefined}
+					handleChange={(value) => updateConfig({ valor: value })}
+					onReset={() => updateConfig({ valor: "" })}
 					resetOptionLabel="SELECIONE O SEGMENTO"
 					options={RFM_SEGMENT_OPTIONS}
 				/>
@@ -170,8 +177,8 @@ function VerifyClientAttributeConfig({
 			{selectedField?.type === "text" ? (
 				<TextInput
 					label="VALOR"
-					value={(config.valor as string) ?? ""}
-					handleChange={(value) => updateConfig("valor", value)}
+					value={typeof node.configuracao.valor === "string" ? node.configuracao.valor : ""}
+					handleChange={(value) => updateConfig({ valor: value })}
 					placeholder="Preencha o valor esperado"
 				/>
 			) : null}

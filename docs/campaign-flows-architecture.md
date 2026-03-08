@@ -206,8 +206,8 @@ O no de entrada do workflow. Define **quando** a campanha dispara.
 | `ENTRADA-SEGMENTACAO` | Cliente entrou em segmento RFM | `{ segmentos: string[] }` |
 | `PERMANENCIA-SEGMENTACAO` | Cliente permanece em segmento RFM por tempo X | `{ segmentos: string[], tempoValor: number, tempoMedida: "DIAS"\|"SEMANAS"\|"MESES" }` |
 | `CASHBACK-ACUMULADO` | Cashback acumulou acima de X | `{ valorMinimoNovo?: number, valorMinimoTotal?: number }` |
-| `CASHBACK-EXPIRANDO` | Cashback esta prestes a expirar | `{ diasAntecedencia: number }` |
-| `ANIVERSARIO-CLIENTE` | Aniversario do cliente | `{ diasAntecedencia?: number }` |
+| `CASHBACK-EXPIRANDO` | Cashback esta prestes a expirar | `{ tempoAntecedenciaMedida: "DIAS", "SEMANAS", "MESES", "ANOS", tempoAntecedenciaValor: number  }` |
+| `ANIVERSARIO-CLIENTE` | Aniversario do cliente | `{ tempoAntecedenciaMedida: "DIAS", "SEMANAS", "MESES", "ANOS", tempoAntecedenciaValor: number }` |
 | `QUANTIDADE-TOTAL-COMPRAS` | Total de compras atingiu N | `{ quantidade: number }` |
 | `VALOR-TOTAL-COMPRAS` | Valor total de compras atingiu X | `{ valor: number }` |
 | `INICIO-RECORRENTE` | Ponto de entrada para cron (nao e evento) | `{}` |
@@ -239,7 +239,7 @@ Pausa o workflow por um periodo.
 |---|---|---|
 | `ESPERAR-DURACAO` | Espera X horas/dias/semanas | `{ valor: number, medida: "HORAS"\|"DIAS"\|"SEMANAS"\|"MESES" }` |
 | `ESPERAR-ATE-HORARIO` | Espera ate proximo horario especifico | `{ horario: "09:00"\|"12:00"\|... , diaSemana?: number[] }` |
-| `ESPERAR-ATE-DATA` | Espera ate data especifica | `{ data: "YYYY-MM-DD" }` |
+| `ESPERAR-ATE-DATA` | Espera ate data especifica | `{ data: ISO-FORMAT }` |
 
 **Implementacao:** usa `context.sleep()` do Vercel Workflows para delays longos.
 

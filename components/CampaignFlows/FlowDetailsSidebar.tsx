@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { TCampaignFlowState } from "@/schemas/campaign-flows";
+import type { TUseCampaignFlowState } from "@/state-hooks/use-campaign-flow-state";
 import { FileText, Settings, Trash2, X } from "lucide-react";
 import NumberInput from "../Inputs/NumberInput";
 import SelectInput from "../Inputs/SelectInput";
@@ -18,6 +19,7 @@ type FlowDetailsSidebarProps = {
 	selectedNodeIndex: number | null;
 	nodes: TCampaignFlowState["nos"];
 	updateNode: (args: { index: number; changes: Partial<TCampaignFlowState["nos"][number]> }) => void;
+	updateNodeConfigBySubtype: TUseCampaignFlowState["updateNodeConfigBySubtype"];
 	removeNode: (index: number) => void;
 	organizationId: string;
 	onClose: () => void;
@@ -29,6 +31,7 @@ export function FlowDetailsSidebar({
 	selectedNodeIndex,
 	nodes,
 	updateNode,
+	updateNodeConfigBySubtype,
 	removeNode,
 	organizationId,
 	onClose,
@@ -57,12 +60,13 @@ export function FlowDetailsSidebar({
 			</div>
 
 			<div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-				{selectedNode ? (
+				{selectedNode && selectedNodeIndex !== null ? (
 					<NodeConfigSection
 						node={selectedNode}
-						nodeIndex={selectedNodeIndex!}
+						nodeIndex={selectedNodeIndex}
 						nodes={nodes}
 						updateNode={updateNode}
+						updateNodeConfigBySubtype={updateNodeConfigBySubtype}
 						removeNode={removeNode}
 						organizationId={organizationId}
 					/>
@@ -162,6 +166,7 @@ function NodeConfigSection({
 	nodeIndex,
 	nodes,
 	updateNode,
+	updateNodeConfigBySubtype,
 	removeNode,
 	organizationId,
 }: {
@@ -169,6 +174,7 @@ function NodeConfigSection({
 	nodeIndex: number;
 	nodes: TCampaignFlowState["nos"];
 	updateNode: (args: { index: number; changes: Partial<TCampaignFlowState["nos"][number]> }) => void;
+	updateNodeConfigBySubtype: TUseCampaignFlowState["updateNodeConfigBySubtype"];
 	removeNode: (index: number) => void;
 	organizationId: string;
 }) {
@@ -197,7 +203,13 @@ function NodeConfigSection({
 
 			<div className="flex flex-col gap-3">
 				<h4 className="text-xs font-bold tracking-tight text-muted-foreground uppercase">CONFIGURAÇÃO</h4>
-				<NodeSpecificConfig node={node} nodeIndex={nodeIndex} nodes={nodes} updateNode={updateNode} organizationId={organizationId} />
+				<NodeSpecificConfig
+					node={node}
+					nodeIndex={nodeIndex}
+					nodes={nodes}
+					updateNodeConfigBySubtype={updateNodeConfigBySubtype}
+					organizationId={organizationId}
+				/>
 			</div>
 
 			<Separator />
@@ -214,23 +226,23 @@ function NodeSpecificConfig({
 	node,
 	nodeIndex,
 	nodes,
-	updateNode,
+	updateNodeConfigBySubtype,
 	organizationId,
 }: {
 	node: TCampaignFlowState["nos"][number];
 	nodeIndex: number;
 	nodes: TCampaignFlowState["nos"];
-	updateNode: (args: { index: number; changes: Partial<TCampaignFlowState["nos"][number]> }) => void;
+	updateNodeConfigBySubtype: TUseCampaignFlowState["updateNodeConfigBySubtype"];
 	organizationId: string;
 }) {
-	const config = node.configuracao as Record<string, unknown>;
-
-	const updateConfig = (key: string, value: unknown) => {
-		updateNode({
+	const updateConfig = (changes: Partial<TCampaignFlowState["nos"][number]["configuracao"]>) => {
+		updateNodeConfigBySubtype({
 			index: nodeIndex,
-			changes: { configuracao: { ...config, [key]: value } },
+			tipo: node.tipo,
+			subtipo: node.subtipo,
+			changes,
 		});
 	};
 
-	return <NodeConfigRenderer node={node} nodes={nodes} config={config} organizationId={organizationId} updateConfig={updateConfig} />;
+	return <NodeConfigRenderer node={node} nodes={nodes} organizationId={organizationId} updateConfig={updateConfig} />;
 }

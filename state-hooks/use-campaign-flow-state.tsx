@@ -5,29 +5,37 @@ type TUseCampaignFlowStateProps = {
 	initialState: Partial<TCampaignFlowState>;
 };
 
-export function useCampaignFlowState({ initialState }: TUseCampaignFlowStateProps) {
-	const buildInitialState = (): TCampaignFlowState => ({
-		campaignFlow: {
-			titulo: initialState.campaignFlow?.titulo ?? "",
-			descricao: initialState.campaignFlow?.descricao ?? null,
-			status: initialState.campaignFlow?.status ?? "RASCUNHO",
-			tipo: initialState.campaignFlow?.tipo ?? "EVENTO",
-			recorrenciaTipo: initialState.campaignFlow?.recorrenciaTipo ?? null,
-			recorrenciaIntervalo: initialState.campaignFlow?.recorrenciaIntervalo ?? 1,
-			recorrenciaDiasSemana: initialState.campaignFlow?.recorrenciaDiasSemana ?? null,
-			recorrenciaDiasMes: initialState.campaignFlow?.recorrenciaDiasMes ?? null,
-			recorrenciaBlocoHorario: initialState.campaignFlow?.recorrenciaBlocoHorario ?? null,
-			unicaDataExecucao: initialState.campaignFlow?.unicaDataExecucao ?? null,
-			unicaExecutada: initialState.campaignFlow?.unicaExecutada ?? false,
-			atribuicaoModelo: initialState.campaignFlow?.atribuicaoModelo ?? "LAST_TOUCH",
-			atribuicaoJanelaDias: initialState.campaignFlow?.atribuicaoJanelaDias ?? 14,
-			publicoId: initialState.campaignFlow?.publicoId ?? null,
-		},
-		nos: initialState.nos ?? [],
-		arestas: initialState.arestas ?? [],
-	});
+type TCampaignFlowNodeState = TCampaignFlowState["nos"][number];
+type TCampaignFlowNodeSubtype = TCampaignFlowNodeState["subtipo"];
+type TCampaignFlowNodeBySubtype<TSubtipo extends TCampaignFlowNodeSubtype> = Extract<TCampaignFlowNodeState, { subtipo: TSubtipo }>;
+type TCampaignFlowNodeConfigBySubtype<TSubtipo extends TCampaignFlowNodeSubtype> = TCampaignFlowNodeBySubtype<TSubtipo>["configuracao"];
 
-	const [state, setState] = useState<TCampaignFlowState>(buildInitialState);
+export function useCampaignFlowState({ initialState }: TUseCampaignFlowStateProps) {
+	const buildInitialState = useCallback(
+		(): TCampaignFlowState => ({
+			campaignFlow: {
+				titulo: initialState.campaignFlow?.titulo ?? "",
+				descricao: initialState.campaignFlow?.descricao ?? null,
+				status: initialState.campaignFlow?.status ?? "RASCUNHO",
+				tipo: initialState.campaignFlow?.tipo ?? "EVENTO",
+				recorrenciaTipo: initialState.campaignFlow?.recorrenciaTipo ?? null,
+				recorrenciaIntervalo: initialState.campaignFlow?.recorrenciaIntervalo ?? 1,
+				recorrenciaDiasSemana: initialState.campaignFlow?.recorrenciaDiasSemana ?? null,
+				recorrenciaDiasMes: initialState.campaignFlow?.recorrenciaDiasMes ?? null,
+				recorrenciaBlocoHorario: initialState.campaignFlow?.recorrenciaBlocoHorario ?? null,
+				unicaDataExecucao: initialState.campaignFlow?.unicaDataExecucao ?? null,
+				unicaExecutada: initialState.campaignFlow?.unicaExecutada ?? false,
+				atribuicaoModelo: initialState.campaignFlow?.atribuicaoModelo ?? "LAST_TOUCH",
+				atribuicaoJanelaDias: initialState.campaignFlow?.atribuicaoJanelaDias ?? 14,
+				publicoId: initialState.campaignFlow?.publicoId ?? null,
+			},
+			nos: initialState.nos ?? [],
+			arestas: initialState.arestas ?? [],
+		}),
+		[initialState],
+	);
+
+	const [state, setState] = useState<TCampaignFlowState>(() => buildInitialState());
 
 	// ── Campaign flow root ─────────────────────────────────────────────────────
 
@@ -48,11 +56,57 @@ export function useCampaignFlowState({ initialState }: TUseCampaignFlowStateProp
 	}, []);
 
 	const updateNode = useCallback(({ index, changes }: { index: number; changes: Partial<TCampaignFlowState["nos"][number]> }) => {
-		setState((prev) => ({
-			...prev,
-			nos: prev.nos.map((n, i) => (i === index ? { ...n, ...changes } : n)),
-		}));
+		setState((prev) => {
+			if (!prev.nos[index]) return prev;
+			const nextNodes = [...prev.nos] as TCampaignFlowState["nos"];
+			nextNodes[index] = {
+				...nextNodes[index],
+				...changes,
+			} as TCampaignFlowState["nos"][number];
+			return {
+				...prev,
+				nos: nextNodes,
+			};
+		});
 	}, []);
+
+	const updateNodeConfigBySubtype = useCallback(
+		<TSubtipo extends TCampaignFlowNodeSubtype>({
+			index,
+			subtipo,
+			tipo,
+			changes,
+		}: {
+			index: number;
+			subtipo: TSubtipo;
+			tipo?: TCampaignFlowNodeBySubtype<TSubtipo>["tipo"];
+			changes: Partial<TCampaignFlowNodeConfigBySubtype<TSubtipo>>;
+		}) => {
+			setState((prev) => {
+				const currentNode = prev.nos[index];
+				if (!currentNode) return prev;
+				if (currentNode.subtipo !== subtipo) return prev;
+				if (tipo && currentNode.tipo !== tipo) return prev;
+
+				const narrowedNode = currentNode as TCampaignFlowNodeBySubtype<TSubtipo>;
+				const nextNodes = [...prev.nos] as TCampaignFlowState["nos"];
+
+				nextNodes[index] = {
+					...narrowedNode,
+					configuracao: {
+						...narrowedNode.configuracao,
+						...changes,
+					},
+				} as TCampaignFlowState["nos"][number];
+
+				return {
+					...prev,
+					nos: nextNodes,
+				};
+			});
+		},
+		[],
+	);
 
 	const removeNode = useCallback((index: number) => {
 		setState((prev) => {
@@ -109,13 +163,14 @@ export function useCampaignFlowState({ initialState }: TUseCampaignFlowStateProp
 
 	const resetState = useCallback(() => {
 		setState(buildInitialState());
-	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [buildInitialState]);
 
 	return {
 		state,
 		updateCampaignFlow,
 		addNode,
 		updateNode,
+		updateNodeConfigBySubtype,
 		removeNode,
 		addEdge,
 		updateEdge,

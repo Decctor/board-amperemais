@@ -11,33 +11,28 @@ import { Info, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FLOW_TRIGGER_TO_CAMPAIGN_TRIGGER } from "./shared";
-import type { TNodeConfigComponentProps } from "./types";
+import type { TActionNodeConfigComponentProps } from "./types";
 
-export function ActionConfig({ node, nodes, config, organizationId, updateConfig }: TNodeConfigComponentProps) {
+export function ActionConfig({ node, nodes, organizationId, updateConfig }: TActionNodeConfigComponentProps) {
 	switch (node.subtipo) {
 		case "ENVIAR-WHATSAPP":
-			return <WhatsappActionConfig nodes={nodes} organizationId={organizationId} config={config} updateConfig={updateConfig} />;
+			return <WhatsappActionConfig node={node} nodes={nodes} organizationId={organizationId} updateConfig={updateConfig} />;
 
 		case "GERAR-CASHBACK":
 			return (
 				<div className="flex flex-col gap-2">
 					<SelectInput
 						label="TIPO"
-						value={(config.tipo as string | undefined) ?? undefined}
-						handleChange={(value) => updateConfig("tipo", value)}
-						onReset={() => updateConfig("tipo", "FIXO")}
+						value={node.configuracao.tipo}
+						handleChange={(value) => updateConfig({ tipo: value as "FIXO" | "PERCENTUAL" })}
+						onReset={() => updateConfig({ tipo: "FIXO" })}
 						resetOptionLabel="SELECIONE O TIPO"
 						options={[
 							{ id: 1, value: "FIXO", label: "VALOR FIXO" },
 							{ id: 2, value: "PERCENTUAL", label: "PERCENTUAL" },
 						]}
 					/>
-					<NumberInput
-						label="VALOR"
-						value={config.valor as number | null | undefined}
-						handleChange={(value) => updateConfig("valor", value)}
-						placeholder="0.00"
-					/>
+					<NumberInput label="VALOR" value={node.configuracao.valor} handleChange={(value) => updateConfig({ valor: value })} placeholder="0.00" />
 				</div>
 			);
 
@@ -45,8 +40,8 @@ export function ActionConfig({ node, nodes, config, organizationId, updateConfig
 			return (
 				<TextInput
 					label="MENSAGEM"
-					value={(config.mensagem as string) ?? ""}
-					handleChange={(value) => updateConfig("mensagem", value)}
+					value={node.configuracao.mensagem ?? ""}
+					handleChange={(value) => updateConfig({ mensagem: value })}
 					placeholder="Mensagem da notificacao"
 				/>
 			);
@@ -57,15 +52,15 @@ export function ActionConfig({ node, nodes, config, organizationId, updateConfig
 }
 
 function WhatsappActionConfig({
+	node,
 	nodes,
 	organizationId,
-	config,
 	updateConfig,
 }: {
-	nodes: TNodeConfigComponentProps["nodes"];
+	node: Extract<TActionNodeConfigComponentProps["node"], { subtipo: "ENVIAR-WHATSAPP" }>;
+	nodes: TActionNodeConfigComponentProps["nodes"];
 	organizationId: string;
-	config: Record<string, unknown>;
-	updateConfig: TNodeConfigComponentProps["updateConfig"];
+	updateConfig: TActionNodeConfigComponentProps["updateConfig"];
 }) {
 	const queryClient = useQueryClient();
 	const [showCreateTemplate, setShowCreateTemplate] = useState(false);
@@ -78,7 +73,7 @@ function WhatsappActionConfig({
 		initialParams: {
 			page: 1,
 			search: "",
-			whatsappConnectionPhoneId: (config.whatsappConexaoTelefoneId as string | undefined) ?? undefined,
+			whatsappConnectionPhoneId: node.configuracao.whatsappConexaoTelefoneId || undefined,
 		},
 	});
 
@@ -101,7 +96,7 @@ function WhatsappActionConfig({
 	}, [allTemplates, triggerContext]);
 
 	useEffect(() => {
-		const selectedTemplateId = config.whatsappTemplateId as string | undefined;
+		const selectedTemplateId = node.configuracao.whatsappTemplateId;
 		if (!selectedTemplateId || !triggerContext || allTemplates.length === 0) return;
 
 		const selectedTemplate = allTemplates.find((template) => template.id === selectedTemplateId);
@@ -109,16 +104,15 @@ function WhatsappActionConfig({
 
 		const validation = validateTemplateForTrigger(selectedTemplate.bodyParametros, triggerContext);
 		if (!validation.valid) {
-			updateConfig("whatsappTemplateId", "");
+			updateConfig({ whatsappTemplateId: "" });
 			toast.warning("Template removido: variaveis incompativeis com o gatilho atual.");
 		}
-	}, [allTemplates, config.whatsappTemplateId, triggerContext, updateConfig]);
+	}, [allTemplates, node.configuracao.whatsappTemplateId, triggerContext, updateConfig]);
 
 	const selectedTemplate = useMemo(
-		() => allTemplates.find((template) => template.id === (config.whatsappTemplateId as string | undefined)),
-		[allTemplates, config.whatsappTemplateId],
+		() => allTemplates.find((template) => template.id === node.configuracao.whatsappTemplateId),
+		[allTemplates, node.configuracao.whatsappTemplateId],
 	);
-
 	return (
 		<>
 			{showCreateTemplate && (
@@ -128,7 +122,7 @@ function WhatsappActionConfig({
 					closeMenu={() => setShowCreateTemplate(false)}
 					callbacks={{
 						onSuccess: ({ templateId }) => {
-							if (templateId) updateConfig("whatsappTemplateId", templateId);
+							if (templateId) updateConfig({ whatsappTemplateId: templateId });
 							queryClient.invalidateQueries({ queryKey: ["whatsapp-templates"] });
 							setShowCreateTemplate(false);
 						},
@@ -139,17 +133,21 @@ function WhatsappActionConfig({
 			<div className="flex flex-col gap-2">
 				<SelectInput
 					label="TELEFONE WHATSAPP"
-					value={(config.whatsappConexaoTelefoneId as string | undefined) ?? undefined}
+					value={node.configuracao.whatsappConexaoTelefoneId || undefined}
 					resetOptionLabel="SELECIONE O TELEFONE"
 					options={whatsappConnectionPhones}
 					handleChange={(value) => {
-						updateConfig("whatsappConexaoTelefoneId", value);
-						updateConfig("whatsappTemplateId", "");
+						updateConfig({
+							whatsappConexaoTelefoneId: value,
+							whatsappTemplateId: "",
+						});
 						updateParams({ whatsappConnectionPhoneId: value });
 					}}
 					onReset={() => {
-						updateConfig("whatsappConexaoTelefoneId", "");
-						updateConfig("whatsappTemplateId", "");
+						updateConfig({
+							whatsappConexaoTelefoneId: "",
+							whatsappTemplateId: "",
+						});
 						updateParams({ whatsappConnectionPhoneId: undefined });
 					}}
 				/>
@@ -158,12 +156,12 @@ function WhatsappActionConfig({
 					<div className="flex-1 min-w-0">
 						<SelectInput
 							label="TEMPLATE WHATSAPP"
-							value={(config.whatsappTemplateId as string | undefined) ?? undefined}
-							editable={!!config.whatsappConexaoTelefoneId}
-							resetOptionLabel={config.whatsappConexaoTelefoneId ? "SELECIONE O TEMPLATE" : "SELECIONE UM TELEFONE PRIMEIRO"}
+							value={node.configuracao.whatsappTemplateId || undefined}
+							editable={!!node.configuracao.whatsappConexaoTelefoneId}
+							resetOptionLabel={node.configuracao.whatsappConexaoTelefoneId ? "SELECIONE O TEMPLATE" : "SELECIONE UM TELEFONE PRIMEIRO"}
 							options={compatibleTemplates.map((template) => ({ id: template.id, label: template.nome, value: template.id }))}
-							handleChange={(value) => updateConfig("whatsappTemplateId", value)}
-							onReset={() => updateConfig("whatsappTemplateId", "")}
+							handleChange={(value) => updateConfig({ whatsappTemplateId: value })}
+							onReset={() => updateConfig({ whatsappTemplateId: "" })}
 						/>
 					</div>
 					<Button
@@ -172,7 +170,7 @@ function WhatsappActionConfig({
 						variant="outline"
 						className="mb-0.5 gap-1.5 shrink-0"
 						onClick={() => setShowCreateTemplate(true)}
-						disabled={!config.whatsappConexaoTelefoneId}
+						disabled={!node.configuracao.whatsappConexaoTelefoneId}
 					>
 						<Plus className="w-3.5 h-3.5" />
 						CRIAR
