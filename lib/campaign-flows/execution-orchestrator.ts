@@ -1,13 +1,8 @@
 import type { TFilterTree } from "@/schemas/campaign-audiences";
-import { db, type DBTransaction } from "@/services/drizzle";
-import {
-	campaignAudiences,
-	campaignFlowExecutions,
-	campaignFlowExecutionSteps,
-	campaignFlows,
-} from "@/services/drizzle/schema";
+import { type DBTransaction, db } from "@/services/drizzle";
+import { campaignAudiences, campaignFlowExecutionSteps, campaignFlowExecutions, campaignFlows } from "@/services/drizzle/schema";
 import type { TCampaignFlowEntity } from "@/services/drizzle/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { resolveAudience } from "./audience-resolver";
 import { type FlowGraph, type NodeResult, getNextNodeId, loadFlowGraph, validateFlowGraph } from "./graph-utils";
 import { processNode } from "./node-processors";
@@ -145,9 +140,7 @@ export async function executeFlowForClient({
 					.set({
 						status: "AGUARDANDO_DELAY",
 						resultado: result.dados,
-						delayAte: result.dados?.sleepMs
-							? new Date(Date.now() + (result.dados.sleepMs as number))
-							: null,
+						delayAte: result.dados?.sleepMs ? new Date(Date.now() + (result.dados.sleepMs as number)) : null,
 					})
 					.where(eq(campaignFlowExecutionSteps.id, step.id));
 
@@ -206,10 +199,7 @@ export async function executeFlowForClient({
  * Triggers a campaign flow for all matching clients (recurrent or one-time).
  * Creates a batch execution and fans out to individual client runs.
  */
-export async function triggerBatchFlow({
-	campanhaId,
-	organizacaoId,
-}: TriggerBatchFlowParams): Promise<{
+export async function triggerBatchFlow({ campanhaId, organizacaoId }: TriggerBatchFlowParams): Promise<{
 	executionId: string;
 	totalClients: number;
 }> {
@@ -361,7 +351,7 @@ export function shouldTriggerFire({
 	gatilhoConfig: Record<string, unknown>;
 	eventoMetadados: Record<string, unknown>;
 }): boolean {
-	switch (gatilhoSubtipo) {
+	switch (normalizeFlowTriggerSubtype(gatilhoSubtipo)) {
 		case "NOVA-COMPRA": {
 			const valorMinimo = gatilhoConfig.valorMinimo as number | undefined;
 			if (valorMinimo != null) {
@@ -386,13 +376,15 @@ export function shouldTriggerFire({
 		}
 
 		case "QUANTIDADE-TOTAL-COMPRAS": {
-			const quantidade = gatilhoConfig.quantidade as number;
+			const quantidade = gatilhoConfig.quantidade as number | undefined;
+			if (quantidade == null) return true;
 			const totalCompras = eventoMetadados.totalCompras as number;
 			return totalCompras >= quantidade;
 		}
 
 		case "VALOR-TOTAL-COMPRAS": {
-			const valor = gatilhoConfig.valor as number;
+			const valor = gatilhoConfig.valor as number | undefined;
+			if (valor == null) return true;
 			const valorTotal = eventoMetadados.valorTotalCompras as number;
 			return valorTotal >= valor;
 		}
@@ -405,7 +397,7 @@ export function shouldTriggerFire({
 		}
 
 		case "CASHBACK-EXPIRANDO":
-		case "ANIVERSARIO-CLIENTE":
+		case "ANIVERSARIO_CLIENTE":
 		case "INICIO-RECORRENTE":
 		case "INICIO-UNICO":
 			return true;
@@ -413,6 +405,13 @@ export function shouldTriggerFire({
 		default:
 			return false;
 	}
+}
+
+function normalizeFlowTriggerSubtype(gatilhoSubtipo: string): string {
+	if (gatilhoSubtipo === "ENTRADA-SEGMENTAÇÃO") return "ENTRADA-SEGMENTACAO";
+	if (gatilhoSubtipo === "PERMANÊNCIA-SEGMENTAÇÃO") return "PERMANENCIA-SEGMENTACAO";
+	if (gatilhoSubtipo === "ANIVERSARIO-CLIENTE") return "ANIVERSARIO_CLIENTE";
+	return gatilhoSubtipo;
 }
 
 // ============================================================================

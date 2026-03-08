@@ -1,10 +1,12 @@
+import DateInput from "@/components/Inputs/DateInput";
+import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
+import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
-import NumberInput from "@/components/Inputs/NumberInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { TFilterCondition, TFilterTree } from "@/schemas/campaign-audiences";
+import { RFMLabels } from "@/utils/rfm";
 import { Filter, Plus, Trash2 } from "lucide-react";
 
 const FILTER_TYPE_OPTIONS = [
@@ -113,17 +115,13 @@ function FilterConfigFields({ condition, onUpdate }: { condition: TFilterConditi
 	switch (condition.tipo) {
 		case "SEGMENTO-RFM":
 			return (
-				<TextInput
-					label="SEGMENTOS (separados por vírgula)"
-					value={(config.segmentos as string[] | undefined)?.join(", ") ?? ""}
-					placeholder="CAMPEOES, CLIENTES LEAIS..."
-					handleChange={(value) =>
-						onUpdate({
-							...condition,
-							configuracao: { segmentos: value.split(",").map((s) => s.trim()).filter(Boolean) },
-						})
-					}
-					width="100%"
+				<MultipleSelectInput
+					label="SEGMENTOS"
+					selected={(config.segmentos as string[] | undefined) ?? []}
+					handleChange={(segmentos) => onUpdate({ ...condition, configuracao: { segmentos } })}
+					options={RFMLabels.map((s, index) => ({ id: index + 1, label: s.text, value: s.text }))}
+					resetOptionLabel="Selecione os segmentos"
+					onReset={() => onUpdate({ ...condition, configuracao: { segmentos: [] } })}
 				/>
 			);
 		case "LOCALIZACAO-CIDADE":
@@ -135,7 +133,12 @@ function FilterConfigFields({ condition, onUpdate }: { condition: TFilterConditi
 					handleChange={(value) =>
 						onUpdate({
 							...condition,
-							configuracao: { cidades: value.split(",").map((s) => s.trim()).filter(Boolean) },
+							configuracao: {
+								cidades: value
+									.split(",")
+									.map((s) => s.trim())
+									.filter(Boolean),
+							},
 						})
 					}
 					width="100%"
@@ -150,7 +153,12 @@ function FilterConfigFields({ condition, onUpdate }: { condition: TFilterConditi
 					handleChange={(value) =>
 						onUpdate({
 							...condition,
-							configuracao: { estados: value.split(",").map((s) => s.trim()).filter(Boolean) },
+							configuracao: {
+								estados: value
+									.split(",")
+									.map((s) => s.trim())
+									.filter(Boolean),
+							},
 						})
 					}
 					width="100%"
@@ -196,6 +204,57 @@ function FilterConfigFields({ condition, onUpdate }: { condition: TFilterConditi
 						placeholder="0"
 						handleChange={(value) => onUpdate({ ...condition, configuracao: { ...config, valor: value } })}
 					/>
+				</div>
+			);
+		case "ULTIMA-COMPRA":
+		case "PRIMEIRA-COMPRA":
+			return (
+				<div className="flex flex-col gap-2">
+					<SelectInput
+						label="OPERADOR"
+						value={config.operador ?? null}
+						options={[
+							{ id: "ULTIMOS_N_DIAS", value: "ULTIMOS_N_DIAS", label: "Ultimos N dias" },
+							{ id: "ANTES", value: "ANTES", label: "Antes de" },
+							{ id: "DEPOIS", value: "DEPOIS", label: "Depois de" },
+							{ id: "ENTRE", value: "ENTRE", label: "Entre datas" },
+						]}
+						handleChange={(value) => onUpdate({ ...condition, configuracao: { ...config, operador: value, valor: undefined, valorMax: undefined } })}
+						onReset={() => onUpdate({ ...condition, configuracao: { ...config, operador: undefined, valor: undefined, valorMax: undefined } })}
+						resetOptionLabel="Selecione..."
+					/>
+
+					{config.operador === "ULTIMOS_N_DIAS" ? (
+						<NumberInput
+							label="DIAS"
+							value={(config.valor as number | undefined) ?? null}
+							placeholder="30"
+							handleChange={(value) => onUpdate({ ...condition, configuracao: { ...config, valor: value } })}
+						/>
+					) : null}
+
+					{config.operador === "ANTES" || config.operador === "DEPOIS" ? (
+						<DateInput
+							label="DATA"
+							value={(config.valor as string | undefined) ?? undefined}
+							handleChange={(value) => onUpdate({ ...condition, configuracao: { ...config, valor: value } })}
+						/>
+					) : null}
+
+					{config.operador === "ENTRE" ? (
+						<div className="flex gap-2">
+							<DateInput
+								label="DATA INICIAL"
+								value={(config.valor as string | undefined) ?? undefined}
+								handleChange={(value) => onUpdate({ ...condition, configuracao: { ...config, valor: value } })}
+							/>
+							<DateInput
+								label="DATA FINAL"
+								value={(config.valorMax as string | undefined) ?? undefined}
+								handleChange={(value) => onUpdate({ ...condition, configuracao: { ...config, valorMax: value } })}
+							/>
+						</div>
+					) : null}
 				</div>
 			);
 		case "TOP-N-COMPRADORES":

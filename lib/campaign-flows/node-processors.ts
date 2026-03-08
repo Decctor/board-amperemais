@@ -1,19 +1,12 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import type { ImmediateProcessingData } from "@/lib/interactions";
-import type { TCampaignFlowNodeEntity } from "@/services/drizzle/schema";
-import {
-	campaignAudiences,
-	campaignFlowExecutionSteps,
-	cashbackProgramBalances,
-	clients,
-	interactions,
-	sales,
-} from "@/services/drizzle/schema";
-import type { DBTransaction } from "@/services/drizzle";
-import { and, eq, gte, sql } from "drizzle-orm";
-import type { NodeResult } from "./graph-utils";
-import { checkClientInAudience } from "./audience-resolver";
 import type { TFilterTree } from "@/schemas/campaign-audiences";
+import type { DBTransaction } from "@/services/drizzle";
+import type { TCampaignFlowNodeEntity } from "@/services/drizzle/schema";
+import { campaignAudiences, campaignFlowExecutionSteps, cashbackProgramBalances, clients, interactions, sales } from "@/services/drizzle/schema";
+import { and, eq, gte, sql } from "drizzle-orm";
+import { checkClientInAudience } from "./audience-resolver";
+import type { NodeResult } from "./graph-utils";
 
 // ============================================================================
 // TYPES
@@ -185,18 +178,13 @@ async function processActionCashback(
 	};
 }
 
-async function processActionNotification(
-	{ organizacaoId }: ProcessNodeParams,
-	config: Record<string, unknown>,
-): Promise<NodeResult> {
+async function processActionNotification({ organizacaoId }: ProcessNodeParams, config: Record<string, unknown>): Promise<NodeResult> {
 	const mensagem = config.mensagem as string;
 	const destinatarioIds = config.destinatarioIds as string[] | undefined;
 
 	// For now, just log the notification. This can be extended to send
 	// real notifications via email, push, or in-app notifications.
-	console.log(
-		`[CAMPAIGN_FLOW] [NOTIFICACAO] Org: ${organizacaoId} | Msg: ${mensagem} | Dest: ${destinatarioIds?.join(", ") ?? "todos"}`,
-	);
+	console.log(`[CAMPAIGN_FLOW] [NOTIFICACAO] Org: ${organizacaoId} | Msg: ${mensagem} | Dest: ${destinatarioIds?.join(", ") ?? "todos"}`);
 
 	return {
 		sucesso: true,
@@ -225,8 +213,14 @@ async function processDelayNode({ node }: ProcessNodeParams): Promise<NodeResult
 
 		case "ESPERAR-ATE-HORARIO": {
 			const horario = config.horario as string;
+			if (!/^\d{2}:\d{2}$/.test(horario)) {
+				return { sucesso: false, erro: "Horario invalido. Use o formato HH:mm." };
+			}
 			const now = new Date();
 			const [hours, minutes] = horario.split(":").map(Number);
+			if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+				return { sucesso: false, erro: "Horario invalido." };
+			}
 			const target = new Date(now);
 			target.setHours(hours, minutes, 0, 0);
 			if (target <= now) target.setDate(target.getDate() + 1);
@@ -236,7 +230,10 @@ async function processDelayNode({ node }: ProcessNodeParams): Promise<NodeResult
 
 		case "ESPERAR-ATE-DATA": {
 			const data = config.data as string;
-			const target = new Date(data);
+			const target = parseDateAtLocalEndOfDay(data);
+			if (!target) {
+				return { sucesso: false, erro: "Data invalida para delay." };
+			}
 			const sleepMs = Math.max(0, target.getTime() - Date.now());
 			return { sucesso: true, dados: { sleepMs, tipo: "ATE_DATA", data } };
 		}
@@ -259,6 +256,18 @@ function convertToMs(valor: number, medida: string): number {
 		default:
 			return valor * 24 * 60 * 60 * 1000; // default to days
 	}
+}
+
+function parseDateAtLocalEndOfDay(value: string): Date | null {
+	if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+		const [year, month, day] = value.split("-").map(Number);
+		if (!year || !month || !day) return null;
+		return new Date(year, month - 1, day, 23, 59, 59, 999);
+	}
+
+	const parsed = new Date(value);
+	if (Number.isNaN(parsed.getTime())) return null;
+	return parsed;
 }
 
 // ============================================================================
@@ -290,10 +299,7 @@ async function processConditionNode(params: ProcessNodeParams): Promise<NodeResu
 	}
 }
 
-async function evaluateClientAttribute(
-	{ tx, clienteId }: ProcessNodeParams,
-	config: Record<string, unknown>,
-): Promise<NodeResult> {
+async function evaluateClientAttribute({ tx, clienteId }: ProcessNodeParams, config: Record<string, unknown>): Promise<NodeResult> {
 	const campo = config.campo as string;
 	const operador = config.operador as string;
 	const valor = config.valor;
@@ -310,21 +316,14 @@ async function evaluateClientAttribute(
 	return { sucesso: true, condicaoResultado: resultado };
 }
 
-async function evaluateRecentPurchase(
-	{ tx, clienteId, organizacaoId }: ProcessNodeParams,
-	config: Record<string, unknown>,
-): Promise<NodeResult> {
+async function evaluateRecentPurchase({ tx, clienteId, organizacaoId }: ProcessNodeParams, config: Record<string, unknown>): Promise<NodeResult> {
 	const diasAtras = config.diasAtras as number;
 	const valorMinimo = config.valorMinimo as number | undefined;
 
 	const cutoff = new Date();
 	cutoff.setDate(cutoff.getDate() - diasAtras);
 
-	const conditions = [
-		eq(sales.clienteId, clienteId),
-		eq(sales.organizacaoId, organizacaoId),
-		gte(sales.dataVenda, cutoff),
-	];
+	const conditions = [eq(sales.clienteId, clienteId), eq(sales.organizacaoId, organizacaoId), gte(sales.dataVenda, cutoff)];
 
 	if (valorMinimo != null) {
 		conditions.push(gte(sales.valorTotal, valorMinimo));
@@ -337,10 +336,7 @@ async function evaluateRecentPurchase(
 	return { sucesso: true, condicaoResultado: !!recentSale };
 }
 
-async function evaluatePreviousInteraction(
-	{ tx, executionId, clienteId }: ProcessNodeParams,
-	config: Record<string, unknown>,
-): Promise<NodeResult> {
+async function evaluatePreviousInteraction({ tx, executionId, clienteId }: ProcessNodeParams, config: Record<string, unknown>): Promise<NodeResult> {
 	const statusEsperado = config.statusEsperado as string;
 
 	// Find the most recent completed step in this execution for this client
@@ -374,10 +370,7 @@ async function evaluatePreviousInteraction(
 	return { sucesso: true, condicaoResultado: matches };
 }
 
-async function evaluateRfmSegment(
-	{ tx, clienteId }: ProcessNodeParams,
-	config: Record<string, unknown>,
-): Promise<NodeResult> {
+async function evaluateRfmSegment({ tx, clienteId }: ProcessNodeParams, config: Record<string, unknown>): Promise<NodeResult> {
 	const segmentos = config.segmentos as string[];
 	if (!segmentos?.length) return { sucesso: true, condicaoResultado: false };
 
@@ -390,10 +383,7 @@ async function evaluateRfmSegment(
 	return { sucesso: true, condicaoResultado: resultado };
 }
 
-async function evaluateCashbackBalance(
-	{ tx, clienteId, organizacaoId }: ProcessNodeParams,
-	config: Record<string, unknown>,
-): Promise<NodeResult> {
+async function evaluateCashbackBalance({ tx, clienteId, organizacaoId }: ProcessNodeParams, config: Record<string, unknown>): Promise<NodeResult> {
 	const valorMinimo = config.valorMinimo as number;
 
 	const balance = await tx.query.cashbackProgramBalances.findFirst({

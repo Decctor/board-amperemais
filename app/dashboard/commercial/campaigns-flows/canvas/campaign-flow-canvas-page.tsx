@@ -1,52 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import {
-	ReactFlow,
 	Background,
 	Controls,
-	MiniMap,
-	useNodesState,
-	useEdgesState,
-	addEdge,
-	type Node,
 	type Edge,
-	type OnConnect,
-	type NodeTypes,
 	type EdgeTypes,
 	MarkerType,
+	MiniMap,
+	type Node,
+	type NodeTypes,
+	type OnConnect,
 	Panel,
+	ReactFlow,
+	useEdgesState,
+	useNodesState,
 } from "@xyflow/react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "@xyflow/react/dist/style.css";
 
+import { Button } from "@/components/ui/button";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getErrorMessage } from "@/lib/errors";
+import { createCampaignFlow, updateCampaignFlow } from "@/lib/mutations/campaign-flows";
+import { useCampaignFlowById } from "@/lib/queries/campaign-flows";
+import type { TCampaignFlowState } from "@/schemas/campaign-flows";
+import { useCampaignFlowState } from "@/state-hooks/use-campaign-flow-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { getErrorMessage } from "@/lib/errors";
-import type { TAuthUserSession } from "@/lib/authentication/types";
-import { useCampaignFlowById } from "@/lib/queries/campaign-flows";
-import { createCampaignFlow, updateCampaignFlow } from "@/lib/mutations/campaign-flows";
-import { useCampaignFlowState } from "@/state-hooks/use-campaign-flow-state";
-import type { TCampaignFlowState } from "@/schemas/campaign-flows";
 
-import { FlowCustomNode, type TFlowCustomNodeData } from "@/components/CampaignFlows/FlowCustomNode";
 import { FlowConditionEdge } from "@/components/CampaignFlows/FlowConditionEdge";
-import { FlowNodeSelector } from "@/components/CampaignFlows/FlowNodeSelector";
+import { FlowCustomNode, type TFlowCustomNodeData } from "@/components/CampaignFlows/FlowCustomNode";
 import { FlowDetailsSidebar } from "@/components/CampaignFlows/FlowDetailsSidebar";
+import { FlowNodeSelector } from "@/components/CampaignFlows/FlowNodeSelector";
 import { getNodeSubtype } from "@/components/CampaignFlows/flow-node-types";
 
-import {
-	ArrowLeft,
-	FileText,
-	Info,
-	Loader2,
-	Plus,
-	Save,
-	Upload,
-	X,
-} from "lucide-react";
+import type { TGetCampaignFlowsOutputById } from "@/app/api/campaign-flows/route";
+import { ArrowLeft, FileText, Info, Loader2, Plus, Save, Upload, X } from "lucide-react";
 import Link from "next/link";
 
 // ─── React Flow node/edge type registrations ──────────────────────────────────
@@ -71,7 +61,7 @@ function stateNodesToFlowNodes(nos: TCampaignFlowState["nos"]): Node[] {
 			data: {
 				tipo: n.tipo,
 				subtipo: n.subtipo,
-				rotulo: n.rotulo,
+				rotulo: n.rotulo ?? null,
 				configuracao: n.configuracao,
 				dbNodeIndex: index,
 			} satisfies TFlowCustomNodeData,
@@ -96,28 +86,88 @@ function stateEdgesToFlowEdges(arestas: TCampaignFlowState["arestas"], nos: TCam
 		});
 }
 
+function parseNumberArrayOrNull(value: unknown): number[] | null {
+	if (!Array.isArray(value)) return null;
+	const parsed = value.map((item) => Number(item)).filter((item) => Number.isFinite(item));
+	return parsed.length > 0 ? parsed : null;
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 type CampaignFlowCanvasPageProps = {
+	flowId: string | null;
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
 };
 
-export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlowCanvasPageProps) {
-	const router = useRouter();
-	const searchParams = useSearchParams();
-	const flowId = searchParams.get("id");
-	const isEditing = !!flowId;
-	const queryClient = useQueryClient();
+export default function CampaignFlowCanvasPage({ flowId, user: _user, membership }: CampaignFlowCanvasPageProps) {
+	if (!flowId) return <CampaignFlowCanvasPageCreating organizationId={membership.organizacao.id} />;
+	return <CampaignFlowCanvasPageEditing flowId={flowId} organizationId={membership.organizacao.id} />;
+}
 
+function CampaignFlowCanvasPageEditing({ flowId, organizationId }: { flowId: string; organizationId: string }) {
+	const queryClient = useQueryClient();
 	// ── Fetch existing flow if editing ──────────────────────────────────────
 	const {
 		data: existingFlow,
+		queryKey,
 		isLoading: flowIsLoading,
+		isSuccess: flowIsSuccess,
 		isError: flowIsError,
 		error: flowError,
 	} = useCampaignFlowById({ id: flowId ?? "" });
 
+	if (flowIsLoading) {
+		// ── Loading / error states ──────────────────────────────────────────────
+		return (
+			<div className="w-full h-full flex items-center justify-center">
+				<Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+			</div>
+		);
+	}
+
+	if (flowIsError) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center gap-2">
+				<p className="text-sm text-destructive">{getErrorMessage(flowError)}</p>
+				<Button variant="outline" size="sm" asChild>
+					<Link href="/dashboard/commercial/campaigns">Voltar</Link>
+				</Button>
+			</div>
+		);
+	}
+
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
+	const handleOnSuccess = async () => await queryClient.invalidateQueries({ queryKey });
+	if (flowIsSuccess)
+		return (
+			<CampaignFlowCanvasContent
+				flowId={flowId}
+				organizationId={organizationId}
+				initialFlow={existingFlow}
+				callbacks={{ onMutate: handleOnMutate, onSuccess: handleOnSuccess }}
+			/>
+		);
+	return <></>;
+}
+function CampaignFlowCanvasPageCreating({ organizationId }: { organizationId: string }) {
+	return <CampaignFlowCanvasContent flowId={null} organizationId={organizationId} initialFlow={null} callbacks={{}} />;
+}
+
+type CampaignFlowCanvasContentProps = {
+	flowId: string | null;
+	organizationId: string;
+	initialFlow: TGetCampaignFlowsOutputById | null;
+	callbacks: {
+		onMutate?: () => void;
+		onSuccess?: () => void;
+		onError?: (error: Error) => void;
+		onSettled?: () => void;
+	};
+};
+function CampaignFlowCanvasContent({ flowId, organizationId, initialFlow, callbacks }: CampaignFlowCanvasContentProps) {
+	const isEditing = !!flowId;
+	const router = useRouter();
 	// ── Flow state management ───────────────────────────────────────────────
 	const {
 		state,
@@ -131,28 +181,26 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 		redefineState,
 	} = useCampaignFlowState({ initialState: {} });
 
-	// ── Hydrate state when editing ──────────────────────────────────────────
-	const [hydrated, setHydrated] = useState(!isEditing);
 	useEffect(() => {
-		if (existingFlow && !hydrated) {
+		if (initialFlow) {
 			redefineState({
 				campaignFlow: {
-					titulo: existingFlow.titulo,
-					descricao: existingFlow.descricao ?? null,
-					status: existingFlow.status,
-					tipo: existingFlow.tipo,
-					recorrenciaTipo: existingFlow.recorrenciaTipo ?? null,
-					recorrenciaIntervalo: existingFlow.recorrenciaIntervalo ?? 1,
-					recorrenciaDiasSemana: existingFlow.recorrenciaDiasSemana ?? null,
-					recorrenciaDiasMes: existingFlow.recorrenciaDiasMes ?? null,
-					recorrenciaBlocoHorario: existingFlow.recorrenciaBlocoHorario ?? null,
-					unicaDataExecucao: existingFlow.unicaDataExecucao ?? null,
-					unicaExecutada: existingFlow.unicaExecutada ?? false,
-					atribuicaoModelo: existingFlow.atribuicaoModelo,
-					atribuicaoJanelaDias: existingFlow.atribuicaoJanelaDias,
-					publicoId: existingFlow.publicoId ?? null,
+					titulo: initialFlow.titulo,
+					descricao: initialFlow?.descricao ?? null,
+					status: initialFlow.status,
+					tipo: initialFlow.tipo,
+					recorrenciaTipo: initialFlow.recorrenciaTipo ?? null,
+					recorrenciaIntervalo: initialFlow.recorrenciaIntervalo ?? 1,
+					recorrenciaDiasSemana: parseNumberArrayOrNull(initialFlow.recorrenciaDiasSemana),
+					recorrenciaDiasMes: parseNumberArrayOrNull(initialFlow.recorrenciaDiasMes),
+					recorrenciaBlocoHorario: initialFlow.recorrenciaBlocoHorario ?? null,
+					unicaDataExecucao: initialFlow.unicaDataExecucao ?? null,
+					unicaExecutada: initialFlow.unicaExecutada ?? false,
+					atribuicaoModelo: initialFlow.atribuicaoModelo,
+					atribuicaoJanelaDias: initialFlow.atribuicaoJanelaDias,
+					publicoId: initialFlow.publicoId ?? null,
 				},
-				nos: existingFlow.nos.map((n) => ({
+				nos: initialFlow.nos.map((n) => ({
 					id: n.id,
 					tipo: n.tipo,
 					subtipo: n.subtipo,
@@ -161,17 +209,16 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 					posicaoX: n.posicaoX ?? null,
 					posicaoY: n.posicaoY ?? null,
 				})),
-				arestas: existingFlow.arestas.map((a) => ({
+				arestas: initialFlow.arestas.map((a) => ({
 					id: a.id,
 					noOrigemId: a.noOrigemId,
 					noDestinoId: a.noDestinoId,
 					condicaoLabel: a.condicaoLabel ?? null,
-					ordem: a.ordem,
+					ordem: a.ordem ?? 0,
 				})),
 			});
-			setHydrated(true);
 		}
-	}, [existingFlow, hydrated, redefineState]);
+	}, [initialFlow, redefineState]);
 
 	// ── React Flow nodes/edges state ────────────────────────────────────────
 	const flowNodes = useMemo(() => stateNodesToFlowNodes(state.nos), [state.nos]);
@@ -209,9 +256,7 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 	// ── Handle new connections ──────────────────────────────────────────────
 	const onConnect: OnConnect = useCallback(
 		(connection) => {
-			const sourceNode = state.nos.find(
-				(n, i) => (n.id || `temp-${i}`) === connection.source,
-			);
+			const sourceNode = state.nos.find((n, i) => (n.id || `temp-${i}`) === connection.source);
 
 			const condicaoLabel = sourceNode?.tipo === "CONDICAO" ? (connection.sourceHandle ?? null) : null;
 
@@ -252,14 +297,11 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 	);
 
 	// ── Node selection ──────────────────────────────────────────────────────
-	const onNodeClick = useCallback(
-		(_event: React.MouseEvent, node: Node) => {
-			const dataIndex = (node.data as TFlowCustomNodeData).dbNodeIndex;
-			setSelectedNodeIndex(dataIndex);
-			setSidebarOpen(true);
-		},
-		[],
-	);
+	const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+		const dataIndex = (node.data as TFlowCustomNodeData).dbNodeIndex;
+		setSelectedNodeIndex(dataIndex);
+		setSidebarOpen(true);
+	}, []);
 
 	const onPaneClick = useCallback(() => {
 		setSelectedNodeIndex(null);
@@ -304,33 +346,13 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 		},
 		onSuccess: (data) => {
 			toast.success(data.message);
-			queryClient.invalidateQueries({ queryKey: ["campaign-flows"] });
-			if (!isEditing && "insertedId" in data.data) {
+			callbacks?.onSuccess?.();
+			if ("insertedId" in data.data) {
 				router.replace(`/dashboard/commercial/campaigns-flows/canvas?id=${data.data.insertedId}`);
 			}
 		},
 		onError: (err) => toast.error(getErrorMessage(err)),
 	});
-
-	// ── Loading / error states ──────────────────────────────────────────────
-	if (isEditing && flowIsLoading) {
-		return (
-			<div className="w-full h-full flex items-center justify-center">
-				<Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-			</div>
-		);
-	}
-
-	if (isEditing && flowIsError) {
-		return (
-			<div className="w-full h-full flex flex-col items-center justify-center gap-2">
-				<p className="text-sm text-destructive">{getErrorMessage(flowError)}</p>
-				<Button variant="outline" size="sm" asChild>
-					<Link href="/dashboard/commercial/campaigns">Voltar</Link>
-				</Button>
-			</div>
-		);
-	}
 
 	return (
 		<div className="w-full h-[calc(100vh-100px)] flex flex-col">
@@ -345,9 +367,7 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 					<div className="flex items-center gap-1.5 text-sm">
 						<span className="text-muted-foreground">FLUXOS</span>
 						<span className="text-muted-foreground">/</span>
-						<span className="font-bold tracking-tight uppercase truncate max-w-[300px]">
-							{state.campaignFlow.titulo || "NOVO FLUXO"}
-						</span>
+						<span className="font-bold tracking-tight uppercase truncate max-w-[300px]">{state.campaignFlow.titulo || "NOVO FLUXO"}</span>
 					</div>
 				</div>
 
@@ -372,17 +392,8 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 						Detalhes
 					</Button>
 
-					<Button
-						size="sm"
-						className="flex items-center gap-1.5"
-						onClick={() => saveFlow()}
-						disabled={isSaving || !state.campaignFlow.titulo}
-					>
-						{isSaving ? (
-							<Loader2 className="w-3.5 h-3.5 animate-spin" />
-						) : (
-							<Save className="w-3.5 h-3.5" />
-						)}
+					<Button size="sm" className="flex items-center gap-1.5" onClick={() => saveFlow()} disabled={isSaving || !state.campaignFlow.titulo}>
+						{isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
 						{isEditing ? "SALVAR" : "CRIAR"}
 					</Button>
 
@@ -432,24 +443,25 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 							nodeColor={(node) => {
 								const tipo = (node.data as TFlowCustomNodeData)?.tipo;
 								switch (tipo) {
-									case "GATILHO": return "#f59e0b";
-									case "ACAO": return "#3b82f6";
-									case "DELAY": return "#8b5cf6";
-									case "CONDICAO": return "#f97316";
-									case "FILTRO": return "#22c55e";
-									default: return "#94a3b8";
+									case "GATILHO":
+										return "#f59e0b";
+									case "ACAO":
+										return "#3b82f6";
+									case "DELAY":
+										return "#8b5cf6";
+									case "CONDICAO":
+										return "#f97316";
+									case "FILTRO":
+										return "#22c55e";
+									default:
+										return "#94a3b8";
 								}
 							}}
 						/>
 
 						{/* Add node button */}
 						<Panel position="top-left" className="!m-3">
-							<Button
-								size="sm"
-								variant="outline"
-								className="flex items-center gap-1.5 shadow-sm bg-card"
-								onClick={() => setSelectorOpen(!selectorOpen)}
-							>
+							<Button size="sm" variant="outline" className="flex items-center gap-1.5 shadow-sm bg-card" onClick={() => setSelectorOpen(!selectorOpen)}>
 								{selectorOpen ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
 								{selectorOpen ? "FECHAR" : "ADICIONAR NO"}
 							</Button>
@@ -458,11 +470,7 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 						{/* Node selector panel */}
 						{selectorOpen && (
 							<Panel position="top-left" className="!m-3 !mt-14">
-								<FlowNodeSelector
-									onSelectNode={handleAddNode}
-									onClose={() => setSelectorOpen(false)}
-									hasTrigger={hasTrigger}
-								/>
+								<FlowNodeSelector onSelectNode={handleAddNode} onClose={() => setSelectorOpen(false)} hasTrigger={hasTrigger} />
 							</Panel>
 						)}
 
@@ -479,11 +487,7 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 											Clique em &quot;Adicionar No&quot; para criar seu primeiro gatilho e depois conecte acoes, condicoes e delays.
 										</p>
 									</div>
-									<Button
-										size="sm"
-										onClick={() => setSelectorOpen(true)}
-										className="flex items-center gap-1.5"
-									>
+									<Button size="sm" onClick={() => setSelectorOpen(true)} className="flex items-center gap-1.5">
 										<Plus className="w-4 h-4" />
 										ADICIONAR PRIMEIRO NO
 									</Button>
@@ -502,6 +506,7 @@ export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlo
 						nodes={state.nos}
 						updateNode={updateNode}
 						removeNode={handleRemoveNode}
+						organizationId={organizationId}
 						onClose={() => {
 							setSidebarOpen(false);
 							setSelectedNodeIndex(null);

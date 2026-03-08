@@ -5,14 +5,14 @@ import { createCampaignAudience } from "@/lib/mutations/campaign-audiences";
 import { useCampaignAudienceState } from "@/state-hooks/use-campaign-audience-state";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import CampaignAudienceGeneralBlock from "./Blocks/General";
 import FiltersBlock from "./Blocks/Filters";
+import CampaignAudienceGeneralBlock from "./Blocks/General";
 
 type NewCampaignAudienceProps = {
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: (info: TCreateCampaignAudienceInput) => void;
-		onSuccess?: () => void;
+		onSuccess?: (data: { insertedId?: string }) => void;
 		onError?: (error: Error) => void;
 		onSettled?: () => void;
 	};
@@ -26,7 +26,7 @@ export function NewCampaignAudience({ closeModal, callbacks }: NewCampaignAudien
 		mutationFn: createCampaignAudience,
 		onMutate: (variables) => callbacks?.onMutate?.(variables),
 		onSuccess: (data) => {
-			callbacks?.onSuccess?.();
+			callbacks?.onSuccess?.({ insertedId: data.data.insertedId });
 			toast.success(data.message);
 			closeModal();
 		},

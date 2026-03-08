@@ -27,4 +27,3 @@ export * from "./internal-lead-stage-history";
 export * from "./internal-leads";
 export * from "./campaign-audiences";
 export * from "./campaign-flows";
-export * from "./campaign-flow-executions";

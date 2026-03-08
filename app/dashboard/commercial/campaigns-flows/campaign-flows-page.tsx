@@ -1,11 +1,13 @@
 "use client";
 
+import type { TGetCampaignAudiencesOutputDefault } from "@/app/api/campaign-audiences/route";
+import type { TGetCampaignFlowsOutputDefault } from "@/app/api/campaign-flows/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import { NewCampaignAudience } from "@/components/Modals/Internal/CampaignAudiences/NewCampaignAudience";
 import { ControlCampaignAudience } from "@/components/Modals/Internal/CampaignAudiences/ControlCampaignAudience";
-import { NewCampaignFlow } from "@/components/Modals/Internal/CampaignFlows/NewCampaignFlow";
+import { NewCampaignAudience } from "@/components/Modals/Internal/CampaignAudiences/NewCampaignAudience";
 import { ControlCampaignFlow } from "@/components/Modals/Internal/CampaignFlows/ControlCampaignFlow";
+import { NewCampaignFlow } from "@/components/Modals/Internal/CampaignFlows/NewCampaignFlow";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,15 +15,14 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { deleteCampaignFlow } from "@/lib/mutations/campaign-flows";
 import { deleteCampaignAudience } from "@/lib/mutations/campaign-audiences";
-import { useCampaignFlows } from "@/lib/queries/campaign-flows";
+import { deleteCampaignFlow } from "@/lib/mutations/campaign-flows";
 import { useCampaignAudiences } from "@/lib/queries/campaign-audiences";
-import type { TGetCampaignFlowsOutputDefault } from "@/app/api/campaign-flows/route";
-import type { TGetCampaignAudiencesOutputDefault } from "@/app/api/campaign-audiences/route";
+import { useCampaignFlows } from "@/lib/queries/campaign-flows";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, GitBranch, Megaphone, Pencil, Plus, Repeat, Search, Trash2, Users, Zap } from "lucide-react";
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 type CampaignFlowsPageProps = {
@@ -73,7 +74,7 @@ function FlowsTab() {
 		updateFilters,
 		queryKey,
 	} = useCampaignFlows({
-		initialFilters: { search: "", page: 1 },
+		initialFilters: { search: "", page: 1, status: [], tipo: [] },
 	});
 
 	const { mutate: handleDeleteFlow, isPending: isDeleting } = useMutation({
@@ -226,9 +227,7 @@ function AudiencesTab() {
 								isDeleting={isDeleting}
 							/>
 						))}
-						{audiencesResult.audiences.length === 0 && (
-							<p className="text-sm text-muted-foreground text-center py-8">Nenhum público encontrado.</p>
-						)}
+						{audiencesResult.audiences.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum público encontrado.</p>}
 					</div>
 					<GeneralPaginationComponent
 						activePage={filters.page ?? 1}
@@ -308,9 +307,7 @@ function CampaignFlowCard({ flow, onEdit, onDelete, isDeleting }: CampaignFlowCa
 							{flow.publico.titulo}
 						</span>
 					)}
-					{flow.autor && (
-						<span className="text-xs text-muted-foreground">por {flow.autor.nome}</span>
-					)}
+					{flow.autor && <span className="text-xs text-muted-foreground">por {flow.autor.nome}</span>}
 				</div>
 			</div>
 			<div className="flex items-center gap-1 shrink-0">
@@ -342,12 +339,8 @@ function CampaignAudienceCard({ audience, onEdit, onDelete, isDeleting }: Campai
 				<h3 className="text-sm font-medium truncate">{audience.titulo}</h3>
 				{audience.descricao && <p className="text-xs text-muted-foreground truncate">{audience.descricao}</p>}
 				<div className="flex items-center gap-3 mt-1">
-					<span className="text-xs text-muted-foreground">
-						{filterCount + groupCount} filtro(s)
-					</span>
-					{audience.autor && (
-						<span className="text-xs text-muted-foreground">por {audience.autor.nome}</span>
-					)}
+					<span className="text-xs text-muted-foreground">{filterCount + groupCount} filtro(s)</span>
+					{audience.autor && <span className="text-xs text-muted-foreground">por {audience.autor.nome}</span>}
 				</div>
 			</div>
 			<div className="flex items-center gap-1 shrink-0">
