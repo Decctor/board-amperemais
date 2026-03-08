@@ -1,3 +1,4 @@
+import { triggerEventCampaignFlows } from "@/lib/campaign-flows";
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatDateAsLocale } from "@/lib/formatting";
@@ -73,6 +74,7 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 
 			// Collect data for immediate processing
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
+			const clientsWithExpiringCashback = new Set<string>();
 
 			await db.transaction(async (tx) => {
 				// Get active campaigns for expiring cashback notifications
@@ -116,6 +118,9 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 
 				// Query cashback balances for all clients with expiring cashback
 				const clientIds = Array.from(cashbackByClient.keys());
+				for (const clientId of clientIds) {
+					clientsWithExpiringCashback.add(clientId);
+				}
 				const clientBalances =
 					clientIds.length > 0
 						? await tx.query.cashbackProgramBalances.findMany({
@@ -229,6 +234,31 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
 					);
 					await delay(100); // Small delay between sends to avoid rate limiting
+				}
+			}
+
+			if (clientsWithExpiringCashback.size > 0) {
+				const clientIds = Array.from(clientsWithExpiringCashback);
+				console.log(`[ORG: ${organization.id}] [CAMPAIGN_FLOW] Processando ${clientIds.length} cliente(s) para trigger CASHBACK-EXPIRANDO.`);
+
+				const chunkSize = 50;
+				for (let i = 0; i < clientIds.length; i += chunkSize) {
+					const chunk = clientIds.slice(i, i + chunkSize);
+					await Promise.allSettled(
+						chunk.map((clienteId) =>
+							triggerEventCampaignFlows({
+								organizacaoId: organization.id,
+								clienteId,
+								gatilhoSubtipo: "CASHBACK-EXPIRANDO",
+								eventoTipo: "CASHBACK-EXPIRANDO",
+								eventoMetadados: {
+									dataReferencia: today,
+									dataExpiracaoReferencia: soonDate,
+									diasAntecedencia: EXPIRING_SOON_DAYS,
+								},
+							}),
+						),
+					);
 				}
 			}
 		}

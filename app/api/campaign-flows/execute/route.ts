@@ -1,9 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { triggerBatchFlow } from "@/lib/campaign-flows";
+import { startCampaignFlowRun, triggerBatchFlow } from "@/lib/campaign-flows";
 import { db } from "@/services/drizzle";
 import { campaignFlows } from "@/services/drizzle/schema";
+import { waitUntil } from "@vercel/functions";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -41,12 +42,27 @@ async function executeCampaignFlow({ input, session }: { input: TExecuteCampaign
 		organizacaoId: userOrgId,
 	});
 
+	if (result.clientIds.length > 0) {
+		const runPromises = result.clientIds.map(async (clienteId) => {
+			try {
+				await startCampaignFlowRun({
+					executionId: result.executionId,
+					campanhaId: campaign.id,
+					organizacaoId: userOrgId,
+					clienteId,
+					eventoMetadados: null,
+				});
+			} catch (error) {
+				console.error(`[CAMPAIGN_FLOW] Falha ao iniciar run para cliente ${clienteId} na campanha ${campaign.id}:`, error);
+			}
+		});
+
+		waitUntil(Promise.allSettled(runPromises));
+	}
+
 	// Mark one-time campaign as executed
 	if (campaign.tipo === "UNICA") {
-		await db
-			.update(campaignFlows)
-			.set({ unicaExecutada: true })
-			.where(eq(campaignFlows.id, campaign.id));
+		await db.update(campaignFlows).set({ unicaExecutada: true }).where(eq(campaignFlows.id, campaign.id));
 	}
 
 	return {

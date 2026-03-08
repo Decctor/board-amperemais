@@ -1,7 +1,8 @@
 import { appApiHandler } from "@/lib/app-api";
+import { triggerEventCampaignFlows } from "@/lib/campaign-flows";
 import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureCashbackBalanceForClient } from "@/lib/cashback/accumulation";
-import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
@@ -374,8 +375,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 		} | null = null;
 		if (isPrizeRedemption && prizeRedemption) {
 			const prize = await tx.query.cashbackProgramPrizes.findFirst({
-				where: (fields, { and, eq }) =>
-					and(eq(fields.id, prizeRedemption.prizeId), eq(fields.ativo, true), eq(fields.programaId, program.id)),
+				where: (fields, { and, eq }) => and(eq(fields.id, prizeRedemption.prizeId), eq(fields.ativo, true), eq(fields.programaId, program.id)),
 				columns: {
 					id: true,
 					valor: true,
@@ -686,6 +686,11 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 
 		return {
 			transactionSaleId,
+			clientId,
+			clientIsNew,
+			clientCurrentPurchaseCount,
+			clientCurrentPurchaseValue,
+			transactionRequiresAccumulationProcessing,
 			clientAccumulatedCashbackValue: clientNewAccumulatedCashbackValue,
 			clientNewOverallAvailableBalance: clientCashbackAvailableBalance,
 			visualClientAccumulatedCashbackValue,
@@ -694,27 +699,32 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 		};
 	});
 
-	if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
-		// Create all processing promises
-		const processingPromises = result.immediateProcessingDataList.map(async (processingData) => {
-			console.log(`[POI] [IMMEDIATE_PROCESS] Processing interaction ${processingData.interactionId} for client ${processingData.client.id}`);
-			console.log(
-				`[POI] [IMMEDIATE_PROCESS] Client phone: ${processingData.client.telefone}, Template: ${processingData.campaign.whatsappTemplate?.nome || "unknown"}`,
-			);
+	const processingPromises = result.immediateProcessingDataList.map(async (processingData) => {
+		console.log(`[POI] [IMMEDIATE_PROCESS] Processing interaction ${processingData.interactionId} for client ${processingData.client.id}`);
+		console.log(
+			`[POI] [IMMEDIATE_PROCESS] Client phone: ${processingData.client.telefone}, Template: ${processingData.campaign.whatsappTemplate?.nome || "unknown"}`,
+		);
 
-			try {
-				await processSingleInteractionImmediately(processingData);
-				console.log(`[POI] [IMMEDIATE_PROCESS] Successfully processed interaction ${processingData.interactionId}`);
-			} catch (err) {
-				console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
-			}
-		});
+		try {
+			await processSingleInteractionImmediately(processingData);
+			console.log(`[POI] [IMMEDIATE_PROCESS] Successfully processed interaction ${processingData.interactionId}`);
+		} catch (err) {
+			console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
+		}
+	});
 
-		// Use waitUntil to keep the function alive until all processing is complete
-		// This allows us to return the response immediately while ensuring the background work finishes
-		waitUntil(Promise.all(processingPromises));
-	} else {
+	if (processingPromises.length === 0) {
 		console.log("[POI] [IMMEDIATE_PROCESS] No interactions to process immediately");
+	}
+
+	const flowProcessingPromises = createFlowProcessingPromises({
+		orgId: input.orgId,
+		saleValue: input.sale.valor,
+		result,
+	});
+
+	if (processingPromises.length > 0 || flowProcessingPromises.length > 0) {
+		waitUntil(Promise.allSettled([...processingPromises, ...flowProcessingPromises]));
 	}
 
 	return NextResponse.json(
@@ -735,6 +745,96 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 export const POST = appApiHandler({
 	POST: handleNewTransaction,
 });
+
+function createFlowProcessingPromises({
+	orgId,
+	saleValue,
+	result,
+}: {
+	orgId: string;
+	saleValue: number;
+	result: {
+		transactionSaleId: string | null;
+		clientId: string | null;
+		clientIsNew: boolean;
+		clientCurrentPurchaseCount: number;
+		clientCurrentPurchaseValue: number;
+		transactionRequiresAccumulationProcessing: boolean;
+		clientAccumulatedCashbackValue: number;
+		clientNewOverallAvailableBalance: number | null;
+	};
+}) {
+	if (!result.clientId) return [];
+
+	const promises: Promise<unknown>[] = [
+		triggerEventCampaignFlows({
+			organizacaoId: orgId,
+			clienteId: result.clientId,
+			gatilhoSubtipo: "NOVA-COMPRA",
+			eventoTipo: "NOVA-COMPRA",
+			eventoMetadados: {
+				vendaId: result.transactionSaleId,
+				valor: saleValue,
+			},
+		}),
+		triggerEventCampaignFlows({
+			organizacaoId: orgId,
+			clienteId: result.clientId,
+			gatilhoSubtipo: "QUANTIDADE-TOTAL-COMPRAS",
+			eventoTipo: "QUANTIDADE-TOTAL-COMPRAS",
+			eventoMetadados: {
+				totalCompras: result.clientCurrentPurchaseCount,
+				valor: saleValue,
+				vendaId: result.transactionSaleId,
+			},
+		}),
+		triggerEventCampaignFlows({
+			organizacaoId: orgId,
+			clienteId: result.clientId,
+			gatilhoSubtipo: "VALOR-TOTAL-COMPRAS",
+			eventoTipo: "VALOR-TOTAL-COMPRAS",
+			eventoMetadados: {
+				valorTotalCompras: result.clientCurrentPurchaseValue,
+				valor: saleValue,
+				vendaId: result.transactionSaleId,
+			},
+		}),
+	];
+
+	if (result.clientIsNew) {
+		promises.push(
+			triggerEventCampaignFlows({
+				organizacaoId: orgId,
+				clienteId: result.clientId,
+				gatilhoSubtipo: "PRIMEIRA-COMPRA",
+				eventoTipo: "PRIMEIRA-COMPRA",
+				eventoMetadados: {
+					vendaId: result.transactionSaleId,
+					valor: saleValue,
+				},
+			}),
+		);
+	}
+
+	if (result.transactionRequiresAccumulationProcessing && result.clientAccumulatedCashbackValue > 0) {
+		promises.push(
+			triggerEventCampaignFlows({
+				organizacaoId: orgId,
+				clienteId: result.clientId,
+				gatilhoSubtipo: "CASHBACK-ACUMULADO",
+				eventoTipo: "CASHBACK-ACUMULADO",
+				eventoMetadados: {
+					novoCashback: result.clientAccumulatedCashbackValue,
+					totalCashback: result.clientNewOverallAvailableBalance ?? 0,
+					vendaId: result.transactionSaleId,
+					valor: saleValue,
+				},
+			}),
+		);
+	}
+
+	return promises;
+}
 
 type TGetOrganizationCampaignsParams = {
 	tx: DBTransaction;

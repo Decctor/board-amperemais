@@ -2,6 +2,7 @@ import type { TSale } from "@/schemas/sales";
 import dayjs, { type ManipulateType } from "dayjs";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { triggerEventCampaignFlows } from "@/lib/campaign-flows";
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
@@ -182,6 +183,11 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 
 			// Collect data for immediate processing
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
+			const flowTriggerQueue: Array<{
+				gatilhoSubtipo: "ENTRADA-SEGMENTACAO" | "PERMANENCIA-SEGMENTACAO";
+				clienteId: string;
+				eventoMetadados: Record<string, unknown>;
+			}> = [];
 
 			await db.transaction(async (tx) => {
 				for (const [index, results] of accumulatedResultsByClient.entries()) {
@@ -217,6 +223,14 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 						);
 						if (applicableCampaigns.length > 0)
 							console.log(`${applicableCampaigns.length} campanhas de entrada em segmentação aplicáveis encontradas para o cliente ${results.clientId}.`);
+
+						flowTriggerQueue.push({
+							gatilhoSubtipo: "ENTRADA-SEGMENTACAO",
+							clienteId: results.clientId,
+							eventoMetadados: {
+								segmentoAtual: newRFMLabel,
+							},
+						});
 						for (const campaign of applicableCampaigns) {
 							// Validate campaign frequency before scheduling
 							const canSchedule = await canScheduleCampaignForClient(
@@ -316,6 +330,15 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 
 						// If no previous modifications occurred, skipping
 						if (!lastRFMLabelModification) continue;
+
+						flowTriggerQueue.push({
+							gatilhoSubtipo: "PERMANENCIA-SEGMENTACAO",
+							clienteId: results.clientId,
+							eventoMetadados: {
+								segmentoAtual: newRFMLabel,
+								segmentoUltimaAlteracaoData: dayjs(lastRFMLabelModification).toISOString(),
+							},
+						});
 						// If client has not changed labels, checking for permanence in campaing defined automations
 						const applicableCampaigns = campaignsForPermanenceInSegmentation.filter((c) => {
 							const isApplicableToSegmentation = c.segmentacoes.some((s) => s.segmentacao === newRFMLabel);
@@ -334,6 +357,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 							console.log(
 								`${applicableCampaigns.length} campanhas de permanência em segmentação aplicáveis encontradas para o cliente ${results.clientId}.`,
 							);
+
 						for (const campaign of applicableCampaigns) {
 							// Checking if there is already an interaction scheduled for this campaign and client since the last label modification
 							const existingInteraction = await tx.query.interactions.findFirst({
@@ -474,6 +498,26 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
 					);
 					await delay(100); // Small delay between sends to avoid rate limiting
+				}
+			}
+
+			if (flowTriggerQueue.length > 0) {
+				console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Processando ${flowTriggerQueue.length} trigger(s) de campaign flows.`);
+
+				const chunkSize = 50;
+				for (let i = 0; i < flowTriggerQueue.length; i += chunkSize) {
+					const chunk = flowTriggerQueue.slice(i, i + chunkSize);
+					await Promise.allSettled(
+						chunk.map((item) =>
+							triggerEventCampaignFlows({
+								organizacaoId: organization.id,
+								clienteId: item.clienteId,
+								gatilhoSubtipo: item.gatilhoSubtipo,
+								eventoTipo: item.gatilhoSubtipo,
+								eventoMetadados: item.eventoMetadados,
+							}),
+						),
+					);
 				}
 			}
 

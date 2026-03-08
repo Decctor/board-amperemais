@@ -1,3 +1,4 @@
+import { triggerEventCampaignFlows } from "@/lib/campaign-flows";
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
@@ -205,6 +206,42 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
 					);
 					await delay(100); // Small delay between sends to avoid rate limiting
+				}
+			}
+
+			const birthdayClientsForFlow = await db
+				.select({ id: clients.id })
+				.from(clients)
+				.where(
+					and(
+						eq(clients.organizacaoId, organization.id),
+						sql`EXTRACT(MONTH FROM ${clients.dataNascimento}) = ${currentMonth}`,
+						sql`EXTRACT(DAY FROM ${clients.dataNascimento}) = ${currentDay}`,
+					),
+				);
+
+			if (birthdayClientsForFlow.length > 0) {
+				console.log(
+					`[ORG: ${organization.id}] [CAMPAIGN_FLOW] Processando ${birthdayClientsForFlow.length} cliente(s) para trigger ANIVERSARIO-CLIENTE.`,
+				);
+
+				const chunkSize = 50;
+				for (let i = 0; i < birthdayClientsForFlow.length; i += chunkSize) {
+					const chunk = birthdayClientsForFlow.slice(i, i + chunkSize);
+					await Promise.allSettled(
+						chunk.map((client) =>
+							triggerEventCampaignFlows({
+								organizacaoId: organization.id,
+								clienteId: client.id,
+								gatilhoSubtipo: "ANIVERSARIO-CLIENTE",
+								eventoTipo: "ANIVERSARIO-CLIENTE",
+								eventoMetadados: {
+									dataReferencia: today,
+									diasAntecedencia: 0,
+								},
+							}),
+						),
+					);
 				}
 			}
 		}

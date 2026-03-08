@@ -47,6 +47,7 @@
 		"@types/http-errors": "^2.0.4",
 		"@vercel/analytics": "^1.6.1",
 		"@vercel/functions": "^3.3.6",
+		"workflow": "^4.2.0-beta.67",
 		"@xyflow/react": "^12.10.1",
 		"ai": "^6.0.0",
 		"arctic": "^3.7.0",
