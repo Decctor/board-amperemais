@@ -15,6 +15,7 @@ import {
 	UserRound,
 	Users,
 	UsersRound,
+	Workflow,
 } from "lucide-react";
 import AppSidebarContentGroup from "./AppSidebarContentGroup";
 import AppSidebarFooter from "./AppSidebarFooter";
@@ -114,6 +115,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				title: "Campanhas de Vendas",
 				url: "/dashboard/commercial/campaigns",
 				icon: <Megaphone className="w-4 h-4" />,
+				items: null,
+				checkAccess: () => true,
+			},
+			{
+				title: "Fluxos de Campanha",
+				url: "/dashboard/commercial/campaigns-flows/canvas",
+				icon: <Workflow className="w-4 h-4" />,
 				items: null,
 				checkAccess: () => true,
 			},

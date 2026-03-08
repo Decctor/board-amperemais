@@ -1,0 +1,514 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+	ReactFlow,
+	Background,
+	Controls,
+	MiniMap,
+	useNodesState,
+	useEdgesState,
+	addEdge,
+	type Node,
+	type Edge,
+	type OnConnect,
+	type NodeTypes,
+	type EdgeTypes,
+	MarkerType,
+	Panel,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { useCampaignFlowById } from "@/lib/queries/campaign-flows";
+import { createCampaignFlow, updateCampaignFlow } from "@/lib/mutations/campaign-flows";
+import { useCampaignFlowState } from "@/state-hooks/use-campaign-flow-state";
+import type { TCampaignFlowState } from "@/schemas/campaign-flows";
+
+import { FlowCustomNode, type TFlowCustomNodeData } from "@/components/CampaignFlows/FlowCustomNode";
+import { FlowConditionEdge } from "@/components/CampaignFlows/FlowConditionEdge";
+import { FlowNodeSelector } from "@/components/CampaignFlows/FlowNodeSelector";
+import { FlowDetailsSidebar } from "@/components/CampaignFlows/FlowDetailsSidebar";
+import { getNodeSubtype } from "@/components/CampaignFlows/flow-node-types";
+
+import {
+	ArrowLeft,
+	FileText,
+	Info,
+	Loader2,
+	Plus,
+	Save,
+	Upload,
+	X,
+} from "lucide-react";
+import Link from "next/link";
+
+// ─── React Flow node/edge type registrations ──────────────────────────────────
+
+const nodeTypes: NodeTypes = {
+	flowNode: FlowCustomNode as unknown as NodeTypes[string],
+};
+
+const edgeTypes: EdgeTypes = {
+	conditionEdge: FlowConditionEdge as unknown as EdgeTypes[string],
+};
+
+// ─── Conversion helpers: state <-> React Flow ─────────────────────────────────
+
+function stateNodesToFlowNodes(nos: TCampaignFlowState["nos"]): Node[] {
+	return nos
+		.filter((n) => !n.deletar)
+		.map((n, index) => ({
+			id: n.id || `temp-${index}`,
+			type: "flowNode",
+			position: { x: n.posicaoX ?? 0, y: n.posicaoY ?? index * 180 },
+			data: {
+				tipo: n.tipo,
+				subtipo: n.subtipo,
+				rotulo: n.rotulo,
+				configuracao: n.configuracao,
+				dbNodeIndex: index,
+			} satisfies TFlowCustomNodeData,
+		}));
+}
+
+function stateEdgesToFlowEdges(arestas: TCampaignFlowState["arestas"], nos: TCampaignFlowState["nos"]): Edge[] {
+	return arestas
+		.filter((a) => !a.deletar)
+		.map((a, index) => {
+			return {
+				id: a.id || `edge-${index}`,
+				source: a.noOrigemId,
+				target: a.noDestinoId,
+				sourceHandle: a.condicaoLabel ?? undefined,
+				type: a.condicaoLabel ? "conditionEdge" : "default",
+				data: { condicaoLabel: a.condicaoLabel },
+				animated: true,
+				markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+				style: { strokeWidth: 2, stroke: "var(--color-muted-foreground)", opacity: 0.3 },
+			};
+		});
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+type CampaignFlowCanvasPageProps = {
+	user: TAuthUserSession["user"];
+	membership: NonNullable<TAuthUserSession["membership"]>;
+};
+
+export default function CampaignFlowCanvasPage({ user, membership }: CampaignFlowCanvasPageProps) {
+	const router = useRouter();
+	const searchParams = useSearchParams();
+	const flowId = searchParams.get("id");
+	const isEditing = !!flowId;
+	const queryClient = useQueryClient();
+
+	// ── Fetch existing flow if editing ──────────────────────────────────────
+	const {
+		data: existingFlow,
+		isLoading: flowIsLoading,
+		isError: flowIsError,
+		error: flowError,
+	} = useCampaignFlowById({ id: flowId ?? "" });
+
+	// ── Flow state management ───────────────────────────────────────────────
+	const {
+		state,
+		updateCampaignFlow: updateFlowState,
+		addNode,
+		updateNode,
+		removeNode,
+		addEdge: addEdgeState,
+		removeEdge,
+		replaceGraph,
+		redefineState,
+	} = useCampaignFlowState({ initialState: {} });
+
+	// ── Hydrate state when editing ──────────────────────────────────────────
+	const [hydrated, setHydrated] = useState(!isEditing);
+	useEffect(() => {
+		if (existingFlow && !hydrated) {
+			redefineState({
+				campaignFlow: {
+					titulo: existingFlow.titulo,
+					descricao: existingFlow.descricao ?? null,
+					status: existingFlow.status,
+					tipo: existingFlow.tipo,
+					recorrenciaTipo: existingFlow.recorrenciaTipo ?? null,
+					recorrenciaIntervalo: existingFlow.recorrenciaIntervalo ?? 1,
+					recorrenciaDiasSemana: existingFlow.recorrenciaDiasSemana ?? null,
+					recorrenciaDiasMes: existingFlow.recorrenciaDiasMes ?? null,
+					recorrenciaBlocoHorario: existingFlow.recorrenciaBlocoHorario ?? null,
+					unicaDataExecucao: existingFlow.unicaDataExecucao ?? null,
+					unicaExecutada: existingFlow.unicaExecutada ?? false,
+					atribuicaoModelo: existingFlow.atribuicaoModelo,
+					atribuicaoJanelaDias: existingFlow.atribuicaoJanelaDias,
+					publicoId: existingFlow.publicoId ?? null,
+				},
+				nos: existingFlow.nos.map((n) => ({
+					id: n.id,
+					tipo: n.tipo,
+					subtipo: n.subtipo,
+					rotulo: n.rotulo ?? null,
+					configuracao: (n.configuracao as Record<string, unknown>) ?? {},
+					posicaoX: n.posicaoX ?? null,
+					posicaoY: n.posicaoY ?? null,
+				})),
+				arestas: existingFlow.arestas.map((a) => ({
+					id: a.id,
+					noOrigemId: a.noOrigemId,
+					noDestinoId: a.noDestinoId,
+					condicaoLabel: a.condicaoLabel ?? null,
+					ordem: a.ordem,
+				})),
+			});
+			setHydrated(true);
+		}
+	}, [existingFlow, hydrated, redefineState]);
+
+	// ── React Flow nodes/edges state ────────────────────────────────────────
+	const flowNodes = useMemo(() => stateNodesToFlowNodes(state.nos), [state.nos]);
+	const flowEdges = useMemo(() => stateEdgesToFlowEdges(state.arestas, state.nos), [state.arestas, state.nos]);
+
+	const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
+	const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
+
+	// Sync React Flow nodes/edges when state changes
+	useEffect(() => {
+		setNodes(flowNodes);
+	}, [flowNodes, setNodes]);
+
+	useEffect(() => {
+		setEdges(flowEdges);
+	}, [flowEdges, setEdges]);
+
+	// ── Handle node position changes ────────────────────────────────────────
+	const onNodeDragStop = useCallback(
+		(_event: React.MouseEvent, node: Node) => {
+			const dataIndex = (node.data as TFlowCustomNodeData).dbNodeIndex;
+			if (dataIndex != null) {
+				updateNode({
+					index: dataIndex,
+					changes: {
+						posicaoX: Math.round(node.position.x),
+						posicaoY: Math.round(node.position.y),
+					},
+				});
+			}
+		},
+		[updateNode],
+	);
+
+	// ── Handle new connections ──────────────────────────────────────────────
+	const onConnect: OnConnect = useCallback(
+		(connection) => {
+			const sourceNode = state.nos.find(
+				(n, i) => (n.id || `temp-${i}`) === connection.source,
+			);
+
+			const condicaoLabel = sourceNode?.tipo === "CONDICAO" ? (connection.sourceHandle ?? null) : null;
+
+			addEdgeState({
+				noOrigemId: connection.source ?? "",
+				noDestinoId: connection.target ?? "",
+				condicaoLabel,
+				ordem: 0,
+			});
+		},
+		[state.nos, addEdgeState],
+	);
+
+	// ── UI state ────────────────────────────────────────────────────────────
+	const [selectorOpen, setSelectorOpen] = useState(false);
+	const [sidebarOpen, setSidebarOpen] = useState(true);
+	const [selectedNodeIndex, setSelectedNodeIndex] = useState<number | null>(null);
+
+	const hasTrigger = state.nos.some((n) => n.tipo === "GATILHO" && !n.deletar);
+
+	// ── Add node from selector ──────────────────────────────────────────────
+	const handleAddNode = useCallback(
+		(tipo: string, subtipo: string) => {
+			const subtypeInfo = getNodeSubtype(tipo, subtipo);
+			const existingCount = state.nos.filter((n) => !n.deletar).length;
+
+			addNode({
+				tipo: tipo as "GATILHO" | "ACAO" | "DELAY" | "CONDICAO" | "FILTRO",
+				subtipo,
+				rotulo: subtypeInfo?.rotulo ?? null,
+				configuracao: {},
+				posicaoX: 250,
+				posicaoY: existingCount * 180,
+			});
+			setSelectorOpen(false);
+		},
+		[addNode, state.nos],
+	);
+
+	// ── Node selection ──────────────────────────────────────────────────────
+	const onNodeClick = useCallback(
+		(_event: React.MouseEvent, node: Node) => {
+			const dataIndex = (node.data as TFlowCustomNodeData).dbNodeIndex;
+			setSelectedNodeIndex(dataIndex);
+			setSidebarOpen(true);
+		},
+		[],
+	);
+
+	const onPaneClick = useCallback(() => {
+		setSelectedNodeIndex(null);
+	}, []);
+
+	// ── Handle node removal (sync with state) ───────────────────────────────
+	const handleRemoveNode = useCallback(
+		(index: number) => {
+			const node = state.nos[index];
+			const nodeId = node?.id || `temp-${index}`;
+
+			// Remove connected edges
+			state.arestas.forEach((a, i) => {
+				if (a.noOrigemId === nodeId || a.noDestinoId === nodeId) {
+					removeEdge(i);
+				}
+			});
+
+			removeNode(index);
+			setSelectedNodeIndex(null);
+		},
+		[state.nos, state.arestas, removeNode, removeEdge],
+	);
+
+	// ── Mutations ───────────────────────────────────────────────────────────
+	const { mutate: saveFlow, isPending: isSaving } = useMutation({
+		mutationKey: ["save-campaign-flow"],
+		mutationFn: async () => {
+			if (isEditing && flowId) {
+				return updateCampaignFlow({
+					campaignFlowId: flowId,
+					campaignFlow: state.campaignFlow,
+					nos: state.nos,
+					arestas: state.arestas,
+				});
+			}
+			return createCampaignFlow({
+				campaignFlow: state.campaignFlow,
+				nos: state.nos,
+				arestas: state.arestas,
+			});
+		},
+		onSuccess: (data) => {
+			toast.success(data.message);
+			queryClient.invalidateQueries({ queryKey: ["campaign-flows"] });
+			if (!isEditing && "insertedId" in data.data) {
+				router.replace(`/dashboard/commercial/campaigns-flows/canvas?id=${data.data.insertedId}`);
+			}
+		},
+		onError: (err) => toast.error(getErrorMessage(err)),
+	});
+
+	// ── Loading / error states ──────────────────────────────────────────────
+	if (isEditing && flowIsLoading) {
+		return (
+			<div className="w-full h-full flex items-center justify-center">
+				<Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+			</div>
+		);
+	}
+
+	if (isEditing && flowIsError) {
+		return (
+			<div className="w-full h-full flex flex-col items-center justify-center gap-2">
+				<p className="text-sm text-destructive">{getErrorMessage(flowError)}</p>
+				<Button variant="outline" size="sm" asChild>
+					<Link href="/dashboard/commercial/campaigns">Voltar</Link>
+				</Button>
+			</div>
+		);
+	}
+
+	return (
+		<div className="w-full h-[calc(100vh-100px)] flex flex-col">
+			{/* ── Top toolbar ──────────────────────────────────────────────────── */}
+			<div className="flex items-center justify-between border-b px-4 py-2.5 bg-card shrink-0">
+				<div className="flex items-center gap-3">
+					<Button variant="ghost" size="icon" className="w-8 h-8" asChild>
+						<Link href="/dashboard/commercial/campaigns">
+							<ArrowLeft className="w-4 h-4" />
+						</Link>
+					</Button>
+					<div className="flex items-center gap-1.5 text-sm">
+						<span className="text-muted-foreground">FLUXOS</span>
+						<span className="text-muted-foreground">/</span>
+						<span className="font-bold tracking-tight uppercase truncate max-w-[300px]">
+							{state.campaignFlow.titulo || "NOVO FLUXO"}
+						</span>
+					</div>
+				</div>
+
+				<div className="flex items-center gap-2">
+					{state.campaignFlow.status === "RASCUNHO" && (
+						<div className="flex items-center gap-1.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-3 py-1.5">
+							<Info className="w-3.5 h-3.5" />
+							<span className="text-xs font-medium">Rascunho</span>
+						</div>
+					)}
+
+					<Button
+						variant="outline"
+						size="sm"
+						className="flex items-center gap-1.5"
+						onClick={() => {
+							setSidebarOpen(!sidebarOpen);
+							setSelectedNodeIndex(null);
+						}}
+					>
+						<FileText className="w-3.5 h-3.5" />
+						Detalhes
+					</Button>
+
+					<Button
+						size="sm"
+						className="flex items-center gap-1.5"
+						onClick={() => saveFlow()}
+						disabled={isSaving || !state.campaignFlow.titulo}
+					>
+						{isSaving ? (
+							<Loader2 className="w-3.5 h-3.5 animate-spin" />
+						) : (
+							<Save className="w-3.5 h-3.5" />
+						)}
+						{isEditing ? "SALVAR" : "CRIAR"}
+					</Button>
+
+					{isEditing && state.campaignFlow.status === "RASCUNHO" && (
+						<Button
+							size="sm"
+							variant="default"
+							className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+							onClick={() => {
+								updateFlowState({ status: "ATIVO" });
+								setTimeout(() => saveFlow(), 100);
+							}}
+							disabled={isSaving}
+						>
+							<Upload className="w-3.5 h-3.5" />
+							PUBLICAR
+						</Button>
+					)}
+				</div>
+			</div>
+
+			{/* ── Canvas area ──────────────────────────────────────────────────── */}
+			<div className="flex-1 flex overflow-hidden">
+				<div className="flex-1 relative">
+					<ReactFlow
+						nodes={nodes}
+						edges={edges}
+						onNodesChange={onNodesChange}
+						onEdgesChange={onEdgesChange}
+						onConnect={onConnect}
+						onNodeDragStop={onNodeDragStop}
+						onNodeClick={onNodeClick}
+						onPaneClick={onPaneClick}
+						nodeTypes={nodeTypes}
+						edgeTypes={edgeTypes}
+						fitView
+						fitViewOptions={{ padding: 0.3 }}
+						snapToGrid
+						snapGrid={[20, 20]}
+						deleteKeyCode="Delete"
+						className="bg-muted/30"
+					>
+						<Background gap={20} size={1} className="!bg-transparent" />
+						<Controls className="!rounded-lg !border !shadow-sm" />
+						<MiniMap
+							className="!rounded-lg !border !shadow-sm"
+							nodeColor={(node) => {
+								const tipo = (node.data as TFlowCustomNodeData)?.tipo;
+								switch (tipo) {
+									case "GATILHO": return "#f59e0b";
+									case "ACAO": return "#3b82f6";
+									case "DELAY": return "#8b5cf6";
+									case "CONDICAO": return "#f97316";
+									case "FILTRO": return "#22c55e";
+									default: return "#94a3b8";
+								}
+							}}
+						/>
+
+						{/* Add node button */}
+						<Panel position="top-left" className="!m-3">
+							<Button
+								size="sm"
+								variant="outline"
+								className="flex items-center gap-1.5 shadow-sm bg-card"
+								onClick={() => setSelectorOpen(!selectorOpen)}
+							>
+								{selectorOpen ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+								{selectorOpen ? "FECHAR" : "ADICIONAR NO"}
+							</Button>
+						</Panel>
+
+						{/* Node selector panel */}
+						{selectorOpen && (
+							<Panel position="top-left" className="!m-3 !mt-14">
+								<FlowNodeSelector
+									onSelectNode={handleAddNode}
+									onClose={() => setSelectorOpen(false)}
+									hasTrigger={hasTrigger}
+								/>
+							</Panel>
+						)}
+
+						{/* Empty state */}
+						{state.nos.filter((n) => !n.deletar).length === 0 && (
+							<Panel position="top-center" className="!mt-[30%]">
+								<div className="flex flex-col items-center gap-3 text-center">
+									<div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+										<Plus className="w-8 h-8 text-muted-foreground" />
+									</div>
+									<div className="flex flex-col gap-1">
+										<p className="text-sm font-semibold">Comece adicionando nos</p>
+										<p className="text-xs text-muted-foreground max-w-[280px]">
+											Clique em &quot;Adicionar No&quot; para criar seu primeiro gatilho e depois conecte acoes, condicoes e delays.
+										</p>
+									</div>
+									<Button
+										size="sm"
+										onClick={() => setSelectorOpen(true)}
+										className="flex items-center gap-1.5"
+									>
+										<Plus className="w-4 h-4" />
+										ADICIONAR PRIMEIRO NO
+									</Button>
+								</div>
+							</Panel>
+						)}
+					</ReactFlow>
+				</div>
+
+				{/* ── Right sidebar ─────────────────────────────────────────────── */}
+				{sidebarOpen && (
+					<FlowDetailsSidebar
+						flow={state.campaignFlow}
+						updateFlow={updateFlowState}
+						selectedNodeIndex={selectedNodeIndex}
+						nodes={state.nos}
+						updateNode={updateNode}
+						removeNode={handleRemoveNode}
+						onClose={() => {
+							setSidebarOpen(false);
+							setSelectedNodeIndex(null);
+						}}
+					/>
+				)}
+			</div>
+		</div>
+	);
+}
