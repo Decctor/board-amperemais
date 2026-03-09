@@ -1,6 +1,7 @@
 "use client";
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
-import type { TGetCampaignsOutputDefault } from "@/app/api/campaigns/route";
+import type { TGetCampaignsInput, TGetCampaignsOutputDefault } from "@/app/api/campaigns/route";
+import CampaignsDatabaseFilterMenu from "@/components/Campaigns/CampaignsDatabaseFilterMenu";
 import CampaignInteractionsFilterMenu from "@/components/Campaigns/CampaignInteractionsFilterMenu";
 import CampaignsBySegmentation from "@/components/Campaigns/CampaignsBySegmentation";
 import CampaignsFunnel from "@/components/Campaigns/CampaignsFunnel";
@@ -23,602 +24,808 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { retryCampaignInteraction } from "@/lib/mutations/campaigns";
-import { useCampaignInteractionsLogs, useCampaignStatsOverall, useCampaigns, useConversionQuality } from "@/lib/queries/campaigns";
+import {
+  useCampaignInteractionsLogs,
+  useCampaignStatsOverall,
+  useCampaigns,
+  useConversionQuality,
+} from "@/lib/queries/campaigns";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
-	AreaChart,
-	BadgeDollarSign,
-	Calendar,
-	CircleCheck,
-	CircleX,
-	Clock,
-	Database,
-	Grid3x3,
-	ListFilter,
-	MessageCircle,
-	MousePointerClick,
-	PencilIcon,
-	Plus,
-	RefreshCw,
-	TrendingUp,
-	UserPlus,
-	UserRound,
-	UserRoundCheck,
-	Zap,
+  AreaChart,
+  BadgeDollarSign,
+  Calendar,
+  CircleCheck,
+  CircleX,
+  Clock,
+  Database,
+  Grid3x3,
+  ListFilter,
+  MessageCircle,
+  MousePointerClick,
+  PencilIcon,
+  Plus,
+  RefreshCw,
+  TrendingUp,
+  UserPlus,
+  UserRound,
+  UserRoundCheck,
+  X,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 import { toast } from "sonner";
 type CampaignsPageProps = {
-	user: TAuthUserSession["user"];
-	membership: NonNullable<TAuthUserSession["membership"]>;
+  user: TAuthUserSession["user"];
+  membership: NonNullable<TAuthUserSession["membership"]>;
 };
 export default function CampaignsPage({ user, membership }: CampaignsPageProps) {
-	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "database", "interactions"]));
+  const [viewMode, setViewMode] = useQueryState(
+    "view",
+    parseAsStringEnum(["stats", "database", "interactions"]),
+  );
 
-	return (
-		<div className="w-full h-full flex flex-col gap-3">
-			<Tabs value={viewMode ?? "stats"} onValueChange={(v: string) => setViewMode(v as "stats" | "database" | "interactions")}>
-				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
-					<TabsTrigger value="stats" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
-						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
-						Estatísticas
-					</TabsTrigger>
-					<TabsTrigger value="database" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
-						<Database className="w-4 h-4 min-w-4 min-h-4" />
-						Minhas Campanhas
-					</TabsTrigger>
-					<TabsTrigger value="interactions" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
-						<MessageCircle className="w-4 h-4 min-w-4 min-h-4" />
-						Interações
-					</TabsTrigger>
-				</TabsList>
-				<TabsContent value="stats" className="flex flex-col gap-3">
-					<CampaignsStatsView />
-				</TabsContent>
-				<TabsContent value="database" className="flex flex-col gap-3">
-					<CampaignsDatabaseView user={user} membership={membership} />
-				</TabsContent>
-				<TabsContent value="interactions" className="flex flex-col gap-3">
-					<CampaignsInteractionsView />
-				</TabsContent>
-			</Tabs>
-		</div>
-	);
+  return (
+    <div className="w-full h-full flex flex-col gap-3">
+      <Tabs
+        value={viewMode ?? "stats"}
+        onValueChange={(v: string) => setViewMode(v as "stats" | "database" | "interactions")}
+      >
+        <TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
+          <TabsTrigger value="stats" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+            <TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
+            Estatísticas
+          </TabsTrigger>
+          <TabsTrigger value="database" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+            <Database className="w-4 h-4 min-w-4 min-h-4" />
+            Minhas Campanhas
+          </TabsTrigger>
+          <TabsTrigger
+            value="interactions"
+            className="flex items-center gap-1.5 px-2 py-2 rounded-lg"
+          >
+            <MessageCircle className="w-4 h-4 min-w-4 min-h-4" />
+            Interações
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="stats" className="flex flex-col gap-3">
+          <CampaignsStatsView />
+        </TabsContent>
+        <TabsContent value="database" className="flex flex-col gap-3">
+          <CampaignsDatabaseView user={user} membership={membership} />
+        </TabsContent>
+        <TabsContent value="interactions" className="flex flex-col gap-3">
+          <CampaignsInteractionsView />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }
 
-function CampaignsDatabaseView({ user, membership }: { user: TAuthUserSession["user"]; membership: NonNullable<TAuthUserSession["membership"]> }) {
-	const queryClient = useQueryClient();
-	const initialStatsPeriodAfter = dayjs().startOf("month").toDate();
-	const initialStatsPeriodBefore = dayjs().endOf("month").toDate();
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
-	const [newCampaignModalIsOpen, setNewCampaignModalIsOpen] = useState<boolean>(false);
-	const [editCampaignModalId, setEditCampaignModalId] = useState<string | null>(null);
-	const {
-		data: campaignsResult,
-		queryKey,
-		isLoading,
-		isError,
-		isSuccess,
-		error,
-		filters,
-		updateFilters,
-	} = useCampaigns({
-		initialFilters: {
-			search: "",
-			activeOnly: true,
-			statsPeriodAfter: initialStatsPeriodAfter,
-			statsPeriodBefore: initialStatsPeriodBefore,
-		},
-	});
-	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
-	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
-	return (
-		<div className="w-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end gap-2">
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewCampaignModalIsOpen(true)}>
-					<Plus className="w-4 h-4 min-w-4 min-h-4" />
-					NOVA CAMPANHA
-				</Button>
-			</div>
-			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
-				<Input
-					value={filters.search ?? ""}
-					placeholder="Pesquisar campanha..."
-					onChange={(e) => updateFilters({ search: e.target.value })}
-					className="grow rounded-xl"
-				/>
-				<DateIntervalInput
-					label="Período dos cards"
-					labelClassName="hidden"
-					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
-					value={{
-						after: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
-						before: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
-					}}
-					handleChange={(value) =>
-						updateFilters({
-							statsPeriodAfter: value.after ? new Date(value.after) : null,
-							statsPeriodBefore: value.before ? new Date(value.before) : null,
-						})
-					}
-				/>
-			</div>
-			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando campanhas...</p> : null}
-			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{isSuccess ? (
-				<div className="w-full flex flex-col gap-1.5">
-					{campaignsResult && campaignsResult.length > 0 ? (
-						campaignsResult.map((campaign) => (
-							<CampaignsPageCampaignCard key={campaign.id} campaign={campaign} handleEditClick={() => setEditCampaignModalId(campaign.id)} />
-						))
-					) : (
-						<p className="w-full flex items-center justify-center">Nenhuma campanha encontrada</p>
-					)}
-				</div>
-			) : null}
+type CampaignsDatabaseFiltersShowcaseProps = {
+  filters: TGetCampaignsInput;
+  updateFilters: (filters: Partial<TGetCampaignsInput>) => void;
+};
+function CampaignsDatabaseFiltersShowcase({
+  filters,
+  updateFilters,
+}: CampaignsDatabaseFiltersShowcaseProps) {
+  function FilterTag({
+    label,
+    value,
+    onRemove,
+  }: {
+    label: string;
+    value: string;
+    onRemove?: () => void;
+  }) {
+    return (
+      <div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
+        <p className="text-primary/80">
+          {label}: <strong>{value}</strong>
+        </p>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+    );
+  }
 
-			{newCampaignModalIsOpen ? (
-				<NewCampaign
-					user={user}
-					organizationId={membership.organizacao.id}
-					closeModal={() => setNewCampaignModalIsOpen(false)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
-			) : null}
-			{editCampaignModalId ? (
-				<ControlCampaign
-					campaignId={editCampaignModalId}
-					organizationId={membership.organizacao.id}
-					closeModal={() => setEditCampaignModalId(null)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
-			) : null}
-		</div>
-	);
+  return (
+    <div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+      {filters.search && filters.search.trim().length > 0 ? (
+        <FilterTag
+          label="PESQUISA"
+          value={filters.search}
+          onRemove={() => updateFilters({ search: "" })}
+        />
+      ) : null}
+      {filters.statsPeriodAfter && filters.statsPeriodBefore ? (
+        <FilterTag
+          label="PERÍODO DAS ESTASTÍCAS"
+          value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
+          onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
+        />
+      ) : null}
+      {filters.activeOnly ? (
+        <FilterTag
+          label="APENAS ATIVAS"
+          value="SIM"
+          onRemove={() => updateFilters({ activeOnly: false })}
+        />
+      ) : null}
+      {filters.triggerTypes && filters.triggerTypes.length > 0 ? (
+        <FilterTag
+          label="TIPO DE GATILHO"
+          value={filters.triggerTypes.join(", ")}
+          onRemove={() => updateFilters({ triggerTypes: [] })}
+        />
+      ) : null}
+      {filters.actionWhatsappOnly ? (
+        <FilterTag
+          label="APENAS COM ENVIO DE WHATSAPP"
+          value="SIM"
+          onRemove={() => updateFilters({ actionWhatsappOnly: false })}
+        />
+      ) : null}
+      {filters.cashbackGenerationOnly ? (
+        <FilterTag
+          label="APENAS COM GERACÃO DE CASHBACK"
+          value="SIM"
+          onRemove={() => updateFilters({ cashbackGenerationOnly: false })}
+        />
+      ) : null}
+    </div>
+  );
+}
+function CampaignsDatabaseView({
+  user,
+  membership,
+}: {
+  user: TAuthUserSession["user"];
+  membership: NonNullable<TAuthUserSession["membership"]>;
+}) {
+  const queryClient = useQueryClient();
+  const initialStatsPeriodAfter = dayjs().startOf("month").toDate();
+  const initialStatsPeriodBefore = dayjs().endOf("month").toDate();
+  const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
+  const [newCampaignModalIsOpen, setNewCampaignModalIsOpen] = useState<boolean>(false);
+  const [editCampaignModalId, setEditCampaignModalId] = useState<string | null>(null);
+  const {
+    data: campaignsResult,
+    queryKey,
+    isLoading,
+    isError,
+    isSuccess,
+    error,
+    filters,
+    updateFilters,
+  } = useCampaigns({
+    initialFilters: {
+      search: "",
+      activeOnly: true,
+      statsPeriodAfter: initialStatsPeriodAfter,
+      statsPeriodBefore: initialStatsPeriodBefore,
+    },
+  });
+  const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
+  const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
+  return (
+    <div className="w-full flex flex-col gap-3">
+      <div className="w-full flex items-center justify-end gap-2">
+        <Button
+          className="flex items-center gap-2"
+          size="sm"
+          onClick={() => setFilterMenuIsOpen(true)}
+        >
+          <ListFilter className="w-4 h-4 min-w-4 min-h-4" />
+          FILTROS
+        </Button>
+        <Button
+          className="flex items-center gap-2"
+          size="sm"
+          onClick={() => setNewCampaignModalIsOpen(true)}
+        >
+          <Plus className="w-4 h-4 min-w-4 min-h-4" />
+          NOVA CAMPANHA
+        </Button>
+      </div>
+      <div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
+        <Input
+          value={filters.search ?? ""}
+          placeholder="Pesquisar campanha..."
+          onChange={(e) => updateFilters({ search: e.target.value })}
+          className="grow rounded-xl"
+        />
+
+        <DateIntervalInput
+          label="Período dos cards"
+          labelClassName="hidden"
+          className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+          value={{
+            after: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
+            before: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
+          }}
+          handleChange={(value) =>
+            updateFilters({
+              statsPeriodAfter: value.after ? new Date(value.after) : null,
+              statsPeriodBefore: value.before ? new Date(value.before) : null,
+            })
+          }
+        />
+      </div>
+      <CampaignsDatabaseFiltersShowcase filters={filters} updateFilters={updateFilters} />
+      {isLoading ? (
+        <p className="w-full flex items-center justify-center animate-pulse">
+          Carregando campanhas...
+        </p>
+      ) : null}
+      {isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+      {isSuccess ? (
+        <div className="w-full flex flex-col gap-1.5">
+          {campaignsResult && campaignsResult.length > 0 ? (
+            campaignsResult.map((campaign) => (
+              <CampaignsPageCampaignCard
+                key={campaign.id}
+                campaign={campaign}
+                handleEditClick={() => setEditCampaignModalId(campaign.id)}
+              />
+            ))
+          ) : (
+            <p className="w-full flex items-center justify-center">Nenhuma campanha encontrada</p>
+          )}
+        </div>
+      ) : null}
+
+      {newCampaignModalIsOpen ? (
+        <NewCampaign
+          user={user}
+          organizationId={membership.organizacao.id}
+          closeModal={() => setNewCampaignModalIsOpen(false)}
+          callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+        />
+      ) : null}
+      {editCampaignModalId ? (
+        <ControlCampaign
+          campaignId={editCampaignModalId}
+          organizationId={membership.organizacao.id}
+          closeModal={() => setEditCampaignModalId(null)}
+          callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+        />
+      ) : null}
+      {filterMenuIsOpen ? (
+        <CampaignsDatabaseFilterMenu
+          filters={filters}
+          updateFilters={updateFilters}
+          closeMenu={() => setFilterMenuIsOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
 }
 
 function CampaignsInteractionsView() {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
-	const {
-		data: interactionsResult,
-		isLoading,
-		isError,
-		isSuccess,
-		error,
-		filters,
-		updateFilters,
-	} = useCampaignInteractionsLogs({
-		initialFilters: {
-			page: 1,
-			search: "",
-			status: [],
-			orderByField: "agendamentoData",
-			orderByDirection: "desc",
-		},
-	});
+  const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
+  const {
+    data: interactionsResult,
+    isLoading,
+    isError,
+    isSuccess,
+    error,
+    filters,
+    updateFilters,
+  } = useCampaignInteractionsLogs({
+    initialFilters: {
+      page: 1,
+      search: "",
+      status: [],
+      orderByField: "agendamentoData",
+      orderByDirection: "desc",
+    },
+  });
 
-	const interactionsItems = interactionsResult?.items ?? [];
-	const interactionsShowing = interactionsItems.length;
-	const interactionsMatched = interactionsResult?.interactionsMatched ?? 0;
-	const totalPages = interactionsResult?.totalPages ?? 0;
+  const interactionsItems = interactionsResult?.items ?? [];
+  const interactionsShowing = interactionsItems.length;
+  const interactionsMatched = interactionsResult?.interactionsMatched ?? 0;
+  const totalPages = interactionsResult?.totalPages ?? 0;
 
-	return (
-		<div className="w-full flex flex-col gap-3">
-			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
-				<Input
-					value={filters.search ?? ""}
-					placeholder="Pesquisar interações (título, descrição, cliente)..."
-					onChange={(e) =>
-						updateFilters({
-							search: e.target.value,
-							page: 1,
-						})
-					}
-					className="grow rounded-xl"
-				/>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
-			</div>
+  return (
+    <div className="w-full flex flex-col gap-3">
+      <div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
+        <Input
+          value={filters.search ?? ""}
+          placeholder="Pesquisar interações (título, descrição, cliente)..."
+          onChange={(e) =>
+            updateFilters({
+              search: e.target.value,
+              page: 1,
+            })
+          }
+          className="grow rounded-xl"
+        />
+        <Button
+          className="flex items-center gap-2"
+          size="sm"
+          onClick={() => setFilterMenuIsOpen(true)}
+        >
+          <ListFilter className="w-4 h-4 min-w-4 min-h-4" />
+          FILTROS
+        </Button>
+      </div>
 
-			<GeneralPaginationComponent
-				activePage={filters.page}
-				queryLoading={isLoading}
-				selectPage={(page) => updateFilters({ page })}
-				totalPages={totalPages}
-				itemsMatchedText={`${interactionsMatched} ${interactionsMatched === 1 ? "interação encontrada." : "interações encontradas."}`}
-				itemsShowingText={`${interactionsShowing} ${interactionsShowing === 1 ? "interação exibida." : "interações exibidas."}`}
-			/>
+      <GeneralPaginationComponent
+        activePage={filters.page}
+        queryLoading={isLoading}
+        selectPage={(page) => updateFilters({ page })}
+        totalPages={totalPages}
+        itemsMatchedText={`${interactionsMatched} ${interactionsMatched === 1 ? "interação encontrada." : "interações encontradas."}`}
+        itemsShowingText={`${interactionsShowing} ${interactionsShowing === 1 ? "interação exibida." : "interações exibidas."}`}
+      />
 
-			{isLoading ? <LoadingComponent /> : null}
-			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{isSuccess ? (
-				<div className="w-full flex flex-col gap-1.5">
-					{interactionsItems.length > 0 ? (
-						interactionsItems.map((interaction) => <CampaignInteractionLogCard key={interaction.id} interaction={interaction} />)
-					) : (
-						<p className="w-full flex items-center justify-center">Nenhuma interação encontrada</p>
-					)}
-				</div>
-			) : null}
+      {isLoading ? <LoadingComponent /> : null}
+      {isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+      {isSuccess ? (
+        <div className="w-full flex flex-col gap-1.5">
+          {interactionsItems.length > 0 ? (
+            interactionsItems.map((interaction) => (
+              <CampaignInteractionLogCard key={interaction.id} interaction={interaction} />
+            ))
+          ) : (
+            <p className="w-full flex items-center justify-center">Nenhuma interação encontrada</p>
+          )}
+        </div>
+      ) : null}
 
-			{filterMenuIsOpen ? (
-				<CampaignInteractionsFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
-			) : null}
-		</div>
-	);
+      {filterMenuIsOpen ? (
+        <CampaignInteractionsFilterMenu
+          filters={filters}
+          updateFilters={updateFilters}
+          closeMenu={() => setFilterMenuIsOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
 }
 
-function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaignInteractionsOutputItems[number] }) {
-	const queryClient = useQueryClient();
-	const { mutate: handleRetryInteraction, isPending: retryIsPending } = useMutation({
-		mutationKey: ["retry-campaign-interaction", interaction.id],
-		mutationFn: async () => await retryCampaignInteraction({ interactionId: interaction.id }),
-		onSuccess: async (response) => {
-			toast.success(response.message);
-			await queryClient.invalidateQueries({ queryKey: ["campaign-interactions-logs"] });
-		},
-		onError: (error) => {
-			toast.error(getErrorMessage(error));
-		},
-	});
-	const executionStatus = interaction.dataExecucao ? "EXECUTADA" : "AGENDADA";
-	const scheduleDateText = interaction.agendamentoDataReferencia ? dayjs(interaction.agendamentoDataReferencia).format("DD/MM/YYYY") : "Não definido";
-	const scheduleBlockText = interaction.agendamentoBlocoReferencia ?? "--:--";
-	const executionDateText = interaction.dataExecucao ? formatDateAsLocale(interaction.dataExecucao, true) : "Não executada";
-	const sentDateText = interaction.dataEnvio ? formatDateAsLocale(interaction.dataEnvio, true) : null;
+function CampaignInteractionLogCard({
+  interaction,
+}: {
+  interaction: TGetCampaignInteractionsOutputItems[number];
+}) {
+  const queryClient = useQueryClient();
+  const { mutate: handleRetryInteraction, isPending: retryIsPending } = useMutation({
+    mutationKey: ["retry-campaign-interaction", interaction.id],
+    mutationFn: async () => await retryCampaignInteraction({ interactionId: interaction.id }),
+    onSuccess: async (response) => {
+      toast.success(response.message);
+      await queryClient.invalidateQueries({ queryKey: ["campaign-interactions-logs"] });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
+  });
+  const executionStatus = interaction.dataExecucao ? "EXECUTADA" : "AGENDADA";
+  const scheduleDateText = interaction.agendamentoDataReferencia
+    ? dayjs(interaction.agendamentoDataReferencia).format("DD/MM/YYYY")
+    : "Não definido";
+  const scheduleBlockText = interaction.agendamentoBlocoReferencia ?? "--:--";
+  const executionDateText = interaction.dataExecucao
+    ? formatDateAsLocale(interaction.dataExecucao, true)
+    : "Não executada";
+  const sentDateText = interaction.dataEnvio
+    ? formatDateAsLocale(interaction.dataEnvio, true)
+    : null;
 
-	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
-			<div className="w-full flex flex-col gap-0.5">
-				<div className="w-full flex items-center justify-between gap-2">
-					<div className="flex items-center gap-3">
-						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{interaction.campanha?.titulo ?? "CAMPANHA NÃO ENCONTRADA"}</h1>
-						<ClientHoverCard clientId={interaction.cliente.id}>
-							<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5  bg-secondary text-primary cursor-pointer")}>
-								<UserRound className="w-4 h-4 min-w-4 min-h-4" />
-								<p className={cn("text-[0.65rem] font-medium tracking-tight uppercase")}>{interaction.cliente.nome ?? "NÃO INFORMADO"}</p>
-							</div>
-						</ClientHoverCard>
-					</div>
-					<div className="flex items-center gap-3">
-						{interaction.erroEnvio ? (
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-red-500 text-white">
-											<CircleX className="w-4 min-w-4 h-4 min-h-4" />
-											<p className="text-[0.65rem] font-medium tracking-tight">FALHOU</p>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent>
-										<p className="text-xs font-medium tracking-tight text-red-500">{interaction.erroEnvio}</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						) : null}
-						<div
-							className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", {
-								"bg-blue-500 text-white": executionStatus === "AGENDADA",
-								"bg-green-500 text-white": executionStatus === "EXECUTADA",
-							})}
-						>
-							<CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
-							<p className="text-xs font-bold tracking-tight uppercase">{executionStatus}</p>
-						</div>
-						{interaction.erroEnvio && !interaction.dataExecucao ? (
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={() => handleRetryInteraction()}
-								disabled={retryIsPending}
-								className="h-7 text-[0.65rem] font-semibold"
-							>
-								<RefreshCw className={cn("w-3.5 h-3.5 min-w-3.5 min-h-3.5", { "animate-spin": retryIsPending })} />
-								{retryIsPending ? "REENVIANDO..." : "TENTAR NOVAMENTE"}
-							</Button>
-						) : null}
-					</div>
-				</div>
-				<p className="text-xs font-medium tracking-tight text-muted-foreground">{interaction.descricao}</p>
-			</div>
-			<div className="w-full flex items-center justify-end gap-2 flex-wrap">
-				<div className="flex items-center gap-2">
-					<div className="flex items-center gap-1">
-						<Calendar className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
-							AGENDADO PARA: {scheduleDateText} ({scheduleBlockText})
-						</h1>
-					</div>
-					<div
-						className={cn("flex items-center gap-1", {
-							"text-green-500 dark:text-green-400": !!interaction.dataExecucao,
-						})}
-					>
-						<Calendar className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">{executionDateText}</h1>
-					</div>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div
+      className={cn(
+        "bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs",
+      )}
+    >
+      <div className="w-full flex flex-col gap-0.5">
+        <div className="w-full flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xs font-bold tracking-tight lg:text-sm">
+              {interaction.campanha?.titulo ?? "CAMPANHA NÃO ENCONTRADA"}
+            </h1>
+            <ClientHoverCard clientId={interaction.cliente.id}>
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5  bg-secondary text-primary cursor-pointer",
+                )}
+              >
+                <UserRound className="w-4 h-4 min-w-4 min-h-4" />
+                <p className={cn("text-[0.65rem] font-medium tracking-tight uppercase")}>
+                  {interaction.cliente.nome ?? "NÃO INFORMADO"}
+                </p>
+              </div>
+            </ClientHoverCard>
+          </div>
+          <div className="flex items-center gap-3">
+            {interaction.erroEnvio ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-red-500 text-white">
+                      <CircleX className="w-4 min-w-4 h-4 min-h-4" />
+                      <p className="text-[0.65rem] font-medium tracking-tight">FALHOU</p>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs font-medium tracking-tight text-red-500">
+                      {interaction.erroEnvio}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : null}
+            <div
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold",
+                {
+                  "bg-blue-500 text-white": executionStatus === "AGENDADA",
+                  "bg-green-500 text-white": executionStatus === "EXECUTADA",
+                },
+              )}
+            >
+              <CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
+              <p className="text-xs font-bold tracking-tight uppercase">{executionStatus}</p>
+            </div>
+            {interaction.erroEnvio && !interaction.dataExecucao ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleRetryInteraction()}
+                disabled={retryIsPending}
+                className="h-7 text-[0.65rem] font-semibold"
+              >
+                <RefreshCw
+                  className={cn("w-3.5 h-3.5 min-w-3.5 min-h-3.5", {
+                    "animate-spin": retryIsPending,
+                  })}
+                />
+                {retryIsPending ? "REENVIANDO..." : "TENTAR NOVAMENTE"}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        <p className="text-xs font-medium tracking-tight text-muted-foreground">
+          {interaction.descricao}
+        </p>
+      </div>
+      <div className="w-full flex items-center justify-end gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Calendar className="w-4 h-4 min-w-4 min-h-4" />
+            <h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
+              AGENDADO PARA: {scheduleDateText} ({scheduleBlockText})
+            </h1>
+          </div>
+          <div
+            className={cn("flex items-center gap-1", {
+              "text-green-500 dark:text-green-400": !!interaction.dataExecucao,
+            })}
+          >
+            <Calendar className="w-4 h-4 min-w-4 min-h-4" />
+            <h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
+              {executionDateText}
+            </h1>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function CampaignsStatsView() {
-	const initialStartDate = dayjs().startOf("month");
-	const initialEndDate = dayjs().endOf("month");
-	const [filters, setFilters] = useState<{
-		startDate: Date | null;
-		endDate: Date | null;
-	}>({
-		startDate: initialStartDate.toDate(),
-		endDate: initialEndDate.toDate(),
-	});
-	const [comparingFilters, setComparingFilters] = useState<{
-		startDate: Date | null;
-		endDate: Date | null;
-	}>({
-		startDate: initialStartDate.subtract(1, "month").toDate(),
-		endDate: initialEndDate.subtract(1, "month").toDate(),
-	});
-	const { data: analytics, isLoading } = useCampaignStatsOverall({
-		startDate: filters.startDate ?? undefined,
-		endDate: filters.endDate ?? undefined,
-	});
+  const initialStartDate = dayjs().startOf("month");
+  const initialEndDate = dayjs().endOf("month");
+  const [filters, setFilters] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+  }>({
+    startDate: initialStartDate.toDate(),
+    endDate: initialEndDate.toDate(),
+  });
+  const [comparingFilters, setComparingFilters] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+  }>({
+    startDate: initialStartDate.subtract(1, "month").toDate(),
+    endDate: initialEndDate.subtract(1, "month").toDate(),
+  });
+  const { data: analytics, isLoading } = useCampaignStatsOverall({
+    startDate: filters.startDate ?? undefined,
+    endDate: filters.endDate ?? undefined,
+  });
 
-	const { data: qualityData } = useConversionQuality({
-		startDate: filters.startDate ?? undefined,
-		endDate: filters.endDate ?? undefined,
-	});
+  const { data: qualityData } = useConversionQuality({
+    startDate: filters.startDate ?? undefined,
+    endDate: filters.endDate ?? undefined,
+  });
 
-	const totals = analytics?.totais;
+  const totals = analytics?.totais;
 
-	// Calculate quality percentages
-	const aquisicoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "AQUISICAO");
-	const reativacoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "REATIVACAO");
-	const aceleracoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "ACELERACAO");
+  // Calculate quality percentages
+  const aquisicoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "AQUISICAO");
+  const reativacoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "REATIVACAO");
+  const aceleracoes = qualityData?.distribuicaoTipos.find((t) => t.tipo === "ACELERACAO");
 
-	return (
-		<div className="w-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end">
-				<DateIntervalInput
-					label="Período"
-					labelClassName="hidden"
-					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
-					value={{
-						after: filters.startDate ? new Date(filters.startDate) : undefined,
-						before: filters.endDate ? new Date(filters.endDate) : undefined,
-					}}
-					handleChange={(value) => {
-						const newStartDate = value.after ? new Date(value.after) : null;
-						const newEndDate = value.before ? new Date(value.before) : null;
+  return (
+    <div className="w-full flex flex-col gap-3">
+      <div className="w-full flex items-center justify-end">
+        <DateIntervalInput
+          label="Período"
+          labelClassName="hidden"
+          className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+          value={{
+            after: filters.startDate ? new Date(filters.startDate) : undefined,
+            before: filters.endDate ? new Date(filters.endDate) : undefined,
+          }}
+          handleChange={(value) => {
+            const newStartDate = value.after ? new Date(value.after) : null;
+            const newEndDate = value.before ? new Date(value.before) : null;
 
-						setFilters({
-							startDate: newStartDate,
-							endDate: newEndDate,
-						});
+            setFilters({
+              startDate: newStartDate,
+              endDate: newEndDate,
+            });
 
-						// Auto-update comparison period
-						if (newStartDate && newEndDate) {
-							const diffDays = dayjs(newEndDate).diff(dayjs(newStartDate), "day");
-							setComparingFilters({
-								startDate: dayjs(newStartDate)
-									.subtract(diffDays + 1, "day")
-									.toDate(),
-								endDate: dayjs(newStartDate).subtract(1, "day").toDate(),
-							});
-						}
-					}}
-				/>
-			</div>
-			{/* Primary KPIs */}
-			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
-				<StatUnitCard
-					title="TOTAL DE CAMPANHAS"
-					icon={<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: totals?.campanhas || 0,
-						format: (n) => formatDecimalPlaces(n),
-					}}
-				/>
-				<StatUnitCard
-					title="INTERAÇÕES"
-					icon={<MessageCircle className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: totals?.interacoes || 0,
-						format: (n) => formatDecimalPlaces(n),
-					}}
-				/>
-				<StatUnitCard
-					title="CONVERSÕES"
-					icon={<MousePointerClick className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: totals?.conversoes || 0,
-						format: (n) => formatDecimalPlaces(n),
-					}}
-				/>
-				<StatUnitCard
-					title="TAXA DE CONVERSÃO"
-					icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: totals?.taxaConversaoGeral || 0,
-						format: (n) => `${formatDecimalPlaces(n)}%`,
-					}}
-				/>
-				<StatUnitCard
-					title="RECEITA GERADA"
-					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: totals?.receita || 0,
-						format: (n) => formatToMoney(n),
-					}}
-				/>
-			</div>
-			{/* Conversion Quality KPIs */}
-			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
-				<StatUnitCard
-					title="AQUISIÇÕES"
-					subtitle="Novos clientes"
-					icon={<UserPlus className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: aquisicoes?.quantidade || 0,
-						format: (n) => formatDecimalPlaces(n),
-					}}
-				/>
-				<StatUnitCard
-					title="REATIVAÇÕES"
-					subtitle="Clientes resgatados"
-					icon={<RefreshCw className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: reativacoes?.quantidade || 0,
-						format: (n) => formatDecimalPlaces(n),
-					}}
-				/>
-				<StatUnitCard
-					title="ACELERAÇÕES"
-					subtitle="Compraram mais rápido"
-					icon={<Zap className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: aceleracoes?.quantidade || 0,
-						format: (n) => formatDecimalPlaces(n),
-					}}
-				/>
-				<StatUnitCard
-					title="ANTECIPAÇÃO MÉDIA"
-					subtitle="Dias economizados"
-					icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: qualityData?.impactoFrequencia?.mediasDiasAntecipados || 0,
-						format: (n) => `${formatDecimalPlaces(n)} dias`,
-					}}
-				/>
-				<StatUnitCard
-					title="IMPACTO NO TICKET"
-					subtitle="Variação média"
-					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: qualityData?.impactoMonetario?.deltaMonetarioPercentualMedio || 0,
-						format: (n) => `${n > 0 ? "+" : ""}${formatDecimalPlaces(n)}%`,
-					}}
-				/>
-			</div>
-			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
-				<div className="w-full lg:w-1/2 h-full min-h-0">
-					<CampaignsGraphs
-						startDate={filters.startDate ?? null}
-						endDate={filters.endDate ?? null}
-						comparingStartDate={comparingFilters.startDate}
-						comparingEndDate={comparingFilters.endDate}
-					/>
-				</div>
-				<div className="w-full lg:w-1/2 h-full min-h-0">
-					<CampaignsRanking
-						startDate={filters.startDate ?? null}
-						endDate={filters.endDate ?? null}
-						comparingStartDate={comparingFilters.startDate}
-						comparingEndDate={comparingFilters.endDate}
-					/>
-				</div>
-			</div>
-			<div className="w-full h-[400px]">
-				<CampaignsFunnel startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
-			</div>
-			<div className="w-full h-[550px]">
-				<CampaignsBySegmentation startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
-			</div>
-			{/* <div className="w-full h-[450px]">
+            // Auto-update comparison period
+            if (newStartDate && newEndDate) {
+              const diffDays = dayjs(newEndDate).diff(dayjs(newStartDate), "day");
+              setComparingFilters({
+                startDate: dayjs(newStartDate)
+                  .subtract(diffDays + 1, "day")
+                  .toDate(),
+                endDate: dayjs(newStartDate).subtract(1, "day").toDate(),
+              });
+            }
+          }}
+        />
+      </div>
+      {/* Primary KPIs */}
+      <div className="w-full flex items-start flex-col lg:flex-row gap-3">
+        <StatUnitCard
+          title="TOTAL DE CAMPANHAS"
+          icon={<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: totals?.campanhas || 0,
+            format: (n) => formatDecimalPlaces(n),
+          }}
+        />
+        <StatUnitCard
+          title="INTERAÇÕES"
+          icon={<MessageCircle className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: totals?.interacoes || 0,
+            format: (n) => formatDecimalPlaces(n),
+          }}
+        />
+        <StatUnitCard
+          title="CONVERSÕES"
+          icon={<MousePointerClick className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: totals?.conversoes || 0,
+            format: (n) => formatDecimalPlaces(n),
+          }}
+        />
+        <StatUnitCard
+          title="TAXA DE CONVERSÃO"
+          icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: totals?.taxaConversaoGeral || 0,
+            format: (n) => `${formatDecimalPlaces(n)}%`,
+          }}
+        />
+        <StatUnitCard
+          title="RECEITA GERADA"
+          icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: totals?.receita || 0,
+            format: (n) => formatToMoney(n),
+          }}
+        />
+      </div>
+      {/* Conversion Quality KPIs */}
+      <div className="w-full flex items-start flex-col lg:flex-row gap-3">
+        <StatUnitCard
+          title="AQUISIÇÕES"
+          subtitle="Novos clientes"
+          icon={<UserPlus className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: aquisicoes?.quantidade || 0,
+            format: (n) => formatDecimalPlaces(n),
+          }}
+        />
+        <StatUnitCard
+          title="REATIVAÇÕES"
+          subtitle="Clientes resgatados"
+          icon={<RefreshCw className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: reativacoes?.quantidade || 0,
+            format: (n) => formatDecimalPlaces(n),
+          }}
+        />
+        <StatUnitCard
+          title="ACELERAÇÕES"
+          subtitle="Compraram mais rápido"
+          icon={<Zap className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: aceleracoes?.quantidade || 0,
+            format: (n) => formatDecimalPlaces(n),
+          }}
+        />
+        <StatUnitCard
+          title="ANTECIPAÇÃO MÉDIA"
+          subtitle="Dias economizados"
+          icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: qualityData?.impactoFrequencia?.mediasDiasAntecipados || 0,
+            format: (n) => `${formatDecimalPlaces(n)} dias`,
+          }}
+        />
+        <StatUnitCard
+          title="IMPACTO NO TICKET"
+          subtitle="Variação média"
+          icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+          current={{
+            value: qualityData?.impactoMonetario?.deltaMonetarioPercentualMedio || 0,
+            format: (n) => `${n > 0 ? "+" : ""}${formatDecimalPlaces(n)}%`,
+          }}
+        />
+      </div>
+      <div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
+        <div className="w-full lg:w-1/2 h-full min-h-0">
+          <CampaignsGraphs
+            startDate={filters.startDate ?? null}
+            endDate={filters.endDate ?? null}
+            comparingStartDate={comparingFilters.startDate}
+            comparingEndDate={comparingFilters.endDate}
+          />
+        </div>
+        <div className="w-full lg:w-1/2 h-full min-h-0">
+          <CampaignsRanking
+            startDate={filters.startDate ?? null}
+            endDate={filters.endDate ?? null}
+            comparingStartDate={comparingFilters.startDate}
+            comparingEndDate={comparingFilters.endDate}
+          />
+        </div>
+      </div>
+      <div className="w-full h-[400px]">
+        <CampaignsFunnel startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
+      </div>
+      <div className="w-full h-[550px]">
+        <CampaignsBySegmentation
+          startDate={filters.startDate ?? null}
+          endDate={filters.endDate ?? null}
+        />
+      </div>
+      {/* <div className="w-full h-[450px]">
 				<CampaignsConversionQuality startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
 			</div> */}
-		</div>
-	);
+    </div>
+  );
 }
 
-function CampaignsPageCampaignCard({ campaign, handleEditClick }: { campaign: TGetCampaignsOutputDefault[number]; handleEditClick: () => void }) {
-	const stats = campaign.estatisticas ?? {
-		envios: 0,
-		entregues: 0,
-		convertidos: 0,
-		taxaConversao: 0,
-		receita: 0,
-	};
+function CampaignsPageCampaignCard({
+  campaign,
+  handleEditClick,
+}: {
+  campaign: TGetCampaignsOutputDefault[number];
+  handleEditClick: () => void;
+}) {
+  const stats = campaign.estatisticas ?? {
+    envios: 0,
+    entregues: 0,
+    convertidos: 0,
+    taxaConversao: 0,
+    receita: 0,
+  };
 
-	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
-			<div className="w-full flex flex-col gap-0.5">
-				<div className="w-full flex items-center justify-between gap-2 flex-col-reverse lg:flex-row">
-					<div className="flex items-center gap-2">
-						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{campaign.titulo}</h1>
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<div className={cn("flex items-center gap-1.5 px-3 py-1.5 text-primary")}>
-										<Grid3x3 className="w-4 min-w-4 h-4 min-h-4" />
-										<p className="text-[0.65rem] font-bold tracking-tight uppercase">{campaign.segmentacoes.length} SEGMENTAÇÔES</p>
-									</div>
-								</TooltipTrigger>
-								<TooltipContent className="max-w-xs">Incluindo {campaign.segmentacoes.map((s) => s.segmentacao).join(", ")}</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					</div>
-					<div
-						className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 bg-secondary text-primary", {
-							"bg-green-500 dark:bg-green-600 text-white": campaign.ativo,
-							"bg-gray-500 dark:bg-gray-600 text-white": !campaign.ativo,
-						})}
-					>
-						<CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
-						<p className="text-[0.65rem] font-bold tracking-tight uppercase">{campaign.ativo ? "ATIVO" : "INATIVO"}</p>
-					</div>
-				</div>
-				<p className="text-xs font-medium tracking-tight text-muted-foreground">{campaign.descricao}</p>
-			</div>
+  return (
+    <div
+      className={cn(
+        "bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs",
+      )}
+    >
+      <div className="w-full flex flex-col gap-0.5">
+        <div className="w-full flex items-center justify-between gap-2 flex-col-reverse lg:flex-row">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xs font-bold tracking-tight lg:text-sm">{campaign.titulo}</h1>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={cn("flex items-center gap-1.5 px-3 py-1.5 text-primary")}>
+                    <Grid3x3 className="w-4 min-w-4 h-4 min-h-4" />
+                    <p className="text-[0.65rem] font-bold tracking-tight uppercase">
+                      {campaign.segmentacoes.length} SEGMENTAÇÔES
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  Incluindo {campaign.segmentacoes.map((s) => s.segmentacao).join(", ")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div
+            className={cn(
+              "flex items-center gap-1.5 rounded-xl px-3 py-1.5 bg-secondary text-primary",
+              {
+                "bg-green-500 dark:bg-green-600 text-white": campaign.ativo,
+                "bg-gray-500 dark:bg-gray-600 text-white": !campaign.ativo,
+              },
+            )}
+          >
+            <CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
+            <p className="text-[0.65rem] font-bold tracking-tight uppercase">
+              {campaign.ativo ? "ATIVO" : "INATIVO"}
+            </p>
+          </div>
+        </div>
+        <p className="text-xs font-medium tracking-tight text-muted-foreground">
+          {campaign.descricao}
+        </p>
+      </div>
 
-			<div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
-				<div className="flex items-center gap-2 flex-wrap py-1.5">
-					<StatBadge
-						icon={<MessageCircle className="w-4 h-4 min-w-4 min-h-4" />}
-						value={`${formatDecimalPlaces(stats.envios)} ENVIOS`}
-						tooltipContent="Total de mensagens enviadas no período selecionado."
-					/>
-					{/* <StatBadge
+      <div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap py-1.5">
+          <StatBadge
+            icon={<MessageCircle className="w-4 h-4 min-w-4 min-h-4" />}
+            value={`${formatDecimalPlaces(stats.envios)} ENVIOS`}
+            tooltipContent="Total de mensagens enviadas no período selecionado."
+          />
+          {/* <StatBadge
 						icon={<UserRoundCheck className="w-4 h-4 min-w-4 min-h-4" />}
 						value={`${formatDecimalPlaces(stats.entregues)} ENTREGUES`}
 						tooltipContent="Mensagens com status DELIVERED ou READ."
 					/> */}
-					<StatBadge
-						icon={<MousePointerClick className="w-4 h-4 min-w-4 min-h-4" />}
-						value={`${formatDecimalPlaces(stats.convertidos)} CONVERTIDOS`}
-						tooltipContent="Quantidade de conversões atribuídas à campanha no período."
-					/>
-					<StatBadge
-						icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
-						value={`${formatDecimalPlaces(stats.taxaConversao)}% TAXA`}
-						tooltipContent="Taxa de conversão calculada por convertidos/envios."
-					/>
-					<StatBadge
-						icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
-						value={formatToMoney(stats.receita)}
-						tooltipContent="Receita total atribuída às conversões da campanha."
-					/>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleEditClick}>
-						<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
-						EDITAR
-					</Button>
-					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-						<Link href={`/dashboard/commercial/campaigns/id/${campaign.id}`}>
-							<AreaChart className="w-3 min-w-3 h-3 min-h-3" />
-							VER RESULTADOS
-						</Link>
-					</Button>
-				</div>
-			</div>
-		</div>
-	);
+          <StatBadge
+            icon={<MousePointerClick className="w-4 h-4 min-w-4 min-h-4" />}
+            value={`${formatDecimalPlaces(stats.convertidos)} CONVERTIDOS`}
+            tooltipContent="Quantidade de conversões atribuídas à campanha no período."
+          />
+          <StatBadge
+            icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
+            value={`${formatDecimalPlaces(stats.taxaConversao)}% TAXA`}
+            tooltipContent="Taxa de conversão calculada por convertidos/envios."
+          />
+          <StatBadge
+            icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+            value={formatToMoney(stats.receita)}
+            tooltipContent="Receita total atribuída às conversões da campanha."
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            className="flex items-center gap-1.5"
+            size="sm"
+            onClick={handleEditClick}
+          >
+            <PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
+            EDITAR
+          </Button>
+          <Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+            <Link href={`/dashboard/commercial/campaigns/id/${campaign.id}`}>
+              <AreaChart className="w-3 min-w-3 h-3 min-h-3" />
+              VER RESULTADOS
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }

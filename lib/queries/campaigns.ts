@@ -17,6 +17,10 @@ async function fetchCampaigns(input: Omit<TGetCampaignsInput, "id">) {
 	try {
 		const searchParams = new URLSearchParams();
 		if (input.search) searchParams.set("search", input.search);
+		if (input.triggerTypes && input.triggerTypes.length > 0) searchParams.set("triggerTypes", input.triggerTypes.join(","));
+		if (typeof input.actionWhatsappOnly === "boolean") searchParams.set("actionWhatsappOnly", input.actionWhatsappOnly.toString());
+		if (typeof input.cashbackGenerationOnly === "boolean")
+			searchParams.set("cashbackGenerationOnly", input.cashbackGenerationOnly.toString());
 		if (input.activeOnly) searchParams.set("activeOnly", input.activeOnly.toString());
 		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
 		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
