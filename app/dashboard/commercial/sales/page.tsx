@@ -6,25 +6,26 @@ import { redirect } from "next/navigation";
 import SalesPage from "./sales-page";
 
 export default async function Sales() {
-	const sessionUser = await getCurrentSession();
-	if (!sessionUser) redirect("/auth/signin");
+  const sessionUser = await getCurrentSession();
+  if (!sessionUser) redirect("/auth/signin");
 
-	const membership = sessionUser.membership;
-	if (!membership) redirect("/onboarding");
+  const membership = sessionUser.membership;
+  if (!membership) redirect("/onboarding");
 
-	const orgId = membership.organizacao.id;
-	const organizationConfig = membership.organizacao.configuracao as TOrganizationConfiguration | null;
+  const orgId = membership.organizacao.id;
+  const organizationConfig = membership.organizacao
+    .configuracao as TOrganizationConfiguration | null;
 
-	// Check if the organization has any sales
-	const firstSale = await db.query.sales.findFirst({
-		where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
-		columns: { id: true },
-	});
-	const hasSales = !!firstSale;
+  // Check if the organization has any sales
+  const firstSale = await db.query.sales.findFirst({
+    where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
+    columns: { id: true },
+  });
+  const hasSales = !!firstSale;
 
-	if (!hasSales) {
-		return <SalesEmptyState organizationId={orgId} organizationConfig={organizationConfig} />;
-	}
+  if (!hasSales) {
+    return <SalesEmptyState organizationId={orgId} organizationConfig={organizationConfig} />;
+  }
 
-	return <SalesPage user={sessionUser.user} />;
+  return <SalesPage user={sessionUser.user} organization={membership.organizacao} />;
 }

@@ -1,116 +1,148 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
+import {
+  ProductAddOnOptionSchema,
+  ProductAddOnSchema,
+  ProductSchema,
+  ProductVariantSchema,
+} from "@/schemas/products";
 import { db } from "@/services/drizzle";
-import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products, saleItems, sales } from "@/services/drizzle/schema";
-import { and, asc, count, countDistinct, desc, eq, gte, inArray, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
+import {
+  productAddOnOptions,
+  productAddOnReferences,
+  productAddOns,
+  productStockTransactions,
+  productVariants,
+  products,
+  saleItems,
+  sales,
+} from "@/services/drizzle/schema";
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  gte,
+  inArray,
+  lte,
+  max,
+  min,
+  notInArray,
+  sql,
+  sum,
+} from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
 
 const GetProductsDefaultInputSchema = z.object({
-	page: z
-		.string({
-			required_error: "Página não informada.",
-			invalid_type_error: "Tipo inválido para página.",
-		})
-		.transform((val) => Number(val)),
+  page: z
+    .string({
+      required_error: "Página não informada.",
+      invalid_type_error: "Tipo inválido para página.",
+    })
+    .transform((val) => Number(val)),
 
-	search: z
-		.string({
-			required_error: "Busca não informada.",
-			invalid_type_error: "Tipo inválido para busca.",
-		})
-		.optional()
-		.nullable(),
-	groups: z
-		.string({
-			required_error: "Grupos não informados.",
-			invalid_type_error: "Tipo inválido para grupo.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? val.split(",") : [])),
-	statsPeriodBefore: z
-		.string({ invalid_type_error: "Tipo não válido para data de venda antes da data." })
-		.optional()
-		.nullable()
-		.transform((val) => (val ? new Date(val) : null)),
-	statsPeriodAfter: z
-		.string({ invalid_type_error: "Tipo não válido para data de venda após a data." })
-		.optional()
-		.nullable()
-		.transform((val) => (val ? new Date(val) : null)),
-	statsSellerIds: z
-		.string({
-			required_error: "IDs dos vendedores não informados.",
-			invalid_type_error: "Tipo inválido para IDs dos vendedores.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? val.split(",") : [])),
-	statsSaleNatures: z
-		.string({
-			invalid_type_error: "Tipo não válido para natureza de venda.",
-		})
-		.optional()
-		.nullable()
-		.transform((v) => (v ? v.split(",") : [])),
-	statsExcludedSalesIds: z
-		.string({
-			invalid_type_error: "Tipo não válido para ID da venda.",
-		})
-		.optional()
-		.nullable()
-		.transform((v) => (v ? v.split(",") : [])),
-	statsTotalMin: z
-		.string({
-			invalid_type_error: "Tipo não válido para valor mínimo da venda.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? Number(val) : null)),
-	statsTotalMax: z
-		.string({
-			invalid_type_error: "Tipo não válido para valor máximo da venda.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? Number(val) : null)),
-	stockStatus: z
-		.string({
-			invalid_type_error: "Tipo não válido para status de estoque.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? val.split(",") : [])),
-	priceMin: z
-		.string({
-			invalid_type_error: "Tipo não válido para preço mínimo.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? Number(val) : null)),
-	priceMax: z
-		.string({
-			invalid_type_error: "Tipo não válido para preço máximo.",
-		})
-		.optional()
-		.nullable()
-		.transform((val) => (val ? Number(val) : null)),
-	orderByField: z.enum(["descricao", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal", "quantidade"]).optional().nullable(),
-	orderByDirection: z.enum(["asc", "desc"]).optional().nullable(),
+  search: z
+    .string({
+      required_error: "Busca não informada.",
+      invalid_type_error: "Tipo inválido para busca.",
+    })
+    .optional()
+    .nullable(),
+  groups: z
+    .string({
+      required_error: "Grupos não informados.",
+      invalid_type_error: "Tipo inválido para grupo.",
+    })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? val.split(",") : [])),
+  statsPeriodBefore: z
+    .string({ invalid_type_error: "Tipo não válido para data de venda antes da data." })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? new Date(val) : null)),
+  statsPeriodAfter: z
+    .string({ invalid_type_error: "Tipo não válido para data de venda após a data." })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? new Date(val) : null)),
+  statsSellerIds: z
+    .string({
+      required_error: "IDs dos vendedores não informados.",
+      invalid_type_error: "Tipo inválido para IDs dos vendedores.",
+    })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? val.split(",") : [])),
+  statsSaleNatures: z
+    .string({
+      invalid_type_error: "Tipo não válido para natureza de venda.",
+    })
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v.split(",") : [])),
+  statsExcludedSalesIds: z
+    .string({
+      invalid_type_error: "Tipo não válido para ID da venda.",
+    })
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v.split(",") : [])),
+  statsTotalMin: z
+    .string({
+      invalid_type_error: "Tipo não válido para valor mínimo da venda.",
+    })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? Number(val) : null)),
+  statsTotalMax: z
+    .string({
+      invalid_type_error: "Tipo não válido para valor máximo da venda.",
+    })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? Number(val) : null)),
+  stockStatus: z
+    .string({
+      invalid_type_error: "Tipo não válido para status de estoque.",
+    })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? val.split(",") : [])),
+  priceMin: z
+    .string({
+      invalid_type_error: "Tipo não válido para preço mínimo.",
+    })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? Number(val) : null)),
+  priceMax: z
+    .string({
+      invalid_type_error: "Tipo não válido para preço máximo.",
+    })
+    .optional()
+    .nullable()
+    .transform((val) => (val ? Number(val) : null)),
+  orderByField: z
+    .enum(["descricao", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal", "quantidade"])
+    .optional()
+    .nullable(),
+  orderByDirection: z.enum(["asc", "desc"]).optional().nullable(),
 });
 export type TGetProductsDefaultInput = z.infer<typeof GetProductsDefaultInputSchema>;
 
 const GetProductsByIdInputSchema = z.object({
-	id: z
-		.string({
-			required_error: "ID do produto não informado.",
-			invalid_type_error: "Tipo inválido para ID do produto.",
-		})
-		.uuid({ message: "ID do produto inválido." }),
+  id: z
+    .string({
+      required_error: "ID do produto não informado.",
+      invalid_type_error: "Tipo inválido para ID do produto.",
+    })
+    .uuid({ message: "ID do produto inválido." }),
 });
 export type TGetProductsByIdInput = z.infer<typeof GetProductsByIdInputSchema>;
 
@@ -118,208 +150,222 @@ const GetProductsInputSchema = z.union([GetProductsByIdInputSchema, GetProductsD
 export type TGetProductsInput = z.infer<typeof GetProductsInputSchema>;
 
 type GetProductsParams = {
-	input: TGetProductsInput;
-	session: TAuthUserSession;
+  input: TGetProductsInput;
+  session: TAuthUserSession;
 };
 
 async function getProducts({ input, session }: GetProductsParams) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+  const userOrgId = session.membership?.organizacao.id;
+  if (!userOrgId)
+    throw new createHttpError.Unauthorized(
+      "Você precisa estar vinculado a uma organização para acessar esse recurso.",
+    );
 
-	console.log("[INFO] [GET PRODUCTS] Input:", input);
+  console.log("[INFO] [GET PRODUCTS] Input:", input);
 
-	if ("id" in input) {
-		console.log("[INFO] [GET PRODUCTS] Getting product by id:", input.id);
-		const product = await db.query.products.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, userOrgId)),
-		});
-		if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
+  if ("id" in input) {
+    console.log("[INFO] [GET PRODUCTS] Getting product by id:", input.id);
+    const product = await db.query.products.findFirst({
+      where: (fields, { and, eq }) =>
+        and(eq(fields.id, input.id), eq(fields.organizacaoId, userOrgId)),
+    });
+    if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
 
-		return {
-			data: {
-				byId: product,
-				default: undefined,
-			},
-		};
-	}
+    return {
+      data: {
+        byId: product,
+        default: undefined,
+      },
+    };
+  }
 
-	const productQueryConditions = [eq(products.organizacaoId, userOrgId)];
+  const productQueryConditions = [eq(products.organizacaoId, userOrgId)];
 
-	if (input.search) {
-		productQueryConditions.push(
-			sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`,
-		);
-	}
-	if (input.groups.length > 0) {
-		productQueryConditions.push(inArray(products.grupo, input.groups));
-	}
+  if (input.search) {
+    productQueryConditions.push(
+      sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`,
+    );
+  }
+  if (input.groups.length > 0) {
+    productQueryConditions.push(inArray(products.grupo, input.groups));
+  }
 
-	// Stock status filters
-	if (input.stockStatus && input.stockStatus.length > 0) {
-		const stockConditions = [];
-		for (const status of input.stockStatus) {
-			if (status === "out") {
-				stockConditions.push(sql`(${products.quantidade} IS NULL OR ${products.quantidade} = 0)`);
-			} else if (status === "low") {
-				stockConditions.push(sql`(${products.quantidade} > 0 AND ${products.quantidade} <= 10)`);
-			} else if (status === "healthy") {
-				stockConditions.push(sql`(${products.quantidade} > 10 AND ${products.quantidade} <= 50)`);
-			} else if (status === "overstocked") {
-				stockConditions.push(sql`${products.quantidade} > 50`);
-			}
-		}
-		if (stockConditions.length > 0) {
-			productQueryConditions.push(sql`(${sql.join(stockConditions, sql` OR `)})`);
-		}
-	}
+  // Stock status filters
+  if (input.stockStatus && input.stockStatus.length > 0) {
+    const stockConditions = [];
+    for (const status of input.stockStatus) {
+      if (status === "out") {
+        stockConditions.push(sql`(${products.quantidade} IS NULL OR ${products.quantidade} = 0)`);
+      } else if (status === "low") {
+        stockConditions.push(sql`(${products.quantidade} > 0 AND ${products.quantidade} <= 10)`);
+      } else if (status === "healthy") {
+        stockConditions.push(sql`(${products.quantidade} > 10 AND ${products.quantidade} <= 50)`);
+      } else if (status === "overstocked") {
+        stockConditions.push(sql`${products.quantidade} > 50`);
+      }
+    }
+    if (stockConditions.length > 0) {
+      productQueryConditions.push(sql`(${sql.join(stockConditions, sql` OR `)})`);
+    }
+  }
 
-	// Price range filters
-	if (input.priceMin) {
-		productQueryConditions.push(gte(products.precoVenda, input.priceMin));
-	}
-	if (input.priceMax) {
-		productQueryConditions.push(lte(products.precoVenda, input.priceMax));
-	}
+  // Price range filters
+  if (input.priceMin) {
+    productQueryConditions.push(gte(products.precoVenda, input.priceMin));
+  }
+  if (input.priceMax) {
+    productQueryConditions.push(lte(products.precoVenda, input.priceMax));
+  }
 
-	const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
-	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
-	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
-	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
-	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
-	if (input.statsSellerIds && input.statsSellerIds.length > 0) statsConditions.push(inArray(sales.vendedorId, input.statsSellerIds));
-	const havingConditions = [];
-	if (input.statsTotalMin) {
-		havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
-	}
-	if (input.statsTotalMax) {
-		havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
-	}
+  const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
+  if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
+  if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
+  if (input.statsSaleNatures && input.statsSaleNatures.length > 0)
+    statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
+  if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0)
+    statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
+  if (input.statsSellerIds && input.statsSellerIds.length > 0)
+    statsConditions.push(inArray(sales.vendedorId, input.statsSellerIds));
+  const havingConditions = [];
+  if (input.statsTotalMin) {
+    havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
+  }
+  if (input.statsTotalMax) {
+    havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
+  }
 
-	let orderByClause = asc(products.descricao);
-	const direction = input.orderByDirection === "desc" ? desc : asc;
-	switch (input.orderByField) {
-		case "descricao":
-			orderByClause = direction(products.descricao);
-			break;
-		case "codigo":
-			orderByClause = direction(products.codigo);
-			break;
-		case "grupo":
-			orderByClause = direction(products.grupo);
-			break;
-		case "vendasValorTotal":
-			orderByClause = direction(sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`);
-			break;
-		case "vendasQtdeTotal":
-			orderByClause = direction(sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END), 0)`);
-			break;
-		case "quantidade":
-			orderByClause = direction(sql`COALESCE(${products.quantidade}, 0)`);
-			break;
-		default:
-			orderByClause = asc(products.descricao);
-			break;
-	}
+  let orderByClause = asc(products.descricao);
+  const direction = input.orderByDirection === "desc" ? desc : asc;
+  switch (input.orderByField) {
+    case "descricao":
+      orderByClause = direction(products.descricao);
+      break;
+    case "codigo":
+      orderByClause = direction(products.codigo);
+      break;
+    case "grupo":
+      orderByClause = direction(products.grupo);
+      break;
+    case "vendasValorTotal":
+      orderByClause = direction(
+        sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`,
+      );
+      break;
+    case "vendasQtdeTotal":
+      orderByClause = direction(
+        sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END), 0)`,
+      );
+      break;
+    case "quantidade":
+      orderByClause = direction(sql`COALESCE(${products.quantidade}, 0)`);
+      break;
+    default:
+      orderByClause = asc(products.descricao);
+      break;
+  }
 
-	const PAGE_SIZE = 25;
-	const skip = PAGE_SIZE * (input.page - 1);
+  const PAGE_SIZE = 25;
+  const skip = PAGE_SIZE * (input.page - 1);
 
-	// Fragmento SQL reutilizável para o valor total (só considera quando a venda passa nos filtros)
-	const totalSalesSql = sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`;
+  // Fragmento SQL reutilizável para o valor total (só considera quando a venda passa nos filtros)
+  const totalSalesSql = sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`;
 
-	// Query única que retorna produtos + stats já ordenados e paginados
-	// Usa LEFT JOINs condicionais para aplicar filtros de stats apenas quando necessário
-	const baseQuery = db
-		.select({
-			// Campos do produto
-			productId: products.id,
-			codigo: products.codigo,
-			descricao: products.descricao,
-			unidade: products.unidade,
-			ncm: products.ncm,
-			tipo: products.tipo,
-			grupo: products.grupo,
-			imagemCapaUrl: products.imagemCapaUrl,
-			precoVenda: products.precoVenda,
-			precoCusto: products.precoCusto,
-			quantidade: products.quantidade,
-			organizacaoId: products.organizacaoId,
-			dataUltimaSincronizacao: products.dataUltimaSincronizacao,
-			// Campos de stats - só considera valores quando a venda passa nos filtros
-			totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`,
-			totalSalesQty: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END)`,
-			firstSaleDate: min(sales.dataVenda),
-			lastSaleDate: max(sales.dataVenda),
-			// Curva ABC - calculamos via window functions
-			accumulatedSales: sql<number>`sum(${totalSalesSql}) OVER (ORDER BY ${totalSalesSql} DESC)`,
-			totalSalesGlobal: sql<number>`sum(${totalSalesSql}) OVER ()`,
-		})
-		.from(products)
-		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
-		.leftJoin(sales, and(eq(saleItems.vendaId, sales.id), ...statsConditions))
-		.where(and(...productQueryConditions))
-		.groupBy(products.id);
+  // Query única que retorna produtos + stats já ordenados e paginados
+  // Usa LEFT JOINs condicionais para aplicar filtros de stats apenas quando necessário
+  const baseQuery = db
+    .select({
+      // Campos do produto
+      productId: products.id,
+      codigo: products.codigo,
+      descricao: products.descricao,
+      unidade: products.unidade,
+      ncm: products.ncm,
+      tipo: products.tipo,
+      grupo: products.grupo,
+      imagemCapaUrl: products.imagemCapaUrl,
+      precoVenda: products.precoVenda,
+      precoCusto: products.precoCusto,
+      quantidade: products.quantidade,
+      organizacaoId: products.organizacaoId,
+      dataUltimaSincronizacao: products.dataUltimaSincronizacao,
+      // Campos de stats - só considera valores quando a venda passa nos filtros
+      totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`,
+      totalSalesQty: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END)`,
+      firstSaleDate: min(sales.dataVenda),
+      lastSaleDate: max(sales.dataVenda),
+      // Curva ABC - calculamos via window functions
+      accumulatedSales: sql<number>`sum(${totalSalesSql}) OVER (ORDER BY ${totalSalesSql} DESC)`,
+      totalSalesGlobal: sql<number>`sum(${totalSalesSql}) OVER ()`,
+    })
+    .from(products)
+    .leftJoin(saleItems, eq(products.id, saleItems.produtoId))
+    .leftJoin(sales, and(eq(saleItems.vendaId, sales.id), ...statsConditions))
+    .where(and(...productQueryConditions))
+    .groupBy(products.id);
 
-	if (havingConditions.length > 0) {
-		baseQuery.having(and(...havingConditions));
-	}
+  if (havingConditions.length > 0) {
+    baseQuery.having(and(...havingConditions));
+  }
 
-	// Conta total de produtos que correspondem aos filtros
-	const matchedCountResult = await db.select({ count: count() }).from(baseQuery.as("sq"));
-	const statsByProductMatchedCount = matchedCountResult[0]?.count ?? 0;
+  // Conta total de produtos que correspondem aos filtros
+  const matchedCountResult = await db.select({ count: count() }).from(baseQuery.as("sq"));
+  const statsByProductMatchedCount = matchedCountResult[0]?.count ?? 0;
 
-	// Aplica ordenação e paginação
-	const productsWithStatsResult = await baseQuery.orderBy(orderByClause).offset(skip).limit(PAGE_SIZE);
+  // Aplica ordenação e paginação
+  const productsWithStatsResult = await baseQuery
+    .orderBy(orderByClause)
+    .offset(skip)
+    .limit(PAGE_SIZE);
 
-	// Mapeia os resultados para o formato final
-	const productsWithStats = productsWithStatsResult.map((row) => {
-		const totalSales = row.totalSalesValue ? Number(row.totalSalesValue) : 0;
-		const accumulated = row.accumulatedSales ? Number(row.accumulatedSales) : 0;
-		const globalTotal = row.totalSalesGlobal ? Number(row.totalSalesGlobal) : 0;
+  // Mapeia os resultados para o formato final
+  const productsWithStats = productsWithStatsResult.map((row) => {
+    const totalSales = row.totalSalesValue ? Number(row.totalSalesValue) : 0;
+    const accumulated = row.accumulatedSales ? Number(row.accumulatedSales) : 0;
+    const globalTotal = row.totalSalesGlobal ? Number(row.totalSalesGlobal) : 0;
 
-		// Lógica da Curva ABC
-		let curvaABC = "C";
-		if (globalTotal > 0) {
-			const prevAccumulated = accumulated - totalSales;
-			const prevPercentage = prevAccumulated / globalTotal;
+    // Lógica da Curva ABC
+    let curvaABC = "C";
+    if (globalTotal > 0) {
+      const prevAccumulated = accumulated - totalSales;
+      const prevPercentage = prevAccumulated / globalTotal;
 
-			if (prevPercentage < 0.8) curvaABC = "A";
-			else if (prevPercentage < 0.95) curvaABC = "B";
-		}
+      if (prevPercentage < 0.8) curvaABC = "A";
+      else if (prevPercentage < 0.95) curvaABC = "B";
+    }
 
-		return {
-			id: row.productId,
-			codigo: row.codigo,
-			descricao: row.descricao,
-			unidade: row.unidade,
-			ncm: row.ncm,
-			tipo: row.tipo,
-			grupo: row.grupo,
-			imagemCapaUrl: row.imagemCapaUrl,
-			precoVenda: row.precoVenda,
-			precoCusto: row.precoCusto,
-			quantidade: row.quantidade,
-			organizacaoId: row.organizacaoId,
-			dataUltimaSincronizacao: row.dataUltimaSincronizacao,
-			estatisticas: {
-				vendasValorTotal: totalSales,
-				vendasQtdeTotal: row.totalSalesQty ? Number(row.totalSalesQty) : 0,
-				dataPrimeiraVenda: row.firstSaleDate ?? null,
-				dataUltimaVenda: row.lastSaleDate ?? null,
-				curvaABC: curvaABC,
-			},
-		};
-	});
-	return {
-		data: {
-			default: {
-				products: productsWithStats,
-				productsMatched: statsByProductMatchedCount,
-				totalPages: Math.ceil(statsByProductMatchedCount / PAGE_SIZE),
-			},
-			byId: undefined,
-		},
-	};
+    return {
+      id: row.productId,
+      codigo: row.codigo,
+      descricao: row.descricao,
+      unidade: row.unidade,
+      ncm: row.ncm,
+      tipo: row.tipo,
+      grupo: row.grupo,
+      imagemCapaUrl: row.imagemCapaUrl,
+      precoVenda: row.precoVenda,
+      precoCusto: row.precoCusto,
+      quantidade: row.quantidade,
+      organizacaoId: row.organizacaoId,
+      dataUltimaSincronizacao: row.dataUltimaSincronizacao,
+      estatisticas: {
+        vendasValorTotal: totalSales,
+        vendasQtdeTotal: row.totalSalesQty ? Number(row.totalSalesQty) : 0,
+        dataPrimeiraVenda: row.firstSaleDate ?? null,
+        dataUltimaVenda: row.lastSaleDate ?? null,
+        curvaABC: curvaABC,
+      },
+    };
+  });
+  return {
+    data: {
+      default: {
+        products: productsWithStats,
+        productsMatched: statsByProductMatchedCount,
+        totalPages: Math.ceil(statsByProductMatchedCount / PAGE_SIZE),
+      },
+      byId: undefined,
+    },
+  };
 }
 
 export type TGetProductsOutput = Awaited<ReturnType<typeof getProducts>>;
@@ -327,239 +373,332 @@ export type TGetProductsOutputDefault = Exclude<TGetProductsOutput["data"]["defa
 export type TGetProductsOutputById = Exclude<TGetProductsOutput["data"]["byId"], undefined>;
 
 const getProductsHandler: NextApiHandler<TGetProductsOutput> = async (req, res) => {
-	const sessionUser = await getCurrentSessionUncached(req.cookies);
-	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+  const sessionUser = await getCurrentSessionUncached(req.cookies);
+  if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	console.log("[INFO] [GET PRODUCTS] Query params:", req.query);
-	const input = GetProductsInputSchema.parse({
-		page: req.query.page as string | undefined,
-		id: req.query.id as string | undefined,
-		search: req.query.search as string | undefined,
-		groups: req.query.groups as string | undefined,
-		statsPeriodAfter: req.query.statsPeriodAfter as string | undefined,
-		statsPeriodBefore: req.query.statsPeriodBefore as string | undefined,
-		statsSaleNatures: req.query.statsSaleNatures as string | undefined,
-		statsExcludedSalesIds: req.query.statsExcludedSalesIds as string | undefined,
-		statsTotalMin: req.query.statsTotalMin as string | undefined,
-		statsTotalMax: req.query.statsTotalMax as string | undefined,
-		stockStatus: req.query.stockStatus as string | undefined,
-		priceMin: req.query.priceMin as string | undefined,
-		priceMax: req.query.priceMax as string | undefined,
-		orderByField: req.query.orderByField as string | undefined,
-		orderByDirection: req.query.orderByDirection as string | undefined,
-	});
-	const data = await getProducts({ input, session: sessionUser });
-	return res.status(200).json(data);
+  console.log("[INFO] [GET PRODUCTS] Query params:", req.query);
+  const input = GetProductsInputSchema.parse({
+    page: req.query.page as string | undefined,
+    id: req.query.id as string | undefined,
+    search: req.query.search as string | undefined,
+    groups: req.query.groups as string | undefined,
+    statsPeriodAfter: req.query.statsPeriodAfter as string | undefined,
+    statsPeriodBefore: req.query.statsPeriodBefore as string | undefined,
+    statsSaleNatures: req.query.statsSaleNatures as string | undefined,
+    statsExcludedSalesIds: req.query.statsExcludedSalesIds as string | undefined,
+    statsTotalMin: req.query.statsTotalMin as string | undefined,
+    statsTotalMax: req.query.statsTotalMax as string | undefined,
+    stockStatus: req.query.stockStatus as string | undefined,
+    priceMin: req.query.priceMin as string | undefined,
+    priceMax: req.query.priceMax as string | undefined,
+    orderByField: req.query.orderByField as string | undefined,
+    orderByDirection: req.query.orderByDirection as string | undefined,
+  });
+  const data = await getProducts({ input, session: sessionUser });
+  return res.status(200).json(data);
 };
 
 const UpdateProductInputSchema = z.object({
-	productId: z.string({
-		required_error: "ID do produto não informado.",
-		invalid_type_error: "Tipo inválido para ID do produto.",
-	}),
-	product: ProductSchema.partial(),
+  productId: z.string({
+    required_error: "ID do produto não informado.",
+    invalid_type_error: "Tipo inválido para ID do produto.",
+  }),
+  product: ProductSchema.partial(),
 });
 export type TUpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
 
-async function updateProduct({ session, input }: { session: TAuthUserSession; input: TUpdateProductInput }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+async function updateProduct({
+  session,
+  input,
+}: {
+  session: TAuthUserSession;
+  input: TUpdateProductInput;
+}) {
+  const userOrgId = session.membership?.organizacao.id;
+  if (!userOrgId)
+    throw new createHttpError.Unauthorized(
+      "Você precisa estar vinculado a uma organização para acessar esse recurso.",
+    );
 
-	const product = await db.query.products.findFirst({
-		where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
-	});
-	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
-	const updatedProduct = await db
-		.update(products)
-		.set({ ...input.product, organizacaoId: userOrgId })
-		.where(and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)))
-		.returning({ updatedId: products.id });
-	const updatedProductId = updatedProduct[0]?.updatedId;
-	if (!updatedProductId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar produto.");
-	return {
-		data: {
-			updatedId: updatedProductId,
-		},
-		message: "Produto atualizado com sucesso.",
-	};
+  const product = await db.query.products.findFirst({
+    where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
+  });
+  if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
+  const updatedProduct = await db
+    .update(products)
+    .set({ ...input.product, organizacaoId: userOrgId })
+    .where(and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)))
+    .returning({ updatedId: products.id });
+  const updatedProductId = updatedProduct[0]?.updatedId;
+  if (!updatedProductId)
+    throw new createHttpError.InternalServerError(
+      "Oops, houve um erro desconhecido ao atualizar produto.",
+    );
+  return {
+    data: {
+      updatedId: updatedProductId,
+    },
+    message: "Produto atualizado com sucesso.",
+  };
 }
 export type TUpdateProductOutput = Awaited<ReturnType<typeof updateProduct>>;
 const updateProductHandler: NextApiHandler<TUpdateProductOutput> = async (req, res) => {
-	const sessionUser = await getCurrentSessionUncached(req.cookies);
-	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const input = UpdateProductInputSchema.parse(req.body);
-	const data = await updateProduct({ session: sessionUser, input });
-	return res.status(200).json(data);
+  const sessionUser = await getCurrentSessionUncached(req.cookies);
+  if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+  const input = UpdateProductInputSchema.parse(req.body);
+  const data = await updateProduct({ session: sessionUser, input });
+  return res.status(200).json(data);
 };
 
 // ========== CREATE PRODUCT ==========
 
-const CreateProductAddOnOptionInputSchema = ProductAddOnOptionSchema.omit({ organizacaoId: true, produtoAddOnId: true }).extend({
-	produtoConsumo: z.string().optional().nullable(),
+const CreateProductAddOnOptionInputSchema = ProductAddOnOptionSchema.omit({
+  organizacaoId: true,
+  produtoAddOnId: true,
+}).extend({
+  produtoConsumo: z.string().optional().nullable(),
 });
 
 const CreateProductAddOnInputSchema = ProductAddOnSchema.omit({ organizacaoId: true }).extend({
-	opcoes: z.array(CreateProductAddOnOptionInputSchema),
+  opcoes: z.array(CreateProductAddOnOptionInputSchema),
 });
 
-const CreateProductVariantInputSchema = ProductVariantSchema.omit({ organizacaoId: true, produtoId: true }).extend({
-	imagemCapaUrl: z.string().optional().nullable(),
-	addOns: z.array(CreateProductAddOnInputSchema),
+const CreateProductVariantInputSchema = ProductVariantSchema.omit({
+  organizacaoId: true,
+  produtoId: true,
+}).extend({
+  imagemCapaUrl: z.string().optional().nullable(),
+  addOns: z.array(CreateProductAddOnInputSchema),
 });
 
 const CreateProductInputSchema = z.object({
-	product: ProductSchema.omit({ organizacaoId: true }),
-	productVariants: z.array(CreateProductVariantInputSchema),
-	productAddOns: z.array(CreateProductAddOnInputSchema),
+  product: ProductSchema.omit({ organizacaoId: true }),
+  productVariants: z.array(CreateProductVariantInputSchema),
+  productAddOns: z.array(CreateProductAddOnInputSchema),
 });
 
 export type TCreateProductInput = z.infer<typeof CreateProductInputSchema>;
 
-async function createProduct({ session, input }: { session: TAuthUserSession; input: TCreateProductInput }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+async function createProduct({
+  session,
+  input,
+}: {
+  session: TAuthUserSession;
+  input: TCreateProductInput;
+}) {
+  const userOrgId = session.membership?.organizacao.id;
+  if (!userOrgId)
+    throw new createHttpError.Unauthorized(
+      "Você precisa estar vinculado a uma organização para acessar esse recurso.",
+    );
 
-	console.log("[INFO] [CREATE PRODUCT] Input:", JSON.stringify(input, null, 2));
+  console.log("[INFO] [CREATE PRODUCT] Input:", JSON.stringify(input, null, 2));
 
-	// 1. Create the main product
-	const [createdProduct] = await db
-		.insert(products)
-		.values({
-			organizacaoId: userOrgId,
-			descricao: input.product.descricao,
-			codigo: input.product.codigo,
-			unidade: input.product.unidade,
-			ncm: input.product.ncm,
-			tipo: input.product.tipo,
-			grupo: input.product.grupo,
-			imagemCapaUrl: input.product.imagemCapaUrl,
-			precoVenda: input.product.precoVenda,
-			precoCusto: input.product.precoCusto,
-			quantidade: input.product.quantidade,
-		})
-		.returning({ id: products.id });
+  const transactionReturn = await db.transaction(async (tx) => {
+    // 1. Create the main product
+    const [createdProduct] = await tx
+      .insert(products)
+      .values({
+        organizacaoId: userOrgId,
+        descricao: input.product.descricao,
+        codigo: input.product.codigo,
+        unidade: input.product.unidade,
+        ncm: input.product.ncm,
+        tipo: input.product.tipo,
+        grupo: input.product.grupo,
+        imagemCapaUrl: input.product.imagemCapaUrl,
+        precoVenda: input.product.precoVenda,
+        precoCusto: input.product.precoCusto,
+        quantidade: input.product.quantidade,
+        rastreamentoEstoqueAtivo: input.product.rastreamentoEstoqueAtivo,
+      })
+      .returning({ id: products.id });
 
-	if (!createdProduct?.id) throw new createHttpError.InternalServerError("Erro ao criar o produto.");
+    if (!createdProduct?.id)
+      throw new createHttpError.InternalServerError("Erro ao criar o produto.");
 
-	const productId = createdProduct.id;
+    const productId = createdProduct.id;
 
-	// 2. Create product variants (if any)
-	for (const variant of input.productVariants) {
-		const [createdVariant] = await db
-			.insert(productVariants)
-			.values({
-				organizacaoId: userOrgId,
-				produtoId: productId,
-				nome: variant.nome,
-				codigo: variant.codigo,
-				imagemCapaUrl: variant.imagemCapaUrl,
-				precoVenda: variant.precoVenda,
-				precoCusto: variant.precoCusto,
-				quantidade: variant.quantidade,
-				ativo: variant.ativo,
-			})
-			.returning({ id: productVariants.id });
+    // 1.1 Checking if product allows stock tracking and if quantity is greater than 0
+    if (
+      input.product.rastreamentoEstoqueAtivo &&
+      input.product.quantidade &&
+      input.product.quantidade > 0
+    ) {
+      // If that is the case, we gotta create the initial manual stock transaction for the product
+      await tx.insert(productStockTransactions).values({
+        organizacaoId: userOrgId,
+        produtoId: productId,
+        produtoVarianteId: null,
+        quantidade: input.product.quantidade,
+        saldoAnterior: 0,
+        saldoPosterior: input.product.quantidade,
+        motivo: "Inicialização do estoque",
+        tipo: "AJUSTE",
+        operadorId: session.user.id,
+      });
+    }
 
-		if (!createdVariant?.id) throw new createHttpError.InternalServerError("Erro ao criar variante do produto.");
+    const insertedProductVariantIds = [];
+    const insertedProductAddOnIds = [];
+    // 2. Create product variants (if any)
+    for (const variant of input.productVariants) {
+      const [createdVariant] = await tx
+        .insert(productVariants)
+        .values({
+          organizacaoId: userOrgId,
+          produtoId: productId,
+          nome: variant.nome,
+          codigo: variant.codigo,
+          imagemCapaUrl: variant.imagemCapaUrl,
+          precoVenda: variant.precoVenda,
+          precoCusto: variant.precoCusto,
+          quantidade: variant.quantidade,
+          rastreamentoEstoqueAtivo: variant.rastreamentoEstoqueAtivo,
+          ativo: variant.ativo,
+        })
+        .returning({ id: productVariants.id });
 
-		// 2.1 Create variant add-ons (if any)
-		for (const [addOnIndex, addOn] of variant.addOns.entries()) {
-			const [createdAddOn] = await db
-				.insert(productAddOns)
-				.values({
-					organizacaoId: userOrgId,
-					nome: addOn.nome,
-					internoNome: addOn.internoNome,
-					minOpcoes: addOn.minOpcoes,
-					maxOpcoes: addOn.maxOpcoes,
-					ativo: addOn.ativo,
-				})
-				.returning({ id: productAddOns.id });
+      if (!createdVariant?.id)
+        throw new createHttpError.InternalServerError("Erro ao criar variante do produto.");
 
-			if (!createdAddOn?.id) throw new createHttpError.InternalServerError("Erro ao criar grupo de adicionais da variante.");
+      insertedProductVariantIds.push(createdVariant.id);
 
-			// Create options for this add-on
-			for (const option of addOn.opcoes) {
-				await db.insert(productAddOnOptions).values({
-					organizacaoId: userOrgId,
-					produtoAddOnId: createdAddOn.id,
-					nome: option.nome,
-					codigo: option.codigo,
-					precoDelta: option.precoDelta,
-					maxQtdePorItem: option.maxQtdePorItem,
-					ativo: option.ativo,
-					produtoId: option.produtoId,
-					produtoVarianteId: option.produtoVarianteId,
-					quantidadeConsumo: option.quantidadeConsumo,
-				});
-			}
+      // 2.1 Checking if variant allows stock tracking and if quantity is greater than 0
+      if (variant.rastreamentoEstoqueAtivo && variant.quantidade && variant.quantidade > 0) {
+        // If that is the case, we gotta create the initial manual stock transaction for the variant
+        await tx.insert(productStockTransactions).values({
+          organizacaoId: userOrgId,
+          produtoId: productId,
+          produtoVarianteId: createdVariant.id,
+          quantidade: variant.quantidade,
+          saldoAnterior: 0,
+          saldoPosterior: variant.quantidade,
+          motivo: "Inicialização do estoque",
+          tipo: "AJUSTE",
+          operadorId: session.user.id,
+        });
+      }
+      // 2.2 Create variant add-ons (if any)
+      for (const [addOnIndex, addOn] of variant.addOns.entries()) {
+        const [createdAddOn] = await tx
+          .insert(productAddOns)
+          .values({
+            organizacaoId: userOrgId,
+            nome: addOn.nome,
+            internoNome: addOn.internoNome,
+            minOpcoes: addOn.minOpcoes,
+            maxOpcoes: addOn.maxOpcoes,
+            ativo: addOn.ativo,
+          })
+          .returning({ id: productAddOns.id });
 
-			// 2.2 Create the reference linking product and the variant to the add-on
-			await db.insert(productAddOnReferences).values({
-				produtoId: productId,
-				ordem: addOnIndex,
-				produtoAddOnId: createdAddOn.id,
-				produtoVarianteId: createdVariant.id,
-			});
-		}
-	}
+        if (!createdAddOn?.id)
+          throw new createHttpError.InternalServerError(
+            "Erro ao criar grupo de adicionais da variante.",
+          );
 
-	// 3. Create product add-ons (at product level) and link them
-	for (const [addOnIndex, addOn] of input.productAddOns.entries()) {
-		const [createdAddOn] = await db
-			.insert(productAddOns)
-			.values({
-				organizacaoId: userOrgId,
-				nome: addOn.nome,
-				internoNome: addOn.internoNome,
-				minOpcoes: addOn.minOpcoes,
-				maxOpcoes: addOn.maxOpcoes,
-				ativo: addOn.ativo,
-			})
-			.returning({ id: productAddOns.id });
+        insertedProductAddOnIds.push(createdAddOn.id);
 
-		if (!createdAddOn?.id) throw new createHttpError.InternalServerError("Erro ao criar grupo de adicionais do produto.");
+        // Create options for this add-on
+        for (const option of addOn.opcoes) {
+          await tx.insert(productAddOnOptions).values({
+            organizacaoId: userOrgId,
+            produtoAddOnId: createdAddOn.id,
+            nome: option.nome,
+            codigo: option.codigo,
+            precoDelta: option.precoDelta,
+            maxQtdePorItem: option.maxQtdePorItem,
+            ativo: option.ativo,
+            produtoId: option.produtoId,
+            produtoVarianteId: option.produtoVarianteId,
+            quantidadeConsumo: option.quantidadeConsumo,
+          });
+        }
 
-		// 3.1 Create options for this add-on
-		for (const option of addOn.opcoes) {
-			await db.insert(productAddOnOptions).values({
-				organizacaoId: userOrgId,
-				produtoAddOnId: createdAddOn.id,
-				nome: option.nome,
-				codigo: option.codigo,
-				precoDelta: option.precoDelta,
-				maxQtdePorItem: option.maxQtdePorItem,
-				ativo: option.ativo,
-				produtoId: option.produtoId,
-				produtoVarianteId: option.produtoVarianteId,
-				quantidadeConsumo: option.quantidadeConsumo,
-			});
-		}
+        // 2.2 Create the reference linking product and the variant to the add-on
+        await tx.insert(productAddOnReferences).values({
+          produtoId: productId,
+          ordem: addOnIndex,
+          produtoAddOnId: createdAddOn.id,
+          produtoVarianteId: createdVariant.id,
+        });
+      }
+    }
 
-		// 3.2 Create the reference linking product to add-on
-		await db.insert(productAddOnReferences).values({
-			produtoId: productId,
-			produtoAddOnId: createdAddOn.id,
-			ordem: addOnIndex,
-		});
-	}
+    // 3. Create product add-ons (at product level) and link them
+    for (const [addOnIndex, addOn] of input.productAddOns.entries()) {
+      const [createdAddOn] = await tx
+        .insert(productAddOns)
+        .values({
+          organizacaoId: userOrgId,
+          nome: addOn.nome,
+          internoNome: addOn.internoNome,
+          minOpcoes: addOn.minOpcoes,
+          maxOpcoes: addOn.maxOpcoes,
+          ativo: addOn.ativo,
+        })
+        .returning({ id: productAddOns.id });
 
-	return {
-		data: {
-			productId: productId,
-		},
-		message: "Produto criado com sucesso.",
-	};
+      if (!createdAddOn?.id)
+        throw new createHttpError.InternalServerError(
+          "Erro ao criar grupo de adicionais do produto.",
+        );
+
+      insertedProductAddOnIds.push(createdAddOn.id);
+      // 3.1 Create options for this add-on
+      for (const option of addOn.opcoes) {
+        await tx.insert(productAddOnOptions).values({
+          organizacaoId: userOrgId,
+          produtoAddOnId: createdAddOn.id,
+          nome: option.nome,
+          codigo: option.codigo,
+          precoDelta: option.precoDelta,
+          maxQtdePorItem: option.maxQtdePorItem,
+          ativo: option.ativo,
+          produtoId: option.produtoId,
+          produtoVarianteId: option.produtoVarianteId,
+          quantidadeConsumo: option.quantidadeConsumo,
+        });
+      }
+
+      // 3.2 Create the reference linking product to add-on
+      await tx.insert(productAddOnReferences).values({
+        produtoId: productId,
+        produtoAddOnId: createdAddOn.id,
+        ordem: addOnIndex,
+      });
+    }
+
+    return {
+      insertedProductId: productId,
+      insertedProductVariantIds: insertedProductVariantIds,
+      insertedProductAddOnIds: insertedProductAddOnIds,
+    };
+  });
+
+  return {
+    data: {
+      productId: transactionReturn.insertedProductId,
+      productVariantIds: transactionReturn.insertedProductVariantIds,
+      productAddOnIds: transactionReturn.insertedProductAddOnIds,
+    },
+    message: "Produto criado com sucesso.",
+  };
 }
 
 export type TCreateProductOutput = Awaited<ReturnType<typeof createProduct>>;
 
 const createProductHandler: NextApiHandler<TCreateProductOutput> = async (req, res) => {
-	const sessionUser = await getCurrentSessionUncached(req.cookies);
-	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const input = CreateProductInputSchema.parse(req.body);
-	const data = await createProduct({ session: sessionUser, input });
-	return res.status(201).json(data);
+  const sessionUser = await getCurrentSessionUncached(req.cookies);
+  if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+  const input = CreateProductInputSchema.parse(req.body);
+  const data = await createProduct({ session: sessionUser, input });
+  return res.status(201).json(data);
 };
 
-export default apiHandler({ GET: getProductsHandler, PUT: updateProductHandler, POST: createProductHandler });
+export default apiHandler({
+  GET: getProductsHandler,
+  PUT: updateProductHandler,
+  POST: createProductHandler,
+});
