@@ -101,7 +101,7 @@ export default function FooterV2() {
 			{/* Footer */}
 			<footer className="bg-slate-50 border-t border-slate-200">
 				<div className="container mx-auto max-w-7xl px-6 lg:px-8 py-12">
-					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 mb-10">
 						{/* Brand */}
 						<div className="md:col-span-1">
 							<h3 className="font-black text-lg text-slate-900 mb-3">RecompraCRM</h3>
@@ -135,14 +135,52 @@ export default function FooterV2() {
 							</ul>
 						</div>
 
-						{/* Recursos */}
+						{/* Funcionalidades */}
 						<div>
-							<h4 className="font-bold text-slate-900 mb-3 text-sm">Recursos</h4>
+							<h4 className="font-bold text-slate-900 mb-3 text-sm">Funcionalidades</h4>
 							<ul className="space-y-2 text-sm text-slate-500">
-								<li>Cashback e Pontos</li>
-								<li>Campanhas Automáticas</li>
-								<li>WhatsApp Hub</li>
-								<li>Business Intelligence</li>
+								<li>
+									<Link href="/funcionalidades/programa-de-cashback" className="hover:text-[#24549C] transition-colors">
+										Cashback e Pontos
+									</Link>
+								</li>
+								<li>
+									<Link href="/funcionalidades/campanhas-whatsapp" className="hover:text-[#24549C] transition-colors">
+										Campanhas WhatsApp
+									</Link>
+								</li>
+								<li>
+									<Link href="/funcionalidades/ponto-de-interacao" className="hover:text-[#24549C] transition-colors">
+										Ponto de Interação
+									</Link>
+								</li>
+								<li>
+									<Link href="/funcionalidades/business-intelligence" className="hover:text-[#24549C] transition-colors">
+										Business Intelligence
+									</Link>
+								</li>
+							</ul>
+						</div>
+
+						{/* Blog */}
+						<div>
+							<h4 className="font-bold text-slate-900 mb-3 text-sm">Blog</h4>
+							<ul className="space-y-2 text-sm text-slate-500">
+								<li>
+									<Link href="/blog" className="hover:text-[#24549C] transition-colors">
+										Todos os Artigos
+									</Link>
+								</li>
+								<li>
+									<Link href="/blog/como-recompracrm-pode-ajudar-sua-sorveteria" className="hover:text-[#24549C] transition-colors">
+										Sorveterias
+									</Link>
+								</li>
+								<li>
+									<Link href="/blog?categoria=casos-de-uso" className="hover:text-[#24549C] transition-colors">
+										Casos de Uso
+									</Link>
+								</li>
 							</ul>
 						</div>
 
