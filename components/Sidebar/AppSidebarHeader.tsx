@@ -79,7 +79,7 @@ export default function AppSidebarHeader({ sessionUserOrg, user, mode = "app" }:
 						</div>
 					)}
 				</SidebarMenuItem>
-				{showPanelLink && (
+				{/* {showPanelLink && (
 					<SidebarMenuItem>
 						<SidebarMenuButton asChild>
 							<Link href={panelHref}>
@@ -88,7 +88,7 @@ export default function AppSidebarHeader({ sessionUserOrg, user, mode = "app" }:
 							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
-				)}
+				)} */}
 			</SidebarMenu>
 		);
 	}
