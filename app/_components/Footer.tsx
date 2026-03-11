@@ -177,8 +177,13 @@ export default function FooterV2() {
 									</Link>
 								</li>
 								<li>
-									<Link href="/blog?categoria=casos-de-uso" className="hover:text-[#24549C] transition-colors">
-										Casos de Uso
+									<Link href="/blog/como-recompracrm-pode-ajudar-seu-petshop" className="hover:text-[#24549C] transition-colors">
+										Pet Shops
+									</Link>
+								</li>
+								<li>
+									<Link href="/blog/como-recompracrm-pode-ajudar-sua-loja-de-roupas" className="hover:text-[#24549C] transition-colors">
+										Lojas de Roupas
 									</Link>
 								</li>
 							</ul>
