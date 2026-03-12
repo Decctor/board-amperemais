@@ -167,17 +167,8 @@ export function convertLocalComponentsToMetaComponents(components: TWhatsappTemp
 		}
 	}
 
-	// Add body component
-	let bodyText = convertHtmlToWhatsappText(components.corpo.conteudo);
-
-	// Convert identificador placeholders (e.g. {{nome_cliente}}) to positional placeholders (e.g. {{1}})
-	if (components.corpo.parametros.length > 0) {
-		for (const param of components.corpo.parametros) {
-			const identificadorPlaceholder = `{{${param.identificador}}}`;
-			const numericPlaceholder = `{{${param.nome}}}`;
-			bodyText = bodyText.replace(new RegExp(identificadorPlaceholder.replace(/[{}]/g, "\\$&"), "g"), numericPlaceholder);
-		}
-	}
+	// Add body component — keep {{identificador}} placeholders as-is for named parameter format
+	const bodyText = convertHtmlToWhatsappText(components.corpo.conteudo);
 
 	const bodyComponent: MetaTemplateComponent = {
 		type: "BODY",
@@ -186,7 +177,10 @@ export function convertLocalComponentsToMetaComponents(components: TWhatsappTemp
 
 	if (components.corpo.parametros.length > 0) {
 		bodyComponent.example = {
-			body_text: [components.corpo.parametros.map((param) => param.exemplo)],
+			body_text_named_params: components.corpo.parametros.map((param) => ({
+				param_name: param.identificador,
+				example: param.exemplo,
+			})),
 		};
 	}
 
@@ -250,7 +244,7 @@ export function convertToWhatsappApiPayload(template: Omit<TWhatsappTemplate, "a
 		name: template.nome,
 		category: WHATSAPP_CATEGORY_MAP[template.categoria],
 		language: "pt_BR",
-		parameter_format: "positional",
+		parameter_format: "named",
 		components,
 	};
 }
@@ -571,29 +565,37 @@ export function convertMetaComponentsToLocal(components: MetaTemplateComponent[]
 					parametros: [],
 				};
 
-				// Extract parameters from body text
-				const paramRegex = /\{\{(\d+)\}\}/g;
-				const paramPositions: number[] = [];
+				// Restore parameters: prefer named format (body_text_named_params), fall back to positional
+				if (component.example?.body_text_named_params && component.example.body_text_named_params.length > 0) {
+					localComponents.corpo.parametros = component.example.body_text_named_params.map((p, i) => ({
+						nome: (i + 1).toString(),
+						exemplo: p.example,
+						identificador: p.param_name,
+					}));
+				} else {
+					// Positional format fallback (legacy templates)
+					const paramRegex = /\{\{(\d+)\}\}/g;
+					const paramPositions: number[] = [];
 
-				let match = paramRegex.exec(component.text || "");
-				while (match !== null) {
-					const position = Number.parseInt(match[1]);
-					if (!paramPositions.includes(position)) {
-						paramPositions.push(position);
+					let match = paramRegex.exec(component.text || "");
+					while (match !== null) {
+						const position = Number.parseInt(match[1]);
+						if (!paramPositions.includes(position)) {
+							paramPositions.push(position);
+						}
+						match = paramRegex.exec(component.text || "");
 					}
-					match = paramRegex.exec(component.text || "");
-				}
 
-				// Create parameters with examples if available
-				const examples: string[] = component.example?.body_text?.[0] || [];
-				paramPositions.sort((a, b) => a - b);
+					const examples: string[] = component.example?.body_text?.[0] || [];
+					paramPositions.sort((a, b) => a - b);
 
-				for (let i = 0; i < paramPositions.length; i++) {
-					localComponents.corpo.parametros.push({
-						nome: paramPositions[i].toString(),
-						exemplo: examples[i] || "exemplo",
-						identificador: `param_${i + 1}`,
-					});
+					for (let i = 0; i < paramPositions.length; i++) {
+						localComponents.corpo.parametros.push({
+							nome: paramPositions[i].toString(),
+							exemplo: examples[i] || "exemplo",
+							identificador: `param_${i + 1}`,
+						});
+					}
 				}
 				break;
 			}
