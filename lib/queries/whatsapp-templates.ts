@@ -8,7 +8,7 @@ async function getWhatsappTemplates(input: Omit<TGetWhatsappTemplatesInput, "id"
 	const searchParams = new URLSearchParams();
 	if (input.search && input.search.trim().length > 0) searchParams.set("search", input.search);
 	if (input.whatsappConnectionPhoneId) searchParams.set("whatsappConnectionPhoneId", input.whatsappConnectionPhoneId);
-
+	if (input.includeRecompraTemplates) searchParams.set("includeRecompraTemplates", "true");
 	searchParams.set("page", input.page?.toString() ?? "1");
 	const url = `/api/whatsapp-templates?${searchParams.toString()}`;
 	const { data } = await axios.get<TGetWhatsappTemplatesOutput>(url);
@@ -32,6 +32,7 @@ export function useWhatsappTemplates({ initialParams }: UseWhatsappTemplatesPara
 		page: initialParams?.page || 1,
 		search: initialParams?.search || "",
 		whatsappConnectionPhoneId: initialParams?.whatsappConnectionPhoneId || undefined,
+		includeRecompraTemplates: initialParams?.includeRecompraTemplates || false,
 	});
 	const updateParams = useCallback((newParams: Partial<Omit<TGetWhatsappTemplatesInput, "id">>) => {
 		setParams((prevParams) => ({ ...prevParams, ...newParams }));

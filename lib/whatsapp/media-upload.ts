@@ -2,6 +2,16 @@ import axios from "axios";
 
 const GRAPH_API_BASE_URL = "https://graph.facebook.com/v23.0";
 
+function getMetaUploadErrorMessage(error: unknown, fallbackMessage: string): string {
+	if (!axios.isAxiosError(error)) return fallbackMessage;
+
+	const metaError = error.response?.data?.error;
+	const userMessage = typeof metaError?.error_user_msg === "string" ? metaError.error_user_msg.trim() : "";
+	const message = typeof metaError?.message === "string" ? metaError.message.trim() : "";
+
+	return userMessage || message || error.message || fallbackMessage;
+}
+
 /**
  * Constraints for template media files by header type
  */
@@ -81,24 +91,28 @@ export async function startMetaResumableUpload({
 	fileName,
 	fileType,
 }: StartMetaResumableUploadParams): Promise<StartMetaResumableUploadResponse> {
-	const response = await axios.post(
-		`${GRAPH_API_BASE_URL}/${appId}/uploads`,
-		{
-			file_length: fileLength,
-			file_name: fileName,
-			file_type: fileType,
-		},
-		{
-			headers: {
-				Authorization: `Bearer ${accessToken}`,
-				"Content-Type": "application/json",
+	try {
+		const response = await axios.post(`${GRAPH_API_BASE_URL}/${appId}/uploads`, null, {
+			params: {
+				file_length: fileLength,
+				file_name: fileName,
+				file_type: fileType,
 			},
-		},
-	);
+			headers: {
+				Authorization: `OAuth ${accessToken}`,
+			},
+		});
 
-	return {
-		uploadSessionId: response.data.id,
-	};
+		return {
+			uploadSessionId: response.data.id,
+		};
+	} catch (error) {
+		console.error("[ERROR] [META_MEDIA_UPLOAD_START_ERROR]", error);
+		if (axios.isAxiosError(error)) {
+			console.error("[ERROR] [META_MEDIA_UPLOAD_START_ERROR_RESPONSE]", error.response?.data);
+		}
+		throw new Error(getMetaUploadErrorMessage(error, "Erro ao iniciar upload de mídia no Meta."));
+	}
 }
 
 type UploadFileDataToMetaParams = {
@@ -120,17 +134,25 @@ export async function uploadFileDataToMeta({
 	accessToken,
 	fileBuffer,
 }: UploadFileDataToMetaParams): Promise<UploadFileDataToMetaResponse> {
-	const response = await axios.post(`${GRAPH_API_BASE_URL}/${uploadSessionId}`, fileBuffer, {
-		headers: {
-			Authorization: `OAuth ${accessToken}`,
-			file_offset: "0",
-			"Content-Type": "application/octet-stream",
-		},
-	});
+	try {
+		const response = await axios.post(`${GRAPH_API_BASE_URL}/${uploadSessionId}`, fileBuffer, {
+			headers: {
+				Authorization: `OAuth ${accessToken}`,
+				file_offset: "0",
+				"Content-Type": "application/octet-stream",
+			},
+		});
 
-	return {
-		headerHandle: response.data.h,
-	};
+		return {
+			headerHandle: response.data.h,
+		};
+	} catch (error) {
+		console.error("[ERROR] [META_MEDIA_UPLOAD_BINARY_ERROR]", error);
+		if (axios.isAxiosError(error)) {
+			console.error("[ERROR] [META_MEDIA_UPLOAD_BINARY_ERROR_RESPONSE]", error.response?.data);
+		}
+		throw new Error(getMetaUploadErrorMessage(error, "Erro ao enviar arquivo de mídia para o Meta."));
+	}
 }
 
 type UploadTemplateMediaToMetaParams = {
@@ -216,7 +238,8 @@ export async function fetchAndUploadToMeta({
 
 	// Extract filename from URL
 	const urlParts = fileUrl.split("/");
-	const fileName = urlParts[urlParts.length - 1]?.split("?")[0] || "file";
+	const rawFileName = urlParts[urlParts.length - 1]?.split("?")[0] || "file";
+	const fileName = decodeURIComponent(rawFileName);
 
 	console.log(`[INFO] [META_MEDIA_UPLOAD] File fetched: ${fileName} (${contentType}, ${buffer.length} bytes)`);
 

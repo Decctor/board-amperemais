@@ -267,6 +267,16 @@ type CreateWhatsappTemplateResponse = {
 	message: string;
 };
 
+function getMetaApiErrorMessage(error: unknown, fallbackMessage: string): string {
+	if (!axios.isAxiosError(error)) return fallbackMessage;
+
+	const metaError = error.response?.data?.error;
+	const errorUserMessage = typeof metaError?.error_user_msg === "string" ? metaError.error_user_msg.trim() : "";
+	const errorMessage = typeof metaError?.message === "string" ? metaError.message.trim() : "";
+
+	return errorUserMessage || errorMessage || fallbackMessage;
+}
+
 /**
  * Creates a template in WhatsApp Business API
  */
@@ -316,7 +326,7 @@ export async function createWhatsappTemplate({
 		console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE_ERROR]", error);
 		if (axios.isAxiosError(error)) {
 			console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE_ERROR_RESPONSE]", error.response?.data);
-			const errorMessage = error.response?.data?.error?.message || "Erro ao criar template no WhatsApp.";
+			const errorMessage = getMetaApiErrorMessage(error, "Erro ao criar template no WhatsApp.");
 			throw new createHttpError.BadRequest(errorMessage);
 		}
 		throw new createHttpError.InternalServerError("Oops, algo deu errado ao criar o template no WhatsApp.");
@@ -428,7 +438,7 @@ export async function getWhatsappTemplates({
 		console.error("[ERROR] [WHATSAPP_TEMPLATES_GET_ERROR]", error);
 		if (axios.isAxiosError(error)) {
 			console.error("[ERROR] [WHATSAPP_TEMPLATES_GET_ERROR_RESPONSE]", error.response?.data);
-			const errorMessage = error.response?.data?.error?.message || "Erro ao buscar templates do WhatsApp.";
+			const errorMessage = getMetaApiErrorMessage(error, "Erro ao buscar templates do WhatsApp.");
 			throw new createHttpError.BadRequest(errorMessage);
 		}
 		throw new createHttpError.InternalServerError("Oops, algo deu errado ao buscar templates do WhatsApp.");
@@ -473,7 +483,7 @@ export async function getWhatsappTemplateById({
 		console.error("[ERROR] [WHATSAPP_TEMPLATE_GET_BY_ID_ERROR]", error);
 		if (axios.isAxiosError(error)) {
 			console.error("[ERROR] [WHATSAPP_TEMPLATE_GET_BY_ID_ERROR_RESPONSE]", error.response?.data);
-			const errorMessage = error.response?.data?.error?.message || "Erro ao buscar template do WhatsApp.";
+			const errorMessage = getMetaApiErrorMessage(error, "Erro ao buscar template do WhatsApp.");
 			throw new createHttpError.BadRequest(errorMessage);
 		}
 		throw new createHttpError.InternalServerError("Oops, algo deu errado ao buscar o template do WhatsApp.");
@@ -529,7 +539,7 @@ export async function editWhatsappTemplateInMeta({
 		console.error("[ERROR] [WHATSAPP_TEMPLATE_EDIT_ERROR]", error);
 		if (axios.isAxiosError(error)) {
 			console.error("[ERROR] [WHATSAPP_TEMPLATE_EDIT_ERROR_RESPONSE]", error.response?.data);
-			const errorMessage = error.response?.data?.error?.message || "Erro ao editar template do WhatsApp.";
+			const errorMessage = getMetaApiErrorMessage(error, "Erro ao editar template do WhatsApp.");
 			throw new createHttpError.BadRequest(errorMessage);
 		}
 		throw new createHttpError.InternalServerError("Oops, algo deu errado ao editar o template do WhatsApp.");
@@ -673,7 +683,7 @@ export async function deleteWhatsappTemplate({ templateName }: DeleteWhatsappTem
 		console.error("[ERROR] [WHATSAPP_TEMPLATE_DELETE_ERROR]", error);
 		if (axios.isAxiosError(error)) {
 			console.error("[ERROR] [WHATSAPP_TEMPLATE_DELETE_ERROR_RESPONSE]", error.response?.data);
-			const errorMessage = error.response?.data?.error?.message || "Erro ao deletar template do WhatsApp.";
+			const errorMessage = getMetaApiErrorMessage(error, "Erro ao deletar template do WhatsApp.");
 			throw new createHttpError.BadRequest(errorMessage);
 		}
 		throw new createHttpError.InternalServerError("Oops, algo deu errado ao deletar o template do WhatsApp.");

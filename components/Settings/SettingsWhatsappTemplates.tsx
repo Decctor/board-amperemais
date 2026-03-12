@@ -39,7 +39,7 @@ export default function SettingsWhatsappTemplates({ user, membership }: Settings
 		error,
 		params,
 		updateParams,
-	} = useWhatsappTemplates({ initialParams: { search: "" } });
+	} = useWhatsappTemplates({ initialParams: { search: "", includeRecompraTemplates: false } });
 	const whatsappTemplates = whatsappTemplatesResult?.whatsappTemplates;
 	const whatsappTemplatesShowing = whatsappTemplates ? whatsappTemplates.length : 0;
 	const whatsappTemplatesMatched = whatsappTemplatesResult?.whatsappTemplatesMatched || 0;

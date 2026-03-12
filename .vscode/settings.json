@@ -9,7 +9,7 @@
 		"source.organizeImports.biome": "explicit"
 	},
 	"[typescript]": {
-		"editor.defaultFormatter": "oxc.oxc-vscode"
+		"editor.defaultFormatter": "vscode.typescript-language-features"
 	},
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "oxc.oxc-vscode"

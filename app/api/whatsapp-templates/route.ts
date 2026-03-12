@@ -136,6 +136,9 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 	}
 	const successfulPhones = phoneResults.filter((r) => r.whatsappTemplateId !== null);
 	const failedPhones = phoneResults.filter((r) => r.whatsappTemplateId === null);
+	if (successfulPhones.length === 0 && failedPhones.length > 0) {
+		throw new createHttpError.BadRequest(failedPhones[0]?.error || "Erro ao criar template no WhatsApp.");
+	}
 	return {
 		data: {
 			insertedId: insertedTemplate.id,
@@ -204,8 +207,13 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 		})
 		.where(and(eq(whatsappTemplates.id, input.whatsappTemplateId), eq(whatsappTemplates.organizacaoId, userOrgId)));
 
-	const updatedComponents = input.whatsappTemplate.componentes;
-	const updatedCategory = input.whatsappTemplate.categoria;
+	const updatedTemplate = await db.query.whatsappTemplates.findFirst({
+		where: (fields, { eq }) => eq(fields.id, input.whatsappTemplateId),
+	});
+	if (!updatedTemplate) throw new createHttpError.NotFound("Template não encontrado.");
+
+	const updatedComponents = updatedTemplate.componentes;
+	const updatedCategory = updatedTemplate.categoria;
 	const shouldUpdateInMeta = Boolean(updatedComponents || updatedCategory);
 
 	// If no remote-editable field changed, we can return early
@@ -227,6 +235,7 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 		};
 	}
 
+	console.log("[INFO] [WHATSAPP_TEMPLATE_UPDATE] Updating template in Meta for phones", orgWhatsappConnection.telefones.map((t) => t.numero).join(", "));
 	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; success: boolean; error?: string }> = [];
 
 	// Third, for Meta Cloud API connection, update each phone template in Meta
@@ -237,22 +246,88 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 			const existingTemplatePhone = await db.query.whatsappTemplatePhones.findFirst({
 				where: (fields, { and, eq }) => and(eq(fields.templateId, input.whatsappTemplateId), eq(fields.telefoneId, telefone.id)),
 			});
+
 			if (!existingTemplatePhone || !existingTemplatePhone.whatsappTemplateId) {
-				phoneResults.push({
+
+				let metaWhatsappTemplateId: string | null = null;
+				if (whatsappConnectionType === "META_CLOUD_API" && whatsappToken) {
+					if (!telefone.whatsappBusinessAccountId) continue;
+
+					// Process template to upload media header if needed
+					let templateToCreate: Omit<TWhatsappTemplate, "autorId" | "dataInsercao"> = updatedTemplate;
+
+					if (updatedTemplate.componentes?.cabecalho) {
+						const header = updatedTemplate.componentes?.cabecalho;
+
+						if (isMediaHeaderType(header.tipo) && header.conteudo) {
+							try {
+								const metaAppId = process.env.NEXT_PUBLIC_META_APP_ID;
+								if (!metaAppId) {
+									throw new createHttpError.InternalServerError("Meta app ID não configurado.");
+								}
+
+								// Upload media to Meta and get header_handle
+								const { headerHandle } = await fetchAndUploadToMeta({
+									fileUrl: header.conteudo,
+									appId: metaAppId,
+									accessToken: whatsappToken,
+								});
+
+								// Create a copy of the template with the header_handle in exemplo field
+								templateToCreate = {
+									...updatedTemplate,
+									componentes: {
+										...updatedTemplate.componentes,
+										cabecalho: {
+											...header,
+											exemplo: headerHandle,
+										},
+									},
+								};
+
+								console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Media uploaded successfully. Header handle: ${headerHandle}`);
+							} catch (uploadError) {
+								console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to upload media to Meta:", uploadError);
+								throw new createHttpError.BadRequest(
+									`Erro ao fazer upload da mídia para o WhatsApp: ${uploadError instanceof Error ? uploadError.message : "Erro desconhecido"}`,
+								);
+							}
+						}
+					}
+
+					const metaResponse = await createWhatsappTemplateInMeta({
+						whatsappToken,
+						whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
+						template: templateToCreate,
+					});
+					metaWhatsappTemplateId = metaResponse.whatsappTemplateId;
+				}
+
+				// Insert child record with the whatsappTemplateId from Meta
+				await db.insert(whatsappTemplatePhones).values({
+					templateId: updatedTemplate.id,
 					telefoneId: telefone.id,
-					whatsappTemplateId: existingTemplatePhone?.whatsappTemplateId || null,
-					success: false,
-					error: "Template não vinculado ao telefone no Meta.",
+					whatsappTemplateId: metaWhatsappTemplateId,
+					status: metaWhatsappTemplateId ? "PENDENTE" : "APROVADO",
+					qualidade: metaWhatsappTemplateId ? "PENDENTE" : "ALTA",
 				});
+
 				continue;
+			} else {
+				try {
+					await editWhatsappTemplateInMeta({
+						whatsappToken,
+						templateId: existingTemplatePhone.whatsappTemplateId,
+						category: updatedCategory ? WHATSAPP_CATEGORY_MAP[updatedCategory] : undefined,
+						components: updatedComponents ? convertLocalComponentsToMetaComponents(updatedComponents) : undefined,
+					});
+
+				} catch (error) {
+					console.error(`[ERROR] [WHATSAPP_TEMPLATE_UPDATE] Failed to in Meta's update call for template ${existingTemplatePhone.whatsappTemplateId} for phone ${telefone.numero}:`, error);
+					throw error;
+				}
 			}
 
-			await editWhatsappTemplateInMeta({
-				whatsappToken,
-				templateId: existingTemplatePhone.whatsappTemplateId,
-				category: updatedCategory ? WHATSAPP_CATEGORY_MAP[updatedCategory] : undefined,
-				components: updatedComponents ? convertLocalComponentsToMetaComponents(updatedComponents) : undefined,
-			});
 
 			// After a successful edit in Meta, status/quality should return to pending review.
 			await db
@@ -281,6 +356,9 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 
 	const successfulPhones = phoneResults.filter((result) => result.success);
 	const failedPhones = phoneResults.filter((result) => !result.success);
+	if (successfulPhones.length === 0 && failedPhones.length > 0) {
+		throw new createHttpError.BadRequest(failedPhones[0]?.error || "Erro ao atualizar template no WhatsApp.");
+	}
 
 	return {
 		data: {
@@ -323,6 +401,7 @@ const GetWhatsappTemplatesInputSchema = z.object({
 		.nullable()
 		.transform((val) => Number(val)),
 	search: z.string({ invalid_type_error: "Tipo inválido para busca." }).optional().nullable(),
+	includeRecompraTemplates: z.string().optional().nullable().transform((val) => val === "true"),
 	whatsappConnectionPhoneId: z.string({ invalid_type_error: "Tipo inválido para ID do telefone." }).optional().nullable(),
 });
 export type TGetWhatsappTemplatesInput = z.infer<typeof GetWhatsappTemplatesInputSchema>;
@@ -422,6 +501,11 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 			),
 		);
 	}
+	if (input.includeRecompraTemplates) {
+		conditions.push(or(eq(whatsappTemplates.organizacaoId, userOrgId), isNull(whatsappTemplates.organizacaoId)));
+	} else {
+		conditions.push(eq(whatsappTemplates.organizacaoId, userOrgId));
+	}
 
 	const PAGE_SIZE = 25;
 	const skip = PAGE_SIZE * (input.page - 1);
@@ -429,13 +513,13 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 	const matchedWhatsappTemplatesResult = await db
 		.select({ count: count() })
 		.from(whatsappTemplates)
-		.where(and(...conditions, or(eq(whatsappTemplates.organizacaoId, userOrgId), isNull(whatsappTemplates.organizacaoId))));
+		.where(and(...conditions));
 	const matchedWhatsappTemplatesCount = matchedWhatsappTemplatesResult[0]?.count ?? 0;
 
 	const totalPages = Math.ceil(matchedWhatsappTemplatesCount / PAGE_SIZE);
 
 	const whatsappTemplatesResult = await db.query.whatsappTemplates.findMany({
-		where: and(...conditions, or(eq(whatsappTemplates.organizacaoId, userOrgId), isNull(whatsappTemplates.organizacaoId))),
+		where: and(...conditions,),
 		columns: {
 			id: true,
 			nome: true,
@@ -529,6 +613,7 @@ async function getWhatsappTemplatesRoute(request: NextRequest) {
 		search: searchParams.get("search") ?? undefined,
 		page: searchParams.get("page") ?? undefined,
 		whatsappConnectionPhoneId: searchParams.get("whatsappConnectionPhoneId") ?? undefined,
+		includeRecompraTemplates: searchParams.get("includeRecompraTemplates") ?? undefined,
 	});
 	const result = await getWhatsappTemplates({ input, session });
 	return NextResponse.json(result, { status: 200 });
