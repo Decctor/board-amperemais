@@ -145,6 +145,12 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES: TOrganizationConfigur
     },
   };
 
+export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfiguration["preferencias"] =
+  {
+    rastreamentoEstoque: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES.erp.acesso === true,
+    limiteMensagensSemanaisViaCampanhas: null,
+  };
+
 export const AppSubscriptionPlans: {
   [key in TAppSubscriptionPlanKey]: {
     name: string;

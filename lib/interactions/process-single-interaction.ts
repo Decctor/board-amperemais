@@ -1,4 +1,10 @@
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
+import {
+	checkCampaignWeeklyInteractionLimit,
+	incrementCampaignWeeklyLimitUsageCache,
+	markInteractionAsWeeklyLimitFailed,
+	type TCampaignWeeklyLimitCache,
+} from "@/lib/interactions/campaign-weekly-limits";
 import type { TInteractionContextMetadados, TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import { db } from "@/services/drizzle";
@@ -7,6 +13,7 @@ import { and, eq } from "drizzle-orm";
 import { formatToMoney } from "../formatting";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "../whatsapp/internal-gateway";
 import { formatPhoneForInternalGateway } from "../whatsapp/utils";
+import dayjs from "dayjs";
 
 export type ImmediateProcessingData = {
 	interactionId: string;
@@ -28,6 +35,7 @@ export type ImmediateProcessingData = {
 	whatsappToken?: string;
 	whatsappSessionId?: string;
 	contextMetadados?: TInteractionContextMetadados;
+	weeklyLimitCache?: TCampaignWeeklyLimitCache;
 };
 
 export type ProcessSingleInteractionResult = {
@@ -74,9 +82,20 @@ export function buildContextVariablesMap(
  * 6. Error handling (marks message as "FALHOU", doesn't mark interaction as executed)
  */
 export async function processSingleInteractionImmediately(params: ImmediateProcessingData): Promise<ProcessSingleInteractionResult> {
-	const { interactionId, organizationId, client, campaign, whatsappToken, whatsappSessionId } = params;
+	const { interactionId, organizationId, client, campaign, whatsappToken, whatsappSessionId, weeklyLimitCache } = params;
 
 	try {
+		const interaction = await db.query.interactions.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, interactionId), eq(fields.organizacaoId, organizationId)),
+			columns: {
+				id: true,
+				campanhaId: true,
+				tipo: true,
+			},
+		});
+		if (!interaction) {
+			return { success: false, error: "Interação não encontrada para processamento." };
+		}
 		const previousInteraction = await db.query.interactions.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.clienteId, client.id), eq(fields.campanhaId, campaign.whatsappTemplate.id)),
 		});
@@ -94,6 +113,35 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 				.where(eq(interactions.id, interactionId));
 			return { success: false, error: "Cliente não tem telefone válido" };
 		}
+		if (interaction.tipo === "ENVIO-MENSAGEM" && interaction.campanhaId) {
+			const limitCheck = await checkCampaignWeeklyInteractionLimit({
+				organizationId,
+				campaignId: interaction.campanhaId,
+				cache: weeklyLimitCache,
+			});
+
+			if (!limitCheck.allowed && limitCheck.reason) {
+				await markInteractionAsWeeklyLimitFailed({
+					interactionId,
+					reason: limitCheck.reason,
+				});
+				console.warn("[WARN] [IMMEDIATE_PROCESS] Interação bloqueada por limite semanal.", {
+					interactionId,
+					organizationId,
+					campaignId: interaction.campanhaId,
+					reason: limitCheck.reason,
+					message: limitCheck.message,
+					organizationUsedThisWeek: limitCheck.organizationUsedThisWeek,
+					organizationWeeklyLimit: limitCheck.organizationWeeklyLimit,
+					campaignUsedThisWeek: limitCheck.campaignUsedThisWeek,
+					campaignWeeklyLimit: limitCheck.campaignWeeklyLimit,
+					campaignEffectiveWeeklyLimit: limitCheck.campaignEffectiveWeeklyLimit,
+				});
+				return { success: false, error: limitCheck.message ?? "Interação bloqueada por limite semanal." };
+			} else {
+				console.log("[IMMEDIATE_PROCESS] Interação permitida por limite semanal.")
+			}
+		}
 		// Check if hubAtendimentos access is enabled for this organization
 		const organization = await db.query.organizations.findFirst({
 			where: (fields, { eq }) => eq(fields.id, organizationId),
@@ -103,10 +151,10 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 
 		const clientFavoriteProduct = client.metadataProdutoMaisCompradoId
 			? (
-					await db.query.products.findFirst({
-						where: (fields, { eq }) => eq(fields.id, client.metadataProdutoMaisCompradoId as string),
-					})
-				)?.descricao
+				await db.query.products.findFirst({
+					where: (fields, { eq }) => eq(fields.id, client.metadataProdutoMaisCompradoId as string),
+				})
+			)?.descricao
 			: null;
 		const whatsappConnectionPhone = await db.query.whatsappConnectionPhones.findFirst({
 			where: (fields, { eq }) => eq(fields.id, campaign.whatsappConexaoTelefoneId),
@@ -228,6 +276,15 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 						},
 					})
 					.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
+				if (interaction.campanhaId) {
+					const weekKey = dayjs().startOf("week").format("YYYY-[W]WW");
+					incrementCampaignWeeklyLimitUsageCache({
+						organizationId,
+						campaignId: interaction.campanhaId,
+						weekKey,
+						cache: weeklyLimitCache,
+					});
+				}
 
 				console.log(`[IMMEDIATE_PROCESS] Successfully processed interaction ${interactionId}`);
 			} else if (whatsappSessionId) {

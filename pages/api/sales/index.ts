@@ -4,6 +4,7 @@ import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
+import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import type { TSale } from "@/schemas/sales";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -855,8 +856,9 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 
 	// Process interactions immediately after transaction (fire-and-forget)
 	if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
+		const weeklyLimitCache = createCampaignWeeklyLimitCache();
 		for (const processingData of result.immediateProcessingDataList) {
-			processSingleInteractionImmediately(processingData).catch((err) =>
+			processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
 				console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
 			);
 		}

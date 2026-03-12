@@ -1,5 +1,6 @@
 import {
   AppSubscriptionPlans,
+  DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
   DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
   DEFAULT_ORGANIZATION_OWNER_PERMISSIONS,
   DEFAULT_ORGANIZATION_RFM_CONFIG,
@@ -124,9 +125,7 @@ async function createOrganization({
         ...organization,
         configuracao: {
           recursos: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
-          preferencias: {
-            rastreamentoEstoque: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES.erp.acesso === true,
-          },
+          preferencias: DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
         },
         autorId: sessionUser.id,
       })
@@ -251,6 +250,7 @@ async function createOrganization({
             recursos: freeTrialConfig,
             preferencias: {
               rastreamentoEstoque: freeTrialConfig.erp.acesso === true,
+              limiteMensagensSemanaisViaCampanhas: null,
             },
           },
           periodoTesteInicio,
@@ -384,6 +384,7 @@ async function createOrganization({
           recursos: plan.capabilities,
           preferencias: {
             rastreamentoEstoque: plan.capabilities.erp.acesso === true,
+            limiteMensagensSemanaisViaCampanhas: null,
           },
         },
         stripeCustomerId: stripeCustomer.id,

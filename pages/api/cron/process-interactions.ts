@@ -1,4 +1,10 @@
 import { buildContextVariablesMap } from "@/lib/interactions/process-single-interaction";
+import {
+	checkCampaignWeeklyInteractionLimit,
+	createCampaignWeeklyLimitCache,
+	incrementCampaignWeeklyLimitUsageCache,
+	markInteractionAsWeeklyLimitFailed,
+} from "@/lib/interactions/campaign-weekly-limits";
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "@/lib/whatsapp/internal-gateway";
 import type { TInteractionContextMetadados, TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
@@ -73,6 +79,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 		for (const organization of organizationsList) {
 			try {
 				console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Processing interactions`);
+				const weeklyLimitCache = createCampaignWeeklyLimitCache();
 
 				// Check if hubAtendimentos access is enabled for this organization
 				const hasHubAccess = organization.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
@@ -141,6 +148,35 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
 					const interactionCampaign = interaction.campanha;
 					if (!campaign || !interactionCampaign) continue;
+					if (interaction.campanhaId) {
+						const limitCheck = await checkCampaignWeeklyInteractionLimit({
+							organizationId: organization.id,
+							campaignId: interaction.campanhaId,
+							cache: weeklyLimitCache,
+						});
+
+						if (!limitCheck.allowed && limitCheck.reason) {
+							await markInteractionAsWeeklyLimitFailed({
+								interactionId: interaction.id,
+								reason: limitCheck.reason,
+							});
+							console.warn(
+								`[ORG: ${organization.id}] [WARN] [PROCESS_INTERACTIONS] Interação bloqueada por limite semanal`,
+								{
+									interactionId: interaction.id,
+									campaignId: interaction.campanhaId,
+									reason: limitCheck.reason,
+									message: limitCheck.message,
+									organizationUsedThisWeek: limitCheck.organizationUsedThisWeek,
+									organizationWeeklyLimit: limitCheck.organizationWeeklyLimit,
+									campaignUsedThisWeek: limitCheck.campaignUsedThisWeek,
+									campaignWeeklyLimit: limitCheck.campaignWeeklyLimit,
+									campaignEffectiveWeeklyLimit: limitCheck.campaignEffectiveWeeklyLimit,
+								},
+							);
+							continue;
+						}
+					}
 
 					// First, checking if client has valid phone number
 					if (!interaction.cliente.telefone) {
@@ -317,6 +353,15 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 								},
 							})
 							.where(and(eq(interactions.id, interaction.id), eq(interactions.organizacaoId, organization.id)));
+						if (interaction.campanhaId && interactionStatusEnvio === "ENVIADO") {
+							const weekKey = dayjs().startOf("week").format("YYYY-[W]WW");
+							incrementCampaignWeeklyLimitUsageCache({
+								organizationId: organization.id,
+								campaignId: interaction.campanhaId,
+								weekKey,
+								cache: weeklyLimitCache,
+							});
+						}
 					} catch (error) {
 						console.error(
 							`[ORG: ${organization.id}] [ERROR] [PROCESS_INTERACTIONS] Failed to send WhatsApp message for interaction ${interaction.id}:`,

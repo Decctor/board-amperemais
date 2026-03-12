@@ -93,6 +93,7 @@ async function generateCheckoutRoute(request: NextRequest) {
         recursos: plan.capabilities,
         preferencias: {
           rastreamentoEstoque: plan.capabilities.erp.acesso === true,
+          limiteMensagensSemanaisViaCampanhas: null,
         },
       },
     })

@@ -5,6 +5,7 @@ import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
+import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-variables";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
@@ -694,6 +695,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 	});
 
 	if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
+		const weeklyLimitCache = createCampaignWeeklyLimitCache();
 		// Create all processing promises
 		const processingPromises = result.immediateProcessingDataList.map(async (processingData) => {
 			console.log(`[POI] [IMMEDIATE_PROCESS] Processing interaction ${processingData.interactionId} for client ${processingData.client.id}`);
@@ -702,7 +704,10 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 			);
 
 			try {
-				await processSingleInteractionImmediately(processingData);
+				await processSingleInteractionImmediately({
+					...processingData,
+					weeklyLimitCache,
+				});
 				console.log(`[POI] [IMMEDIATE_PROCESS] Successfully processed interaction ${processingData.interactionId}`);
 			} catch (err) {
 				console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);

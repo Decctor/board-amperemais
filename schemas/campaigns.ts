@@ -118,6 +118,14 @@ export const CampaignSchema = z.object({
 		})
 		.optional()
 		.default(true),
+	limiteEnviosSemanais: z
+		.number({
+			invalid_type_error: "Tipo não válido para o limite semanal de envios da campanha.",
+		})
+		.int("O limite semanal de envios da campanha deve ser um número inteiro.")
+		.positive("O limite semanal de envios da campanha deve ser maior que zero.")
+		.optional()
+		.nullable(),
 	frequenciaIntervaloValor: z
 		.number({
 			required_error: "Valor da frequência de intervalo não informado.",

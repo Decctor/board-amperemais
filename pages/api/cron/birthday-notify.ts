@@ -1,6 +1,7 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
+import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { campaigns, clients, interactions } from "@/services/drizzle/schema";
@@ -200,8 +201,9 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 			// Process interactions immediately after transaction (with delay to avoid rate limiting)
 			if (immediateProcessingDataList.length > 0) {
 				console.log(`[ORG: ${organization.id}] [INFO] Processing ${immediateProcessingDataList.length} immediate interactions`);
+				const weeklyLimitCache = createCampaignWeeklyLimitCache();
 				for (const processingData of immediateProcessingDataList) {
-					processSingleInteractionImmediately(processingData).catch((err) =>
+					processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
 						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
 					);
 					await delay(100); // Small delay between sends to avoid rate limiting

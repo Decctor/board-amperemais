@@ -291,12 +291,24 @@ async function retryCampaignInteraction({ input, session }: { input: TRetryCampa
 	});
 
 	if (!processingResult.success) {
-		throw new createHttpError.BadRequest(processingResult.error ?? "Não foi possível reenviar essa interação.");
+		console.warn("[WARN] [RETRY_CAMPAIGN_INTERACTION] Reenvio não executado.", {
+			interactionId: interaction.id,
+			organizationId: userOrgId,
+			reason: processingResult.error,
+		});
+		return {
+			data: {
+				interactionId: interaction.id,
+				reenviada: false,
+			},
+			message: processingResult.error ?? "Não foi possível reenviar essa interação.",
+		};
 	}
 
 	return {
 		data: {
 			interactionId: interaction.id,
+			reenviada: true,
 		},
 		message: "Interação reenviada com sucesso.",
 	};

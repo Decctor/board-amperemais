@@ -48,6 +48,7 @@ export const campaigns = newTable("campaigns", {
 
 	// Configs for recurring interactions and intervals
 	permitirRecorrencia: boolean("permitir_recorrencia").notNull().default(true),
+	limiteEnviosSemanais: integer("limite_envios_semanais"),
 
 	// Minimum time required between interactions of this specific campaign
 	frequenciaIntervaloValor: integer("frequencia_intervalo_valor").default(0),

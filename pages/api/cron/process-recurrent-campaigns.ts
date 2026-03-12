@@ -1,5 +1,6 @@
 import { DASTJS_TIME_DURATION_UNITS_MAP } from "@/lib/dates";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
+import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { type TCampaignEntity, type TInteractionEntity, campaigns, clients, interactions } from "@/services/drizzle/schema";
@@ -238,8 +239,9 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 			// Process interactions immediately after transaction
 			if (immediateProcessingDataList.length > 0) {
 				console.log(`[ORG: ${organization.id}] [INFO] Processing ${immediateProcessingDataList.length} immediate interactions`);
+				const weeklyLimitCache = createCampaignWeeklyLimitCache();
 				for (const processingData of immediateProcessingDataList) {
-					processSingleInteractionImmediately(processingData).catch((err) =>
+					processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
 						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
 					);
 					await delay(100);

@@ -8,6 +8,7 @@ import type { TCardapioWebConfig } from "@/lib/data-connectors/cardapio-web/type
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
+import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
@@ -1316,8 +1317,9 @@ async function handleCardapioWebImportation(
 	// Process immediate interactions after transaction
 	if (immediateProcessingDataList.length > 0) {
 		console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Processing ${immediateProcessingDataList.length} immediate interactions`);
+		const weeklyLimitCache = createCampaignWeeklyLimitCache();
 		for (const processingData of immediateProcessingDataList) {
-			processSingleInteractionImmediately(processingData).catch((err) =>
+			processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
 				console.error(`[CARDAPIO-WEB] Failed to process interaction ${processingData.interactionId}:`, err),
 			);
 			await delay(100);
@@ -2748,8 +2750,9 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 			// Process interactions immediately after transaction (with delay to avoid rate limiting)
 			if (immediateProcessingDataList.length > 0) {
 				console.log(`[ORG: ${organization.id}] [INFO] Processing ${immediateProcessingDataList.length} immediate interactions`);
+				const weeklyLimitCache = createCampaignWeeklyLimitCache();
 				for (const processingData of immediateProcessingDataList) {
-					processSingleInteractionImmediately(processingData).catch((err) =>
+					processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
 						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
 					);
 					await delay(100); // Small delay between sends to avoid rate limiting

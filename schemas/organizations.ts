@@ -92,6 +92,14 @@ export const OrganizationConfigurationSchema = z.object({
       required_error: "Configuração global de rastreamento de estoque não informada.",
       invalid_type_error: "Tipo não válido para a configuração global de rastreamento de estoque.",
     }),
+    limiteMensagensSemanaisViaCampanhas: z
+      .number({
+        invalid_type_error:
+          "Tipo não válido para o limite semanal de mensagens enviadas via campanhas.",
+      })
+      .nullable()
+      .optional()
+      .default(null),
   }),
 });
 export type TOrganizationConfiguration = z.infer<typeof OrganizationConfigurationSchema>;

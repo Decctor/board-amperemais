@@ -6,7 +6,7 @@ import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
 import { CampaignSchema, CampaignSegmentationSchema } from "@/schemas/campaigns";
 import { CampaignTriggerTypeEnum, type TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { campaignConversions, interactions } from "@/services/drizzle/schema";
+import { campaignConversions, interactions, organizations } from "@/services/drizzle/schema";
 import { campaignSegmentations, campaigns } from "@/services/drizzle/schema/campaigns";
 import dayjs from "dayjs";
 import { and, count, eq, gte, inArray, isNotNull, lte, or, sql, sum } from "drizzle-orm";
@@ -97,6 +97,48 @@ async function validateCampaignTemplateTriggerCompatibility(
   }
 }
 
+async function getOrganizationWeeklyCampaignLimit(organizationId: string) {
+  const organization = await db.query.organizations.findFirst({
+    where: (fields, { eq }) => eq(fields.id, organizationId),
+    columns: { configuracao: true },
+  });
+
+  return organization?.configuracao?.preferencias?.limiteMensagensSemanaisViaCampanhas ?? null;
+}
+
+function getEffectiveCampaignWeeklyLimit({
+  organizationWeeklyLimit,
+  campaignWeeklyLimit,
+  operation,
+  campaignId,
+  organizationId,
+}: {
+  organizationWeeklyLimit: number | null;
+  campaignWeeklyLimit: number | null | undefined;
+  operation: "CREATE" | "UPDATE";
+  campaignId?: string;
+  organizationId: string;
+}) {
+  if (campaignWeeklyLimit == null) return organizationWeeklyLimit;
+  if (organizationWeeklyLimit == null) return campaignWeeklyLimit;
+
+  const effectiveLimit = Math.min(campaignWeeklyLimit, organizationWeeklyLimit);
+  if (campaignWeeklyLimit > organizationWeeklyLimit) {
+    console.warn(
+      `[WARN] [${operation}_CAMPAIGN] limiteEnviosSemanais da campanha excede limite da organização; limite efetivo será aplicado no processamento.`,
+      {
+        campaignId: campaignId ?? null,
+        organizationId,
+        campaignWeeklyLimit,
+        organizationWeeklyLimit,
+        effectiveLimit,
+      },
+    );
+  }
+
+  return effectiveLimit;
+}
+
 const CreateCampaignInputSchema = z.object({
   campaign: CampaignSchema.omit({ dataInsercao: true, autorId: true }),
   segmentations: z.array(CampaignSegmentationSchema.omit({ campanhaId: true })),
@@ -133,6 +175,13 @@ async function createCampaign({
     input.campaign.whatsappTemplateId,
     input.campaign.gatilhoTipo,
   );
+  const organizationWeeklyLimit = await getOrganizationWeeklyCampaignLimit(userOrgId);
+  getEffectiveCampaignWeeklyLimit({
+    organizationWeeklyLimit,
+    campaignWeeklyLimit: input.campaign.limiteEnviosSemanais,
+    operation: "CREATE",
+    organizationId: userOrgId,
+  });
 
   // Validate cashback generation settings
   if (input.campaign.cashbackGeracaoAtivo) {
@@ -518,6 +567,14 @@ async function updateCampaign({
     input.campaign.whatsappTemplateId,
     input.campaign.gatilhoTipo,
   );
+  const organizationWeeklyLimit = await getOrganizationWeeklyCampaignLimit(userOrgId);
+  getEffectiveCampaignWeeklyLimit({
+    organizationWeeklyLimit,
+    campaignWeeklyLimit: input.campaign.limiteEnviosSemanais,
+    operation: "UPDATE",
+    campaignId,
+    organizationId: userOrgId,
+  });
 
   // Validate cashback generation settings
   if (input.campaign.cashbackGeracaoAtivo) {
