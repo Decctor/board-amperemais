@@ -12,7 +12,7 @@ async function fetchMessageTemplates(params: { page: number; search?: string }) 
 	searchParams.set("page", params.page.toString());
 	const { data } = await axios.get<TGetMessageTemplatesOutput>(`/api/message-templates?${searchParams.toString()}`);
 	const result = data.data.default;
-	if (!result) throw new Error("Grupos de templates não encontrados.");
+	if (result === null) throw new Error("Grupos de templates não encontrados.");
 	return result;
 }
 

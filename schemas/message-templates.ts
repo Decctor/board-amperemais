@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import { WhatsappTemplateCategoryEnum, WhatsappTemplateQualityEnum, WhatsappTemplateStatusEnum } from "./enums";
 import { WhatsappTemplateComponentsSchema } from "./whatsapp-templates";
 

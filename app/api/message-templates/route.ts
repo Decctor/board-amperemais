@@ -2,8 +2,9 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { fetchAndUploadToMeta, isMediaHeaderType } from "@/lib/whatsapp/media-upload";
-import { WHATSAPP_CATEGORY_MAP, convertLocalComponentsToMetaComponents, createWhatsappTemplate as createWhatsappTemplateInMeta } from "@/lib/whatsapp/template-management";
+import { createWhatsappTemplate as createWhatsappTemplateInMeta } from "@/lib/whatsapp/template-management";
 import { CreateMessageTemplateInputSchema, AddMessageTemplateVersionInputSchema } from "@/schemas/message-templates";
+import type { TWhatsappTemplateCategoryEnum } from "@/schemas/enums";
 import type { TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
 import { db } from "@/services/drizzle";
 import { messageTemplateGroups, messageTemplateVersionPhones, messageTemplateVersions } from "@/services/drizzle/schema";
@@ -11,7 +12,7 @@ import { and, desc, eq, max } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import z from "zod";
+import { z } from "zod";
 
 // ─── Status / quality priority helpers ───────────────────────────────────────
 
@@ -49,7 +50,7 @@ async function pushVersionToPhones({
 	telefones,
 }: {
 	metaNome: string;
-	categoria: string;
+	categoria: TWhatsappTemplateCategoryEnum;
 	componentes: TWhatsappTemplateComponents;
 	versaoId: string;
 	whatsappToken: string | null | undefined;
@@ -86,7 +87,7 @@ async function pushVersionToPhones({
 					whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
 					template: {
 						nome: metaNome,
-						categoria: categoria as "AUTENTICAÇÃO" | "MARKETING" | "UTILIDADE",
+						categoria,
 						componentes: componentesToCreate,
 					},
 				});
