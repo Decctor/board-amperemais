@@ -28,9 +28,11 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 	const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 	const [selectedModifiers, setSelectedModifiers] = useState<SelectedModifier[]>([]);
 	const [quantity, setQuantity] = useState(1);
+	const selectedVariant = selectedVariantId ? product.variantes.find((v) => v.id === selectedVariantId) : null;
+	const availableReferences = [...product.addOnsReferencias, ...(selectedVariant?.addOnsReferencias ?? [])];
 
 	const hasVariants = product.variantes && product.variantes.length > 0;
-	const hasAddOns = product.addOnsReferencias && product.addOnsReferencias.length > 0;
+	const hasAddOns = availableReferences.length > 0;
 
 	// Auto-select first variant if only one exists
 	useEffect(() => {
@@ -52,7 +54,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 	const getModifiersTotal = () => {
 		let total = 0;
 		for (const selected of selectedModifiers) {
-			for (const reference of product.addOnsReferencias) {
+			for (const reference of availableReferences) {
 				const option = reference.grupo.opcoes.find((o) => o.id === selected.opcaoId);
 				if (option) {
 					total += option.precoDelta * selected.quantidade;
@@ -75,7 +77,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 		if (hasVariants && !selectedVariantId) return false;
 
 		// Check if all required add-on groups are satisfied
-		for (const reference of product.addOnsReferencias) {
+		for (const reference of availableReferences) {
 			const grupo = reference.grupo;
 			if (grupo.minOpcoes > 0) {
 				// Count how many options from this group are selected
@@ -102,7 +104,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 			// For radio-style (maxOpcoes === 1), clear other options from the same group first
 			if (groupMaxOpcoes === 1) {
 				// Find which group this option belongs to
-				const belongsToGroup = product.addOnsReferencias.find((ref) => ref.grupo.opcoes.some((o) => o.id === opcaoId));
+				const belongsToGroup = availableReferences.find((ref) => ref.grupo.opcoes.some((o) => o.id === opcaoId));
 				if (belongsToGroup) {
 					const otherOptionsInGroup = belongsToGroup.grupo.opcoes.map((o) => o.id);
 					return [...prev.filter((m) => !otherOptionsInGroup.includes(m.opcaoId)), { opcaoId, quantidade: 1 }];
@@ -138,7 +140,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 		// Build modifiers array
 		const modifiers: TCartItemModifier[] = [];
 		for (const selected of selectedModifiers) {
-			for (const reference of product.addOnsReferencias) {
+			for (const reference of availableReferences) {
 				const option = reference.grupo.opcoes.find((o) => o.id === selected.opcaoId);
 				if (option) {
 					modifiers.push({
@@ -153,7 +155,6 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 		}
 
 		// Get variant name if selected
-		const selectedVariant = selectedVariantId ? product.variantes.find((v) => v.id === selectedVariantId) : null;
 		const itemName = selectedVariant ? `${product.descricao} - ${selectedVariant.nome}` : product.descricao;
 
 		const cartItem: TCartItem = {
@@ -239,7 +240,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 				{/* Section B: Add-Ons/Modifiers */}
 				{hasAddOns && (
 					<div className="flex flex-col gap-4">
-						{product.addOnsReferencias.map((reference) => {
+						{availableReferences.map((reference) => {
 							const grupo = reference.grupo;
 							const isRequired = grupo.minOpcoes > 0;
 							const isRadioStyle = grupo.maxOpcoes === 1;

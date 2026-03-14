@@ -24,6 +24,8 @@ const CartItemInputSchema = z.object({
 	produtoId: z.string({ required_error: "ID do produto não informado." }),
 	produtoVarianteId: z.string({ invalid_type_error: "Tipo não válido para ID da variante." }).optional().nullable(),
 	nome: z.string({ required_error: "Nome do item não informado." }),
+	codigo: z.string({ required_error: "Código do item não informado." }),
+	imagemUrl: z.string({ invalid_type_error: "Tipo não válido para URL da imagem." }).optional().nullable(),
 	quantidade: z.number({ required_error: "Quantidade não informada." }).min(1),
 	valorUnitarioBase: z.number({ required_error: "Valor unitário base não informado." }),
 	valorModificadores: z.number({ required_error: "Valor de modificadores não informado." }),
@@ -173,6 +175,22 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 					valorTotalDesconto: item.valorDesconto,
 					valorVendaTotalLiquido: item.valorTotalLiquido,
 					valorCustoTotal: valorCustoUnitario * item.quantidade,
+					metadados: {
+						nome: item.nome,
+						codigo: item.codigo,
+						imagemUrl: item.imagemUrl ?? null,
+						produtoId: item.produtoId,
+						produtoVarianteId: item.produtoVarianteId ?? null,
+						valorUnitarioBase: item.valorUnitarioBase,
+						valorModificadores: item.valorModificadores,
+						modificadores: item.modificadores.map((mod) => ({
+							opcaoId: mod.opcaoId,
+							nome: mod.nome,
+							quantidade: mod.quantidade,
+							valorUnitario: mod.valorUnitario,
+							valorTotal: mod.valorTotal,
+						})),
+					},
 				})
 				.returning({ id: saleItems.id });
 

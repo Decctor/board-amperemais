@@ -318,7 +318,7 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 							holderClassName="!p-1.5 h-7 w-20 bg-background/50 border-primary/20"
 						/>
 						<Button
-							onClick={() => updateOption({ produtoConsumo: null, quantidadeConsumo: 1 })}
+							onClick={() => updateOption({ produtoConsumo: null, produtoId: null, produtoVarianteId: null, quantidadeConsumo: 1 })}
 							size="icon"
 							variant="ghost"
 							className="h-7 w-7 text-primary/60 hover:text-destructive hover:bg-destructive/10"
@@ -407,7 +407,9 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 					closeModal={() => setVinculationModalIsOpen(false)}
 					handleSelection={(product, variant) => {
 						updateOption(
-							variant ? { produtoConsumo: variant.nome, produtoVarianteId: variant.id } : { produtoConsumo: product.descricao, produtoId: product.id },
+							variant
+								? { produtoConsumo: variant.nome, produtoId: null, produtoVarianteId: variant.id }
+								: { produtoConsumo: product.descricao, produtoId: product.id, produtoVarianteId: null },
 						);
 						setVinculationModalIsOpen(false);
 					}}

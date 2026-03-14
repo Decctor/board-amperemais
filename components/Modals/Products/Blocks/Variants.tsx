@@ -23,13 +23,13 @@ export default function ProductVariantsBlock({
 	variants,
 	addVariant,
 	updateVariant,
-	updateVariantImageHolder,
+	updateVariantImageHolder: _updateVariantImageHolder,
 	removeVariant,
 }: ProductVariantsBlockProps) {
 	const [newVariantMenuIsOpen, setNewVariantMenuIsOpen] = useState(false);
 	const [editVariantIndex, setEditVariantIndex] = useState<number | null>(null);
-	const validVariants = variants.filter((variant) => !variant.deletar);
-	const editingVariant = isValidNumber(editVariantIndex) ? validVariants[editVariantIndex as number] : null;
+	const validVariants = variants.map((variant, index) => ({ ...variant, originalIndex: index })).filter((variant) => !variant.deletar);
+	const editingVariant = isValidNumber(editVariantIndex) ? variants[editVariantIndex as number] : null;
 	return (
 		<ResponsiveMenuSection title="VARIANTES" icon={<GitBranch className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="flex w-full items-center justify-end gap-2">
@@ -39,12 +39,12 @@ export default function ProductVariantsBlock({
 				</Button>
 			</div>
 			{validVariants.length > 0 ? (
-				validVariants.map((variant, index) => (
+				validVariants.map((variant) => (
 					<ProductVariantsBlockVariant
-						key={variant.id}
+						key={variant.id || `temp-variant-${variant.originalIndex}`}
 						variant={variant}
-						handleEditClick={() => setEditVariantIndex(index)}
-						handleDeleteClick={() => removeVariant(index)}
+						handleEditClick={() => setEditVariantIndex(variant.originalIndex)}
+						handleDeleteClick={() => removeVariant(variant.originalIndex)}
 					/>
 				))
 			) : (
@@ -85,6 +85,7 @@ function NewProductVariantMenu({ closeMenu, addVariant }: NewProductVariantMenuP
 		precoVenda: 0,
 		quantidade: 0,
 		ativo: true,
+		rastreamentoEstoqueAtivo: false,
 		imagemCapaHolder: {
 			file: null,
 			previewUrl: null,
@@ -375,7 +376,7 @@ function ProductVariantsBlockVariant({ variant, handleEditClick, handleDeleteCli
 						className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-destructive/10 hover:text-destructive duration-300 ease-in-out"
 					>
 						<Trash2 className="w-4 h-4 min-w-4 min-h-4" />
-						EDITAR
+						REMOVER
 					</Button>
 				</div>
 			</div>

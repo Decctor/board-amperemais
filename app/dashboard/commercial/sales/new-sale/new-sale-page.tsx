@@ -25,6 +25,8 @@ function mapItemsToApi(saleState: TUseSaleState) {
 		produtoId: item.produtoId,
 		produtoVarianteId: item.produtoVarianteId,
 		nome: item.nome,
+		codigo: item.codigo,
+		imagemUrl: item.imagemUrl,
 		quantidade: item.quantidade,
 		valorUnitarioBase: item.valorUnitarioBase,
 		valorModificadores: item.valorModificadores,

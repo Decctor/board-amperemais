@@ -75,7 +75,7 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 				},
 			});
 		}
-		// biome-ignore lint/correctness/useExhaustiveDependencies: Initialize state only once
+		// oxlint-disable-next-line react/exhaustive-deps -- Initialize state only once
 	}, []);
 
 	// Pre-fill credentials when opening menu for the *currently active* integration

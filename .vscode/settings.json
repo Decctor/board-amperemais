@@ -1,15 +1,15 @@
 {
 	"typescript.tsdk": "node_modules\\typescript\\lib",
-	"editor.defaultFormatter": "oxc.oxc-vscode",	
+	"editor.defaultFormatter": "oxc.oxc-vscode",
 	"notebook.defaultFormatter": "oxc.oxc-vscode",
 	"editor.formatOnSave": true,
 	"editor.formatOnPaste": true,
 	"editor.codeActionsOnSave": {
-		"source.fixAll.biome": "explicit",
-		"source.organizeImports.biome": "explicit"
+		"source.fixAll.oxc": "explicit",
+		"source.organizeImports.oxc": "explicit"
 	},
 	"[typescript]": {
-		"editor.defaultFormatter": "vscode.typescript-language-features"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "oxc.oxc-vscode"

@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products } from "@/services/drizzle/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { count } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
@@ -41,7 +41,7 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 	const skip = PAGE_SIZE * (input.page - 1);
 	const limit = PAGE_SIZE;
 
-	const conditions = [eq(products.organizacaoId, userOrgId)];
+	const conditions = [eq(products.organizacaoId, userOrgId), eq(products.ativo, true)];
 
 	// Search filter
 	if (input.search && input.search.length > 0) {
@@ -69,8 +69,24 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 			variantes: {
 				where: (fields, { eq }) => eq(fields.ativo, true),
 				orderBy: (fields, { asc }) => asc(fields.precoVenda),
+				with: {
+					addOnsReferencias: {
+						with: {
+							grupo: {
+								with: {
+									opcoes: {
+										where: (fields, { eq }) => eq(fields.ativo, true),
+										orderBy: (fields, { asc }) => asc(fields.nome),
+									},
+								},
+							},
+						},
+						orderBy: (fields, { asc }) => asc(fields.ordem),
+					},
+				},
 			},
 			addOnsReferencias: {
+				where: (fields, { isNull }) => isNull(fields.produtoVarianteId),
 				with: {
 					grupo: {
 						with: {
@@ -89,9 +105,18 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 		orderBy: (fields, { asc }) => asc(fields.descricao),
 	});
 
+	const normalizedProducts = productsResult.map((product) => ({
+		...product,
+		addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+		variantes: product.variantes.map((variant) => ({
+			...variant,
+			addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+		})),
+	}));
+
 	return {
 		data: {
-			products: productsResult,
+			products: normalizedProducts,
 			productsMatched: productsMatchedCount,
 			totalPages: totalPages,
 			currentPage: input.page,
