@@ -1,4 +1,5 @@
 import { AIHintsBubble } from "@/components/AIHints";
+import { AIAssistantTrigger } from "@/components/AIBusinessAssistant/AIAssistantTrigger";
 import AppHeader from "@/components/Layouts/HeaderApp";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { OnboardingQualityBubble } from "@/components/Onboarding";
@@ -30,6 +31,7 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 						{children}
 						<OnboardingQualityBubble />
 						{/* <AIHintsBubble /> */}
+						<AIAssistantTrigger />
 						<SubscriptionPaywall />
 					</OrgColorsProvider>
 				</SidebarInset>
