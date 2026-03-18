@@ -5,9 +5,6 @@ const nextConfig = {
 	typescript: {
 		ignoreBuildErrors: true,
 	},
-	eslint: {
-		ignoreDuringBuilds: true,
-	},
 	images: {
 		minimumCacheTTL: 2678400, // 31 days
 		remotePatterns: [
@@ -31,6 +28,7 @@ const nextConfig = {
 				protocol: "https",
 				hostname: "wawrqfehfafrrnfsycgs.supabase.co",
 			},
+
 			{
 				protocol: "https",
 				hostname: "storage.googleapis.com",

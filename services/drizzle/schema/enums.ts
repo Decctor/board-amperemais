@@ -168,6 +168,8 @@ export const paymentMethodEnum = pgEnum("payment_method", [
 
 export const deliveryModeEnum = pgEnum("delivery_mode", ["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"]);
 
+export const purchaseStatusEnum = pgEnum("purchase_status", ["RASCUNHO", "CONFIRMADA", "RECEBIMENTO_PARCIAL", "RECEBIDA", "CANCELADA"]);
+
 export const fiscalProviderEnum = pgEnum("fiscal_provider", ["MANUAL", "NUVEM_FISCAL"]);
 
 export const paymentProviderEnum = pgEnum("payment_provider", ["LOCAL", "MERCADO_PAGO", "STRIPE_CONNECT", "PAGARME"]);

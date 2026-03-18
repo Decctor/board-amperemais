@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { useClients, useClientsBySearch, useClientsOverallStats } from "@/lib/queries/clients";
+import { useClients, useClientsOverallStats } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
 import type { TGetClientsOverallStatsInput } from "@/pages/api/clients/stats/overall";
@@ -423,15 +423,7 @@ function ClientPageFilterShowcase({ queryParams, updateQueryParams }: ClientPage
 	const orderingDirectionLabel = queryParams.orderByDirection === "desc" ? "DECRESCENTE" : "CRESCENTE";
 	const orderingFieldLabel = orderingFieldLabelMap[queryParams.orderByField || "nome"];
 
-	const FilterTag = ({
-		label,
-		value,
-		onRemove,
-	}: {
-		label: string;
-		value: string;
-		onRemove?: () => void;
-	}) => (
+	const FilterTag = ({ label, value, onRemove }: { label: string; value: string; onRemove?: () => void }) => (
 		<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
 			<p className="text-primary/80">
 				{label}: <strong>{value}</strong>

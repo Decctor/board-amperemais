@@ -1,0 +1,124 @@
+import { doublePrecision, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { newTable } from "./common";
+import { organizations } from "./organizations";
+import { accountingEntries, fiscalDocuments } from "./financial";
+import { users } from "./users";
+import { relations } from "drizzle-orm";
+import { products, productStockTransactions, productVariants } from "./products";
+import { purchaseStatusEnum } from "./enums";
+
+export const purchases = newTable("purchases", {
+	id: varchar("id", { length: 255 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
+	idExterno: varchar("id_externo", { length: 255 }),
+
+	status: purchaseStatusEnum("status").default("RASCUNHO").notNull(),
+	titulo: text("titulo").notNull(),
+
+	lancamentoContabilId: varchar("lancamento_contabil_id", { length: 255 }).references(() => accountingEntries.id, { onDelete: "set null" }),
+
+	pedidoData: timestamp("pedido_data"),
+	pedidoFornecedorNome: text("pedido_fornecedor_nome"),
+	pedidoFornecedorCnpj: text("pedido_fornecedor_cnpj"),
+	pedidoFornecedorTelefone: text("pedido_fornecedor_telefone"),
+	pedidoFornecedorEmail: text("pedido_fornecedor_email"),
+
+	transporteTransportadoraNome: text("transporte_transportadora_nome"),
+	transporteTransportadoraCnpj: text("transporte_transportadora_cnpj"),
+	transporteTransportadoraTelefone: text("transporte_transportadora_telefone"),
+	transporteTransportadoraEmail: text("transporte_transportadora_email"),
+	transporteLinkRastreio: text("transporte_link_rastreio"),
+
+	entregaDataEnvio: timestamp("entrega_data_envio"),
+	entregaDataRecebimentoPrevisao: timestamp("entrega_data_recebimento_previsao"),
+	entregaDataRecebimentoEfetivacao: timestamp("entrega_data_recebimento_efetivacao"),
+
+	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	dataEfetivacao: timestamp("data_efetivacao"),
+	dataUltimaAtualizacao: timestamp("data_ultima_atualizacao").defaultNow().notNull(),
+
+	autorId: varchar("autor_id", { length: 255 }).references(() => users.id),
+});
+
+export const purchaseRelations = relations(purchases, ({ one, many }) => ({
+	organizacao: one(organizations, {
+		fields: [purchases.organizacaoId],
+		references: [organizations.id],
+	}),
+	lancamentoContabil: one(accountingEntries, {
+		fields: [purchases.lancamentoContabilId],
+		references: [accountingEntries.id],
+	}),
+	itens: many(purchaseItems),
+	documentosFiscais: many(fiscalDocuments),
+	autor: one(users, {
+		fields: [purchases.autorId],
+		references: [users.id],
+	}),
+}));
+
+export type TPurchaseEntity = typeof purchases.$inferSelect;
+export type TNewPurchaseEntity = typeof purchases.$inferInsert;
+
+export const purchaseItems = newTable("purchase_items", {
+	id: varchar("id", { length: 255 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
+	compraId: varchar("compra_id", { length: 255 })
+		.references(() => purchases.id, { onDelete: "cascade" })
+		.notNull(),
+	produtoId: varchar("produto_id", { length: 255 })
+		.references(() => products.id)
+		.notNull(),
+	produtoVarianteId: varchar("produto_variante_id", { length: 255 }).references(() => productVariants.id),
+
+	// product related snapshots
+	snapshotProdutoDescricao: text("snapshot_produto_descricao").notNull(),
+	snapshotProdutoCodigo: text("snapshot_produto_codigo").notNull(),
+
+	quantidade: doublePrecision("quantidade").notNull(),
+	valorUnitarioBruto: doublePrecision("valor_unitario_bruto").notNull(),
+	valorUnitarioLiquido: doublePrecision("valor_unitario_liquido"),
+	valorTotalBruto: doublePrecision("valor_total_bruto").notNull(),
+	valorTotalLiquido: doublePrecision("valor_total_liquido"),
+
+	// Value modifiers
+	descontosTotal: doublePrecision("descontos_total"), // sum of everything that reduces the total "expected" value
+	acrescimosTotal: doublePrecision("acrescimos_total"), // sum of everything that increases the total "expected" value
+
+	// External values (suppliers, etc)
+	externoQtde: doublePrecision("externo_qtde"),
+	externoValor: doublePrecision("externo_valor"),
+	externoUnidade: varchar("externo_unidade", { length: 255 }),
+	externoFatorConversao: doublePrecision("externo_fator_conversao"),
+
+	anotacoes: text("anotacoes"),
+
+	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+});
+
+export const purchaseItemsRelations = relations(purchaseItems, ({ one, many }) => ({
+	organizacao: one(organizations, {
+		fields: [purchaseItems.organizacaoId],
+		references: [organizations.id],
+	}),
+	compra: one(purchases, {
+		fields: [purchaseItems.compraId],
+		references: [purchases.id],
+	}),
+	produto: one(products, {
+		fields: [purchaseItems.produtoId],
+		references: [products.id],
+	}),
+	produtoVariante: one(productVariants, {
+		fields: [purchaseItems.produtoVarianteId],
+		references: [productVariants.id],
+	}),
+	transacoes: many(productStockTransactions),
+}));
+
+export type TPurchaseItemEntity = typeof purchaseItems.$inferSelect;
+export type TNewPurchaseItemEntity = typeof purchaseItems.$inferInsert;

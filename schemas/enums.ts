@@ -131,7 +131,7 @@ export const FiscalDocumentTypeEnum = z.enum(["NFCE", "NFE", "NFSE"]);
 export type TFiscalDocumentTypeEnum = z.infer<typeof FiscalDocumentTypeEnum>;
 export const FiscalDocumentStatusEnum = z.enum(["PENDENTE", "AUTORIZADA", "CANCELADA", "INUTILIZADA"]);
 export type TFiscalDocumentStatusEnum = z.infer<typeof FiscalDocumentStatusEnum>;
-export const StockMovementTypeEnum = z.enum(["ENTRADA", "SAIDA", "AJUSTE", "DEVOLUCAO"]);
+export const StockMovementTypeEnum = z.enum(["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 export type TStockMovementTypeEnum = z.infer<typeof StockMovementTypeEnum>;
 export const SaleProcessingSourceEnum = z.enum(["EXTERNO", "INTERNO"]);
 export type TSaleProcessingSourceEnum = z.infer<typeof SaleProcessingSourceEnum>;
@@ -155,6 +155,9 @@ export type TPaymentMethodEnum = z.infer<typeof PaymentMethodEnum>;
 
 export const DeliveryModeEnum = z.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"]);
 export type TDeliveryModeEnum = z.infer<typeof DeliveryModeEnum>;
+
+export const PurchaseStatusEnum = z.enum(["RASCUNHO", "CONFIRMADA", "RECEBIMENTO_PARCIAL", "RECEBIDA", "CANCELADA"]);
+export type TPurchaseStatusEnum = z.infer<typeof PurchaseStatusEnum>;
 
 export const FiscalProviderEnum = z.enum(["MANUAL", "NUVEM_FISCAL"]);
 export type TFiscalProviderEnum = z.infer<typeof FiscalProviderEnum>;

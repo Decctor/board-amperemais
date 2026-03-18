@@ -22,14 +22,8 @@ export const AccountChartSchema = z.object({
 		required_error: "Nome da conta contábil não informado.",
 		invalid_type_error: "Tipo não válido para o nome da conta contábil.",
 	}),
-	codigo: z
-		.string({ invalid_type_error: "Tipo não válido para o código da conta contábil." })
-		.optional()
-		.nullable(),
-	idContaPai: z
-		.string({ invalid_type_error: "Tipo não válido para o ID da conta pai." })
-		.optional()
-		.nullable(),
+	codigo: z.string({ invalid_type_error: "Tipo não válido para o código da conta contábil." }).optional().nullable(),
+	idContaPai: z.string({ invalid_type_error: "Tipo não válido para o ID da conta pai." }).optional().nullable(),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção." })
 		.datetime({ message: "Tipo não válido para a data de inserção." })
@@ -47,19 +41,13 @@ export const AccountingEntrySchema = z.object({
 		required_error: "ID da organização não informado.",
 		invalid_type_error: "Tipo não válido para o ID da organização.",
 	}),
-	vendaId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID da venda." })
-		.optional()
-		.nullable(),
+	vendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da venda." }).optional().nullable(),
 	origemTipo: AccountingEntryOriginTypeEnum,
 	titulo: z.string({
 		required_error: "Título do lançamento contábil não informado.",
 		invalid_type_error: "Tipo não válido para o título do lançamento contábil.",
 	}),
-	anotacoes: z
-		.string({ invalid_type_error: "Tipo não válido para as anotações do lançamento contábil." })
-		.optional()
-		.nullable(),
+	anotacoes: z.string({ invalid_type_error: "Tipo não válido para as anotações do lançamento contábil." }).optional().nullable(),
 	idContaDebito: z.string({
 		required_error: "Conta de débito não informada.",
 		invalid_type_error: "Tipo não válido para o ID da conta de débito.",
@@ -72,10 +60,7 @@ export const AccountingEntrySchema = z.object({
 		required_error: "Valor do lançamento contábil não informado.",
 		invalid_type_error: "Tipo não válido para o valor do lançamento contábil.",
 	}),
-	valorPrevisto: z
-		.number({ invalid_type_error: "Tipo não válido para o valor previsto do lançamento contábil." })
-		.optional()
-		.nullable(),
+	valorPrevisto: z.number({ invalid_type_error: "Tipo não válido para o valor previsto do lançamento contábil." }).optional().nullable(),
 	dataCompetencia: z
 		.string({
 			required_error: "Data de competência não informada.",
@@ -83,10 +68,7 @@ export const AccountingEntrySchema = z.object({
 		})
 		.datetime({ message: "Tipo não válido para a data de competência." })
 		.transform((val) => new Date(val)),
-	autorId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID do autor." })
-		.optional()
-		.nullable(),
+	autorId: z.string({ invalid_type_error: "Tipo não válido para o ID do autor." }).optional().nullable(),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção." })
 		.datetime({ message: "Tipo não válido para a data de inserção." })
@@ -108,25 +90,17 @@ export const FinancialAccountSchema = z.object({
 		required_error: "Nome da conta financeira não informado.",
 		invalid_type_error: "Tipo não válido para o nome da conta financeira.",
 	}),
-	descricao: z
-		.string({ invalid_type_error: "Tipo não válido para a descrição da conta financeira." })
-		.optional()
-		.nullable(),
+	descricao: z.string({ invalid_type_error: "Tipo não válido para a descrição da conta financeira." }).optional().nullable(),
 	tipo: FinancialAccountTypeEnum,
-	moeda: z
-		.string({ invalid_type_error: "Tipo não válido para a moeda da conta financeira." })
-		.default("BRL"),
-	ativo: z
-		.boolean({ invalid_type_error: "Tipo não válido para o status ativo da conta financeira." })
-		.default(true),
-	contaContabilId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID da conta contábil vinculada." })
-		.optional()
-		.nullable(),
-	saldoInicial: z.number({
-		required_error: "Saldo inicial não informado.",
-		invalid_type_error: "Tipo não válido para o saldo inicial.",
-	}).default(0),
+	moeda: z.string({ invalid_type_error: "Tipo não válido para a moeda da conta financeira." }).default("BRL"),
+	ativo: z.boolean({ invalid_type_error: "Tipo não válido para o status ativo da conta financeira." }).default(true),
+	contaContabilId: z.string({ invalid_type_error: "Tipo não válido para o ID da conta contábil vinculada." }).optional().nullable(),
+	saldoInicial: z
+		.number({
+			required_error: "Saldo inicial não informado.",
+			invalid_type_error: "Tipo não válido para o saldo inicial.",
+		})
+		.default(0),
 	dataSaldoInicial: z
 		.string({
 			required_error: "Data do saldo inicial não informada.",
@@ -135,26 +109,11 @@ export const FinancialAccountSchema = z.object({
 		.datetime({ message: "Tipo não válido para a data do saldo inicial." })
 		.transform((val) => new Date(val)),
 	// Bank details (optional)
-	codigoBanco: z
-		.string({ invalid_type_error: "Tipo não válido para o código do banco." })
-		.optional()
-		.nullable(),
-	nomeBanco: z
-		.string({ invalid_type_error: "Tipo não válido para o nome do banco." })
-		.optional()
-		.nullable(),
-	agencia: z
-		.string({ invalid_type_error: "Tipo não válido para a agência." })
-		.optional()
-		.nullable(),
-	numeroConta: z
-		.string({ invalid_type_error: "Tipo não válido para o número da conta." })
-		.optional()
-		.nullable(),
-	digitoConta: z
-		.string({ invalid_type_error: "Tipo não válido para o dígito da conta." })
-		.optional()
-		.nullable(),
+	codigoBanco: z.string({ invalid_type_error: "Tipo não válido para o código do banco." }).optional().nullable(),
+	nomeBanco: z.string({ invalid_type_error: "Tipo não válido para o nome do banco." }).optional().nullable(),
+	agencia: z.string({ invalid_type_error: "Tipo não válido para a agência." }).optional().nullable(),
+	numeroConta: z.string({ invalid_type_error: "Tipo não válido para o número da conta." }).optional().nullable(),
+	digitoConta: z.string({ invalid_type_error: "Tipo não válido para o dígito da conta." }).optional().nullable(),
 	tipoConta: BankAccountTypeEnum.optional().nullable(),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção." })
@@ -177,10 +136,7 @@ export const FinancialTransactionSchema = z.object({
 		required_error: "ID do lançamento contábil não informado.",
 		invalid_type_error: "Tipo não válido para o ID do lançamento contábil.",
 	}),
-	contaFinanceiraId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID da conta financeira." })
-		.optional()
-		.nullable(),
+	contaFinanceiraId: z.string({ invalid_type_error: "Tipo não válido para o ID da conta financeira." }).optional().nullable(),
 	titulo: z.string({
 		required_error: "Título da transação financeira não informado.",
 		invalid_type_error: "Tipo não válido para o título da transação financeira.",
@@ -207,18 +163,9 @@ export const FinancialTransactionSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	parcela: z
-		.number({ invalid_type_error: "Tipo não válido para o número da parcela." })
-		.optional()
-		.nullable(),
-	totalParcelas: z
-		.number({ invalid_type_error: "Tipo não válido para o total de parcelas." })
-		.optional()
-		.nullable(),
-	autorId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID do autor." })
-		.optional()
-		.nullable(),
+	parcela: z.number({ invalid_type_error: "Tipo não válido para o número da parcela." }).optional().nullable(),
+	totalParcelas: z.number({ invalid_type_error: "Tipo não válido para o total de parcelas." }).optional().nullable(),
+	autorId: z.string({ invalid_type_error: "Tipo não válido para o ID do autor." }).optional().nullable(),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção." })
 		.datetime({ message: "Tipo não válido para a data de inserção." })
@@ -236,14 +183,9 @@ export const FiscalDocumentSchema = z.object({
 		required_error: "ID da organização não informado.",
 		invalid_type_error: "Tipo não válido para o ID da organização.",
 	}),
-	vendaId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID da venda." })
-		.optional()
-		.nullable(),
-	lancamentoContabilId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID do lançamento contábil." })
-		.optional()
-		.nullable(),
+	compraId: z.string({ invalid_type_error: "Tipo não válido para o ID da compra." }).optional().nullable(),
+	vendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da venda." }).optional().nullable(),
+	lancamentoContabilId: z.string({ invalid_type_error: "Tipo não válido para o ID do lançamento contábil." }).optional().nullable(),
 	tipo: FiscalDocumentTypeEnum,
 	status: FiscalDocumentStatusEnum.default("PENDENTE"),
 	chaveAcesso: z
@@ -251,38 +193,14 @@ export const FiscalDocumentSchema = z.object({
 		.max(44, { message: "Chave de acesso deve ter no máximo 44 caracteres." })
 		.optional()
 		.nullable(),
-	numero: z
-		.string({ invalid_type_error: "Tipo não válido para o número do documento fiscal." })
-		.optional()
-		.nullable(),
-	serie: z
-		.string({ invalid_type_error: "Tipo não válido para a série do documento fiscal." })
-		.optional()
-		.nullable(),
-	protocolo: z
-		.string({ invalid_type_error: "Tipo não válido para o protocolo do documento fiscal." })
-		.optional()
-		.nullable(),
-	xmlUrl: z
-		.string({ invalid_type_error: "Tipo não válido para a URL do XML." })
-		.optional()
-		.nullable(),
-	pdfUrl: z
-		.string({ invalid_type_error: "Tipo não válido para a URL do PDF." })
-		.optional()
-		.nullable(),
-	emissorReferencia: z
-		.string({ invalid_type_error: "Tipo não válido para a referência do emissor." })
-		.optional()
-		.nullable(),
-	emissorServico: z
-		.string({ invalid_type_error: "Tipo não válido para o serviço emissor." })
-		.optional()
-		.nullable(),
-	documentoOrigemId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID do documento de origem." })
-		.optional()
-		.nullable(),
+	numero: z.string({ invalid_type_error: "Tipo não válido para o número do documento fiscal." }).optional().nullable(),
+	serie: z.string({ invalid_type_error: "Tipo não válido para a série do documento fiscal." }).optional().nullable(),
+	protocolo: z.string({ invalid_type_error: "Tipo não válido para o protocolo do documento fiscal." }).optional().nullable(),
+	xmlUrl: z.string({ invalid_type_error: "Tipo não válido para a URL do XML." }).optional().nullable(),
+	pdfUrl: z.string({ invalid_type_error: "Tipo não válido para a URL do PDF." }).optional().nullable(),
+	emissorReferencia: z.string({ invalid_type_error: "Tipo não válido para a referência do emissor." }).optional().nullable(),
+	emissorServico: z.string({ invalid_type_error: "Tipo não válido para o serviço emissor." }).optional().nullable(),
+	documentoOrigemId: z.string({ invalid_type_error: "Tipo não válido para o ID do documento de origem." }).optional().nullable(),
 	chaveAcessoReferencia: z
 		.string({ invalid_type_error: "Tipo não válido para a chave de acesso de referência." })
 		.max(44, { message: "Chave de acesso de referência deve ter no máximo 44 caracteres." })
@@ -311,43 +229,19 @@ export const ProductStockTransactionSchema = z.object({
 		required_error: "ID da organização não informado.",
 		invalid_type_error: "Tipo não válido para o ID da organização.",
 	}),
-	produtoId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID do produto." })
-		.optional()
-		.nullable(),
-	produtoVarianteId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID da variante do produto." })
-		.optional()
-		.nullable(),
+	produtoId: z.string({ invalid_type_error: "Tipo não válido para o ID do produto." }).optional().nullable(),
+	produtoVarianteId: z.string({ invalid_type_error: "Tipo não válido para o ID da variante do produto." }).optional().nullable(),
 	tipo: StockMovementTypeEnum.default("SAIDA"),
 	quantidade: z.number({
 		required_error: "Quantidade não informada.",
 		invalid_type_error: "Tipo não válido para a quantidade.",
 	}),
-	motivo: z
-		.string({ invalid_type_error: "Tipo não válido para o motivo da movimentação." })
-		.optional()
-		.nullable(),
-	vendaId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID da venda." })
-		.optional()
-		.nullable(),
-	vendaItemId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID do item de venda." })
-		.optional()
-		.nullable(),
-	saldoAnterior: z
-		.number({ invalid_type_error: "Tipo não válido para o saldo anterior." })
-		.optional()
-		.nullable(),
-	saldoPosterior: z
-		.number({ invalid_type_error: "Tipo não válido para o saldo posterior." })
-		.optional()
-		.nullable(),
-	operadorId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID do operador." })
-		.optional()
-		.nullable(),
+	motivo: z.string({ invalid_type_error: "Tipo não válido para o motivo da movimentação." }).optional().nullable(),
+	vendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da venda." }).optional().nullable(),
+	vendaItemId: z.string({ invalid_type_error: "Tipo não válido para o ID do item de venda." }).optional().nullable(),
+	saldoAnterior: z.number({ invalid_type_error: "Tipo não válido para o saldo anterior." }).optional().nullable(),
+	saldoPosterior: z.number({ invalid_type_error: "Tipo não válido para o saldo posterior." }).optional().nullable(),
+	operadorId: z.string({ invalid_type_error: "Tipo não válido para o ID do operador." }).optional().nullable(),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção." })
 		.datetime({ message: "Tipo não válido para a data de inserção." })

@@ -127,6 +127,42 @@ export const NewUserSchema = z.object({
 				invalid_type_error: "Tipo não válido para a permissão de exclusão de usuários.",
 			}),
 		}),
+		vendas: z.object({
+			visualizar: z.boolean({
+				required_error: "Permissão de visualização de vendas não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de visualização de vendas.",
+			}),
+			criar: z.boolean({
+				required_error: "Permissão de criação de vendas não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de criação de vendas.",
+			}),
+			editar: z.boolean({
+				required_error: "Permissão de edição de vendas não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de edição de vendas.",
+			}),
+			excluir: z.boolean({
+				required_error: "Permissão de exclusão de vendas não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de exclusão de vendas.",
+			}),
+		}),
+		compras: z.object({
+			visualizar: z.boolean({
+				required_error: "Permissão de visualização de compras não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de visualização de compras.",
+			}),
+			criar: z.boolean({
+				required_error: "Permissão de criação de compras não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de criação de compras.",
+			}),
+			editar: z.boolean({
+				required_error: "Permissão de edição de compras não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de edição de compras.",
+			}),
+			excluir: z.boolean({
+				required_error: "Permissão de exclusão de compras não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de exclusão de compras.",
+			}),
+		}),
 		atendimentos: z.object({
 			visualizar: z.boolean({
 				required_error: "Permissão de visualização de atendimentos não informada.",

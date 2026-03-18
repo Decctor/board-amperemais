@@ -1,15 +1,5 @@
 import { relations } from "drizzle-orm";
-import {
-	type AnyPgColumn,
-	boolean,
-	doublePrecision,
-	foreignKey,
-	index,
-	integer,
-	text,
-	timestamp,
-	varchar,
-} from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, doublePrecision, foreignKey, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import {
 	accountingEntryOriginTypeEnum,
@@ -23,6 +13,7 @@ import {
 import { organizations } from "./organizations";
 import { sales } from "./sales";
 import { users } from "./users";
+import { purchases } from "./purchases";
 
 // ============================================================================
 // ACCOUNTS CHARTS (Plano de Contas)
@@ -228,10 +219,7 @@ export const financialTransactions = newTable(
 	(table) => ({
 		organizacaoIdIdx: index("idx_financial_transactions_organizacao_id").on(table.organizacaoId),
 		lancamentoContabilIdIdx: index("idx_financial_transactions_lancamento_id").on(table.lancamentoContabilId),
-		contaFinanceiraEfetivacaoIdx: index("idx_financial_transactions_conta_efetivacao").on(
-			table.contaFinanceiraId,
-			table.dataEfetivacao,
-		),
+		contaFinanceiraEfetivacaoIdx: index("idx_financial_transactions_conta_efetivacao").on(table.contaFinanceiraId, table.dataEfetivacao),
 		dataPrevisaoIdx: index("idx_financial_transactions_data_previsao").on(table.dataPrevisao),
 	}),
 );
@@ -272,6 +260,7 @@ export const fiscalDocuments = newTable(
 		organizacaoId: varchar("organizacao_id", { length: 255 })
 			.references(() => organizations.id, { onDelete: "cascade" })
 			.notNull(),
+		compraId: varchar("compra_id", { length: 255 }).references(() => purchases.id, { onDelete: "set null" }),
 		vendaId: varchar("venda_id", { length: 255 }).references(() => sales.id, { onDelete: "set null" }),
 		lancamentoContabilId: varchar("lancamento_contabil_id", { length: 255 }).references(() => accountingEntries.id, {
 			onDelete: "set null",
@@ -309,6 +298,10 @@ export const fiscalDocumentsRelations = relations(fiscalDocuments, ({ one, many 
 	venda: one(sales, {
 		fields: [fiscalDocuments.vendaId],
 		references: [sales.id],
+	}),
+	compra: one(purchases, {
+		fields: [fiscalDocuments.compraId],
+		references: [purchases.id],
 	}),
 	lancamentoContabil: one(accountingEntries, {
 		fields: [fiscalDocuments.lancamentoContabilId],

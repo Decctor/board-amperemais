@@ -15,6 +15,7 @@ import {
 	UserRound,
 	Users,
 	UsersRound,
+	Wallet,
 } from "lucide-react";
 import AppSidebarContentGroup from "./AppSidebarContentGroup";
 import AppSidebarFooter from "./AppSidebarFooter";
@@ -139,6 +140,25 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 			},
 		],
 	},
+	{
+		group: "Operacional",
+		items: [
+			{
+				title: "Compras",
+				url: "/dashboard/operational/purchases",
+				icon: <ShoppingCart className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+			},
+			{
+				title: "Financeiro",
+				url: "/dashboard/operational/finances",
+				icon: <Wallet className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+			},
+		],
+	},
 ];
 function filterSidebarConfig(
 	config: TSidebarConfigItemWithAccess[],
@@ -147,9 +167,7 @@ function filterSidebarConfig(
 	return config
 		.map((group) => ({
 			group: group.group,
-			items: group.items
-				.filter((item) => item.checkAccess(organization))
-				.map(({ checkAccess, ...rest }) => rest),
+			items: group.items.filter((item) => item.checkAccess(organization)).map(({ checkAccess, ...rest }) => rest),
 		}))
 		.filter((group) => group.items.length > 0);
 }

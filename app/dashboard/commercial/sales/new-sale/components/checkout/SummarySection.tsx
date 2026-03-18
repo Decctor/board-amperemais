@@ -44,9 +44,9 @@ function CashbackRedemptionBlock({ saleState, clientId, organizationCashbackProg
 						: null;
 	const isCashbackDisabled = isCashbackBalanceLoading || !!cashbackDisabledReason;
 
-	useEffect(() => {
-		saleState.setCashbackProgramaId(cashbackProgramId);
-	}, [cashbackProgramId, saleState.setCashbackProgramaId]);
+	// useEffect(() => {
+	// 	saleState.setCashbackProgramaId(cashbackProgramId);
+	// }, [cashbackProgramId, saleState.setCashbackProgramaId]);
 
 	useEffect(() => {
 		if (isCashbackDisabled) {

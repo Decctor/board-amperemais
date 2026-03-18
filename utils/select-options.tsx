@@ -9,6 +9,7 @@ import type {
 	TInteractionsCronJobTimeBlocksEnum,
 	TInternalLeadActivityTypeEnum,
 	TPaymentMethodEnum,
+	TPurchaseStatusEnum,
 	TRecurrenceFrequencyEnum,
 	TTimeDurationUnitsEnum,
 } from "@/schemas/enums";
@@ -16,6 +17,8 @@ import type { TInternalLeadOriginEnum, TInternalLeadStatusCRMEnum } from "@/sche
 import {
 	Archive,
 	Banknote,
+	Check,
+	CheckCheck,
 	ClipboardIcon,
 	Clock,
 	CreditCard,
@@ -36,6 +39,7 @@ import {
 	TrendingUp,
 	Video,
 	Wallet,
+	X,
 } from "lucide-react";
 
 export const InternalActivityTypeOptions: { id: number; label: string; value: TInternalLeadActivityTypeEnum; icon: React.ReactNode }[] = [
@@ -292,4 +296,42 @@ export const AttributionModelOptions: { id: number; label: string; value: TAttri
 	{ id: 1, label: "ÚLTIMA INTERAÇÃO", value: "LAST_TOUCH" },
 	{ id: 2, label: "PRIMEIRA INTERAÇÃO", value: "FIRST_TOUCH" },
 	{ id: 3, label: "MÉDIA DE INTERAÇÕES", value: "LINEAR" },
+];
+
+export const PurchaseStatusOptions: { id: number; label: string; value: TPurchaseStatusEnum; icon: React.ReactNode; className: string }[] = [
+	{
+		id: 1,
+		label: "RASCUNHO",
+		value: "RASCUNHO",
+		icon: <FileIcon className="w-4 h-4 text-gray-600" />,
+		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-500",
+	},
+	{
+		id: 2,
+		label: "CONFIRMADA",
+		value: "CONFIRMADA",
+		icon: <Check className="w-4 h-4 text-blue-600	" />,
+		className: "bg-blue-200 text-blue-600 border border-blue-600 hover:bg-blue-100 hover:text-blue-500 hover:border-blue-500",
+	},
+	{
+		id: 3,
+		label: "RECEBIMENTO PARCIAL",
+		value: "RECEBIMENTO_PARCIAL",
+		icon: <FileIcon className="w-4 h-4 text-yellow-600" />,
+		className: "bg-yellow-200 text-yellow-600 border border-yellow-600 hover:bg-yellow-100 hover:text-yellow-500 hover:border-yellow-500",
+	},
+	{
+		id: 4,
+		label: "RECEBIDA",
+		value: "RECEBIDA",
+		icon: <CheckCheck className="w-4 h-4 text-green-600" />,
+		className: "bg-green-200 text-green-600 border border-green-600 hover:bg-green-100 hover:text-green-500 hover:border-green-500",
+	},
+	{
+		id: 5,
+		label: "CANCELADA",
+		value: "CANCELADA",
+		icon: <X className="w-4 h-4 text-red-600" />,
+		className: "bg-red-200 text-red-600 border border-red-600 hover:bg-red-100 hover:text-red-500 hover:border-red-500",
+	},
 ];
