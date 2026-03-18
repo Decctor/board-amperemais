@@ -69,6 +69,29 @@ async function getPurchases({ input, session }: { input: TGetPurchasesInput; ses
 
 		const purchase = await db.query.purchases.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, purchaseId), eq(fields.organizacaoId, userOrgId)),
+			with: {
+				itens: {
+					with: {
+						produto: {
+							columns: {
+								id: true,
+								descricao: true,
+								imagemCapaUrl: true,
+								codigo: true,
+								unidade: true,
+							},
+						},
+						produtoVariante: {
+							columns: {
+								id: true,
+								nome: true,
+								codigo: true,
+								imagemCapaUrl: true,
+							},
+						},
+					},
+				},
+			},
 		});
 		if (!purchase) throw new createHttpError.NotFound("Compra não encontrada.");
 
