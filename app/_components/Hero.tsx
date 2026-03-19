@@ -213,11 +213,6 @@ function HeroVisual() {
 				<WhatsAppBubble />
 			</div>
 
-			{/* Small calendar badge */}
-			<div className="absolute bottom-4 right-4">
-				<CalendarBadge />
-			</div>
-
 			{/* Connecting lines (decorative) */}
 			<svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: "visible" }}>
 				<title>Linha de conexão entre o dashboard e o tablet</title>

@@ -2,10 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import SalesSheetImport from "@/components/Modals/Sales/SalesSheetImport";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { motion } from "framer-motion";
-import { ArrowRight, Cable, Lock, ShoppingCart, Sparkles, Store, Zap } from "lucide-react";
+import { ArrowRight, Cable, Lock, Sheet, ShoppingCart, Sparkles, Store, Zap } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { FaWhatsapp } from "react-icons/fa6";
 
 type SalesEmptyStateProps = {
@@ -15,6 +17,7 @@ type SalesEmptyStateProps = {
 
 export default function SalesEmptyState({ organizationId, organizationConfig }: SalesEmptyStateProps) {
 	const hasIntegrationAccess = organizationConfig?.recursos?.integracoes?.acesso ?? false;
+	const [salesSheetImportIsOpen, setSalesSheetImportIsOpen] = useState(false);
 
 	const containerVariants = {
 		hidden: { opacity: 0 },
@@ -56,7 +59,7 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 				</p>
 			</motion.div>
 
-			<motion.div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl px-4" variants={itemVariants}>
+			<motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl px-4" variants={itemVariants}>
 				{/* Integration Option */}
 				<motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 300 }}>
 					<Card
@@ -154,6 +157,43 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 						<div className="absolute -top-12 -right-12 w-32 h-32 bg-gradient-to-br from-[#FFB900]/10 to-transparent rounded-full blur-2xl group-hover:from-[#FFB900]/20 transition-all duration-500" />
 					</Card>
 				</motion.div>
+				{/** Import from sheet */}
+				<motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 300 }}>
+					<Card
+						className={`h-full border-muted/60 shadow-lg shadow-muted/5 overflow-hidden relative group ${!hasIntegrationAccess ? "opacity-75 grayscale-[0.5]" : "hover:border-[#24549C]/50 hover:shadow-[#24549C]/10 transition-all duration-300"}`}
+					>
+						<CardHeader>
+							<div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-2 bg-[#24549C]/10 group-hover:bg-[#24549C]/20 transition-colors">
+								<Sheet className="w-7 h-7 text-[#24549C]" />
+							</div>
+							<CardTitle className="text-xl">Importar de planilha</CardTitle>
+							<CardDescription className="text-base">Importe suas vendas de uma planilha Excel para o sistema.</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-6">
+							<div className="space-y-3">
+								{["Importação automática", "Atualização em tempo real", "Importação de histórico", "Compatível com planilhas Excel e CSV"].map((item, i) => (
+									<div key={i.toString()} className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
+										<div className="w-6 h-6 rounded-full bg-[#FFB900]/10 flex items-center justify-center shrink-0">
+											<Zap className="w-3.5 h-3.5 text-[#FFB900] fill-[#FFB900]" />
+										</div>
+										<span>{item}</span>
+									</div>
+								))}
+							</div>
+							<Button
+								className="w-full gap-2 h-11 text-base shadow-lg shadow-[#24549C]/20 hover:shadow-[#24549C]/40 transition-all text-white hover:text-white"
+								style={{ backgroundColor: "#24549C" }}
+								onClick={() => setSalesSheetImportIsOpen(true)}
+							>
+								Importar vendas
+								<ArrowRight className="w-4 h-4 ml-1" />
+							</Button>
+						</CardContent>
+
+						{/* Decorator */}
+						<div className="absolute -top-12 -right-12 w-32 h-32 bg-gradient-to-br from-[#24549C]/10 to-transparent rounded-full blur-2xl group-hover:from-[#24549C]/20 transition-all duration-500" />
+					</Card>
+				</motion.div>
 			</motion.div>
 
 			<motion.div className="flex items-center gap-2 text-center w-fit self-center px-4 py-2 rounded-lg bg-green-50" variants={itemVariants}>
@@ -171,6 +211,7 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 					</a>
 				</p>
 			</motion.div>
+			{salesSheetImportIsOpen ? <SalesSheetImport closeModal={() => setSalesSheetImportIsOpen(false)} /> : null}
 		</motion.div>
 	);
 }

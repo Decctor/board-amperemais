@@ -3,6 +3,7 @@ import type {
 	TCreatePointOfInteractionTransactionOutput,
 } from "@/app/api/point-of-interaction/new-transaction/route";
 import type { TCreateSaleInput, TCreateSaleOutput } from "@/pages/api/sales";
+import type { TBulkCreateSalesInput, TBulkCreateSalesOutput, TBulkSalesMapInput, TBulkSalesMapOutput } from "@/state-hooks/use-bulk-create-sales";
 import axios from "axios";
 
 export async function createSale(input: TCreateSaleInput) {
@@ -52,4 +53,19 @@ export async function createPointOfInteractionSale(input: TCreatePointOfInteract
 		console.log("Error running createPointOfInteractionSale", error);
 		throw error;
 	}
+}
+
+export async function suggestSalesSheetMapping(input: TBulkSalesMapInput) {
+	const { data } = await axios.post<{
+		data: TBulkSalesMapOutput;
+		message: string;
+	}>("/api/sales/bulk/map", input);
+	return data;
+}
+
+export async function bulkCreateSales(input: TBulkCreateSalesInput, onUploadProgress?: (progress: number) => void) {
+	const { data } = await axios.post<TBulkCreateSalesOutput>("/api/sales/bulk", input, {
+		onUploadProgress: (progressEvent) => onUploadProgress?.(Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? 1))),
+	});
+	return data;
 }

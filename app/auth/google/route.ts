@@ -18,7 +18,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 		"https://www.googleapis.com/auth/user.addresses.read",
 	]);
 	url.searchParams.set("access_type", "offline");
-	url.searchParams.set("prompt", "consent");
+	// url.searchParams.set("prompt", "consent");
 
 	console.log("[INFO] [GOOGLE_AUTH] Google OAuth params set:", { state, codeVerifier });
 	cookieStore.set(GOOGLE_OAUTH_STATE_COOKIE_NAME, state, {
