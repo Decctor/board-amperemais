@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
-import { processStockEntry } from "@/lib/purchase-processing/process-stock-entry";
+import { processStockEntry, processStockEntryRollback } from "@/lib/purchase-processing/process-stock-entry";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { PurchaseStatusEnum, TPurchaseStatusEnum } from "@/schemas/enums";
 import { PurchaseItemSchema, PurchaseSchema } from "@/schemas/purchases";
@@ -288,6 +288,11 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 		!existingPurchase.entregaDataRecebimentoEfetivacao &&
 		!!input.purchase.entregaDataRecebimentoEfetivacao;
 
+	// Explicit null (not undefined) means the client intentionally cleared the field
+	const deliveryCancelled =
+		!!existingPurchase.entregaDataRecebimentoEfetivacao &&
+		input.purchase.entregaDataRecebimentoEfetivacao === null;
+
 	await db.transaction(async (tx) => {
 		await tx
 			.update(purchases)
@@ -323,6 +328,16 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 					operatorId: session.user.id,
 				});
 			}
+		}
+
+		if (deliveryCancelled) {
+			// processStockEntryRollback is a no-op if no ENTRADA_AQUISICAO transactions exist
+			// (e.g. org had stock tracking disabled at the time of delivery)
+			await processStockEntryRollback(tx, {
+				organizationId: userOrgId,
+				purchaseId: input.id,
+				operatorId: session.user.id,
+			});
 		}
 	});
 

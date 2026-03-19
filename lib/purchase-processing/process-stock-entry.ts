@@ -196,3 +196,184 @@ export async function processStockEntry(
 
   return { success: true };
 }
+
+type ProcessStockEntryRollbackParams = {
+  organizationId: string;
+  purchaseId: string;
+  operatorId: string;
+};
+
+/**
+ * Reverses ENTRADA_AQUISICAO stock transactions previously created for a purchase delivery.
+ * Uses the original transactions as source of truth (no-op if none exist).
+ * Throws if current stock would go below zero after reversal.
+ * Also reverses the weighted average cost using the inverse formula.
+ */
+export async function processStockEntryRollback(
+  tx: DBTransaction,
+  params: ProcessStockEntryRollbackParams,
+) {
+  // Source of truth: the original ENTRADA_AQUISICAO transactions for this purchase
+  const originalTransactions = await tx.query.productStockTransactions.findMany({
+    where: (fields, { and, eq }) =>
+      and(eq(fields.compraId, params.purchaseId), eq(fields.tipo, "ENTRADA_AQUISICAO")),
+    columns: {
+      id: true,
+      produtoId: true,
+      produtoVarianteId: true,
+      quantidade: true,
+      custoUnitarioMovimentado: true,
+      compraItemId: true,
+    },
+  });
+
+  if (originalTransactions.length === 0) return { success: true, skipped: true };
+
+  // Fetch current quantities for all involved products and variants
+  const productIds = [...new Set(originalTransactions.map((t) => t.produtoId))];
+  const variantIds = [
+    ...new Set(
+      originalTransactions
+        .filter((t) => !!t.produtoVarianteId)
+        .map((t) => t.produtoVarianteId as string),
+    ),
+  ];
+
+  const [productsResult, variantsResult] = await Promise.all([
+    productIds.length > 0
+      ? tx.query.products.findMany({
+          where: (fields, { and, eq, inArray }) =>
+            and(inArray(fields.id, productIds), eq(fields.organizacaoId, params.organizationId)),
+          columns: { id: true, descricao: true, quantidade: true, precoCusto: true },
+        })
+      : [],
+    variantIds.length > 0
+      ? tx.query.productVariants.findMany({
+          where: (fields, { and, eq, inArray }) =>
+            and(inArray(fields.id, variantIds), eq(fields.organizacaoId, params.organizationId)),
+          columns: { id: true, nome: true, quantidade: true, precoCusto: true },
+        })
+      : [],
+  ]);
+
+  const productsMap = new Map(productsResult.map((p) => [p.id, p]));
+  const variantsMap = new Map(variantsResult.map((v) => [v.id, v]));
+
+  for (const origTx of originalTransactions) {
+    if (origTx.produtoVarianteId) {
+      // Path 1: variant
+      const variant = variantsMap.get(origTx.produtoVarianteId);
+      if (!variant)
+        throw new createHttpError.NotFound("Variante de produto não encontrada para estorno.");
+
+      const quantidadeAtual = variant.quantidade ?? 0;
+      if (quantidadeAtual - origTx.quantidade < 0) {
+        throw new createHttpError.BadRequest(
+          `Estorno inviável: o estorno de ${origTx.quantidade} un. de "${variant.nome}" resultaria em estoque negativo (atual: ${quantidadeAtual}).`,
+        );
+      }
+
+      const quantidadeNova = quantidadeAtual - origTx.quantidade;
+      const custoAtual = variant.precoCusto ?? 0;
+      const custoMovimentado = origTx.custoUnitarioMovimentado ?? 0;
+
+      // Inverse weighted average: remove origTx contribution from the running average
+      const novoCusto =
+        quantidadeNova === 0
+          ? 0
+          : (quantidadeAtual * custoAtual - origTx.quantidade * custoMovimentado) / quantidadeNova;
+
+      await tx.insert(productStockTransactions).values({
+        organizacaoId: params.organizationId,
+        produtoId: origTx.produtoId,
+        produtoVarianteId: origTx.produtoVarianteId,
+        tipo: "AJUSTE" as const,
+        quantidade: -origTx.quantidade,
+        saldoAnterior: quantidadeAtual,
+        saldoPosterior: quantidadeNova,
+        custoUnitarioMovimentado: custoMovimentado,
+        custoUnitarioAnterior: custoAtual,
+        custoUnitarioPosterior: novoCusto,
+        motivo: "Cancelamento de recebimento de compra",
+        compraId: params.purchaseId,
+        compraItemId: origTx.compraItemId,
+        operadorId: params.operatorId,
+      });
+
+      await tx
+        .update(productVariants)
+        .set({
+          quantidade: sql`${productVariants.quantidade} - ${origTx.quantidade}`,
+          precoCusto: novoCusto,
+        })
+        .where(
+          and(
+            eq(productVariants.id, origTx.produtoVarianteId),
+            eq(productVariants.organizacaoId, params.organizationId),
+          ),
+        );
+
+      variant.quantidade = quantidadeNova;
+      variant.precoCusto = novoCusto;
+      variantsMap.set(variant.id, variant);
+    } else {
+      // Path 2: base product
+      const baseProduct = productsMap.get(origTx.produtoId);
+      if (!baseProduct)
+        throw new createHttpError.NotFound("Produto não encontrado para estorno.");
+
+      const quantidadeAtual = baseProduct.quantidade ?? 0;
+      if (quantidadeAtual - origTx.quantidade < 0) {
+        throw new createHttpError.BadRequest(
+          `Estorno inviável: o estorno de ${origTx.quantidade} un. de "${baseProduct.descricao}" resultaria em estoque negativo (atual: ${quantidadeAtual}).`,
+        );
+      }
+
+      const quantidadeNova = quantidadeAtual - origTx.quantidade;
+      const custoAtual = baseProduct.precoCusto ?? 0;
+      const custoMovimentado = origTx.custoUnitarioMovimentado ?? 0;
+
+      // Inverse weighted average
+      const novoCusto =
+        quantidadeNova === 0
+          ? 0
+          : (quantidadeAtual * custoAtual - origTx.quantidade * custoMovimentado) / quantidadeNova;
+
+      await tx.insert(productStockTransactions).values({
+        organizacaoId: params.organizationId,
+        produtoId: origTx.produtoId,
+        produtoVarianteId: null,
+        tipo: "AJUSTE" as const,
+        quantidade: -origTx.quantidade,
+        saldoAnterior: quantidadeAtual,
+        saldoPosterior: quantidadeNova,
+        custoUnitarioMovimentado: custoMovimentado,
+        custoUnitarioAnterior: custoAtual,
+        custoUnitarioPosterior: novoCusto,
+        motivo: "Cancelamento de recebimento de compra",
+        compraId: params.purchaseId,
+        compraItemId: origTx.compraItemId,
+        operadorId: params.operatorId,
+      });
+
+      await tx
+        .update(products)
+        .set({
+          quantidade: sql`${products.quantidade} - ${origTx.quantidade}`,
+          precoCusto: novoCusto,
+        })
+        .where(
+          and(
+            eq(products.id, origTx.produtoId),
+            eq(products.organizacaoId, params.organizationId),
+          ),
+        );
+
+      baseProduct.quantidade = quantidadeNova;
+      baseProduct.precoCusto = novoCusto;
+      productsMap.set(baseProduct.id, baseProduct);
+    }
+  }
+
+  return { success: true };
+}
