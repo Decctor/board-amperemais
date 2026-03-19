@@ -2,12 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import SalesSheetImport from "@/components/Modals/Sales/SalesSheetImport";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { motion } from "framer-motion";
 import { ArrowRight, Cable, Lock, Sheet, ShoppingCart, Sparkles, Store, Zap } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import { FaWhatsapp } from "react-icons/fa6";
 
 type SalesEmptyStateProps = {
@@ -17,7 +15,6 @@ type SalesEmptyStateProps = {
 
 export default function SalesEmptyState({ organizationId, organizationConfig }: SalesEmptyStateProps) {
 	const hasIntegrationAccess = organizationConfig?.recursos?.integracoes?.acesso ?? false;
-	const [salesSheetImportIsOpen, setSalesSheetImportIsOpen] = useState(false);
 
 	const containerVariants = {
 		hidden: { opacity: 0 },
@@ -183,10 +180,12 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 							<Button
 								className="w-full gap-2 h-11 text-base shadow-lg shadow-[#24549C]/20 hover:shadow-[#24549C]/40 transition-all text-white hover:text-white"
 								style={{ backgroundColor: "#24549C" }}
-								onClick={() => setSalesSheetImportIsOpen(true)}
+								asChild
 							>
-								Importar vendas
-								<ArrowRight className="w-4 h-4 ml-1" />
+								<Link href="/dashboard/commercial/sales/bulk-insert">
+									Importar vendas
+									<ArrowRight className="w-4 h-4 ml-1" />
+								</Link>
 							</Button>
 						</CardContent>
 
@@ -211,7 +210,6 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 					</a>
 				</p>
 			</motion.div>
-			{salesSheetImportIsOpen ? <SalesSheetImport closeModal={() => setSalesSheetImportIsOpen(false)} /> : null}
 		</motion.div>
 	);
 }
