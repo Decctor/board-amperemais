@@ -1,11 +1,11 @@
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { formatDateAsLocale, formatDecimalPlaces, formatLocation, formatToMoney } from "@/lib/formatting";
 import { useClientStatsById } from "@/lib/queries/clients";
 import { isValidNumber } from "@/lib/validation";
 import type { TGetClientStatsOutput } from "@/pages/api/clients/stats/by-client";
 import dayjs from "dayjs";
-import { BadgeDollarSign, Calendar, CirclePlus, Mail, Phone, ShoppingBag, UserRound } from "lucide-react";
+import { BadgeDollarSign, Calendar, CirclePlus, IdCard, Mail, Phone, ShoppingBag, UserRound, MapPin, Megaphone, Grid3X3 } from "lucide-react";
 import { useState } from "react";
 import { BsCart, BsTicketPerforated } from "react-icons/bs";
 import DateIntervalInput from "../../Inputs/DateIntervalInput";
@@ -15,12 +15,14 @@ import StatUnitCard from "../../Stats/StatUnitCard";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
 import ClientCashback from "./Blocks/ClientCashback";
 import ClientPurchases from "./Blocks/ClientPurchases";
+import { getAgeFromBirthdayDate } from "@/lib/dates";
+import { cn } from "@/lib/utils";
+import { getRFMConfigByLabel } from "@/utils/rfm";
 type ClientMainProps = {
 	id: string;
 	user: TAuthUserSession["user"];
 };
 export default function ClientMain({ id, user }: ClientMainProps) {
-	const [purchasesFilterMenuIsOpen, setPurchasesFilterMenuIsOpen] = useState(false);
 	const {
 		data: stats,
 		isLoading,
@@ -33,6 +35,7 @@ export default function ClientMain({ id, user }: ClientMainProps) {
 		clientId: id,
 		initialFilters: { periodAfter: dayjs().startOf("month").toISOString(), periodBefore: dayjs().endOf("month").toISOString() },
 	});
+	const rfmConfig = getRFMConfigByLabel(stats?.cliente.analiseRFMTitulo);
 
 	if (isLoading) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
@@ -40,38 +43,84 @@ export default function ClientMain({ id, user }: ClientMainProps) {
 	if (isSuccess)
 		return (
 			<>
-				<div className="flex w-full items-center justify-between border-b border-primary pb-2 gap-2">
-					<h1 className="text-base text-center lg:text-start lg:text-2xl font-black text-primary">Resultados do Cliente</h1>
-					<div className="flex items-center justify-end">
-						<DateIntervalInput
-							label="Período"
-							value={{
-								after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
-								before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
-							}}
-							handleChange={(value) => updateFilters({ periodAfter: value.after?.toISOString(), periodBefore: value.before?.toISOString() })}
-						/>
-					</div>
+				<div className="w-full flex items-center justify-end">
+					<DateIntervalInput
+						label="Período"
+						labelClassName="hidden"
+						className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+						value={{
+							after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+							before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+						}}
+						handleChange={(value) => updateFilters({ periodAfter: value.after?.toISOString(), periodBefore: value.before?.toISOString() })}
+					/>
 				</div>
 				<div className="w-full flex flex-col gap-3">
 					<div className="w-full flex items-center gap-2 flex-col md:flex-row">
-						<div className="flex items-center justify-center w-full md:w-fit">
-							<UserRound className="w-24 h-24 min-w-24 min-h-24" />
+						<div className="flex items-center justify-center w-16 h-16 bg-primary text-primary-foreground rounded-lg">
+							<UserRound className="w-10 h-10 min-w-10 min-h-10" />
 						</div>
 						<div className="flex flex-col gap-2 grow">
-							<div className="w-full flex items-center justify-between gap-2">
+							<div className="w-full flex items-center gap-1.5">
 								<h1 className="text-lg font-bold tracking-tight">{stats?.cliente.nome}</h1>
+								<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem]", rfmConfig.backgroundCollor, rfmConfig.textCollor)}>
+									<Grid3X3 className="w-4 h-4 min-w-4 min-h-4" />
+									<p className={cn("text-xs font-medium tracking-tight uppercase", rfmConfig.textCollor)}>{stats?.cliente.analiseRFMTitulo}</p>
+								</div>
 							</div>
 
 							<div className="w-full flex items-center gap-2 flex-wrap">
-								<div className="flex items-center gap-2">
-									<Mail className="w-4 min-w-4 h-4 min-h-4" />
-									<p className="text-sm font-medium tracking-tight">{stats?.cliente.email ?? "EMAIL NÃO INFORMADO"}</p>
+								{stats?.cliente.cpfCnpj ? (
+									<div className="flex items-center gap-1">
+										<IdCard className="w-4 h-4 min-w-4 min-h-4" />
+										<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">{stats?.cliente.cpfCnpj ?? "CPF/CNPJ NÃO INFORMADO"}</h1>
+									</div>
+								) : null}
+								<div className="flex items-center gap-1">
+									<Mail className="w-4 h-4 min-w-4 min-h-4" />
+									<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">{stats?.cliente.email ?? "EMAIL NÃO INFORMADO"}</h1>
 								</div>
-								<div className="flex items-center gap-2">
+								<div className="flex items-center gap-1">
 									<Phone className="w-4 min-w-4 h-4 min-h-4" />
-									<p className="text-sm font-medium tracking-tight">{stats?.cliente.telefone ?? "TELEFONE NÃO INFORMADO"}</p>
+									<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">{stats?.cliente.telefone ?? "TELEFONE NÃO INFORMADO"}</h1>
 								</div>
+								{stats?.cliente.dataNascimento ? (
+									<div className="flex items-center gap-1">
+										<Calendar className="w-4 h-4 min-w-4 min-h-4" />
+										<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
+											{formatDateAsLocale(stats?.cliente.dataNascimento)} ({getAgeFromBirthdayDate(stats?.cliente.dataNascimento ?? "")} anos)
+										</h1>
+									</div>
+								) : null}
+								{stats?.cliente.localizacaoCidade && stats?.cliente.localizacaoEstado ? (
+									<div className="flex items-center gap-1">
+										<MapPin className="w-4 h-4 min-w-4 min-h-4" />
+										<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
+											{formatLocation({
+												location: {
+													cep: stats?.cliente.localizacaoCep,
+													uf: stats?.cliente.localizacaoEstado,
+													cidade: stats?.cliente.localizacaoCidade,
+													bairro: stats?.cliente.localizacaoBairro,
+													endereco: stats?.cliente.localizacaoLogradouro,
+													numeroOuIdentificador: stats?.cliente.localizacaoNumero,
+													complemento: stats?.cliente.localizacaoComplemento,
+												},
+												includeUf: true,
+												includeCity: true,
+												includeCEP: true,
+											})}
+										</h1>
+									</div>
+								) : null}
+								{stats?.cliente.canalAquisicao ? (
+									<div className="flex items-center gap-1">
+										<Megaphone className="w-4 h-4 min-w-4 min-h-4" />
+										<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
+											{stats?.cliente.canalAquisicao ?? "CANAL DE AQUISIÇÃO NÃO INFORMADO"}
+										</h1>
+									</div>
+								) : null}
 							</div>
 						</div>
 					</div>
@@ -502,7 +551,11 @@ function GroupedByProduct({ data }: { data: TGetClientStatsOutput["data"]["resul
 		index,
 		product,
 		mode,
-	}: { index: number; product: TGetClientStatsOutput["data"]["resultadosAgrupados"]["produto"][number]; mode: "value" | "quantity" }) {
+	}: {
+		index: number;
+		product: TGetClientStatsOutput["data"]["resultadosAgrupados"]["produto"][number];
+		mode: "value" | "quantity";
+	}) {
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
@@ -570,7 +623,11 @@ function GroupedBySeller({ data }: { data: TGetClientStatsOutput["data"]["result
 		index,
 		client,
 		mode,
-	}: { index: number; client: TGetClientStatsOutput["data"]["resultadosAgrupados"]["vendedor"][number]; mode: "value" | "quantity" }) {
+	}: {
+		index: number;
+		client: TGetClientStatsOutput["data"]["resultadosAgrupados"]["vendedor"][number];
+		mode: "value" | "quantity";
+	}) {
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
@@ -638,7 +695,11 @@ function GroupedByProductGroup({ data }: { data: TGetClientStatsOutput["data"]["
 		index,
 		productGroup,
 		mode,
-	}: { index: number; productGroup: TGetClientStatsOutput["data"]["resultadosAgrupados"]["grupo"][number]; mode: "value" | "quantity" }) {
+	}: {
+		index: number;
+		productGroup: TGetClientStatsOutput["data"]["resultadosAgrupados"]["grupo"][number];
+		mode: "value" | "quantity";
+	}) {
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">

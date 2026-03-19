@@ -20,6 +20,7 @@ import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/cli
 import type { TGetClientsOverallStatsInput } from "@/pages/api/clients/stats/overall";
 import dayjs from "dayjs";
 import {
+	FileSpreadsheet,
 	BadgeDollarSign,
 	BadgePercent,
 	CirclePlus,
@@ -98,6 +99,12 @@ function ClientsDatabaseView() {
 					onChange={(e) => updateFilters({ search: e.target.value })}
 					className="grow rounded-xl"
 				/>
+				<Button variant={"ghost"} className="flex items-center gap-2" size="sm" asChild>
+					<Link href="/dashboard/commercial/clients/bulk-insert">
+						<FileSpreadsheet className="w-4 h-4 min-w-4 min-h-4" />
+						IMPORTAR CLIENTES
+					</Link>
+				</Button>
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
 					<p className="hidden lg:block">FILTROS</p>

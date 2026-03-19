@@ -179,6 +179,11 @@ export const BulkClientImportRowSchema = z.object({
 			invalid_type_error: "Nome do cliente deve ser um texto.",
 		})
 		.min(1, "Nome do cliente é obrigatório."),
+	cpfCnpj: z
+		.string({ invalid_type_error: "CPF/CNPJ deve ser um texto." })
+		.optional()
+		.nullable()
+		.transform((val) => val?.replace(/\D/g, "") || null),
 	telefone: z
 		.string({ invalid_type_error: "Telefone deve ser um texto." })
 		.optional()

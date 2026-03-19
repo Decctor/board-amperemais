@@ -1,28 +1,31 @@
 import { getFixedDateFromExcel } from "@/lib/excel-utils";
 import {
-	BulkSaleCanonicalFieldSchema,
-	BulkSalesMappingDefinitionSchema,
-	type TBulkCreateSalesImportState,
-	type TBulkSalesMappingDefinition,
-} from "@/state-hooks/use-bulk-create-sales";
+	BulkClientCanonicalFieldSchema,
+	BulkClientsMappingDefinitionSchema,
+	type TBulkClientsMappingDefinition,
+	type TBulkCreateClientsImportState,
+} from "@/state-hooks/use-bulk-create-clients";
 import { z } from "zod";
 
-export const FIELD_LABELS: Record<(typeof BulkSaleCanonicalFieldSchema.options)[number], string> = {
-	clienteNome: "NOME DO CLIENTE",
-	clienteTelefone: "TELEFONE DO CLIENTE",
-	clienteCpfCnpj: "CPF/CNPJ DO CLIENTE",
-	valorTotal: "VALOR TOTAL",
-	vendedorNome: "NOME DO VENDEDOR",
-	parceiroNomeOuIdentificador: "NOME/IDENTIFICADOR DO PARCEIRO",
-	dataVenda: "DATA DA VENDA",
+export const FIELD_LABELS: Record<(typeof BulkClientCanonicalFieldSchema.options)[number], string> = {
+	nome: "NOME",
+	cpfCnpj: "CPF/CNPJ",
+	telefone: "TELEFONE",
+	email: "EMAIL",
+	dataNascimento: "DATA DE NASCIMENTO",
+	canalAquisicao: "CANAL DE AQUISIÇÃO",
+	localizacaoCidade: "CIDADE",
+	localizacaoEstado: "ESTADO",
+	localizacaoBairro: "BAIRRO",
+	localizacaoCep: "CEP",
 };
 
-export const REQUIRED_FIELDS: Array<(typeof BulkSaleCanonicalFieldSchema.options)[number]> = ["clienteNome", "valorTotal", "dataVenda"];
+export const REQUIRED_FIELDS: Array<(typeof BulkClientCanonicalFieldSchema.options)[number]> = ["nome"];
 
-const BULK_INSERT_MAPPINGS_STORAGE_KEY = "recompracrm:sales-bulk-insert:mappings:v1";
+const BULK_INSERT_MAPPINGS_STORAGE_KEY = "recompracrm:clients-bulk-insert:mappings:v1";
 
 const BulkInsertStoredMappingSchema = z.object({
-	mappingDefinitions: z.array(BulkSalesMappingDefinitionSchema),
+	mappingDefinitions: z.array(BulkClientsMappingDefinitionSchema),
 	updatedAt: z.number(),
 });
 
@@ -32,50 +35,37 @@ function forceUTCMidday(date: Date) {
 	return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0, 0));
 }
 
-export function normalizeDateToISOString(value: unknown) {
-	if (value == null) return "";
+export function normalizeDateToDate(value: unknown) {
+	if (value == null) return null;
+	if (value instanceof Date && !Number.isNaN(value.getTime())) return forceUTCMidday(value);
 	if (typeof value === "number") {
-		const parsed = getFixedDateFromExcel(value);
-		return Number.isNaN(parsed.getTime()) ? "" : forceUTCMidday(parsed).toISOString();
-	}
-	if (value instanceof Date && !Number.isNaN(value.getTime())) {
-		return forceUTCMidday(value).toISOString();
+		const dateFromExcel = getFixedDateFromExcel(value);
+		return Number.isNaN(dateFromExcel.getTime()) ? null : forceUTCMidday(dateFromExcel);
 	}
 
 	const strValue = String(value).trim();
-	if (!strValue) return "";
+	if (!strValue) return null;
 
 	const brDateMatch = strValue.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
 	if (brDateMatch) {
 		const [, dd, mm, yyyy] = brDateMatch;
 		const parsed = new Date(`${yyyy}-${mm}-${dd}T12:00:00.000Z`);
-		return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
+		return Number.isNaN(parsed.getTime()) ? null : parsed;
 	}
 
 	const isoDateOnlyMatch = strValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 	if (isoDateOnlyMatch) {
 		const [, yyyy, mm, dd] = isoDateOnlyMatch;
 		const parsed = new Date(`${yyyy}-${mm}-${dd}T12:00:00.000Z`);
-		return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
+		return Number.isNaN(parsed.getTime()) ? null : parsed;
 	}
 
 	const parsed = new Date(strValue);
-	return Number.isNaN(parsed.getTime()) ? "" : forceUTCMidday(parsed).toISOString();
+	return Number.isNaN(parsed.getTime()) ? null : forceUTCMidday(parsed);
 }
 
-export function normalizeCurrency(value: unknown) {
-	if (typeof value === "number") return value;
-	const normalized = String(value ?? "")
-		.trim()
-		.replace(/\./g, "")
-		.replace(",", ".")
-		.replace(/[^\d.-]/g, "");
-	const parsed = Number(normalized);
-	return Number.isFinite(parsed) ? parsed : Number.NaN;
-}
-
-export function getDefaultMappings(): TBulkSalesMappingDefinition[] {
-	return BulkSaleCanonicalFieldSchema.options.map((field) => ({
+export function getDefaultMappings(): TBulkClientsMappingDefinition[] {
+	return BulkClientCanonicalFieldSchema.options.map((field) => ({
 		field,
 		sourceColumn: null,
 		confidence: null,
@@ -87,10 +77,10 @@ export function getBulkInsertHeadersSignature(headers: string[]) {
 	return headers.map((header) => header.trim().toLocaleLowerCase().replace(/\s+/g, " ")).join("||");
 }
 
-export function normalizeBulkInsertMappings(mappingDefinitions: TBulkSalesMappingDefinition[]): TBulkSalesMappingDefinition[] {
+export function normalizeBulkInsertMappings(mappingDefinitions: TBulkClientsMappingDefinition[]): TBulkClientsMappingDefinition[] {
 	const mappingByField = new Map(mappingDefinitions.map((mapping) => [mapping.field, mapping]));
 
-	return BulkSaleCanonicalFieldSchema.options.map((field) => {
+	return BulkClientCanonicalFieldSchema.options.map((field) => {
 		const mapping = mappingByField.get(field);
 
 		return {
@@ -122,7 +112,7 @@ export function loadBulkInsertMappingsFromStorage(headers: string[]) {
 	}
 }
 
-export function saveBulkInsertMappingsToStorage(headers: string[], mappingDefinitions: TBulkSalesMappingDefinition[]) {
+export function saveBulkInsertMappingsToStorage(headers: string[], mappingDefinitions: TBulkClientsMappingDefinition[]) {
 	if (typeof window === "undefined") return;
 
 	const signature = getBulkInsertHeadersSignature(headers);
@@ -150,7 +140,7 @@ export function saveBulkInsertMappingsToStorage(headers: string[], mappingDefini
 	);
 }
 
-export function getBulkInsertCurrentStepIndex(importState: TBulkCreateSalesImportState) {
+export function getBulkInsertCurrentStepIndex(importState: TBulkCreateClientsImportState) {
 	switch (importState) {
 		case "idle":
 		case "parsing":

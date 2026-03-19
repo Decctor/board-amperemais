@@ -4,6 +4,7 @@ import type {
 } from "@/app/api/point-of-interaction/new-client/route";
 import type { TCreateClientInput, TCreateClientOutput } from "@/pages/api/clients";
 import type { TBulkCreateClientsInput, TBulkCreateClientsOutput } from "@/pages/api/clients/bulk";
+import type { TBulkClientsMapInput, TBulkClientsMapOutput } from "@/state-hooks/use-bulk-create-clients";
 import axios from "axios";
 
 export async function createClient(info: TCreateClientInput) {
@@ -15,6 +16,14 @@ export async function bulkCreateClients(info: TBulkCreateClientsInput, onUploadP
 	const { data } = await axios.post<TBulkCreateClientsOutput>("/api/clients/bulk", info, {
 		onUploadProgress: (progressEvent) => onUploadProgress?.(Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? 1))),
 	});
+	return data;
+}
+
+export async function suggestClientsSheetMapping(input: TBulkClientsMapInput) {
+	const { data } = await axios.post<{
+		data: TBulkClientsMapOutput;
+		message: string;
+	}>("/api/clients/bulk/map", input);
 	return data;
 }
 

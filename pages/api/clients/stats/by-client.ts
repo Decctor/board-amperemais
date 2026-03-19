@@ -66,8 +66,18 @@ async function getClientStats({ session, input }: GetClientStatsParams) {
 	const totalPurchasesValue = totalPurchaseResultStats?.total ? Number(totalPurchaseResultStats.total) : 0;
 	const avgPurchaseValue = totalPurchasesCount > 0 ? totalPurchasesValue / totalPurchasesCount : 0;
 
-	const firstPurchaseResult = await db.select({ data: sales.dataVenda }).from(sales).where(saleWhere).orderBy(sql`${sales.dataVenda} asc`).limit(1);
-	const lastPurchaseResult = await db.select({ data: sales.dataVenda }).from(sales).where(saleWhere).orderBy(sql`${sales.dataVenda} desc`).limit(1);
+	const firstPurchaseResult = await db
+		.select({ data: sales.dataVenda })
+		.from(sales)
+		.where(saleWhere)
+		.orderBy(sql`${sales.dataVenda} asc`)
+		.limit(1);
+	const lastPurchaseResult = await db
+		.select({ data: sales.dataVenda })
+		.from(sales)
+		.where(saleWhere)
+		.orderBy(sql`${sales.dataVenda} desc`)
+		.limit(1);
 
 	const firstPurchaseDate = firstPurchaseResult[0]?.data ?? null;
 	const lastPurchaseDate = lastPurchaseResult[0]?.data ?? null;
@@ -156,6 +166,18 @@ async function getClientStats({ session, input }: GetClientStatsParams) {
 				nome: client.nome,
 				telefone: client.telefone,
 				email: client.email,
+				cpfCnpj: client.cpfCnpj,
+				canalAquisicao: client.canalAquisicao,
+				localizacaoCidade: client.localizacaoCidade,
+				localizacaoEstado: client.localizacaoEstado,
+				localizacaoBairro: client.localizacaoBairro,
+				localizacaoLogradouro: client.localizacaoLogradouro,
+				localizacaoNumero: client.localizacaoNumero,
+				localizacaoComplemento: client.localizacaoComplemento,
+				localizacaoCep: client.localizacaoCep,
+				dataNascimento: client.dataNascimento,
+				dataInsercao: client.dataInsercao,
+				analiseRFMTitulo: client.analiseRFMTitulo,
 			},
 			dataPrimeiraCompra: firstPurchaseDate,
 			dataUltimaCompra: lastPurchaseDate,

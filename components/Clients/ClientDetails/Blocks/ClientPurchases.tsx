@@ -86,7 +86,7 @@ export default function ClientPurchases({ clientId }: ClientPurchasesProps) {
 					itemsShowingText={purchasesShowing > 1 ? `Mostrando ${purchasesShowing} compras.` : `Mostrando ${purchasesShowing} compra.`}
 				/>
 			</div>
-			<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 min-h-0 flex-1 overflow-y-auto">
+			<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 min-h-0 flex-1 flex flex-col overflow-y-auto gap-3">
 				{isPurchasesLoading ? <LoadingComponent /> : null}
 				{isPurchasesError ? <ErrorComponent msg={getErrorMessage(purchasesError)} /> : null}
 				{isPurchasesSuccess && purchases.length > 0 ? purchases.map((sale) => <SaleCard key={sale.id} sale={sale} />) : null}

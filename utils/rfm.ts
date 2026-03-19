@@ -72,6 +72,7 @@ export const RFMLabels = [
 	{
 		text: "CAMPEÕES",
 		backgroundCollor: "bg-orange-400",
+		textCollor: "text-gray-950",
 		combinations: [
 			[5, 5, 5],
 			[5, 5, 4],
@@ -83,6 +84,7 @@ export const RFMLabels = [
 	{
 		text: "CLIENTES LEAIS",
 		backgroundCollor: "bg-green-400",
+		textCollor: "text-gray-950",
 		combinations: [
 			[4, 4, 4],
 			[4, 4, 3],
@@ -94,6 +96,7 @@ export const RFMLabels = [
 	{
 		text: "POTENCIAIS CLIENTES LEAIS",
 		backgroundCollor: "bg-[#5C4033]",
+		textCollor: "text-white",
 		combinations: [
 			[3, 4, 4],
 			[3, 3, 5], // Crescimento em frequência
@@ -104,6 +107,7 @@ export const RFMLabels = [
 	{
 		text: "CLIENTES RECENTES",
 		backgroundCollor: "bg-teal-400",
+		textCollor: "text-gray-950",
 		combinations: [
 			[3, 1, 5],
 			[3, 2, 5], // Novos com alto valor
@@ -114,6 +118,7 @@ export const RFMLabels = [
 	{
 		text: "PROMISSORES",
 		backgroundCollor: "bg-pink-400",
+		textCollor: "text-gray-950",
 		combinations: [
 			[4, 2, 3],
 			[3, 2, 4], // Valor crescente
@@ -124,6 +129,7 @@ export const RFMLabels = [
 	{
 		text: "PRECISAM DE ATENÇÃO",
 		backgroundCollor: "bg-indigo-400",
+		textCollor: "text-white",
 		combinations: [
 			[3, 3, 2],
 			[3, 2, 3], // Performance mediana
@@ -134,6 +140,7 @@ export const RFMLabels = [
 	{
 		text: "PRESTES A DORMIR",
 		backgroundCollor: "bg-yellow-600",
+		textCollor: "text-white",
 		combinations: [
 			[2, 2, 2],
 			[3, 1, 2], // Engajamento baixo
@@ -144,6 +151,7 @@ export const RFMLabels = [
 	{
 		text: "EM RISCO",
 		backgroundCollor: "bg-yellow-400",
+		textCollor: "text-gray-950",
 		combinations: [
 			[4, 1, 1],
 			[3, 1, 1], // Alto valor histórico, sem engajamento
@@ -154,6 +162,7 @@ export const RFMLabels = [
 	{
 		text: "NÃO PODE PERDÊ-LOS",
 		backgroundCollor: "bg-blue-400",
+		textCollor: "text-white",
 		combinations: [
 			[5, 2, 2],
 			[5, 2, 1], // Alto valor, baixo engajamento
@@ -164,6 +173,7 @@ export const RFMLabels = [
 	{
 		text: "HIBERNANDO",
 		backgroundCollor: "bg-purple-400",
+		textCollor: "text-white",
 		combinations: [
 			[2, 1, 1],
 			[1, 2, 2], // Baixo desempenho geral
@@ -174,6 +184,7 @@ export const RFMLabels = [
 	{
 		text: "PERDIDOS",
 		backgroundCollor: "bg-red-500",
+		textCollor: "text-white",
 		combinations: [
 			[1, 1, 1],
 			[1, 1, 2], // Sem engajamento
@@ -182,6 +193,17 @@ export const RFMLabels = [
 		],
 	},
 ];
+
+export type TRFMLabelConfig = (typeof RFMLabels)[number];
+
+export const getRFMConfigByLabel = (label: string | null | undefined): TRFMLabelConfig => {
+	if (!label) {
+		return RFMLabels.find((item) => item.text === "PERDIDOS") ?? RFMLabels[0];
+	}
+
+	return RFMLabels.find((item) => item.text === label) ?? RFMLabels.find((item) => item.text === "PERDIDOS") ?? RFMLabels[0];
+};
+
 export const getRFMLabel = ({ monetary, frequency, recency }: { monetary: number; frequency: number; recency: number }) => {
 	const label = RFMLabels.find((l) => l.combinations.some((c) => c[0] === monetary && c[1] === frequency && c[2] === recency));
 
