@@ -558,20 +558,6 @@ function PointOfInteractionActions({ org, terminology, router, handleOpenProfile
 							<p className="text-xs md:text-sm opacity-80 font-medium">Veja sua posição no ranking, seus resgates e seus acumulos</p>
 						</div>
 					</Button>
-
-					{/* RANKING VENDEDORES */}
-					<Button
-						onClick={() => router.push(`/point-of-interaction/${org.id}/sellers-ranking`)}
-						variant="outline"
-						size="fit"
-						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full bg-secondary"
-					>
-						<Trophy className="w-10 h-10" />
-						<div className="text-center">
-							<h3 className="text-base font-bold uppercase">RANKING DE VENDEDORES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Acompanhe a competição entre os vendedores</p>
-						</div>
-					</Button>
 				</div>
 			</div>
 		</main>
