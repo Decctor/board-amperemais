@@ -1,8 +1,10 @@
 import type { TRedemptionLimit } from "../types";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 
 type ClientSaldo = {
 	saldoValorDisponivel: number;
 	programa?: {
+		terminologia?: TCashbackProgramTerminologyEnum | null;
 		resgateLimiteTipo: string | null;
 		resgateLimiteValor: number | null;
 	} | null;
@@ -15,6 +17,7 @@ export function getAvailableCashback(saldos: ClientSaldo[] | undefined | null): 
 export function getRedemptionLimitConfig(saldos: ClientSaldo[] | undefined | null): TRedemptionLimit {
 	const programa = saldos?.[0]?.programa;
 	return {
+		terminologia: programa?.terminologia ?? "DINHEIRO",
 		tipo: programa?.resgateLimiteTipo ?? null,
 		valor: programa?.resgateLimiteValor ?? null,
 	};

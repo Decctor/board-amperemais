@@ -4,10 +4,11 @@ import type { TCreatePointOfInteractionTransactionOutput } from "@/app/api/point
 import { Button } from "@/components/ui/button";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
-import { formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { createPointOfInteractionSale } from "@/lib/mutations/sales";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { usePointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +51,7 @@ type NewSaleContentProps = {
 		nome: TOrganizationEntity["nome"];
 		logoUrl: TOrganizationEntity["logoUrl"];
 		telefone: TOrganizationEntity["telefone"];
+		terminologia: TCashbackProgramTerminologyEnum;
 		modalidadeDescontosPermitida: boolean;
 		modalidadeRecompensasPermitida: boolean;
 	};
@@ -188,7 +190,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		onSuccess: (data) => {
 			const visualAccumulatedCashbackValue = data.data.visualClientAccumulatedCashbackValue ?? data.data.clientAccumulatedCashbackValue;
 			playSuccess();
-			toast.success(`Venda finalizada! Saldo: ${formatToMoney(visualAccumulatedCashbackValue)}`);
+			toast.success(`Venda finalizada! Saldo: ${formatCashbackValue(visualAccumulatedCashbackValue, org.terminologia)}`);
 			setSuccessData(data.data);
 			setCurrentStep(successStep);
 		},
@@ -281,7 +283,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								amount={state.sale.cashback.valor}
 								isAttemptingToUseMoreCashbackThanAllowed={isAttemptingToUseMoreCashbackThanAllowed}
 								finalValue={finalValue}
-								redemptionLimit={redemptionLimitConfig}
+								redemptionLimit={{ ...redemptionLimitConfig, terminologia: org.terminologia }}
 								onToggle={(v) =>
 									updateCashback({
 										aplicar: v,
@@ -327,11 +329,13 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										label: "CASHBACK GERADO",
 										value: successData.visualClientAccumulatedCashbackValue ?? successData.clientAccumulatedCashbackValue,
 										variant: "green",
+										formatValue: (value) => formatCashbackValue(value, org.terminologia),
 									},
 									{
 										label: "NOVO SALDO TOTAL",
 										value: successData.visualClientNewOverallAvailableBalance ?? successData.clientNewOverallAvailableBalance ?? 0,
 										variant: "brand",
+										formatValue: (value) => formatCashbackValue(value, org.terminologia),
 									},
 									{
 										label: "VALOR DA COMPRA",
@@ -363,11 +367,13 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										label: "CASHBACK GERADO",
 										value: successData.visualClientAccumulatedCashbackValue ?? successData.clientAccumulatedCashbackValue,
 										variant: "green",
+										formatValue: (value) => formatCashbackValue(value, org.terminologia),
 									},
 									{
 										label: "NOVO SALDO TOTAL",
 										value: successData.visualClientNewOverallAvailableBalance ?? successData.clientNewOverallAvailableBalance ?? 0,
 										variant: "brand",
+										formatValue: (value) => formatCashbackValue(value, org.terminologia),
 									},
 								]}
 								primaryAction={{ label: "NOVA VENDA", onClick: handleReset }}
@@ -386,7 +392,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										</div>
 										<div className="flex-1 min-w-0 text-left">
 											<h3 className="font-black text-sm short:text-xs uppercase tracking-tight truncate">{selectedPrize.titulo}</h3>
-											<p className="font-black text-lg short:text-base text-amber-700">{formatToMoney(selectedPrize.valor)}</p>
+											<p className="font-black text-lg short:text-base text-amber-700">{formatCashbackValue(selectedPrize.valor, org.terminologia)}</p>
 										</div>
 									</div>
 								)}

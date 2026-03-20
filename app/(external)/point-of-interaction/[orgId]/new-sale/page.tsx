@@ -51,6 +51,7 @@ export default async function NewSalePage({
 	const cashbackProgramConfig = await db.query.cashbackPrograms.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
 		columns: {
+			terminologia: true,
 			modalidadeDescontosPermitida: true,
 			modalidadeRecompensasPermitida: true,
 		},
@@ -58,6 +59,7 @@ export default async function NewSalePage({
 
 	const orgWithCashbackConfig = {
 		...org,
+		terminologia: cashbackProgramConfig?.terminologia ?? "DINHEIRO",
 		modalidadeDescontosPermitida: cashbackProgramConfig?.modalidadeDescontosPermitida ?? true,
 		modalidadeRecompensasPermitida: cashbackProgramConfig?.modalidadeRecompensasPermitida ?? false,
 	};

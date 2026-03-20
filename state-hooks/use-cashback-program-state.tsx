@@ -39,6 +39,7 @@ export function useCashbackProgramState({ initialState }: TUseCashbackProgramSta
 				ativo: initialState?.cashbackProgram?.ativo ?? true,
 				titulo: initialState?.cashbackProgram?.titulo ?? "",
 				descricao: initialState?.cashbackProgram?.descricao ?? "",
+				terminologia: initialState?.cashbackProgram?.terminologia ?? "DINHEIRO",
 				modalidadeDescontosPermitida: initialState?.cashbackProgram?.modalidadeDescontosPermitida ?? true,
 				modalidadeRecompensasPermitida: initialState?.cashbackProgram?.modalidadeRecompensasPermitida ?? false,
 				acumuloTipo: initialState?.cashbackProgram?.acumuloTipo ?? "FIXO",

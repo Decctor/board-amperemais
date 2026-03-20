@@ -43,6 +43,8 @@ export const whatsappTemplateQualityEnum = pgEnum("whatsapp_template_quality", [
 
 export const cashbackProgramAccumulationTypeEnum = pgEnum("cashback_program_accumulation_type", ["FIXO", "PERCENTUAL"]);
 
+export const cashbackProgramTerminologyEnum = pgEnum("cashback_program_terminology", ["DINHEIRO", "PONTOS"]);
+
 export const cashbackProgramRedemptionLimitTypeEnum = pgEnum("cashback_program_redemption_limit_type", ["FIXO", "PERCENTUAL"]);
 
 export const cashbackProgramTransactionTypeEnum = pgEnum("cashback_program_transaction_type", ["ACÚMULO", "RESGATE", "EXPIRAÇÃO", "CANCELAMENTO"]);

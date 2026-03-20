@@ -4,7 +4,6 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	Award,
-	Banknote,
 	Calendar,
 	Clock,
 	History,
@@ -17,12 +16,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
-import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatDateAsLocale, formatToPhone, getCashbackUnitLabel } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
 import { useEffect } from "react";
@@ -75,8 +73,6 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 		});
 	}, [orgId, client.id]);
 
-	const allowAccumulation = cashbackProgram.acumuloPermitirViaPontoIntegracao;
-
 	const clientHasNoAvailableBalance = balance.saldoValorDisponivel <= 0;
 
 	const daysSinceCreation = client.dataInsercao
@@ -99,8 +95,8 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 	};
 
 	return (
-		<div className="h-full bg-slate-50 p-4 md:p-6 short:p-2 flex flex-col items-center overflow-hidden">
-			<div className="w-full max-w-6xl flex flex-col gap-4 short:gap-2 h-full min-h-0">
+		<div className="h-full bg-slate-50 p-4 md:p-6 short:p-2 flex flex-col items-center overflow-y-auto md:overflow-hidden">
+			<div className="w-full max-w-6xl flex flex-col gap-4 short:gap-2 min-h-full md:h-full md:min-h-0">
 				{/* 1. HEADER: Informações e Status */}
 				<header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 short:gap-2 bg-white p-4 short:p-2.5 rounded-4xl short:rounded-2xl shadow-sm border border-slate-100 shrink-0">
 					<div className="flex items-center gap-3 short:gap-1.5">
@@ -120,7 +116,9 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 					<div className="flex items-center bg-brand/5 border-2 short:border border-brand/10 rounded-full px-6 short:px-3 py-2 short:py-1.5 gap-6 short:gap-3 shadow-inner">
 						<div className="flex flex-col items-center border-r-2 short:border-r border-brand/10 pr-6 short:pr-3">
 							<span className="text-[0.6rem] short:text-[0.5rem] font-black text-black uppercase tracking-widest">Saldo Disponível</span>
-							<span className="text-xl short:text-base font-black text-brand">{formatToMoney(balance.saldoValorDisponivel)}</span>
+							<span className="text-xl short:text-base font-black text-brand">
+								{formatCashbackValue(balance.saldoValorDisponivel, cashbackProgram.terminologia)}
+							</span>
 						</div>
 						<div className="flex flex-col items-center">
 							<span className="text-[0.6rem] short:text-[0.5rem] font-black text-black uppercase tracking-widest">Ranking</span>
@@ -144,7 +142,7 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 						<div>
 							<span className="block text-xl short:text-sm font-black text-brand-foreground italic leading-none uppercase">Nova Compra</span>
 							<span className="text-[0.65rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-widest short:hidden">
-								Registre pontos e acumule cashback
+								Registre compras e acumule {getCashbackUnitLabel(cashbackProgram.terminologia)}
 							</span>
 						</div>
 					</div>
@@ -164,7 +162,7 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 							<div>
 								<h4 className="text-base short:text-xs font-bold text-amber-900 leading-tight">Seu saldo ainda está decolando! 🚀</h4>
 								<p className="text-sm short:text-[0.6rem] text-amber-700/80 mt-1 short:mt-0">
-									Identifique-se em suas compras para acumular pontos e resgatar prêmios incríveis.
+									Identifique-se em suas compras para acumular {getCashbackUnitLabel(cashbackProgram.terminologia)} e resgatar prêmios incríveis.
 								</p>
 							</div>
 						</div>
@@ -172,9 +170,9 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 				)}
 
 				{/* 3. GRID INFERIOR: Resgates e Histórico */}
-				<div className="grid grid-cols-1 md:grid-cols-12 gap-4 short:gap-2 items-stretch flex-1 min-h-0">
+				<div className="grid grid-cols-1 md:grid-cols-12 gap-4 short:gap-2 items-stretch md:flex-1 md:min-h-0">
 					{/* Seção de Resumo (Lado Esquerdo) */}
-					<section className="md:col-span-5 bg-white rounded-4xl short:rounded-2xl p-6 short:p-3 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-hidden">
+					<section className="md:col-span-5 bg-white rounded-4xl short:rounded-2xl p-6 short:p-3 shadow-sm border border-slate-100 flex flex-col overflow-visible md:min-h-0 md:overflow-hidden">
 						<div className="flex items-center gap-3 short:gap-1.5 mb-6 short:mb-2 shrink-0">
 							<div className="p-2 short:p-1 bg-brand/5 rounded-lg short:rounded text-brand">
 								<UserRound className="w-5 h-5 short:w-3.5 short:h-3.5" />
@@ -182,31 +180,9 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 							<h2 className="text-lg short:text-sm font-black text-black uppercase italic">SOBRE VOCÊ</h2>
 						</div>
 
-						<div className="grid grid-cols-2 gap-4 short:gap-1.5 overflow-y-auto overscroll-y-auto p-2 short:p-0.5 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
-							{/* Card 1: Total Acumulado */}
-							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
-								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
-									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-green-100 text-green-700">
-										<TrendingUp className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
-									</div>
-									<span className="text-[0.6rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-wider">Total Acumulado</span>
-								</div>
-								<span className="text-xl short:text-sm font-black text-green-700">{formatToMoney(balance.saldoValorAcumuladoTotal)}</span>
-							</div>
-
-							{/* Card 2: Total Resgatado */}
-							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
-								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
-									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-orange-100 text-orange-700">
-										<TrendingDown className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
-									</div>
-									<span className="text-[0.6rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-wider">Total Utilizado</span>
-								</div>
-								<span className="text-xl short:text-sm font-black text-orange-700">{formatToMoney(balance.saldoValorResgatadoTotal)}</span>
-							</div>
-
-							{/* Card 3: Total Compras */}
-							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
+						<div className="grid grid-cols-2 gap-4 short:gap-1.5 p-2 short:p-0.5 md:overflow-y-auto md:overscroll-y-auto md:scrollbar-thin md:scrollbar-track-primary/10 md:scrollbar-thumb-primary/30">
+							{/* Card 1: Total Compras */}
+							<div className="col-span-2 p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
 								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
 									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-blue-100 text-blue-700">
 										<ShoppingBag className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
@@ -215,19 +191,33 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 								</div>
 								<span className="text-xl short:text-sm font-black text-slate-800">{client.metadataTotalCompras ?? 0}</span>
 							</div>
-
-							{/* Card 4: Total Investido (LTV) */}
+							{/* Card 2: Total Acumulado */}
 							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
 								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
-									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-emerald-100 text-emerald-700">
-										<Banknote className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
+									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-green-100 text-green-700">
+										<TrendingUp className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
 									</div>
-									<span className="text-[0.6rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-wider">Total Investido</span>
+									<span className="text-[0.6rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-wider">Total Acumulado</span>
 								</div>
-								<span className="text-xl short:text-sm font-black text-emerald-700">{formatToMoney(client.metadataValorTotalCompras ?? 0)}</span>
+								<span className="text-xl short:text-sm font-black text-green-700">
+									{formatCashbackValue(balance.saldoValorAcumuladoTotal, cashbackProgram.terminologia)}
+								</span>
 							</div>
 
-							{/* Card 5: Última Compra (Recência) */}
+							{/* Card 3: Total Resgatado */}
+							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
+								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
+									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-orange-100 text-orange-700">
+										<TrendingDown className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
+									</div>
+									<span className="text-[0.6rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-wider">Total Utilizado</span>
+								</div>
+								<span className="text-xl short:text-sm font-black text-orange-700">
+									{formatCashbackValue(balance.saldoValorResgatadoTotal, cashbackProgram.terminologia)}
+								</span>
+							</div>
+
+							{/* Card 4: Última Compra (Recência) */}
 							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
 								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
 									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-amber-100 text-amber-700">
@@ -263,7 +253,7 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 					</section>
 
 					{/* Seção de Histórico (Lado Direito) */}
-					<section className="md:col-span-7 bg-card rounded-4xl short:rounded-2xl p-6 short:p-3 shadow-sm border border-brand/20 flex flex-col min-h-0 overflow-hidden">
+					<section className="md:col-span-7 bg-card rounded-4xl short:rounded-2xl p-6 short:p-3 shadow-sm border border-brand/20 flex flex-col min-h-80 md:min-h-0 overflow-hidden">
 						<div className="flex items-center justify-between mb-4 short:mb-2 shrink-0">
 							<div className="flex items-center gap-3 short:gap-1.5">
 								<div className="p-2 short:p-1 bg-brand/5 rounded-lg short:rounded text-muted-foreground">
@@ -316,18 +306,22 @@ export default function ClientProfileContent({ orgId, cashbackProgram, client, b
 													{t.tipo === "ACÚMULO" ? (
 														<Tooltip>
 															<TooltipTrigger asChild>
-																<p className="text-lg short:text-sm font-black leading-none text-green-600 cursor-help">+ {formatToMoney(displayValor)}</p>
+																<p className="text-lg short:text-sm font-black leading-none text-green-600 cursor-help">
+																	+ {formatCashbackValue(displayValor, cashbackProgram.terminologia)}
+																</p>
 															</TooltipTrigger>
 															<TooltipContent side="left" className="max-w-[200px]">
-																<p className="font-bold">Valor restante: {formatToMoney(t.valorRestante)}</p>
+																<p className="font-bold">Valor restante: {formatCashbackValue(t.valorRestante, cashbackProgram.terminologia)}</p>
 																<p className="text-[0.65rem] opacity-90 mt-0.5">Parte pode ter sido usada em resgates.</p>
 															</TooltipContent>
 														</Tooltip>
 													) : (
-														<p className={cn("text-lg short:text-sm font-black leading-none", "text-red-500")}>- {formatToMoney(displayValor)}</p>
+														<p className={cn("text-lg short:text-sm font-black leading-none", "text-red-500")}>
+															- {formatCashbackValue(displayValor, cashbackProgram.terminologia)}
+														</p>
 													)}
 													<p className="text-[0.55rem] short:text-[0.45rem] font-bold text-muted-foreground mt-0.5 uppercase">
-														Saldo Final: {formatToMoney(t.saldoValorPosterior)}
+														Saldo Final: {formatCashbackValue(t.saldoValorPosterior, cashbackProgram.terminologia)}
 													</p>
 												</div>
 											</div>

@@ -9,6 +9,7 @@ type StatItem = {
 	label: string;
 	value: number;
 	variant: "green" | "brand";
+	formatValue?: (value: number) => string;
 };
 
 type ActionButton = {
@@ -71,7 +72,7 @@ export function SuccessCelebration({ title, subtitle, stats, primaryAction, seco
 									: "text-4xl short:text-xl font-black text-brand"
 							}
 						>
-							{formatToMoney(stat.value)}
+							{stat.formatValue ? stat.formatValue(stat.value) : formatToMoney(stat.value)}
 						</p>
 					</div>
 				))}

@@ -1,3 +1,4 @@
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import dayjs from "dayjs";
 import { getAgeFromBirthdayDate } from "./dates";
 
@@ -122,6 +123,32 @@ export function formatDecimalPlaces(value: string | number, minPlaces?: number, 
 		minimumFractionDigits: minPlaces != null && minPlaces !== undefined ? minPlaces : 0,
 		maximumFractionDigits: maxPlaces != null && maxPlaces !== undefined ? maxPlaces : 2,
 	});
+}
+
+export function getCashbackUnitLabel(
+	terminology: TCashbackProgramTerminologyEnum = "DINHEIRO",
+	options?: {
+		plural?: boolean;
+		uppercase?: boolean;
+	},
+) {
+	const plural = options?.plural ?? true;
+	const label = terminology === "PONTOS" ? (plural ? "pontos" : "ponto") : "cashback";
+	return options?.uppercase ? label.toUpperCase() : label;
+}
+
+export function formatCashbackValue(
+	value: string | number,
+	terminology: TCashbackProgramTerminologyEnum = "DINHEIRO",
+	options?: {
+		usePluralForPoints?: boolean;
+	},
+) {
+	if (terminology === "DINHEIRO") return formatToMoney(value);
+
+	const numericValue = Number(value);
+	const usePluralForPoints = options?.usePluralForPoints ?? Math.abs(numericValue) !== 1;
+	return `${formatDecimalPlaces(numericValue)} ${getCashbackUnitLabel("PONTOS", { plural: usePluralForPoints })}`;
 }
 
 export function formatWithoutDiacritics(string: string, useUpperCase?: boolean) {

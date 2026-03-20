@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatToMoney } from "@/lib/formatting";
+import { formatCashbackValue, formatToMoney, getCashbackUnitLabel } from "@/lib/formatting";
 import { useAutoScrollOnFocus } from "@/lib/hooks/use-auto-scroll-on-focus";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, BadgePercent, CreditCard, ShoppingCart } from "lucide-react";
@@ -92,22 +92,26 @@ export function CashbackStep({
 					<div className="grid grid-cols-2 gap-4 short:gap-1.5">
 						<div className="bg-brand/5 p-4 short:p-2 rounded-2xl short:rounded-lg border border-brand/10">
 							<p className="text-[0.6rem] short:text-[0.6rem] font-bold text-muted-foreground uppercase">Seu Saldo</p>
-							<p className="text-xl short:text-base font-black text-green-600">{formatToMoney(available)}</p>
+							<p className="text-xl short:text-base font-black text-green-600">{formatCashbackValue(available, redemptionLimit.terminologia)}</p>
 						</div>
 						<div className="bg-brand/5 p-4 short:p-2 rounded-2xl short:rounded-lg border border-brand/10">
 							<p className="text-[0.6rem] short:text-[0.6rem] font-bold text-muted-foreground uppercase">Limite p/ esta compra</p>
-							<p className="text-xl short:text-base font-black text-brand">{formatToMoney(maxAllowed)}</p>
+							<p className="text-xl short:text-base font-black text-brand">{formatCashbackValue(maxAllowed, redemptionLimit.terminologia)}</p>
 						</div>
 					</div>
-
-					{limitDescription && (
-						<p className="text-[0.65rem] short:text-[0.6rem] font-medium text-muted-foreground text-center italic">{limitDescription}</p>
-					)}
+					<div className="flex flex-col items-center gap-1">
+						{limitDescription && (
+							<p className="text-[0.65rem] short:text-[0.6rem] font-medium text-muted-foreground text-center italic">{limitDescription}</p>
+						)}
+						{redemptionLimit.terminologia === "PONTOS" ? (
+							<p className="text-[0.65rem] short:text-[0.6rem] font-medium text-muted-foreground text-center italic">1 ponto = R$ 1,00</p>
+						) : null}
+					</div>
 
 					{applied && (
 						<div className="space-y-2 short:space-y-0.5 mt-auto pt-2 animate-in zoom-in">
 							<Label className="font-bold text-xs short:text-[0.65rem] text-muted-foreground uppercase tracking-widest text-center block">
-								Valor a Resgatar
+								Valor a Resgatar em {getCashbackUnitLabel(redemptionLimit.terminologia)}
 							</Label>
 							<Input
 								type="number"
@@ -162,7 +166,7 @@ export function CashbackStep({
 					<div className="w-fit self-center flex items-center justify-center px-4 py-2 short:px-2 short:py-1 bg-red-100 border border-red-200 text-red-600 rounded-2xl short:rounded-lg gap-2 short:gap-1 shadow-sm">
 						<AlertTriangle className="w-5 h-5 short:w-3.5 short:h-3.5" />
 						<p className="text-xs short:text-[0.65rem] font-medium text-center italic">
-							O valor a resgatar não pode ser maior que o limite de {formatToMoney(maxAllowed)}.
+							O valor a resgatar não pode ser maior que o limite de {formatCashbackValue(maxAllowed, redemptionLimit.terminologia)}.
 						</p>
 					</div>
 				</div>

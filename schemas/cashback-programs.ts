@@ -2,6 +2,7 @@ import z from "zod";
 import {
 	CashbackProgramAccumulationTypeEnum,
 	CashbackProgramRedemptionLimitTypeEnum,
+	CashbackProgramTerminologyEnum,
 	CashbackProgramTransactionStatusEnum,
 	CashbackProgramTransactionTypeEnum,
 } from "./enums";
@@ -24,6 +25,7 @@ export const CashbackProgramSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	terminologia: CashbackProgramTerminologyEnum.default("DINHEIRO"),
 	modalidadeDescontosPermitida: z
 		.boolean({
 			required_error: "Modalidade de descontos permitida do programa de cashback não informada.",

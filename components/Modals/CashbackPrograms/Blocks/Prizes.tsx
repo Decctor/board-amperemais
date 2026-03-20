@@ -6,7 +6,8 @@ import TextareaInput from "@/components/Inputs/TextareaInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
-import { formatToMoney } from "@/lib/formatting";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
+import { formatCashbackValue, getCashbackUnitLabel } from "@/lib/formatting";
 import { isValidNumber } from "@/lib/validation";
 import type { TUseCashbackProgramState } from "@/state-hooks/use-cashback-program-state";
 import { BadgeDollarSign, Gift, PencilIcon, Plus, Trash2 } from "lucide-react";
@@ -15,12 +16,14 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 type CashbackProgramsPrizesBlockProps = {
+	terminology: TCashbackProgramTerminologyEnum;
 	cashbackProgramPrizes: TUseCashbackProgramState["state"]["cashbackProgramPrizes"];
 	addCashbackProgramPrize: TUseCashbackProgramState["addCashbackProgramPrize"];
 	updateCashbackProgramPrize: TUseCashbackProgramState["updateCashbackProgramPrize"];
 	deleteCashbackProgramPrize: TUseCashbackProgramState["deleteCashbackProgramPrize"];
 };
 export default function CashbackProgramsPrizesBlock({
+	terminology,
 	cashbackProgramPrizes,
 	addCashbackProgramPrize,
 	updateCashbackProgramPrize,
@@ -33,7 +36,7 @@ export default function CashbackProgramsPrizesBlock({
 		<ResponsiveMenuSection title="PRÊMIOS" icon={<Gift className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex flex-col gap-1">
 				<p className="text-sm font-medium text-muted-foreground">
-					Define abaixo, se aplicável, recompensas rápidas que estarão disponíveis para resgate no seu programa de cashback.
+					Define abaixo, se aplicável, recompensas rápidas que estarão disponíveis para resgate no seu programa de {getCashbackUnitLabel(terminology)}.
 				</p>
 			</div>
 			<div className="w-full flex items-center justify-end">
@@ -49,6 +52,7 @@ export default function CashbackProgramsPrizesBlock({
 							<CashbackProgramPrizeCard
 								key={prize.id}
 								prize={prize}
+								terminology={terminology}
 								handleRemoveClick={() => deleteCashbackProgramPrize(index)}
 								handleEditClick={() => setEditingPrizeIndex(index)}
 							/>
@@ -60,6 +64,7 @@ export default function CashbackProgramsPrizesBlock({
 			</div>
 			{newPrizeMenuIsOpen ? (
 				<NewPrizeMenu
+					terminology={terminology}
 					closeMenu={() => setNewPrizeMenuIsOpen(false)}
 					addCashbackProgramPrize={(v) => {
 						addCashbackProgramPrize(v);
@@ -70,6 +75,7 @@ export default function CashbackProgramsPrizesBlock({
 			{editingPrize ? (
 				<EditPrizeMenu
 					initialPrize={editingPrize}
+					terminology={terminology}
 					closeMenu={() => setEditingPrizeIndex(null)}
 					updateCashbackProgramPrize={(v) => {
 						updateCashbackProgramPrize(editingPrizeIndex as number, v);
@@ -83,10 +89,11 @@ export default function CashbackProgramsPrizesBlock({
 
 type CashbackProgramPrizeCardProps = {
 	prize: TUseCashbackProgramState["state"]["cashbackProgramPrizes"][number];
+	terminology: TCashbackProgramTerminologyEnum;
 	handleRemoveClick: () => void;
 	handleEditClick: () => void;
 };
-function CashbackProgramPrizeCard({ prize, handleRemoveClick, handleEditClick }: CashbackProgramPrizeCardProps) {
+function CashbackProgramPrizeCard({ prize, terminology, handleRemoveClick, handleEditClick }: CashbackProgramPrizeCardProps) {
 	return (
 		<div className="w-full flex flex-col sm:flex-row gap-1.5 bg-card border-primary/20 rounded-xl border p-1.5 shadow-2xs">
 			<div className="flex items-center justify-center">
@@ -107,7 +114,7 @@ function CashbackProgramPrizeCard({ prize, handleRemoveClick, handleEditClick }:
 						<div className="flex items-center gap-3 flex-col md:flex-row gap-y-1">
 							<div className="flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem]">
 								<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
-								<p className="text-xs tracking-tight uppercase">{formatToMoney(prize.valor)}</p>
+								<p className="text-xs tracking-tight uppercase">{formatCashbackValue(prize.valor, terminology)}</p>
 							</div>
 						</div>
 					</div>
@@ -133,10 +140,11 @@ function CashbackProgramPrizeCard({ prize, handleRemoveClick, handleEditClick }:
 }
 
 type NewPrizeMenuProps = {
+	terminology: TCashbackProgramTerminologyEnum;
 	closeMenu: () => void;
 	addCashbackProgramPrize: TUseCashbackProgramState["addCashbackProgramPrize"];
 };
-function NewPrizeMenu({ closeMenu, addCashbackProgramPrize }: NewPrizeMenuProps) {
+function NewPrizeMenu({ terminology, closeMenu, addCashbackProgramPrize }: NewPrizeMenuProps) {
 	const [newPrize, setNewPrize] = useState<TUseCashbackProgramState["state"]["cashbackProgramPrizes"][number]>({
 		ativo: true,
 		titulo: "",
@@ -196,7 +204,7 @@ function NewPrizeMenu({ closeMenu, addCashbackProgramPrize }: NewPrizeMenuProps)
 			/>
 			<NumberInput
 				label="VALOR"
-				placeholder="Preencha aqui o valor do prêmio em cashback..."
+				placeholder={`Preencha aqui o valor do prêmio em ${getCashbackUnitLabel(terminology)}...`}
 				width="100%"
 				value={newPrize.valor}
 				handleChange={(value) => setNewPrize({ ...newPrize, valor: value })}
@@ -206,10 +214,11 @@ function NewPrizeMenu({ closeMenu, addCashbackProgramPrize }: NewPrizeMenuProps)
 }
 type EditPrizeMenuProps = {
 	initialPrize: TUseCashbackProgramState["state"]["cashbackProgramPrizes"][number];
+	terminology: TCashbackProgramTerminologyEnum;
 	closeMenu: () => void;
 	updateCashbackProgramPrize: (info: Parameters<TUseCashbackProgramState["updateCashbackProgramPrize"]>[1]) => void;
 };
-function EditPrizeMenu({ initialPrize, closeMenu, updateCashbackProgramPrize }: EditPrizeMenuProps) {
+function EditPrizeMenu({ initialPrize, terminology, closeMenu, updateCashbackProgramPrize }: EditPrizeMenuProps) {
 	const [newPrize, setNewPrize] = useState<TUseCashbackProgramState["state"]["cashbackProgramPrizes"][number]>(initialPrize);
 
 	function validateAndUpdatePrize(info: TUseCashbackProgramState["state"]["cashbackProgramPrizes"][number]) {
@@ -261,7 +270,7 @@ function EditPrizeMenu({ initialPrize, closeMenu, updateCashbackProgramPrize }: 
 			/>
 			<NumberInput
 				label="VALOR"
-				placeholder="Preencha aqui o valor do prêmio em cashback..."
+				placeholder={`Preencha aqui o valor do prêmio em ${getCashbackUnitLabel(terminology)}...`}
 				width="100%"
 				value={newPrize.valor}
 				handleChange={(value) => setNewPrize({ ...newPrize, valor: value })}

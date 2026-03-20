@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
+import { formatCashbackValue, formatNameAsInitials } from "@/lib/formatting";
 import { useTopCashbackClients } from "@/lib/queries/cashback-programs";
 import { BadgeDollarSign, CirclePlus } from "lucide-react";
 import { useMemo, useState } from "react";
 
-export default function TopClientsBlock() {
+export default function TopClientsBlock({ terminology }: { terminology: TCashbackProgramTerminologyEnum }) {
 	const [sortBy, setSortBy] = useState<"cumulative" | "rescued">("cumulative");
 
 	const { data: clients, isLoading } = useTopCashbackClients({
@@ -85,7 +86,7 @@ export default function TopClientsBlock() {
 											<Progress value={percentage} className="h-2 w-full" />
 										</div>
 
-										<div className="w-[100px] text-right font-bold text-sm">{formatToMoney(value)}</div>
+										<div className="w-[100px] text-right font-bold text-sm">{formatCashbackValue(value, terminology)}</div>
 									</div>
 								</HoverCardTrigger>
 								<HoverCardContent className="flex flex-col w-80">
@@ -102,15 +103,15 @@ export default function TopClientsBlock() {
 										</div>
 										<div className="w-full flex items-center gap-2 justify-between">
 											<p className="text-xs text-muted-foreground">TOTAL ACUMULADO</p>
-											<p className="text-xs font-medium">{formatToMoney(client.saldoValorAcumuladoTotal)}</p>
+											<p className="text-xs font-medium">{formatCashbackValue(client.saldoValorAcumuladoTotal, terminology)}</p>
 										</div>
 										<div className="w-full flex items-center gap-2 justify-between">
 											<p className="text-xs text-muted-foreground">TOTAL RESGATADO</p>
-											<p className="text-xs font-medium">{formatToMoney(client.saldoValorResgatadoTotal)}</p>
+											<p className="text-xs font-medium">{formatCashbackValue(client.saldoValorResgatadoTotal, terminology)}</p>
 										</div>
 										<div className="w-full flex items-center gap-2 justify-between">
 											<p className="text-xs text-muted-foreground">SALDO DISPONÍVEL</p>
-											<p className="text-xs font-medium text-green-600">{formatToMoney(client.saldoValorDisponivel)}</p>
+											<p className="text-xs font-medium text-green-600">{formatCashbackValue(client.saldoValorDisponivel, terminology)}</p>
 										</div>
 									</div>
 								</HoverCardContent>

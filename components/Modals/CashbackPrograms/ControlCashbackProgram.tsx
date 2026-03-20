@@ -43,6 +43,7 @@ export default function EditCashbackProgram({ user, userOrg, cashbackProgram, cl
 					ativo: cashbackProgram.ativo,
 					titulo: cashbackProgram.titulo,
 					descricao: cashbackProgram.descricao,
+					terminologia: cashbackProgram.terminologia,
 					modalidadeDescontosPermitida: cashbackProgram.modalidadeDescontosPermitida,
 					modalidadeRecompensasPermitida: cashbackProgram.modalidadeRecompensasPermitida,
 					acumuloTipo: cashbackProgram.acumuloTipo,
@@ -81,7 +82,6 @@ export default function EditCashbackProgram({ user, userOrg, cashbackProgram, cl
 		},
 	});
 
-	console.log("PRÊMIOS:", state.cashbackProgramPrizes);
 	return (
 		<ResponsiveMenu
 			menuTitle="EDITAR PROGRAMA DE CASHBACK"
@@ -110,6 +110,7 @@ export default function EditCashbackProgram({ user, userOrg, cashbackProgram, cl
 			<CashbackProgramsExpirationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 			<CashbackProgramsRedemptionLimitBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 			<CashbackProgramsPrizesBlock
+				terminology={state.cashbackProgram.terminologia}
 				cashbackProgramPrizes={state.cashbackProgramPrizes}
 				addCashbackProgramPrize={addCashbackProgramPrize}
 				updateCashbackProgramPrize={updateCashbackProgramPrize}

@@ -3,7 +3,7 @@ import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureC
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
-import { formatPhoneAsBase } from "@/lib/formatting";
+import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
@@ -404,7 +404,9 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 						maxAllowedRedemption = Number.MAX_SAFE_INTEGER;
 					}
 					if (input.sale.cashback.valor > maxAllowedRedemption) {
-						throw new createHttpError.BadRequest(`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`);
+						throw new createHttpError.BadRequest(
+							`Valor de resgate excede o limite permitido. Máximo: ${formatCashbackValue(maxAllowedRedemption, program.terminologia)}`,
+						);
 					}
 				}
 			}

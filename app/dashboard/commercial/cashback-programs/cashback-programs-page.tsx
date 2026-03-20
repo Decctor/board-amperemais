@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { formatCashbackValue, formatDecimalPlaces, formatToMoney, getCashbackUnitLabel } from "@/lib/formatting";
 import { copyToClipboard } from "@/lib/utils";
 import dayjs from "dayjs";
 import { Calendar, DollarSign, Edit, Pencil, Presentation, Settings, TrendingUp } from "lucide-react";
@@ -58,7 +58,7 @@ export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, o
 							REGRA DE ACUMULAÇÃO:
 							{cashbackProgram.acumuloTipo === "PERCENTUAL"
 								? `${formatDecimalPlaces(cashbackProgram.acumuloValor)}% do valor da venda`
-								: `${formatToMoney(cashbackProgram.acumuloValor)} fixo por venda`}
+								: `${formatCashbackValue(cashbackProgram.acumuloValor, cashbackProgram.terminologia)} fixo por venda`}
 						</p>
 					</div>
 					<div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, o
 					<div className="flex items-center gap-2">
 						<Calendar className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-sm font-medium tracking-tight">
-							VALIDADE DOS CRÉDITOS:{" "}
+							VALIDADE DO {getCashbackUnitLabel(cashbackProgram.terminologia, { uppercase: true, plural: false })}:{" "}
 							{cashbackProgram.expiracaoRegraValidadeValor > 0
 								? `${cashbackProgram.expiracaoRegraValidadeValor} dias após o acúmulo`
 								: "Sem validade (não expira)"}
@@ -111,13 +111,13 @@ export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, o
 					PONTO DE INTERAÇÃO
 				</Button>
 			</div>
-			<CashbackStatsBlock period={periodFormatted} />
+			<CashbackStatsBlock period={periodFormatted} terminology={cashbackProgram.terminologia} />
 			<div className="w-full flex flex-col lg:flex-row gap-3 items-stretch">
 				<div className="w-full lg:w-1/2">
-					<RecentTransactionsBlock period={periodFormatted} />
+					<RecentTransactionsBlock period={periodFormatted} terminology={cashbackProgram.terminologia} />
 				</div>
 				<div className="w-full lg:w-1/2">
-					<TopClientsBlock />
+					<TopClientsBlock terminology={cashbackProgram.terminologia} />
 				</div>
 			</div>
 			{editCashbackProgramModalIsOpen ? (
