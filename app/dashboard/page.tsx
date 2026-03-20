@@ -28,5 +28,6 @@ export default async function Main() {
 			/>
 		);
 	}
+	console.log(authSession.session.id);
 	return <DashboardPage user={authSession.user} userOrg={membership.organizacao} membership={membership} />;
 }
