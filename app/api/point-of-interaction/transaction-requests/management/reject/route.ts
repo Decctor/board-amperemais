@@ -52,8 +52,10 @@ export type TRejectPoiTransactionRequestOutput = Awaited<ReturnType<typeof rejec
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ requestId: string }> }) {
 	try {
-		const { requestId } = await params;
-		const body = await request.json().catch(() => ({}));
+		const searchParams = request.nextUrl.searchParams;
+		const requestId = searchParams.get("requestId");
+		if (!requestId) throw new createHttpError.BadRequest("ID da solicitação não informado.");
+		const body = await request.json();
 		const input = RejectPoiTransactionRequestInputSchema.parse(body);
 		const result = await rejectPoiTransactionRequest({ requestId, input });
 		return NextResponse.json(result);

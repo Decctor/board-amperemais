@@ -1,5 +1,11 @@
-import type { TCreatePoiTransactionRequestInput, TCreatePoiTransactionRequestOutput } from "@/app/api/point-of-interaction/transaction-requests/public/route";
-import type { TRejectPoiTransactionRequestInput, TRejectPoiTransactionRequestOutput } from "@/app/api/point-of-interaction/transaction-requests/management/[requestId]/reject/route";
+import type {
+	TCreatePoiTransactionRequestInput,
+	TCreatePoiTransactionRequestOutput,
+} from "@/app/api/point-of-interaction/transaction-requests/public/route";
+import type {
+	TRejectPoiTransactionRequestInput,
+	TRejectPoiTransactionRequestOutput,
+} from "@/app/api/point-of-interaction/transaction-requests/management/reject/route";
 import axios from "axios";
 
 export async function createPoiTransactionRequest(input: TCreatePoiTransactionRequestInput) {
@@ -8,11 +14,14 @@ export async function createPoiTransactionRequest(input: TCreatePoiTransactionRe
 }
 
 export async function approvePoiTransactionRequest(requestId: string) {
-	const { data } = await axios.post(`/api/point-of-interaction/transaction-requests/management/${requestId}/approve`);
+	const { data } = await axios.post(`/api/point-of-interaction/transaction-requests/management/approve?requestId=${requestId}`);
 	return data;
 }
 
 export async function rejectPoiTransactionRequest({ requestId, input }: { requestId: string; input?: TRejectPoiTransactionRequestInput }) {
-	const { data } = await axios.post<TRejectPoiTransactionRequestOutput>(`/api/point-of-interaction/transaction-requests/management/${requestId}/reject`, input ?? {});
+	const { data } = await axios.post<TRejectPoiTransactionRequestOutput>(
+		`/api/point-of-interaction/transaction-requests/management/reject?requestId=${requestId}`,
+		input ?? {},
+	);
 	return data;
 }

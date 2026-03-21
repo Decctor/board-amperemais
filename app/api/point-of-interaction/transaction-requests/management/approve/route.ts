@@ -16,7 +16,8 @@ async function approvePoiTransactionRequest({ requestId }: { requestId: string }
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
-	if (!session.membership.usuarioVendedorId) throw new createHttpError.BadRequest("Seu usuário não possui vendedor vinculado para aprovar esta solicitação.");
+	if (!session.membership.usuarioVendedorId)
+		throw new createHttpError.BadRequest("Seu usuário não possui vendedor vinculado para aprovar esta solicitação.");
 
 	const orgId = session.membership.organizacao.id;
 	const poiRequest = await db.query.poiTransactionRequests.findFirst({
@@ -89,9 +90,11 @@ async function approvePoiTransactionRequest({ requestId }: { requestId: string }
 	}
 }
 
-export async function POST(_request: NextRequest, { params }: { params: Promise<{ requestId: string }> }) {
+export async function POST(request: NextRequest) {
 	try {
-		const { requestId } = await params;
+		const searchParams = request.nextUrl.searchParams;
+		const requestId = searchParams.get("requestId");
+		if (!requestId) throw new createHttpError.BadRequest("ID da solicitação não informado.");
 		const result = await approvePoiTransactionRequest({ requestId });
 		return NextResponse.json(result);
 	} catch (error) {

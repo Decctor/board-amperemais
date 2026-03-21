@@ -7,8 +7,10 @@ import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { usePoiTransactionRequestsRealtime } from "@/lib/hooks/use-supabase-realtime";
 import { approvePoiTransactionRequest, rejectPoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
 import { usePoiTransactionRequests } from "@/lib/queries/poi-transaction-requests";
+import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { GitPullRequestArrow, RefreshCcw, ShieldCheck, ShieldX, Smartphone } from "lucide-react";
+import { BadgeDollarSign, BadgePercent, CheckCheck, GitPullRequestArrow, Phone, RefreshCcw, ShieldCheck, ShieldX, Smartphone, X } from "lucide-react";
+import { BsCalendar, BsCalendarPlus } from "react-icons/bs";
 import { toast } from "sonner";
 
 type PointOfInteractionTransactionRequestsQueueProps = {
@@ -99,8 +101,62 @@ function PoiTransactionRequestCard({
 	};
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
-			<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+		<div className="bg-card border border-primary/20 flex w-full flex-col gap-1 rounded-xl px-3 py-4 shadow-2xs h-fit">
+			<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
+				<div className="flex items-center gap-2 flex-wrap">
+					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{request.cliente?.nome ?? resumo?.cliente?.nome ?? "Cliente não identificado"}</h1>
+					<div className="flex items-center gap-1">
+						<Phone className="w-4 h-4 min-w-4 min-h-4" />
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
+							{request.cliente?.telefone ?? resumo?.cliente?.telefone ?? "Telefone não informado"}
+						</h1>
+					</div>
+				</div>
+
+				<div className="flex items-center gap-3">
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<BsCalendarPlus className="w-4 min-w-4 h-4 min-h-4" />
+						<p className="text-xs font-medium tracking-tight uppercase">{formatDateAsLocale(request.dataInsercao, true)}</p>
+					</div>
+					<div
+						className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-primary", {
+							"bg-amber-100 text-amber-700": request.status === "PENDENTE",
+							"bg-green-100 text-green-700": request.status === "APROVADO",
+							"bg-red-100 text-red-700": request.status === "REJEITADO",
+						})}
+					>
+						<p className="text-xs font-medium tracking-tight uppercase">{request.status}</p>
+					</div>
+				</div>
+			</div>
+
+			<div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
+				<div className="flex items-center gap-3 flex-wrap">
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
+						<p className="text-xs font-medium tracking-tight uppercase">BRUTO: {formatToMoney(resumo?.venda?.valorBruto ?? 0)}</p>
+					</div>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<BadgePercent className="w-4 min-w-4 h-4 min-h-4" />
+						<p className="text-xs font-medium tracking-tight uppercase">RESGATE: {formatToMoney(resumo?.venda?.valorResgate ?? 0)}</p>
+					</div>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
+						<p className="text-xs font-medium tracking-tight uppercase">FINAL: {formatToMoney(resumo?.venda?.valorBruto ?? 0)}</p>
+					</div>
+				</div>
+				<div className="flex items-center gap-3">
+					<Button disabled={disabled} variant="ghost-destructive" className="flex items-center gap-1.5" size="sm" onClick={onReject}>
+						<X className="w-4 min-w-4 h-4 min-h-4" />
+						REJEITAR
+					</Button>
+					<Button disabled={disabled} variant="brand" className="flex items-center gap-1.5" size="sm" onClick={onApprove}>
+						<CheckCheck className="w-4 min-w-4 h-4 min-h-4" />
+						APROVAR
+					</Button>
+				</div>
+			</div>
+			{/* <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<div className="space-y-2">
 					<div className="flex flex-wrap items-center gap-2 text-xs">
 						<span className="rounded-full bg-amber-100 px-2.5 py-1 font-bold text-amber-700">{request.status}</span>
@@ -133,7 +189,7 @@ function PoiTransactionRequestCard({
 						<ShieldX className="h-4 w-4" /> Rejeitar
 					</Button>
 				</div>
-			</div>
+			</div> */}
 		</div>
 	);
 }
