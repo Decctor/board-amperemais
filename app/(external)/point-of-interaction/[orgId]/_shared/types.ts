@@ -8,6 +8,7 @@ export type TPrize = {
 	descricao: string | null;
 	imagemCapaUrl: string | null;
 	valor: number;
+	valorVenda: number;
 	produto: { grupo: string } | null;
 };
 

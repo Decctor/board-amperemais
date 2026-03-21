@@ -17,6 +17,7 @@ export type TPoiTransactionRequestSummary = {
 	recompensa: {
 		prizeId: string;
 		prizeValue: number;
+		prizeSaleValue: number;
 	} | null;
 	resultadoProcessamento?: TCreatePointOfInteractionTransactionOutput["data"] | null;
 	statusPublico?: TPoiTransactionRequestStatusEnum;
@@ -30,9 +31,13 @@ export function buildPoiTransactionRequestSummary(input: TCreatePointOfInteracti
 			telefone: input.client.telefone,
 		},
 		venda: {
-			valorBruto: input.sale.valor,
-			valorResgate: input.sale.cashback.aplicar ? input.sale.cashback.valor : 0,
-			valorFinal: Math.max(0, input.sale.valor - (input.sale.cashback.aplicar ? input.sale.cashback.valor : 0)),
+			valorBruto: input.sale.prizeRedemption?.prizeSaleValue ?? input.sale.valor,
+			valorResgate: input.sale.prizeRedemption?.prizeValue ?? (input.sale.cashback.aplicar ? input.sale.cashback.valor : 0),
+			valorFinal: Math.max(
+				0,
+				(input.sale.prizeRedemption?.prizeSaleValue ?? input.sale.valor) -
+					(input.sale.prizeRedemption?.prizeValue ?? (input.sale.cashback.aplicar ? input.sale.cashback.valor : 0)),
+			),
 			modo: input.sale.prizeRedemption ? "RECOMPENSA" : "DESCONTO",
 			codigoParceiro: input.sale.partnerCode ?? null,
 		},
@@ -40,6 +45,7 @@ export function buildPoiTransactionRequestSummary(input: TCreatePointOfInteracti
 			? {
 				prizeId: input.sale.prizeRedemption.prizeId,
 				prizeValue: input.sale.prizeRedemption.prizeValue,
+				prizeSaleValue: input.sale.prizeRedemption.prizeSaleValue,
 			}
 			: null,
 	};

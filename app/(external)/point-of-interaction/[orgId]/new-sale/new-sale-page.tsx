@@ -48,6 +48,13 @@ const PRIZE_STEPS: TStepDefinition[] = [
 	{ id: 3, label: "CONFIRMAÇÃO", icon: Lock },
 ];
 
+const PRIZE_SALE_ONLY_STEPS: TStepDefinition[] = [
+	{ id: 1, label: "CLIENTE", icon: UserRound },
+	{ id: 2, label: "RECOMPENSA", icon: Gift },
+	{ id: 3, label: "VENDA", icon: Tag },
+	{ id: 4, label: "CONFIRMAÇÃO", icon: Lock },
+];
+
 type NewSaleContentProps = {
 	org: {
 		id: TOrganizationEntity["id"];
@@ -85,6 +92,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const [flowMode, setFlowMode] = React.useState<"discount" | "prize" | null>(null);
 	const [showModeSelection, setShowModeSelection] = React.useState(false);
 	const [selectedPrize, setSelectedPrize] = React.useState<TPrize | null>(null);
+	const [prizeFlowIntent, setPrizeFlowIntent] = React.useState<"redeem" | "sale-only" | null>(null);
 
 	const hasPrizes = prizes.length > 0;
 	const isDiscountModeAllowed = org.modalidadeDescontosPermitida;
@@ -92,9 +100,10 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const shouldShowFlowModeSelection = isDiscountModeAllowed && isPrizeModeAllowed;
 	const effectiveFlowMode: "discount" | "prize" = shouldShowFlowModeSelection ? (flowMode ?? "discount") : isPrizeModeAllowed ? "prize" : "discount";
 	const isPrizeMode = effectiveFlowMode === "prize";
-	const totalSteps = isPrizeMode ? 3 : 4;
-	const successStep = isPrizeMode ? 4 : 5;
-	const waitingStep = isPrizeMode ? 4 : 5;
+	const isPrizeSaleOnlyFlow = isPrizeMode && prizeFlowIntent === "sale-only";
+	const totalSteps = isPrizeMode ? (isPrizeSaleOnlyFlow ? 4 : 3) : 4;
+	const successStep = totalSteps + 1;
+	const waitingStep = totalSteps + 1;
 	const finalSuccessStep = mode === "mobile" ? waitingStep + 1 : successStep;
 	const isMobileMode = mode === "mobile";
 
@@ -161,11 +170,18 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		if (!isPrizeMode && currentStep === 2 && state.sale.valor <= 0) {
 			return toast.error("Digite o valor da venda.");
 		}
+		if (isPrizeSaleOnlyFlow && currentStep === 3 && state.sale.valor <= 0) {
+			return toast.error("Digite o valor da venda.");
+		}
 		if (!isPrizeMode && currentStep === 2) {
 			updateCashback({
 				aplicar: maximumCashbackAllowed > 0,
 				valor: maximumCashbackAllowed,
 			});
+		}
+		if (isPrizeSaleOnlyFlow && currentStep === 3) {
+			updateCashback({ aplicar: false, valor: 0 });
+			updatePrizeRedemption(null);
 		}
 		playAction();
 		setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
@@ -184,6 +200,11 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		});
 
 		setFlowMode(mode);
+		setPrizeFlowIntent(null);
+		setSelectedPrize(null);
+		updatePrizeRedemption(null);
+		updateCashback({ aplicar: false, valor: 0 });
+		updateSale({ valor: 0 });
 		setShowModeSelection(false);
 		playAction();
 		setCurrentStep(2);
@@ -191,10 +212,21 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 
 	const handleSelectPrize = (prize: TPrize) => {
 		if (availableCashback < prize.valor) return;
+		setPrizeFlowIntent("redeem");
 		setSelectedPrize(prize);
-		updateSale({ valor: prize.valor });
+		updateSale({ valor: prize.valorVenda });
 		updateCashback({ aplicar: true, valor: prize.valor });
-		updatePrizeRedemption({ prizeId: prize.id, prizeValue: prize.valor });
+		updatePrizeRedemption({ prizeId: prize.id, prizeValue: prize.valor, prizeSaleValue: prize.valorVenda });
+		playAction();
+		setCurrentStep(3);
+	};
+
+	const handleContinueWithoutPrize = () => {
+		setPrizeFlowIntent("sale-only");
+		setSelectedPrize(null);
+		updatePrizeRedemption(null);
+		updateCashback({ aplicar: false, valor: 0 });
+		updateSale({ valor: 0 });
 		playAction();
 		setCurrentStep(3);
 	};
@@ -244,6 +276,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		setFlowMode(null);
 		setShowModeSelection(false);
 		setSelectedPrize(null);
+		setPrizeFlowIntent(null);
 	};
 
 	async function handleCancelRedirect() {
@@ -252,8 +285,8 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		updateParams({ phone: "", clientId: null });
 	}
 
-	const headerSteps = isPrizeMode ? PRIZE_STEPS : DISCOUNT_STEPS;
-	const confirmationStep = isPrizeMode ? 3 : 4;
+	const headerSteps = isPrizeMode ? (isPrizeSaleOnlyFlow ? PRIZE_SALE_ONLY_STEPS : PRIZE_STEPS) : DISCOUNT_STEPS;
+	const confirmationStep = isPrizeMode ? (isPrizeSaleOnlyFlow ? 4 : 3) : 4;
 	const isSubmitting = isCreatingSale || isCreatingRequest;
 
 	return (
@@ -351,14 +384,25 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 
 						{/* Prize mode steps */}
 						{!showModeSelection && isPrizeMode && currentStep === 2 && (
-							<PrizeSelectionStep prizes={prizes} availableBalance={availableCashback} onSelectPrize={handleSelectPrize} />
+							<PrizeSelectionStep
+								prizes={prizes}
+								availableBalance={availableCashback}
+								terminology={org.terminologia}
+								onSelectPrize={handleSelectPrize}
+								onContinueWithoutPrize={handleContinueWithoutPrize}
+							/>
+						)}
+						{!showModeSelection && isPrizeSaleOnlyFlow && currentStep === 3 && (
+							<SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} />
 						)}
 						{!showModeSelection && isPrizeMode && currentStep === 3 &&
+							!isPrizeSaleOnlyFlow &&
 							(isMobileMode ? (
 								<MobilePrizeConfirmationStep
 									clientName={state.client.nome || client?.nome || ""}
 									selectedPrize={selectedPrize}
 									availableBalance={availableCashback}
+									terminology={org.terminologia}
 									onSubmit={submitTransaction}
 								/>
 							) : (
@@ -366,6 +410,19 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 									clientName={state.client.nome || client?.nome || ""}
 									selectedPrize={selectedPrize}
 									availableBalance={availableCashback}
+									terminology={org.terminologia}
+									operatorIdentifier={state.operatorIdentifier}
+									onOperatorIdentifierChange={updateOperatorIdentifier}
+									onSubmit={submitTransaction}
+								/>
+							))}
+						{!showModeSelection && isPrizeSaleOnlyFlow && currentStep === 4 &&
+							(isMobileMode ? (
+								<MobileConfirmationStep clientName={state.client.nome || client?.nome || ""} finalValue={state.sale.valor} onSubmit={submitTransaction} />
+							) : (
+								<KioskConfirmationStep
+									clientName={state.client.nome || client?.nome || ""}
+									finalValue={state.sale.valor}
 									operatorIdentifier={state.operatorIdentifier}
 									onOperatorIdentifierChange={updateOperatorIdentifier}
 									onSubmit={submitTransaction}
@@ -437,8 +494,8 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						{/* Prize mode success */}
 						{!showModeSelection && isPrizeMode && currentStep === finalSuccessStep && successData && (
 							<SuccessCelebration
-								title="RESGATE REALIZADO!"
-								subtitle="A recompensa foi resgatada com sucesso."
+								title={selectedPrize ? "RESGATE REALIZADO!" : "VENDA REGISTRADA!"}
+								subtitle={selectedPrize ? "A recompensa foi resgatada com sucesso." : "A venda foi registrada com sucesso para pontuação."}
 								stats={[
 									{
 										label: "CASHBACK GERADO",
@@ -452,6 +509,15 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										variant: "brand",
 										formatValue: (value) => formatCashbackValue(value, org.terminologia),
 									},
+									...(selectedPrize
+										? []
+										: [
+												{
+													label: "VALOR DA VENDA",
+													value: state.sale.valor,
+													variant: "brand" as const,
+												},
+											]),
 								]}
 								primaryAction={{ label: "NOVA VENDA", onClick: handleReset }}
 								secondaryAction={{ label: "VOLTAR AO INÍCIO", onClick: () => router.push(`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`) }}
@@ -470,6 +536,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										<div className="flex-1 min-w-0 text-left">
 											<h3 className="font-black text-sm short:text-xs uppercase tracking-tight truncate">{selectedPrize.titulo}</h3>
 											<p className="font-black text-lg short:text-base text-amber-700">{formatCashbackValue(selectedPrize.valor, org.terminologia)}</p>
+											<p className="text-xs short:text-[0.65rem] text-muted-foreground">
+												Valor comercial: {selectedPrize.valorVenda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+											</p>
 										</div>
 									</div>
 								)}
@@ -482,11 +551,20 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								{currentStep > 1 && (
 									<Button
 										onClick={() => {
-											if (isPrizeMode && currentStep === 3) {
+											if (isPrizeMode && currentStep === 3 && !isPrizeSaleOnlyFlow) {
 												setSelectedPrize(null);
+												setPrizeFlowIntent(null);
 												updatePrizeRedemption(null);
 												updateSale({ valor: 0 });
 												updateCashback({ aplicar: false, valor: 0 });
+											}
+											if (isPrizeSaleOnlyFlow && currentStep === 4) {
+												updateCashback({ aplicar: false, valor: 0 });
+												updatePrizeRedemption(null);
+											}
+											if (isPrizeSaleOnlyFlow && currentStep === 3) {
+												setPrizeFlowIntent(null);
+												updateSale({ valor: 0 });
 											}
 											setCurrentStep((p) => p - 1);
 										}}
@@ -497,7 +575,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										VOLTAR
 									</Button>
 								)}
-								{!(isPrizeMode && currentStep === 2) && (
+								{!(isPrizeMode && currentStep === 2) && !(isPrizeMode && currentStep === 3 && !isPrizeSaleOnlyFlow) && (
 									<Button
 										onClick={currentStep === confirmationStep ? submitTransaction : handleNextStep}
 										size="lg"

@@ -53,6 +53,7 @@ export const PointOfInteractionNewSaleStateSchema = z.object({
 				.object({
 					prizeId: z.string(),
 					prizeValue: z.number(),
+					prizeSaleValue: z.number(),
 				})
 				.optional()
 				.nullable(),

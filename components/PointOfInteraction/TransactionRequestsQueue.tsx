@@ -98,7 +98,9 @@ function PoiTransactionRequestCard({
 	const resumo = request.resumoSolicitacao as {
 		cliente?: { nome?: string; telefone?: string };
 		venda?: { valorBruto?: number; valorResgate?: number; valorFinal?: number; modo?: string };
+		recompensa?: { prizeValue?: number; prizeSaleValue?: number } | null;
 	};
+	const isRewardMode = resumo?.venda?.modo === "RECOMPENSA";
 
 	return (
 		<div className="bg-card border border-primary/20 flex w-full flex-col gap-1 rounded-xl px-3 py-4 shadow-2xs h-fit">
@@ -138,7 +140,9 @@ function PoiTransactionRequestCard({
 					</div>
 					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
 						<BadgePercent className="w-4 min-w-4 h-4 min-h-4" />
-						<p className="text-xs font-medium tracking-tight uppercase">RESGATE: {formatToMoney(resumo?.venda?.valorResgate ?? 0)}</p>
+						<p className="text-xs font-medium tracking-tight uppercase">
+							{isRewardMode ? `RESGATE: ${resumo?.recompensa?.prizeValue ?? resumo?.venda?.valorResgate ?? 0} créditos` : `RESGATE: ${formatToMoney(resumo?.venda?.valorResgate ?? 0)}`}
+						</p>
 					</div>
 					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
 						<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />

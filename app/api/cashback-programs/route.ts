@@ -48,6 +48,9 @@ export type TCreateCashbackProgramInput = z.infer<typeof CreateCashbackProgramIn
 async function createCashbackProgram({ input, session }: { input: TCreateCashbackProgramInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	if (input.cashbackProgramPrizes.some((prize) => !prize.produtoId)) {
+		throw new createHttpError.BadRequest("Toda recompensa deve estar vinculada a um produto.");
+	}
 
 	const existingCashbackProgram = await db.query.cashbackPrograms.findFirst({
 		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
@@ -156,6 +159,9 @@ export type TUpdateCashbackProgramInput = z.infer<typeof UpdateCashbackProgramIn
 async function updateCashbackProgram({ input, session }: { input: TUpdateCashbackProgramInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	if (input.cashbackProgramPrizes.some((prize) => !prize.deletar && !prize.produtoId)) {
+		throw new createHttpError.BadRequest("Toda recompensa deve estar vinculada a um produto.");
+	}
 
 	const transactionReturn = await db.transaction(async (tx) => {
 		const updatedCashbackProgram = await tx

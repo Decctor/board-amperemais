@@ -46,7 +46,7 @@ export function SuccessCelebration({ title, subtitle, stats, primaryAction, seco
 
 			{children}
 
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 short:gap-2 w-full max-w-xl">
+			<div className="w-full flex flex-col md:flex-row gap-2 flex-wrap justify-center">
 				{stats.map((stat) => (
 					<div
 						key={stat.label}
@@ -65,13 +65,7 @@ export function SuccessCelebration({ title, subtitle, stats, primaryAction, seco
 						>
 							{stat.label}
 						</p>
-						<p
-							className={
-								stat.variant === "green"
-									? "text-4xl short:text-xl font-black text-green-700"
-									: "text-4xl short:text-xl font-black text-brand"
-							}
-						>
+						<p className={stat.variant === "green" ? "text-4xl short:text-xl font-black text-green-700" : "text-4xl short:text-xl font-black text-brand"}>
 							{stat.formatValue ? stat.formatValue(stat.value) : formatToMoney(stat.value)}
 						</p>
 					</div>

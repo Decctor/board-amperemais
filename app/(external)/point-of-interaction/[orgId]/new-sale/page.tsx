@@ -45,9 +45,21 @@ export default async function NewSalePage({
 			produto: {
 				columns: {
 					grupo: true,
+					precoVenda: true,
+				},
+			},
+			produtoVariante: {
+				columns: {
+					precoVenda: true,
 				},
 			},
 		},
+	});
+
+	const normalizedPrizes = prizes.flatMap((prize) => {
+		const valorVenda = prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? null;
+		if (valorVenda === null || valorVenda === undefined) return [];
+		return [{ ...prize, valorVenda }];
 	});
 	const cashbackProgramConfig = await db.query.cashbackPrograms.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
@@ -75,7 +87,7 @@ export default async function NewSalePage({
 			<NewSaleContent
 				org={orgWithCashbackConfig}
 				clientId={clientId}
-				prizes={prizes}
+				prizes={normalizedPrizes}
 				initialOperatorPassword={filledOperatorPassword}
 				mode={interfaceMode}
 			/>

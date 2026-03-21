@@ -156,6 +156,7 @@ function NewPrizeMenu({ terminology, closeMenu, addCashbackProgramPrize }: NewPr
 	});
 
 	function validateAndAddPrize(info: TUseCashbackProgramState["state"]["cashbackProgramPrizes"][number]) {
+		if (!info.produtoId) return toast.error("Selecione um produto para vincular ao prêmio.");
 		if (info.titulo.trim().length < 3) return toast.error("Título do prêmio deve ter pelo menos 3 caracteres.");
 		if (info.valor < 0) return toast.error("Valor do prêmio deve ser maior que 0.");
 		return addCashbackProgramPrize(info);
@@ -222,6 +223,7 @@ function EditPrizeMenu({ initialPrize, terminology, closeMenu, updateCashbackPro
 	const [newPrize, setNewPrize] = useState<TUseCashbackProgramState["state"]["cashbackProgramPrizes"][number]>(initialPrize);
 
 	function validateAndUpdatePrize(info: TUseCashbackProgramState["state"]["cashbackProgramPrizes"][number]) {
+		if (!info.produtoId) return toast.error("Selecione um produto para vincular ao prêmio.");
 		if (info.titulo.trim().length < 3) return toast.error("Título do prêmio deve ter pelo menos 3 caracteres.");
 		if (info.valor < 0) return toast.error("Valor do prêmio deve ser maior que 0.");
 		return updateCashbackProgramPrize(info);
