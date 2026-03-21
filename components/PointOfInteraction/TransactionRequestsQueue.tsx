@@ -142,7 +142,7 @@ function PoiTransactionRequestCard({
 					</div>
 					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
 						<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
-						<p className="text-xs font-medium tracking-tight uppercase">FINAL: {formatToMoney(resumo?.venda?.valorBruto ?? 0)}</p>
+						<p className="text-xs font-medium tracking-tight uppercase">FINAL: {formatToMoney(resumo?.venda?.valorFinal ?? 0)}</p>
 					</div>
 				</div>
 				<div className="flex items-center gap-3">
