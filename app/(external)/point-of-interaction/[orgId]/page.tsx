@@ -8,8 +8,16 @@ import Link from "next/link";
 import { MdOutlineError } from "react-icons/md";
 import PointOfInteractionContent from "./point-of-interaction-page";
 
-export default async function PointOfInteraction({ params }: { params: Promise<{ orgId: string }> }) {
+export default async function PointOfInteraction({
+	params,
+	searchParams,
+}: {
+	params: Promise<{ orgId: string }>;
+	searchParams: Promise<{ mode?: string }>;
+}) {
 	const { orgId } = await params;
+	const { mode } = await searchParams;
+	const interfaceMode = mode === "mobile" ? "mobile" : "kiosk";
 
 	if (!orgId) {
 		return <ErrorComponent msg="Oops, parâmetro inválido." />;
@@ -65,7 +73,7 @@ export default async function PointOfInteraction({ params }: { params: Promise<{
 			corSecundaria={org.corSecundaria}
 			corSecundariaForeground={org.corSecundariaForeground}
 		>
-			<PointOfInteractionContent org={org} cashbackProgram={cashbackProgram} />
+			<PointOfInteractionContent org={org} cashbackProgram={cashbackProgram} mode={interfaceMode} />
 		</OrgColorsProvider>
 	);
 }

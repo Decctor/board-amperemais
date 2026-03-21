@@ -5,8 +5,16 @@ import { cashbackProgramBalances, cashbackProgramTransactions } from "@/services
 import { and, desc, eq, gt } from "drizzle-orm";
 import ClientProfileContent from "./client-profile-content";
 
-export default async function ClientProfilePage({ params }: { params: Promise<{ orgId: string; clientId: string }> }) {
+export default async function ClientProfilePage({
+	params,
+	searchParams,
+}: {
+	params: Promise<{ orgId: string; clientId: string }>;
+	searchParams: Promise<{ mode?: string }>;
+}) {
 	const { orgId, clientId } = await params;
+	const { mode } = await searchParams;
+	const interfaceMode = mode === "mobile" ? "mobile" : "kiosk";
 
 	if (!orgId || !clientId) {
 		return <ErrorComponent msg="Oops, parâmetro inválido." />;
@@ -111,6 +119,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
 		>
 			<ClientProfileContent
 				orgId={orgId}
+				mode={interfaceMode}
 				cashbackProgram={cashbackProgram}
 				client={client}
 				balance={balance}

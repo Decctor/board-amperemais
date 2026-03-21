@@ -6,9 +6,10 @@ import NewSaleContent from "./new-sale-page";
 export default async function NewSalePage({
 	params,
 	searchParams,
-}: { params: Promise<{ orgId: string }>; searchParams: Promise<{ clientId?: string; filledOperatorPassword?: string }> }) {
+}: { params: Promise<{ orgId: string }>; searchParams: Promise<{ clientId?: string; filledOperatorPassword?: string; mode?: string }> }) {
 	const { orgId } = await params;
-	const { clientId, filledOperatorPassword } = await searchParams;
+	const { clientId, filledOperatorPassword, mode } = await searchParams;
+	const interfaceMode = mode === "mobile" ? "mobile" : "kiosk";
 	if (!orgId) {
 		return <ErrorComponent msg="Oops, parâmetro inválido." />;
 	}
@@ -71,7 +72,13 @@ export default async function NewSalePage({
 			corSecundaria={org.corSecundaria}
 			corSecundariaForeground={org.corSecundariaForeground}
 		>
-			<NewSaleContent org={orgWithCashbackConfig} clientId={clientId} prizes={prizes} initialOperatorPassword={filledOperatorPassword} />
+			<NewSaleContent
+				org={orgWithCashbackConfig}
+				clientId={clientId}
+				prizes={prizes}
+				initialOperatorPassword={filledOperatorPassword}
+				mode={interfaceMode}
+			/>
 		</OrgColorsProvider>
 	);
 }

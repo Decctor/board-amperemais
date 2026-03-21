@@ -67,7 +67,7 @@ async function canScheduleCampaignForClient(
 	return true;
 }
 
-const CreatePointOfInteractionTransactionInputSchema = z.object({
+export const CreatePointOfInteractionTransactionInputSchema = z.object({
 	orgId: z
 		.string({
 			required_error: "ID da organização não informado.",
@@ -148,9 +148,16 @@ const CreatePointOfInteractionTransactionInputSchema = z.object({
 });
 export type TCreatePointOfInteractionTransactionInput = z.infer<typeof CreatePointOfInteractionTransactionInputSchema>;
 
+export const CreatePointOfInteractionTransactionRequestInputSchema = CreatePointOfInteractionTransactionInputSchema.omit({
+	operatorIdentifier: true,
+});
+export type TCreatePointOfInteractionTransactionRequestInput = z.infer<typeof CreatePointOfInteractionTransactionRequestInputSchema>;
+
 export type TCreatePointOfInteractionTransactionOutput = {
 	data: {
 		saleId: string | null;
+		transactionAccumulationId?: string | null;
+		transactionRedemptionId?: string | null;
 		clientAccumulatedCashbackValue: number;
 		clientNewOverallAvailableBalance: number | null;
 		visualClientAccumulatedCashbackValue: number;
@@ -159,9 +166,21 @@ export type TCreatePointOfInteractionTransactionOutput = {
 	message: string;
 };
 
-async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCreatePointOfInteractionTransactionOutput>> {
-	const body = await req.json();
-	const input = CreatePointOfInteractionTransactionInputSchema.parse(body);
+type TProcessPointOfInteractionTransactionInput = TCreatePointOfInteractionTransactionInput | TCreatePointOfInteractionTransactionRequestInput;
+
+type TProcessPointOfInteractionTransactionParams = {
+	input: TProcessPointOfInteractionTransactionInput;
+	operatorContext?: {
+		operatorIdentifier?: string;
+		operatorSellerId?: string | null;
+		operatorUserId?: string | null;
+	};
+};
+
+export async function processPointOfInteractionTransaction({
+	input,
+	operatorContext,
+}: TProcessPointOfInteractionTransactionParams) {
 	console.log(`[POI ${input.orgId}] [NEW_TRANSACTION]`, input);
 	const result = await db.transaction(async (tx) => {
 		const program = await tx.query.cashbackPrograms.findFirst({
@@ -213,13 +232,31 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 			"CAMPAIGNS FOR TOTAL PURCHASE VALUE": campaignsForTotalPurchaseValue.length,
 		});
 		// FIRST STEP: Identifying the transaction operator
+		const operatorIdentifier = operatorContext?.operatorIdentifier ?? ("operatorIdentifier" in input ? input.operatorIdentifier : undefined);
+		const operatorSellerId = operatorContext?.operatorSellerId;
 		const operator = await tx.query.sellers.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
+			where: (fields, { and, eq }) => {
+				if (operatorSellerId) {
+					return and(eq(fields.id, operatorSellerId), eq(fields.organizacaoId, input.orgId));
+				}
+
+				if (operatorIdentifier) {
+					return and(eq(fields.senhaOperador, operatorIdentifier), eq(fields.organizacaoId, input.orgId));
+				}
+
+				throw new createHttpError.Unauthorized("Operador não informado.");
+			},
 		});
 		if (!operator) throw new createHttpError.Unauthorized("Operador não encontrado.");
 
 		const operatorMembership = await tx.query.organizationMembers.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.usuarioVendedorId, operator.id), eq(fields.organizacaoId, input.orgId)),
+			where: (fields, { and, eq }) => {
+				const conditions = [eq(fields.usuarioVendedorId, operator.id), eq(fields.organizacaoId, input.orgId)];
+				if (operatorContext?.operatorUserId) {
+					conditions.push(eq(fields.usuarioId, operatorContext.operatorUserId));
+				}
+				return and(...conditions);
+			},
 			with: {
 				usuario: true,
 			},
@@ -688,6 +725,8 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 
 		return {
 			transactionSaleId,
+			transactionAccumulationId,
+			transactionRedemptionId,
 			clientAccumulatedCashbackValue: clientNewAccumulatedCashbackValue,
 			clientNewOverallAvailableBalance: clientCashbackAvailableBalance,
 			visualClientAccumulatedCashbackValue,
@@ -723,19 +762,28 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 		console.log("[POI] [IMMEDIATE_PROCESS] No interactions to process immediately");
 	}
 
-	return NextResponse.json(
-		{
-			data: {
-				saleId: result.transactionSaleId,
-				clientAccumulatedCashbackValue: result.clientAccumulatedCashbackValue,
-				clientNewOverallAvailableBalance: result.clientNewOverallAvailableBalance,
-				visualClientAccumulatedCashbackValue: result.visualClientAccumulatedCashbackValue,
-				visualClientNewOverallAvailableBalance: result.visualClientNewOverallAvailableBalance,
-			},
-			message: "Transação processada com sucesso.",
+	return {
+		data: {
+			saleId: result.transactionSaleId,
+			transactionAccumulationId: result.transactionAccumulationId,
+			transactionRedemptionId: result.transactionRedemptionId,
+			clientAccumulatedCashbackValue: result.clientAccumulatedCashbackValue,
+			clientNewOverallAvailableBalance: result.clientNewOverallAvailableBalance,
+			visualClientAccumulatedCashbackValue: result.visualClientAccumulatedCashbackValue,
+			visualClientNewOverallAvailableBalance: result.visualClientNewOverallAvailableBalance,
 		},
-		{ status: 201 },
-	);
+		message: "Transação processada com sucesso.",
+	};
+}
+
+export type TProcessPointOfInteractionTransactionOutput = Awaited<ReturnType<typeof processPointOfInteractionTransaction>>;
+
+async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCreatePointOfInteractionTransactionOutput>> {
+	const body = await req.json();
+	const input = CreatePointOfInteractionTransactionInputSchema.parse(body);
+	const result = await processPointOfInteractionTransaction({ input });
+
+	return NextResponse.json(result, { status: 201 });
 }
 
 export const POST = appApiHandler({

@@ -4,7 +4,8 @@ import type { TCreatePointOfInteractionTransactionOutput } from "@/app/api/point
 import { Button } from "@/components/ui/button";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
-import { formatCashbackValue, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatToPhone } from "@/lib/formatting";
+import { createPoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
 import { createPointOfInteractionSale } from "@/lib/mutations/sales";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
@@ -24,12 +25,15 @@ import { StepProgressHeader } from "../_shared/components/step-progress-header";
 import { SuccessCelebration } from "../_shared/components/success-celebration";
 import { getAvailableCashback, getFinalValue, getMaxCashbackToUse, getRedemptionLimitConfig } from "../_shared/helpers/cashback-calculations";
 import type { TPrize, TStepDefinition } from "../_shared/types";
-import { CashbackStep } from "./components/cashback-step";
-import { ConfirmationStep } from "./components/confirmation-step";
-import { ModeSelectionStep } from "./components/mode-selection-step";
-import { PrizeConfirmationStep } from "./components/prize-confirmation-step";
-import { PrizeSelectionStep } from "./components/prize-selection-step";
-import { SaleValueStep } from "./components/sale-value-step";
+import { CashbackStep } from "./components/kiosk/cashback-step";
+import { ConfirmationStep as KioskConfirmationStep } from "./components/kiosk/confirmation-step";
+import { ModeSelectionStep } from "./components/kiosk/mode-selection-step";
+import { PrizeConfirmationStep as KioskPrizeConfirmationStep } from "./components/kiosk/prize-confirmation-step";
+import { PrizeSelectionStep } from "./components/kiosk/prize-selection-step";
+import { SaleValueStep } from "./components/kiosk/sale-value-step";
+import { MobileConfirmationStep } from "./components/mobile/confirmation-step";
+import { MobilePrizeConfirmationStep } from "./components/mobile/prize-confirmation-step";
+import { MobileWaitingStep } from "./components/mobile/waiting-step";
 
 const DISCOUNT_STEPS: TStepDefinition[] = [
 	{ id: 1, label: "CLIENTE", icon: UserRound },
@@ -58,12 +62,21 @@ type NewSaleContentProps = {
 	clientId?: string;
 	prizes: TPrize[];
 	initialOperatorPassword?: string;
+	mode: "kiosk" | "mobile";
 };
-export default function NewSaleContent({ org, clientId, prizes, initialOperatorPassword }: NewSaleContentProps) {
+export default function NewSaleContent({ org, clientId, prizes, initialOperatorPassword, mode }: NewSaleContentProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const { state, updateClient, updateSale, updateCashback, updatePrizeRedemption, updateOperatorIdentifier, resetState } =
-		usePointOfInteractionNewSaleState(org.id);
+	const {
+		state,
+		updateClient,
+		updateSale,
+		updateCashback,
+		updatePrizeRedemption,
+		updateOperatorIdentifier,
+		updateWatchTransactionRequest,
+		resetState,
+	} = usePointOfInteractionNewSaleState(org.id, mode);
 
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
 	const [successData, setSuccessData] = React.useState<TCreatePointOfInteractionTransactionOutput["data"] | null>(null);
@@ -81,6 +94,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const isPrizeMode = effectiveFlowMode === "prize";
 	const totalSteps = isPrizeMode ? 3 : 4;
 	const successStep = isPrizeMode ? 4 : 5;
+	const waitingStep = isPrizeMode ? 4 : 5;
+	const finalSuccessStep = mode === "mobile" ? waitingStep + 1 : successStep;
+	const isMobileMode = mode === "mobile";
 
 	const {
 		data: client,
@@ -192,12 +208,33 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 			playSuccess();
 			toast.success(`Venda finalizada! Saldo: ${formatCashbackValue(visualAccumulatedCashbackValue, org.terminologia)}`);
 			setSuccessData(data.data);
-			setCurrentStep(successStep);
+			setCurrentStep(finalSuccessStep);
 		},
 		onError: (error) => {
 			toast.error(getErrorMessage(error));
 		},
 	});
+
+	const { mutate: createRequestMutation, isPending: isCreatingRequest } = useMutation({
+		mutationFn: createPoiTransactionRequest,
+		onSuccess: (data) => {
+			updateWatchTransactionRequest({ token: data.data.tokenPublico, status: data.data.status });
+			toast.success("Solicitação enviada para aprovação.");
+			setCurrentStep(waitingStep);
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+
+	const submitTransaction = () => {
+		if (isMobileMode) {
+			createRequestMutation({ payload: state });
+			return;
+		}
+
+		createSaleMutation(state);
+	};
 
 	const handleReset = () => {
 		resetState();
@@ -217,10 +254,11 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 
 	const headerSteps = isPrizeMode ? PRIZE_STEPS : DISCOUNT_STEPS;
 	const confirmationStep = isPrizeMode ? 3 : 4;
+	const isSubmitting = isCreatingSale || isCreatingRequest;
 
 	return (
-		<div className="w-full min-h-screen p-6 md:p-10 short:p-3 short:min-h-0 flex flex-col items-center">
-			<div className="w-full max-w-4xl flex flex-col gap-6 short:gap-3">
+		<div className={cn("w-full min-h-screen flex flex-col items-center", isMobileMode ? "bg-slate-50 px-4 py-5" : "p-6 md:p-10 short:p-3 short:min-h-0")}>
+			<div className={cn("w-full flex flex-col gap-6 short:gap-3", isMobileMode ? "max-w-md" : "max-w-4xl")}>
 				{/* Header com Navegação */}
 				<div className="flex items-center gap-4 short:gap-1.5">
 					<Button
@@ -229,7 +267,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						asChild
 						className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2 short:px-1.5 short:py-0.5"
 					>
-						<Link href={`/point-of-interaction/${org.id}`} className="flex items-center gap-1">
+						<Link href={`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`} className="flex items-center gap-1">
 							<ArrowLeft className="w-5 h-5 short:w-3.5 short:h-3.5" />
 							<span className="short:text-xs">VOLTAR</span>
 						</Link>
@@ -241,7 +279,11 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						<div>
 							<h1 className="text-2xl md:text-3xl short:text-base font-black tracking-tighter">NOVA VENDA</h1>
 							<p className="text-[0.6rem] md:text-xs short:text-[0.6rem] text-muted-foreground font-bold uppercase tracking-widest opacity-70">
-								{showModeSelection ? "Escolha o modo" : `Passo ${currentStep} de ${totalSteps}`}
+								{showModeSelection
+									? "Escolha o modo"
+									: isMobileMode && currentStep === waitingStep
+										? "Aguardando aprovação"
+										: `Passo ${Math.min(currentStep, totalSteps)} de ${totalSteps}`}
 							</p>
 						</div>
 					</div>
@@ -249,7 +291,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 
 				{/* Wrapper de Estágios */}
 				<div className="bg-card rounded-3xl short:rounded-xl shadow-xl overflow-hidden border border-brand/20">
-					{currentStep < successStep && !showModeSelection && <StepProgressHeader steps={headerSteps} currentStep={currentStep} />}
+					{currentStep <= confirmationStep && !showModeSelection && <StepProgressHeader steps={headerSteps} currentStep={currentStep} />}
 
 					<div className="p-6 md:p-10 short:p-3">
 						{/* Mode Selection Screen */}
@@ -294,33 +336,68 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								onSubmit={handleNextStep}
 							/>
 						)}
-						{!showModeSelection && !isPrizeMode && currentStep === 4 && (
-							<ConfirmationStep
-								clientName={state.client.nome || client?.nome || ""}
-								finalValue={finalValue}
-								operatorIdentifier={state.operatorIdentifier}
-								onOperatorIdentifierChange={updateOperatorIdentifier}
-								onSubmit={() => createSaleMutation(state)}
-							/>
-						)}
+						{!showModeSelection && !isPrizeMode && currentStep === 4 &&
+							(isMobileMode ? (
+								<MobileConfirmationStep clientName={state.client.nome || client?.nome || ""} finalValue={finalValue} onSubmit={submitTransaction} />
+							) : (
+								<KioskConfirmationStep
+									clientName={state.client.nome || client?.nome || ""}
+									finalValue={finalValue}
+									operatorIdentifier={state.operatorIdentifier}
+									onOperatorIdentifierChange={updateOperatorIdentifier}
+									onSubmit={submitTransaction}
+								/>
+							))}
 
 						{/* Prize mode steps */}
 						{!showModeSelection && isPrizeMode && currentStep === 2 && (
 							<PrizeSelectionStep prizes={prizes} availableBalance={availableCashback} onSelectPrize={handleSelectPrize} />
 						)}
-						{!showModeSelection && isPrizeMode && currentStep === 3 && (
-							<PrizeConfirmationStep
-								clientName={state.client.nome || client?.nome || ""}
-								selectedPrize={selectedPrize}
-								availableBalance={availableCashback}
-								operatorIdentifier={state.operatorIdentifier}
-								onOperatorIdentifierChange={updateOperatorIdentifier}
-								onSubmit={() => createSaleMutation(state)}
+						{!showModeSelection && isPrizeMode && currentStep === 3 &&
+							(isMobileMode ? (
+								<MobilePrizeConfirmationStep
+									clientName={state.client.nome || client?.nome || ""}
+									selectedPrize={selectedPrize}
+									availableBalance={availableCashback}
+									onSubmit={submitTransaction}
+								/>
+							) : (
+								<KioskPrizeConfirmationStep
+									clientName={state.client.nome || client?.nome || ""}
+									selectedPrize={selectedPrize}
+									availableBalance={availableCashback}
+									operatorIdentifier={state.operatorIdentifier}
+									onOperatorIdentifierChange={updateOperatorIdentifier}
+									onSubmit={submitTransaction}
+								/>
+							))}
+
+						{!showModeSelection && isMobileMode && currentStep === waitingStep && state.watchTransactionRequestToken && (
+							<MobileWaitingStep
+								token={state.watchTransactionRequestToken}
+								onApproved={(requestStatus) => {
+									if (!requestStatus.resultadoProcessamento) return;
+									updateWatchTransactionRequest({ status: "APROVADO" });
+									playSuccess();
+									setSuccessData(requestStatus.resultadoProcessamento);
+									setCurrentStep(finalSuccessStep);
+								}}
+								onRejected={() => {
+									if (state.watchTransactionRequestStatus === "REJEITADO") return;
+									updateWatchTransactionRequest({ status: "REJEITADO" });
+									toast.error("Sua solicitação não foi aprovada pelo operador.");
+								}}
+								onErrored={() => {
+									if (state.watchTransactionRequestStatus === "ERRO") return;
+									updateWatchTransactionRequest({ status: "ERRO" });
+									toast.error("Não foi possível processar a solicitação.");
+								}}
+								onReset={handleReset}
 							/>
 						)}
 
 						{/* Discount mode success */}
-						{!showModeSelection && !isPrizeMode && currentStep === 5 && successData && (
+						{!showModeSelection && !isPrizeMode && currentStep === finalSuccessStep && successData && (
 							<SuccessCelebration
 								title="VENDA REALIZADA!"
 								subtitle="A operação foi processada com sucesso."
@@ -353,12 +430,12 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										: []),
 								]}
 								primaryAction={{ label: "NOVA VENDA", onClick: handleReset }}
-								secondaryAction={{ label: "VOLTAR AO INÍCIO", onClick: () => router.push(`/point-of-interaction/${org.id}`) }}
+								secondaryAction={{ label: "VOLTAR AO INÍCIO", onClick: () => router.push(`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`) }}
 							/>
 						)}
 
 						{/* Prize mode success */}
-						{!showModeSelection && isPrizeMode && currentStep === 4 && successData && (
+						{!showModeSelection && isPrizeMode && currentStep === finalSuccessStep && successData && (
 							<SuccessCelebration
 								title="RESGATE REALIZADO!"
 								subtitle="A recompensa foi resgatada com sucesso."
@@ -377,7 +454,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 									},
 								]}
 								primaryAction={{ label: "NOVA VENDA", onClick: handleReset }}
-								secondaryAction={{ label: "VOLTAR AO INÍCIO", onClick: () => router.push(`/point-of-interaction/${org.id}`) }}
+								secondaryAction={{ label: "VOLTAR AO INÍCIO", onClick: () => router.push(`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`) }}
 							>
 								{selectedPrize && (
 									<div className="bg-amber-50 border-2 short:border border-amber-200 rounded-3xl short:rounded-xl p-4 short:p-2 flex items-center gap-4 short:gap-2 w-full max-w-xl">
@@ -400,7 +477,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						)}
 
 						{/* Action Buttons */}
-						{!showModeSelection && currentStep < successStep && !(currentStep === 1 && client) && (
+						{!showModeSelection && currentStep <= confirmationStep && !(currentStep === 1 && client) && (!isMobileMode || currentStep < confirmationStep) && (
 							<div className="flex gap-4 short:gap-3 mt-10 short:mt-4">
 								{currentStep > 1 && (
 									<Button
@@ -422,15 +499,15 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								)}
 								{!(isPrizeMode && currentStep === 2) && (
 									<Button
-										onClick={currentStep === confirmationStep ? () => createSaleMutation(state) : handleNextStep}
+										onClick={currentStep === confirmationStep ? submitTransaction : handleNextStep}
 										size="lg"
-										disabled={isCreatingSale || (!isPrizeMode && isAttemptingToUseMoreCashbackThanAllowed)}
+										disabled={isSubmitting || (!isPrizeMode && isAttemptingToUseMoreCashbackThanAllowed)}
 										className={cn(
 											"flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
 											currentStep === confirmationStep && "bg-green-600 hover:bg-green-700",
 										)}
 									>
-										{currentStep === confirmationStep ? (isCreatingSale ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
+										{currentStep === confirmationStep ? (isSubmitting ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
 										{currentStep === confirmationStep ? (
 											<Check className="ml-2 w-6 h-6 short:w-5 short:h-5" />
 										) : (

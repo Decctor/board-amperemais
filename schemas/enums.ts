@@ -166,3 +166,9 @@ export type TFiscalProviderEnum = z.infer<typeof FiscalProviderEnum>;
 
 export const PaymentProviderEnum = z.enum(["LOCAL", "MERCADO_PAGO", "STRIPE_CONNECT", "PAGARME"]);
 export type TPaymentProviderEnum = z.infer<typeof PaymentProviderEnum>;
+
+export const PoiTransactionRequestStatusEnum = z.enum(["PENDENTE", "PROCESSANDO", "APROVADO", "REJEITADO", "ERRO"]);
+export type TPoiTransactionRequestStatusEnum = z.infer<typeof PoiTransactionRequestStatusEnum>;
+
+export const PoiTransactionRequestTypeEnum = z.enum(["NOVA_TRANSACAO"]);
+export type TPoiTransactionRequestTypeEnum = z.infer<typeof PoiTransactionRequestTypeEnum>;

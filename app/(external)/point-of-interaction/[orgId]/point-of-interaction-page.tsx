@@ -120,6 +120,7 @@ function AlternatingCashbackBadge({ cashbackProgram }: AlternatingCashbackBadgeP
 export default function PointOfInteractionContent({
 	org,
 	cashbackProgram,
+	mode,
 }: {
 	cashbackProgram: TCashbackProgramEntity;
 	org: {
@@ -129,6 +130,7 @@ export default function PointOfInteractionContent({
 		logoUrl: TOrganizationEntity["logoUrl"];
 		telefone: TOrganizationEntity["telefone"];
 	};
+	mode: "kiosk" | "mobile";
 }) {
 	const router = useRouter();
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -170,6 +172,7 @@ export default function PointOfInteractionContent({
 			<PointOfInteractionActions
 				org={org}
 				terminology={cashbackProgram.terminologia}
+				mode={mode}
 				router={router}
 				handleOpenProfileMenu={() => {
 					setShowProfileMenu(true);
@@ -180,7 +183,7 @@ export default function PointOfInteractionContent({
 
 			{/* MODAL DE BUSCA */}
 			{showProfileMenu ? (
-				<IdentificationMenu orgId={org.id} terminology={cashbackProgram.terminologia} closeMenu={() => setShowProfileMenu(false)} />
+				<IdentificationMenu orgId={org.id} terminology={cashbackProgram.terminologia} mode={mode} closeMenu={() => setShowProfileMenu(false)} />
 			) : null}
 		</div>
 	);
@@ -189,6 +192,7 @@ export default function PointOfInteractionContent({
 type IdentificationMenuProps = {
 	orgId: string;
 	terminology: TCashbackProgramEntity["terminologia"];
+	mode: "kiosk" | "mobile";
 	closeMenu: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -197,7 +201,7 @@ type IdentificationMenuProps = {
 		onSettled?: () => void;
 	};
 };
-function IdentificationMenu({ orgId, terminology, closeMenu, callbacks }: IdentificationMenuProps) {
+function IdentificationMenu({ orgId, terminology, mode, closeMenu, callbacks }: IdentificationMenuProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const {
@@ -247,7 +251,7 @@ function IdentificationMenu({ orgId, terminology, closeMenu, callbacks }: Identi
 
 		if (countdown === 0) {
 			setIsRedirecting(true);
-			router.push(`/point-of-interaction/${orgId}/client-profile/${client?.id}`);
+			router.push(`/point-of-interaction/${orgId}/client-profile/${client?.id}${mode === "mobile" ? "?mode=mobile" : ""}`);
 			return;
 		}
 
@@ -256,7 +260,7 @@ function IdentificationMenu({ orgId, terminology, closeMenu, callbacks }: Identi
 		}, 1000);
 
 		return () => clearTimeout(timer);
-	}, [countdown, router, orgId, client?.id]);
+	}, [countdown, router, orgId, client?.id, mode]);
 
 	// Cancel auto-redirect and reset search
 	async function handleCancelRedirect() {
@@ -449,7 +453,7 @@ function NewClientForm({ orgId, terminology, phone, closeMenu, callbacks }: NewC
 			if (callbacks?.onSuccess) callbacks.onSuccess();
 			playSuccess();
 			toast.success(data.message);
-			return router.push(`/point-of-interaction/${orgId}/client-profile/${data.data.insertedClientId}`);
+			return router.push(`/point-of-interaction/${orgId}/client-profile/${data.data.insertedClientId}${mode === "mobile" ? "?mode=mobile" : ""}`);
 		},
 		onError: async (error) => {
 			if (callbacks?.onError) callbacks.onError();
@@ -511,12 +515,13 @@ type PointOfInteractionActionsProps = {
 		telefone: TOrganizationEntity["telefone"];
 	};
 	terminology: TCashbackProgramEntity["terminologia"];
+	mode: "kiosk" | "mobile";
 	router: ReturnType<typeof useRouter>;
 	handleOpenProfileMenu: () => void;
 	handlePlayAction: () => void;
 };
 
-function PointOfInteractionActions({ org, terminology, router, handleOpenProfileMenu, handlePlayAction }: PointOfInteractionActionsProps) {
+function PointOfInteractionActions({ org, terminology, mode, router, handleOpenProfileMenu, handlePlayAction }: PointOfInteractionActionsProps) {
 	return (
 		<main className="w-full max-w-5xl flex-1 flex flex-col">
 			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
@@ -525,7 +530,7 @@ function PointOfInteractionActions({ org, terminology, router, handleOpenProfile
 					<Button
 						onClick={() => {
 							handlePlayAction();
-							router.push(`/point-of-interaction/${org.id}/new-sale`);
+							router.push(`/point-of-interaction/${org.id}/new-sale${mode === "mobile" ? "?mode=mobile" : ""}`);
 						}}
 						variant="default"
 						className="group relative flex flex-col items-center justify-center gap-4 h-auto flex-1 rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"

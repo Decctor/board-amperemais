@@ -175,3 +175,7 @@ export const purchaseStatusEnum = pgEnum("purchase_status", ["RASCUNHO", "CONFIR
 export const fiscalProviderEnum = pgEnum("fiscal_provider", ["MANUAL", "NUVEM_FISCAL"]);
 
 export const paymentProviderEnum = pgEnum("payment_provider", ["LOCAL", "MERCADO_PAGO", "STRIPE_CONNECT", "PAGARME"]);
+
+export const poiTransactionRequestStatusEnum = pgEnum("poi_transaction_request_status", ["PENDENTE", "PROCESSANDO", "APROVADO", "REJEITADO", "ERRO"]);
+
+export const poiTransactionRequestTypeEnum = pgEnum("poi_transaction_request_type", ["NOVA_TRANSACAO"]);
