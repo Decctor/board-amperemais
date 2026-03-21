@@ -1,5 +1,5 @@
 "use client";
-import { PoiTransactionRequestsQueue } from "./components/PoiTransactionRequestsQueue";
+import { PointOfInteractionTransactionRequestsQueue } from "@/components/PointOfInteraction/TransactionRequestsQueue";
 import DateInput from "@/components/Inputs/DateInput";
 import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
 import TextInput from "@/components/Inputs/TextInput";
@@ -112,7 +112,7 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 
 			<SalesFiltersShowcase filters={params} updateFilters={updateParams} />
 
-			<PoiTransactionRequestsQueue orgId={organization.id} />
+			<PointOfInteractionTransactionRequestsQueue orgId={organization.id} />
 
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}

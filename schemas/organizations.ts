@@ -255,6 +255,14 @@ export const OrganizationSchema = z.object({
     })
     .optional()
     .nullable(),
+  poiQrCodeKioskDataUrl: z
+    .string({ invalid_type_error: "Tipo não válido para o QR Code kiosk da organização." })
+    .optional()
+    .nullable(),
+  poiQrCodeMobileDataUrl: z
+    .string({ invalid_type_error: "Tipo não válido para o QR Code mobile da organização." })
+    .optional()
+    .nullable(),
 
   configuracao: OrganizationConfigurationSchema,
   autorId: z.string({ invalid_type_error: "Tipo não válido para o ID do autor da organização." }),

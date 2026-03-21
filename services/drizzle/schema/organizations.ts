@@ -60,6 +60,8 @@ export const organizations = newTable("organizations", {
   corPrimariaForeground: text("cor_primaria_foreground"), // Foreground for primary color (hex, e.g., #000000)
   corSecundaria: text("cor_secundaria"), // Secondary color (hex format, e.g., #15599a)
   corSecundariaForeground: text("cor_secundaria_foreground"), // Foreground for secondary color (hex, e.g., #FFFFFF)
+  poiQrCodeKioskDataUrl: text("poi_qr_code_kiosk_data_url"),
+  poiQrCodeMobileDataUrl: text("poi_qr_code_mobile_data_url"),
   configuracao: jsonb("configuracao").$type<TOrganizationConfiguration>().notNull(),
 
   // Fiscal config
