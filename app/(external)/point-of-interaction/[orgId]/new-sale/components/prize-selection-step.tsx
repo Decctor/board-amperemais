@@ -70,7 +70,9 @@ export function PrizeSelectionStep({ prizes, availableBalance, terminology, onSe
 						<ShoppingCart className="w-4 h-4 mr-2" />
 						Prosseguir sem resgate ?
 					</div>
-					<p className="text-center text-xs text-muted-foreground">Registre apenas a venda para acumular {getCashbackUnitLabel(terminology)}.</p>
+					<p className="text-center text-[0.65rem] lg:text-xs text-muted-foreground">
+						Registre apenas a venda para acumular {getCashbackUnitLabel(terminology)}.
+					</p>
 				</Button>
 			</div>
 			<div className="text-center space-y-2 short:space-y-0.5">
