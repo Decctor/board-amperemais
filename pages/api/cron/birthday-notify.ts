@@ -59,8 +59,6 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 		});
 
 		const today = dayjs();
-		const currentMonth = today.month() + 1; // dayjs months are 0-indexed
-		const currentDay = today.date();
 
 		for (const organization of organizationsList) {
 			console.log(`[ORG: ${organization.id}] Processing organization...`);
@@ -88,26 +86,55 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 					return;
 				}
 
-				// Find clients whose birthday matches today (month and day)
-				const birthdayClients = await tx
-					.select({
-						id: clients.id,
-						nome: clients.nome,
-					})
-					.from(clients)
-					.where(
-						and(
-							eq(clients.organizacaoId, organization.id),
-							sql`EXTRACT(MONTH FROM ${clients.dataNascimento}) = ${currentMonth}`,
-							sql`EXTRACT(DAY FROM ${clients.dataNascimento}) = ${currentDay}`,
-						),
+				// Process each campaign individually (each may target a different birthday date based on direction)
+				for (const campaign of birthdayCampaigns) {
+					let targetMonth: number;
+					let targetDay: number;
+					let scheduleDate: string;
+					const isAntes = campaign.execucaoAgendadaDirecao === "ANTES" && campaign.execucaoAgendadaValor > 0;
+
+					if (isAntes) {
+						// Look ahead: find clients whose birthday is N days/weeks/months from now
+						const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[campaign.execucaoAgendadaMedida];
+						const futureDate = today.add(campaign.execucaoAgendadaValor, dayjsUnit);
+						targetMonth = futureDate.month() + 1;
+						targetDay = futureDate.date();
+						// Schedule for today (send the message now, before the birthday)
+						scheduleDate = today.format("YYYY-MM-DD");
+					} else {
+						// Current behavior: birthday is today, delay execution by N days
+						targetMonth = today.month() + 1;
+						targetDay = today.date();
+						const interactionScheduleDate = getPostponedDateFromReferenceDate({
+							date: today.toDate(),
+							unit: campaign.execucaoAgendadaMedida,
+							value: campaign.execucaoAgendadaValor,
+						});
+						scheduleDate = dayjs(interactionScheduleDate).format("YYYY-MM-DD");
+					}
+
+					// Find clients whose birthday matches the target date (month and day)
+					const birthdayClients = await tx
+						.select({
+							id: clients.id,
+							nome: clients.nome,
+						})
+						.from(clients)
+						.where(
+							and(
+								eq(clients.organizacaoId, organization.id),
+								sql`EXTRACT(MONTH FROM ${clients.dataNascimento}) = ${targetMonth}`,
+								sql`EXTRACT(DAY FROM ${clients.dataNascimento}) = ${targetDay}`,
+							),
+						);
+
+					console.log(
+						`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Direction: ${campaign.execucaoAgendadaDirecao}, ` +
+							`Target birthday: ${targetMonth}/${targetDay}, Found ${birthdayClients.length} matching clients.`,
 					);
 
-				console.log(`[ORG: ${organization.id}] Found ${birthdayClients.length} clients with birthday today.`);
-
-				// Schedule notifications for each client
-				for (const client of birthdayClients) {
-					for (const campaign of birthdayCampaigns) {
+					// Schedule notifications for each matching client
+					for (const client of birthdayClients) {
 						const canSchedule = await canScheduleCampaignForClient(
 							tx,
 							client.id,
@@ -118,12 +145,6 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 						);
 
 						if (canSchedule) {
-							const interactionScheduleDate = getPostponedDateFromReferenceDate({
-								date: dayjs().toDate(),
-								unit: campaign.execucaoAgendadaMedida,
-								value: campaign.execucaoAgendadaValor,
-							});
-
 							const [insertedInteraction] = await tx
 								.insert(interactions)
 								.values({
@@ -133,13 +154,14 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 									titulo: `Aniversário: ${campaign.titulo}`,
 									tipo: "ENVIO-MENSAGEM",
 									descricao: `Feliz aniversário, ${client.nome}!`,
-									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
+									agendamentoDataReferencia: scheduleDate,
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 								})
 								.returning({ id: interactions.id });
 
-							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+							// Check for immediate processing (schedule date is today and value is 0, or ANTES direction)
+							const isImmediate = isAntes || campaign.execucaoAgendadaValor === 0;
+							if (isImmediate && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, client.id),

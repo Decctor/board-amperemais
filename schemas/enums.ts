@@ -15,6 +15,8 @@ export const CampaignTriggerTypeEnum = z.enum([
 	"RECORRENTE",
 ]);
 export type TCampaignTriggerTypeEnum = z.infer<typeof CampaignTriggerTypeEnum>;
+export const CampaignExecutionDelayDirectionEnum = z.enum(["ANTES", "DEPOIS"]);
+export type TCampaignExecutionDelayDirectionEnum = z.infer<typeof CampaignExecutionDelayDirectionEnum>;
 export const RecurrenceFrequencyEnum = z.enum(["DIARIO", "SEMANAL", "MENSAL"]);
 export type TRecurrenceFrequencyEnum = z.infer<typeof RecurrenceFrequencyEnum>;
 export const TimeDurationUnitsEnum = z.enum(["DIAS", "SEMANAS", "MESES", "ANOS"]);

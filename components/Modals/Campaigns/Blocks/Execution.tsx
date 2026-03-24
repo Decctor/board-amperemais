@@ -2,8 +2,10 @@ import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
-import { InteractionsCronJobTimeBlocksOptions, TimeDurationUnitsOptions } from "@/utils/select-options";
+import { CampaignExecutionDelayDirectionOptions, InteractionsCronJobTimeBlocksOptions, TimeDurationUnitsOptions } from "@/utils/select-options";
 import { PlayIcon } from "lucide-react";
+
+const TRIGGERS_SUPPORTING_ANTES = ["ANIVERSARIO_CLIENTE"] as const;
 
 type CampaignsExecutionBlockProps = {
 	campaign: TUseCampaignState["state"]["campaign"];
@@ -12,15 +14,35 @@ type CampaignsExecutionBlockProps = {
 };
 export default function CampaignsExecutionBlock({ campaign, updateCampaign, campaignSegmentations }: CampaignsExecutionBlockProps) {
 	const isRecorrente = campaign.gatilhoTipo === "RECORRENTE";
+	const supportsAntes = (TRIGGERS_SUPPORTING_ANTES as readonly string[]).includes(campaign.gatilhoTipo);
+
+	const descriptionText =
+		campaign.execucaoAgendadaDirecao === "ANTES"
+			? "Defina em quanto tempo antes do evento a automação será executada."
+			: "Defina em quanto tempo deve ser executada a automação depois do gatilho ser ativado.";
+
 	return (
 		<ResponsiveMenuSection title="EXECUÇÃO" icon={<PlayIcon className="h-4 min-h-4 w-4 min-w-4" />}>
 			{!isRecorrente ? (
 				<div className="w-full flex flex-col gap-1">
-					<p className="text-center text-sm tracking-tigh text-muted-foreground">
-						Defina em quanto tempo deve ser executada a automação depois do gatilho ser ativado.
-					</p>
+					<p className="text-center text-sm tracking-tigh text-muted-foreground">{descriptionText}</p>
 					<div className="w-full flex items-center gap-2 flex-col lg:flex-row">
-						<div className="w-full lg:w-1/2">
+						{supportsAntes ? (
+							<div className="w-full lg:w-1/3">
+								<SelectInput
+									label="DIREÇÃO"
+									value={campaign.execucaoAgendadaDirecao}
+									resetOptionLabel="SELECIONE A DIREÇÃO"
+									options={CampaignExecutionDelayDirectionOptions}
+									handleChange={(value) =>
+										updateCampaign({ execucaoAgendadaDirecao: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaDirecao"] })
+									}
+									onReset={() => updateCampaign({ execucaoAgendadaDirecao: "DEPOIS" })}
+									width="100%"
+								/>
+							</div>
+						) : null}
+						<div className={supportsAntes ? "w-full lg:w-1/3" : "w-full lg:w-1/2"}>
 							<SelectInput
 								label="MEDIDA"
 								value={campaign.execucaoAgendadaMedida}
@@ -31,7 +53,7 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 								width="100%"
 							/>
 						</div>
-						<div className="w-full lg:w-1/2">
+						<div className={supportsAntes ? "w-full lg:w-1/3" : "w-full lg:w-1/2"}>
 							<NumberInput
 								label="VALOR"
 								value={campaign.execucaoAgendadaValor}

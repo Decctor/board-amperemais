@@ -1,5 +1,6 @@
 import type {
 	TAttributionModelEnum,
+	TCampaignExecutionDelayDirectionEnum,
 	TCampaignTriggerTypeEnum,
 	TCashbackProgramAccumulationTypeEnum,
 	TCashbackProgramRedemptionLimitTypeEnum,
@@ -225,6 +226,11 @@ export const DaysOfWeekOptions: { id: number; label: string; value: number }[] =
 	{ id: 4, label: "QUINTA", value: 4 },
 	{ id: 5, label: "SEXTA", value: 5 },
 	{ id: 6, label: "SÁBADO", value: 6 },
+];
+
+export const CampaignExecutionDelayDirectionOptions: { id: number; label: string; value: TCampaignExecutionDelayDirectionEnum }[] = [
+	{ id: 1, label: "ANTES", value: "ANTES" },
+	{ id: 2, label: "DEPOIS", value: "DEPOIS" },
 ];
 
 export const TimeDurationUnitsOptions: { id: number; label: string; value: TTimeDurationUnitsEnum }[] = [

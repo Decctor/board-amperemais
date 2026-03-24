@@ -16,6 +16,7 @@ export function useCampaignState() {
 			recorrenciaDiasMes: null,
 			execucaoAgendadaMedida: "DIAS",
 			execucaoAgendadaValor: 0,
+			execucaoAgendadaDirecao: "DEPOIS",
 			execucaoAgendadaBloco: "06:00",
 			whatsappTemplateId: "",
 			whatsappConexaoTelefoneId: "",

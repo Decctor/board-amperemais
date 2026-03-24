@@ -1,6 +1,7 @@
 import z from "zod";
 import {
 	AttributionModelEnum,
+	CampaignExecutionDelayDirectionEnum,
 	CampaignTriggerTypeEnum,
 	CashbackProgramAccumulationTypeEnum,
 	InteractionsCronJobTimeBlocksEnum,
@@ -108,6 +109,7 @@ export const CampaignSchema = z.object({
 		required_error: "Valor da execução agendada não informado.",
 		invalid_type_error: "Tipo não válido para o valor da execução agendada.",
 	}),
+	execucaoAgendadaDirecao: CampaignExecutionDelayDirectionEnum.default("DEPOIS"),
 	execucaoAgendadaBloco: InteractionsCronJobTimeBlocksEnum,
 
 	// Configs for recurring interactions and intervals

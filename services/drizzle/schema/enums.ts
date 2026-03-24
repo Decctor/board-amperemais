@@ -13,6 +13,8 @@ export const campaignTriggerTypeEnum = pgEnum("campaign_trigger_type", [
 	"RECORRENTE",
 ]);
 
+export const campaignExecutionDelayDirectionEnum = pgEnum("campaign_execution_delay_direction", ["ANTES", "DEPOIS"]);
+
 export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", ["DIARIO", "SEMANAL", "MENSAL"]);
 
 export const timeDurationUnitsEnum = pgEnum("time_duration_units", ["DIAS", "SEMANAS", "MESES", "ANOS"]);
