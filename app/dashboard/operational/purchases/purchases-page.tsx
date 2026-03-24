@@ -1,10 +1,11 @@
 "use client";
+import ControlPurchase from "@/components/Modals/Purchases/ControlPurchase";
 import NewPurchase from "@/components/Modals/Purchases/NewPurchase";
 import { Button } from "@/components/ui/button";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { usePurchases } from "@/lib/queries/purchases";
 import { useQueryClient } from "@tanstack/react-query";
-import { Factory, ListFilter, Plus, ShoppingCart, Truck, SquareArrowOutUpRight, Pencil } from "lucide-react";
+import { Factory, Plus, ShoppingCart, Truck, Pencil } from "lucide-react";
 import { BsCalendar, BsCalendarCheck, BsCalendarEvent, BsCalendarPlus } from "react-icons/bs";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import type { TGetPurchasesOutputDefault } from "@/app/api/purchases/route";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDateAsLocale, formatNameAsInitials } from "@/lib/formatting";
-import Link from "next/link";
+
 type PurchasesPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -26,6 +27,7 @@ type PurchasesPageProps = {
 export default function PurchasesPage({ user, membership }: PurchasesPageProps) {
 	const queryClient = useQueryClient();
 	const [newPurchaseModalIsOpen, setNewPurchaseModalIsOpen] = useState(false);
+	const [editPurchaseModalId, setEditPurchaseModalId] = useState<string | null>(null);
 	const { data, isLoading, isError, isSuccess, error, queryKey, filters, updateFilters } = usePurchases({ initialFilters: { page: 1, search: "" } });
 	const purchases = data?.purchases ?? [];
 	const purchasesMatched = data?.purchasesMatched ?? 0;
@@ -61,7 +63,9 @@ export default function PurchasesPage({ user, membership }: PurchasesPageProps) 
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && purchases ? (
 				purchases.length > 0 ? (
-					purchases.map((purchase, index: number) => <PurchasePageCard key={purchase.id} purchase={purchase} />)
+					purchases.map((purchase) => (
+						<PurchasePageCard key={purchase.id} purchase={purchase} handleEditClick={() => setEditPurchaseModalId(purchase.id)} />
+					))
 				) : (
 					<Empty>
 						<EmptyHeader>
@@ -84,14 +88,22 @@ export default function PurchasesPage({ user, membership }: PurchasesPageProps) 
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
 			) : null}
+			{editPurchaseModalId ? (
+				<ControlPurchase
+					purchaseId={editPurchaseModalId}
+					closeModal={() => setEditPurchaseModalId(null)}
+					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+				/>
+			) : null}
 		</div>
 	);
 }
 
 type PurchasePageCardProps = {
 	purchase: TGetPurchasesOutputDefault["purchases"][number];
+	handleEditClick: () => void;
 };
-function PurchasePageCard({ purchase }: PurchasePageCardProps) {
+function PurchasePageCard({ purchase, handleEditClick }: PurchasePageCardProps) {
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
@@ -155,7 +167,7 @@ function PurchasePageCard({ purchase }: PurchasePageCardProps) {
 						<h2 className="text-[0.65rem] font-medium text-muted-foreground">{purchase.autor?.nome || "N/A"}</h2>
 					</div>
 				</div>
-				<Button variant="ghost" size="xs">
+				<Button variant="ghost" size="xs" onClick={handleEditClick}>
 					<Pencil className="w-4 h-4 min-w-4 min-h-4" />
 					<p>EDITAR</p>
 				</Button>

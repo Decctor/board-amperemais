@@ -1,11 +1,13 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
+import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { processStockEntry, processStockEntryRollback } from "@/lib/purchase-processing/process-stock-entry";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { PurchaseStatusEnum, TPurchaseStatusEnum } from "@/schemas/enums";
 import { PurchaseItemSchema, PurchaseSchema } from "@/schemas/purchases";
 import { db } from "@/services/drizzle";
-import { purchaseItems, purchases } from "@/services/drizzle/schema";
+import { organizations, purchaseItems, purchases } from "@/services/drizzle/schema";
 import { and, count, eq, inArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextResponse, type NextRequest } from "next/server";
@@ -67,6 +69,29 @@ async function getPurchases({ input, session }: { input: TGetPurchasesInput; ses
 
 		const purchase = await db.query.purchases.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, purchaseId), eq(fields.organizacaoId, userOrgId)),
+			with: {
+				itens: {
+					with: {
+						produto: {
+							columns: {
+								id: true,
+								descricao: true,
+								imagemCapaUrl: true,
+								codigo: true,
+								unidade: true,
+							},
+						},
+						produtoVariante: {
+							columns: {
+								id: true,
+								nome: true,
+								codigo: true,
+								imagemCapaUrl: true,
+							},
+						},
+					},
+				},
+			},
 		});
 		if (!purchase) throw new createHttpError.NotFound("Compra não encontrada.");
 
@@ -228,4 +253,109 @@ async function createPurchaseRoute(request: NextRequest) {
 }
 export const POST = appApiHandler({
 	POST: createPurchaseRoute,
+});
+
+const UpdatePurchaseInputSchema = z.object({
+	id: z.string({
+		required_error: "ID da compra não informado.",
+		invalid_type_error: "Tipo não válido para ID da compra.",
+	}),
+	purchase: PurchaseSchema.omit({ organizacaoId: true, autorId: true, dataInsercao: true, dataEfetivacao: true, dataUltimaAtualizacao: true }).partial(),
+	purchaseItems: z.array(
+		PurchaseItemSchema.omit({ organizacaoId: true, compraId: true, dataInsercao: true })
+			.partial()
+			.extend({
+				id: z.string({ invalid_type_error: "Tipo não válido para ID do item." }).optional().nullable(),
+				deletar: z.boolean({ invalid_type_error: "Tipo não válido para o campo deletar." }).optional().nullable(),
+			}),
+	),
+});
+export type TUpdatePurchaseInput = z.infer<typeof UpdatePurchaseInputSchema>;
+
+async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	if (!session.membership?.permissoes.compras.editar) throw new createHttpError.Unauthorized("Você não possui permissão para editar compras.");
+
+	const existingPurchase = await db.query.purchases.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, userOrgId)),
+		with: { itens: true },
+	});
+	if (!existingPurchase) throw new createHttpError.NotFound("Compra não encontrada.");
+
+	const deliveryJustHappened =
+		!existingPurchase.entregaDataRecebimentoEfetivacao &&
+		!!input.purchase.entregaDataRecebimentoEfetivacao;
+
+	// Explicit null (not undefined) means the client intentionally cleared the field
+	const deliveryCancelled =
+		!!existingPurchase.entregaDataRecebimentoEfetivacao &&
+		input.purchase.entregaDataRecebimentoEfetivacao === null;
+
+	await db.transaction(async (tx) => {
+		await tx
+			.update(purchases)
+			.set({
+				...input.purchase,
+				dataUltimaAtualizacao: new Date(),
+			})
+			.where(and(eq(purchases.id, input.id), eq(purchases.organizacaoId, userOrgId)));
+
+		await handleSimpleChildRowsProcessing({
+			trx: tx,
+			table: purchaseItems,
+			entities: input.purchaseItems,
+			fatherEntityKey: "compraId",
+			fatherEntityId: input.id,
+			organizacaoId: userOrgId,
+		});
+
+		if (deliveryJustHappened) {
+			const org = await tx.query.organizations.findFirst({
+				where: (fields, { eq }) => eq(fields.id, userOrgId),
+				columns: { configuracao: true },
+			});
+			if (org?.configuracao.preferencias.rastreamentoEstoque) {
+				// Reload items after any inserts/updates so we work with final state
+				const currentItems = await tx.query.purchaseItems.findMany({
+					where: (fields, { and, eq }) => and(eq(fields.compraId, input.id), eq(fields.organizacaoId, userOrgId)),
+				});
+				await processStockEntry(tx, {
+					organizationId: userOrgId,
+					purchaseId: input.id,
+					purchaseItems: currentItems,
+					operatorId: session.user.id,
+				});
+			}
+		}
+
+		if (deliveryCancelled) {
+			// processStockEntryRollback is a no-op if no ENTRADA_AQUISICAO transactions exist
+			// (e.g. org had stock tracking disabled at the time of delivery)
+			await processStockEntryRollback(tx, {
+				organizationId: userOrgId,
+				purchaseId: input.id,
+				operatorId: session.user.id,
+			});
+		}
+	});
+
+	return {
+		data: { updatedPurchaseId: input.id },
+		message: "Compra atualizada com sucesso.",
+	};
+}
+export type TUpdatePurchaseOutput = Awaited<ReturnType<typeof updatePurchase>>;
+
+async function updatePurchaseRoute(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	const body = await request.json();
+	const input = UpdatePurchaseInputSchema.parse(body);
+	const result = await updatePurchase({ input, session });
+	return NextResponse.json(result);
+}
+export const PATCH = appApiHandler({
+	PATCH: updatePurchaseRoute,
 });
