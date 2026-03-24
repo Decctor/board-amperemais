@@ -96,6 +96,19 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 					</div>
 				</div>
 			</div>
+
+			<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-primary/10">
+				<h1 className="text-xs font-medium tracking-tight uppercase">MATERIAL PARA DISPLAY</h1>
+				<p className="text-[0.65rem] text-muted-foreground mb-2">Display pronto para impressão no formato A5 para engajar seus clientes.</p>
+				<div className="w-full flex items-center justify-center">
+					<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
+						<Link href={`/point-of-interaction-display/${organization.id}`} target="_blank">
+							<ExternalLink className="w-4 h-4" />
+							ABRIR DISPLAY
+						</Link>
+					</Button>
+				</div>
+			</div>
 		</div>
 	);
 }

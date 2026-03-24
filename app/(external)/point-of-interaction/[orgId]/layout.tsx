@@ -147,7 +147,7 @@ function KioskModeToggleButton() {
 			onClick={toggleKioskMode}
 			variant="ghost"
 			size="icon"
-			className="fixed top-4 right-4 z-50 bg-background/80 backdrop-blur-sm hover:bg-background"
+			className="print:hidden fixed top-4 right-4 z-50 bg-background/80 backdrop-blur-sm hover:bg-background"
 			title={isActive ? "Sair do modo kiosk" : "Entrar no modo kiosk (tela cheia + tela sempre ligada)"}
 		>
 			{isActive ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
@@ -159,10 +159,10 @@ export default function PointOfInteractionLayout({ children }: { children: React
 	return (
 		<ConnectionStatusProvider>
 			<KioskModeProvider>
-				<KioskModeToggleButton />
-				<div className="flex flex-col h-dvh w-full">
-					<div className="flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col">{children}</div>
-					<div className="w-full self-center bg-[#24549C] flex items-center justify-center gap-3 px-4 py-1 flex-shrink-0 rounded-tl-3xl rounded-tr-3xl">
+					<KioskModeToggleButton />
+				<div className="flex flex-col h-dvh print:h-auto print:block w-full">
+					<div className="flex-1 w-full overflow-y-auto print:overflow-visible overflow-x-hidden flex flex-col">{children}</div>
+					<div className="w-full self-center bg-[#24549C] flex items-center justify-center gap-3 px-4 py-1 flex-shrink-0 rounded-tl-3xl rounded-tr-3xl print:hidden">
 						<p className="text-sm xl:text-base text-white font-medium tracking-tighter">Powered by</p>
 						<div className="w-24 xl:w-36 h-8 xl:h-12 relative">
 							<Image src={LogoHorizontalRecompraCRM} alt="RecompraCRM" fill className="object-contain" />

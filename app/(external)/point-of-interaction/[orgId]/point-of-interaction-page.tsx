@@ -331,7 +331,7 @@ function IdentificationMenu({ orgId, terminology, mode, closeMenu, callbacks }: 
 							) : null}
 						</AnimatePresence>
 						{isSuccessClient && !client ? (
-							<NewClientForm orgId={orgId} terminology={terminology} phone={params.phone} closeMenu={closeMenu} callbacks={callbacks} />
+							<NewClientForm orgId={orgId} terminology={terminology} phone={params.phone} closeMenu={closeMenu} callbacks={callbacks} mode={mode} />
 						) : null}
 					</motion.div>
 				) : null}
@@ -434,8 +434,9 @@ type NewClientFormProps = {
 		onError?: () => void;
 		onSettled?: () => void;
 	};
+	mode: "kiosk" | "mobile";
 };
-function NewClientForm({ orgId, terminology, phone, closeMenu, callbacks }: NewClientFormProps) {
+function NewClientForm({ orgId, terminology, phone, closeMenu, callbacks, mode }: NewClientFormProps) {
 	const router = useRouter();
 	const [infoHolder, setInfoHolder] = useState<Omit<TCreatePointOfInteractionTransactionInput["client"], "telefone">>({
 		nome: "",
