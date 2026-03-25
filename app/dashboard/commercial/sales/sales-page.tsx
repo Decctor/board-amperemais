@@ -1,4 +1,5 @@
 "use client";
+import { PointOfInteractionTransactionRequestsQueue } from "@/components/PointOfInteraction/TransactionRequestsQueue";
 import DateInput from "@/components/Inputs/DateInput";
 import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
 import TextInput from "@/components/Inputs/TextInput";
@@ -11,7 +12,6 @@ import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
@@ -19,8 +19,6 @@ import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
 import type { TGetSalesInput, TGetSalesOutputDefault } from "@/pages/api/sales";
-import { useQueryClient } from "@tanstack/react-query";
-import dayjs from "dayjs";
 import {
 	ArrowRight,
 	BadgeDollarSign,
@@ -29,13 +27,11 @@ import {
 	CircleUser,
 	Clock,
 	FileSpreadsheet,
-	Handshake,
 	Info,
 	ListFilter,
 	Megaphone,
 	Package,
 	Plus,
-	Search,
 	Tag,
 	TrendingDown,
 	TrendingUp,
@@ -48,13 +44,11 @@ type SalesPageProps = {
 	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 };
 
-export default function SalesPage({ user, organization }: SalesPageProps) {
+export default function SalesPage({ user: _user, organization }: SalesPageProps) {
 	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
-	const queryClient = useQueryClient();
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const {
 		data: salesResult,
-		queryKey,
 		isLoading,
 		isError,
 		isSuccess,
@@ -117,6 +111,8 @@ export default function SalesPage({ user, organization }: SalesPageProps) {
 			/>
 
 			<SalesFiltersShowcase filters={params} updateFilters={updateParams} />
+
+			<PointOfInteractionTransactionRequestsQueue orgId={organization.id} />
 
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}

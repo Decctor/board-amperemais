@@ -35,12 +35,14 @@ export default async function NewCashbackRedemptionPage({
         where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
         columns: {
             id: true,
+            terminologia: true,
             resgateLimiteTipo: true,
             resgateLimiteValor: true,
         },
     });
 	const redemptionLimit = orgCashbackProgram
 		? {
+				terminologia: orgCashbackProgram.terminologia,
 				tipo: orgCashbackProgram.resgateLimiteTipo,
 				valor: orgCashbackProgram.resgateLimiteValor,
 			}

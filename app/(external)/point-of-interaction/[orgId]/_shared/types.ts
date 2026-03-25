@@ -1,3 +1,4 @@
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import type { TClientByLookupOutput } from "@/pages/api/clients/lookup";
 import type { LucideIcon } from "lucide-react";
 
@@ -7,6 +8,7 @@ export type TPrize = {
 	descricao: string | null;
 	imagemCapaUrl: string | null;
 	valor: number;
+	valorVenda: number;
 	produto: { grupo: string } | null;
 };
 
@@ -17,6 +19,7 @@ export type TStepDefinition = {
 };
 
 export type TRedemptionLimit = {
+	terminologia: TCashbackProgramTerminologyEnum;
 	tipo: string | null;
 	valor: number | null;
 };

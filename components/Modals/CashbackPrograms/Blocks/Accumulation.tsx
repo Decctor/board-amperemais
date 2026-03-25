@@ -2,6 +2,7 @@ import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { getCashbackUnitLabel } from "@/lib/formatting";
 import type { TUseCashbackProgramState } from "@/state-hooks/use-cashback-program-state";
 import { CashbackProgramAccumulationTypeOptions } from "@/utils/select-options";
 import { LayoutGrid, PiggyBank } from "lucide-react";
@@ -33,8 +34,8 @@ export default function CashbackProgramsAccumulationBlock({
 				<div className="w-full lg:w-1/3">
 					<NumberInput
 						value={cashbackProgram.acumuloValor}
-						label="VALOR DE ACUMULAÇÃO"
-						placeholder="Preencha aqui o valor de acumulação..."
+						label={`VALOR DE ACUMULAÇÃO (${getCashbackUnitLabel(cashbackProgram.terminologia, { uppercase: true })})`}
+						placeholder={`Preencha aqui o valor de acúmulo em ${getCashbackUnitLabel(cashbackProgram.terminologia)}...`}
 						handleChange={(value) => updateCashbackProgram({ acumuloValor: value })}
 						width="100%"
 					/>
@@ -42,8 +43,8 @@ export default function CashbackProgramsAccumulationBlock({
 				<div className="w-full lg:w-1/3">
 					<NumberInput
 						value={cashbackProgram.acumuloValorParceiro}
-						label="VALOR DE ACÚMULO PARCEIRO"
-						placeholder="Preencha aqui o valor de acúmulo do parceiro..."
+						label={`VALOR DE ACÚMULO PARCEIRO (${getCashbackUnitLabel(cashbackProgram.terminologia, { uppercase: true })})`}
+						placeholder={`Preencha aqui o valor de acúmulo do parceiro em ${getCashbackUnitLabel(cashbackProgram.terminologia)}...`}
 						handleChange={(value) => updateCashbackProgram({ acumuloValorParceiro: value })}
 						width="100%"
 					/>
@@ -51,7 +52,7 @@ export default function CashbackProgramsAccumulationBlock({
 			</div>
 			<div className="w-full flex flex-col gap-1">
 				<p className="text-sm font-medium text-muted-foreground">
-					Define abaixo, se aplicável, um valor mínimo de compra para que o cliente acumule pontos.
+					Define abaixo, se aplicável, um valor mínimo de compra para que o cliente acumule {getCashbackUnitLabel(cashbackProgram.terminologia)}.
 				</p>
 				<NumberInput
 					value={cashbackProgram.acumuloRegraValorMinimo}
@@ -63,7 +64,9 @@ export default function CashbackProgramsAccumulationBlock({
 			</div>
 			{userOrgHasIntegration ? (
 				<div className="w-full flex flex-col gap-1">
-					<p className="text-sm font-medium text-muted-foreground">Define abaixo o mecanismo aplicável de acúmulo de pontos.</p>
+					<p className="text-sm font-medium text-muted-foreground">
+						Define abaixo o mecanismo aplicável de acúmulo de {getCashbackUnitLabel(cashbackProgram.terminologia)}.
+					</p>
 					<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
 						<div className="w-full lg:w-1/2">
 							<CheckboxInput

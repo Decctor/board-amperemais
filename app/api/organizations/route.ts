@@ -22,17 +22,23 @@ import {
 	organizationMembers,
 	organizations,
 	sellers,
-	users,
 	utils,
 } from "@/services/drizzle/schema";
 import { stripe } from "@/services/stripe";
 import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
+import { generateOrganizationPoiQrCodes, getAppBaseUrl } from "@/lib/organizations/poi-qr-codes";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 export const CreateOrganizationInputSchema = z.object({
-	organization: OrganizationSchema.omit({ dataInsercao: true, autorId: true, configuracao: true }),
+	organization: OrganizationSchema.omit({
+		dataInsercao: true,
+		autorId: true,
+		configuracao: true,
+		poiQrCodeKioskDataUrl: true,
+		poiQrCodeMobileDataUrl: true,
+	}),
 	subscription: z
 		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL"])
 		.optional()
@@ -75,7 +81,7 @@ async function getOrganization({ session }: { session: TAuthUserSession }) {
 }
 export type TGetOrganizationOutput = Awaited<ReturnType<typeof getOrganization>>;
 
-async function getOrganizationRoute(request: NextRequest) {
+async function getOrganizationRoute(_request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
@@ -95,7 +101,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 	// Pré-Stripe: grava apenas dados locais em uma transação curta.
 	const insertedOrgId = await db.transaction(async (tx) => {
 		// 1. Insert organization first
-		const insertedOrganizationResponse = await tx
+		const [createdOrgResponse] = await tx
 			.insert(organizations)
 			.values({
 				...organization,
@@ -107,9 +113,18 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 			})
 			.returning({ id: organizations.id });
 
-		const createdOrgId = insertedOrganizationResponse[0]?.id;
+		const createdOrgId = createdOrgResponse?.id;
 		if (!createdOrgId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar organização.");
+
 		console.log("[INFO] [CREATE_ORGANIZATION] Organization created successfully with ID:", createdOrgId);
+		const organizationPoiQrCodes = await generateOrganizationPoiQrCodes({ orgId: createdOrgId });
+
+		await tx
+			.update(organizations)
+			.set({
+				...organizationPoiQrCodes,
+			})
+			.where(eq(organizations.id, createdOrgId));
 
 		// 2. Inserting the organization member
 		await tx.insert(organizationMembers).values({
@@ -293,7 +308,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 	console.log("[INFO] [CREATE_ORGANIZATION] Stripe customer created successfully with ID:", stripeCustomer.id);
 
 	// Create checkout session
-	const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+	const baseUrl = getAppBaseUrl();
 	const checkoutSession = await stripe.checkout.sessions.create({
 		customer: stripeCustomer.id,
 		line_items: [
@@ -395,6 +410,8 @@ const UpdateOrganizationInputSchema = z.object({
 		periodoTesteInicio: true,
 		configuracao: true,
 		autorId: true,
+		poiQrCodeKioskDataUrl: true,
+		poiQrCodeMobileDataUrl: true,
 	}).partial(),
 });
 export type TUpdateOrganizationInput = z.infer<typeof UpdateOrganizationInputSchema>;

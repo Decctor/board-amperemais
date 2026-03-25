@@ -43,6 +43,8 @@ export const whatsappTemplateQualityEnum = pgEnum("whatsapp_template_quality", [
 
 export const cashbackProgramAccumulationTypeEnum = pgEnum("cashback_program_accumulation_type", ["FIXO", "PERCENTUAL"]);
 
+export const cashbackProgramTerminologyEnum = pgEnum("cashback_program_terminology", ["DINHEIRO", "PONTOS"]);
+
 export const cashbackProgramRedemptionLimitTypeEnum = pgEnum("cashback_program_redemption_limit_type", ["FIXO", "PERCENTUAL"]);
 
 export const cashbackProgramTransactionTypeEnum = pgEnum("cashback_program_transaction_type", ["ACÚMULO", "RESGATE", "EXPIRAÇÃO", "CANCELAMENTO"]);
@@ -173,3 +175,7 @@ export const purchaseStatusEnum = pgEnum("purchase_status", ["RASCUNHO", "CONFIR
 export const fiscalProviderEnum = pgEnum("fiscal_provider", ["MANUAL", "NUVEM_FISCAL"]);
 
 export const paymentProviderEnum = pgEnum("payment_provider", ["LOCAL", "MERCADO_PAGO", "STRIPE_CONNECT", "PAGARME"]);
+
+export const poiTransactionRequestStatusEnum = pgEnum("poi_transaction_request_status", ["PENDENTE", "PROCESSANDO", "APROVADO", "REJEITADO", "ERRO"]);
+
+export const poiTransactionRequestTypeEnum = pgEnum("poi_transaction_request_type", ["NOVA_TRANSACAO"]);

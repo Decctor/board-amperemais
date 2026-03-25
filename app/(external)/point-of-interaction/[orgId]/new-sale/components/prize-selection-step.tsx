@@ -1,7 +1,9 @@
 "use client";
 
+import { formatCashbackValue, getCashbackUnitLabel } from "@/lib/formatting";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Gift, LayoutGrid, List } from "lucide-react";
+import { ArrowLeft, Gift, LayoutGrid, List, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import React from "react";
 import type { TPrize } from "../../_shared/types";
@@ -13,10 +15,12 @@ const SHOW_TOGGLE_THRESHOLD = 4;
 type PrizeSelectionStepProps = {
 	prizes: TPrize[];
 	availableBalance: number;
+	terminology: TCashbackProgramTerminologyEnum;
 	onSelectPrize: (prize: TPrize) => void;
+	onContinueWithoutPrize: () => void;
 };
 
-export function PrizeSelectionStep({ prizes, availableBalance, onSelectPrize }: PrizeSelectionStepProps) {
+export function PrizeSelectionStep({ prizes, availableBalance, terminology, onSelectPrize, onContinueWithoutPrize }: PrizeSelectionStepProps) {
 	const [viewMode, setViewMode] = React.useState<"categories" | "list">("list");
 	const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
 
@@ -54,10 +58,27 @@ export function PrizeSelectionStep({ prizes, availableBalance, onSelectPrize }: 
 
 	return (
 		<div className="space-y-6 short:space-y-2 animate-in fade-in slide-in-from-bottom-4">
+			<div className="w-full flex items-center flex-col justify-center gap-1.5">
+				<Button
+					type="button"
+					variant="ghost"
+					size="fit"
+					onClick={onContinueWithoutPrize}
+					className="flex flex-col w-fit h-14 short:h-11 rounded-2xl short:rounded-lg font-bold uppercase tracking-wide px-2 py-1"
+				>
+					<div className="flex items-center gap-1.5">
+						<ShoppingCart className="w-4 h-4 mr-2" />
+						Prosseguir sem resgate ?
+					</div>
+					<p className="text-center text-[0.65rem] lg:text-xs text-muted-foreground">
+						Registre apenas a venda para acumular {getCashbackUnitLabel(terminology)}.
+					</p>
+				</Button>
+			</div>
 			<div className="text-center space-y-2 short:space-y-0.5">
 				<h2 className="text-xl short:text-lg font-black uppercase tracking-tight">Escolha a recompensa</h2>
 				<p className="text-muted-foreground short:text-xs">
-					Saldo disponível: <span className="font-black text-green-600">{availableBalance} créditos</span>
+					Saldo disponível: <span className="font-black text-green-600">{formatCashbackValue(availableBalance, terminology)}</span>
 				</p>
 				{showToggle && (
 					<div className="flex items-center justify-center gap-1 pt-1">
@@ -130,7 +151,13 @@ export function PrizeSelectionStep({ prizes, availableBalance, onSelectPrize }: 
 						</button>
 						<div className="flex flex-col gap-2 short:gap-1.5">
 							{groupedPrizes[selectedCategory].map((prize) => (
-								<PrizeCard key={prize.id} prize={prize} isDisabled={availableBalance < prize.valor} onSelect={() => onSelectPrize(prize)} />
+								<PrizeCard
+									key={prize.id}
+									prize={prize}
+									terminology={terminology}
+									isDisabled={availableBalance < prize.valor}
+									onSelect={() => onSelectPrize(prize)}
+								/>
 							))}
 						</div>
 					</div>
@@ -138,7 +165,13 @@ export function PrizeSelectionStep({ prizes, availableBalance, onSelectPrize }: 
 			) : (
 				<div className="flex flex-col gap-2 short:gap-1.5">
 					{sortedPrizes.map((prize) => (
-						<PrizeCard key={prize.id} prize={prize} isDisabled={availableBalance < prize.valor} onSelect={() => onSelectPrize(prize)} />
+						<PrizeCard
+							key={prize.id}
+							prize={prize}
+							terminology={terminology}
+							isDisabled={availableBalance < prize.valor}
+							onSelect={() => onSelectPrize(prize)}
+						/>
 					))}
 				</div>
 			)}

@@ -2,7 +2,7 @@
 
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
-import { formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { useAutoScrollOnFocus } from "@/lib/hooks/use-auto-scroll-on-focus";
 import { Loader2, Phone, UserPlus } from "lucide-react";
 import React from "react";
@@ -140,7 +140,9 @@ export function ClientStep({
 					</div>
 					<div className="bg-green-600 w-full rounded-2xl short:rounded-lg p-4 short:p-2 text-center text-white shadow-md">
 						<p className="text-[0.6rem] short:text-[0.6rem] font-bold opacity-80 uppercase tracking-widest">Saldo Disponível</p>
-						<p className="text-3xl short:text-xl font-black">{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}</p>
+						<p className="text-3xl short:text-xl font-black">
+							{formatCashbackValue(client.saldos[0]?.saldoValorDisponivel ?? 0, client.saldos[0]?.programa?.terminologia ?? "DINHEIRO")}
+						</p>
 					</div>
 
 					{/* Progress bar and countdown */}

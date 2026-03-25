@@ -3,7 +3,7 @@ import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureC
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
-import { formatPhoneAsBase } from "@/lib/formatting";
+import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
@@ -67,7 +67,7 @@ async function canScheduleCampaignForClient(
 	return true;
 }
 
-const CreatePointOfInteractionTransactionInputSchema = z.object({
+export const CreatePointOfInteractionTransactionInputSchema = z.object({
 	orgId: z
 		.string({
 			required_error: "ID da organização não informado.",
@@ -135,6 +135,7 @@ const CreatePointOfInteractionTransactionInputSchema = z.object({
 			.object({
 				prizeId: z.string(),
 				prizeValue: z.number(),
+				prizeSaleValue: z.number(),
 			})
 			.optional()
 			.nullable(),
@@ -148,9 +149,16 @@ const CreatePointOfInteractionTransactionInputSchema = z.object({
 });
 export type TCreatePointOfInteractionTransactionInput = z.infer<typeof CreatePointOfInteractionTransactionInputSchema>;
 
+export const CreatePointOfInteractionTransactionRequestInputSchema = CreatePointOfInteractionTransactionInputSchema.omit({
+	operatorIdentifier: true,
+});
+export type TCreatePointOfInteractionTransactionRequestInput = z.infer<typeof CreatePointOfInteractionTransactionRequestInputSchema>;
+
 export type TCreatePointOfInteractionTransactionOutput = {
 	data: {
 		saleId: string | null;
+		transactionAccumulationId?: string | null;
+		transactionRedemptionId?: string | null;
 		clientAccumulatedCashbackValue: number;
 		clientNewOverallAvailableBalance: number | null;
 		visualClientAccumulatedCashbackValue: number;
@@ -159,9 +167,21 @@ export type TCreatePointOfInteractionTransactionOutput = {
 	message: string;
 };
 
-async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCreatePointOfInteractionTransactionOutput>> {
-	const body = await req.json();
-	const input = CreatePointOfInteractionTransactionInputSchema.parse(body);
+type TProcessPointOfInteractionTransactionInput = TCreatePointOfInteractionTransactionInput | TCreatePointOfInteractionTransactionRequestInput;
+
+type TProcessPointOfInteractionTransactionParams = {
+	input: TProcessPointOfInteractionTransactionInput;
+	operatorContext?: {
+		operatorIdentifier?: string;
+		operatorSellerId?: string | null;
+		operatorUserId?: string | null;
+	};
+};
+
+export async function processPointOfInteractionTransaction({
+	input,
+	operatorContext,
+}: TProcessPointOfInteractionTransactionParams) {
 	console.log(`[POI ${input.orgId}] [NEW_TRANSACTION]`, input);
 	const result = await db.transaction(async (tx) => {
 		const program = await tx.query.cashbackPrograms.findFirst({
@@ -213,13 +233,31 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 			"CAMPAIGNS FOR TOTAL PURCHASE VALUE": campaignsForTotalPurchaseValue.length,
 		});
 		// FIRST STEP: Identifying the transaction operator
+		const operatorIdentifier = operatorContext?.operatorIdentifier ?? ("operatorIdentifier" in input ? input.operatorIdentifier : undefined);
+		const operatorSellerId = operatorContext?.operatorSellerId;
 		const operator = await tx.query.sellers.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.operatorIdentifier), eq(fields.organizacaoId, input.orgId)),
+			where: (fields, { and, eq }) => {
+				if (operatorSellerId) {
+					return and(eq(fields.id, operatorSellerId), eq(fields.organizacaoId, input.orgId));
+				}
+
+				if (operatorIdentifier) {
+					return and(eq(fields.senhaOperador, operatorIdentifier), eq(fields.organizacaoId, input.orgId));
+				}
+
+				throw new createHttpError.Unauthorized("Operador não informado.");
+			},
 		});
 		if (!operator) throw new createHttpError.Unauthorized("Operador não encontrado.");
 
 		const operatorMembership = await tx.query.organizationMembers.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.usuarioVendedorId, operator.id), eq(fields.organizacaoId, input.orgId)),
+			where: (fields, { and, eq }) => {
+				const conditions = [eq(fields.usuarioVendedorId, operator.id), eq(fields.organizacaoId, input.orgId)];
+				if (operatorContext?.operatorUserId) {
+					conditions.push(eq(fields.usuarioId, operatorContext.operatorUserId));
+				}
+				return and(...conditions);
+			},
 			with: {
 				usuario: true,
 			},
@@ -350,26 +388,13 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 			}
 		}
 
-		// Visual-only tracking values for UX (no persistence writes).
-		// They simulate redemption/accumulation computation even when accumulation is handled by external integration.
-		visualClientNewOverallAvailableBalance = clientCashbackAvailableBalance ?? 0;
-		if (transactionRequiresRedemptionProcessing) {
-			visualClientNewOverallAvailableBalance -= input.sale.cashback.valor;
-		}
-		visualClientAccumulatedCashbackValue = calculateAccumulatedCashbackValue({
-			accumulationType: program.acumuloTipo,
-			accumulationValue: program.acumuloValor,
-			minimumSaleValue: program.acumuloRegraValorMinimo,
-			saleValue: input.sale.valor,
-		});
-		visualClientNewOverallAvailableBalance += visualClientAccumulatedCashbackValue;
-
 		// PRIZE VALIDATION (if prize redemption is requested)
 		const prizeRedemption = input.sale.prizeRedemption;
 		const isPrizeRedemption = !!prizeRedemption;
 		let validatedPrize: {
 			id: string;
 			valor: number;
+			valorVenda: number;
 			produtoId: string | null;
 			produtoVarianteId: string | null;
 		} | null = null;
@@ -382,12 +407,57 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 					produtoId: true,
 					produtoVarianteId: true,
 				},
+				with: {
+					produto: {
+						columns: {
+							precoVenda: true,
+						},
+					},
+					produtoVariante: {
+						columns: {
+							precoVenda: true,
+						},
+					},
+				},
 			});
 			if (!prize) {
 				throw new createHttpError.BadRequest("Recompensa não encontrada ou inativa.");
 			}
-			validatedPrize = prize;
+			if (!prize.produtoId && !prize.produtoVarianteId) {
+				throw new createHttpError.BadRequest("A recompensa selecionada não possui vínculo com produto ou variante.");
+			}
+
+			const prizeSaleValue = prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? null;
+			if (prizeSaleValue === null || prizeSaleValue === undefined) {
+				throw new createHttpError.BadRequest("A recompensa selecionada não possui valor comercial configurado.");
+			}
+
+			validatedPrize = {
+				id: prize.id,
+				valor: prize.valor,
+				valorVenda: prizeSaleValue,
+				produtoId: prize.produtoId,
+				produtoVarianteId: prize.produtoVarianteId,
+			};
 		}
+
+		const effectiveSaleValue = validatedPrize?.valorVenda ?? input.sale.valor;
+		const effectiveRedemptionValue = validatedPrize?.valor ?? (input.sale.cashback.aplicar ? input.sale.cashback.valor : 0);
+		const effectiveSaleFinalValue = Math.max(0, effectiveSaleValue - effectiveRedemptionValue);
+
+		// Visual-only tracking values for UX (no persistence writes).
+		// They simulate redemption/accumulation computation even when accumulation is handled by external integration.
+		visualClientNewOverallAvailableBalance = clientCashbackAvailableBalance ?? 0;
+		if (transactionRequiresRedemptionProcessing) {
+			visualClientNewOverallAvailableBalance -= effectiveRedemptionValue;
+		}
+		visualClientAccumulatedCashbackValue = calculateAccumulatedCashbackValue({
+			accumulationType: program.acumuloTipo,
+			accumulationValue: program.acumuloValor,
+			minimumSaleValue: program.acumuloRegraValorMinimo,
+			saleValue: effectiveSaleValue,
+		});
+		visualClientNewOverallAvailableBalance += visualClientAccumulatedCashbackValue;
 
 		// THIRD STEP: Processing cashback redemption (if applicable)
 		if (transactionRequiresRedemptionProcessing) {
@@ -399,16 +469,18 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 					if (program.resgateLimiteTipo === "FIXO") {
 						maxAllowedRedemption = program.resgateLimiteValor;
 					} else if (program.resgateLimiteTipo === "PERCENTUAL") {
-						maxAllowedRedemption = (input.sale.valor * program.resgateLimiteValor) / 100;
+						maxAllowedRedemption = (effectiveSaleValue * program.resgateLimiteValor) / 100;
 					} else {
 						maxAllowedRedemption = Number.MAX_SAFE_INTEGER;
 					}
-					if (input.sale.cashback.valor > maxAllowedRedemption) {
-						throw new createHttpError.BadRequest(`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`);
+					if (effectiveRedemptionValue > maxAllowedRedemption) {
+						throw new createHttpError.BadRequest(
+							`Valor de resgate excede o limite permitido. Máximo: ${formatCashbackValue(maxAllowedRedemption, program.terminologia)}`,
+						);
 					}
 				}
 			}
-			if (clientCashbackAvailableBalance < input.sale.cashback.valor) {
+			if (clientCashbackAvailableBalance < effectiveRedemptionValue) {
 				throw new createHttpError.BadRequest("Saldo insuficiente.");
 			}
 
@@ -417,7 +489,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 				orgId: input.orgId,
 				clientId: clientId as string,
 				programId: program.id,
-				redemptionValue: input.sale.cashback.valor,
+				redemptionValue: effectiveRedemptionValue,
 			});
 
 			const previousBalance = redemptionResult.previousBalance;
@@ -432,11 +504,11 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 					organizacaoId: input.orgId,
 					clienteId: clientId,
 					vendaId: null, // No associated sale (yet ?)
-					vendaValor: input.sale.valor,
+					vendaValor: effectiveSaleValue,
 					programaId: program.id,
 					tipo: "RESGATE",
 					status: "ATIVO",
-					valor: -input.sale.cashback.valor,
+					valor: -effectiveRedemptionValue,
 					valorRestante: 0, // RESGATE transactions are fully consumed
 					saldoValorAnterior: previousBalance,
 					saldoValorPosterior: newBalanceAfterRedemption,
@@ -462,7 +534,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 				orgId: input.orgId,
 				clientId: clientId as string,
 				saleId: null, // associated after sale insertion if applicable
-				saleValue: input.sale.valor,
+				saleValue: effectiveSaleValue,
 				operatorId: operatorMembershipUser?.id,
 				operatorSellerId: operator.id,
 				program,
@@ -484,7 +556,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 					orgId: input.orgId,
 					clientId: salePartnerClientId,
 					saleId: null, // associated after sale insertion if applicable
-					saleValue: input.sale.valor,
+					saleValue: effectiveSaleValue,
 					operatorId: operatorMembershipUser?.id,
 					operatorSellerId: operator.id,
 					program,
@@ -510,7 +582,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 				clientId: clientId,
 				clientCashbackToAccumulate: clientNewAccumulatedCashbackValue,
 				clientCashbackAvailableBalance: clientCashbackAvailableBalance,
-				saleValue: input.sale.valor,
+				saleValue: effectiveSaleValue,
 				sellerName: operator.nome,
 				clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
 				clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
@@ -519,14 +591,14 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 
 		// FIFTH STEP: Processing sale processing (if applicable)
 		if (transactionRequiresSaleProcessing) {
-			const saleFinalValue = input.sale.valor - input.sale.cashback.valor;
 			const insertedSaleResponse = await tx
 				.insert(sales)
 				.values({
 					organizacaoId: input.orgId,
 					clienteId: clientId,
 					idExterno: `POI-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-					valorTotal: saleFinalValue,
+					valorTotal: effectiveSaleFinalValue,
+					descontosTotal: transactionRequiresRedemptionProcessing ? Math.min(effectiveSaleValue, effectiveRedemptionValue) : 0,
 					custoTotal: 0,
 					vendedorNome: operator.nome,
 					vendedorId: operator.id,
@@ -553,7 +625,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 				clientFirstSaleDate = new Date();
 			}
 			clientCurrentPurchaseCount++;
-			clientCurrentPurchaseValue += input.sale.valor;
+			clientCurrentPurchaseValue += effectiveSaleValue;
 
 			// Updating client's sale related metadata
 			await tx
@@ -588,6 +660,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 
 			// Insert saleItem if this is a prize redemption and the prize has a linked product
 			if (isPrizeRedemption && validatedPrize?.produtoId && transactionSaleId) {
+				const saleItemDiscountValue = Math.min(validatedPrize.valorVenda, validatedPrize.valor);
 				await tx.insert(saleItems).values({
 					organizacaoId: input.orgId,
 					vendaId: transactionSaleId,
@@ -595,12 +668,17 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 					produtoId: validatedPrize.produtoId,
 					produtoVarianteId: validatedPrize.produtoVarianteId ?? null,
 					quantidade: 1,
-					valorVendaUnitario: validatedPrize.valor,
+					valorVendaUnitario: validatedPrize.valorVenda,
 					valorCustoUnitario: 0,
-					valorVendaTotalBruto: validatedPrize.valor,
-					valorTotalDesconto: validatedPrize.valor,
-					valorVendaTotalLiquido: 0,
+					valorVendaTotalBruto: validatedPrize.valorVenda,
+					valorTotalDesconto: saleItemDiscountValue,
+					valorVendaTotalLiquido: Math.max(0, validatedPrize.valorVenda - saleItemDiscountValue),
 					valorCustoTotal: 0,
+					metadados: {
+						origem: "POI-RESGATE-RECOMPENSA",
+						valorResgate: validatedPrize.valor,
+						valorComercial: validatedPrize.valorVenda,
+					},
 				});
 			}
 
@@ -615,7 +693,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 					campaignsForFirstPurchase: campaignsForFirstPurchase,
 					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 					saleId: transactionSaleId,
-					saleValue: input.sale.valor,
+					saleValue: effectiveSaleValue,
 					clientId: clientId,
 					clientRFMTitle: clientRfmTitle,
 					sellerName: operator.nome,
@@ -635,7 +713,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 					campaignsForNewPurchase: campaignsForNewPurchase,
 					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 					saleId: transactionSaleId,
-					saleValue: input.sale.valor,
+					saleValue: effectiveSaleValue,
 					clientId: clientId,
 					clientRFMTitle: clientRfmTitle,
 					sellerName: operator.nome,
@@ -653,7 +731,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 				campaignsForTotalPurchaseCount: campaignsForTotalPurchaseCount,
 				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 				saleId: transactionSaleId,
-				saleValue: input.sale.valor,
+				saleValue: effectiveSaleValue,
 				clientId: clientId,
 				clientRFMTitle: clientRfmTitle,
 				clientNewTotalPurchaseCount: clientCurrentPurchaseCount,
@@ -672,7 +750,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 				campaignsForTotalPurchaseValue: campaignsForTotalPurchaseValue,
 				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 				saleId: transactionSaleId,
-				saleValue: input.sale.valor,
+				saleValue: effectiveSaleValue,
 				clientId: clientId,
 				clientRFMTitle: clientRfmTitle,
 				clientNewTotalPurchaseValue: clientCurrentPurchaseValue,
@@ -686,6 +764,8 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 
 		return {
 			transactionSaleId,
+			transactionAccumulationId,
+			transactionRedemptionId,
 			clientAccumulatedCashbackValue: clientNewAccumulatedCashbackValue,
 			clientNewOverallAvailableBalance: clientCashbackAvailableBalance,
 			visualClientAccumulatedCashbackValue,
@@ -721,19 +801,28 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 		console.log("[POI] [IMMEDIATE_PROCESS] No interactions to process immediately");
 	}
 
-	return NextResponse.json(
-		{
-			data: {
-				saleId: result.transactionSaleId,
-				clientAccumulatedCashbackValue: result.clientAccumulatedCashbackValue,
-				clientNewOverallAvailableBalance: result.clientNewOverallAvailableBalance,
-				visualClientAccumulatedCashbackValue: result.visualClientAccumulatedCashbackValue,
-				visualClientNewOverallAvailableBalance: result.visualClientNewOverallAvailableBalance,
-			},
-			message: "Transação processada com sucesso.",
+	return {
+		data: {
+			saleId: result.transactionSaleId,
+			transactionAccumulationId: result.transactionAccumulationId,
+			transactionRedemptionId: result.transactionRedemptionId,
+			clientAccumulatedCashbackValue: result.clientAccumulatedCashbackValue,
+			clientNewOverallAvailableBalance: result.clientNewOverallAvailableBalance,
+			visualClientAccumulatedCashbackValue: result.visualClientAccumulatedCashbackValue,
+			visualClientNewOverallAvailableBalance: result.visualClientNewOverallAvailableBalance,
 		},
-		{ status: 201 },
-	);
+		message: "Transação processada com sucesso.",
+	};
+}
+
+export type TProcessPointOfInteractionTransactionOutput = Awaited<ReturnType<typeof processPointOfInteractionTransaction>>;
+
+async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCreatePointOfInteractionTransactionOutput>> {
+	const body = await req.json();
+	const input = CreatePointOfInteractionTransactionInputSchema.parse(body);
+	const result = await processPointOfInteractionTransaction({ input });
+
+	return NextResponse.json(result, { status: 201 });
 }
 
 export const POST = appApiHandler({

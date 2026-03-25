@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
-import { formatToMoney, formatToNumericPassword, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatToMoney, formatToNumericPassword, formatToPhone, getCashbackUnitLabel } from "@/lib/formatting";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { createCashbackProgramRedemption } from "@/lib/mutations/cashback-programs";
 import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
@@ -58,12 +59,14 @@ type NewCashbackRedemptionContentProps = {
 	};
 	clientId?: string;
 	redemptionLimit: {
+		terminologia: TCashbackProgramTerminologyEnum;
 		tipo: string | null;
 		valor: number | null;
 	} | null;
 };
 
 export default function NewCashbackRedemptionContent({ org, clientId, redemptionLimit }: NewCashbackRedemptionContentProps) {
+	const terminology = redemptionLimit?.terminologia ?? "DINHEIRO";
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { state, updateClient, updateSaleValue, updateRedemptionValue, updateOperatorIdentifier, resetState } =
@@ -164,7 +167,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 		mutationFn: createCashbackProgramRedemption,
 		onSuccess: (data) => {
 			playSuccess();
-			toast.success(`Resgate realizado! Novo saldo: ${formatToMoney(data.data.newBalance)}`);
+			toast.success(`Resgate realizado! Novo saldo: ${formatCashbackValue(data.data.newBalance, terminology)}`);
 			setIsNewClientSignup(false);
 			setSuccessData(data.data);
 			setCurrentStep(5);
@@ -255,6 +258,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 								amount={state.redemptionValue}
 								isAttemptingToRedeemMoreThanAllowed={isAttemptingToRedeemMoreThanAllowed}
 								redemptionLimit={redemptionLimit}
+								terminology={terminology}
 								isNewClient={!state.client.id}
 								onAmountChange={updateRedemptionValue}
 								onSubmit={handleNextStep}
@@ -264,6 +268,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 							<ConfirmationStep
 								clientName={state.client.nome || client?.nome || ""}
 								redemptionValue={state.redemptionValue}
+								terminology={terminology}
 								operatorIdentifier={state.operatorIdentifier}
 								onOperatorIdentifierChange={updateOperatorIdentifier}
 								onSubmit={() =>
@@ -280,6 +285,7 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 						{currentStep === 5 && isNewClientSignup && (
 							<NewClientSuccessStep
 								clientName={state.client.nome}
+								terminology={terminology}
 								onReset={handleReset}
 								onGoHome={() => router.push(`/point-of-interaction/${org.id}`)}
 								onNewSale={() => router.push(`/point-of-interaction/${org.id}/new-sale`)}
@@ -290,8 +296,18 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 								title="RESGATE REALIZADO!"
 								subtitle="O saldo foi baixado com sucesso."
 								stats={[
-									{ label: "VALOR RESGATADO", value: state.redemptionValue, variant: "green" },
-									{ label: "NOVO SALDO TOTAL", value: successData.newBalance, variant: "brand" },
+									{
+										label: "VALOR RESGATADO",
+										value: state.redemptionValue,
+										variant: "green",
+										formatValue: (value) => formatCashbackValue(value, terminology),
+									},
+									{
+										label: "NOVO SALDO TOTAL",
+										value: successData.newBalance,
+										variant: "brand",
+										formatValue: (value) => formatCashbackValue(value, terminology),
+									},
 								]}
 								primaryAction={{ label: "NOVO RESGATE", onClick: handleReset }}
 								secondaryAction={{ label: "VOLTAR AO INÍCIO", onClick: () => router.push(`/point-of-interaction/${org.id}`) }}
@@ -340,11 +356,13 @@ export default function NewCashbackRedemptionContent({ org, clientId, redemption
 
 function NewClientSuccessStep({
 	clientName,
+	terminology,
 	onReset,
 	onGoHome,
 	onNewSale,
 }: {
 	clientName: string;
+	terminology: TCashbackProgramTerminologyEnum;
 	onReset: () => void;
 	onGoHome: () => void;
 	onNewSale: () => void;
@@ -374,9 +392,12 @@ function NewClientSuccessStep({
 							<Wallet className="w-6 h-6" />
 						</div>
 						<div className="flex-1 text-left">
-							<h3 className="font-black text-lg uppercase tracking-tight mb-2">COMECE A ACUMULAR CASHBACK!</h3>
+							<h3 className="font-black text-lg uppercase tracking-tight mb-2">
+								COMECE A ACUMULAR {getCashbackUnitLabel(terminology, { uppercase: true })}!
+							</h3>
 							<p className="text-sm text-muted-foreground leading-relaxed">
-								Agora você faz parte do nosso programa de recompensas! A cada compra, você acumula cashback que pode ser usado em futuras transações.
+								Agora você faz parte do nosso programa de recompensas! A cada compra, você acumula{" "}
+								{getCashbackUnitLabel(terminology)} que pode ser usado em futuras transações.
 							</p>
 						</div>
 					</div>
@@ -450,6 +471,7 @@ function RedemptionStep({
 	onAmountChange,
 	saleValue,
 	redemptionLimit,
+	terminology,
 	isNewClient,
 	onSubmit,
 }: {
@@ -459,14 +481,15 @@ function RedemptionStep({
 	isAttemptingToRedeemMoreThanAllowed: boolean;
 	onAmountChange: (amount: number) => void;
 	saleValue: number;
-	redemptionLimit: { tipo: string | null; valor: number | null } | null;
+	redemptionLimit: { terminologia: TCashbackProgramTerminologyEnum; tipo: string | null; valor: number | null } | null;
+	terminology: TCashbackProgramTerminologyEnum;
 	isNewClient: boolean;
 	onSubmit: () => void;
 }) {
 	const getLimitDescription = () => {
 		if (!redemptionLimit?.tipo || redemptionLimit.valor === null) return null;
 		if (redemptionLimit.tipo === "FIXO") {
-			return `Limite máximo: ${formatToMoney(redemptionLimit.valor)}`;
+			return `Limite máximo: ${formatCashbackValue(redemptionLimit.valor, terminology)}`;
 		}
 		return `Limite máximo: ${redemptionLimit.valor}% do valor da compra`;
 	};
@@ -484,7 +507,7 @@ function RedemptionStep({
 			}}
 		>
 			<div className="text-center space-y-2">
-				<h2 className="text-xl font-black uppercase tracking-tight">Qual o valor do resgate?</h2>
+				<h2 className="text-xl font-black uppercase tracking-tight">Qual o valor do resgate em {getCashbackUnitLabel(terminology)}?</h2>
 			</div>
 
 			{isNewClient && (
@@ -502,7 +525,9 @@ function RedemptionStep({
 			)}
 
 			<div className="relative max-w-md mx-auto">
-				<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">R$</span>
+				<span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-muted-foreground">
+					{terminology === "DINHEIRO" ? "R$" : "PTS"}
+				</span>
 				<Input
 					type="number"
 					value={amount || ""}
@@ -563,7 +588,7 @@ function RedemptionStep({
 			{getLimitDescription() && (
 				<p className="text-[0.65rem] font-medium text-muted-foreground text-center italic">
 					{getLimitDescription()}
-					{saleValue > 0 && redemptionLimit?.tipo === "PERCENTUAL" && <> (Máx: {formatToMoney(maxAllowed)})</>}
+					{saleValue > 0 && redemptionLimit?.tipo === "PERCENTUAL" && <> (Máx: {formatCashbackValue(maxAllowed, terminology)})</>}
 				</p>
 			)}
 		</form>
@@ -573,12 +598,14 @@ function RedemptionStep({
 function ConfirmationStep({
 	clientName,
 	redemptionValue,
+	terminology,
 	operatorIdentifier,
 	onOperatorIdentifierChange,
 	onSubmit,
 }: {
 	clientName: string;
 	redemptionValue: number;
+	terminology: TCashbackProgramTerminologyEnum;
 	operatorIdentifier: string;
 	onOperatorIdentifierChange: (identifier: string) => void;
 	onSubmit: () => void;
@@ -603,7 +630,7 @@ function ConfirmationStep({
 				</div>
 				<div className="flex justify-between">
 					<span className="text-muted-foreground font-bold text-xs uppercase">Valor do Resgate</span>
-					<span className="font-black text-green-600 text-xl">{formatToMoney(redemptionValue)}</span>
+					<span className="font-black text-green-600 text-xl">{formatCashbackValue(redemptionValue, terminology)}</span>
 				</div>
 			</div>
 

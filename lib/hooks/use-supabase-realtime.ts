@@ -2,8 +2,9 @@
 
 import { supabaseClient } from "@/services/supabase";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import type { QueryKey } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 type RealtimeEvent = "INSERT" | "UPDATE" | "DELETE" | "*";
 
@@ -21,7 +22,7 @@ type UseSupabaseRealtimeOptions<T> = {
 	onInsert?: (payload: T) => void;
 	onUpdate?: (payload: { old: T; new: T }) => void;
 	onDelete?: (payload: T) => void;
-	invalidateQueries?: string[][];
+	invalidateQueries?: QueryKey[];
 };
 
 /**
@@ -174,13 +175,7 @@ export function useSupabaseRealtime<T extends Record<string, unknown>>({
 /**
  * Hook to subscribe to chat list updates
  */
-export function useChatsRealtime({
-	whatsappPhoneId,
-	enabled = true,
-}: {
-	whatsappPhoneId: string | null;
-	enabled?: boolean;
-}) {
+export function useChatsRealtime({ whatsappPhoneId, enabled = true }: { whatsappPhoneId: string | null; enabled?: boolean }) {
 	// Memoize filter and invalidateQueries to prevent unnecessary re-subscriptions
 	const filter = useMemo(() => (whatsappPhoneId ? { column: "whatsapp_conexao_telefone_id", value: whatsappPhoneId } : undefined), [whatsappPhoneId]);
 	const invalidateQueries = useMemo(() => [["chats"]], []);
@@ -215,5 +210,28 @@ export function useChatMessagesRealtime({
 		enabled: enabled && !!chatId,
 		invalidateQueries,
 		onInsert: onNewMessage,
+	});
+}
+
+/**
+ * Hook to subscribe to point-of-interaction transaction requests updates
+ */
+export function usePoiTransactionRequestsRealtime({
+	orgId,
+	enabled = true,
+	queryKey,
+}: {
+	orgId: string | null;
+	enabled?: boolean;
+	queryKey: QueryKey;
+}) {
+	const filter = useMemo(() => (orgId ? { column: "organizacao_id", value: orgId } : undefined), [orgId]);
+	const invalidateQueries = useMemo(() => [queryKey], [queryKey]);
+
+	return useSupabaseRealtime({
+		table: "ampmais_poi_transaction_requests",
+		filter,
+		enabled: enabled && !!orgId,
+		invalidateQueries,
 	});
 }

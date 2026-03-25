@@ -33,9 +33,11 @@ export const WhatsappTemplateQualityEnum = z.enum(["PENDENTE", "ALTA", "MEDIA", 
 export type TWhatsappTemplateQualityEnum = z.infer<typeof WhatsappTemplateQualityEnum>;
 export const CashbackProgramAccumulationTypeEnum = z.enum(["FIXO", "PERCENTUAL"]);
 export type TCashbackProgramAccumulationTypeEnum = z.infer<typeof CashbackProgramAccumulationTypeEnum>;
+export const CashbackProgramTerminologyEnum = z.enum(["DINHEIRO", "PONTOS"]);
+export type TCashbackProgramTerminologyEnum = z.infer<typeof CashbackProgramTerminologyEnum>;
 export const CashbackProgramRedemptionLimitTypeEnum = z.enum(["FIXO", "PERCENTUAL"]);
 export type TCashbackProgramRedemptionLimitTypeEnum = z.infer<typeof CashbackProgramRedemptionLimitTypeEnum>;
-export const CashbackProgramTransactionTypeEnum = z.enum(["ACÚMULO", "RESGATE", "EXPIRAÇÃO"]);
+export const CashbackProgramTransactionTypeEnum = z.enum(["ACÚMULO", "RESGATE", "EXPIRAÇÃO", "CANCELAMENTO"]);
 export type TCashbackProgramTransactionTypeEnum = z.infer<typeof CashbackProgramTransactionTypeEnum>;
 export const CashbackProgramTransactionStatusEnum = z.enum(["ATIVO", "CONSUMIDO", "EXPIRADO"]);
 export type TCashbackProgramTransactionStatusEnum = z.infer<typeof CashbackProgramTransactionStatusEnum>;
@@ -164,3 +166,9 @@ export type TFiscalProviderEnum = z.infer<typeof FiscalProviderEnum>;
 
 export const PaymentProviderEnum = z.enum(["LOCAL", "MERCADO_PAGO", "STRIPE_CONNECT", "PAGARME"]);
 export type TPaymentProviderEnum = z.infer<typeof PaymentProviderEnum>;
+
+export const PoiTransactionRequestStatusEnum = z.enum(["PENDENTE", "PROCESSANDO", "APROVADO", "REJEITADO", "ERRO"]);
+export type TPoiTransactionRequestStatusEnum = z.infer<typeof PoiTransactionRequestStatusEnum>;
+
+export const PoiTransactionRequestTypeEnum = z.enum(["NOVA_TRANSACAO"]);
+export type TPoiTransactionRequestTypeEnum = z.infer<typeof PoiTransactionRequestTypeEnum>;

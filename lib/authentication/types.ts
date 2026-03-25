@@ -33,6 +33,8 @@ export type TAuthUserSession = {
 			corPrimariaForeground: TOrganizationEntity["corPrimariaForeground"];
 			corSecundaria: TOrganizationEntity["corSecundaria"];
 			corSecundariaForeground: TOrganizationEntity["corSecundariaForeground"];
+			poiQrCodeKioskDataUrl: TOrganizationEntity["poiQrCodeKioskDataUrl"];
+			poiQrCodeMobileDataUrl: TOrganizationEntity["poiQrCodeMobileDataUrl"];
 			configuracao: TOrganizationEntity["configuracao"];
 			integracaoTipo: TOrganizationEntity["integracaoTipo"];
 			integracaoConfiguracao: TOrganizationEntity["integracaoConfiguracao"];

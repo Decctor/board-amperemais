@@ -616,6 +616,11 @@ export const AppRoutes = [
 		description: "Visão geral das principais métricas do seu negócio",
 	},
 	{
+		path: "/dashboard/commercial/point-of-interaction",
+		title: "Ponto de Interação",
+		description: "Painel de acompanhamento e gestão do seu ponto de interação.",
+	},
+	{
 		path: "/dashboard/commercial/sales",
 		title: "Vendas",
 		description: "Listagem das vendas realizadas",

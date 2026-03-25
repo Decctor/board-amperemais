@@ -3,7 +3,8 @@ import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
+import { formatCashbackValue, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useDebounceMemo } from "@/lib/hooks/use-debounce";
 import { useCashbackProgramStats, useCashbackProgramsGraph } from "@/lib/queries/cashback-programs";
 import { BadgeDollarSign, CirclePlus, Clock, Percent, ShoppingCart, UserPlus, UserRoundPlus, UserRoundX, Users, UsersRound, XCircle } from "lucide-react";
@@ -13,9 +14,10 @@ import { useDebounce } from "use-debounce";
 
 type CashbackStatsBlockProps = {
 	period: { after: string; before: string };
+	terminology: TCashbackProgramTerminologyEnum;
 };
 
-export default function CashbackStatsBlock({ period }: CashbackStatsBlockProps) {
+export default function CashbackStatsBlock({ period, terminology }: CashbackStatsBlockProps) {
 	const [debouncedPeriod] = useDebounce(period, 1000);
 
 	const { data: stats, isLoading } = useCashbackProgramStats(debouncedPeriod);
@@ -181,18 +183,22 @@ export default function CashbackStatsBlock({ period }: CashbackStatsBlockProps) 
 				<StatUnitCard
 					title="Cashback Gerado"
 					icon={<CirclePlus className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: stats?.totalCashbackGenerated.atual || 0, format: (n) => formatToMoney(n) }}
+					current={{ value: stats?.totalCashbackGenerated.atual || 0, format: (n) => formatCashbackValue(n, terminology) }}
 					previous={
-						stats?.totalCashbackGenerated.anterior ? { value: stats.totalCashbackGenerated.anterior || 0, format: (n) => formatToMoney(n) } : undefined
+						stats?.totalCashbackGenerated.anterior
+							? { value: stats.totalCashbackGenerated.anterior || 0, format: (n) => formatCashbackValue(n, terminology) }
+							: undefined
 					}
 					className="w-full lg:w-1/5"
 				/>
 				<StatUnitCard
 					title="Cashback Resgatado"
 					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: stats?.totalCashbackRescued.atual || 0, format: (n) => formatToMoney(n) }}
+					current={{ value: stats?.totalCashbackRescued.atual || 0, format: (n) => formatCashbackValue(n, terminology) }}
 					previous={
-						stats?.totalCashbackRescued.anterior ? { value: stats.totalCashbackRescued.anterior || 0, format: (n) => formatToMoney(n) } : undefined
+						stats?.totalCashbackRescued.anterior
+							? { value: stats.totalCashbackRescued.anterior || 0, format: (n) => formatCashbackValue(n, terminology) }
+							: undefined
 					}
 					className="w-full lg:w-1/5"
 				/>
@@ -208,9 +214,11 @@ export default function CashbackStatsBlock({ period }: CashbackStatsBlockProps) 
 				<StatUnitCard
 					title="Cashback Expirado"
 					icon={<XCircle className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: stats?.totalExpiredCashback.atual || 0, format: (n) => formatToMoney(n) }}
+					current={{ value: stats?.totalExpiredCashback.atual || 0, format: (n) => formatCashbackValue(n, terminology) }}
 					previous={
-						stats?.totalExpiredCashback.anterior ? { value: stats.totalExpiredCashback.anterior || 0, format: (n) => formatToMoney(n) } : undefined
+						stats?.totalExpiredCashback.anterior
+							? { value: stats.totalExpiredCashback.anterior || 0, format: (n) => formatCashbackValue(n, terminology) }
+							: undefined
 					}
 					className="w-full lg:w-1/5"
 					lowerIsBetter={true}
@@ -218,15 +226,17 @@ export default function CashbackStatsBlock({ period }: CashbackStatsBlockProps) 
 				<StatUnitCard
 					title="Cashback Expirando"
 					icon={<Clock className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: stats?.totalExpiringCashback.atual || 0, format: (n) => formatToMoney(n) }}
+					current={{ value: stats?.totalExpiringCashback.atual || 0, format: (n) => formatCashbackValue(n, terminology) }}
 					previous={
-						stats?.totalExpiringCashback.anterior ? { value: stats.totalExpiringCashback.anterior || 0, format: (n) => formatToMoney(n) } : undefined
+						stats?.totalExpiringCashback.anterior
+							? { value: stats.totalExpiringCashback.anterior || 0, format: (n) => formatCashbackValue(n, terminology) }
+							: undefined
 					}
 					className="w-full lg:w-1/5"
 					lowerIsBetter={true}
 				/>
 			</div>
-			<CashbackProgramsGraphBlock period={debouncedPeriod} />
+			<CashbackProgramsGraphBlock period={debouncedPeriod} terminology={terminology} />
 		</div>
 	);
 }
@@ -300,8 +310,9 @@ function CustomCashbackTooltip({ active, payload, valueFormatter, metricLabel }:
 
 type CashbackProgramsGraphBlockProps = {
 	period: { after: string; before: string };
+	terminology: TCashbackProgramTerminologyEnum;
 };
-function CashbackProgramsGraphBlock({ period }: CashbackProgramsGraphBlockProps) {
+function CashbackProgramsGraphBlock({ period, terminology }: CashbackProgramsGraphBlockProps) {
 	const [graphType, setGraphType] = useState<"participants-growth" | "total-cashback-generated" | "total-cashback-rescued">(
 		"total-cashback-generated",
 	);
@@ -322,13 +333,13 @@ function CashbackProgramsGraphBlock({ period }: CashbackProgramsGraphBlockProps)
 		"total-cashback-generated": {
 			title: "Cashback Gerado",
 			chartLabel: "CASHBACK GERADO",
-			valorFormatting: (value: number) => formatToMoney(value),
+			valorFormatting: (value: number) => formatCashbackValue(value, terminology),
 			icon: <CirclePlus className="h-4 min-h-4 w-4 min-w-4" />,
 		},
 		"total-cashback-rescued": {
 			title: "Cashback Resgatado",
 			chartLabel: "CASHBACK RESGATADO",
-			valorFormatting: (value: number) => formatToMoney(value),
+			valorFormatting: (value: number) => formatCashbackValue(value, terminology),
 			icon: <BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />,
 		},
 	};

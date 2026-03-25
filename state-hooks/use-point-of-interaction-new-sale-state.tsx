@@ -1,4 +1,5 @@
 import { ClientSchema } from "@/schemas/clients";
+import { PoiTransactionRequestStatusEnum } from "@/schemas/enums";
 import { SaleSchema } from "@/schemas/sales";
 import { useCallback, useState } from "react";
 import z from "zod";
@@ -52,6 +53,7 @@ export const PointOfInteractionNewSaleStateSchema = z.object({
 				.object({
 					prizeId: z.string(),
 					prizeValue: z.number(),
+					prizeSaleValue: z.number(),
 				})
 				.optional()
 				.nullable(),
@@ -64,15 +66,21 @@ export const PointOfInteractionNewSaleStateSchema = z.object({
 		required_error: "Identificador do operador não informado.",
 		invalid_type_error: "Tipo não válido para identificador do operador.",
 	}),
+	interfaceMode: z.enum(["kiosk", "mobile"]),
+	watchTransactionRequestToken: z.string({ invalid_type_error: "Tipo não válido para token da solicitação." }).nullable(),
+	watchTransactionRequestStatus: PoiTransactionRequestStatusEnum.nullable(),
 });
 export type TPointOfInteractionNewSaleState = z.infer<typeof PointOfInteractionNewSaleStateSchema>;
 
-export function usePointOfInteractionNewSaleState(initialOrgId: string) {
+export function usePointOfInteractionNewSaleState(initialOrgId: string, initialInterfaceMode: "kiosk" | "mobile" = "kiosk") {
 	const [state, setState] = useState<TPointOfInteractionNewSaleState>({
 		orgId: initialOrgId,
 		client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 		sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null },
 		operatorIdentifier: "",
+		interfaceMode: initialInterfaceMode,
+		watchTransactionRequestToken: null,
+		watchTransactionRequestStatus: null,
 	});
 
 	const updateClient = useCallback((client: Partial<TPointOfInteractionNewSaleState["client"]>) => {
@@ -110,14 +118,28 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string) {
 		}));
 	}, []);
 
+	const updateWatchTransactionRequest = useCallback(
+		({ token, status }: { token?: string | null; status?: TPointOfInteractionNewSaleState["watchTransactionRequestStatus"] }) => {
+			setState((prev) => ({
+				...prev,
+				watchTransactionRequestToken: token !== undefined ? token : prev.watchTransactionRequestToken,
+				watchTransactionRequestStatus: status !== undefined ? status : prev.watchTransactionRequestStatus,
+			}));
+		},
+		[],
+	);
+
 	const resetState = useCallback(() => {
 		setState({
 			orgId: initialOrgId,
 			client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 			sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null },
 			operatorIdentifier: "",
+			interfaceMode: initialInterfaceMode,
+			watchTransactionRequestToken: null,
+			watchTransactionRequestStatus: null,
 		});
-	}, [initialOrgId]);
+	}, [initialOrgId, initialInterfaceMode]);
 
 	const redefineState = useCallback((newState: TPointOfInteractionNewSaleState) => {
 		setState(newState);
@@ -130,6 +152,7 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string) {
 		updateCashback,
 		updatePrizeRedemption,
 		updateOperatorIdentifier,
+		updateWatchTransactionRequest,
 		resetState,
 		redefineState,
 	};

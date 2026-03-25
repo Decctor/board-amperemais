@@ -1,6 +1,7 @@
 "use client";
 
-import { formatToMoney } from "@/lib/formatting";
+import { formatCashbackValue, formatToMoney } from "@/lib/formatting";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { OperatorConfirmationInput } from "../../_shared/components/operator-confirmation-input";
 import type { TPrize } from "../../_shared/types";
 import { ArrowRight, Gift } from "lucide-react";
@@ -10,6 +11,7 @@ type PrizeConfirmationStepProps = {
 	clientName: string;
 	selectedPrize: TPrize | null;
 	availableBalance: number;
+	terminology: TCashbackProgramTerminologyEnum;
 	operatorIdentifier: string;
 	onOperatorIdentifierChange: (identifier: string) => void;
 	onSubmit: () => void;
@@ -19,11 +21,14 @@ export function PrizeConfirmationStep({
 	clientName,
 	selectedPrize,
 	availableBalance,
+	terminology,
 	operatorIdentifier,
 	onOperatorIdentifierChange,
 	onSubmit,
 }: PrizeConfirmationStepProps) {
 	const balanceAfter = selectedPrize ? availableBalance - selectedPrize.valor : availableBalance;
+	const commercialValue = selectedPrize?.valorVenda ?? 0;
+	const finalValue = Math.max(0, commercialValue - (selectedPrize?.valor ?? 0));
 	return (
 		<form
 			className="space-y-8 short:space-y-2 animate-in fade-in slide-in-from-bottom-4"
@@ -51,7 +56,8 @@ export function PrizeConfirmationStep({
 					</div>
 					<div className="flex-1 min-w-0">
 						<h3 className="font-black text-sm short:text-xs uppercase tracking-tight truncate">{selectedPrize.titulo}</h3>
-						<p className="font-black text-lg short:text-base text-amber-700">{formatToMoney(selectedPrize.valor)}</p>
+						<p className="font-black text-lg short:text-base text-amber-700">{formatCashbackValue(selectedPrize.valor, terminology)}</p>
+						<p className="text-xs short:text-[0.65rem] text-muted-foreground">Valor comercial: {formatToMoney(selectedPrize.valorVenda)}</p>
 					</div>
 				</div>
 			)}
@@ -64,10 +70,18 @@ export function PrizeConfirmationStep({
 				<div className="flex justify-between items-center">
 					<span className="text-muted-foreground font-bold text-xs short:text-[0.7rem] uppercase">Saldo</span>
 					<div className="flex items-center gap-2 short:gap-1">
-						<span className="font-bold text-sm short:text-xs text-muted-foreground">{formatToMoney(availableBalance)}</span>
+						<span className="font-bold text-sm short:text-xs text-muted-foreground">{formatCashbackValue(availableBalance, terminology)}</span>
 						<ArrowRight className="w-3 h-3 text-muted-foreground" />
-						<span className="font-black text-sm short:text-xs text-brand">{formatToMoney(Math.max(0, balanceAfter))}</span>
+						<span className="font-black text-sm short:text-xs text-brand">{formatCashbackValue(Math.max(0, balanceAfter), terminology)}</span>
 					</div>
+				</div>
+				<div className="flex justify-between">
+					<span className="text-muted-foreground font-bold text-xs short:text-[0.7rem] uppercase">Valor do produto</span>
+					<span className="font-black short:text-xs">{formatToMoney(commercialValue)}</span>
+				</div>
+				<div className="flex justify-between">
+					<span className="text-muted-foreground font-bold text-xs short:text-[0.7rem] uppercase">Valor final</span>
+					<span className="font-black text-brand short:text-xs">{formatToMoney(finalValue)}</span>
 				</div>
 			</div>
 

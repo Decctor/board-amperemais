@@ -2,8 +2,8 @@ import type { TCashbackProgramTransactionsOutputByClientId } from "@/app/api/cas
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import { useCashbackProgramTransactionsByClientId, useClientCashbackBalance } from "@/lib/queries/cashback-programs";
+import { formatCashbackValue, formatDateAsLocale, getCashbackUnitLabel, formatToMoney } from "@/lib/formatting";
+import { useCashbackProgram, useCashbackProgramTransactionsByClientId, useClientCashbackBalance } from "@/lib/queries/cashback-programs";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, BadgePercent, History, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
@@ -17,6 +17,7 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 	const limit = 5;
 
 	const { data: balance, isLoading: isBalanceLoading } = useClientCashbackBalance({ clienteId: clientId });
+	const { data: cashbackProgram } = useCashbackProgram();
 	const {
 		data: transactionsResult,
 		isLoading: isTransactionsLoading,
@@ -35,14 +36,18 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 	const canGoPrevious = page > 1;
 	const canGoNext = totalPages > 0 ? page < totalPages : false;
 
-	const formattedBalance = useMemo(() => formatToMoney(balance?.saldoValorDisponivel ?? 0), [balance?.saldoValorDisponivel]);
+	const terminology = cashbackProgram?.terminologia ?? "DINHEIRO";
+	const formattedBalance = useMemo(
+		() => formatCashbackValue(balance?.saldoValorDisponivel ?? 0, terminology),
+		[balance?.saldoValorDisponivel, terminology],
+	);
 
 	return (
 		<div className="bg-card border-primary/20 flex h-full w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
 			<div className="w-full shrink-0 flex flex-col gap-1.5 rounded-xl border border-brand/30 bg-brand/20 px-3 py-3">
 				<div className="w-full flex items-center gap-1.5">
 					<BadgePercent className="w-4 h-4 text-brand" />
-					<p className="text-xs font-semibold tracking-tight uppercase text-brand">SALDO EM CASHBACK</p>
+					<p className="text-xs font-semibold tracking-tight uppercase text-brand">SALDO EM {getCashbackUnitLabel(terminology, { uppercase: true })}</p>
 				</div>
 				<p className="text-2xl font-black tracking-tight text-brand">{isBalanceLoading ? "Carregando..." : formattedBalance}</p>
 			</div>
@@ -60,7 +65,7 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 				) : null}
 
 				{transactions.map((transaction) => (
-					<TransactionCard key={transaction.id} transaction={transaction} />
+					<TransactionCard key={transaction.id} transaction={transaction} terminology={terminology} />
 				))}
 			</div>
 			{totalPages > 1 ? (
@@ -112,7 +117,13 @@ function TransactionTypeBadge({ type }: { type: "ACÚMULO" | "RESGATE" | "EXPIRA
 	);
 }
 
-function TransactionCard({ transaction }: { transaction: TCashbackProgramTransactionsOutputByClientId["transactions"][number] }) {
+function TransactionCard({
+	transaction,
+	terminology,
+}: {
+	transaction: TCashbackProgramTransactionsOutputByClientId["transactions"][number];
+	terminology: "DINHEIRO" | "PONTOS";
+}) {
 	return (
 		<HoverCard key={transaction.id}>
 			<HoverCardTrigger asChild>
@@ -145,11 +156,11 @@ function TransactionCard({ transaction }: { transaction: TCashbackProgramTransac
 					</div>
 
 					<div className={cn("text-sm font-bold", transaction.tipo === "RESGATE" ? "text-red-600" : "text-green-600")}>
-						{transaction.tipo === "RESGATE" ? "-" : "+"} {formatToMoney(transaction.valor)}
+						{transaction.tipo === "RESGATE" ? "-" : "+"} {formatCashbackValue(Math.abs(transaction.valor), terminology)}
 					</div>
 				</div>
 			</HoverCardTrigger>
-			<HoverCardContent className="w-80 p-0 overflow-hidden flex flex-col gap-3 p-4" align="start">
+			<HoverCardContent className="w-80 overflow-hidden p-4 flex flex-col gap-3" align="start">
 				<div className="w-full flex flex-col gap-3">
 					<div className="flex items-center gap-3">
 						<div
@@ -176,7 +187,7 @@ function TransactionCard({ transaction }: { transaction: TCashbackProgramTransac
 						</div>
 						<div className="ml-auto">
 							<span className={cn("text-sm font-bold", transaction.tipo === "RESGATE" ? "text-red-600" : "text-green-600")}>
-								{transaction.tipo === "RESGATE" ? "-" : "+"} {formatToMoney(transaction.valor)}
+								{transaction.tipo === "RESGATE" ? "-" : "+"} {formatCashbackValue(Math.abs(transaction.valor), terminology)}
 							</span>
 						</div>
 					</div>

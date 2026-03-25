@@ -7,6 +7,7 @@ import { newTable } from "./common";
 import {
 	cashbackProgramAccumulationTypeEnum,
 	cashbackProgramRedemptionLimitTypeEnum,
+	cashbackProgramTerminologyEnum,
 	cashbackProgramTransactionStatusEnum,
 	cashbackProgramTransactionTypeEnum,
 } from "./enums";
@@ -26,6 +27,7 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	ativo: boolean("ativo").notNull().default(true),
 	titulo: text("titulo").notNull(),
 	descricao: text("descricao"),
+	terminologia: cashbackProgramTerminologyEnum("terminologia").notNull().default("DINHEIRO"),
 	modalidadeDescontosPermitida: boolean("modalidade_descontos_permitida").notNull().default(true),
 	modalidadeRecompensasPermitida: boolean("modalidade_recompensas_permitida").notNull().default(false),
 	acumuloTipo: cashbackProgramAccumulationTypeEnum().notNull().default("FIXO"),

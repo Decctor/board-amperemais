@@ -3,6 +3,7 @@ import type {
 	TCampaignTriggerTypeEnum,
 	TCashbackProgramAccumulationTypeEnum,
 	TCashbackProgramRedemptionLimitTypeEnum,
+	TCashbackProgramTerminologyEnum,
 	TCommunityCourseStatusEnum,
 	TCommunityLessonContentTypeEnum,
 	TDeliveryModeEnum,
@@ -33,6 +34,7 @@ import {
 	Percent,
 	Phone,
 	QrCode,
+	Stars,
 	Store,
 	Target,
 	TrendingDown,
@@ -246,6 +248,11 @@ export const InteractionsCronJobTimeBlocksOptions: { id: number; label: string; 
 export const CashbackProgramAccumulationTypeOptions: { id: number; label: string; value: TCashbackProgramAccumulationTypeEnum }[] = [
 	{ id: 1, label: "FIXO", value: "FIXO" },
 	{ id: 2, label: "PERCENTUAL", value: "PERCENTUAL" },
+];
+
+export const CashbackProgramTerminologyOptions: { id: number; label: string; value: TCashbackProgramTerminologyEnum; icon: React.ReactNode }[] = [
+	{ id: 1, label: "DINHEIRO", value: "DINHEIRO", icon: <Banknote className="w-4 h-4" /> },
+	{ id: 2, label: "PONTOS", value: "PONTOS", icon: <Stars className="w-4 h-4" /> },
 ];
 
 export const CashbackProgramRedemptionLimitTypeOptions: { id: number; label: string; value: TCashbackProgramRedemptionLimitTypeEnum }[] = [

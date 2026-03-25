@@ -1,6 +1,7 @@
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { getCashbackUnitLabel } from "@/lib/formatting";
 import type { TUseCashbackProgramState } from "@/state-hooks/use-cashback-program-state";
 import { CashbackProgramRedemptionLimitTypeOptions } from "@/utils/select-options";
 import { Shield } from "lucide-react";
@@ -35,8 +36,16 @@ export default function CashbackProgramsRedemptionLimitBlock({ cashbackProgram, 
 				<div className="w-full lg:w-1/2">
 					<NumberInput
 						value={cashbackProgram.resgateLimiteValor ?? 0}
-						label={cashbackProgram.resgateLimiteTipo === "PERCENTUAL" ? "LIMITE (%)" : "LIMITE (R$)"}
-						placeholder={cashbackProgram.resgateLimiteTipo === "PERCENTUAL" ? "Ex: 50 para 50% do valor da compra..." : "Ex: 100 para R$ 100,00..."}
+						label={
+							cashbackProgram.resgateLimiteTipo === "PERCENTUAL"
+								? "LIMITE (%)"
+								: `LIMITE (${getCashbackUnitLabel(cashbackProgram.terminologia, { uppercase: true })})`
+						}
+						placeholder={
+							cashbackProgram.resgateLimiteTipo === "PERCENTUAL"
+								? "Ex: 50 para 50% do valor da compra..."
+								: `Ex: 100 para ${getCashbackUnitLabel(cashbackProgram.terminologia)}...`
+						}
 						handleChange={(value) => updateCashbackProgram({ resgateLimiteValor: value })}
 						width="100%"
 						editable={!!cashbackProgram.resgateLimiteTipo}

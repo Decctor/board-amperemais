@@ -3,6 +3,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import type { TUserSession } from "@/schemas/users";
 import {
 	BadgePercent,
+	CirclePlay,
 	Goal,
 	Grid3X3,
 	Handshake,
@@ -57,6 +58,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 	{
 		group: "Comercial",
 		items: [
+			{
+				title: "Ponto de Interação",
+				url: "/dashboard/commercial/point-of-interaction",
+				icon: <CirclePlay className="w-4 h-4" />,
+				items: null,
+				checkAccess: () => true,
+			},
 			{
 				title: "Vendas",
 				url: "/dashboard/commercial/sales",

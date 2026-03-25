@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
+import { formatCashbackValue } from "@/lib/formatting";
 import { db } from "@/services/drizzle";
 import { cashbackProgramTransactions, cashbackPrograms, organizations } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -90,7 +91,9 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			}
 
 			if (input.redemptionValue > maxAllowedRedemption) {
-				throw new createHttpError.BadRequest(`Valor de resgate excede o limite permitido. Máximo: R$ ${maxAllowedRedemption.toFixed(2)}`);
+				throw new createHttpError.BadRequest(
+					`Valor de resgate excede o limite permitido. Máximo: ${formatCashbackValue(maxAllowedRedemption, program.terminologia)}`,
+				);
 			}
 		}
 

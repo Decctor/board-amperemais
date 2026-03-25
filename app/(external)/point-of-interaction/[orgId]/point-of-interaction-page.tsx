@@ -7,7 +7,7 @@ import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
-import { formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
@@ -120,6 +120,7 @@ function AlternatingCashbackBadge({ cashbackProgram }: AlternatingCashbackBadgeP
 export default function PointOfInteractionContent({
 	org,
 	cashbackProgram,
+	mode,
 }: {
 	cashbackProgram: TCashbackProgramEntity;
 	org: {
@@ -129,6 +130,7 @@ export default function PointOfInteractionContent({
 		logoUrl: TOrganizationEntity["logoUrl"];
 		telefone: TOrganizationEntity["telefone"];
 	};
+	mode: "kiosk" | "mobile";
 }) {
 	const router = useRouter();
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -146,7 +148,7 @@ export default function PointOfInteractionContent({
 	return (
 		<div className="grow bg-background p-6 md:p-10 flex flex-col items-center gap-6">
 			{/* HEADER HORIZONTAL: Logo + Info + Regras */}
-			<header className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 bg-white/50 backdrop-blur-sm px-4 py-2 md:px-6 md:py-4 rounded-[2rem] border border-white/40 shadow-sm">
+			<header className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 bg-white/50 backdrop-blur-sm px-4 py-2 md:px-6 md:py-4 rounded-4xl border border-white/40 shadow-sm">
 				<div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
 					{org.logoUrl ? (
 						<div className="relative w-12 h-12 md:w-16 md:h-16 drop-shadow-sm rounded-full overflow-hidden bg-white">
@@ -169,6 +171,8 @@ export default function PointOfInteractionContent({
 			{/* MAIN CONTENT - Unified Flow */}
 			<PointOfInteractionActions
 				org={org}
+				terminology={cashbackProgram.terminologia}
+				mode={mode}
 				router={router}
 				handleOpenProfileMenu={() => {
 					setShowProfileMenu(true);
@@ -178,13 +182,17 @@ export default function PointOfInteractionContent({
 			/>
 
 			{/* MODAL DE BUSCA */}
-			{showProfileMenu ? <IdentificationMenu orgId={org.id} closeMenu={() => setShowProfileMenu(false)} /> : null}
+			{showProfileMenu ? (
+				<IdentificationMenu orgId={org.id} terminology={cashbackProgram.terminologia} mode={mode} closeMenu={() => setShowProfileMenu(false)} />
+			) : null}
 		</div>
 	);
 }
 
 type IdentificationMenuProps = {
 	orgId: string;
+	terminology: TCashbackProgramEntity["terminologia"];
+	mode: "kiosk" | "mobile";
 	closeMenu: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -193,7 +201,7 @@ type IdentificationMenuProps = {
 		onSettled?: () => void;
 	};
 };
-function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuProps) {
+function IdentificationMenu({ orgId, terminology, mode, closeMenu, callbacks }: IdentificationMenuProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const {
@@ -243,7 +251,7 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 
 		if (countdown === 0) {
 			setIsRedirecting(true);
-			router.push(`/point-of-interaction/${orgId}/client-profile/${client?.id}`);
+			router.push(`/point-of-interaction/${orgId}/client-profile/${client?.id}${mode === "mobile" ? "?mode=mobile" : ""}`);
 			return;
 		}
 
@@ -252,7 +260,7 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 		}, 1000);
 
 		return () => clearTimeout(timer);
-	}, [countdown, router, orgId, client?.id]);
+	}, [countdown, router, orgId, client?.id, mode]);
 
 	// Cancel auto-redirect and reset search
 	async function handleCancelRedirect() {
@@ -322,7 +330,9 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 								</motion.div>
 							) : null}
 						</AnimatePresence>
-						{isSuccessClient && !client ? <NewClientForm orgId={orgId} phone={params.phone} closeMenu={closeMenu} callbacks={callbacks} /> : null}
+						{isSuccessClient && !client ? (
+							<NewClientForm orgId={orgId} terminology={terminology} phone={params.phone} closeMenu={closeMenu} callbacks={callbacks} mode={mode} />
+						) : null}
 					</motion.div>
 				) : null}
 
@@ -361,7 +371,7 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 								transition={{ delay: 0.35, type: "spring", stiffness: 400, damping: 20 }}
 								className="text-3xl font-black"
 							>
-								{formatToMoney(client.saldos[0]?.saldoValorDisponivel ?? 0)}
+								{formatCashbackValue(client.saldos[0]?.saldoValorDisponivel ?? 0, terminology)}
 							</motion.p>
 						</motion.div>
 
@@ -415,6 +425,7 @@ function IdentificationMenu({ orgId, closeMenu, callbacks }: IdentificationMenuP
 
 type NewClientFormProps = {
 	orgId: string;
+	terminology: TCashbackProgramEntity["terminologia"];
 	phone: string;
 	closeMenu: () => void;
 	callbacks?: {
@@ -423,8 +434,9 @@ type NewClientFormProps = {
 		onError?: () => void;
 		onSettled?: () => void;
 	};
+	mode: "kiosk" | "mobile";
 };
-function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProps) {
+function NewClientForm({ orgId, terminology, phone, closeMenu, callbacks, mode }: NewClientFormProps) {
 	const router = useRouter();
 	const [infoHolder, setInfoHolder] = useState<Omit<TCreatePointOfInteractionTransactionInput["client"], "telefone">>({
 		nome: "",
@@ -442,7 +454,7 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 			if (callbacks?.onSuccess) callbacks.onSuccess();
 			playSuccess();
 			toast.success(data.message);
-			return router.push(`/point-of-interaction/${orgId}/client-profile/${data.data.insertedClientId}`);
+			return router.push(`/point-of-interaction/${orgId}/client-profile/${data.data.insertedClientId}${mode === "mobile" ? "?mode=mobile" : ""}`);
 		},
 		onError: async (error) => {
 			if (callbacks?.onError) callbacks.onError();
@@ -462,7 +474,8 @@ function NewClientForm({ orgId, phone, closeMenu, callbacks }: NewClientFormProp
 			}}
 		>
 			<p className="text-sm text-muted-foreground text-pretty">
-				Oops, parece que você ainda não tem um cadastro. Por favor, preencha os dados abaixo para criar seu cadastro e começar a ganhar cashback !
+				Oops, parece que você ainda não tem um cadastro. Por favor, preencha os dados abaixo para criar seu cadastro e começar a ganhar{" "}
+				{terminology === "PONTOS" ? "pontos" : "cashback"}!
 			</p>
 			<TextInput
 				label="NOME DO CLIENTE"
@@ -502,12 +515,14 @@ type PointOfInteractionActionsProps = {
 		logoUrl: TOrganizationEntity["logoUrl"];
 		telefone: TOrganizationEntity["telefone"];
 	};
+	terminology: TCashbackProgramEntity["terminologia"];
+	mode: "kiosk" | "mobile";
 	router: ReturnType<typeof useRouter>;
 	handleOpenProfileMenu: () => void;
 	handlePlayAction: () => void;
 };
 
-function PointOfInteractionActions({ org, router, handleOpenProfileMenu, handlePlayAction }: PointOfInteractionActionsProps) {
+function PointOfInteractionActions({ org, terminology, mode, router, handleOpenProfileMenu, handlePlayAction }: PointOfInteractionActionsProps) {
 	return (
 		<main className="w-full max-w-5xl flex-1 flex flex-col">
 			<div className="flex flex-col md:flex-row items-stretch gap-6 md:gap-10 flex-1">
@@ -516,7 +531,7 @@ function PointOfInteractionActions({ org, router, handleOpenProfileMenu, handleP
 					<Button
 						onClick={() => {
 							handlePlayAction();
-							router.push(`/point-of-interaction/${org.id}/new-sale`);
+							router.push(`/point-of-interaction/${org.id}/new-sale${mode === "mobile" ? "?mode=mobile" : ""}`);
 						}}
 						variant="default"
 						className="group relative flex flex-col items-center justify-center gap-4 h-auto flex-1 rounded-3xl shadow-xl hover:scale-[1.02] transition-all border-none p-8 bg-brand text-brand-foreground hover:bg-brand/80"
@@ -525,9 +540,9 @@ function PointOfInteractionActions({ org, router, handleOpenProfileMenu, handleP
 							<ShoppingCart className="w-16 h-16 md:w-20 md:h-20" />
 						</div>
 						<div className="text-center">
-							<h3 className="text-2xl md:text-3xl font-black tracking-tight">RESGATE SEU CASHBACK</h3>
+							<h3 className="text-2xl md:text-3xl font-black tracking-tight">{terminology === "PONTOS" ? "RESGATE SEUS PONTOS" : "RESGATE SEU CASHBACK"}</h3>
 							<p className="text-sm md:text-base opacity-90 mt-2 font-medium text-wrap whitespace-pre-wrap">
-								Ganhe ou resgate cashback <br className="hidden md:block" /> em suas compras.
+								Ganhe ou resgate {terminology === "PONTOS" ? "pontos" : "cashback"} <br className="hidden md:block" /> em suas compras.
 							</p>
 						</div>
 						<ArrowRight className="absolute bottom-8 right-8 w-8 h-8 opacity-50" />
@@ -547,20 +562,6 @@ function PointOfInteractionActions({ org, router, handleOpenProfileMenu, handleP
 						<div className="text-center">
 							<h3 className="text-base font-bold uppercase">MEU SALDO</h3>
 							<p className="text-xs md:text-sm opacity-80 font-medium">Veja sua posição no ranking, seus resgates e seus acumulos</p>
-						</div>
-					</Button>
-
-					{/* RANKING VENDEDORES */}
-					<Button
-						onClick={() => router.push(`/point-of-interaction/${org.id}/sellers-ranking`)}
-						variant="outline"
-						size="fit"
-						className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-primary/20 p-6 flex-1 w-full bg-secondary"
-					>
-						<Trophy className="w-10 h-10" />
-						<div className="text-center">
-							<h3 className="text-base font-bold uppercase">RANKING DE VENDEDORES</h3>
-							<p className="text-xs md:text-sm opacity-80 font-medium">Acompanhe a competição entre os vendedores</p>
 						</div>
 					</Button>
 				</div>

@@ -2,7 +2,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
+import { formatCashbackValue, formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { useCashbackProgramTransactions } from "@/lib/queries/cashback-programs";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, ChevronLeft, ChevronRight, Clock, History, Link as LinkIcon, TrendingDown, TrendingUp } from "lucide-react";
@@ -11,9 +12,10 @@ import { useState } from "react";
 
 type RecentTransactionsBlockProps = {
 	period?: { after: string; before: string };
+	terminology: TCashbackProgramTerminologyEnum;
 };
 
-export default function RecentTransactionsBlock({ period }: RecentTransactionsBlockProps) {
+export default function RecentTransactionsBlock({ period, terminology }: RecentTransactionsBlockProps) {
 	const [page, setPage] = useState(1);
 	const [filterType, setFilterType] = useState<"ACÚMULO" | "RESGATE" | "EXPIRAÇÃO" | undefined>(undefined);
 	const limit = 10;
@@ -154,11 +156,11 @@ export default function RecentTransactionsBlock({ period }: RecentTransactionsBl
 									</div>
 
 									<div className={cn("text-sm font-bold", transaction.tipo === "RESGATE" ? "text-red-600" : "text-green-600")}>
-										{transaction.tipo === "RESGATE" ? "-" : "+"} {formatToMoney(transaction.valor)}
+										{transaction.tipo === "RESGATE" ? "-" : "+"} {formatCashbackValue(Math.abs(transaction.valor), terminology)}
 									</div>
 								</div>
 							</HoverCardTrigger>
-							<HoverCardContent className="w-80 p-0 overflow-hidden flex flex-col gap-3 p-4" align="start">
+							<HoverCardContent className="w-80 overflow-hidden p-4 flex flex-col gap-3" align="start">
 								<div className="w-full flex flex-col gap-3">
 									<div className="flex items-center gap-3">
 										<div
@@ -185,7 +187,7 @@ export default function RecentTransactionsBlock({ period }: RecentTransactionsBl
 										</div>
 										<div className="ml-auto">
 											<span className={cn("text-sm font-bold", transaction.tipo === "RESGATE" ? "text-red-600" : "text-green-600")}>
-												{transaction.tipo === "RESGATE" ? "-" : "+"} {formatToMoney(transaction.valor)}
+												{transaction.tipo === "RESGATE" ? "-" : "+"} {formatCashbackValue(Math.abs(transaction.valor), terminology)}
 											</span>
 										</div>
 									</div>
