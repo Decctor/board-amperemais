@@ -5,6 +5,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import RFMAnalysisQueryParamsMenu from "@/components/RFMAnalysis/RFMAnalysisQueryParamsMenu";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -18,7 +19,7 @@ import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/cli
 import { RFMLabels } from "@/utils/rfm";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 import dayjs from "dayjs";
-import { BadgeDollarSign, Download, Filter, Grid3x3, Info, Mail, Megaphone, Phone, ShoppingCart, UsersRound, X } from "lucide-react";
+import { BadgeDollarSign, Download, Filter, Grid3x3, Info, Mail, Megaphone, Phone, ShoppingCart, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { toast } from "sonner";
@@ -153,68 +154,54 @@ type SegmentsPageClientsFiltersShowcaseProps = {
 	updateFilters: (params: Partial<TGetClientsInput>) => void;
 };
 function SegmentsPageClientsFiltersShowcase({ filters, updateFilters }: SegmentsPageClientsFiltersShowcaseProps) {
-	function FilterTag({ label, value, onRemove }: { label: string; value: string; onRemove?: () => void }) {
-		return (
-			<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
-				<p className="text-primary/80">
-					{label}: <strong>{value}</strong>
-				</p>
-				{onRemove && (
-					<button type="button" onClick={onRemove} className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1">
-						<X size={12} />
-					</button>
-				)}
-			</div>
-		);
-	}
 	return (
-		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+		<FiltersShowcase.Root>
 			{filters.search && filters.search.trim().length > 0 ? (
-				<FilterTag label="NOME" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
+				<FiltersShowcase.Item label="NOME" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
 			) : null}
 			{filters.acquisitionChannels.length > 0 ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="CANAL DE AQUISIÇÃO"
 					value={filters.acquisitionChannels.map((channel) => channel).join(", ")}
 					onRemove={() => updateFilters({ acquisitionChannels: [] })}
 				/>
 			) : null}
 			{filters.segmentationTitles.length > 0 ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="SEGMENTAÇÃO"
 					value={filters.segmentationTitles.map((title) => title).join(", ")}
 					onRemove={() => updateFilters({ segmentationTitles: [] })}
 				/>
 			) : null}
 			{filters.statsSaleNatures.length > 0 ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="NATUREZA DA VENDA"
 					value={filters.statsSaleNatures.map((nature) => nature).join(", ")}
 					onRemove={() => updateFilters({ statsSaleNatures: [] })}
 				/>
 			) : null}
 			{filters.statsPeriodAfter && filters.statsPeriodBefore ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="PERÍODO"
 					value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
 					onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
 				/>
 			) : null}
 			{filters.statsExcludedSalesIds.length > 0 ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="VENDAS EXCLUÍDAS"
 					value={filters.statsExcludedSalesIds.map((id) => id).join(", ")}
 					onRemove={() => updateFilters({ statsExcludedSalesIds: [] })}
 				/>
 			) : null}
 			{filters.orderByField && filters.orderByDirection ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="ORDENAÇÃO"
 					value={`${filters.orderByField} (${filters.orderByDirection})`}
 					onRemove={() => updateFilters({ orderByField: "nome", orderByDirection: "asc" })}
 				/>
 			) : null}
-		</div>
+		</FiltersShowcase.Root>
 	);
 }
 type SegmentsPageClientCardProps = {

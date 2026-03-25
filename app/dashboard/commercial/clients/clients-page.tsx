@@ -8,6 +8,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,7 +35,6 @@ import {
 	UserPlus,
 	UserRoundX,
 	Users,
-	X,
 } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
@@ -430,56 +430,44 @@ function ClientPageFilterShowcase({ queryParams, updateQueryParams }: ClientPage
 	const orderingDirectionLabel = queryParams.orderByDirection === "desc" ? "DECRESCENTE" : "CRESCENTE";
 	const orderingFieldLabel = orderingFieldLabelMap[queryParams.orderByField || "nome"];
 
-	const FilterTag = ({ label, value, onRemove }: { label: string; value: string; onRemove?: () => void }) => (
-		<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
-			<p className="text-primary/80">
-				{label}: <strong>{value}</strong>
-			</p>
-			{onRemove && (
-				<button type="button" onClick={onRemove} className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1">
-					<X size={12} />
-				</button>
-			)}
-		</div>
-	);
 	return (
-		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+		<FiltersShowcase.Root>
 			{queryParams.search && queryParams.search.trim().length > 0 && (
-				<FilterTag label="PESQUISA" value={queryParams.search} onRemove={() => updateQueryParams({ search: "" })} />
+				<FiltersShowcase.Item label="PESQUISA" value={queryParams.search} onRemove={() => updateQueryParams({ search: "" })} />
 			)}
 			{queryParams.statsPeriodAfter && queryParams.statsPeriodBefore && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="PERÍODO DAS ESTASTÍCAS"
 					value={`${formatDateAsLocale(queryParams.statsPeriodAfter)} a ${formatDateAsLocale(queryParams.statsPeriodBefore)}`}
 					onRemove={() => updateQueryParams({ statsPeriodAfter: null, statsPeriodBefore: null })}
 				/>
 			)}
 			{queryParams.statsSaleNatures.length > 0 ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="NATUREZAS DAS VENDAS"
 					value={queryParams.statsSaleNatures.map((nature) => nature).join(", ")}
 					onRemove={() => updateQueryParams({ statsSaleNatures: [] })}
 				/>
 			) : null}
 			{queryParams.acquisitionChannels.length > 0 ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="CANAIS DE AQUISIÇÃO"
 					value={queryParams.acquisitionChannels.map((channel) => channel).join(", ")}
 					onRemove={() => updateQueryParams({ acquisitionChannels: [] })}
 				/>
 			) : null}
 			{queryParams.segmentationTitles.length > 0 ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="TÍTULOS DE SEGMENTAÇÃO"
 					value={queryParams.segmentationTitles.map((title) => title).join(", ")}
 					onRemove={() => updateQueryParams({ segmentationTitles: [] })}
 				/>
 			) : null}
-			<FilterTag
+			<FiltersShowcase.Item
 				label="ORDENAÇÃO"
 				value={`${orderingFieldLabel} (${orderingDirectionLabel})`}
 				onRemove={() => updateQueryParams({ orderByField: "nome", orderByDirection: "asc" })}
 			/>
-		</div>
+		</FiltersShowcase.Root>
 	);
 }

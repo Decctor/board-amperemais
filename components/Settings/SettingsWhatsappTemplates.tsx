@@ -1,5 +1,5 @@
 import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
-import type { TGetWhatsappTemplatesOutputDefault } from "@/app/api/whatsapp-templates/route";
+import type { TGetWhatsappTemplatesInput, TGetWhatsappTemplatesOutputDefault } from "@/app/api/whatsapp-templates/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
@@ -20,6 +20,7 @@ import GeneralPaginationComponent from "../Utils/Pagination";
 import { LoadingButton } from "../loading-button";
 import { Button } from "../ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/hover-card";
+import { FiltersShowcase } from "../ui/filters-showcase";
 type SettingsWhatsappTemplatesProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -39,7 +40,7 @@ export default function SettingsWhatsappTemplates({ user, membership }: Settings
 		error,
 		params,
 		updateParams,
-	} = useWhatsappTemplates({ initialParams: { search: "", includeRecompraTemplates: false } });
+	} = useWhatsappTemplates({ initialParams: { search: "", includeRecompraTemplates: true } });
 	const whatsappTemplates = whatsappTemplatesResult?.whatsappTemplates;
 	const whatsappTemplatesShowing = whatsappTemplates ? whatsappTemplates.length : 0;
 	const whatsappTemplatesMatched = whatsappTemplatesResult?.whatsappTemplatesMatched || 0;
@@ -83,6 +84,7 @@ export default function SettingsWhatsappTemplates({ user, membership }: Settings
 					NOVO TEMPLATE
 				</Button>
 			</div>
+			<SettingWhatsappTemplatesFiltersShowcase filters={params} updateFilters={updateParams} />
 			<GeneralPaginationComponent
 				activePage={params.page}
 				queryLoading={isLoading}
@@ -133,6 +135,22 @@ export default function SettingsWhatsappTemplates({ user, membership }: Settings
 	);
 }
 
+type SettingWhatsappTemplatesFiltersShowcaseProps = {
+	filters: TGetWhatsappTemplatesInput;
+	updateFilters: (filters: Partial<TGetWhatsappTemplatesInput>) => void;
+};
+function SettingWhatsappTemplatesFiltersShowcase({ filters, updateFilters }: SettingWhatsappTemplatesFiltersShowcaseProps) {
+	return (
+		<FiltersShowcase.Root>
+			{filters.search && filters.search.trim().length > 0 ? (
+				<FiltersShowcase.Item label="NOME" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
+			) : null}
+			{filters.includeRecompraTemplates ? (
+				<FiltersShowcase.Item label="INCLUIR TEMPLATES DE RECOMPRA" value="SIM" onRemove={() => updateFilters({ includeRecompraTemplates: false })} />
+			) : null}
+		</FiltersShowcase.Root>
+	);
+}
 type WhatsappTemplateCardProps = {
 	whatsappTemplate: TGetWhatsappTemplatesOutputDefault["whatsappTemplates"][number];
 	whatsappConnectionPhones: Exclude<TGetWhatsappConnectionOutput["data"], null>["telefones"];

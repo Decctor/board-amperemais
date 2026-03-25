@@ -13,6 +13,7 @@ import ProductsRanking from "@/components/Products/ProductsRanking";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,7 +48,6 @@ import {
   Star,
   TrendingUp,
   Users,
-  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -657,69 +657,45 @@ function ProductsFiltersShowcase({ filters, updateFilters }: ProductsFiltersShow
     healthy: "ESTOQUE SAUDÁVEL",
     overstocked: "EXCESSO DE ESTOQUE",
   };
-  const FilterTag = ({
-    label,
-    value,
-    onRemove,
-  }: {
-    label: string;
-    value: string;
-    onRemove?: () => void;
-  }) => (
-    <div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
-      <p className="text-primary/80">
-        {label}: <strong>{value}</strong>
-      </p>
-      {onRemove && (
-        <button
-          type="button"
-          onClick={onRemove}
-          className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1"
-        >
-          <X size={12} />
-        </button>
-      )}
-    </div>
-  );
   return (
-    <div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+    <FiltersShowcase.Root>
       {filters.search && filters.search.trim().length > 0 && (
-        <FilterTag
+        <FiltersShowcase.Item
           label="PESQUISA"
           value={filters.search}
           onRemove={() => updateFilters({ search: "" })}
         />
       )}
       {filters.groups.length > 0 && (
-        <FilterTag
+        <FiltersShowcase.Item
           label="GRUPOS"
           value={filters.groups.join(", ")}
           onRemove={() => updateFilters({ groups: [] })}
         />
       )}
       {filters.statsTotalMin || filters.statsTotalMax ? (
-        <FilterTag
+        <FiltersShowcase.Item
           label="ESTATÍSTICAS - VALOR"
           value={`${filters.statsTotalMin ? `> ${formatToMoney(filters.statsTotalMin)}` : ""}${filters.statsTotalMin && filters.statsTotalMax ? " & " : ""}${filters.statsTotalMax ? `< ${formatToMoney(filters.statsTotalMax)}` : ""}`}
           onRemove={() => updateFilters({ statsTotalMin: null, statsTotalMax: null })}
         />
       ) : null}
       {filters.statsPeriodAfter && filters.statsPeriodBefore && (
-        <FilterTag
+        <FiltersShowcase.Item
           label="ESTATÍSTICAS - PERÍODO"
           value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
           onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
         />
       )}
       {filters.statsSaleNatures.length > 0 && (
-        <FilterTag
+        <FiltersShowcase.Item
           label="ESTATÍSTICAS - NATUREZAS DAS VENDAS"
           value={filters.statsSaleNatures.join(", ")}
           onRemove={() => updateFilters({ statsSaleNatures: [] })}
         />
       )}
       {filters.stockStatus && filters.stockStatus.length > 0 && (
-        <FilterTag
+        <FiltersShowcase.Item
           label="STATUS DE ESTOQUE"
           value={filters.stockStatus
             .map(
@@ -731,19 +707,19 @@ function ProductsFiltersShowcase({ filters, updateFilters }: ProductsFiltersShow
         />
       )}
       {(filters.priceMin || filters.priceMax) && (
-        <FilterTag
+        <FiltersShowcase.Item
           label="FAIXA DE PREÇO"
           value={`${filters.priceMin ? `≥ ${formatToMoney(filters.priceMin)}` : ""}${filters.priceMin && filters.priceMax ? " & " : ""}${filters.priceMax ? `≤ ${formatToMoney(filters.priceMax)}` : ""}`}
           onRemove={() => updateFilters({ priceMin: null, priceMax: null })}
         />
       )}
       {filters.orderByField && filters.orderByDirection && (
-        <FilterTag
+        <FiltersShowcase.Item
           label="ORDENAÇÃO"
           value={`${ORDERING_FIELDS_MAP[filters.orderByField]} - ${ORDERING_DIRECTION_MAP[filters.orderByDirection]}`}
           onRemove={() => updateFilters({ orderByField: null, orderByDirection: null })}
         />
       )}
-    </div>
+    </FiltersShowcase.Root>
   );
 }

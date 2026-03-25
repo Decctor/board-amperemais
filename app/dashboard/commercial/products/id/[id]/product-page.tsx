@@ -6,6 +6,7 @@ import ProductFilterMenu from "@/components/Products/ProductFilterMenu";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -34,7 +35,6 @@ import {
 	TrendingUp,
 	UserRound,
 	Users,
-	X,
 } from "lucide-react";
 import { useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
@@ -608,54 +608,33 @@ type ProductPageFiltersShowcaseProps = {
 function ProductPageFiltersShowcase({ filters, updateFilters }: ProductPageFiltersShowcaseProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
 
-	const FilterTag = ({
-		label,
-		value,
-		onRemove,
-	}: {
-		label: string;
-		value: string;
-		onRemove?: () => void;
-	}) => (
-		<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
-			<p className="text-primary/80">
-				{label}: <strong>{value}</strong>
-			</p>
-			{onRemove && (
-				<button type="button" onClick={onRemove} className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1">
-					<X size={12} />
-				</button>
-			)}
-		</div>
-	);
-
 	return (
-		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+		<FiltersShowcase.Root>
 			{filters.periodAfter && filters.periodBefore && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="PERÍODO"
 					value={`${formatDateAsLocale(filters.periodAfter)} a ${formatDateAsLocale(filters.periodBefore)}`}
 					onRemove={() => updateFilters({ periodAfter: null, periodBefore: null })}
 				/>
 			)}
 			{filters.saleNatures && filters.saleNatures.length > 0 && (
-				<FilterTag label="NATUREZAS DA VENDA" value={filters.saleNatures.join(", ")} onRemove={() => updateFilters({ saleNatures: null })} />
+				<FiltersShowcase.Item label="NATUREZAS DA VENDA" value={filters.saleNatures.join(", ")} onRemove={() => updateFilters({ saleNatures: null })} />
 			)}
 			{filters.sellerId && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="VENDEDOR"
 					value={filterOptions?.sellers?.find((s) => s.id === filters.sellerId)?.label || filters.sellerId}
 					onRemove={() => updateFilters({ sellerId: null })}
 				/>
 			)}
 			{filters.partnerId && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="PARCEIRO"
 					value={filterOptions?.partners?.find((p) => p.id === filters.partnerId)?.label || filters.partnerId}
 					onRemove={() => updateFilters({ partnerId: null })}
 				/>
 			)}
-		</div>
+		</FiltersShowcase.Root>
 	);
 }
 

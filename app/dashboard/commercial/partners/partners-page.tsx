@@ -13,6 +13,7 @@ import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,7 +24,7 @@ import { usePartners, usePartnersOverallStats } from "@/lib/queries/partners";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { Activity, BadgeDollarSign, CirclePlus, IdCard, ListFilter, Mail, Pencil, Phone, Plus, Ticket, TrendingUp, Users, X } from "lucide-react";
+import { Activity, BadgeDollarSign, CirclePlus, IdCard, ListFilter, Mail, Pencil, Phone, Plus, Ticket, TrendingUp, Users } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
@@ -279,53 +280,33 @@ type PartnersPageFilterShowcaseProps = {
 };
 
 function PartnersPageFilterShowcase({ queryParams, updateQueryParams }: PartnersPageFilterShowcaseProps) {
-	const FilterTag = ({
-		label,
-		value,
-		onRemove,
-	}: {
-		label: string;
-		value: string;
-		onRemove?: () => void;
-	}) => (
-		<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
-			<p className="text-primary/80">
-				{label}: <strong>{value}</strong>
-			</p>
-			{onRemove && (
-				<button type="button" onClick={onRemove} className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1">
-					<X size={12} />
-				</button>
-			)}
-		</div>
-	);
 	return (
-		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+		<FiltersShowcase.Root>
 			{queryParams.search && queryParams.search.trim().length > 0 && (
-				<FilterTag label="PESQUISA" value={queryParams.search} onRemove={() => updateQueryParams({ search: "" })} />
+				<FiltersShowcase.Item label="PESQUISA" value={queryParams.search} onRemove={() => updateQueryParams({ search: "" })} />
 			)}
 			{queryParams.statsPeriodAfter && queryParams.statsPeriodBefore && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="PERÍODO DAS ESTASTÍCAS"
 					value={`${formatDateAsLocale(queryParams.statsPeriodAfter)} a ${formatDateAsLocale(queryParams.statsPeriodBefore)}`}
 					onRemove={() => updateQueryParams({ statsPeriodAfter: null, statsPeriodBefore: null })}
 				/>
 			)}
 			{queryParams.statsSaleNatures && queryParams.statsSaleNatures.length > 0 && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="NATUREZAS DAS VENDAS"
 					value={queryParams.statsSaleNatures.join(", ")}
 					onRemove={() => updateQueryParams({ statsSaleNatures: [] })}
 				/>
 			)}
 			{queryParams.statsTotalMin || queryParams.statsTotalMax ? (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="VALOR"
 					value={`${queryParams.statsTotalMin ? `> ${formatToMoney(queryParams.statsTotalMin)}` : ""}${queryParams.statsTotalMin && queryParams.statsTotalMax ? " & " : ""}${queryParams.statsTotalMax ? `< ${formatToMoney(queryParams.statsTotalMax)}` : ""}`}
 					onRemove={() => updateQueryParams({ statsTotalMin: null, statsTotalMax: null })}
 				/>
 			) : null}
-		</div>
+		</FiltersShowcase.Root>
 	);
 }
 

@@ -16,6 +16,7 @@ import NewCampaign from "@/components/Modals/Campaigns/NewCampaign";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -52,7 +53,6 @@ import {
   UserPlus,
   UserRound,
   UserRoundCheck,
-  X,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -114,78 +114,51 @@ function CampaignsDatabaseFiltersShowcase({
   filters,
   updateFilters,
 }: CampaignsDatabaseFiltersShowcaseProps) {
-  function FilterTag({
-    label,
-    value,
-    onRemove,
-  }: {
-    label: string;
-    value: string;
-    onRemove?: () => void;
-  }) {
-    return (
-      <div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
-        <p className="text-primary/80">
-          {label}: <strong>{value}</strong>
-        </p>
-        {onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1"
-          >
-            <X size={12} />
-          </button>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+    <FiltersShowcase.Root>
       {filters.search && filters.search.trim().length > 0 ? (
-        <FilterTag
+        <FiltersShowcase.Item
           label="PESQUISA"
           value={filters.search}
           onRemove={() => updateFilters({ search: "" })}
         />
       ) : null}
       {filters.statsPeriodAfter && filters.statsPeriodBefore ? (
-        <FilterTag
+        <FiltersShowcase.Item
           label="PERÍODO DAS ESTASTÍCAS"
           value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
           onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
         />
       ) : null}
       {filters.activeOnly ? (
-        <FilterTag
+        <FiltersShowcase.Item
           label="APENAS ATIVAS"
           value="SIM"
           onRemove={() => updateFilters({ activeOnly: false })}
         />
       ) : null}
       {filters.triggerTypes && filters.triggerTypes.length > 0 ? (
-        <FilterTag
+        <FiltersShowcase.Item
           label="TIPO DE GATILHO"
           value={filters.triggerTypes.join(", ")}
           onRemove={() => updateFilters({ triggerTypes: [] })}
         />
       ) : null}
       {filters.actionWhatsappOnly ? (
-        <FilterTag
+        <FiltersShowcase.Item
           label="APENAS COM ENVIO DE WHATSAPP"
           value="SIM"
           onRemove={() => updateFilters({ actionWhatsappOnly: false })}
         />
       ) : null}
       {filters.cashbackGenerationOnly ? (
-        <FilterTag
+        <FiltersShowcase.Item
           label="APENAS COM GERACÃO DE CASHBACK"
           value="SIM"
           onRemove={() => updateFilters({ cashbackGenerationOnly: false })}
         />
       ) : null}
-    </div>
+    </FiltersShowcase.Root>
   );
 }
 function CampaignsDatabaseView({

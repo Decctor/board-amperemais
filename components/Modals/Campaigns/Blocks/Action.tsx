@@ -23,7 +23,7 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 
 	const { data: whatsappConnection } = useWhatsappConnection();
 	const { data: whatsappTemplatesResult, updateParams } = useWhatsappTemplates({
-		initialParams: { page: 1, search: "", whatsappConnectionPhoneId: campaign.whatsappConexaoTelefoneId },
+		initialParams: { page: 1, search: "", whatsappConnectionPhoneId: campaign.whatsappConexaoTelefoneId, includeRecompraTemplates: true },
 	});
 
 	const whatsappConnectionPhones =

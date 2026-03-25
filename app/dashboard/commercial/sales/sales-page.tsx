@@ -7,6 +7,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -38,7 +39,6 @@ import {
 	Tag,
 	TrendingDown,
 	TrendingUp,
-	X,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -361,49 +361,36 @@ type SalesFiltersShowcaseProps = {
 };
 
 function SalesFiltersShowcase({ filters, updateFilters }: SalesFiltersShowcaseProps) {
-	const FilterTag = ({ label, value, onRemove }: { label: string; value: string; onRemove?: () => void }) => (
-		<div className="flex items-center gap-1 bg-secondary text-[0.65rem] rounded-lg px-2 py-1">
-			<p className="text-primary/80">
-				{label}: <strong>{value}</strong>
-			</p>
-			{onRemove && (
-				<button type="button" onClick={onRemove} className="bg-transparent text-primary hover:bg-primary/20 rounded-lg p-1">
-					<X size={12} />
-				</button>
-			)}
-		</div>
-	);
-
 	return (
-		<div className="flex items-center justify-center lg:justify-end flex-wrap gap-2">
+		<FiltersShowcase.Root>
 			{filters.search && filters.search.trim().length > 0 && (
-				<FilterTag label="PESQUISA" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
+				<FiltersShowcase.Item label="PESQUISA" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
 			)}
 			{filters.periodAfter && filters.periodBefore && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="PERÍODO"
 					value={`${formatDateAsLocale(filters.periodAfter)} a ${formatDateAsLocale(filters.periodBefore)}`}
 					onRemove={() => updateFilters({ periodAfter: null, periodBefore: null })}
 				/>
 			)}
 			{filters.saleNatures && filters.saleNatures.length > 0 && (
-				<FilterTag label="NATUREZAS" value={filters.saleNatures.join(", ")} onRemove={() => updateFilters({ saleNatures: [] })} />
+				<FiltersShowcase.Item label="NATUREZAS" value={filters.saleNatures.join(", ")} onRemove={() => updateFilters({ saleNatures: [] })} />
 			)}
 			{filters.sellersIds && filters.sellersIds.length > 0 && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="VENDEDORES"
 					value={`${filters.sellersIds.length} selecionado(s)`} // Showing count as names require lookup
 					onRemove={() => updateFilters({ sellersIds: [] })}
 				/>
 			)}
 			{filters.partnersIds && filters.partnersIds.length > 0 && (
-				<FilterTag
+				<FiltersShowcase.Item
 					label="PARCEIROS"
 					value={`${filters.partnersIds.length} selecionado(s)`} // Showing count as names require lookup
 					onRemove={() => updateFilters({ partnersIds: [] })}
 				/>
 			)}
-		</div>
+		</FiltersShowcase.Root>
 	);
 }
 
