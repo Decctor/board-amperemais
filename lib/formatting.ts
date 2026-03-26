@@ -1,6 +1,7 @@
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import dayjs from "dayjs";
 import { getAgeFromBirthdayDate } from "./dates";
+import { isValidNumber } from "./validation";
 
 export function formatDateTime(value: any) {
 	if (!value) return undefined;
@@ -123,6 +124,10 @@ export function formatDecimalPlaces(value: string | number, minPlaces?: number, 
 		minimumFractionDigits: minPlaces != null && minPlaces !== undefined ? minPlaces : 0,
 		maximumFractionDigits: maxPlaces != null && maxPlaces !== undefined ? maxPlaces : 2,
 	});
+}
+export function formatAsNumber(value: unknown) {
+	if (isValidNumber(Number(value))) return Number(value) as number;
+	return 0;
 }
 
 export function getCashbackUnitLabel(

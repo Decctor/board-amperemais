@@ -1,7 +1,28 @@
 import dayjs, { type ManipulateType } from "dayjs";
 import type { TTimeDurationUnitsEnum } from "../schemas/enums";
 import { formatDecimalPlaces } from "./formatting";
+import isoWeek from "dayjs/plugin/isoWeek";
+import z from "zod";
 
+dayjs.extend(isoWeek);
+
+export const GranularityEnumSchema = z.enum(["daily", "weekly", "monthly", "spaced-out"]);
+export type TGranularityEnum = z.infer<typeof GranularityEnumSchema>;
+
+export function isDateOverdue({
+	date,
+	inRelationTo,
+	useEndOfDay = false,
+}: {
+	date: Date | string | dayjs.Dayjs;
+	inRelationTo: Date | string | dayjs.Dayjs;
+	useEndOfDay?: boolean;
+}) {
+	const dateAsDayJs = dayjs(date);
+	const inRelationToAsDayJs = dayjs(inRelationTo);
+	if (!useEndOfDay) return dateAsDayJs.isBefore(inRelationToAsDayJs);
+	return dateAsDayJs.endOf("day").isBefore(inRelationToAsDayJs);
+}
 export function getAgeFromBirthdayDate(date: string | Date) {
 	const age = dayjs().diff(date, "years");
 	return age;
@@ -219,13 +240,7 @@ export function getDatePeriodMetadata({ startDate, endDate }: { startDate: Date;
 	return { seconds, minutes, hours, days, months, years };
 }
 
-export function getBestNumberOfPointsBetweenDates({
-	startDate,
-	endDate,
-}: {
-	startDate: Date;
-	endDate: Date;
-}): {
+export function getBestNumberOfPointsBetweenDates({ startDate, endDate }: { startDate: Date; endDate: Date }): {
 	groupingFormat: string;
 	points: number;
 } {
@@ -317,6 +332,118 @@ export function getDateBuckets(dates: Date[]) {
 	return buckets;
 }
 
+function getGranularityConfig(granularity: TGranularityEnum, metadata: ReturnType<typeof getDatePeriodMetadata>) {
+	switch (granularity) {
+		case "daily":
+			return {
+				format: "DD/MM",
+				points: metadata.days + 1,
+			};
+		case "weekly":
+			return {
+				format: "DD/MM",
+				points: Math.ceil(metadata.days / 7) + 1,
+			};
+		case "monthly":
+			return {
+				format: "MM/YYYY",
+				points: metadata.months + 1,
+			};
+		case "spaced-out":
+		default:
+			return null; // usa a lógica existente de getBestNumberOfPointsBetweenDates
+	}
+}
+
+export function getDailyDates({ startDate, endDate }: { startDate: Date; endDate: Date }): Date[] {
+	const dates: Date[] = [];
+	let current = dayjs(startDate).startOf("day");
+	const end = dayjs(endDate).startOf("day");
+
+	while (current.isBefore(end) || current.isSame(end, "day")) {
+		dates.push(current.toDate());
+		current = current.add(1, "day");
+	}
+
+	return dates;
+}
+
+export function getWeeklyDates({ startDate, endDate }: { startDate: Date; endDate: Date }): Date[] {
+	const dates: Date[] = [];
+	let current = dayjs(startDate).startOf("isoWeek");
+	const end = dayjs(endDate);
+
+	while (current.isBefore(end) || current.isSame(end, "day")) {
+		dates.push(current.toDate());
+		current = current.add(1, "week");
+	}
+
+	return dates;
+}
+
+export function getMonthlyDates({ startDate, endDate }: { startDate: Date; endDate: Date }): Date[] {
+	const dates: Date[] = [];
+	let current = dayjs(startDate).startOf("month");
+	const end = dayjs(endDate);
+
+	while (current.isBefore(end) || current.isSame(end, "month")) {
+		dates.push(current.toDate());
+		current = current.add(1, "month");
+	}
+
+	return dates;
+}
+
+function getDatesByGranularity({ startDate, endDate, granularity }: { startDate: Date; endDate: Date; granularity: TGranularityEnum }): Date[] {
+	switch (granularity) {
+		case "daily":
+			return getDailyDates({ startDate, endDate });
+		case "weekly":
+			return getWeeklyDates({ startDate, endDate });
+		case "monthly":
+			return getMonthlyDates({ startDate, endDate });
+		case "spaced-out":
+		default: {
+			const { points } = getBestNumberOfPointsBetweenDates({ startDate, endDate });
+			return getEvenlySpacedDates({ startDate, endDate, points });
+		}
+	}
+}
+
+export function getPeriodUtils({
+	startDate,
+	endDate,
+	granularity = "spaced-out",
+}: {
+	startDate: Date;
+	endDate: Date;
+	granularity?: TGranularityEnum;
+}) {
+	const metadata = getDatePeriodMetadata({ startDate, endDate });
+	const granularityConfig = getGranularityConfig(granularity, metadata);
+
+	const groupingFormat = granularityConfig?.format ?? getBestNumberOfPointsBetweenDates({ startDate, endDate }).groupingFormat;
+
+	const numberOfPoints = granularityConfig?.points ?? getBestNumberOfPointsBetweenDates({ startDate, endDate }).points;
+
+	const dates = getDatesByGranularity({ startDate, endDate, granularity });
+	const dateBuckets = getDateBuckets(dates);
+
+	const periodDatesStrs = getDayStringsBetweenDates({
+		initialDate: startDate.toISOString(),
+		endDate: endDate.toISOString(),
+	});
+
+	return {
+		granularity,
+		format: groupingFormat,
+		dates,
+		buckets: dateBuckets,
+		dateCount: numberOfPoints,
+		dateLabels: periodDatesStrs,
+	};
+}
+
 export const DASTJS_TIME_DURATION_UNITS_MAP: Record<TTimeDurationUnitsEnum, ManipulateType> = {
 	DIAS: "day",
 	SEMANAS: "week",
@@ -335,7 +462,12 @@ export function getPeriodAmountFromReferenceUnit({
 	end,
 	unit,
 	absolute = false,
-}: { start: Date; end: Date; unit: TTimeDurationUnitsEnum; absolute?: boolean }) {
+}: {
+	start: Date;
+	end: Date;
+	unit: TTimeDurationUnitsEnum;
+	absolute?: boolean;
+}) {
 	const timeDurationUnit = DASTJS_TIME_DURATION_UNITS_MAP[unit];
 	if (!timeDurationUnit) return 0;
 	const diff = dayjs(end).diff(dayjs(start), timeDurationUnit);
