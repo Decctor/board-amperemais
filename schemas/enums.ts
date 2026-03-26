@@ -13,6 +13,7 @@ export const CampaignTriggerTypeEnum = z.enum([
 	"QUANTIDADE-TOTAL-COMPRAS",
 	"VALOR-TOTAL-COMPRAS",
 	"RECORRENTE",
+	"PIOR-DIA-VENDAS",
 ]);
 export type TCampaignTriggerTypeEnum = z.infer<typeof CampaignTriggerTypeEnum>;
 export const CampaignExecutionDelayDirectionEnum = z.enum(["ANTES", "DEPOIS"]);

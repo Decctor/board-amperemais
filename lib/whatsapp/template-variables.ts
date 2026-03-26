@@ -15,6 +15,7 @@ export const TRIGGER_CONTEXT_MAP: Record<TCampaignTriggerTypeEnum, TVariableCont
 	"QUANTIDADE-TOTAL-COMPRAS": ["CLIENTE", "COMPRA", "CASHBACK"],
 	"VALOR-TOTAL-COMPRAS": ["CLIENTE", "COMPRA", "CASHBACK"],
 	RECORRENTE: ["CLIENTE", "CASHBACK"],
+	"PIOR-DIA-VENDAS": ["CLIENTE", "CASHBACK"],
 };
 
 // --- Variable types ---

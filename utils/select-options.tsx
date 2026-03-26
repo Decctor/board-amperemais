@@ -210,6 +210,7 @@ export const CampaignTriggerTypeOptions: { id: number; label: string; value: TCa
 	{ id: 8, label: "QUANTIDADE TOTAL DE COMPRAS", value: "QUANTIDADE-TOTAL-COMPRAS" },
 	{ id: 9, label: "VALOR TOTAL DE COMPRAS", value: "VALOR-TOTAL-COMPRAS" },
 	{ id: 10, label: "RECORRENTE (AGENDAMENTO)", value: "RECORRENTE" },
+	{ id: 11, label: "PIOR DIA DE VENDAS", value: "PIOR-DIA-VENDAS" },
 ];
 
 export const RecurrenceFrequencyOptions: { id: number; label: string; value: TRecurrenceFrequencyEnum }[] = [

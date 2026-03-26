@@ -5,7 +5,7 @@ import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
 import { CampaignExecutionDelayDirectionOptions, InteractionsCronJobTimeBlocksOptions, TimeDurationUnitsOptions } from "@/utils/select-options";
 import { PlayIcon } from "lucide-react";
 
-const TRIGGERS_SUPPORTING_ANTES = ["ANIVERSARIO_CLIENTE"] as const;
+const TRIGGERS_SUPPORTING_ANTES = ["ANIVERSARIO_CLIENTE", "PIOR-DIA-VENDAS"] as const;
 
 type CampaignsExecutionBlockProps = {
 	campaign: TUseCampaignState["state"]["campaign"];

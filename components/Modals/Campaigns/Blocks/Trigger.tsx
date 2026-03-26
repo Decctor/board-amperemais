@@ -191,6 +191,12 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 					width="100%"
 				/>
 			) : null}
+			{campaign.gatilhoTipo === "PIOR-DIA-VENDAS" ? (
+				<p className="text-center text-sm tracking-tight text-muted-foreground">
+					A campanha será disparada automaticamente no dia da semana com menor volume de vendas, calculado com base nas últimas 8 semanas de
+					histórico.
+				</p>
+			) : null}
 			{campaign.gatilhoTipo === "VALOR-TOTAL-COMPRAS" ? (
 				<NumberInput
 					label="VALOR TOTAL DE COMPRAS (GATILHO)"

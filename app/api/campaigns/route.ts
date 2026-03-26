@@ -64,7 +64,7 @@ function validateCampaignFrequencyInterval(campaign: z.infer<typeof CampaignSche
   }
 }
 
-const TRIGGERS_SUPPORTING_ANTES: TCampaignTriggerTypeEnum[] = ["ANIVERSARIO_CLIENTE"];
+const TRIGGERS_SUPPORTING_ANTES: TCampaignTriggerTypeEnum[] = ["ANIVERSARIO_CLIENTE", "PIOR-DIA-VENDAS"];
 
 function validateExecutionDelayDirection(campaign: z.infer<typeof CampaignSchema>) {
 	if (campaign.execucaoAgendadaDirecao === "ANTES" && !TRIGGERS_SUPPORTING_ANTES.includes(campaign.gatilhoTipo)) {
