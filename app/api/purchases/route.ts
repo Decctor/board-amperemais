@@ -170,7 +170,7 @@ export const GET = appApiHandler({
 
 const CreatePurchaseInputSchema = z.object({
 	purchase: PurchaseSchema.omit({ organizacaoId: true, autorId: true, dataInsercao: true, dataEfetivacao: true, dataUltimaAtualizacao: true }),
-	purchaseItems: z.array(PurchaseItemSchema.omit({ organizacaoId: true, compraId: true })),
+	purchaseItems: z.array(PurchaseItemSchema.omit({ organizacaoId: true, compraId: true, dataInsercao: true })),
 });
 export type TCreatePurchaseInput = z.infer<typeof CreatePurchaseInputSchema>;
 

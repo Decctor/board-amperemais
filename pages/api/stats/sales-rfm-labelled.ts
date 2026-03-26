@@ -214,16 +214,9 @@ const getSalesRFMLabelledRoute: NextApiHandler<GetResponse> = async (req, res) =
 		{
 			rfmLabel: "PERDIDOS",
 			backgroundCollor: "bg-red-500",
-			gridArea: "4 / 1 / 6 / 2",
+			gridArea: "4 / 1 / 6 / 3",
 			clientsQty: clientsQtyBySegment["PERDIDOS"] || 0,
 			segmentPeriodStats: getSegmentPeriodStats("PERDIDOS"),
-		},
-		{
-			rfmLabel: "PERDIDOS (extensão)",
-			backgroundCollor: "bg-red-500",
-			gridArea: "5 / 2 / 6 / 3",
-			clientsQty: clientsQtyBySegment["PERDIDOS (extensão)"] || 0,
-			segmentPeriodStats: getSegmentPeriodStats("PERDIDOS (extensão)"),
 		},
 		{
 			rfmLabel: "PROMISSORES",

@@ -6,7 +6,7 @@ import { usePurchases } from "@/lib/queries/purchases";
 import { useQueryClient } from "@tanstack/react-query";
 import { Factory, ListFilter, Plus, ShoppingCart, Truck, SquareArrowOutUpRight, Pencil } from "lucide-react";
 import { BsCalendar, BsCalendarCheck, BsCalendarEvent, BsCalendarPlus } from "react-icons/bs";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Input } from "@/components/ui/input";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { getErrorMessage } from "@/lib/errors";
@@ -18,6 +18,8 @@ import type { TGetPurchasesOutputDefault } from "@/app/api/purchases/route";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDateAsLocale, formatNameAsInitials } from "@/lib/formatting";
 import Link from "next/link";
+import { PurchaseStatusOptions } from "@/utils/select-options";
+import { cn } from "@/lib/utils";
 type PurchasesPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -92,47 +94,26 @@ type PurchasePageCardProps = {
 	purchase: TGetPurchasesOutputDefault["purchases"][number];
 };
 function PurchasePageCard({ purchase }: PurchasePageCardProps) {
+	const getPurchaseStatus = useCallback(() => {
+		const status = PurchaseStatusOptions.find((status) => status.value === purchase.status);
+		return status || null;
+	}, [purchase.status]);
+
+	const purchaseStatus = getPurchaseStatus();
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
 				<div className="flex items-center gap-2">
-					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{purchase.titulo}</h1>
+					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{purchase.titulo || "TÍTULO NÃO DEFINIDO"}</h1>
 				</div>
+				{purchaseStatus ? (
+					<div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg", purchaseStatus.className, "border-none")}>
+						{purchaseStatus.icon}
+						<span className="text-xs font-medium">{purchaseStatus.label}</span>
+					</div>
+				) : null}
 			</div>
-			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
-				<div className="flex w-full flex-wrap items-center justify-center gap-2 lg:min-w-fit lg:justify-end">
-					<div className="flex items-center gap-1">
-						<Factory className="w-4 h-4 min-w-4 min-h-4" />
-						<h2 className="py-0.5 text-center text-[0.65rem] font-medium italic text-muted-foreground">FORNECEDOR</h2>
-						<h2 className="py-0.5 text-center text-[0.65rem] font-bold text-foreground">{purchase.pedidoFornecedorNome || "N/A"}</h2>
-					</div>
-					<div className="flex items-center gap-1">
-						<Truck className="w-4 h-4 min-w-4 min-h-4" />
-						<h2 className="py-0.5 text-center text-[0.65rem] font-medium italic text-muted-foreground">TRANSPORTADORA</h2>
-						<h2 className="py-0.5 text-center text-[0.65rem] font-bold text-foreground">{purchase.transporteTransportadoraNome || "N/A"}</h2>
-					</div>
-					<div className="flex items-center gap-1">
-						<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />
-						<h2 className="py-0.5 text-center text-[0.65rem] font-medium italic text-muted-foreground">PEDIDO</h2>
-						<h2 className="py-0.5 text-center text-[0.65rem] font-bold text-foreground">{formatDateAsLocale(purchase.pedidoData) || "PENDENTE"}</h2>
-					</div>
-
-					<div className="flex items-center gap-1">
-						<BsCalendarEvent className="w-4 h-4 min-w-4 min-h-4" />
-						<h2 className="py-0.5 text-center text-[0.65rem] font-medium italic text-muted-foreground">PREVISÃO</h2>
-						<h2 className="py-0.5 text-center text-[0.65rem] font-bold text-foreground">
-							{formatDateAsLocale(purchase.entregaDataRecebimentoPrevisao) || "N/A"}
-						</h2>
-					</div>
-					<div className="flex items-center gap-1">
-						<BsCalendarCheck className="w-4 h-4 min-w-4 min-h-4" />
-						<h2 className="py-0.5 text-center text-[0.65rem] font-medium italic text-muted-foreground">EFETIVAÇÃO</h2>
-						<h2 className="py-0.5 text-center text-[0.65rem] font-bold text-foreground">
-							{formatDateAsLocale(purchase.entregaDataRecebimentoEfetivacao) || "N/A"}
-						</h2>
-					</div>
-				</div>
-			</div>
+			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row"></div>
 
 			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
 				<div className="flex flex-wrap items-center gap-2">

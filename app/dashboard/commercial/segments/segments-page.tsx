@@ -274,6 +274,110 @@ function SegmentsPageClientCard({ client, period }: SegmentsPageClientCardProps)
  * RFM MATRIX RELATED COMPONENTS
  */
 
+const RFM_SEGMENT_STYLES: Record<string, { gradient: string; text: string; badge: string; badgeText: string }> = {
+	CAMPEÕES: {
+		gradient: "bg-gradient-to-br from-orange-400 via-orange-500 to-amber-600",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+	"CLIENTES LEAIS": {
+		gradient: "bg-gradient-to-br from-emerald-400 via-emerald-500 to-green-600",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+	"POTENCIAIS CLIENTES LEAIS": {
+		gradient: "bg-gradient-to-br from-amber-800 via-amber-900 to-yellow-950",
+		text: "text-amber-100",
+		badge: "bg-amber-100/20 border border-amber-100/30 backdrop-blur-sm",
+		badgeText: "text-amber-100",
+	},
+	"CLIENTES RECENTES": {
+		gradient: "bg-gradient-to-br from-teal-400 via-teal-500 to-cyan-600",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+	PROMISSORES: {
+		gradient: "bg-gradient-to-br from-pink-400 via-pink-500 to-rose-600",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+	"PRECISAM DE ATENÇÃO": {
+		gradient: "bg-gradient-to-br from-indigo-400 via-indigo-500 to-violet-600",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+	"PRESTES A DORMIR": {
+		gradient: "bg-gradient-to-br from-yellow-500 via-yellow-600 to-amber-700",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+	"EM RISCO": {
+		gradient: "bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500",
+		text: "text-yellow-950",
+		badge: "bg-yellow-950/15 border border-yellow-950/20 backdrop-blur-sm",
+		badgeText: "text-yellow-950",
+	},
+	"NÃO PODE PERDÊ-LOS": {
+		gradient: "bg-gradient-to-br from-blue-400 via-blue-500 to-sky-600",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+	HIBERNANDO: {
+		gradient: "bg-gradient-to-br from-purple-400 via-purple-500 to-violet-600",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+	PERDIDOS: {
+		gradient: "bg-gradient-to-br from-red-400 via-red-500 to-rose-700",
+		text: "text-white",
+		badge: "bg-white/20 border border-white/30 backdrop-blur-sm",
+		badgeText: "text-white",
+	},
+};
+
+const DEFAULT_SEGMENT_STYLE = {
+	gradient: "bg-gradient-to-br from-gray-400 to-gray-500",
+	text: "text-white",
+	badge: "bg-white/20 border border-white/30",
+	badgeText: "text-white",
+};
+
+function getSegmentStyle(label: string) {
+	return RFM_SEGMENT_STYLES[label] || DEFAULT_SEGMENT_STYLE;
+}
+
+/**
+ * Layout config per segment.
+ * PERDIDOS spans a 2×2 grid area and uses clip-path to carve an L-shape
+ * (cutting out the top-right quadrant where HIBERNANDO sits).
+ * Content is pushed to the bottom-left quadrant of that L.
+ */
+type SegmentLayout = {
+	clipPath?: string;
+	/** Extra classes for content alignment (defaults to centered) */
+	contentWrapper?: string;
+};
+
+function getSegmentLayout(label: string): SegmentLayout {
+	if (label === "PERDIDOS") {
+		return {
+			// L-shape: full left column + bottom-right quadrant. Cuts top-right.
+			clipPath: "polygon(0 0, 50% 0, 50% 50%, 100% 50%, 100% 100%, 0 100%)",
+			// Place content in the bottom-left quadrant of the 2×2 block
+			contentWrapper: "absolute bottom-0 left-0 w-1/2 h-1/2",
+		};
+	}
+	return {};
+}
+
 function SegmentsPageMatrixRFM() {
 	const { data: rfmStats } = useRFMLabelledStats();
 
@@ -287,78 +391,115 @@ function SegmentsPageMatrixRFM() {
 	}
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between gap-2 flex-col lg:flex-row">
 				<div className="flex items-center gap-2">
 					<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
 					<h1 className="text-xs font-medium tracking-tight uppercase">MATRIZ RFM</h1>
 				</div>
 				<div className="px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-primary/80 text-[0.65rem] font-medium tracking-tight text-center">
-					<Info className="w-4 h-4 min-w-4 min-h-4" />
-					Os números representam uma análise de matriz RFM nos últimos 12 meses. Passe o mouse no bloco para ver os detalhes.
+					<Info className="w-3 h-3 min-w-3 min-h-3 shrink-0" />
+					<span>Análise RFM dos últimos 12 meses. Passe o mouse no bloco para detalhes.</span>
 				</div>
 			</div>
-			<AspectRatio ratio={10 / 10}>
-				<div className="grid grid-cols-5 grid-rows-5 w-full h-full p-1 lg:p-4">
+			<AspectRatio ratio={1}>
+				<div className="grid grid-cols-5 grid-rows-5 w-full h-full gap-0.5">
 					{rfmStats?.map((item, index) => {
-						const isLostExtension = item.rfmLabel === "PERDIDOS (extensão)";
+						const style = getSegmentStyle(item.rfmLabel);
+						const layout = getSegmentLayout(item.rfmLabel);
+						const hasClipPath = !!layout.clipPath;
+
+						const content = (
+							<>
+								{/* Segment label */}
+								<h2
+									className={cn(
+										"relative z-10 text-[0.35rem] leading-tight lg:text-[0.7rem] xl:text-[0.7rem] font-semibold tracking-wide uppercase text-center",
+										style.text,
+									)}
+								>
+									{item.rfmLabel}
+								</h2>
+
+								{/* Client count badge */}
+								<div
+									className={cn(
+										"relative z-10 flex items-center justify-center rounded-full",
+										style.badge,
+										"h-6 w-6 min-h-6 min-w-6 lg:h-12 lg:w-12 lg:min-h-12 lg:min-w-12",
+									)}
+								>
+									<span className={cn("text-[0.5rem] lg:text-sm font-bold tabular-nums", style.badgeText)}>{item.clientsQty}</span>
+								</div>
+
+								{/* Revenue */}
+								<p className={cn("relative z-10 hidden lg:block text-[0.6rem] xl:text-[0.65rem] font-medium tracking-tight opacity-85", style.text)}>
+									{formatToMoney(item.segmentPeriodStats.totalRevenue)}
+								</p>
+							</>
+						);
 
 						const block = (
 							<div
 								className={cn(
-									`${item.backgroundCollor} flex flex-col gap-2 items-center justify-center p-2 text-primary-foreground font-bold text-center`,
-									!isLostExtension ? "cursor-pointer" : undefined,
+									style.gradient,
+									"relative rounded-lg shadow-sm cursor-pointer",
+									"transition-all duration-200 hover:shadow-md hover:brightness-105 hover:scale-[1.02]",
+									"overflow-hidden",
+									// When there's no clip-path, center content directly
+									!hasClipPath && "flex flex-col items-center justify-center gap-1 lg:gap-2 p-1.5 lg:p-3",
 								)}
-								style={{ gridArea: item.gridArea }}
+								style={{
+									gridArea: item.gridArea,
+									...(layout.clipPath ? { clipPath: layout.clipPath } : {}),
+								}}
 							>
-								{!isLostExtension ? <h1 className="text-[0.4rem] lg:text-base">{item.rfmLabel}</h1> : null}
-								{!isLostExtension ? (
-									<div className="bg-primary h-5 w-5 min-h-5 min-w-5 lg:h-16 lg:w-16 lg:min-h-16 lg:min-w-16 p-2 rounded-full flex items-center justify-center">
-										<h1 className="text-[0.4rem] lg:text-sm font-bold text-primary-foreground">{item.clientsQty}</h1>
-									</div>
-								) : null}
-								{!isLostExtension ? (
-									<p className="hidden lg:block text-[0.6rem] tracking-tight">Receita: {formatToMoney(item.segmentPeriodStats.totalRevenue)}</p>
-								) : null}
+								{/* Subtle inner highlight */}
+								<div className="absolute inset-0 rounded-lg bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+
+								{hasClipPath && layout.contentWrapper ? (
+									// Content positioned in a specific quadrant (e.g. bottom-left for L-shaped PERDIDOS)
+									<div className={cn(layout.contentWrapper, "flex flex-col items-center justify-center gap-1 lg:gap-2 p-1.5 lg:p-3")}>{content}</div>
+								) : (
+									content
+								)}
 							</div>
 						);
-
-						if (isLostExtension) {
-							return (
-								<div
-									key={`${item.rfmLabel}-${index}`}
-									className={`${item.backgroundCollor} flex flex-col gap-2 items-center justify-center p-2 text-primary-foreground font-bold text-center`}
-									style={{ gridArea: item.gridArea }}
-								/>
-							);
-						}
 
 						return (
 							<HoverCard key={`${item.rfmLabel}-${index}`} openDelay={150}>
 								<HoverCardTrigger asChild>{block}</HoverCardTrigger>
-								<HoverCardContent className="w-[290px]">
-									<div className="w-full flex flex-col gap-1">
-										<h1 className="text-xs font-bold">{item.rfmLabel}</h1>
-										<p className="text-[0.7rem] text-muted-foreground">Período: últimos 12 meses</p>
-										<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-											<p>Receita total</p>
-											<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.totalRevenue)}</p>
+								<HoverCardContent className="w-[280px] p-4" side="right" sideOffset={8}>
+									<div className="w-full flex flex-col gap-2">
+										<div className="flex items-center gap-2">
+											<div className={cn("w-2.5 h-2.5 rounded-full shrink-0", style.gradient)} />
+											<h3 className="text-sm font-bold tracking-tight">{item.rfmLabel}</h3>
 										</div>
-										<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-											<p>Total de compras</p>
-											<p className="font-semibold">{item.segmentPeriodStats.totalPurchasesQty}</p>
-										</div>
-										<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-											<p>Ticket médio</p>
-											<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.avgTicket)}</p>
-										</div>
-										<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-											<p>Ciclo médio de compra</p>
-											<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgPurchaseCycleDays)} dias</p>
-										</div>
-										<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-											<p>Basket médio</p>
-											<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgBasketSize, 2)} itens</p>
+										<p className="text-[0.7rem] text-muted-foreground -mt-1">
+											Últimos 12 meses · {item.clientsQty} {item.clientsQty === 1 ? "cliente" : "clientes"}
+										</p>
+										<div className="w-full h-px bg-border" />
+										<div className="flex flex-col gap-1.5">
+											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
+												<p className="text-muted-foreground">Receita total</p>
+												<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.totalRevenue)}</p>
+											</div>
+											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
+												<p className="text-muted-foreground">Total de compras</p>
+												<p className="font-semibold">{item.segmentPeriodStats.totalPurchasesQty}</p>
+											</div>
+											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
+												<p className="text-muted-foreground">Ticket médio</p>
+												<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.avgTicket)}</p>
+											</div>
+											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
+												<p className="text-muted-foreground">Ciclo médio de compra</p>
+												<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgPurchaseCycleDays)} dias</p>
+											</div>
+											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
+												<p className="text-muted-foreground">Basket médio</p>
+												<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgBasketSize, 2)} itens</p>
+											</div>
 										</div>
 									</div>
 								</HoverCardContent>
