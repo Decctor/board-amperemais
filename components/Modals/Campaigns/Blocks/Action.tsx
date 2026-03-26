@@ -1,13 +1,15 @@
 import SelectInput from "@/components/Inputs/SelectInput";
 import NewWhatsappTemplate from "@/components/Modals/WhatsappTemplates/NewWhatsappTemplate";
+import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
 import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
 import { useQueryClient } from "@tanstack/react-query";
-import { Info, Plus, Send } from "lucide-react";
+import { Eye, Info, Plus, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -60,9 +62,9 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 
 	// Find the selected template for status/quality display
 	const selectedTemplate = useMemo(() => allTemplates.find((t) => t.id === campaign.whatsappTemplateId), [allTemplates, campaign.whatsappTemplateId]);
+	const selectedTemplateComponents = selectedTemplate?.componentes;
 
 	const rejectionReason = selectedTemplate?.rejeicao ?? null;
-	console.log("whatsappTemplatesResult", whatsappTemplatesResult);
 	return (
 		<>
 			{showCreateTemplate && (
@@ -110,11 +112,26 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 								width="100%"
 							/>
 						</div>
+					</div>
+					<div className="w-full flex items-center justify-end gap-3">
+						{selectedTemplate && selectedTemplateComponents ? (
+							<HoverCard openDelay={200}>
+								<HoverCardTrigger asChild>
+									<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
+										<Eye className="h-3.5 w-3.5" />
+										PREVIEW
+									</Button>
+								</HoverCardTrigger>
+								<HoverCardContent className="w-[360px] p-2 overflow-auto max-h-[70vh]" side="left" align="end">
+									<TemplatePreview components={selectedTemplateComponents} />
+								</HoverCardContent>
+							</HoverCard>
+						) : null}
 						<Button
 							type="button"
 							size="sm"
-							variant="outline"
-							className="mb-0.5 gap-1.5 shrink-0"
+							variant="ghost"
+							className="flex items-center gap-1.5"
 							onClick={() => setShowCreateTemplate(true)}
 							disabled={!campaign.whatsappConexaoTelefoneId}
 						>

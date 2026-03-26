@@ -69,9 +69,7 @@ async function computeWorstSalesDayOfWeek(tx: DBTransaction, organizationId: str
 	if (salesByDayOfWeek.length < 2) return null;
 
 	// Sort by total value ascending, then by day-of-week ascending for tie-breaking
-	const sorted = salesByDayOfWeek.sort(
-		(a, b) => Number(a.totalValue ?? 0) - Number(b.totalValue ?? 0) || a.dayOfWeek - b.dayOfWeek,
-	);
+	const sorted = salesByDayOfWeek.sort((a, b) => Number(a.totalValue ?? 0) - Number(b.totalValue ?? 0) || a.dayOfWeek - b.dayOfWeek);
 
 	return sorted[0].dayOfWeek;
 }
@@ -145,9 +143,7 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 					}
 
 					if (targetDayOfWeek !== worstDayOfWeek) {
-						console.log(
-							`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Target DOW ${targetDayOfWeek} !== worst DOW ${worstDayOfWeek}. Skipping.`,
-						);
+						console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Target DOW ${targetDayOfWeek} !== worst DOW ${worstDayOfWeek}. Skipping.`);
 						continue;
 					}
 
@@ -166,10 +162,7 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 							.from(clients)
 							.where(and(eq(clients.organizacaoId, organization.id), inArray(clients.analiseRFMTitulo, segmentationValues)));
 					} else {
-						targetClients = await tx
-							.select({ id: clients.id, nome: clients.nome })
-							.from(clients)
-							.where(eq(clients.organizacaoId, organization.id));
+						targetClients = await tx.select({ id: clients.id, nome: clients.nome }).from(clients).where(eq(clients.organizacaoId, organization.id));
 					}
 
 					console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${targetClients.length} matching clients.`);

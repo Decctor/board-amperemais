@@ -1,4 +1,5 @@
 import type { TCampaignState } from "@/schemas/campaigns";
+import { RFMLabels } from "@/utils/rfm";
 import { useCallback, useState } from "react";
 
 export function useCampaignState() {
@@ -31,7 +32,9 @@ export function useCampaignState() {
 			cashbackGeracaoExpiracaoMedida: null,
 			cashbackGeracaoExpiracaoValor: null,
 		},
-		segmentations: [],
+		segmentations: RFMLabels.map((label) => ({
+			segmentacao: label.text,
+		})),
 	};
 
 	const [state, setState] = useState<TCampaignState>(initialState);

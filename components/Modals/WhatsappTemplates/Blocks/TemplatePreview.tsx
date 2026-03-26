@@ -4,10 +4,12 @@ import type { TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
 import { Eye, FileText as FileTextIcon, ImageIcon, VideoIcon } from "lucide-react";
 
 type TemplatePreviewProps = {
-	components: TWhatsappTemplateComponents;
+	components?: TWhatsappTemplateComponents | null;
 };
 
 function TemplatePreview({ components }: TemplatePreviewProps) {
+	if (!components) return null;
+
 	const { cabecalho, corpo, rodape, botoes } = components;
 
 	// Convert HTML content to plain text with WhatsApp formatting

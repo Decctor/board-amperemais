@@ -2,10 +2,11 @@ import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { useCampaignUtilPreviewWorstSalesDay } from "@/lib/queries/campaigns";
 import type { TCampaignState } from "@/schemas/campaigns";
 import type { TCampaignTriggerTypeEnum, TRecurrenceFrequencyEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { CampaignTriggerTypeOptions, DaysOfWeekOptions, RecurrenceFrequencyOptions, TimeDurationUnitsOptions } from "@/utils/select-options";
-import { SparklesIcon } from "lucide-react";
+import { Loader2, SparklesIcon } from "lucide-react";
 import { useMemo } from "react";
 
 const DaysOfMonthOptions = Array.from({ length: 31 }, (_, i) => ({
@@ -192,10 +193,12 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 				/>
 			) : null}
 			{campaign.gatilhoTipo === "PIOR-DIA-VENDAS" ? (
-				<p className="text-center text-sm tracking-tight text-muted-foreground">
-					A campanha será disparada automaticamente no dia da semana com menor volume de vendas, calculado com base nas últimas 8 semanas de
-					histórico.
-				</p>
+				<div className="w-full flex flex-col gap-2">
+					<p className="text-center text-sm tracking-tight text-muted-foreground">
+						A campanha será disparada automaticamente no dia da semana com menor volume de vendas, calculado com base nas últimas 8 semanas de histórico.
+					</p>
+					<UtilsPreviewWorstSalesDayShowcase campaign={campaign} />
+				</div>
 			) : null}
 			{campaign.gatilhoTipo === "VALOR-TOTAL-COMPRAS" ? (
 				<NumberInput
@@ -208,4 +211,50 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 			) : null}
 		</ResponsiveMenuSection>
 	);
+}
+
+const DAY_NAMES = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+function UtilsPreviewWorstSalesDayShowcase({ campaign }: { campaign: TCampaignState["campaign"] }) {
+	const { data: worstSalesDay, isLoading, isError, isSuccess } = useCampaignUtilPreviewWorstSalesDay();
+
+	const delayLabel = useMemo(() => {
+		const valor = campaign.execucaoAgendadaValor;
+		const medida = campaign.execucaoAgendadaMedida;
+		const direcao = campaign.execucaoAgendadaDirecao;
+		if (!valor || !medida) return null;
+		const dir = direcao === "ANTES" ? "antes" : "depois";
+		return `${valor} ${valor > 1 ? medida.toLowerCase() : medida.toLowerCase().slice(0, -1)} ${dir}`;
+	}, [campaign.execucaoAgendadaValor, campaign.execucaoAgendadaMedida, campaign.execucaoAgendadaDirecao]);
+
+	if (isLoading)
+		return (
+			<div className="w-full rounded-md border border-amber-300 bg-amber-100 px-3 py-2.5 flex flex-col gap-2">
+				<p className="text-amber-600 animate-pulse text-sm tracking-tight font-medium text-center">Carregando informações do pior dia de vendas...</p>
+			</div>
+		);
+	if (isError)
+		return (
+			<div className="w-full rounded-md border border-red-300 bg-red-100 px-3 py-2.5 flex flex-col gap-2">
+				<p className="text-red-600 text-sm tracking-tight font-medium text-center">Erro ao carregar informações do pior dia de vendas.</p>
+			</div>
+		);
+	if (isSuccess && worstSalesDay != null)
+		return (
+			<div className="w-full rounded-md border border-amber-300 bg-amber-100 px-3 py-2.5 flex flex-col gap-2">
+				<p className="text-amber-600 text-sm tracking-tight font-medium text-center">
+					O pior dia previsto de vendas da semana é o{" "}
+					<strong className="px-2 py-1 rounded-lg bg-amber-600 text-amber-100">{DAY_NAMES[worstSalesDay].toUpperCase()}</strong>. Enviaremos a mensagem{" "}
+					{delayLabel}, às {campaign.execucaoAgendadaBloco}.
+				</p>
+			</div>
+		);
+
+	if (isSuccess && worstSalesDay == null)
+		return (
+			<div className="w-full rounded-md border border-red-300 bg-red-100 px-3 py-2.5 flex flex-col gap-2">
+				<p className="text-red-600 text-sm tracking-tight font-medium text-center">Não foi possível carregar informações do pior dia de vendas.</p>
+			</div>
+		);
+	return <></>;
 }

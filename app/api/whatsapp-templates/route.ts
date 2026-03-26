@@ -574,6 +574,7 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 			id: template.id,
 			nome: template.nome,
 			categoria: template.categoria,
+			componentes: template.componentes,
 			dataInsercao: template.dataInsercao,
 			autor: template.autor,
 			statusGeral,
