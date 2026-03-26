@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users, whatsappConnectionPhones, whatsappTemplates } from ".";
 import {
+	campaignExecutionDelayDirectionEnum,
 	campaignTriggerTypeEnum,
 	cashbackProgramAccumulationTypeEnum,
 	interactionsCronJobTimeBlocksEnum,
@@ -44,6 +45,7 @@ export const campaigns = newTable("campaigns", {
 
 	execucaoAgendadaMedida: timeDurationUnitsEnum("execucao_agendada_medida").notNull().default("DIAS"),
 	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
+	execucaoAgendadaDirecao: campaignExecutionDelayDirectionEnum("execucao_agendada_direcao").notNull().default("DEPOIS"),
 	execucaoAgendadaBloco: interactionsCronJobTimeBlocksEnum("execucao_agendada_bloco").notNull(),
 
 	// Configs for recurring interactions and intervals

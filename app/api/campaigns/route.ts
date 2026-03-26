@@ -64,6 +64,16 @@ function validateCampaignFrequencyInterval(campaign: z.infer<typeof CampaignSche
   }
 }
 
+const TRIGGERS_SUPPORTING_ANTES: TCampaignTriggerTypeEnum[] = ["ANIVERSARIO_CLIENTE", "PIOR-DIA-VENDAS"];
+
+function validateExecutionDelayDirection(campaign: z.infer<typeof CampaignSchema>) {
+	if (campaign.execucaoAgendadaDirecao === "ANTES" && !TRIGGERS_SUPPORTING_ANTES.includes(campaign.gatilhoTipo)) {
+		throw new createHttpError.BadRequest(
+			"A direção 'ANTES' só é suportada para os gatilhos: Aniversário do cliente.",
+		);
+	}
+}
+
 function validateCashbackExpiringTrigger(campaign: z.infer<typeof CampaignSchema>) {
   if (campaign.gatilhoTipo !== "CASHBACK-EXPIRANDO") return;
 
@@ -169,6 +179,7 @@ async function createCampaign({
   validateRecurrentCampaign(input.campaign as z.infer<typeof CampaignSchema>);
   validateCashbackExpiringTrigger(input.campaign as z.infer<typeof CampaignSchema>);
   validateCampaignFrequencyInterval(input.campaign as z.infer<typeof CampaignSchema>);
+  validateExecutionDelayDirection(input.campaign as z.infer<typeof CampaignSchema>);
 
   // Validate template-trigger compatibility
   await validateCampaignTemplateTriggerCompatibility(
@@ -561,6 +572,7 @@ async function updateCampaign({
   validateRecurrentCampaign(input.campaign as z.infer<typeof CampaignSchema>);
   validateCashbackExpiringTrigger(input.campaign as z.infer<typeof CampaignSchema>);
   validateCampaignFrequencyInterval(input.campaign as z.infer<typeof CampaignSchema>);
+  validateExecutionDelayDirection(input.campaign as z.infer<typeof CampaignSchema>);
 
   // Validate template-trigger compatibility
   await validateCampaignTemplateTriggerCompatibility(

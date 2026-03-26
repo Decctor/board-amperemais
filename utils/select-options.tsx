@@ -1,5 +1,6 @@
 import type {
 	TAttributionModelEnum,
+	TCampaignExecutionDelayDirectionEnum,
 	TCampaignTriggerTypeEnum,
 	TCashbackProgramAccumulationTypeEnum,
 	TCashbackProgramRedemptionLimitTypeEnum,
@@ -209,6 +210,7 @@ export const CampaignTriggerTypeOptions: { id: number; label: string; value: TCa
 	{ id: 8, label: "QUANTIDADE TOTAL DE COMPRAS", value: "QUANTIDADE-TOTAL-COMPRAS" },
 	{ id: 9, label: "VALOR TOTAL DE COMPRAS", value: "VALOR-TOTAL-COMPRAS" },
 	{ id: 10, label: "RECORRENTE (AGENDAMENTO)", value: "RECORRENTE" },
+	{ id: 11, label: "PIOR DIA DE VENDAS", value: "PIOR-DIA-VENDAS" },
 ];
 
 export const RecurrenceFrequencyOptions: { id: number; label: string; value: TRecurrenceFrequencyEnum }[] = [
@@ -225,6 +227,11 @@ export const DaysOfWeekOptions: { id: number; label: string; value: number }[] =
 	{ id: 4, label: "QUINTA", value: 4 },
 	{ id: 5, label: "SEXTA", value: 5 },
 	{ id: 6, label: "SÁBADO", value: 6 },
+];
+
+export const CampaignExecutionDelayDirectionOptions: { id: number; label: string; value: TCampaignExecutionDelayDirectionEnum }[] = [
+	{ id: 1, label: "ANTES", value: "ANTES" },
+	{ id: 2, label: "DEPOIS", value: "DEPOIS" },
 ];
 
 export const TimeDurationUnitsOptions: { id: number; label: string; value: TTimeDurationUnitsEnum }[] = [
