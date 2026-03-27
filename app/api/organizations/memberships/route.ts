@@ -12,6 +12,7 @@ import z from "zod";
 
 // GET - Fetch all user memberships
 async function getUserMemberships(request: NextRequest) {
+	console.log("[INFO] [GET USER MEMBERSHIPS] Request:", request);
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
