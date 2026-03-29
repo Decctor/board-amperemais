@@ -86,11 +86,11 @@ Instead of separate routes, use a single GET with conditional logic:
 ```typescript
 // Response shape: only one field is non-null at a time
 return {
-  data: {
-    byId: singleResult,       // when ?id= is provided
-    default: listResult,       // when listing (with pagination)
-  },
-  message: "..."
+	data: {
+		byId: singleResult, // when ?id= is provided
+		default: listResult, // when listing (with pagination)
+	},
+	message: "...",
 };
 ```
 
@@ -100,22 +100,23 @@ Parent + children are sent together in one request:
 
 ```typescript
 const CreateFooInputSchema = z.object({
-  foo: FooSchema.omit({ dataInsercao: true, autorId: true }),
-  fooChildren: z.array(FooChildSchema.omit({ fooId: true, dataInsercao: true })),
+	foo: FooSchema.omit({ dataInsercao: true, autorId: true }),
+	fooChildren: z.array(FooChildSchema.omit({ fooId: true, dataInsercao: true })),
 });
 ```
 
 ### Child entity management (insert/update/delete)
 
-Children include optional `id` and `deletar` fields. Use `handleAdminSimpleChildRowsProcessing()` from `/lib/db-utils/` for batch operations in a transaction:
+Children include optional `id` and `deletar` fields. Use `handleSimpleChildRowsProcessing()` from `/lib/db-utils/` for batch operations in a transaction:
 
 ```typescript
-await handleAdminSimpleChildRowsProcessing({
-  trx: tx,
-  table: childTable,
-  entities: input.children,
-  fatherEntityKey: "parentId",
-  fatherEntityId: parentId,
+await handleSimpleChildRowsProcessing({
+	trx: tx,
+	table: childTable,
+	entities: input.children,
+	fatherEntityKey: "parentId",
+	fatherEntityId: parentId,
+	organizacaoId, // tenancy isolation
 });
 ```
 
@@ -137,17 +138,17 @@ Always `{ data: ..., message: "..." }`. Export the return type for client consum
 
 ```typescript
 async function fetchFooById(id: string) {
-  const { data } = await axios.get<TGetFoosOutput>(`/api/admin/foos?id=${id}`);
-  const result = data.data.byId;
-  if (!result) throw new Error("...");
-  return result;
+	const { data } = await axios.get<TGetFoosOutput>(`/api/admin/foos?id=${id}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("...");
+	return result;
 }
 
 export function useAdminFooById({ fooId }: { fooId: string }) {
-  return {
-    ...useQuery({ queryKey: ["admin-foo-by-id", fooId], queryFn: () => fetchFooById(fooId) }),
-    queryKey: ["admin-foo-by-id", fooId],
-  };
+	return {
+		...useQuery({ queryKey: ["admin-foo-by-id", fooId], queryFn: () => fetchFooById(fooId) }),
+		queryKey: ["admin-foo-by-id", fooId],
+	};
 }
 ```
 
