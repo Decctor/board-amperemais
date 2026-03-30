@@ -196,8 +196,8 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 			</motion.div>
 
 			<motion.div className="flex items-center gap-2 text-center w-fit self-center px-4 py-2 rounded-lg bg-green-50" variants={itemVariants}>
-				<FaWhatsapp className="w-4 h-4" />
-				<p className="text-sm">
+				<FaWhatsapp className="w-4 h-4 text-black" />
+				<p className="text-sm text-black">
 					Precisa de ajuda para começar?{" "}
 					<a
 						href="https://wa.me/5534996626855?text=Gostaria%20de%20receber%20suporte%20direto%20no%20WhatsApp."

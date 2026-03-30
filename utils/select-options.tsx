@@ -1,4 +1,5 @@
 import type {
+	TAccountingEntryOriginTypeEnum,
 	TAttributionModelEnum,
 	TCampaignExecutionDelayDirectionEnum,
 	TCampaignTriggerTypeEnum,
@@ -8,6 +9,7 @@ import type {
 	TCommunityCourseStatusEnum,
 	TCommunityLessonContentTypeEnum,
 	TDeliveryModeEnum,
+	TFinancialTransactionTypeEnum,
 	TInteractionsCronJobTimeBlocksEnum,
 	TInternalLeadActivityTypeEnum,
 	TPaymentMethodEnum,
@@ -18,6 +20,8 @@ import type {
 import type { TInternalLeadOriginEnum, TInternalLeadStatusCRMEnum } from "@/schemas/enums";
 import {
 	Archive,
+	ArrowDown,
+	ArrowUp,
 	Banknote,
 	Check,
 	CheckCheck,
@@ -32,9 +36,11 @@ import {
 	MessageSquare,
 	Minus,
 	Package,
+	Pencil,
 	Percent,
 	Phone,
 	QrCode,
+	ShoppingCart,
 	Stars,
 	Store,
 	Target,
@@ -279,8 +285,11 @@ export const SalePaymentMethodsOptions: { id: number; label: string; value: TPay
 	{ id: 2, label: "PIX", value: "PIX", icon: <QrCode className="w-4 h-4" /> },
 	{ id: 3, label: "CARTÃO DE CRÉDITO", value: "CARTAO_CREDITO", icon: <CreditCard className="w-4 h-4" /> },
 	{ id: 4, label: "CARTÃO DE DÉBITO", value: "CARTAO_DEBITO", icon: <CreditCard className="w-4 h-4" /> },
-	{ id: 5, label: "TRANSFERÊNCIA", value: "TRANSFERENCIA", icon: <Wallet className="w-4 h-4" /> },
-	{ id: 6, label: "OUTRO", value: "OUTRO", icon: <Wallet className="w-4 h-4" /> },
+	{ id: 5, label: "BOLETO", value: "BOLETO", icon: <FileText className="w-4 h-4" /> },
+	{ id: 6, label: "TRANSFERÊNCIA", value: "TRANSFERENCIA", icon: <Wallet className="w-4 h-4" /> },
+	{ id: 7, label: "CASHBACK", value: "CASHBACK", icon: <Stars className="w-4 h-4" /> },
+	{ id: 8, label: "VALE", value: "VALE", icon: <Wallet className="w-4 h-4" /> },
+	{ id: 9, label: "OUTRO", value: "OUTRO", icon: <Wallet className="w-4 h-4" /> },
 ];
 
 export const UnitsOfMeasurementOptions: { id: number; label: string; value: string }[] = [
@@ -348,4 +357,30 @@ export const PurchaseStatusOptions: { id: number; label: string; value: TPurchas
 		icon: <X className="w-4 h-4 text-red-600" />,
 		className: "bg-red-200 text-red-600 border border-red-600 hover:bg-red-100 hover:text-red-500 hover:border-red-500",
 	},
+];
+
+export const AccountingEntryOriginTypeOptions: { id: number; label: string; value: TAccountingEntryOriginTypeEnum; icon: React.ReactNode }[] = [
+	{
+		id: 1,
+		label: "VENDA",
+		value: "VENDA",
+		icon: <ShoppingCart className="w-4 h-4" />,
+	},
+	{
+		id: 2,
+		label: "MANUAL",
+		value: "MANUAL",
+		icon: <Pencil className="w-4 h-4" />,
+	},
+	{
+		id: 3,
+		label: "ESTORNO",
+		value: "ESTORNO",
+		icon: <X className="w-4 h-4" />,
+	},
+];
+
+export const FinancialTransactionTypeOptions: { id: number; label: string; value: TFinancialTransactionTypeEnum; icon: React.ReactNode }[] = [
+	{ id: 1, label: "ENTRADA", value: "ENTRADA", icon: <ArrowUp className="w-4 h-4 text-green-600" /> },
+	{ id: 2, label: "SAÍDA", value: "SAIDA", icon: <ArrowDown className="w-4 h-4 text-red-600" /> },
 ];

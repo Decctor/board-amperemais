@@ -26,6 +26,18 @@ export function useOrganizationMembershipInvitationState() {
 					editar: true,
 					excluir: true,
 				},
+				vendas: {
+					visualizar: true,
+					criar: false,
+					editar: false,
+					excluir: false,
+				},
+				compras: {
+					visualizar: true,
+					criar: false,
+					editar: false,
+					excluir: false,
+				},
 				atendimentos: {
 					visualizar: true,
 					iniciar: true,

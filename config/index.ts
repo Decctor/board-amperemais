@@ -671,6 +671,16 @@ export const AppRoutes = [
 		description: "Hub de atendimento com os clientes.",
 	},
 	{
+		path: "/dashboard/operational/finances",
+		title: "Finanças",
+		description: "Painel de acompanhamento e gestão das finanças do seu negócio.",
+	},
+	{
+		path: "/dashboard/operational/purchases",
+		title: "Compras",
+		description: "Painel de acompanhamento e gestão das compras do seu negócio.",
+	},
+	{
 		path: "/dashboard/settings",
 		title: "Configurações",
 		description: "Configurações do seu negócio.",

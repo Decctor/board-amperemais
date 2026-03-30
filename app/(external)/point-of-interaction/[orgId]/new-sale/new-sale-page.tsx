@@ -290,7 +290,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const isSubmitting = isCreatingSale || isCreatingRequest;
 
 	return (
-		<div className={cn("w-full min-h-screen flex flex-col items-center", isMobileMode ? "bg-slate-50 px-4 py-5" : "p-6 md:p-10 short:p-3 short:min-h-0")}>
+		<div
+			className={cn("w-full min-h-screen flex flex-col items-center", isMobileMode ? "bg-slate-50 px-4 py-5" : "p-6 md:p-10 short:p-3 short:min-h-0")}
+		>
 			<div className={cn("w-full flex flex-col gap-6 short:gap-3", isMobileMode ? "max-w-md" : "max-w-4xl")}>
 				{/* Header com Navegação */}
 				<div className="flex items-center gap-4 short:gap-1.5">
@@ -369,7 +371,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								onSubmit={handleNextStep}
 							/>
 						)}
-						{!showModeSelection && !isPrizeMode && currentStep === 4 &&
+						{!showModeSelection &&
+							!isPrizeMode &&
+							currentStep === 4 &&
 							(isMobileMode ? (
 								<MobileConfirmationStep clientName={state.client.nome || client?.nome || ""} finalValue={finalValue} onSubmit={submitTransaction} />
 							) : (
@@ -395,7 +399,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						{!showModeSelection && isPrizeSaleOnlyFlow && currentStep === 3 && (
 							<SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} />
 						)}
-						{!showModeSelection && isPrizeMode && currentStep === 3 &&
+						{!showModeSelection &&
+							isPrizeMode &&
+							currentStep === 3 &&
 							!isPrizeSaleOnlyFlow &&
 							(isMobileMode ? (
 								<MobilePrizeConfirmationStep
@@ -416,7 +422,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 									onSubmit={submitTransaction}
 								/>
 							))}
-						{!showModeSelection && isPrizeSaleOnlyFlow && currentStep === 4 &&
+						{!showModeSelection &&
+							isPrizeSaleOnlyFlow &&
+							currentStep === 4 &&
 							(isMobileMode ? (
 								<MobileConfirmationStep clientName={state.client.nome || client?.nome || ""} finalValue={state.sale.valor} onSubmit={submitTransaction} />
 							) : (
@@ -487,7 +495,10 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										: []),
 								]}
 								primaryAction={{ label: "NOVA VENDA", onClick: handleReset }}
-								secondaryAction={{ label: "VOLTAR AO INÍCIO", onClick: () => router.push(`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`) }}
+								secondaryAction={{
+									label: "VOLTAR AO INÍCIO",
+									onClick: () => router.push(`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`),
+								}}
 							/>
 						)}
 
@@ -520,7 +531,10 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 											]),
 								]}
 								primaryAction={{ label: "NOVA VENDA", onClick: handleReset }}
-								secondaryAction={{ label: "VOLTAR AO INÍCIO", onClick: () => router.push(`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`) }}
+								secondaryAction={{
+									label: "VOLTAR AO INÍCIO",
+									onClick: () => router.push(`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`),
+								}}
 							>
 								{selectedPrize && (
 									<div className="bg-amber-50 border-2 short:border border-amber-200 rounded-3xl short:rounded-xl p-4 short:p-2 flex items-center gap-4 short:gap-2 w-full max-w-xl">
@@ -546,55 +560,58 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						)}
 
 						{/* Action Buttons */}
-						{!showModeSelection && currentStep <= confirmationStep && !(currentStep === 1 && client) && (!isMobileMode || currentStep < confirmationStep) && (
-							<div className="flex gap-4 short:gap-3 mt-10 short:mt-4">
-								{currentStep > 1 && (
-									<Button
-										onClick={() => {
-											if (isPrizeMode && currentStep === 3 && !isPrizeSaleOnlyFlow) {
-												setSelectedPrize(null);
-												setPrizeFlowIntent(null);
-												updatePrizeRedemption(null);
-												updateSale({ valor: 0 });
-												updateCashback({ aplicar: false, valor: 0 });
-											}
-											if (isPrizeSaleOnlyFlow && currentStep === 4) {
-												updateCashback({ aplicar: false, valor: 0 });
-												updatePrizeRedemption(null);
-											}
-											if (isPrizeSaleOnlyFlow && currentStep === 3) {
-												setPrizeFlowIntent(null);
-												updateSale({ valor: 0 });
-											}
-											setCurrentStep((p) => p - 1);
-										}}
-										variant="outline"
-										size="lg"
-										className="flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold"
-									>
-										VOLTAR
-									</Button>
-								)}
-								{!(isPrizeMode && currentStep === 2) && !(isPrizeMode && currentStep === 3 && !isPrizeSaleOnlyFlow) && (
-									<Button
-										onClick={currentStep === confirmationStep ? submitTransaction : handleNextStep}
-										size="lg"
-										disabled={isSubmitting || (!isPrizeMode && isAttemptingToUseMoreCashbackThanAllowed)}
-										className={cn(
-											"flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
-											currentStep === confirmationStep && "bg-green-600 hover:bg-green-700",
-										)}
-									>
-										{currentStep === confirmationStep ? (isSubmitting ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
-										{currentStep === confirmationStep ? (
-											<Check className="ml-2 w-6 h-6 short:w-5 short:h-5" />
-										) : (
-											<ArrowRight className="ml-2 w-6 h-6 short:w-5 short:h-5" />
-										)}
-									</Button>
-								)}
-							</div>
-						)}
+						{!showModeSelection &&
+							currentStep <= confirmationStep &&
+							!(currentStep === 1 && client) &&
+							(!isMobileMode || currentStep < confirmationStep) && (
+								<div className="flex gap-4 short:gap-3 mt-10 short:mt-4">
+									{currentStep > 1 && (
+										<Button
+											onClick={() => {
+												if (isPrizeMode && currentStep === 3 && !isPrizeSaleOnlyFlow) {
+													setSelectedPrize(null);
+													setPrizeFlowIntent(null);
+													updatePrizeRedemption(null);
+													updateSale({ valor: 0 });
+													updateCashback({ aplicar: false, valor: 0 });
+												}
+												if (isPrizeSaleOnlyFlow && currentStep === 4) {
+													updateCashback({ aplicar: false, valor: 0 });
+													updatePrizeRedemption(null);
+												}
+												if (isPrizeSaleOnlyFlow && currentStep === 3) {
+													setPrizeFlowIntent(null);
+													updateSale({ valor: 0 });
+												}
+												setCurrentStep((p) => p - 1);
+											}}
+											variant="outline"
+											size="lg"
+											className="flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold"
+										>
+											VOLTAR
+										</Button>
+									)}
+									{!(isPrizeMode && currentStep === 2) && !(isPrizeMode && currentStep === 3 && !isPrizeSaleOnlyFlow) && (
+										<Button
+											onClick={currentStep === confirmationStep ? submitTransaction : handleNextStep}
+											size="lg"
+											disabled={isSubmitting || (!isPrizeMode && isAttemptingToUseMoreCashbackThanAllowed)}
+											className={cn(
+												"flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
+												currentStep === confirmationStep && "bg-green-600 hover:bg-green-700",
+											)}
+										>
+											{currentStep === confirmationStep ? (isSubmitting ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
+											{currentStep === confirmationStep ? (
+												<Check className="ml-2 w-6 h-6 short:w-5 short:h-5" />
+											) : (
+												<ArrowRight className="ml-2 w-6 h-6 short:w-5 short:h-5" />
+											)}
+										</Button>
+									)}
+								</div>
+							)}
 					</div>
 				</div>
 			</div>

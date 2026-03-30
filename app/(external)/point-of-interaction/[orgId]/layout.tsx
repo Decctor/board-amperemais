@@ -159,7 +159,7 @@ export default function PointOfInteractionLayout({ children }: { children: React
 	return (
 		<ConnectionStatusProvider>
 			<KioskModeProvider>
-					<KioskModeToggleButton />
+				<KioskModeToggleButton />
 				<div className="flex flex-col h-dvh print:h-auto print:block w-full">
 					<div className="flex-1 w-full overflow-y-auto print:overflow-visible overflow-x-hidden flex flex-col">{children}</div>
 					<div className="w-full self-center bg-[#24549C] flex items-center justify-center gap-3 px-4 py-1 flex-shrink-0 rounded-tl-3xl rounded-tr-3xl print:hidden">
