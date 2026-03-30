@@ -95,6 +95,7 @@ async function generateCheckoutRoute(request: NextRequest) {
           rastreamentoEstoque: plan.capabilities.erp.acesso === true,
           limiteMensagensSemanaisViaCampanhas: null,
         },
+        defaults: organization.configuracao.defaults,
       },
     })
     .where(eq(organizations.id, userOrgId));

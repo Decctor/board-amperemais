@@ -48,6 +48,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import { InteractiveFilter } from "@/components/ui/interactive-filter";
 import { AccountingEntryOriginTypeOptions, FinancialTransactionTypeOptions, SalePaymentMethodsOptions } from "@/utils/select-options";
+import { BsCalendar, BsCalendarCheck } from "react-icons/bs";
 
 type FinancesPageProps = {
 	user: TAuthUserSession["user"];
@@ -488,27 +489,31 @@ type AccountingEntryCardProps = {
 	entry: TGetAccountingEntriesOutputDefault["entries"][number];
 };
 function AccountingEntryCard({ entry }: AccountingEntryCardProps) {
-	const originTypeBadge = {
-		VENDA: { label: "Venda", className: "bg-blue-100 text-blue-700" },
-		MANUAL: { label: "Manual", className: "bg-gray-100 text-gray-700" },
-		ESTORNO: { label: "Estorno", className: "bg-orange-100 text-orange-700" },
-	}[entry.origemTipo] ?? { label: entry.origemTipo, className: "bg-gray-100 text-gray-700" };
-
+	const originTypeConfig = useMemo(() => AccountingEntryOriginTypeOptions.find((o) => o.value === entry.origemTipo) ?? null, [entry.origemTipo]);
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex items-center gap-2">
+					{originTypeConfig ? (
+						<span
+							className={cn(
+								"flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem]",
+								originTypeConfig.colors.background,
+								originTypeConfig.colors.text,
+							)}
+						>
+							{originTypeConfig.icon}
+							{originTypeConfig.label}
+						</span>
+					) : null}
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{entry.titulo || "TÍTULO NÃO DEFINIDO"}</h1>
-					<span className={cn("flex items-center gap-1 px-2 py-0.5 rounded-lg text-[0.65rem] font-medium", originTypeBadge.className)}>
-						{originTypeBadge.label}
-					</span>
 				</div>
 				<span className="text-sm font-semibold">{formatToMoney(entry.valor)}</span>
 			</div>
 
 			<div className="flex items-center gap-1.5 text-[0.65rem] text-muted-foreground">
 				<span className="font-medium">{entry.contaDebito?.nome ?? "—"}</span>
-				<ArrowRight className="w-3 h-3 min-w-3 min-h-3" />
+				<ArrowRight className="w-4 h-4 min-w-4 min-h-4" />
 				<span className="font-medium">{entry.contaCredito?.nome ?? "—"}</span>
 			</div>
 
@@ -516,11 +521,12 @@ function AccountingEntryCard({ entry }: AccountingEntryCardProps) {
 
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex flex-wrap items-center gap-2">
-					<div className="flex items-center gap-1">
-						<span className="text-[0.65rem] text-muted-foreground">Competência: {formatDateAsLocale(entry.dataCompetencia)}</span>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />
+						<p className="text-xs font-medium tracking-tight uppercase">COMPETÊNCIA: {formatDateAsLocale(entry.dataCompetencia)}</p>
 					</div>
 					{entry.autor ? (
-						<div className="flex items-center gap-1">
+						<div className="flex items-center gap-1.5">
 							<Avatar className="h-4 w-4">
 								<AvatarImage src={entry.autor.avatarUrl || undefined} alt={entry.autor.nome || "N/A"} />
 								<AvatarFallback className="text-[0.5rem]">{formatNameAsInitials(entry.autor.nome || "N/A")}</AvatarFallback>
@@ -539,17 +545,13 @@ function AccountingEntryCard({ entry }: AccountingEntryCardProps) {
 // FINANCIAL TRANSACTIONS VIEW
 // ============================================================================
 
-
-
 const TRANSACTION_STATUS_OPTIONS = [
-	{ id: "pendente", value: "pendente", label: "Pendente", icon: <Clock className="w-4 h-4 text-blue-600" /> },
-	{ id: "efetivada", value: "efetivada", label: "Efetivada", icon: <CheckCircle2 className="w-4 h-4 text-green-600" /> },
-	{ id: "em-atraso", value: "em-atraso", label: "Em Atraso", icon: <AlertCircle className="w-4 h-4 text-red-600" /> },
+	{ id: "pendente", value: "pendente", label: "PENDENTE", icon: <Clock className="w-4 h-4 text-blue-600" /> },
+	{ id: "efetivada", value: "efetivada", label: "EFETIVADA", icon: <CheckCircle2 className="w-4 h-4 text-green-600" /> },
+	{ id: "em-atraso", value: "em-atraso", label: "EM ATRASO", icon: <AlertCircle className="w-4 h-4 text-red-600" /> },
 ];
 
 const PAYMENT_METHOD_LABELS = Object.fromEntries(SalePaymentMethodsOptions.map((option) => [option.value, option.label])) as Record<string, string>;
-
-
 
 function FinancesTransactionsView() {
 	const { data, isLoading, isError, isSuccess, error, filters, updateFilters } = useFinancesTransactions({
@@ -592,9 +594,7 @@ function FinancesTransactionsView() {
 							<ArrowRight className="h-4 w-4 min-h-4 min-w-4" />
 							<InteractiveFilter.Label>TIPO</InteractiveFilter.Label>
 						</InteractiveFilter.Icon>
-						<InteractiveFilter.Value>
-							{selectedTypesLabel.length > 0 ? <strong>{selectedTypesLabel}</strong> : <span>NENHUM</span>}
-						</InteractiveFilter.Value>
+						<InteractiveFilter.Value>{selectedTypesLabel.length > 0 ? <strong>{selectedTypesLabel}</strong> : <span>NENHUM</span>}</InteractiveFilter.Value>
 						<InteractiveFilter.Clear onClear={() => updateFilters({ types: [], page: 1 })} />
 					</InteractiveFilter.Trigger>
 					<InteractiveFilter.Content className="w-72 p-0">
@@ -729,42 +729,51 @@ type TransactionCardProps = {
 	transaction: TGetFinancialTransactionsOutputDefault["transactions"][number];
 };
 function TransactionCard({ transaction }: TransactionCardProps) {
-	const typeBadge =
-		transaction.tipo === "ENTRADA"
-			? { label: "Entrada", className: "bg-green-100 text-green-700", icon: <MoveDown className="w-3 h-3" /> }
-			: { label: "Saída", className: "bg-red-100 text-red-700", icon: <MoveUp className="w-3 h-3" /> };
+	const typeConfig = useMemo(() => FinancialTransactionTypeOptions.find((o) => o.value === transaction.tipo) ?? null, [transaction.tipo]);
 
 	const now = new Date();
 	const isEffective = !!transaction.dataEfetivacao;
 	const isOverdue = !isEffective && transaction.dataPrevisao && new Date(transaction.dataPrevisao) < now;
+	const statusConfig = useMemo(() => {
+		return {
+			label: isEffective ? "EFETIVADA" : isOverdue ? "EM ATRASO" : "PENDENTE",
+			className: isEffective ? "bg-green-100 text-green-700" : isOverdue ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700",
+			icon: isEffective ? <CheckCircle2 className="w-3 h-3" /> : isOverdue ? <AlertCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />,
+		};
+	}, [isEffective, isOverdue]);
 
-	const statusBadge = isEffective
-		? { label: "Efetivada", className: "bg-green-100 text-green-700", icon: <CheckCircle2 className="w-3 h-3" /> }
-		: isOverdue
-			? { label: "Em Atraso", className: "bg-red-100 text-red-700", icon: <AlertCircle className="w-3 h-3" /> }
-			: { label: "Pendente", className: "bg-blue-100 text-blue-700", icon: <Clock className="w-3 h-3" /> };
+	const paymentMethodConfig = useMemo(() => {
+		return SalePaymentMethodsOptions.find((o) => o.value === transaction.metodo) ?? null;
+	}, [transaction.metodo]);
 
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex items-center gap-2 flex-wrap">
+					{typeConfig ? (
+						<span className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem]", typeConfig.colors.background, typeConfig.colors.text)}>
+							{typeConfig.icon}
+							{typeConfig.label}
+						</span>
+					) : null}
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{transaction.titulo || "TÍTULO NÃO DEFINIDO"}</h1>
-					<span className={cn("flex items-center gap-1 px-2 py-0.5 rounded-lg text-[0.65rem] font-medium", typeBadge.className)}>
-						{typeBadge.icon}
-						{typeBadge.label}
-					</span>
-					<span className={cn("flex items-center gap-1 px-2 py-0.5 rounded-lg text-[0.65rem] font-medium", statusBadge.className)}>
-						{statusBadge.icon}
-						{statusBadge.label}
-					</span>
 				</div>
-				<span className="text-sm font-semibold">{formatToMoney(transaction.valor)}</span>
+				<div className="flex items-center gap-1.5">
+					{statusConfig ? (
+						<span className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem]", statusConfig.className)}>
+							{statusConfig.icon}
+							{statusConfig.label}
+						</span>
+					) : null}
+					<span className="text-sm font-semibold">{formatToMoney(transaction.valor)}</span>
+				</div>
 			</div>
 
 			<div className="flex flex-wrap items-center gap-2">
-				{transaction.metodo ? (
-					<span className="px-2 py-0.5 rounded-lg bg-secondary text-[0.65rem] font-medium">
-						{PAYMENT_METHOD_LABELS[transaction.metodo] ?? transaction.metodo}
+				{paymentMethodConfig ? (
+					<span className={cn("flex items-center gap-1.5 text-[0.65rem]")}>
+						{paymentMethodConfig.icon}
+						{paymentMethodConfig.label}
 					</span>
 				) : null}
 				{transaction.contaFinanceira ? <span className="text-[0.65rem] text-muted-foreground">{transaction.contaFinanceira.nome}</span> : null}
@@ -777,10 +786,18 @@ function TransactionCard({ transaction }: TransactionCardProps) {
 
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex flex-wrap items-center gap-2">
-					<span className="text-[0.65rem] text-muted-foreground">Previsão: {formatDateAsLocale(transaction.dataPrevisao)}</span>
 					{transaction.dataEfetivacao ? (
-						<span className="text-[0.65rem] text-muted-foreground">Efetivação: {formatDateAsLocale(transaction.dataEfetivacao)}</span>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+							<BsCalendarCheck className="w-3 min-w-3 h-3 min-h-3 text-green-600" />
+							<p className="text-xs font-medium tracking-tight uppercase">EFETIVADA: {formatDateAsLocale(transaction.dataEfetivacao)}</p>
+						</div>
+					) : transaction.dataPrevisao ? (
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+							<BsCalendar className="w-3 min-w-3 h-3 min-h-3 text-amber-600" />
+							<p className="text-xs font-medium tracking-tight uppercase">PREVISÃO: {formatDateAsLocale(transaction.dataPrevisao)}</p>
+						</div>
 					) : null}
+
 					{transaction.autor ? (
 						<div className="flex items-center gap-1">
 							<Avatar className="h-4 w-4">

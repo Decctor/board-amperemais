@@ -50,6 +50,13 @@
       "when": 1765312200000,
       "tag": "0006_partner_cashback_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774868400000,
+      "tag": "0007_account_chart_nature",
+      "breakpoints": true
     }
   ]
 }

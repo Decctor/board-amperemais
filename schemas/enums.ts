@@ -175,3 +175,13 @@ export type TPoiTransactionRequestStatusEnum = z.infer<typeof PoiTransactionRequ
 
 export const PoiTransactionRequestTypeEnum = z.enum(["NOVA_TRANSACAO"]);
 export type TPoiTransactionRequestTypeEnum = z.infer<typeof PoiTransactionRequestTypeEnum>;
+
+export const AccountChartNatureEnum = z.enum([
+	"ATIVO",
+	"PASSIVO",
+	"PATRIMONIO_LIQUIDO",
+	"RECEITA",
+	"CUSTO",
+	"DESPESA",
+]);
+export type TAccountChartNatureEnum = z.infer<typeof AccountChartNatureEnum>;

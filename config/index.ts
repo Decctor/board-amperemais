@@ -1,11 +1,8 @@
-import type { TOrganizationConfiguration } from "@/schemas/organizations";
+import type { TOrganizationAccountingDefaults, TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TUserPermissions } from "@/schemas/users";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
 export const SESSION_COOKIE_NAME = "syncrono-session";
-
-export const DEFAULT_POS_CONTA_DEBITO_ID = "TODO_CONTA_DEBITO";
-export const DEFAULT_POS_CONTA_CREDITO_ID = "TODO_CONTA_CREDITO";
 
 export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 	usuarios: {
@@ -159,6 +156,25 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES: TOrganizationConfigur
 export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfiguration["preferencias"] = {
 	rastreamentoEstoque: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES.erp.acesso === true,
 	limiteMensagensSemanaisViaCampanhas: null,
+};
+
+export const DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS: TOrganizationAccountingDefaults = {
+	contabilidade: {
+		lancamentosPadrao: {
+			vendas: {
+				debitoContaId: null,
+				debitoContaKey: null,
+				creditoContaId: null,
+				creditoContaKey: null,
+			},
+			compras: {
+				debitoContaId: null,
+				debitoContaKey: null,
+				creditoContaId: null,
+				creditoContaKey: null,
+			},
+		},
+	},
 };
 
 export const AppSubscriptionPlans: {

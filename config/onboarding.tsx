@@ -1,4 +1,6 @@
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import type { TAccountChartNatureEnum } from "@/schemas/enums";
+import type { TOrganizationAccountingDefaults } from "@/schemas/organizations";
 import { sendMessage } from "@/lib/whatsapp/internal-gateway";
 import type { TNewCampaignEntity, TNewCampaignSegmentationEntity, TNewCashbackProgramEntity } from "@/services/drizzle/schema";
 import {
@@ -21,11 +23,10 @@ import {
 	SprayCan,
 	Store,
 	Utensils,
-	WandSparkles,
 	Wrench,
 	Zap,
 } from "lucide-react";
-import { FaGoogle, FaInstagram, FaLinkedin, FaUserGroup, FaWandSparkles, FaYoutube } from "react-icons/fa6";
+import { FaGoogle, FaInstagram, FaLinkedin, FaUserGroup, FaYoutube } from "react-icons/fa6";
 
 export const RecompraCRMDefaultWhatsappTemplates = {
 	recompracrm_primeira_compra: {
@@ -49,6 +50,121 @@ export const RecompraCRMDefaultWhatsappTemplates = {
 		descricao: "Nosso template para recuperar clientes inativos, oferecendo cashback como recompensa.",
 	},
 };
+
+export type TOnboardingAccountChartNode = {
+	key: string;
+	nome: string;
+	codigo: string;
+	natureza: TAccountChartNatureEnum;
+	children?: TOnboardingAccountChartNode[];
+};
+
+export const RecompraCRMDefaultAccountCharts: TOnboardingAccountChartNode[] = [
+	{
+		key: "ativo",
+		nome: "Ativo",
+		codigo: "1",
+		natureza: "ATIVO",
+		children: [
+			{ key: "caixa_bancos", nome: "Caixa e Bancos", codigo: "1.1", natureza: "ATIVO" },
+			{ key: "contas_receber", nome: "Contas a Receber", codigo: "1.2", natureza: "ATIVO" },
+			{ key: "estoques", nome: "Estoques", codigo: "1.3", natureza: "ATIVO" },
+			{ key: "outros_ativos", nome: "Outros Ativos", codigo: "1.4", natureza: "ATIVO" },
+		],
+	},
+	{
+		key: "passivo",
+		nome: "Passivo",
+		codigo: "2",
+		natureza: "PASSIVO",
+		children: [
+			{ key: "fornecedores", nome: "Fornecedores", codigo: "2.1", natureza: "PASSIVO" },
+			{ key: "contas_pagar", nome: "Contas a Pagar", codigo: "2.2", natureza: "PASSIVO" },
+			{ key: "obrigacoes_tributarias", nome: "Obrigações Tributárias", codigo: "2.3", natureza: "PASSIVO" },
+			{ key: "obrigacoes_trabalhistas", nome: "Obrigações Trabalhistas", codigo: "2.4", natureza: "PASSIVO" },
+			{ key: "emprestimos_financiamentos", nome: "Empréstimos e Financiamentos", codigo: "2.5", natureza: "PASSIVO" },
+		],
+	},
+	{
+		key: "patrimonio_liquido",
+		nome: "Patrimônio Líquido",
+		codigo: "3",
+		natureza: "PATRIMONIO_LIQUIDO",
+		children: [
+			{ key: "capital_social", nome: "Capital Social", codigo: "3.1", natureza: "PATRIMONIO_LIQUIDO" },
+			{
+				key: "lucros_prejuizos_acumulados",
+				nome: "Lucros ou Prejuízos Acumulados",
+				codigo: "3.2",
+				natureza: "PATRIMONIO_LIQUIDO",
+			},
+		],
+	},
+	{
+		key: "receitas",
+		nome: "Receitas",
+		codigo: "4",
+		natureza: "RECEITA",
+		children: [
+			{ key: "receitas_operacionais", nome: "Receitas Operacionais", codigo: "4.1", natureza: "RECEITA" },
+			{ key: "outras_receitas", nome: "Outras Receitas", codigo: "4.2", natureza: "RECEITA" },
+		],
+	},
+	{
+		key: "custos",
+		nome: "Custos",
+		codigo: "5",
+		natureza: "CUSTO",
+		children: [{ key: "custo_mercadorias_vendidas", nome: "Custo das Mercadorias Vendidas", codigo: "5.1", natureza: "CUSTO" }],
+	},
+	{
+		key: "despesas",
+		nome: "Despesas",
+		codigo: "6",
+		natureza: "DESPESA",
+		children: [
+			{ key: "despesas_operacionais", nome: "Despesas Operacionais", codigo: "6.1", natureza: "DESPESA" },
+			{ key: "despesas_administrativas", nome: "Despesas Administrativas", codigo: "6.2", natureza: "DESPESA" },
+			{ key: "despesas_comerciais", nome: "Despesas Comerciais", codigo: "6.3", natureza: "DESPESA" },
+			{ key: "despesas_financeiras", nome: "Despesas Financeiras", codigo: "6.4", natureza: "DESPESA" },
+		],
+	},
+];
+
+export const RecompraCRMDefaultAccountingDefaults: {
+	lancamentosPadrao: {
+		vendas: { debitoKey: string; creditoKey: string };
+		compras: { debitoKey: string; creditoKey: string };
+	};
+} = {
+	lancamentosPadrao: {
+		vendas: { debitoKey: "contas_receber", creditoKey: "receitas_operacionais" },
+		compras: { debitoKey: "estoques", creditoKey: "fornecedores" },
+	},
+};
+
+export function buildOrganizationAccountingDefaults(
+	accountIdsByKey: Map<string, string>,
+): TOrganizationAccountingDefaults {
+	return {
+		contabilidade: {
+			lancamentosPadrao: {
+				vendas: {
+					debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.debitoKey) ?? null,
+					debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.debitoKey,
+					creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.creditoKey) ?? null,
+					creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.creditoKey,
+				},
+				compras: {
+					debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey) ?? null,
+					debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey,
+					creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey) ?? null,
+					creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey,
+				},
+			},
+		},
+	};
+}
 
 type TRecompraCRMDefaultCampaign = {
 	campaign: {

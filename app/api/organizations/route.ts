@@ -1,5 +1,6 @@
 import {
 	AppSubscriptionPlans,
+	DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS,
 	DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
 	DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
 	DEFAULT_ORGANIZATION_OWNER_PERMISSIONS,
@@ -7,7 +8,14 @@ import {
 	FREE_TRIAL_DURATION_DAYS,
 } from "@/config";
 import { notifyInternalsOnNewOrganization } from "@/config/internal-coms";
-import { RecompraCRMDefaultCampaigns, getOrganizationNicheByValue, welcomeOrganizationOwnerOnOnboarding } from "@/config/onboarding";
+import {
+	buildOrganizationAccountingDefaults,
+	RecompraCRMDefaultAccountCharts,
+	RecompraCRMDefaultCampaigns,
+	type TOnboardingAccountChartNode,
+	getOrganizationNicheByValue,
+	welcomeOrganizationOwnerOnOnboarding,
+} from "@/config/onboarding";
 import { captureServerEvent } from "@/lib/analytics/posthog-server";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
@@ -16,6 +24,7 @@ import { OrganizationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
 import {
 	authSessions,
+	accountsCharts,
 	campaignSegmentations,
 	campaigns,
 	cashbackPrograms,
@@ -46,6 +55,48 @@ export const CreateOrganizationInputSchema = z.object({
 });
 
 export type TCreateOrganizationInputSchema = z.infer<typeof CreateOrganizationInputSchema>;
+
+async function seedDefaultAccountCharts({
+	tx,
+	organizationId,
+	nodes,
+	parentId = null,
+	accountIdsByKey,
+}: {
+	tx: Parameters<Parameters<typeof db.transaction>[0]>[0];
+	organizationId: string;
+	nodes: TOnboardingAccountChartNode[];
+	parentId?: string | null;
+	accountIdsByKey: Map<string, string>;
+}) {
+	for (const node of nodes) {
+		const [createdAccount] = await tx
+			.insert(accountsCharts)
+			.values({
+				organizacaoId: organizationId,
+				nome: node.nome,
+				codigo: node.codigo,
+				natureza: node.natureza,
+				idContaPai: parentId,
+			})
+			.returning({ id: accountsCharts.id });
+
+		const createdAccountId = createdAccount?.id;
+		if (!createdAccountId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar plano de contas.");
+
+		accountIdsByKey.set(node.key, createdAccountId);
+
+		if (node.children?.length) {
+			await seedDefaultAccountCharts({
+				tx,
+				organizationId,
+				nodes: node.children,
+				parentId: createdAccountId,
+				accountIdsByKey,
+			});
+		}
+	}
+}
 
 async function getOrganization({ session }: { session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
@@ -99,7 +150,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 	console.log("[INFO] [CREATE_ORGANIZATION] Starting the organization onboarding conclusion process:", JSON.stringify(input, null, 2));
 
 	// Pré-Stripe: grava apenas dados locais em uma transação curta.
-	const insertedOrgId = await db.transaction(async (tx) => {
+	const { createdOrgId: insertedOrgId, accountingDefaults } = await db.transaction(async (tx) => {
 		// 1. Insert organization first
 		const [createdOrgResponse] = await tx
 			.insert(organizations)
@@ -108,6 +159,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 				configuracao: {
 					recursos: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
 					preferencias: DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
+					defaults: DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS,
 				},
 				autorId: sessionUser.id,
 			})
@@ -123,6 +175,26 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 			.update(organizations)
 			.set({
 				...organizationPoiQrCodes,
+			})
+			.where(eq(organizations.id, createdOrgId));
+
+		const accountIdsByKey = new Map<string, string>();
+		await seedDefaultAccountCharts({
+			tx,
+			organizationId: createdOrgId,
+			nodes: RecompraCRMDefaultAccountCharts,
+			accountIdsByKey,
+		});
+
+		const accountingDefaults = buildOrganizationAccountingDefaults(accountIdsByKey);
+		await tx
+			.update(organizations)
+			.set({
+				configuracao: {
+					recursos: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
+					preferencias: DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
+					defaults: accountingDefaults,
+				},
 			})
 			.where(eq(organizations.id, createdOrgId));
 
@@ -196,7 +268,10 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 			})
 			.where(eq(authSessions.id, session.session.id));
 
-		return createdOrgId;
+		return {
+			createdOrgId,
+			accountingDefaults,
+		};
 	});
 
 	// 6. Process subscription
@@ -231,6 +306,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 							rastreamentoEstoque: freeTrialConfig.erp.acesso === true,
 							limiteMensagensSemanaisViaCampanhas: null,
 						},
+						defaults: accountingDefaults,
 					},
 					periodoTesteInicio,
 					periodoTesteFim,
@@ -340,6 +416,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 						rastreamentoEstoque: plan.capabilities.erp.acesso === true,
 						limiteMensagensSemanaisViaCampanhas: null,
 					},
+					defaults: accountingDefaults,
 				},
 				stripeCustomerId: stripeCustomer.id,
 				assinaturaPlano: planName,

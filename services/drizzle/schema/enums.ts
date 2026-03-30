@@ -182,3 +182,12 @@ export const paymentProviderEnum = pgEnum("payment_provider", ["LOCAL", "MERCADO
 export const poiTransactionRequestStatusEnum = pgEnum("poi_transaction_request_status", ["PENDENTE", "PROCESSANDO", "APROVADO", "REJEITADO", "ERRO"]);
 
 export const poiTransactionRequestTypeEnum = pgEnum("poi_transaction_request_type", ["NOVA_TRANSACAO"]);
+
+export const accountChartNatureEnum = pgEnum("account_chart_nature", [
+	"ATIVO",
+	"PASSIVO",
+	"PATRIMONIO_LIQUIDO",
+	"RECEITA",
+	"CUSTO",
+	"DESPESA",
+]);

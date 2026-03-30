@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { type AnyPgColumn, boolean, doublePrecision, foreignKey, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import {
+	accountChartNatureEnum,
 	accountingEntryOriginTypeEnum,
 	bankAccountTypeEnum,
 	financialAccountTypeEnum,
@@ -31,6 +32,7 @@ export const accountsCharts = newTable(
 			.notNull(),
 		nome: varchar("nome", { length: 255 }).notNull(),
 		codigo: varchar("codigo", { length: 50 }),
+		natureza: accountChartNatureEnum("natureza").notNull(),
 		idContaPai: varchar("id_conta_pai", { length: 255 }).references((): AnyPgColumn => accountsCharts.id),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},
@@ -38,6 +40,7 @@ export const accountsCharts = newTable(
 		autoReferencia: foreignKey({ columns: [table.idContaPai], foreignColumns: [table.id] }),
 		organizacaoIdIdx: index("idx_accounts_charts_organizacao_id").on(table.organizacaoId),
 		codigoIdx: index("idx_accounts_charts_codigo").on(table.organizacaoId, table.codigo),
+		naturezaIdx: index("idx_accounts_charts_natureza").on(table.organizacaoId, table.natureza),
 	}),
 );
 

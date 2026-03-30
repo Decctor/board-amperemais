@@ -14,6 +14,26 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 ]);
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
 
+export const OrganizationAccountingDefaultsSchema = z.object({
+	contabilidade: z.object({
+		lancamentosPadrao: z.object({
+			vendas: z.object({
+				debitoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de dÃ©bito padrÃ£o de vendas." }).nullable(),
+				debitoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de dÃ©bito padrÃ£o de vendas." }).nullable(),
+				creditoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de crÃ©dito padrÃ£o de vendas." }).nullable(),
+				creditoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de crÃ©dito padrÃ£o de vendas." }).nullable(),
+			}),
+			compras: z.object({
+				debitoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de dÃ©bito padrÃ£o de compras." }).nullable(),
+				debitoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de dÃ©bito padrÃ£o de compras." }).nullable(),
+				creditoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de crÃ©dito padrÃ£o de compras." }).nullable(),
+				creditoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de crÃ©dito padrÃ£o de compras." }).nullable(),
+			}),
+		}),
+	}),
+});
+export type TOrganizationAccountingDefaults = z.infer<typeof OrganizationAccountingDefaultsSchema>;
+
 export const OrganizationConfigurationSchema = z.object({
 	recursos: z.object({
 		analytics: z.object({
@@ -94,6 +114,7 @@ export const OrganizationConfigurationSchema = z.object({
 			.optional()
 			.default(null),
 	}),
+	defaults: OrganizationAccountingDefaultsSchema,
 });
 export type TOrganizationConfiguration = z.infer<typeof OrganizationConfigurationSchema>;
 

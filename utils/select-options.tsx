@@ -359,28 +359,64 @@ export const PurchaseStatusOptions: { id: number; label: string; value: TPurchas
 	},
 ];
 
-export const AccountingEntryOriginTypeOptions: { id: number; label: string; value: TAccountingEntryOriginTypeEnum; icon: React.ReactNode }[] = [
+export const AccountingEntryOriginTypeOptions: {
+	id: number;
+	label: string;
+	value: TAccountingEntryOriginTypeEnum;
+	icon: React.ReactNode;
+	colors: { text: string; background: string };
+}[] = [
 	{
 		id: 1,
 		label: "VENDA",
 		value: "VENDA",
 		icon: <ShoppingCart className="w-4 h-4" />,
+		colors: {
+			text: "text-green-600",
+			background: "bg-green-200",
+		},
 	},
 	{
 		id: 2,
 		label: "MANUAL",
 		value: "MANUAL",
 		icon: <Pencil className="w-4 h-4" />,
+		colors: {
+			text: "text-amber-600",
+			background: "bg-amber-200",
+		},
 	},
 	{
 		id: 3,
 		label: "ESTORNO",
 		value: "ESTORNO",
 		icon: <X className="w-4 h-4" />,
+		colors: {
+			text: "text-red-600",
+			background: "bg-red-200",
+		},
 	},
 ];
 
-export const FinancialTransactionTypeOptions: { id: number; label: string; value: TFinancialTransactionTypeEnum; icon: React.ReactNode }[] = [
-	{ id: 1, label: "ENTRADA", value: "ENTRADA", icon: <ArrowUp className="w-4 h-4 text-green-600" /> },
-	{ id: 2, label: "SAÍDA", value: "SAIDA", icon: <ArrowDown className="w-4 h-4 text-red-600" /> },
+export const FinancialTransactionTypeOptions: {
+	id: number;
+	label: string;
+	value: TFinancialTransactionTypeEnum;
+	icon: React.ReactNode;
+	colors: { text: string; background: string };
+}[] = [
+	{
+		id: 1,
+		label: "ENTRADA",
+		value: "ENTRADA",
+		icon: <ArrowUp className="w-4 h-4 text-green-600" />,
+		colors: { text: "text-green-600", background: "bg-green-200" },
+	},
+	{
+		id: 2,
+		label: "SAÍDA",
+		value: "SAIDA",
+		icon: <ArrowDown className="w-4 h-4 text-red-600" />,
+		colors: { text: "text-red-600", background: "bg-red-200" },
+	},
 ];

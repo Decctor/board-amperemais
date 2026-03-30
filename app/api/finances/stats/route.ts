@@ -1,12 +1,12 @@
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { getDayStringsBetweenDates, isDateOverdue } from "@/lib/dates";
+import { getAccountChartIdsByNatureza } from "@/lib/finances";
 import { db } from "@/services/drizzle";
-import { accountingEntries, financialTransactions, accountsCharts } from "@/services/drizzle/schema";
+import { accountingEntries, financialTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import createHttpError from "http-errors";
 import z from "zod";
 import { and, eq, gte, inArray, lte, sum } from "drizzle-orm";
-import { getCostRelatedAccountChartsIds, getExpenseRelatedAccountChartsIds, getRevenueRelatedAccountChartsIds } from "@/lib/finances";
 import { formatAsNumber } from "@/lib/formatting";
 import { appApiHandler } from "@/lib/app-api";
 import { NextRequest, NextResponse } from "next/server";
@@ -100,15 +100,19 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 
 	// Fetch account details for proper naming
 	const accounts = await db.query.accountsCharts.findMany({
-		where: (fields, { eq, or, isNull }) => or(eq(fields.organizacaoId, userOrgId), isNull(fields.organizacaoId)),
+		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
 		columns: {
 			id: true,
 			nome: true,
+			natureza: true,
 		},
 	});
 
 	// Create account map for easier lookup
 	const accountMap = new Map(accounts.map((account) => [account.id, account.nome]));
+	const revenueAccountIds = getAccountChartIdsByNatureza(accounts, "RECEITA");
+	const expenseAccountIds = getAccountChartIdsByNatureza(accounts, "DESPESA");
+	const costAccountIds = getAccountChartIdsByNatureza(accounts, "CUSTO");
 
 	// Combine the results into a single data structure
 	const resultMap = new Map<string, TAccountResult>();
@@ -149,51 +153,60 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 	}
 	const resultByAccounts = Array.from(resultMap.values());
 
-	const totalRevenueResult = await db
-		.select({
-			total: sum(accountingEntries.valor),
-		})
-		.from(accountingEntries)
-		.where(
-			and(
-				eq(accountingEntries.organizacaoId, userOrgId),
-				gte(accountingEntries.dataCompetencia, periodAfter),
-				lte(accountingEntries.dataCompetencia, periodBefore),
-				inArray(accountingEntries.idContaCredito, getRevenueRelatedAccountChartsIds()),
-			),
-		);
+	const totalRevenueResult =
+		revenueAccountIds.length > 0
+			? await db
+					.select({
+						total: sum(accountingEntries.valor),
+					})
+					.from(accountingEntries)
+					.where(
+						and(
+							eq(accountingEntries.organizacaoId, userOrgId),
+							gte(accountingEntries.dataCompetencia, periodAfter),
+							lte(accountingEntries.dataCompetencia, periodBefore),
+							inArray(accountingEntries.idContaCredito, revenueAccountIds),
+						),
+					)
+			: [{ total: 0 }];
 
 	const totalRevenueResultValue = formatAsNumber(totalRevenueResult[0]?.total || 0);
 
-	const totalExpenseResult = await db
-		.select({
-			total: sum(accountingEntries.valor),
-		})
-		.from(accountingEntries)
-		.where(
-			and(
-				eq(accountingEntries.organizacaoId, userOrgId),
-				gte(accountingEntries.dataCompetencia, periodAfter),
-				lte(accountingEntries.dataCompetencia, periodBefore),
-				inArray(accountingEntries.idContaDebito, getExpenseRelatedAccountChartsIds()),
-			),
-		);
+	const totalExpenseResult =
+		expenseAccountIds.length > 0
+			? await db
+					.select({
+						total: sum(accountingEntries.valor),
+					})
+					.from(accountingEntries)
+					.where(
+						and(
+							eq(accountingEntries.organizacaoId, userOrgId),
+							gte(accountingEntries.dataCompetencia, periodAfter),
+							lte(accountingEntries.dataCompetencia, periodBefore),
+							inArray(accountingEntries.idContaDebito, expenseAccountIds),
+						),
+					)
+			: [{ total: 0 }];
 
 	const totalExpenseResultValue = formatAsNumber(totalExpenseResult[0]?.total || 0);
 
-	const totalCostResult = await db
-		.select({
-			total: sum(accountingEntries.valor),
-		})
-		.from(accountingEntries)
-		.where(
-			and(
-				eq(accountingEntries.organizacaoId, userOrgId),
-				gte(accountingEntries.dataCompetencia, periodAfter),
-				lte(accountingEntries.dataCompetencia, periodBefore),
-				inArray(accountingEntries.idContaDebito, getCostRelatedAccountChartsIds()),
-			),
-		);
+	const totalCostResult =
+		costAccountIds.length > 0
+			? await db
+					.select({
+						total: sum(accountingEntries.valor),
+					})
+					.from(accountingEntries)
+					.where(
+						and(
+							eq(accountingEntries.organizacaoId, userOrgId),
+							gte(accountingEntries.dataCompetencia, periodAfter),
+							lte(accountingEntries.dataCompetencia, periodBefore),
+							inArray(accountingEntries.idContaDebito, costAccountIds),
+						),
+					)
+			: [{ total: 0 }];
 	const totalCostResultValue = formatAsNumber(totalCostResult[0]?.total || 0);
 
 	const totalInFlowResult = await db
