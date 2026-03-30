@@ -4,6 +4,7 @@ import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/Templa
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
 import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
@@ -38,13 +39,27 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 	const allTemplates = whatsappTemplatesResult?.whatsappTemplates ?? [];
 
 	// Filter templates by trigger compatibility
-	const { compatibleTemplates, hiddenCount } = useMemo(() => {
-		if (!campaign.gatilhoTipo) return { compatibleTemplates: allTemplates, hiddenCount: 0 };
-		const compatible = allTemplates.filter((template) => {
+	const { compatibleTemplates, hiddenTemplates, hiddenCount } = useMemo(() => {
+		if (!campaign.gatilhoTipo) return { compatibleTemplates: allTemplates, hiddenTemplates: [], hiddenCount: 0 };
+
+		const compatible = [];
+		const hidden = [];
+
+		for (const template of allTemplates) {
 			const validation = validateTemplateForTrigger(template.bodyParametros, campaign.gatilhoTipo);
-			return validation.valid;
-		});
-		return { compatibleTemplates: compatible, hiddenCount: allTemplates.length - compatible.length };
+			if (validation.valid) {
+				compatible.push(template);
+				continue;
+			}
+
+			hidden.push({
+				id: template.id,
+				nome: template.nome,
+				incompatibleVariables: validation.incompatibleVariables,
+			});
+		}
+
+		return { compatibleTemplates: compatible, hiddenTemplates: hidden, hiddenCount: hidden.length };
 	}, [allTemplates, campaign.gatilhoTipo]);
 
 	// Clear template when trigger type changes and selected template becomes incompatible
@@ -140,13 +155,38 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 						</Button>
 					</div>
 					{hiddenCount > 0 && (
-						<div className="flex items-center gap-2 rounded-md bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400">
-							<Info className="h-3.5 w-3.5 shrink-0" />
-							<span>
-								{hiddenCount} {hiddenCount === 1 ? "template foi ocultado" : "templates foram ocultados"} por uso de variáveis incompatíveis com o gatilho
-								selecionado.
-							</span>
-						</div>
+						<TooltipProvider>
+							<Tooltip delayDuration={150}>
+								<TooltipTrigger asChild>
+									<div className="flex cursor-help items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/60">
+										<Info className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+										<span>
+											{hiddenCount} {hiddenCount === 1 ? "template foi ocultado" : "templates foram ocultados"} por uso de variáveis incompatíveis com o gatilho
+											selecionado.
+										</span>
+									</div>
+								</TooltipTrigger>
+								<TooltipContent
+									side="top"
+									align="start"
+									className="w-[360px] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl"
+								>
+									<div className="flex max-h-72 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
+										<p className="text-xs font-semibold uppercase tracking-wide text-foreground">Motivos do bloqueio</p>
+										<div className="flex flex-col gap-2">
+											{hiddenTemplates.map((template) => (
+												<div key={template.id} className="rounded-lg border border-border/60 bg-muted/35 px-2.5 py-2">
+													<p className="text-xs font-semibold text-foreground">{template.nome}</p>
+													<p className="mt-1 text-xs text-muted-foreground">
+														Variáveis incompatíveis: {template.incompatibleVariables.join(", ")}.
+													</p>
+												</div>
+											))}
+										</div>
+									</div>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 					)}
 					{selectedTemplate && (
 						<div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/10 bg-muted/30 px-3 py-2">

@@ -30,7 +30,7 @@ async function syncWhatsappTemplates({ input, session }: { input: TSyncWhatsappT
 	if (orgWhatsappConnection.telefones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
 	const whatsappToken = orgWhatsappConnection.token;
-
+	if (!whatsappToken) throw new createHttpError.NotFound("Token WhatsApp não encontrado.");
 	// Determine which phones to sync
 	let phonesToSync = orgWhatsappConnection.telefones;
 	if (input.telefoneId) {
@@ -47,6 +47,7 @@ async function syncWhatsappTemplates({ input, session }: { input: TSyncWhatsappT
 	const syncResults = await Promise.all(
 		phonesToSync.map(async (phone) => {
 			try {
+				if (!phone.whatsappBusinessAccountId) throw new createHttpError.NotFound("WhatsApp Business Account ID não encontrado.");
 				const result = await syncWhatsappTemplatesHelper({
 					whatsappToken,
 					whatsappBusinessAccountId: phone.whatsappBusinessAccountId,
