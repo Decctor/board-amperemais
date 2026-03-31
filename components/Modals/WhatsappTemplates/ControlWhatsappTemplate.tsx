@@ -53,7 +53,7 @@ function ControlWhatsappTemplate({ whatsappTemplateId, organizationId, closeMenu
 			return;
 		},
 	});
-
+	console.log(whatsappTemplate);
 	useEffect(() => {
 		if (whatsappTemplate) redefineState({ whatsappTemplate: whatsappTemplate });
 	}, [whatsappTemplate, redefineState]);

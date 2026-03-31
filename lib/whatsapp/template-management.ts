@@ -1,4 +1,4 @@
-import type { TWhatsappTemplate, TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
+import type { TWhatsappTemplate, TWhatsappTemplateBodyParameter, TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
 import type { db as DbType } from "@/services/drizzle";
 import axios from "axios";
 import createHttpError from "http-errors";
@@ -643,6 +643,58 @@ export function convertMetaComponentsToLocal(components: MetaTemplateComponent[]
 	return localComponents;
 }
 
+function mergeBodyParametersWithExistingIdentifiers({
+	metaParameters,
+	existingParameters,
+}: {
+	metaParameters: TWhatsappTemplateBodyParameter[];
+	existingParameters?: TWhatsappTemplateBodyParameter[] | null;
+}): TWhatsappTemplateBodyParameter[] {
+	if (!existingParameters?.length || metaParameters.length === 0) {
+		return metaParameters;
+	}
+
+	const existingParametersByName = new Map(existingParameters.map((param) => [param.nome, param]));
+	const canPreserveIdentifiers =
+		existingParameters.length === metaParameters.length &&
+		metaParameters.every((param) => {
+			const existingParameter = existingParametersByName.get(param.nome);
+			return Boolean(existingParameter?.identificador);
+		});
+
+	if (!canPreserveIdentifiers) {
+		return metaParameters;
+	}
+
+	return metaParameters.map((param) => ({
+		...param,
+		identificador: existingParametersByName.get(param.nome)?.identificador || param.identificador,
+	}));
+}
+
+function mergeSyncedComponentsWithExistingIdentifiers({
+	metaComponents,
+	existingComponents,
+}: {
+	metaComponents: TWhatsappTemplateComponents;
+	existingComponents?: TWhatsappTemplateComponents | null;
+}): TWhatsappTemplateComponents {
+	if (!existingComponents?.corpo?.parametros?.length || metaComponents.corpo.parametros.length === 0) {
+		return metaComponents;
+	}
+
+	return {
+		...metaComponents,
+		corpo: {
+			...metaComponents.corpo,
+			parametros: mergeBodyParametersWithExistingIdentifiers({
+				metaParameters: metaComponents.corpo.parametros,
+				existingParameters: existingComponents.corpo.parametros,
+			}),
+		},
+	};
+}
+
 type DeleteWhatsappTemplateParams = {
 	templateName: string;
 };
@@ -764,6 +816,10 @@ export async function syncWhatsappTemplates({
 				if (existingTemplatePhone) {
 					// Update existing template
 					console.log(`[INFO] [WHATSAPP_TEMPLATES_SYNC] Updating template: ${metaTemplate.name}`);
+					const mergedComponents = mergeSyncedComponentsWithExistingIdentifiers({
+						metaComponents: localComponents,
+						existingComponents: existingTemplatePhone.template.componentes,
+					});
 
 					// Update parent template
 					await db
@@ -771,7 +827,7 @@ export async function syncWhatsappTemplates({
 						.set({
 							nome: metaTemplate.name,
 							categoria: localCategory,
-							componentes: localComponents,
+							componentes: mergedComponents,
 						})
 						.where(eq(whatsappTemplates.id, existingTemplatePhone.templateId));
 
@@ -804,13 +860,17 @@ export async function syncWhatsappTemplates({
 					if (existingParentTemplate) {
 						// Use existing parent template
 						parentTemplateId = existingParentTemplate.id;
+						const mergedComponents = mergeSyncedComponentsWithExistingIdentifiers({
+							metaComponents: localComponents,
+							existingComponents: existingParentTemplate.componentes,
+						});
 
 						// Update it with latest data
 						await db
 							.update(whatsappTemplates)
 							.set({
 								categoria: localCategory,
-								componentes: localComponents,
+								componentes: mergedComponents,
 							})
 							.where(eq(whatsappTemplates.id, parentTemplateId));
 					} else {
