@@ -25,7 +25,7 @@ type CheckoutPageProps = {
 	saleId: string;
 };
 
-export default function CheckoutPage({ user, membership, saleId }: CheckoutPageProps) {
+export default function CheckoutPage({ user: _user, membership: _membership, saleId }: CheckoutPageProps) {
 	const router = useRouter();
 
 	// Load draft sale from DB
@@ -34,6 +34,7 @@ export default function CheckoutPage({ user, membership, saleId }: CheckoutPageP
 	// Checkout state
 	const checkoutState = useCheckoutState({
 		valorTotal: sale?.valorTotal ?? 0,
+		clienteId: sale?.clienteId ?? null,
 		initialState: {
 			vendedorId: sale?.vendedorId,
 			vendedorNome: sale?.vendedorNome,
@@ -127,6 +128,10 @@ export default function CheckoutPage({ user, membership, saleId }: CheckoutPageP
 				valor: p.valor,
 				parcela: p.parcela,
 				totalParcelas: p.totalParcelas,
+				efetivacaoTipo: p.efetivacaoTipo,
+				dataPrevisao: p.dataPrevisao,
+				primeiraDataPrevisaoParcela: p.primeiraDataPrevisaoParcela,
+				observacoes: p.observacoes,
 			})),
 			cashbackResgate: checkoutState.state.cashbackResgate,
 			cashbackProgramaId: checkoutState.state.cashbackProgramaId,

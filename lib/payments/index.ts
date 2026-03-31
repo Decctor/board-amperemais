@@ -31,3 +31,15 @@ export function getPaymentProvider(organization: Pick<TOrganizationEntity, "paga
 }
 
 export type { IPaymentProvider, TPaymentIntentResult, TPaymentSplit, TProcessPaymentsInput } from "./types";
+export {
+	CheckoutPaymentSplitSchema,
+	PaymentEffectivenessTypeEnum,
+	PaymentInstallmentModelEnum,
+	getDefaultCheckoutPaymentSplit,
+	getPaymentPreset,
+	getPaymentSummaryLabel,
+	getTodayDateInputValue,
+	isCheckoutPaymentSplitValid,
+	isInstallmentPayment,
+} from "./schemas";
+export type { TCheckoutPaymentSplit, TPaymentEffectivenessTypeEnum, TPaymentInstallmentModelEnum } from "./schemas";

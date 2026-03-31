@@ -1,71 +1,39 @@
-import type { TDeliveryModeEnum, TPaymentMethodEnum } from "@/schemas/enums";
+import {
+	CheckoutPaymentSplitSchema,
+	type TCheckoutPaymentSplit,
+	getDefaultCheckoutPaymentSplit,
+	isCheckoutPaymentSplitValid,
+} from "@/lib/payments/schemas";
+import type { TDeliveryModeEnum } from "@/schemas/enums";
 import { useCallback, useMemo, useState } from "react";
 import z from "zod";
 
-// ============================================================================
-// Payment split schema
-// ============================================================================
-
-export const CheckoutPaymentSplitSchema = z.object({
-	id: z.string({
-		required_error: "ID do pagamento não informado.",
-		invalid_type_error: "Tipo não válido para ID do pagamento.",
-	}),
-	metodo: z.enum(["DINHEIRO", "PIX", "CARTAO_CREDITO", "CARTAO_DEBITO", "BOLETO", "TRANSFERENCIA", "CASHBACK", "VALE", "OUTRO"], {
-		required_error: "Método de pagamento não informado.",
-		invalid_type_error: "Tipo não válido para método de pagamento.",
-	}),
-	valor: z.number({
-		required_error: "Valor do pagamento não informado.",
-		invalid_type_error: "Tipo não válido para valor do pagamento.",
-	}),
-	parcela: z.number({ invalid_type_error: "Tipo não válido para parcela." }).optional().nullable(),
-	totalParcelas: z.number({ invalid_type_error: "Tipo não válido para total de parcelas." }).optional().nullable(),
-});
-
-// ============================================================================
-// Checkout state schema
-// ============================================================================
-
 export const CheckoutStateSchema = z.object({
 	step: z.number().min(1).max(4).default(1),
-
-	// Step 1: Review
 	vendedorId: z.string({ invalid_type_error: "Tipo não válido para ID do vendedor." }).optional().nullable(),
 	vendedorNome: z.string({ invalid_type_error: "Tipo não válido para nome do vendedor." }).optional().nullable(),
 	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }).default(0),
 	acrescimoGeral: z.number({ invalid_type_error: "Tipo não válido para acréscimo geral." }).default(0),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).default(""),
-
-	// Step 2: Delivery
-	entregaModalidade: z
-		.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], {
-			invalid_type_error: "Tipo não válido para modalidade de entrega.",
-		})
-		.default("PRESENCIAL"),
+	entregaModalidade: z.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], {
+		invalid_type_error: "Tipo não válido para modalidade de entrega.",
+	}).default("PRESENCIAL"),
 	entregaLocalizacaoId: z.string({ invalid_type_error: "Tipo não válido para ID da localização." }).optional().nullable(),
 	comandaNumero: z.string({ invalid_type_error: "Tipo não válido para número da comanda." }).optional().nullable(),
-
-	// Step 3: Payments
 	pagamentos: z.array(CheckoutPaymentSplitSchema).default([]),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
 });
 
-export type TCheckoutPaymentSplit = z.infer<typeof CheckoutPaymentSplitSchema>;
 export type TCheckoutState = z.infer<typeof CheckoutStateSchema>;
-
-// ============================================================================
-// Hook
-// ============================================================================
 
 type UseCheckoutStateProps = {
 	initialState?: Partial<TCheckoutState>;
-	/** Total value of the sale (from the draft), used for payment validation */
 	valorTotal: number;
+	clienteId?: string | null;
 };
 
-export const useCheckoutState = ({ initialState, valorTotal }: UseCheckoutStateProps) => {
+export const useCheckoutState = ({ initialState, valorTotal, clienteId }: UseCheckoutStateProps) => {
 	const [state, setState] = useState<TCheckoutState>({
 		step: initialState?.step ?? 1,
 		vendedorId: initialState?.vendedorId ?? null,
@@ -81,8 +49,6 @@ export const useCheckoutState = ({ initialState, valorTotal }: UseCheckoutStateP
 		cashbackProgramaId: initialState?.cashbackProgramaId ?? null,
 	});
 
-	// ===== STEP NAVIGATION =====
-
 	const goToStep = useCallback((step: number) => {
 		setState((prev) => ({ ...prev, step: Math.max(1, Math.min(4, step)) }));
 	}, []);
@@ -94,8 +60,6 @@ export const useCheckoutState = ({ initialState, valorTotal }: UseCheckoutStateP
 	const prevStep = useCallback(() => {
 		setState((prev) => ({ ...prev, step: Math.max(1, prev.step - 1) }));
 	}, []);
-
-	// ===== STEP 1: REVIEW =====
 
 	const setVendedor = useCallback((vendedorId: string | null, vendedorNome: string | null) => {
 		setState((prev) => ({ ...prev, vendedorId, vendedorNome }));
@@ -113,15 +77,11 @@ export const useCheckoutState = ({ initialState, valorTotal }: UseCheckoutStateP
 		setState((prev) => ({ ...prev, observacoes }));
 	}, []);
 
-	// ===== STEP 2: DELIVERY =====
-
 	const setEntregaModalidade = useCallback((entregaModalidade: TDeliveryModeEnum) => {
 		setState((prev) => ({
 			...prev,
 			entregaModalidade,
-			// Clear location when switching away from ENTREGA
 			entregaLocalizacaoId: entregaModalidade === "ENTREGA" ? prev.entregaLocalizacaoId : null,
-			// Clear comanda when switching away from COMANDA
 			comandaNumero: entregaModalidade === "COMANDA" ? prev.comandaNumero : null,
 		}));
 	}, []);
@@ -134,12 +94,10 @@ export const useCheckoutState = ({ initialState, valorTotal }: UseCheckoutStateP
 		setState((prev) => ({ ...prev, comandaNumero }));
 	}, []);
 
-	// ===== STEP 3: PAYMENTS =====
-
-	const addPagamento = useCallback((pagamento: Omit<TCheckoutPaymentSplit, "id">) => {
+	const addPagamento = useCallback((pagamento: Partial<Omit<TCheckoutPaymentSplit, "id">>) => {
 		setState((prev) => ({
 			...prev,
-			pagamentos: [...prev.pagamentos, { ...pagamento, id: crypto.randomUUID() }],
+			pagamentos: [...prev.pagamentos, getDefaultCheckoutPaymentSplit(pagamento)],
 		}));
 	}, []);
 
@@ -165,14 +123,12 @@ export const useCheckoutState = ({ initialState, valorTotal }: UseCheckoutStateP
 		setState((prev) => ({ ...prev, cashbackProgramaId }));
 	}, []);
 
-	// ===== COMPUTED VALUES =====
-
 	const computedValues = useMemo(() => {
 		const totalPagamentos = state.pagamentos.reduce((sum, p) => sum + p.valor, 0) + state.cashbackResgate;
 		const valorFinal = valorTotal - state.descontoGeral + state.acrescimoGeral;
 		const valorRestante = valorFinal - totalPagamentos;
 		const troco = totalPagamentos > valorFinal ? totalPagamentos - valorFinal : 0;
-		const pagamentoCompleto = valorRestante <= 0.01; // float tolerance
+		const pagamentoCompleto = valorRestante <= 0.01;
 
 		return {
 			valorFinal,
@@ -183,27 +139,30 @@ export const useCheckoutState = ({ initialState, valorTotal }: UseCheckoutStateP
 		};
 	}, [valorTotal, state.descontoGeral, state.acrescimoGeral, state.pagamentos, state.cashbackResgate]);
 
-	// ===== VALIDATION =====
-
 	const canProceedFromStep = useCallback(
 		(step: number): boolean => {
 			switch (step) {
-				case 1: // Review — always can proceed
+				case 1:
 					return true;
-				case 2: // Delivery
+				case 2:
 					if (state.entregaModalidade === "ENTREGA" && !state.entregaLocalizacaoId) return false;
 					if (state.entregaModalidade === "COMANDA" && !state.comandaNumero) return false;
 					return true;
-				case 3: // Payment — must cover the full amount
-					return computedValues.pagamentoCompleto;
+				case 3:
+					if (!computedValues.pagamentoCompleto) return false;
+					if (state.pagamentos.length === 0 && state.cashbackResgate <= 0) return false;
+					return state.pagamentos.every((payment) =>
+						isCheckoutPaymentSplitValid(payment, {
+							hasLinkedClient: !!clienteId,
+							entregaModalidade: state.entregaModalidade,
+						}),
+					);
 				default:
 					return true;
 			}
 		},
-		[state.entregaModalidade, state.entregaLocalizacaoId, state.comandaNumero, computedValues.pagamentoCompleto],
+		[clienteId, computedValues.pagamentoCompleto, state.entregaModalidade, state.entregaLocalizacaoId, state.comandaNumero, state.pagamentos, state.cashbackResgate],
 	);
-
-	// ===== RESET =====
 
 	const resetState = useCallback((newState: TCheckoutState) => {
 		setState(newState);
@@ -211,30 +170,23 @@ export const useCheckoutState = ({ initialState, valorTotal }: UseCheckoutStateP
 
 	return {
 		state,
-		// Step navigation
 		goToStep,
 		nextStep,
 		prevStep,
-		// Step 1
 		setVendedor,
 		setDescontoGeral,
 		setAcrescimoGeral,
 		setObservacoes,
-		// Step 2
 		setEntregaModalidade,
 		setEntregaLocalizacaoId,
 		setComandaNumero,
-		// Step 3
 		addPagamento,
 		removePagamento,
 		updatePagamento,
 		setCashbackResgate,
 		setCashbackProgramaId,
-		// Computed
 		...computedValues,
-		// Validation
 		canProceedFromStep,
-		// Utilities
 		resetState,
 	};
 };

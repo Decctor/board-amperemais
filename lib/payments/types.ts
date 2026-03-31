@@ -9,6 +9,10 @@ export type TPaymentSplit = {
 	valor: number;
 	parcela?: number;
 	totalParcelas?: number;
+	efetivacaoTipo: "IMEDIATA" | "PENDENTE";
+	dataPrevisao?: string | Date | null;
+	primeiraDataPrevisaoParcela?: string | Date | null;
+	observacoes?: string | null;
 };
 
 // ============================================================================

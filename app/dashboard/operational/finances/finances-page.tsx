@@ -2,6 +2,7 @@
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { parseAsStringEnum, useQueryState } from "nuqs";
+import { effectFinancialTransaction } from "@/lib/mutations/finances";
 import {
 	BadgeDollarSign,
 	Banknote,
@@ -46,9 +47,12 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { getErrorMessage } from "@/lib/errors";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
+import DateInput from "@/components/Inputs/DateInput";
 import { InteractiveFilter } from "@/components/ui/interactive-filter";
 import { AccountingEntryOriginTypeOptions, FinancialTransactionTypeOptions, SalePaymentMethodsOptions } from "@/utils/select-options";
 import { BsCalendar, BsCalendarCheck } from "react-icons/bs";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 type FinancesPageProps = {
 	user: TAuthUserSession["user"];
@@ -551,14 +555,14 @@ const TRANSACTION_STATUS_OPTIONS = [
 	{ id: "em-atraso", value: "em-atraso", label: "EM ATRASO", icon: <AlertCircle className="w-4 h-4 text-red-600" /> },
 ];
 
-const PAYMENT_METHOD_LABELS = Object.fromEntries(SalePaymentMethodsOptions.map((option) => [option.value, option.label])) as Record<string, string>;
-
 function FinancesTransactionsView() {
 	const { data, isLoading, isError, isSuccess, error, filters, updateFilters } = useFinancesTransactions({
 		initialFilters: { page: 1, search: "" },
 	});
+	const { data: financialAccountsData } = useFinancesAccounts({ initialFilters: { activeOnly: true } });
 
 	const transactions = data?.transactions ?? [];
+	const financialAccounts = financialAccountsData?.accounts ?? [];
 	const transactionsMatched = data?.transactionsMatched ?? 0;
 	const totalPages = data?.totalPages ?? 0;
 	const selectedTypesLabel = useMemo(
@@ -707,7 +711,7 @@ function FinancesTransactionsView() {
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && transactions ? (
 				transactions.length > 0 ? (
-					transactions.map((tx) => <TransactionCard key={tx.id} transaction={tx} />)
+					transactions.map((tx) => <TransactionCard key={tx.id} transaction={tx} financialAccounts={financialAccounts} />)
 				) : (
 					<Empty>
 						<EmptyHeader>
@@ -727,9 +731,15 @@ function FinancesTransactionsView() {
 
 type TransactionCardProps = {
 	transaction: TGetFinancialTransactionsOutputDefault["transactions"][number];
+	financialAccounts: TGetFinancialAccountsOutputDefault["accounts"];
 };
-function TransactionCard({ transaction }: TransactionCardProps) {
+function TransactionCard({ transaction, financialAccounts }: TransactionCardProps) {
 	const typeConfig = useMemo(() => FinancialTransactionTypeOptions.find((o) => o.value === transaction.tipo) ?? null, [transaction.tipo]);
+	const queryClient = useQueryClient();
+	const [isEffectFormOpen, setIsEffectFormOpen] = useState(false);
+	const [effectDate, setEffectDate] = useState<string | undefined>(transaction.dataPrevisao ? new Date(transaction.dataPrevisao).toISOString().slice(0, 10) : undefined);
+	const [selectedAccountId, setSelectedAccountId] = useState<string | null>(transaction.contaFinanceira?.id ?? null);
+	const [selectedMethod, setSelectedMethod] = useState(transaction.metodo === "A_DEFINIR" ? "DINHEIRO" : transaction.metodo);
 
 	const now = new Date();
 	const isEffective = !!transaction.dataEfetivacao;
@@ -745,6 +755,19 @@ function TransactionCard({ transaction }: TransactionCardProps) {
 	const paymentMethodConfig = useMemo(() => {
 		return SalePaymentMethodsOptions.find((o) => o.value === transaction.metodo) ?? null;
 	}, [transaction.metodo]);
+	const canChangeMethod = transaction.metodo === "A_DEFINIR";
+
+	const { mutate: mutateEffectTransaction, isPending: isEffecting } = useMutation({
+		mutationFn: effectFinancialTransaction,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			setIsEffectFormOpen(false);
+			void queryClient.invalidateQueries({ queryKey: ["finances-financial-transactions"] });
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
 
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
@@ -808,7 +831,64 @@ function TransactionCard({ transaction }: TransactionCardProps) {
 						</div>
 					) : null}
 				</div>
+				{!isEffective ? (
+					<Button type="button" size="sm" variant={isEffectFormOpen ? "default" : "outline"} onClick={() => setIsEffectFormOpen((prev) => !prev)}>
+						Efetivar
+					</Button>
+				) : null}
 			</div>
+
+			{!isEffective && isEffectFormOpen ? (
+				<div className="mt-2 grid gap-3 rounded-xl border border-primary/10 bg-background/70 p-3 md:grid-cols-3">
+					<DateInput label="Data de efetivação" value={effectDate} handleChange={setEffectDate} />
+					<div className="flex flex-col gap-1">
+						<span className="text-[0.7rem] font-medium uppercase text-muted-foreground">Conta financeira</span>
+						<select
+							className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+							value={selectedAccountId ?? ""}
+							onChange={(event) => setSelectedAccountId(event.target.value || null)}
+						>
+							<option value="">Sem conta</option>
+							{financialAccounts.map((account) => (
+								<option key={account.id} value={account.id}>
+									{account.nome}
+								</option>
+							))}
+						</select>
+					</div>
+					<div className="flex flex-col gap-1">
+						<span className="text-[0.7rem] font-medium uppercase text-muted-foreground">Método final</span>
+						<select
+							className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+							value={selectedMethod}
+							onChange={(event) => setSelectedMethod(event.target.value as typeof selectedMethod)}
+							disabled={!canChangeMethod}
+						>
+							{SalePaymentMethodsOptions.filter((option) => option.value !== "A_DEFINIR").map((option) => (
+								<option key={option.value} value={option.value}>
+									{option.label}
+								</option>
+							))}
+						</select>
+					</div>
+					<div className="md:col-span-3 flex justify-end">
+						<Button
+							type="button"
+							onClick={() =>
+								mutateEffectTransaction({
+									transactionId: transaction.id,
+									dataEfetivacao: effectDate ?? null,
+									contaFinanceiraId: selectedAccountId,
+									metodo: canChangeMethod ? selectedMethod : null,
+								})
+							}
+							disabled={isEffecting}
+						>
+							{isEffecting ? "Efetivando..." : "Confirmar efetivação"}
+						</Button>
+					</div>
+				</div>
+			) : null}
 		</div>
 	);
 }

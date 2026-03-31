@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { CheckoutPaymentSplitSchema } from "@/lib/payments";
 import { processSaleConfirmation } from "@/lib/sale-processing";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -43,18 +44,7 @@ const CreateAndConfirmSaleInputSchema = z.object({
 	descontosTotal: z.number({ invalid_type_error: "Tipo não válido para desconto." }).optional().nullable(),
 	acrescimosTotal: z.number({ invalid_type_error: "Tipo não válido para acréscimo." }).optional().nullable(),
 	rascunhoMetadados: z.unknown().optional().nullable(),
-	pagamentos: z
-		.array(
-			z.object({
-				metodo: z.enum(["DINHEIRO", "PIX", "CARTAO_CREDITO", "CARTAO_DEBITO", "BOLETO", "TRANSFERENCIA", "CASHBACK", "VALE", "OUTRO"], {
-					required_error: "Método de pagamento não informado.",
-				}),
-				valor: z.number({ required_error: "Valor do pagamento não informado." }),
-				parcela: z.number().optional().nullable(),
-				totalParcelas: z.number().optional().nullable(),
-			}),
-		)
-		.min(1, { message: "Pelo menos um pagamento é obrigatório." }),
+	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })).min(1, { message: "Pelo menos um pagamento é obrigatório." }),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
 	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
@@ -205,21 +195,22 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	});
 
 	const confirmation = await processSaleConfirmation({
-		organization: organization,
-
-		saleId: saleId,
+		organization,
+		saleId,
 		salePayments: input.pagamentos.map((payment) => ({
 			metodo: payment.metodo,
 			valor: payment.valor,
 			parcela: payment.parcela ?? undefined,
 			totalParcelas: payment.totalParcelas ?? undefined,
+			efetivacaoTipo: payment.efetivacaoTipo,
+			dataPrevisao: payment.dataPrevisao ?? undefined,
+			primeiraDataPrevisaoParcela: payment.primeiraDataPrevisaoParcela ?? undefined,
+			observacoes: payment.observacoes ?? undefined,
 		})),
 		saleAuthorId: session.user.id,
 		saleClientId: input.clienteId ?? null,
-
 		saleCashbackProgramId: input.cashbackProgramaId,
 		saleCashbackRedemptionValue: input.cashbackResgate,
-
 		accountingEntryDebitAccountId: organizationSaleDefaults.debitoContaId,
 		accountingEntryCreditAccountId: organizationSaleDefaults.creditoContaId,
 	});

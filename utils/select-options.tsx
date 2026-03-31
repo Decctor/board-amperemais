@@ -23,6 +23,7 @@ import {
 	ArrowDown,
 	ArrowUp,
 	Banknote,
+	BookOpen,
 	Check,
 	CheckCheck,
 	ClipboardIcon,
@@ -280,16 +281,78 @@ export const SaleFullfilmentModesOptions: { id: number; label: string; value: TD
 	{ id: 4, label: "COMANDA", value: "COMANDA", icon: <ClipboardIcon className="w-4 h-4" /> },
 ];
 
-export const SalePaymentMethodsOptions: { id: number; label: string; value: TPaymentMethodEnum; icon: React.ReactNode }[] = [
-	{ id: 1, label: "DINHEIRO", value: "DINHEIRO", icon: <Banknote className="w-4 h-4" /> },
-	{ id: 2, label: "PIX", value: "PIX", icon: <QrCode className="w-4 h-4" /> },
-	{ id: 3, label: "CARTÃO DE CRÉDITO", value: "CARTAO_CREDITO", icon: <CreditCard className="w-4 h-4" /> },
-	{ id: 4, label: "CARTÃO DE DÉBITO", value: "CARTAO_DEBITO", icon: <CreditCard className="w-4 h-4" /> },
-	{ id: 5, label: "BOLETO", value: "BOLETO", icon: <FileText className="w-4 h-4" /> },
-	{ id: 6, label: "TRANSFERÊNCIA", value: "TRANSFERENCIA", icon: <Wallet className="w-4 h-4" /> },
-	{ id: 7, label: "CASHBACK", value: "CASHBACK", icon: <Stars className="w-4 h-4" /> },
-	{ id: 8, label: "VALE", value: "VALE", icon: <Wallet className="w-4 h-4" /> },
-	{ id: 9, label: "OUTRO", value: "OUTRO", icon: <Wallet className="w-4 h-4" /> },
+export const SalePaymentMethodsOptions: {
+	id: number;
+	label: string;
+	value: TPaymentMethodEnum;
+	icon: React.ReactNode;
+	renderIcon: (className: string) => React.ReactNode;
+}[] = [
+	{
+		id: 1,
+		label: "DINHEIRO",
+		value: "DINHEIRO",
+		icon: <Banknote className="w-4 h-4" />,
+		renderIcon: (className: string) => <Banknote className={className} />,
+	},
+	{ id: 2, label: "PIX", value: "PIX", icon: <QrCode className="w-4 h-4" />, renderIcon: (className: string) => <QrCode className={className} /> },
+	{
+		id: 3,
+		label: "CARTÃO DE CRÉDITO",
+		value: "CARTAO_CREDITO",
+		icon: <CreditCard className="w-4 h-4" />,
+		renderIcon: (className: string) => <CreditCard className={className} />,
+	},
+	{
+		id: 4,
+		label: "CARTÃO DE DÉBITO",
+		value: "CARTAO_DEBITO",
+		icon: <CreditCard className="w-4 h-4" />,
+		renderIcon: (className: string) => <CreditCard className={className} />,
+	},
+	{
+		id: 5,
+		label: "BOLETO",
+		value: "BOLETO",
+		icon: <FileText className="w-4 h-4" />,
+		renderIcon: (className: string) => <FileText className={className} />,
+	},
+	{
+		id: 6,
+		label: "TRANSFERÊNCIA",
+		value: "TRANSFERENCIA",
+		icon: <Wallet className="w-4 h-4" />,
+		renderIcon: (className: string) => <Wallet className={className} />,
+	},
+	// {
+	// 	id: 7,
+	// 	label: "CASHBACK",
+	// 	value: "CASHBACK",
+	// 	icon: <Stars className="w-4 h-4" />,
+	// 	renderIcon: (className: string) => <Stars className={className} />,
+	// },
+	{ id: 8, label: "VALE", value: "VALE", icon: <Wallet className="w-4 h-4" />, renderIcon: (className: string) => <Wallet className={className} /> },
+	{
+		id: 9,
+		label: "A DEFINIR",
+		value: "A_DEFINIR",
+		icon: <Clock className="w-4 h-4" />,
+		renderIcon: (className: string) => <Clock className={className} />,
+	},
+	{
+		id: 10,
+		label: "FIADO / NOTA",
+		value: "FIADO_NOTA",
+		icon: <BookOpen className="w-4 h-4" />,
+		renderIcon: (className: string) => <BookOpen className={className} />,
+	},
+	{
+		id: 11,
+		label: "OUTRO",
+		value: "OUTRO",
+		icon: <Wallet className="w-4 h-4" />,
+		renderIcon: (className: string) => <Wallet className={className} />,
+	},
 ];
 
 export const UnitsOfMeasurementOptions: { id: number; label: string; value: string }[] = [
