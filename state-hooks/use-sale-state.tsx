@@ -1,3 +1,9 @@
+import {
+	CheckoutPaymentSplitSchema,
+	type TCheckoutPaymentSplit,
+	getDefaultCheckoutPaymentSplit,
+	isCheckoutPaymentSplitValid,
+} from "@/lib/payments/schemas";
 import type { TDeliveryModeEnum } from "@/schemas/enums";
 import { useCallback, useMemo, useState } from "react";
 import z from "zod";
@@ -50,17 +56,6 @@ export const CartItemSchema = z.object({
 	modificadores: z.array(CartItemModifierSchema),
 });
 
-export const CheckoutPaymentSplitSchema = z.object({
-	id: z.string({ required_error: "ID do pagamento não informado.", invalid_type_error: "Tipo não válido para ID do pagamento." }),
-	metodo: z.enum(["DINHEIRO", "PIX", "CARTAO_CREDITO", "CARTAO_DEBITO", "BOLETO", "TRANSFERENCIA", "CASHBACK", "VALE", "OUTRO"], {
-		required_error: "Método de pagamento não informado.",
-		invalid_type_error: "Tipo não válido para método de pagamento.",
-	}),
-	valor: z.number({ required_error: "Valor do pagamento não informado.", invalid_type_error: "Tipo não válido para valor do pagamento." }),
-	parcela: z.number({ invalid_type_error: "Tipo não válido para parcela." }).optional().nullable(),
-	totalParcelas: z.number({ invalid_type_error: "Tipo não válido para total de parcelas." }).optional().nullable(),
-});
-
 export const SaleDraftMetadataSchema = z.object({
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }),
@@ -98,9 +93,9 @@ export const SaleStateSchema = z.object({
 	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }).default(0),
 	acrescimoGeral: z.number({ invalid_type_error: "Tipo não válido para acréscimo geral." }).default(0),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).default(""),
-	entregaModalidade: z
-		.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], { invalid_type_error: "Tipo não válido para modalidade de entrega." })
-		.default("PRESENCIAL"),
+	entregaModalidade: z.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], {
+		invalid_type_error: "Tipo não válido para modalidade de entrega.",
+	}).default("PRESENCIAL"),
 	entregaLocalizacaoId: z.string({ invalid_type_error: "Tipo não válido para ID da localização." }).optional().nullable(),
 	comandaNumero: z.string({ invalid_type_error: "Tipo não válido para número da comanda." }).optional().nullable(),
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
@@ -110,7 +105,6 @@ export const SaleStateSchema = z.object({
 
 export type TCartItemModifier = z.infer<typeof CartItemModifierSchema>;
 export type TCartItem = z.infer<typeof CartItemSchema>;
-export type TCheckoutPaymentSplit = z.infer<typeof CheckoutPaymentSplitSchema>;
 export type TSaleDraftMetadata = z.infer<typeof SaleDraftMetadataSchema>;
 export type TSaleState = z.infer<typeof SaleStateSchema>;
 
@@ -186,7 +180,7 @@ export const useSaleState = ({ initialState }: UseSaleStateProps = {}) => {
 	}, []);
 
 	const clearCart = useCallback(() => {
-		setState((prev) => ({ ...prev, itens: [], pagamentos: [], cashbackResgate: 0, cashbackProgramaId: null }));
+		setState((prev) => ({ ...prev, itens: [], pagamentos: [], cashbackResgate: 0 }));
 	}, []);
 
 	const setDescontoGeral = useCallback((descontoGeral: number) => {
@@ -224,16 +218,7 @@ export const useSaleState = ({ initialState }: UseSaleStateProps = {}) => {
 	const addPagamento = useCallback((pagamento?: Partial<Omit<TCheckoutPaymentSplit, "id">>) => {
 		setState((prev) => ({
 			...prev,
-			pagamentos: [
-				...prev.pagamentos,
-				{
-					id: crypto.randomUUID(),
-					metodo: pagamento?.metodo ?? "DINHEIRO",
-					valor: pagamento?.valor ?? 0,
-					parcela: pagamento?.parcela ?? null,
-					totalParcelas: pagamento?.totalParcelas ?? null,
-				},
-			],
+			pagamentos: [...prev.pagamentos, getDefaultCheckoutPaymentSplit(pagamento)],
 		}));
 	}, []);
 
@@ -287,14 +272,8 @@ export const useSaleState = ({ initialState }: UseSaleStateProps = {}) => {
 	const totalDescontoItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorDesconto, 0), [state.itens]);
 	const totalItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0), [state.itens]);
 	const itemCount = useMemo(() => state.itens.reduce((sum, item) => sum + item.quantidade, 0), [state.itens]);
-	const valorFinal = useMemo(
-		() => Math.max(0, totalItens - state.descontoGeral + state.acrescimoGeral),
-		[totalItens, state.descontoGeral, state.acrescimoGeral],
-	);
-	const totalPagamentos = useMemo(
-		() => state.pagamentos.reduce((sum, p) => sum + p.valor, 0) + state.cashbackResgate,
-		[state.pagamentos, state.cashbackResgate],
-	);
+	const valorFinal = useMemo(() => Math.max(0, totalItens - state.descontoGeral + state.acrescimoGeral), [totalItens, state.descontoGeral, state.acrescimoGeral]);
+	const totalPagamentos = useMemo(() => state.pagamentos.reduce((sum, p) => sum + p.valor, 0) + state.cashbackResgate, [state.pagamentos, state.cashbackResgate]);
 	const valorRestante = useMemo(() => Math.max(0, valorFinal - totalPagamentos), [valorFinal, totalPagamentos]);
 	const troco = useMemo(() => (totalPagamentos > valorFinal ? totalPagamentos - valorFinal : 0), [totalPagamentos, valorFinal]);
 	const pagamentoCompleto = useMemo(() => valorRestante <= 0.01, [valorRestante]);
@@ -310,8 +289,19 @@ export const useSaleState = ({ initialState }: UseSaleStateProps = {}) => {
 		if (state.entregaModalidade === "ENTREGA" && !state.entregaLocalizacaoId) return false;
 		if (state.entregaModalidade === "COMANDA" && !state.comandaNumero?.trim()) return false;
 		if (!pagamentoCompleto) return false;
+		if (state.pagamentos.length === 0 && state.cashbackResgate <= 0) return false;
+		if (
+			state.pagamentos.some((payment) =>
+				!isCheckoutPaymentSplitValid(payment, {
+					hasLinkedClient: !!state.cliente,
+					entregaModalidade: state.entregaModalidade,
+				}),
+			)
+		) {
+			return false;
+		}
 		return true;
-	}, [isReadyForDraft, state.entregaModalidade, state.entregaLocalizacaoId, state.comandaNumero, pagamentoCompleto]);
+	}, [isReadyForDraft, state.entregaModalidade, state.entregaLocalizacaoId, state.comandaNumero, state.pagamentos, state.cashbackResgate, state.cliente, pagamentoCompleto]);
 
 	const getDraftMetadata = useCallback((): TSaleDraftMetadata => {
 		return {

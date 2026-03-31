@@ -154,6 +154,8 @@ export const PaymentMethodEnum = z.enum([
 	"TRANSFERENCIA",
 	"CASHBACK",
 	"VALE",
+	"A_DEFINIR",
+	"FIADO_NOTA",
 	"OUTRO",
 ]);
 export type TPaymentMethodEnum = z.infer<typeof PaymentMethodEnum>;

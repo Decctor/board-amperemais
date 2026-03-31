@@ -168,6 +168,8 @@ export const paymentMethodEnum = pgEnum("payment_method", [
 	"TRANSFERENCIA",
 	"CASHBACK",
 	"VALE",
+	"A_DEFINIR",
+	"FIADO_NOTA",
 	"OUTRO",
 ]);
 
@@ -183,11 +185,4 @@ export const poiTransactionRequestStatusEnum = pgEnum("poi_transaction_request_s
 
 export const poiTransactionRequestTypeEnum = pgEnum("poi_transaction_request_type", ["NOVA_TRANSACAO"]);
 
-export const accountChartNatureEnum = pgEnum("account_chart_nature", [
-	"ATIVO",
-	"PASSIVO",
-	"PATRIMONIO_LIQUIDO",
-	"RECEITA",
-	"CUSTO",
-	"DESPESA",
-]);
+export const accountChartNatureEnum = pgEnum("account_chart_nature", ["ATIVO", "PASSIVO", "PATRIMONIO_LIQUIDO", "RECEITA", "CUSTO", "DESPESA"]);

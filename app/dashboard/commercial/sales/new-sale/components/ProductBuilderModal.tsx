@@ -181,7 +181,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 	return (
 		<ResponsiveMenu
 			menuTitle={product.descricao}
-			menuDescription="Configure seu produto"
+			menuDescription="Configure os detalhes do produto para adicionar ao carrinho..."
 			menuActionButtonText="ADICIONAR AO CARRINHO"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={handleAddToCart}
@@ -189,7 +189,6 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 			actionIsLoading={false}
 			stateIsLoading={false}
 			stateError={null}
-			dialogVariant="md"
 			menuActionButtonClassName={cn(!canAddToCart() && "opacity-50 cursor-not-allowed")}
 		>
 			<div className="flex flex-col gap-6">
@@ -214,7 +213,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 				{/* Section A: Variant Selector */}
 				{hasVariants && (
 					<div className="flex flex-col gap-3">
-						<h3 className="font-black text-sm uppercase tracking-wide">Escolha o Tamanho/Variante</h3>
+						<h3 className="font-black text-sm uppercase tracking-wide">ESCOLHA A VARIANTE</h3>
 						<ScrollArea className="w-full">
 							<div className="flex gap-2 pb-2">
 								{product.variantes.map((variant) => (
@@ -224,7 +223,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 										onClick={() => setSelectedVariantId(variant.id)}
 										className={cn(
 											"flex-shrink-0 h-auto py-4 px-6 rounded-xl flex flex-col items-center gap-2 min-w-[120px]",
-											selectedVariantId === variant.id && "ring-2 ring-primary ring-offset-2",
+											selectedVariantId === variant.id && "ring-2 ring-primary",
 										)}
 									>
 										<span className="font-bold">{variant.nome}</span>
@@ -342,13 +341,13 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 				<div className="flex flex-col gap-4 border-t pt-4">
 					{/* Quantity Stepper */}
 					<div className="flex items-center justify-between">
-						<span className="font-bold text-sm">Quantidade</span>
+						<span className="font-bold text-sm">QUANTIDADE</span>
 						<div className="flex items-center gap-3">
-							<Button size="icon" variant="outline" className="h-10 w-10 rounded-lg" onClick={() => setQuantity((q) => Math.max(1, q - 1))}>
+							<Button size="icon" variant="ghost-brand" className="h-10 w-10 rounded-lg" onClick={() => setQuantity((q) => Math.max(1, q - 1))}>
 								<Minus className="w-4 h-4" />
 							</Button>
 							<span className="w-12 text-center font-black text-lg">{quantity}</span>
-							<Button size="icon" variant="outline" className="h-10 w-10 rounded-lg" onClick={() => setQuantity((q) => q + 1)}>
+							<Button size="icon" variant="ghost-brand" className="h-10 w-10 rounded-lg" onClick={() => setQuantity((q) => q + 1)}>
 								<Plus className="w-4 h-4" />
 							</Button>
 						</div>

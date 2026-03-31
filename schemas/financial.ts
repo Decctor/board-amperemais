@@ -7,6 +7,7 @@ import {
 	FinancialTransactionTypeEnum,
 	FiscalDocumentStatusEnum,
 	FiscalDocumentTypeEnum,
+	PaymentMethodEnum,
 	StockMovementTypeEnum,
 } from "./enums";
 
@@ -147,10 +148,7 @@ export const FinancialTransactionSchema = z.object({
 		required_error: "Valor da transacao financeira nao informado.",
 		invalid_type_error: "Tipo nao valido para o valor da transacao financeira.",
 	}),
-	metodo: z.string({
-		required_error: "Metodo de pagamento nao informado.",
-		invalid_type_error: "Tipo nao valido para o metodo de pagamento.",
-	}),
+	metodo: PaymentMethodEnum,
 	dataPrevisao: z
 		.string({
 			required_error: "Data de previsao nao informada.",
