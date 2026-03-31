@@ -186,11 +186,9 @@ export default function NewSalePage({ organizationCashbackProgram }: NewSalePage
 			pagamentos: saleState.state.pagamentos.map((payment) => ({
 				metodo: payment.metodo,
 				valor: payment.valor,
-				parcela: payment.parcela,
 				totalParcelas: payment.totalParcelas,
 				efetivacaoTipo: payment.efetivacaoTipo,
 				dataPrevisao: payment.dataPrevisao,
-				primeiraDataPrevisaoParcela: payment.primeiraDataPrevisaoParcela,
 				observacoes: payment.observacoes,
 			})),
 			cashbackResgate: saleState.state.cashbackResgate,

@@ -24,7 +24,7 @@ export class LocalPaymentProvider implements IPaymentProvider {
 
 			if (isInstallmentPayment) {
 				const totalParcelas = pagamento.totalParcelas ?? 1;
-				const primeiraData = resolveDate(pagamento.primeiraDataPrevisaoParcela ?? pagamento.dataPrevisao, now);
+				const primeiraData = resolveDate(pagamento.dataPrevisao, now);
 				const valorParcelaBase = Number((pagamento.valor / totalParcelas).toFixed(2));
 				let valorAcumulado = 0;
 
@@ -79,7 +79,7 @@ export class LocalPaymentProvider implements IPaymentProvider {
 					metodo: pagamento.metodo,
 					dataPrevisao,
 					dataEfetivacao,
-					parcela: pagamento.parcela ?? null,
+					parcela: null,
 					totalParcelas: pagamento.totalParcelas ?? null,
 					provedorReferencia: null,
 					provedorStatus,

@@ -200,11 +200,9 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 		salePayments: input.pagamentos.map((payment) => ({
 			metodo: payment.metodo,
 			valor: payment.valor,
-			parcela: payment.parcela ?? undefined,
 			totalParcelas: payment.totalParcelas ?? undefined,
 			efetivacaoTipo: payment.efetivacaoTipo,
 			dataPrevisao: payment.dataPrevisao ?? undefined,
-			primeiraDataPrevisaoParcela: payment.primeiraDataPrevisaoParcela ?? undefined,
 			observacoes: payment.observacoes ?? undefined,
 		})),
 		saleAuthorId: session.user.id,

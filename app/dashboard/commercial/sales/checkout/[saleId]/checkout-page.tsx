@@ -126,11 +126,9 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 			pagamentos: checkoutState.state.pagamentos.map((p) => ({
 				metodo: p.metodo,
 				valor: p.valor,
-				parcela: p.parcela,
 				totalParcelas: p.totalParcelas,
 				efetivacaoTipo: p.efetivacaoTipo,
 				dataPrevisao: p.dataPrevisao,
-				primeiraDataPrevisaoParcela: p.primeiraDataPrevisaoParcela,
 				observacoes: p.observacoes,
 			})),
 			cashbackResgate: checkoutState.state.cashbackResgate,

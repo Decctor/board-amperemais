@@ -54,7 +54,6 @@ export default function PaymentStep({ sale, checkoutState }: PaymentStepProps) {
 				efetivacaoTipo: "PENDENTE",
 				totalParcelas: 2,
 				dataPrevisao: getTodayDateInputValue(),
-				primeiraDataPrevisaoParcela: getTodayDateInputValue(),
 			});
 		}
 		if (preset === "FIADO") {
@@ -212,14 +211,9 @@ export default function PaymentStep({ sale, checkoutState }: PaymentStepProps) {
 											onChange={(event) => checkoutState.updatePagamento(pagamento.id, { totalParcelas: Math.max(2, Number(event.target.value) || 2) })}
 										/>
 										<DateInput
-											label="Primeira previsão"
-											value={pagamento.primeiraDataPrevisaoParcela ?? undefined}
-											handleChange={(value) =>
-												checkoutState.updatePagamento(pagamento.id, {
-													primeiraDataPrevisaoParcela: value ?? null,
-													dataPrevisao: value ?? null,
-												})
-											}
+											label="Data da 1a parcela"
+											value={pagamento.dataPrevisao ?? undefined}
+											handleChange={(value) => checkoutState.updatePagamento(pagamento.id, { dataPrevisao: value ?? null })}
 										/>
 									</div>
 								) : null}

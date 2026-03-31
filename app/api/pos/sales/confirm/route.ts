@@ -34,11 +34,9 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		salePayments: input.pagamentos.map((pagamento) => ({
 			metodo: pagamento.metodo,
 			valor: pagamento.valor,
-			parcela: pagamento.parcela ?? undefined,
 			totalParcelas: pagamento.totalParcelas ?? undefined,
 			efetivacaoTipo: pagamento.efetivacaoTipo,
 			dataPrevisao: pagamento.dataPrevisao ?? undefined,
-			primeiraDataPrevisaoParcela: pagamento.primeiraDataPrevisaoParcela ?? undefined,
 			observacoes: pagamento.observacoes ?? undefined,
 		})),
 		saleAuthorId: session.user.id,

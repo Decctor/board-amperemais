@@ -15,11 +15,9 @@ export const CheckoutPaymentSplitSchema = z.object({
 		required_error: "Valor do pagamento não informado.",
 		invalid_type_error: "Tipo não válido para valor do pagamento.",
 	}),
-	parcela: z.number({ invalid_type_error: "Tipo não válido para parcela." }).optional().nullable(),
 	totalParcelas: z.number({ invalid_type_error: "Tipo não válido para total de parcelas." }).optional().nullable(),
 	efetivacaoTipo: PaymentEffectivenessTypeEnum.default("IMEDIATA"),
 	dataPrevisao: z.string({ invalid_type_error: "Tipo não válido para data de previsão." }).optional().nullable(),
-	primeiraDataPrevisaoParcela: z.string({ invalid_type_error: "Tipo não válido para a primeira data de previsão." }).optional().nullable(),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).optional().nullable(),
 });
 
@@ -34,11 +32,9 @@ export function getDefaultCheckoutPaymentSplit(overrides?: Partial<Omit<TCheckou
 		id: crypto.randomUUID(),
 		metodo: overrides?.metodo ?? "DINHEIRO",
 		valor: overrides?.valor ?? 0,
-		parcela: overrides?.parcela ?? null,
 		totalParcelas: overrides?.totalParcelas ?? null,
 		efetivacaoTipo: overrides?.efetivacaoTipo ?? "IMEDIATA",
 		dataPrevisao: overrides?.dataPrevisao ?? getTodayDateInputValue(),
-		primeiraDataPrevisaoParcela: overrides?.primeiraDataPrevisaoParcela ?? null,
 		observacoes: overrides?.observacoes ?? null,
 	};
 }
@@ -59,7 +55,7 @@ export function isCheckoutPaymentSplitValid(payment: TCheckoutPaymentSplit, cont
 	if ((payment.efetivacaoTipo === "PENDENTE" || payment.metodo === "FIADO_NOTA") && !payment.dataPrevisao) return false;
 	if (isInstallmentPayment(payment)) {
 		if ((payment.totalParcelas ?? 0) <= 1) return false;
-		if (!payment.primeiraDataPrevisaoParcela) return false;
+		if (!payment.dataPrevisao) return false;
 	}
 	if (context.entregaModalidade === "ENTREGA" && payment.metodo === "A_DEFINIR" && payment.efetivacaoTipo !== "PENDENTE") {
 		return false;
@@ -69,7 +65,7 @@ export function isCheckoutPaymentSplitValid(payment: TCheckoutPaymentSplit, cont
 
 export function getPaymentSummaryLabel(payment: TCheckoutPaymentSplit) {
 	if (isInstallmentPayment(payment)) {
-		return `${payment.totalParcelas} parcelas, primeira em ${payment.primeiraDataPrevisaoParcela ?? "N/A"}`;
+		return `${payment.totalParcelas} parcelas, primeira em ${payment.dataPrevisao ?? "N/A"}`;
 	}
 	if (payment.efetivacaoTipo === "IMEDIATA") return "Efetivado agora";
 	return `Previsto para ${payment.dataPrevisao ?? "N/A"}`;

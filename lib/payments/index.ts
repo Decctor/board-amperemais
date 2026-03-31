@@ -34,7 +34,6 @@ export type { IPaymentProvider, TPaymentIntentResult, TPaymentSplit, TProcessPay
 export {
 	CheckoutPaymentSplitSchema,
 	PaymentEffectivenessTypeEnum,
-	PaymentInstallmentModelEnum,
 	getDefaultCheckoutPaymentSplit,
 	getPaymentPreset,
 	getPaymentSummaryLabel,
@@ -42,4 +41,4 @@ export {
 	isCheckoutPaymentSplitValid,
 	isInstallmentPayment,
 } from "./schemas";
-export type { TCheckoutPaymentSplit, TPaymentEffectivenessTypeEnum, TPaymentInstallmentModelEnum } from "./schemas";
+export type { TCheckoutPaymentSplit, TPaymentEffectivenessTypeEnum } from "./schemas";
