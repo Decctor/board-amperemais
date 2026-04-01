@@ -1,4 +1,4 @@
-import type { TOrganizationConfiguration, TOrganizationIntegrationConfig, TOrganizationMemberPermissions } from "@/schemas/organizations";
+import type { TOrganizationConfiguration, TOrganizationIntegrationConfig, TOrganizationMemberPermissions, TOrganizationFiscalConfig } from "@/schemas/organizations";
 import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
@@ -58,7 +58,7 @@ export const organizations = newTable("organizations", {
 	// Fiscal config
 	fiscalProvedor: fiscalProviderEnum("fiscal_provedor"),
 	fiscalEmissaoAutomatica: boolean("fiscal_emissao_automatica").default(false).notNull(),
-	fiscalConfiguracao: jsonb("fiscal_configuracao"),
+	fiscalConfiguracao: jsonb("fiscal_configuracao").$type<TOrganizationFiscalConfig>(),
 
 	// Payment provider config
 	pagamentoProvedor: paymentProviderEnum("pagamento_provedor"),

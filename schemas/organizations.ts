@@ -1,5 +1,6 @@
 import z from "zod";
 import { DefaultDataSourceEnum, OrganizationIntegrationTypeEnum } from "./enums";
+import { OrganizationFiscalConfigSchema } from "./fiscal";
 import { PaymentEffectivenessTypeEnum } from "@/lib/payments/schemas";
 
 export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", [
@@ -219,6 +220,13 @@ export const OrganizationSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	fiscalProvedor: z.enum(["MANUAL", "NUVEM_FISCAL"]).optional().nullable(),
+	fiscalEmissaoAutomatica: z
+		.boolean({
+			invalid_type_error: "Tipo nao valido para a emissao automatica fiscal.",
+		})
+		.default(false),
+	fiscalConfiguracao: OrganizationFiscalConfigSchema.optional().nullable(),
 
 	// Others
 	periodoTesteInicio: z
@@ -274,6 +282,7 @@ export const OrganizationSchema = z.object({
 		.default(new Date().toISOString())
 		.transform((val) => new Date(val)),
 });
+export type TOrganizationFiscalConfig = z.infer<typeof OrganizationFiscalConfigSchema>;
 
 export const OrganizationMemberPermissionsSchema = z.object({
 	empresa: z.object({

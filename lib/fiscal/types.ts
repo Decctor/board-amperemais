@@ -1,45 +1,116 @@
-import type { TFiscalDocumentStatusEnum, TFiscalDocumentTypeEnum } from "@/schemas/enums";
-import type { TOrganizationEntity } from "@/services/drizzle/schema";
+import type {
+	TFiscalDocumentEnvironmentEnum,
+	TFiscalDocumentLifecycleStatusEnum,
+	TFiscalDocumentStatusEnum,
+	TFiscalDocumentTypeEnum,
+} from "@/schemas/enums";
+import type { TOrganizationFiscalConfig } from "@/schemas/organizations";
+import type { TOrganizationEntity, TFiscalDocument, TFiscalOperationProfileEntity, TFiscalSeriesEntity, TProductFiscalProfileEntity } from "@/services/drizzle/schema";
+import type { TClientEntity } from "@/services/drizzle/schema/clients";
 import type { TSaleEntity, TSaleItemEntity } from "@/services/drizzle/schema/sales";
 
-// ============================================================================
-// Fiscal Provider Interface
-// ============================================================================
+export type TSaleForFiscal = TSaleEntity & {
+	itens: TSaleItemEntity[];
+	cliente?: TClientEntity | null;
+	entregaLocalizacao?: {
+		localizacaoCep: string | null;
+		localizacaoEstado: string | null;
+		localizacaoCidade: string | null;
+		localizacaoBairro: string | null;
+		localizacaoLogradouro: string | null;
+		localizacaoNumero: string | null;
+		localizacaoComplemento: string | null;
+	} | null;
+};
+
+export type TFiscalOrganization = TOrganizationEntity & {
+	fiscalConfiguracao: TOrganizationFiscalConfig | null;
+};
+
+export type TFiscalSaleContext = {
+	venda: TSaleForFiscal;
+	organizacao: TFiscalOrganization;
+	serie: TFiscalSeriesEntity;
+	operacao: TFiscalOperationProfileEntity;
+	perfisProdutos: TProductFiscalProfileEntity[];
+	destinatarioSnapshot: Record<string, unknown> | null;
+};
 
 export type TEmitirDocumentoInput = {
-	venda: TSaleEntity & { itens: TSaleItemEntity[] };
-	tipo: TFiscalDocumentTypeEnum;
-	organizacao: TOrganizationEntity;
-	lancamentoContabilId?: string;
+	vendaId: string;
+	tipo: Extract<TFiscalDocumentTypeEnum, "NFCE" | "NFE">;
+	organizacaoId: string;
+	lancamentoContabilId?: string | null;
+	autorId?: string | null;
+	origem: "AUTOMATICA" | "MANUAL";
 };
 
 export type TEmitirDocumentoResult = {
 	documentoId: string;
-	chaveAcesso?: string;
-	numero?: string;
-	serie?: string;
-	protocolo?: string;
 	status: TFiscalDocumentStatusEnum;
+	statusInterno: TFiscalDocumentLifecycleStatusEnum;
+	chaveAcesso?: string | null;
+	numero?: string | null;
+	serie?: string | null;
+	protocolo?: string | null;
+};
+
+export type TCancelarDocumentoInput = {
+	documentoId: string;
+	motivo: string;
+	autorId?: string | null;
 };
 
 export type TCancelarDocumentoResult = {
 	documentoId: string;
 	status: TFiscalDocumentStatusEnum;
+	statusInterno: TFiscalDocumentLifecycleStatusEnum;
+};
+
+export type TSyncDocumentoInput = {
+	documentoId: string;
+	autorId?: string | null;
+};
+
+export type TSyncDocumentoResult = {
+	documentoId: string;
+	status: TFiscalDocumentStatusEnum;
+	statusInterno: TFiscalDocumentLifecycleStatusEnum;
+};
+
+export type TDownloadFiscalAssetInput = {
+	documento: TFiscalDocument;
+	asset: "xml" | "pdf";
+};
+
+export type TProviderCompanySyncResult = {
+	cpfCnpj: string;
+	sincronizado: boolean;
+};
+
+export type TProviderDocumentDetails = {
+	id: string;
+	status: TFiscalDocumentStatusEnum;
+	statusInterno: TFiscalDocumentLifecycleStatusEnum;
+	ambiente: TFiscalDocumentEnvironmentEnum;
+	chaveAcesso?: string | null;
+	numero?: string | null;
+	serie?: string | null;
+	protocolo?: string | null;
+	dataEmissao?: Date | null;
+	dataAutorizacao?: Date | null;
+	dataCancelamento?: Date | null;
+	mensagens?: unknown[];
+	payloadProvedor?: Record<string, unknown> | null;
+	retornoProvedor?: Record<string, unknown> | null;
 };
 
 export interface IFiscalProvider {
-	/**
-	 * Emit a fiscal document (NFCe, NFe, NFSe) for a sale.
-	 */
-	emitirDocumento(input: TEmitirDocumentoInput): Promise<TEmitirDocumentoResult>;
-
-	/**
-	 * Check the current status of a fiscal document.
-	 */
-	consultarStatus(documentoId: string): Promise<TFiscalDocumentStatusEnum>;
-
-	/**
-	 * Cancel an emitted fiscal document.
-	 */
-	cancelarDocumento(documentoId: string, motivo: string): Promise<TCancelarDocumentoResult>;
+	emitirDocumento(context: TFiscalSaleContext, documento: TFiscalDocument): Promise<TProviderDocumentDetails>;
+	consultarDocumento(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
+	sincronizarDocumento(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
+	cancelarDocumento(input: TCancelarDocumentoInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
+	baixarXml(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
+	baixarPdf(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
+	sincronizarEmpresa(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult>;
 }

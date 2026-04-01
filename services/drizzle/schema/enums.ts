@@ -151,6 +151,53 @@ export const fiscalDocumentTypeEnum = pgEnum("fiscal_document_type", ["NFCE", "N
 
 export const fiscalDocumentStatusEnum = pgEnum("fiscal_document_status", ["PENDENTE", "AUTORIZADA", "CANCELADA", "INUTILIZADA"]);
 
+export const fiscalDocumentEnvironmentEnum = pgEnum("fiscal_document_environment", ["HOMOLOGACAO", "PRODUCAO"]);
+
+export const fiscalDocumentLifecycleStatusEnum = pgEnum("fiscal_document_lifecycle_status", [
+	"RASCUNHO",
+	"PRONTO_PARA_ENVIO",
+	"EM_PROCESSAMENTO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"CANCELAMENTO_PENDENTE",
+	"CANCELADO",
+	"ERRO",
+]);
+
+export const fiscalDocumentEventTypeEnum = pgEnum("fiscal_document_event_type", [
+	"CRIADO",
+	"ENVIO_SOLICITADO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"SINCRONIZADO",
+	"CANCELAMENTO_SOLICITADO",
+	"CANCELADO",
+	"ERRO",
+]);
+
+export const fiscalOperationConsumerPresenceEnum = pgEnum("fiscal_operation_consumer_presence", [
+	"NAO_SE_APLICA",
+	"OPERACAO_PRESENCIAL",
+	"INTERNET",
+	"TELEATENDIMENTO",
+	"ENTREGA_DOMICILIO",
+]);
+
+export const fiscalOperationFinalityEnum = pgEnum("fiscal_operation_finality", ["NORMAL", "COMPLEMENTAR", "AJUSTE", "DEVOLUCAO"]);
+
+export const fiscalProductOriginEnum = pgEnum("fiscal_product_origin", [
+	"NACIONAL",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL",
+	"NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+	"NACIONAL_PROCESSOS_BASICOS",
+	"NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+]);
+
+export const fiscalClientTaxIndicatorEnum = pgEnum("fiscal_client_tax_indicator", ["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
+
 export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 
 export const saleProcessingSourceEnum = pgEnum("origem_processamento_venda", ["EXTERNO", "INTERNO"]);

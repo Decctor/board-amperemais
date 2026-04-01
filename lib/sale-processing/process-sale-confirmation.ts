@@ -1,5 +1,5 @@
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
-import { getFiscalProvider } from "@/lib/fiscal";
+import { emitFiscalDocument } from "@/lib/fiscal/documents";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions, sales } from "@/services/drizzle/schema";
@@ -168,12 +168,13 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 	// 5. Fiscal emission (async, non-blocking)
 	if (input.organization.fiscalEmissaoAutomatica) {
 		try {
-			const fiscalProvider = getFiscalProvider(input.organization);
-			await fiscalProvider.emitirDocumento({
-				venda: sale,
+			await emitFiscalDocument({
+				vendaId: input.saleId,
 				tipo: "NFCE",
-				organizacao: input.organization,
+				organizacaoId: input.organization.id,
 				lancamentoContabilId: transactionResult.entry.id,
+				autorId: input.saleAuthorId,
+				origem: "AUTOMATICA",
 			});
 		} catch (error) {
 			// Fiscal emission failure should not block sale confirmation

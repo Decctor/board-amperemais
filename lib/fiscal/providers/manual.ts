@@ -1,50 +1,63 @@
-import type { TFiscalDocumentStatusEnum } from "@/schemas/enums";
-import { db } from "@/services/drizzle";
-import { fiscalDocuments } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
-import type { IFiscalProvider, TCancelarDocumentoResult, TEmitirDocumentoInput, TEmitirDocumentoResult } from "../types";
+import type { IFiscalProvider, TCancelarDocumentoInput, TProviderCompanySyncResult, TProviderDocumentDetails, TFiscalOrganization, TFiscalSaleContext } from "../types";
+import type { TFiscalDocument } from "@/services/drizzle/schema";
 
-/**
- * ManualFiscalProvider — creates a fiscal document record with PENDENTE status.
- * The actual emission is handled manually by the operator or by a future provider integration.
- */
 export class ManualFiscalProvider implements IFiscalProvider {
-	async emitirDocumento(input: TEmitirDocumentoInput): Promise<TEmitirDocumentoResult> {
-		const [inserted] = await db
-			.insert(fiscalDocuments)
-			.values({
-				organizacaoId: input.organizacao.id,
-				vendaId: input.venda.id,
-				lancamentoContabilId: input.lancamentoContabilId ?? null,
-				tipo: input.tipo,
-				status: "PENDENTE",
-			})
-			.returning({
-				id: fiscalDocuments.id,
-			});
-
+	async emitirDocumento(_context: TFiscalSaleContext, documento: TFiscalDocument): Promise<TProviderDocumentDetails> {
 		return {
-			documentoId: inserted.id,
+			id: documento.id,
 			status: "PENDENTE",
+			statusInterno: "PRONTO_PARA_ENVIO",
+			ambiente: documento.ambiente,
+			chaveAcesso: documento.chaveAcesso,
+			numero: documento.numero,
+			serie: documento.serie,
+			protocolo: documento.protocolo,
 		};
 	}
 
-	async consultarStatus(documentoId: string): Promise<TFiscalDocumentStatusEnum> {
-		const doc = await db.query.fiscalDocuments.findFirst({
-			where: (fields, { eq }) => eq(fields.id, documentoId),
-			columns: { status: true },
-		});
-
-		if (!doc) throw new Error(`Documento fiscal ${documentoId} não encontrado.`);
-		return doc.status;
+	async consultarDocumento(documento: TFiscalDocument): Promise<TProviderDocumentDetails> {
+		return {
+			id: documento.provedorDocumentoId ?? documento.id,
+			status: documento.status,
+			statusInterno: documento.statusInterno,
+			ambiente: documento.ambiente,
+			chaveAcesso: documento.chaveAcesso,
+			numero: documento.numero,
+			serie: documento.serie,
+			protocolo: documento.protocolo,
+		};
 	}
 
-	async cancelarDocumento(documentoId: string, _motivo: string): Promise<TCancelarDocumentoResult> {
-		await db.update(fiscalDocuments).set({ status: "CANCELADA" }).where(eq(fiscalDocuments.id, documentoId));
+	async sincronizarDocumento(documento: TFiscalDocument): Promise<TProviderDocumentDetails> {
+		return this.consultarDocumento(documento);
+	}
 
+	async cancelarDocumento(_input: TCancelarDocumentoInput, documento: TFiscalDocument): Promise<TProviderDocumentDetails> {
 		return {
-			documentoId,
+			id: documento.provedorDocumentoId ?? documento.id,
 			status: "CANCELADA",
+			statusInterno: "CANCELADO",
+			ambiente: documento.ambiente,
+			chaveAcesso: documento.chaveAcesso,
+			numero: documento.numero,
+			serie: documento.serie,
+			protocolo: documento.protocolo,
+			dataCancelamento: new Date(),
+		};
+	}
+
+	async baixarXml(): Promise<ArrayBuffer | null> {
+		return null;
+	}
+
+	async baixarPdf(): Promise<ArrayBuffer | null> {
+		return null;
+	}
+
+	async sincronizarEmpresa(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult> {
+		return {
+			cpfCnpj: organizacao.fiscalConfiguracao?.cpfCnpj ?? organizacao.cnpj,
+			sincronizado: true,
 		};
 	}
 }

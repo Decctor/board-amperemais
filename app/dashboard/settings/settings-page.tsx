@@ -2,6 +2,7 @@
 import SettingsIntegration from "@/components/Settings/SettingsIntegration";
 import SettingsOrg from "@/components/Settings/SettingsOrg";
 import SettingsProfile from "@/components/Settings/SettingsProfile";
+import SettingsFiscal from "@/components/Settings/SettingsFiscal";
 import SettingsSalesPromoCampaigns from "@/components/Settings/SettingsSalesPromoCampaigns";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
@@ -11,7 +12,7 @@ import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { copyToClipboard } from "@/lib/utils";
-import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, Trophy, User, UsersRound } from "lucide-react";
+import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, Receipt, Trophy, User, UsersRound } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 type SettingsPageProps = {
 	user: TAuthUserSession["user"];
@@ -20,7 +21,7 @@ type SettingsPageProps = {
 export default function SettingsPage({ user, membership }: SettingsPageProps) {
 	const [view, setView] = useQueryState(
 		"view",
-		parseAsStringEnum(["profile", "users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns", "organization", "integration"]),
+		parseAsStringEnum(["profile", "users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns", "organization", "integration", "fiscal"]),
 	);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -65,6 +66,15 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 					>
 						<Plug className="w-4 h-4 min-w-4 min-h-4" />
 						INTEGRAÇÃO
+					</Button>
+					<Button
+						variant={view === "fiscal" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("fiscal")}
+					>
+						<Receipt className="w-4 h-4 min-w-4 min-h-4" />
+						FISCAL
 					</Button>
 					<Button
 						variant={view === "users" ? "secondary" : "ghost"}
@@ -127,6 +137,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 			{view === "sales-promo-campaigns" ? <SettingsSalesPromoCampaigns user={user} /> : null}
 			{view === "organization" ? <SettingsOrg user={user} membership={membership} /> : null}
 			{view === "integration" ? <SettingsIntegration user={user} membership={membership} /> : null}
+			{view === "fiscal" ? <SettingsFiscal membership={membership} /> : null}
 		</div>
 	);
 }

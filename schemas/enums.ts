@@ -136,6 +136,53 @@ export const FiscalDocumentTypeEnum = z.enum(["NFCE", "NFE", "NFSE"]);
 export type TFiscalDocumentTypeEnum = z.infer<typeof FiscalDocumentTypeEnum>;
 export const FiscalDocumentStatusEnum = z.enum(["PENDENTE", "AUTORIZADA", "CANCELADA", "INUTILIZADA"]);
 export type TFiscalDocumentStatusEnum = z.infer<typeof FiscalDocumentStatusEnum>;
+export const FiscalDocumentEnvironmentEnum = z.enum(["HOMOLOGACAO", "PRODUCAO"]);
+export type TFiscalDocumentEnvironmentEnum = z.infer<typeof FiscalDocumentEnvironmentEnum>;
+export const FiscalDocumentLifecycleStatusEnum = z.enum([
+	"RASCUNHO",
+	"PRONTO_PARA_ENVIO",
+	"EM_PROCESSAMENTO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"CANCELAMENTO_PENDENTE",
+	"CANCELADO",
+	"ERRO",
+]);
+export type TFiscalDocumentLifecycleStatusEnum = z.infer<typeof FiscalDocumentLifecycleStatusEnum>;
+export const FiscalDocumentEventTypeEnum = z.enum([
+	"CRIADO",
+	"ENVIO_SOLICITADO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"SINCRONIZADO",
+	"CANCELAMENTO_SOLICITADO",
+	"CANCELADO",
+	"ERRO",
+]);
+export type TFiscalDocumentEventTypeEnum = z.infer<typeof FiscalDocumentEventTypeEnum>;
+export const FiscalOperationConsumerPresenceEnum = z.enum([
+	"NAO_SE_APLICA",
+	"OPERACAO_PRESENCIAL",
+	"INTERNET",
+	"TELEATENDIMENTO",
+	"ENTREGA_DOMICILIO",
+]);
+export type TFiscalOperationConsumerPresenceEnum = z.infer<typeof FiscalOperationConsumerPresenceEnum>;
+export const FiscalOperationFinalityEnum = z.enum(["NORMAL", "COMPLEMENTAR", "AJUSTE", "DEVOLUCAO"]);
+export type TFiscalOperationFinalityEnum = z.infer<typeof FiscalOperationFinalityEnum>;
+export const FiscalProductOriginEnum = z.enum([
+	"NACIONAL",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL",
+	"NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+	"NACIONAL_PROCESSOS_BASICOS",
+	"NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+]);
+export type TFiscalProductOriginEnum = z.infer<typeof FiscalProductOriginEnum>;
+export const FiscalClientTaxIndicatorEnum = z.enum(["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
+export type TFiscalClientTaxIndicatorEnum = z.infer<typeof FiscalClientTaxIndicatorEnum>;
 export const StockMovementTypeEnum = z.enum(["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 export type TStockMovementTypeEnum = z.infer<typeof StockMovementTypeEnum>;
 export const SaleProcessingSourceEnum = z.enum(["EXTERNO", "INTERNO"]);
