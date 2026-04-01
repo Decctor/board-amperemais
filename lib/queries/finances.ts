@@ -2,6 +2,7 @@ import { TGetFinancesOverallStatsInput, TGetFinancesOverallStatsOutput } from "@
 import { TGetAccountingEntriesInput, TGetAccountingEntriesOutput } from "@/app/api/finances/accounting-entries/route";
 import { TGetFinancialTransactionsOutput } from "@/app/api/finances/financial-transactions/route";
 import { TGetFinancialAccountsOutput } from "@/app/api/finances/financial-accounts/route";
+import { TGetFinancialAccountGraphOutput } from "@/app/api/finances/financial-accounts/graph/route";
 import axios from "axios";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -148,11 +149,17 @@ export function useFinancesTransactions({ initialFilters }: UseFinancesTransacti
 
 type FinancialAccountsFilters = {
 	activeOnly: boolean;
+	stats: boolean;
+	statsPeriodAfter: Date | null;
+	statsPeriodBefore: Date | null;
 };
 
 async function fetchFinancialAccounts(filters: FinancialAccountsFilters) {
 	const searchParams = new URLSearchParams();
 	searchParams.set("activeOnly", filters.activeOnly ? "true" : "false");
+	searchParams.set("stats", filters.stats ? "true" : "false");
+	if (filters.statsPeriodAfter) searchParams.set("statsPeriodAfter", filters.statsPeriodAfter.toISOString());
+	if (filters.statsPeriodBefore) searchParams.set("statsPeriodBefore", filters.statsPeriodBefore.toISOString());
 	const { data } = await axios.get<TGetFinancialAccountsOutput>(`/api/finances/financial-accounts?${searchParams.toString()}`);
 	const result = data.data.default;
 	if (!result) throw new Error("Oops, houve um erro ao buscar as contas financeiras.");
@@ -163,8 +170,13 @@ type UseFinancesAccountsParams = {
 	initialFilters?: Partial<FinancialAccountsFilters>;
 };
 export function useFinancesAccounts({ initialFilters }: UseFinancesAccountsParams) {
+	const monthStart = dayjs().startOf("month").toDate();
+	const monthEnd = dayjs().endOf("month").toDate();
 	const [filters, setFilters] = useState<FinancialAccountsFilters>({
 		activeOnly: initialFilters?.activeOnly ?? true,
+		stats: initialFilters?.stats ?? true,
+		statsPeriodAfter: initialFilters?.statsPeriodAfter ?? monthStart,
+		statsPeriodBefore: initialFilters?.statsPeriodBefore ?? monthEnd,
 	});
 	function updateFilters(newFilters: Partial<FinancialAccountsFilters>) {
 		setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -178,4 +190,40 @@ export function useFinancesAccounts({ initialFilters }: UseFinancesAccountsParam
 		filters,
 		updateFilters,
 	};
+}
+
+// ============================================================================
+// FINANCIAL ACCOUNT GRAPH
+// ============================================================================
+
+type FinancialAccountGraphFilters = {
+	contaFinanceiraId: string;
+	startDate: Date | null;
+	endDate: Date | null;
+	comparingStartDate?: Date | null;
+	comparingEndDate?: Date | null;
+};
+
+async function fetchFinancialAccountGraph(filters: FinancialAccountGraphFilters) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("contaFinanceiraId", filters.contaFinanceiraId);
+	if (filters.startDate) searchParams.set("startDate", filters.startDate.toISOString());
+	if (filters.endDate) searchParams.set("endDate", filters.endDate.toISOString());
+	if (filters.comparingStartDate) searchParams.set("comparingStartDate", filters.comparingStartDate.toISOString());
+	if (filters.comparingEndDate) searchParams.set("comparingEndDate", filters.comparingEndDate.toISOString());
+	const { data } = await axios.get<TGetFinancialAccountGraphOutput>(`/api/finances/financial-accounts/graph?${searchParams.toString()}`);
+	return data.data;
+}
+
+type UseFinancialAccountGraphParams = {
+	contaFinanceiraId: string;
+	startDate: Date | null;
+	endDate: Date | null;
+};
+export function useFinancialAccountGraph({ contaFinanceiraId, startDate, endDate }: UseFinancialAccountGraphParams) {
+	return useQuery({
+		queryKey: ["financial-account-graph", contaFinanceiraId, startDate, endDate],
+		queryFn: () => fetchFinancialAccountGraph({ contaFinanceiraId, startDate, endDate }),
+		enabled: !!contaFinanceiraId,
+	});
 }

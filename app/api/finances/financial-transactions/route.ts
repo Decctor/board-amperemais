@@ -39,13 +39,13 @@ async function getFinancialTransactions({ input, session }: { input: TGetFinanci
 
 	const { page, search, periodAfter, periodBefore, types, paymentMethods, statuses } = input;
 
-	const typesArr = types
-		? (types.split(",").filter((v) => FinancialTransactionTypeEnum.safeParse(v).success) as TFinancialTransactionTypeEnum[])
-		: [];
+	const typesArr = types ? (types.split(",").filter((v) => FinancialTransactionTypeEnum.safeParse(v).success) as TFinancialTransactionTypeEnum[]) : [];
 	const paymentMethodsArr = paymentMethods
 		? (paymentMethods.split(",").filter((v) => PaymentMethodEnum.safeParse(v).success) as TPaymentMethodEnum[])
 		: [];
-	const statusesArr = statuses ? statuses.split(",").filter((v): v is TFinancialTransactionStatus => VALID_STATUSES.includes(v as TFinancialTransactionStatus)) : [];
+	const statusesArr = statuses
+		? statuses.split(",").filter((v): v is TFinancialTransactionStatus => VALID_STATUSES.includes(v as TFinancialTransactionStatus))
+		: [];
 
 	const now = new Date();
 	const conditions = [eq(financialTransactions.organizacaoId, userOrgId)];
@@ -78,11 +78,14 @@ async function getFinancialTransactions({ input, session }: { input: TGetFinanci
 	const skip = PAGE_SIZE * (page - 1);
 
 	const [countResult, transactionsResult] = await Promise.all([
-		db.select({ count: count() }).from(financialTransactions).where(and(...conditions)),
+		db
+			.select({ count: count() })
+			.from(financialTransactions)
+			.where(and(...conditions)),
 		db.query.financialTransactions.findMany({
 			where: and(...conditions),
 			with: {
-				contaFinanceira: { columns: { id: true, nome: true } },
+				contaFinanceira: { columns: { id: true, nome: true, tipo: true } },
 				autor: { columns: { id: true, nome: true, avatarUrl: true } },
 			},
 			orderBy: (fields, { desc }) => desc(fields.dataPrevisao),

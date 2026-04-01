@@ -79,7 +79,7 @@ export default function CheckoutPanel({
 						saleState.setVendedor(value, seller?.nome ?? null);
 					}}
 					onReset={() => saleState.setVendedor(null, null)}
-					resetOptionLabel="Selecionar vendedor"
+					resetOptionLabel="SELECIONE UM VENDEDOR"
 				/>
 
 				<ClientSection saleState={saleState} onOpenVinculationMenu={() => setIsVinculationMenuOpen(true)} />

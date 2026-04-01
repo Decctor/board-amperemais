@@ -9,6 +9,7 @@ import type {
 	TCommunityCourseStatusEnum,
 	TCommunityLessonContentTypeEnum,
 	TDeliveryModeEnum,
+	TFinancialAccountTypeEnum,
 	TFinancialTransactionTypeEnum,
 	TInteractionsCronJobTimeBlocksEnum,
 	TInternalLeadActivityTypeEnum,
@@ -422,6 +423,43 @@ export const PurchaseStatusOptions: { id: number; label: string; value: TPurchas
 	},
 ];
 
+export const FinancialAccountTypeOptions: {
+	id: number;
+	label: string;
+	value: TFinancialAccountTypeEnum;
+	icon: React.ReactNode;
+	className: string;
+	colors: { text: string; background: string };
+	renderIcon: (className: string) => React.ReactNode;
+}[] = [
+	{
+		id: 1,
+		label: "CAIXA",
+		value: "CAIXA",
+		icon: <Wallet className="w-4 h-4" />,
+		className: "bg-green-200 text-green-600 border border-green-600 hover:bg-green-100 hover:text-green-500 hover:border-green-500",
+		colors: { text: "text-green-600", background: "bg-green-200" },
+		renderIcon: (className: string) => <Wallet className={className} />,
+	},
+	{
+		id: 2,
+		label: "BANCO",
+		value: "BANCO",
+		icon: <Banknote className="w-4 h-4" />,
+		className: "bg-blue-200 text-blue-600 border border-blue-600 hover:bg-blue-100 hover:text-blue-500 hover:border-blue-500",
+		colors: { text: "text-blue-600", background: "bg-blue-200" },
+		renderIcon: (className: string) => <Banknote className={className} />,
+	},
+	{
+		id: 3,
+		label: "CARTEIRA DIGITAL",
+		value: "CARTEIRA_DIGITAL",
+		icon: <Wallet className="w-4 h-4" />,
+		className: "bg-purple-200 text-purple-600 border border-purple-600 hover:bg-purple-100 hover:text-purple-500 hover:border-purple-500",
+		colors: { text: "text-purple-600", background: "bg-purple-200" },
+		renderIcon: (className: string) => <Wallet className={className} />,
+	},
+];
 export const AccountingEntryOriginTypeOptions: {
 	id: number;
 	label: string;
