@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { CheckoutPaymentSplitSchema } from "@/lib/payments";
+import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { processSaleConfirmation } from "@/lib/sale-processing";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -85,6 +85,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	if (!organizationSaleDefaults.debitoContaId || !organizationSaleDefaults.creditoContaId) {
 		throw new createHttpError.InternalServerError("A organizacao nao possui contas padrao de vendas configuradas.");
 	}
+	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
 
 	const productCostMap = new Map(produtosResult.map((p) => [p.id, p.precoCusto ?? 0]));
 	const variantCostMap = new Map(variantesResult.map((v) => [v.id, v.precoCusto ?? 0]));
@@ -197,14 +198,22 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	const confirmation = await processSaleConfirmation({
 		organization,
 		saleId,
-		salePayments: input.pagamentos.map((payment) => ({
-			metodo: payment.metodo,
-			valor: payment.valor,
-			totalParcelas: payment.totalParcelas ?? undefined,
-			efetivacaoTipo: payment.efetivacaoTipo,
-			dataPrevisao: payment.dataPrevisao ?? undefined,
-			observacoes: payment.observacoes ?? undefined,
-		})),
+		salePayments: input.pagamentos.map((payment) => {
+			const methodDefaults = organizationPaymentMethodDefaults[payment.metodo];
+			if (!methodDefaults?.suportado) {
+				throw new createHttpError.BadRequest(`O método de pagamento ${payment.metodo} não está habilitado para esta organização.`);
+			}
+
+			return {
+				metodo: payment.metodo,
+				valor: payment.valor,
+				totalParcelas: payment.totalParcelas ?? undefined,
+				efetivacaoTipo: payment.efetivacaoTipo,
+				dataPrevisao: payment.dataPrevisao ?? undefined,
+				observacoes: payment.observacoes ?? undefined,
+				contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
+			};
+		}),
 		saleAuthorId: session.user.id,
 		saleClientId: input.clienteId ?? null,
 		saleCashbackProgramId: input.cashbackProgramaId,

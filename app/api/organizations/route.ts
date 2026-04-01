@@ -10,9 +10,12 @@ import {
 import { notifyInternalsOnNewOrganization } from "@/config/internal-coms";
 import {
 	buildOrganizationAccountingDefaults,
+	buildOrganizationPaymentMethodDefaults,
 	RecompraCRMDefaultAccountCharts,
+	RecompraCRMDefaultFinancialAccounts,
 	RecompraCRMDefaultCampaigns,
 	type TOnboardingAccountChartNode,
+	type TOnboardingFinancialAccountNode,
 	getOrganizationNicheByValue,
 	welcomeOrganizationOwnerOnOnboarding,
 } from "@/config/onboarding";
@@ -28,6 +31,7 @@ import {
 	campaignSegmentations,
 	campaigns,
 	cashbackPrograms,
+	financialAccounts,
 	organizationMembers,
 	organizations,
 	sellers,
@@ -98,6 +102,44 @@ async function seedDefaultAccountCharts({
 	}
 }
 
+async function seedDefaultFinancialAccounts({
+	tx,
+	organizationId,
+	nodes,
+	accountIdsByKey,
+	financialAccountIdsByKey,
+}: {
+	tx: Parameters<Parameters<typeof db.transaction>[0]>[0];
+	organizationId: string;
+	nodes: TOnboardingFinancialAccountNode[];
+	accountIdsByKey: Map<string, string>;
+	financialAccountIdsByKey: Map<string, string>;
+}) {
+	for (const node of nodes) {
+		const [createdFinancialAccount] = await tx
+			.insert(financialAccounts)
+			.values({
+				organizacaoId: organizationId,
+				nome: node.nome,
+				descricao: node.descricao,
+				tipo: node.tipo,
+				moeda: node.moeda,
+				ativo: node.ativo,
+				contaContabilId: node.contaContabilKey ? (accountIdsByKey.get(node.contaContabilKey) ?? null) : null,
+				saldoInicial: node.saldoInicial,
+				dataSaldoInicial: new Date(),
+			})
+			.returning({ id: financialAccounts.id });
+
+		const createdFinancialAccountId = createdFinancialAccount?.id;
+		if (!createdFinancialAccountId) {
+			throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar conta financeira.");
+		}
+
+		financialAccountIdsByKey.set(node.key, createdFinancialAccountId);
+	}
+}
+
 async function getOrganization({ session }: { session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
@@ -150,7 +192,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 	console.log("[INFO] [CREATE_ORGANIZATION] Starting the organization onboarding conclusion process:", JSON.stringify(input, null, 2));
 
 	// Pré-Stripe: grava apenas dados locais em uma transação curta.
-	const { createdOrgId: insertedOrgId, accountingDefaults } = await db.transaction(async (tx) => {
+	const { createdOrgId: insertedOrgId, organizationDefaults } = await db.transaction(async (tx) => {
 		// 1. Insert organization first
 		const [createdOrgResponse] = await tx
 			.insert(organizations)
@@ -186,14 +228,26 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 			accountIdsByKey,
 		});
 
-		const accountingDefaults = buildOrganizationAccountingDefaults(accountIdsByKey);
+		const financialAccountIdsByKey = new Map<string, string>();
+		await seedDefaultFinancialAccounts({
+			tx,
+			organizationId: createdOrgId,
+			nodes: RecompraCRMDefaultFinancialAccounts,
+			accountIdsByKey,
+			financialAccountIdsByKey,
+		});
+
+		const organizationDefaults = {
+			contabilidade: buildOrganizationAccountingDefaults(accountIdsByKey),
+			pagamentos: buildOrganizationPaymentMethodDefaults(financialAccountIdsByKey),
+		};
 		await tx
 			.update(organizations)
 			.set({
 				configuracao: {
 					recursos: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
 					preferencias: DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
-					defaults: accountingDefaults,
+					defaults: organizationDefaults,
 				},
 			})
 			.where(eq(organizations.id, createdOrgId));
@@ -270,7 +324,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 
 		return {
 			createdOrgId,
-			accountingDefaults,
+			organizationDefaults,
 		};
 	});
 
@@ -306,7 +360,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 							rastreamentoEstoque: freeTrialConfig.erp.acesso === true,
 							limiteMensagensSemanaisViaCampanhas: null,
 						},
-						defaults: accountingDefaults,
+						defaults: organizationDefaults,
 					},
 					periodoTesteInicio,
 					periodoTesteFim,
@@ -416,7 +470,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 						rastreamentoEstoque: plan.capabilities.erp.acesso === true,
 						limiteMensagensSemanaisViaCampanhas: null,
 					},
-					defaults: accountingDefaults,
+					defaults: organizationDefaults,
 				},
 				stripeCustomerId: stripeCustomer.id,
 				assinaturaPlano: planName,

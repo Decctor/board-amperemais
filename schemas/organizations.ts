@@ -1,5 +1,6 @@
 import z from "zod";
 import { DefaultDataSourceEnum, OrganizationIntegrationTypeEnum } from "./enums";
+import { PaymentEffectivenessTypeEnum } from "@/lib/payments/schemas";
 
 export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", [
 	z.object({
@@ -14,7 +15,26 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 ]);
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
 
-export const OrganizationAccountingDefaultsSchema = z.object({
+export const OrganizationPaymentMethodDefaultsSchema = z.object({
+	suportado: z.boolean({
+		invalid_type_error: "Tipo não válido para se o método de pagamento é suportado.",
+	}),
+	contaFinanceiraPadraoId: z.string({ invalid_type_error: "Tipo não válido para a conta financeira padrão." }).nullable(),
+	contaFinanceiraPadraoKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta financeira padrão." }).nullable(),
+	efetivacaoTipoPadrao: PaymentEffectivenessTypeEnum,
+	delayDiasPadrao: z.number({ invalid_type_error: "Tipo não válido para o delay padrão em dias." }).int().nullable(),
+	parcelamento: z.object({
+		permitido: z.boolean({
+			invalid_type_error: "Tipo não válido para se o parcelamento é permitido.",
+		}),
+		minParcelas: z.number({ invalid_type_error: "Tipo não válido para o mínimo de parcelas." }).int(),
+		maxParcelas: z.number({ invalid_type_error: "Tipo não válido para o máximo de parcelas." }).int().nullable(),
+		intervaloMeses: z.number({ invalid_type_error: "Tipo não válido para o intervalo em meses." }).int().nullable(),
+	}),
+});
+export type TOrganizationPaymentMethodDefaults = z.infer<typeof OrganizationPaymentMethodDefaultsSchema>;
+
+export const OrganizationDefaultsSchema = z.object({
 	contabilidade: z.object({
 		lancamentosPadrao: z.object({
 			vendas: z.object({
@@ -31,8 +51,24 @@ export const OrganizationAccountingDefaultsSchema = z.object({
 			}),
 		}),
 	}),
+	pagamentos: z.object({
+		metodos: z.object({
+			DINHEIRO: OrganizationPaymentMethodDefaultsSchema,
+			PIX: OrganizationPaymentMethodDefaultsSchema,
+			CARTAO_DEBITO: OrganizationPaymentMethodDefaultsSchema,
+			CARTAO_CREDITO: OrganizationPaymentMethodDefaultsSchema,
+			BOLETO: OrganizationPaymentMethodDefaultsSchema,
+			TRANSFERENCIA: OrganizationPaymentMethodDefaultsSchema,
+			CASHBACK: OrganizationPaymentMethodDefaultsSchema,
+			VALE: OrganizationPaymentMethodDefaultsSchema,
+			A_DEFINIR: OrganizationPaymentMethodDefaultsSchema,
+			FIADO_NOTA: OrganizationPaymentMethodDefaultsSchema,
+			OUTRO: OrganizationPaymentMethodDefaultsSchema,
+		}),
+	}),
 });
-export type TOrganizationAccountingDefaults = z.infer<typeof OrganizationAccountingDefaultsSchema>;
+export type TOrganizationDefaults = z.infer<typeof OrganizationDefaultsSchema>;
+export type TOrganizationAccountingDefaults = TOrganizationDefaults;
 
 export const OrganizationConfigurationSchema = z.object({
 	recursos: z.object({
@@ -114,7 +150,7 @@ export const OrganizationConfigurationSchema = z.object({
 			.optional()
 			.default(null),
 	}),
-	defaults: OrganizationAccountingDefaultsSchema,
+	defaults: OrganizationDefaultsSchema,
 });
 export type TOrganizationConfiguration = z.infer<typeof OrganizationConfigurationSchema>;
 

@@ -7,6 +7,7 @@ export type TPaymentSplit = {
 	efetivacaoTipo: "IMEDIATA" | "PENDENTE";
 	dataPrevisao?: string | Date | null;
 	observacoes?: string | null;
+	contaFinanceiraPadraoId?: string | null;
 };
 
 export type TProcessPaymentsInput = {

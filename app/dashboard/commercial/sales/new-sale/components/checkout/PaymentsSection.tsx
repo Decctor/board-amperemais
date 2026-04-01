@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { InteractiveInput } from "@/components/ui/interactive-input";
 import { Input } from "@/components/ui/input";
-import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
+import { formatDateAsLocale, formatDateOnInputChange } from "@/lib/formatting";
+import { getPaymentInstallmentsOptions } from "@/lib/payments/defaults";
 import { getTodayDateInputValue } from "@/lib/payments/schemas";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { SalePaymentMethodsOptions } from "@/utils/select-options";
@@ -25,9 +26,12 @@ type PaymentCardProps = {
 };
 
 function PaymentCard({ saleState, payment }: PaymentCardProps) {
+	const paymentMethodConfig = saleState.organizationPaymentMethodsConfig[payment.metodo];
 	const selectedMethod = SalePaymentMethodsOptions.find((method) => method.value === payment.metodo);
 	const selectedForecastDate = payment.dataPrevisao ? new Date(payment.dataPrevisao) : undefined;
-	console.log(payment.dataPrevisao);
+	const supportedMethodOptions = SalePaymentMethodsOptions.filter((method) => saleState.organizationPaymentMethodsConfig[method.value]?.suportado);
+	const installmentOptions = getPaymentInstallmentsOptions(paymentMethodConfig);
+	const shouldShowInstallments = installmentOptions.length > 0;
 	return (
 		<div className="w-full flex flex-col gap-2 rounded-lg border px-2 py-2">
 			<div className="flex items-center gap-1.5 justify-between">
@@ -76,7 +80,7 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 						<DropdownMenuContent>
 							<DropdownMenuLabel>MÉTODO</DropdownMenuLabel>
 							<DropdownMenuSeparator />
-							{SalePaymentMethodsOptions.map((method) => (
+							{supportedMethodOptions.map((method) => (
 								<DropdownMenuItem key={method.value} onClick={() => saleState.updatePagamento(payment.id, { metodo: method.value })}>
 									<div className="flex items-center gap-2 w-full justify-between">
 										<div className="flex items-center gap-2">
@@ -104,26 +108,49 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 				</div>
 			</div>
 
-			{payment.efetivacaoTipo === "PENDENTE" ? (
-				<div className="flex justify-end">
-					<InteractiveInput.Root>
-						<InteractiveInput.Trigger>
-							<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 text-[0.7rem]">
-								<CalendarClock className="w-3.5 h-3.5 text-amber-600" />
-								{payment.dataPrevisao ? `PREVISÃO: ${formatDateAsLocale(payment.dataPrevisao)}` : "DEFINIR PREVISÃO"}
-							</Button>
-						</InteractiveInput.Trigger>
-						<InteractiveInput.Content align="end">
-							<InteractiveInput.DateContent
-								value={selectedForecastDate}
-								onChange={(nextDate) =>
-									saleState.updatePagamento(payment.id, {
-										dataPrevisao: formatDateOnInputChange(nextDate?.toISOString()) ?? null,
-									})
-								}
-							/>
-						</InteractiveInput.Content>
-					</InteractiveInput.Root>
+			{shouldShowInstallments || payment.efetivacaoTipo === "PENDENTE" ? (
+				<div className="w-full flex justify-end items-center gap-3">
+					{shouldShowInstallments ? (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 text-[0.7rem]">
+									{payment.totalParcelas ? `${payment.totalParcelas}x` : "PARCELAS"}
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuLabel>PARCELAMENTO</DropdownMenuLabel>
+								<DropdownMenuSeparator />
+								{installmentOptions.map((parcelas) => (
+									<DropdownMenuItem key={parcelas} onClick={() => saleState.updatePagamento(payment.id, { totalParcelas: parcelas })}>
+										<div className="flex items-center gap-2 w-full justify-between">
+											<span>{parcelas}x</span>
+											{payment.totalParcelas === parcelas ? <Check className="w-4 h-4" /> : null}
+										</div>
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					) : null}
+					{payment.efetivacaoTipo === "PENDENTE" ? (
+						<InteractiveInput.Root>
+							<InteractiveInput.Trigger>
+								<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 text-[0.7rem]">
+									<CalendarClock className="w-3.5 h-3.5 text-amber-600" />
+									{payment.dataPrevisao ? `PREVISÃO: ${formatDateAsLocale(payment.dataPrevisao)}` : "DEFINIR PREVISÃO"}
+								</Button>
+							</InteractiveInput.Trigger>
+							<InteractiveInput.Content align="end">
+								<InteractiveInput.DateContent
+									value={selectedForecastDate}
+									onChange={(nextDate) =>
+										saleState.updatePagamento(payment.id, {
+											dataPrevisao: formatDateOnInputChange(nextDate?.toISOString()) ?? null,
+										})
+									}
+								/>
+							</InteractiveInput.Content>
+						</InteractiveInput.Root>
+					) : null}
 				</div>
 			) : null}
 		</div>
@@ -131,6 +158,8 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 }
 
 export default function PaymentsSection({ saleState }: PaymentsSectionProps) {
+	const supportedMethodOptions = SalePaymentMethodsOptions.filter((method) => saleState.organizationPaymentMethodsConfig[method.value]?.suportado);
+
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center gap-1.5 justify-between">
@@ -143,7 +172,7 @@ export default function PaymentsSection({ saleState }: PaymentsSectionProps) {
 					size="fit"
 					className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
 					variant="ghost-brand"
-					onClick={() => saleState.addPagamento()}
+					onClick={() => saleState.addPagamento({ metodo: supportedMethodOptions[0]?.value ?? "DINHEIRO" })}
 				>
 					<Plus className="w-4 h-4" /> ADICIONAR
 				</Button>

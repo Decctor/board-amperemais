@@ -1,6 +1,6 @@
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import type { TAccountChartNatureEnum } from "@/schemas/enums";
-import type { TOrganizationAccountingDefaults } from "@/schemas/organizations";
+import type { TAccountChartNatureEnum, TFinancialAccountTypeEnum, TPaymentMethodEnum } from "@/schemas/enums";
+import type { TOrganizationDefaults } from "@/schemas/organizations";
 import { sendMessage } from "@/lib/whatsapp/internal-gateway";
 import type { TNewCampaignEntity, TNewCampaignSegmentationEntity, TNewCashbackProgramEntity } from "@/services/drizzle/schema";
 import {
@@ -57,6 +57,31 @@ export type TOnboardingAccountChartNode = {
 	codigo: string;
 	natureza: TAccountChartNatureEnum;
 	children?: TOnboardingAccountChartNode[];
+};
+
+export type TOnboardingFinancialAccountNode = {
+	key: string;
+	nome: string;
+	descricao: string | null;
+	tipo: TFinancialAccountTypeEnum;
+	contaContabilKey: string | null;
+	moeda: string;
+	ativo: boolean;
+	saldoInicial: number;
+	dataSaldoInicialStrategy: "NOW";
+};
+
+export type TOnboardingPaymentMethodDefault = {
+	suportado: boolean;
+	contaFinanceiraPadraoKey: string | null;
+	efetivacaoTipoPadrao: "IMEDIATA" | "PENDENTE";
+	delayDiasPadrao: number | null;
+	parcelamento: {
+		permitido: boolean;
+		minParcelas: number;
+		maxParcelas: number | null;
+		intervaloMeses: number | null;
+	};
 };
 
 export const RecompraCRMDefaultAccountCharts: TOnboardingAccountChartNode[] = [
@@ -143,26 +168,165 @@ export const RecompraCRMDefaultAccountingDefaults: {
 	},
 };
 
+export const RecompraCRMDefaultFinancialAccounts: TOnboardingFinancialAccountNode[] = [
+	{
+		key: "caixa_principal",
+		nome: "Caixa Principal",
+		descricao: "Conta financeira padrão para recebimentos em dinheiro.",
+		tipo: "CAIXA",
+		contaContabilKey: "caixa_bancos",
+		moeda: "BRL",
+		ativo: true,
+		saldoInicial: 0,
+		dataSaldoInicialStrategy: "NOW",
+	},
+	{
+		key: "conta_bancaria_principal",
+		nome: "Conta Bancária Principal",
+		descricao: "Conta financeira padrão para movimentações bancárias.",
+		tipo: "BANCO",
+		contaContabilKey: "caixa_bancos",
+		moeda: "BRL",
+		ativo: true,
+		saldoInicial: 0,
+		dataSaldoInicialStrategy: "NOW",
+	},
+	{
+		key: "carteira_digital_pix",
+		nome: "Carteira Digital / Pix",
+		descricao: "Conta financeira padrão para recebimentos via Pix e carteiras digitais.",
+		tipo: "CARTEIRA_DIGITAL",
+		contaContabilKey: "caixa_bancos",
+		moeda: "BRL",
+		ativo: true,
+		saldoInicial: 0,
+		dataSaldoInicialStrategy: "NOW",
+	},
+];
+
+export const RecompraCRMDefaultPaymentMethodDefaults: Record<TPaymentMethodEnum, TOnboardingPaymentMethodDefault> = {
+	DINHEIRO: {
+		suportado: true,
+		contaFinanceiraPadraoKey: "caixa_principal",
+		efetivacaoTipoPadrao: "IMEDIATA",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	PIX: {
+		suportado: true,
+		contaFinanceiraPadraoKey: "carteira_digital_pix",
+		efetivacaoTipoPadrao: "IMEDIATA",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	CARTAO_DEBITO: {
+		suportado: true,
+		contaFinanceiraPadraoKey: "conta_bancaria_principal",
+		efetivacaoTipoPadrao: "IMEDIATA",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	CARTAO_CREDITO: {
+		suportado: true,
+		contaFinanceiraPadraoKey: "conta_bancaria_principal",
+		efetivacaoTipoPadrao: "IMEDIATA",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: true, minParcelas: 1, maxParcelas: 12, intervaloMeses: 1 },
+	},
+	BOLETO: {
+		suportado: false,
+		contaFinanceiraPadraoKey: "conta_bancaria_principal",
+		efetivacaoTipoPadrao: "PENDENTE",
+		delayDiasPadrao: 3,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	TRANSFERENCIA: {
+		suportado: false,
+		contaFinanceiraPadraoKey: "conta_bancaria_principal",
+		efetivacaoTipoPadrao: "IMEDIATA",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	CASHBACK: {
+		suportado: false,
+		contaFinanceiraPadraoKey: null,
+		efetivacaoTipoPadrao: "IMEDIATA",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	VALE: {
+		suportado: false,
+		contaFinanceiraPadraoKey: null,
+		efetivacaoTipoPadrao: "IMEDIATA",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	A_DEFINIR: {
+		suportado: true,
+		contaFinanceiraPadraoKey: null,
+		efetivacaoTipoPadrao: "PENDENTE",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	FIADO_NOTA: {
+		suportado: true,
+		contaFinanceiraPadraoKey: null,
+		efetivacaoTipoPadrao: "PENDENTE",
+		delayDiasPadrao: 30,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+	OUTRO: {
+		suportado: false,
+		contaFinanceiraPadraoKey: null,
+		efetivacaoTipoPadrao: "IMEDIATA",
+		delayDiasPadrao: 0,
+		parcelamento: { permitido: false, minParcelas: 0, maxParcelas: null, intervaloMeses: null },
+	},
+};
+
 export function buildOrganizationAccountingDefaults(
 	accountIdsByKey: Map<string, string>,
-): TOrganizationAccountingDefaults {
+): TOrganizationDefaults["contabilidade"] {
 	return {
-		contabilidade: {
-			lancamentosPadrao: {
-				vendas: {
-					debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.debitoKey) ?? null,
-					debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.debitoKey,
-					creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.creditoKey) ?? null,
-					creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.creditoKey,
-				},
-				compras: {
-					debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey) ?? null,
-					debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey,
-					creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey) ?? null,
-					creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey,
-				},
+		lancamentosPadrao: {
+			vendas: {
+				debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.debitoKey) ?? null,
+				debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.debitoKey,
+				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.creditoKey) ?? null,
+				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.vendas.creditoKey,
+			},
+			compras: {
+				debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey) ?? null,
+				debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey,
+				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey) ?? null,
+				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey,
 			},
 		},
+	};
+}
+
+export function buildOrganizationPaymentMethodDefaults(
+	financialAccountIdsByKey: Map<string, string>,
+): TOrganizationDefaults["pagamentos"] {
+	return {
+		metodos: Object.fromEntries(
+			Object.entries(RecompraCRMDefaultPaymentMethodDefaults).map(([metodo, config]) => [
+				metodo,
+				{
+					suportado: config.suportado,
+					contaFinanceiraPadraoId: config.contaFinanceiraPadraoKey ? (financialAccountIdsByKey.get(config.contaFinanceiraPadraoKey) ?? null) : null,
+					contaFinanceiraPadraoKey: config.contaFinanceiraPadraoKey,
+					efetivacaoTipoPadrao: config.efetivacaoTipoPadrao,
+					delayDiasPadrao: config.delayDiasPadrao,
+					parcelamento: {
+						permitido: config.parcelamento.permitido,
+						minParcelas: config.parcelamento.minParcelas,
+						maxParcelas: config.parcelamento.maxParcelas,
+						intervaloMeses: config.parcelamento.intervaloMeses,
+					},
+				},
+			]),
+		) as TOrganizationDefaults["pagamentos"]["metodos"],
 	};
 }
 

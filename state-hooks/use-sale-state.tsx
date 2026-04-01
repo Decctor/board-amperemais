@@ -4,7 +4,9 @@ import {
 	getDefaultCheckoutPaymentSplit,
 	isCheckoutPaymentSplitValid,
 } from "@/lib/payments/schemas";
+import { getOrganizationPaymentMethodDefault, getOrganizationPaymentMethodsConfig } from "@/lib/payments/defaults";
 import type { TDeliveryModeEnum } from "@/schemas/enums";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { useCallback, useMemo, useState } from "react";
 import z from "zod";
 
@@ -110,6 +112,7 @@ export type TSaleState = z.infer<typeof SaleStateSchema>;
 
 type UseSaleStateProps = {
 	initialState?: Partial<TSaleState>;
+	organizationConfig?: Pick<TOrganizationConfiguration, "defaults"> | null;
 };
 
 export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleState {
@@ -131,8 +134,9 @@ export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleSt
 	};
 }
 
-export const useSaleState = ({ initialState }: UseSaleStateProps = {}) => {
+export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateProps = {}) => {
 	const [state, setState] = useState<TSaleState>(() => getDefaultSaleState(initialState));
+	const organizationPaymentMethodsConfig = useMemo(() => getOrganizationPaymentMethodsConfig(organizationConfig), [organizationConfig]);
 
 	const setCliente = useCallback((cliente: TSaleState["cliente"]) => {
 		setState((prev) => ({ ...prev, modoCliente: "VINCULADO", cliente }));
@@ -216,11 +220,25 @@ export const useSaleState = ({ initialState }: UseSaleStateProps = {}) => {
 	}, []);
 
 	const addPagamento = useCallback((pagamento?: Partial<Omit<TCheckoutPaymentSplit, "id">>) => {
+		const metodo = pagamento?.metodo ?? "DINHEIRO";
+		const paymentDefaults = getOrganizationPaymentMethodDefault({
+			organizationConfig,
+			metodo,
+		});
 		setState((prev) => ({
 			...prev,
-			pagamentos: [...prev.pagamentos, getDefaultCheckoutPaymentSplit(pagamento)],
+			pagamentos: [
+				...prev.pagamentos,
+				getDefaultCheckoutPaymentSplit({
+					metodo: paymentDefaults.metodo,
+					efetivacaoTipo: paymentDefaults.efetivacaoTipo,
+					dataPrevisao: paymentDefaults.dataPrevisao,
+					totalParcelas: paymentDefaults.totalParcelas,
+					...pagamento,
+				}),
+			],
 		}));
-	}, []);
+	}, [organizationConfig]);
 
 	const removePagamento = useCallback((id: string) => {
 		setState((prev) => ({ ...prev, pagamentos: prev.pagamentos.filter((payment) => payment.id !== id) }));
@@ -231,14 +249,30 @@ export const useSaleState = ({ initialState }: UseSaleStateProps = {}) => {
 			...prev,
 			pagamentos: prev.pagamentos.map((payment) => {
 				if (payment.id !== id) return payment;
+				const metodoAtualizado = updates.metodo ?? payment.metodo;
+				const nextPaymentDefaults =
+					updates.metodo && updates.metodo !== payment.metodo
+						? getOrganizationPaymentMethodDefault({
+								organizationConfig,
+								metodo: updates.metodo,
+							})
+						: null;
 				return {
 					...payment,
+					...(nextPaymentDefaults
+						? {
+								metodo: metodoAtualizado,
+								efetivacaoTipo: nextPaymentDefaults.efetivacaoTipo,
+								dataPrevisao: nextPaymentDefaults.dataPrevisao,
+								totalParcelas: nextPaymentDefaults.totalParcelas,
+							}
+						: {}),
 					...updates,
 					valor: typeof updates.valor === "number" ? Math.max(0, updates.valor) : payment.valor,
 				};
 			}),
 		}));
-	}, []);
+	}, [organizationConfig]);
 
 	const setCashbackResgate = useCallback((cashbackResgate: number) => {
 		setState((prev) => {
@@ -353,6 +387,7 @@ export const useSaleState = ({ initialState }: UseSaleStateProps = {}) => {
 		isReadyForFinalize,
 		getDraftMetadata,
 		resetState,
+		organizationPaymentMethodsConfig,
 	};
 };
 

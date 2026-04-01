@@ -1,5 +1,6 @@
 import { getCurrentSession } from "@/lib/authentication/session";
 import { db } from "@/services/drizzle";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import NewSalePage from "./new-sale-page";
@@ -30,5 +31,10 @@ export default async function NewSale() {
       />
     );
   }
-  return <NewSalePage organizationCashbackProgram={organizationCashbackProgram ?? null} />;
+  return (
+    <NewSalePage
+      organizationCashbackProgram={organizationCashbackProgram ?? null}
+      organizationConfiguration={sessionUser.membership.organizacao.configuracao as TOrganizationConfiguration}
+    />
+  );
 }

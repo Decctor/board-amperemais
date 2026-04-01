@@ -1,4 +1,4 @@
-import type { TOrganizationAccountingDefaults, TOrganizationConfiguration } from "@/schemas/organizations";
+import type { TOrganizationDefaults, TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TUserPermissions } from "@/schemas/users";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
@@ -158,7 +158,21 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfig
 	limiteMensagensSemanaisViaCampanhas: null,
 };
 
-export const DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS: TOrganizationAccountingDefaults = {
+const DEFAULT_PAYMENT_METHOD_CONFIGURATION: TOrganizationConfiguration["defaults"]["pagamentos"]["metodos"]["DINHEIRO"] = {
+	suportado: false,
+	contaFinanceiraPadraoId: null,
+	contaFinanceiraPadraoKey: null,
+	efetivacaoTipoPadrao: "IMEDIATA",
+	delayDiasPadrao: 0,
+	parcelamento: {
+		permitido: false,
+		minParcelas: 0,
+		maxParcelas: null,
+		intervaloMeses: null,
+	},
+};
+
+export const DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS: TOrganizationDefaults = {
 	contabilidade: {
 		lancamentosPadrao: {
 			vendas: {
@@ -173,6 +187,21 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS: TOrganizationAccountin
 				creditoContaId: null,
 				creditoContaKey: null,
 			},
+		},
+	},
+	pagamentos: {
+		metodos: {
+			DINHEIRO: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
+			PIX: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
+			CARTAO_DEBITO: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
+			CARTAO_CREDITO: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
+			BOLETO: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
+			TRANSFERENCIA: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
+			CASHBACK: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
+			VALE: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
+			A_DEFINIR: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION, efetivacaoTipoPadrao: "PENDENTE" },
+			FIADO_NOTA: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION, efetivacaoTipoPadrao: "PENDENTE" },
+			OUTRO: { ...DEFAULT_PAYMENT_METHOD_CONFIGURATION },
 		},
 	},
 };

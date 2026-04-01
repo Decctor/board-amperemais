@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { CheckoutPaymentSplitSchema } from "@/lib/payments";
+import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { processSaleConfirmation } from "@/lib/sale-processing";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
@@ -28,17 +28,27 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
 
+	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
+
 	const result = await processSaleConfirmation({
 		organization,
 		saleId: input.id,
-		salePayments: input.pagamentos.map((pagamento) => ({
-			metodo: pagamento.metodo,
-			valor: pagamento.valor,
-			totalParcelas: pagamento.totalParcelas ?? undefined,
-			efetivacaoTipo: pagamento.efetivacaoTipo,
-			dataPrevisao: pagamento.dataPrevisao ?? undefined,
-			observacoes: pagamento.observacoes ?? undefined,
-		})),
+		salePayments: input.pagamentos.map((pagamento) => {
+			const methodDefaults = organizationPaymentMethodDefaults[pagamento.metodo];
+			if (!methodDefaults?.suportado) {
+				throw new createHttpError.BadRequest(`O método de pagamento ${pagamento.metodo} não está habilitado para esta organização.`);
+			}
+
+			return {
+				metodo: pagamento.metodo,
+				valor: pagamento.valor,
+				totalParcelas: pagamento.totalParcelas ?? undefined,
+				efetivacaoTipo: pagamento.efetivacaoTipo,
+				dataPrevisao: pagamento.dataPrevisao ?? undefined,
+				observacoes: pagamento.observacoes ?? undefined,
+				contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
+			};
+		}),
 		saleAuthorId: session.user.id,
 		saleClientId: input.clienteId,
 		saleCashbackProgramId: input.cashbackProgramaId,

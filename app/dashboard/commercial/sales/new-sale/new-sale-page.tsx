@@ -8,6 +8,7 @@ import { useIsMobile } from "@/lib/hooks/use-mobile";
 import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mutations/pos";
 import { usePOSGroups, usePOSProducts } from "@/lib/queries/pos";
 import type { TGetPOSProductsOutput } from "@/pages/api/pos/products";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";
 import { useMutation } from "@tanstack/react-query";
@@ -40,14 +41,15 @@ function mapItemsToApi(saleState: TUseSaleState) {
 
 type NewSalePageProps = {
 	organizationCashbackProgram: TCashbackProgramEntity | null;
+	organizationConfiguration: TOrganizationConfiguration;
 };
-export default function NewSalePage({ organizationCashbackProgram }: NewSalePageProps) {
+export default function NewSalePage({ organizationCashbackProgram, organizationConfiguration }: NewSalePageProps) {
 	const isMobile = useIsMobile();
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [searchValue, setSearchValue] = useState("");
 	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
 	const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
-	const saleState = useSaleState();
+	const saleState = useSaleState({ organizationConfig: organizationConfiguration });
 
 	const { mutate: createDraft, isPending: isCreatingDraft } = useMutation({
 		mutationKey: ["create-sale-draft"],
