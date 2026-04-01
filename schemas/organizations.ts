@@ -209,7 +209,7 @@ export const OrganizationSchema = z.object({
 			invalid_type_error: "Tipo não válido para se os dados da organização foram via integrações.",
 		})
 		.default(false),
-	origemDadosPadrao: DefaultDataSourceEnum.default("RECEPTOR"),
+	origemDadosPadrao: DefaultDataSourceEnum.default("RECEPTOR").nullable(),
 	// Integration
 	integracaoTipo: OrganizationIntegrationTypeEnum.optional().nullable(),
 	integracaoConfiguracao: OrganizationIntegrationConfigSchema.optional().nullable(),
