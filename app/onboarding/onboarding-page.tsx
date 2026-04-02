@@ -7,7 +7,7 @@ import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
 import { createOrganization } from "@/lib/mutations/organizations";
 import { isValidCNPJ } from "@/lib/validation";
-import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
+import { TOrganizationOnboardingState, useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -18,6 +18,8 @@ import { GeneralInfoStage } from "./_components/GeneralInfoStage";
 import { NicheOriginStage } from "./_components/NicheOriginStage";
 import { OnboardingLayout } from "./_components/OnboardingLayout";
 import { SubscriptionPlansStage } from "./_components/SubscriptionPlansStage";
+import { TCreateOrganizationInput } from "../api/admin/organizations/route";
+import { uploadFile } from "@/lib/files-storage";
 
 type OnboardingPageProps = {
 	user: unknown; // We might need this later, keeping prop signature
@@ -58,8 +60,26 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 		});
 	}, [state.stage]);
 
+	async function handleCreateOrganization(state: TOrganizationOnboardingState) {
+		let logoUrl: string | null = null;
+		if (state.organizationLogoHolder.file) {
+			const { url } = await uploadFile({
+				file: state.organizationLogoHolder.file,
+				fileName: state.organization.nome,
+				prefix: "organizations",
+			});
+			logoUrl = url;
+		}
+		return await createOrganization({
+			organization: {
+				...state.organization,
+				logoUrl: logoUrl,
+			},
+			subscription: state.subscription,
+		});
+	}
 	const mutation = useMutation({
-		mutationFn: createOrganization,
+		mutationFn: handleCreateOrganization,
 		onSuccess: (data) => {
 			// Redirect to the provided URL (either dashboard or Stripe checkout)
 			window.location.href = data.data.redirectTo;
@@ -117,10 +137,7 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 						state={state}
 						handleSelectPlan={(info) => {
 							updateOrganizationOnboarding({ subscription: info });
-							mutation.mutate({
-								organization: state.organization,
-								subscription: info,
-							});
+							mutation.mutate(state);
 						}}
 						isMutationPending={mutation.isPending}
 						goToPreviousStage={handleBack}
