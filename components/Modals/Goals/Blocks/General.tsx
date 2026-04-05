@@ -14,7 +14,7 @@ type GoalGeneralProps = {
 function GoalGeneral({ goal, updateGoal, goalSellers }: GoalGeneralProps) {
 	const goalSellersTotalValue = goalSellers.reduce((acc, goalSeller) => acc + goalSeller.objetivoValor, 0);
 	return (
-		<ResponsiveMenuSection title="INFORMAÇÕES GERIAS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
+		<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
 			<DateInput
 				label="DATA DE INÍCIO"
 				value={formatDateForInputValue(goal.dataInicio)}
@@ -28,7 +28,7 @@ function GoalGeneral({ goal, updateGoal, goalSellers }: GoalGeneralProps) {
 				width="100%"
 			/>
 			<NumberInput
-				label="VALOR"
+				label="META DE VALOR (R$)"
 				placeholder="Preencha aqui o valor da meta..."
 				value={goal.objetivoValor}
 				handleChange={(value) => updateGoal({ objetivoValor: value })}
@@ -49,6 +49,23 @@ function GoalGeneral({ goal, updateGoal, goalSellers }: GoalGeneralProps) {
 					</div>
 				</div>
 			) : null}
+			<div className="w-full border-t border-primary/10 pt-3 flex flex-col gap-3">
+				<p className="text-xs text-muted-foreground tracking-tight font-medium uppercase">Métricas adicionais (opcional)</p>
+				<NumberInput
+					label="META DE QUANTIDADE DE VENDAS"
+					placeholder="Ex: 150 vendas no período..."
+					value={goal.objetivoQtdeVendas ?? undefined}
+					handleChange={(value) => updateGoal({ objetivoQtdeVendas: value || null })}
+					width="100%"
+				/>
+				<NumberInput
+					label="META DE NOVOS CLIENTES"
+					placeholder="Ex: 30 novos clientes no período..."
+					value={goal.objetivoNovosClientes ?? undefined}
+					handleChange={(value) => updateGoal({ objetivoNovosClientes: value || null })}
+					width="100%"
+				/>
+			</div>
 		</ResponsiveMenuSection>
 	);
 }
