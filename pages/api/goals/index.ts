@@ -4,19 +4,70 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { GoalSchema, GoalSellerSchema } from "@/schemas/goals";
 import { db } from "@/services/drizzle";
-import { goals, goalsSellers } from "@/services/drizzle/schema/goals";
-import { and, eq } from "drizzle-orm";
+import { clients, goals, goalsSellers, sales, sellers } from "@/services/drizzle/schema";
+import { and, count, eq, gte, isNotNull, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
 
+const PAGE_SIZE = 10;
+
 /**
  *
  *
+ * HELPER: compute achievement for a goal period
  *
- * NEW
+ *
+ */
+async function computeGoalAchievement({
+	organizacaoId,
+	dataInicio,
+	dataFim,
+	vendedorId,
+}: {
+	organizacaoId: string;
+	dataInicio: Date;
+	dataFim: Date;
+	vendedorId?: string;
+}) {
+	const saleConditions = [
+		eq(sales.organizacaoId, organizacaoId),
+		isNotNull(sales.dataVenda),
+		eq(sales.natureza, "SN01"),
+		gte(sales.dataVenda, dataInicio),
+		lte(sales.dataVenda, dataFim),
+	];
+	if (vendedorId) saleConditions.push(eq(sales.vendedorId, vendedorId));
+
+	const [salesResult, clientsResult] = await Promise.all([
+		db
+			.select({ totalValor: sum(sales.valorTotal), totalQtde: count(sales.id) })
+			.from(sales)
+			.where(and(...saleConditions)),
+		db
+			.select({ totalNovosClientes: count(clients.id) })
+			.from(clients)
+			.where(
+				and(
+					eq(clients.organizacaoId, organizacaoId),
+					isNotNull(clients.primeiraCompraData),
+					gte(clients.primeiraCompraData, dataInicio),
+					lte(clients.primeiraCompraData, dataFim),
+				),
+			),
+	]);
+
+	return {
+		realizadoValor: Number(salesResult[0]?.totalValor ?? 0),
+		realizadoQtdeVendas: Number(salesResult[0]?.totalQtde ?? 0),
+		realizadoNovosClientes: Number(clientsResult[0]?.totalNovosClientes ?? 0),
+	};
+}
+
+/**
  *
  *
+ * GET
  *
  *
  */
@@ -28,6 +79,13 @@ const GetGoalsInputSchema = z.object({
 			invalid_type_error: "Tipo inválido para ID da meta.",
 		})
 		.optional(),
+	page: z.coerce
+		.number({
+			invalid_type_error: "Tipo inválido para página.",
+		})
+		.min(1)
+		.default(1)
+		.optional(),
 });
 export type TGetGoalsByIdInput = Pick<TGetGoalsInput, "id">;
 export type TGetGoalsInput = z.infer<typeof GetGoalsInputSchema>;
@@ -35,7 +93,7 @@ async function getGoals({ input, session }: { input: TGetGoalsInput; session: TA
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const { id } = input;
+	const { id, page = 1 } = input;
 
 	if (id) {
 		if (typeof id !== "string") throw new createHttpError.BadRequest("ID inválido.");
@@ -65,33 +123,80 @@ async function getGoals({ input, session }: { input: TGetGoalsInput; session: TA
 		};
 	}
 
-	const goals = await db.query.goals.findMany({
-		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
-		with: {
-			vendedores: {
-				with: {
-					vendedor: {
-						columns: {
-							id: true,
-							nome: true,
-							avatarUrl: true,
+	// Count total for pagination
+	const [totalResult, allGoals] = await Promise.all([
+		db
+			.select({ total: count(goals.id) })
+			.from(goals)
+			.where(eq(goals.organizacaoId, userOrgId)),
+		db.query.goals.findMany({
+			where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
+			with: {
+				vendedores: {
+					with: {
+						vendedor: {
+							columns: {
+								id: true,
+								nome: true,
+								avatarUrl: true,
+							},
 						},
 					},
 				},
 			},
-		},
-		orderBy: (fields, { desc }) => desc(fields.dataInicio),
-	});
+			orderBy: (fields, { desc }) => desc(fields.dataInicio),
+			limit: PAGE_SIZE,
+			offset: (page - 1) * PAGE_SIZE,
+		}),
+	]);
+
+	const goalsMatched = Number(totalResult[0]?.total ?? 0);
+	const totalPages = Math.max(1, Math.ceil(goalsMatched / PAGE_SIZE));
+
+	// Compute achievement for each goal in parallel
+	const goalsWithAchievement = await Promise.all(
+		allGoals.map(async (goal) => {
+			const orgAchievement = await computeGoalAchievement({
+				organizacaoId: userOrgId,
+				dataInicio: goal.dataInicio,
+				dataFim: goal.dataFim,
+			});
+
+			const vendedoresWithAchievement = await Promise.all(
+				goal.vendedores.map(async (gv) => {
+					const sellerAchievement = await computeGoalAchievement({
+						organizacaoId: userOrgId,
+						dataInicio: goal.dataInicio,
+						dataFim: goal.dataFim,
+						vendedorId: gv.vendedorId,
+					});
+					return { ...gv, ...sellerAchievement };
+				}),
+			);
+
+			return {
+				...goal,
+				...orgAchievement,
+				vendedores: vendedoresWithAchievement,
+			};
+		}),
+	);
+
 	return {
 		data: {
 			byId: undefined,
-			default: goals,
+			default: {
+				goals: goalsWithAchievement,
+				goalsMatched,
+				totalPages,
+			},
 		},
 	};
 }
 export type TGetGoalsOutput = Awaited<ReturnType<typeof getGoals>>;
 export type TGetGoalsOutputById = Exclude<TGetGoalsOutput["data"]["byId"], undefined>;
 export type TGetGoalsOutputDefault = Exclude<TGetGoalsOutput["data"]["default"], undefined>;
+export type TGetGoalsOutputDefaultGoal = TGetGoalsOutputDefault["goals"][number];
 const getGoalsHandler: NextApiHandler<TGetGoalsOutput> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached(req.cookies);
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
@@ -100,6 +205,14 @@ const getGoalsHandler: NextApiHandler<TGetGoalsOutput> = async (req, res) => {
 	const goals = await getGoals({ input, session: sessionUser });
 	return res.status(200).json(goals);
 };
+
+/**
+ *
+ *
+ * CREATE
+ *
+ *
+ */
 
 const CreateGoalInputSchema = z.object({
 	goal: GoalSchema.omit({ dataInsercao: true }),
@@ -151,6 +264,14 @@ const createGoalHandler: NextApiHandler<TCreateGoalOutput> = async (req, res) =>
 	const goal = await createGoal({ input, session: sessionUser });
 	return res.status(200).json(goal);
 };
+
+/**
+ *
+ *
+ * UPDATE
+ *
+ *
+ */
 
 const UpdateGoalInputSchema = z.object({
 	goalId: z.string({
@@ -218,6 +339,14 @@ const updateGoalHandler: NextApiHandler<TUpdateGoalOutput> = async (req, res) =>
 	const goal = await updateGoal({ input, session: sessionUser });
 	return res.status(200).json(goal);
 };
+
+/**
+ *
+ *
+ * DELETE
+ *
+ *
+ */
 
 const DeleteGoalInputSchema = z.object({
 	goalId: z.string({

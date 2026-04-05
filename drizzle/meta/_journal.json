@@ -64,6 +64,13 @@
       "when": 1774947600000,
       "tag": "0008_payment_method_pending_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1775520000000,
+      "tag": "0009_goal_multi_metrics",
+      "breakpoints": true
     }
   ]
 }

@@ -11,11 +11,13 @@ import { memo, useCallback } from "react";
 
 type GoalSellersProps = {
 	goalTotalValue: number;
+	goalQtdeVendas?: number | null;
+	goalNovosClientes?: number | null;
 	goalSellers: TUseGoalsState["state"]["goalSellers"];
 	updateGoalSeller: TUseGoalsState["updateGoalSeller"];
 	updateManyGoalSellers: TUseGoalsState["updateManyGoalSellers"];
 };
-function GoalSellers({ goalTotalValue, goalSellers, updateGoalSeller, updateManyGoalSellers }: GoalSellersProps) {
+function GoalSellers({ goalTotalValue, goalQtdeVendas, goalNovosClientes, goalSellers, updateGoalSeller, updateManyGoalSellers }: GoalSellersProps) {
 	const { data: sellers, isLoading, isError, isSuccess, error } = useSellers({});
 
 	const goalSellersTotalValue = goalSellers.reduce((acc, goalSeller) => acc + goalSeller.objetivoValor, 0);
@@ -35,11 +37,6 @@ function GoalSellers({ goalTotalValue, goalSellers, updateGoalSeller, updateMany
 		[goalSellers, updateManyGoalSellers],
 	);
 
-	console.log("[INFO] [GOAL SELLERS]", {
-		goalTotalValue,
-		goalSellersTotalValue,
-		goalSellers,
-	});
 	return (
 		<ResponsiveMenuSection title="VENDEDORES" icon={<UsersRound className="h-4 min-h-4 w-4 min-w-4" />}>
 			{Math.abs(goalTotalValue - goalSellersTotalValue) > 1 ? (
@@ -65,6 +62,8 @@ function GoalSellers({ goalTotalValue, goalSellers, updateGoalSeller, updateMany
 							goalSeller={
 								goalSellers.find((goalSeller) => goalSeller.vendedorId === seller.id) ?? { vendedorId: seller.id, objetivoValor: 0, vendedor: seller }
 							}
+							hasQtdeVendas={!!goalQtdeVendas}
+							hasNovosClientes={!!goalNovosClientes}
 							updateGoalSeller={updateGoalSeller}
 						/>
 					))}
@@ -77,16 +76,14 @@ function GoalSellers({ goalTotalValue, goalSellers, updateGoalSeller, updateMany
 type GoalSellerCardProps = {
 	seller: TGetSellersOutputDefault["sellers"][number];
 	goalSeller: TUseGoalsState["state"]["goalSellers"][number];
+	hasQtdeVendas: boolean;
+	hasNovosClientes: boolean;
 	updateGoalSeller: TUseGoalsState["updateGoalSeller"];
 };
 const GoalSellerCard = memo(
-	function GoalSellerCard({ seller, goalSeller, updateGoalSeller }: GoalSellerCardProps) {
-		console.log("[INFO] [GOAL SELLER CARD]", {
-			seller,
-			goalSeller,
-		});
+	function GoalSellerCard({ seller, goalSeller, hasQtdeVendas, hasNovosClientes, updateGoalSeller }: GoalSellerCardProps) {
 		return (
-			<div className="w-full flex items-center justify-between gap-2 p-2 border border-primary/20 rounded-md">
+			<div className="w-full flex flex-col gap-2 p-2 border border-primary/20 rounded-md">
 				<div className="flex items-center gap-2">
 					<Avatar className="w-6 h-6 min-w-6 min-h-6">
 						<AvatarImage src={seller.avatarUrl ?? undefined} />
@@ -94,18 +91,54 @@ const GoalSellerCard = memo(
 					</Avatar>
 					<h1 className="w-full text-sm font-medium">{seller.nome}</h1>
 				</div>
-				<input
-					type="number"
-					placeholder="Preencha aqui o valor da meta..."
-					value={goalSeller.objetivoValor}
-					onChange={(e) => updateGoalSeller({ ...goalSeller, objetivoValor: Number(e.target.value) })}
-					className="w-24 text-xs rounded-md border border-primary/20 p-1"
-				/>
+				<div className="flex flex-wrap items-center gap-2">
+					<div className="flex flex-col gap-0.5 min-w-[120px]">
+						<p className="text-[0.6rem] text-muted-foreground uppercase font-medium tracking-tight">Meta de Valor (R$)</p>
+						<input
+							type="number"
+							placeholder="0"
+							value={goalSeller.objetivoValor}
+							onChange={(e) => updateGoalSeller({ ...goalSeller, objetivoValor: Number(e.target.value) })}
+							className="w-full text-xs rounded-md border border-primary/20 p-1"
+						/>
+					</div>
+					{hasQtdeVendas ? (
+						<div className="flex flex-col gap-0.5 min-w-[120px]">
+							<p className="text-[0.6rem] text-muted-foreground uppercase font-medium tracking-tight">Meta de Qtde Vendas</p>
+							<input
+								type="number"
+								placeholder="0"
+								value={goalSeller.objetivoQtdeVendas ?? ""}
+								onChange={(e) => updateGoalSeller({ ...goalSeller, objetivoQtdeVendas: Number(e.target.value) || null })}
+								className="w-full text-xs rounded-md border border-primary/20 p-1"
+							/>
+						</div>
+					) : null}
+					{hasNovosClientes ? (
+						<div className="flex flex-col gap-0.5 min-w-[120px]">
+							<p className="text-[0.6rem] text-muted-foreground uppercase font-medium tracking-tight">Meta de Novos Clientes</p>
+							<input
+								type="number"
+								placeholder="0"
+								value={goalSeller.objetivoNovosClientes ?? ""}
+								onChange={(e) => updateGoalSeller({ ...goalSeller, objetivoNovosClientes: Number(e.target.value) || null })}
+								className="w-full text-xs rounded-md border border-primary/20 p-1"
+							/>
+						</div>
+					) : null}
+				</div>
 			</div>
 		);
 	},
 	(prevProps, nextProps) => {
-		return prevProps.seller.id === nextProps.seller.id && prevProps.goalSeller.objetivoValor === nextProps.goalSeller.objetivoValor;
+		return (
+			prevProps.seller.id === nextProps.seller.id &&
+			prevProps.goalSeller.objetivoValor === nextProps.goalSeller.objetivoValor &&
+			prevProps.goalSeller.objetivoQtdeVendas === nextProps.goalSeller.objetivoQtdeVendas &&
+			prevProps.goalSeller.objetivoNovosClientes === nextProps.goalSeller.objetivoNovosClientes &&
+			prevProps.hasQtdeVendas === nextProps.hasQtdeVendas &&
+			prevProps.hasNovosClientes === nextProps.hasNovosClientes
+		);
 	},
 );
 
