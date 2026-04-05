@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "sync:org-sales-history": "tsx ./sync-org-sales-history.ts",
     "lint": "oxlint --react-plugin --nextjs-plugin .",
     "lint:fix": "oxlint --react-plugin --nextjs-plugin --fix .",
     "format": "oxfmt --write .",
@@ -113,6 +114,7 @@
     "oxlint": "^1.55.0",
     "postcss": "^8",
     "tailwindcss": "^4.1.16",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "overrides": {
