@@ -5,7 +5,7 @@ import { useDismissHint, useHintFeedback } from "@/lib/queries/ai-hints";
 import { cn } from "@/lib/utils";
 import type { TAIHint } from "@/schemas/ai-hints";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, ChevronDown, ChevronUp, Lightbulb, Sparkles, Target, ThumbsDown, ThumbsUp, TrendingDown, TrendingUp, Users, X } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Lightbulb, RefreshCw, Sparkles, Target, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -16,41 +16,9 @@ type AIHintCardProps = {
 };
 
 const HINT_ICONS: Record<string, React.ReactNode> = {
-	"campaign-suggestion": <Target className="w-4 h-4" />,
-	"campaign-optimization": <TrendingUp className="w-4 h-4" />,
-	"rfm-action": <Users className="w-4 h-4" />,
-	"client-reactivation": <Users className="w-4 h-4" />,
-	"sales-trend": <TrendingUp className="w-4 h-4" />,
-	"product-insight": <Lightbulb className="w-4 h-4" />,
-	"seller-performance": <Users className="w-4 h-4" />,
-	general: <Sparkles className="w-4 h-4" />,
+	"campaign-creation-suggestion": <Target className="w-4 h-4" />,
+	"campaign-updates-suggestion": <RefreshCw className="w-4 h-4" />,
 };
-
-const URGENCY_STYLES: Record<string, string> = {
-	critica: "border-l-4 border-l-red-500 bg-red-50/50",
-	alta: "border-l-4 border-l-orange-500 bg-orange-50/50",
-	media: "border-l-4 border-l-yellow-500 bg-yellow-50/50",
-	baixa: "border-l-4 border-l-blue-500 bg-blue-50/50",
-};
-
-const TREND_ICONS: Record<string, React.ReactNode> = {
-	crescimento: <TrendingUp className="w-4 h-4 text-green-500" />,
-	queda: <TrendingDown className="w-4 h-4 text-red-500" />,
-	estavel: <TrendingUp className="w-4 h-4 text-gray-500" />,
-};
-
-function getUrgencyFromHint(hint: TAIHint): string | null {
-	if (hint.conteudo.tipo === "rfm-action") {
-		return hint.conteudo.dados.urgencia;
-	}
-	if (hint.conteudo.tipo === "general") {
-		return hint.conteudo.dados.prioridade;
-	}
-	if (hint.conteudo.tipo === "sales-trend" && hint.conteudo.dados.tendencia === "queda") {
-		return "alta";
-	}
-	return null;
-}
 
 export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 	const [feedbackGiven, setFeedbackGiven] = useState<"like" | "dislike" | null>(null);
@@ -69,10 +37,6 @@ export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 	};
 
 	const icon = HINT_ICONS[hint.tipo] || <Sparkles className="w-4 h-4" />;
-	const urgency = getUrgencyFromHint(hint);
-	const urgencyStyle = urgency ? URGENCY_STYLES[urgency] : "";
-
-	const trendIcon = hint.conteudo.tipo === "sales-trend" ? TREND_ICONS[hint.conteudo.dados.tendencia] : null;
 
 	return (
 		<div
@@ -80,7 +44,6 @@ export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 				"group flex items-start gap-3 p-3 transition-all duration-300 rounded-xl border border-transparent cursor-pointer",
 				isOpened && "bg-secondary/40 border-border/40",
 				!isOpened && "opacity-70 hover:opacity-100",
-				urgencyStyle,
 			)}
 			onClick={onClick}
 			onKeyDown={(e) => {
@@ -95,7 +58,7 @@ export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 			{/* Icon */}
 			<div className="flex-shrink-0">
 				<div className={cn("h-8 w-8 rounded-full flex items-center justify-center", isOpened ? "bg-brand text-brand-foreground" : "bg-secondary text-muted-foreground")}>
-					{trendIcon || icon}
+					{icon}
 				</div>
 			</div>
 

@@ -14,27 +14,16 @@ async function generateHints(request: NextRequest) {
 	const orgId = session.membership.organizacao.id;
 	const body = await request.json();
 	const input = GenerateHintsInputSchema.parse(body);
-
 	const result = await generateHintsForSubject({
 		organizacaoId: orgId,
 		assunto: input.assunto,
 		contextoAdicional: input.contextoAdicional,
 	});
 
-	if (result.limiteAtingido && result.hints.length === 0) {
-		return NextResponse.json(
-			{
-				data: { hints: [], tokensUsados: 0, limiteAtingido: true },
-				message: "Limite semanal de dicas atingido.",
-			},
-			{ status: 200 },
-		);
-	}
-
 	return NextResponse.json(
 		{
 			data: result,
-			message: `${result.hints.length} dica(s) gerada(s) com sucesso.`,
+			message: "Geração automática de dicas não está disponível nesta versão.",
 		},
 		{ status: 200 },
 	);

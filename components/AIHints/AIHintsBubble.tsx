@@ -72,8 +72,7 @@ export function AIHintsBubble() {
 	};
 
 	const handleRefresh = () => {
-		// Generate hints for dashboard (default)
-		generateHints({ assunto: "dashboard" });
+		generateHints({ assunto: "campaigns" });
 	};
 
 	// Don't render if:
