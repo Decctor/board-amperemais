@@ -1,88 +1,128 @@
 "use client";
+
+import GoalEnrichedCard from "@/components/Goals/GoalEnrichedCard";
+import GoalsDashboardView from "@/components/Goals/GoalsDashboardView";
+import GoalsEmptyState from "@/components/Goals/GoalsEmptyState";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlGoal from "@/components/Modals/Goals/ControlGoal";
 import NewGoal from "@/components/Modals/Goals/NewGoal";
+import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { useGoals } from "@/lib/queries/goals";
-import { cn } from "@/lib/utils";
-import type { TGetGoalsOutputDefault } from "@/pages/api/goals";
 import { useQueryClient } from "@tanstack/react-query";
-import dayjs from "dayjs";
-import { Pencil } from "lucide-react";
+import { LayoutDashboard, Plus, Target } from "lucide-react";
+import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 
-const currentDate = dayjs();
 type GoalsPageProps = {
 	user: TAuthUserSession["user"];
 };
 export default function GoalsPage({ user }: GoalsPageProps) {
 	const queryClient = useQueryClient();
+	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["dashboard", "metas"]));
 	const [newGoalModalIsOpen, setNewGoalModalIsOpen] = useState<boolean>(false);
 	const [editGoalModal, setEditGoalModal] = useState<{ id: string | null; isOpen: boolean }>({ id: null, isOpen: false });
-	const { data: goals, queryKey, isLoading, isError, isSuccess, error } = useGoals();
 
-	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
-	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
+	const activeView = viewMode ?? "dashboard";
+
+	const handleOnSettled = async () => {
+		await queryClient.invalidateQueries({ queryKey: ["goals"] });
+		await queryClient.invalidateQueries({ queryKey: ["goals-stats"] });
+	};
+
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end gap-2">
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewGoalModalIsOpen(true)}>
-					NOVA META
-				</Button>
-			</div>
-			{isLoading ? <LoadingComponent /> : null}
-			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{isSuccess &&
-				goals.map((goal, index: number) => <GoalsPageGoalCard key={goal.id} goal={goal} handleClick={(id) => setEditGoalModal({ id, isOpen: true })} />)}
+			<Tabs value={activeView} onValueChange={(v) => setViewMode(v as "dashboard" | "metas")}>
+				<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+					<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
+						<TabsTrigger value="dashboard" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+							<LayoutDashboard className="w-4 h-4 min-w-4 min-h-4" />
+							Dashboard
+						</TabsTrigger>
+						<TabsTrigger value="metas" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+							<Target className="w-4 h-4 min-w-4 min-h-4" />
+							Metas
+						</TabsTrigger>
+					</TabsList>
+					<Button className="flex items-center gap-2" size="sm" onClick={() => setNewGoalModalIsOpen(true)}>
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						NOVA META
+					</Button>
+				</div>
+
+				<TabsContent value="dashboard">
+					<GoalsDashboardView />
+				</TabsContent>
+
+				<TabsContent value="metas">
+					<GoalsListingView
+						onEdit={(id) => setEditGoalModal({ id, isOpen: true })}
+						onCreateGoal={() => setNewGoalModalIsOpen(true)}
+					/>
+				</TabsContent>
+			</Tabs>
 
 			{newGoalModalIsOpen ? (
-				<NewGoal user={user} closeModal={() => setNewGoalModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
+				<NewGoal
+					user={user}
+					closeModal={() => setNewGoalModalIsOpen(false)}
+					callbacks={{ onSettled: handleOnSettled }}
+				/>
 			) : null}
 			{editGoalModal.id && editGoalModal.isOpen ? (
 				<ControlGoal
 					goalId={editGoalModal.id}
 					user={user}
 					closeModal={() => setEditGoalModal({ id: null, isOpen: false })}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+					callbacks={{ onSettled: handleOnSettled }}
 				/>
 			) : null}
 		</div>
 	);
 }
 
-type GoalsPageGoalCardProps = {
-	goal: TGetGoalsOutputDefault[number];
-	handleClick: (id: string) => void;
+type GoalsListingViewProps = {
+	onEdit: (id: string) => void;
+	onCreateGoal: () => void;
 };
-function GoalsPageGoalCard({ goal, handleClick }: GoalsPageGoalCardProps) {
-	const isGoalActive = dayjs(goal.dataInicio).isBefore(currentDate) && dayjs(goal.dataFim).isAfter(currentDate);
+function GoalsListingView({ onEdit, onCreateGoal }: GoalsListingViewProps) {
+	const [page, setPage] = useState(1);
+	const { data, isLoading, isError, isSuccess, error } = useGoals({ page });
+
+	const goals = data?.goals ?? [];
+	const goalsMatched = data?.goalsMatched ?? 0;
+	const totalPages = data?.totalPages ?? 1;
+
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
-			<div className="w-full flex items-center justify-between gap-2">
-				<h1 className="text-xs font-bold tracking-tight lg:text-sm">
-					META DE {formatDateAsLocale(goal.dataInicio)} À {formatDateAsLocale(goal.dataFim)}
-				</h1>
-				<div className="flex items-center gap-1">
-					{isGoalActive ? (
-						<div className="px-2 py-1 flex items-center gap-1 rounded-lg bg-blue-600 texy-white">
-							<h3 className="text-xs font-medium tracking-tight lg:text-sm text-primary">META ATIVA</h3>
+		<div className="w-full flex flex-col gap-3">
+			{isLoading ? <LoadingComponent /> : null}
+			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+
+			{isSuccess ? (
+				goals.length === 0 && page === 1 ? (
+					<GoalsEmptyState onCreateGoal={onCreateGoal} />
+				) : (
+					<>
+						<GeneralPaginationComponent
+							activePage={page}
+							queryLoading={isLoading}
+							selectPage={setPage}
+							totalPages={totalPages}
+							itemsMatchedText={`${goalsMatched} ${goalsMatched === 1 ? "meta encontrada" : "metas encontradas"}.`}
+							itemsShowingText={`Mostrando ${goals.length} ${goals.length === 1 ? "meta" : "metas"}.`}
+						/>
+						<div className="w-full flex flex-col gap-3">
+							{goals.map((goal) => (
+								<GoalEnrichedCard key={goal.id} goal={goal} onEdit={onEdit} />
+							))}
 						</div>
-					) : null}
-					<div className="px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10">
-						<h3 className="text-xs font-medium tracking-tight lg:text-sm">{formatToMoney(goal.objetivoValor)}</h3>
-					</div>
-				</div>
-			</div>
-			<div className="flex w-full items-center justify-end">
-				<Button variant="ghost" onClick={() => handleClick(goal.id)} className="flex items-center gap-1">
-					<Pencil className="w-4 h-4 min-w-4 min-h-4" />
-					<p>EDITAR</p>
-				</Button>
-			</div>
+					</>
+				)
+			) : null}
 		</div>
 	);
 }

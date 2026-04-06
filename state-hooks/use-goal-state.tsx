@@ -39,6 +39,8 @@ export function useGoalsState({ initialState }: TUseGoalsStateProps) {
 			dataInicio: initialState?.goal?.dataInicio ?? new Date(),
 			dataFim: initialState?.goal?.dataFim ?? new Date(),
 			objetivoValor: initialState?.goal?.objetivoValor ?? 0,
+			objetivoQtdeVendas: initialState?.goal?.objetivoQtdeVendas ?? null,
+			objetivoNovosClientes: initialState?.goal?.objetivoNovosClientes ?? null,
 		},
 		goalSellers: initialState?.goalSellers ?? [],
 	});
@@ -89,6 +91,8 @@ export function useGoalsState({ initialState }: TUseGoalsStateProps) {
 				dataInicio: new Date(),
 				dataFim: new Date(),
 				objetivoValor: 0,
+				objetivoQtdeVendas: null,
+				objetivoNovosClientes: null,
 			},
 			goalSellers: [],
 		});
