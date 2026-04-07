@@ -3,18 +3,19 @@ import type { TGetCashbackProgramOutput } from "@/app/api/cashback-programs/rout
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ControlCashbackProgram from "@/components/Modals/CashbackPrograms/ControlCashbackProgram";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatCashbackValue, formatDecimalPlaces, formatToMoney, getCashbackUnitLabel } from "@/lib/formatting";
-import { copyToClipboard } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import dayjs from "dayjs";
-import { Calendar, DollarSign, Edit, Pencil, Presentation, Settings, TrendingUp } from "lucide-react";
+import { Calendar, Check, DollarSign, Pencil, PlayIcon, Presentation, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import CashbackStatsBlock from "./CashbackStatsBlock";
 import RecentTransactionsBlock from "./RecentTransactionsBlock";
 import TopClientsBlock from "./TopClientsBlock";
-
+import { updateCashbackProgram } from "@/lib/mutations/cashback-programs";
+import { getErrorMessage } from "@/lib/errors";
+import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
 type CashbackProgramsPageProps = {
 	user: TAuthUserSession["user"];
 	userOrg: Exclude<TAuthUserSession["membership"], null>["organizacao"];
@@ -36,6 +37,20 @@ export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, o
 		before: period.before ? period.before.toISOString() : dayjs().endOf("month").toISOString(),
 	};
 
+	const { mutate: handleUpdateCashbackProgramMutation, isPending } = useMutation({
+		mutationKey: ["update-cashback-program", cashbackProgram.id],
+		mutationFn: updateCashbackProgram,
+		onSuccess: async (data) => {
+			return toast.success(data.message);
+		},
+		onError: async (error) => {
+			return toast.error(getErrorMessage(error));
+		},
+		onSettled: async () => {
+			return window.location.reload();
+		},
+	});
+
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			{/* Program Info Card */}
@@ -45,10 +60,38 @@ export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, o
 						<h1 className="text-lg font-bold tracking-tight">{cashbackProgram.titulo}</h1>
 						{cashbackProgram.descricao && <p className="text-sm font-medium tracking-tight">{cashbackProgram.descricao}</p>}
 					</div>
-					<Button variant="ghost" className="flex items-center gap-2" onClick={() => setEditCashbackProgramModalIsOpen(true)}>
-						<Pencil className="w-4 min-w-4 h-4 min-h-4" />
-						EDITAR
-					</Button>
+					<div className="flex items-center gap-3">
+						<Button variant="ghost" className="flex items-center gap-2" onClick={() => setEditCashbackProgramModalIsOpen(true)}>
+							<Pencil className="w-4 min-w-4 h-4 min-h-4" />
+							EDITAR
+						</Button>
+						{cashbackProgram.ativo ? (
+							<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 bg-green-500 dark:bg-green-600 text-white")}>
+								<Check className="w-4 min-w-4 h-4 min-h-4" />
+								<p className="text-[0.65rem] font-bold tracking-tight uppercase">ATIVO</p>
+							</div>
+						) : (
+							<Button
+								variant="ghost"
+								size="fit"
+								disabled={isPending}
+								className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 bg-green-500 dark:bg-green-600 text-white hover:bg-green-600 hover:dark:bg-green-700 hover:text-white"
+								onClick={() =>
+									handleUpdateCashbackProgramMutation({
+										cashbackProgramId: cashbackProgram.id,
+										cashbackProgram: {
+											...cashbackProgram,
+											ativo: true,
+										},
+										cashbackProgramPrizes: cashbackProgram.recompensas,
+									})
+								}
+							>
+								<PlayIcon className="w-4 min-w-4 h-4 min-h-4" />
+								ATIVAR
+							</Button>
+						)}
+					</div>
 				</div>
 
 				<div className="w-full flex items-center gap-2 flex-wrap">

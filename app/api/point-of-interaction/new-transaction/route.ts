@@ -200,12 +200,17 @@ export async function processPointOfInteractionTransaction({
 			throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 		}
 
+		const cashbackProgramIsActive = program.ativo;
 		// Transactions only require accumulation processing when organization allows it
-		const transactionRequiresAccumulationProcessing = program.acumuloPermitirViaPontoIntegracao;
+		const transactionRequiresAccumulationProcessing = cashbackProgramIsActive && program.acumuloPermitirViaPontoIntegracao;
 		// Transactions only require sale processing when organization has no defined integration
 		const transactionRequiresSaleProcessing = !program.organizacao.integracaoTipo;
 		// Transactions only require redemption processing when cashback is applied and has a positive value
-		const transactionRequiresRedemptionProcessing = input.sale.cashback.aplicar && input.sale.cashback.valor > 0;
+		const requestedCashbackRedemption = input.sale.cashback.aplicar && input.sale.cashback.valor > 0;
+		if (!cashbackProgramIsActive && requestedCashbackRedemption) {
+			throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
+		}
+		const transactionRequiresRedemptionProcessing = cashbackProgramIsActive && requestedCashbackRedemption;
 		console.log({
 			transactionRequiresAccumulationProcessing,
 			transactionRequiresSaleProcessing,
@@ -451,12 +456,14 @@ export async function processPointOfInteractionTransaction({
 		if (transactionRequiresRedemptionProcessing) {
 			visualClientNewOverallAvailableBalance -= effectiveRedemptionValue;
 		}
-		visualClientAccumulatedCashbackValue = calculateAccumulatedCashbackValue({
-			accumulationType: program.acumuloTipo,
-			accumulationValue: program.acumuloValor,
-			minimumSaleValue: program.acumuloRegraValorMinimo,
-			saleValue: effectiveSaleValue,
-		});
+		visualClientAccumulatedCashbackValue = cashbackProgramIsActive
+			? calculateAccumulatedCashbackValue({
+					accumulationType: program.acumuloTipo,
+					accumulationValue: program.acumuloValor,
+					minimumSaleValue: program.acumuloRegraValorMinimo,
+					saleValue: effectiveSaleValue,
+				})
+			: 0;
 		visualClientNewOverallAvailableBalance += visualClientAccumulatedCashbackValue;
 
 		// THIRD STEP: Processing cashback redemption (if applicable)
