@@ -1,15 +1,16 @@
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
-import { formatDateAsLocale, formatDecimalPlaces, formatLongString, formatNameAsInitials } from "@/lib/formatting";
+import { formatDateAsLocale, formatDecimalPlaces, formatNameAsInitials } from "@/lib/formatting";
 import { formatToMoney } from "@/lib/formatting";
 import { useGroupedSalesStats } from "@/lib/queries/stats/grouped";
 import type { TGroupedSalesStats } from "@/pages/api/stats/sales-grouped";
+import type { TSalesDetailedAnalysisInput } from "@/pages/api/stats/sales-detailed-analysis";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { useEffect, useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { type ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,71 +20,79 @@ import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { isValidNumber } from "@/lib/validation";
 import { BadgeDollarSign, Calendar, CirclePlus, Download, Flame } from "lucide-react";
-import { FaRankingStar } from "react-icons/fa6";
-import { VariableSizeList as List, VariableSizeList } from "react-window";
-import { Bar, BarChart, LabelList, Pie, PieChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { VariableSizeList } from "react-window";
+import { Pie, PieChart } from "recharts";
 import { toast } from "sonner";
+import WeeklyStatsDetailMenu from "./WeeklyStatsDetailMenu";
+
 type GroupedStatsBlockProps = {
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 	user: TAuthUserSession["user"];
 	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 };
-function GroupedStatsBlock({ generalQueryParams, user, userOrg }: GroupedStatsBlockProps) {
+function GroupedStatsBlock({ generalQueryParams, user: _user, userOrg }: GroupedStatsBlockProps) {
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
+	const [selectedWeeklyDrilldown, setSelectedWeeklyDrilldown] = useState<TSalesDetailedAnalysisInput | null>(null);
 
 	const [debouncedQueryParams] = useDebounce(queryParams, 1000);
 
-	const { data: groupedStats, isLoading: groupedStatsLoading } = useGroupedSalesStats(debouncedQueryParams);
+	const { data: groupedStats } = useGroupedSalesStats(debouncedQueryParams);
 
 	useEffect(() => {
 		setQueryParams(generalQueryParams);
+		setSelectedWeeklyDrilldown(null);
 	}, [generalQueryParams]);
 	return (
-		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
-				<div className="w-full lg:w-[50%]">
-					<ResultsByPartnerGraph data={groupedStats?.porParceiro || []} />
-				</div>
-				<div className="w-full lg:w-[50%]">
-					<ResultsBySellerGraph data={groupedStats?.porVendedor || []} />
-				</div>
-			</div>
-			{userOrg?.assinaturaPlano === "CRESCIMENTO" ? (
+		<>
+			<div className="w-full flex flex-col gap-2 py-2">
 				<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
 					<div className="w-full lg:w-[50%]">
-						<ResultsByItemGraph data={groupedStats?.porItem || []} />
+						<ResultsByPartnerGraph data={groupedStats?.porParceiro || []} />
 					</div>
 					<div className="w-full lg:w-[50%]">
-						<ResultsByProductGroupGraph data={groupedStats?.porGrupo || []} />
+						<ResultsBySellerGraph data={groupedStats?.porVendedor || []} />
 					</div>
 				</div>
-			) : null}
+				{userOrg?.assinaturaPlano === "CRESCIMENTO" ? (
+					<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
+						<div className="w-full lg:w-[50%]">
+							<ResultsByItemGraph data={groupedStats?.porItem || []} />
+						</div>
+						<div className="w-full lg:w-[50%]">
+							<ResultsByProductGroupGraph data={groupedStats?.porGrupo || []} />
+						</div>
+					</div>
+				) : null}
 
-			<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
-				<div className="w-full lg:w-[50%]">
-					<ResultsByChannelGraph data={groupedStats?.porCanal || []} />
+				<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
+					<div className="w-full lg:w-[50%]">
+						<ResultsByChannelGraph data={groupedStats?.porCanal || []} />
+					</div>
+					<div className="w-full lg:w-[50%]">
+						<ResultsByFulfillmentMethodGraph data={groupedStats?.porEntregaModalidade || []} />
+					</div>
 				</div>
-				<div className="w-full lg:w-[50%]">
-					<ResultsByFulfillmentMethodGraph data={groupedStats?.porEntregaModalidade || []} />
-				</div>
-			</div>
 
-			<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
-				<div className="w-full lg:w-1/2">
-					<GroupedByMonthDay data={groupedStats?.porDiaDoMes || []} />
+				<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
+					<div className="w-full lg:w-1/2">
+						<GroupedByMonthDay data={groupedStats?.porDiaDoMes || []} />
+					</div>
+					<div className="w-full lg:w-1/2">
+						<GroupedByMonth data={groupedStats?.porMes || []} />
+					</div>
 				</div>
-				<div className="w-full lg:w-1/2">
-					<GroupedByMonth data={groupedStats?.porMes || []} />
+
+				<div className="w-full">
+					<WeeklyStatsBlock
+						porDiaDaSemana={groupedStats?.porDiaDaSemana || []}
+						porDiaSemanaHora={groupedStats?.porDiaSemanaHora || []}
+						period={queryParams.period}
+						onSelectDrilldown={setSelectedWeeklyDrilldown}
+					/>
 				</div>
 			</div>
-			<div className="w-full">
-				<WeeklyStatsBlock
-					porDiaDaSemana={groupedStats?.porDiaDaSemana || []}
-					porDiaSemanaHora={groupedStats?.porDiaSemanaHora || []}
-					period={queryParams.period}
-				/>
-			</div>
-		</div>
+			{selectedWeeklyDrilldown ? <WeeklyStatsDetailMenu params={selectedWeeklyDrilldown} closeMenu={() => setSelectedWeeklyDrilldown(null)} /> : null}
+		</>
 	);
 }
 
@@ -114,20 +123,12 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 			return toast.error(msg);
 		}
 	}
-	const ProductsList = ({
-		height,
-		width,
-		list,
-	}: {
-		height: number | string;
-		width: number | string;
-		list: TGroupedSalesStats["porItem"];
-	}) => (
+	const ProductsList = ({ height, width, list }: { height: number | string; width: number | string; list: TGroupedSalesStats["porItem"] }) => (
 		<VariableSizeList
 			height={height}
 			width={width}
 			itemCount={list ? list.length : 0}
-			itemSize={(index) => 30} // Adjust the item height as needed
+			itemSize={(_index) => 30} // Adjust the item height as needed
 			className="overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
 		>
 			{({ index, style }) => {
@@ -606,9 +607,10 @@ type WeeklyStatsBlockProps = {
 	porDiaDaSemana: TGroupedSalesStats["porDiaDaSemana"];
 	porDiaSemanaHora: TGroupedSalesStats["porDiaSemanaHora"];
 	period: TSaleStatsGeneralQueryParams["period"];
+	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
 };
 
-function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period }: WeeklyStatsBlockProps) {
+function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period, onSelectDrilldown }: WeeklyStatsBlockProps) {
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs min-h-[420px]">
 			<div className="flex items-center justify-between">
@@ -619,13 +621,13 @@ function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period }: WeeklySt
 			</div>
 
 			<p className="text-[0.65rem] text-muted-foreground italic shrink-0">
-				A intensidade da cor indica o volume de faturamento em cada horário. Passe o mouse sobre as células para ver os detalhes.
+				A intensidade da cor indica o volume de faturamento em cada horário. Passe o mouse para ver os detalhes e clique para abrir a análise segmentada.
 			</p>
 			{/* Faixa resumo por dia (7 células) + Heatmap (ocupa espaço restante) */}
 			<div className="flex flex-col gap-3 flex-1 min-h-0">
-				<GroupedByWeekDayStrip data={porDiaDaSemana} />
+				<GroupedByWeekDayStrip data={porDiaDaSemana} period={period} onSelectDrilldown={onSelectDrilldown} />
 				<div className="flex-1 min-h-0 flex flex-col overflow-x-auto overflow-y-hidden">
-					<RevenueHeatmapCore data={porDiaSemanaHora} />
+					<RevenueHeatmapCore data={porDiaSemanaHora} period={period} onSelectDrilldown={onSelectDrilldown} />
 				</div>
 			</div>
 		</div>
@@ -633,7 +635,15 @@ function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period }: WeeklySt
 }
 
 /** Faixa horizontal com 7 dias: total por dia da semana (resumo acima do heatmap) */
-function GroupedByWeekDayStrip({ data }: { data: TGroupedSalesStats["porDiaDaSemana"] }) {
+function GroupedByWeekDayStrip({
+	data,
+	period,
+	onSelectDrilldown,
+}: {
+	data: TGroupedSalesStats["porDiaDaSemana"];
+	period: TSaleStatsGeneralQueryParams["period"];
+	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
+}) {
 	const { colors } = useOrgColors();
 	const maxValue = Math.max(...data.map((item) => item.total), 0);
 	const minValue = Math.min(...data.map((item) => item.total), 0);
@@ -658,9 +668,17 @@ function GroupedByWeekDayStrip({ data }: { data: TGroupedSalesStats["porDiaDaSem
 		return (
 			<Tooltip delayDuration={150}>
 				<TooltipTrigger asChild>
-					<div
+					<button
+						type="button"
 						className="flex flex-col items-center justify-center py-2 px-1 rounded-md border border-primary/20 min-h-[44px] min-w-0 flex-1 transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
+						onClick={() =>
+							onSelectDrilldown({
+								weekday: index,
+								periodStart: period.after,
+								periodEnd: period.before,
+							})
+						}
 					>
 						<span className="text-[0.6rem] font-bold tracking-tight uppercase">{WEEKDAY_MAP_HEATMAP[index as keyof typeof WEEKDAY_MAP_HEATMAP]}</span>
 						{result ? (
@@ -668,7 +686,7 @@ function GroupedByWeekDayStrip({ data }: { data: TGroupedSalesStats["porDiaDaSem
 						) : (
 							<span className="text-[0.6rem] text-primary/80">—</span>
 						)}
-					</div>
+					</button>
 				</TooltipTrigger>
 				{result ? (
 					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
@@ -738,7 +756,15 @@ function formatHourLabel(hour: number): string {
 }
 
 /** Grid do heatmap (sem card): dias x horas */
-function RevenueHeatmapCore({ data }: { data: TGroupedSalesStats["porDiaSemanaHora"] }) {
+function RevenueHeatmapCore({
+	data,
+	period,
+	onSelectDrilldown,
+}: {
+	data: TGroupedSalesStats["porDiaSemanaHora"];
+	period: TSaleStatsGeneralQueryParams["period"];
+	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
+}) {
 	const { colors } = useOrgColors();
 	const dataMap = useMemo(() => {
 		const map = new Map<string, { qtde: number; total: number }>();
@@ -772,9 +798,19 @@ function RevenueHeatmapCore({ data }: { data: TGroupedSalesStats["porDiaSemanaHo
 			<Tooltip delayDuration={150}>
 				<TooltipTrigger asChild>
 					<div className="flex-1 min-w-0 min-h-0 flex items-center justify-center p-0.5">
-						<div
+						<button
+							type="button"
 							className="w-full aspect-square max-w-full max-h-full rounded-full transition-all hover:scale-110 hover:z-10 cursor-pointer border border-primary/10"
 							style={{ backgroundColor: bgColor }}
+							onClick={() =>
+								onSelectDrilldown({
+									weekday: diaSemana,
+									hourIntervalStart: hora,
+									hourIntervalEnd: hora + 1,
+									periodStart: period.after,
+									periodEnd: period.before,
+								})
+							}
 						/>
 					</div>
 				</TooltipTrigger>
