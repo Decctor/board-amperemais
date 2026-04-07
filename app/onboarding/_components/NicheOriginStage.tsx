@@ -10,7 +10,7 @@ type NicheOriginStageProps = {
 };
 
 const ORIGIN_OPTIONS = [
-	{ id: "instagram", label: "INSTAGRAM", icon: <FaInstagram /> },
+	{ id: "instagram", label: "Instagram", icon: <FaInstagram /> },
 	{ id: "linkedin", label: "LinkedIn", icon: <FaLinkedin /> },
 	{ id: "youtube", label: "YouTube", icon: <FaYoutube /> },
 	{ id: "google", label: "Google", icon: <FaGoogle /> },
@@ -22,7 +22,7 @@ export function NicheOriginStage({ state, updateOrganization }: NicheOriginStage
 	return (
 		<div className="w-full flex flex-col gap-6">
 			<div className="w-full flex flex-col gap-4">
-				<h3 className="text-lg font-medium tracking-tight">Qual o nicho de atuação da sua empresa?</h3>
+				<h3 className="text-lg font-medium tracking-tight dark:text-black">Qual o nicho de atuação da sua empresa?</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					{OrganizationNicheOptions.map((niche) => {
 						const isSelected = state.organization.atuacaoNicho === niche.value;
@@ -62,7 +62,7 @@ export function NicheOriginStage({ state, updateOrganization }: NicheOriginStage
 			</div>
 
 			<div className="w-full flex flex-col gap-4">
-				<h3 className="text-lg font-medium tracking-tight">Como você conheceu a RecompraCRM?</h3>
+				<h3 className="text-lg font-medium tracking-tight dark:text-black">Como você conheceu a RecompraCRM?</h3>
 				<div className="flex flex-wrap gap-3">
 					{ORIGIN_OPTIONS.map((origin) => {
 						const isSelected = state.organization.origemLead === origin.label.toUpperCase();
