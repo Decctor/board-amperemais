@@ -3,10 +3,18 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { useOrganizations } from "@/lib/queries/admin";
 import AdminOrganizationCard from "./AdminOrganizationCard";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { useQueryClient } from "@tanstack/react-query";
 
-export default function AdminOrganizationsBlock() {
-	const { data, isLoading, error } = useOrganizations();
+type TAdminOrganizationsBlockProps = {
+	user: TAuthUserSession["user"];
+};
+export default function AdminOrganizationsBlock({ user }: TAdminOrganizationsBlockProps) {
+	const queryClient = useQueryClient();
+	const { data, isLoading, error, queryKey } = useOrganizations();
 
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 	if (isLoading) return <LoadingComponent />;
 	if (error) return <ErrorComponent msg="Erro ao carregar organizações" />;
 
@@ -18,12 +26,9 @@ export default function AdminOrganizationsBlock() {
 					{data.data.map((org) => (
 						<AdminOrganizationCard
 							key={org.id}
-							id={org.id}
-							nome={org.nome}
-							cnpj={org.cnpj}
-							logoUrl={org.logoUrl}
-							userCount={org.userCount}
-							dataInsercao={org.dataInsercao}
+							sessionUser={user}
+							organization={org}
+							callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 						/>
 					))}
 				</div>

@@ -1,4 +1,4 @@
-import type { TGetOrganizationsOutput } from "@/app/api/admin/organizations/route";
+import type { TGetOrganizationsAdminOutput } from "@/app/api/admin/organizations/route";
 import type { TGetAdminStatsOutput } from "@/app/api/admin/stats/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -9,7 +9,7 @@ async function fetchAdminStats() {
 }
 
 async function fetchOrganizations() {
-	const response = await axios.get<TGetOrganizationsOutput>("/api/admin/organizations");
+	const response = await axios.get<TGetOrganizationsAdminOutput>("/api/admin/organizations");
 	return response.data;
 }
 
@@ -21,8 +21,11 @@ export function useAdminStats() {
 }
 
 export function useOrganizations() {
-	return useQuery({
+	return {
+		...useQuery({
+			queryKey: ["admin-organizations"],
+			queryFn: fetchOrganizations,
+		}),
 		queryKey: ["admin-organizations"],
-		queryFn: fetchOrganizations,
-	});
+	};
 }

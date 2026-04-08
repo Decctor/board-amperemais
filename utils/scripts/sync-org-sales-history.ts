@@ -19,11 +19,14 @@ import {
 	utils,
 } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
+import dayjsCustomParseFormat from "dayjs/plugin/customParseFormat";
 import { and, eq } from "drizzle-orm";
 import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import z from "zod";
 import axios from "axios";
+
+dayjs.extend(dayjsCustomParseFormat);
 
 const SCRIPT_NAME = "SYNC-ORG-SALES-HISTORY";
 const DEFAULT_ORGANIZATION_ID = "12204136-080b-4e4d-92bb-668c48bf0cb7";
@@ -360,11 +363,17 @@ async function handleCardapioWebImportation({
 	);
 	let existingProductsMap = new Map<string, string>(existingProducts.map((product) => [product.codigo, product.id]));
 	let existingPartnersMap = new Map<string, TPartnerLookupData>(
-		existingPartners.map((partner) => [partner.identificador, { id: partner.id, clienteId: partner.clienteId }]),
+		existingPartners.flatMap((partner) =>
+			partner.identificador ? ([[partner.identificador, { id: partner.id, clienteId: partner.clienteId }]] as const) : [],
+		),
 	);
-	let existingAddOnsMap = new Map<string, string>(existingAddOns.map((addon) => [addon.idExterno, addon.id]));
+	let existingAddOnsMap = new Map<string, string>(
+		existingAddOns.flatMap((addon) => (addon.idExterno ? ([[addon.idExterno, addon.id]] as const) : [])),
+	);
 	let existingAddOnOptionsMap = new Map<string, TAddOnOptionLookupData>(
-		existingAddOnOptions.map((option) => [option.idExterno, { id: option.id, addOnId: option.produtoAddOnId }]),
+		existingAddOnOptions.flatMap((option) =>
+			option.idExterno ? ([[option.idExterno, { id: option.id, addOnId: option.produtoAddOnId }]] as const) : [],
+		),
 	);
 	let existingCashbackProgramBalancesMap = new Map<string, TCashbackBalanceEntry>(
 		existingCashbackProgramBalances.map((balance) => [balance.clienteId, balance]),
@@ -658,7 +667,7 @@ async function handleCardapioWebImportation({
 				if (!existingSale) {
 					isNewSale = true;
 					console.log(
-						`[ORG: ${organizationId}] [CARDAPIO-WEB] Creating new sale ${cardapioWebSale.idExterno} with ${cardapioWebSale.itens.length} items...`,
+						`[ORG: ${organizationId}] [CARDAPIO-WEB] Creating new sale ${cardapioWebSale.idExterno} (${saleDate.toLocaleString()}) with ${cardapioWebSale.itens.length} items...`,
 					);
 
 					const [insertedSale] = await tx
@@ -730,7 +739,7 @@ async function handleCardapioWebImportation({
 
 					batchCreatedSalesCount++;
 				} else {
-					console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Updating sale ${cardapioWebSale.idExterno}...`);
+					console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Updating sale ${cardapioWebSale.idExterno} (${saleDate.toLocaleString()})...`);
 
 					const wasPreviouslyValid = existingSale.natureza === "SN01" && existingSale.valorTotal > 0;
 					const isNowCanceled = cardapioWebSale.isCanceled || cardapioWebSale.valorTotal === 0;
@@ -820,7 +829,7 @@ type TOnlineSoftwareImportationOptions = {
 	endDate: string;
 	dryRun: boolean;
 };
-async function handleOnlineSoftwareImportation({ organizationId, config, startDate, endDate, dryRun }: TOnlineSoftwareImportationOptions) {
+async function handleOnlineSoftwareImportation({ organizationId, config, startDate, endDate, dryRun: _dryRun }: TOnlineSoftwareImportationOptions) {
 	try {
 		const parsedStartDate = dayjs(startDate);
 		const parsedEndDate = dayjs(endDate);
@@ -843,6 +852,107 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 		console.log(
 			`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [ONLINE-SOFTWARE] Starting OnlineSoftware integration in ${weekPeriods.length} weekly period(s)`,
 		);
+		const onlineSoftwareConfig = config as { tipo: "ONLINE-SOFTWARE"; token: string; serverUrl: string };
+		const [cashbackProgram, existingClients, existingProducts, existingSellers, existingPartners] = await Promise.all([
+			db.query.cashbackPrograms.findFirst({
+				where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+				columns: {
+					id: true,
+					acumuloTipo: true,
+					acumuloRegraValorMinimo: true,
+					acumuloValor: true,
+					acumuloValorParceiro: true,
+					expiracaoRegraValidadeValor: true,
+					acumuloPermitirViaIntegracao: true,
+				},
+			}),
+			db.query.clients.findMany({
+				where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+				columns: {
+					id: true,
+					nome: true,
+					telefoneBase: true,
+					primeiraCompraData: true,
+					ultimaCompraData: true,
+					analiseRFMTitulo: true,
+					metadataTotalCompras: true,
+					metadataValorTotalCompras: true,
+				},
+			}),
+			db.query.products.findMany({
+				where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+				columns: {
+					id: true,
+					codigo: true,
+				},
+			}),
+			db.query.sellers.findMany({
+				where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+				columns: {
+					id: true,
+					nome: true,
+				},
+			}),
+			db.query.partners.findMany({
+				where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+				columns: {
+					id: true,
+					identificador: true,
+					clienteId: true,
+				},
+			}),
+		]);
+		const existingCashbackProgramBalances = cashbackProgram
+			? await db.query.cashbackProgramBalances.findMany({
+					where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organizationId), eq(fields.programaId, cashbackProgram.id)),
+					columns: {
+						programaId: true,
+						clienteId: true,
+						saldoValorDisponivel: true,
+						saldoValorAcumuladoTotal: true,
+					},
+				})
+			: [];
+
+		const normalizeOnlineClientName = (name?: string | null) => (name ?? "").trim().toUpperCase();
+		const buildOnlineClientLookupData = (client: (typeof existingClients)[number]) => ({
+			id: client.id,
+			name: client.nome,
+			basePhone: client.telefoneBase,
+			firstPurchaseDate: client.primeiraCompraData,
+			lastPurchaseDate: client.ultimaCompraData,
+			rfmTitle: client.analiseRFMTitulo,
+			metadataTotalCompras: client.metadataTotalCompras ?? 0,
+			metadataValorTotalCompras: client.metadataValorTotalCompras ?? 0,
+		});
+		const computeOnlineSaleDate = (onlineSale: (typeof OnlineSoftwareSaleImportationSchema)["_output"]) => {
+			const onlineSaleDateTime = onlineSale.datahora ? dayjs(onlineSale.datahora, ["DD/MM/YYYY HH:mm:ss", "DD/MM/YYYY HH:mm"], true) : null;
+			const onlineBaseSaleDate = onlineSaleDateTime?.isValid() ? onlineSaleDateTime : dayjs(onlineSale.data, "DD/MM/YYYY", true);
+
+			if (!onlineBaseSaleDate.isValid()) {
+				throw new Error(`Data inválida recebida da Online Software. data="${onlineSale.data}" datahora="${onlineSale.datahora ?? ""}"`);
+			}
+
+			return onlineSaleDateTime?.isValid()
+				? onlineSaleDateTime.toDate()
+				: dayjs().isSame(onlineBaseSaleDate, "day")
+					? dayjs().toDate()
+					: onlineBaseSaleDate.add(3, "hours").toDate();
+		};
+
+		let existingSalesMap = new Map<string, TExistingSaleLookupData>();
+		let existingClientsMapByName = new Map(
+			existingClients.filter((client) => !!client.nome).map((client) => [normalizeOnlineClientName(client.nome), buildOnlineClientLookupData(client)]),
+		);
+		let existingClientsMapByBasePhone = new Map(
+			existingClients.filter((client) => !!client.telefoneBase).map((client) => [client.telefoneBase as string, buildOnlineClientLookupData(client)]),
+		);
+		let existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
+		let existingSellersMap = new Map(existingSellers.map((seller) => [seller.nome, seller.id]));
+		let existingPartnersMap = new Map(existingPartners.map((partner) => [partner.identificador, { id: partner.id, clienteId: partner.clienteId }]));
+		let existingCashbackProgramBalancesMap = new Map(existingCashbackProgramBalances.map((balance) => [balance.clienteId, balance]));
+		let createdSalesCount = 0;
+		let updatedSalesCount = 0;
 
 		for (const weekPeriod of weekPeriods) {
 			console.log(
@@ -850,8 +960,6 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 			);
 			const startDateFixed = dayjs(weekPeriod.startDate).format("DD/MM/YYYY").replaceAll("/", "");
 			const endDateFixed = dayjs(weekPeriod.endDate).format("DD/MM/YYYY").replaceAll("/", "");
-			// Fetching data from the online software API
-			const onlineSoftwareConfig = config as { tipo: "ONLINE-SOFTWARE"; token: string; serverUrl: string };
 			const { data: onlineAPIResponse } = await axios.post(onlineSoftwareConfig.serverUrl, {
 				token: onlineSoftwareConfig.token,
 				rotina: "listarVendas001",
@@ -859,240 +967,333 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 				dtfim: endDateFixed,
 			});
 			console.log("ONLINE API RECEIVED RESULT", onlineAPIResponse.resultado[0]);
-			const OnlineSoftwareSales = z
+			const onlineSoftwareSales = z
 				.array(OnlineSoftwareSaleImportationSchema, {
 					required_error: "Payload da Online não é uma lista.",
 					invalid_type_error: "Tipo não permitido para o payload.",
 				})
 				.parse(onlineAPIResponse.resultado);
-			console.log("ONLINE SALES PARSED", OnlineSoftwareSales.length);
-			console.log(`[ORG: ${organizationId}] ${OnlineSoftwareSales.length} vendas encontradas.`);
-			if (OnlineSoftwareSales.length === 0) {
+			const deduplicatedOnlineSalesMap = new Map<string, (typeof onlineSoftwareSales)[number]>();
+			for (const onlineSale of onlineSoftwareSales) {
+				deduplicatedOnlineSalesMap.set(onlineSale.id, onlineSale);
+			}
+			const deduplicatedOnlineSales = Array.from(deduplicatedOnlineSalesMap.values());
+			const duplicatedSalesCount = onlineSoftwareSales.length - deduplicatedOnlineSales.length;
+
+			console.log("ONLINE SALES PARSED", onlineSoftwareSales.length);
+			if (duplicatedSalesCount > 0) {
+				console.log(
+					`[ORG: ${organizationId}] [ONLINE-SOFTWARE] ${duplicatedSalesCount} venda(s) duplicada(s) foram descartadas do payload desta janela.`,
+				);
+			}
+			console.log(`[ORG: ${organizationId}] ${deduplicatedOnlineSales.length} vendas encontradas após deduplicação.`);
+			if (deduplicatedOnlineSales.length === 0) {
 				continue;
 			}
 
-			const OnlineSoftwareSalesIds = OnlineSoftwareSales.map((sale) => sale.id);
+			const salesBatches = chunkArray(deduplicatedOnlineSales, SALES_BATCH_SIZE);
+			for (const [batchIndex, salesBatch] of salesBatches.entries()) {
+				const batchExistingSalesMap = new Map(existingSalesMap);
+				const batchClientsMapByName = new Map(existingClientsMapByName);
+				const batchClientsMapByBasePhone = new Map(existingClientsMapByBasePhone);
+				const batchProductsMap = new Map(existingProductsMap);
+				const batchSellersMap = new Map(existingSellersMap);
+				const batchPartnersMap = new Map(existingPartnersMap);
+				const batchCashbackProgramBalancesMap = new Map(existingCashbackProgramBalancesMap);
+				let batchCreatedSalesCount = 0;
+				let batchUpdatedSalesCount = 0;
+				const batchStartSaleIndex = batchIndex * SALES_BATCH_SIZE;
 
-			await db.transaction(async (tx) => {
-				const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
-					where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
-					columns: {
-						id: true,
-						acumuloTipo: true,
-						acumuloRegraValorMinimo: true,
-						acumuloValor: true,
-						acumuloValorParceiro: true,
-						expiracaoRegraValidadeValor: true,
-						acumuloPermitirViaIntegracao: true,
-					},
-				});
-				const existingSales = await tx.query.sales.findMany({
-					where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, organizationId), inArray(fields.idExterno, OnlineSoftwareSalesIds)),
-					with: {
-						itens: true,
-					},
-				});
+				const batchMissingSaleIds = salesBatch.map((sale) => sale.id).filter((saleId) => !batchExistingSalesMap.has(saleId));
+				if (batchMissingSaleIds.length > 0) {
+					const fetchedExistingSales = await db.query.sales.findMany({
+						where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, organizationId), inArray(fields.idExterno, batchMissingSaleIds)),
+						columns: {
+							id: true,
+							idExterno: true,
+							natureza: true,
+							valorTotal: true,
+						},
+					});
+					for (const existingSale of fetchedExistingSales) {
+						batchExistingSalesMap.set(existingSale.idExterno, existingSale);
+					}
+				}
 
-				const existingClients = await tx.query.clients.findMany({
-					where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
-					columns: {
-						id: true,
-						nome: true,
-						telefoneBase: true,
-						primeiraCompraData: true,
-						ultimaCompraData: true,
-						analiseRFMTitulo: true,
-						metadataTotalCompras: true,
-						metadataValorTotalCompras: true,
-					},
-				});
-				const existingProducts = await tx.query.products.findMany({
-					where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
-					columns: {
-						id: true,
-						codigo: true,
-					},
-				});
-				const existingSellers = await tx.query.sellers.findMany({
-					where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
-					columns: {
-						id: true,
-						nome: true,
-					},
-				});
-				const existingPartners = await tx.query.partners.findMany({
-					where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
-					columns: {
-						id: true,
-						identificador: true,
-						clienteId: true,
-					},
-				});
-				const existingCashbackProgramBalances = cashbackProgram
-					? await tx.query.cashbackProgramBalances.findMany({
-							where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organizationId), eq(fields.programaId, cashbackProgram.id)),
-							columns: {
-								programaId: true,
-								clienteId: true,
-								saldoValorDisponivel: true,
-								saldoValorAcumuladoTotal: true,
-							},
-						})
-					: [];
-
-				const existingSalesMap = new Map(existingSales.map((sale) => [sale.idExterno, sale]));
-				const normalizeOnlineClientName = (name?: string | null) => (name ?? "").trim().toUpperCase();
-				const buildOnlineClientLookupData = (client: (typeof existingClients)[number]) => ({
-					id: client.id,
-					name: client.nome,
-					basePhone: client.telefoneBase,
-					firstPurchaseDate: client.primeiraCompraData,
-					lastPurchaseDate: client.ultimaCompraData,
-					rfmTitle: client.analiseRFMTitulo,
-					metadataTotalCompras: client.metadataTotalCompras ?? 0,
-					metadataValorTotalCompras: client.metadataValorTotalCompras ?? 0,
-				});
-				const existingClientsMapByName = new Map(
-					existingClients.filter((client) => !!client.nome).map((client) => [normalizeOnlineClientName(client.nome), buildOnlineClientLookupData(client)]),
+				console.log(
+					`[ORG: ${organizationId}] [ONLINE-SOFTWARE] Processing sales batch ${batchIndex + 1}/${salesBatches.length} (${salesBatch.length} sales)...`,
 				);
-				const existingClientsMapByBasePhone = new Map(
-					existingClients.filter((client) => !!client.telefoneBase).map((client) => [client.telefoneBase as string, buildOnlineClientLookupData(client)]),
-				);
-				const indexOnlineClientInLookupMaps = (client: ReturnType<typeof buildOnlineClientLookupData>) => {
-					const normalizedName = normalizeOnlineClientName(client.name);
-					if (normalizedName) {
-						existingClientsMapByName.set(normalizedName, client);
-					}
-					if (client.basePhone) {
-						existingClientsMapByBasePhone.set(client.basePhone, client);
-					}
-				};
-				const resolveExistingOnlineClient = (clientName?: string | null, clientBasePhone?: string | null) => {
-					const normalizedName = normalizeOnlineClientName(clientName);
-					if (normalizedName) {
-						const clientByName = existingClientsMapByName.get(normalizedName);
-						if (clientByName) return clientByName;
-					}
 
-					if (clientBasePhone) {
-						const clientByPhone = existingClientsMapByBasePhone.get(clientBasePhone);
-						if (clientByPhone) {
-							if (normalizedName && !existingClientsMapByName.has(normalizedName)) {
-								existingClientsMapByName.set(normalizedName, clientByPhone);
+				await db.transaction(async (tx) => {
+					const indexOnlineClientInLookupMaps = (
+						client: ReturnType<typeof buildOnlineClientLookupData>,
+						clientsMapByName: Map<string, ReturnType<typeof buildOnlineClientLookupData>>,
+						clientsMapByBasePhone: Map<string, ReturnType<typeof buildOnlineClientLookupData>>,
+					) => {
+						const normalizedName = normalizeOnlineClientName(client.name);
+						if (normalizedName) {
+							clientsMapByName.set(normalizedName, client);
+						}
+						if (client.basePhone) {
+							clientsMapByBasePhone.set(client.basePhone, client);
+						}
+					};
+					const resolveExistingOnlineClient = (
+						clientName: string | null | undefined,
+						clientBasePhone: string | null | undefined,
+						clientsMapByName: Map<string, ReturnType<typeof buildOnlineClientLookupData>>,
+						clientsMapByBasePhone: Map<string, ReturnType<typeof buildOnlineClientLookupData>>,
+					) => {
+						const normalizedName = normalizeOnlineClientName(clientName);
+						if (normalizedName) {
+							const clientByName = clientsMapByName.get(normalizedName);
+							if (clientByName) {
+								return clientByName;
 							}
-							return clientByPhone;
+						}
+
+						if (clientBasePhone) {
+							const clientByPhone = clientsMapByBasePhone.get(clientBasePhone);
+							if (clientByPhone) {
+								if (normalizedName && !clientsMapByName.has(normalizedName)) {
+									clientsMapByName.set(normalizedName, clientByPhone);
+								}
+								return clientByPhone;
+							}
+						}
+
+						return undefined;
+					};
+					const buildSaleItemsValues = (onlineSale: (typeof salesBatch)[number], saleId: string, saleClientId: string | null) =>
+						onlineSale.itens.map((item) => {
+							const productId = batchProductsMap.get(item.codigo);
+							if (!productId) {
+								throw new Error(`Produto não encontrado no cache para o código ${item.codigo}.`);
+							}
+
+							const quantidade = Number(item.qtde);
+							const valorVendaUnitario = Number(item.valorunit);
+							const valorVendaTotalBruto = valorVendaUnitario * quantidade;
+							const valorTotalDesconto = Number(item.vdesc);
+							const valorVendaTotalLiquido = valorVendaTotalBruto - valorTotalDesconto;
+							const valorCustoTotal = Number(item.vcusto);
+
+							return {
+								organizacaoId: organizationId,
+								vendaId: saleId,
+								clienteId: saleClientId,
+								produtoId: productId,
+								quantidade,
+								valorVendaUnitario,
+								valorCustoUnitario: quantidade === 0 ? 0 : valorCustoTotal / quantidade,
+								valorVendaTotalBruto,
+								valorTotalDesconto,
+								valorVendaTotalLiquido,
+								valorCustoTotal,
+								metadados: {
+									baseicms: item.baseicms,
+									percent: item.percent,
+									icms: item.icms,
+									cst_icms: item.cst_icms,
+									csosn: item.csosn,
+									cst_pis: item.cst_pis,
+									cfop: item.cfop,
+									vfrete: item.vfrete,
+									vseg: item.vseg,
+									voutro: item.voutro,
+									vipi: item.vipi,
+									vicmsst: item.vicmsst,
+									vicms_desonera: item.vicms_desonera,
+									cest: item.cest,
+								},
+							};
+						});
+					const clientPurchaseUpdates = new Map<
+						string,
+						{ ultimaCompraData: Date; ultimaCompraId: string; metadataTotalCompras: number; metadataValorTotalCompras: number }
+					>();
+
+					const newSellerNames = Array.from(
+						new Set(
+							salesBatch
+								.map((sale) => sale.vendedor)
+								.filter((sellerName): sellerName is string => !!sellerName && sellerName !== "N/A" && sellerName !== "0" && !batchSellersMap.has(sellerName)),
+						),
+					);
+					if (newSellerNames.length > 0) {
+						const insertedSellers = await tx
+							.insert(sellers)
+							.values(newSellerNames.map((sellerName) => ({ organizacaoId: organizationId, nome: sellerName, identificador: sellerName })))
+							.returning({ id: sellers.id, nome: sellers.nome });
+						for (const insertedSeller of insertedSellers) {
+							batchSellersMap.set(insertedSeller.nome, insertedSeller.id);
 						}
 					}
 
-					return undefined;
-				};
-				const existingProductsMap = new Map(existingProducts.map((product) => [product.codigo, product.id]));
-				const existingSellersMap = new Map(existingSellers.map((seller) => [seller.nome, seller.id]));
-				const existingPartnersMap = new Map(existingPartners.map((partner) => [partner.identificador, { id: partner.id, clienteId: partner.clienteId }]));
-				const existingCashbackProgramBalancesMap = new Map(existingCashbackProgramBalances.map((balance) => [balance.clienteId, balance]));
+					const batchReferencedProductCodes = Array.from(new Set(salesBatch.flatMap((sale) => sale.itens.map((item) => item.codigo))));
+					if (batchReferencedProductCodes.length > 0) {
+						const persistedBatchProducts = await tx.query.products.findMany({
+							where: (fields, { and, eq, inArray }) =>
+								and(eq(fields.organizacaoId, organizationId), inArray(fields.codigo, batchReferencedProductCodes)),
+							columns: {
+								id: true,
+								codigo: true,
+							},
+						});
+						for (const persistedProduct of persistedBatchProducts) {
+							batchProductsMap.set(persistedProduct.codigo, persistedProduct.id);
+						}
+					}
 
-				let createdSalesCount = 0;
-				let updatedSalesCount = 0;
-				for (const OnlineSale of OnlineSoftwareSales) {
-					let isNewClient = false;
-					let isNewSale = false;
-					let newTotalPurchaseCountForSale: number | undefined;
-					let newTotalPurchaseValueForSale: number | undefined;
+					const missingProductsMap = new Map<string, { codigo: string; descricao: string; unidade: string; grupo: string; ncm: string; tipo: string }>();
+					for (const onlineSale of salesBatch) {
+						for (const item of onlineSale.itens) {
+							if (!batchProductsMap.has(item.codigo) && !missingProductsMap.has(item.codigo)) {
+								missingProductsMap.set(item.codigo, {
+									codigo: item.codigo,
+									descricao: item.descricao,
+									unidade: item.unidade,
+									grupo: item.grupo,
+									ncm: item.ncm,
+									tipo: item.tipo,
+								});
+							}
+						}
+					}
+					if (missingProductsMap.size > 0) {
+						const insertedProducts = await tx
+							.insert(products)
+							.values(
+								Array.from(missingProductsMap.values()).map((product) => ({
+									organizacaoId: organizationId,
+									codigo: product.codigo,
+									descricao: product.descricao,
+									unidade: product.unidade,
+									grupo: product.grupo,
+									ncm: product.ncm,
+									tipo: product.tipo,
+								})),
+							)
+							.returning({ id: products.id, codigo: products.codigo });
+						for (const insertedProduct of insertedProducts) {
+							batchProductsMap.set(insertedProduct.codigo, insertedProduct.id);
+						}
+					}
 
-					const onlineSaleDateTime = OnlineSale.datahora ? dayjs(OnlineSale.datahora, "DD/MM/YYYY HH:mm:ss", true) : null;
-					const onlineBaseSaleDate = onlineSaleDateTime?.isValid() ? onlineSaleDateTime : dayjs(OnlineSale.data, "DD/MM/YYYY", true);
-					// If the Online sale date is the same as the current date, we use the current date (with time frame component, since cron runs every 5 minutes, we get approximately real time),
-					// Otherwise we use the online sale date + 3 hours (to compensate for lack of time component in Online date field)
-					const saleDate = onlineSaleDateTime?.isValid()
-						? onlineSaleDateTime.toDate()
-						: dayjs().isSame(onlineBaseSaleDate, "day")
-							? dayjs().toDate()
-							: onlineBaseSaleDate.add(3, "hours").toDate();
-					const isValidSale = OnlineSale.natureza === "SN01";
-					// First, we check for an existing client with the same name (in this case, our primary key for the integration)
-					const isValidClient = OnlineSale.cliente !== "AO CONSUMIDOR";
-					const onlineSaleClientBasePhone = formatPhoneAsBase(OnlineSale.clientefone || OnlineSale.clientecelular || "");
+					const pendingNewClientsMap = new Map<
+						string,
+						{ nome: string; telefone: string; telefoneBase: string; primeiraCompraData: Date | null; ultimaCompraData: Date | null }
+					>();
+					const pendingClientsMapByName = new Map<
+						string,
+						{ nome: string; telefone: string; telefoneBase: string; primeiraCompraData: Date | null; ultimaCompraData: Date | null }
+					>();
+					const pendingClientsMapByBasePhone = new Map<
+						string,
+						{ nome: string; telefone: string; telefoneBase: string; primeiraCompraData: Date | null; ultimaCompraData: Date | null }
+					>();
+					for (const onlineSale of salesBatch) {
+						const isValidClient = onlineSale.cliente !== "AO CONSUMIDOR";
+						if (!isValidClient) {
+							continue;
+						}
 
-					console.log(`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [CLIENT] Client: ${OnlineSale.cliente}.`);
-					if (!isValidClient)
-						console.log(`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [CLIENT] Non-identified client detected: ${OnlineSale.cliente}`);
+						const saleDate = computeOnlineSaleDate(onlineSale);
+						const isValidSale = onlineSale.natureza === "SN01";
+						const onlineSaleClientBasePhone = formatPhoneAsBase(onlineSale.clientefone || onlineSale.clientecelular || "");
+						const normalizedName = normalizeOnlineClientName(onlineSale.cliente);
+						const existingClient = resolveExistingOnlineClient(
+							onlineSale.cliente,
+							onlineSaleClientBasePhone,
+							batchClientsMapByName,
+							batchClientsMapByBasePhone,
+						);
+						if (existingClient) {
+							continue;
+						}
 
-					const equivalentSaleClient = isValidClient ? resolveExistingOnlineClient(OnlineSale.cliente, onlineSaleClientBasePhone) : undefined;
-					// Initalize the saleClientId holder with the existing client (if any)
-					let saleClientId = equivalentSaleClient?.id;
-					if (!saleClientId && isValidClient) {
-						console.log(`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [CLIENT] Creating new client for ${OnlineSale.cliente}`);
-						// If no existing client is found, we create a new one
-						const insertedClientResponse = await tx
+						const pendingClientByName = normalizedName ? pendingClientsMapByName.get(normalizedName) : undefined;
+						const pendingClientByPhone = onlineSaleClientBasePhone ? pendingClientsMapByBasePhone.get(onlineSaleClientBasePhone) : undefined;
+						const pendingClient = pendingClientByName ?? pendingClientByPhone;
+						if (pendingClient) {
+							if (normalizedName && !pendingClientsMapByName.has(normalizedName)) {
+								pendingClientsMapByName.set(normalizedName, pendingClient);
+							}
+							continue;
+						}
+
+						const pendingKey = normalizedName || `PHONE:${onlineSaleClientBasePhone}` || `SALE:${onlineSale.id}`;
+						const pendingClientData = {
+							nome: onlineSale.cliente,
+							telefone: formatToPhone(onlineSale.clientefone || onlineSale.clientecelular || ""),
+							telefoneBase: onlineSaleClientBasePhone,
+							primeiraCompraData: isValidSale ? saleDate : null,
+							ultimaCompraData: isValidSale ? saleDate : null,
+						};
+						pendingNewClientsMap.set(pendingKey, pendingClientData);
+						if (normalizedName) {
+							pendingClientsMapByName.set(normalizedName, pendingClientData);
+						}
+						if (onlineSaleClientBasePhone) {
+							pendingClientsMapByBasePhone.set(onlineSaleClientBasePhone, pendingClientData);
+						}
+					}
+
+					if (pendingNewClientsMap.size > 0) {
+						const insertedClients = await tx
 							.insert(clients)
-							.values({
-								nome: OnlineSale.cliente,
-								organizacaoId: organizationId,
-								telefone: formatToPhone(OnlineSale.clientefone || OnlineSale.clientecelular || ""),
-								telefoneBase: onlineSaleClientBasePhone,
-								primeiraCompraData: isValidSale ? saleDate : null,
-								ultimaCompraData: isValidSale ? saleDate : null,
-								analiseRFMTitulo: "CLIENTES RECENTES",
-							})
+							.values(
+								Array.from(pendingNewClientsMap.values()).map((client) => ({
+									nome: client.nome,
+									organizacaoId: organizationId,
+									telefone: client.telefone,
+									telefoneBase: client.telefoneBase,
+									primeiraCompraData: client.primeiraCompraData,
+									ultimaCompraData: client.ultimaCompraData,
+									analiseRFMTitulo: "CLIENTES RECENTES",
+								})),
+							)
 							.returning({
 								id: clients.id,
+								nome: clients.nome,
+								telefoneBase: clients.telefoneBase,
+								primeiraCompraData: clients.primeiraCompraData,
+								ultimaCompraData: clients.ultimaCompraData,
+								analiseRFMTitulo: clients.analiseRFMTitulo,
+								metadataTotalCompras: clients.metadataTotalCompras,
+								metadataValorTotalCompras: clients.metadataValorTotalCompras,
 							});
-						const insertedClientId = insertedClientResponse[0]?.id;
-						if (!insertedClientResponse) throw new Error("Oops, um erro ocorreu ao criar cliente.");
-						// Define the saleClientId with the newly created client id
-						saleClientId = insertedClientId;
-						isNewClient = true;
-						// Add the new client to the existing clients map
-						indexOnlineClientInLookupMaps({
-							id: insertedClientId,
-							name: OnlineSale.cliente,
-							basePhone: onlineSaleClientBasePhone,
-							firstPurchaseDate: isValidSale ? saleDate : null,
-							lastPurchaseDate: isValidSale ? saleDate : null,
-							rfmTitle: "CLIENTES RECENTES",
-							metadataTotalCompras: 0,
-							metadataValorTotalCompras: 0,
-						});
+						for (const insertedClient of insertedClients) {
+							indexOnlineClientInLookupMaps(buildOnlineClientLookupData(insertedClient), batchClientsMapByName, batchClientsMapByBasePhone);
+						}
 
 						if (cashbackProgram) {
-							// If there is a cashback program, we need to create a new balance for the client
-							await tx.insert(cashbackProgramBalances).values({
-								clienteId: insertedClientId,
-								programaId: cashbackProgram.id,
-								organizacaoId: organizationId,
-								saldoValorDisponivel: 0,
-								saldoValorAcumuladoTotal: 0,
-							});
-							updateCashbackBalanceInMap(existingCashbackProgramBalancesMap, insertedClientId, cashbackProgram.id, 0, 0);
+							await tx.insert(cashbackProgramBalances).values(
+								insertedClients.map((client) => ({
+									clienteId: client.id,
+									programaId: cashbackProgram.id,
+									organizacaoId: organizationId,
+									saldoValorDisponivel: 0,
+									saldoValorAcumuladoTotal: 0,
+								})),
+							);
+							for (const insertedClient of insertedClients) {
+								updateCashbackBalanceInMap(batchCashbackProgramBalancesMap, insertedClient.id, cashbackProgram.id, 0, 0);
+							}
 						}
 					}
 
-					// Then, we check for an existing seller with the same name (in this case, our primary key for the integration)
-					const isValidSeller = !!OnlineSale.vendedor && OnlineSale.vendedor !== "N/A" && OnlineSale.vendedor !== "0";
-					const equivalentSaleSeller = isValidSeller ? existingSellersMap.get(OnlineSale.vendedor) : null;
-					// Initalize the saleSellerId holder with the existing seller (if any)
-					let saleSellerId = equivalentSaleSeller;
-					if (!saleSellerId && isValidSeller) {
-						// If no existing seller is found, we create a new one
-						const insertedSellerResponse = await tx
-							.insert(sellers)
-							.values({ organizacaoId: organizationId, nome: OnlineSale.vendedor || "N/A", identificador: OnlineSale.vendedor || "N/A" })
-							.returning({ id: sellers.id });
-						const insertedSellerId = insertedSellerResponse[0]?.id;
-						if (!insertedSellerResponse) throw new Error("Oops, um erro ocorreu ao criar vendedor.");
-						// Define the saleSellerId with the newly created seller id
-						saleSellerId = insertedSellerId;
-						// Add the new seller to the existing sellers map
-						existingSellersMap.set(OnlineSale.vendedor, insertedSellerId);
-					}
-
-					// Then, we check for an existing partner with the same identificador (in this case, our primary key for the integration)
-					const isValidPartner = OnlineSale.parceiro && OnlineSale.parceiro !== "N/A" && OnlineSale.parceiro !== "0";
-					const equivalentSalePartner = isValidPartner ? existingPartnersMap.get(OnlineSale.parceiro as string) : null;
-					let salePartnerId = equivalentSalePartner?.id ?? null;
-					let salePartnerClientId = equivalentSalePartner?.clienteId ?? null;
-					if (!salePartnerId && isValidPartner) {
-						const partnerIdentifier = OnlineSale.parceiro || "N/A";
+					const newPartnerIdentifiers = Array.from(
+						new Set(
+							salesBatch
+								.map((sale) => sale.parceiro)
+								.filter(
+									(partnerIdentifier): partnerIdentifier is string =>
+										!!partnerIdentifier && partnerIdentifier !== "N/A" && partnerIdentifier !== "0" && !batchPartnersMap.has(partnerIdentifier),
+								),
+						),
+					);
+					for (const partnerIdentifier of newPartnerIdentifiers) {
 						const partnerDocument = formatToCPForCNPJ(partnerIdentifier);
 						const linkage = await linkPartnerToClient({
 							tx,
@@ -1103,9 +1304,7 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 							},
 							createClientIfNotFound: true,
 						});
-
-						// If no existing partner is found, we create a new one
-						const insertedPartnerResponse = await tx
+						const [insertedPartner] = await tx
 							.insert(partners)
 							.values({
 								organizacaoId: organizationId,
@@ -1115,315 +1314,219 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 								cpfCnpj: partnerDocument,
 								clienteId: linkage.clientId,
 							})
-							.returning({ id: partners.id });
-						const insertedPartnerId = insertedPartnerResponse[0]?.id;
-						if (!insertedPartnerResponse) throw new Error("Oops, um erro ocorreu ao criar parceiro.");
-						// Define the salePartnerId with the newly created partner id
-						salePartnerId = insertedPartnerId;
-						salePartnerClientId = linkage.clientId;
-						// Add the new partner to the existing partners map
-						existingPartnersMap.set(OnlineSale.parceiro || "N/A", { id: insertedPartnerId, clienteId: linkage.clientId });
+							.returning({ id: partners.id, identificador: partners.identificador, clienteId: partners.clienteId });
+						batchPartnersMap.set(insertedPartner.identificador, { id: insertedPartner.id, clienteId: insertedPartner.clienteId });
 					}
 
-					let saleId = null;
-					const existingSale = existingSalesMap.get(OnlineSale.id);
-					if (!existingSale) {
-						isNewSale = true; // MARCA COMO NOVA VENDA
+					for (const [saleOffset, onlineSale] of salesBatch.entries()) {
 						console.log(
-							`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [SALE] Creating new sale ${OnlineSale.id} with ${OnlineSale.itens.length} items...`,
+							`[ORG: ${organizationId}] [ONLINE-SOFTWARE] Processing sale ${batchStartSaleIndex + saleOffset + 1} of ${deduplicatedOnlineSales.length}...`,
 						);
-						// Now, we extract the data to compose the sale entity
-						const saleTotalCost = OnlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
-						// Insert the sale entity into the database
-						const insertedSaleResponse = await tx
-							.insert(sales)
-							.values({
-								organizacaoId: organizationId,
-								idExterno: OnlineSale.id,
-								clienteId: saleClientId,
-								valorTotal: Number(OnlineSale.valor),
-								custoTotal: saleTotalCost,
-								vendedorNome: OnlineSale.vendedor || "N/A",
-								vendedorId: saleSellerId,
-								parceiro: OnlineSale.parceiro || "N/A",
-								parceiroId: salePartnerId,
-								chave: OnlineSale.chave || "N/A",
-								documento: OnlineSale.documento || "N/A",
-								modelo: OnlineSale.modelo || "N/A",
-								movimento: OnlineSale.movimento || "N/A",
-								natureza: OnlineSale.natureza || "N/A",
-								serie: OnlineSale.serie || "N/A",
-								situacao: OnlineSale.situacao || "N/A",
-								tipo: OnlineSale.tipo,
-								canal: "Loja Física",
-								entregaModalidade: "PRESENCIAL",
-								dataVenda: saleDate,
-							})
-							.returning({
-								id: sales.id,
-							});
-						const insertedSaleId = insertedSaleResponse[0]?.id;
-						if (!insertedSaleResponse) throw new Error("Oops, um erro ocorreu ao criar venda.");
+						const saleDate = computeOnlineSaleDate(onlineSale);
+						const isValidSale = onlineSale.natureza === "SN01";
+						const isValidClient = onlineSale.cliente !== "AO CONSUMIDOR";
+						const onlineSaleClientBasePhone = formatPhoneAsBase(onlineSale.clientefone || onlineSale.clientecelular || "");
 
-						// Now, we iterate over the items to insert the sale items entities into the database
-						for (const item of OnlineSale.itens) {
-							// First, we check for an existing product with the same code (in this case, our primary key for the integration)
-							// Initalize the productId holder with the existing product (if any)
-							const equivalentProduct = existingProductsMap.get(item.codigo);
-							let productId = equivalentProduct;
-							if (!productId) {
-								// If no existing product is found, we create a new one
-								const insertedProductResponse = await tx
-									.insert(products)
-									.values({
-										organizacaoId: organizationId,
-										codigo: item.codigo,
-										descricao: item.descricao,
-										unidade: item.unidade,
-										grupo: item.grupo,
-										ncm: item.ncm,
-										tipo: item.tipo,
-									})
-									.returning({
-										id: products.id,
-									});
-								const insertedProductId = insertedProductResponse[0]?.id;
-								if (!insertedProductResponse) throw new Error("Oops, um erro ocorreu ao criar produto.");
-								// Define the productId with the newly created product id
-								productId = insertedProductId;
-								// Add the new product to the existing products map
-								existingProductsMap.set(item.codigo, insertedProductId);
+						console.log(`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [CLIENT] Client: ${onlineSale.cliente}.`);
+						if (!isValidClient) {
+							console.log(`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [CLIENT] Non-identified client detected: ${onlineSale.cliente}`);
+						}
+
+						const equivalentSaleClient = isValidClient
+							? resolveExistingOnlineClient(onlineSale.cliente, onlineSaleClientBasePhone, batchClientsMapByName, batchClientsMapByBasePhone)
+							: undefined;
+						let saleClientId = equivalentSaleClient?.id ?? null;
+						if (!saleClientId && isValidClient) {
+							throw new Error(`Cliente ${onlineSale.cliente} não foi encontrado no cache após o preload do lote.`);
+						}
+
+						const isValidSeller = !!onlineSale.vendedor && onlineSale.vendedor !== "N/A" && onlineSale.vendedor !== "0";
+						const saleSellerId = isValidSeller ? (batchSellersMap.get(onlineSale.vendedor) ?? null) : null;
+
+						const isValidPartner = !!onlineSale.parceiro && onlineSale.parceiro !== "N/A" && onlineSale.parceiro !== "0";
+						const matchedPartner = isValidPartner ? batchPartnersMap.get(onlineSale.parceiro as string) : null;
+						const salePartnerId = matchedPartner?.id ?? null;
+
+						let saleId: string | null = null;
+						let isNewSale = false;
+						const existingSale = batchExistingSalesMap.get(onlineSale.id);
+						const saleTotalCost = onlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
+
+						if (!existingSale) {
+							isNewSale = true;
+							console.log(
+								`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [SALE] Creating new sale ${onlineSale.id} (${saleDate.toLocaleString()}) with ${onlineSale.itens.length} items...`,
+							);
+							const [insertedSale] = await tx
+								.insert(sales)
+								.values({
+									organizacaoId: organizationId,
+									idExterno: onlineSale.id,
+									clienteId: saleClientId,
+									valorTotal: Number(onlineSale.valor),
+									custoTotal: saleTotalCost,
+									vendedorNome: onlineSale.vendedor || "N/A",
+									vendedorId: saleSellerId,
+									parceiro: onlineSale.parceiro || "N/A",
+									parceiroId: salePartnerId,
+									chave: onlineSale.chave || "N/A",
+									documento: onlineSale.documento || "N/A",
+									modelo: onlineSale.modelo || "N/A",
+									movimento: onlineSale.movimento || "N/A",
+									natureza: onlineSale.natureza || "N/A",
+									serie: onlineSale.serie || "N/A",
+									situacao: onlineSale.situacao || "N/A",
+									tipo: onlineSale.tipo,
+									canal: "Loja Física",
+									entregaModalidade: "PRESENCIAL",
+									dataVenda: saleDate,
+								})
+								.returning({ id: sales.id });
+							saleId = insertedSale.id;
+							batchExistingSalesMap.set(onlineSale.id, {
+								id: insertedSale.id,
+								idExterno: onlineSale.id,
+								natureza: onlineSale.natureza,
+								valorTotal: Number(onlineSale.valor),
+							});
+
+							const newSaleItems = buildSaleItemsValues(onlineSale, insertedSale.id, saleClientId);
+							if (newSaleItems.length > 0) {
+								await tx.insert(saleItems).values(newSaleItems);
 							}
 
-							// Now, we extract the data to compose the sale item entity
-							const quantidade = Number(item.qtde);
-							const valorVendaUnitario = Number(item.valorunit);
-							const valorVendaTotalBruto = valorVendaUnitario * quantidade;
-							const valorTotalDesconto = Number(item.vdesc);
-							const valorVendaTotalLiquido = valorVendaTotalBruto - valorTotalDesconto;
-							const valorCustoTotal = Number(item.vcusto);
-
-							// Insert the sale item entity into the database
-							await tx.insert(saleItems).values({
-								organizacaoId: organizationId,
-								vendaId: insertedSaleId,
-								clienteId: saleClientId,
-								produtoId: productId,
-								quantidade: Number(item.qtde),
-								valorVendaUnitario: valorVendaUnitario,
-								valorCustoUnitario: valorCustoTotal / quantidade,
-								valorVendaTotalBruto,
-								valorTotalDesconto,
-								valorVendaTotalLiquido,
-								valorCustoTotal,
-								metadados: {
-									baseicms: item.baseicms,
-									percent: item.percent,
-									icms: item.icms,
-									cst_icms: item.cst_icms,
-									csosn: item.csosn,
-									cst_pis: item.cst_pis,
-									cfop: item.cfop,
-									vfrete: item.vfrete,
-									vseg: item.vseg,
-									voutro: item.voutro,
-									vipi: item.vipi,
-									vicmsst: item.vicmsst,
-									vicms_desonera: item.vicms_desonera,
-									cest: item.cest,
-								},
-							});
-						}
-						// Defining the saleId
-						saleId = insertedSaleId;
-
-						// Process conversion attribution for new valid sales (and valid client)
-						if (insertedSaleId && isValidSale && saleClientId) {
-							await processConversionAttribution(tx, {
-								vendaId: insertedSaleId,
-								clienteId: saleClientId,
-								organizacaoId: organizationId,
-								valorVenda: Number(OnlineSale.valor),
-								dataVenda: saleDate,
-							});
-						}
-
-						createdSalesCount++;
-					} else {
-						isNewSale = false; // É APENAS ATUALIZAÇÃO
-						console.log(`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [SALE] Updating sale ${OnlineSale.id} with ${OnlineSale.itens.length} items...`);
-						// Handle sales updates
-						const saleTotalCost = OnlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
-						const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
-						await tx
-							.update(sales)
-							.set({
-								organizacaoId: organizationId,
-								idExterno: OnlineSale.id,
-								clienteId: saleClientId,
-								valorTotal: Number(OnlineSale.valor),
-								custoTotal: saleTotalCost,
-								vendedorNome: OnlineSale.vendedor || "N/A",
-								vendedorId: saleSellerId,
-								parceiro: OnlineSale.parceiro || "N/A",
-								parceiroId: salePartnerId,
-								chave: OnlineSale.chave || "N/A",
-								documento: OnlineSale.documento || "N/A",
-								modelo: OnlineSale.modelo || "N/A",
-								movimento: OnlineSale.movimento || "N/A",
-								natureza: OnlineSale.natureza || "N/A",
-								serie: OnlineSale.serie || "N/A",
-								situacao: OnlineSale.situacao || "N/A",
-								tipo: OnlineSale.tipo,
-								canal: "Loja Física",
-								entregaModalidade: "PRESENCIAL",
-								dataVenda: saleDate,
-							})
-							.where(eq(sales.id, existingSale.id));
-
-						// Check if sale was canceled
-						const wasPreviouslyValid = existingSale.natureza === "SN01" && existingSale.valorTotal > 0;
-						const isNowCanceled = OnlineSale.natureza !== "SN01" || Number(OnlineSale.valor) === 0;
-
-						if (wasPreviouslyValid && isNowCanceled && saleClientId) {
-							console.log(`[ORG: ${organizationId}] [SALE_CANCELED] Venda ${OnlineSale.id} foi cancelada. Revertendo cashback e cancelando interações...`);
-
-							await reverseSaleCashback({
-								tx,
-								saleId: existingSale.id,
-								clientId: saleClientId,
-								organizationId: organizationId,
-								reason: "VENDA_CANCELADA",
-							});
-						}
-
-						// Now, since we can reliably update sale items, we will delete all previous items and insert the new ones
-
-						await tx.delete(saleItems).where(and(eq(saleItems.vendaId, existingSale.id), eq(saleItems.organizacaoId, organizationId)));
-						// Now, we iterate over the items to insert the sale items entities into the database
-						for (const item of OnlineSale.itens) {
-							// First, we check for an existing product with the same code (in this case, our primary key for the integration)
-							// Initalize the productId holder with the existing product (if any)
-							const equivalentProduct = existingProductsMap.get(item.codigo);
-							let productId = equivalentProduct;
-							if (!productId) {
-								// If no existing product is found, we create a new one
-								const insertedProductResponse = await tx
-									.insert(products)
-									.values({
-										organizacaoId: organizationId,
-										codigo: item.codigo,
-										descricao: item.descricao,
-										unidade: item.unidade,
-										grupo: item.grupo,
-										ncm: item.ncm,
-										tipo: item.tipo,
-									})
-									.returning({
-										id: products.id,
-									});
-								const insertedProductId = insertedProductResponse[0]?.id;
-								if (!insertedProductResponse) throw new Error("Oops, um erro ocorreu ao criar produto.");
-								// Define the productId with the newly created product id
-								productId = insertedProductId;
-								// Add the new product to the existing products map
-								existingProductsMap.set(item.codigo, insertedProductId);
+							if (isValidSale && saleClientId) {
+								await processConversionAttribution(tx, {
+									vendaId: insertedSale.id,
+									clienteId: saleClientId,
+									organizacaoId: organizationId,
+									valorVenda: Number(onlineSale.valor),
+									dataVenda: saleDate,
+								});
 							}
 
-							// Now, we extract the data to compose the sale item entity
-							const quantidade = Number(item.qtde);
-							const valorVendaUnitario = Number(item.valorunit);
-							const valorVendaTotalBruto = valorVendaUnitario * quantidade;
-							const valorTotalDesconto = Number(item.vdesc);
-							const valorVendaTotalLiquido = valorVendaTotalBruto - valorTotalDesconto;
-							const valorCustoTotal = Number(item.vcusto);
+							batchCreatedSalesCount++;
+						} else {
+							console.log(
+								`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [SALE] Updating sale ${onlineSale.id} (${saleDate.toLocaleString()}) with ${onlineSale.itens.length} items...`,
+							);
+							await tx
+								.update(sales)
+								.set({
+									organizacaoId: organizationId,
+									idExterno: onlineSale.id,
+									clienteId: saleClientId,
+									valorTotal: Number(onlineSale.valor),
+									custoTotal: saleTotalCost,
+									vendedorNome: onlineSale.vendedor || "N/A",
+									vendedorId: saleSellerId,
+									parceiro: onlineSale.parceiro || "N/A",
+									parceiroId: salePartnerId,
+									chave: onlineSale.chave || "N/A",
+									documento: onlineSale.documento || "N/A",
+									modelo: onlineSale.modelo || "N/A",
+									movimento: onlineSale.movimento || "N/A",
+									natureza: onlineSale.natureza || "N/A",
+									serie: onlineSale.serie || "N/A",
+									situacao: onlineSale.situacao || "N/A",
+									tipo: onlineSale.tipo,
+									canal: "Loja Física",
+									entregaModalidade: "PRESENCIAL",
+									dataVenda: saleDate,
+								})
+								.where(eq(sales.id, existingSale.id));
 
-							// Insert the sale item entity into the database
-							await tx.insert(saleItems).values({
-								organizacaoId: organizationId,
-								vendaId: existingSale.id,
-								clienteId: saleClientId,
-								produtoId: productId,
-								quantidade: Number(item.qtde),
-								valorVendaUnitario: valorVendaUnitario,
-								valorCustoUnitario: valorCustoTotal / quantidade,
-								valorVendaTotalBruto,
-								valorTotalDesconto,
-								valorVendaTotalLiquido,
-								valorCustoTotal,
-								metadados: {
-									baseicms: item.baseicms,
-									percent: item.percent,
-									icms: item.icms,
-									cst_icms: item.cst_icms,
-									csosn: item.csosn,
-									cst_pis: item.cst_pis,
-									cfop: item.cfop,
-									vfrete: item.vfrete,
-									vseg: item.vseg,
-									voutro: item.voutro,
-									vipi: item.vipi,
-									vicmsst: item.vicmsst,
-									vicms_desonera: item.vicms_desonera,
-									cest: item.cest,
-								},
+							const wasPreviouslyValid = existingSale.natureza === "SN01" && existingSale.valorTotal > 0;
+							const isNowCanceled = onlineSale.natureza !== "SN01" || Number(onlineSale.valor) === 0;
+							if (wasPreviouslyValid && isNowCanceled && saleClientId) {
+								console.log(`[ORG: ${organizationId}] [SALE_CANCELED] Venda ${onlineSale.id} foi cancelada. Revertendo cashback e cancelando interações...`);
+								await reverseSaleCashback({
+									tx,
+									saleId: existingSale.id,
+									clientId: saleClientId,
+									organizationId: organizationId,
+									reason: "VENDA_CANCELADA",
+								});
+							}
+
+							await tx.delete(saleItems).where(and(eq(saleItems.vendaId, existingSale.id), eq(saleItems.organizacaoId, organizationId)));
+							const replacementSaleItems = buildSaleItemsValues(onlineSale, existingSale.id, saleClientId);
+							if (replacementSaleItems.length > 0) {
+								await tx.insert(saleItems).values(replacementSaleItems);
+							}
+
+							saleId = existingSale.id;
+							batchExistingSalesMap.set(onlineSale.id, {
+								id: existingSale.id,
+								idExterno: onlineSale.id,
+								natureza: onlineSale.natureza,
+								valorTotal: Number(onlineSale.valor),
 							});
+							batchUpdatedSalesCount++;
 						}
-						// Defining the saleId
-						saleId = existingSale.id;
-						updatedSalesCount++;
-					}
 
-					// Process QUANTIDADE-TOTAL-COMPRAS and VALOR-TOTAL-COMPRAS campaigns
-					if (isNewSale && isValidSale && saleClientId) {
-						const clientData = resolveExistingOnlineClient(OnlineSale.cliente, onlineSaleClientBasePhone);
-						const previousPurchaseCount = clientData?.metadataTotalCompras ?? 0;
-						const previousPurchaseValue = clientData?.metadataValorTotalCompras ?? 0;
-						const newTotalPurchaseCount = previousPurchaseCount + 1;
-						const newTotalPurchaseValue = previousPurchaseValue + Number(OnlineSale.valor);
-						newTotalPurchaseCountForSale = newTotalPurchaseCount;
-						newTotalPurchaseValueForSale = newTotalPurchaseValue;
-						const clientRfmTitle = clientData?.rfmTitle ?? "CLIENTES RECENTES";
+						if (isNewSale && isValidSale && saleClientId && saleId) {
+							const clientData = resolveExistingOnlineClient(
+								onlineSale.cliente,
+								onlineSaleClientBasePhone,
+								batchClientsMapByName,
+								batchClientsMapByBasePhone,
+							);
+							const finalTotalPurchaseCount = (clientData?.metadataTotalCompras ?? 0) + 1;
+							const finalTotalPurchaseValue = (clientData?.metadataValorTotalCompras ?? 0) + Number(onlineSale.valor);
 
-						// Update client metadata in the map for subsequent sales in the same batch
-						if (clientData) {
-							indexOnlineClientInLookupMaps({
-								...clientData,
-								metadataTotalCompras: newTotalPurchaseCount,
-								metadataValorTotalCompras: newTotalPurchaseValue,
-							});
-						}
-					}
+							if (clientData) {
+								indexOnlineClientInLookupMaps(
+									{
+										...clientData,
+										lastPurchaseDate: saleDate,
+										metadataTotalCompras: finalTotalPurchaseCount,
+										metadataValorTotalCompras: finalTotalPurchaseValue,
+									},
+									batchClientsMapByName,
+									batchClientsMapByBasePhone,
+								);
+							}
 
-					if (isValidSale && saleClientId && isNewSale) {
-						const clientData = resolveExistingOnlineClient(OnlineSale.cliente, onlineSaleClientBasePhone);
-						const finalTotalPurchaseCount = newTotalPurchaseCountForSale ?? (clientData?.metadataTotalCompras ?? 0) + 1;
-						const finalTotalPurchaseValue = newTotalPurchaseValueForSale ?? (clientData?.metadataValorTotalCompras ?? 0) + Number(OnlineSale.valor);
-						await tx
-							.update(clients)
-							.set({
+							clientPurchaseUpdates.set(saleClientId, {
 								ultimaCompraData: saleDate,
 								ultimaCompraId: saleId,
 								metadataTotalCompras: finalTotalPurchaseCount,
 								metadataValorTotalCompras: finalTotalPurchaseValue,
-							})
-							.where(and(eq(clients.id, saleClientId), eq(clients.organizacaoId, organizationId)));
-
-						if (clientData) {
-							indexOnlineClientInLookupMaps({
-								...clientData,
-								metadataTotalCompras: finalTotalPurchaseCount,
-								metadataValorTotalCompras: finalTotalPurchaseValue,
 							});
 						}
 					}
-				}
+
+					for (const [clientId, clientPurchaseUpdate] of clientPurchaseUpdates.entries()) {
+						await tx
+							.update(clients)
+							.set({
+								ultimaCompraData: clientPurchaseUpdate.ultimaCompraData,
+								ultimaCompraId: clientPurchaseUpdate.ultimaCompraId,
+								metadataTotalCompras: clientPurchaseUpdate.metadataTotalCompras,
+								metadataValorTotalCompras: clientPurchaseUpdate.metadataValorTotalCompras,
+							})
+							.where(and(eq(clients.id, clientId), eq(clients.organizacaoId, organizationId)));
+					}
+				});
+
+				existingSalesMap = batchExistingSalesMap;
+				existingClientsMapByName = batchClientsMapByName;
+				existingClientsMapByBasePhone = batchClientsMapByBasePhone;
+				existingProductsMap = batchProductsMap;
+				existingSellersMap = batchSellersMap;
+				existingPartnersMap = batchPartnersMap;
+				existingCashbackProgramBalancesMap = batchCashbackProgramBalancesMap;
+				createdSalesCount += batchCreatedSalesCount;
+				updatedSalesCount += batchUpdatedSalesCount;
 
 				console.log(
-					`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [SALES] Created ${createdSalesCount} sales and updated ${updatedSalesCount} sales.`,
+					`[ORG: ${organizationId}] [ONLINE-SOFTWARE] Sales batch ${batchIndex + 1}/${salesBatches.length} committed. Created ${batchCreatedSalesCount}, updated ${batchUpdatedSalesCount}.`,
 				);
-			});
+			}
 		}
+
+		console.log(`[ORG: ${organizationId}] [INFO] [DATA_COLLECTING] [SALES] Created ${createdSalesCount} sales and updated ${updatedSalesCount} sales.`);
 	} catch (error) {
 		const serializedError = serializeError(error);
 		console.error(`[ORG: ${organizationId}] [ERROR] Running into error for the data collecting cron`, serializedError);
@@ -1479,7 +1582,7 @@ export async function syncOrganizationSalesHistory(options: TScriptOptions) {
 			dryRun: options.dryRun,
 		});
 	} else {
-		throw new Error(`Tipo de integração não suportado: ${config.integracaoConfiguracao.tipo}.`);
+		throw new Error("Tipo de integração não suportado.");
 	}
 	return {
 		message: options.dryRun ? "Dry run concluído." : "Importação concluída.",

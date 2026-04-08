@@ -6,8 +6,12 @@ import { useState } from "react";
 import AdminKPIsBlock from "./components/AdminKPIsBlock";
 import AdminOrganizationsBlock from "./components/AdminOrganizationsBlock";
 import NewOrganization from "./components/NewOrganization/NewOrganization";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 
-export default function AdminDashboardPage() {
+type TAdminDashboardPageProps = {
+	user: TAuthUserSession["user"];
+};
+export default function AdminDashboardPage({ user }: TAdminDashboardPageProps) {
 	const [newOrganizationModalOpen, setNewOrganizationModalOpen] = useState(false);
 
 	return (
@@ -33,7 +37,7 @@ export default function AdminDashboardPage() {
 			<AdminKPIsBlock />
 
 			{/* Organizations Block */}
-			<AdminOrganizationsBlock />
+			<AdminOrganizationsBlock user={user} />
 
 			{/* New Organization Modal */}
 			{newOrganizationModalOpen && <NewOrganization closeModal={() => setNewOrganizationModalOpen(false)} />}
