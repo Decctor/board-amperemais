@@ -29,6 +29,8 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 						<TextInput
 							value={state.organization.nome}
 							label="NOME DA EMPRESA"
+							labelClassName="text-black"
+							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o nome da sua empresa..."
 							handleChange={(value) => updateOrganization({ nome: value })}
 							width="100%"
@@ -37,6 +39,8 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 						<TextInput
 							value={state.organization.cnpj || ""}
 							label="CNPJ DA EMPRESA"
+							labelClassName="text-black"
+							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o CNPJ da sua empresa..."
 							handleChange={(value) => updateOrganization({ cnpj: formatToCPForCNPJ(value) })}
 							width="100%"
@@ -45,6 +49,8 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 						<TextInput
 							value={state.organization.email || ""}
 							label="EMAIL CORPORATIVO"
+							labelClassName="text-black"
+							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o email corporativo da sua empresa..."
 							handleChange={(value) => updateOrganization({ email: value })}
 							width="100%"
@@ -52,6 +58,8 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 						<TextInput
 							value={state.organization.telefone || ""}
 							label="TELEFONE / WHATSAPP"
+							labelClassName="text-black"
+							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o telefone/whatsapp da sua empresa..."
 							handleChange={(value) => updateOrganization({ telefone: formatToPhone(value) })}
 							width="100%"
@@ -63,9 +71,9 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 								onCheckedChange={(checked) => updateOrganizationOnboarding({ termsAccepted: checked === true })}
 								className="mt-0.5"
 							/>
-							<label htmlFor="terms-consent" className="text-sm text-gray-700 leading-relaxed cursor-pointer">
+							<label htmlFor="terms-consent" className="text-sm text-primary dark:text-black leading-relaxed cursor-pointer">
 								Li e concordo com os{" "}
-								<Link href="/legal" target="_blank" className="text-primary font-medium underline hover:text-primary/80 transition-colors">
+								<Link href="/legal" target="_blank" className="text-primary dark:text-black font-medium underline hover:text-primary/80 transition-colors">
 									Termos de Uso e Política de Privacidade
 								</Link>{" "}
 								da plataforma RecompraCRM.
@@ -120,9 +128,9 @@ function ImagePreview({ imageUrl, imageHolder }: { imageUrl?: string | null; ima
 	}
 
 	return (
-		<div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gray-200">
-			<MdAttachFile className="h-6 w-6 text-primary/50" />
-			<p className="text-center font-medium text-xs text-primary/50">DEFINIR LOGO</p>
+		<div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gray-200 dark:bg-black/20">
+			<MdAttachFile className="h-6 w-6 text-primary/50 dark:text-black" />
+			<p className="text-center font-medium text-xs text-primary/50 dark:text-black">DEFINIR LOGO</p>
 		</div>
 	);
 }

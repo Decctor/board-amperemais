@@ -257,6 +257,7 @@ async function handleCardapioWebImportation(
 			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
 			columns: {
 				id: true,
+				ativo: true,
 				acumuloTipo: true,
 				acumuloRegraValorMinimo: true,
 				acumuloValor: true,
@@ -265,7 +266,8 @@ async function handleCardapioWebImportation(
 				acumuloPermitirViaIntegracao: true,
 			},
 		});
-		const cashbackProgramAllowsAccumulationViaIntegration = cashbackProgram?.acumuloPermitirViaIntegracao;
+		const cashbackProgramIsActive = cashbackProgram?.ativo;
+		const cashbackProgramAllowsAccumulationViaIntegration = cashbackProgramIsActive && cashbackProgram?.acumuloPermitirViaIntegracao;
 
 		const existingSales = await tx.query.sales.findMany({
 			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, organizationId), inArray(fields.idExterno, cardapioWebSalesIds)),
@@ -1459,6 +1461,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
 					columns: {
 						id: true,
+						ativo: true,
 						acumuloTipo: true,
 						acumuloRegraValorMinimo: true,
 						acumuloValor: true,
@@ -1467,7 +1470,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						acumuloPermitirViaIntegracao: true,
 					},
 				});
-				const cashbackProgramAllowsAccumulationViaIntegration = cashbackProgram?.acumuloPermitirViaIntegracao;
+				const cashbackProgramIsActive = cashbackProgram?.ativo;
+				const cashbackProgramAllowsAccumulationViaIntegration = cashbackProgramIsActive && cashbackProgram?.acumuloPermitirViaIntegracao;
 				const existingSales = await tx.query.sales.findMany({
 					where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, organization.id), inArray(fields.idExterno, OnlineSoftwareSalesIds)),
 					with: {

@@ -78,7 +78,7 @@ function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
 					color: chartColors.goal,
 				},
 			}) satisfies ChartConfig,
-		[chartColors]
+		[chartColors],
 	);
 	useEffect(() => {
 		setQueryParams((prev) => ({ ...prev, ...generalQueryParams }));

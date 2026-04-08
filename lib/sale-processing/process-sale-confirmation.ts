@@ -2,7 +2,7 @@ import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { getFiscalProvider } from "@/lib/fiscal";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db } from "@/services/drizzle";
-import { cashbackProgramBalances, cashbackProgramTransactions, sales } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, sales } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -123,6 +123,15 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 
 			const programId = input.saleCashbackProgramId ?? balance.programaId;
 			if (!programId) throw new createHttpError.BadRequest("Programa de cashback não informado.");
+
+			const program = await tx.query.cashbackPrograms.findFirst({
+				where: and(eq(cashbackPrograms.organizacaoId, input.organization.id), eq(cashbackPrograms.id, programId)),
+				columns: {
+					ativo: true,
+				},
+			});
+			if (!program) throw new createHttpError.NotFound("Programa de cashback não encontrado.");
+			if (!program.ativo) throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
 
 			const redemptionResult = await applyCashbackRedemptionFIFO({
 				tx,

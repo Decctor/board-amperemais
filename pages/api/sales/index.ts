@@ -563,6 +563,10 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 			throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 		}
 
+		if (!program.ativo && input.cashbackApplied && input.cashbackAppliedAmount > 0) {
+			throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
+		}
+
 		// 2.1. Query campaigns for cashback accumulation trigger
 		const campaignsForCashbackAccumulation = await tx.query.campaigns.findMany({
 			where: (fields, { and, eq }) => and(eq(fields.organizacaoId, input.orgId), eq(fields.ativo, true), eq(fields.gatilhoTipo, "CASHBACK-ACUMULADO")),
@@ -663,11 +667,13 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 			where: and(eq(cashbackProgramBalances.clienteId, input.clientId), eq(cashbackProgramBalances.organizacaoId, input.orgId)),
 		});
 
-		if (!balance) {
+		if (!balance && program.ativo) {
 			throw new createHttpError.NotFound("Saldo de cashback não encontrado.");
 		}
 
-		if (program.acumuloTipo === "FIXO") {
+		if (!program.ativo) {
+			accumulatedBalance = 0;
+		} else if (program.acumuloTipo === "FIXO") {
 			if (input.saleValue >= program.acumuloRegraValorMinimo) {
 				accumulatedBalance = program.acumuloValor;
 			}
@@ -677,15 +683,15 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 			}
 		}
 
-		const previousOverallAvailableBalance = balance.saldoValorDisponivel;
-		const previousOverallAccumulatedBalance = balance.saldoValorAcumuladoTotal;
+		const previousOverallAvailableBalance = balance?.saldoValorDisponivel ?? 0;
+		const previousOverallAccumulatedBalance = balance?.saldoValorAcumuladoTotal ?? 0;
 		const newOverallAvailableBalance = previousOverallAvailableBalance + accumulatedBalance;
 		const newOverallAccumulatedBalance = previousOverallAccumulatedBalance + accumulatedBalance;
 
 		// Collect data for immediate processing
 		const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
-		if (accumulatedBalance > 0) {
+		if (accumulatedBalance > 0 && balance) {
 			// Update balance (credit)
 			await tx
 				.update(cashbackProgramBalances)

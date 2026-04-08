@@ -283,8 +283,8 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 		if (orgNicheData) {
 			await tx.insert(cashbackPrograms).values({
 				organizacaoId: createdOrgId,
-				ativo: true,
-				titulo: `Program de Cashback ${organization.nome}`,
+				ativo: false, // initialize as false to avoid "auto-generating cashback" unintentionally
+				titulo: `Programa de Cashback ${organization.nome}`,
 				descricao: "Nosso programa de fidelidade.",
 				...orgNicheData.cashbackProgramDefault,
 			});
@@ -574,9 +574,7 @@ async function updateOrganization({ input, session }: { input: TUpdateOrganizati
 		const currentConfig = currentOrg.configuracao;
 		const mergedConfig = {
 			...currentConfig,
-			preferencias: configuracao.preferencias
-				? { ...currentConfig.preferencias, ...configuracao.preferencias }
-				: currentConfig.preferencias,
+			preferencias: configuracao.preferencias ? { ...currentConfig.preferencias, ...configuracao.preferencias } : currentConfig.preferencias,
 			defaults: configuracao.defaults
 				? {
 						contabilidade: configuracao.defaults.contabilidade
