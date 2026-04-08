@@ -59,8 +59,8 @@ const DISPLAY_MODE_CONFIG: Record<
 		widthMm: 210,
 		heightMm: 297,
 		headerClassName: "pt-10 pb-14 px-10",
-		logoWrapperStyle: { width: "150px", height: "82px" },
-		logoClassName: "w-20 h-20",
+		logoWrapperStyle: { width: "150px", height: "150px" },
+		logoClassName: "w-full h-full",
 		orgNameClassName: "text-xl px-4 py-2",
 		titleClassName: "text-5xl",
 		subtitleClassName: "text-sm mt-2",
@@ -83,8 +83,8 @@ const DISPLAY_MODE_CONFIG: Record<
 		widthMm: 148,
 		heightMm: 210,
 		headerClassName: "pt-7 pb-10 px-6",
-		logoWrapperStyle: { width: "120px", height: "64px" },
-		logoClassName: "w-12 h-12",
+		logoWrapperStyle: { width: "100px", height: "100px" },
+		logoClassName: "w-full h-full",
 		orgNameClassName: "text-base px-2 py-1",
 		titleClassName: "text-4xl",
 		subtitleClassName: "text-xs mt-1",
@@ -107,8 +107,8 @@ const DISPLAY_MODE_CONFIG: Record<
 		widthMm: 105,
 		heightMm: 148,
 		headerClassName: "pt-5 pb-7 px-4",
-		logoWrapperStyle: { width: "92px", height: "50px" },
-		logoClassName: "w-10 h-10",
+		logoWrapperStyle: { width: "60px", height: "60px" },
+		logoClassName: "w-full h-full",
 		orgNameClassName: "text-sm px-2 py-1",
 		titleClassName: "text-[1.7rem]",
 		subtitleClassName: "text-[9px] mt-1",
@@ -179,9 +179,9 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 
 						{/* Logo or Org Name */}
 						{org.logoUrl ? (
-							<div className="flex items-center justify-center relative z-10 mb-3 bg-white rounded p-2 shadow-lg" style={displayConfig.logoWrapperStyle}>
+							<div className="flex items-center justify-center relative z-10 mb-3 bg-white rounded-xl p-2 shadow-lg" style={displayConfig.logoWrapperStyle}>
 								<div className={`relative ${displayConfig.logoClassName} rounded-xl overflow-hidden`}>
-									<Image src={org.logoUrl} alt={`Logo ${org.nome}`} fill className="object-contain" sizes={displayConfig.qrSize} />
+									<Image src={org.logoUrl} alt={`Logo ${org.nome}`} fill sizes={displayConfig.qrSize} />
 								</div>
 							</div>
 						) : (

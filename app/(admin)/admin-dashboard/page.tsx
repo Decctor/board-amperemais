@@ -7,6 +7,5 @@ export default async function AdminDashboard() {
 	const authSession = await getCurrentSession();
 	if (!authSession) redirect("/auth/signin");
 	if (!authSession.user.admin) return <UnauthorizedPage message="Oops, aparentemente você não possui permissão para acessar essa área." />;
-	console.log("AUTH SESSION ADMIN DASHBOARD PAGE", authSession);
 	return <AdminDashboardPage user={authSession.user} />;
 }
