@@ -28,7 +28,12 @@ export async function GET(request: NextRequest): Promise<Response> {
 
 	console.log("[INFO] [GOOGLE_CALLBACK] Code/state validation:", { code, state, storedState, codeVerifier });
 	if (!code || !state || !storedState || state !== storedState || !codeVerifier) {
-		console.log("[ERROR] [GOOGLE_CALLBACK] Error in code/state validation.");
+		console.log("[ERROR] [GOOGLE_CALLBACK] Error in code/state validation.", {
+			code,
+			state,
+			storedState,
+			codeVerifier,
+		});
 		return new Response(null, {
 			status: 400,
 			headers: { Location: "/login" },
@@ -87,18 +92,6 @@ export async function GET(request: NextRequest): Promise<Response> {
 				googleId: googleUser.sub,
 				googleRefreshToken: refreshToken,
 				googleAccessToken: accessToken,
-				permissoes: {
-					resultados: {
-						visualizar: true,
-						criarMetas: true,
-						visualizarMetas: true,
-						editarMetas: true,
-						excluirMetas: true,
-						escopo: [],
-					},
-					usuarios: { visualizar: true, criar: true, editar: true, excluir: true },
-					atendimentos: { visualizar: true, iniciar: true, responder: true, finalizar: true },
-				},
 				senha: "",
 				usuario: formatAsSlug(googleUser.name),
 			};

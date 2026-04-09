@@ -10,9 +10,10 @@ import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
 import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, Info, Plus, Send } from "lucide-react";
+import { Eye, Info, Pencil, Plus, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import ControlWhatsappTemplate from "../../WhatsappTemplates/ControlWhatsappTemplate";
 
 type CampaignsActionBlockProps = {
 	organizationId: string;
@@ -22,10 +23,15 @@ type CampaignsActionBlockProps = {
 
 export default function CampaignsActionBlock({ organizationId, campaign, updateCampaign }: CampaignsActionBlockProps) {
 	const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+	const [editTemplateId, setEditTemplateId] = useState<string | null>(null);
 	const queryClient = useQueryClient();
 
 	const { data: whatsappConnection } = useWhatsappConnection();
-	const { data: whatsappTemplatesResult, updateParams } = useWhatsappTemplates({
+	const {
+		data: whatsappTemplatesResult,
+		updateParams,
+		queryKey,
+	} = useWhatsappTemplates({
 		initialParams: { page: 1, search: "", whatsappConnectionPhoneId: campaign.whatsappConexaoTelefoneId, includeRecompraTemplates: true },
 	});
 
@@ -75,6 +81,8 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [campaign.gatilhoTipo]);
 
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 	// Find the selected template for status/quality display
 	const selectedTemplate = useMemo(() => allTemplates.find((t) => t.id === campaign.whatsappTemplateId), [allTemplates, campaign.whatsappTemplateId]);
 	const selectedTemplateComponents = selectedTemplate?.componentes;
@@ -88,14 +96,29 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 					triggerContext={campaign.gatilhoTipo ?? undefined}
 					closeMenu={() => setShowCreateTemplate(false)}
 					callbacks={{
+						onMutate: handleOnMutate,
 						onSuccess: ({ templateId }) => {
 							if (templateId) updateCampaign({ whatsappTemplateId: templateId });
-							queryClient.invalidateQueries({ queryKey: ["whatsapp-templates"] });
+							handleOnSettled();
 							setShowCreateTemplate(false);
 						},
 					}}
 				/>
 			)}
+			{editTemplateId ? (
+				<ControlWhatsappTemplate
+					whatsappTemplateId={editTemplateId}
+					organizationId={organizationId}
+					closeMenu={() => setEditTemplateId(null)}
+					callbacks={{
+						onMutate: handleOnMutate,
+						onSuccess: () => {
+							handleOnSettled();
+							setEditTemplateId(null);
+						},
+					}}
+				/>
+			) : null}
 			<ResponsiveMenuSection title="AÇÃO" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
 				<div className="w-full flex flex-col gap-1">
 					<p className="text-center text-sm tracking-tight text-muted-foreground">Defina o template do WhatsApp que deve ser enviado.</p>
@@ -142,6 +165,12 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 								</HoverCardContent>
 							</HoverCard>
 						) : null}
+						{selectedTemplate ? (
+							<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5" onClick={() => setEditTemplateId(selectedTemplate.id)}>
+								<Pencil className="h-3.5 w-3.5" />
+								EDITAR
+							</Button>
+						) : null}
 						<Button
 							type="button"
 							size="sm"
@@ -177,9 +206,7 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 											{hiddenTemplates.map((template) => (
 												<div key={template.id} className="rounded-lg border border-border/60 bg-muted/35 px-2.5 py-2">
 													<p className="text-xs font-semibold text-foreground">{template.nome}</p>
-													<p className="mt-1 text-xs text-muted-foreground">
-														Variáveis incompatíveis: {template.incompatibleVariables.join(", ")}.
-													</p>
+													<p className="mt-1 text-xs text-muted-foreground">Variáveis incompatíveis: {template.incompatibleVariables.join(", ")}.</p>
 												</div>
 											))}
 										</div>
