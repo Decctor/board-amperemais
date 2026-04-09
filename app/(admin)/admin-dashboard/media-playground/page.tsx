@@ -1,18 +1,12 @@
 "use client";
 
+import type { ComponentType } from "react";
 import { useRef, useState } from "react";
+import CampeoesFeedPost from "./components/designs/campeoes/campeoes-feed";
+import CampeoesQuadradoPost from "./components/designs/campeoes/campeoes-quadrado";
+import CampeoesReelsPost from "./components/designs/campeoes/campeoes-reels";
 import ExportButton from "./components/export-button";
 import PostPreviewShell from "./components/post-preview-shell";
-import CampeoesPost from "./components/designs/campeoes/campeoes-post";
-
-// ─── Design Registry ─────────────────────────────────────────────
-const DESIGNS = [
-	{
-		key: "campeoes",
-		label: "Campanha CAMPEÕES — Ampère+",
-		component: CampeoesPost,
-	},
-] as const;
 
 // ─── Size Presets ────────────────────────────────────────────────
 const SIZE_PRESETS = [
@@ -21,14 +15,41 @@ const SIZE_PRESETS = [
 	{ key: "square", label: "Quadrado", width: 1080, height: 1080, description: "1080 × 1080" },
 ] as const;
 
+type SizePresetKey = (typeof SIZE_PRESETS)[number]["key"];
+
+type DesignCanvasProps = { width: number; height: number };
+
+type MediaDesignEntry = {
+	key: string;
+	label: string;
+	component?: ComponentType<DesignCanvasProps>;
+	componentsBySize?: Partial<Record<SizePresetKey, ComponentType<DesignCanvasProps>>>;
+};
+
+// ─── Design Registry ─────────────────────────────────────────────
+const DESIGNS: MediaDesignEntry[] = [
+	{
+		key: "campeoes",
+		label: "Campanha CAMPEÕES — Ampère+",
+		componentsBySize: {
+			feed: CampeoesFeedPost,
+			reels: CampeoesReelsPost,
+			square: CampeoesQuadradoPost,
+		},
+	},
+];
+
 export default function MediaPlaygroundPage() {
 	const [selectedDesign, setSelectedDesign] = useState(DESIGNS[0].key);
-	const [selectedSize, setSelectedSize] = useState(SIZE_PRESETS[0].key);
+	const [selectedSize, setSelectedSize] = useState<SizePresetKey>(SIZE_PRESETS[0].key);
 	const contentRef = useRef<HTMLDivElement>(null);
 
 	const design = DESIGNS.find((d) => d.key === selectedDesign) ?? DESIGNS[0];
 	const size = SIZE_PRESETS.find((s) => s.key === selectedSize) ?? SIZE_PRESETS[0];
-	const DesignComponent = design.component;
+	const DesignComponent = design.componentsBySize?.[size.key] ?? design.component;
+	if (!DesignComponent) {
+		throw new Error(`Design "${design.key}" não define componente para o formato "${size.key}".`);
+	}
 
 	return (
 		<div className="w-full flex flex-col gap-6 p-6">
