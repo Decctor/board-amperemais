@@ -19,6 +19,10 @@ import { getWhatsappTemplatePlainText } from "./template-text";
 import { validateTemplateVariablesForTrigger } from "./template-variables";
 
 const TRIGGERS_SUPPORTING_ANTES: TCampaignTriggerTypeEnum[] = ["ANIVERSARIO_CLIENTE", "PIOR-DIA-VENDAS"];
+const TEMPLATE_BODY_SECTION_PATTERN =
+	/(?:^|\n)\s*(?:corpo|body)\s*:\s*\n?([\s\S]*?)(?=\n\s*(?:cabeçalho(?:\s*\([^)]+\))?|header(?:\s*\([^)]+\))?|rodapé|footer|bot(?:õ|o)es?|buttons?)\s*:|$)/i;
+const TEMPLATE_NON_BODY_SECTION_PATTERN =
+	/(^|\n)\s*(?:cabeçalho(?:\s*\([^)]+\))?|header(?:\s*\([^)]+\))?|rodapé|footer|bot(?:õ|o)es?|buttons?)\s*:/i;
 
 function validateRecurrentCampaign(campaign: z.infer<typeof CampaignSchema>) {
 	if (campaign.gatilhoTipo !== "RECORRENTE") return;
@@ -121,6 +125,24 @@ function validateTemplateTextForTrigger(templateText: string, triggerType: TCamp
 	}
 }
 
+function normalizeSuggestedWhatsappTemplateText(templateText: string) {
+	const trimmedTemplateText = templateText.trim();
+	const bodySectionMatch = trimmedTemplateText.match(TEMPLATE_BODY_SECTION_PATTERN);
+	if (bodySectionMatch?.[1]?.trim()) {
+		return bodySectionMatch[1].trim();
+	}
+
+	return trimmedTemplateText;
+}
+
+function validateSuggestedWhatsappTemplateText(templateText: string) {
+	if (TEMPLATE_NON_BODY_SECTION_PATTERN.test(templateText)) {
+		throw new createHttpError.BadRequest(
+			"O campo whatsappTemplateText deve conter apenas o corpo da mensagem, sem cabeçalho, rodapé, botões ou outras seções estruturais.",
+		);
+	}
+}
+
 function validateCampaignRules(campaign: z.infer<typeof CampaignSchema>) {
 	validateRecurrentCampaign(campaign);
 	validateCampaignFrequencyInterval(campaign);
@@ -138,7 +160,9 @@ export async function normalizeCampaignCreationSuggestion({
 }) {
 	const parsedSuggestion = CampaignCreationSuggestionSchema.parse(suggestion);
 	await ensureWhatsappPhoneBelongsToOrganization(organizacaoId, parsedSuggestion.whatsappConexaoTelefoneId);
-	validateTemplateTextForTrigger(parsedSuggestion.whatsappTemplateText, parsedSuggestion.gatilhoTipo);
+	const normalizedWhatsappTemplateText = normalizeSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
+	validateSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
+	validateTemplateTextForTrigger(normalizedWhatsappTemplateText, parsedSuggestion.gatilhoTipo);
 
 	const campaignValidationShape = CampaignSchema.omit({
 		autorId: true,
@@ -155,7 +179,7 @@ export async function normalizeCampaignCreationSuggestion({
 	return {
 		...parsedSuggestion,
 		segmentations: Array.from(new Set(parsedSuggestion.segmentations.map((segmentation) => segmentation.trim()).filter(Boolean))),
-		whatsappTemplateText: parsedSuggestion.whatsappTemplateText.trim(),
+		whatsappTemplateText: normalizedWhatsappTemplateText,
 		justificativa: parsedSuggestion.justificativa.trim(),
 		objetivoEsperado: parsedSuggestion.objetivoEsperado?.trim() || null,
 	};
@@ -239,7 +263,9 @@ export async function normalizeCampaignUpdateSuggestion({
 	}
 
 	await ensureWhatsappPhoneBelongsToOrganization(organizacaoId, effectiveWhatsappPhoneId);
-	validateTemplateTextForTrigger(parsedSuggestion.whatsappTemplateText, effectiveTriggerType);
+	const normalizedWhatsappTemplateText = normalizeSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
+	validateSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
+	validateTemplateTextForTrigger(normalizedWhatsappTemplateText, effectiveTriggerType);
 
 	const campaignValidationShape = CampaignSchema.omit({
 		autorId: true,
@@ -267,7 +293,7 @@ export async function normalizeCampaignUpdateSuggestion({
 		currentSummary,
 		proposedChanges: parsedChanges,
 		segmentations: Array.from(new Set(parsedSuggestion.segmentations.map((segmentation) => segmentation.trim()).filter(Boolean))),
-		whatsappTemplateText: parsedSuggestion.whatsappTemplateText.trim(),
+		whatsappTemplateText: normalizedWhatsappTemplateText,
 		justificativa: parsedSuggestion.justificativa.trim(),
 		impactoEsperado: parsedSuggestion.impactoEsperado?.trim() || null,
 	};

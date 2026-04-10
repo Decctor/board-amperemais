@@ -5,8 +5,16 @@ import { useRef, useState } from "react";
 import CampeoesFeedPost from "./components/designs/campeoes/campeoes-feed";
 import CampeoesQuadradoPost from "./components/designs/campeoes/campeoes-quadrado";
 import CampeoesReelsPost from "./components/designs/campeoes/campeoes-reels";
+import NoticiaBoaFeedPost from "./components/designs/noticia-boa/noticia-boa-feed";
+import NoticiaBoaQuadradoPost from "./components/designs/noticia-boa/noticia-boa-quadrado";
+import NoticiaBoaReelsPost from "./components/designs/noticia-boa/noticia-boa-reels";
 import ExportButton from "./components/export-button";
 import PostPreviewShell from "./components/post-preview-shell";
+import {
+	DEFAULT_MEDIA_EXPORT_PIXEL_RATIO,
+	MEDIA_EXPORT_PIXEL_RATIO_OPTIONS,
+	type TMediaExportPixelRatio,
+} from "./export-config";
 
 // ─── Size Presets ────────────────────────────────────────────────
 const SIZE_PRESETS = [
@@ -37,11 +45,23 @@ const DESIGNS: MediaDesignEntry[] = [
 			square: CampeoesQuadradoPost,
 		},
 	},
+	{
+		key: "noticia-boa",
+		label: "Relatório semanal — WhatsApp",
+		componentsBySize: {
+			feed: NoticiaBoaFeedPost,
+			reels: NoticiaBoaReelsPost,
+			square: NoticiaBoaQuadradoPost,
+		},
+	},
 ];
 
 export default function MediaPlaygroundPage() {
 	const [selectedDesign, setSelectedDesign] = useState(DESIGNS[0].key);
 	const [selectedSize, setSelectedSize] = useState<SizePresetKey>(SIZE_PRESETS[0].key);
+	const [exportPixelRatio, setExportPixelRatio] = useState<TMediaExportPixelRatio>(
+		DEFAULT_MEDIA_EXPORT_PIXEL_RATIO,
+	);
 	const contentRef = useRef<HTMLDivElement>(null);
 
 	const design = DESIGNS.find((d) => d.key === selectedDesign) ?? DESIGNS[0];
@@ -101,16 +121,32 @@ export default function MediaPlaygroundPage() {
 					</div>
 				</div>
 
-				{/* Export button */}
+				{/* Export */}
 				<div className="flex flex-col gap-1.5 sm:ml-auto">
 					<label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Exportar</label>
-					<ExportButton
-						contentRef={contentRef}
-						width={size.width}
-						height={size.height}
-						designName={design.key}
-						sizeLabel={size.key}
-					/>
+					<div className="flex flex-wrap items-center gap-2">
+						<select
+							value={exportPixelRatio}
+							onChange={(e) => setExportPixelRatio(Number(e.target.value) as TMediaExportPixelRatio)}
+							className="bg-card border border-primary/20 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-32"
+							aria-label="Resolução de exportação"
+							title="Escala do PNG — valores maiores geram arquivo mais nítido e pesado"
+						>
+							{MEDIA_EXPORT_PIXEL_RATIO_OPTIONS.map((r) => (
+								<option key={r} value={r}>
+									{r}× ({size.width * r}×{size.height * r}px)
+								</option>
+							))}
+						</select>
+						<ExportButton
+							contentRef={contentRef}
+							width={size.width}
+							height={size.height}
+							designName={design.key}
+							sizeLabel={size.key}
+							pixelRatio={exportPixelRatio}
+						/>
+					</div>
 				</div>
 			</div>
 

@@ -78,6 +78,9 @@ const CampaignBaseSuggestionConfigSchema = CampaignSchema.omit({
 	execucaoAgendadaMedida: TimeDurationUnitsEnum,
 	execucaoAgendadaDirecao: CampaignExecutionDelayDirectionEnum,
 	execucaoAgendadaBloco: InteractionsCronJobTimeBlocksEnum,
+	limiteEnviosSemanais: CampaignSchema.shape.limiteEnviosSemanais.describe(
+		"Volume total de mensagens individuais que a campanha pode enviar por semana. Nao representa quantidade de clientes, execucoes ou recorrencias.",
+	),
 	recorrenciaTipo: RecurrenceFrequencyEnum.optional().nullable(),
 	frequenciaIntervaloMedida: TimeDurationUnitsEnum.optional().nullable(),
 	atribuicaoModelo: AttributionModelEnum,
@@ -95,7 +98,9 @@ export const CampaignCreationSuggestionSchema = CampaignBaseSuggestionConfigSche
 	whatsappTemplateText: z.string({
 		required_error: "Texto do template não informado.",
 		invalid_type_error: "Tipo inválido para o texto do template.",
-	}),
+	}).describe(
+		"Somente o corpo da mensagem sugerida, sem prefixos como 'Corpo:' e sem incluir ou alterar cabecalho, rodape, botoes ou midia.",
+	),
 	justificativa: z.string({
 		required_error: "Justificativa não informada.",
 		invalid_type_error: "Tipo inválido para justificativa.",
@@ -149,7 +154,9 @@ export const CampaignUpdateSuggestionSchema = z.object({
 	whatsappTemplateText: z.string({
 		required_error: "Texto do template não informado.",
 		invalid_type_error: "Tipo inválido para o texto do template.",
-	}),
+	}).describe(
+		"Somente o corpo da mensagem sugerida para a atualizacao. Preserve cabecalho, rodape, botoes e outras estruturas existentes.",
+	),
 	justificativa: z.string({
 		required_error: "Justificativa não informada.",
 		invalid_type_error: "Tipo inválido para justificativa.",

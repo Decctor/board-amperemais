@@ -30,6 +30,8 @@ type CampeoesImpactPanelsProps = {
 
 export function CampeoesImpactPanels({ tokens, className, fillHeight = false }: CampeoesImpactPanelsProps) {
 	const { t, radiusMd } = tokens;
+	const panelPadY = Math.round(18 * t);
+	const panelPadX = Math.round(18 * t);
 
 	return (
 		<div
@@ -55,12 +57,14 @@ export function CampeoesImpactPanels({ tokens, className, fillHeight = false }: 
 						flex: fillHeight ? "1 1 0" : undefined,
 						display: fillHeight ? "flex" : undefined,
 						flexDirection: fillHeight ? "column" : undefined,
-						justifyContent: fillHeight ? "center" : undefined,
+						/** flex-start + padding simétrico — evita título colado ao topo no 1.º painel (vs. centrado a meio) */
+						justifyContent: fillHeight ? "flex-start" : undefined,
 						borderRadius: radiusMd,
 						background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)",
 						boxShadow: "0 10px 36px rgba(0,0,0,0.18)",
-						padding: `${Math.round(16 * (t))}px ${Math.round(18 * t)}px`,
+						padding: `${panelPadY}px ${panelPadX}px`,
 						border: "1px solid rgba(255,255,255,0.75)",
+						boxSizing: "border-box",
 					}}
 				>
 					<div
@@ -70,7 +74,7 @@ export function CampeoesImpactPanels({ tokens, className, fillHeight = false }: 
 							textTransform: "uppercase",
 							letterSpacing: "0.1em",
 							color: "#94A3B8",
-							marginBottom: Math.round(10 * t),
+							marginBottom: Math.round(4 * t),
 						}}
 					>
 						{panel.title}
@@ -89,7 +93,7 @@ export function CampeoesImpactPanels({ tokens, className, fillHeight = false }: 
 						>
 							<span
 								style={{
-									fontSize: Math.round(11 * t),
+									fontSize: Math.round(8 * t),
 									fontWeight: 600,
 									color: "#334155",
 									minWidth: 0,

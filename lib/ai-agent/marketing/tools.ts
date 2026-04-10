@@ -235,7 +235,7 @@ export function createMarketingAgentTools({ organizacaoId }: { organizacaoId: st
 		}),
 		draft_campaign_creation_suggestion: tool({
 			description:
-				"Valida e normaliza uma proposta de nova campanha. Use apenas quando houver uma recomendação concreta pronta para aprovação humana.",
+				"Valida e normaliza uma proposta de nova campanha. Use apenas quando houver uma recomendação concreta pronta para aprovação humana. Em whatsappTemplateText envie somente o corpo da mensagem. limiteEnviosSemanais é o volume semanal de mensagens individuais da campanha.",
 			inputSchema: CampaignCreationSuggestionSchema,
 			execute: async (input) => {
 				return await draftCampaignCreationSuggestion({
@@ -246,15 +246,17 @@ export function createMarketingAgentTools({ organizacaoId }: { organizacaoId: st
 		}),
 		draft_campaign_update_suggestion: tool({
 			description:
-				"Valida e normaliza uma proposta de atualização de campanha existente. Use quando já houver uma campanha específica para otimizar.",
+				"Valida e normaliza uma proposta de atualização de campanha existente. Use quando já houver uma campanha específica para otimizar. Em whatsappTemplateText envie somente o corpo da mensagem e preserve cabeçalho, rodapé, botões e mídia já existentes. limiteEnviosSemanais é o volume semanal de mensagens individuais da campanha.",
 			inputSchema: z
 				.object({
-					campaignId: z.string(),
+					campaignId: z.string().describe("ID da campanha a ser otimizada."),
 					proposedChanges: CampaignUpdateProposedChangesSchema,
-					segmentations: z.array(z.string()),
-					whatsappTemplateText: z.string(),
-					justificativa: z.string(),
-					impactoEsperado: z.string().optional().nullable(),
+					segmentations: z.array(z.string()).describe("Lista final de segmentações recomendadas para a campanha."),
+					whatsappTemplateText: z
+						.string()
+						.describe("Somente o corpo da mensagem sugerida. Nao inclua nem altere cabecalho, rodape, botoes, midia ou prefixos como 'Corpo:' ."),
+					justificativa: z.string().describe("Resumo objetivo do porquê as mudanças propostas fazem sentido."),
+					impactoEsperado: z.string().optional().nullable().describe("Impacto esperado da otimização, quando aplicável."),
 				})
 				.strict(),
 			execute: async (input) => {

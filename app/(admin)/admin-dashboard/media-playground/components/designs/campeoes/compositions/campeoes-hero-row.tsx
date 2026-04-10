@@ -12,15 +12,7 @@ type CampeoesHeroRowProps = {
 	heroLayout?: "default" | "fill";
 };
 
-export function CampeoesHeroRow({
-	width,
-	tokens,
-	heroBasis,
-	headlineSize,
-	bodySize,
-	className,
-	heroLayout = "default",
-}: CampeoesHeroRowProps) {
+export function CampeoesHeroRow({ width, tokens, heroBasis, headlineSize, bodySize, className, heroLayout = "default" }: CampeoesHeroRowProps) {
 	const { t, padX, radiusLg } = tokens;
 	const isFill = heroLayout === "fill";
 	const rowGap = Math.round((isFill ? 26 : 20) * t);
@@ -80,8 +72,8 @@ export function CampeoesHeroRow({
 						lineHeight: isFill ? 1.52 : 1.55,
 					}}
 				>
-					A Ampère+ criou um clube exclusivo para seus campeões de compra com o <span style={{ color: "#FFCD2E", fontWeight: 800 }}>RecompraCRM</span> e
-					os resultados falam por si.
+					A Ampère+ criou um clube exclusivo para seus campeões de compra com o <span style={{ color: "#FFCD2E", fontWeight: 800 }}>RecompraCRM</span> e os
+					resultados falam por si.
 				</p>
 			</div>
 
@@ -115,11 +107,12 @@ export function CampeoesHeroRow({
 					</div>
 					<div
 						style={{
-							fontSize: Math.round(34 * t * cf),
+							fontSize: Math.round(30 * t * cf),
 							fontWeight: 800,
 							color: "#1E3A5F",
 							letterSpacing: "-0.03em",
-							lineHeight: 1,
+							lineHeight: 1.1,
+							whiteSpace: "nowrap",
 						}}
 					>
 						R$ 29.408,63

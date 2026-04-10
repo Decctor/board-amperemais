@@ -31,7 +31,6 @@ function clearDismissedAt() {
 
 export function AIHintsBubble() {
 	const { data: hints, isLoading, isError } = useAllActiveHints();
-	const { mutate: generateHints, isPending: isGenerating } = useGenerateHints();
 
 	const [isOpen, setIsOpen] = useState(false);
 	const [isDismissed, setIsDismissed] = useState(true);
@@ -69,10 +68,6 @@ export function AIHintsBubble() {
 
 	const handleHintClick = (index: number) => {
 		setOpenedHintIndex((prev) => (prev === index ? null : index));
-	};
-
-	const handleRefresh = () => {
-		generateHints({ assunto: "campaigns" });
 	};
 
 	// Don't render if:
@@ -136,12 +131,8 @@ export function AIHintsBubble() {
 									variant="ghost"
 									size="icon"
 									className="h-7 w-7 rounded-full hover:bg-secondary text-muted-foreground"
-									onClick={handleRefresh}
-									disabled={isGenerating}
+									onClick={() => setIsOpen(false)}
 								>
-									<RefreshCw className={cn("h-4 w-4", isGenerating && "animate-spin")} />
-								</Button>
-								<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-secondary text-muted-foreground" onClick={() => setIsOpen(false)}>
 									<ChevronDown className="h-4 w-4" />
 								</Button>
 								<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-secondary text-muted-foreground" onClick={handleDismiss}>
@@ -157,19 +148,6 @@ export function AIHintsBubble() {
 							<div className="flex flex-col items-center justify-center py-8 px-4 text-center">
 								<Lightbulb className="h-10 w-10 text-muted-foreground/50 mb-3" />
 								<p className="text-sm text-muted-foreground mb-4">Nenhuma dica disponível no momento.</p>
-								<Button variant="outline" size="sm" onClick={handleRefresh} disabled={isGenerating} className="rounded-full">
-									{isGenerating ? (
-										<>
-											<RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-											Gerando...
-										</>
-									) : (
-										<>
-											<Sparkles className="h-4 w-4 mr-2" />
-											Gerar dicas
-										</>
-									)}
-								</Button>
 							</div>
 						) : (
 							activeHints.map((hint, index) => (
