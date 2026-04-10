@@ -1,15 +1,30 @@
 "use client";
 
+import ViewAIHint from "@/components/Modals/AiHints/ViewAIHint";
+import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useAllActiveHints, useGenerateHints } from "@/lib/queries/ai-hints";
+import { getErrorMessage } from "@/lib/errors";
+import { generateHints } from "@/lib/mutations/ai-hints";
+import { useAllActiveHints, useCheckAiHintsUsage } from "@/lib/queries/ai-hints";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Lightbulb, RefreshCw, Sparkles, X } from "lucide-react";
+import type { TAIHint } from "@/schemas/ai-hints";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, Lightbulb, RefreshCw, Sparkles, WandSparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AIHintCard } from "./AIHintCard";
 
 const DISMISS_KEY = "ai-hints-dismissed-at";
-const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+
+const GENERATION_STEPS = [
+	"Analisando campanhas...",
+	"Buscando oportunidades...",
+	"Cruzando sinais de compra...",
+	"Escrevendo uma recomendação...",
+	"Preparando a dica para revisão...",
+];
 
 function getDismissedAt(): number | null {
 	if (typeof window === "undefined") return null;
@@ -29,12 +44,41 @@ function clearDismissedAt() {
 	localStorage.removeItem(DISMISS_KEY);
 }
 
+function GeneratingHintText({ isGenerating }: { isGenerating: boolean }) {
+	const [stepIndex, setStepIndex] = useState(0);
+
+	useEffect(() => {
+		if (!isGenerating) {
+			setStepIndex(0);
+			return;
+		}
+
+		const interval = window.setInterval(() => {
+			setStepIndex((currentStepIndex) => (currentStepIndex + 1) % GENERATION_STEPS.length);
+		}, 1800);
+
+		return () => window.clearInterval(interval);
+	}, [isGenerating]);
+
+	if (!isGenerating) return null;
+
+	return (
+		<div className="mt-3 flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-3 py-2 text-[11px] font-medium text-brand animate-pulse">
+			<RefreshCw className="h-3.5 w-3.5 animate-spin" />
+			<span>{GENERATION_STEPS[stepIndex]}</span>
+		</div>
+	);
+}
+
 export function AIHintsBubble() {
 	const { data: hints, isLoading, isError } = useAllActiveHints();
+	const { data: usage, isLoading: usageIsLoading, isError: usageIsError } = useCheckAiHintsUsage();
+	const queryClient = useQueryClient();
 
 	const [isOpen, setIsOpen] = useState(false);
 	const [isDismissed, setIsDismissed] = useState(true);
 	const [openedHintIndex, setOpenedHintIndex] = useState<number | null>(null);
+	const [viewingHint, setViewingHint] = useState<TAIHint | null>(null);
 
 	useEffect(() => {
 		const dismissedAt = getDismissedAt();
@@ -52,12 +96,24 @@ export function AIHintsBubble() {
 		}
 	}, []);
 
-	// Auto-open first hint when hints load
 	useEffect(() => {
 		if (hints && hints.length > 0 && openedHintIndex === null) {
 			setOpenedHintIndex(0);
 		}
 	}, [hints, openedHintIndex]);
+
+	const { mutate: handleGenerateHints, isPending: generateIsLoading } = useMutation({
+		mutationKey: ["generate-ai-hints"],
+		mutationFn: generateHints,
+		onSuccess: async (data) => {
+			toast.success(data.message);
+			await queryClient.invalidateQueries({ queryKey: ["ai-hints"] });
+			await queryClient.invalidateQueries({ queryKey: ["ai-hints-usage"] });
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
 
 	const handleDismiss = (e?: React.MouseEvent) => {
 		e?.stopPropagation();
@@ -70,22 +126,22 @@ export function AIHintsBubble() {
 		setOpenedHintIndex((prev) => (prev === index ? null : index));
 	};
 
-	// Don't render if:
-	// - User dismissed the bubble
-	// - Still loading
-	// - API error (likely feature not enabled or auth issue)
 	if (isDismissed || isLoading || isError) {
 		return null;
 	}
 
 	const activeHints = hints ?? [];
 	const hintsCount = activeHints.length;
-
-	// If no hints and not generating, still show the bubble but with generate option
 	const showEmptyState = hintsCount === 0;
+	const usedHints = usage?.usedHints ?? 0;
+	const availableHints = Math.max(usage?.availableHints ?? 0, 0);
+	const totalHints = usedHints + availableHints;
+	const usagePercentage = totalHints > 0 ? Math.min((usedHints / totalHints) * 100, 100) : 0;
+	const canGenerateHints = !usageIsLoading && !usageIsError && availableHints > 0 && !generateIsLoading;
 
 	return (
 		<div className="fixed bottom-6 right-24 z-50 font-sans">
+			{viewingHint && <ViewAIHint hintId={viewingHint.id} hintType={viewingHint.tipo} closeMenu={() => setViewingHint(null)} />}
 			<Popover open={isOpen} onOpenChange={setIsOpen}>
 				<PopoverTrigger asChild>
 					<Button
@@ -115,7 +171,6 @@ export function AIHintsBubble() {
 					className="w-[380px] max-h-[calc(100dvh-120px)] p-0 border-0 shadow-2xl rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 flex flex-col"
 					sideOffset={16}
 				>
-					{/* Header Section */}
 					<div className="p-5 pb-3 flex-shrink-0 border-b border-border/50">
 						<div className="flex items-start justify-between">
 							<div>
@@ -142,26 +197,89 @@ export function AIHintsBubble() {
 						</div>
 					</div>
 
-					{/* Hints List */}
 					<div className="flex flex-col gap-1 px-2 py-3 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-secondary scrollbar-track-transparent">
-						{showEmptyState ? (
+						{generateIsLoading ? (
+							<div className="flex flex-col items-center justify-center py-10 px-5 text-center">
+								<div className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
+									<div className="absolute inset-0 rounded-full border border-brand/20 animate-ping" />
+									<WandSparkles className="h-6 w-6" />
+								</div>
+								<p className="text-sm font-semibold text-foreground">Gerando uma nova dica</p>
+								<p className="mt-1 text-xs text-muted-foreground">Isso pode levar alguns instantes enquanto a IA analisa seus dados.</p>
+								<GeneratingHintText isGenerating={generateIsLoading} />
+							</div>
+						) : showEmptyState ? (
 							<div className="flex flex-col items-center justify-center py-8 px-4 text-center">
 								<Lightbulb className="h-10 w-10 text-muted-foreground/50 mb-3" />
 								<p className="text-sm text-muted-foreground mb-4">Nenhuma dica disponível no momento.</p>
 							</div>
 						) : (
 							activeHints.map((hint, index) => (
-								<AIHintCard key={hint.id} hint={hint} isOpened={index === openedHintIndex} onClick={() => handleHintClick(index)} />
+								<AIHintCard
+									key={hint.id}
+									hint={hint}
+									isOpened={index === openedHintIndex}
+									onClick={() => handleHintClick(index)}
+									onViewDetails={setViewingHint}
+								/>
 							))
 						)}
 					</div>
 
-					{/* Footer */}
-					{hintsCount > 0 && (
-						<div className="w-full flex items-center justify-center bg-secondary/50 px-4 py-2.5 border-t border-border/50">
-							<p className="text-[10px] text-muted-foreground">Dicas geradas por IA com base nos dados do seu negócio</p>
+					<div className="border-t border-border/50 bg-secondary/40 px-4 py-3">
+						<div className="rounded-2xl border border-border/60 bg-background/80 p-3 shadow-sm">
+							<div className="flex items-start justify-between gap-3">
+								<div className="min-w-0">
+									<p className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+										<WandSparkles className="h-3.5 w-3.5 text-brand" />
+										GERAR NOVA DICA
+									</p>
+									{usageIsLoading ? (
+										<p className="mt-1 h-3 w-40 animate-pulse rounded-full bg-secondary" />
+									) : usageIsError ? (
+										<p className="mt-1 text-[11px] text-destructive">Não foi possível consultar seu limite.</p>
+									) : (
+										<p className="mt-1 text-[11px] text-muted-foreground">
+											{usedHints}/{totalHints} dicas utilizadas no período. {availableHints} disponíveis.
+										</p>
+									)}
+								</div>
+								{!usageIsLoading && !usageIsError && (
+									<span
+										className={cn(
+											"rounded-full px-2 py-0.5 text-[10px] font-bold",
+											availableHints > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700",
+										)}
+									>
+										{availableHints > 0 ? `${availableHints} livres` : "limite atingido"}
+									</span>
+								)}
+							</div>
+
+							{!usageIsLoading && !usageIsError && (
+								<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
+									<div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${usagePercentage}%` }} />
+								</div>
+							)}
+
+							<GeneratingHintText isGenerating={generateIsLoading} />
+
+							{!usageIsLoading && !usageIsError && (
+								<LoadingButton
+									size="sm"
+									variant="brand"
+									loading={generateIsLoading}
+									disabled={!canGenerateHints}
+									onClick={() => handleGenerateHints()}
+									className="mt-3 w-full rounded-full flex items-center gap-1.5"
+								>
+									<WandSparkles className="mr-1.5 h-3.5 w-3.5" />
+									Gerar dica com IA
+								</LoadingButton>
+							)}
 						</div>
-					)}
+						<p className="mt-2 text-center text-[10px] text-muted-foreground">Dicas geradas por IA com base nos dados do seu negócio</p>
+					</div>
 				</PopoverContent>
 			</Popover>
 		</div>

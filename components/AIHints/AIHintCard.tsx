@@ -13,6 +13,7 @@ type AIHintCardProps = {
 	hint: TAIHint;
 	isOpened: boolean;
 	onClick?: () => void;
+	onViewDetails?: (hint: TAIHint) => void;
 };
 
 const HINT_ICONS: Record<string, React.ReactNode> = {
@@ -20,7 +21,7 @@ const HINT_ICONS: Record<string, React.ReactNode> = {
 	"campaign-updates-suggestion": <RefreshCw className="w-4 h-4" />,
 };
 
-export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
+export function AIHintCard({ hint, isOpened, onClick, onViewDetails }: AIHintCardProps) {
 	const [feedbackGiven, setFeedbackGiven] = useState<"like" | "dislike" | null>(null);
 	const { mutate: dismiss, isPending: isDismissing } = useDismissHint();
 	const { mutate: submitFeedback, isPending: isFeedbackPending } = useHintFeedback();
@@ -84,19 +85,36 @@ export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 								<p className="text-xs text-muted-foreground leading-relaxed">{hint.conteudo.descricao}</p>
 
 								{/* Action Button */}
-								{hint.conteudo.acaoSugerida && hint.conteudo.urlAcao && (
-									<Button
-										asChild
-										size="sm"
-										variant="default"
-										className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
-										onClick={(e) => e.stopPropagation()}
-									>
-										<Link href={hint.conteudo.urlAcao} className="flex items-center gap-1.5">
-											{hint.conteudo.acaoSugerida}
-											<ArrowRight className="w-3 h-3" />
-										</Link>
-									</Button>
+								{hint.conteudo.acaoSugerida && (
+									hint.conteudo.urlAcao ? (
+										<Button
+											asChild
+											size="sm"
+											variant="default"
+											className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
+											onClick={(e) => e.stopPropagation()}
+										>
+											<Link href={hint.conteudo.urlAcao} className="flex items-center gap-1.5">
+												{hint.conteudo.acaoSugerida}
+												<ArrowRight className="w-3 h-3" />
+											</Link>
+										</Button>
+									) : onViewDetails ? (
+										<Button
+											size="sm"
+											variant="default"
+											className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
+											onClick={(e) => {
+												e.stopPropagation();
+												onViewDetails(hint);
+											}}
+										>
+											<span className="flex items-center gap-1.5">
+												{hint.conteudo.acaoSugerida}
+												<ArrowRight className="w-3 h-3" />
+											</span>
+										</Button>
+									) : null
 								)}
 
 								{/* Feedback & Dismiss Row */}

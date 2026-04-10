@@ -71,6 +71,13 @@
       "when": 1775520000000,
       "tag": "0009_goal_multi_metrics",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1775836800000,
+      "tag": "0010_ai_hint_approval_tracking",
+      "breakpoints": true
     }
   ]
 }

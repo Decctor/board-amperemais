@@ -34,6 +34,10 @@ export const aiHints = newTable(
 		// Status
 		status: varchar("status", { length: 20 }).notNull().default("active"), // "active" | "dismissed" | "expired"
 
+		// Approval tracking (nullable - filled when approved)
+		aprovadaPor: varchar("aprovada_por", { length: 255 }).references(() => users.id),
+		dataAprovacao: timestamp("data_aprovacao"),
+
 		// Dismissal tracking (nullable - filled when dismissed)
 		descartadaPor: varchar("descartada_por", { length: 255 }).references(() => users.id),
 		dataDescarte: timestamp("data_descarte"),
@@ -59,6 +63,10 @@ export const aiHintsRelations = relations(aiHints, ({ one, many }) => ({
 	}),
 	descartadaPorUsuario: one(users, {
 		fields: [aiHints.descartadaPor],
+		references: [users.id],
+	}),
+	aprovadaPorUsuario: one(users, {
+		fields: [aiHints.aprovadaPor],
 		references: [users.id],
 	}),
 	feedbacks: many(aiHintFeedback),

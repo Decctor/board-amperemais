@@ -1,7 +1,4 @@
-import {
-	CampaignCreationSuggestionSchema,
-	CampaignUpdateSuggestionSchema,
-} from "@/lib/ai-agent/marketing/schemas";
+import { CampaignCreationSuggestionSchema, CampaignUpdateSuggestionSchema } from "@/lib/ai-agent/marketing/schemas";
 import { z } from "zod";
 
 export const AIHintSubjectSchema = z.enum(["campaigns"]);
@@ -38,10 +35,7 @@ export const AIHintCampaignUpdatesSuggestionSchema = AIHintBaseSchema.extend({
 	}),
 });
 
-export const AIHintContentSchema = z.discriminatedUnion("tipo", [
-	AIHintCampaignCreationSuggestionSchema,
-	AIHintCampaignUpdatesSuggestionSchema,
-]);
+export const AIHintContentSchema = z.discriminatedUnion("tipo", [AIHintCampaignCreationSuggestionSchema, AIHintCampaignUpdatesSuggestionSchema]);
 export type TAIHintContent = z.infer<typeof AIHintContentSchema>;
 export type TAIHintType = TAIHintContent["tipo"];
 
@@ -55,6 +49,8 @@ export const AIHintSchema = z.object({
 	tokensUtilizados: z.number().nullable(),
 	relevancia: z.number().min(0).max(1).nullable(),
 	status: AIHintStatusSchema,
+	aprovadaPor: z.string().nullable(),
+	dataAprovacao: z.date().nullable(),
 	descartadaPor: z.string().nullable(),
 	dataDescarte: z.date().nullable(),
 	dataExpiracao: z.date().nullable(),
@@ -73,12 +69,10 @@ export const DismissHintInputSchema = z.object({
 });
 export type TDismissHintInput = z.infer<typeof DismissHintInputSchema>;
 
-export const GetHintsInputSchema = z.object({
-	assunto: AIHintSubjectSchema.optional(),
-	status: AIHintStatusSchema.optional().default("active"),
-	limite: z.coerce.number().min(1).max(20).optional().default(5),
+export const ApproveHintInputSchema = z.object({
+	id: z.string(),
 });
-export type TGetHintsInput = z.infer<typeof GetHintsInputSchema>;
+export type TApproveHintInput = z.infer<typeof ApproveHintInputSchema>;
 
 export const HintFeedbackInputSchema = z.object({
 	id: z.string(),
@@ -101,3 +95,15 @@ export const GenerateHintsOutputSchema = z.object({
 	message: z.string(),
 });
 export type TGenerateHintsOutput = z.infer<typeof GenerateHintsOutputSchema>;
+
+export const ApproveHintOutputSchema = z.object({
+	data: z.object({
+		hintId: z.string(),
+		operation: z.enum(["campaign-created", "campaign-updated"]),
+		campaignId: z.string(),
+		whatsappTemplateId: z.string(),
+		templateOperation: z.literal("created"),
+	}),
+	message: z.string(),
+});
+export type TApproveHintOutput = z.infer<typeof ApproveHintOutputSchema>;
