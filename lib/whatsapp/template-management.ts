@@ -672,6 +672,32 @@ function mergeBodyParametersWithExistingIdentifiers({
 	}));
 }
 
+function mergeSyncedHeaderWithExistingContent({
+	metaHeader,
+	existingHeader,
+}: {
+	metaHeader?: TWhatsappTemplateComponents["cabecalho"];
+	existingHeader?: TWhatsappTemplateComponents["cabecalho"];
+}): TWhatsappTemplateComponents["cabecalho"] {
+	if (!metaHeader) {
+		return metaHeader;
+	}
+
+	if (metaHeader.tipo === "text") {
+		return metaHeader;
+	}
+
+	if (!existingHeader || existingHeader.tipo !== metaHeader.tipo || !existingHeader.conteudo) {
+		return metaHeader;
+	}
+
+	// Keep the local file URL we already control while refreshing Meta's current handle.
+	return {
+		...metaHeader,
+		conteudo: existingHeader.conteudo,
+	};
+}
+
 function mergeSyncedComponentsWithExistingIdentifiers({
 	metaComponents,
 	existingComponents,
@@ -679,12 +705,21 @@ function mergeSyncedComponentsWithExistingIdentifiers({
 	metaComponents: TWhatsappTemplateComponents;
 	existingComponents?: TWhatsappTemplateComponents | null;
 }): TWhatsappTemplateComponents {
+	const mergedHeader = mergeSyncedHeaderWithExistingContent({
+		metaHeader: metaComponents.cabecalho,
+		existingHeader: existingComponents?.cabecalho,
+	});
+
 	if (!existingComponents?.corpo?.parametros?.length || metaComponents.corpo.parametros.length === 0) {
-		return metaComponents;
+		return {
+			...metaComponents,
+			cabecalho: mergedHeader,
+		};
 	}
 
 	return {
 		...metaComponents,
+		cabecalho: mergedHeader,
 		corpo: {
 			...metaComponents.corpo,
 			parametros: mergeBodyParametersWithExistingIdentifiers({
