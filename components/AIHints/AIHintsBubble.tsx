@@ -1,7 +1,6 @@
 "use client";
 
 import ViewAIHint from "@/components/Modals/AiHints/ViewAIHint";
-import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getErrorMessage } from "@/lib/errors";
@@ -10,6 +9,7 @@ import { useAllActiveHints, useCheckAiHintsUsage } from "@/lib/queries/ai-hints"
 import { cn } from "@/lib/utils";
 import type { TAIHint } from "@/schemas/ai-hints";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Lightbulb, RefreshCw, Sparkles, WandSparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -55,7 +55,7 @@ function GeneratingHintText({ isGenerating }: { isGenerating: boolean }) {
 
 		const interval = window.setInterval(() => {
 			setStepIndex((currentStepIndex) => (currentStepIndex + 1) % GENERATION_STEPS.length);
-		}, 1800);
+		}, 2500);
 
 		return () => window.clearInterval(interval);
 	}, [isGenerating]);
@@ -227,57 +227,62 @@ export function AIHintsBubble() {
 					</div>
 
 					<div className="border-t border-border/50 bg-secondary/40 px-4 py-3">
-						<div className="rounded-2xl border border-border/60 bg-background/80 p-3 shadow-sm">
-							<div className="flex items-start justify-between gap-3">
-								<div className="min-w-0">
-									<p className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-										<WandSparkles className="h-3.5 w-3.5 text-brand" />
-										GERAR NOVA DICA
-									</p>
-									{usageIsLoading ? (
-										<p className="mt-1 h-3 w-40 animate-pulse rounded-full bg-secondary" />
-									) : usageIsError ? (
-										<p className="mt-1 text-[11px] text-destructive">Não foi possível consultar seu limite.</p>
-									) : (
-										<p className="mt-1 text-[11px] text-muted-foreground">
-											{usedHints}/{totalHints} dicas utilizadas no período. {availableHints} disponíveis.
-										</p>
-									)}
-								</div>
-								{!usageIsLoading && !usageIsError && (
-									<span
-										className={cn(
-											"rounded-full px-2 py-0.5 text-[10px] font-bold",
-											availableHints > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700",
-										)}
-									>
-										{availableHints > 0 ? `${availableHints} livres` : "limite atingido"}
-									</span>
-								)}
-							</div>
-
-							{!usageIsLoading && !usageIsError && (
-								<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
-									<div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${usagePercentage}%` }} />
-								</div>
-							)}
-
-							<GeneratingHintText isGenerating={generateIsLoading} />
-
-							{!usageIsLoading && !usageIsError && (
-								<LoadingButton
-									size="sm"
-									variant="brand"
-									loading={generateIsLoading}
-									disabled={!canGenerateHints}
-									onClick={() => handleGenerateHints()}
-									className="mt-3 w-full rounded-full flex items-center gap-1.5"
+						<AnimatePresence mode="popLayout">
+							{!generateIsLoading && (
+								<motion.div
+									key="ai-hints-footer-actions"
+									layout
+									initial={{ opacity: 0, y: 14, scale: 0.98 }}
+									animate={{ opacity: 1, y: 0, scale: 1 }}
+									exit={{ opacity: 0, y: 20, scale: 0.96 }}
+									transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
 								>
-									<WandSparkles className="mr-1.5 h-3.5 w-3.5" />
-									Gerar dica com IA
-								</LoadingButton>
+									<div className="rounded-2xl border border-border/60 bg-background/80 p-3 shadow-sm">
+										{!usageIsLoading && !usageIsError && (
+											<Button
+												size="sm"
+												variant="brand"
+												disabled={!canGenerateHints}
+												onClick={() => handleGenerateHints()}
+												className="w-full rounded-full flex items-center gap-1.5"
+											>
+												<WandSparkles className="mr-1.5 h-3.5 w-3.5" />
+												Gerar dica com IA
+											</Button>
+										)}
+										<div className="mt-2 flex items-start justify-between gap-3">
+											<div className="min-w-0">
+												{usageIsLoading ? (
+													<p className="mt-1 h-3 w-40 animate-pulse rounded-full bg-secondary" />
+												) : usageIsError ? (
+													<p className="mt-1 text-[11px] text-destructive">Não foi possível consultar seu limite.</p>
+												) : (
+													<p className="mt-1 text-[11px] text-muted-foreground">
+														{usedHints}/{totalHints} dicas utilizadas no período. {availableHints} disponíveis.
+													</p>
+												)}
+											</div>
+											{!usageIsLoading && !usageIsError && (
+												<span
+													className={cn(
+														"rounded-full px-2 py-0.5 text-[10px] font-bold",
+														availableHints > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700",
+													)}
+												>
+													{availableHints > 0 ? `${availableHints} livres` : "limite atingido"}
+												</span>
+											)}
+										</div>
+
+										{!usageIsLoading && !usageIsError && (
+											<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
+												<div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${usagePercentage}%` }} />
+											</div>
+										)}
+									</div>
+								</motion.div>
 							)}
-						</div>
+						</AnimatePresence>
 						<p className="mt-2 text-center text-[10px] text-muted-foreground">Dicas geradas por IA com base nos dados do seu negócio</p>
 					</div>
 				</PopoverContent>
