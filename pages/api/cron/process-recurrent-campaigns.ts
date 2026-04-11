@@ -99,8 +99,7 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 	console.log("[INFO] [RECURRENT_CAMPAIGNS] Starting recurrent campaigns processing");
 
 	try {
-		// const currentTimeBlock = getCurrentTimeBlock();
-		const currentTimeBlock = "18:00";
+		const currentTimeBlock = getCurrentTimeBlock();
 		const currentDateFormatted = dayjs().format("YYYY-MM-DD");
 
 		console.log(`[INFO] [RECURRENT_CAMPAIGNS] Current time block: ${currentTimeBlock}, date: ${currentDateFormatted}`);
