@@ -12,13 +12,7 @@ import {
 import { parseTemplateVariables } from "@/lib/ai-agent/marketing/template-variables";
 import { fetchAndUploadToMeta, isMediaHeaderType } from "@/lib/whatsapp/media-upload";
 import { createWhatsappTemplate as createWhatsappTemplateInMeta } from "@/lib/whatsapp/template-management";
-import {
-	AIHintSchema,
-	ApproveHintOutputSchema,
-	type TAIHint,
-	type TApproveHintInput,
-	type TApproveHintOutput,
-} from "@/schemas/ai-hints";
+import { AIHintSchema, ApproveHintOutputSchema, type TAIHint, type TApproveHintInput, type TApproveHintOutput } from "@/schemas/ai-hints";
 import { CampaignSchema } from "@/schemas/campaigns";
 import { type TWhatsappTemplate, type TWhatsappTemplateBodyParameter, type TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
 import { db } from "@/services/drizzle";
@@ -77,10 +71,7 @@ function buildTemplateComponentsFromSuggestion({
 }
 
 function validatePermanenciaSegmentacaoRequirement(campaign: z.infer<typeof CampaignSchema>) {
-	if (
-		campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO" &&
-		(!campaign.gatilhoTempoPermanenciaMedida || !campaign.gatilhoTempoPermanenciaValor)
-	) {
+	if (campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO" && (!campaign.gatilhoTempoPermanenciaMedida || !campaign.gatilhoTempoPermanenciaValor)) {
 		throw new createHttpError.BadRequest("Defina um tempo de permanência para a segmentação.");
 	}
 }
@@ -221,13 +212,7 @@ async function createTemplateRegistry({
 	};
 }
 
-async function getHintForApproval({
-	organizationId,
-	hintId,
-}: {
-	organizationId: string;
-	hintId: string;
-}): Promise<TAIHint> {
+async function getHintForApproval({ organizationId, hintId }: { organizationId: string; hintId: string }): Promise<TAIHint> {
 	const hint = await db.query.aiHints.findFirst({
 		where: and(eq(aiHints.id, hintId), eq(aiHints.organizacaoId, organizationId)),
 	});
@@ -422,13 +407,7 @@ async function updateCampaignFromApprovedHint({
 	}
 }
 
-export async function approveHint({
-	input,
-	session,
-}: {
-	input: TApproveHintInput;
-	session: TAuthUserSession;
-}): Promise<TApproveHintOutput> {
+export async function approveHint({ input, session }: { input: TApproveHintInput; session: TAuthUserSession }): Promise<TApproveHintOutput> {
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) {
 		throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
@@ -438,12 +417,12 @@ export async function approveHint({
 		organizationId,
 		hintId: input.id,
 	});
-
+	console.log("[INFO] Hint found", hint);
 	const result =
 		hint.conteudo.tipo === "campaign-creation-suggestion"
 			? await createCampaignFromApprovedHint({ hint, session, organizationId })
 			: await updateCampaignFromApprovedHint({ hint, session, organizationId });
-
+	console.log("[INFO] Result from creating/updating the suggestion:", result);
 	await db
 		.update(aiHints)
 		.set({
