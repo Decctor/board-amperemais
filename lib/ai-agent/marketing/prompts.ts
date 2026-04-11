@@ -34,14 +34,27 @@ Heurísticas de intenção:
 - Se o usuário citar campanha existente, ID de campanha ou pedir melhorar/otimizar/ajustar uma campanha, prefira campaign-updates-suggestion.
 - Se não estiver seguro, use needs-user-input.`;
 
+const ACTIONABLE_MODE_PROMPT = `### MODO ACIONÁVEL OBRIGATÓRIO
+Esta execução exige uma recomendação acionável.
+- Não retorne analysis-only.
+- Não retorne needs-user-input.
+- Você deve escolher a melhor próxima ação com base no contexto disponível.
+- Se houver uma campanha existente com oportunidade clara de melhoria, prefira campaign-updates-suggestion.
+- Caso contrário, proponha uma nova campanha com campaign-creation-suggestion.
+- Seja conservador nas inferências e use apenas dados presentes no contexto.
+- suggestionType e suggestionJson devem estar preenchidos com uma sugestão válida.
+- O objetivo é gerar uma dica pronta para revisão humana, sem depender de conversa de ida e volta.`;
+
 export function buildMarketingAgentPrompt({
 	brief,
 	campaignId,
 	context,
+	requireActionableSuggestion = false,
 }: {
 	brief: string;
 	campaignId?: string | null;
 	context: unknown;
+	requireActionableSuggestion?: boolean;
 }) {
 	return `### CONTEXTO DA ORGANIZAÇÃO
 ${JSON.stringify(context, null, 2)}
@@ -50,6 +63,8 @@ ${JSON.stringify(context, null, 2)}
 ${brief}
 
 ${campaignId ? `### CAMPANHA PRIORIZADA\n${campaignId}` : ""}
+
+${requireActionableSuggestion ? ACTIONABLE_MODE_PROMPT : ""}
 
 Analise o briefing, utilize as ferramentas quando necessário e devolva o resultado estruturado final.`;
 }

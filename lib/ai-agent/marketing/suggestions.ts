@@ -291,6 +291,7 @@ export async function normalizeCampaignUpdateSuggestion({
 		...parsedSuggestion,
 		campaignTitle: parsedSuggestion.campaignTitle.trim(),
 		currentSummary,
+		currentConfig,
 		proposedChanges: parsedChanges,
 		segmentations: Array.from(new Set(parsedSuggestion.segmentations.map((segmentation) => segmentation.trim()).filter(Boolean))),
 		whatsappTemplateText: normalizedWhatsappTemplateText,

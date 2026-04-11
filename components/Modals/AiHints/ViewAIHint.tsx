@@ -67,6 +67,7 @@ export default function ViewAIHint({ hintId, hintType, closeMenu, callbacks }: V
 					}}
 				/>
 			)}
+			{/* Diff de alterações (antes → depois) em CampaignUpdateSuggestionBlock; valores idênticos mostram só uma coluna */}
 			{hintData?.conteudo.tipo === "campaign-updates-suggestion" && (
 				<CampaignUpdateSuggestionBlock
 					hint={hintData}

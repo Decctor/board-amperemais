@@ -47,6 +47,7 @@ async function main() {
 		campaignId: input.campaignId,
 		persistSuggestion: input.persistSuggestion,
 		debug: input.debug,
+		requireActionableSuggestion: false,
 	});
 
 	console.log(JSON.stringify(result, null, 2));

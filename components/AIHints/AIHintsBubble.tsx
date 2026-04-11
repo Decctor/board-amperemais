@@ -106,7 +106,11 @@ export function AIHintsBubble() {
 		mutationKey: ["generate-ai-hints"],
 		mutationFn: generateHints,
 		onSuccess: async (data) => {
-			toast.success(data.message);
+			if (data.data.generatedHints > 0) {
+				toast.success(data.message);
+			} else {
+				toast.error("A IA não conseguiu gerar uma dica acionável nesta tentativa.");
+			}
 			await queryClient.invalidateQueries({ queryKey: ["ai-hints"] });
 			await queryClient.invalidateQueries({ queryKey: ["ai-hints-usage"] });
 		},
@@ -126,6 +130,12 @@ export function AIHintsBubble() {
 		setOpenedHintIndex((prev) => (prev === index ? null : index));
 	};
 
+	/** PopoverContent is z-[101]; hint detail Drawer/Dialog is z-[100]. Close popover so the detail is not covered (mobile + desktop). */
+	const openHintDetails = (hint: TAIHint) => {
+		setIsOpen(false);
+		setViewingHint(hint);
+	};
+
 	if (isDismissed || isLoading || isError) {
 		return null;
 	}
@@ -141,7 +151,9 @@ export function AIHintsBubble() {
 
 	return (
 		<div className="fixed bottom-6 right-24 z-50 font-sans">
-			{viewingHint && <ViewAIHint hintId={viewingHint.id} hintType={viewingHint.tipo} closeMenu={() => setViewingHint(null)} />}
+			{viewingHint && (
+				<ViewAIHint hintId={viewingHint.id} hintType={viewingHint.tipo} closeMenu={() => setViewingHint(null)} />
+			)}
 			<Popover open={isOpen} onOpenChange={setIsOpen}>
 				<PopoverTrigger asChild>
 					<Button
@@ -171,7 +183,7 @@ export function AIHintsBubble() {
 					className="w-[380px] max-h-[calc(100dvh-120px)] p-0 border-0 shadow-2xl rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 flex flex-col"
 					sideOffset={16}
 				>
-					<div className="p-5 pb-3 flex-shrink-0 border-b border-border/50">
+					<div className="p-5 pb-3 shrink-0 border-b border-border/50">
 						<div className="flex items-start justify-between">
 							<div>
 								<h3 className="text-lg font-bold text-foreground flex items-center gap-2">
@@ -220,7 +232,7 @@ export function AIHintsBubble() {
 									hint={hint}
 									isOpened={index === openedHintIndex}
 									onClick={() => handleHintClick(index)}
-									onViewDetails={setViewingHint}
+									onViewDetails={openHintDetails}
 								/>
 							))
 						)}

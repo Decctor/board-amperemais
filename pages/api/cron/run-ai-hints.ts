@@ -50,10 +50,12 @@ export default async function handleRunAIHints(req: NextApiRequest, res: NextApi
 
 	const agentResultsPromises = organizationsToRunAgent.map(async (organizationId) => {
 		return await runMarketingAgent({
-			brief: "Eu quero criar uma nova campanha de marketing (ou otimizar uma das existentes) com potência de grande impacto.",
+			brief:
+				"Analise o contexto atual da organização e gere a melhor sugestão acionável de alto impacto para campanhas de WhatsApp. Escolha entre otimizar uma campanha existente com oportunidade clara ou propor uma nova campanha quando isso for mais promissor.",
 			organizacaoId: organizationId,
 			debug: false,
 			persistSuggestion: true,
+			requireActionableSuggestion: true,
 		});
 	});
 

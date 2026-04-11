@@ -8,6 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		organizacaoId: organizationId,
 		debug: false,
 		persistSuggestion: false,
+		requireActionableSuggestion: false,
 	});
 
 	return res.status(200).json(agentResult);

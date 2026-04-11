@@ -49,6 +49,7 @@ async function main() {
 		campaignId: input.campaignId,
 		persistSuggestion: false,
 		debug: input.debug,
+		requireActionableSuggestion: false,
 	});
 
 	if (result.suggestion?.tipo === "campaign-creation-suggestion") {

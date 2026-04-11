@@ -32,6 +32,12 @@ export const MarketingAgentInputSchema = z.object({
 		required_error: "ID da organização não informado.",
 		invalid_type_error: "Tipo inválido para o ID da organização.",
 	}),
+	traceId: z
+		.string({
+			invalid_type_error: "Tipo inválido para o trace ID.",
+		})
+		.optional()
+		.nullable(),
 	brief: z.string({
 		required_error: "Briefing não informado.",
 		invalid_type_error: "Tipo inválido para o briefing.",
@@ -63,6 +69,12 @@ export const MarketingAgentInputSchema = z.object({
 	persistSuggestion: z
 		.boolean({
 			invalid_type_error: "Tipo inválido para persistência da sugestão.",
+		})
+		.optional()
+		.default(false),
+	requireActionableSuggestion: z
+		.boolean({
+			invalid_type_error: "Tipo inválido para a exigência de sugestão acionável.",
 		})
 		.optional()
 		.default(false),
@@ -134,6 +146,13 @@ export const CampaignCurrentSummarySchema = z.object({
 });
 export type TCampaignCurrentSummary = z.infer<typeof CampaignCurrentSummarySchema>;
 
+export const CampaignCurrentConfigSchema = CampaignSchema.omit({
+	autorId: true,
+	dataInsercao: true,
+	whatsappTemplateId: true,
+});
+export type TCampaignCurrentConfig = z.infer<typeof CampaignCurrentConfigSchema>;
+
 export const CampaignUpdateSuggestionSchema = z.object({
 	campaignId: z.string({
 		required_error: "ID da campanha não informado.",
@@ -144,6 +163,7 @@ export const CampaignUpdateSuggestionSchema = z.object({
 		invalid_type_error: "Tipo inválido para o título da campanha.",
 	}),
 	currentSummary: CampaignCurrentSummarySchema,
+	currentConfig: CampaignCurrentConfigSchema.optional().nullable(),
 	proposedChanges: CampaignUpdateProposedChangesSchema,
 	segmentations: z.array(
 		z.string({
