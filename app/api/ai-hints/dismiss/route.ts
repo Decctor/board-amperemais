@@ -38,14 +38,14 @@ function getDismissHintInput(request: NextRequest): TDismissHintInput {
 	});
 }
 
-async function dismissHintRoute(request: NextRequest) {
+async function dismissHintRoutePOST(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session?.membership) {
 		throw new createHttpError.Unauthorized("Você não está autenticado.");
 	}
 
 	const input = getDismissHintInput(request);
-
+	console.log("[INFO] Dismissing hints of id", input.id);
 	const result = await dismissHint({
 		input,
 		session,
@@ -53,6 +53,26 @@ async function dismissHintRoute(request: NextRequest) {
 
 	return NextResponse.json(result);
 }
+async function dismissHintRouteGET(request: NextRequest) {
+	const baseRedirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/ai-hints/approval-dismiss`;
+	try {
+		const session = await getCurrentSessionUncached();
+		if (!session?.membership) {
+			const msg = encodeURIComponent("Você não está autenticado.");
+			return NextResponse.redirect(`${baseRedirectUrl}?type=error&message=${msg}`);
+		}
 
-export const GET = appApiHandler({ GET: dismissHintRoute });
-export const POST = appApiHandler({ POST: dismissHintRoute });
+		const input = getDismissHintInput(request);
+		console.log("[INFO] Dismissing hints of id", input.id);
+		const result = await dismissHint({ input, session });
+
+		const msg = encodeURIComponent(result.message);
+		return NextResponse.redirect(`${baseRedirectUrl}?type=dismiss&message=${msg}`);
+	} catch (error) {
+		const msg = encodeURIComponent(error instanceof Error ? error.message : "Algo deu errado.");
+		return NextResponse.redirect(`${baseRedirectUrl}?type=error&message=${msg}`);
+	}
+}
+
+export const GET = appApiHandler({ GET: dismissHintRouteGET });
+export const POST = appApiHandler({ POST: dismissHintRoutePOST });
