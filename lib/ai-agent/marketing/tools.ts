@@ -212,59 +212,83 @@ export async function draftCampaignUpdateSuggestion({
 	};
 }
 
+export function createGetCampaignPerformanceByIdTool({ organizacaoId }: { organizacaoId: string }) {
+	return tool({
+		description:
+			"Busca detalhes completos de performance e configuração de uma campanha específica. Use quando precisar entender uma campanha existente antes de recomendar uma próxima ação.",
+		inputSchema: z
+			.object({
+				campaignId: z.string().describe("ID da campanha."),
+				periodStart: z.string().optional().describe("Data inicial ISO opcional."),
+				periodEnd: z.string().optional().describe("Data final ISO opcional."),
+			})
+			.strict(),
+		execute: async ({ campaignId, periodStart, periodEnd }) => {
+			return await getCampaignPerformanceById({
+				orgId: organizacaoId,
+				campaignId,
+				periodStart: periodStart ? new Date(periodStart) : undefined,
+				periodEnd: periodEnd ? new Date(periodEnd) : undefined,
+			});
+		},
+	});
+}
+
+export function createDraftCampaignCreationSuggestionTool({ organizacaoId }: { organizacaoId: string }) {
+	return tool({
+		description:
+			"Valida e normaliza uma proposta de nova campanha. Use apenas quando houver uma recomendação concreta pronta para aprovação humana. Em whatsappTemplateText envie somente o corpo da mensagem. limiteEnviosSemanais é o volume semanal de mensagens individuais da campanha.",
+		inputSchema: CampaignCreationSuggestionSchema,
+		execute: async (input) => {
+			return await draftCampaignCreationSuggestion({
+				organizacaoId,
+				input,
+			});
+		},
+	});
+}
+
+export function createDraftCampaignUpdateSuggestionTool({ organizacaoId }: { organizacaoId: string }) {
+	return tool({
+		description:
+			"Valida e normaliza uma proposta de atualização de campanha existente. Use quando já houver uma campanha específica para otimizar. Em whatsappTemplateText envie somente o corpo da mensagem e preserve cabeçalho, rodapé, botões e mídia já existentes. limiteEnviosSemanais é o volume semanal de mensagens individuais da campanha.",
+		inputSchema: z
+			.object({
+				campaignId: z.string().describe("ID da campanha a ser otimizada."),
+				proposedChanges: CampaignUpdateProposedChangesSchema,
+				segmentations: z.array(z.string()).describe("Lista final de segmentações recomendadas para a campanha."),
+				whatsappTemplateText: z
+					.string()
+					.describe("Somente o corpo da mensagem sugerida. Nao inclua nem altere cabecalho, rodape, botoes, midia ou prefixos como 'Corpo:' ."),
+				justificativa: z.string().describe("Resumo objetivo do porquê as mudanças propostas fazem sentido."),
+				impactoEsperado: z.string().optional().nullable().describe("Impacto esperado da otimização, quando aplicável."),
+			})
+			.strict(),
+		execute: async (input) => {
+			return await draftCampaignUpdateSuggestion({
+				organizacaoId,
+				input,
+			});
+		},
+	});
+}
+
+export function createMarketingAnalystTools({ organizacaoId }: { organizacaoId: string }) {
+	return {
+		get_campaign_performance_by_id: createGetCampaignPerformanceByIdTool({ organizacaoId }),
+	};
+}
+
+export function createMarketingExecutorTools({ organizacaoId }: { organizacaoId: string }) {
+	return {
+		draft_campaign_creation_suggestion: createDraftCampaignCreationSuggestionTool({ organizacaoId }),
+		draft_campaign_update_suggestion: createDraftCampaignUpdateSuggestionTool({ organizacaoId }),
+	};
+}
+
 export function createMarketingAgentTools({ organizacaoId }: { organizacaoId: string }) {
 	return {
-		get_campaign_performance_by_id: tool({
-			description:
-				"Busca detalhes completos de performance e configuração de uma campanha específica. Use antes de propor mudanças em campanha existente.",
-			inputSchema: z
-				.object({
-					campaignId: z.string().describe("ID da campanha."),
-					periodStart: z.string().optional().describe("Data inicial ISO opcional."),
-					periodEnd: z.string().optional().describe("Data final ISO opcional."),
-				})
-				.strict(),
-			execute: async ({ campaignId, periodStart, periodEnd }) => {
-				return await getCampaignPerformanceById({
-					orgId: organizacaoId,
-					campaignId,
-					periodStart: periodStart ? new Date(periodStart) : undefined,
-					periodEnd: periodEnd ? new Date(periodEnd) : undefined,
-				});
-			},
-		}),
-		draft_campaign_creation_suggestion: tool({
-			description:
-				"Valida e normaliza uma proposta de nova campanha. Use apenas quando houver uma recomendação concreta pronta para aprovação humana. Em whatsappTemplateText envie somente o corpo da mensagem. limiteEnviosSemanais é o volume semanal de mensagens individuais da campanha.",
-			inputSchema: CampaignCreationSuggestionSchema,
-			execute: async (input) => {
-				return await draftCampaignCreationSuggestion({
-					organizacaoId,
-					input,
-				});
-			},
-		}),
-		draft_campaign_update_suggestion: tool({
-			description:
-				"Valida e normaliza uma proposta de atualização de campanha existente. Use quando já houver uma campanha específica para otimizar. Em whatsappTemplateText envie somente o corpo da mensagem e preserve cabeçalho, rodapé, botões e mídia já existentes. limiteEnviosSemanais é o volume semanal de mensagens individuais da campanha.",
-			inputSchema: z
-				.object({
-					campaignId: z.string().describe("ID da campanha a ser otimizada."),
-					proposedChanges: CampaignUpdateProposedChangesSchema,
-					segmentations: z.array(z.string()).describe("Lista final de segmentações recomendadas para a campanha."),
-					whatsappTemplateText: z
-						.string()
-						.describe("Somente o corpo da mensagem sugerida. Nao inclua nem altere cabecalho, rodape, botoes, midia ou prefixos como 'Corpo:' ."),
-					justificativa: z.string().describe("Resumo objetivo do porquê as mudanças propostas fazem sentido."),
-					impactoEsperado: z.string().optional().nullable().describe("Impacto esperado da otimização, quando aplicável."),
-				})
-				.strict(),
-			execute: async (input) => {
-				return await draftCampaignUpdateSuggestion({
-					organizacaoId,
-					input,
-				});
-			},
-		}),
+		...createMarketingAnalystTools({ organizacaoId }),
+		...createMarketingExecutorTools({ organizacaoId }),
 	};
 }

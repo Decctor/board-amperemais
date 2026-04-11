@@ -1,19 +1,24 @@
 import { createCampaignSuggestionHint, createCampaignUpdateSuggestionHint } from "@/lib/ai-hints/service";
 import { AIHintSchema, type TAIHint } from "@/schemas/ai-hints";
-import { createMarketingAgent } from "./agent";
+import { createMarketingAnalystAgent, createMarketingExecutorAgent } from "./agent";
 import { getCampaignsPerformanceContext } from "./context";
-import { buildMarketingAgentPrompt, MARKETING_AGENT_SYSTEM_PROMPT } from "./prompts";
 import {
-	CampaignCreationSuggestionSchema,
-	CampaignUpdateSuggestionInputSchema,
+	MARKETING_ANALYST_SYSTEM_PROMPT,
+	MARKETING_EXECUTOR_SYSTEM_PROMPT,
+	buildMarketingAnalysisPrompt,
+	buildMarketingExecutorPrompt,
+} from "./prompts";
+import {
 	MarketingAgentInputSchema,
 	MarketingAgentMetadataSchema,
+	MarketingSuggestionSchema,
 	type TMarketingAgentInput,
 	type TMarketingAgentMetadata,
+	type TMarketingAnalystOutput,
 	type TMarketingSuggestion,
 } from "./schemas";
-import { ensureOrganizationExists, normalizeCampaignCreationSuggestion, normalizeCampaignUpdateSuggestion } from "./suggestions";
-import { createMarketingAgentTools } from "./tools";
+import { ensureOrganizationExists } from "./suggestions";
+import { createMarketingAnalystTools, createMarketingExecutorTools } from "./tools";
 
 export type TMarketingAgentOutput = {
 	status: "analysis-only" | "campaign-creation-suggestion" | "campaign-updates-suggestion" | "needs-user-input";
@@ -26,8 +31,30 @@ export type TMarketingAgentOutput = {
 	metadata: TMarketingAgentMetadata;
 };
 
+type TStepTiming = {
+	phase: "analyst" | "executor";
+	step: number;
+	durationMs: number;
+	elapsedMs: number;
+	toolCalls: string[];
+};
+
 function isActionableSuggestionStatus(status: TMarketingAgentOutput["status"]) {
 	return status === "campaign-creation-suggestion" || status === "campaign-updates-suggestion";
+}
+
+function shouldRunExecutor({
+	analystOutput,
+	requireActionableSuggestion,
+}: {
+	analystOutput: TMarketingAnalystOutput;
+	requireActionableSuggestion: boolean;
+}) {
+	return (
+		requireActionableSuggestion ||
+		isActionableSuggestionStatus(analystOutput.status) ||
+		analystOutput.recommendedAction.suggestionType !== null
+	);
 }
 
 function getElapsedMs(startedAt: number) {
@@ -42,149 +69,21 @@ function logMarketingAgentError(event: string, payload: Record<string, unknown>)
 	console.error(`[ERROR] [MARKETING_AGENT] [${event}]`, payload);
 }
 
-function extractFirstJsonValue(input: string) {
-	for (let startIndex = 0; startIndex < input.length; startIndex += 1) {
-		const startCharacter = input[startIndex];
-		if (startCharacter !== "{" && startCharacter !== "[") {
-			continue;
-		}
+function dedupeStrings(values: string[]) {
+	return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
 
-		const stack: string[] = [startCharacter];
-		let isInsideString = false;
-		let isEscaping = false;
+function getValidatedSuggestionFromExecutorSteps(toolResults: Array<{ output: unknown }>) {
+	let suggestion: TMarketingSuggestion | null = null;
 
-		for (let cursor = startIndex + 1; cursor < input.length; cursor += 1) {
-			const character = input[cursor];
-
-			if (isInsideString) {
-				if (isEscaping) {
-					isEscaping = false;
-					continue;
-				}
-
-				if (character === "\\") {
-					isEscaping = true;
-					continue;
-				}
-
-				if (character === '"') {
-					isInsideString = false;
-				}
-
-				continue;
-			}
-
-			if (character === '"') {
-				isInsideString = true;
-				continue;
-			}
-
-			if (character === "{" || character === "[") {
-				stack.push(character);
-				continue;
-			}
-
-			if (character === "}" || character === "]") {
-				const lastOpenedCharacter = stack.at(-1);
-				const matchesObject = lastOpenedCharacter === "{" && character === "}";
-				const matchesArray = lastOpenedCharacter === "[" && character === "]";
-				if (!matchesObject && !matchesArray) {
-					break;
-				}
-
-				stack.pop();
-				if (stack.length === 0) {
-					const candidate = input.slice(startIndex, cursor + 1);
-					try {
-						return JSON.parse(candidate) as unknown;
-					} catch {
-						break;
-					}
-				}
-			}
+	for (const toolResult of toolResults) {
+		const parsedSuggestion = MarketingSuggestionSchema.safeParse(toolResult.output);
+		if (parsedSuggestion.success) {
+			suggestion = parsedSuggestion.data;
 		}
 	}
 
-	return null;
-}
-
-function parseSuggestionJson(suggestionJson: string) {
-	const normalizedJson = suggestionJson.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
-
-	try {
-		return JSON.parse(normalizedJson) as unknown;
-	} catch {
-		const extractedJsonValue = extractFirstJsonValue(normalizedJson);
-		if (extractedJsonValue !== null) {
-			return extractedJsonValue;
-		}
-
-		throw new Error("O agente retornou suggestionJson inválido.");
-	}
-}
-
-function unwrapSuggestionPayload({
-	parsedPayload,
-	suggestionType,
-}: {
-	parsedPayload: unknown;
-	suggestionType: "campaign-creation-suggestion" | "campaign-updates-suggestion";
-}) {
-	if (
-		parsedPayload &&
-		typeof parsedPayload === "object" &&
-		"tipo" in parsedPayload &&
-		"payload" in parsedPayload &&
-		parsedPayload.tipo === suggestionType
-	) {
-		return parsedPayload.payload;
-	}
-
-	return parsedPayload;
-}
-
-async function parseGeneratedSuggestion({
-	organizacaoId,
-	suggestionType,
-	suggestionJson,
-}: {
-	organizacaoId: string;
-	suggestionType: "campaign-creation-suggestion" | "campaign-updates-suggestion" | null;
-	suggestionJson: string | null;
-}): Promise<TMarketingSuggestion | null> {
-	if (!suggestionType || !suggestionJson) {
-		return null;
-	}
-
-	const parsedPayload = parseSuggestionJson(suggestionJson);
-	const suggestionPayload = unwrapSuggestionPayload({
-		parsedPayload,
-		suggestionType,
-	});
-
-	if (suggestionType === "campaign-creation-suggestion") {
-		const validatedPayload = CampaignCreationSuggestionSchema.parse(suggestionPayload);
-		const normalizedPayload = await normalizeCampaignCreationSuggestion({
-			organizacaoId,
-			suggestion: validatedPayload,
-		});
-
-		return {
-			tipo: suggestionType,
-			payload: normalizedPayload,
-		};
-	}
-
-	const validatedPayload = CampaignUpdateSuggestionInputSchema.parse(suggestionPayload);
-	const normalizedPayload = await normalizeCampaignUpdateSuggestion({
-		organizacaoId,
-		suggestion: validatedPayload,
-	});
-
-	return {
-		tipo: suggestionType,
-		payload: normalizedPayload,
-	};
+	return suggestion;
 }
 
 function buildHintPayload({
@@ -259,112 +158,219 @@ export async function runMarketingAgent(rawInput: TMarketingAgentInput): Promise
 			whatsappPhonesCount: context.telefonesWhatsappDisponiveis.length,
 		});
 
-		const tools = createMarketingAgentTools({
+		const toolsUsed = new Set<string>();
+		const stepTimings: TStepTiming[] = [];
+		let totalStepCount = 0;
+
+		const analystTools = createMarketingAnalystTools({
 			organizacaoId: input.organizacaoId,
 		});
-		const agent = createMarketingAgent({
-			tools,
-			instructions: MARKETING_AGENT_SYSTEM_PROMPT,
+		const analystAgent = createMarketingAnalystAgent({
+			tools: analystTools,
+			instructions: MARKETING_ANALYST_SYSTEM_PROMPT,
 		});
-		const toolsUsed = new Set<string>();
-		const stepTimings: Array<{
-			step: number;
-			durationMs: number;
-			elapsedMs: number;
-			toolCalls: string[];
-		}> = [];
-		let stepCount = 0;
-		const agentExecutionStartedAt = Date.now();
-		let lastStepFinishedAt = agentExecutionStartedAt;
+		let analystStepCount = 0;
+		const analystExecutionStartedAt = Date.now();
+		let lastAnalystStepFinishedAt = analystExecutionStartedAt;
 
-		const result = await agent.generate({
-			prompt: buildMarketingAgentPrompt({
+		logMarketingAgent("ANALYST_STARTED", {
+			traceId,
+			organizacaoId: input.organizacaoId,
+		});
+
+		const analystResult = await analystAgent.generate({
+			prompt: buildMarketingAnalysisPrompt({
 				brief: input.brief,
 				campaignId: input.campaignId,
 				context,
 				requireActionableSuggestion: input.requireActionableSuggestion,
 			}),
 			onStepFinish: ({ toolCalls }) => {
-				stepCount += 1;
+				analystStepCount += 1;
+				totalStepCount += 1;
 				for (const toolCall of toolCalls) {
 					toolsUsed.add(toolCall.toolName);
 				}
 
 				const now = Date.now();
-				const durationMs = now - lastStepFinishedAt;
-				const elapsedMs = now - agentExecutionStartedAt;
+				const durationMs = now - lastAnalystStepFinishedAt;
+				const elapsedMs = now - analystExecutionStartedAt;
 				const toolCallNames = toolCalls.map((toolCall) => toolCall.toolName);
 
-				lastStepFinishedAt = now;
+				lastAnalystStepFinishedAt = now;
 				stepTimings.push({
-					step: stepCount,
+					phase: "analyst",
+					step: analystStepCount,
 					durationMs,
 					elapsedMs,
 					toolCalls: toolCallNames,
 				});
 
-				logMarketingAgent("STEP_FINISHED", {
+				logMarketingAgent("ANALYST_STEP_FINISHED", {
 					traceId,
-					step: stepCount,
+					step: analystStepCount,
 					durationMs,
 					elapsedMs,
 					toolCalls: toolCallNames,
 				});
 			},
 		});
-		const agentExecutionDurationMs = getElapsedMs(agentExecutionStartedAt);
+		const analystExecutionDurationMs = getElapsedMs(analystExecutionStartedAt);
 
-		if (!result.output) {
-			throw new Error("O agente de marketing não retornou uma resposta estruturada.");
+		if (!analystResult.output) {
+			throw new Error("O analista de marketing não retornou uma resposta estruturada.");
 		}
 
-		if (input.requireActionableSuggestion && !isActionableSuggestionStatus(result.output.status)) {
+		logMarketingAgent("ANALYST_COMPLETED", {
+			traceId,
+			durationMs: analystExecutionDurationMs,
+			steps: analystStepCount,
+			tokensUsed: analystResult.usage.totalTokens ?? 0,
+			status: analystResult.output.status,
+			inferredIntent: analystResult.output.inferredIntent,
+			recommendedAction: analystResult.output.recommendedAction,
+			toolsUsed: Array.from(toolsUsed),
+		});
+
+		let executorExecutionDurationMs = 0;
+		let executorStepCount = 0;
+		let executorTokensUsed = 0;
+		let executorMessage: string | null = null;
+		let executorSuggestionType: "campaign-creation-suggestion" | "campaign-updates-suggestion" | null = null;
+		let validatedSuggestion: TMarketingSuggestion | null = null;
+
+		if (shouldRunExecutor({ analystOutput: analystResult.output, requireActionableSuggestion: input.requireActionableSuggestion })) {
+			const executorTools = createMarketingExecutorTools({
+				organizacaoId: input.organizacaoId,
+			});
+			const executorAgent = createMarketingExecutorAgent({
+				tools: executorTools,
+				instructions: MARKETING_EXECUTOR_SYSTEM_PROMPT,
+			});
+			const executorToolResults: Array<{ output: unknown }> = [];
+			const executorExecutionStartedAt = Date.now();
+			let lastExecutorStepFinishedAt = executorExecutionStartedAt;
+
+			logMarketingAgent("EXECUTOR_STARTED", {
+				traceId,
+				organizacaoId: input.organizacaoId,
+				analystStatus: analystResult.output.status,
+				recommendedAction: analystResult.output.recommendedAction,
+			});
+
+			const executorResult = await executorAgent.generate({
+				prompt: buildMarketingExecutorPrompt({
+					brief: input.brief,
+					campaignId: input.campaignId,
+					context,
+					analystOutput: analystResult.output,
+					requireActionableSuggestion: input.requireActionableSuggestion,
+				}),
+				onStepFinish: ({ toolCalls, toolResults }) => {
+					executorStepCount += 1;
+					totalStepCount += 1;
+					for (const toolCall of toolCalls) {
+						toolsUsed.add(toolCall.toolName);
+					}
+					for (const toolResult of toolResults) {
+						executorToolResults.push({ output: toolResult.output });
+					}
+
+					const suggestionFromStep = getValidatedSuggestionFromExecutorSteps(toolResults);
+					if (suggestionFromStep) {
+						validatedSuggestion = suggestionFromStep;
+						logMarketingAgent("SUGGESTION_VALIDATED_FROM_TOOL", {
+							traceId,
+							step: executorStepCount,
+							suggestionType: suggestionFromStep.tipo,
+						});
+					}
+
+					const now = Date.now();
+					const durationMs = now - lastExecutorStepFinishedAt;
+					const elapsedMs = now - executorExecutionStartedAt;
+					const toolCallNames = toolCalls.map((toolCall) => toolCall.toolName);
+
+					lastExecutorStepFinishedAt = now;
+					stepTimings.push({
+						phase: "executor",
+						step: executorStepCount,
+						durationMs,
+						elapsedMs,
+						toolCalls: toolCallNames,
+					});
+
+					logMarketingAgent("EXECUTOR_STEP_FINISHED", {
+						traceId,
+						step: executorStepCount,
+						durationMs,
+						elapsedMs,
+						toolCalls: toolCallNames,
+					});
+				},
+			});
+
+			executorExecutionDurationMs = getElapsedMs(executorExecutionStartedAt);
+			executorTokensUsed = executorResult.usage.totalTokens ?? 0;
+
+			if (!executorResult.output) {
+				throw new Error("O executor de marketing não retornou uma resposta estruturada.");
+			}
+
+			executorMessage = executorResult.output.message;
+			executorSuggestionType = executorResult.output.suggestionType;
+			validatedSuggestion = validatedSuggestion ?? getValidatedSuggestionFromExecutorSteps(executorToolResults);
+
+			logMarketingAgent("EXECUTOR_COMPLETED", {
+				traceId,
+				durationMs: executorExecutionDurationMs,
+				steps: executorStepCount,
+				tokensUsed: executorTokensUsed,
+				suggestionType: executorSuggestionType,
+				hasSuggestion: Boolean(validatedSuggestion),
+				toolsUsed: Array.from(toolsUsed),
+			});
+
+			if (executorSuggestionType && !validatedSuggestion) {
+				throw new Error("O executor de marketing não retornou uma sugestão validada.");
+			}
+		} else {
+			logMarketingAgent("EXECUTOR_SKIPPED", {
+				traceId,
+				status: analystResult.output.status,
+				recommendedAction: analystResult.output.recommendedAction,
+			});
+		}
+
+		if (input.requireActionableSuggestion && !validatedSuggestion) {
 			throw new Error("O agente de marketing não conseguiu gerar uma sugestão acionável para este contexto.");
 		}
 
-		logMarketingAgent("AGENT_GENERATION_COMPLETED", {
-			traceId,
-			durationMs: agentExecutionDurationMs,
-			steps: stepCount,
-			tokensUsed: result.usage.totalTokens ?? 0,
-			toolsUsed: Array.from(toolsUsed),
-		});
-
-		const suggestionParsingStartedAt = Date.now();
-		let normalizedSuggestion = await parseGeneratedSuggestion({
-			organizacaoId: input.organizacaoId,
-			suggestionType: result.output.suggestionType,
-			suggestionJson: result.output.suggestionJson,
-		});
-		const suggestionParsingDurationMs = getElapsedMs(suggestionParsingStartedAt);
-
-		if (!isActionableSuggestionStatus(result.output.status)) {
-			normalizedSuggestion = null;
+		const finalStatus = validatedSuggestion?.tipo ?? analystResult.output.status;
+		if (input.requireActionableSuggestion && !isActionableSuggestionStatus(finalStatus)) {
+			throw new Error("O agente de marketing não conseguiu gerar uma sugestão acionável para este contexto.");
 		}
-
-		logMarketingAgent("SUGGESTION_PARSED", {
-			traceId,
-			durationMs: suggestionParsingDurationMs,
-			suggestionType: result.output.suggestionType,
-			hasSuggestion: Boolean(normalizedSuggestion),
-		});
 
 		const metadata = MarketingAgentMetadataSchema.parse({
 			model: "openai/gpt-5.4-mini",
-			steps: stepCount,
-			tokensUsed: result.usage.totalTokens ?? 0,
+			steps: totalStepCount,
+			tokensUsed: (analystResult.usage.totalTokens ?? 0) + executorTokensUsed,
 			toolsUsed: Array.from(toolsUsed),
 		});
 
+		const finalMessage = validatedSuggestion ? (executorMessage ?? analystResult.output.message) : analystResult.output.message;
+		const finalInsights = dedupeStrings(analystResult.output.insights);
+		const finalMissingInformation = dedupeStrings(analystResult.output.missingInformation);
+
 		let hint: TAIHint | null = null;
 		let hintPersistenceDurationMs = 0;
-		if (input.persistSuggestion && normalizedSuggestion && isActionableSuggestionStatus(result.output.status)) {
+		if (input.persistSuggestion && validatedSuggestion && isActionableSuggestionStatus(finalStatus)) {
 			const hintPersistenceStartedAt = Date.now();
 			const createdHint = await buildHintPayload({
 				organizacaoId: input.organizacaoId,
-				suggestion: normalizedSuggestion,
-				message: result.output.message,
-				insights: result.output.insights,
+				suggestion: validatedSuggestion,
+				message: finalMessage,
+				insights: finalInsights,
 				metadata,
 			});
 			hint = AIHintSchema.parse(createdHint);
@@ -382,16 +388,16 @@ export async function runMarketingAgent(rawInput: TMarketingAgentInput): Promise
 
 		logMarketingAgent("COMPLETED", {
 			traceId,
-			status: result.output.status,
-			inferredIntent: result.output.inferredIntent,
-			hasSuggestion: Boolean(normalizedSuggestion),
+			status: finalStatus,
+			inferredIntent: analystResult.output.inferredIntent,
+			hasSuggestion: Boolean(validatedSuggestion),
 			hintPersisted: Boolean(hint),
 			durations: {
 				totalDurationMs,
 				organizationValidationDurationMs,
 				contextDurationMs,
-				agentExecutionDurationMs,
-				suggestionParsingDurationMs,
+				analystExecutionDurationMs,
+				executorExecutionDurationMs,
 				hintPersistenceDurationMs,
 			},
 			stepTimings,
@@ -400,12 +406,12 @@ export async function runMarketingAgent(rawInput: TMarketingAgentInput): Promise
 		});
 
 		return {
-			status: result.output.status,
-			message: result.output.message,
-			inferredIntent: result.output.inferredIntent,
-			insights: result.output.insights,
-			missingInformation: result.output.missingInformation,
-			suggestion: normalizedSuggestion,
+			status: finalStatus,
+			message: finalMessage,
+			inferredIntent: analystResult.output.inferredIntent,
+			insights: finalInsights,
+			missingInformation: finalMissingInformation,
+			suggestion: validatedSuggestion,
 			hint,
 			metadata,
 		};

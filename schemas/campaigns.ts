@@ -138,10 +138,13 @@ export const CampaignSchema = z.object({
 		.default(0),
 	frequenciaIntervaloMedida: TimeDurationUnitsEnum.optional().nullable().default("DIAS"),
 	// Whatsapp specific
-	whatsappConexaoTelefoneId: z.string({
-		required_error: "ID da conexão do WhatsApp não informado.",
-		invalid_type_error: "Tipo não válido para o ID da conexão do WhatsApp.",
-	}),
+	whatsappConexaoTelefoneId: z
+		.string({
+			required_error: "ID da conexão do WhatsApp não informado.",
+			invalid_type_error: "Tipo não válido para o ID da conexão do WhatsApp.",
+		})
+		.optional()
+		.nullable(),
 	whatsappTemplateId: z.string({
 		required_error: "ID do template do WhatsApp não informado.",
 		invalid_type_error: "Tipo não válido para o ID do template do WhatsApp.",

@@ -220,20 +220,32 @@ export const MarketingAgentGeneratedOutputSchema = z.object({
 });
 export type TMarketingAgentGeneratedOutput = z.infer<typeof MarketingAgentGeneratedOutputSchema>;
 
-export const MarketingAgentProviderSuggestionTypeSchema = z
-	.enum(["campaign-creation-suggestion", "campaign-updates-suggestion"])
-	.nullable();
+export const MarketingActionableSuggestionTypeSchema = z.enum(["campaign-creation-suggestion", "campaign-updates-suggestion"]);
+export type TMarketingActionableSuggestionType = z.infer<typeof MarketingActionableSuggestionTypeSchema>;
 
-export const MarketingAgentProviderOutputSchema = z.object({
+export const MarketingAnalystRecommendedActionSchema = z.object({
+	suggestionType: MarketingActionableSuggestionTypeSchema.nullable(),
+	campaignId: z.string().nullable(),
+	rationale: z.string().nullable(),
+});
+export type TMarketingAnalystRecommendedAction = z.infer<typeof MarketingAnalystRecommendedActionSchema>;
+
+export const MarketingAnalystOutputSchema = z.object({
 	status: MarketingAgentStatusSchema,
-	message: z.string(),
 	inferredIntent: MarketingAgentIntentSchema,
+	message: z.string(),
+	detailedAnalysis: z.string(),
 	insights: z.array(z.string()),
 	missingInformation: z.array(z.string()),
-	suggestionType: MarketingAgentProviderSuggestionTypeSchema,
-	suggestionJson: z.string().nullable(),
+	recommendedAction: MarketingAnalystRecommendedActionSchema,
 });
-export type TMarketingAgentProviderOutput = z.infer<typeof MarketingAgentProviderOutputSchema>;
+export type TMarketingAnalystOutput = z.infer<typeof MarketingAnalystOutputSchema>;
+
+export const MarketingExecutorOutputSchema = z.object({
+	suggestionType: MarketingActionableSuggestionTypeSchema.nullable(),
+	message: z.string(),
+});
+export type TMarketingExecutorOutput = z.infer<typeof MarketingExecutorOutputSchema>;
 
 export const MarketingAgentMetadataSchema = z.object({
 	model: z.string(),

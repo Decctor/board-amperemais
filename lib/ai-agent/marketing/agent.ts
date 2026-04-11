@@ -1,15 +1,41 @@
 import { Output, ToolLoopAgent, gateway, stepCountIs } from "ai";
-import { MarketingAgentProviderOutputSchema } from "./schemas";
-import type { createMarketingAgentTools } from "./tools";
+import { MarketingAnalystOutputSchema, MarketingExecutorOutputSchema } from "./schemas";
+import type { createMarketingAnalystTools, createMarketingExecutorTools } from "./tools";
 
-export function createMarketingAgent({ tools, instructions }: { tools: ReturnType<typeof createMarketingAgentTools>; instructions: string }) {
+export function createMarketingAnalystAgent({
+	tools,
+	instructions,
+}: {
+	tools: ReturnType<typeof createMarketingAnalystTools>;
+	instructions: string;
+}) {
 	return new ToolLoopAgent({
 		model: gateway("openai/gpt-5.4-mini"),
 		instructions,
 		tools,
 		output: Output.object({
-			schema: MarketingAgentProviderOutputSchema,
+			name: "MarketingAnalystOutput",
+			schema: MarketingAnalystOutputSchema,
 		}),
-		stopWhen: stepCountIs(10),
+		stopWhen: stepCountIs(8),
+	});
+}
+
+export function createMarketingExecutorAgent({
+	tools,
+	instructions,
+}: {
+	tools: ReturnType<typeof createMarketingExecutorTools>;
+	instructions: string;
+}) {
+	return new ToolLoopAgent({
+		model: gateway("openai/gpt-5.4-mini"),
+		instructions,
+		tools,
+		output: Output.object({
+			name: "MarketingExecutorOutput",
+			schema: MarketingExecutorOutputSchema,
+		}),
+		stopWhen: stepCountIs(6),
 	});
 }
