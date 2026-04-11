@@ -31,18 +31,20 @@ async function dismissHint({ input, session }: { input: TDismissHintInput; sessi
 	};
 }
 export type TDismissHintOutput = Awaited<ReturnType<typeof dismissHint>>;
+
+function getDismissHintInput(request: NextRequest): TDismissHintInput {
+	return DismissHintInputSchema.parse({
+		id: request.nextUrl.searchParams.get("id"),
+	});
+}
+
 async function dismissHintRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session?.membership) {
 		throw new createHttpError.Unauthorized("Você não está autenticado.");
 	}
 
-	const orgId = session.membership.organizacao.id;
-	const userId = session.user.id;
-	const url = new URL(request.url);
-	const input = DismissHintInputSchema.parse({
-		id: url.searchParams.get("id"),
-	});
+	const input = getDismissHintInput(request);
 
 	const result = await dismissHint({
 		input,
@@ -52,4 +54,5 @@ async function dismissHintRoute(request: NextRequest) {
 	return NextResponse.json(result);
 }
 
+export const GET = appApiHandler({ GET: dismissHintRoute });
 export const POST = appApiHandler({ POST: dismissHintRoute });

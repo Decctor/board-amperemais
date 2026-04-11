@@ -81,11 +81,12 @@ export const MarketingAgentInputSchema = z.object({
 });
 export type TMarketingAgentInput = z.infer<typeof MarketingAgentInputSchema>;
 
-const CampaignBaseSuggestionConfigSchema = CampaignSchema.omit({
+const CampaignEditableAiSuggestionConfigSchema = CampaignSchema.omit({
 	autorId: true,
 	dataInsercao: true,
 	whatsappTemplateId: true,
 }).extend({
+	whatsappConexaoTelefoneId: CampaignSchema.shape.whatsappConexaoTelefoneId.nullable(),
 	gatilhoTipo: CampaignTriggerTypeEnum,
 	execucaoAgendadaMedida: TimeDurationUnitsEnum,
 	execucaoAgendadaDirecao: CampaignExecutionDelayDirectionEnum,
@@ -100,7 +101,7 @@ const CampaignBaseSuggestionConfigSchema = CampaignSchema.omit({
 	cashbackGeracaoExpiracaoMedida: TimeDurationUnitsEnum.optional().nullable(),
 });
 
-export const CampaignCreationSuggestionSchema = CampaignBaseSuggestionConfigSchema.extend({
+export const CampaignCreationSuggestionSchema = CampaignEditableAiSuggestionConfigSchema.extend({
 	segmentations: z.array(
 		z.string({
 			required_error: "Segmentação não informada.",
@@ -126,7 +127,7 @@ export const CampaignCreationSuggestionSchema = CampaignBaseSuggestionConfigSche
 });
 export type TCampaignCreationSuggestion = z.infer<typeof CampaignCreationSuggestionSchema>;
 
-export const CampaignUpdateProposedChangesSchema = CampaignBaseSuggestionConfigSchema.partial().refine(
+export const CampaignUpdateProposedChangesSchema = CampaignEditableAiSuggestionConfigSchema.partial().refine(
 	(value) => Object.keys(value).length > 0,
 	{
 		message: "Informe ao menos uma alteração proposta para a campanha.",
@@ -146,23 +147,21 @@ export const CampaignCurrentSummarySchema = z.object({
 });
 export type TCampaignCurrentSummary = z.infer<typeof CampaignCurrentSummarySchema>;
 
-export const CampaignCurrentConfigSchema = CampaignSchema.omit({
-	autorId: true,
-	dataInsercao: true,
-	whatsappTemplateId: true,
-});
+export const CampaignCurrentConfigSchema = CampaignEditableAiSuggestionConfigSchema;
 export type TCampaignCurrentConfig = z.infer<typeof CampaignCurrentConfigSchema>;
 
-export const CampaignUpdateSuggestionSchema = z.object({
+export const CampaignUpdateSuggestionInputSchema = z.object({
 	campaignId: z.string({
 		required_error: "ID da campanha não informado.",
 		invalid_type_error: "Tipo inválido para o ID da campanha.",
 	}),
-	campaignTitle: z.string({
-		required_error: "Título da campanha não informado.",
-		invalid_type_error: "Tipo inválido para o título da campanha.",
-	}),
-	currentSummary: CampaignCurrentSummarySchema,
+	campaignTitle: z
+		.string({
+			invalid_type_error: "Tipo inválido para o título da campanha.",
+		})
+		.optional()
+		.nullable(),
+	currentSummary: CampaignCurrentSummarySchema.optional().nullable(),
 	currentConfig: CampaignCurrentConfigSchema.optional().nullable(),
 	proposedChanges: CampaignUpdateProposedChangesSchema,
 	segmentations: z.array(
@@ -187,6 +186,15 @@ export const CampaignUpdateSuggestionSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+});
+export type TCampaignUpdateSuggestionInput = z.infer<typeof CampaignUpdateSuggestionInputSchema>;
+
+export const CampaignUpdateSuggestionSchema = CampaignUpdateSuggestionInputSchema.extend({
+	campaignTitle: z.string({
+		required_error: "Título da campanha não informado.",
+		invalid_type_error: "Tipo inválido para o título da campanha.",
+	}),
+	currentSummary: CampaignCurrentSummarySchema,
 });
 export type TCampaignUpdateSuggestion = z.infer<typeof CampaignUpdateSuggestionSchema>;
 

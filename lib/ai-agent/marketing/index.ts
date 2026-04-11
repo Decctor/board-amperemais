@@ -5,10 +5,9 @@ import { getCampaignsPerformanceContext } from "./context";
 import { buildMarketingAgentPrompt, MARKETING_AGENT_SYSTEM_PROMPT } from "./prompts";
 import {
 	CampaignCreationSuggestionSchema,
-	CampaignUpdateSuggestionSchema,
+	CampaignUpdateSuggestionInputSchema,
 	MarketingAgentInputSchema,
 	MarketingAgentMetadataSchema,
-	MarketingSuggestionSchema,
 	type TMarketingAgentInput,
 	type TMarketingAgentMetadata,
 	type TMarketingSuggestion,
@@ -43,6 +42,107 @@ function logMarketingAgentError(event: string, payload: Record<string, unknown>)
 	console.error(`[ERROR] [MARKETING_AGENT] [${event}]`, payload);
 }
 
+function extractFirstJsonValue(input: string) {
+	for (let startIndex = 0; startIndex < input.length; startIndex += 1) {
+		const startCharacter = input[startIndex];
+		if (startCharacter !== "{" && startCharacter !== "[") {
+			continue;
+		}
+
+		const stack: string[] = [startCharacter];
+		let isInsideString = false;
+		let isEscaping = false;
+
+		for (let cursor = startIndex + 1; cursor < input.length; cursor += 1) {
+			const character = input[cursor];
+
+			if (isInsideString) {
+				if (isEscaping) {
+					isEscaping = false;
+					continue;
+				}
+
+				if (character === "\\") {
+					isEscaping = true;
+					continue;
+				}
+
+				if (character === '"') {
+					isInsideString = false;
+				}
+
+				continue;
+			}
+
+			if (character === '"') {
+				isInsideString = true;
+				continue;
+			}
+
+			if (character === "{" || character === "[") {
+				stack.push(character);
+				continue;
+			}
+
+			if (character === "}" || character === "]") {
+				const lastOpenedCharacter = stack.at(-1);
+				const matchesObject = lastOpenedCharacter === "{" && character === "}";
+				const matchesArray = lastOpenedCharacter === "[" && character === "]";
+				if (!matchesObject && !matchesArray) {
+					break;
+				}
+
+				stack.pop();
+				if (stack.length === 0) {
+					const candidate = input.slice(startIndex, cursor + 1);
+					try {
+						return JSON.parse(candidate) as unknown;
+					} catch {
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	return null;
+}
+
+function parseSuggestionJson(suggestionJson: string) {
+	const normalizedJson = suggestionJson.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+
+	try {
+		return JSON.parse(normalizedJson) as unknown;
+	} catch {
+		const extractedJsonValue = extractFirstJsonValue(normalizedJson);
+		if (extractedJsonValue !== null) {
+			return extractedJsonValue;
+		}
+
+		throw new Error("O agente retornou suggestionJson inválido.");
+	}
+}
+
+function unwrapSuggestionPayload({
+	parsedPayload,
+	suggestionType,
+}: {
+	parsedPayload: unknown;
+	suggestionType: "campaign-creation-suggestion" | "campaign-updates-suggestion";
+}) {
+	if (
+		parsedPayload &&
+		typeof parsedPayload === "object" &&
+		"tipo" in parsedPayload &&
+		"payload" in parsedPayload &&
+		parsedPayload.tipo === suggestionType
+	) {
+		return parsedPayload.payload;
+	}
+
+	return parsedPayload;
+}
+
 async function parseGeneratedSuggestion({
 	organizacaoId,
 	suggestionType,
@@ -56,12 +156,11 @@ async function parseGeneratedSuggestion({
 		return null;
 	}
 
-	const parsedPayload = JSON.parse(suggestionJson) as unknown;
-	const parsedWrappedSuggestion = MarketingSuggestionSchema.safeParse(parsedPayload);
-	const suggestionPayload =
-		parsedWrappedSuggestion.success && parsedWrappedSuggestion.data.tipo === suggestionType
-			? parsedWrappedSuggestion.data.payload
-			: parsedPayload;
+	const parsedPayload = parseSuggestionJson(suggestionJson);
+	const suggestionPayload = unwrapSuggestionPayload({
+		parsedPayload,
+		suggestionType,
+	});
 
 	if (suggestionType === "campaign-creation-suggestion") {
 		const validatedPayload = CampaignCreationSuggestionSchema.parse(suggestionPayload);
@@ -76,7 +175,7 @@ async function parseGeneratedSuggestion({
 		};
 	}
 
-	const validatedPayload = CampaignUpdateSuggestionSchema.parse(suggestionPayload);
+	const validatedPayload = CampaignUpdateSuggestionInputSchema.parse(suggestionPayload);
 	const normalizedPayload = await normalizeCampaignUpdateSuggestion({
 		organizacaoId,
 		suggestion: validatedPayload,
@@ -213,7 +312,6 @@ export async function runMarketingAgent(rawInput: TMarketingAgentInput): Promise
 				});
 			},
 		});
-		console.log("RESULT", result.output);
 		const agentExecutionDurationMs = getElapsedMs(agentExecutionStartedAt);
 
 		if (!result.output) {

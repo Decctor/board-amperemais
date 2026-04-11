@@ -39,10 +39,32 @@ export type SendMessageResponse = {
 	error?: string;
 };
 
+export type SendMessageQuickReplyButton = {
+	type: "quick_reply";
+	text: string;
+	id: string;
+};
+
+export type SendMessageUrlButton = {
+	type: "url";
+	text: string;
+	url: string;
+};
+
+export type SendMessagePhoneButton = {
+	type: "phone";
+	text: string;
+	phoneNumber: string;
+};
+
+export type SendMessageButton = SendMessageQuickReplyButton | SendMessageUrlButton | SendMessagePhoneButton;
+
 export type SendMessageContent =
 	| {
 			type: "text";
 			text: string;
+			footerText?: string;
+			buttons?: SendMessageButton[];
 	  }
 	| {
 			type: "image" | "video" | "audio" | "document" | "sticker";
@@ -250,7 +272,8 @@ export async function sendMessage(
 
 	try {
 		const messageLength = content.type === "text" ? content.text.length : content.text?.length;
-		console.log("[INTERNAL_GATEWAY] Sending message:", { sessionId, to, messageLength });
+		const buttonsCount = content.type === "text" ? content.buttons?.length ?? 0 : 0;
+		console.log("[INTERNAL_GATEWAY] Sending message:", { sessionId, to, messageLength, buttonsCount });
 
 		const response = await axios.post<SendMessageResponse>(
 			`${GATEWAY_URL}/messages/send`,

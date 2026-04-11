@@ -2,6 +2,10 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
+import { absoluteUrl } from "@/lib/utils";
+import { sendMessage, type SendMessageContent } from "@/lib/whatsapp/internal-gateway";
+import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
+import { waitUntil } from "@vercel/functions";
 import dayjs from "dayjs";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -9,6 +13,9 @@ import { aiHints } from "@/services/drizzle/schema";
 import { and, eq, gte, lt, count } from "drizzle-orm";
 import { HINTS_AMMOUNT_VALIDATION_THRESHOLD } from "@/config";
 import { runMarketingAgent } from "@/lib/ai-agent/marketing";
+import type { TAIHint } from "@/schemas/ai-hints";
+
+const INTERNAL_SESSION_ID = process.env.INTERNAL_WHATSAPP_GATEWAY_SESSION_COMS as string;
 
 function getCurrentSundayBasedWeekRange() {
 	const now = dayjs();
@@ -31,6 +38,115 @@ function logGenerateHints(event: string, payload: Record<string, unknown>) {
 
 function logGenerateHintsError(event: string, payload: Record<string, unknown>) {
 	console.error(`[ERROR] [AI_HINTS_GENERATE] [${event}]`, payload);
+}
+
+function buildHintActionUrl(path: string, hintId: string) {
+	const url = absoluteUrl(path);
+	const nextUrl = new URL(url);
+	nextUrl.searchParams.set("id", hintId);
+	return nextUrl.href;
+}
+
+function buildHintWhatsappMessage({ hint }: { hint: TAIHint }): SendMessageContent {
+	const approveUrl = buildHintActionUrl("/api/ai-hints/approve", hint.id);
+	const dismissUrl = buildHintActionUrl("/api/ai-hints/dismiss", hint.id);
+
+	return {
+		type: "text",
+		text: `Nova dica de IA pronta para revisão.
+
+*${hint.conteudo.titulo}*
+${hint.conteudo.descricao}
+
+Abra uma das opções abaixo para aprovar ou descartar a dica. Você precisa estar autenticado no CRM para concluir a ação.`,
+		footerText: "Escolha uma ação",
+		buttons: [
+			{
+				type: "url",
+				text: "Aprovar dica",
+				url: approveUrl,
+			},
+			{
+				type: "url",
+				text: "Descartar dica",
+				url: dismissUrl,
+			},
+		],
+	};
+}
+
+async function notifyOrganizationOwnerAboutHint({
+	traceId,
+	organizacaoId,
+	hint,
+}: {
+	traceId: string;
+	organizacaoId: string;
+	hint: TAIHint;
+}) {
+	if (!INTERNAL_SESSION_ID) {
+		logGenerateHints("WHATSAPP_NOTIFICATION_SKIPPED", {
+			traceId,
+			organizacaoId,
+			hintId: hint.id,
+			reason: "internal_session_not_configured",
+		});
+		return;
+	}
+
+	if (!process.env.NEXT_PUBLIC_APP_URL) {
+		logGenerateHints("WHATSAPP_NOTIFICATION_SKIPPED", {
+			traceId,
+			organizacaoId,
+			hintId: hint.id,
+			reason: "app_url_not_configured",
+		});
+		return;
+	}
+
+	const organization = await db.query.organizations.findFirst({
+		columns: {
+			id: true,
+			nome: true,
+		},
+		where: (fields, { eq }) => eq(fields.id, organizacaoId),
+		with: {
+			autor: {
+				columns: {
+					telefone: true,
+				},
+			},
+		},
+	});
+
+	const ownerPhone = organization?.autor?.telefone;
+	if (!organization || !ownerPhone) {
+		logGenerateHints("WHATSAPP_NOTIFICATION_SKIPPED", {
+			traceId,
+			organizacaoId,
+			hintId: hint.id,
+			reason: "owner_phone_not_available",
+		});
+		return;
+	}
+
+	try {
+		const result = await sendMessage(INTERNAL_SESSION_ID, formatPhoneForInternalGateway(ownerPhone), buildHintWhatsappMessage({ hint }));
+		logGenerateHints("WHATSAPP_NOTIFICATION_SENT", {
+			traceId,
+			organizacaoId,
+			hintId: hint.id,
+			orgNome: organization.nome,
+			messageId: result.clientMessageId ?? result.jobId ?? null,
+		});
+	} catch (error) {
+		logGenerateHintsError("WHATSAPP_NOTIFICATION_FAILED", {
+			traceId,
+			organizacaoId,
+			hintId: hint.id,
+			error,
+		});
+	}
 }
 
 async function generateHints({ session, traceId }: { session: TAuthUserSession; traceId: string }) {
@@ -78,7 +194,6 @@ async function generateHints({ session, traceId }: { session: TAuthUserSession; 
 			persistSuggestion: true,
 			requireActionableSuggestion: true,
 		});
-		console.log(generationResult.hint);
 		const agentDurationMs = getElapsedMs(agentStartedAt);
 
 		logGenerateHints("AGENT_COMPLETED", {
@@ -94,6 +209,15 @@ async function generateHints({ session, traceId }: { session: TAuthUserSession; 
 		if (!generationResult.hint) {
 			throw new createHttpError.InternalServerError("A IA não conseguiu gerar uma dica acionável para revisão.");
 		}
+		const generatedHint = generationResult.hint;
+
+		waitUntil(
+			notifyOrganizationOwnerAboutHint({
+				traceId,
+				organizacaoId: orgId,
+				hint: generatedHint,
+			}),
+		);
 
 		const result = {
 			data: {

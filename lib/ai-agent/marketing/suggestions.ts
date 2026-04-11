@@ -9,11 +9,12 @@ import {
 	CampaignCreationSuggestionSchema,
 	CampaignCurrentSummarySchema,
 	CampaignUpdateProposedChangesSchema,
+	CampaignUpdateSuggestionInputSchema,
 	CampaignUpdateSuggestionSchema,
 	type TCampaignCreationSuggestion,
 	type TCampaignCurrentSummary,
 	type TCampaignUpdateProposedChanges,
-	type TCampaignUpdateSuggestion,
+	type TCampaignUpdateSuggestionInput,
 } from "./schemas";
 import { getWhatsappTemplatePlainText } from "./template-text";
 import { validateTemplateVariablesForTrigger } from "./template-variables";
@@ -24,80 +25,14 @@ const TEMPLATE_BODY_SECTION_PATTERN =
 const TEMPLATE_NON_BODY_SECTION_PATTERN =
 	/(^|\n)\s*(?:cabeçalho(?:\s*\([^)]+\))?|header(?:\s*\([^)]+\))?|rodapé|footer|bot(?:õ|o)es?|buttons?)\s*:/i;
 
-function validateRecurrentCampaign(campaign: z.infer<typeof CampaignSchema>) {
-	if (campaign.gatilhoTipo !== "RECORRENTE") return;
-
-	if (!campaign.recorrenciaTipo) {
-		throw new createHttpError.BadRequest("Selecione a frequência de recorrência da campanha.");
-	}
-
-	if (campaign.recorrenciaTipo === "SEMANAL") {
-		if (!campaign.recorrenciaDiasSemana) {
-			throw new createHttpError.BadRequest("Informe os dias da semana para a recorrência.");
-		}
-
-		const dias = JSON.parse(campaign.recorrenciaDiasSemana) as number[];
-		if (!Array.isArray(dias) || dias.length === 0 || dias.some((dia) => dia < 0 || dia > 6)) {
-			throw new createHttpError.BadRequest("Dias da semana inválidos para a recorrência.");
-		}
-	}
-
-	if (campaign.recorrenciaTipo === "MENSAL") {
-		if (!campaign.recorrenciaDiasMes) {
-			throw new createHttpError.BadRequest("Informe os dias do mês para a recorrência.");
-		}
-
-		const dias = JSON.parse(campaign.recorrenciaDiasMes) as number[];
-		if (!Array.isArray(dias) || dias.length === 0 || dias.some((dia) => dia < 1 || dia > 31)) {
-			throw new createHttpError.BadRequest("Dias do mês inválidos para a recorrência.");
-		}
-	}
-}
-
-function validateCampaignFrequencyInterval(campaign: z.infer<typeof CampaignSchema>) {
-	if (!campaign.permitirRecorrencia) return;
-
-	if (!campaign.frequenciaIntervaloMedida || !campaign.frequenciaIntervaloValor || campaign.frequenciaIntervaloValor <= 0) {
-		throw new createHttpError.BadRequest("A frequência mínima entre interações deve ser maior que zero.");
-	}
-}
-
-function validateExecutionDelayDirection(campaign: z.infer<typeof CampaignSchema>) {
-	if (campaign.execucaoAgendadaDirecao === "ANTES" && !TRIGGERS_SUPPORTING_ANTES.includes(campaign.gatilhoTipo)) {
-		throw new createHttpError.BadRequest("A direção ANTES só é suportada por gatilhos específicos.");
-	}
-}
-
-function validateCashbackExpiringTrigger(campaign: z.infer<typeof CampaignSchema>) {
-	if (campaign.gatilhoTipo !== "CASHBACK-EXPIRANDO") return;
-
-	if (
-		!campaign.gatilhoCashbackExpirandoAntecedenciaMedida ||
-		!campaign.gatilhoCashbackExpirandoAntecedenciaValor ||
-		campaign.gatilhoCashbackExpirandoAntecedenciaValor <= 0
-	) {
-		throw new createHttpError.BadRequest("Informe uma antecedência válida para campanhas de cashback expirando.");
-	}
-}
-
-function validateCashbackGeneration(campaign: z.infer<typeof CampaignSchema>) {
-	if (!campaign.cashbackGeracaoAtivo) return;
-
-	if (!campaign.cashbackGeracaoTipo) {
-		throw new createHttpError.BadRequest("Selecione o tipo de geração de cashback.");
-	}
-
-	if (!campaign.cashbackGeracaoValor || campaign.cashbackGeracaoValor <= 0) {
-		throw new createHttpError.BadRequest("Informe um valor válido para geração de cashback.");
-	}
-
-	if (campaign.cashbackGeracaoTipo === "PERCENTUAL") {
-		const validTriggersForPercentual = ["NOVA-COMPRA", "PRIMEIRA-COMPRA"];
-		if (!validTriggersForPercentual.includes(campaign.gatilhoTipo)) {
-			throw new createHttpError.BadRequest("Cashback percentual só é aceito em gatilhos de compra.");
-		}
-	}
-}
+const CampaignAiValidationSchema = CampaignSchema.omit({
+	autorId: true,
+	dataInsercao: true,
+	whatsappTemplateId: true,
+}).extend({
+	whatsappConexaoTelefoneId: CampaignSchema.shape.whatsappConexaoTelefoneId.nullable(),
+});
+type TCampaignRulesValidationInput = z.infer<typeof CampaignAiValidationSchema>;
 
 async function ensureWhatsappPhoneBelongsToOrganization(orgId: string, whatsappConexaoTelefoneId: string) {
 	const phone = await db.query.whatsappConnectionPhones.findFirst({
@@ -143,7 +78,82 @@ function validateSuggestedWhatsappTemplateText(templateText: string) {
 	}
 }
 
-function validateCampaignRules(campaign: z.infer<typeof CampaignSchema>) {
+function validateRecurrentCampaign(campaign: TCampaignRulesValidationInput) {
+	if (campaign.gatilhoTipo !== "RECORRENTE") return;
+
+	if (!campaign.recorrenciaTipo) {
+		throw new createHttpError.BadRequest("Selecione a frequência de recorrência da campanha.");
+	}
+
+	if (campaign.recorrenciaTipo === "SEMANAL") {
+		if (!campaign.recorrenciaDiasSemana) {
+			throw new createHttpError.BadRequest("Informe os dias da semana para a recorrência.");
+		}
+
+		const dias = JSON.parse(campaign.recorrenciaDiasSemana) as number[];
+		if (!Array.isArray(dias) || dias.length === 0 || dias.some((dia) => dia < 0 || dia > 6)) {
+			throw new createHttpError.BadRequest("Dias da semana inválidos para a recorrência.");
+		}
+	}
+
+	if (campaign.recorrenciaTipo === "MENSAL") {
+		if (!campaign.recorrenciaDiasMes) {
+			throw new createHttpError.BadRequest("Informe os dias do mês para a recorrência.");
+		}
+
+		const dias = JSON.parse(campaign.recorrenciaDiasMes) as number[];
+		if (!Array.isArray(dias) || dias.length === 0 || dias.some((dia) => dia < 1 || dia > 31)) {
+			throw new createHttpError.BadRequest("Dias do mês inválidos para a recorrência.");
+		}
+	}
+}
+
+function validateCampaignFrequencyInterval(campaign: TCampaignRulesValidationInput) {
+	if (!campaign.permitirRecorrencia) return;
+
+	if (!campaign.frequenciaIntervaloMedida || !campaign.frequenciaIntervaloValor || campaign.frequenciaIntervaloValor <= 0) {
+		throw new createHttpError.BadRequest("A frequência mínima entre interações deve ser maior que zero.");
+	}
+}
+
+function validateExecutionDelayDirection(campaign: TCampaignRulesValidationInput) {
+	if (campaign.execucaoAgendadaDirecao === "ANTES" && !TRIGGERS_SUPPORTING_ANTES.includes(campaign.gatilhoTipo)) {
+		throw new createHttpError.BadRequest("A direção ANTES só é suportada por gatilhos específicos.");
+	}
+}
+
+function validateCashbackExpiringTrigger(campaign: TCampaignRulesValidationInput) {
+	if (campaign.gatilhoTipo !== "CASHBACK-EXPIRANDO") return;
+
+	if (
+		!campaign.gatilhoCashbackExpirandoAntecedenciaMedida ||
+		!campaign.gatilhoCashbackExpirandoAntecedenciaValor ||
+		campaign.gatilhoCashbackExpirandoAntecedenciaValor <= 0
+	) {
+		throw new createHttpError.BadRequest("Informe uma antecedência válida para campanhas de cashback expirando.");
+	}
+}
+
+function validateCashbackGeneration(campaign: TCampaignRulesValidationInput) {
+	if (!campaign.cashbackGeracaoAtivo) return;
+
+	if (!campaign.cashbackGeracaoTipo) {
+		throw new createHttpError.BadRequest("Selecione o tipo de geração de cashback.");
+	}
+
+	if (!campaign.cashbackGeracaoValor || campaign.cashbackGeracaoValor <= 0) {
+		throw new createHttpError.BadRequest("Informe um valor válido para geração de cashback.");
+	}
+
+	if (campaign.cashbackGeracaoTipo === "PERCENTUAL") {
+		const validTriggersForPercentual = ["NOVA-COMPRA", "PRIMEIRA-COMPRA"];
+		if (!validTriggersForPercentual.includes(campaign.gatilhoTipo)) {
+			throw new createHttpError.BadRequest("Cashback percentual só é aceito em gatilhos de compra.");
+		}
+	}
+}
+
+function validateCampaignRules(campaign: TCampaignRulesValidationInput) {
 	validateRecurrentCampaign(campaign);
 	validateCampaignFrequencyInterval(campaign);
 	validateExecutionDelayDirection(campaign);
@@ -159,22 +169,15 @@ export async function normalizeCampaignCreationSuggestion({
 	suggestion: TCampaignCreationSuggestion;
 }) {
 	const parsedSuggestion = CampaignCreationSuggestionSchema.parse(suggestion);
-	await ensureWhatsappPhoneBelongsToOrganization(organizacaoId, parsedSuggestion.whatsappConexaoTelefoneId);
+	if (parsedSuggestion.whatsappConexaoTelefoneId) {
+		await ensureWhatsappPhoneBelongsToOrganization(organizacaoId, parsedSuggestion.whatsappConexaoTelefoneId);
+	}
 	const normalizedWhatsappTemplateText = normalizeSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
 	validateSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
 	validateTemplateTextForTrigger(normalizedWhatsappTemplateText, parsedSuggestion.gatilhoTipo);
 
-	const campaignValidationShape = CampaignSchema.omit({
-		autorId: true,
-		dataInsercao: true,
-		whatsappTemplateId: true,
-	}).parse(parsedSuggestion);
-	validateCampaignRules({
-		...campaignValidationShape,
-		autorId: "ai-agent",
-		dataInsercao: new Date(),
-		whatsappTemplateId: "ai-agent-template",
-	});
+	const campaignValidationShape = CampaignAiValidationSchema.parse(parsedSuggestion);
+	validateCampaignRules(campaignValidationShape);
 
 	return {
 		...parsedSuggestion,
@@ -231,11 +234,7 @@ async function getExistingCampaignEditableConfig({
 		throw new createHttpError.NotFound("Campanha não encontrada.");
 	}
 
-	return CampaignSchema.omit({
-		autorId: true,
-		dataInsercao: true,
-		whatsappTemplateId: true,
-	}).parse(campaign);
+	return CampaignAiValidationSchema.parse(campaign);
 }
 
 export async function normalizeCampaignUpdateSuggestion({
@@ -243,9 +242,9 @@ export async function normalizeCampaignUpdateSuggestion({
 	suggestion,
 }: {
 	organizacaoId: string;
-	suggestion: TCampaignUpdateSuggestion;
+	suggestion: TCampaignUpdateSuggestionInput;
 }) {
-	const parsedSuggestion = CampaignUpdateSuggestionSchema.parse(suggestion);
+	const parsedSuggestion = CampaignUpdateSuggestionInputSchema.parse(suggestion);
 	const currentSummary = await buildCampaignCurrentSummary({
 		organizacaoId,
 		campaignId: parsedSuggestion.campaignId,
@@ -258,20 +257,14 @@ export async function normalizeCampaignUpdateSuggestion({
 	const parsedChanges = CampaignUpdateProposedChangesSchema.parse(parsedSuggestion.proposedChanges) as TCampaignUpdateProposedChanges;
 	const effectiveTriggerType = parsedChanges.gatilhoTipo ?? currentSummary.gatilhoTipo;
 	const effectiveWhatsappPhoneId = parsedChanges.whatsappConexaoTelefoneId ?? currentSummary.whatsappConexaoTelefoneId;
-	if (!effectiveWhatsappPhoneId) {
-		throw new createHttpError.BadRequest("A campanha precisa ter um telefone de WhatsApp definido.");
+	if (effectiveWhatsappPhoneId) {
+		await ensureWhatsappPhoneBelongsToOrganization(organizacaoId, effectiveWhatsappPhoneId);
 	}
-
-	await ensureWhatsappPhoneBelongsToOrganization(organizacaoId, effectiveWhatsappPhoneId);
 	const normalizedWhatsappTemplateText = normalizeSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
 	validateSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
 	validateTemplateTextForTrigger(normalizedWhatsappTemplateText, effectiveTriggerType);
 
-	const campaignValidationShape = CampaignSchema.omit({
-		autorId: true,
-		dataInsercao: true,
-		whatsappTemplateId: true,
-	}).parse({
+	const campaignValidationShape = CampaignAiValidationSchema.parse({
 		...currentConfig,
 		...parsedChanges,
 		titulo: parsedChanges.titulo ?? currentConfig.titulo,
@@ -280,16 +273,11 @@ export async function normalizeCampaignUpdateSuggestion({
 		whatsappConexaoTelefoneId: effectiveWhatsappPhoneId,
 	});
 
-	validateCampaignRules({
-		...campaignValidationShape,
-		autorId: "ai-agent",
-		dataInsercao: new Date(),
-		whatsappTemplateId: "ai-agent-template",
-	});
+	validateCampaignRules(campaignValidationShape);
 
-	return {
+	return CampaignUpdateSuggestionSchema.parse({
 		...parsedSuggestion,
-		campaignTitle: parsedSuggestion.campaignTitle.trim(),
+		campaignTitle: parsedSuggestion.campaignTitle?.trim() || currentSummary.titulo,
 		currentSummary,
 		currentConfig,
 		proposedChanges: parsedChanges,
@@ -297,7 +285,7 @@ export async function normalizeCampaignUpdateSuggestion({
 		whatsappTemplateText: normalizedWhatsappTemplateText,
 		justificativa: parsedSuggestion.justificativa.trim(),
 		impactoEsperado: parsedSuggestion.impactoEsperado?.trim() || null,
-	};
+	});
 }
 
 export async function ensureOrganizationExists(organizacaoId: string) {

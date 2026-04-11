@@ -9,16 +9,19 @@ import z from "zod";
 export type TApproveHintInput = z.infer<typeof ApproveHintInputSchema>;
 export type TApproveHintOutput = Awaited<ReturnType<typeof approveHint>>;
 
-async function approveHintRoute(request: NextRequest) {
+function getApproveHintInput(request: NextRequest): TApproveHintInput {
+	return ApproveHintInputSchema.parse({
+		id: request.nextUrl.searchParams.get("id"),
+	});
+}
+
+async function approveHintRoutePOST(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session?.membership) {
 		throw new createHttpError.Unauthorized("Você não está autenticado.");
 	}
 
-	const url = new URL(request.url);
-	const input = ApproveHintInputSchema.parse({
-		id: url.searchParams.get("id"),
-	});
+	const input = getApproveHintInput(request);
 
 	const result = await approveHint({
 		input,
@@ -27,5 +30,21 @@ async function approveHintRoute(request: NextRequest) {
 
 	return NextResponse.json(result, { status: 200 });
 }
+async function approveHintRouteGET(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session?.membership) {
+		throw new createHttpError.Unauthorized("Você não está autenticado.");
+	}
 
-export const POST = appApiHandler({ POST: approveHintRoute });
+	const input = getApproveHintInput(request);
+
+	const result = await approveHint({
+		input,
+		session,
+	});
+
+	return NextResponse.redirect("/dashboard/commercial/campaigns");
+}
+
+export const GET = appApiHandler({ GET: approveHintRouteGET });
+export const POST = appApiHandler({ POST: approveHintRoutePOST });
