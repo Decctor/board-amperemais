@@ -22,7 +22,7 @@ async function approveHintRoutePOST(request: NextRequest) {
 	}
 
 	const input = getApproveHintInput(request);
-
+	console.log("[INFO] Approving hints of id", input.id);
 	const result = await approveHint({
 		input,
 		session,
@@ -37,13 +37,13 @@ async function approveHintRouteGET(request: NextRequest) {
 	}
 
 	const input = getApproveHintInput(request);
-
+	console.log("[INFO] Approving hints of id", input.id);
 	const result = await approveHint({
 		input,
 		session,
 	});
 
-	return NextResponse.redirect("/dashboard/commercial/campaigns");
+	return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/commercial/campaigns`);
 }
 
 export const GET = appApiHandler({ GET: approveHintRouteGET });
