@@ -1,0 +1,314 @@
+{
+  "root": "canvas",
+  "elements": {
+    "canvas": {
+      "type": "MediaCanvas",
+      "props": {
+        "background": "linear-gradient(180deg, #24549C 0%, #0C1D36 100%)",
+        "fontFamily": "var(--font-raleway), ui-sans-serif, system-ui, sans-serif",
+        "overflow": "hidden"
+      },
+      "children": ["atmosphere-radials", "atmosphere-noise", "atmosphere-stripes", "atmosphere-vignette", "frame", "footer"]
+    },
+    "atmosphere-radials": {
+      "type": "MediaBox",
+      "props": {
+        "position": "absolute",
+        "top": 0,
+        "left": 0,
+        "width": "100%",
+        "height": "100%",
+        "pointerEvents": "none",
+        "zIndex": 0,
+        "background": "radial-gradient(ellipse 80% 50% at 100% 0%, rgba(255, 200, 80, 0.08) 0%, transparent 52%), radial-gradient(ellipse 55% 40% at 0% 100%, rgba(15, 40, 80, 0.45) 0%, transparent 50%)"
+      }
+    },
+    "atmosphere-noise": {
+      "type": "MediaBox",
+      "props": {
+        "position": "absolute",
+        "top": 0,
+        "left": 0,
+        "width": "100%",
+        "height": "100%",
+        "pointerEvents": "none",
+        "opacity": 0.4,
+        "backgroundImage": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        "backgroundSize": "180px 180px",
+        "mixBlendMode": "overlay"
+      }
+    },
+    "atmosphere-stripes": {
+      "type": "MediaBox",
+      "props": {
+        "position": "absolute",
+        "top": 0,
+        "left": 0,
+        "width": "100%",
+        "height": "100%",
+        "pointerEvents": "none",
+        "background": "repeating-linear-gradient(-28deg, transparent, transparent 56px, rgba(255,255,255,0.014) 56px, rgba(255,255,255,0.014) 57px)"
+      }
+    },
+    "atmosphere-vignette": {
+      "type": "MediaBox",
+      "props": {
+        "position": "absolute",
+        "top": 0,
+        "left": 0,
+        "width": "100%",
+        "height": "100%",
+        "pointerEvents": "none",
+        "background": "radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.25) 0%, transparent 55%)"
+      }
+    },
+    "frame": {
+      "type": "MediaStack",
+      "props": {
+        "position": "relative",
+        "zIndex": 1,
+        "height": "100%",
+        "paddingTop": { "$state": "/layout/campeoesQuadrado/framePaddingTop" },
+        "paddingBottom": { "$state": "/layout/campeoesQuadrado/framePaddingBottom" },
+        "paddingX": { "$state": "/layout/campeoesQuadrado/framePaddingX" },
+        "justifyContent": "center"
+      },
+      "children": ["hero"]
+    },
+    "hero": {
+      "type": "MediaGrid",
+      "props": {
+        "columns": { "$state": "/layout/campeoesQuadrado/heroGridTemplateColumns" },
+        "gap": { "$state": "/layout/campeoesQuadrado/heroRowGapPx" },
+        "alignItems": "center"
+      },
+      "children": ["hero-copy", "hero-card"]
+    },
+    "hero-copy": {
+      "type": "MediaStack",
+      "props": {
+        "gap": 22,
+        "maxWidth": { "$state": "/layout/campeoesQuadrado/heroCopyMaxWidth" }
+      },
+      "children": ["hero-title", "hero-body"]
+    },
+    "hero-title": {
+      "type": "MediaText",
+      "props": {
+        "size": 76,
+        "weight": "bold",
+        "color": "#FAFAFA",
+        "lineHeight": 1.07,
+        "tracking": "-0.032em",
+        "shadow": "0 4px 28px rgba(0,0,0,0.35)",
+        "lines": [
+          [{ "text": "Crie campanhas automáticas" }],
+          [
+            { "text": "de " },
+            { "text": "WhatsApp", "color": "#FFCD2E", "weight": "bold" },
+            { "text": " e aumente" }
+          ],
+          [
+            { "text": "sua " },
+            {
+              "text": "taxa de recompra",
+              "color": "#FFCD2E",
+              "weight": "bold",
+              "underlineColor": "rgba(255, 205, 46, 0.55)",
+              "underlineThickness": 3,
+              "skipInkNone": true
+            }
+          ]
+        ]
+      }
+    },
+    "hero-body": {
+      "type": "MediaText",
+      "props": {
+        "size": 26,
+        "weight": "medium",
+        "color": "rgba(252,252,252,0.78)",
+        "lineHeight": 1.52,
+        "lines": [
+          [
+            { "text": "A Ampère+ criou um clube exclusivo para seus campeões de compra com o " },
+            { "text": "RecompraCRM", "color": "#FFCD2E", "weight": "bold" },
+            { "text": " e os resultados falam por si." }
+          ]
+        ]
+      }
+    },
+    "hero-card": {
+      "type": "MediaSurface",
+      "props": {
+        "background": "linear-gradient(165deg, #FFFFFF 0%, #F4F7FB 100%)",
+        "borderRadius": { "$state": "/layout/campeoesQuadrado/heroCardBorderRadiusPx" },
+        "boxShadow": "0 18px 44px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.7), 0 0 80px rgba(0,0,0,0.12)",
+        "rotateDeg": -0.9,
+        "overflow": "hidden"
+      },
+      "children": ["hero-card-top", "hero-card-bottom"]
+    },
+    "hero-card-top": {
+      "type": "MediaStack",
+      "props": {
+        "paddingY": 24,
+        "paddingX": 27,
+        "gap": 12
+      },
+      "children": ["hero-card-eyebrow", "hero-card-value"]
+    },
+    "hero-card-eyebrow": {
+      "type": "MediaText",
+      "props": {
+        "text": "Receita atribuída",
+        "size": 11,
+        "weight": "bold",
+        "color": "#9CA3AF",
+        "uppercase": true,
+        "tracking": "0.1em"
+      }
+    },
+    "hero-card-value": {
+      "type": "MediaText",
+      "props": {
+        "text": "R$ 29.408,63",
+        "size": 37,
+        "weight": "bold",
+        "color": "#1E3A5F",
+        "tracking": "-0.03em",
+        "lineHeight": 1.08,
+        "whiteSpace": "nowrap"
+      }
+    },
+    "hero-card-bottom": {
+      "type": "MediaGrid",
+      "props": {
+        "columns": ["minmax(0,1fr)", "minmax(0,1fr)"],
+        "background": "linear-gradient(180deg, #E8F1FF 0%, #DDE9FC 100%)",
+        "borderTop": "1px solid rgba(226,232,240,0.95)"
+      },
+      "children": ["hero-card-rate", "hero-card-conversions"]
+    },
+    "hero-card-rate": {
+      "type": "MediaStack",
+      "props": {
+        "paddingY": 15,
+        "paddingX": 17,
+        "gap": 6,
+        "borderRight": "1px solid rgba(203,213,225,0.55)"
+      },
+      "children": ["hero-card-rate-label", "hero-card-rate-value"]
+    },
+    "hero-card-rate-label": {
+      "type": "MediaText",
+      "props": {
+        "text": "Taxa de conversão",
+        "size": 10,
+        "weight": "bold",
+        "color": "#64748B",
+        "uppercase": true,
+        "tracking": "0.08em"
+      }
+    },
+    "hero-card-rate-value": {
+      "type": "MediaText",
+      "props": {
+        "text": "75,39%",
+        "size": 28,
+        "weight": "bold",
+        "color": "#059669",
+        "tracking": "-0.02em"
+      }
+    },
+    "hero-card-conversions": {
+      "type": "MediaStack",
+      "props": {
+        "paddingY": 15,
+        "paddingX": 17,
+        "gap": 6
+      },
+      "children": ["hero-card-conversions-label", "hero-card-conversions-value"]
+    },
+    "hero-card-conversions-label": {
+      "type": "MediaText",
+      "props": {
+        "text": "Conversões",
+        "size": 10,
+        "weight": "bold",
+        "color": "#64748B",
+        "uppercase": true,
+        "tracking": "0.08em"
+      }
+    },
+    "hero-card-conversions-value": {
+      "type": "MediaText",
+      "props": {
+        "text": "144",
+        "size": 28,
+        "weight": "bold",
+        "color": "#1E3A5F",
+        "tracking": "-0.02em"
+      }
+    },
+    "footer": {
+      "type": "MediaGrid",
+      "props": {
+        "position": "absolute",
+        "left": { "$state": "/layout/padXPx" },
+        "right": { "$state": "/layout/padXPx" },
+        "bottom": { "$state": "/layout/footerBottomPx" },
+        "columns": ["auto", "auto"],
+        "alignItems": "center",
+        "justifyItems": "stretch",
+        "borderTop": "1px solid rgba(255,255,255,0.12)",
+        "paddingTop": 14,
+        "zIndex": 2
+      },
+      "children": ["footer-logo", "footer-cta"]
+    },
+    "footer-logo": {
+      "type": "MediaLogo",
+      "props": {
+        "asset": "recompra-horizontal-colorful",
+        "alt": "RecompraCRM",
+        "height": 52,
+        "maxWidth": "25%"
+      }
+    },
+    "footer-cta": {
+      "type": "MediaStack",
+      "props": {
+        "direction": "row",
+        "alignItems": "center",
+        "justifySelf": "end",
+        "gap": 12
+      },
+      "children": ["footer-copy", "footer-button"]
+    },
+    "footer-copy": {
+      "type": "MediaText",
+      "props": {
+        "text": "Conheça e",
+        "size": 16,
+        "weight": "medium",
+        "color": "rgba(248,250,252,0.55)"
+      }
+    },
+    "footer-button": {
+      "type": "MediaBadge",
+      "props": {
+        "label": "Comece grátis",
+        "background": "linear-gradient(180deg, #FFCD2E 0%, #FFB800 100%)",
+        "color": "#0A0F18",
+        "fontSize": 16,
+        "fontWeight": "bold",
+        "borderRadius": 10,
+        "paddingX": 24,
+        "paddingY": 10,
+        "boxShadow": "0 10px 28px rgba(255,184,0,0.3), inset 0 1px 0 rgba(255,255,255,0.45)",
+        "tracking": "-0.02em"
+      }
+    }
+  }
+}
