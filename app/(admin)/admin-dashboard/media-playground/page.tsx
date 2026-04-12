@@ -35,16 +35,17 @@ type MediaDesignEntry = {
 	componentsBySize?: Partial<Record<SizePresetKey, ComponentType<DesignCanvasProps>>>;
 };
 
-// ─── Wrappers JSON Render ─────────────────────────────────────────
-const CampeoesJsonFeed = ({ width, height }: DesignCanvasProps) => (
-	<CampeoesJsonRenderer width={width} height={height} sizeKey="feed" />
-);
-const CampeoesJsonReels = ({ width, height }: DesignCanvasProps) => (
-	<CampeoesJsonRenderer width={width} height={height} sizeKey="reels" />
-);
-const CampeoesJsonSquare = ({ width, height }: DesignCanvasProps) => (
-	<CampeoesJsonRenderer width={width} height={height} sizeKey="square" />
-);
+function createCampeoesJsonDesign(sizeKey: "feed" | "reels" | "square") {
+	return function CampeoesJsonDesignBySize({ width, height }: DesignCanvasProps) {
+		return <CampeoesJsonRenderer width={width} height={height} sizeKey={sizeKey} />;
+	};
+}
+
+const campeoesJsonComponentsBySize = {
+	feed: createCampeoesJsonDesign("feed"),
+	reels: createCampeoesJsonDesign("reels"),
+	square: createCampeoesJsonDesign("square"),
+} satisfies Partial<Record<SizePresetKey, ComponentType<DesignCanvasProps>>>;
 
 // ─── Design Registry ─────────────────────────────────────────────
 const DESIGNS: MediaDesignEntry[] = [
@@ -60,11 +61,7 @@ const DESIGNS: MediaDesignEntry[] = [
 	{
 		key: "campeoes-json",
 		label: "Campanha CAMPEÕES — JSON Render",
-		componentsBySize: {
-			feed: CampeoesJsonFeed,
-			reels: CampeoesJsonReels,
-			square: CampeoesJsonSquare,
-		},
+		componentsBySize: campeoesJsonComponentsBySize,
 	},
 	{
 		key: "noticia-boa",
