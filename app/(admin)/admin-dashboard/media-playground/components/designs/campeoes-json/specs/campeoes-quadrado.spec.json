@@ -1,0 +1,32 @@
+{
+  "root": "canvas",
+  "elements": {
+    "canvas": {
+      "type": "CampeoesCanvas",
+      "props": {},
+      "children": ["atmosphere", "quadrado-frame", "footer"]
+    },
+    "atmosphere": {
+      "type": "CampeoesAtmosphere",
+      "props": {}
+    },
+    "quadrado-frame": {
+      "type": "CampeoesQuadradoFrame",
+      "props": { "logoHeightBase": 52, "footerBottomBase": 30 },
+      "children": ["hero"]
+    },
+    "hero": {
+      "type": "CampeoesHeroRow",
+      "props": {
+        "heroLayout": "fill",
+        "heroBasisBase": 396,
+        "headlineSizeBase": 76,
+        "bodySizeBase": 26
+      }
+    },
+    "footer": {
+      "type": "CampeoesFooter",
+      "props": { "logoHeightBase": 52, "footerBottomBase": 30 }
+    }
+  }
+}

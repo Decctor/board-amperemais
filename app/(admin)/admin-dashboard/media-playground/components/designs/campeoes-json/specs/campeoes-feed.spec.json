@@ -1,0 +1,66 @@
+{
+  "root": "canvas",
+  "elements": {
+    "canvas": {
+      "type": "CampeoesCanvas",
+      "props": {},
+      "children": ["atmosphere", "main-column", "footer"]
+    },
+    "atmosphere": {
+      "type": "CampeoesAtmosphere",
+      "props": {}
+    },
+    "main-column": {
+      "type": "CampeoesMainColumn",
+      "props": {},
+      "children": ["hero", "cta", "club-pill", "metrics", "distribution", "delivery"]
+    },
+    "hero": {
+      "type": "CampeoesHeroRow",
+      "props": {
+        "heroLayout": "default",
+        "heroBasisBase": 332,
+        "headlineSizeBase": 60,
+        "bodySizeBase": 20
+      }
+    },
+    "cta": {
+      "type": "CampeoesCtaStrip",
+      "props": {
+        "flexDirection": "row",
+        "buttonFontMultiplier": 12,
+        "ctaLineSizeBase": 20
+      }
+    },
+    "club-pill": {
+      "type": "CampeoesClubPill",
+      "props": {}
+    },
+    "metrics": {
+      "type": "CampeoesMetricTrio",
+      "props": {}
+    },
+    "distribution": {
+      "type": "CampeoesDistributionImpactRow",
+      "props": {
+        "items": [
+          { "type": "Aceleração",  "count": 109, "percentage": 75.69, "revenue": "R$ 19.936,77", "color": "#EAB308" },
+          { "type": "Atrasada",    "count": 17,  "percentage": 11.81, "revenue": "R$ 4.087,13",  "color": "#EF4444" },
+          { "type": "Regular",     "count": 14,  "percentage": 9.72,  "revenue": "R$ 4.938,85",  "color": "#9CA3AF" },
+          { "type": "Reativação",  "count": 4,   "percentage": 2.78,  "revenue": "R$ 445,88",    "color": "#3B82F6" }
+        ],
+        "showTaglineBand": true,
+        "taglineFontMultiplier": 12,
+        "tagline": "Dados que viram relacionamento — e relacionamento que viram receita."
+      }
+    },
+    "delivery": {
+      "type": "CampeoesDeliveryKpis",
+      "props": { "valueFontMultiplier": 19 }
+    },
+    "footer": {
+      "type": "CampeoesFooter",
+      "props": { "logoHeightBase": 52, "footerBottomBase": 30 }
+    }
+  }
+}

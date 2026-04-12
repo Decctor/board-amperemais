@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import CampeoesFeedPost from "./components/designs/campeoes/campeoes-feed";
 import CampeoesQuadradoPost from "./components/designs/campeoes/campeoes-quadrado";
 import CampeoesReelsPost from "./components/designs/campeoes/campeoes-reels";
+import CampeoesJsonRenderer from "./components/designs/campeoes-json/campeoes-json-renderer";
 import NoticiaBoaFeedPost from "./components/designs/noticia-boa/noticia-boa-feed";
 import NoticiaBoaQuadradoPost from "./components/designs/noticia-boa/noticia-boa-quadrado";
 import NoticiaBoaReelsPost from "./components/designs/noticia-boa/noticia-boa-reels";
@@ -34,6 +35,17 @@ type MediaDesignEntry = {
 	componentsBySize?: Partial<Record<SizePresetKey, ComponentType<DesignCanvasProps>>>;
 };
 
+// ─── Wrappers JSON Render ─────────────────────────────────────────
+const CampeoesJsonFeed = ({ width, height }: DesignCanvasProps) => (
+	<CampeoesJsonRenderer width={width} height={height} sizeKey="feed" />
+);
+const CampeoesJsonReels = ({ width, height }: DesignCanvasProps) => (
+	<CampeoesJsonRenderer width={width} height={height} sizeKey="reels" />
+);
+const CampeoesJsonSquare = ({ width, height }: DesignCanvasProps) => (
+	<CampeoesJsonRenderer width={width} height={height} sizeKey="square" />
+);
+
 // ─── Design Registry ─────────────────────────────────────────────
 const DESIGNS: MediaDesignEntry[] = [
 	{
@@ -43,6 +55,15 @@ const DESIGNS: MediaDesignEntry[] = [
 			feed: CampeoesFeedPost,
 			reels: CampeoesReelsPost,
 			square: CampeoesQuadradoPost,
+		},
+	},
+	{
+		key: "campeoes-json",
+		label: "Campanha CAMPEÕES — JSON Render",
+		componentsBySize: {
+			feed: CampeoesJsonFeed,
+			reels: CampeoesJsonReels,
+			square: CampeoesJsonSquare,
 		},
 	},
 	{
