@@ -3,7 +3,7 @@ import { type ImmediateProcessingData, delay, processSingleInteractionImmediatel
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { type TCampaignEntity, type TInteractionEntity, campaigns, clients, interactions } from "@/services/drizzle/schema";
+import { type TCampaignEntity, type TInteractionEntity, clients, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, eq, inArray } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -240,9 +240,10 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 				console.log(`[ORG: ${organization.id}] [INFO] Processing ${immediateProcessingDataList.length} immediate interactions`);
 				const weeklyLimitCache = createCampaignWeeklyLimitCache();
 				for (const processingData of immediateProcessingDataList) {
-					processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
-						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
-					);
+					const result = await processSingleInteractionImmediately({ ...processingData, weeklyLimitCache });
+					if (!result.success) {
+						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, result.error);
+					}
 					await delay(100);
 				}
 			}

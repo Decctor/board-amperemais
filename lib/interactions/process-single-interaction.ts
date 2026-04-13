@@ -1,19 +1,16 @@
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import {
-	checkCampaignWeeklyInteractionLimit,
-	incrementCampaignWeeklyLimitUsageCache,
-	markInteractionAsWeeklyLimitFailed,
+	reserveCampaignWeeklyQuota,
 	type TCampaignWeeklyLimitCache,
 } from "@/lib/interactions/campaign-weekly-limits";
 import type { TInteractionContextMetadados, TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import { db } from "@/services/drizzle";
-import { type TClientEntity, type TWhatsappTemplate, chatMessages, chats, interactions, organizations } from "@/services/drizzle/schema";
+import { type TClientEntity, type TWhatsappTemplate, chatMessages, chats, interactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { formatToMoney } from "../formatting";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "../whatsapp/internal-gateway";
 import { formatPhoneForInternalGateway } from "../whatsapp/utils";
-import dayjs from "dayjs";
 
 export type ImmediateProcessingData = {
 	interactionId: string;
@@ -36,6 +33,11 @@ export type ImmediateProcessingData = {
 	whatsappSessionId?: string;
 	contextMetadados?: TInteractionContextMetadados;
 	weeklyLimitCache?: TCampaignWeeklyLimitCache;
+	testing?: {
+		overridePhoneNumber?: string;
+		disableWhatsappCloudApi?: boolean;
+		disableInternalGateway?: boolean;
+	};
 };
 
 export type ProcessSingleInteractionResult = {
@@ -82,7 +84,9 @@ export function buildContextVariablesMap(
  * 6. Error handling (marks message as "FALHOU", doesn't mark interaction as executed)
  */
 export async function processSingleInteractionImmediately(params: ImmediateProcessingData): Promise<ProcessSingleInteractionResult> {
-	const { interactionId, organizationId, client, campaign, whatsappToken, whatsappSessionId, weeklyLimitCache } = params;
+	const { interactionId, organizationId, client, campaign, whatsappToken, whatsappSessionId, weeklyLimitCache, testing } = params;
+	let weeklyQuotaReserved = false;
+	const effectivePhoneNumber = testing?.overridePhoneNumber ?? client.telefone;
 
 	try {
 		const interaction = await db.query.interactions.findFirst({
@@ -99,11 +103,12 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 		const previousInteraction = await db.query.interactions.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.clienteId, client.id), eq(fields.campanhaId, campaign.whatsappTemplate.id)),
 		});
+		const previousInteractionMetadados = (previousInteraction?.metadados ?? {}) as Record<string, unknown>;
 
 		console.log(`[IMMEDIATE_PROCESS] Processing interaction ${interactionId} for org ${organizationId}`);
 
 		// First, checking if client has valid phone number
-		if (!client.telefone) {
+		if (!effectivePhoneNumber) {
 			await db
 				.update(interactions)
 				.set({
@@ -112,35 +117,6 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 				})
 				.where(eq(interactions.id, interactionId));
 			return { success: false, error: "Cliente não tem telefone válido" };
-		}
-		if (interaction.tipo === "ENVIO-MENSAGEM" && interaction.campanhaId) {
-			const limitCheck = await checkCampaignWeeklyInteractionLimit({
-				organizationId,
-				campaignId: interaction.campanhaId,
-				cache: weeklyLimitCache,
-			});
-
-			if (!limitCheck.allowed && limitCheck.reason) {
-				await markInteractionAsWeeklyLimitFailed({
-					interactionId,
-					reason: limitCheck.reason,
-				});
-				console.warn("[WARN] [IMMEDIATE_PROCESS] Interação bloqueada por limite semanal.", {
-					interactionId,
-					organizationId,
-					campaignId: interaction.campanhaId,
-					reason: limitCheck.reason,
-					message: limitCheck.message,
-					organizationUsedThisWeek: limitCheck.organizationUsedThisWeek,
-					organizationWeeklyLimit: limitCheck.organizationWeeklyLimit,
-					campaignUsedThisWeek: limitCheck.campaignUsedThisWeek,
-					campaignWeeklyLimit: limitCheck.campaignWeeklyLimit,
-					campaignEffectiveWeeklyLimit: limitCheck.campaignEffectiveWeeklyLimit,
-				});
-				return { success: false, error: limitCheck.message ?? "Interação bloqueada por limite semanal." };
-			} else {
-				console.log("[IMMEDIATE_PROCESS] Interação permitida por limite semanal.")
-			}
 		}
 		// Check if hubAtendimentos access is enabled for this organization
 		const organization = await db.query.organizations.findFirst({
@@ -167,7 +143,7 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 		const whatsappTemplateVariablesValuesMap: Record<keyof TWhatsappTemplateVariables, string> = {
 			clientEmail: client.email ?? "",
 			clientName: client.nome,
-			clientPhoneNumber: client.telefone,
+			clientPhoneNumber: effectivePhoneNumber,
 			clientSegmentation: client.analiseRFMTitulo ?? "",
 			clientFavoriteProduct: clientFavoriteProduct ?? "",
 			clientFavoriteProductGroup: client.metadataGrupoProdutoMaisComprado ?? "",
@@ -182,10 +158,51 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 				components: campaign.whatsappTemplate.componentes,
 			},
 			variables: whatsappTemplateVariablesValuesMap,
-			toPhoneNumber: client.telefone,
+			toPhoneNumber: effectivePhoneNumber,
 		});
 
 		console.log(`[IMMEDIATE_PROCESS] Creating template message for interaction ${interactionId}`);
+
+		if (interaction.tipo === "ENVIO-MENSAGEM" && interaction.campanhaId) {
+			const reservationResult = await reserveCampaignWeeklyQuota({
+				interactionId,
+				organizationId,
+				campaignId: interaction.campanhaId,
+				cache: weeklyLimitCache,
+			});
+
+			if (reservationResult.status === "INTERACTION_NOT_FOUND") {
+				return { success: false, error: reservationResult.message ?? "Interação não encontrada para reservar quota semanal." };
+			}
+
+			if (reservationResult.status === "ALREADY_RESERVED") {
+				console.warn("[WARN] [IMMEDIATE_PROCESS] Interação já reservada por outro worker.", {
+					interactionId,
+					organizationId,
+					campaignId: interaction.campanhaId,
+				});
+				return { success: false, error: reservationResult.message ?? "Interação já foi reservada por outro worker." };
+			}
+
+			if (reservationResult.status === "LIMIT_REACHED" && reservationResult.reason) {
+				console.warn("[WARN] [IMMEDIATE_PROCESS] Interação bloqueada por limite semanal.", {
+					interactionId,
+					organizationId,
+					campaignId: interaction.campanhaId,
+					reason: reservationResult.reason,
+					message: reservationResult.message,
+					organizationUsedThisWeek: reservationResult.organizationUsedThisWeek,
+					organizationWeeklyLimit: reservationResult.organizationWeeklyLimit,
+					campaignUsedThisWeek: reservationResult.campaignUsedThisWeek,
+					campaignWeeklyLimit: reservationResult.campaignWeeklyLimit,
+					campaignEffectiveWeeklyLimit: reservationResult.campaignEffectiveWeeklyLimit,
+				});
+				return { success: false, error: reservationResult.message ?? "Interação bloqueada por limite semanal." };
+			}
+
+			console.log("[IMMEDIATE_PROCESS] Interação reservada por limite semanal.");
+			weeklyQuotaReserved = true;
+		}
 
 		// Only create chat and insert message if hubAtendimentos access is enabled
 		let insertedChatMessageId: string | null = null;
@@ -244,11 +261,18 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 			// Send WhatsApp message
 			let sentWhatsappTemplateResponse = null;
 			if (whatsappToken && whatsappConnectionPhone.whatsappTelefoneId) {
-				sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
-					fromPhoneNumberId: whatsappConnectionPhone.whatsappTelefoneId,
-					templatePayload: payload.data,
-					whatsappToken: whatsappToken,
-				});
+				if (testing?.disableWhatsappCloudApi) {
+					sentWhatsappTemplateResponse = {
+						whatsappMessageId: `test-whatsapp-message-${interactionId}`,
+					};
+					console.log("[IMMEDIATE_PROCESS] WhatsApp Cloud API send disabled in test mode.");
+				} else {
+					sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
+						fromPhoneNumberId: whatsappConnectionPhone.whatsappTelefoneId,
+						templatePayload: payload.data,
+						whatsappToken: whatsappToken,
+					});
+				}
 				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
 
 				// Update chat message with WhatsApp message ID (only if hub access enabled)
@@ -268,37 +292,40 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 					.set({
 						statusEnvio: "ENVIADO",
 						erroEnvio: null,
-						dataExecucao: new Date(),
 						metadados: {
-							...(previousInteraction?.metadados ?? {}),
+							...previousInteractionMetadados,
 							whatsappMessageId: sentWhatsappTemplateResponse.whatsappMessageId,
 							whatsappTemplateId: campaign.whatsappTemplate.id,
 						},
 					})
 					.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
-				if (interaction.campanhaId) {
-					const weekKey = dayjs().startOf("week").format("YYYY-[W]WW");
-					incrementCampaignWeeklyLimitUsageCache({
-						organizationId,
-						campaignId: interaction.campanhaId,
-						weekKey,
-						cache: weeklyLimitCache,
-					});
-				}
 
 				console.log(`[IMMEDIATE_PROCESS] Successfully processed interaction ${interactionId}`);
 			} else if (whatsappSessionId) {
 				const gatewayPayload = {
 					...payload.data,
-					to: formatPhoneForInternalGateway(client.telefone),
+					to: formatPhoneForInternalGateway(effectivePhoneNumber),
 				};
 				const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload, {
 					fallbackText: payload.content,
 				});
 				console.log("[IMMEDIATE_PROCESS] Template content", templateContent);
-				sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(client.telefone), templateContent, {
-					clientMessageId: interactionId,
-				});
+				if (testing?.disableInternalGateway) {
+					sentWhatsappTemplateResponse = {
+						success: true,
+						jobId: `test-gateway-job-${interactionId}`,
+					};
+					console.log("[IMMEDIATE_PROCESS] Internal gateway send disabled in test mode.");
+				} else {
+					sentWhatsappTemplateResponse = await sendMessage(
+						whatsappSessionId,
+						formatPhoneForInternalGateway(effectivePhoneNumber),
+						templateContent,
+						{
+							clientMessageId: interactionId,
+						},
+					);
+				}
 				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
 				if (!sentWhatsappTemplateResponse.success) {
 					throw new Error(sentWhatsappTemplateResponse.error || "Falha ao enfileirar mensagem no Gateway Interno");
@@ -320,9 +347,8 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 					.set({
 						statusEnvio: "PENDENTE",
 						erroEnvio: null,
-						dataExecucao: new Date(),
 						metadados: {
-							...(previousInteraction?.metadados ?? {}),
+							...previousInteractionMetadados,
 							clientMessageId: interactionId,
 							jobId: sentWhatsappTemplateResponse.jobId,
 							chatMessageId: insertedChatMessageId,
@@ -354,6 +380,7 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 				.set({
 					statusEnvio: "FALHOU",
 					erroEnvio: "Houve uma falha ao enviar a mensagem via WhatsApp.",
+					dataExecucao: null,
 				})
 				.where(eq(interactions.id, interactionId));
 
@@ -365,6 +392,16 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 		}
 	} catch (error) {
 		console.error(`[IMMEDIATE_PROCESS] Error processing interaction ${interactionId}:`, error);
+		if (weeklyQuotaReserved) {
+			await db
+				.update(interactions)
+				.set({
+					statusEnvio: "FALHOU",
+					erroEnvio: error instanceof Error ? error.message : "Unknown error",
+					dataExecucao: null,
+				})
+				.where(eq(interactions.id, interactionId));
+		}
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",

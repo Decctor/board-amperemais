@@ -16,6 +16,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
 		"knip": "knip",
+		"test:weekly-quota-recurrent": "tsx ./utils/scripts/test-recurrent-campaign-weekly-quota.ts",
 		"marketing-agent:run": "tsx ./scripts/run-marketing-agent.ts",
 		"marketing-agent:test": "tsx ./scripts/test-marketing-agent.ts"
 	},

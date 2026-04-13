@@ -1,9 +1,13 @@
-import { db } from "@/services/drizzle";
-import { interactions } from "@/services/drizzle/schema";
+import { type DBTransaction, db } from "@/services/drizzle";
+import { campaigns, interactions, organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear";
 import { and, count, eq, gte, inArray, isNotNull } from "drizzle-orm";
 
-const SUCCESSFUL_INTERACTION_STATUSES = ["ENVIADO", "ENTREGUE", "LIDO"] as const;
+dayjs.extend(weekOfYear);
+
+const QUOTA_CONSUMING_INTERACTION_STATUSES = ["PENDENTE", "ENVIADO", "ENTREGUE", "LIDO"] as const;
+type TWeeklyLimitExecutor = typeof db | DBTransaction;
 
 export type TCampaignWeeklyLimitFailureReason =
   | "ORG_LIMIT_REACHED"
@@ -21,6 +25,17 @@ export type TCampaignWeeklyLimitCheckResult = {
   campaignUsedThisWeek: number;
   campaignLimitExceedsOrganizationLimit: boolean;
   weekKey: string;
+};
+
+export type TCampaignWeeklyQuotaReservationStatus =
+  | "RESERVED"
+  | "LIMIT_REACHED"
+  | "ALREADY_RESERVED"
+  | "INTERACTION_NOT_FOUND";
+
+export type TCampaignWeeklyQuotaReservationResult = TCampaignWeeklyLimitCheckResult & {
+  status: TCampaignWeeklyQuotaReservationStatus;
+  reservedAt: Date | null;
 };
 
 export type TCampaignWeeklyLimitCache = {
@@ -69,11 +84,65 @@ function getEffectiveCampaignWeeklyLimit({
   return Math.min(campaignWeeklyLimit, organizationWeeklyLimit);
 }
 
+function getCurrentWeekWindow() {
+  const startOfWeekDate = dayjs().startOf("week").toDate();
+  const weekReference = dayjs(startOfWeekDate);
+  const weekKey = `${weekReference.year()}-W${String(weekReference.week()).padStart(2, "0")}`;
+
+  return {
+    startOfWeekDate,
+    weekKey,
+  };
+}
+
+function buildWeeklyLimitCheckResult({
+  allowed,
+  reason,
+  message,
+  organizationWeeklyLimit,
+  campaignWeeklyLimit,
+  campaignEffectiveWeeklyLimit,
+  organizationUsedThisWeek,
+  campaignUsedThisWeek,
+  campaignLimitExceedsOrganizationLimit,
+  weekKey,
+}: TCampaignWeeklyLimitCheckResult): TCampaignWeeklyLimitCheckResult {
+  return {
+    allowed,
+    reason,
+    message,
+    organizationWeeklyLimit,
+    campaignWeeklyLimit,
+    campaignEffectiveWeeklyLimit,
+    organizationUsedThisWeek,
+    campaignUsedThisWeek,
+    campaignLimitExceedsOrganizationLimit,
+    weekKey,
+  };
+}
+
+function buildEmptyWeeklyLimitCheckResult(weekKey: string): TCampaignWeeklyLimitCheckResult {
+  return buildWeeklyLimitCheckResult({
+    allowed: false,
+    reason: null,
+    message: null,
+    organizationWeeklyLimit: null,
+    campaignWeeklyLimit: null,
+    campaignEffectiveWeeklyLimit: null,
+    organizationUsedThisWeek: 0,
+    campaignUsedThisWeek: 0,
+    campaignLimitExceedsOrganizationLimit: false,
+    weekKey,
+  });
+}
+
 async function getWeeklyLimitContext({
+  executor = db,
   organizationId,
   campaignId,
   cache,
 }: {
+  executor?: TWeeklyLimitExecutor;
   organizationId: string;
   campaignId: string;
   cache?: TCampaignWeeklyLimitCache;
@@ -82,11 +151,11 @@ async function getWeeklyLimitContext({
   if (cached) return cached;
 
   const [organization, campaign] = await Promise.all([
-    db.query.organizations.findFirst({
+    executor.query.organizations.findFirst({
       where: (fields, { eq }) => eq(fields.id, organizationId),
       columns: { configuracao: true },
     }),
-    db.query.campaigns.findFirst({
+    executor.query.campaigns.findFirst({
       where: (fields, { and, eq }) =>
         and(eq(fields.id, campaignId), eq(fields.organizacaoId, organizationId)),
       columns: { limiteEnviosSemanais: true },
@@ -117,11 +186,13 @@ async function getWeeklyLimitContext({
 }
 
 async function getOrganizationUsedThisWeek({
+  executor = db,
   organizationId,
   weekKey,
   startOfWeekDate,
   cache,
 }: {
+  executor?: TWeeklyLimitExecutor;
   organizationId: string;
   weekKey: string;
   startOfWeekDate: Date;
@@ -131,7 +202,7 @@ async function getOrganizationUsedThisWeek({
   const cached = cache?.orgUsageByWeekKey.get(cacheKey);
   if (cached != null) return cached;
 
-  const [usage] = await db
+  const [usage] = await executor
     .select({ value: count(interactions.id) })
     .from(interactions)
     .where(
@@ -139,7 +210,7 @@ async function getOrganizationUsedThisWeek({
         eq(interactions.organizacaoId, organizationId),
         eq(interactions.tipo, "ENVIO-MENSAGEM"),
         isNotNull(interactions.campanhaId),
-        inArray(interactions.statusEnvio, [...SUCCESSFUL_INTERACTION_STATUSES]),
+        inArray(interactions.statusEnvio, [...QUOTA_CONSUMING_INTERACTION_STATUSES]),
         gte(interactions.dataExecucao, startOfWeekDate),
       ),
     );
@@ -150,12 +221,14 @@ async function getOrganizationUsedThisWeek({
 }
 
 async function getCampaignUsedThisWeek({
+  executor = db,
   organizationId,
   campaignId,
   weekKey,
   startOfWeekDate,
   cache,
 }: {
+  executor?: TWeeklyLimitExecutor;
   organizationId: string;
   campaignId: string;
   weekKey: string;
@@ -166,7 +239,7 @@ async function getCampaignUsedThisWeek({
   const cached = cache?.campaignUsageByWeekKey.get(cacheKey);
   if (cached != null) return cached;
 
-  const [usage] = await db
+  const [usage] = await executor
     .select({ value: count(interactions.id) })
     .from(interactions)
     .where(
@@ -174,7 +247,7 @@ async function getCampaignUsedThisWeek({
         eq(interactions.organizacaoId, organizationId),
         eq(interactions.campanhaId, campaignId),
         eq(interactions.tipo, "ENVIO-MENSAGEM"),
-        inArray(interactions.statusEnvio, [...SUCCESSFUL_INTERACTION_STATUSES]),
+        inArray(interactions.statusEnvio, [...QUOTA_CONSUMING_INTERACTION_STATUSES]),
         gte(interactions.dataExecucao, startOfWeekDate),
       ),
     );
@@ -185,20 +258,34 @@ async function getCampaignUsedThisWeek({
 }
 
 export async function checkCampaignWeeklyInteractionLimit({
+  executor = db,
   organizationId,
   campaignId,
   cache,
+  startOfWeekDate,
+  weekKey,
 }: {
+  executor?: TWeeklyLimitExecutor;
   organizationId: string;
   campaignId: string;
   cache?: TCampaignWeeklyLimitCache;
+  startOfWeekDate?: Date;
+  weekKey?: string;
 }): Promise<TCampaignWeeklyLimitCheckResult> {
-  const startOfWeekDate = dayjs().startOf("week").toDate();
-  const weekKey = dayjs(startOfWeekDate).format("YYYY-[W]WW");
+  const weekWindow = getCurrentWeekWindow();
+  const effectiveStartOfWeekDate = startOfWeekDate ?? weekWindow.startOfWeekDate;
+  const effectiveWeekKey = weekKey ?? weekWindow.weekKey;
   const [limitContext, organizationUsedThisWeek, campaignUsedThisWeek] = await Promise.all([
-    getWeeklyLimitContext({ organizationId, campaignId, cache }),
-    getOrganizationUsedThisWeek({ organizationId, weekKey, startOfWeekDate, cache }),
-    getCampaignUsedThisWeek({ organizationId, campaignId, weekKey, startOfWeekDate, cache }),
+    getWeeklyLimitContext({ executor, organizationId, campaignId, cache }),
+    getOrganizationUsedThisWeek({ executor, organizationId, weekKey: effectiveWeekKey, startOfWeekDate: effectiveStartOfWeekDate, cache }),
+    getCampaignUsedThisWeek({
+      executor,
+      organizationId,
+      campaignId,
+      weekKey: effectiveWeekKey,
+      startOfWeekDate: effectiveStartOfWeekDate,
+      cache,
+    }),
   ]);
 
   const {
@@ -209,7 +296,7 @@ export async function checkCampaignWeeklyInteractionLimit({
   } = limitContext;
 
   if (organizationWeeklyLimit != null && organizationUsedThisWeek >= organizationWeeklyLimit) {
-    return {
+    return buildWeeklyLimitCheckResult({
       allowed: false,
       reason: "ORG_LIMIT_REACHED",
       message: getCampaignWeeklyLimitFailureMessage("ORG_LIMIT_REACHED"),
@@ -219,8 +306,8 @@ export async function checkCampaignWeeklyInteractionLimit({
       organizationUsedThisWeek,
       campaignUsedThisWeek,
       campaignLimitExceedsOrganizationLimit,
-      weekKey,
-    };
+      weekKey: effectiveWeekKey,
+    });
   }
 
   if (campaignEffectiveWeeklyLimit != null && campaignUsedThisWeek >= campaignEffectiveWeeklyLimit) {
@@ -228,7 +315,7 @@ export async function checkCampaignWeeklyInteractionLimit({
       ? "CAMPAIGN_LIMIT_EXCEEDS_ORG_EFFECTIVE"
       : "CAMPAIGN_LIMIT_REACHED";
 
-    return {
+    return buildWeeklyLimitCheckResult({
       allowed: false,
       reason,
       message: getCampaignWeeklyLimitFailureMessage(reason),
@@ -238,11 +325,11 @@ export async function checkCampaignWeeklyInteractionLimit({
       organizationUsedThisWeek,
       campaignUsedThisWeek,
       campaignLimitExceedsOrganizationLimit,
-      weekKey,
-    };
+      weekKey: effectiveWeekKey,
+    });
   }
 
-  return {
+  return buildWeeklyLimitCheckResult({
     allowed: true,
     reason: null,
     message: null,
@@ -252,8 +339,123 @@ export async function checkCampaignWeeklyInteractionLimit({
     organizationUsedThisWeek,
     campaignUsedThisWeek,
     campaignLimitExceedsOrganizationLimit,
-    weekKey,
-  };
+    weekKey: effectiveWeekKey,
+  });
+}
+
+export async function reserveCampaignWeeklyQuota({
+  interactionId,
+  organizationId,
+  campaignId,
+  cache,
+}: {
+  interactionId: string;
+  organizationId: string;
+  campaignId: string;
+  cache?: TCampaignWeeklyLimitCache;
+}): Promise<TCampaignWeeklyQuotaReservationResult> {
+  const { startOfWeekDate, weekKey } = getCurrentWeekWindow();
+  const reservedAt = new Date();
+
+  const reservationResult = await db.transaction(async (tx) => {
+    const [interaction] = await tx
+      .select({
+        id: interactions.id,
+        dataExecucao: interactions.dataExecucao,
+      })
+      .from(interactions)
+      .where(
+        and(
+          eq(interactions.id, interactionId),
+          eq(interactions.organizacaoId, organizationId),
+          eq(interactions.campanhaId, campaignId),
+        ),
+      )
+      .for("update");
+
+    if (!interaction) {
+      return {
+        ...buildEmptyWeeklyLimitCheckResult(weekKey),
+        status: "INTERACTION_NOT_FOUND" as const,
+        reservedAt: null,
+        message: "Interação não encontrada para reservar quota semanal.",
+      };
+    }
+
+    if (interaction.dataExecucao != null) {
+      return {
+        ...buildEmptyWeeklyLimitCheckResult(weekKey),
+        status: "ALREADY_RESERVED" as const,
+        reservedAt: null,
+        message: "Interação já foi reservada ou executada anteriormente.",
+      };
+    }
+
+    await tx
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .for("update");
+    await tx
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(and(eq(campaigns.id, campaignId), eq(campaigns.organizacaoId, organizationId)))
+      .for("update");
+
+    const limitCheck = await checkCampaignWeeklyInteractionLimit({
+      executor: tx,
+      organizationId,
+      campaignId,
+      startOfWeekDate,
+      weekKey,
+    });
+
+    if (!limitCheck.allowed && limitCheck.reason) {
+      await tx
+        .update(interactions)
+        .set({
+          statusEnvio: "FALHOU",
+          erroEnvio: getCampaignWeeklyLimitFailureMessage(limitCheck.reason),
+        })
+        .where(eq(interactions.id, interactionId));
+
+      return {
+        ...limitCheck,
+        status: "LIMIT_REACHED" as const,
+        reservedAt: null,
+      };
+    }
+
+    await tx
+      .update(interactions)
+      .set({
+        statusEnvio: "PENDENTE",
+        erroEnvio: null,
+        dataExecucao: reservedAt,
+      })
+      .where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
+
+    return {
+      ...buildWeeklyLimitCheckResult({
+        ...limitCheck,
+        organizationUsedThisWeek: limitCheck.organizationUsedThisWeek + 1,
+        campaignUsedThisWeek: limitCheck.campaignUsedThisWeek + 1,
+      }),
+      status: "RESERVED" as const,
+      reservedAt,
+    };
+  });
+
+  if (reservationResult.status === "RESERVED") {
+    incrementCampaignWeeklyLimitUsageCache({
+      organizationId,
+      campaignId,
+      weekKey,
+      cache,
+    });
+  }
+
+  return reservationResult;
 }
 
 export function incrementCampaignWeeklyLimitUsageCache({

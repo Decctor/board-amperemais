@@ -1,10 +1,5 @@
 import { buildContextVariablesMap } from "@/lib/interactions/process-single-interaction";
-import {
-	checkCampaignWeeklyInteractionLimit,
-	createCampaignWeeklyLimitCache,
-	incrementCampaignWeeklyLimitUsageCache,
-	markInteractionAsWeeklyLimitFailed,
-} from "@/lib/interactions/campaign-weekly-limits";
+import { createCampaignWeeklyLimitCache, reserveCampaignWeeklyQuota } from "@/lib/interactions/campaign-weekly-limits";
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "@/lib/whatsapp/internal-gateway";
 import type { TInteractionContextMetadados, TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
@@ -12,11 +7,11 @@ import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import type { TInteractionsCronJobTimeBlocksEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { chatMessages, chats, interactions, organizations } from "@/services/drizzle/schema";
+import { chatMessages, chats, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { NextApiHandler } from "next";
 
 dayjs.extend(utc);
@@ -43,12 +38,10 @@ function getCurrentTimeBlock(currentTime = dayjs()): (typeof TIME_BLOCKS)[number
 
 	// Find the most recent time block that has passed
 	let closestBlock = TIME_BLOCKS[0]; // Default to "00:00"
-	let closestMinutes = timeBlocksInMinutes[0];
 
 	for (let i = 0; i < timeBlocksInMinutes.length; i++) {
 		if (timeBlocksInMinutes[i] <= currentTotalMinutes) {
 			closestBlock = TIME_BLOCKS[i];
-			closestMinutes = timeBlocksInMinutes[i];
 		} else {
 			break; // Since blocks are sorted, we can break early
 		}
@@ -148,36 +141,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					const campaign = campaigns.find((campaign) => campaign.id === interaction.campanhaId);
 					const interactionCampaign = interaction.campanha;
 					if (!campaign || !interactionCampaign) continue;
-					if (interaction.campanhaId) {
-						const limitCheck = await checkCampaignWeeklyInteractionLimit({
-							organizationId: organization.id,
-							campaignId: interaction.campanhaId,
-							cache: weeklyLimitCache,
-						});
-
-						if (!limitCheck.allowed && limitCheck.reason) {
-							await markInteractionAsWeeklyLimitFailed({
-								interactionId: interaction.id,
-								reason: limitCheck.reason,
-							});
-							console.warn(
-								`[ORG: ${organization.id}] [WARN] [PROCESS_INTERACTIONS] Interação bloqueada por limite semanal`,
-								{
-									interactionId: interaction.id,
-									campaignId: interaction.campanhaId,
-									reason: limitCheck.reason,
-									message: limitCheck.message,
-									organizationUsedThisWeek: limitCheck.organizationUsedThisWeek,
-									organizationWeeklyLimit: limitCheck.organizationWeeklyLimit,
-									campaignUsedThisWeek: limitCheck.campaignUsedThisWeek,
-									campaignWeeklyLimit: limitCheck.campaignWeeklyLimit,
-									campaignEffectiveWeeklyLimit: limitCheck.campaignEffectiveWeeklyLimit,
-								},
-							);
-							continue;
-						}
-					}
-
+					const interactionMetadata = (interaction.metadados ?? {}) as Record<string, unknown>;
 					// First, checking if client has valid phone number
 					if (!interaction.cliente.telefone) {
 						await db
@@ -227,55 +191,98 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 					});
 					console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] Creating template message:`, JSON.stringify(payload, null, 2));
 
-					// Only create chat and insert message if hubAtendimentos access is enabled
-					let insertedChatMessageId: string | null = null;
-					if (hasHubAccess) {
-						let chatId: string | null = null;
-						const existingChat = await db.query.chats.findFirst({
-							where: (fields, { and, eq }) =>
-								and(
-									eq(fields.organizacaoId, organization.id),
-									eq(fields.clienteId, interaction.clienteId),
-									eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhone.id),
-								),
+					let weeklyQuotaReserved = false;
+					if (interaction.campanhaId) {
+						const reservationResult = await reserveCampaignWeeklyQuota({
+							interactionId: interaction.id,
+							organizationId: organization.id,
+							campaignId: interaction.campanhaId,
+							cache: weeklyLimitCache,
 						});
-						if (existingChat) {
-							chatId = existingChat.id;
-						} else {
-							const [newChat] = await db
-								.insert(chats)
-								.values({
-									organizacaoId: organization.id,
-									clienteId: interaction.clienteId,
-									whatsappTelefoneId: whatsappConnectionPhone.whatsappTelefoneId,
-									whatsappConexaoTelefoneId: whatsappConnectionPhone.id,
-									ultimaMensagemData: new Date(),
-									ultimaMensagemConteudoTipo: "TEXTO",
-								})
-								.returning({ id: chats.id });
-							chatId = newChat.id;
+
+						if (reservationResult.status === "INTERACTION_NOT_FOUND") {
+							console.warn(`[ORG: ${organization.id}] [WARN] [PROCESS_INTERACTIONS] Interação não encontrada para reservar quota semanal`, {
+								interactionId: interaction.id,
+								campaignId: interaction.campanhaId,
+							});
+							continue;
 						}
-						// Inserting message in db
-						const insertedChatMessageResponse = await db
-							.insert(chatMessages)
-							.values({
-								organizacaoId: organization.id,
-								chatId: chatId,
-								autorTipo: "USUÁRIO",
-								autorUsuarioId: interactionCampaign.autorId,
-								conteudoTexto: payload.content,
-								conteudoMidiaTipo: "TEXTO",
-							})
-							.returning({ id: chatMessages.id });
 
-						insertedChatMessageId = insertedChatMessageResponse[0]?.id ?? null;
+						if (reservationResult.status === "ALREADY_RESERVED") {
+							console.warn(`[ORG: ${organization.id}] [WARN] [PROCESS_INTERACTIONS] Interação já reservada por outro worker`, {
+								interactionId: interaction.id,
+								campaignId: interaction.campanhaId,
+							});
+							continue;
+						}
 
-						if (!insertedChatMessageId) throw new Error("Failed to insert chat message");
-					} else {
-						console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] hubAtendimentos disabled, skipping chat message insertion`);
+						if (reservationResult.status === "LIMIT_REACHED" && reservationResult.reason) {
+							console.warn(`[ORG: ${organization.id}] [WARN] [PROCESS_INTERACTIONS] Interação bloqueada por limite semanal`, {
+								interactionId: interaction.id,
+								campaignId: interaction.campanhaId,
+								reason: reservationResult.reason,
+								message: reservationResult.message,
+								organizationUsedThisWeek: reservationResult.organizationUsedThisWeek,
+								organizationWeeklyLimit: reservationResult.organizationWeeklyLimit,
+								campaignUsedThisWeek: reservationResult.campaignUsedThisWeek,
+								campaignWeeklyLimit: reservationResult.campaignWeeklyLimit,
+								campaignEffectiveWeeklyLimit: reservationResult.campaignEffectiveWeeklyLimit,
+							});
+							continue;
+						}
+
+						weeklyQuotaReserved = reservationResult.status === "RESERVED";
 					}
 
 					try {
+						// Only create chat and insert message if hubAtendimentos access is enabled
+						let insertedChatMessageId: string | null = null;
+						if (hasHubAccess) {
+							let chatId: string | null = null;
+							const existingChat = await db.query.chats.findFirst({
+								where: (fields, { and, eq }) =>
+									and(
+										eq(fields.organizacaoId, organization.id),
+										eq(fields.clienteId, interaction.clienteId),
+										eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhone.id),
+									),
+							});
+							if (existingChat) {
+								chatId = existingChat.id;
+							} else {
+								const [newChat] = await db
+									.insert(chats)
+									.values({
+										organizacaoId: organization.id,
+										clienteId: interaction.clienteId,
+										whatsappTelefoneId: whatsappConnectionPhone.whatsappTelefoneId,
+										whatsappConexaoTelefoneId: whatsappConnectionPhone.id,
+										ultimaMensagemData: new Date(),
+										ultimaMensagemConteudoTipo: "TEXTO",
+									})
+									.returning({ id: chats.id });
+								chatId = newChat.id;
+							}
+							// Inserting message in db
+							const insertedChatMessageResponse = await db
+								.insert(chatMessages)
+								.values({
+									organizacaoId: organization.id,
+									chatId: chatId,
+									autorTipo: "USUÁRIO",
+									autorUsuarioId: interactionCampaign.autorId,
+									conteudoTexto: payload.content,
+									conteudoMidiaTipo: "TEXTO",
+								})
+								.returning({ id: chatMessages.id });
+
+							insertedChatMessageId = insertedChatMessageResponse[0]?.id ?? null;
+
+							if (!insertedChatMessageId) throw new Error("Failed to insert chat message");
+						} else {
+							console.log(`[ORG: ${organization.id}] [INFO] [PROCESS_INTERACTIONS] hubAtendimentos disabled, skipping chat message insertion`);
+						}
+
 						let whatsappMessageId: string | undefined;
 						let interactionStatusEnvio: "PENDENTE" | "ENVIADO" = "ENVIADO";
 						let interactionClientMessageId: string | undefined;
@@ -342,9 +349,8 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 							.set({
 								statusEnvio: interactionStatusEnvio,
 								erroEnvio: null,
-								dataExecucao: new Date(),
 								metadados: {
-									...(interaction.metadados ?? {}),
+									...interactionMetadata,
 									...(interactionClientMessageId != null && { clientMessageId: interactionClientMessageId }),
 									...(interactionJobId != null && { jobId: interactionJobId }),
 									...(insertedChatMessageId != null && { chatMessageId: insertedChatMessageId }),
@@ -353,35 +359,18 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 								},
 							})
 							.where(and(eq(interactions.id, interaction.id), eq(interactions.organizacaoId, organization.id)));
-						if (interaction.campanhaId && interactionStatusEnvio === "ENVIADO") {
-							const weekKey = dayjs().startOf("week").format("YYYY-[W]WW");
-							incrementCampaignWeeklyLimitUsageCache({
-								organizationId: organization.id,
-								campaignId: interaction.campanhaId,
-								weekKey,
-								cache: weeklyLimitCache,
-							});
-						}
 					} catch (error) {
 						console.error(
 							`[ORG: ${organization.id}] [ERROR] [PROCESS_INTERACTIONS] Failed to send WhatsApp message for interaction ${interaction.id}:`,
 							error,
 						);
 
-						// Mark message as failed (only if hub access enabled)
-						if (hasHubAccess && insertedChatMessageId) {
-							await db
-								.update(chatMessages)
-								.set({
-									whatsappMessageStatus: "FALHOU",
-								})
-								.where(eq(chatMessages.id, insertedChatMessageId));
-						}
 						await db
 							.update(interactions)
 							.set({
 								statusEnvio: "FALHOU",
 								erroEnvio: "Houve uma falha ao enviar a mensagem via WhatsApp.",
+								dataExecucao: weeklyQuotaReserved ? null : interaction.dataExecucao,
 							})
 							.where(eq(interactions.id, interaction.id));
 
