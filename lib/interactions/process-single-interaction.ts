@@ -1,8 +1,5 @@
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
-import {
-	reserveCampaignWeeklyQuota,
-	type TCampaignWeeklyLimitCache,
-} from "@/lib/interactions/campaign-weekly-limits";
+import { reserveCampaignWeeklyQuota, type TCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TInteractionContextMetadados, TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import { db } from "@/services/drizzle";
@@ -127,10 +124,10 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 
 		const clientFavoriteProduct = client.metadataProdutoMaisCompradoId
 			? (
-				await db.query.products.findFirst({
-					where: (fields, { eq }) => eq(fields.id, client.metadataProdutoMaisCompradoId as string),
-				})
-			)?.descricao
+					await db.query.products.findFirst({
+						where: (fields, { eq }) => eq(fields.id, client.metadataProdutoMaisCompradoId as string),
+					})
+				)?.descricao
 			: null;
 		const whatsappConnectionPhone = await db.query.whatsappConnectionPhones.findFirst({
 			where: (fields, { eq }) => eq(fields.id, campaign.whatsappConexaoTelefoneId),
@@ -291,6 +288,7 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 					.update(interactions)
 					.set({
 						statusEnvio: "ENVIADO",
+						dataExecucao: new Date(),
 						erroEnvio: null,
 						metadados: {
 							...previousInteractionMetadados,
@@ -317,14 +315,9 @@ export async function processSingleInteractionImmediately(params: ImmediateProce
 					};
 					console.log("[IMMEDIATE_PROCESS] Internal gateway send disabled in test mode.");
 				} else {
-					sentWhatsappTemplateResponse = await sendMessage(
-						whatsappSessionId,
-						formatPhoneForInternalGateway(effectivePhoneNumber),
-						templateContent,
-						{
-							clientMessageId: interactionId,
-						},
-					);
+					sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(effectivePhoneNumber), templateContent, {
+						clientMessageId: interactionId,
+					});
 				}
 				console.log("[IMMEDIATE_PROCESS] Sent WHATSAPP TEMPLATE RESPONSE", sentWhatsappTemplateResponse);
 				if (!sentWhatsappTemplateResponse.success) {

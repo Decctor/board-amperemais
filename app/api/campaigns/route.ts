@@ -405,6 +405,7 @@ async function getCampaigns({
     eq(interactions.organizacaoId, userOrgId),
     eq(interactions.tipo, "ENVIO-MENSAGEM"),
     inArray(interactions.campanhaId, campaignIds),
+    sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
   ];
   if (input.statsPeriodAfter)
     interactionsConditions.push(gte(interactions.dataInsercao, input.statsPeriodAfter));

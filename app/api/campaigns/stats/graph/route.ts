@@ -91,6 +91,7 @@ async function getGraphDataForPeriod({
 				and(
 					eq(interactions.organizacaoId, userOrgId),
 					eq(interactions.tipo, "ENVIO-MENSAGEM"),
+					sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
 					gte(interactions.dataInsercao, period.after),
 					lte(interactions.dataInsercao, period.before),
 					...(campanhaId ? [eq(interactions.campanhaId, campanhaId)] : []),

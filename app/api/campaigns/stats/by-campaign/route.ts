@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, avg, count, countDistinct, eq, gte, lte, sum } from "drizzle-orm";
+import { and, avg, count, countDistinct, eq, gte, lte, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -56,6 +56,7 @@ async function getCampaignStats({
 		eq(interactions.campanhaId, input.campaignId),
 		eq(interactions.organizacaoId, userOrgId),
 		eq(interactions.tipo, "ENVIO-MENSAGEM"),
+		sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
 		gte(interactions.dataInsercao, input.startDate),
 		lte(interactions.dataInsercao, input.endDate),
 	];

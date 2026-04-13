@@ -72,6 +72,7 @@ async function fetchRankingForPeriod({
 
 	// Build interaction conditions
 	const interactionConditions = [eq(interactions.organizacaoId, userOrgId), eq(interactions.tipo, "ENVIO-MENSAGEM")];
+	interactionConditions.push(sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`);
 	if (startDate) interactionConditions.push(gte(interactions.dataInsercao, startDate));
 	if (endDate) interactionConditions.push(lte(interactions.dataInsercao, endDate));
 
