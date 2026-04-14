@@ -14,7 +14,7 @@ import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/dri
 import LogoHorizontalRecompraCRM from "@/utils/images/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.png";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Building2, Coins, Gift, Loader2, ShoppingCart, Trophy, Wallet } from "lucide-react";
+import { ArrowRight, Building2, ChevronDown, ChevronUp, Coins, Gift, Loader2, ShoppingCart, Trophy, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -442,6 +442,7 @@ function NewClientForm({ orgId, terminology, phone, closeMenu, callbacks, mode }
 		nome: "",
 		cpfCnpj: null,
 	});
+	const [showOptionalFields, setShowOptionalFields] = useState(false);
 	const [playSuccess] = useSound("/sounds/success.mp3");
 	const { mutate: handleCreateClientMutation, isPending: isCreatingClient } = useMutation({
 		mutationKey: ["create-client"],
@@ -488,18 +489,26 @@ function NewClientForm({ orgId, terminology, phone, closeMenu, callbacks, mode }
 					}, 300);
 				}}
 			/>
-			<TextInput
-				label="CPF/CNPJ"
-				inputType="tel"
-				placeholder="Digite o CPF/CNPJ do cliente"
-				value={infoHolder.cpfCnpj ?? ""}
-				handleChange={(value) => setInfoHolder((prev) => ({ ...prev, cpfCnpj: formatToCPForCNPJ(value) }))}
-				onFocus={(e) => {
-					setTimeout(() => {
-						e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-					}, 300);
-				}}
-			/>
+			<div className="w-full flex items-center justify-center">
+				<Button variant="ghost" size="fit" className="w-full" onClick={() => setShowOptionalFields((prev) => !prev)}>
+					{showOptionalFields ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+					MOSTRAR OUTROS DADOS
+				</Button>
+			</div>
+			{showOptionalFields ? (
+				<TextInput
+					label="CPF/CNPJ"
+					inputType="tel"
+					placeholder="Digite o CPF/CNPJ do cliente"
+					value={infoHolder.cpfCnpj ?? ""}
+					handleChange={(value) => setInfoHolder((prev) => ({ ...prev, cpfCnpj: formatToCPForCNPJ(value) }))}
+					onFocus={(e) => {
+						setTimeout(() => {
+							e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+						}, 300);
+					}}
+				/>
+			) : null}
 			<LoadingButton type="submit" loading={isCreatingClient}>
 				CRIAR CADASTRO
 			</LoadingButton>
