@@ -2,7 +2,6 @@
 import SettingsIntegration from "@/components/Settings/SettingsIntegration";
 import SettingsOrg from "@/components/Settings/SettingsOrg";
 import SettingsProfile from "@/components/Settings/SettingsProfile";
-import SettingsSalesPromoCampaigns from "@/components/Settings/SettingsSalesPromoCampaigns";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
 import SettingsWhatsAppConnection from "@/components/Settings/SettingsWhatsAppConnection";
@@ -11,7 +10,7 @@ import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { copyToClipboard } from "@/lib/utils";
-import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, Trophy, User, UsersRound } from "lucide-react";
+import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, User, UsersRound } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 type SettingsPageProps = {
 	user: TAuthUserSession["user"];
@@ -20,7 +19,7 @@ type SettingsPageProps = {
 export default function SettingsPage({ user, membership }: SettingsPageProps) {
 	const [view, setView] = useQueryState(
 		"view",
-		parseAsStringEnum(["profile", "users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns", "organization", "integration"]),
+		parseAsStringEnum(["profile", "users", "meta-oauth", "whatsapp-templates", "segments", "organization", "integration"]),
 	);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -102,15 +101,6 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
 						SEGMENTAÇÕES
 					</Button>
-					<Button
-						variant={view === "sales-promo-campaigns" ? "secondary" : "ghost"}
-						className="flex items-center gap-2 whitespace-nowrap"
-						size="sm"
-						onClick={() => setView("sales-promo-campaigns")}
-					>
-						<Trophy className="w-4 h-4 min-w-4 min-h-4" />
-						CAMPANHAS DE PROMOÇÃO DE VENDAS
-					</Button>
 				</div>
 			</div>
 			{!view || view === "profile" ? <SettingsProfile sessionUser={user} /> : null}
@@ -124,7 +114,6 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 			{view === "meta-oauth" ? <SettingsWhatsAppConnection user={user} /> : null}
 			{view === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} membership={membership} /> : null}
 			{view === "segments" ? <SettingsSegments user={user} /> : null}
-			{view === "sales-promo-campaigns" ? <SettingsSalesPromoCampaigns user={user} /> : null}
 			{view === "organization" ? <SettingsOrg user={user} membership={membership} /> : null}
 			{view === "integration" ? <SettingsIntegration user={user} membership={membership} /> : null}
 		</div>
