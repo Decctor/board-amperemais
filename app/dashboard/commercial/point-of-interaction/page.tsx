@@ -9,5 +9,7 @@ export default async function PointOfInteraction() {
 	const membership = sessionUser.membership;
 	if (!membership) redirect("/onboarding");
 
-	return <PointOfInteractionPage user={sessionUser.user} organization={membership.organizacao} />;
+	return (
+		<PointOfInteractionPage user={sessionUser.user} organization={membership.organizacao} usuarioVendedorId={membership.usuarioVendedorId} />
+	);
 }

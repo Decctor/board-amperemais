@@ -104,7 +104,7 @@ const MenuContentSwitcher = ({
 				<motion.div
 					key="main-content"
 					{...contentAnimation}
-					className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-0"
+					className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 py-2 lg:px-0"
 				>
 					{children}
 				</motion.div>

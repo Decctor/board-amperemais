@@ -1,41 +1,38 @@
 "use client";
 
 import type { TGetPoiTransactionRequestsOutput } from "@/app/api/point-of-interaction/transaction-requests/management/route";
+import { ApproveTransaction } from "@/components/Modals/TransactionRequests/ApproveTransaction";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { usePoiTransactionRequestsRealtime } from "@/lib/hooks/use-supabase-realtime";
-import { approvePoiTransactionRequest, rejectPoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
+import { rejectPoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
 import { usePoiTransactionRequests } from "@/lib/queries/poi-transaction-requests";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgeDollarSign, BadgePercent, CheckCheck, GitPullRequestArrow, Phone, RefreshCcw, ShieldCheck, ShieldX, Smartphone, X } from "lucide-react";
-import { BsCalendar, BsCalendarPlus } from "react-icons/bs";
+import { BadgeDollarSign, BadgePercent, CheckCheck, GitPullRequestArrow, Phone, RefreshCcw, X } from "lucide-react";
+import { BsCalendarPlus } from "react-icons/bs";
+import { useState } from "react";
 import { toast } from "sonner";
 
 type PointOfInteractionTransactionRequestsQueueProps = {
 	orgId: string;
+	usuarioVendedorId: string | null;
 };
 
-export function PointOfInteractionTransactionRequestsQueue({ orgId }: PointOfInteractionTransactionRequestsQueueProps) {
+type ApprovalTarget = {
+	requestId: string;
+	clientDisplayName: string;
+};
+
+export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVendedorId }: PointOfInteractionTransactionRequestsQueueProps) {
 	const queryClient = useQueryClient();
 	const { data: requests = [], isLoading, queryKey } = usePoiTransactionRequests();
+	const [approvalTarget, setApprovalTarget] = useState<ApprovalTarget | null>(null);
 
 	usePoiTransactionRequestsRealtime({
 		orgId,
 		queryKey,
-	});
-
-	const { mutate: approveRequest, isPending: isApproving } = useMutation({
-		mutationFn: approvePoiTransactionRequest,
-		onSuccess: () => {
-			toast.success("Solicitação aprovada com sucesso.");
-			queryClient.invalidateQueries({ queryKey });
-			queryClient.invalidateQueries({ queryKey: ["sales"] });
-		},
-		onError: (error) => {
-			toast.error(getErrorMessage(error));
-		},
 	});
 
 	const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
@@ -48,6 +45,8 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId }: PointOfInt
 			toast.error(getErrorMessage(error));
 		},
 	});
+
+	const hasLinkedSeller = !!usuarioVendedorId;
 
 	return (
 		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs md:h-full md:min-h-0">
@@ -73,13 +72,33 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId }: PointOfInt
 						<PoiTransactionRequestCard
 							key={request.id}
 							request={request}
-							onApprove={() => approveRequest(request.id)}
+							onApprove={() =>
+								setApprovalTarget({
+									requestId: request.id,
+									clientDisplayName: request.cliente?.nome ?? "Cliente não identificado",
+								})
+							}
 							onReject={() => rejectRequest(request.id)}
-							disabled={isApproving || isRejecting}
+							disabled={isRejecting}
 						/>
 					))}
 				</div>
 			)}
+
+			{approvalTarget ? (
+				<ApproveTransaction
+					requestId={approvalTarget.requestId}
+					clientDisplayName={approvalTarget.clientDisplayName}
+					hasLinkedSeller={hasLinkedSeller}
+					closeModal={() => setApprovalTarget(null)}
+					callbacks={{
+						onSuccess: () => {
+							queryClient.invalidateQueries({ queryKey });
+							queryClient.invalidateQueries({ queryKey: ["sales"] });
+						},
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }
