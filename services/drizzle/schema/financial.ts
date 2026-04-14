@@ -286,10 +286,10 @@ export const fiscalDocuments = newTable(
 		pdfStoragePath: text("pdf_storage_path"),
 		mensagens: text("mensagens").array().default([]),
 		snapshotOrigemVenda: text("snapshot_origem_venda"),
-		payloadProvedor: text("payload_provedor"),
-		retornoProvedor: text("retorno_provedor"),
+		provedorPayload: text("provedor_payload"),
+		provedorRetorno: text("provedor_retorno"),
 		tentativasEnvio: integer("tentativas_envio").notNull().default(0),
-		ultimaSincronizacaoEm: timestamp("ultima_sincronizacao_em"),
+		dataUltimaSincronizacao: timestamp("data_ultima_sincronizacao"),
 		dataAutorizacao: timestamp("data_autorizacao"),
 		dataCancelamento: timestamp("data_cancelamento"),
 		// Document chaining (cancellation/return references)

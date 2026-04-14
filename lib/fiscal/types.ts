@@ -5,7 +5,13 @@ import type {
 	TFiscalDocumentTypeEnum,
 } from "@/schemas/enums";
 import type { TOrganizationFiscalConfig } from "@/schemas/organizations";
-import type { TOrganizationEntity, TFiscalDocument, TFiscalOperationProfileEntity, TFiscalSeriesEntity, TProductFiscalProfileEntity } from "@/services/drizzle/schema";
+import type {
+	TOrganizationEntity,
+	TFiscalDocument,
+	TFiscalOperationProfileEntity,
+	TFiscalSeriesEntity,
+	TProductFiscalProfileEntity,
+} from "@/services/drizzle/schema";
 import type { TClientEntity } from "@/services/drizzle/schema/clients";
 import type { TSaleEntity, TSaleItemEntity } from "@/services/drizzle/schema/sales";
 
@@ -101,8 +107,8 @@ export type TProviderDocumentDetails = {
 	dataAutorizacao?: Date | null;
 	dataCancelamento?: Date | null;
 	mensagens?: unknown[];
-	payloadProvedor?: Record<string, unknown> | null;
-	retornoProvedor?: Record<string, unknown> | null;
+	provedorPayload?: Record<string, unknown> | null;
+	provedorRetorno?: Record<string, unknown> | null;
 };
 
 export interface IFiscalProvider {

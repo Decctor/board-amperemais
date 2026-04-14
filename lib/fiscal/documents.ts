@@ -8,7 +8,15 @@ import { ManualFiscalProvider } from "./providers/manual";
 import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
 import { consumeFiscalSeriesNumber, findActiveFiscalSeries, findDefaultOperationProfileForType, loadFiscalOrganization } from "./settings";
 import { downloadStoredFiscalAsset, getFiscalAssetContentType, storeFiscalAsset, type TFiscalAssetType } from "./storage";
-import type { IFiscalProvider, TCancelarDocumentoInput, TEmitirDocumentoInput, TProviderDocumentDetails, TSaleForFiscal, TFiscalSaleContext, TSyncDocumentoInput } from "./types";
+import type {
+	IFiscalProvider,
+	TCancelarDocumentoInput,
+	TEmitirDocumentoInput,
+	TProviderDocumentDetails,
+	TSaleForFiscal,
+	TFiscalSaleContext,
+	TSyncDocumentoInput,
+} from "./types";
 
 function resolveFiscalProvider(fiscalProvedor: "MANUAL" | "NUVEM_FISCAL" | null | undefined): IFiscalProvider {
 	return fiscalProvedor === "NUVEM_FISCAL" ? new NuvemFiscalProvider() : new ManualFiscalProvider();
@@ -35,7 +43,10 @@ export async function listFiscalDocuments({ organizacaoId, page = 1, search }: {
 	const offset = (page - 1) * PAGE_SIZE;
 	const searchLike = search?.trim() ? `%${search.trim()}%` : null;
 	const whereClause = searchLike
-		? and(eq(fiscalDocuments.organizacaoId, organizacaoId), sql`(${fiscalDocuments.referencia} ilike ${searchLike} or ${fiscalDocuments.chaveAcesso} ilike ${searchLike})`)
+		? and(
+				eq(fiscalDocuments.organizacaoId, organizacaoId),
+				sql`(${fiscalDocuments.referencia} ilike ${searchLike} or ${fiscalDocuments.chaveAcesso} ilike ${searchLike})`,
+			)
 		: eq(fiscalDocuments.organizacaoId, organizacaoId);
 
 	const [documents, [{ count }]] = await Promise.all([
@@ -48,7 +59,10 @@ export async function listFiscalDocuments({ organizacaoId, page = 1, search }: {
 			offset,
 			limit: PAGE_SIZE,
 		}),
-		db.select({ count: sql<number>`count(*)::int` }).from(fiscalDocuments).where(whereClause),
+		db
+			.select({ count: sql<number>`count(*)::int` })
+			.from(fiscalDocuments)
+			.where(whereClause),
 	]);
 
 	return {
@@ -113,12 +127,12 @@ async function applyProviderDocumentDetails(documentoId: string, details: TProvi
 		serie: details.serie ?? null,
 		protocolo: details.protocolo ?? null,
 		mensagens: (details.mensagens as string[] | undefined) ?? [],
-		payloadProvedor: serializeJson(details.payloadProvedor),
-		retornoProvedor: serializeJson(details.retornoProvedor),
+		provedorPayload: serializeJson(details.provedorPayload),
+		provedorRetorno: serializeJson(details.provedorRetorno),
 		dataEmissao: details.dataEmissao ?? null,
 		dataAutorizacao: details.dataAutorizacao ?? null,
 		dataCancelamento: details.dataCancelamento ?? null,
-		ultimaSincronizacaoEm: new Date(),
+		dataUltimaSincronizacao: new Date(),
 	});
 }
 
@@ -168,7 +182,11 @@ async function loadProductFiscalProfilesForSale(venda: TSaleForFiscal) {
 	const produtoIds = [...new Set(venda.itens.map((item) => item.produtoId))];
 	return db.query.productFiscalProfiles.findMany({
 		where: (fields, operators) =>
-			operators.and(operators.eq(fields.organizacaoId, venda.organizacaoId ?? ""), operators.inArray(fields.produtoId, produtoIds), operators.isNull(fields.produtoVarianteId)),
+			operators.and(
+				operators.eq(fields.organizacaoId, venda.organizacaoId ?? ""),
+				operators.inArray(fields.produtoId, produtoIds),
+				operators.isNull(fields.produtoVarianteId),
+			),
 	});
 }
 
@@ -245,8 +263,12 @@ async function persistAuthorizedAssets(documento: typeof fiscalDocuments.$inferS
 	if (!organizacao) return null;
 	const provider = resolveFiscalProvider(organizacao.fiscalProvedor);
 	const [xmlBuffer, pdfBuffer] = await Promise.all([provider.baixarXml(documento, organizacao), provider.baixarPdf(documento, organizacao)]);
-	const xmlStoragePath = xmlBuffer ? await storeFiscalAsset({ documentoId: documento.id, tipo: documento.tipo, asset: "xml", buffer: xmlBuffer }) : null;
-	const pdfStoragePath = pdfBuffer ? await storeFiscalAsset({ documentoId: documento.id, tipo: documento.tipo, asset: "pdf", buffer: pdfBuffer }) : null;
+	const xmlStoragePath = xmlBuffer
+		? await storeFiscalAsset({ documentoId: documento.id, tipo: documento.tipo, asset: "xml", buffer: xmlBuffer })
+		: null;
+	const pdfStoragePath = pdfBuffer
+		? await storeFiscalAsset({ documentoId: documento.id, tipo: documento.tipo, asset: "pdf", buffer: pdfBuffer })
+		: null;
 	return patchFiscalDocument(documento.id, {
 		xmlStoragePath,
 		pdfStoragePath,
@@ -308,7 +330,7 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 		documentoFiscalId: documento.id,
 		tipo: providerDetails.statusInterno === "AUTORIZADO" ? "AUTORIZADO" : providerDetails.statusInterno === "REJEITADO" ? "REJEITADO" : "ERRO",
 		descricao: `Documento retornou do provedor com status ${providerDetails.statusInterno}.`,
-		payload: providerDetails.retornoProvedor,
+		payload: providerDetails.provedorRetorno,
 		autorId: input.autorId ?? null,
 	});
 
@@ -344,7 +366,7 @@ export async function syncFiscalDocument(input: TSyncDocumentoInput) {
 		documentoFiscalId: documento.id,
 		tipo: "SINCRONIZADO",
 		descricao: "Documento fiscal sincronizado manualmente.",
-		payload: providerDetails.retornoProvedor,
+		payload: providerDetails.provedorRetorno,
 		autorId: input.autorId ?? null,
 	});
 
@@ -381,7 +403,7 @@ export async function cancelFiscalDocument(input: TCancelarDocumentoInput) {
 		documentoFiscalId: documento.id,
 		tipo: providerDetails.statusInterno === "CANCELADO" ? "CANCELADO" : "ERRO",
 		descricao: providerDetails.statusInterno === "CANCELADO" ? "Documento cancelado com sucesso." : "Falha ao cancelar documento.",
-		payload: providerDetails.retornoProvedor,
+		payload: providerDetails.provedorRetorno,
 		autorId: input.autorId ?? null,
 	});
 

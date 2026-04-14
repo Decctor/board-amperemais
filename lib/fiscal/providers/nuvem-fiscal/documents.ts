@@ -56,7 +56,7 @@ function mapDfeResponse(response: TNuvemFiscalDfeResponse): TProviderDocumentDet
 		dataEmissao: response.data_emissao ? new Date(response.data_emissao) : null,
 		dataAutorizacao: response.autorizacao?.data_recebimento ? new Date(response.autorizacao.data_recebimento) : null,
 		mensagens: response.mensagens ?? [],
-		retornoProvedor: response as unknown as Record<string, unknown>,
+		provedorRetorno: response as unknown as Record<string, unknown>,
 	};
 }
 
@@ -67,7 +67,7 @@ export async function emitNuvemFiscalDocument(context: TFiscalSaleContext, docum
 	const { data } = await client.post<TNuvemFiscalDfeResponse>(path, payload);
 	return {
 		...mapDfeResponse(data),
-		payloadProvedor: payload as Record<string, unknown>,
+		provedorPayload: payload as Record<string, unknown>,
 	};
 }
 
@@ -91,7 +91,8 @@ export async function cancelNuvemFiscalDocument(
 	organizacao: TFiscalOrganization,
 ): Promise<TProviderDocumentDetails> {
 	const client = getClient(organizacao);
-	const path = documento.tipo === "NFCE" ? `/nfce/${documento.provedorDocumentoId}/cancelamento` : `/nfe/${documento.provedorDocumentoId}/cancelamento`;
+	const path =
+		documento.tipo === "NFCE" ? `/nfce/${documento.provedorDocumentoId}/cancelamento` : `/nfe/${documento.provedorDocumentoId}/cancelamento`;
 	const { data } = await client.post<TNuvemFiscalCancelResponse>(path, { justificativa: input.motivo });
 	return {
 		id: documento.provedorDocumentoId ?? documento.id,
@@ -104,7 +105,7 @@ export async function cancelNuvemFiscalDocument(
 		protocolo: data.numero_protocolo ?? null,
 		dataCancelamento: data.data_recebimento ? new Date(data.data_recebimento) : null,
 		mensagens: data.motivo_status ? [data.motivo_status] : [],
-		retornoProvedor: data as unknown as Record<string, unknown>,
+		provedorRetorno: data as unknown as Record<string, unknown>,
 	};
 }
 

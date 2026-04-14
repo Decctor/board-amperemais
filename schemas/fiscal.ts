@@ -100,20 +100,22 @@ export const OrganizationFiscalConfigSchema = z.object({
 	inscricaoMunicipal: z.string({ invalid_type_error: "Tipo nao valido para a inscricao municipal." }).optional().nullable(),
 	cnae: z.string({ invalid_type_error: "Tipo nao valido para o CNAE fiscal." }).optional().nullable(),
 	endereco: FiscalAddressSchema,
-	nuvemFiscal: z.object({
-		api: NuvemFiscalApiConfigSchema.default({ baseUrl: "https://api.nuvemfiscal.com.br" }),
-		certificado: FiscalCertificateMetadataSchema.default({}),
-		nfce: z.object({
-			idCsc: z.number({ invalid_type_error: "Tipo nao valido para o ID CSC da NFC-e." }).int().optional().nullable(),
-			csc: z.string({ invalid_type_error: "Tipo nao valido para o CSC da NFC-e." }).optional().nullable(),
+	nuvemFiscal: z
+		.object({
+			api: NuvemFiscalApiConfigSchema.default({ baseUrl: "https://api.nuvemfiscal.com.br" }),
+			certificado: FiscalCertificateMetadataSchema.default({}),
+			nfce: z.object({
+				idCsc: z.number({ invalid_type_error: "Tipo nao valido para o ID CSC da NFC-e." }).int().optional().nullable(),
+				csc: z.string({ invalid_type_error: "Tipo nao valido para o CSC da NFC-e." }).optional().nullable(),
+			}),
+			nfe: z.object({}).default({}),
+		})
+		.default({
+			api: { baseUrl: "https://api.nuvemfiscal.com.br" },
+			certificado: {},
+			nfce: {},
+			nfe: {},
 		}),
-		nfe: z.object({}).default({}),
-	}).default({
-		api: { baseUrl: "https://api.nuvemfiscal.com.br" },
-		certificado: {},
-		nfce: {},
-		nfe: {},
-	}),
 	operacaoPadraoPorTipo: z
 		.object({
 			NFCE: z.string({ invalid_type_error: "Tipo nao valido para a operacao padrao da NFC-e." }).optional().nullable(),
@@ -232,12 +234,12 @@ export const FiscalDocumentSchema = z.object({
 	protocolo: z.string({ invalid_type_error: "Tipo nao valido para o protocolo do documento." }).optional().nullable(),
 	mensagens: z.array(z.unknown(), { invalid_type_error: "Tipo nao valido para as mensagens fiscais." }).default([]),
 	snapshotOrigemVenda: z.record(z.any()).optional().nullable(),
-	payloadProvedor: z.record(z.any()).optional().nullable(),
-	retornoProvedor: z.record(z.any()).optional().nullable(),
+	provedorPayload: z.record(z.any()).optional().nullable(),
+	provedorRetorno: z.record(z.any()).optional().nullable(),
 	xmlStoragePath: z.string({ invalid_type_error: "Tipo nao valido para o path do XML." }).optional().nullable(),
 	pdfStoragePath: z.string({ invalid_type_error: "Tipo nao valido para o path do PDF." }).optional().nullable(),
 	tentativasEnvio: z.number({ invalid_type_error: "Tipo nao valido para o numero de tentativas de envio." }).default(0),
-	ultimaSincronizacaoEm: z
+	dataUltimaSincronizacao: z
 		.string({ invalid_type_error: "Tipo nao valido para a ultima sincronizacao." })
 		.datetime({ message: "Tipo nao valido para a ultima sincronizacao." })
 		.optional()
