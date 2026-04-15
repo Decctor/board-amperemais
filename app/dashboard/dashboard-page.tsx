@@ -77,7 +77,7 @@ export function DashboardPage({ user, userOrg, membership }: DashboardPageProps)
 				queryParams={generalQueryParams}
 				updateQueryParams={updateGeneralQueryParams}
 			/>
-			<OverallStatsBlock generalQueryParams={generalQueryParams} user={user} userOrg={userOrg} />
+			<OverallStatsBlock generalQueryParams={generalQueryParams} user={user} userMembership={membership} userOrg={userOrg} />
 			<SalesGraphBlock generalQueryParams={generalQueryParams} user={user} />
 			<GroupedStatsBlock generalQueryParams={generalQueryParams} user={user} userOrg={userOrg} />
 			{filterMenuIsOpen ? (

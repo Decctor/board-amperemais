@@ -300,6 +300,10 @@ export const OrganizationMemberPermissionsSchema = z.object({
 			required_error: "Permissão de visualização de resultados não informada.",
 			invalid_type_error: "Tipo não válido para a permissão de visualização de resultados.",
 		}),
+		visualizarSensiveis: z.boolean({
+			required_error: "Permissão de visualização de dados sensíveis não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização de dados sensíveis.",
+		}),
 		// Goals
 		criarMetas: z.boolean({
 			required_error: "Permissão de criação de metas não informada.",

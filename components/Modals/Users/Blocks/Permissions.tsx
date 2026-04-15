@@ -73,6 +73,12 @@ function ResultsPermissions({ userId, permissionsHolder, updateUserPermissions }
 					checked={permissionsHolder.resultados.visualizar}
 					handleChange={(value) => updateUserPermissions({ resultados: { ...permissionsHolder.resultados, visualizar: value } })}
 				/>
+				<CheckboxInput
+					labelTrue="APTO A VISUALIZAR DADOS SENSÍVEIS"
+					labelFalse="APTO A VISUALIZAR DADOS SENSÍVEIS"
+					checked={permissionsHolder.resultados.visualizarSensiveis}
+					handleChange={(value) => updateUserPermissions({ resultados: { ...permissionsHolder.resultados, visualizarSensiveis: value } })}
+				/>
 			</div>
 		</div>
 	);

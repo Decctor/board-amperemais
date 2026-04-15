@@ -15,11 +15,12 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { StatEmptyState } from "@/components/SalesStats/StatEmptyState";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { isValidNumber } from "@/lib/validation";
-import { BadgeDollarSign, Calendar, CirclePlus, Download, Flame } from "lucide-react";
+import { BadgeDollarSign, Calendar, CirclePlus, Download, Flame, Radio, Truck, UserRound, Users } from "lucide-react";
 import { VariableSizeList } from "react-window";
 import { Pie, PieChart } from "recharts";
 import { toast } from "sonner";
@@ -328,7 +329,6 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"] }) {
 	const [type, setType] = useState<"qtde" | "total">("total");
 
-	console.log("ResultsBySellerGraph data", data);
 	const dataSorted = useMemo(() => [...data].sort((a, b) => (type === "total" ? b.total - a.total : b.qtde - a.qtde)), [data, type]);
 
 	const maxValue = useMemo(() => {
@@ -393,71 +393,78 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 			</div>
 
 			<ScrollArea className="h-[450px] w-full pr-4">
-				<div className="flex flex-col gap-4 py-2">
-					{dataSorted.map((item, index) => {
-						const value = type === "total" ? item.total : item.qtde;
-						const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
-						console.log("VENDEDOR: ", item.vendedor);
+				{dataSorted.length === 0 ? (
+					<StatEmptyState
+						className="min-h-[420px]"
+						icon={UserRound}
+						title="Nenhum vendedor no ranking"
+						description="Não há vendas por vendedor no período e filtros selecionados. Ajuste os filtros ou escolha outro intervalo para ver o ranking."
+					/>
+				) : (
+					<div className="flex flex-col gap-4 py-2">
+						{dataSorted.map((item, index) => {
+							const value = type === "total" ? item.total : item.qtde;
+							const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+							return (
+								<HoverCard key={item.vendedor.id}>
+									<HoverCardTrigger asChild>
+										<div key={item.vendedor.id} className="flex items-center gap-4 w-full group">
+											<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
+												<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
 
-						return (
-							<HoverCard key={item.vendedor.id}>
-								<HoverCardTrigger asChild>
-									<div key={item.vendedor.id} className="flex items-center gap-4 w-full group">
-										<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
-											<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
-
-											<div className="flex items-center gap-2 cursor-pointer">
-												<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-primary transition-colors">
-													<AvatarImage src={item.vendedor.avatarUrl || undefined} alt={item.vendedor.nome} />
-													<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
-												</Avatar>
-												<div className="flex flex-col">
-													<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.vendedor.nome}>
-														{item.vendedor.nome}
-													</span>
-													<span className="text-[0.6rem] text-muted-foreground">ID: {item.vendedor.identificador}</span>
+												<div className="flex items-center gap-2 cursor-pointer">
+													<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-primary transition-colors">
+														<AvatarImage src={item.vendedor.avatarUrl || undefined} alt={item.vendedor.nome} />
+														<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
+													</Avatar>
+													<div className="flex flex-col">
+														<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.vendedor.nome || "NÃO DEFINIDO"}>
+															{item.vendedor.nome || "NÃO DEFINIDO"}
+														</span>
+														<span className="text-[0.6rem] text-muted-foreground">ID: {item.vendedor.identificador || "N/A"}</span>
+													</div>
 												</div>
 											</div>
-										</div>
 
-										<div className="flex-1 flex flex-col justify-center h-full">
-											<Progress value={percentage} className="h-2 w-full" />
-										</div>
+											<div className="flex-1 flex flex-col justify-center h-full">
+												<Progress value={percentage} className="h-2 w-full" />
+											</div>
 
-										<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
-									</div>
-								</HoverCardTrigger>
-								<HoverCardContent className="flex flex-col w-80">
-									<div className="w-full flex items-center gap-2">
-										<Avatar className="h-12 w-12 min-h-12 min-w-12">
-											<AvatarImage src={item.vendedor.avatarUrl || undefined} />
-											<AvatarFallback>{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
-										</Avatar>
-										<h2 className="text-sm font-semibold">{item.vendedor.nome}</h2>
-									</div>
-									<div className="w-full flex flex-col gap-1">
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
-											<p className="text-xs font-medium">{item.vendedor.identificador}</p>
+											<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
-											<p className="text-xs font-medium">{item.qtde}</p>
+									</HoverCardTrigger>
+									<HoverCardContent className="flex flex-col w-80">
+										<div className="w-full flex items-center gap-2">
+											<Avatar className="h-12 w-12 min-h-12 min-w-12">
+												<AvatarImage src={item.vendedor.avatarUrl || undefined} />
+												<AvatarFallback>{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
+											</Avatar>
+											<h2 className="text-sm font-semibold">{item.vendedor.nome}</h2>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
-											<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
+										<div className="w-full flex flex-col gap-1">
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
+												<p className="text-xs font-medium">{item.vendedor.identificador}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
+												<p className="text-xs font-medium">{item.qtde}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
+												<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
+												<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
+											</div>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
-											<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
-										</div>
-									</div>
-								</HoverCardContent>
-							</HoverCard>
-						);
-					})}
-				</div>
+									</HoverCardContent>
+								</HoverCard>
+							);
+						})}
+					</div>
+				)}
 			</ScrollArea>
 		</div>
 	);
@@ -531,73 +538,82 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 			</div>
 
 			<ScrollArea className="h-[450px] w-full pr-4">
-				<div className="flex flex-col gap-4 py-2">
-					{dataSorted.map((item, index) => {
-						const value = type === "total" ? item.total : item.qtde;
-						const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+				{dataSorted.length === 0 ? (
+					<StatEmptyState
+						className="min-h-[420px]"
+						icon={Users}
+						title="Nenhum parceiro no ranking"
+						description="Não há vendas por parceiro no período e filtros selecionados. Ajuste os filtros ou escolha outro intervalo para ver o ranking."
+					/>
+				) : (
+					<div className="flex flex-col gap-4 py-2">
+						{dataSorted.map((item, index) => {
+							const value = type === "total" ? item.total : item.qtde;
+							const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
 
-						return (
-							<HoverCard key={item.parceiro.id}>
-								<HoverCardTrigger asChild>
-									<div className="flex items-center gap-4 w-full hover:bg-primary/10 rounded-lg transition-all px-2 py-">
-										<div className="flex items-center gap-3 w-fit min-w-fit lg:w-[250px] lg:min-w-[250px]">
-											<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
-											<div className="flex items-center gap-2 cursor-pointer">
-												<Avatar className="h-9 w-9 border-2 border-transparent transition-colors">
-													<AvatarImage src={item.parceiro.avatarUrl || undefined} alt={item.parceiro.nome} />
-													<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
-												</Avatar>
-												<div className="flex flex-col">
-													<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.parceiro.nome}>
-														{item.parceiro.nome}
-													</span>
-													<span className="text-[0.6rem] text-muted-foreground">ID: {item.parceiro.identificador}</span>
+							return (
+								<HoverCard key={item.parceiro.id}>
+									<HoverCardTrigger asChild>
+										<div className="flex items-center gap-4 w-full hover:bg-primary/10 rounded-lg transition-all px-2 py-">
+											<div className="flex items-center gap-3 w-fit min-w-fit lg:w-[250px] lg:min-w-[250px]">
+												<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
+												<div className="flex items-center gap-2 cursor-pointer">
+													<Avatar className="h-9 w-9 border-2 border-transparent transition-colors">
+														<AvatarImage src={item.parceiro.avatarUrl || undefined} alt={item.parceiro.nome} />
+														<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
+													</Avatar>
+													<div className="flex flex-col">
+														<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.parceiro.nome}>
+															{item.parceiro.nome}
+														</span>
+														<span className="text-[0.6rem] text-muted-foreground">ID: {item.parceiro.identificador}</span>
+													</div>
 												</div>
 											</div>
-										</div>
 
-										<div className="hidden lg:flex flex-1 flex-col justify-center h-full">
-											<Progress value={percentage} className="h-2 w-full" />
-										</div>
+											<div className="hidden lg:flex flex-1 flex-col justify-center h-full">
+												<Progress value={percentage} className="h-2 w-full" />
+											</div>
 
-										<div className="w-fit lg:w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
-									</div>
-								</HoverCardTrigger>
-								<HoverCardContent className="flex flex-col w-80">
-									<div className="w-full flex items-center gap-2">
-										<Avatar className="h-12 w-12 min-h-12 min-w-12">
-											<AvatarImage src={item.parceiro.avatarUrl || undefined} />
-											<AvatarFallback>{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
-										</Avatar>
-										<h2 className="text-sm font-semibold">{item.parceiro.nome}</h2>
-									</div>
-									<div className="w-full flex flex-col gap-1">
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
-											<p className="text-xs font-medium">{item.parceiro.identificador}</p>
+											<div className="w-fit lg:w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">CPF/CNPJ</p>
-											<p className="text-xs font-medium">{item.parceiro.cpfCnpj}</p>
+									</HoverCardTrigger>
+									<HoverCardContent className="flex flex-col w-80">
+										<div className="w-full flex items-center gap-2">
+											<Avatar className="h-12 w-12 min-h-12 min-w-12">
+												<AvatarImage src={item.parceiro.avatarUrl || undefined} />
+												<AvatarFallback>{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
+											</Avatar>
+											<h2 className="text-sm font-semibold">{item.parceiro.nome}</h2>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
-											<p className="text-xs font-medium">{item.qtde}</p>
+										<div className="w-full flex flex-col gap-1">
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
+												<p className="text-xs font-medium">{item.parceiro.identificador}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">CPF/CNPJ</p>
+												<p className="text-xs font-medium">{item.parceiro.cpfCnpj}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
+												<p className="text-xs font-medium">{item.qtde}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
+												<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
+												<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
+											</div>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
-											<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
-										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
-											<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
-										</div>
-									</div>
-								</HoverCardContent>
-							</HoverCard>
-						);
-					})}
-				</div>
+									</HoverCardContent>
+								</HoverCard>
+							);
+						})}
+					</div>
+				)}
 			</ScrollArea>
 		</div>
 	);
@@ -1191,25 +1207,34 @@ function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] 
 				</div>
 			</div>
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
-				<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
-					<PieChart>
-						<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-						<Pie
-							data={graphData}
-							dataKey={type}
-							nameKey="titulo"
-							label={(x) => {
-								return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
-							}}
-							innerRadius={60}
-							strokeWidth={2}
-						/>
-						<ChartLegend
-							content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
-							className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
-						/>
-					</PieChart>
-				</ChartContainer>
+				{data.length === 0 ? (
+					<StatEmptyState
+						className="min-h-[260px] w-full flex-1"
+						icon={Radio}
+						title="Nenhum canal no período"
+						description="Não há vendas por canal no período e filtros selecionados. Ajuste os filtros ou escolha outro intervalo para ver a participação."
+					/>
+				) : (
+					<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
+						<PieChart>
+							<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+							<Pie
+								data={graphData}
+								dataKey={type}
+								nameKey="titulo"
+								label={(x) => {
+									return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
+								}}
+								innerRadius={60}
+								strokeWidth={2}
+							/>
+							<ChartLegend
+								content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
+								className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
+							/>
+						</PieChart>
+					</ChartContainer>
+				)}
 			</div>
 		</div>
 	);
@@ -1281,25 +1306,34 @@ function ResultsByFulfillmentMethodGraph({ data }: { data: TGroupedSalesStats["p
 				</div>
 			</div>
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
-				<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
-					<PieChart>
-						<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-						<Pie
-							data={graphData}
-							dataKey={type}
-							nameKey="titulo"
-							label={(x) => {
-								return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
-							}}
-							innerRadius={60}
-							strokeWidth={2}
-						/>
-						<ChartLegend
-							content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
-							className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
-						/>
-					</PieChart>
-				</ChartContainer>
+				{data.length === 0 ? (
+					<StatEmptyState
+						className="min-h-[260px] w-full flex-1"
+						icon={Truck}
+						title="Nenhuma modalidade no período"
+						description="Não há vendas por modalidade de entrega no período e filtros selecionados. Ajuste os filtros ou escolha outro intervalo para ver a participação."
+					/>
+				) : (
+					<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
+						<PieChart>
+							<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+							<Pie
+								data={graphData}
+								dataKey={type}
+								nameKey="titulo"
+								label={(x) => {
+									return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
+								}}
+								innerRadius={60}
+								strokeWidth={2}
+							/>
+							<ChartLegend
+								content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
+								className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
+							/>
+						</PieChart>
+					</ChartContainer>
+				)}
 			</div>
 		</div>
 	);

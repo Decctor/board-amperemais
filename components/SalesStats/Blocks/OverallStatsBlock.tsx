@@ -16,10 +16,12 @@ import { useDebounce } from "use-debounce";
 
 type OverallStatsBlockProps = {
 	user: TAuthUserSession["user"];
+	userMembership: NonNullable<TAuthUserSession["membership"]>;
 	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 };
-function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBlockProps) {
+function OverallStatsBlock({ user, userMembership, userOrg, generalQueryParams }: OverallStatsBlockProps) {
+	const isUserAllowedToSeeSensitiveData = userMembership.permissoes.resultados.visualizarSensiveis;
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
 	const { getPrimaryGradientStyle } = useOrgColors();
 
@@ -51,7 +53,7 @@ function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBl
 			{userOrg?.assinaturaPlano === "ESSENCIAL" ? (
 				<OverallStatsBlockStarter overallStats={overallStats} />
 			) : (
-				<OverallStatsBlockPlus overallStats={overallStats} />
+				<OverallStatsBlockPlus overallStats={overallStats} isUserAllowedToSeeSensitiveData={isUserAllowedToSeeSensitiveData} />
 			)}
 		</div>
 	);
@@ -177,8 +179,9 @@ function OverallStatsBlockStarter({ overallStats }: OverallStatsBlockStarterProp
 
 type OverallStatsBlockPlusProps = {
 	overallStats: TOverallSalesStats | undefined;
+	isUserAllowedToSeeSensitiveData: boolean;
 };
-function OverallStatsBlockPlus({ overallStats }: OverallStatsBlockPlusProps) {
+function OverallStatsBlockPlus({ overallStats, isUserAllowedToSeeSensitiveData }: OverallStatsBlockPlusProps) {
 	return (
 		<>
 			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
@@ -189,39 +192,43 @@ function OverallStatsBlockPlus({ overallStats }: OverallStatsBlockPlusProps) {
 					previous={
 						overallStats?.qtdeVendas.anterior ? { value: overallStats?.qtdeVendas.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined
 					}
-					className="w-full lg:w-1/4"
+					className={isUserAllowedToSeeSensitiveData ? "w-full lg:w-1/4" : "w-full lg:w-1/2"}
 				/>
 				<StatUnitCard
 					title="Faturamento"
 					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: overallStats?.faturamento.atual || 0, format: (n) => formatToMoney(n) }}
 					previous={overallStats?.faturamento.anterior ? { value: overallStats.faturamento.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
-					className="w-full lg:w-1/4"
+					className={isUserAllowedToSeeSensitiveData ? "w-full lg:w-1/4" : "w-full lg:w-1/2"}
 				/>
-				<StatUnitCard
-					title="Margem Bruta"
-					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: overallStats?.margemBruta.atual || 0, format: (n) => formatToMoney(n) }}
-					previous={overallStats?.margemBruta.anterior ? { value: overallStats.margemBruta.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
-					className="w-full lg:w-1/4"
-				/>
-				<StatUnitCard
-					title="Margem"
-					icon={<Percent className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: (100 * (overallStats?.margemBruta.atual || 0)) / (overallStats?.faturamento.atual || 0),
-						format: (n) => formatDecimalPlaces(n),
-					}}
-					previous={
-						overallStats?.margemBruta.anterior && overallStats?.faturamento.anterior
-							? {
-									value: (100 * (overallStats.margemBruta.anterior || 0)) / (overallStats.faturamento.anterior || 0),
-									format: (n) => formatDecimalPlaces(n),
-								}
-							: undefined
-					}
-					className="w-full lg:w-1/4"
-				/>
+				{isUserAllowedToSeeSensitiveData ? (
+					<>
+						<StatUnitCard
+							title="Margem Bruta"
+							icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
+							current={{ value: overallStats?.margemBruta.atual || 0, format: (n) => formatToMoney(n) }}
+							previous={overallStats?.margemBruta.anterior ? { value: overallStats.margemBruta.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
+							className="w-full lg:w-1/4"
+						/>
+						<StatUnitCard
+							title="Margem"
+							icon={<Percent className="w-4 h-4 min-w-4 min-h-4" />}
+							current={{
+								value: (100 * (overallStats?.margemBruta.atual || 0)) / (overallStats?.faturamento.atual || 0),
+								format: (n) => formatDecimalPlaces(n),
+							}}
+							previous={
+								overallStats?.margemBruta.anterior && overallStats?.faturamento.anterior
+									? {
+											value: (100 * (overallStats.margemBruta.anterior || 0)) / (overallStats.faturamento.anterior || 0),
+											format: (n) => formatDecimalPlaces(n),
+										}
+									: undefined
+							}
+							className="w-full lg:w-1/4"
+						/>
+					</>
+				) : null}
 			</div>
 			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
 				<StatUnitCard
