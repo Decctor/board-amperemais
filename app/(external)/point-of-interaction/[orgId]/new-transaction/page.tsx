@@ -19,7 +19,7 @@ export default async function NewSalePage({
 	// clientId is now required - redirect to hub if missing
 	if (!clientId) {
 		const modeParam = interfaceMode === "mobile" ? "?mode=mobile" : "";
-		redirect(`/point-of-interaction-v2/${orgId}${modeParam}`);
+		redirect(`/point-of-interaction/${orgId}${modeParam}`);
 	}
 
 	const org = await db.query.organizations.findFirst({
@@ -47,7 +47,7 @@ export default async function NewSalePage({
 	});
 	if (!clientRecord) {
 		const modeParam = interfaceMode === "mobile" ? "?mode=mobile" : "";
-		redirect(`/point-of-interaction-v2/${orgId}${modeParam}`);
+		redirect(`/point-of-interaction/${orgId}${modeParam}`);
 	}
 
 	const prizes = await db.query.cashbackProgramPrizes.findMany({

@@ -79,7 +79,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 	const handleAdvance = useCallback(() => {
 		if (!client) return;
 		const modeParam = isMobileMode ? "&mode=mobile" : "";
-		router.push(`/point-of-interaction-v2/${org.id}/new-transaction?clientId=${client.id}${modeParam}`);
+		router.push(`/point-of-interaction/${org.id}/new-transaction?clientId=${client.id}${modeParam}`);
 	}, [client, isMobileMode, org.id, router]);
 
 	const { countdown, countdownSeconds, isAdvancing, wasCancelled, cancel, resetCancellation } = useAutoAdvanceTimer({
@@ -109,7 +109,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 			playSuccess();
 			toast.success(data.message);
 			const modeParam = isMobileMode ? "&mode=mobile" : "";
-			router.push(`/point-of-interaction-v2/${org.id}/new-transaction?clientId=${data.data.insertedClientId}${modeParam}`);
+			router.push(`/point-of-interaction/${org.id}/new-transaction?clientId=${data.data.insertedClientId}${modeParam}`);
 		},
 		onError: (error) => {
 			toast.error(getErrorMessage(error));
