@@ -262,7 +262,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	};
 
 	const handleGoToHub = () => {
-		router.push(`/point-of-interaction-v2/${org.id}${isMobileMode ? "?mode=mobile" : ""}`);
+		router.push(`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`);
 	};
 
 	const handleReset = () => {
@@ -286,7 +286,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						asChild
 						className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2 short:px-1.5 short:py-0.5"
 					>
-						<Link href={`/point-of-interaction-v2/${org.id}${isMobileMode ? "?mode=mobile" : ""}`} className="flex items-center gap-1">
+						<Link href={`/point-of-interaction/${org.id}${isMobileMode ? "?mode=mobile" : ""}`} className="flex items-center gap-1">
 							<ArrowLeft className="w-5 h-5 short:w-3.5 short:h-3.5" />
 							<span className="short:text-xs">VOLTAR</span>
 						</Link>
