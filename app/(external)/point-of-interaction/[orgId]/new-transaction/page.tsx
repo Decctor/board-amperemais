@@ -7,7 +7,10 @@ import NewSaleContent from "./new-transaction-page";
 export default async function NewSalePage({
 	params,
 	searchParams,
-}: { params: Promise<{ orgId: string }>; searchParams: Promise<{ clientId?: string; filledOperatorPassword?: string; mode?: string }> }) {
+}: {
+	params: Promise<{ orgId: string }>;
+	searchParams: Promise<{ clientId?: string; filledOperatorPassword?: string; mode?: string }>;
+}) {
 	const { orgId } = await params;
 	const { clientId, filledOperatorPassword, mode } = await searchParams;
 	const interfaceMode = mode === "mobile" ? "mobile" : "kiosk";
@@ -75,8 +78,7 @@ export default async function NewSalePage({
 	});
 
 	const normalizedPrizes = prizes.flatMap((prize) => {
-		const valorVenda = prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? null;
-		if (valorVenda === null || valorVenda === undefined) return [];
+		const valorVenda = prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? 0;
 		return [{ ...prize, valorVenda }];
 	});
 	const cashbackProgramConfig = await db.query.cashbackPrograms.findFirst({
