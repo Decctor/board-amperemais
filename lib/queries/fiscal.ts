@@ -1,4 +1,4 @@
-import type { TGetFiscalDocumentsOutput } from "@/app/api/fiscal/documents/route";
+import type { TGetFiscalDocumentsInput, TGetFiscalDocumentsOutput } from "@/app/api/fiscal/documents/route";
 import type { TGetFiscalOperationProfilesOutput } from "@/app/api/fiscal/operation-profiles/route";
 import type { TGetFiscalSeriesOutput } from "@/app/api/fiscal/series/route";
 import type { TGetFiscalSettingsOutput } from "@/app/api/fiscal/settings/route";
@@ -23,38 +23,50 @@ export function useFiscalSettings() {
 	};
 }
 
-async function fetchFiscalDocuments({ page, search, documentId }: { page?: number; search?: string; documentId?: string }) {
+async function fetchFiscalDocuments({ page, search }: Omit<TGetFiscalDocumentsInput, "documentId">) {
 	const searchParams = new URLSearchParams();
 	if (page) searchParams.set("page", page.toString());
 	if (search) searchParams.set("search", search);
-	if (documentId) searchParams.set("documentId", documentId);
 	const { data } = await axios.get<TGetFiscalDocumentsOutput>(`/api/fiscal/documents?${searchParams.toString()}`);
-	return data.data;
+	const result = data.data.default;
+	if (!result) throw new Error("Oops, houve um erro ao buscar os documentos fiscais.");
+	return result;
+}
+async function fetchFiscalDocumentById({ documentId }: { documentId: string }) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("documentId", documentId);
+	const { data } = await axios.get<TGetFiscalDocumentsOutput>(`/api/fiscal/documents?${searchParams.toString()}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("Oops, houve um erro ao buscar o documento fiscal.");
+	return result;
 }
 
 export function useFiscalDocuments() {
-	const [filters, setFilters] = useState({ page: 1, search: "" });
+	const [filters, setFilters] = useState<Exclude<TGetFiscalDocumentsInput, "documentId">>({ page: 1, search: "" });
+	function updateFilters(next: Partial<Exclude<TGetFiscalDocumentsInput, "documentId">>) {
+		setFilters((prev) => ({ ...prev, ...next }));
+	}
+
 	const debounced = useDebounceMemo({ search: filters.search }, 500);
 	const finalFilters = { ...filters, ...debounced };
 	const queryKey = ["fiscal-documents", finalFilters];
 	return {
 		...useQuery({
 			queryKey,
-			queryFn: () => fetchFiscalDocuments(finalFilters),
+			queryFn: () => fetchFiscalDocuments({ ...finalFilters }),
 		}),
 		queryKey,
 		filters,
-		updateFilters: (next: Partial<typeof filters>) => setFilters((prev) => ({ ...prev, ...next })),
+		updateFilters,
 	};
 }
 
-export function useFiscalDocumentById(documentId: string | null) {
+export function useFiscalDocumentById(documentId: string) {
 	const queryKey = ["fiscal-document-by-id", documentId];
 	return {
 		...useQuery({
 			queryKey,
-			queryFn: () => fetchFiscalDocuments({ documentId: documentId ?? undefined }),
-			enabled: !!documentId,
+			queryFn: () => fetchFiscalDocumentById({ documentId: documentId }),
 		}),
 		queryKey,
 	};
