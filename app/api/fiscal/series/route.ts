@@ -41,7 +41,10 @@ const UpsertFiscalSeriesInputSchema = z.object({
 export type TUpsertFiscalSeriesInput = z.infer<typeof UpsertFiscalSeriesInputSchema>;
 
 async function upsertFiscalSeriesRoute(request: NextRequest) {
-	const { orgId } = await requireOrgSession();
+	const { session, orgId } = await requireOrgSession();
+	const userHasFiscalConfigurePermission = session.membership?.permissoes.fiscal.configurar;
+	if (!userHasFiscalConfigurePermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar séries fiscais.");
+
 	const payload = await request.json();
 	const input = UpsertFiscalSeriesInputSchema.parse(payload);
 	const result = await upsertFiscalSeries({

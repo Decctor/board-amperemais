@@ -8,11 +8,11 @@ import z from "zod";
 
 async function requireOrgSession() {
 	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("VocÃª nÃ£o estÃ¡ autenticado.");
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const orgId = session.membership?.organizacao.id;
-	if (!orgId) throw new createHttpError.Unauthorized("VocÃª precisa estar vinculado a uma organizaÃ§Ã£o.");
-	if (!session.user.admin && !session.membership?.permissoes.empresa.editar) {
-		throw new createHttpError.Forbidden("Acesso restrito aos responsÃ¡veis pela organizaÃ§Ã£o.");
+	if (!orgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	if (!session.user.admin && !session.membership?.permissoes.fiscal.configurar) {
+		throw new createHttpError.Forbidden("Acesso restrito aos responsáveis pela organização.");
 	}
 	return { session, orgId };
 }
@@ -39,7 +39,8 @@ const UpdateFiscalSettingsInputSchema = z.object({
 export type TUpdateFiscalSettingsInput = z.infer<typeof UpdateFiscalSettingsInputSchema>;
 
 async function updateFiscalSettings({ input }: { input: TUpdateFiscalSettingsInput }) {
-	const { orgId } = await requireOrgSession();
+	const { session, orgId } = await requireOrgSession();
+
 	const updated = await updateFiscalSettingsData({
 		organizacaoId: orgId,
 		fiscalProvedor: input.fiscalProvedor,

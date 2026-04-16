@@ -15,7 +15,11 @@ async function requireOrgSession() {
 }
 
 async function getFiscalOperationProfiles() {
-	const { orgId } = await requireOrgSession();
+	const { session, orgId } = await requireOrgSession();
+	const userHasFiscalConfigurePermission = session.membership?.permissoes.fiscal.configurar;
+	if (!userHasFiscalConfigurePermission)
+		throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar perfis de operação fiscal.");
+
 	return {
 		data: {
 			default: await listFiscalOperationProfiles(orgId),

@@ -20,6 +20,9 @@ export type TCancelFiscalDocumentInput = z.infer<typeof CancelFiscalDocumentInpu
 async function cancelFiscalDocumentRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	const userHasFiscalCancelPermission = session.membership?.permissoes.fiscal.cancelar;
+	if (!userHasFiscalCancelPermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para cancelar documentos fiscais.");
+
 	const payload = await request.json();
 	const input = CancelFiscalDocumentInputSchema.parse(payload);
 	const result = await cancelFiscalDocument({ documentoId: input.documentId, motivo: input.motivo, autorId: session.user.id });

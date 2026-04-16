@@ -22,7 +22,11 @@ const GetFiscalDocumentsInputSchema = z.object({
 export type TGetFiscalDocumentsInput = z.infer<typeof GetFiscalDocumentsInputSchema>;
 
 async function getFiscalDocuments({ input }: { input: TGetFiscalDocumentsInput }) {
-	const { orgId } = await requireOrgSession();
+	const { session, orgId } = await requireOrgSession();
+
+	const userHasFiscalViewPermission = session.membership?.permissoes.fiscal.visualizar;
+	if (!userHasFiscalViewPermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para visualizar o módulo fiscal.");
+
 	if (input.documentId) {
 		const document = await getFiscalDocumentById(input.documentId);
 		if (!document || document.organizacaoId !== orgId) throw new createHttpError.NotFound("Documento fiscal não encontrado.");

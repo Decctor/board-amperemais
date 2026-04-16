@@ -6,11 +6,11 @@ import { NextResponse } from "next/server";
 
 async function syncFiscalCompany() {
 	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("VocÃª nÃ£o estÃ¡ autenticado.");
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const orgId = session.membership?.organizacao.id;
-	if (!orgId) throw new createHttpError.Unauthorized("VocÃª precisa estar vinculado a uma organizaÃ§Ã£o.");
-	if (!session.user.admin && !session.membership?.permissoes.empresa.editar) {
-		throw new createHttpError.Forbidden("Acesso restrito aos responsÃ¡veis pela organizaÃ§Ã£o.");
+	if (!orgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	if (!session.user.admin && !session.membership?.permissoes.fiscal.configurar) {
+		throw new createHttpError.Forbidden("Acesso restrito aos responsáveis pela organização.");
 	}
 
 	const result = await syncFiscalCompanySettings(orgId);
