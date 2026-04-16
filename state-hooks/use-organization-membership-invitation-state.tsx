@@ -44,6 +44,12 @@ export function useOrganizationMembershipInvitationState() {
 					responder: true,
 					finalizar: true,
 				},
+				fiscal: {
+					visualizar: false,
+					configurar: false,
+					emitir: false,
+					cancelar: false,
+				},
 			},
 		},
 	};

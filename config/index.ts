@@ -721,6 +721,11 @@ export const AppRoutes = [
 		description: "Painel de acompanhamento e gestão das finanças do seu negócio.",
 	},
 	{
+		path: "/dashboard/operational/fiscal",
+		title: "Fiscal",
+		description: "Painel de acompanhamento e gestão do seu recursos fiscais.",
+	},
+	{
 		path: "/dashboard/operational/purchases",
 		title: "Compras",
 		description: "Painel de acompanhamento e gestão das compras do seu negócio.",

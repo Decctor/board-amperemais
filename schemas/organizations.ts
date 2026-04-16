@@ -381,6 +381,24 @@ export const OrganizationMemberPermissionsSchema = z.object({
 			invalid_type_error: "Tipo não válido para a permissão de exclusão de compras.",
 		}),
 	}),
+	fiscal: z.object({
+		visualizar: z.boolean({
+			required_error: "Permissão de visualização de documentos fiscais não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização de documentos fiscais.",
+		}),
+		configurar: z.boolean({
+			required_error: "Permissão de configuração de documentos fiscais não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de configuração de documentos fiscais.",
+		}),
+		emitir: z.boolean({
+			required_error: "Permissão de emissão de documentos fiscais não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de emissão de documentos fiscais.",
+		}),
+		cancelar: z.boolean({
+			required_error: "Permissão de cancelamento de documentos fiscais não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de cancelamento de documentos fiscais.",
+		}),
+	}),
 	atendimentos: z.object({
 		visualizar: z.boolean({
 			required_error: "Permissão de visualização de atendimentos não informada.",

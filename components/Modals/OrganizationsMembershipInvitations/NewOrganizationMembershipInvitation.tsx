@@ -10,9 +10,11 @@ import { toast } from "sonner";
 import OrganizationsMembershipInvitationsGeneralBlock from "./Blocks/General";
 import OrganizationsMembershipInvitationsPermissionsBlock from "./Blocks/Permissions";
 import OrganizationsMembershipInvitationsSellerBlock from "./Blocks/Seller";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 
 type NewOrganizationMembershipInvitationProps = {
 	sessionUserId: string;
+	sessionUserMembership: NonNullable<TAuthUserSession["membership"]>;
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -21,7 +23,13 @@ type NewOrganizationMembershipInvitationProps = {
 		onSettled?: () => void;
 	};
 };
-export default function NewOrganizationMembershipInvitation({ sessionUserId, closeModal, callbacks }: NewOrganizationMembershipInvitationProps) {
+export default function NewOrganizationMembershipInvitation({
+	sessionUserId,
+	sessionUserMembership,
+	closeModal,
+	callbacks,
+}: NewOrganizationMembershipInvitationProps) {
+	const organizationHasERPAccess = !!sessionUserMembership.organizacao.configuracao.recursos.erp.acesso;
 	const { state, updateInvitation, updateInvitationPermissions, resetState } = useOrganizationMembershipInvitationState();
 	const [successInvitationId, setSuccessInvitationId] = useState<string | null>(null);
 
@@ -87,6 +95,7 @@ export default function NewOrganizationMembershipInvitation({ sessionUserId, clo
 			<OrganizationsMembershipInvitationsGeneralBlock invitation={state.invitation} updateInvitation={updateInvitation} />
 			<OrganizationsMembershipInvitationsSellerBlock invitation={state.invitation} updateInvitation={updateInvitation} />
 			<OrganizationsMembershipInvitationsPermissionsBlock
+				organizationHasERPAccess={organizationHasERPAccess}
 				permissions={state.invitation.permissoes}
 				updateInvitationPermissions={updateInvitationPermissions}
 			/>

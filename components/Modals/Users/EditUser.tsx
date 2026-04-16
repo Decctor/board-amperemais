@@ -15,6 +15,7 @@ import UsersSellerBlock from "./Blocks/Seller";
 type EditUserProps = {
 	userId: string;
 	session: TAuthUserSession["user"];
+	sessionUserMembership: NonNullable<TAuthUserSession["membership"]>;
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -23,7 +24,8 @@ type EditUserProps = {
 		onSettled?: () => void;
 	};
 };
-function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
+function EditUser({ userId, session, sessionUserMembership, closeModal, callbacks }: EditUserProps) {
+	const organizationHasERPAccess = !!sessionUserMembership.organizacao.configuracao.recursos.erp.acesso;
 	const queryClient = useQueryClient();
 	const { state, updateUser, updateAvatarHolder, updateMembership, updateMembershipPermissions, redefineState } = useUserState();
 	const { data: user, queryKey, isLoading, isError, isSuccess, error } = useUserById(userId);
@@ -82,7 +84,12 @@ function EditUser({ userId, session, closeModal, callbacks }: EditUserProps) {
 				updateAvatarHolder={updateAvatarHolder}
 			/>
 			<UsersSellerBlock membershipHolder={state.membership} updateMembership={updateMembership} />
-			<UsersPermissionsBlock userId={userId} permissionsHolder={state.membership.permissoes} updateUserPermissions={updateMembershipPermissions} />
+			<UsersPermissionsBlock
+				userId={userId}
+				permissionsHolder={state.membership.permissoes}
+				updateUserPermissions={updateMembershipPermissions}
+				organizationHasERPAccess={organizationHasERPAccess}
+			/>
 		</ResponsiveMenu>
 	);
 }
