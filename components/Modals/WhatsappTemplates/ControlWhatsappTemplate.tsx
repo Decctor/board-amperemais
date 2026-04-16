@@ -73,7 +73,7 @@ function ControlWhatsappTemplate({ whatsappTemplateId, organizationId, closeMenu
 			<div className="w-full flex items-start gap-2 flex-col lg:flex-row lg:max-h-full lg:h-full">
 				<div className="w-full lg:w-2/3 flex flex-col gap-3 p-2 rounded-lg border border-primary/30 shadow-sm overflow-y-auto lg:h-full scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 					{/* Basic Information */}
-					<TemplateGeneral template={state.whatsappTemplate} updateTemplate={updateTemplate} whatsappTemplateId={null} />
+					<TemplateGeneral template={state.whatsappTemplate} updateTemplate={updateTemplate} blockNameChange={!!whatsappTemplateId} />
 					<TemplateHeaderConfig
 						header={state.whatsappTemplate.componentes.cabecalho ?? null}
 						onHeaderChange={(header) => updateComponents({ cabecalho: header })}
