@@ -1,6 +1,6 @@
 "use client";
 
-import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
+import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -20,7 +20,7 @@ import { type ReactNode, useMemo } from "react";
 import { useChatHub } from "./context";
 
 export type ChatHubHeaderProps = {
-	whatsappConnection: TGetWhatsappConnectionOutput["data"];
+	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
 	children?: ReactNode;
 	className?: string;
 	showPhoneSelector?: boolean;
@@ -33,7 +33,7 @@ export type ChatHubHeaderProps = {
 export function Header({
 	children,
 	className,
-	whatsappConnection,
+	whatsappConnections,
 	showPhoneSelector = true,
 	showSearch = false,
 	searchQuery = "",
@@ -41,7 +41,7 @@ export function Header({
 	onNewChat,
 }: ChatHubHeaderProps) {
 	const { selectedPhoneNumber, setSelectedPhoneNumber, user } = useChatHub();
-	const phoneNumbers = whatsappConnection?.telefones ?? [];
+	const phoneNumbers = whatsappConnections.flatMap((connection) => connection.telefones);
 
 	const selectedPhoneNumberData = useMemo(() => phoneNumbers.find((phone) => phone.id === selectedPhoneNumber), [phoneNumbers, selectedPhoneNumber]);
 

@@ -26,13 +26,24 @@ async function createWhatsappTemplatePhone({ input, session }: { input: TCreateW
 	const orgId = session.membership?.organizacao.id;
 	if (!orgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const orgWhatsappConnection = await db.query.whatsappConnections.findFirst({
+	const orgWhatsappConnections = await db.query.whatsappConnections.findMany({
 		where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
+		columns: {
+			id: true,
+		},
 	});
-	if (!orgWhatsappConnection) throw new createHttpError.NotFound("Conexão WhatsApp não encontrada.");
-
+	const orgConnectionIds = orgWhatsappConnections.map((connection) => connection.id);
 	const orgWhatsappConnectionPhone = await db.query.whatsappConnectionPhones.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.id, input.whatsappTemplatePhone.telefoneId), eq(fields.conexaoId, orgWhatsappConnection.id)),
+		where: (fields, { and, eq, inArray }) => and(eq(fields.id, input.whatsappTemplatePhone.telefoneId), inArray(fields.conexaoId, orgConnectionIds)),
+		with: {
+			conexao: {
+				columns: {
+					id: true,
+					token: true,
+					tipoConexao: true,
+				},
+			},
+		},
 	});
 	if (!orgWhatsappConnectionPhone) throw new createHttpError.NotFound("Telefone não encontrado na conexão WhatsApp.");
 
@@ -43,7 +54,11 @@ async function createWhatsappTemplatePhone({ input, session }: { input: TCreateW
 	if (!whatsappTemplate) throw new createHttpError.NotFound("Oops, template requisitado para vincular ao telefone não encontrado.");
 
 	let metaWhatsappTemplateId: string | null = null;
-	if (orgWhatsappConnection.tipoConexao === "META_CLOUD_API" && orgWhatsappConnection.token && orgWhatsappConnectionPhone.whatsappBusinessAccountId) {
+	if (
+		orgWhatsappConnectionPhone.conexao.tipoConexao === "META_CLOUD_API" &&
+		orgWhatsappConnectionPhone.conexao.token &&
+		orgWhatsappConnectionPhone.whatsappBusinessAccountId
+	) {
 		let templateToCreate: Omit<TWhatsappTemplate, "autorId" | "dataInsercao"> = whatsappTemplate;
 
 		if (whatsappTemplate.componentes.cabecalho) {
@@ -60,7 +75,7 @@ async function createWhatsappTemplatePhone({ input, session }: { input: TCreateW
 					const { headerHandle } = await fetchAndUploadToMeta({
 						fileUrl: header.conteudo,
 						appId: metaAppId,
-						accessToken: orgWhatsappConnection.token,
+						accessToken: orgWhatsappConnectionPhone.conexao.token,
 					});
 
 					// Create a copy of the template with the header_handle in exemplo field
@@ -86,7 +101,7 @@ async function createWhatsappTemplatePhone({ input, session }: { input: TCreateW
 		}
 
 		const metaResponse = await createWhatsappTemplateInMeta({
-			whatsappToken: orgWhatsappConnection.token,
+			whatsappToken: orgWhatsappConnectionPhone.conexao.token,
 			whatsappBusinessAccountId: orgWhatsappConnectionPhone.whatsappBusinessAccountId,
 			template: templateToCreate,
 		});

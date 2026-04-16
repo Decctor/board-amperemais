@@ -26,7 +26,7 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 	const [editTemplateId, setEditTemplateId] = useState<string | null>(null);
 	const queryClient = useQueryClient();
 
-	const { data: whatsappConnection } = useWhatsappConnection();
+	const { data: whatsappConnections } = useWhatsappConnection();
 	const {
 		data: whatsappTemplatesResult,
 		updateParams,
@@ -36,11 +36,13 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 	});
 
 	const whatsappConnectionPhones =
-		whatsappConnection?.telefones.map((v) => ({
-			id: v.id,
-			label: `(${v.numero}) - ${v.nome}`,
-			value: v.id,
-		})) ?? [];
+		whatsappConnections
+			?.flatMap((v) => v.telefones)
+			.map((v) => ({
+				id: v.id,
+				label: `(${v.numero}) - ${v.nome}`,
+				value: v.id,
+			})) ?? [];
 
 	const allTemplates = whatsappTemplatesResult?.whatsappTemplates ?? [];
 

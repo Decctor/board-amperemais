@@ -111,11 +111,6 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 		for (const organization of organizationsList) {
 			console.log(`[ORG: ${organization.id}] Processing organization...`);
 
-			// Query whatsappConnection for immediate processing
-			const whatsappConnection = await db.query.whatsappConnections.findFirst({
-				where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
-			});
-
 			// Collect data for immediate processing
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
@@ -132,6 +127,14 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 					with: {
 						segmentacoes: true,
 						whatsappTemplate: true,
+						whatsappConexaoTelefone: {
+							columns: {
+								id: true,
+							},
+							with: {
+								conexao: { columns: { token: true, gatewaySessaoId: true } },
+							},
+						},
 					},
 				});
 
@@ -194,7 +197,7 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 							.returning({ id: interactions.id });
 
 						// Prepare for immediate processing
-						if (campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+						if (campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, client.id),
 								columns: {
@@ -226,8 +229,8 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token ?? undefined,
-									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+									whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+									whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 								});
 							}
 						}

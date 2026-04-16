@@ -186,7 +186,15 @@ async function ensureCashbackBalanceEntry({
  * Type for campaigns with relations (used by both ONLINE-SOFTWARE and CARDAPIO-WEB handlers)
  */
 type TCampaignWithRelations = Awaited<
-	ReturnType<typeof db.query.campaigns.findMany<{ with: { segmentacoes: true; whatsappTemplate: true } }>>
+	ReturnType<
+		typeof db.query.campaigns.findMany<{
+			with: {
+				segmentacoes: true;
+				whatsappTemplate: true;
+				whatsappConexaoTelefone: { columns: { id: true }; with: { conexao: { columns: { token: true; gatewaySessaoId: true } } } };
+			};
+		}>
+	>
 >[number];
 
 /**
@@ -201,7 +209,6 @@ async function handleCardapioWebImportation(
 	campaignsForCashbackAccumulation: TCampaignWithRelations[],
 	campaignsForTotalPurchaseCount: TCampaignWithRelations[],
 	campaignsForTotalPurchaseValue: TCampaignWithRelations[],
-	whatsappConnection: Awaited<ReturnType<typeof db.query.whatsappConnections.findFirst>>,
 	immediateProcessingDataList: ImmediateProcessingData[],
 ) {
 	// Fetch orders for today (start of day until now)
@@ -670,7 +677,12 @@ async function handleCardapioWebImportation(
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+						if (
+							campaign.execucaoAgendadaValor === 0 &&
+							campaign.whatsappTemplate &&
+							campaign.whatsappConexaoTelefone?.conexao &&
+							campaign.whatsappConexaoTelefoneId
+						) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, saleClientId),
 								columns: {
@@ -693,8 +705,8 @@ async function handleCardapioWebImportation(
 										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token ?? undefined,
-									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+									whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+									whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									contextMetadados: firstPurchaseCWMetadados,
 								});
 							}
@@ -780,7 +792,12 @@ async function handleCardapioWebImportation(
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+						if (
+							campaign.execucaoAgendadaValor === 0 &&
+							campaign.whatsappTemplate &&
+							campaign.whatsappConexaoTelefone?.conexao &&
+							campaign.whatsappConexaoTelefoneId
+						) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, saleClientId),
 								columns: {
@@ -803,8 +820,8 @@ async function handleCardapioWebImportation(
 										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token ?? undefined,
-									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+									whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+									whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									contextMetadados: newPurchaseCWMetadados,
 								});
 							}
@@ -902,7 +919,12 @@ async function handleCardapioWebImportation(
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+						if (
+							campaign.execucaoAgendadaValor === 0 &&
+							campaign.whatsappTemplate &&
+							campaign.whatsappConexaoTelefone?.conexao &&
+							campaign.whatsappConexaoTelefoneId
+						) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, saleClientId),
 								columns: {
@@ -925,8 +947,8 @@ async function handleCardapioWebImportation(
 										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token ?? undefined,
-									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+									whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+									whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									contextMetadados: countTotalPurchasesCWMetadados,
 								});
 							}
@@ -1008,7 +1030,12 @@ async function handleCardapioWebImportation(
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+						if (
+							campaign.execucaoAgendadaValor === 0 &&
+							campaign.whatsappTemplate &&
+							campaign.whatsappConexaoTelefone?.conexao &&
+							campaign.whatsappConexaoTelefoneId
+						) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, saleClientId),
 								columns: {
@@ -1031,8 +1058,8 @@ async function handleCardapioWebImportation(
 										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token ?? undefined,
-									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+									whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+									whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									contextMetadados: valueTotalPurchasesCWMetadados,
 								});
 							}
@@ -1229,7 +1256,12 @@ async function handleCardapioWebImportation(
 									})
 									.returning({ id: interactions.id });
 
-								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+								if (
+									campaign.execucaoAgendadaValor === 0 &&
+									campaign.whatsappTemplate &&
+									campaign.whatsappConexaoTelefone?.conexao &&
+									campaign.whatsappConexaoTelefoneId
+								) {
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, saleClientId),
 										columns: {
@@ -1252,8 +1284,8 @@ async function handleCardapioWebImportation(
 												whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
-											whatsappToken: whatsappConnection.token ?? undefined,
-											whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+											whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+											whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 											contextMetadados: cashbackAccCWMetadados,
 										});
 									}
@@ -1356,6 +1388,19 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					),
 				),
 			with: {
+				whatsappConexaoTelefone: {
+					columns: {
+						id: true,
+					},
+					with: {
+						conexao: {
+							columns: {
+								token: true,
+								gatewaySessaoId: true,
+							},
+						},
+					},
+				},
 				segmentacoes: true,
 				whatsappTemplate: true,
 			},
@@ -1370,11 +1415,6 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 		console.log(`[ORG: ${organization.id}] ${campaignsForCashbackAccumulation.length} campanhas de cashback acumulado encontradas.`);
 		console.log(`[ORG: ${organization.id}] ${campaignsForTotalPurchaseCount.length} campanhas de quantidade total de compras encontradas.`);
 		console.log(`[ORG: ${organization.id}] ${campaignsForTotalPurchaseValue.length} campanhas de valor total de compras encontradas.`);
-
-		// Query whatsappConnection for immediate processing
-		const whatsappConnection = await db.query.whatsappConnections.findFirst({
-			where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
-		});
 
 		// Collect data for immediate processing
 		const immediateProcessingDataList: ImmediateProcessingData[] = [];
@@ -1391,7 +1431,6 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					campaignsForCashbackAccumulation,
 					campaignsForTotalPurchaseCount,
 					campaignsForTotalPurchaseValue,
-					whatsappConnection,
 					immediateProcessingDataList,
 				);
 			} catch (error) {
@@ -2014,7 +2053,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									.returning({ id: interactions.id });
 
 								// Check for immediate processing (execucaoAgendadaValor === 0)
-								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+								if (
+									campaign.execucaoAgendadaValor === 0 &&
+									campaign.whatsappTemplate &&
+									campaign.whatsappConexaoTelefone?.conexao &&
+									campaign.whatsappConexaoTelefoneId
+								) {
 									// Query client data for immediate processing
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, saleClientId),
@@ -2039,8 +2083,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
-											whatsappToken: whatsappConnection.token ?? undefined,
-											whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+											whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+											whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 											contextMetadados: firstPurchaseOSMetadados,
 										});
 									}
@@ -2139,7 +2183,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 									.returning({ id: interactions.id });
 
 								// Check for immediate processing (execucaoAgendadaValor === 0)
-								if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+								if (
+									campaign.execucaoAgendadaValor === 0 &&
+									campaign.whatsappTemplate &&
+									campaign.whatsappConexaoTelefone?.conexao &&
+									campaign.whatsappConexaoTelefoneId
+								) {
 									// Query client data for immediate processing
 									const clientData = await tx.query.clients.findFirst({
 										where: (fields, { eq }) => eq(fields.id, saleClientId),
@@ -2164,8 +2213,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 												whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 												whatsappTemplate: campaign.whatsappTemplate,
 											},
-											whatsappToken: whatsappConnection.token ?? undefined,
-											whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+											whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+											whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 											contextMetadados: {
 												compraValor: Number(OnlineSale.valor),
 												compraVendedorNome: OnlineSale.vendedor || "N/A",
@@ -2274,7 +2323,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 										})
 										.returning({ id: interactions.id });
 
-									if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+									if (
+										campaign.execucaoAgendadaValor === 0 &&
+										campaign.whatsappTemplate &&
+										campaign.whatsappConexaoTelefone?.conexao &&
+										campaign.whatsappConexaoTelefoneId
+									) {
 										const clientDetails = await tx.query.clients.findFirst({
 											where: (fields, { eq }) => eq(fields.id, saleClientId),
 											columns: {
@@ -2297,8 +2351,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 													whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 													whatsappTemplate: campaign.whatsappTemplate,
 												},
-												whatsappToken: whatsappConnection.token ?? undefined,
-												whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+												whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+												whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 												contextMetadados: totalPurchaseCountMetadados,
 											});
 										}
@@ -2386,7 +2440,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 										})
 										.returning({ id: interactions.id });
 
-									if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+									if (
+										campaign.execucaoAgendadaValor === 0 &&
+										campaign.whatsappTemplate &&
+										campaign.whatsappConexaoTelefone?.conexao &&
+										campaign.whatsappConexaoTelefoneId
+									) {
 										const clientDetails = await tx.query.clients.findFirst({
 											where: (fields, { eq }) => eq(fields.id, saleClientId),
 											columns: {
@@ -2409,8 +2468,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 													whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 													whatsappTemplate: campaign.whatsappTemplate,
 												},
-												whatsappToken: whatsappConnection.token ?? undefined,
-												whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+												whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+												whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 												contextMetadados: totalPurchaseValueMetadados,
 											});
 										}
@@ -2654,7 +2713,12 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 											.returning({ id: interactions.id });
 
 										// Check for immediate processing (execucaoAgendadaValor === 0)
-										if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+										if (
+											campaign.execucaoAgendadaValor === 0 &&
+											campaign.whatsappTemplate &&
+											campaign.whatsappConexaoTelefone?.conexao &&
+											campaign.whatsappConexaoTelefoneId
+										) {
 											// Query client data for immediate processing
 											const clientData = await tx.query.clients.findFirst({
 												where: (fields, { eq }) => eq(fields.id, buyerClientId),
@@ -2679,8 +2743,8 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 														whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 														whatsappTemplate: campaign.whatsappTemplate,
 													},
-													whatsappToken: whatsappConnection.token ?? undefined,
-													whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+													whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+													whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 													contextMetadados: {
 														compraValor: saleValue,
 														compraCashbackAcumulado: accumulatedBalance,

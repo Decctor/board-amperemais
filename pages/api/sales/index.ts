@@ -573,12 +573,15 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 			with: {
 				segmentacoes: true,
 				whatsappTemplate: true,
+				whatsappConexaoTelefone: {
+					columns: {
+						id: true,
+					},
+					with: {
+						conexao: { columns: { token: true, gatewaySessaoId: true } },
+					},
+				},
 			},
-		});
-
-		// Query whatsappConnection for immediate processing
-		const whatsappConnection = await tx.query.whatsappConnections.findFirst({
-			where: (fields, { eq }) => eq(fields.organizacaoId, input.orgId),
 		});
 
 		// 3. If using cashback: validate balance and create redemption
@@ -813,7 +816,7 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 					if (
 						campaign.execucaoAgendadaValor === 0 &&
 						campaign.whatsappTemplate &&
-						whatsappConnection &&
+						campaign.whatsappConexaoTelefone?.conexao &&
 						clientData &&
 						campaign.whatsappConexaoTelefoneId
 					) {
@@ -834,8 +837,8 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 								whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 								whatsappTemplate: campaign.whatsappTemplate,
 							},
-							whatsappToken: whatsappConnection.token ?? undefined,
-							whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+							whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+							whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 							contextMetadados: interactionContextMetadados,
 						});
 					}

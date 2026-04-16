@@ -91,12 +91,15 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 				with: {
 					segmentacoes: true,
 					whatsappTemplate: true,
+					whatsappConexaoTelefone: {
+						columns: {
+							id: true,
+						},
+						with: {
+							conexao: { columns: { token: true, gatewaySessaoId: true } },
+						},
+					},
 				},
-			});
-
-			// Query whatsappConnection for immediate processing
-			const whatsappConnection = await db.query.whatsappConnections.findFirst({
-				where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
 			});
 
 			const campaignsForPermanenceInSegmentation = campaigns.filter((campaign) => campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO");
@@ -257,7 +260,12 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+							if (
+								campaign.execucaoAgendadaValor === 0 &&
+								campaign.whatsappTemplate &&
+								campaign.whatsappConexaoTelefone?.conexao &&
+								campaign.whatsappConexaoTelefoneId
+							) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, results.clientId),
@@ -290,8 +298,8 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
-										whatsappToken: whatsappConnection.token ?? undefined,
-										whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+										whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									});
 								}
 							}
@@ -386,7 +394,12 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								.returning({ id: interactions.id });
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
-							if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+							if (
+								campaign.execucaoAgendadaValor === 0 &&
+								campaign.whatsappTemplate &&
+								campaign.whatsappConexaoTelefone?.conexao &&
+								campaign.whatsappConexaoTelefoneId
+							) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, results.clientId),
@@ -419,8 +432,8 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
-										whatsappToken: whatsappConnection.token ?? undefined,
-										whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+										whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									});
 								}
 							}

@@ -87,11 +87,6 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 		for (const organization of organizationsList) {
 			console.log(`[ORG: ${organization.id}] Processing organization...`);
 
-			// Query whatsappConnection for immediate processing
-			const whatsappConnection = await db.query.whatsappConnections.findFirst({
-				where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
-			});
-
 			// Collect data for immediate processing
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
@@ -103,6 +98,14 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 					with: {
 						segmentacoes: true,
 						whatsappTemplate: true,
+						whatsappConexaoTelefone: {
+							columns: {
+								id: true,
+							},
+							with: {
+								conexao: { columns: { token: true, gatewaySessaoId: true } },
+							},
+						},
 					},
 				});
 
@@ -194,7 +197,7 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 
 							// Check for immediate processing
 							const isImmediate = isAntes || campaign.execucaoAgendadaValor === 0;
-							if (isImmediate && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+							if (isImmediate && campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, client.id),
 									columns: {
@@ -226,8 +229,8 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
-										whatsappToken: whatsappConnection.token ?? undefined,
-										whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+										whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									});
 								}
 							}

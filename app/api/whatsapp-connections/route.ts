@@ -13,19 +13,19 @@ async function getWhatsappConnection({ session }: { session: TAuthUserSession })
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização para conectar o WhatsApp.");
 
-	const whatsappConnection = await db.query.whatsappConnections.findFirst({
+	const whatsappConnectionsResults = await db.query.whatsappConnections.findMany({
 		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
 		with: {
 			telefones: true,
 		},
 	});
 	return {
-		data: whatsappConnection ?? null,
+		data: whatsappConnectionsResults ?? null,
 		message: "Conexão do WhatsApp encontrada com sucesso.",
 	};
 }
 
-export type TGetWhatsappConnectionOutput = Awaited<ReturnType<typeof getWhatsappConnection>>;
+export type TGetWhatsappConnectionsOutput = Awaited<ReturnType<typeof getWhatsappConnection>>;
 
 async function getWhatsappConnectionRoute(req: NextRequest) {
 	const session = await getCurrentSessionUncached();
@@ -47,7 +47,6 @@ async function deleteWhatsappConnection({ input, session }: { input: string; ses
 		});
 	const deletedWhatsappConnectionId = deletedWhatsappConnection[0]?.id;
 	if (!deletedWhatsappConnectionId) throw new createHttpError.NotFound("Conexão do WhatsApp não encontrada.");
-	await db.delete(whatsappTemplates).where(eq(whatsappTemplates.organizacaoId, userOrgId));
 	return {
 		data: {
 			deletedId: deletedWhatsappConnectionId,

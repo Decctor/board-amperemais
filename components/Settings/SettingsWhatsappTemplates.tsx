@@ -1,4 +1,4 @@
-import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
+import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import type { TGetWhatsappTemplatesInput, TGetWhatsappTemplatesOutputDefault } from "@/app/api/whatsapp-templates/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -30,7 +30,7 @@ export default function SettingsWhatsappTemplates({ user, membership }: Settings
 	const [newWhatsappTemplateModalIsOpen, setNewWhatsappTemplateModalIsOpen] = useState(false);
 	const [editWhatsappTemplateId, setEditWhatsappTemplateId] = useState<string | null>(null);
 
-	const { data: whatsappConnection } = useWhatsappConnection();
+	const { data: whatsappConnections } = useWhatsappConnection();
 	const {
 		data: whatsappTemplatesResult,
 		queryKey,
@@ -65,7 +65,7 @@ export default function SettingsWhatsappTemplates({ user, membership }: Settings
 		onSettled: handleOnSettled,
 	});
 
-	const whatsappConnectionPhones = whatsappConnection?.telefones ?? [];
+	const whatsappConnectionPhones = whatsappConnections?.flatMap((connection) => connection.telefones) ?? [];
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end gap-2">
@@ -153,7 +153,7 @@ function SettingWhatsappTemplatesFiltersShowcase({ filters, updateFilters }: Set
 }
 type WhatsappTemplateCardProps = {
 	whatsappTemplate: TGetWhatsappTemplatesOutputDefault["whatsappTemplates"][number];
-	whatsappConnectionPhones: Exclude<TGetWhatsappConnectionOutput["data"], null>["telefones"];
+	whatsappConnectionPhones: Exclude<TGetWhatsappConnectionsOutput["data"], null>[number]["telefones"];
 	onEditClick: () => void;
 	callbacks: {
 		onMutate?: () => void;
@@ -190,7 +190,7 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 				handleCreateTemplatePhone,
 				isCreatingWhatsappTemplatePhone,
 			}: {
-				connectionPhone: Exclude<TGetWhatsappConnectionOutput["data"], null>["telefones"][number];
+				connectionPhone: Exclude<TGetWhatsappConnectionsOutput["data"], null>[number]["telefones"][number];
 				handleCreateTemplatePhone: (id: string) => void;
 				isCreatingWhatsappTemplatePhone: boolean;
 			}) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
+import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { createContext, useContext } from "react";
 
@@ -12,7 +12,7 @@ export type ChatHubContextValue = {
 	organizationId: string;
 	isDesktop: boolean;
 	userHasMessageSendingPermission: boolean;
-	whatsappConnection: TGetWhatsappConnectionOutput["data"];
+	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
 
 	// Actions
 	setSelectedChatId: (chatId: string | null) => void;

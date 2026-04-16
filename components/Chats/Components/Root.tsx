@@ -1,6 +1,6 @@
 "use client";
 
-import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
+import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ export type ChatHubRootProps = {
 	user: TAuthUserSession["user"];
 	organizationId: string;
 	userHasMessageSendingPermission: boolean;
-	whatsappConnection: TGetWhatsappConnectionOutput["data"];
+	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
 	className?: string;
 	defaultPhoneNumber?: string;
 };
@@ -22,14 +22,16 @@ export function Root({
 	user,
 	organizationId,
 	userHasMessageSendingPermission,
-	whatsappConnection,
+	whatsappConnections,
 	className,
 	defaultPhoneNumber,
 }: ChatHubRootProps) {
 	const isDesktop = useMediaQuery("(min-width: 1024px)");
 
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-	const [selectedPhoneNumber, setSelectedPhoneNumber] = useState<string | null>(defaultPhoneNumber ?? whatsappConnection?.telefones?.[0]?.id ?? null);
+	const [selectedPhoneNumber, setSelectedPhoneNumber] = useState<string | null>(
+		defaultPhoneNumber ?? whatsappConnections.flatMap((connection) => connection.telefones)[0]?.id ?? null,
+	);
 
 	const contextValue = {
 		selectedChatId,
@@ -38,7 +40,7 @@ export function Root({
 		organizationId,
 		isDesktop,
 		userHasMessageSendingPermission,
-		whatsappConnection,
+		whatsappConnections,
 		setSelectedChatId,
 		setSelectedPhoneNumber,
 	};

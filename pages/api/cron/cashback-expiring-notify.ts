@@ -67,11 +67,6 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 		for (const organization of organizationsList) {
 			console.log(`[ORG: ${organization.id}] Processing organization...`);
 
-			// Query whatsappConnection for immediate processing
-			const whatsappConnection = await db.query.whatsappConnections.findFirst({
-				where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
-			});
-
 			// Collect data for immediate processing
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
@@ -82,6 +77,14 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 						and(eq(fields.organizacaoId, organization.id), eq(fields.ativo, true), eq(fields.gatilhoTipo, "CASHBACK-EXPIRANDO")),
 					with: {
 						whatsappTemplate: true,
+						whatsappConexaoTelefone: {
+							columns: {
+								id: true,
+							},
+							with: {
+								conexao: { columns: { token: true, gatewaySessaoId: true } },
+							},
+						},
 					},
 				});
 
@@ -206,7 +209,12 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 							})
 							.returning({ id: interactions.id });
 
-						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && whatsappConnection && campaign.whatsappConexaoTelefoneId) {
+						if (
+							campaign.execucaoAgendadaValor === 0 &&
+							campaign.whatsappTemplate &&
+							campaign.whatsappConexaoTelefone?.conexao &&
+							campaign.whatsappConexaoTelefoneId
+						) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, clienteId),
 								columns: {
@@ -230,8 +238,8 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
-									whatsappToken: whatsappConnection.token ?? undefined,
-									whatsappSessionId: whatsappConnection.gatewaySessaoId ?? undefined,
+									whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+									whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									contextMetadados: interactionContextMetadados,
 								});
 							}

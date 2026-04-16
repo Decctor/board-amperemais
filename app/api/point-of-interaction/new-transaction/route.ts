@@ -217,9 +217,6 @@ export async function processPointOfInteractionTransaction({
 			transactionRequiresRedemptionProcessing,
 		});
 		// PRE-STEPS:
-		const organizationWhatsappConnection = await tx.query.whatsappConnections.findFirst({
-			where: (fields, { eq }) => eq(fields.organizacaoId, input.orgId),
-		});
 		const {
 			campaignsForNewPurchase,
 			campaignsForFirstPurchase,
@@ -582,8 +579,6 @@ export async function processPointOfInteractionTransaction({
 			await handleCampaignProcessingForCashbackAccumulation({
 				tx,
 				orgId: input.orgId,
-				orgWhatsappConnectionToken: organizationWhatsappConnection?.token ?? null,
-				orgWhatsappConnectionGatewaySessionId: organizationWhatsappConnection?.gatewaySessaoId ?? null,
 				cashbackAccumulationCampaigns: campaignsForCashbackAccumulation,
 				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 				clientId: clientId,
@@ -695,8 +690,6 @@ export async function processPointOfInteractionTransaction({
 				await handleCampaignProcessingForFirstPurchase({
 					tx,
 					orgId: input.orgId,
-					orgWhatsappConnectionToken: organizationWhatsappConnection?.token ?? null,
-					orgWhatsappConnectionGatewaySessionId: organizationWhatsappConnection?.gatewaySessaoId ?? null,
 					campaignsForFirstPurchase: campaignsForFirstPurchase,
 					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 					saleId: transactionSaleId,
@@ -715,8 +708,6 @@ export async function processPointOfInteractionTransaction({
 				await handleCampaignProcessingForNewPurchase({
 					tx,
 					orgId: input.orgId,
-					orgWhatsappConnectionToken: organizationWhatsappConnection?.token ?? null,
-					orgWhatsappConnectionGatewaySessionId: organizationWhatsappConnection?.gatewaySessaoId ?? null,
 					campaignsForNewPurchase: campaignsForNewPurchase,
 					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 					saleId: transactionSaleId,
@@ -733,8 +724,6 @@ export async function processPointOfInteractionTransaction({
 			await handleCampaignProcessingForTotalPurchaseCount({
 				tx,
 				orgId: input.orgId,
-				orgWhatsappConnectionToken: organizationWhatsappConnection?.token ?? null,
-				orgWhatsappConnectionGatewaySessionId: organizationWhatsappConnection?.gatewaySessaoId ?? null,
 				campaignsForTotalPurchaseCount: campaignsForTotalPurchaseCount,
 				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 				saleId: transactionSaleId,
@@ -752,8 +741,6 @@ export async function processPointOfInteractionTransaction({
 			await handleCampaignProcessingForTotalPurchaseValue({
 				tx,
 				orgId: input.orgId,
-				orgWhatsappConnectionToken: organizationWhatsappConnection?.token ?? null,
-				orgWhatsappConnectionGatewaySessionId: organizationWhatsappConnection?.gatewaySessaoId ?? null,
 				campaignsForTotalPurchaseValue: campaignsForTotalPurchaseValue,
 				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 				saleId: transactionSaleId,
@@ -857,6 +844,14 @@ async function getOrganizationCampaigns({ tx, orgId }: TGetOrganizationCampaigns
 		with: {
 			segmentacoes: true,
 			whatsappTemplate: true,
+			whatsappConexaoTelefone: {
+				columns: {
+					id: true,
+				},
+				with: {
+					conexao: { columns: { token: true, gatewaySessaoId: true } },
+				},
+			},
 		},
 	});
 
@@ -879,8 +874,6 @@ type TGetOrganizationCampaignsOutput = Awaited<ReturnType<typeof getOrganization
 type THandleCampaignProcessingForNewPurchaseParams = {
 	tx: DBTransaction;
 	orgId: string;
-	orgWhatsappConnectionToken: string | null;
-	orgWhatsappConnectionGatewaySessionId: string | null;
 	campaignsForNewPurchase: TGetOrganizationCampaignsOutput["campaignsForNewPurchase"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	saleId: string;
@@ -897,8 +890,6 @@ type THandleCampaignProcessingForNewPurchaseParams = {
 async function handleCampaignProcessingForNewPurchase({
 	tx,
 	orgId,
-	orgWhatsappConnectionToken,
-	orgWhatsappConnectionGatewaySessionId,
 	campaignsForNewPurchase,
 	addToImmediateProcessingDataList,
 	saleId,
@@ -1011,14 +1002,16 @@ async function handleCampaignProcessingForNewPurchase({
 			console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
 				SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
 				HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
-				HAS_WHATSAPP_CONNECTION: !!orgWhatsappConnectionToken || !!orgWhatsappConnectionGatewaySessionId,
+				HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 				HAS_CLIENT_DATA: !!clientData,
 			});
-			if (shouldProcessImmediately && campaign.whatsappTemplate && clientData && campaign.whatsappConexaoTelefoneId) {
-				// Checking if both whatsapp connection token and gateway session are not avaliable
-				// If so, skipping the interaction
-				if (!orgWhatsappConnectionToken && !orgWhatsappConnectionGatewaySessionId) continue;
-
+			if (
+				shouldProcessImmediately &&
+				campaign.whatsappTemplate &&
+				campaign.whatsappConexaoTelefone?.conexao &&
+				clientData &&
+				campaign.whatsappConexaoTelefoneId
+			) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,
 					organizationId: orgId,
@@ -1028,8 +1021,8 @@ async function handleCampaignProcessingForNewPurchase({
 						whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 						whatsappTemplate: campaign.whatsappTemplate,
 					},
-					whatsappToken: orgWhatsappConnectionToken ?? undefined,
-					whatsappSessionId: orgWhatsappConnectionGatewaySessionId ?? undefined,
+					whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+					whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 					contextMetadados: interactionContextMetadados,
 				});
 			} else {
@@ -1061,8 +1054,6 @@ async function handleCampaignProcessingForNewPurchase({
 type THandleCampaignProcessingForFirstPurchaseParams = {
 	tx: DBTransaction;
 	orgId: string;
-	orgWhatsappConnectionToken: string | null;
-	orgWhatsappConnectionGatewaySessionId: string | null;
 	campaignsForFirstPurchase: TGetOrganizationCampaignsOutput["campaignsForFirstPurchase"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	saleId: string;
@@ -1078,8 +1069,6 @@ type THandleCampaignProcessingForFirstPurchaseParams = {
 async function handleCampaignProcessingForFirstPurchase({
 	tx,
 	orgId,
-	orgWhatsappConnectionToken,
-	orgWhatsappConnectionGatewaySessionId,
 	campaignsForFirstPurchase,
 	addToImmediateProcessingDataList,
 	saleId,
@@ -1157,13 +1146,14 @@ async function handleCampaignProcessingForFirstPurchase({
 			console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
 				SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
 				HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
-				HAS_WHATSAPP_CONNECTION: !!orgWhatsappConnectionToken || !!orgWhatsappConnectionGatewaySessionId,
+				HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 			});
-			if (shouldProcessImmediately && campaign.whatsappTemplate && campaign.whatsappConexaoTelefoneId) {
-				// Checking if both whatsapp connection token and gateway session are not avaliable
-				// If so, skipping the interaction
-				if (!orgWhatsappConnectionToken && !orgWhatsappConnectionGatewaySessionId) continue;
-
+			if (
+				shouldProcessImmediately &&
+				campaign.whatsappTemplate &&
+				campaign.whatsappConexaoTelefone?.conexao &&
+				campaign.whatsappConexaoTelefoneId
+			) {
 				const clientData = await tx.query.clients.findFirst({
 					where: (fields, { eq }) => eq(fields.id, clientId),
 					columns: {
@@ -1190,8 +1180,8 @@ async function handleCampaignProcessingForFirstPurchase({
 						whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 						whatsappTemplate: campaign.whatsappTemplate,
 					},
-					whatsappToken: orgWhatsappConnectionToken ?? undefined,
-					whatsappSessionId: orgWhatsappConnectionGatewaySessionId ?? undefined,
+					whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+					whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 					contextMetadados: interactionContextMetadados,
 				});
 			} else {
@@ -1221,8 +1211,6 @@ async function handleCampaignProcessingForFirstPurchase({
 type THandleCampaignProcessingForCashbackAccumulationParams = {
 	tx: DBTransaction;
 	orgId: string;
-	orgWhatsappConnectionToken: string | null;
-	orgWhatsappConnectionGatewaySessionId: string | null;
 	cashbackAccumulationCampaigns: TGetOrganizationCampaignsOutput["campaignsForCashbackAccumulation"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	clientId: string;
@@ -1236,8 +1224,6 @@ type THandleCampaignProcessingForCashbackAccumulationParams = {
 async function handleCampaignProcessingForCashbackAccumulation({
 	tx,
 	orgId,
-	orgWhatsappConnectionToken,
-	orgWhatsappConnectionGatewaySessionId,
 	cashbackAccumulationCampaigns,
 	addToImmediateProcessingDataList,
 	clientId,
@@ -1336,15 +1322,17 @@ async function handleCampaignProcessingForCashbackAccumulation({
 		console.log(`[POI] [ORG: ${orgId}] [CASHBACK-ACUMULADO] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
 			SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
 			HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
-			HAS_WHATSAPP_CONNECTION: !!orgWhatsappConnectionToken || !!orgWhatsappConnectionGatewaySessionId,
+			HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 			HAS_CLIENT_DATA: !!clientData,
 		});
-		if (shouldProcessImmediately && campaign.whatsappTemplate && clientData && campaign.whatsappConexaoTelefoneId) {
+		if (
+			shouldProcessImmediately &&
+			campaign.whatsappTemplate &&
+			campaign.whatsappConexaoTelefone?.conexao &&
+			clientData &&
+			campaign.whatsappConexaoTelefoneId
+		) {
 			console.log(`[POI] [ORG: ${orgId}] [CASHBACK-ACUMULADO] Adding to immediate processing list`);
-			// Checking if both whatsapp connection token and gateway session are not avaliable
-			// If so, skipping the interaction
-			if (!orgWhatsappConnectionToken && !orgWhatsappConnectionGatewaySessionId) continue;
-
 			addToImmediateProcessingDataList({
 				interactionId: insertedInteraction.id,
 				organizationId: orgId,
@@ -1354,8 +1342,8 @@ async function handleCampaignProcessingForCashbackAccumulation({
 					whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 					whatsappTemplate: campaign.whatsappTemplate,
 				},
-				whatsappToken: orgWhatsappConnectionToken ?? undefined,
-				whatsappSessionId: orgWhatsappConnectionGatewaySessionId ?? undefined,
+				whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+				whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 				contextMetadados: interactionContextMetadados,
 			});
 		}
@@ -1365,8 +1353,6 @@ async function handleCampaignProcessingForCashbackAccumulation({
 type THandleCampaignProcessingForTotalPurchaseCountParams = {
 	tx: DBTransaction;
 	orgId: string;
-	orgWhatsappConnectionToken: string | null;
-	orgWhatsappConnectionGatewaySessionId: string | null;
 	campaignsForTotalPurchaseCount: TGetOrganizationCampaignsOutput["campaignsForTotalPurchaseCount"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	saleId: string;
@@ -1383,8 +1369,6 @@ type THandleCampaignProcessingForTotalPurchaseCountParams = {
 async function handleCampaignProcessingForTotalPurchaseCount({
 	tx,
 	orgId,
-	orgWhatsappConnectionToken,
-	orgWhatsappConnectionGatewaySessionId,
 	campaignsForTotalPurchaseCount,
 	addToImmediateProcessingDataList,
 	saleId,
@@ -1477,11 +1461,13 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 			const shouldProcessImmediately =
 				campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
 
-			if (shouldProcessImmediately && campaign.whatsappTemplate && clientData && campaign.whatsappConexaoTelefoneId) {
-				// Checking if both whatsapp connection token and gateway session are not avaliable
-				// If so, skipping the interaction
-				if (!orgWhatsappConnectionToken && !orgWhatsappConnectionGatewaySessionId) continue;
-
+			if (
+				shouldProcessImmediately &&
+				campaign.whatsappTemplate &&
+				campaign.whatsappConexaoTelefone?.conexao &&
+				clientData &&
+				campaign.whatsappConexaoTelefoneId
+			) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,
 					organizationId: orgId,
@@ -1491,8 +1477,8 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 						whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 						whatsappTemplate: campaign.whatsappTemplate,
 					},
-					whatsappToken: orgWhatsappConnectionToken ?? undefined,
-					whatsappSessionId: orgWhatsappConnectionGatewaySessionId ?? undefined,
+					whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+					whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 					contextMetadados: interactionContextMetadados,
 				});
 			}
@@ -1519,8 +1505,6 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 type THandleCampaignProcessingForTotalPurchaseValueParams = {
 	tx: DBTransaction;
 	orgId: string;
-	orgWhatsappConnectionToken: string | null;
-	orgWhatsappConnectionGatewaySessionId: string | null;
 	campaignsForTotalPurchaseValue: TGetOrganizationCampaignsOutput["campaignsForTotalPurchaseValue"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	saleId: string;
@@ -1538,8 +1522,6 @@ type THandleCampaignProcessingForTotalPurchaseValueParams = {
 async function handleCampaignProcessingForTotalPurchaseValue({
 	tx,
 	orgId,
-	orgWhatsappConnectionToken,
-	orgWhatsappConnectionGatewaySessionId,
 	campaignsForTotalPurchaseValue,
 	addToImmediateProcessingDataList,
 	saleId,
@@ -1633,11 +1615,13 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 			const shouldProcessImmediately =
 				campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
 
-			if (shouldProcessImmediately && campaign.whatsappTemplate && clientData && campaign.whatsappConexaoTelefoneId) {
-				// Checking if both whatsapp connection token and gateway session are not avaliable
-				// If so, skipping the interaction
-				if (!orgWhatsappConnectionToken && !orgWhatsappConnectionGatewaySessionId) continue;
-
+			if (
+				shouldProcessImmediately &&
+				campaign.whatsappTemplate &&
+				campaign.whatsappConexaoTelefone?.conexao &&
+				clientData &&
+				campaign.whatsappConexaoTelefoneId
+			) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,
 					organizationId: orgId,
@@ -1647,8 +1631,8 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 						whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 						whatsappTemplate: campaign.whatsappTemplate,
 					},
-					whatsappToken: orgWhatsappConnectionToken ?? undefined,
-					whatsappSessionId: orgWhatsappConnectionGatewaySessionId ?? undefined,
+					whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+					whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 					contextMetadados: interactionContextMetadados,
 				});
 			}

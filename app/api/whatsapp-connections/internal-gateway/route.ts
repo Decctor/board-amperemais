@@ -19,13 +19,7 @@ const initializeConnectionSchema = z.object({
 
 export type TInitializeInternalGatewayInput = z.infer<typeof initializeConnectionSchema>;
 
-async function initializeInternalGatewayConnection({
-	session,
-	input,
-}: {
-	session: TAuthUserSession;
-	input: TInitializeInternalGatewayInput;
-}) {
+async function initializeInternalGatewayConnection({ session, input }: { session: TAuthUserSession; input: TInitializeInternalGatewayInput }) {
 	const organizacaoId = session.membership?.organizacao.id;
 	const userId = session.user?.id;
 
@@ -39,15 +33,6 @@ async function initializeInternalGatewayConnection({
 
 	// Use a transaction to prevent race conditions
 	return await db.transaction(async (tx) => {
-		// Check if organization already has a connection
-		const existingConnection = await tx.query.whatsappConnections.findFirst({
-			where: (fields, { eq }) => eq(fields.organizacaoId, organizacaoId),
-		});
-
-		if (existingConnection) {
-			throw new createHttpError.BadRequest("Sua organização já possui uma conexão WhatsApp ativa. Desconecte a conexão atual antes de criar uma nova.");
-		}
-
 		// Generate session ID
 		const sessionId = generateSessionId(organizacaoId);
 
@@ -111,13 +96,7 @@ async function postHandler(req: NextRequest) {
 
 // ============= DELETE - Remove Internal Gateway Connection =============
 
-async function deleteInternalGatewayConnection({
-	session,
-	connectionId,
-}: {
-	session: TAuthUserSession;
-	connectionId: string;
-}) {
+async function deleteInternalGatewayConnection({ session, connectionId }: { session: TAuthUserSession; connectionId: string }) {
 	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
@@ -149,9 +128,6 @@ async function deleteInternalGatewayConnection({
 
 	// Delete connection from database (cascades to phones)
 	await db.delete(whatsappConnections).where(and(eq(whatsappConnections.id, connectionId), eq(whatsappConnections.organizacaoId, organizacaoId)));
-
-	// Also delete any templates for this organization
-	await db.delete(whatsappTemplates).where(eq(whatsappTemplates.organizacaoId, organizacaoId));
 
 	return {
 		data: { deletedId: connectionId },
