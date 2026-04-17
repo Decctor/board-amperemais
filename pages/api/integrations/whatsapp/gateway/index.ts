@@ -10,6 +10,7 @@ import { db } from "@/services/drizzle";
 import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
 import { interactions } from "@/services/drizzle/schema/interactions";
+import { whatsappTemplatePhones } from "@/services/drizzle/schema/whatsapp-templates";
 import { supabaseClient } from "@/services/supabase";
 import { waitUntil } from "@vercel/functions";
 import { eq, sql } from "drizzle-orm";
@@ -152,6 +153,18 @@ async function handleConnectionUpdate(body: Extract<WebhookBody, { event: "conne
 	// Find connection by session ID
 	const connection = await db.query.whatsappConnections.findFirst({
 		where: (fields, { eq }) => eq(fields.gatewaySessaoId, sessionId),
+		with: {
+			telefones: {
+				with: {
+					templates: {
+						columns: {
+							id: true,
+							templateId: true,
+						},
+					},
+				},
+			},
+		},
 	});
 
 	if (!connection) {
@@ -174,6 +187,26 @@ async function handleConnectionUpdate(body: Extract<WebhookBody, { event: "conne
 	const { whatsappConnections } = await import("@/services/drizzle/schema/whatsapp-connections");
 	await db.update(whatsappConnections).set(updateData).where(eq(whatsappConnections.id, connection.id));
 
+	if (data.status === "connected") {
+		const orgTemplates = await db.query.whatsappTemplates.findMany({
+			where: (fields, { eq }) => eq(fields.organizacaoId, connection.organizacaoId),
+		});
+
+		const syncTemplateTasks = orgTemplates.flatMap((template) =>
+			connection.telefones.map(async (phone) => {
+				const alreadyLinked = phone.templates.some((t) => t.templateId === template.id);
+				if (alreadyLinked) return;
+				await db.insert(whatsappTemplatePhones).values({
+					templateId: template.id,
+					telefoneId: phone.id,
+					whatsappTemplateId: null,
+					status: "APROVADO",
+					qualidade: "ALTA",
+				});
+			}),
+		);
+		await Promise.all(syncTemplateTasks);
+	}
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Connection status updated:", {
 		sessionId,
 		status: data.status,
@@ -415,13 +448,7 @@ function getRecord(value: unknown): Record<string, unknown> {
 	return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
-async function resolveMessageTargets({
-	clientMessageId,
-	whatsappMessageId,
-}: {
-	clientMessageId?: string;
-	whatsappMessageId?: string;
-}): Promise<{
+async function resolveMessageTargets({ clientMessageId, whatsappMessageId }: { clientMessageId?: string; whatsappMessageId?: string }): Promise<{
 	chatMessageId: string | null;
 	interactionId: string | null;
 	interactionMetadados: Record<string, unknown>;
@@ -446,8 +473,7 @@ async function resolveMessageTargets({
 
 		if (interaction) {
 			const interactionMetadados = getRecord(interaction.metadados);
-			const chatMessageIdFromMetadata =
-				typeof interactionMetadados.chatMessageId === "string" ? interactionMetadados.chatMessageId : null;
+			const chatMessageIdFromMetadata = typeof interactionMetadados.chatMessageId === "string" ? interactionMetadados.chatMessageId : null;
 
 			return {
 				chatMessageId: chatMessageIdFromMetadata,

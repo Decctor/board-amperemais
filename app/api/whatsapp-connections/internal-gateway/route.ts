@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { DEFAULT_GATEWAY_ENABLED_EVENTS, deleteSession, generateSessionId, initSession } from "@/lib/whatsapp/internal-gateway";
 import { db } from "@/services/drizzle";
 import { whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
-import { whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
+import { whatsappTemplatePhones, whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -106,6 +106,9 @@ async function deleteInternalGatewayConnection({ session, connectionId }: { sess
 	// Get connection to verify ownership and get session ID
 	const connection = await db.query.whatsappConnections.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, connectionId), eq(fields.organizacaoId, organizacaoId)),
+		with: {
+			telefones: true,
+		},
 	});
 
 	if (!connection) {
@@ -128,7 +131,9 @@ async function deleteInternalGatewayConnection({ session, connectionId }: { sess
 
 	// Delete connection from database (cascades to phones)
 	await db.delete(whatsappConnections).where(and(eq(whatsappConnections.id, connectionId), eq(whatsappConnections.organizacaoId, organizacaoId)));
-
+	for (const phone of connection.telefones) {
+		await db.delete(whatsappTemplatePhones).where(eq(whatsappTemplatePhones.telefoneId, phone.id));
+	}
 	return {
 		data: { deletedId: connectionId },
 		message: "Conexão do Gateway Interno removida com sucesso.",

@@ -250,9 +250,9 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 		onSettled: () => queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] }),
 	});
 
-	if (showQRConnect && !isConnected) {
-		return (
-			<div className="border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+	return (
+		<>
+			{showQRConnect && !isConnected && (
 				<InternalGatewayQRConnect
 					onBack={() => setShowQRConnect(false)}
 					onSuccess={() => {
@@ -260,12 +260,8 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 						queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] });
 					}}
 				/>
-			</div>
-		);
-	}
-
-	return (
-		<div className="border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			)}
+			<div className="border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex w-full items-start gap-3">
 				<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
 					<div className="ring-background z-10 flex h-16 min-h-16 w-16 min-w-16 items-center justify-center rounded-full bg-[#24549C] ring-2">
@@ -341,6 +337,7 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 					)}
 				</div>
 			)}
-		</div>
+			</div>
+		</>
 	);
 }
