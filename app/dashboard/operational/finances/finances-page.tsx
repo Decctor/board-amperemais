@@ -69,6 +69,7 @@ import {
 import { BsCalendar, BsCalendarCheck } from "react-icons/bs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { TPaymentMethodEnum } from "@/schemas/enums";
 
 type FinancesPageProps = {
 	user: TAuthUserSession["user"];
@@ -905,9 +906,11 @@ function TransactionCard({ transaction, financialAccounts }: TransactionCardProp
 							onClick={() =>
 								mutateEffectTransaction({
 									transactionId: transaction.id,
-									dataEfetivacao: effectDate ?? null,
-									contaFinanceiraId: selectedAccountId,
-									metodo: canChangeMethod ? selectedMethod : null,
+									transaction: {
+										dataEfetivacao: effectDate ? new Date(effectDate) : null,
+										contaFinanceiraId: selectedAccountId,
+										metodo: canChangeMethod ? (selectedMethod as TPaymentMethodEnum) : "A_DEFINIR",
+									},
 								})
 							}
 							disabled={isEffecting}
@@ -1157,9 +1160,7 @@ function AccountCardChart({ accountId, startDate, endDate }: AccountCardChartPro
 
 	const header = (
 		<div className="mb-1 flex items-center justify-between px-0.5">
-			<span className="text-[0.55rem] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-				{GRAPH_TYPE_LABELS[graphType]}
-			</span>
+			<span className="text-[0.55rem] font-semibold uppercase tracking-[0.05em] text-muted-foreground">{GRAPH_TYPE_LABELS[graphType]}</span>
 			<div className="flex items-center gap-0.5">
 				{GRAPH_TYPE_OPTIONS.map((opt) => (
 					<button
@@ -1169,9 +1170,7 @@ function AccountCardChart({ accountId, startDate, endDate }: AccountCardChartPro
 						onClick={() => setGraphType(opt.value)}
 						className={cn(
 							"flex h-5 w-5 items-center justify-center rounded-md transition-colors",
-							graphType === opt.value
-								? "bg-primary text-primary-foreground"
-								: "text-muted-foreground hover:bg-muted hover:text-foreground",
+							graphType === opt.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
 						)}
 					>
 						{opt.icon}
@@ -1208,11 +1207,7 @@ function AccountCardChart({ accountId, startDate, endDate }: AccountCardChartPro
 		<div className="flex w-full flex-col flex-1">
 			{header}
 			<ChartContainer config={chartConfig} className="aspect-auto h-[88px] w-full">
-				<AreaChart
-					accessibilityLayer
-					data={graphType === "consolidated" ? consolidatedData : data}
-					margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
-				>
+				<AreaChart accessibilityLayer data={graphType === "consolidated" ? consolidatedData : data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
 					<defs>
 						<linearGradient id={`grad-entries-${accountId}`} x1="0" y1="0" x2="0" y2="1">
 							<stop offset="5%" stopColor="#16a34a" stopOpacity={0.35} />
@@ -1253,13 +1248,37 @@ function AccountCardChart({ accountId, startDate, endDate }: AccountCardChartPro
 					/>
 
 					{(graphType === "entries-and-exits" || graphType === "entries") && (
-						<Area type="monotone" dataKey="entries" stroke="#16a34a" strokeWidth={1.5} fill={`url(#grad-entries-${accountId})`} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
+						<Area
+							type="monotone"
+							dataKey="entries"
+							stroke="#16a34a"
+							strokeWidth={1.5}
+							fill={`url(#grad-entries-${accountId})`}
+							dot={false}
+							activeDot={{ r: 3, strokeWidth: 0 }}
+						/>
 					)}
 					{(graphType === "entries-and-exits" || graphType === "exits") && (
-						<Area type="monotone" dataKey="exits" stroke="#dc2626" strokeWidth={1.5} fill={`url(#grad-exits-${accountId})`} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
+						<Area
+							type="monotone"
+							dataKey="exits"
+							stroke="#dc2626"
+							strokeWidth={1.5}
+							fill={`url(#grad-exits-${accountId})`}
+							dot={false}
+							activeDot={{ r: 3, strokeWidth: 0 }}
+						/>
 					)}
 					{graphType === "consolidated" && (
-						<Area type="monotone" dataKey="net" stroke="#6366f1" strokeWidth={1.5} fill={`url(#grad-net-${accountId})`} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
+						<Area
+							type="monotone"
+							dataKey="net"
+							stroke="#6366f1"
+							strokeWidth={1.5}
+							fill={`url(#grad-net-${accountId})`}
+							dot={false}
+							activeDot={{ r: 3, strokeWidth: 0 }}
+						/>
 					)}
 				</AreaChart>
 			</ChartContainer>

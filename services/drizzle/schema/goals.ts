@@ -12,6 +12,8 @@ export const goals = newTable("goals", {
 	dataInicio: timestamp("data_inicio").notNull(),
 	dataFim: timestamp("data_fim").notNull(),
 	objetivoValor: doublePrecision("objetivo_valor").notNull(),
+	objetivoQtdeVendas: doublePrecision("objetivo_qtde_vendas"),
+	objetivoNovosClientes: doublePrecision("objetivo_novos_clientes"),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
 export const goalsRelations = relations(goals, ({ many }) => ({
@@ -30,6 +32,8 @@ export const goalsSellers = newTable("goals_sellers", {
 		.references(() => sellers.id, { onDelete: "cascade" })
 		.notNull(),
 	objetivoValor: doublePrecision("objetivo_valor").notNull(),
+	objetivoQtdeVendas: doublePrecision("objetivo_qtde_vendas"),
+	objetivoNovosClientes: doublePrecision("objetivo_novos_clientes"),
 });
 
 export const goalsSellersRelations = relations(goalsSellers, ({ one }) => ({

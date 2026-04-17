@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { listFiscalOperationProfiles, upsertFiscalOperationProfile } from "@/lib/fiscal/settings";
 import { FiscalDocumentTypeEnum, FiscalOperationConsumerPresenceEnum, FiscalOperationFinalityEnum } from "@/schemas/enums";
+import { FiscalOperationProfileSchema } from "@/schemas/fiscal";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -35,18 +36,16 @@ async function getFiscalOperationProfilesRoute() {
 }
 
 const UpsertFiscalOperationProfileInputSchema = z.object({
-	id: z.string().optional().nullable(),
-	nome: z.string(),
-	descricao: z.string().optional().nullable(),
-	tipoDocumento: FiscalDocumentTypeEnum,
-	finalidade: FiscalOperationFinalityEnum,
-	presencaConsumidor: FiscalOperationConsumerPresenceEnum,
-	consumidorFinal: z.boolean(),
-	cfopPadrao: z.string(),
-	naturezaOperacao: z.string(),
-	seriePadraoId: z.string().optional().nullable(),
-	ativo: z.boolean().default(true),
+	operationProfileId: z.string({
+		required_error: "ID da operacao fiscal nao informado.",
+		invalid_type_error: "Tipo nao valido para o ID da operacao fiscal.",
+	}),
+	operationProfile: FiscalOperationProfileSchema.omit({
+		organizacaoId: true,
+		dataInsercao: true,
+	}),
 });
+
 export type TUpsertFiscalOperationProfileInput = z.infer<typeof UpsertFiscalOperationProfileInputSchema>;
 
 async function upsertFiscalOperationProfileRoute(request: NextRequest) {
@@ -54,18 +53,9 @@ async function upsertFiscalOperationProfileRoute(request: NextRequest) {
 	const payload = await request.json();
 	const input = UpsertFiscalOperationProfileInputSchema.parse(payload);
 	const result = await upsertFiscalOperationProfile({
-		id: input.id ?? undefined,
+		id: input.operationProfileId,
 		organizacaoId: orgId,
-		nome: input.nome,
-		descricao: input.descricao ?? null,
-		tipoDocumento: input.tipoDocumento,
-		finalidade: input.finalidade,
-		presencaConsumidor: input.presencaConsumidor,
-		consumidorFinal: input.consumidorFinal,
-		cfopPadrao: input.cfopPadrao,
-		naturezaOperacao: input.naturezaOperacao,
-		seriePadraoId: input.seriePadraoId ?? null,
-		ativo: input.ativo,
+		...input.operationProfile,
 	});
 	return NextResponse.json({
 		data: result,

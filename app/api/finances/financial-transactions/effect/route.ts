@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { PaymentMethodEnum } from "@/schemas/enums";
+import { FinancialTransactionSchema } from "@/schemas/financial";
 import { db } from "@/services/drizzle";
 import { financialTransactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -10,12 +11,11 @@ import z from "zod";
 
 const EffectFinancialTransactionInputSchema = z.object({
 	transactionId: z.string({ required_error: "ID da transação não informado." }),
-	dataEfetivacao: z
-		.string({ invalid_type_error: "Tipo não válido para data de efetivação." })
-		.optional()
-		.nullable(),
-	contaFinanceiraId: z.string({ invalid_type_error: "Tipo não válido para conta financeira." }).optional().nullable(),
-	metodo: PaymentMethodEnum.optional().nullable(),
+	transaction: FinancialTransactionSchema.pick({
+		contaFinanceiraId: true,
+		metodo: true,
+		dataEfetivacao: true,
+	}),
 });
 export type TEffectFinancialTransactionInput = z.infer<typeof EffectFinancialTransactionInputSchema>;
 
@@ -27,25 +27,25 @@ async function effectFinancialTransaction({ input, orgId }: { input: TEffectFina
 	if (!transaction) throw new createHttpError.NotFound("Transação financeira não encontrada.");
 	if (transaction.dataEfetivacao) throw new createHttpError.BadRequest("Esta transação já está efetivada.");
 
-	if (input.contaFinanceiraId) {
+	if (input.transaction.contaFinanceiraId) {
 		const account = await db.query.financialAccounts.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.id, input.contaFinanceiraId!), eq(fields.organizacaoId, orgId)),
+			where: (fields, { and, eq }) => and(eq(fields.id, input.transaction.contaFinanceiraId!), eq(fields.organizacaoId, orgId)),
 			columns: { id: true },
 		});
 
 		if (!account) throw new createHttpError.NotFound("Conta financeira não encontrada para esta organização.");
 	}
 
-	const metodo = input.metodo ?? transaction.metodo;
-	if (transaction.metodo !== "A_DEFINIR" && input.metodo && input.metodo !== transaction.metodo) {
-		throw new createHttpError.BadRequest("Somente transações com método A_DEFINIR podem trocar o método na efetivação.");
+	const metodo = input.transaction.metodo ?? transaction.metodo;
+	if (transaction.metodo !== "A_DEFINIR" && input.transaction.metodo && input.transaction.metodo !== transaction.metodo) {
+		throw new createHttpError.BadRequest(`Somente transações com método "A DEFINIR" podem trocar o método na efetivação.`);
 	}
 
 	const [updated] = await db
 		.update(financialTransactions)
 		.set({
-			dataEfetivacao: input.dataEfetivacao ? new Date(input.dataEfetivacao) : new Date(),
-			contaFinanceiraId: input.contaFinanceiraId ?? transaction.contaFinanceiraId,
+			dataEfetivacao: input.transaction.dataEfetivacao ? new Date(input.transaction.dataEfetivacao) : new Date(),
+			contaFinanceiraId: input.transaction.contaFinanceiraId ?? transaction.contaFinanceiraId,
 			metodo,
 			provedorStatus: "APROVADO",
 		})
@@ -63,16 +63,12 @@ async function effectFinancialTransaction({ input, orgId }: { input: TEffectFina
 }
 export type TEffectFinancialTransactionOutput = Awaited<ReturnType<typeof effectFinancialTransaction>>;
 
-async function effectFinancialTransactionRoute(request: NextRequest, { params }: { params: Promise<{ transactionId: string }> }) {
+async function effectFinancialTransactionRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session?.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
 
-	const body = await request.json().catch(() => ({}));
-	const routeParams = await params;
-	const input = EffectFinancialTransactionInputSchema.parse({
-		...body,
-		transactionId: routeParams.transactionId,
-	});
+	const body = await request.json();
+	const input = EffectFinancialTransactionInputSchema.parse(body);
 	const result = await effectFinancialTransaction({ input, orgId: session.membership.organizacao.id });
 	return NextResponse.json(result);
 }

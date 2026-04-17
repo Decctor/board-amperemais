@@ -3,7 +3,7 @@ import { TAuthUserSession } from "@/lib/authentication/types";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BookText, Settings, BadgeCheck, Receipt, RefreshCcw, Save } from "lucide-react";
-import { useFiscalSettings } from "@/lib/queries/fiscal";
+import { useFiscalOperationProfiles, useFiscalSettings } from "@/lib/queries/fiscal";
 import { syncFiscalCompany, updateFiscalSettings } from "@/lib/mutations/fiscal";
 
 import { TUseInternalFiscalSettingsState, useInternalFiscalSettingsState } from "@/state-hooks/use-internal-fiscal-settings-state";
@@ -156,6 +156,7 @@ function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalCo
 			</SectionWrapper>
 
 			<CompanyBasicInformation fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
+			<CompanyFiscalOperationProfiles />
 		</div>
 	);
 }
@@ -341,6 +342,31 @@ function CompanyBasicInformation({ fiscalConfig, updateFiscalConfig }: CompanyBa
 					/>
 				</div>
 			</div>
+		</SectionWrapper>
+	);
+}
+
+function CompanyFiscalOperationProfiles() {
+	const { data, isLoading, isError, isSuccess, error, queryKey } = useFiscalOperationProfiles();
+
+	return (
+		<SectionWrapper title="PERFIS DE OPERAÇÃO FISCAL" icon={<BadgeCheck className="h-4 w-4" />}>
+			{isLoading ? <LoadingComponent /> : null}
+			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+			{isSuccess ? (
+				data.length > 0 ? (
+					data.map((profile) => (
+						<div key={profile.id}>
+							<h3>{profile.nome}</h3>
+							<p>{profile.descricao}</p>
+						</div>
+					))
+				) : (
+					<div className="flex items-center justify-center">
+						<p className="text-sm text-muted-foreground">Nenhum perfil de operação fiscal encontrado.</p>
+					</div>
+				)
+			) : null}
 		</SectionWrapper>
 	);
 }
