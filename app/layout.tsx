@@ -47,7 +47,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	console.log("Triggering Build");
 	return (
-		<html lang="pt-BR" suppressHydrationWarning>
+		<html lang="pt-BR" suppressHydrationWarning={true}>
 			<body className={cn(`min-h-screen min-w-screen bg-background text-primary overflow-x-hidden antialiased font-raleway ${raleway.variable}`)}>
 				<ProvidersWrapper>
 					{children}

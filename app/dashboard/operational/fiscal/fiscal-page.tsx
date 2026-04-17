@@ -6,7 +6,7 @@ import { BookText, Settings, BadgeCheck, Receipt, RefreshCcw, Save } from "lucid
 import { useFiscalSettings } from "@/lib/queries/fiscal";
 import { syncFiscalCompany, updateFiscalSettings } from "@/lib/mutations/fiscal";
 
-import { useInternalFiscalSettingsState } from "@/state-hooks/use-internal-fiscal-settings-state";
+import { TUseInternalFiscalSettingsState, useInternalFiscalSettingsState } from "@/state-hooks/use-internal-fiscal-settings-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -20,6 +20,10 @@ import { Switch } from "@/components/ui/switch";
 import TextInput from "@/components/Inputs/TextInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
+import { getCEPInfo } from "@/lib/utils";
+import { formatToCEP, formatToPhone } from "@/lib/formatting";
+import SelectInput from "@/components/Inputs/SelectInput";
+import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/states-cities";
 type FiscalPageProps = {
 	user: TAuthUserSession["user"];
 	userHasFiscalViewPermission: boolean;
@@ -142,175 +146,201 @@ function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalCo
 			</div>
 
 			<SectionWrapper title="OPERACIONAL" icon={<BadgeCheck className="h-4 w-4" />}>
-				<div className="grid gap-4 md:grid-cols-2">
-					<div className="flex flex-col gap-2">
-						<Label>PROVEDOR</Label>
-						<div className="flex gap-2">
-							<Button
-								type="button"
-								variant={state.fiscalProvedor === "MANUAL" ? "default" : "outline"}
-								onClick={() => updateSettings({ fiscalProvedor: "MANUAL" })}
-							>
-								MANUAL
-							</Button>
-							<Button
-								type="button"
-								variant={state.fiscalProvedor === "NUVEM_FISCAL" ? "default" : "outline"}
-								onClick={() => updateSettings({ fiscalProvedor: "NUVEM_FISCAL" })}
-							>
-								NUVEM FISCAL
-							</Button>
-						</div>
+				<div className="flex items-center justify-between rounded-lg border p-4">
+					<div>
+						<Label>EMISSÃO AUTOMÁTICA</Label>
+						<p className="text-sm text-muted-foreground">Dispara emissão ao confirmar a venda.</p>
 					</div>
-					<div className="flex items-center justify-between rounded-lg border p-4">
-						<div>
-							<Label>EMISSÃO AUTOMÁTICA</Label>
-							<p className="text-sm text-muted-foreground">Dispara emissão ao confirmar a venda.</p>
-						</div>
-						<Switch checked={state.fiscalEmissaoAutomatica} onCheckedChange={(checked) => updateSettings({ fiscalEmissaoAutomatica: checked })} />
-					</div>
+					<Switch checked={state.fiscalEmissaoAutomatica} onCheckedChange={(checked) => updateSettings({ fiscalEmissaoAutomatica: checked })} />
 				</div>
 			</SectionWrapper>
 
-			<SectionWrapper title="EMPRESA FISCAL" icon={<Receipt className="h-4 w-4" />}>
-				<div className="grid gap-4 md:grid-cols-2">
-					<TextInput
-						label="RAZÃO SOCIAL"
-						value={state.fiscalConfiguracao.nomeRazaoSocial}
-						placeholder="Razão social"
-						handleChange={(value) => updateFiscalConfig({ nomeRazaoSocial: value })}
-					/>
+			<CompanyBasicInformation fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
+		</div>
+	);
+}
+
+type CompanyBasicInformationProps = {
+	fiscalConfig: TUseInternalFiscalSettingsState["state"]["fiscalConfiguracao"];
+	updateFiscalConfig: TUseInternalFiscalSettingsState["updateFiscalConfig"];
+};
+function CompanyBasicInformation({ fiscalConfig, updateFiscalConfig }: CompanyBasicInformationProps) {
+	async function setAddressDataByCEP(cep: string) {
+		const addressInfo = await getCEPInfo(cep);
+		const toastID = toast.loading("Buscando informações sobre o CEP...", {
+			duration: 2000,
+		});
+		setTimeout(() => {
+			if (addressInfo) {
+				toast.dismiss(toastID);
+				toast.success("Dados do CEP buscados com sucesso.", {
+					duration: 1000,
+				});
+				updateFiscalConfig({
+					endereco: {
+						...fiscalConfig.endereco,
+						logradouro: addressInfo.logradouro,
+						bairro: addressInfo.bairro,
+						uf: addressInfo.uf,
+						cidade: addressInfo.localidade.toUpperCase(),
+						cep: cep,
+						codigoMunicipio: addressInfo.ibge ?? "",
+					},
+				});
+			}
+		}, 1000);
+	}
+	return (
+		<SectionWrapper title="EMPRESA FISCAL" icon={<Receipt className="h-4 w-4" />}>
+			<TextInput
+				label="RAZÃO SOCIAL"
+				value={fiscalConfig.nomeRazaoSocial}
+				placeholder="Razão social"
+				handleChange={(value) => updateFiscalConfig({ nomeRazaoSocial: value })}
+			/>
+			<div className="w-full flex items-center gap-3 flex-col lg:flex-row">
+				<div className="w-full lg:w-1/2">
 					<TextInput
 						label="NOME FANTASIA"
-						value={state.fiscalConfiguracao.nomeFantasia ?? ""}
+						value={fiscalConfig.nomeFantasia ?? ""}
 						placeholder="Nome fantasia"
 						handleChange={(value) => updateFiscalConfig({ nomeFantasia: value })}
 					/>
+				</div>
+				<div className="w-full lg:w-1/2">
 					<TextInput
 						label="CPF/CNPJ"
-						value={state.fiscalConfiguracao.cpfCnpj}
+						value={fiscalConfig.cpfCnpj}
 						placeholder="Somente números"
 						handleChange={(value) => updateFiscalConfig({ cpfCnpj: value })}
 					/>
+				</div>
+			</div>
+
+			<div className="w-full flex items-center gap-3 flex-col lg:flex-row">
+				<div className="w-full lg:w-1/3">
+					<SelectInput
+						label="REGIME TRIBUTÁRIO"
+						value={fiscalConfig.regimeTributario?.toString()}
+						options={[
+							{ id: 1, label: "1", value: "1" },
+							{ id: 2, label: "2", value: "2" },
+							{ id: 3, label: "3", value: "3" },
+							{ id: 4, label: "4", value: "4" },
+						]}
+						resetOptionLabel="Selecione um regime tributário"
+						handleChange={(value) => updateFiscalConfig({ regimeTributario: Number(value) })}
+						onReset={() => updateFiscalConfig({ regimeTributario: undefined })}
+					/>
+				</div>
+				<div className="w-full lg:w-1/3">
 					<TextInput
 						label="INSCRIÇÃO ESTADUAL"
-						value={state.fiscalConfiguracao.inscricaoEstadual ?? ""}
+						value={fiscalConfig.inscricaoEstadual ?? ""}
 						placeholder="Inscrição estadual"
 						handleChange={(value) => updateFiscalConfig({ inscricaoEstadual: value })}
 					/>
+				</div>
+				<div className="w-full lg:w-1/3">
 					<TextInput
 						label="INSCRIÇÃO MUNICIPAL"
-						value={state.fiscalConfiguracao.inscricaoMunicipal ?? ""}
+						value={fiscalConfig.inscricaoMunicipal ?? ""}
 						placeholder="Inscrição municipal"
 						handleChange={(value) => updateFiscalConfig({ inscricaoMunicipal: value })}
 					/>
-					<NumberInput
-						label="REGIME TRIBUTÁRIO"
-						value={state.fiscalConfiguracao.regimeTributario}
-						placeholder="1 a 4"
-						handleChange={(value) => updateFiscalConfig({ regimeTributario: value })}
-					/>
+				</div>
+			</div>
+			<div className="w-full flex items-center gap-3 flex-col lg:flex-row">
+				<div className="w-full lg:w-1/2">
 					<TextInput
 						label="EMAIL FISCAL"
-						value={state.fiscalConfiguracao.emailFiscal ?? ""}
+						value={fiscalConfig.emailFiscal ?? ""}
 						placeholder="financeiro@empresa.com"
 						handleChange={(value) => updateFiscalConfig({ emailFiscal: value })}
 					/>
+				</div>
+				<div className="w-full lg:w-1/2">
 					<TextInput
 						label="TELEFONE FISCAL"
-						value={state.fiscalConfiguracao.telefoneFiscal ?? ""}
+						value={fiscalConfig.telefoneFiscal ?? ""}
 						placeholder="Telefone fiscal"
-						handleChange={(value) => updateFiscalConfig({ telefoneFiscal: value })}
+						handleChange={(value) => updateFiscalConfig({ telefoneFiscal: formatToPhone(value) })}
 					/>
-					<TextInput
-						label="LOGRADOURO"
-						value={state.fiscalConfiguracao.endereco.logradouro}
-						placeholder="Rua / avenida"
-						handleChange={(value) => updateFiscalConfig({ endereco: { ...state.fiscalConfiguracao.endereco, logradouro: value } })}
-					/>
-					<TextInput
-						label="NÚMERO"
-						value={state.fiscalConfiguracao.endereco.numero}
-						placeholder="Número"
-						handleChange={(value) => updateFiscalConfig({ endereco: { ...state.fiscalConfiguracao.endereco, numero: value } })}
-					/>
-					<TextInput
-						label="BAIRRO"
-						value={state.fiscalConfiguracao.endereco.bairro}
-						placeholder="Bairro"
-						handleChange={(value) => updateFiscalConfig({ endereco: { ...state.fiscalConfiguracao.endereco, bairro: value } })}
-					/>
-					<TextInput
-						label="CIDADE"
-						value={state.fiscalConfiguracao.endereco.cidade}
-						placeholder="Cidade"
-						handleChange={(value) => updateFiscalConfig({ endereco: { ...state.fiscalConfiguracao.endereco, cidade: value } })}
-					/>
-					<TextInput
-						label="UF"
-						value={state.fiscalConfiguracao.endereco.uf}
-						placeholder="UF"
-						handleChange={(value) => updateFiscalConfig({ endereco: { ...state.fiscalConfiguracao.endereco, uf: value } })}
-					/>
+				</div>
+			</div>
+			<div className="w-full flex items-center gap-3 flex-col lg:flex-row">
+				<div className="w-full lg:w-1/3">
 					<TextInput
 						label="CEP"
-						value={state.fiscalConfiguracao.endereco.cep}
+						value={fiscalConfig.endereco.cep}
 						placeholder="CEP"
-						handleChange={(value) => updateFiscalConfig({ endereco: { ...state.fiscalConfiguracao.endereco, cep: value } })}
+						handleChange={(value) => {
+							if (value.length === 9) {
+								setAddressDataByCEP(value);
+							}
+							updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, cep: formatToCEP(value) } });
+						}}
 					/>
+				</div>
+				<div className="w-full lg:w-1/3">
+					<SelectInput
+						label="UF"
+						value={fiscalConfig.endereco.uf}
+						options={BrazilianStatesOptions}
+						resetOptionLabel="Selecione uma UF"
+						handleChange={(value) =>
+							updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, uf: value, cidade: BrazilianCitiesOptionsFromUF(value ?? null)[0]?.value } })
+						}
+						onReset={() => updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, uf: "", cidade: "" } })}
+					/>
+				</div>
+				<div className="w-full lg:w-1/3">
+					<SelectInput
+						label="CIDADE"
+						value={fiscalConfig.endereco.cidade}
+						options={BrazilianCitiesOptionsFromUF(fiscalConfig.endereco.uf ?? null)}
+						resetOptionLabel="Selecione uma cidade"
+						handleChange={(value) => updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, cidade: value } })}
+						onReset={() => updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, cidade: "" } })}
+					/>
+				</div>
+			</div>
+			<div className="w-full flex items-center gap-3 flex-col lg:flex-row">
+				<div className="w-full lg:w-1/2">
 					<TextInput
 						label="CÓDIGO MUNICÍPIO"
-						value={state.fiscalConfiguracao.endereco.codigoMunicipio}
+						value={fiscalConfig.endereco.codigoMunicipio}
 						placeholder="Código IBGE"
-						handleChange={(value) => updateFiscalConfig({ endereco: { ...state.fiscalConfiguracao.endereco, codigoMunicipio: value } })}
+						handleChange={(value) => updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, codigoMunicipio: value } })}
 					/>
 				</div>
-			</SectionWrapper>
-
-			<SectionWrapper title="NUVEM FISCAL" icon={<RefreshCcw className="h-4 w-4" />}>
-				<div className="grid gap-4 md:grid-cols-2">
+				<div className="w-full lg:w-1/2">
 					<TextInput
-						label="BASE URL"
-						value={state.fiscalConfiguracao.nuvemFiscal.api.baseUrl}
-						placeholder="https://api.nuvemfiscal.com.br"
-						handleChange={(value) =>
-							updateFiscalConfig({
-								nuvemFiscal: { ...state.fiscalConfiguracao.nuvemFiscal, api: { ...state.fiscalConfiguracao.nuvemFiscal.api, baseUrl: value } },
-							})
-						}
-					/>
-					<TextInput
-						label="TOKEN API"
-						value={state.fiscalConfiguracao.nuvemFiscal.api.apiToken ?? ""}
-						placeholder="Token opcional salvo na organização"
-						handleChange={(value) =>
-							updateFiscalConfig({
-								nuvemFiscal: { ...state.fiscalConfiguracao.nuvemFiscal, api: { ...state.fiscalConfiguracao.nuvemFiscal.api, apiToken: value } },
-							})
-						}
-					/>
-					<NumberInput
-						label="ID CSC NFC-E"
-						value={state.fiscalConfiguracao.nuvemFiscal.nfce.idCsc ?? 0}
-						placeholder="ID CSC"
-						handleChange={(value) =>
-							updateFiscalConfig({
-								nuvemFiscal: { ...state.fiscalConfiguracao.nuvemFiscal, nfce: { ...state.fiscalConfiguracao.nuvemFiscal.nfce, idCsc: value } },
-							})
-						}
-					/>
-					<TextInput
-						label="CSC NFC-E"
-						value={state.fiscalConfiguracao.nuvemFiscal.nfce.csc ?? ""}
-						placeholder="CSC da NFC-e"
-						handleChange={(value) =>
-							updateFiscalConfig({
-								nuvemFiscal: { ...state.fiscalConfiguracao.nuvemFiscal, nfce: { ...state.fiscalConfiguracao.nuvemFiscal.nfce, csc: value } },
-							})
-						}
+						label="BAIRRO"
+						value={fiscalConfig.endereco.bairro}
+						placeholder="Bairro"
+						handleChange={(value) => updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, bairro: value } })}
 					/>
 				</div>
-			</SectionWrapper>
-		</div>
+			</div>
+			<div className="w-full flex items-center gap-3 flex-col lg:flex-row">
+				<div className="w-full lg:w-1/2">
+					<TextInput
+						label="LOGRADOURO"
+						value={fiscalConfig.endereco.logradouro}
+						placeholder="Rua / avenida"
+						handleChange={(value) => updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, logradouro: value } })}
+					/>
+				</div>
+				<div className="w-full lg:w-1/2">
+					<TextInput
+						label="NÚMERO"
+						value={fiscalConfig.endereco.numero}
+						placeholder="Número"
+						handleChange={(value) => updateFiscalConfig({ endereco: { ...fiscalConfig.endereco, numero: value } })}
+					/>
+				</div>
+			</div>
+		</SectionWrapper>
 	);
 }
