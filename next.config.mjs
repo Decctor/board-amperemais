@@ -28,7 +28,10 @@ const nextConfig = {
 				protocol: "https",
 				hostname: "wawrqfehfafrrnfsycgs.supabase.co",
 			},
-
+			{
+				protocol: "https",
+				hostname: "static.saipos.com",
+			},
 			{
 				protocol: "https",
 				hostname: "storage.googleapis.com",
