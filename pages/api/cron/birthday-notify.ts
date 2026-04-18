@@ -4,10 +4,56 @@ import { type ImmediateProcessingData, delay, processSingleInteractionImmediatel
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { campaigns, clients, interactions } from "@/services/drizzle/schema";
+import { clients, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, eq, sql } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"] as const;
+const INTERACTIONS_CRON_TIMEZONE = process.env.INTERACTIONS_CRON_TIMEZONE ?? "America/Sao_Paulo";
+
+type TTimeBlock = (typeof TIME_BLOCKS)[number];
+
+type TOrganizationBirthdayNotifySummary = {
+	activeCampaigns: number;
+	matchingClients: number;
+	interactionsInserted: number;
+	interactionsQueuedForImmediateProcessing: number;
+	interactionsScheduledForProcessInteractions: number;
+	skippedByFrequencyRules: number;
+	immediateEligibleWithoutDeliveryConfig: number;
+	immediateEligibleWithoutClientData: number;
+	cashbacksGenerated: number;
+};
+
+function getTimeBlockMinutes(block: TTimeBlock): number {
+	const [hour, minute] = block.split(":").map(Number);
+	return hour * 60 + minute;
+}
+
+function getCurrentTimeBlock(currentTime = dayjs()): TTimeBlock {
+	const currentTotalMinutes = currentTime.hour() * 60 + currentTime.minute();
+
+	let closestBlock: TTimeBlock = TIME_BLOCKS[0];
+	for (const block of TIME_BLOCKS) {
+		if (getTimeBlockMinutes(block) <= currentTotalMinutes) {
+			closestBlock = block;
+			continue;
+		}
+		break;
+	}
+
+	return closestBlock;
+}
+
+function scheduledBlockHasArrived(scheduledBlock: TTimeBlock, currentBlock: TTimeBlock): boolean {
+	return getTimeBlockMinutes(scheduledBlock) <= getTimeBlockMinutes(currentBlock);
+}
 
 /**
  * Helper function to check if a campaign can be scheduled for a client based on frequency rules
@@ -58,13 +104,27 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 			columns: { id: true },
 		});
 
-		const today = dayjs();
+		const nowInCronTimezone = dayjs().tz(INTERACTIONS_CRON_TIMEZONE);
+		const today = nowInCronTimezone;
+		const currentDateAsISO8601 = nowInCronTimezone.format("YYYY-MM-DD");
+		const currentTimeBlock = getCurrentTimeBlock(nowInCronTimezone);
 
 		for (const organization of organizationsList) {
 			console.log(`[ORG: ${organization.id}] Processing organization...`);
 
 			// Collect data for immediate processing
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
+			const organizationSummary: TOrganizationBirthdayNotifySummary = {
+				activeCampaigns: 0,
+				matchingClients: 0,
+				interactionsInserted: 0,
+				interactionsQueuedForImmediateProcessing: 0,
+				interactionsScheduledForProcessInteractions: 0,
+				skippedByFrequencyRules: 0,
+				immediateEligibleWithoutDeliveryConfig: 0,
+				immediateEligibleWithoutClientData: 0,
+				cashbacksGenerated: 0,
+			};
 
 			await db.transaction(async (tx) => {
 				// Get active campaigns for birthday notifications
@@ -83,6 +143,7 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 						},
 					},
 				});
+				organizationSummary.activeCampaigns = birthdayCampaigns.length;
 
 				if (birthdayCampaigns.length === 0) {
 					console.log(`[ORG: ${organization.id}] No active ANIVERSARIO_CLIENTE campaigns found. Skipping.`);
@@ -135,6 +196,7 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 						`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Direction: ${campaign.execucaoAgendadaDirecao}, ` +
 							`Target birthday: ${targetMonth}/${targetDay}, Found ${birthdayClients.length} matching clients.`,
 					);
+					organizationSummary.matchingClients += birthdayClients.length;
 
 					// Schedule notifications for each matching client
 					for (const client of birthdayClients) {
@@ -148,6 +210,7 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 						);
 
 						if (canSchedule) {
+							organizationSummary.interactionsInserted += 1;
 							const [insertedInteraction] = await tx
 								.insert(interactions)
 								.values({
@@ -162,9 +225,14 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 								})
 								.returning({ id: interactions.id });
 
-							// Check for immediate processing (schedule date is today and value is 0, or ANTES direction)
-							const isImmediate = isAntes || campaign.execucaoAgendadaValor === 0;
-							if (isImmediate && campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
+							// Process immediately only when today's scheduled block has already arrived.
+							const scheduleIsToday = scheduleDate === currentDateAsISO8601;
+							const isImmediateCandidate = isAntes || campaign.execucaoAgendadaValor === 0;
+							const scheduledBlockArrived = scheduledBlockHasArrived(campaign.execucaoAgendadaBloco as TTimeBlock, currentTimeBlock);
+							const isImmediate = isImmediateCandidate && scheduleIsToday && scheduledBlockArrived;
+							const hasDeliveryConfig = !!(campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId);
+
+							if (isImmediate && hasDeliveryConfig) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, client.id),
@@ -180,6 +248,7 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 								});
 
 								if (clientData) {
+									organizationSummary.interactionsQueuedForImmediateProcessing += 1;
 									immediateProcessingDataList.push({
 										interactionId: insertedInteraction.id,
 										organizationId: organization.id,
@@ -194,13 +263,19 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 										},
 										campaign: {
 											autorId: campaign.autorId,
-											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
+											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId as string, // checked via hasDeliveryConfig, Typescript coundn't infer it
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
 										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
 										whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 									});
+								} else {
+									organizationSummary.immediateEligibleWithoutClientData += 1;
 								}
+							} else if (isImmediate) {
+								organizationSummary.immediateEligibleWithoutDeliveryConfig += 1;
+							} else {
+								organizationSummary.interactionsScheduledForProcessInteractions += 1;
 							}
 
 							// Generate campaign cashback for ANIVERSARIO_CLIENTE trigger (FIXO only)
@@ -217,7 +292,10 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
 								});
+								organizationSummary.cashbacksGenerated += 1;
 							}
+						} else {
+							organizationSummary.skippedByFrequencyRules += 1;
 						}
 					}
 				}
@@ -234,6 +312,13 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 					await delay(100); // Small delay between sends to avoid rate limiting
 				}
 			}
+
+			console.log(`[ORG: ${organization.id}] [INFO] [BIRTHDAY_NOTIFY] Organization processing summary`, {
+				...organizationSummary,
+				timezone: INTERACTIONS_CRON_TIMEZONE,
+				currentDate: currentDateAsISO8601,
+				currentTimeBlock,
+			});
 		}
 
 		console.log("[INFO] [BIRTHDAY_NOTIFY] All organizations processed successfully");
