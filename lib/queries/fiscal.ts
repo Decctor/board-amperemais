@@ -72,9 +72,29 @@ export function useFiscalDocumentById(documentId: string) {
 	};
 }
 
+async function fetchFiscalSeriesById({ id }: { id: string }) {
+	const { data } = await axios.get<TGetFiscalSeriesOutput>(`/api/fiscal/series?id=${id}`);
+	const byIdData = data.data.byId;
+	if (!byIdData) throw new Error("Oops, houve um erro ao buscar a serie fiscal.");
+	return byIdData;
+}
+
+export function useFiscalSeriesById({ id }: { id: string }) {
+	const queryKey = ["fiscal-series-by-id", id];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchFiscalSeriesById({ id }),
+		}),
+		queryKey,
+	};
+}
+
 async function fetchFiscalSeries() {
 	const { data } = await axios.get<TGetFiscalSeriesOutput>("/api/fiscal/series");
-	return data.data.default;
+	const defaultData = data.data.default;
+	if (!defaultData) throw new Error("Oops, houve um erro ao buscar as series fiscais.");
+	return defaultData;
 }
 
 export function useFiscalSeries() {

@@ -96,6 +96,12 @@ export async function listFiscalSeries(organizacaoId: string) {
 	});
 }
 
+export async function findFiscalSeriesById(seriesId: string) {
+	return db.query.fiscalSeries.findFirst({
+		where: (fields, operators) => operators.eq(fields.id, seriesId),
+	});
+}
+
 export async function upsertFiscalSeries(input: typeof fiscalSeries.$inferInsert) {
 	if (input.id) {
 		const [updated] = await db.update(fiscalSeries).set(input).where(eq(fiscalSeries.id, input.id)).returning();

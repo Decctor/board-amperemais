@@ -8,7 +8,12 @@ import type {
 	TUpdateFiscalOperationProfileInput,
 	TUpdateFiscalOperationProfileOutput,
 } from "@/app/api/fiscal/operation-profiles/route";
-import type { TUpsertFiscalSeriesInput, TUpsertFiscalSeriesOutput } from "@/app/api/fiscal/series/route";
+import type {
+	TCreateFiscalSeriesInput,
+	TCreateFiscalSeriesOutput,
+	TUpdateFiscalSeriesInput,
+	TUpdateFiscalSeriesOutput,
+} from "@/app/api/fiscal/series/route";
 import type { TUpdateFiscalSettingsInput, TUpdateFiscalSettingsOutput } from "@/app/api/fiscal/settings/route";
 import axios from "axios";
 
@@ -37,8 +42,13 @@ export async function cancelFiscalDocumentMutation(input: TCancelFiscalDocumentI
 	return data;
 }
 
-export async function upsertFiscalSeriesMutation(input: TUpsertFiscalSeriesInput) {
-	const { data } = await axios.put<TUpsertFiscalSeriesOutput>("/api/fiscal/series", input);
+export async function createFiscalSeriesMutation(input: TCreateFiscalSeriesInput) {
+	const { data } = await axios.post<TCreateFiscalSeriesOutput>("/api/fiscal/series", input);
+	return data;
+}
+
+export async function updateFiscalSeriesMutation(input: TUpdateFiscalSeriesInput) {
+	const { data } = await axios.put<TUpdateFiscalSeriesOutput>("/api/fiscal/series", input);
 	return data;
 }
 

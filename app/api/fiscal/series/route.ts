@@ -1,7 +1,8 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { listFiscalSeries, upsertFiscalSeries } from "@/lib/fiscal/settings";
+import { findFiscalSeriesById, listFiscalSeries, upsertFiscalSeries } from "@/lib/fiscal/settings";
 import { FiscalDocumentEnvironmentEnum, FiscalDocumentTypeEnum } from "@/schemas/enums";
+import { FiscalSeriesSchema } from "@/schemas/fiscal";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -14,54 +15,134 @@ async function requireOrgSession() {
 	return { session, orgId };
 }
 
-async function getFiscalSeries() {
+const GetFiscalSeriesInputSchema = z.object({
+	id: z
+		.string({
+			required_error: "ID da serie fiscal nao informado.",
+			invalid_type_error: "Tipo nao valido para o ID da serie fiscal.",
+		})
+		.optional()
+		.nullable(),
+});
+export type TGetFiscalSeriesInput = z.infer<typeof GetFiscalSeriesInputSchema>;
+
+async function getFiscalSeries({ input }: { input: TGetFiscalSeriesInput }) {
 	const { orgId } = await requireOrgSession();
+
+	if (input.id) {
+		const series = await findFiscalSeriesById(input.id);
+		if (!series) throw new createHttpError.NotFound("Oops, serie fiscal nao encontrada.");
+		return {
+			data: {
+				byId: series,
+				default: null,
+			},
+			message: "Série fiscal encontrada com sucesso.",
+		};
+	}
+
+	const result = await listFiscalSeries(orgId);
 	return {
 		data: {
-			default: await listFiscalSeries(orgId),
+			byId: null,
+			default: result,
 		},
 		message: "Séries fiscais encontradas com sucesso.",
 	};
 }
 export type TGetFiscalSeriesOutput = Awaited<ReturnType<typeof getFiscalSeries>>;
+export type TGetFiscalSeriesOutputById = NonNullable<TGetFiscalSeriesOutput["data"]["byId"]>;
+export type TGetFiscalSeriesOutputDefault = NonNullable<TGetFiscalSeriesOutput["data"]["default"]>;
 
-async function getFiscalSeriesRoute() {
-	const result = await getFiscalSeries();
+async function getFiscalSeriesRoute(request: NextRequest) {
+	const params = await request.nextUrl.searchParams;
+	const input = GetFiscalSeriesInputSchema.parse({
+		id: params.get("id") ?? undefined,
+	});
+	const result = await getFiscalSeries({ input });
 	return NextResponse.json(result);
 }
 
-const UpsertFiscalSeriesInputSchema = z.object({
-	id: z.string().optional().nullable(),
-	tipoDocumento: FiscalDocumentTypeEnum,
-	ambiente: FiscalDocumentEnvironmentEnum,
-	serie: z.string(),
-	proximoNumero: z.number(),
-	ativo: z.boolean().default(true),
+const UpdateFiscalSeriesInputSchema = z.object({
+	fiscalSeriesId: z.string({
+		required_error: "ID da serie fiscal nao informado.",
+		invalid_type_error: "Tipo nao valido para o ID da serie fiscal.",
+	}),
+	fiscalSeries: FiscalSeriesSchema.omit({
+		organizacaoId: true,
+		dataInsercao: true,
+	}),
 });
-export type TUpsertFiscalSeriesInput = z.infer<typeof UpsertFiscalSeriesInputSchema>;
+export type TUpdateFiscalSeriesInput = z.infer<typeof UpdateFiscalSeriesInputSchema>;
 
-async function upsertFiscalSeriesRoute(request: NextRequest) {
+async function updateFiscalSeries({ input }: { input: TUpdateFiscalSeriesInput }) {
+	const { orgId } = await requireOrgSession();
+	const result = await upsertFiscalSeries({
+		id: input.fiscalSeriesId,
+		organizacaoId: orgId,
+		tipoDocumento: input.fiscalSeries.tipoDocumento,
+		ambiente: input.fiscalSeries.ambiente,
+		serie: input.fiscalSeries.serie,
+		proximoNumero: input.fiscalSeries.proximoNumero,
+		ativo: input.fiscalSeries.ativo,
+	});
+	return {
+		data: {
+			updatedId: result.id,
+		},
+		message: "Série fiscal atualizada com sucesso.",
+	};
+}
+export type TUpdateFiscalSeriesOutput = Awaited<ReturnType<typeof updateFiscalSeries>>;
+
+async function updateFiscalSeriesRoute(request: NextRequest) {
 	const { session, orgId } = await requireOrgSession();
 	const userHasFiscalConfigurePermission = session.membership?.permissoes.fiscal.configurar;
 	if (!userHasFiscalConfigurePermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar séries fiscais.");
 
 	const payload = await request.json();
-	const input = UpsertFiscalSeriesInputSchema.parse(payload);
-	const result = await upsertFiscalSeries({
-		id: input.id ?? undefined,
-		organizacaoId: orgId,
-		tipoDocumento: input.tipoDocumento,
-		ambiente: input.ambiente,
-		serie: input.serie,
-		proximoNumero: input.proximoNumero,
-		ativo: input.ativo,
-	});
-	return NextResponse.json({
-		data: result,
-		message: "Série fiscal salva com sucesso.",
-	});
+	const input = UpdateFiscalSeriesInputSchema.parse(payload);
+	const result = await updateFiscalSeries({ input });
+	return NextResponse.json(result);
 }
-export type TUpsertFiscalSeriesOutput = Awaited<ReturnType<typeof upsertFiscalSeries>>;
+
+const CreateFiscalSeriesInputSchema = z.object({
+	fiscalSeries: FiscalSeriesSchema.omit({
+		organizacaoId: true,
+		dataInsercao: true,
+	}),
+});
+export type TCreateFiscalSeriesInput = z.infer<typeof CreateFiscalSeriesInputSchema>;
+async function createFiscalSeries({ input }: { input: TCreateFiscalSeriesInput }) {
+	const { orgId } = await requireOrgSession();
+	const result = await upsertFiscalSeries({
+		organizacaoId: orgId,
+		tipoDocumento: input.fiscalSeries.tipoDocumento,
+		ambiente: input.fiscalSeries.ambiente,
+		serie: input.fiscalSeries.serie,
+		proximoNumero: input.fiscalSeries.proximoNumero,
+		ativo: input.fiscalSeries.ativo,
+	});
+	return {
+		data: {
+			createdId: result.id,
+		},
+		message: "Série fiscal criada com sucesso.",
+	};
+}
+export type TCreateFiscalSeriesOutput = Awaited<ReturnType<typeof createFiscalSeries>>;
+
+async function createFiscalSeriesRoute(request: NextRequest) {
+	const { session, orgId } = await requireOrgSession();
+	const userHasFiscalConfigurePermission = session.membership?.permissoes.fiscal.configurar;
+	if (!userHasFiscalConfigurePermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar séries fiscais.");
+
+	const payload = await request.json();
+	const input = CreateFiscalSeriesInputSchema.parse(payload);
+	const result = await createFiscalSeries({ input });
+	return NextResponse.json(result);
+}
 
 export const GET = appApiHandler({ GET: getFiscalSeriesRoute });
-export const PUT = appApiHandler({ PUT: upsertFiscalSeriesRoute });
+export const PUT = appApiHandler({ PUT: updateFiscalSeriesRoute });
+export const POST = appApiHandler({ POST: createFiscalSeriesRoute });

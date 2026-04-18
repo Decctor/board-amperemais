@@ -3,25 +3,31 @@ import { TAuthUserSession } from "@/lib/authentication/types";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+	AlertTriangle,
 	BadgeCheck,
 	BookText,
 	Calendar,
 	CircleCheck,
 	CircleX,
+	Clock,
+	DollarSign,
 	FileText,
 	Flag,
+	Globe,
 	Hash,
+	KeyRound,
 	MapPin,
 	PencilIcon,
+	Plus,
 	Receipt,
 	RefreshCcw,
 	Save,
 	Settings,
 	User,
+	Zap,
 } from "lucide-react";
-import { useFiscalOperationProfiles, useFiscalSettings } from "@/lib/queries/fiscal";
+import { useFiscalDocuments, useFiscalOperationProfiles, useFiscalSeries, useFiscalSettings } from "@/lib/queries/fiscal";
 import { syncFiscalCompany, updateFiscalSettings } from "@/lib/mutations/fiscal";
-import { Plus } from "lucide-react";
 import { TUseInternalFiscalSettingsState, useInternalFiscalSettingsState } from "@/state-hooks/use-internal-fiscal-settings-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -42,9 +48,22 @@ import { formatDateAsLocale, formatToCEP, formatToPhone } from "@/lib/formatting
 import SelectInput from "@/components/Inputs/SelectInput";
 import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/states-cities";
 import { TGetFiscalOperationProfilesOutputDefault } from "@/app/api/fiscal/operation-profiles/route";
-import type { TFiscalDocumentTypeEnum, TFiscalOperationConsumerPresenceEnum, TFiscalOperationFinalityEnum } from "@/schemas/enums";
+import { TGetFiscalSeriesOutputDefault } from "@/app/api/fiscal/series/route";
+import type {
+	TFiscalDocumentEnvironmentEnum,
+	TFiscalDocumentLifecycleStatusEnum,
+	TFiscalDocumentStatusEnum,
+	TFiscalDocumentTypeEnum,
+	TFiscalOperationConsumerPresenceEnum,
+	TFiscalOperationFinalityEnum,
+} from "@/schemas/enums";
 import NewFiscalOperationProfile from "@/components/Modals/FiscalOperationProfile/NewFiscalOperationProfile";
 import ControlFiscalOperationProfile from "@/components/Modals/FiscalOperationProfile/ControlFiscalOperationProfile";
+import NewFiscalSeries from "@/components/Modals/FiscalSeries/NewFiscalSeries";
+import ControlFiscalSeries from "@/components/Modals/FiscalSeries/ControlFiscalSeries";
+import { Input } from "@/components/ui/input";
+import GeneralPaginationComponent from "@/components/Utils/Pagination";
+import { TGetFiscalDocumentsOutputDefault } from "@/app/api/fiscal/documents/route";
 type FiscalPageProps = {
 	user: TAuthUserSession["user"];
 	userHasFiscalViewPermission: boolean;
@@ -80,6 +99,13 @@ export default function FiscalPage({
 						<UnauthorizedPage message="Oops,  você não possui permissão para visualizar o módulo fiscal." />
 					)}
 				</TabsContent>
+				<TabsContent value="documents" className="flex flex-col gap-3">
+					{userHasFiscalViewPermission ? (
+						<FiscalDocumentsView />
+					) : (
+						<UnauthorizedPage message="Oops,  você não possui permissão para visualizar o módulo fiscal." />
+					)}
+				</TabsContent>
 				{/* <TabsContent value="stats" className="flex flex-col gap-3">
 					<FinancesStatsView />
 				</TabsContent>
@@ -94,6 +120,167 @@ export default function FiscalPage({
 				</TabsContent> */}
 			</Tabs>
 		</div>
+	);
+}
+
+function FiscalDocumentsView() {
+	const { data, isLoading, isError, isSuccess, error, queryKey, filters, updateFilters } = useFiscalDocuments();
+
+	const documents = data?.documents ?? [];
+	const documentsMatched = data?.documentsMatched ?? 0;
+	const totalPages = data?.totalPages ?? 0;
+	const documentsShowing = documents.length;
+	return (
+		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
+				<Input
+					value={filters.search ?? ""}
+					placeholder="Pesquisar documento fiscal..."
+					onChange={(e) => updateFilters({ search: e.target.value })}
+					className="grow rounded-xl"
+				/>
+			</div>
+			<GeneralPaginationComponent
+				activePage={filters.page}
+				queryLoading={isLoading}
+				selectPage={(page) => updateFilters({ page })}
+				totalPages={totalPages || 0}
+				itemsMatchedText={
+					documentsMatched > 0 ? `${documentsMatched} documentos fiscais encontrados.` : `${documentsMatched} documento fiscal encontrado.`
+				}
+				itemsShowingText={documentsShowing > 0 ? `Mostrando ${documentsShowing} documentos fiscais.` : `Mostrando ${documentsShowing} documento fiscal.`}
+			/>
+			{isLoading ? <LoadingComponent /> : null}
+			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+			{isSuccess && documents ? (
+				documents.length > 0 ? (
+					documents.map((document, index: number) => <FiscalDocumentCard key={document.id} document={document} />)
+				) : (
+					<p className="w-full tracking-tight text-center">Nenhum documento fiscal encontrado.</p>
+				)
+			) : null}
+		</div>
+	);
+}
+
+function FiscalDocumentCard({ document }: { document: TGetFiscalDocumentsOutputDefault["documents"][number] }) {
+	const isCancelled = document.status === "CANCELADA" || document.statusInterno === "CANCELADO";
+	const isErrored = document.statusInterno === "ERRO" || document.statusInterno === "REJEITADO";
+	const shortKey = shortenAccessKey(document.chaveAcesso);
+	const titleNumber = document.numero ? `${document.tipo} Nº ${document.numero}` : `${document.tipo} — ${document.referencia}`;
+	const emissionDate = document.dataAutorizacao ?? document.dataEmissao ?? document.dataInsercao;
+	return (
+		<TooltipProvider>
+			<div
+				className={cn(
+					"bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs",
+					isCancelled ? "opacity-70" : null,
+					isErrored ? "border-rose-400/60 dark:border-rose-500/60" : null,
+				)}
+			>
+				<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
+					<div className="flex items-center gap-2 flex-wrap">
+						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{titleNumber}</h1>
+						{document.serie ? (
+							<div className="flex items-center gap-1">
+								<BookText className="w-4 h-4 min-w-4 min-h-4" />
+								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">SÉRIE {document.serie}</h1>
+							</div>
+						) : null}
+						{document.referencia && document.numero ? (
+							<div className="flex items-center gap-1">
+								<FileText className="w-4 h-4 min-w-4 min-h-4" />
+								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">REF: {document.referencia}</h1>
+							</div>
+						) : null}
+					</div>
+					<div className="flex items-center gap-3 flex-wrap">
+						<StatBadge
+							icon={<Receipt className="w-4 min-w-4 h-4 min-h-4" />}
+							value={document.tipo}
+							tooltipContent="Tipo do documento fiscal"
+							className={cn(FISCAL_DOCUMENT_TYPE_STYLES[document.tipo])}
+						/>
+						<StatBadge
+							icon={<Globe className="w-4 min-w-4 h-4 min-h-4" />}
+							value={FISCAL_ENVIRONMENT_LABELS[document.ambiente]}
+							tooltipContent={
+								document.ambiente === "PRODUCAO"
+									? "Documento emitido no ambiente oficial da SEFAZ"
+									: "Documento emitido em ambiente de homologação (sem valor fiscal)"
+							}
+							className={cn(FISCAL_ENVIRONMENT_STYLES[document.ambiente])}
+						/>
+						<StatBadge
+							icon={<BadgeCheck className="w-4 min-w-4 h-4 min-h-4" />}
+							value={FISCAL_DOCUMENT_STATUS_LABELS[document.status]}
+							tooltipContent="Status junto à SEFAZ"
+							className={cn(FISCAL_DOCUMENT_STATUS_STYLES[document.status])}
+						/>
+						<StatBadge
+							icon={<Clock className="w-4 min-w-4 h-4 min-h-4" />}
+							value={FISCAL_LIFECYCLE_STATUS_LABELS[document.statusInterno]}
+							tooltipContent="Status interno do ciclo de vida do documento"
+							className={cn(FISCAL_LIFECYCLE_STATUS_STYLES[document.statusInterno])}
+						/>
+					</div>
+				</div>
+
+				<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+					<div className="flex items-center gap-2 flex-wrap">
+						{shortKey ? (
+							<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+								<KeyRound className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-medium tracking-tight uppercase font-mono" title={document.chaveAcesso ?? undefined}>
+									CHAVE: {shortKey}
+								</p>
+							</div>
+						) : null}
+						{document.protocolo ? (
+							<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+								<Hash className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-medium tracking-tight uppercase">PROTOCOLO: {document.protocolo}</p>
+							</div>
+						) : null}
+						{document.venda?.valorTotal != null ? (
+							<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+								<DollarSign className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-medium tracking-tight uppercase">VALOR: {formatBRL(Number(document.venda.valorTotal))}</p>
+							</div>
+						) : null}
+						{document.tentativasEnvio > 0 ? (
+							<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+								<Zap className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-medium tracking-tight uppercase">TENTATIVAS: {document.tentativasEnvio}</p>
+							</div>
+						) : null}
+						{emissionDate ? (
+							<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+								<Calendar className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-medium tracking-tight uppercase">
+									{document.dataAutorizacao ? "AUTORIZADO" : document.dataEmissao ? "EMITIDO" : "CRIADO"} EM: {formatDateAsLocale(emissionDate)}
+								</p>
+							</div>
+						) : null}
+						{document.dataCancelamento ? (
+							<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-rose-600 dark:text-rose-400")}>
+								<CircleX className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-medium tracking-tight uppercase">CANCELADO EM: {formatDateAsLocale(document.dataCancelamento)}</p>
+							</div>
+						) : null}
+					</div>
+				</div>
+
+				{isErrored && Array.isArray(document.mensagens) && document.mensagens.length > 0 ? (
+					<div className="w-full flex items-start gap-1.5 mt-1 rounded-md bg-rose-50 dark:bg-rose-950/40 px-2 py-1.5">
+						<AlertTriangle className="w-3.5 h-3.5 min-w-3.5 min-h-3.5 text-rose-600 dark:text-rose-400 mt-0.5" />
+						<p className="text-[0.7rem] font-medium tracking-tight text-rose-700 dark:text-rose-300 line-clamp-2">
+							{document.mensagens.map((m) => (typeof m === "string" ? m : JSON.stringify(m))).join(" · ")}
+						</p>
+					</div>
+				) : null}
+			</div>
+		</TooltipProvider>
 	);
 }
 
@@ -177,6 +364,7 @@ function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalCo
 			</SectionWrapper>
 
 			<CompanyBasicInformation fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
+			<CompanyFiscalSeries />
 			<CompanyFiscalOperationProfiles />
 		</div>
 	);
@@ -388,6 +576,61 @@ const FISCAL_DOCUMENT_TYPE_STYLES: Record<TFiscalDocumentTypeEnum, string> = {
 	NFSE: "bg-teal-500 dark:bg-teal-600 text-white",
 };
 
+const FISCAL_ENVIRONMENT_LABELS: Record<TFiscalDocumentEnvironmentEnum, string> = {
+	HOMOLOGACAO: "HOMOLOGAÇÃO",
+	PRODUCAO: "PRODUÇÃO",
+};
+const FISCAL_ENVIRONMENT_STYLES: Record<TFiscalDocumentEnvironmentEnum, string> = {
+	HOMOLOGACAO: "bg-amber-500 dark:bg-amber-600 text-white",
+	PRODUCAO: "bg-emerald-500 dark:bg-emerald-600 text-white",
+};
+
+const FISCAL_DOCUMENT_STATUS_LABELS: Record<TFiscalDocumentStatusEnum, string> = {
+	PENDENTE: "PENDENTE",
+	AUTORIZADA: "AUTORIZADA",
+	CANCELADA: "CANCELADA",
+	INUTILIZADA: "INUTILIZADA",
+};
+const FISCAL_DOCUMENT_STATUS_STYLES: Record<TFiscalDocumentStatusEnum, string> = {
+	PENDENTE: "bg-amber-500 dark:bg-amber-600 text-white",
+	AUTORIZADA: "bg-green-500 dark:bg-green-600 text-white",
+	CANCELADA: "bg-red-500 dark:bg-red-600 text-white",
+	INUTILIZADA: "bg-zinc-500 dark:bg-zinc-600 text-white",
+};
+
+const FISCAL_LIFECYCLE_STATUS_LABELS: Record<TFiscalDocumentLifecycleStatusEnum, string> = {
+	RASCUNHO: "RASCUNHO",
+	PRONTO_PARA_ENVIO: "PRONTO PARA ENVIO",
+	EM_PROCESSAMENTO: "EM PROCESSAMENTO",
+	AUTORIZADO: "AUTORIZADO",
+	REJEITADO: "REJEITADO",
+	CANCELAMENTO_PENDENTE: "CANCELAMENTO PENDENTE",
+	CANCELADO: "CANCELADO",
+	ERRO: "ERRO",
+};
+const FISCAL_LIFECYCLE_STATUS_STYLES: Record<TFiscalDocumentLifecycleStatusEnum, string> = {
+	RASCUNHO: "bg-zinc-400 dark:bg-zinc-500 text-white",
+	PRONTO_PARA_ENVIO: "bg-sky-500 dark:bg-sky-600 text-white",
+	EM_PROCESSAMENTO: "bg-amber-500 dark:bg-amber-600 text-white",
+	AUTORIZADO: "bg-green-500 dark:bg-green-600 text-white",
+	REJEITADO: "bg-rose-500 dark:bg-rose-600 text-white",
+	CANCELAMENTO_PENDENTE: "bg-orange-500 dark:bg-orange-600 text-white",
+	CANCELADO: "bg-red-600 dark:bg-red-700 text-white",
+	ERRO: "bg-red-500 dark:bg-red-600 text-white",
+};
+
+function formatBRL(value: number | null | undefined) {
+	if (value === null || value === undefined) return "R$ 0,00";
+	return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function shortenAccessKey(key: string | null | undefined) {
+	if (!key) return null;
+	const cleaned = key.replace(/\s/g, "");
+	if (cleaned.length <= 12) return cleaned;
+	return `${cleaned.slice(0, 4)}…${cleaned.slice(-6)}`;
+}
+
 function CompanyFiscalOperationProfiles() {
 	const queryClient = useQueryClient();
 	const [newProfileMenuIsOpen, setNewProfileMenuIsOpen] = useState(false);
@@ -507,6 +750,116 @@ function CompanyFiscalOperationProfile({ profile, handleEditClick }: CompanyFisc
 							<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
 								<Calendar className="w-3 min-w-3 h-3 min-h-3" />
 								<p className="text-xs font-medium tracking-tight uppercase">CADASTRADO EM: {formatDateAsLocale(profile.dataInsercao)}</p>
+							</div>
+						) : null}
+					</div>
+					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleEditClick}>
+						<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
+						EDITAR
+					</Button>
+				</div>
+			</div>
+		</TooltipProvider>
+	);
+}
+
+function CompanyFiscalSeries() {
+	const queryClient = useQueryClient();
+	const [newSeriesMenuIsOpen, setNewSeriesMenuIsOpen] = useState(false);
+	const [editingSeriesId, setEditingSeriesId] = useState<string | null>(null);
+	const { data, queryKey, isLoading, isError, isSuccess, error } = useFiscalSeries();
+
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
+
+	return (
+		<SectionWrapper title="SÉRIES FISCAIS" icon={<BookText className="h-4 w-4" />}>
+			<p className="text-xs text-muted-foreground tracking-tight">
+				As séries definem o contador de numeração dos documentos fiscais emitidos. Devem estar sincronizadas com a SEFAZ — alterações manuais do próximo
+				número podem causar rejeições.
+			</p>
+			{isLoading ? <LoadingComponent /> : null}
+			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+			{isSuccess ? (
+				data.length > 0 ? (
+					<div className="flex flex-col gap-2 w-full">
+						{data.map((series) => (
+							<CompanyFiscalSeriesCard key={series.id} series={series} handleEditClick={() => setEditingSeriesId(series.id)} />
+						))}
+					</div>
+				) : (
+					<div className="flex items-center justify-center py-6">
+						<p className="text-sm text-muted-foreground">Nenhuma série fiscal cadastrada.</p>
+					</div>
+				)
+			) : null}
+			<div className="w-full flex items-center justify-center">
+				<Button variant={"ghost"} size={"fit"} className="flex items-center gap-1 px-2 py-1 text-xs" onClick={() => setNewSeriesMenuIsOpen(true)}>
+					<Plus className="w-4 h-4 min-w-4 min-h-4" />
+					ADICIONAR
+				</Button>
+			</div>
+			{newSeriesMenuIsOpen ? (
+				<NewFiscalSeries closeModal={() => setNewSeriesMenuIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
+			) : null}
+			{editingSeriesId ? (
+				<ControlFiscalSeries
+					fiscalSeriesId={editingSeriesId}
+					closeModal={() => setEditingSeriesId(null)}
+					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+				/>
+			) : null}
+		</SectionWrapper>
+	);
+}
+
+type CompanyFiscalSeriesCardProps = {
+	series: TGetFiscalSeriesOutputDefault[number];
+	handleEditClick: () => void;
+};
+function CompanyFiscalSeriesCard({ series, handleEditClick }: CompanyFiscalSeriesCardProps) {
+	return (
+		<TooltipProvider>
+			<div
+				className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs", !series.ativo ? "opacity-70" : null)}
+			>
+				<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
+					<div className="flex items-center gap-2 flex-wrap">
+						<h1 className="text-xs font-bold tracking-tight lg:text-sm">SÉRIE {series.serie}</h1>
+						<div className="flex items-center gap-1">
+							<Hash className="w-4 h-4 min-w-4 min-h-4" />
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">PRÓXIMO Nº {series.proximoNumero}</h1>
+						</div>
+					</div>
+					<div className="flex items-center gap-3 flex-wrap">
+						<StatBadge
+							icon={<Receipt className="w-4 min-w-4 h-4 min-h-4" />}
+							value={series.tipoDocumento}
+							tooltipContent="Tipo de documento emitido por esta série"
+							className={cn(FISCAL_DOCUMENT_TYPE_STYLES[series.tipoDocumento])}
+						/>
+						<StatBadge
+							icon={<Globe className="w-4 min-w-4 h-4 min-h-4" />}
+							value={FISCAL_ENVIRONMENT_LABELS[series.ambiente]}
+							tooltipContent={
+								series.ambiente === "PRODUCAO" ? "Série em produção (documentos com valor fiscal)" : "Série em homologação (testes sem valor fiscal)"
+							}
+							className={cn(FISCAL_ENVIRONMENT_STYLES[series.ambiente])}
+						/>
+						<StatBadge
+							icon={series.ativo ? <CircleCheck className="w-4 min-w-4 h-4 min-h-4" /> : <CircleX className="w-4 min-w-4 h-4 min-h-4" />}
+							value={series.ativo ? "ATIVA" : "INATIVA"}
+							tooltipContent={series.ativo ? "Série disponível para emissão" : "Série desativada"}
+							className={cn(series.ativo ? "bg-green-500 dark:bg-green-600 text-white" : "bg-red-500 dark:bg-red-600 text-white")}
+						/>
+					</div>
+				</div>
+				<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+					<div className="flex items-center gap-2 flex-wrap">
+						{series.dataInsercao ? (
+							<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+								<Calendar className="w-3 min-w-3 h-3 min-h-3" />
+								<p className="text-xs font-medium tracking-tight uppercase">CADASTRADA EM: {formatDateAsLocale(series.dataInsercao)}</p>
 							</div>
 						) : null}
 					</div>

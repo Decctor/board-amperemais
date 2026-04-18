@@ -53,7 +53,8 @@ async function getFiscalDocuments({ input }: { input: TGetFiscalDocumentsInput }
 	};
 }
 export type TGetFiscalDocumentsOutput = Awaited<ReturnType<typeof getFiscalDocuments>>;
-
+export type TGetFiscalDocumentsOutputById = NonNullable<TGetFiscalDocumentsOutput["data"]["byId"]>;
+export type TGetFiscalDocumentsOutputDefault = NonNullable<TGetFiscalDocumentsOutput["data"]["default"]>;
 async function getFiscalDocumentsRoute(request: NextRequest) {
 	const searchParams = request.nextUrl.searchParams;
 	const input = GetFiscalDocumentsInputSchema.parse({
