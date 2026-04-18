@@ -1,21 +1,29 @@
-import type { TSale } from "@/schemas/sales";
-import dayjs, { type ManipulateType } from "dayjs";
+import dayjs from "dayjs";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
-import { TimeDurationUnitsEnum } from "@/schemas/enums";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { type TSaleEntity, clients, interactions, organizations, products, saleItems, sales, utils } from "@/services/drizzle/schema";
-import { type TRFMConfig, getRFMLabel } from "@/utils/rfm";
-import { and, eq, gt, gte, lte, sql } from "drizzle-orm";
-import createHttpError from "http-errors";
+import { clients, interactions, sales, utils } from "@/services/drizzle/schema";
+import { getRFMLabel } from "@/utils/rfm";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 
 const intervalStart = dayjs().subtract(12, "month").startOf("day").toDate();
 const intervalEnd = dayjs().endOf("day").toDate();
+const RFM_UPDATE_BATCH_SIZE = 100;
+
+type TRFMClientUpdateEntry = {
+	clientId: string;
+	analiseRFMTitulo: string;
+	analiseRFMNotasFrequencia: string;
+	analiseRFMNotasRecencia: string;
+	analiseRFMNotasMonetario: string;
+	analiseRFMUltimaAtualizacao: Date;
+	analiseRFMUltimaAlteracao: Date | null;
+};
 
 /**
  * Helper function to check if a campaign can be scheduled for a client based on frequency rules
@@ -69,15 +77,83 @@ async function canScheduleCampaignForClient(
 	return true;
 }
 
+async function flushPendingRFMClientUpdates({
+	tx,
+	organizationId,
+	pendingUpdates,
+}: {
+	tx: DBTransaction;
+	organizationId: string;
+	pendingUpdates: TRFMClientUpdateEntry[];
+}) {
+	if (pendingUpdates.length === 0) return { updatedClientsCount: 0, durationMs: 0 };
+	const startedAt = Date.now();
+
+	await tx.execute(sql`
+		update ${clients} as c
+		set
+			analise_rfm_titulo = v.analise_rfm_titulo::text,
+			analise_rfm_notas_frequencia = v.analise_rfm_notas_frequencia::text,
+			analise_rfm_notas_recencia = v.analise_rfm_notas_recencia::text,
+			analise_rfm_notas_monetario = v.analise_rfm_notas_monetario::text,
+			analise_rfm_ultima_atualizacao = v.analise_rfm_ultima_atualizacao::timestamp,
+			analise_rfm_ultima_alteracao = v.analise_rfm_ultima_alteracao::timestamp
+		from (
+			values
+				${sql.join(
+					pendingUpdates.map(
+						(entry) => sql`(
+							${entry.clientId},
+							${organizationId},
+							${entry.analiseRFMTitulo},
+							${entry.analiseRFMNotasFrequencia},
+							${entry.analiseRFMNotasRecencia},
+							${entry.analiseRFMNotasMonetario},
+							${entry.analiseRFMUltimaAtualizacao.toISOString()},
+							${entry.analiseRFMUltimaAlteracao?.toISOString() ?? null}
+						)`,
+					),
+					sql`, `,
+				)}
+		) as v(
+			client_id,
+			organization_id,
+			analise_rfm_titulo,
+			analise_rfm_notas_frequencia,
+			analise_rfm_notas_recencia,
+			analise_rfm_notas_monetario,
+			analise_rfm_ultima_atualizacao,
+			analise_rfm_ultima_alteracao
+		)
+		where c.id = v.client_id
+			and c.organizacao_id = v.organization_id
+	`);
+
+	return {
+		updatedClientsCount: pendingUpdates.length,
+		durationMs: Date.now() - startedAt,
+	};
+}
+
 export default async function handleRFMAnalysis(req: NextApiRequest, res: NextApiResponse) {
+	const startedAt = Date.now();
 	// Buscar todas as organizacoes
 	const organizationsList = await db.query.organizations.findMany({
 		columns: { id: true },
 	});
 
-	console.log(`[INFO] [RFM_ANALYSIS] Processing ${organizationsList.length} organizations`);
+	console.log(
+		`[INFO] [RFM_ANALYSIS] Starting RFM analysis for ${organizationsList.length} organizations with updateBatchSize=${RFM_UPDATE_BATCH_SIZE}`,
+	);
+
+	let processedOrganizationsCount = 0;
+	let failedOrganizationsCount = 0;
+	let analyzedClientsCount = 0;
+	let updatedClientsCount = 0;
+	let immediateInteractionsCount = 0;
 
 	for (const organization of organizationsList) {
+		const organizationStartedAt = Date.now();
 		try {
 			console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Starting RFM analysis`);
 
@@ -131,48 +207,9 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 				.where(eq(clients.organizacaoId, organization.id))
 				.groupBy(clients.id);
 
-			// Query all-time totals for client metadata (no date filter)
-			const allTimeTotalsByClient = await db
-				.select({
-					clientId: clients.id,
-					allTimeTotalPurchases: sql<number>`COALESCE(sum(${sales.valorTotal}), 0)`,
-					allTimePurchaseCount: sql<number>`COALESCE(count(${sales.id}), 0)`,
-				})
-				.from(clients)
-				.leftJoin(sales, and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, organization.id), eq(sales.natureza, "SN01")))
-				.where(eq(clients.organizacaoId, organization.id))
-				.groupBy(clients.id);
-
-			// Create a map for quick lookup
-			const allTimeTotalsMap = new Map(allTimeTotalsByClient.map((r) => [r.clientId, r]));
-
-			// Query most purchased product per client (by quantity)
-			const mostPurchasedProductByClient = await db
-				.select({
-					clientId: saleItems.clienteId,
-					produtoId: saleItems.produtoId,
-					produtoGrupo: products.grupo,
-					totalQuantity: sql<number>`sum(${saleItems.quantidade})`,
-				})
-				.from(saleItems)
-				.innerJoin(products, eq(products.id, saleItems.produtoId))
-				.innerJoin(sales, and(eq(sales.id, saleItems.vendaId), eq(sales.natureza, "SN01")))
-				.where(eq(saleItems.organizacaoId, organization.id))
-				.groupBy(saleItems.clienteId, saleItems.produtoId, products.grupo)
-				.orderBy(sql`sum(${saleItems.quantidade}) DESC`);
-
-			// Get the most purchased product for each client
-			const mostPurchasedMap = new Map<string, { produtoId: string; produtoGrupo: string }>();
-			for (const row of mostPurchasedProductByClient) {
-				if (row.clientId && !mostPurchasedMap.has(row.clientId)) {
-					mostPurchasedMap.set(row.clientId, {
-						produtoId: row.produtoId,
-						produtoGrupo: row.produtoGrupo,
-					});
-				}
-			}
-
-			console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Computed all-time metadata for ${allTimeTotalsByClient.length} clients`);
+			console.log(
+				`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Loaded ${accumulatedResultsByClient.length} clients for RFM evaluation`,
+			);
 
 			const utilsRFMReturn = await db.query.utils.findFirst({
 				where: eq(utils.identificador, "CONFIG_RFM"),
@@ -186,23 +223,26 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 
 			// Collect data for immediate processing
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
+			const pendingRFMClientUpdates: TRFMClientUpdateEntry[] = [];
+			let flushedRFMUpdateBatchesCount = 0;
+			let scheduledInteractionsCount = 0;
+			let generatedCashbacksCount = 0;
+			const transactionStartedAt = Date.now();
 
 			await db.transaction(async (tx) => {
-				for (const [index, results] of accumulatedResultsByClient.entries()) {
-					// If the index is a multiple of 25, logging the progress
-					if ((index + 1) % 25 === 0) console.log(`Processando o cliente ${index + 1} de ${accumulatedResultsByClient.length}`);
+				for (const [_index, results] of accumulatedResultsByClient.entries()) {
 					const calculatedRecency = dayjs().diff(dayjs(results.lastPurchaseDate), "days");
 					const calculatedFrequency = results.purchaseCount;
 					const calculatedMonetary = results.totalPurchases;
 
 					const configRecency = Object.entries(rfmConfig.recencia).find(
-						([key, value]) => calculatedRecency && calculatedRecency >= value.min && calculatedRecency <= value.max,
+						([_key, value]) => calculatedRecency && calculatedRecency >= value.min && calculatedRecency <= value.max,
 					);
 					const configFrequency = Object.entries(rfmConfig.frequencia).find(
-						([key, value]) => calculatedFrequency >= value.min && calculatedFrequency <= value.max,
+						([_key, value]) => calculatedFrequency >= value.min && calculatedFrequency <= value.max,
 					);
 					const configMonetary = Object.entries(rfmConfig.monetario).find(
-						([key, value]) => calculatedMonetary >= value.min && calculatedMonetary <= value.max,
+						([_key, value]) => calculatedMonetary >= value.min && calculatedMonetary <= value.max,
 					);
 
 					const recencyScore = configRecency ? Number(configRecency[0]) : 1;
@@ -214,7 +254,6 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 					// Now, comparing the new label to the previous one
 					const hasClientChangedRFMLabels = results.clientRFMCurrentLabel !== newRFMLabel;
 					if (hasClientChangedRFMLabels) {
-						console.log(`Cliente ${results.clientId} mudou de classificação RFM de ${results.clientRFMCurrentLabel} para ${newRFMLabel}.`);
 						// If client has changed labels, checking for entry in campaing defined automations
 						const applicableCampaigns = campaignsForEntryInSegmentation.filter(
 							(c) => c.segmentacoes.some((s) => s.segmentacao === newRFMLabel) && c.gatilhoTipo === "ENTRADA-SEGMENTAÇÃO",
@@ -232,12 +271,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 								campaign.frequenciaIntervaloMedida,
 							);
 
-							if (!canSchedule) {
-								console.log(
-									`[ORG: ${organization.id}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${results.clientId} due to frequency limits.`,
-								);
-								continue;
-							}
+							if (!canSchedule) continue;
 
 							// For the applicable campaigns, we will iterate over them and schedule the interactions
 							const interactionScheduleDate = getPostponedDateFromReferenceDate({
@@ -258,6 +292,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 								})
 								.returning({ id: interactions.id });
+							scheduledInteractionsCount += 1;
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
 							if (
@@ -318,6 +353,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
 								});
+								generatedCashbacksCount += 1;
 							}
 						}
 					} else {
@@ -392,6 +428,7 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 								})
 								.returning({ id: interactions.id });
+							scheduledInteractionsCount += 1;
 
 							// Check for immediate processing (execucaoAgendadaValor === 0)
 							if (
@@ -452,52 +489,97 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
 								});
+								generatedCashbacksCount += 1;
 							}
 						}
 					}
 
-					// Get all-time metadata for this client
-					const allTimeData = allTimeTotalsMap.get(results.clientId);
-					const mostPurchasedData = mostPurchasedMap.get(results.clientId);
+					pendingRFMClientUpdates.push({
+						clientId: results.clientId,
+						analiseRFMTitulo: newRFMLabel,
+						analiseRFMNotasFrequencia: frequencyScore.toString(),
+						analiseRFMNotasRecencia: recencyScore.toString(),
+						analiseRFMNotasMonetario: monetaryScore.toString(),
+						analiseRFMUltimaAtualizacao: new Date(),
+						analiseRFMUltimaAlteracao: hasClientChangedRFMLabels ? new Date() : results.clientRFMLastLabelModification,
+					});
 
-					await tx
-						.update(clients)
-						.set({
-							analiseRFMTitulo: newRFMLabel,
-							analiseRFMNotasFrequencia: frequencyScore.toString(),
-							analiseRFMNotasRecencia: recencyScore.toString(),
-							analiseRFMNotasMonetario: monetaryScore.toString(),
-							analiseRFMUltimaAtualizacao: new Date(),
-							analiseRFMUltimaAlteracao: hasClientChangedRFMLabels ? new Date() : results.clientRFMLastLabelModification,
-							// Client metadata updates
-							metadataTotalCompras: allTimeData?.allTimePurchaseCount ?? 0,
-							metadataValorTotalCompras: allTimeData?.allTimeTotalPurchases ?? 0,
-							metadataProdutoMaisCompradoId: mostPurchasedData?.produtoId ?? null,
-							metadataGrupoProdutoMaisComprado: mostPurchasedData?.produtoGrupo ?? null,
-							metadataUltimaAtualizacao: new Date(),
-						})
-						.where(and(eq(clients.id, results.clientId), eq(clients.organizacaoId, organization.id)));
+					if (pendingRFMClientUpdates.length >= RFM_UPDATE_BATCH_SIZE) {
+						const flushSummary = await flushPendingRFMClientUpdates({
+							tx,
+							organizationId: organization.id,
+							pendingUpdates: pendingRFMClientUpdates,
+						});
+						if (flushSummary.updatedClientsCount > 0) {
+							flushedRFMUpdateBatchesCount += 1;
+							console.log(
+								`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Flushed RFM update batch ${flushedRFMUpdateBatchesCount} (${flushSummary.updatedClientsCount} clients) in ${formatDurationMs(flushSummary.durationMs)}`,
+							);
+						}
+						pendingRFMClientUpdates.length = 0;
+					}
+				}
+
+				const finalFlushSummary = await flushPendingRFMClientUpdates({
+					tx,
+					organizationId: organization.id,
+					pendingUpdates: pendingRFMClientUpdates,
+				});
+				if (finalFlushSummary.updatedClientsCount > 0) {
+					flushedRFMUpdateBatchesCount += 1;
+					console.log(
+						`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Flushed RFM update batch ${flushedRFMUpdateBatchesCount} (${finalFlushSummary.updatedClientsCount} clients) in ${formatDurationMs(finalFlushSummary.durationMs)}`,
+					);
 				}
 			});
+
+			console.log(
+				`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Transaction completed in ${formatDurationMs(Date.now() - transactionStartedAt)} | clients=${accumulatedResultsByClient.length} | updateBatches=${flushedRFMUpdateBatchesCount} | scheduledInteractions=${scheduledInteractionsCount} | generatedCashbacks=${generatedCashbacksCount}`,
+			);
 
 			// Process interactions immediately after transaction (with delay to avoid rate limiting)
 			if (immediateProcessingDataList.length > 0) {
 				console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Processing ${immediateProcessingDataList.length} immediate interactions`);
 				const weeklyLimitCache = createCampaignWeeklyLimitCache();
+				const immediateProcessingStartedAt = Date.now();
 				for (const processingData of immediateProcessingDataList) {
 					processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
 						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
 					);
 					await delay(100); // Small delay between sends to avoid rate limiting
 				}
+				console.log(
+					`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Finished immediate interactions in ${formatDurationMs(Date.now() - immediateProcessingStartedAt)}`,
+				);
 			}
 
-			console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] RFM analysis completed successfully`);
+			processedOrganizationsCount += 1;
+			analyzedClientsCount += accumulatedResultsByClient.length;
+			updatedClientsCount += accumulatedResultsByClient.length;
+			immediateInteractionsCount += immediateProcessingDataList.length;
+
+			console.log(
+				`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] RFM analysis completed successfully in ${formatDurationMs(Date.now() - organizationStartedAt)} | clients=${accumulatedResultsByClient.length} | immediateInteractions=${immediateProcessingDataList.length}`,
+			);
 		} catch (error) {
+			failedOrganizationsCount += 1;
 			console.error(`[ORG: ${organization.id}] [ERROR] [RFM_ANALYSIS] Error processing RFM analysis:`, error);
 			// Continuar para proxima organizacao mesmo com erro
 		}
 	}
 
+	console.log(
+		`[INFO] [RFM_ANALYSIS] Completed in ${formatDurationMs(Date.now() - startedAt)} | organizations=${processedOrganizationsCount}/${organizationsList.length} | failedOrganizations=${failedOrganizationsCount} | analyzedClients=${analyzedClientsCount} | updatedClients=${updatedClientsCount} | immediateInteractions=${immediateInteractionsCount}`,
+	);
+
 	return res.status(200).json("ANÁLISE RFM FEITA COM SUCESSO !");
+}
+
+function formatDurationMs(durationMs: number) {
+	if (durationMs < 1000) return `${durationMs}ms`;
+
+	const seconds = durationMs / 1000;
+	if (seconds < 60) return `${seconds.toFixed(2)}s`;
+
+	return `${(seconds / 60).toFixed(2)}min`;
 }
