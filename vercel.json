@@ -41,6 +41,10 @@
 			"schedule": "0 9 */3 * *"
 		},
 		{
+			"path": "/api/cron/birthday-notify",
+			"schedule": "0 3 * * *"
+		},
+		{
 			"path": "/api/cron/process-recurrent-campaigns",
 			"schedule": "0 */3 * * *"
 		}
