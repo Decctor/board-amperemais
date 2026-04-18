@@ -88,9 +88,25 @@ export function useFiscalSeries() {
 	};
 }
 
+async function fetchFiscalOperationProfileById({ id }: { id: string }) {
+	const { data } = await axios.get<TGetFiscalOperationProfilesOutput>(`/api/fiscal/operation-profiles?id=${id}`);
+	return data.data.byId;
+}
+export function useFiscalOperationProfileById({ id }: { id: string }) {
+	const queryKey = ["fiscal-operation-profile-by-id", id];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchFiscalOperationProfileById({ id }),
+		}),
+		queryKey,
+	};
+}
 async function fetchFiscalOperationProfiles() {
 	const { data } = await axios.get<TGetFiscalOperationProfilesOutput>("/api/fiscal/operation-profiles");
-	return data.data.default;
+	const defaultData = data.data.default;
+	if (!defaultData) throw new Error("Oops, houve um erro ao buscar os perfis de operação fiscal.");
+	return defaultData;
 }
 
 export function useFiscalOperationProfiles() {

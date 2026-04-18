@@ -1,5 +1,6 @@
 import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
+import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode } from "./utils";
 
 export function mapSaleContextToNfePayload(context: TFiscalSaleContext, documento: TFiscalDocument) {
 	const fiscalConfig = context.organizacao.fiscalConfiguracao!;
@@ -19,9 +20,9 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 				tpImp: 1,
 				tpEmis: 1,
 				tpAmb: fiscalConfig.ambiente === "PRODUCAO" ? 1 : 2,
-				finNFe: 1,
+				finNFe: mapFiscalFinalityToNfeCode(context.operacao.finalidade),
 				indFinal: context.operacao.consumidorFinal ? 1 : 0,
-				indPres: 0,
+				indPres: mapConsumerPresenceToNfeCode(context.operacao.presencaConsumidor),
 				procEmi: 0,
 				verProc: "recompra-crm",
 			},

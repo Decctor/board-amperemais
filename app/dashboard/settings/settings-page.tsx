@@ -21,7 +21,17 @@ type SettingsPageProps = {
 export default function SettingsPage({ user, membership }: SettingsPageProps) {
 	const [view, setView] = useQueryState(
 		"view",
-		parseAsStringEnum(["profile", "users", "meta-oauth", "whatsapp-templates", "segments", "sales-promo-campaigns", "organization", "integration", "fiscal"]),
+		parseAsStringEnum([
+			"profile",
+			"users",
+			"meta-oauth",
+			"whatsapp-templates",
+			"segments",
+			"sales-promo-campaigns",
+			"organization",
+			"integration",
+			"fiscal",
+		]),
 	);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
