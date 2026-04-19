@@ -8,6 +8,9 @@ import CampeoesReelsPost from "./components/designs/campeoes/campeoes-reels";
 import NoticiaBoaFeedPost from "./components/designs/noticia-boa/noticia-boa-feed";
 import NoticiaBoaQuadradoPost from "./components/designs/noticia-boa/noticia-boa-quadrado";
 import NoticiaBoaReelsPost from "./components/designs/noticia-boa/noticia-boa-reels";
+import PiorDiaFeedPost from "./components/designs/pior-dia/pior-dia-feed";
+import PiorDiaQuadradoPost from "./components/designs/pior-dia/pior-dia-quadrado";
+import PiorDiaReelsPost from "./components/designs/pior-dia/pior-dia-reels";
 import ExportButton from "./components/export-button";
 import PostPreviewShell from "./components/post-preview-shell";
 import {
@@ -52,6 +55,15 @@ const DESIGNS: MediaDesignEntry[] = [
 			feed: NoticiaBoaFeedPost,
 			reels: NoticiaBoaReelsPost,
 			square: NoticiaBoaQuadradoPost,
+		},
+	},
+	{
+		key: "pior-dia",
+		label: "Campanha Pior Dia de Vendas",
+		componentsBySize: {
+			feed: PiorDiaFeedPost,
+			reels: PiorDiaReelsPost,
+			square: PiorDiaQuadradoPost,
 		},
 	},
 ];
