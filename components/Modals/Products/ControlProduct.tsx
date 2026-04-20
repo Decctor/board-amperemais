@@ -114,6 +114,7 @@ export default function ControlProduct({ productId, user: _user, userMembership,
 						ativo: addOn.ativo,
 						opcoes: addOn.opcoes.filter((option) => !(option.deletar && !option.id)),
 					})),
+				perfisFiscais: variant.perfisFiscais.filter((profile) => !(profile.deletar && !profile.id)),
 			});
 		}
 
@@ -147,6 +148,7 @@ export default function ControlProduct({ productId, user: _user, userMembership,
 			},
 			productVariants: processedVariants,
 			productAddOns: processedAddOns,
+			productFiscalProfiles: state.productFiscalProfiles.filter((profile) => !(profile.deletar && !profile.id)),
 		};
 
 		return await updateProduct(input);

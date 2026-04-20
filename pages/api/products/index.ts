@@ -1,12 +1,14 @@
 import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
 import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
 import { db, type DBTransaction } from "@/services/drizzle";
 import {
 	productAddOnOptions,
 	productAddOnReferences,
 	productAddOns,
+	productFiscalProfiles,
 	productStockTransactions,
 	productVariants,
 	products,
@@ -617,12 +619,32 @@ const UpdateProductAddOnInputSchema = ProductAddOnSchema.omit({ organizacaoId: t
 			.nullable(),
 	});
 
+const UpdateProductFiscalProfileInputSchema = ProductFiscalProfileSchema.omit({
+	organizacaoId: true,
+	produtoId: true,
+	produtoVarianteId: true,
+}).extend({
+	id: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID do perfil fiscal.",
+		})
+		.optional()
+		.nullable(),
+	deletar: z
+		.boolean({
+			invalid_type_error: "Tipo não válido para deletar perfil fiscal.",
+		})
+		.optional()
+		.nullable(),
+});
+
 const UpdateProductVariantInputSchema = ProductVariantSchema.omit({
 	organizacaoId: true,
 	produtoId: true,
 }).extend({
 	imagemCapaUrl: z.string().optional().nullable(),
 	addOns: z.array(UpdateProductAddOnInputSchema),
+	perfisFiscais: z.array(UpdateProductFiscalProfileInputSchema),
 	id: z
 		.string({
 			invalid_type_error: "Tipo não válido para ID da variante.",
@@ -645,11 +667,13 @@ const UpdateProductInputSchema = z.object({
 	product: ProductSchema.omit({ organizacaoId: true }),
 	productVariants: z.array(UpdateProductVariantInputSchema),
 	productAddOns: z.array(UpdateProductAddOnInputSchema),
+	productFiscalProfiles: z.array(UpdateProductFiscalProfileInputSchema),
 });
 export type TUpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
 
 type TUpdateProductAddOnInput = z.infer<typeof UpdateProductAddOnInputSchema>;
 type TUpdateProductAddOnOptionInput = z.infer<typeof UpdateProductAddOnOptionInputSchema>;
+type TUpdateProductFiscalProfileInput = z.infer<typeof UpdateProductFiscalProfileInputSchema>;
 
 async function upsertProductAddOnOptions({
 	tx,
@@ -805,6 +829,56 @@ async function upsertScopedProductAddOn({
 	return createdAddOn.id;
 }
 
+async function upsertScopedProductFiscalProfiles({
+	tx,
+	userOrgId,
+	productId,
+	variantId,
+	profiles,
+}: {
+	tx: DBTransaction;
+	userOrgId: string;
+	productId: string;
+	variantId?: string | null;
+	profiles: TUpdateProductFiscalProfileInput[];
+}) {
+	for (const profile of profiles) {
+		const scopedWhereClause = and(
+			eq(productFiscalProfiles.organizacaoId, userOrgId),
+			eq(productFiscalProfiles.produtoId, productId),
+			variantId ? eq(productFiscalProfiles.produtoVarianteId, variantId) : isNull(productFiscalProfiles.produtoVarianteId),
+			profile.id ? eq(productFiscalProfiles.id, profile.id) : undefined,
+		);
+
+		if (profile.id && profile.deletar) {
+			await tx.update(productFiscalProfiles).set({ ativo: false }).where(scopedWhereClause);
+			continue;
+		}
+
+		const profileValues = {
+			origemMercadoria: profile.origemMercadoria,
+			ncm: profile.ncm,
+			cest: profile.cest,
+			cfopPadrao: profile.cfopPadrao,
+			unidadeComercial: profile.unidadeComercial,
+			codigoBeneficioFiscal: profile.codigoBeneficioFiscal,
+			ativo: profile.ativo,
+		};
+
+		if (profile.id) {
+			await tx.update(productFiscalProfiles).set(profileValues).where(scopedWhereClause);
+			continue;
+		}
+
+		await tx.insert(productFiscalProfiles).values({
+			organizacaoId: userOrgId,
+			produtoId: productId,
+			produtoVarianteId: variantId ?? null,
+			...profileValues,
+		});
+	}
+}
+
 async function updateProduct({ session, input }: { session: TAuthUserSession; input: TUpdateProductInput }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
@@ -837,12 +911,30 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 			throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar produto.");
 		}
 
+		await upsertScopedProductFiscalProfiles({
+			tx,
+			userOrgId,
+			productId: input.productId,
+			variantId: null,
+			profiles: input.productFiscalProfiles,
+		});
+
 		for (const variant of input.productVariants) {
 			if (variant.id && variant.deletar) {
 				await tx
 					.update(productVariants)
 					.set({ ativo: false })
 					.where(and(eq(productVariants.id, variant.id), eq(productVariants.produtoId, input.productId), eq(productVariants.organizacaoId, userOrgId)));
+				await tx
+					.update(productFiscalProfiles)
+					.set({ ativo: false })
+					.where(
+						and(
+							eq(productFiscalProfiles.organizacaoId, userOrgId),
+							eq(productFiscalProfiles.produtoId, input.productId),
+							eq(productFiscalProfiles.produtoVarianteId, variant.id),
+						),
+					);
 				continue;
 			}
 
@@ -896,6 +988,14 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 					addOn,
 				});
 			}
+
+			await upsertScopedProductFiscalProfiles({
+				tx,
+				userOrgId,
+				productId: input.productId,
+				variantId,
+				profiles: variant.perfisFiscais,
+			});
 		}
 
 		for (const [addOnIndex, addOn] of input.productAddOns.entries()) {
@@ -949,12 +1049,14 @@ const CreateProductVariantInputSchema = ProductVariantSchema.omit({
 }).extend({
 	imagemCapaUrl: z.string().optional().nullable(),
 	addOns: z.array(CreateProductAddOnInputSchema),
+	perfisFiscais: z.array(ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true })),
 });
 
 const CreateProductInputSchema = z.object({
 	product: ProductSchema.omit({ organizacaoId: true }),
 	productVariants: z.array(CreateProductVariantInputSchema),
 	productAddOns: z.array(CreateProductAddOnInputSchema),
+	productFiscalProfiles: z.array(ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true })),
 });
 
 export type TCreateProductInput = z.infer<typeof CreateProductInputSchema>;
@@ -1002,6 +1104,15 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 				motivo: "Inicialização do estoque",
 				tipo: "AJUSTE",
 				operadorId: session.user.id,
+			});
+		}
+
+		for (const profile of input.productFiscalProfiles) {
+			await tx.insert(productFiscalProfiles).values({
+				organizacaoId: userOrgId,
+				produtoId: productId,
+				produtoVarianteId: null,
+				...profile,
 			});
 		}
 
@@ -1084,6 +1195,14 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 					ordem: addOnIndex,
 					produtoAddOnId: createdAddOn.id,
 					produtoVarianteId: createdVariant.id,
+				});
+			}
+			for (const profile of variant.perfisFiscais) {
+				await tx.insert(productFiscalProfiles).values({
+					organizacaoId: userOrgId,
+					produtoId: productId,
+					produtoVarianteId: createdVariant.id,
+					...profile,
 				});
 			}
 		}
