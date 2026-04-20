@@ -26,29 +26,29 @@ export function PiorDiaKickerBadge({ tokens, centered = false, className }: Pior
 					display: "inline-flex",
 					alignItems: "center",
 					gap: Math.round(8 * t),
-					background: "rgba(239,68,68,0.18)",
-					border: "1px solid rgba(239,68,68,0.35)",
+					background:
+						"linear-gradient(120deg, rgba(255,205,46,0.18) 0%, rgba(16,185,129,0.16) 100%)",
+					border: "1px solid rgba(255,205,46,0.32)",
 					borderRadius: Math.round(100 * t),
 					padding: `${Math.round(6 * t)}px ${Math.round(14 * t)}px`,
+					boxShadow: "0 6px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)",
 				}}
 			>
-				{/* Red pulse dot */}
-				<div
-					style={{
-						width: Math.round(7 * t),
-						height: Math.round(7 * t),
-						borderRadius: "50%",
-						background: "#EF4444",
-						boxShadow: "0 0 6px rgba(239,68,68,0.7)",
-						flexShrink: 0,
-					}}
-				/>
+				<svg width={Math.round(12 * t)} height={Math.round(12 * t)} viewBox="0 0 24 24" fill="none">
+					<path
+						d="M13 2 L4 14 L11 14 L11 22 L20 10 L13 10 Z"
+						fill="#FFCD2E"
+						stroke="#FFCD2E"
+						strokeWidth="1.4"
+						strokeLinejoin="round"
+					/>
+				</svg>
 				<span
 					style={{
 						fontSize: Math.round(11 * t),
 						fontWeight: 800,
-						color: "#FCA5A5",
-						letterSpacing: "0.10em",
+						color: "#FFE17F",
+						letterSpacing: "0.14em",
 						textTransform: "uppercase",
 					}}
 				>
