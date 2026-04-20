@@ -6,6 +6,7 @@ import { organizations } from "./organizations";
 import { saleItems, sales } from "./sales";
 import { users } from "./users";
 import { purchaseItems, purchases } from "./purchases";
+import { productFiscalProfiles } from "./fiscal";
 
 export const products = newTable(
 	"products",
@@ -42,6 +43,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
 	pedidos: many(saleItems),
 	variantes: many(productVariants),
 	addOnsReferencias: many(productAddOnReferences),
+	perfisFiscais: many(productFiscalProfiles),
 }));
 
 export type TProductEntity = typeof products.$inferSelect;
@@ -88,6 +90,7 @@ export const productVariantsRelations = relations(productVariants, ({ one, many 
 		references: [products.id],
 	}),
 	addOnsReferencias: many(productAddOnReferences),
+	perfisFiscais: many(productFiscalProfiles),
 }));
 
 export type TProductVariantEntity = typeof productVariants.$inferSelect;

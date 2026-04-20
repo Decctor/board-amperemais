@@ -11,6 +11,7 @@ import type {
 	TDeliveryModeEnum,
 	TFinancialAccountTypeEnum,
 	TFinancialTransactionTypeEnum,
+	TFiscalProductOriginEnum,
 	TInteractionsCronJobTimeBlocksEnum,
 	TInternalLeadActivityTypeEnum,
 	TPaymentMethodEnum,
@@ -184,6 +185,32 @@ export const InternalLeadStatusCRMOptions: { id: number; label: string; value: T
 	{ id: 6, label: "GANHO", value: "GANHO" },
 ];
 
+export const ProductFiscalProfileOriginOptions: { id: TFiscalProductOriginEnum; value: TFiscalProductOriginEnum; label: string }[] = [
+	{ id: "NACIONAL", value: "NACIONAL", label: "NACIONAL" },
+	{ id: "ESTRANGEIRA_IMPORTACAO_DIRETA", value: "ESTRANGEIRA_IMPORTACAO_DIRETA", label: "ESTRANGEIRA — IMPORTAÇÃO DIRETA" },
+	{ id: "ESTRANGEIRA_ADQUIRIDA_BRASIL", value: "ESTRANGEIRA_ADQUIRIDA_BRASIL", label: "ESTRANGEIRA — ADQUIRIDA NO BRASIL" },
+	{
+		id: "NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+		value: "NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+		label: "NACIONAL — CONTEÚDO IMPORT. > 40%",
+	},
+	{ id: "NACIONAL_PROCESSOS_BASICOS", value: "NACIONAL_PROCESSOS_BASICOS", label: "NACIONAL — PROCESSOS BÁSICOS" },
+	{
+		id: "NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+		value: "NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+		label: "NACIONAL — CONTEÚDO IMPORT. ≤ 40%",
+	},
+	{
+		id: "ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+		value: "ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+		label: "ESTRANGEIRA — IMPORT. DIRETA SEM SIMILAR",
+	},
+	{
+		id: "ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+		value: "ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+		label: "ESTRANGEIRA — ADQUIRIDA BRASIL SEM SIMILAR",
+	},
+];
 export const InternalLeadOriginOptions: { id: string; label: string; value: TInternalLeadOriginEnum }[] = [
 	{ id: "INDICACAO", value: "INDICACAO", label: "Indicação" },
 	{ id: "SITE", value: "SITE", label: "Site" },

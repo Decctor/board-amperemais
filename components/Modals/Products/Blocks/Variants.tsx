@@ -91,6 +91,7 @@ function NewProductVariantMenu({ closeMenu, addVariant }: NewProductVariantMenuP
 			previewUrl: null,
 		},
 		addOns: [],
+		perfisFiscais: [],
 	});
 
 	function updateVariantHolder(updates: Partial<TUseProductState["state"]["productVariants"][number]>) {

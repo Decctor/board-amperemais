@@ -11,12 +11,14 @@ import { toast } from "sonner";
 import ProductAddOnsBlock from "./Blocks/AddOns";
 import ProductGeneralBlock from "./Blocks/General";
 import ProductStockBlock from "./Blocks/Stock";
+import ProductFiscalBlock from "./Blocks/Fiscal";
 import ProductVariantsBlock from "./Blocks/Variants";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 type ControlProductProps = {
 	productId: string;
 	user: TAuthUserSession["user"];
+	userMembership: NonNullable<TAuthUserSession["membership"]>;
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -25,7 +27,9 @@ type ControlProductProps = {
 		onSettled?: () => void;
 	};
 };
-export default function ControlProduct({ productId, user: _user, closeModal, callbacks }: ControlProductProps) {
+export default function ControlProduct({ productId, user: _user, userMembership, closeModal, callbacks }: ControlProductProps) {
+	const userHasFiscalViewPermission = userMembership.permissoes.fiscal.visualizar;
+	const userHasFiscalConfigurePermission = userMembership.permissoes.fiscal.configurar;
 	const queryClient = useQueryClient();
 
 	const { data: product, queryKey, isLoading, error } = useProductById({ id: productId });
@@ -36,6 +40,9 @@ export default function ControlProduct({ productId, user: _user, closeModal, cal
 		addProductVariant,
 		updateProductVariant,
 		updateProductVariantImageHolder,
+		addProductFiscalProfile,
+		updateProductFiscalProfile,
+		removeProductFiscalProfile,
 		removeProductVariant,
 		addProductAddOn,
 		updateProductAddOn,
@@ -48,7 +55,14 @@ export default function ControlProduct({ productId, user: _user, closeModal, cal
 
 	useEffect(() => {
 		if (product) {
-			resetState(product);
+			resetState({
+				...product,
+				productVariants: product.productVariants.map((variant) => ({
+					...variant,
+					perfisFiscais: variant.perfisFiscais,
+				})),
+				productFiscalProfiles: product.product.perfisFiscais,
+			});
 		}
 	}, [product, resetState]);
 
@@ -176,11 +190,7 @@ export default function ControlProduct({ productId, user: _user, closeModal, cal
 			closeMenu={closeModal}
 			dialogVariant="md"
 		>
-			<ProductGeneralBlock
-				product={state.product}
-				updateProduct={updateProductState}
-				updateProductImageHolder={updateProductImageHolder}
-			/>
+			<ProductGeneralBlock product={state.product} updateProduct={updateProductState} updateProductImageHolder={updateProductImageHolder} />
 			<ProductStockBlock product={state.product} updateProduct={updateProductState} />
 			<ProductVariantsBlock
 				variants={state.productVariants}
@@ -197,6 +207,14 @@ export default function ControlProduct({ productId, user: _user, closeModal, cal
 				addProductAddOnOption={addProductAddOnOption}
 				updateProductAddOnOption={updateProductAddOnOption}
 				removeProductAddOnOption={removeProductAddOnOption}
+			/>
+			<ProductFiscalBlock
+				userHasFiscalViewPermission={userHasFiscalViewPermission}
+				userHasFiscalConfigurePermission={userHasFiscalConfigurePermission}
+				productFiscalProfiles={state.productFiscalProfiles}
+				addProductFiscalProfile={addProductFiscalProfile}
+				updateProductFiscalProfile={updateProductFiscalProfile}
+				removeProductFiscalProfile={removeProductFiscalProfile}
 			/>
 		</ResponsiveMenu>
 	);

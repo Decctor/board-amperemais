@@ -225,10 +225,7 @@ async function validateAndResolveAddOnOptionLink({
 
 	if (normalizedOption.produtoVarianteId) {
 		const variant = await tx.query.productVariants.findFirst({
-			where: and(
-				eq(productVariants.id, normalizedOption.produtoVarianteId),
-				eq(productVariants.organizacaoId, userOrgId),
-			),
+			where: and(eq(productVariants.id, normalizedOption.produtoVarianteId), eq(productVariants.organizacaoId, userOrgId)),
 			columns: {
 				id: true,
 				produtoId: true,
@@ -298,6 +295,9 @@ async function getProducts({ input, session }: GetProductsParams) {
 							},
 							orderBy: (fields, { asc }) => asc(fields.ordem),
 						},
+						perfisFiscais: {
+							where: (fields, { eq }) => eq(fields.ativo, true),
+						},
 					},
 				},
 				addOnsReferencias: {
@@ -317,6 +317,9 @@ async function getProducts({ input, session }: GetProductsParams) {
 						},
 					},
 					orderBy: (fields, { asc }) => asc(fields.ordem),
+				},
+				perfisFiscais: {
+					where: (fields, { eq }) => eq(fields.ativo, true),
 				},
 			},
 		});
@@ -341,6 +344,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 							file: null,
 							previewUrl: product.imagemCapaUrl,
 						},
+						perfisFiscais: product.perfisFiscais,
 					},
 					productVariants: product.variantes.map((variant) => ({
 						id: variant.id,
@@ -357,6 +361,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 							previewUrl: variant.imagemCapaUrl,
 						},
 						addOns: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo).map(mapAddOnReferenceToState),
+						perfisFiscais: variant.perfisFiscais,
 					})),
 					productAddOns: product.addOnsReferencias.filter((reference) => reference.grupo.ativo).map(mapAddOnReferenceToState),
 				},
@@ -663,11 +668,7 @@ async function upsertProductAddOnOptions({
 				.update(productAddOnOptions)
 				.set({ ativo: false })
 				.where(
-					and(
-						eq(productAddOnOptions.id, option.id),
-						eq(productAddOnOptions.produtoAddOnId, addOnId),
-						eq(productAddOnOptions.organizacaoId, userOrgId),
-					),
+					and(eq(productAddOnOptions.id, option.id), eq(productAddOnOptions.produtoAddOnId, addOnId), eq(productAddOnOptions.organizacaoId, userOrgId)),
 				);
 			continue;
 		}
@@ -841,13 +842,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 				await tx
 					.update(productVariants)
 					.set({ ativo: false })
-					.where(
-						and(
-							eq(productVariants.id, variant.id),
-							eq(productVariants.produtoId, input.productId),
-							eq(productVariants.organizacaoId, userOrgId),
-						),
-					);
+					.where(and(eq(productVariants.id, variant.id), eq(productVariants.produtoId, input.productId), eq(productVariants.organizacaoId, userOrgId)));
 				continue;
 			}
 
@@ -866,13 +861,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 						rastreamentoEstoqueAtivo: variant.rastreamentoEstoqueAtivo,
 						ativo: variant.ativo,
 					})
-					.where(
-						and(
-							eq(productVariants.id, variantId),
-							eq(productVariants.produtoId, input.productId),
-							eq(productVariants.organizacaoId, userOrgId),
-						),
-					);
+					.where(and(eq(productVariants.id, variantId), eq(productVariants.produtoId, input.productId), eq(productVariants.organizacaoId, userOrgId)));
 			} else {
 				const [createdVariant] = await tx
 					.insert(productVariants)

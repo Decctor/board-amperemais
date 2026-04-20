@@ -1,3 +1,4 @@
+import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
 import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
 import { useCallback, useState } from "react";
 import z from "zod";
@@ -28,6 +29,22 @@ export const ProductStateSchema = z.object({
 					.optional()
 					.nullable(),
 			}),
+			perfisFiscais: z.array(
+				ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true }).extend({
+					id: z
+						.string({
+							required_error: "ID do perfil fiscal não informado.",
+							invalid_type_error: "Tipo não válido para ID do perfil fiscal.",
+						})
+						.optional(),
+					deletar: z
+						.boolean({
+							required_error: "Deletar perfil fiscal não informado.",
+							invalid_type_error: "Tipo não válido para deletar perfil fiscal.",
+						})
+						.optional(),
+				}),
+			),
 			addOns: z.array(
 				ProductAddOnSchema.omit({ organizacaoId: true }).extend({
 					opcoes: z.array(
@@ -120,6 +137,22 @@ export const ProductStateSchema = z.object({
 				.optional(),
 		}),
 	),
+	productFiscalProfiles: z.array(
+		ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true }).extend({
+			id: z
+				.string({
+					required_error: "ID do perfil fiscal não informado.",
+					invalid_type_error: "Tipo não válido para ID do perfil fiscal.",
+				})
+				.optional(),
+			deletar: z
+				.boolean({
+					required_error: "Deletar perfil fiscal não informado.",
+					invalid_type_error: "Tipo não válido para deletar perfil fiscal.",
+				})
+				.optional(),
+		}),
+	),
 });
 
 export type TProductState = z.infer<typeof ProductStateSchema>;
@@ -146,6 +179,7 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 				previewUrl: initialState?.product?.imagemCapaHolder?.previewUrl ?? null,
 			},
 		},
+		productFiscalProfiles: initialState?.productFiscalProfiles ?? [],
 		productVariants: initialState?.productVariants ?? [],
 		productAddOns: initialState?.productAddOns ?? [],
 	});
@@ -443,6 +477,91 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 		}));
 	}, []);
 
+	// ===== PERFIS FISCAIS DO PRODUTO =====
+
+	const addProductFiscalProfile = useCallback((profile: TProductState["productFiscalProfiles"][number]) => {
+		setState((prev) => ({
+			...prev,
+			productFiscalProfiles: [...prev.productFiscalProfiles, profile],
+		}));
+	}, []);
+
+	const updateProductFiscalProfile = useCallback((index: number, updates: Partial<Omit<TProductState["productFiscalProfiles"][number], "id">>) => {
+		setState((prev) => ({
+			...prev,
+			productFiscalProfiles: prev.productFiscalProfiles.map((profile, i) => (i === index ? { ...profile, ...updates } : profile)),
+		}));
+	}, []);
+
+	const removeProductFiscalProfile = useCallback((fiscalProfileIndex: number) => {
+		setState((prev) => {
+			const fiscalProfile = prev.productFiscalProfiles[fiscalProfileIndex];
+			// Se é um perfil fiscal existente (tem id), marca como deletar
+			if (fiscalProfile?.id) {
+				return {
+					...prev,
+					productFiscalProfiles: prev.productFiscalProfiles.map((profile, i) =>
+						i === fiscalProfileIndex ? { ...profile, deletar: true } : profile,
+					),
+				};
+			}
+			// Se é novo (sem id), remove da lista
+			return {
+				...prev,
+				productFiscalProfiles: prev.productFiscalProfiles.filter((_, i) => i !== fiscalProfileIndex),
+			};
+		});
+	}, []);
+
+	// ===== PERFIS FISCAIS DE VARIANTE =====
+
+	const addVariantFiscalProfile = useCallback((variantIndex: number, profile: TProductState["productVariants"][number]["perfisFiscais"][number]) => {
+		setState((prev) => ({
+			...prev,
+			productVariants: prev.productVariants.map((variant, i) =>
+				i === variantIndex ? { ...variant, perfisFiscais: [...variant.perfisFiscais, profile] } : variant,
+			),
+		}));
+	}, []);
+
+	const updateVariantFiscalProfile = useCallback(
+		(variantIndex: number, profileIndex: number, updates: Partial<Omit<TProductState["productVariants"][number]["perfisFiscais"][number], "id">>) => {
+			setState((prev) => ({
+				...prev,
+				productVariants: prev.productVariants.map((variant, i) =>
+					i === variantIndex
+						? { ...variant, perfisFiscais: variant.perfisFiscais.map((profile, j) => (j === profileIndex ? { ...profile, ...updates } : profile)) }
+						: variant,
+				),
+			}));
+		},
+		[],
+	);
+
+	const removeVariantFiscalProfile = useCallback((variantIndex: number, profileIndex: number) => {
+		setState((prev) => ({
+			...prev,
+			productVariants: prev.productVariants.map((variant, vIdx) => {
+				if (vIdx !== variantIndex) return variant;
+
+				const fiscalProfileFound = variant.perfisFiscais[profileIndex];
+				// Se é um perfil fiscal existente (tem id), marca como deletar
+				if (fiscalProfileFound?.id) {
+					return {
+						...variant,
+						perfisFiscais: variant.perfisFiscais.map((profile, fpIdx) =>
+							fpIdx === profileIndex ? { ...profile, deletar: true } : profile,
+						),
+					};
+				}
+				// Se é novo (sem id), remove da lista
+				return {
+					...variant,
+					perfisFiscais: variant.perfisFiscais.filter((_, fpIdx) => fpIdx !== profileIndex),
+				};
+			}),
+		}));
+	}, []);
 	// ===== RESET E ESTADO COMPLETO =====
 
 	const resetState = useCallback((newState: TProductState) => {
@@ -475,6 +594,14 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 		addVariantAddOnOption,
 		updateVariantAddOnOption,
 		removeVariantAddOnOption,
+		// Perfis fiscais do produto
+		addProductFiscalProfile,
+		updateProductFiscalProfile,
+		removeProductFiscalProfile,
+		// Perfis fiscais de variante
+		addVariantFiscalProfile,
+		updateVariantFiscalProfile,
+		removeVariantFiscalProfile,
 		// Utilitários
 		resetState,
 	};
