@@ -65,6 +65,7 @@ export default function NewCampaign({ user, organizationId, closeModal, callback
 				updateCampaign={updateCampaign}
 				campaignSegmentations={state.segmentations}
 				addSegmentation={addSegmentation}
+				updateSegmentation={updateSegmentation}
 				deleteSegmentation={deleteSegmentation}
 			/>
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />

@@ -72,6 +72,7 @@ export default function ControlCampaign({ campaignId, organizationId, closeModal
 				updateCampaign={updateCampaign}
 				campaignSegmentations={state.segmentations}
 				addSegmentation={addSegmentation}
+				updateSegmentation={updateSegmentation}
 				deleteSegmentation={deleteSegmentation}
 			/>
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />

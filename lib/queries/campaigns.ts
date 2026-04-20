@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
+import type { TPreviewSegmentationAudienceOutput } from "@/app/api/campaigns/utils/preview-segmentation-audience/route";
 import { TPreviewWorstSalesDayOutput } from "@/app/api/campaigns/utils/preview-worst-sales-day/route";
 
 async function fetchCampaigns(input: Omit<TGetCampaignsInput, "id">) {
@@ -324,5 +325,25 @@ export function useCampaignUtilPreviewWorstSalesDay() {
 	return useQuery({
 		queryKey: ["campaign-util-preview-worst-sales-day"],
 		queryFn: async () => await fetchCampaignUtilPreviewWorstSalesDay(),
+	});
+}
+
+async function fetchCampaignUtilPreviewSegmentationAudience() {
+	try {
+		const { data } = await axios.get<TPreviewSegmentationAudienceOutput>("/api/campaigns/utils/preview-segmentation-audience");
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchCampaignUtilPreviewSegmentationAudience", error);
+		throw error;
+	}
+}
+
+export type TCampaignUtilPreviewSegmentationAudience = Awaited<ReturnType<typeof fetchCampaignUtilPreviewSegmentationAudience>>;
+
+export function useCampaignUtilPreviewSegmentationAudience() {
+	return useQuery({
+		queryKey: ["campaign-util-preview-segmentation-audience"],
+		queryFn: async () => await fetchCampaignUtilPreviewSegmentationAudience(),
+		staleTime: 60_000,
 	});
 }

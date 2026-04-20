@@ -24,6 +24,7 @@ const buttonVariants = cva(
 				"ghost-brand": "hover:bg-brand hover:text-brand-foreground",
 				"ghost-destructive": "hover:bg-destructive hover:text-destructive-foreground",
 				link: "text-primary underline-offset-4 hover:underline",
+				none: "",
 			},
 			size: {
 				default: "h-9 px-4 py-2",
