@@ -6,10 +6,10 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToPhone } from "@/lib/formatting";
 import { disconnectInternalGateway } from "@/lib/mutations/internal-gateway";
 import { deleteWhatsappConnection } from "@/lib/mutations/whatsapp-connections";
-import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
+import { useWhatsappConnection, useWhatsappPhoneSpend } from "@/lib/queries/whatsapp-connections";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Calendar, Cloud, Key, Loader2, Phone, QrCode, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { BadgeCheck, Calendar, Cloud, DollarSign, Key, Loader2, MessageSquare, Phone, QrCode, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { MetaIcon, RecompraCRMIconColorful, WhatsappIcon } from "../icons";
 import { LoadingButton } from "../loading-button";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/hover-card";
 import { InternalGatewayQRConnect } from "./InternalGatewayQRConnect";
 
 type TWhatsappConnection = TGetWhatsappConnectionsOutput["data"][number];
@@ -121,19 +122,111 @@ function ConnectionDetailRow({ icon, label, children }: ConnectionDetailRowProps
 	);
 }
 
+const CONVERSATION_TYPE_LABELS: Record<string, string> = {
+	MARKETING: "Marketing",
+	UTILITY: "Utilidade",
+	AUTHENTICATION: "Autenticação",
+	SERVICE: "Serviço",
+	UNKNOWN: "Outros",
+};
+
+type PhoneSpendHoverCardProps = {
+	phoneId: string;
+	children: React.ReactNode;
+};
+function PhoneSpendHoverCard({ phoneId, children }: PhoneSpendHoverCardProps) {
+	const [isOpen, setIsOpen] = useState(false);
+	const { data, isPending, isError } = useWhatsappPhoneSpend({ phoneId, enabled: isOpen });
+
+	return (
+		<HoverCard open={isOpen} onOpenChange={setIsOpen}>
+			<HoverCardTrigger asChild>{children}</HoverCardTrigger>
+			<HoverCardContent className="w-72 p-3">
+				<div className="flex flex-col gap-2.5">
+					<div className="flex items-center justify-between">
+						<h3 className="text-xs font-bold tracking-tight">GASTOS — ÚLTIMOS 30 DIAS</h3>
+					</div>
+
+					{isPending ? (
+						<div className="flex items-center justify-center py-3">
+							<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+						</div>
+					) : isError ? (
+						<p className="text-xs text-muted-foreground italic">Não foi possível carregar os dados.</p>
+					) : !data ? null : (
+						<>
+							<div className="flex items-center justify-between rounded-md bg-primary/5 px-2.5 py-2">
+								<div className="flex items-center gap-1.5">
+									<DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+									<span className="text-xs text-muted-foreground">Custo total</span>
+								</div>
+								<span className="text-xs font-bold">
+									{data.totalCost.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+								</span>
+							</div>
+
+							<div className="flex items-center justify-between rounded-md bg-primary/5 px-2.5 py-2">
+								<div className="flex items-center gap-1.5">
+									<MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+									<span className="text-xs text-muted-foreground">Conversas</span>
+								</div>
+								<span className="text-xs font-bold">{data.totalConversations.toLocaleString("pt-BR")}</span>
+							</div>
+
+							{Object.keys(data.byType).length > 0 && (
+								<div className="flex flex-col gap-1">
+									<p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Por tipo</p>
+									{Object.entries(data.byType).map(([type, summary]) => (
+										<div key={type} className="flex items-center justify-between text-xs">
+											<span className="text-primary/70">{CONVERSATION_TYPE_LABELS[type] ?? type}</span>
+											<div className="flex items-center gap-2">
+												<span className="text-muted-foreground">{summary.conversations} conv.</span>
+												<span className="font-medium">
+													{summary.cost.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+												</span>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
+
+							{data.totalConversations === 0 && (
+								<p className="text-xs text-muted-foreground italic text-center">Nenhuma conversa no período.</p>
+							)}
+						</>
+					)}
+				</div>
+			</HoverCardContent>
+		</HoverCard>
+	);
+}
+
 type ConnectionPhonesListProps = {
 	telefones: TWhatsappConnection["telefones"];
+	showSpend?: boolean;
 };
-function ConnectionPhonesList({ telefones }: ConnectionPhonesListProps) {
+function ConnectionPhonesList({ telefones, showSpend }: ConnectionPhonesListProps) {
 	if (!telefones.length) return <span className="text-primary/50 text-xs italic">Nenhum telefone vinculado</span>;
 	return (
 		<>
-			{telefones.map((telefone) => (
-				<div key={telefone.numero} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10">
-					<span className="text-primary/80 text-xs">{telefone.nome}:</span>
-					<span className="text-primary/80 text-xs font-bold">{formatToPhone(telefone.numero)}</span>
-				</div>
-			))}
+			{telefones.map((telefone) => {
+				const badge = (
+					<div key={telefone.numero} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 cursor-default">
+						<span className="text-primary/80 text-xs">{telefone.nome}:</span>
+						<span className="text-primary/80 text-xs font-bold">{formatToPhone(telefone.numero)}</span>
+					</div>
+				);
+
+				if (showSpend && telefone.whatsappBusinessAccountId) {
+					return (
+						<PhoneSpendHoverCard key={telefone.numero} phoneId={telefone.id}>
+							{badge}
+						</PhoneSpendHoverCard>
+					);
+				}
+
+				return badge;
+			})}
 		</>
 	);
 }
@@ -220,7 +313,7 @@ function IntegrationWithMetaCloud({ connections }: IntegrationWithMetaCloudProps
 							</ConnectionDetailRow>
 						)} */}
 						<ConnectionDetailRow icon={<Phone className="h-4 w-4" />} label="TELEFONES CONECTADOS:">
-							<ConnectionPhonesList telefones={connection.telefones} />
+							<ConnectionPhonesList telefones={connection.telefones} showSpend />
 						</ConnectionDetailRow>
 					</div>
 				</div>
