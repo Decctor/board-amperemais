@@ -111,7 +111,8 @@ export const OrganizationFiscalConfigSchema = z.object({
 			nfe: z.object({}).default({}),
 		})
 		.default({
-			api: { baseUrl: "https://api.nuvemfiscal.com.br" },
+			// api: { baseUrl: "https://api.nuvemfiscal.com.br" },
+			api: { baseUrl: "https://api.sandbox.nuvemfiscal.com.br" },
 			certificado: {},
 			nfce: {},
 			nfe: {},

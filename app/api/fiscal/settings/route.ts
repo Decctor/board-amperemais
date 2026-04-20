@@ -21,7 +21,7 @@ async function getFiscalSettings() {
 	const { orgId } = await requireOrgSession();
 	return {
 		data: await getFiscalSettingsData(orgId),
-		message: "ConfiguraÃ§Ã£o fiscal carregada com sucesso.",
+		message: "Configuração fiscal carregada com sucesso.",
 	};
 }
 export type TGetFiscalSettingsOutput = Awaited<ReturnType<typeof getFiscalSettings>>;
@@ -50,7 +50,7 @@ async function updateFiscalSettings({ input }: { input: TUpdateFiscalSettingsInp
 
 	return {
 		data: { updatedId: updated.id },
-		message: "ConfiguraÃ§Ã£o fiscal atualizada com sucesso.",
+		message: "Configuração fiscal atualizada com sucesso.",
 	};
 }
 export type TUpdateFiscalSettingsOutput = Awaited<ReturnType<typeof updateFiscalSettings>>;

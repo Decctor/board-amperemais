@@ -13,11 +13,15 @@ async function syncFiscalCompany() {
 		throw new createHttpError.Forbidden("Acesso restrito aos responsáveis pela organização.");
 	}
 
-	const result = await syncFiscalCompanySettings(orgId);
-	return {
-		data: result,
-		message: "Cadastro fiscal sincronizado com sucesso.",
-	};
+	try {
+		const result = await syncFiscalCompanySettings(orgId);
+		return {
+			data: result,
+			message: "Cadastro fiscal sincronizado com sucesso.",
+		};
+	} catch (error) {
+		throw new createHttpError.InternalServerError("Erro ao sincronizar cadastro fiscal.");
+	}
 }
 export type TSyncFiscalCompanyOutput = Awaited<ReturnType<typeof syncFiscalCompany>>;
 

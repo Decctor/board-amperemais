@@ -1,12 +1,13 @@
 import type { TFiscalOrganization, TProviderCompanySyncResult } from "@/lib/fiscal/types";
 import { createNuvemFiscalClient } from "./client";
+import { formatStringAsOnlyDigits } from "@/lib/formatting";
 
 function mapOrganizationToNuvemFiscalCompany(organizacao: TFiscalOrganization) {
 	const fiscal = organizacao.fiscalConfiguracao;
 	if (!fiscal) throw new Error("Configuracao fiscal nao encontrada.");
 
 	return {
-		cpf_cnpj: fiscal.cpfCnpj,
+		cpf_cnpj: formatStringAsOnlyDigits(fiscal.cpfCnpj),
 		nome_razao_social: fiscal.nomeRazaoSocial,
 		nome_fantasia: fiscal.nomeFantasia ?? undefined,
 		email: fiscal.emailFiscal ?? organizacao.email ?? undefined,
@@ -21,7 +22,7 @@ function mapOrganizationToNuvemFiscalCompany(organizacao: TFiscalOrganization) {
 			codigo_municipio: fiscal.endereco.codigoMunicipio,
 			cidade: fiscal.endereco.cidade,
 			uf: fiscal.endereco.uf,
-			cep: fiscal.endereco.cep,
+			cep: formatStringAsOnlyDigits(fiscal.endereco.cep),
 			codigo_pais: fiscal.endereco.codigoPais,
 			pais: fiscal.endereco.pais,
 		},
@@ -61,16 +62,16 @@ export async function syncNuvemFiscalCompany(organizacao: TFiscalOrganization): 
 	const cpfCnpj = organizacao.fiscalConfiguracao?.cpfCnpj;
 	if (!cpfCnpj) throw new Error("CPF/CNPJ fiscal nao configurado.");
 
+	const cpfCnpjAsNumber = formatStringAsOnlyDigits(cpfCnpj);
 	await client.post("/empresas", companyPayload).catch(async () => {
-		await client.put(`/empresas/${cpfCnpj}`, companyPayload);
+		await client.put(`/empresas/${cpfCnpjAsNumber}`, companyPayload);
 	});
 
-	await client.put(`/empresas/${cpfCnpj}/nfce`, mapOrganizationNfceConfig(organizacao));
-	await client.put(`/empresas/${cpfCnpj}/nfe`, mapOrganizationNfeConfig(organizacao));
+	await client.put(`/empresas/${cpfCnpjAsNumber}/nfce`, mapOrganizationNfceConfig(organizacao));
+	await client.put(`/empresas/${cpfCnpjAsNumber}/nfe`, mapOrganizationNfeConfig(organizacao));
 
 	return {
 		cpfCnpj,
 		sincronizado: true,
 	};
 }
-
