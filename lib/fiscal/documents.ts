@@ -176,9 +176,13 @@ async function createOrUpdateDraftDocument({
 	return inserted;
 }
 
-async function loadSaleForFiscal(vendaId: string): Promise<TSaleForFiscal | null> {
+type LoadSaleForFiscalParams = {
+	saleId: string;
+	organizationId: string;
+};
+async function loadSaleForFiscal({ saleId, organizationId }: LoadSaleForFiscalParams): Promise<TSaleForFiscal | null> {
 	const sale = await db.query.sales.findFirst({
-		where: (fields, operators) => operators.eq(fields.id, vendaId),
+		where: (fields, operators) => operators.and(operators.eq(fields.id, saleId), operators.eq(fields.organizacaoId, organizationId)),
 		with: {
 			itens: true,
 			cliente: true,
@@ -240,7 +244,7 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
 }
 
 async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFiscalSaleContext> {
-	const venda = await loadSaleForFiscal(input.vendaId);
+	const venda = await loadSaleForFiscal({ saleId: input.vendaId, organizationId: input.organizacaoId });
 	if (!venda) throw new createHttpError.NotFound("Venda nao encontrada para emissao fiscal.");
 
 	const organizacao = await loadFiscalOrganization(input.organizacaoId);
@@ -465,7 +469,11 @@ type SyncPendingFiscalDocumentsParams = {
 };
 export async function syncPendingFiscalDocuments({ organizationId, limit = 20 }: SyncPendingFiscalDocumentsParams) {
 	const pendingDocuments = await db.query.fiscalDocuments.findMany({
-		where: (fields, operators) => operators.inArray(fields.statusInterno, ["EM_PROCESSAMENTO", "CANCELAMENTO_PENDENTE"]),
+		where: (fields, operators) =>
+			operators.and(
+				operators.eq(fields.organizacaoId, organizationId),
+				operators.inArray(fields.statusInterno, ["EM_PROCESSAMENTO", "CANCELAMENTO_PENDENTE"]),
+			),
 		orderBy: (fields, operators) => operators.asc(fields.dataInsercao),
 		limit,
 	});

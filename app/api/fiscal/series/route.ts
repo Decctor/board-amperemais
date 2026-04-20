@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { TAuthUserSession } from "@/lib/authentication/types";
 import { findFiscalSeriesById, listFiscalSeries, upsertFiscalSeries } from "@/lib/fiscal/settings";
 import { FiscalSeriesSchema } from "@/schemas/fiscal";
 import createHttpError from "http-errors";
@@ -26,7 +27,12 @@ const GetFiscalSeriesInputSchema = z.object({
 export type TGetFiscalSeriesInput = z.infer<typeof GetFiscalSeriesInputSchema>;
 
 async function getFiscalSeries({ input }: { input: TGetFiscalSeriesInput }) {
-	const { orgId } = await requireOrgSession();
+	const { session, orgId } = await requireOrgSession();
+	const sessionMembership = session.membership;
+	if (!sessionMembership) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	const userHasFiscalConfigurePermission = sessionMembership.permissoes.fiscal.configurar;
+	if (!userHasFiscalConfigurePermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar séries fiscais.");
+
 	if (input.id) {
 		const series = await findFiscalSeriesById({ seriesId: input.id, organizationId: orgId });
 		if (!series) throw new createHttpError.NotFound("Oops, serie fiscal nao encontrada.");
@@ -73,11 +79,16 @@ const UpdateFiscalSeriesInputSchema = z.object({
 });
 export type TUpdateFiscalSeriesInput = z.infer<typeof UpdateFiscalSeriesInputSchema>;
 
-async function updateFiscalSeries({ input }: { input: TUpdateFiscalSeriesInput }) {
-	const { orgId } = await requireOrgSession();
+async function updateFiscalSeries({
+	sessionMembership,
+	input,
+}: {
+	sessionMembership: NonNullable<TAuthUserSession["membership"]>;
+	input: TUpdateFiscalSeriesInput;
+}) {
 	const result = await upsertFiscalSeries({
 		id: input.fiscalSeriesId,
-		organizacaoId: orgId,
+		organizacaoId: sessionMembership.organizacao.id,
 		tipoDocumento: input.fiscalSeries.tipoDocumento,
 		ambiente: input.fiscalSeries.ambiente,
 		serie: input.fiscalSeries.serie,
@@ -94,13 +105,15 @@ async function updateFiscalSeries({ input }: { input: TUpdateFiscalSeriesInput }
 export type TUpdateFiscalSeriesOutput = Awaited<ReturnType<typeof updateFiscalSeries>>;
 
 async function updateFiscalSeriesRoute(request: NextRequest) {
-	const { session, orgId } = await requireOrgSession();
-	const userHasFiscalConfigurePermission = session.membership?.permissoes.fiscal.configurar;
+	const { session } = await requireOrgSession();
+	const sessionMembership = session.membership;
+	if (!sessionMembership) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	const userHasFiscalConfigurePermission = sessionMembership.permissoes.fiscal.configurar;
 	if (!userHasFiscalConfigurePermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar séries fiscais.");
 
 	const payload = await request.json();
 	const input = UpdateFiscalSeriesInputSchema.parse(payload);
-	const result = await updateFiscalSeries({ input });
+	const result = await updateFiscalSeries({ sessionMembership, input });
 	return NextResponse.json(result);
 }
 
@@ -111,10 +124,15 @@ const CreateFiscalSeriesInputSchema = z.object({
 	}),
 });
 export type TCreateFiscalSeriesInput = z.infer<typeof CreateFiscalSeriesInputSchema>;
-async function createFiscalSeries({ input }: { input: TCreateFiscalSeriesInput }) {
-	const { orgId } = await requireOrgSession();
+async function createFiscalSeries({
+	sessionMembership,
+	input,
+}: {
+	sessionMembership: NonNullable<TAuthUserSession["membership"]>;
+	input: TCreateFiscalSeriesInput;
+}) {
 	const result = await upsertFiscalSeries({
-		organizacaoId: orgId,
+		organizacaoId: sessionMembership.organizacao.id,
 		tipoDocumento: input.fiscalSeries.tipoDocumento,
 		ambiente: input.fiscalSeries.ambiente,
 		serie: input.fiscalSeries.serie,
@@ -131,13 +149,15 @@ async function createFiscalSeries({ input }: { input: TCreateFiscalSeriesInput }
 export type TCreateFiscalSeriesOutput = Awaited<ReturnType<typeof createFiscalSeries>>;
 
 async function createFiscalSeriesRoute(request: NextRequest) {
-	const { session, orgId } = await requireOrgSession();
-	const userHasFiscalConfigurePermission = session.membership?.permissoes.fiscal.configurar;
+	const { session } = await requireOrgSession();
+	const sessionMembership = session.membership;
+	if (!sessionMembership) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	const userHasFiscalConfigurePermission = sessionMembership.permissoes.fiscal.configurar;
 	if (!userHasFiscalConfigurePermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar séries fiscais.");
 
 	const payload = await request.json();
 	const input = CreateFiscalSeriesInputSchema.parse(payload);
-	const result = await createFiscalSeries({ input });
+	const result = await createFiscalSeries({ sessionMembership, input });
 	return NextResponse.json(result);
 }
 

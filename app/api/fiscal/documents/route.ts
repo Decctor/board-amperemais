@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { emitFiscalDocument, getFiscalDocumentById, listFiscalDocumentEvents, listFiscalDocuments } from "@/lib/fiscal/documents";
 import { FiscalDocumentTypeEnum } from "@/schemas/enums";
+import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -77,6 +78,14 @@ export type TEmitFiscalDocumentInput = z.infer<typeof EmitFiscalDocumentInputSch
 
 async function createFiscalDocument({ input }: { input: TEmitFiscalDocumentInput }) {
 	const { session, orgId } = await requireOrgSession();
+	const userHasFiscalEmitPermission = session.membership?.permissoes.fiscal.emitir;
+	if (!userHasFiscalEmitPermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para emitir documentos fiscais.");
+
+	const saleBelongsToOrg = await db.query.sales.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.id, input.vendaId), eq(fields.organizacaoId, orgId)),
+	});
+	if (!saleBelongsToOrg) throw new createHttpError.NotFound("Venda não encontrada para emissão fiscal.");
+
 	const result = await emitFiscalDocument({
 		vendaId: input.vendaId,
 		tipo: input.tipo,

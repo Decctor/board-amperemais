@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { TAuthUserSession } from "@/lib/authentication/types";
 import { findFiscalOperationProfileById, listFiscalOperationProfiles, upsertFiscalOperationProfile } from "@/lib/fiscal/settings";
 import { FiscalDocumentTypeEnum, FiscalOperationConsumerPresenceEnum, FiscalOperationFinalityEnum } from "@/schemas/enums";
 import { FiscalOperationProfileSchema } from "@/schemas/fiscal";
@@ -78,11 +79,16 @@ const UpdateFiscalOperationProfileInputSchema = z.object({
 
 export type TUpdateFiscalOperationProfileInput = z.infer<typeof UpdateFiscalOperationProfileInputSchema>;
 
-async function updateFiscalOperationProfile({ input }: { input: TUpdateFiscalOperationProfileInput }) {
-	const { orgId } = await requireOrgSession();
+async function updateFiscalOperationProfile({
+	sessionMembership,
+	input,
+}: {
+	sessionMembership: NonNullable<TAuthUserSession["membership"]>;
+	input: TUpdateFiscalOperationProfileInput;
+}) {
 	const result = await upsertFiscalOperationProfile({
 		id: input.operationProfileId,
-		organizacaoId: orgId,
+		organizacaoId: sessionMembership.organizacao.id,
 		...input.operationProfile,
 	});
 	return {
@@ -95,10 +101,16 @@ async function updateFiscalOperationProfile({ input }: { input: TUpdateFiscalOpe
 export type TUpdateFiscalOperationProfileOutput = Awaited<ReturnType<typeof updateFiscalOperationProfile>>;
 
 async function updateFiscalOperationProfileRoute(request: NextRequest) {
-	const { orgId } = await requireOrgSession();
+	const { session } = await requireOrgSession();
+	const sessionMembership = session.membership;
+	if (!sessionMembership) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	const userHasFiscalConfigurePermission = sessionMembership.permissoes.fiscal.configurar;
+	if (!userHasFiscalConfigurePermission)
+		throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar perfis de operação fiscal.");
+
 	const payload = await request.json();
 	const input = UpdateFiscalOperationProfileInputSchema.parse(payload);
-	const result = await updateFiscalOperationProfile({ input });
+	const result = await updateFiscalOperationProfile({ sessionMembership, input });
 
 	return NextResponse.json(result);
 }
@@ -111,10 +123,15 @@ const CreateFiscalOperationProfileInputSchema = z.object({
 });
 export type TCreateFiscalOperationProfileInput = z.infer<typeof CreateFiscalOperationProfileInputSchema>;
 
-async function createFiscalOperationProfile({ input }: { input: TCreateFiscalOperationProfileInput }) {
-	const { orgId } = await requireOrgSession();
+async function createFiscalOperationProfile({
+	sessionMembership,
+	input,
+}: {
+	sessionMembership: NonNullable<TAuthUserSession["membership"]>;
+	input: TCreateFiscalOperationProfileInput;
+}) {
 	const result = await upsertFiscalOperationProfile({
-		organizacaoId: orgId,
+		organizacaoId: sessionMembership.organizacao.id,
 		...input.operationProfile,
 	});
 	return {
@@ -126,10 +143,16 @@ async function createFiscalOperationProfile({ input }: { input: TCreateFiscalOpe
 }
 export type TCreateFiscalOperationProfileOutput = Awaited<ReturnType<typeof createFiscalOperationProfile>>;
 async function createFiscalOperationProfileRoute(request: NextRequest) {
-	const { orgId } = await requireOrgSession();
+	const { session } = await requireOrgSession();
+	const sessionMembership = session.membership;
+	if (!sessionMembership) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	const userHasFiscalConfigurePermission = sessionMembership.permissoes.fiscal.configurar;
+	if (!userHasFiscalConfigurePermission)
+		throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar perfis de operação fiscal.");
+
 	const payload = await request.json();
 	const input = CreateFiscalOperationProfileInputSchema.parse(payload);
-	const result = await createFiscalOperationProfile({ input });
+	const result = await createFiscalOperationProfile({ sessionMembership, input });
 	return NextResponse.json(result);
 }
 export const GET = appApiHandler({ GET: getFiscalOperationProfilesRoute });
