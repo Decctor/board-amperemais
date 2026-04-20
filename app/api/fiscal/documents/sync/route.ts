@@ -16,12 +16,18 @@ export type TSyncFiscalDocumentInput = z.infer<typeof SyncFiscalDocumentInputSch
 async function syncFiscalDocumentRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const userHasFiscalSyncPermission = session.membership?.permissoes.fiscal.emitir;
+	const sessionMembership = session.membership;
+	if (!sessionMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	const userHasFiscalSyncPermission = sessionMembership.permissoes.fiscal.emitir;
 	if (!userHasFiscalSyncPermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para sincronizar documentos fiscais.");
 
 	const payload = await request.json();
 	const input = SyncFiscalDocumentInputSchema.parse(payload);
-	const result = await syncFiscalDocument({ documentoId: input.documentId, autorId: session.user.id });
+	const result = await syncFiscalDocument({
+		organizationId: sessionMembership.organizacao.id,
+		documentId: input.documentId,
+		authorId: session.user.id,
+	});
 	return NextResponse.json({
 		data: result,
 		message: "Documento fiscal sincronizado com sucesso.",

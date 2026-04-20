@@ -33,7 +33,7 @@ async function getFiscalOperationProfiles({ input }: { input: TGetFiscalOperatio
 		throw new createHttpError.Forbidden("Oops, você não possui permissão para configurar perfis de operação fiscal.");
 
 	if (input.id) {
-		const profile = await findFiscalOperationProfileById(input.id);
+		const profile = await findFiscalOperationProfileById({ fiscalOperationProfileId: input.id, organizationId: orgId });
 		if (!profile) throw new createHttpError.NotFound("Perfil de operação fiscal nao encontrado.");
 
 		return {

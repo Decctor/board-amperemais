@@ -28,9 +28,9 @@ async function getFiscalDocuments({ input }: { input: TGetFiscalDocumentsInput }
 	if (!userHasFiscalViewPermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para visualizar o módulo fiscal.");
 
 	if (input.documentId) {
-		const document = await getFiscalDocumentById(input.documentId);
+		const document = await getFiscalDocumentById({ documentId: input.documentId, organizationId: orgId });
 		if (!document || document.organizacaoId !== orgId) throw new createHttpError.NotFound("Documento fiscal não encontrado.");
-		const events = await listFiscalDocumentEvents(document.id);
+		const events = await listFiscalDocumentEvents({ documentId: document.id, organizationId: orgId });
 		return {
 			data: {
 				byId: {

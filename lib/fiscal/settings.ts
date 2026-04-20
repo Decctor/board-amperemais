@@ -1,7 +1,7 @@
 import { OrganizationFiscalConfigSchema, type TOrganizationFiscalConfig } from "@/schemas/fiscal";
 import { db } from "@/services/drizzle";
 import { fiscalOperationProfiles, fiscalSeries, organizations } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { ManualFiscalProvider } from "./providers/manual";
 import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
@@ -96,15 +96,23 @@ export async function listFiscalSeries(organizacaoId: string) {
 	});
 }
 
-export async function findFiscalSeriesById(seriesId: string) {
+type FindFiscalSeriesByIdParams = {
+	seriesId: string;
+	organizationId: string;
+};
+export async function findFiscalSeriesById({ seriesId, organizationId }: FindFiscalSeriesByIdParams) {
 	return db.query.fiscalSeries.findFirst({
-		where: (fields, operators) => operators.eq(fields.id, seriesId),
+		where: (fields, operators) => operators.and(operators.eq(fields.id, seriesId), operators.eq(fields.organizacaoId, organizationId)),
 	});
 }
 
 export async function upsertFiscalSeries(input: typeof fiscalSeries.$inferInsert) {
 	if (input.id) {
-		const [updated] = await db.update(fiscalSeries).set(input).where(eq(fiscalSeries.id, input.id)).returning();
+		const [updated] = await db
+			.update(fiscalSeries)
+			.set(input)
+			.where(and(eq(fiscalSeries.id, input.id), eq(fiscalSeries.organizacaoId, input.organizacaoId)))
+			.returning();
 		return updated;
 	}
 	const [created] = await db.insert(fiscalSeries).values(input).returning();
@@ -137,9 +145,14 @@ export async function listFiscalOperationProfiles(organizacaoId: string) {
 	});
 }
 
-export async function findFiscalOperationProfileById(id: string) {
+type FindFiscalOperationProfileByIdParams = {
+	fiscalOperationProfileId: string;
+	organizationId: string;
+};
+
+export async function findFiscalOperationProfileById({ fiscalOperationProfileId, organizationId }: FindFiscalOperationProfileByIdParams) {
 	return db.query.fiscalOperationProfiles.findFirst({
-		where: (fields, operators) => operators.eq(fields.id, id),
+		where: (fields, operators) => operators.and(operators.eq(fields.id, fiscalOperationProfileId), operators.eq(fields.organizacaoId, organizationId)),
 		with: {
 			seriePadrao: true,
 		},
@@ -155,7 +168,7 @@ export async function findDefaultOperationProfileForType({
 	tipoDocumento: typeof fiscalOperationProfiles.$inferSelect.tipoDocumento;
 	profileId?: string | null;
 }) {
-	if (profileId) return findFiscalOperationProfileById(profileId);
+	if (profileId) return findFiscalOperationProfileById({ fiscalOperationProfileId: profileId, organizationId: organizacaoId });
 
 	return db.query.fiscalOperationProfiles.findFirst({
 		where: (fields, operators) =>
@@ -173,7 +186,11 @@ export async function findDefaultOperationProfileForType({
 
 export async function upsertFiscalOperationProfile(input: typeof fiscalOperationProfiles.$inferInsert) {
 	if (input.id) {
-		const [updated] = await db.update(fiscalOperationProfiles).set(input).where(eq(fiscalOperationProfiles.id, input.id)).returning();
+		const [updated] = await db
+			.update(fiscalOperationProfiles)
+			.set(input)
+			.where(and(eq(fiscalOperationProfiles.id, input.id), eq(fiscalOperationProfiles.organizacaoId, input.organizacaoId)))
+			.returning();
 		return updated;
 	}
 	const [created] = await db.insert(fiscalOperationProfiles).values(input).returning();

@@ -19,6 +19,11 @@ const GetFiscalDocumentAssetInputSchema = z.object({
 async function getFiscalDocumentAssetRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	const sessionMembership = session.membership;
+	if (!sessionMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+
+	const userHasFiscalDocumentAssetPermission = sessionMembership.permissoes.fiscal.visualizar;
+	if (!userHasFiscalDocumentAssetPermission) throw new createHttpError.Forbidden("Você não possui permissão para visualizar documentos fiscais.");
 
 	const searchParams = request.nextUrl.searchParams;
 	const input = GetFiscalDocumentAssetInputSchema.parse({
@@ -26,7 +31,7 @@ async function getFiscalDocumentAssetRoute(request: NextRequest) {
 		asset: searchParams.get("asset") ?? undefined,
 	});
 
-	const asset = await getFiscalDocumentAsset({ documentId: input.documentId, asset: input.asset });
+	const asset = await getFiscalDocumentAsset({ organizationId: sessionMembership.organizacao.id, documentId: input.documentId, asset: input.asset });
 	return new NextResponse(asset.buffer, {
 		headers: {
 			"Content-Type": asset.contentType,

@@ -1,7 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { findFiscalSeriesById, listFiscalSeries, upsertFiscalSeries } from "@/lib/fiscal/settings";
-import { FiscalDocumentEnvironmentEnum, FiscalDocumentTypeEnum } from "@/schemas/enums";
 import { FiscalSeriesSchema } from "@/schemas/fiscal";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
@@ -28,9 +27,8 @@ export type TGetFiscalSeriesInput = z.infer<typeof GetFiscalSeriesInputSchema>;
 
 async function getFiscalSeries({ input }: { input: TGetFiscalSeriesInput }) {
 	const { orgId } = await requireOrgSession();
-
 	if (input.id) {
-		const series = await findFiscalSeriesById(input.id);
+		const series = await findFiscalSeriesById({ seriesId: input.id, organizationId: orgId });
 		if (!series) throw new createHttpError.NotFound("Oops, serie fiscal nao encontrada.");
 		return {
 			data: {

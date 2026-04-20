@@ -10,12 +10,12 @@ import { consumeFiscalSeriesNumber, findActiveFiscalSeries, findDefaultOperation
 import { downloadStoredFiscalAsset, getFiscalAssetContentType, storeFiscalAsset, type TFiscalAssetType } from "./storage";
 import type {
 	IFiscalProvider,
-	TCancelarDocumentoInput,
+	TCancelDocumentInput,
 	TEmitirDocumentoInput,
 	TProviderDocumentDetails,
 	TSaleForFiscal,
 	TFiscalSaleContext,
-	TSyncDocumentoInput,
+	TSyncDocumentInput,
 } from "./types";
 
 function resolveFiscalProvider(fiscalProvedor: "MANUAL" | "NUVEM_FISCAL" | null | undefined): IFiscalProvider {
@@ -32,12 +32,15 @@ export async function findFiscalDocumentByReference({ organizacaoId, referencia 
 	});
 }
 
-export async function getFiscalDocumentById(documentoId: string) {
+type GetFiscalDocumentByIdParams = {
+	documentId: string;
+	organizationId: string;
+};
+export async function getFiscalDocumentById({ documentId, organizationId }: GetFiscalDocumentByIdParams) {
 	return db.query.fiscalDocuments.findFirst({
-		where: (fields, operators) => operators.eq(fields.id, documentoId),
+		where: (fields, operators) => operators.and(operators.eq(fields.id, documentId), operators.eq(fields.organizacaoId, organizationId)),
 	});
 }
-
 export async function listFiscalDocuments({ organizacaoId, page = 1, search }: { organizacaoId: string; page?: number; search?: string | null }) {
 	const PAGE_SIZE = 25;
 	const offset = (page - 1) * PAGE_SIZE;
@@ -72,9 +75,18 @@ export async function listFiscalDocuments({ organizacaoId, page = 1, search }: {
 	};
 }
 
-export async function listFiscalDocumentEvents(documentoId: string) {
+type ListFiscalDocumentEventsParams = {
+	documentId: string;
+	organizationId: string;
+};
+export async function listFiscalDocumentEvents({ documentId, organizationId }: ListFiscalDocumentEventsParams) {
+	const documentBelongsToOrganization = await db.query.fiscalDocuments.findFirst({
+		where: (fields, operators) => operators.and(operators.eq(fields.id, documentId), operators.eq(fields.organizacaoId, organizationId)),
+		columns: { id: true },
+	});
+	if (!documentBelongsToOrganization) throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
 	return db.query.fiscalDocumentEvents.findMany({
-		where: (fields, operators) => operators.eq(fields.documentoFiscalId, documentoId),
+		where: (fields, operators) => operators.eq(fields.documentoFiscalId, documentId),
 		orderBy: (fields, operators) => operators.desc(fields.dataInsercao),
 		with: {
 			autor: {
@@ -351,8 +363,8 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 	};
 }
 
-export async function syncFiscalDocument(input: TSyncDocumentoInput) {
-	const documento = await getFiscalDocumentById(input.documentoId);
+export async function syncFiscalDocument(input: TSyncDocumentInput) {
+	const documento = await getFiscalDocumentById({ documentId: input.documentId, organizationId: input.organizationId });
 	if (!documento) throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
 
 	const organizacao = await loadFiscalOrganization(documento.organizacaoId);
@@ -367,7 +379,7 @@ export async function syncFiscalDocument(input: TSyncDocumentoInput) {
 		tipo: "SINCRONIZADO",
 		descricao: "Documento fiscal sincronizado manualmente.",
 		payload: providerDetails.provedorRetorno,
-		autorId: input.autorId ?? null,
+		autorId: input.authorId ?? null,
 	});
 
 	if (providerDetails.statusInterno === "AUTORIZADO" && updated) {
@@ -381,8 +393,8 @@ export async function syncFiscalDocument(input: TSyncDocumentoInput) {
 	};
 }
 
-export async function cancelFiscalDocument(input: TCancelarDocumentoInput) {
-	const documento = await getFiscalDocumentById(input.documentoId);
+export async function cancelFiscalDocument(input: TCancelDocumentInput) {
+	const documento = await getFiscalDocumentById({ documentId: input.documentId, organizationId: input.organizationId });
 	if (!documento) throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
 
 	const organizacao = await loadFiscalOrganization(documento.organizacaoId);
@@ -391,8 +403,8 @@ export async function cancelFiscalDocument(input: TCancelarDocumentoInput) {
 	await addFiscalDocumentEvent({
 		documentoFiscalId: documento.id,
 		tipo: "CANCELAMENTO_SOLICITADO",
-		descricao: input.motivo,
-		autorId: input.autorId ?? null,
+		descricao: input.reason,
+		autorId: input.authorId ?? null,
 	});
 
 	const provider = resolveFiscalProvider(organizacao.fiscalProvedor);
@@ -404,7 +416,7 @@ export async function cancelFiscalDocument(input: TCancelarDocumentoInput) {
 		tipo: providerDetails.statusInterno === "CANCELADO" ? "CANCELADO" : "ERRO",
 		descricao: providerDetails.statusInterno === "CANCELADO" ? "Documento cancelado com sucesso." : "Falha ao cancelar documento.",
 		payload: providerDetails.provedorRetorno,
-		autorId: input.autorId ?? null,
+		autorId: input.authorId ?? null,
 	});
 
 	return {
@@ -414,8 +426,13 @@ export async function cancelFiscalDocument(input: TCancelarDocumentoInput) {
 	};
 }
 
-export async function getFiscalDocumentAsset({ documentId, asset }: { documentId: string; asset: TFiscalAssetType }) {
-	const document = await getFiscalDocumentById(documentId);
+type GetFiscalDocumentAssetParams = {
+	documentId: string;
+	organizationId: string;
+	asset: TFiscalAssetType;
+};
+export async function getFiscalDocumentAsset({ documentId, organizationId, asset }: GetFiscalDocumentAssetParams) {
+	const document = await getFiscalDocumentById({ documentId, organizationId });
 	if (!document) throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
 
 	const path = asset === "xml" ? document.xmlStoragePath : document.pdfStoragePath;
@@ -442,7 +459,11 @@ export async function getFiscalDocumentAsset({ documentId, asset }: { documentId
 	};
 }
 
-export async function syncPendingFiscalDocuments({ limit = 20 }: { limit?: number } = {}) {
+type SyncPendingFiscalDocumentsParams = {
+	organizationId: string;
+	limit?: number;
+};
+export async function syncPendingFiscalDocuments({ organizationId, limit = 20 }: SyncPendingFiscalDocumentsParams) {
 	const pendingDocuments = await db.query.fiscalDocuments.findMany({
 		where: (fields, operators) => operators.inArray(fields.statusInterno, ["EM_PROCESSAMENTO", "CANCELAMENTO_PENDENTE"]),
 		orderBy: (fields, operators) => operators.asc(fields.dataInsercao),
@@ -451,7 +472,7 @@ export async function syncPendingFiscalDocuments({ limit = 20 }: { limit?: numbe
 
 	const results = [];
 	for (const document of pendingDocuments) {
-		results.push(await syncFiscalDocument({ documentoId: document.id }));
+		results.push(await syncFiscalDocument({ organizationId, documentId: document.id }));
 	}
 	return results;
 }

@@ -832,12 +832,14 @@ async function upsertScopedProductAddOn({
 async function upsertScopedProductFiscalProfiles({
 	tx,
 	userOrgId,
+	userHasFiscalConfigurePermission,
 	productId,
 	variantId,
 	profiles,
 }: {
 	tx: DBTransaction;
 	userOrgId: string;
+	userHasFiscalConfigurePermission: boolean;
 	productId: string;
 	variantId?: string | null;
 	profiles: TUpdateProductFiscalProfileInput[];
@@ -851,6 +853,10 @@ async function upsertScopedProductFiscalProfiles({
 		);
 
 		if (profile.id && profile.deletar) {
+			if (!userHasFiscalConfigurePermission) {
+				console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
+				continue;
+			}
 			await tx.update(productFiscalProfiles).set({ ativo: false }).where(scopedWhereClause);
 			continue;
 		}
@@ -866,10 +872,18 @@ async function upsertScopedProductFiscalProfiles({
 		};
 
 		if (profile.id) {
+			if (!userHasFiscalConfigurePermission) {
+				console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
+				continue;
+			}
 			await tx.update(productFiscalProfiles).set(profileValues).where(scopedWhereClause);
 			continue;
 		}
 
+		if (!userHasFiscalConfigurePermission) {
+			console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
+			continue;
+		}
 		await tx.insert(productFiscalProfiles).values({
 			organizacaoId: userOrgId,
 			produtoId: productId,
@@ -880,8 +894,10 @@ async function upsertScopedProductFiscalProfiles({
 }
 
 async function updateProduct({ session, input }: { session: TAuthUserSession; input: TUpdateProductInput }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const userMembership = session.membership;
+	if (!userMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const userOrgId = userMembership.organizacao.id;
+	const userHasFiscalConfigurePermission = userMembership.permissoes.fiscal.configurar;
 
 	const product = await db.query.products.findFirst({
 		where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
@@ -914,6 +930,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 		await upsertScopedProductFiscalProfiles({
 			tx,
 			userOrgId,
+			userHasFiscalConfigurePermission,
 			productId: input.productId,
 			variantId: null,
 			profiles: input.productFiscalProfiles,
@@ -992,6 +1009,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 			await upsertScopedProductFiscalProfiles({
 				tx,
 				userOrgId,
+				userHasFiscalConfigurePermission,
 				productId: input.productId,
 				variantId,
 				profiles: variant.perfisFiscais,
@@ -1062,8 +1080,10 @@ const CreateProductInputSchema = z.object({
 export type TCreateProductInput = z.infer<typeof CreateProductInputSchema>;
 
 async function createProduct({ session, input }: { session: TAuthUserSession; input: TCreateProductInput }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const userMembership = session.membership;
+	if (!userMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const userOrgId = userMembership.organizacao.id;
+	const userHasFiscalConfigurePermission = userMembership.permissoes.fiscal.configurar;
 
 	console.log("[INFO] [CREATE PRODUCT] Input:", JSON.stringify(input, null, 2));
 
@@ -1107,6 +1127,11 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 			});
 		}
 
+		const willCreateAnyFiscalProfiles = input.productFiscalProfiles.length > 0;
+		if (willCreateAnyFiscalProfiles && !userHasFiscalConfigurePermission) {
+			console.warn("[WARN] [CREATE PRODUCT] User does not have permission to configure fiscal profiles.");
+			throw new createHttpError.Forbidden("Você não possui permissão para configurar perfis fiscais.");
+		}
 		for (const profile of input.productFiscalProfiles) {
 			await tx.insert(productFiscalProfiles).values({
 				organizacaoId: userOrgId,
@@ -1196,6 +1221,12 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 					produtoAddOnId: createdAddOn.id,
 					produtoVarianteId: createdVariant.id,
 				});
+			}
+
+			const willCreateAnyFiscalProfiles = variant.perfisFiscais.length > 0;
+			if (willCreateAnyFiscalProfiles && !userHasFiscalConfigurePermission) {
+				console.warn("[WARN] [CREATE PRODUCT] User does not have permission to configure fiscal profiles.");
+				throw new createHttpError.Forbidden("Você não possui permissão para configurar perfis fiscais.");
 			}
 			for (const profile of variant.perfisFiscais) {
 				await tx.insert(productFiscalProfiles).values({

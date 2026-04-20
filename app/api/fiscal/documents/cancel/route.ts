@@ -10,9 +10,9 @@ const CancelFiscalDocumentInputSchema = z.object({
 		required_error: "ID do documento fiscal não informado.",
 		invalid_type_error: "Tipo não válido para o ID do documento fiscal.",
 	}),
-	motivo: z.string({
-		required_error: "Motivo do cancelamento não informado.",
-		invalid_type_error: "Tipo não válido para o motivo do cancelamento.",
+	reason: z.string({
+		required_error: "Motivo do cancelamento do documento fiscal não informado.",
+		invalid_type_error: "Tipo não válido para o motivo do cancelamento do documento fiscal.",
 	}),
 });
 export type TCancelFiscalDocumentInput = z.infer<typeof CancelFiscalDocumentInputSchema>;
@@ -20,12 +20,19 @@ export type TCancelFiscalDocumentInput = z.infer<typeof CancelFiscalDocumentInpu
 async function cancelFiscalDocumentRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const userHasFiscalCancelPermission = session.membership?.permissoes.fiscal.cancelar;
+	const sessionMembership = session.membership;
+	if (!sessionMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	const userHasFiscalCancelPermission = sessionMembership.permissoes.fiscal.cancelar;
 	if (!userHasFiscalCancelPermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para cancelar documentos fiscais.");
 
 	const payload = await request.json();
 	const input = CancelFiscalDocumentInputSchema.parse(payload);
-	const result = await cancelFiscalDocument({ documentoId: input.documentId, motivo: input.motivo, autorId: session.user.id });
+	const result = await cancelFiscalDocument({
+		organizationId: sessionMembership.organizacao.id,
+		documentId: input.documentId,
+		reason: input.reason,
+		authorId: session.user.id,
+	});
 	return NextResponse.json({
 		data: result,
 		message: "Cancelamento fiscal solicitado com sucesso.",

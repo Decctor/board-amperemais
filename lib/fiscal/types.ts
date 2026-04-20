@@ -61,24 +61,26 @@ export type TEmitirDocumentoResult = {
 	protocolo?: string | null;
 };
 
-export type TCancelarDocumentoInput = {
-	documentoId: string;
-	motivo: string;
-	autorId?: string | null;
+export type TCancelDocumentInput = {
+	organizationId: string;
+	documentId: string;
+	reason: string;
+	authorId?: string | null;
 };
 
-export type TCancelarDocumentoResult = {
+export type TCancelDocumentResult = {
 	documentoId: string;
 	status: TFiscalDocumentStatusEnum;
 	statusInterno: TFiscalDocumentLifecycleStatusEnum;
 };
 
-export type TSyncDocumentoInput = {
-	documentoId: string;
-	autorId?: string | null;
+export type TSyncDocumentInput = {
+	organizationId: string;
+	documentId: string;
+	authorId?: string | null;
 };
 
-export type TSyncDocumentoResult = {
+export type TSyncDocumentResult = {
 	documentoId: string;
 	status: TFiscalDocumentStatusEnum;
 	statusInterno: TFiscalDocumentLifecycleStatusEnum;
@@ -115,7 +117,7 @@ export interface IFiscalProvider {
 	emitirDocumento(context: TFiscalSaleContext, documento: TFiscalDocument): Promise<TProviderDocumentDetails>;
 	consultarDocumento(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
 	sincronizarDocumento(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
-	cancelarDocumento(input: TCancelarDocumentoInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
+	cancelarDocumento(input: TCancelDocumentInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
 	baixarXml(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
 	baixarPdf(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
 	sincronizarEmpresa(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult>;
