@@ -28,6 +28,10 @@ import { toast } from "sonner";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import { SalePaymentMethodsOptions } from "@/utils/select-options";
+import { useUsers } from "@/lib/queries/users";
+import MultipleSelectInput from "../Inputs/MultipleSelectInput";
+import { formatNameAsInitials } from "@/lib/formatting";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 type SettingsOrgProps = {
 	user: TAuthUserSession["user"];
@@ -227,6 +231,7 @@ function PaymentMethodCard({ methodOption, methodData, financialAccountOptions, 
 function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps) {
 	const queryClient = useQueryClient();
 	const { data: organization, queryKey, isLoading: isOrgLoading, isError: isOrgError, isSuccess: isOrgSuccess, error: orgError } = useOrganization();
+	const { data: users } = useUsers({ initialFilters: { search: "" } });
 	const { state, updateOrganization: updateOrgState, updateLogoHolder, redefineState } = useOrganizationState();
 
 	const hasErpAccess = organization?.configuracao.recursos.erp.acesso ?? false;
@@ -535,6 +540,28 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 			{/* ------------------------------------------------------------------ */}
 			<SectionWrapper title="PREFERÊNCIAS" icon={<Settings2 className="h-4 w-4" />}>
 				<div className="flex flex-col gap-6">
+					<MultipleSelectInput
+						label="DESTINATÁRIOS DE RELATÓRIOS"
+						selected={state.organization.configuracao.preferencias.relatoriosDestinatariosIds ?? []}
+						options={
+							users?.map((user) => ({
+								id: user.id,
+								label: user.nome,
+								value: user.id,
+								startContent: (
+									<Avatar className="w-4 h-4 min-w-4 min-h-4">
+										<AvatarImage src={user.avatarUrl ?? undefined} />
+										<AvatarFallback>{formatNameAsInitials(user.nome)}</AvatarFallback>
+									</Avatar>
+								),
+							})) ?? []
+						}
+						resetOptionLabel="Selecione os destinatários"
+						handleChange={(value) => updatePreferencias({ relatoriosDestinatariosIds: value })}
+						onReset={() => updatePreferencias({ relatoriosDestinatariosIds: null })}
+						editable={userHasEditPermissions}
+						width="100%"
+					/>
 					{/* Message limit */}
 					<div className={cn("flex w-full flex-col gap-1")}>
 						<h3 className={cn("text-sm font-medium tracking-tight text-primary/80")}>LIMITE DE ENVIOS DE MENSAGEM VIA CAMPANHA (POR SEMANA)</h3>

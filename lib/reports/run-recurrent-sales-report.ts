@@ -1,9 +1,19 @@
-import { buildDailyReportCaption, buildMonthlyReportCaption, buildWeeklyReportCaption } from "@/lib/reports/caption-templates";
+import {
+	buildBiweeklyReportCaption,
+	buildDailyReportCaption,
+	buildMonthlyReportCaption,
+	buildWeeklyReportCaption,
+} from "@/lib/reports/caption-templates";
 import { buildSalesReportPayload, type TReportOrganization } from "@/lib/reports/payload";
 import reportImageRenderer from "@/lib/reports/render-report-image";
 import { uploadReportImage } from "@/lib/reports/storage";
 import type { TReportFrequency, TSalesReportPayload } from "@/lib/reports/types";
-import { buildDailyReportMessage, buildMonthlyReportMessage, buildWeeklyReportMessage } from "@/lib/reports/message-templates";
+import {
+	buildBiweeklyReportMessage,
+	buildDailyReportMessage,
+	buildMonthlyReportMessage,
+	buildWeeklyReportMessage,
+} from "@/lib/reports/message-templates";
 import { sendMessage } from "@/lib/whatsapp/internal-gateway";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import { db } from "@/services/drizzle";
@@ -16,12 +26,14 @@ const { renderReportPng } = reportImageRenderer;
 function getReportLogLabel(frequency: TReportFrequency) {
 	if (frequency === "daily") return "DAILY_REPORT";
 	if (frequency === "weekly") return "WEEKLY_REPORT";
+	if (frequency === "biweekly") return "BIWEEKLY_REPORT";
 	return "MONTHLY_REPORT";
 }
 
 function buildCondensedCaption(payload: TSalesReportPayload) {
 	if (payload.period.frequency === "daily") return buildDailyReportCaption(payload);
 	if (payload.period.frequency === "weekly") return buildWeeklyReportCaption(payload);
+	if (payload.period.frequency === "biweekly") return buildBiweeklyReportCaption(payload);
 	return buildMonthlyReportCaption(payload);
 }
 
@@ -39,6 +51,17 @@ function buildFallbackText(payload: TSalesReportPayload) {
 
 	if (payload.period.frequency === "weekly") {
 		return buildWeeklyReportMessage({
+			orgNome: payload.theme.orgName,
+			periodo: payload.period.label,
+			stats: payload.stats,
+			topSellers: payload.topSellers,
+			topPartners: payload.topPartners,
+			topProducts: payload.topProducts,
+		});
+	}
+
+	if (payload.period.frequency === "biweekly") {
+		return buildBiweeklyReportMessage({
 			orgNome: payload.theme.orgName,
 			periodo: payload.period.label,
 			stats: payload.stats,
@@ -68,11 +91,20 @@ async function fetchReportOrganizations() {
 			corPrimariaForeground: true,
 			corSecundaria: true,
 			corSecundariaForeground: true,
+			configuracao: true,
 		},
 		with: {
-			autor: {
+			membros: {
 				columns: {
-					telefone: true,
+					id: true,
+				},
+				with: {
+					usuario: {
+						columns: {
+							id: true,
+							telefone: true,
+						},
+					},
 				},
 			},
 		},
@@ -109,14 +141,21 @@ export async function runRecurrentSalesReport({ frequency, req, res }: RunRecurr
 
 		for (const organization of organizations) {
 			try {
-				// const ownerPhone = organization.autor?.telefone;
-				const ownerPhone = "(34) 99662-6855";
-				if (!ownerPhone) {
-					console.warn(`[ORG: ${organization.id}] [WARN] [${logLabel}] Owner has no phone number, skipping`);
+				const recipientIds = organization.configuracao.preferencias.relatoriosDestinatariosIds ?? [];
+				if (recipientIds.length === 0) {
+					console.warn(`[ORG: ${organization.id}] [WARN] [${logLabel}] No recipient IDs found, skipping`);
 					continue;
 				}
 
-				const recipientPhone = formatPhoneForInternalGateway(ownerPhone);
+				const recipientPhones = organization.membros
+					.filter((m) => recipientIds.includes(m.usuario?.id ?? ""))
+					.map((m) => m.usuario?.telefone)
+					.filter((phone) => !!phone) as string[];
+				if (recipientPhones.length === 0) {
+					console.warn(`[ORG: ${organization.id}] [WARN] [${logLabel}] No recipient phones found, skipping`);
+					continue;
+				}
+
 				const payload = await buildSalesReportPayload({
 					frequency,
 					organization: organization as TReportOrganization,
@@ -130,62 +169,67 @@ export async function runRecurrentSalesReport({ frequency, req, res }: RunRecurr
 				const fallbackText = buildFallbackText(payload);
 				const caption = buildCondensedCaption(payload);
 
-				try {
-					console.log(`[ORG: ${organization.id}] [INFO] [${logLabel}] Rendering report image`);
-					const pngBuffer = await renderReportPng({ payload });
-					const { publicUrl, storagePath } = await uploadReportImage({
-						organizacaoId: organization.id,
-						frequency,
-						storageKey: payload.period.storageKey,
-						pngBuffer,
-					});
+				console.log(`[ORG: ${organization.id}] [INFO] [${logLabel}] Rendering report image`);
+				const pngBuffer = await renderReportPng({ payload });
+				const { publicUrl, storagePath } = await uploadReportImage({
+					organizacaoId: organization.id,
+					frequency,
+					storageKey: payload.period.storageKey,
+					pngBuffer,
+				});
 
-					console.log(`[ORG: ${organization.id}] [INFO] [${logLabel}] Sending image report to ${recipientPhone}`);
-					const result = await sendMessage(INTERNAL_SESSION_ID, recipientPhone, {
-						type: "image",
-						mediaUrl: publicUrl,
-						mediaFileName: `${frequency}-report-${payload.period.storageKey}.png`,
-						mediaMimeType: "image/png",
-						text: caption,
-					});
-
-					allResults.push({
-						organizationId: organization.id,
-						recipient: recipientPhone,
-						status: "success",
-						delivery: "image",
-						messageId: result.clientMessageId ?? result.jobId ?? null,
-						storagePath,
-					});
-					console.log(`[ORG: ${organization.id}] [INFO] [${logLabel}] Image report sent successfully`);
-				} catch (imageError) {
-					console.error(`[ORG: ${organization.id}] [WARN] [${logLabel}] Image flow failed, falling back to text:`, imageError);
+				for (const recipientPhone of recipientPhones) {
+					const formattedRecipientPhone = formatPhoneForInternalGateway(recipientPhone);
 
 					try {
-						const result = await sendMessage(INTERNAL_SESSION_ID, recipientPhone, {
-							type: "text",
-							text: fallbackText,
+						console.log(`[ORG: ${organization.id}] [INFO] [${logLabel}] Sending image report to ${recipientPhone}`);
+						const result = await sendMessage(INTERNAL_SESSION_ID, formattedRecipientPhone, {
+							type: "image",
+							mediaUrl: publicUrl,
+							mediaFileName: `${frequency}-report-${payload.period.storageKey}.png`,
+							mediaMimeType: "image/png",
+							text: caption,
 						});
-
 						allResults.push({
 							organizationId: organization.id,
-							recipient: recipientPhone,
+							recipient: formattedRecipientPhone,
 							status: "success",
-							delivery: "text-fallback",
+							delivery: "image",
 							messageId: result.clientMessageId ?? result.jobId ?? null,
-							fallbackReason: imageError instanceof Error ? imageError.message : "Unknown image error",
+							storagePath,
 						});
-						console.log(`[ORG: ${organization.id}] [INFO] [${logLabel}] Text fallback sent successfully`);
-					} catch (fallbackError) {
-						console.error(`[ORG: ${organization.id}] [ERROR] [${logLabel}] Text fallback failed:`, fallbackError);
-						allResults.push({
-							organizationId: organization.id,
-							recipient: recipientPhone,
-							status: "error",
-							delivery: "failed",
-							error: fallbackError instanceof Error ? fallbackError.message : "Unknown error",
-							fallbackReason: imageError instanceof Error ? imageError.message : "Unknown image error",
-						});
+					} catch (imageError) {
+						console.error(
+							`[ORG: ${organization.id}] [WARN] [${logLabel}] Image send failed for ${formattedRecipientPhone}, falling back to text:`,
+							imageError,
+						);
+
+						try {
+							const result = await sendMessage(INTERNAL_SESSION_ID, formattedRecipientPhone, {
+								type: "text",
+								text: fallbackText,
+							});
+
+							allResults.push({
+								organizationId: organization.id,
+								recipient: formattedRecipientPhone,
+								status: "success",
+								delivery: "text-fallback",
+								messageId: result.clientMessageId ?? result.jobId ?? null,
+								fallbackReason: imageError instanceof Error ? imageError.message : "Unknown image error",
+							});
+							console.log(`[ORG: ${organization.id}] [INFO] [${logLabel}] Text fallback sent successfully`);
+						} catch (fallbackError) {
+							console.error(`[ORG: ${organization.id}] [ERROR] [${logLabel}] Text fallback failed:`, fallbackError);
+							allResults.push({
+								organizationId: organization.id,
+								recipient: formattedRecipientPhone,
+								status: "error",
+								delivery: "failed",
+								error: fallbackError instanceof Error ? fallbackError.message : "Unknown error",
+								fallbackReason: imageError instanceof Error ? imageError.message : "Unknown image error",
+							});
+						}
 					}
 				}
 			} catch (error) {

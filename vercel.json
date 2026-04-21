@@ -29,6 +29,10 @@
 			"schedule": "0 6 1 * *"
 		},
 		{
+			"path": "/api/cron/biweekly-report",
+			"schedule": "0 6 15,28,29,30,31 * *"
+		},
+		{
 			"path": "/api/cron/process-interactions",
 			"schedule": "0 */3 * * *"
 		},

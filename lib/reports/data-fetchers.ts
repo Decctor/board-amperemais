@@ -512,18 +512,18 @@ function getWeeklyTimelineLabels(after: Date) {
 	});
 }
 
-function getMonthlyTimelineLabels(after: Date, before: Date) {
-	const totalDays = dayjs(before).date();
+function getDateRangeTimelineLabels(after: Date, before: Date) {
+	const totalDays = dayjs(before).startOf("day").diff(dayjs(after).startOf("day"), "day") + 1;
 	return Array.from({ length: totalDays }, (_, index) => {
-		const bucket = dayjs(after).date(index + 1).startOf("day");
-		return { key: bucket.toISOString(), label: String(index + 1).padStart(2, "0") };
+		const bucket = dayjs(after).add(index, "day").startOf("day");
+		return { key: bucket.toISOString(), label: bucket.format("DD") };
 	});
 }
 
 function getTimelineBuckets({ frequency, after, before }: { frequency: TReportFrequency; after: Date; before: Date }) {
 	if (frequency === "daily") return getDailyTimelineLabels(after);
 	if (frequency === "weekly") return getWeeklyTimelineLabels(after);
-	return getMonthlyTimelineLabels(after, before);
+	return getDateRangeTimelineLabels(after, before);
 }
 
 function getTimelineGroupingSql(frequency: TReportFrequency) {

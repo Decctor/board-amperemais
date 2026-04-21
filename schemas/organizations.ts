@@ -149,6 +149,10 @@ export const OrganizationConfigurationSchema = z.object({
 			.nullable()
 			.optional()
 			.default(null),
+		relatoriosDestinatariosIds: z
+			.array(z.string({ invalid_type_error: "Tipo não válido para o ID do destinatário de relatórios." }))
+			.optional()
+			.nullable(),
 	}),
 	defaults: OrganizationDefaultsSchema,
 });

@@ -1,6 +1,6 @@
 import type { OverallSalesStatsResult, PartnerRankingItem, ProductRankingItem, SellerRankingItem } from "./data-fetchers";
 
-export type TReportFrequency = "daily" | "weekly" | "monthly";
+export type TReportFrequency = "daily" | "weekly" | "biweekly" | "monthly";
 
 export type TReportPeriod = {
 	frequency: TReportFrequency;

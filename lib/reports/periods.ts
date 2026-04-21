@@ -42,6 +42,43 @@ export function getReportPeriod(frequency: TReportFrequency, referenceDate = new
 		};
 	}
 
+	if (frequency === "biweekly") {
+		const isFirstHalf = baseDate.date() <= 15;
+
+		if (isFirstHalf) {
+			const target = baseDate.startOf("month");
+			const targetEnd = baseDate.date(15).endOf("day");
+			const comparisonMonth = baseDate.subtract(1, "month");
+			const comparisonAfter = comparisonMonth.date(16).startOf("day");
+			const comparisonBefore = comparisonMonth.endOf("month");
+
+			return {
+				frequency,
+				label: `${target.format("DD/MM/YYYY")} a ${targetEnd.format("DD/MM/YYYY")}`,
+				after: target.startOf("day").toDate(),
+				before: targetEnd.toDate(),
+				comparisonAfter: comparisonAfter.toDate(),
+				comparisonBefore: comparisonBefore.toDate(),
+				storageKey: `${target.format("YYYY-MM")}-H1`,
+			};
+		}
+
+		const target = baseDate.date(16).startOf("day");
+		const targetEnd = baseDate.endOf("month");
+		const comparisonAfter = baseDate.startOf("month");
+		const comparisonBefore = baseDate.date(15).endOf("day");
+
+		return {
+			frequency,
+			label: `${target.format("DD/MM/YYYY")} a ${targetEnd.format("DD/MM/YYYY")}`,
+			after: target.toDate(),
+			before: targetEnd.toDate(),
+			comparisonAfter: comparisonAfter.toDate(),
+			comparisonBefore: comparisonBefore.toDate(),
+			storageKey: `${target.format("YYYY-MM")}-H2`,
+		};
+	}
+
 	const target = baseDate.subtract(1, "month");
 	const comparison = baseDate.subtract(2, "month");
 	return {

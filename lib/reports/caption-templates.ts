@@ -8,23 +8,27 @@ function safeNumber(value: number) {
 function getReportTitle(frequency: TSalesReportPayload["period"]["frequency"]) {
 	if (frequency === "daily") return "RELATÓRIO DIÁRIO DE VENDAS";
 	if (frequency === "weekly") return "RELATÓRIO SEMANAL DE VENDAS";
+	if (frequency === "biweekly") return "RELATÓRIO QUINZENAL DE VENDAS";
 	return "RELATÓRIO MENSAL DE VENDAS";
 }
 
 function getRevenueLabel(frequency: TSalesReportPayload["period"]["frequency"]) {
 	if (frequency === "daily") return "Faturamento do dia";
 	if (frequency === "weekly") return "Faturamento da semana";
+	if (frequency === "biweekly") return "Faturamento da quinzena";
 	return "Faturamento do mês";
 }
 
 function getSummaryLabel(frequency: TSalesReportPayload["period"]["frequency"]) {
 	if (frequency === "daily") return "Resumo do Dia";
 	if (frequency === "weekly") return "Resumo da Semana";
+	if (frequency === "biweekly") return "Resumo da Quinzena";
 	return "Resumo do Mês";
 }
 
 function getComparisonText(current: number, previous: number | undefined, frequency: TSalesReportPayload["period"]["frequency"]) {
-	const baseLabel = frequency === "daily" ? "dia anterior" : frequency === "weekly" ? "semana anterior" : "mês anterior";
+	const baseLabel =
+		frequency === "daily" ? "dia anterior" : frequency === "weekly" ? "semana anterior" : frequency === "biweekly" ? "quinzena anterior" : "mês anterior";
 	return `${formatComparisonWithEmoji(current, previous)} vs. ${baseLabel}`;
 }
 
@@ -49,6 +53,10 @@ function getThirdSummaryLine(payload: TSalesReportPayload) {
 
 	if (payload.period.frequency === "weekly") {
 		return `• Média diária: *${formatCurrency(safeNumber(payload.stats.valorDiarioVendido.atual))}*`;
+	}
+
+	if (payload.period.frequency === "biweekly") {
+		return `• Itens vendidos: *${formatNumber(safeNumber(payload.stats.qtdeItensVendidos.atual))}*`;
 	}
 
 	return `• Itens por venda: *${formatNumber(safeNumber(payload.stats.itensPorVendaMedio.atual))}*`;
@@ -87,6 +95,10 @@ export function buildDailyReportCaption(payload: TSalesReportPayload) {
 }
 
 export function buildWeeklyReportCaption(payload: TSalesReportPayload) {
+	return buildCaption(payload);
+}
+
+export function buildBiweeklyReportCaption(payload: TSalesReportPayload) {
 	return buildCaption(payload);
 }
 
