@@ -51,7 +51,7 @@ async function getCampaignStats({ input, session }: { input: TGetCampaignStatsIn
 		eq(interactions.campanhaId, input.campaignId),
 		eq(interactions.organizacaoId, userOrgId),
 		eq(interactions.tipo, "ENVIO-MENSAGEM"),
-		inArray(interactions.statusEnvio, ["ENVIADO", "ENTREGUE", "LIDO"]),
+		,
 		gte(interactions.dataInsercao, input.startDate),
 		lte(interactions.dataInsercao, input.endDate),
 	];
@@ -63,14 +63,14 @@ async function getCampaignStats({ input, session }: { input: TGetCampaignStatsIn
 				clientesAlcancados: countDistinct(interactions.clienteId),
 			})
 			.from(interactions)
-			.where(and(...dateRangeConditions)),
+			.where(and(...dateRangeConditions, inArray(interactions.statusEnvio, ["ENVIADO", "ENTREGUE", "LIDO"]))),
 		db
 			.select({
 				statusEnvio: interactions.statusEnvio,
 				total: count(interactions.id),
 			})
 			.from(interactions)
-			.where(and(...dateRangeConditions))
+			.where(and(...dateRangeConditions, inArray(interactions.statusEnvio, ["ENVIADO", "ENTREGUE", "LIDO", "FALHOU"])))
 			.groupBy(interactions.statusEnvio),
 		db
 			.select({
