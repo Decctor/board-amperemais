@@ -29,12 +29,12 @@ import {
 } from "@/services/drizzle/schema";
 import axios from "axios";
 import dayjs from "dayjs";
-import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
+import dayjsCustomParseFormat from "dayjs/plugin/customParseFormat";
 import { and, eq, gt } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import { z } from "zod";
-dayjs.extend(dayjsCustomFormatter);
+dayjs.extend(dayjsCustomParseFormat);
 
 /**
  * Helper function to check if a campaign can be scheduled for a client based on frequency rules
@@ -120,6 +120,21 @@ function updateCashbackBalanceInMap(
 		saldoValorDisponivel: availableBalance,
 		saldoValorAcumuladoTotal: accumulatedTotal,
 	});
+}
+
+function computeOnlineSaleDate(onlineSale: (typeof OnlineSoftwareSaleImportationSchema)["_output"]) {
+	const onlineSaleDateTime = onlineSale.datahora ? dayjs(onlineSale.datahora, ["DD/MM/YYYY HH:mm:ss", "DD/MM/YYYY HH:mm"], true) : null;
+	const onlineBaseSaleDate = onlineSaleDateTime?.isValid() ? onlineSaleDateTime : dayjs(onlineSale.data, "DD/MM/YYYY", true);
+
+	if (!onlineBaseSaleDate.isValid()) {
+		throw new Error(`Data inválida recebida da Online Software. data="${onlineSale.data}" datahora="${onlineSale.datahora ?? ""}"`);
+	}
+
+	return onlineSaleDateTime?.isValid()
+		? onlineSaleDateTime.toDate()
+		: dayjs().isSame(onlineBaseSaleDate, "day")
+			? dayjs().toDate()
+			: onlineBaseSaleDate.add(3, "hours").toDate();
 }
 
 async function ensureCashbackBalanceEntry({
@@ -1624,10 +1639,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 					let newTotalPurchaseCountForSale: number | undefined;
 					let newTotalPurchaseValueForSale: number | undefined;
 
-					const onlineBaseSaleDate = dayjs(OnlineSale.data, "DD/MM/YYYY");
-					// If the Online sale date is the same as the current date, we use the current date (with time frame component, since cron runs every 5 minutes, we get approximately real time),
-					// Otherwise we use the online sale date + 3 hours (to compensate for lack of time component in Online date field)
-					const saleDate = dayjs().isSame(onlineBaseSaleDate, "day") ? dayjs().toDate() : onlineBaseSaleDate.add(3, "hours").toDate();
+					const saleDate = computeOnlineSaleDate(OnlineSale);
 					const isValidSale = OnlineSale.natureza === "SN01";
 					// First, we check for an existing client with the same name (in this case, our primary key for the integration)
 					const isValidClient = OnlineSale.cliente !== "AO CONSUMIDOR";
@@ -1876,7 +1888,7 @@ const handleOnlineSoftwareImportation: NextApiHandler<string> = async (req, res)
 						);
 						// Handle sales updates
 						const saleTotalCost = OnlineSale.itens.reduce((acc: number, current) => acc + Number(current.vcusto), 0);
-						const saleDate = dayjs(OnlineSale.data, "DD/MM/YYYY").add(3, "hours").toDate();
+						const saleDate = computeOnlineSaleDate(OnlineSale);
 						await tx
 							.update(sales)
 							.set({
