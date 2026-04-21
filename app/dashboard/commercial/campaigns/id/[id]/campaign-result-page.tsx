@@ -1,4 +1,5 @@
 "use client";
+import type { TGetCampaignStatsOutput } from "@/app/api/campaigns/stats/by-campaign/route";
 import type { TGetCampaignConversionsOutputItems } from "@/app/api/campaigns/conversions/route";
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import type { TGetConversionQualityOutput } from "@/app/api/campaigns/stats/conversion-quality/route";
@@ -40,13 +41,13 @@ import {
 	Clock,
 	Diamond,
 	Grid3x3,
-	ListFilter,
 	MessageCircle,
 	MousePointerClick,
 	Pencil,
 	RefreshCw,
 	Rocket,
 	Send,
+	ShieldAlert,
 	ShoppingCart,
 	Ticket,
 	TrendingUp,
@@ -76,6 +77,7 @@ const TRIGGER_TYPE_LABELS: Record<TCampaignTriggerTypeEnum, string> = {
 	ANIVERSARIO_CLIENTE: "Aniversário do Cliente",
 	"QUANTIDADE-TOTAL-COMPRAS": "Qtd. Total de Compras",
 	"VALOR-TOTAL-COMPRAS": "Valor Total de Compras",
+	"PIOR-DIA-VENDAS": "Pior Dia de Vendas",
 	RECORRENTE: "Recorrente",
 };
 
@@ -97,7 +99,7 @@ const INTERACTION_SENT_STATUS_CONFIG: Record<string, { label: string; bgClass: s
 	AGENDADA: { label: "Agendada", bgClass: "bg-gray-400", textClass: "text-gray-600 dark:text-gray-400" },
 	EXECUTADA: { label: "Executada", bgClass: "bg-green-500", textClass: "text-green-600 dark:text-green-400" },
 };
-export default function CampaignResultPage({ campaignId, membership, user }: CampaignResultPageProps) {
+export default function CampaignResultPage({ campaignId, membership, user: _user }: CampaignResultPageProps) {
 	const [editMenuIsOpen, setEditMenuIsOpen] = useState(false);
 	const initialStartDate = dayjs().startOf("month").toDate();
 	const initialEndDate = dayjs().endOf("month").toDate();
@@ -113,7 +115,7 @@ export default function CampaignResultPage({ campaignId, membership, user }: Cam
 
 	const { data: campaign, isLoading: campaignLoading, isError: campaignError } = useCampaignById({ id: campaignId });
 
-	const { data: performance, isLoading: performanceLoading } = useCampaignStats({
+	const { data: performance } = useCampaignStats({
 		campaignId,
 		startDate: filters.startDate,
 		endDate: filters.endDate,
@@ -319,6 +321,7 @@ export default function CampaignResultPage({ campaignId, membership, user }: Cam
 			</div>
 
 			{/* Section D — Time-Series Chart */}
+			<WeeklyLimitSection performance={performance} />
 			<div className="w-full h-[480px]">
 				<CampaignsGraphs
 					startDate={filters.startDate}
@@ -465,6 +468,55 @@ function ImpactRow({ label, value, positive }: { label: string; value: string; p
 			<span className={cn("text-xs font-bold", positive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>{value}</span>
 		</div>
 	);
+}
+
+function WeeklyLimitSection({ performance }: { performance: TGetCampaignStatsOutput["data"] | undefined }) {
+	const weeklyLimit = performance?.limiteSemanal;
+	if (!weeklyLimit) return null;
+
+	return (
+		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="LIMITE SEMANAL EFETIVO"
+					icon={<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: weeklyLimit.campaignEffectiveWeeklyLimit ?? 0,
+						format: () => formatWeeklyLimitValue(weeklyLimit.campaignEffectiveWeeklyLimit),
+					}}
+				/>
+				<StatUnitCard
+					title="USADO NESTA SEMANA"
+					icon={<Send className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: weeklyLimit.campaignUsedThisWeek,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+				/>
+				<StatUnitCard
+					title="SALDO SEMANAL"
+					icon={<Clock className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: weeklyLimit.campaignRemainingThisWeek ?? 0,
+						format: () => formatWeeklyLimitValue(weeklyLimit.campaignRemainingThisWeek),
+					}}
+				/>
+				<StatUnitCard
+					title="LIMITE SEMANAL DA ORGANIZAÇÃO"
+					icon={<ShieldAlert className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: weeklyLimit.organizationWeeklyLimit ?? 0,
+						format: () => formatWeeklyLimitValue(weeklyLimit.organizationWeeklyLimit),
+					}}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function formatWeeklyLimitValue(value: number | null | undefined) {
+	if (value == null) return "N/A";
+	return formatDecimalPlaces(value);
 }
 
 function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: string; startDate: Date; endDate: Date }) {

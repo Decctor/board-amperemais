@@ -11,7 +11,7 @@ import { chatMessages, chats, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { NextApiHandler } from "next";
 
 dayjs.extend(utc);
@@ -85,6 +85,7 @@ const processInteractionsHandler: NextApiHandler = async (req, res) => {
 							eq(fields.agendamentoBlocoReferencia, currentTimeBlock as TInteractionsCronJobTimeBlocksEnum),
 							isNotNull(fields.campanhaId),
 							isNull(fields.dataExecucao),
+							sql`${fields.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
 						),
 					with: {
 						cliente: {

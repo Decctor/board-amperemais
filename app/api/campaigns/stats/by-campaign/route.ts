@@ -1,10 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { checkCampaignWeeklyInteractionLimit } from "@/lib/interactions/campaign-weekly-limits";
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, avg, count, countDistinct, eq, gte, lte, sql, sum } from "drizzle-orm";
+import { and, avg, count, countDistinct, eq, gte, inArray, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -35,13 +36,7 @@ const GetCampaignStatsInputSchema = z.object({
 });
 export type TGetCampaignStatsInput = z.infer<typeof GetCampaignStatsInputSchema>;
 
-async function getCampaignStats({
-	input,
-	session,
-}: {
-	input: TGetCampaignStatsInput;
-	session: TAuthUserSession;
-}) {
+async function getCampaignStats({ input, session }: { input: TGetCampaignStatsInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
@@ -56,57 +51,56 @@ async function getCampaignStats({
 		eq(interactions.campanhaId, input.campaignId),
 		eq(interactions.organizacaoId, userOrgId),
 		eq(interactions.tipo, "ENVIO-MENSAGEM"),
-		sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
+		inArray(interactions.statusEnvio, ["ENVIADO", "ENTREGUE", "LIDO"]),
 		gte(interactions.dataInsercao, input.startDate),
 		lte(interactions.dataInsercao, input.endDate),
 	];
 
-	// Get interactions count (messages sent) for this campaign in the date range
-	const interactionsResult = await db
-		.select({
-			total: count(interactions.id),
-			clientesAlcancados: countDistinct(interactions.clienteId),
-		})
-		.from(interactions)
-		.where(and(...dateRangeConditions));
+	const [interactionsResult, deliveryResult, conversionsResult, weeklyLimitResult] = await Promise.all([
+		db
+			.select({
+				total: count(interactions.id),
+				clientesAlcancados: countDistinct(interactions.clienteId),
+			})
+			.from(interactions)
+			.where(and(...dateRangeConditions)),
+		db
+			.select({
+				statusEnvio: interactions.statusEnvio,
+				total: count(interactions.id),
+			})
+			.from(interactions)
+			.where(and(...dateRangeConditions))
+			.groupBy(interactions.statusEnvio),
+		db
+			.select({
+				total: count(campaignConversions.id),
+				receitaTotal: sum(campaignConversions.atribuicaoReceita),
+				tempoMedioMinutos: avg(campaignConversions.tempoParaConversaoMinutos),
+				clientesConvertidos: countDistinct(campaignConversions.clienteId),
+				ticketMedio: avg(campaignConversions.vendaValor),
+			})
+			.from(campaignConversions)
+			.where(
+				and(
+					eq(campaignConversions.campanhaId, input.campaignId),
+					eq(campaignConversions.organizacaoId, userOrgId),
+					gte(campaignConversions.dataConversao, input.startDate),
+					lte(campaignConversions.dataConversao, input.endDate),
+				),
+			),
+		checkCampaignWeeklyInteractionLimit({
+			organizationId: userOrgId,
+			campaignId: input.campaignId,
+		}),
+	]);
 
 	const interacoesEnviadas = interactionsResult[0]?.total ?? 0;
 	const clientesAlcancados = interactionsResult[0]?.clientesAlcancados ?? 0;
 
-	// Get delivery breakdown
-	const deliveryResult = await db
-		.select({
-			statusEnvio: interactions.statusEnvio,
-			total: count(interactions.id),
-		})
-		.from(interactions)
-		.where(and(...dateRangeConditions))
-		.groupBy(interactions.statusEnvio);
-
-	const totalEntregues = deliveryResult
-		.filter((r) => r.statusEnvio === "ENTREGUE" || r.statusEnvio === "LIDO")
-		.reduce((acc, r) => acc + r.total, 0);
+	const totalEntregues = deliveryResult.filter((r) => r.statusEnvio === "ENTREGUE" || r.statusEnvio === "LIDO").reduce((acc, r) => acc + r.total, 0);
 
 	const totalFalhas = deliveryResult.find((r) => r.statusEnvio === "FALHOU")?.total ?? 0;
-
-	// Get conversions for this campaign in the date range
-	const conversionsResult = await db
-		.select({
-			total: count(campaignConversions.id),
-			receitaTotal: sum(campaignConversions.atribuicaoReceita),
-			tempoMedioMinutos: avg(campaignConversions.tempoParaConversaoMinutos),
-			clientesConvertidos: countDistinct(campaignConversions.clienteId),
-			ticketMedio: avg(campaignConversions.vendaValor),
-		})
-		.from(campaignConversions)
-		.where(
-			and(
-				eq(campaignConversions.campanhaId, input.campaignId),
-				eq(campaignConversions.organizacaoId, userOrgId),
-				gte(campaignConversions.dataConversao, input.startDate),
-				lte(campaignConversions.dataConversao, input.endDate),
-			),
-		);
 
 	const conversoes = conversionsResult[0]?.total ?? 0;
 	const receitaAtribuida = Number(conversionsResult[0]?.receitaTotal ?? 0);
@@ -134,6 +128,17 @@ async function getCampaignStats({
 			receitaAtribuida,
 			tempoMedioConversaoHoras: Math.round(tempoMedioConversaoHoras * 100) / 100,
 			ticketMedioConversao: Math.round(ticketMedioConversao * 100) / 100,
+			limiteSemanal: {
+				...weeklyLimitResult,
+				campaignRemainingThisWeek:
+					weeklyLimitResult.campaignEffectiveWeeklyLimit == null
+						? null
+						: Math.max(weeklyLimitResult.campaignEffectiveWeeklyLimit - weeklyLimitResult.campaignUsedThisWeek, 0),
+				organizationRemainingThisWeek:
+					weeklyLimitResult.organizationWeeklyLimit == null
+						? null
+						: Math.max(weeklyLimitResult.organizationWeeklyLimit - weeklyLimitResult.organizationUsedThisWeek, 0),
+			},
 			periodoInicio: input.startDate,
 			periodoFim: input.endDate,
 		},

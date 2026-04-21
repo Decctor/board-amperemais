@@ -5,7 +5,7 @@ import { getBestNumberOfPointsBetweenDates, getDateBuckets, getEvenlySpacedDates
 import { db } from "@/services/drizzle";
 import { campaignConversions, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, asc, count, eq, gte, lte, sql, sum } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -91,7 +91,7 @@ async function getGraphDataForPeriod({
 				and(
 					eq(interactions.organizacaoId, userOrgId),
 					eq(interactions.tipo, "ENVIO-MENSAGEM"),
-					sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
+					inArray(interactions.statusEnvio, ["ENVIADO", "ENTREGUE", "LIDO"]),
 					gte(interactions.dataInsercao, period.after),
 					lte(interactions.dataInsercao, period.before),
 					...(campanhaId ? [eq(interactions.campanhaId, campanhaId)] : []),
