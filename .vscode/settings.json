@@ -6,14 +6,14 @@
 	"editor.formatOnPaste": true,
 	"editor.codeActionsOnSave": {
 		"source.fixAll.oxc": "explicit",
-		"source.organizeImports.oxc": "explicit"
+		"source.organizeImports.oxc": "explicit",
 	},
 	"[typescript]": {
-		"editor.defaultFormatter": "oxc.oxc-vscode"
+		"editor.defaultFormatter": "oxc.oxc-vscode",
 	},
 	"[typescriptreact]": {
-		"editor.defaultFormatter": "oxc.oxc-vscode"
+		"editor.defaultFormatter": "oxc.oxc-vscode",
 	},
-	"typescript.experimental.useTsgo": false,
-	"typescript.tsserver.maxTsServerMemory": 4096
+	"typescript.experimental.useTsgo": true,
+	"typescript.tsserver.maxTsServerMemory": 4096,
 }
