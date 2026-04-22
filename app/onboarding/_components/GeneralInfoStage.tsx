@@ -96,7 +96,7 @@ function ImageContent({
 	updateImageHolder: (image: { file?: File | null; previewUrl?: string | null }) => void;
 }) {
 	return (
-		<div className="flex items-center justify-center min-h-[350px] min-w-[350px]">
+		<div className="flex w-full max-w-[350px] items-center justify-center self-center lg:self-auto min-h-[240px] sm:min-h-[350px]">
 			<label className="relative aspect-square w-full max-w-[350px] cursor-pointer overflow-hidden rounded-lg" htmlFor="dropzone-file">
 				<ImagePreview imageHolder={imageHolder} imageUrl={imageUrl} />
 				<input
