@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
-import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
+import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -540,13 +540,16 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 			// Process interactions immediately after transaction (with delay to avoid rate limiting)
 			if (immediateProcessingDataList.length > 0) {
 				console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Processing ${immediateProcessingDataList.length} immediate interactions`);
-				const weeklyLimitCache = createCampaignWeeklyLimitCache();
 				const immediateProcessingStartedAt = Date.now();
-				for (const processingData of immediateProcessingDataList) {
-					processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
-						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
-					);
-					await delay(100); // Small delay between sends to avoid rate limiting
+				const processingSummary = await processOrganizationInteractionsBatch({
+					organizationId: organization.id,
+					interactions: immediateProcessingDataList,
+					weeklyLimitCache: createCampaignWeeklyLimitCache(),
+				});
+				if (processingSummary.failed > 0 || processingSummary.blocked > 0) {
+					for (const failedResult of processingSummary.results.filter((itemResult) => !itemResult.success)) {
+						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.error);
+					}
 				}
 				console.log(
 					`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Finished immediate interactions in ${formatDurationMs(Date.now() - immediateProcessingStartedAt)}`,

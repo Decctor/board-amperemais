@@ -78,6 +78,13 @@
       "when": 1775836800000,
       "tag": "0010_ai_hint_approval_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1776816000000,
+      "tag": "0011_interactions_processing_indexes",
+      "breakpoints": true
     }
   ]
 }

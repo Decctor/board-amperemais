@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import weekOfYear from "dayjs/plugin/weekOfYear";
-import { and, count, eq, gte, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, isNotNull } from "drizzle-orm";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -42,6 +42,18 @@ export type TCampaignWeeklyBatchQuotaReservationResult = TCampaignWeeklyLimitChe
 	blockedInteractionIds: string[];
 	alreadyReservedInteractionIds: string[];
 	missingInteractionIds: string[];
+};
+
+export type TOrganizationWeeklyBatchQuotaReservationResult = {
+	weekKey: string;
+	reservedAt: Date | null;
+	claimedInteractionIds: string[];
+	claimedCountsByCampaignId: Map<string, number>;
+	blockedInteractionIds: string[];
+	alreadyReservedInteractionIds: string[];
+	missingInteractionIds: string[];
+	blockedReasonsByInteractionId: Map<string, TCampaignWeeklyLimitFailureReason>;
+	blockedMessagesByInteractionId: Map<string, string>;
 };
 
 export type TCampaignWeeklyLimitCache = {
@@ -143,6 +155,20 @@ function buildEmptyWeeklyLimitCheckResult(weekKey: string): TCampaignWeeklyLimit
 	});
 }
 
+function buildEmptyOrganizationWeeklyBatchQuotaReservationResult(weekKey: string): TOrganizationWeeklyBatchQuotaReservationResult {
+	return {
+		weekKey,
+		reservedAt: null,
+		claimedInteractionIds: [],
+		claimedCountsByCampaignId: new Map(),
+		blockedInteractionIds: [],
+		alreadyReservedInteractionIds: [],
+		missingInteractionIds: [],
+		blockedReasonsByInteractionId: new Map(),
+		blockedMessagesByInteractionId: new Map(),
+	};
+}
+
 function getRemainingWeeklyQuota({
 	organizationWeeklyLimit,
 	campaignEffectiveWeeklyLimit,
@@ -231,6 +257,72 @@ async function getWeeklyLimitContext({
 	return result;
 }
 
+async function getWeeklyLimitContextsByCampaignIds({
+	executor = db,
+	organizationId,
+	campaignIds,
+}: {
+	executor?: TWeeklyLimitExecutor;
+	organizationId: string;
+	campaignIds: string[];
+}) {
+	if (campaignIds.length === 0) {
+		return new Map<
+			string,
+			{
+				organizationWeeklyLimit: number | null;
+				campaignWeeklyLimit: number | null;
+				campaignEffectiveWeeklyLimit: number | null;
+				campaignLimitExceedsOrganizationLimit: boolean;
+			}
+		>();
+	}
+
+	const [organization, campaignsResult] = await Promise.all([
+		executor.query.organizations.findFirst({
+			where: (fields, { eq }) => eq(fields.id, organizationId),
+			columns: { configuracao: true },
+		}),
+		executor.query.campaigns.findMany({
+			where: (fields, { and, inArray }) => and(eq(fields.organizacaoId, organizationId), inArray(fields.id, campaignIds)),
+			columns: {
+				id: true,
+				limiteEnviosSemanais: true,
+			},
+		}),
+	]);
+
+	const organizationWeeklyLimit = organization?.configuracao?.preferencias?.limiteMensagensSemanaisViaCampanhas ?? null;
+	const contextsByCampaignId = new Map<
+		string,
+		{
+			organizationWeeklyLimit: number | null;
+			campaignWeeklyLimit: number | null;
+			campaignEffectiveWeeklyLimit: number | null;
+			campaignLimitExceedsOrganizationLimit: boolean;
+		}
+	>();
+
+	for (const campaign of campaignsResult) {
+		const campaignWeeklyLimit = campaign.limiteEnviosSemanais ?? null;
+		const campaignEffectiveWeeklyLimit = getEffectiveCampaignWeeklyLimit({
+			organizationWeeklyLimit,
+			campaignWeeklyLimit,
+		});
+		const campaignLimitExceedsOrganizationLimit =
+			campaignWeeklyLimit != null && organizationWeeklyLimit != null && campaignWeeklyLimit > organizationWeeklyLimit;
+
+		contextsByCampaignId.set(campaign.id, {
+			organizationWeeklyLimit,
+			campaignWeeklyLimit,
+			campaignEffectiveWeeklyLimit,
+			campaignLimitExceedsOrganizationLimit,
+		});
+	}
+
+	return contextsByCampaignId;
+}
+
 async function getOrganizationUsedThisWeek({
 	executor = db,
 	organizationId,
@@ -301,6 +393,48 @@ async function getCampaignUsedThisWeek({
 	const value = Number(usage?.value ?? 0);
 	cache?.campaignUsageByWeekKey.set(cacheKey, value);
 	return value;
+}
+
+async function getCampaignUsageMapThisWeek({
+	executor = db,
+	organizationId,
+	campaignIds,
+	startOfWeekDate,
+}: {
+	executor?: TWeeklyLimitExecutor;
+	organizationId: string;
+	campaignIds: string[];
+	startOfWeekDate: Date;
+}) {
+	const usageByCampaignId = new Map<string, number>();
+
+	if (campaignIds.length === 0) {
+		return usageByCampaignId;
+	}
+
+	const usageRows = await executor
+		.select({
+			campaignId: interactions.campanhaId,
+			value: count(interactions.id),
+		})
+		.from(interactions)
+		.where(
+			and(
+				eq(interactions.organizacaoId, organizationId),
+				inArray(interactions.campanhaId, campaignIds),
+				eq(interactions.tipo, "ENVIO-MENSAGEM"),
+				inArray(interactions.statusEnvio, [...QUOTA_CONSUMING_INTERACTION_STATUSES]),
+				gte(interactions.dataExecucao, startOfWeekDate),
+			),
+		)
+		.groupBy(interactions.campanhaId);
+
+	for (const usageRow of usageRows) {
+		if (!usageRow.campaignId) continue;
+		usageByCampaignId.set(usageRow.campaignId, Number(usageRow.value ?? 0));
+	}
+
+	return usageByCampaignId;
 }
 
 export async function checkCampaignWeeklyInteractionLimit({
@@ -701,6 +835,187 @@ export async function reserveCampaignWeeklyQuotaBatch({
 			cache,
 			count: reservationResult.claimedInteractionIds.length,
 		});
+	}
+
+	return reservationResult;
+}
+
+export async function reserveOrganizationWeeklyQuotaBatch({
+	interactionIds,
+	organizationId,
+	cache,
+}: {
+	interactionIds: string[];
+	organizationId: string;
+	cache?: TCampaignWeeklyLimitCache;
+}): Promise<TOrganizationWeeklyBatchQuotaReservationResult> {
+	const uniqueInteractionIds = Array.from(new Set(interactionIds));
+	const { startOfWeekDate, weekKey } = getCurrentWeekWindow();
+	const reservedAt = new Date();
+
+	if (uniqueInteractionIds.length === 0) {
+		return buildEmptyOrganizationWeeklyBatchQuotaReservationResult(weekKey);
+	}
+
+	const reservationResult = await db.transaction(async (tx) => {
+		const lockedInteractions = await tx
+			.select({
+				id: interactions.id,
+				campaignId: interactions.campanhaId,
+				dataExecucao: interactions.dataExecucao,
+				dataInsercao: interactions.dataInsercao,
+			})
+			.from(interactions)
+			.where(and(eq(interactions.organizacaoId, organizationId), inArray(interactions.id, uniqueInteractionIds), isNotNull(interactions.campanhaId)))
+			.orderBy(asc(interactions.dataInsercao), asc(interactions.id))
+			.for("update");
+
+		const lockedInteractionsById = new Map(lockedInteractions.map((interaction) => [interaction.id, interaction]));
+		const missingInteractionIds = uniqueInteractionIds.filter((interactionId) => !lockedInteractionsById.has(interactionId));
+		const alreadyReservedInteractionIds = uniqueInteractionIds.filter((interactionId) => {
+			const interaction = lockedInteractionsById.get(interactionId);
+			return interaction?.dataExecucao != null;
+		});
+		const claimableInteractions = lockedInteractions.filter((interaction) => interaction.dataExecucao == null && interaction.campaignId != null);
+
+		if (claimableInteractions.length === 0) {
+			return {
+				...buildEmptyOrganizationWeeklyBatchQuotaReservationResult(weekKey),
+				alreadyReservedInteractionIds,
+				missingInteractionIds,
+			};
+		}
+
+		await tx.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).for("update");
+
+		const campaignIds = Array.from(new Set(claimableInteractions.map((interaction) => interaction.campaignId).filter((campaignId): campaignId is string => !!campaignId))).sort();
+
+		if (campaignIds.length > 0) {
+			await tx
+				.select({ id: campaigns.id })
+				.from(campaigns)
+				.where(and(eq(campaigns.organizacaoId, organizationId), inArray(campaigns.id, campaignIds)))
+				.orderBy(asc(campaigns.id))
+				.for("update");
+		}
+
+		const [limitContextsByCampaignId, organizationUsedThisWeek, campaignUsageById] = await Promise.all([
+			getWeeklyLimitContextsByCampaignIds({
+				executor: tx,
+				organizationId,
+				campaignIds,
+			}),
+			getOrganizationUsedThisWeek({
+				executor: tx,
+				organizationId,
+				weekKey,
+				startOfWeekDate,
+			}),
+			getCampaignUsageMapThisWeek({
+				executor: tx,
+				organizationId,
+				campaignIds,
+				startOfWeekDate,
+			}),
+		]);
+
+		const claimedInteractionIds: string[] = [];
+		const claimedCountsByCampaignId = new Map<string, number>();
+		const blockedInteractionIds: string[] = [];
+		const blockedReasonsByInteractionId = new Map<string, TCampaignWeeklyLimitFailureReason>();
+		const blockedMessagesByInteractionId = new Map<string, string>();
+		let nextOrganizationUsedThisWeek = organizationUsedThisWeek;
+
+		for (const interaction of claimableInteractions) {
+			const campaignId = interaction.campaignId;
+			if (!campaignId) continue;
+
+			const limitContext = limitContextsByCampaignId.get(campaignId);
+			if (!limitContext) {
+				blockedInteractionIds.push(interaction.id);
+				blockedMessagesByInteractionId.set(interaction.id, "Campanha nao encontrada para reservar quota semanal.");
+				continue;
+			}
+
+			const campaignUsedThisWeek = campaignUsageById.get(campaignId) ?? 0;
+			const { organizationWeeklyLimit, campaignEffectiveWeeklyLimit, campaignLimitExceedsOrganizationLimit } = limitContext;
+			let blockingReason: TCampaignWeeklyLimitFailureReason | null = null;
+
+			if (organizationWeeklyLimit != null && nextOrganizationUsedThisWeek >= organizationWeeklyLimit) {
+				blockingReason = "ORG_LIMIT_REACHED";
+			} else if (campaignEffectiveWeeklyLimit != null && campaignUsedThisWeek >= campaignEffectiveWeeklyLimit) {
+				blockingReason = campaignLimitExceedsOrganizationLimit ? "CAMPAIGN_LIMIT_EXCEEDS_ORG_EFFECTIVE" : "CAMPAIGN_LIMIT_REACHED";
+			}
+
+			if (blockingReason) {
+				blockedInteractionIds.push(interaction.id);
+				blockedReasonsByInteractionId.set(interaction.id, blockingReason);
+				blockedMessagesByInteractionId.set(interaction.id, getCampaignWeeklyLimitFailureMessage(blockingReason));
+				continue;
+			}
+
+			claimedInteractionIds.push(interaction.id);
+			nextOrganizationUsedThisWeek += 1;
+			campaignUsageById.set(campaignId, campaignUsedThisWeek + 1);
+			claimedCountsByCampaignId.set(campaignId, (claimedCountsByCampaignId.get(campaignId) ?? 0) + 1);
+		}
+
+		if (claimedInteractionIds.length > 0) {
+			await tx
+				.update(interactions)
+				.set({
+					statusEnvio: "PENDENTE",
+					erroEnvio: null,
+					dataExecucao: reservedAt,
+				})
+				.where(and(eq(interactions.organizacaoId, organizationId), inArray(interactions.id, claimedInteractionIds)));
+		}
+
+		const blockedMessagesGrouped = new Map<string, string[]>();
+		for (const interactionId of blockedInteractionIds) {
+			const blockingMessage = blockedMessagesByInteractionId.get(interactionId) ?? "Interacao bloqueada por limite semanal.";
+			const interactionIdsForMessage = blockedMessagesGrouped.get(blockingMessage);
+			if (interactionIdsForMessage) {
+				interactionIdsForMessage.push(interactionId);
+				continue;
+			}
+
+			blockedMessagesGrouped.set(blockingMessage, [interactionId]);
+		}
+
+		for (const [blockingMessage, interactionIdsForMessage] of blockedMessagesGrouped) {
+			await tx
+				.update(interactions)
+				.set({
+					statusEnvio: "BLOQUEADA",
+					erroEnvio: blockingMessage,
+				})
+				.where(and(eq(interactions.organizacaoId, organizationId), inArray(interactions.id, interactionIdsForMessage)));
+		}
+
+		return {
+			weekKey,
+			reservedAt: claimedInteractionIds.length > 0 ? reservedAt : null,
+			claimedInteractionIds,
+			claimedCountsByCampaignId,
+			blockedInteractionIds,
+			alreadyReservedInteractionIds,
+			missingInteractionIds,
+			blockedReasonsByInteractionId,
+			blockedMessagesByInteractionId,
+		};
+	});
+
+	if (reservationResult.claimedInteractionIds.length > 0) {
+		for (const [campaignId, count] of reservationResult.claimedCountsByCampaignId) {
+			incrementCampaignWeeklyLimitUsageCache({
+				organizationId,
+				campaignId,
+				weekKey,
+				cache,
+				count,
+			});
+		}
 	}
 
 	return reservationResult;
