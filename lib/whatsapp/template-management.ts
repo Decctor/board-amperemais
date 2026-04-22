@@ -323,9 +323,8 @@ export async function createWhatsappTemplate({
 			message: "Template criado com sucesso no WhatsApp!",
 		};
 	} catch (error) {
-		console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE_ERROR]", error);
 		if (axios.isAxiosError(error)) {
-			console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE_ERROR_RESPONSE]", error.response?.data);
+			console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE_ERROR_RESPONSE] Axios Error Response", error.response?.data);
 			const errorMessage = getMetaApiErrorMessage(error, "Erro ao criar template no WhatsApp.");
 			throw new createHttpError.BadRequest(errorMessage);
 		}

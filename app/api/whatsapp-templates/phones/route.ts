@@ -77,7 +77,6 @@ async function createWhatsappTemplatePhone({ input, session }: { input: TCreateW
 						appId: metaAppId,
 						accessToken: orgWhatsappConnectionPhone.conexao.token,
 					});
-
 					// Create a copy of the template with the header_handle in exemplo field
 					templateToCreate = {
 						...whatsappTemplate,
