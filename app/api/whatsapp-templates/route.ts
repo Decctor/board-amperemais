@@ -89,6 +89,11 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 	const allPhones = orgConnections.flatMap((connection) => connection.telefones.map((p) => ({ ...p, conexao: connection })));
 	if (allPhones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
+	console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Inserting parent template...", {
+		orgId: userOrgId,
+		templateName: input.template.nome,
+		phones: allPhones.length,
+	});
 	// 1. Insert parent template first
 	const [insertedTemplate] = await db
 		.insert(whatsappTemplates)
@@ -107,6 +112,11 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 
 	for (const telefone of allPhones) {
 		try {
+			console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Creating template for phone...", {
+				phoneId: telefone.id,
+				phoneNumber: telefone.numero,
+				phoneConnectionType: telefone.conexao.tipoConexao,
+			});
 			const phoneConnection = telefone.conexao;
 			const whatsappConnectionType = phoneConnection.tipoConexao;
 			const whatsappToken = phoneConnection.token;
@@ -119,11 +129,18 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 					whatsappToken,
 					logScope: "WHATSAPP_TEMPLATE_CREATE",
 				});
-
+				console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Template components resolved:", {
+					phoneId: telefone.id,
+					template: templateToCreate,
+				});
 				const metaResponse = await createWhatsappTemplateInMeta({
 					whatsappToken,
 					whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
 					template: templateToCreate,
+				});
+				console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Template created in Meta API:", {
+					phoneId: telefone.id,
+					metaResponse: metaResponse,
 				});
 				metaWhatsappTemplateId = metaResponse.whatsappTemplateId;
 			}

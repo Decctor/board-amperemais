@@ -1,4 +1,11 @@
-import type { TCreateWhatsappTemplatePhoneInput, TCreateWhatsappTemplatePhoneOutput } from "@/app/api/whatsapp-templates/phones/route";
+import type {
+	TCreateWhatsappTemplatePhoneInput,
+	TCreateWhatsappTemplatePhoneOutput,
+	TDeleteWhatsappTemplatePhoneInput,
+	TDeleteWhatsappTemplatePhoneOutput,
+	TSyncWhatsappTemplatePhoneInput,
+	TSyncWhatsappTemplatePhoneOutput,
+} from "@/app/api/whatsapp-templates/phones/route";
 import type {
 	TCreateWhatsappTemplateInput,
 	TCreateWhatsappTemplateOutput,
@@ -25,5 +32,15 @@ export async function syncWhatsappTemplates(input?: TSyncWhatsappTemplatesInput)
 
 export async function createWhatsappTemplatePhone(input: TCreateWhatsappTemplatePhoneInput) {
 	const { data } = await axios.post<TCreateWhatsappTemplatePhoneOutput>("/api/whatsapp-templates/phones", input);
+	return data;
+}
+
+export async function syncWhatsappTemplatePhone(input: TSyncWhatsappTemplatePhoneInput) {
+	const { data } = await axios.put<TSyncWhatsappTemplatePhoneOutput>("/api/whatsapp-templates/phones", input);
+	return data;
+}
+
+export async function deleteWhatsappTemplatePhone(input: TDeleteWhatsappTemplatePhoneInput) {
+	const { data } = await axios.delete<TDeleteWhatsappTemplatePhoneOutput>(`/api/whatsapp-templates/phones?id=${input.id}`);
 	return data;
 }

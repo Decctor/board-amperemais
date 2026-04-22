@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useCallback, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
+import type { TGetWhatsappTemplatePhoneOutput } from "@/app/api/whatsapp-templates/phones/route";
 
 async function getWhatsappTemplates(input: Omit<TGetWhatsappTemplatesInput, "id">) {
 	const searchParams = new URLSearchParams();
@@ -56,5 +57,22 @@ export function useWhatsappTemplateById({ id }: { id: string }) {
 			queryFn: async () => await getWhatsappTemplateById(id),
 		}),
 		queryKey: ["whatsapp-template-by-id", id],
+	};
+}
+
+async function getWhatsappTemplatePhoneById(id: string) {
+	const { data } = await axios.get<TGetWhatsappTemplatePhoneOutput>(`/api/whatsapp-templates/phones?id=${id}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("Telefone do template não encontrado.");
+	return result;
+}
+
+export function useWhatsappTemplatePhoneById({ id }: { id: string }) {
+	return {
+		...useQuery({
+			queryKey: ["whatsapp-template-phone-by-id", id],
+			queryFn: async () => await getWhatsappTemplatePhoneById(id),
+		}),
+		queryKey: ["whatsapp-template-phone-by-id", id],
 	};
 }
