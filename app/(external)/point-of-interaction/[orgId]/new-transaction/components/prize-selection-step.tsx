@@ -74,10 +74,10 @@ export function PrizeSelectionStep({ prizes, availableBalance, terminology, onSe
 						<div className="p-2 short:p-1.5 bg-brand-secondary/10 rounded-xl short:rounded-lg text-brand-secondary group-hover:bg-brand-secondary group-hover:text-brand-secondary-foreground transition-all">
 							<ShoppingCart className="w-4 h-4 shrink-0" />
 						</div>
-						<span className="text-center leading-tight">REGISTRAR ?</span>
+						<span className="text-center leading-tight">APENAS REGISTRAR ?</span>
 					</div>
 					<p className="text-center text-[0.65rem] lg:text-xs font-medium normal-case tracking-normal text-muted-foreground">
-						REGISTRE APENAS A VENDA PARA ACUMULAR {getCashbackUnitLabel(terminology)}.
+						REGISTRE APENAS A VENDA PARA ACUMULAR {getCashbackUnitLabel(terminology).toUpperCase()}.
 					</p>
 				</Button>
 			</div>
