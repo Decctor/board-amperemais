@@ -13,6 +13,7 @@ const FALLBACK_GROUP = "Outros";
 const SHOW_TOGGLE_THRESHOLD = 4;
 
 type PrizeSelectionStepProps = {
+	programAllowsAccumulationViaPOI: boolean;
 	prizes: TPrize[];
 	availableBalance: number;
 	terminology: TCashbackProgramTerminologyEnum;
@@ -20,7 +21,14 @@ type PrizeSelectionStepProps = {
 	onContinueWithoutPrize: () => void;
 };
 
-export function PrizeSelectionStep({ prizes, availableBalance, terminology, onSelectPrize, onContinueWithoutPrize }: PrizeSelectionStepProps) {
+export function PrizeSelectionStep({
+	programAllowsAccumulationViaPOI,
+	prizes,
+	availableBalance,
+	terminology,
+	onSelectPrize,
+	onContinueWithoutPrize,
+}: PrizeSelectionStepProps) {
 	const [viewMode, setViewMode] = React.useState<"categories" | "list">("list");
 	const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
 
@@ -58,29 +66,24 @@ export function PrizeSelectionStep({ prizes, availableBalance, terminology, onSe
 
 	return (
 		<div className="space-y-6 short:space-y-2 animate-in fade-in slide-in-from-bottom-4">
-			<div className="w-full flex items-center flex-col justify-center gap-1.5">
-				<Button
-					type="button"
-					variant="none"
-					size="fit"
-					onClick={onContinueWithoutPrize}
-					className="group flex flex-col w-full max-w-sm mx-auto rounded-2xl short:rounded-xl font-bold uppercase tracking-wide px-4 py-3 short:px-3 short:py-2.5 gap-2
-						border-2 border-brand-secondary/20 bg-brand-secondary/5 text-brand-secondary
-						hover:border-brand-secondary hover:bg-brand-secondary/10 hover:shadow-lg hover:shadow-brand-secondary/15
-						transition-all cursor-pointer
-						focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary focus-visible:ring-offset-2"
-				>
-					<div className="flex items-center justify-center gap-3">
-						<div className="p-2 short:p-1.5 bg-brand-secondary/10 rounded-xl short:rounded-lg text-brand-secondary group-hover:bg-brand-secondary group-hover:text-brand-secondary-foreground transition-all">
-							<ShoppingCart className="w-4 h-4 shrink-0" />
+			{programAllowsAccumulationViaPOI ? (
+				<div className="w-full flex items-center flex-col justify-center gap-1.5">
+					<Button
+						type="button"
+						variant="none"
+						size="fit"
+						onClick={onContinueWithoutPrize}
+						className="group bg-brand-secondary text-brand-secondary-foreground flex flex-col w-full max-w-sm mx-auto rounded-2xl short:rounded-xl font-bold uppercase tracking-wide px-4 py-3 short:px-3 short:py-2.5 gap-"
+					>
+						<div className="flex items-center justify-center gap-3">
+							<div className="p-2 short:p-1.5 bg-brand-secondary-foreground text-brand-secondary rounded-xl">
+								<ShoppingCart className="w-4 h-4 shrink-0" />
+							</div>
+							<span className="text-[0.55rem] sm:text-[0.65rem] lg:text-xs text-center leading-tight">CLIQUE PARA APENAS PONTUAR</span>
 						</div>
-						<span className="text-center leading-tight">APENAS REGISTRAR ?</span>
-					</div>
-					<p className="text-center text-[0.65rem] lg:text-xs font-medium normal-case tracking-normal text-muted-foreground">
-						REGISTRE APENAS A VENDA PARA ACUMULAR {getCashbackUnitLabel(terminology).toUpperCase()}.
-					</p>
-				</Button>
-			</div>
+					</Button>
+				</div>
+			) : null}
 			<div className="text-center space-y-2 short:space-y-0.5">
 				<h2 className="text-xl short:text-lg font-black uppercase tracking-tight">Escolha a recompensa</h2>
 				<p className="text-muted-foreground short:text-xs">

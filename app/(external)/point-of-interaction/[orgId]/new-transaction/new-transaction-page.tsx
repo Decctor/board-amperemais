@@ -22,7 +22,13 @@ import { toast } from "sonner";
 import useSound from "use-sound";
 import { StepProgressHeader } from "../_shared/components/step-progress-header";
 import { SuccessCelebration } from "../_shared/components/success-celebration";
-import { getAvailableCashback, getFinalValue, getMaxCashbackToUse, getRedemptionLimitConfig } from "../_shared/helpers/cashback-calculations";
+import {
+	getAvailableCashback,
+	getCashbackAccumulationConfig,
+	getFinalValue,
+	getMaxCashbackToUse,
+	getRedemptionLimitConfig,
+} from "../_shared/helpers/cashback-calculations";
 import type { TPrize, TStepDefinition } from "../_shared/types";
 import { CashbackStep } from "./components/kiosk/cashback-step";
 import { ConfirmationStep as KioskConfirmationStep } from "./components/kiosk/confirmation-step";
@@ -104,9 +110,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const isMobileMode = mode === "mobile";
 
 	// Load client data by ID (already validated on server)
-	const {
-		data: client,
-	} = useClientByLookup({ initialParams: { orgId: org.id, phone: "", clientId: clientId } });
+	const { data: client } = useClientByLookup({ initialParams: { orgId: org.id, phone: "", clientId: clientId } });
 
 	const [playAction] = useSound("/sounds/action-completed.mp3");
 	const [playSuccess] = useSound("/sounds/success.mp3");
@@ -123,6 +127,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 
 	// Memoized cashback calculations
 	const availableCashback = useMemo(() => getAvailableCashback(client?.saldos), [client?.saldos]);
+	const cashbackAccumulationConfig = useMemo(() => getCashbackAccumulationConfig(client?.saldos), [client?.saldos]);
 	const redemptionLimitConfig = useMemo(() => getRedemptionLimitConfig(client?.saldos), [client?.saldos]);
 	const maximumCashbackAllowed = useMemo(
 		() => getMaxCashbackToUse(availableCashback, state.sale.valor, redemptionLimitConfig),
@@ -362,6 +367,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						{/* Step 1: Prize Selection */}
 						{!showModeSelection && isPrizeMode && currentStep === 1 && (
 							<PrizeSelectionStep
+								programAllowsAccumulationViaPOI={cashbackAccumulationConfig.acumuloPermitirViaPontoIntegracao}
 								prizes={prizes}
 								availableBalance={availableCashback}
 								terminology={org.terminologia}
@@ -537,57 +543,55 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						)}
 
 						{/* Action Buttons */}
-						{!showModeSelection &&
-							currentStep <= confirmationStep &&
-							(!isMobileMode || currentStep < confirmationStep) && (
-								<div className="flex gap-4 short:gap-3 mt-10 short:mt-4">
-									{currentStep > 1 && (
-										<Button
-											onClick={() => {
-												if (isPrizeMode && currentStep === 2 && !isPrizeSaleOnlyFlow) {
-													setSelectedPrize(null);
-													setPrizeFlowIntent(null);
-													updatePrizeRedemption(null);
-													updateSale({ valor: 0 });
-													updateCashback({ aplicar: false, valor: 0 });
-												}
-												if (isPrizeSaleOnlyFlow && currentStep === 3) {
-													updateCashback({ aplicar: false, valor: 0 });
-													updatePrizeRedemption(null);
-												}
-												if (isPrizeSaleOnlyFlow && currentStep === 2) {
-													setPrizeFlowIntent(null);
-													updateSale({ valor: 0 });
-												}
-												setCurrentStep((p) => p - 1);
-											}}
-											variant="outline"
-											size="lg"
-											className="flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold"
-										>
-											VOLTAR
-										</Button>
-									)}
-									{!(isPrizeMode && currentStep === 1) && !(isPrizeMode && currentStep === 2 && !isPrizeSaleOnlyFlow) && (
-										<Button
-											onClick={currentStep === confirmationStep ? submitTransaction : handleNextStep}
-											size="lg"
-											disabled={isSubmitting || (!isPrizeMode && isAttemptingToUseMoreCashbackThanAllowed)}
-											className={cn(
-												"flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
-												currentStep === confirmationStep && "bg-green-600 hover:bg-green-700",
-											)}
-										>
-											{currentStep === confirmationStep ? (isSubmitting ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
-											{currentStep === confirmationStep ? (
-												<Check className="ml-2 w-6 h-6 short:w-5 short:h-5" />
-											) : (
-												<ArrowRight className="ml-2 w-6 h-6 short:w-5 short:h-5" />
-											)}
-										</Button>
-									)}
-								</div>
-							)}
+						{!showModeSelection && currentStep <= confirmationStep && (!isMobileMode || currentStep < confirmationStep) && (
+							<div className="flex gap-4 short:gap-3 mt-10 short:mt-4">
+								{currentStep > 1 && (
+									<Button
+										onClick={() => {
+											if (isPrizeMode && currentStep === 2 && !isPrizeSaleOnlyFlow) {
+												setSelectedPrize(null);
+												setPrizeFlowIntent(null);
+												updatePrizeRedemption(null);
+												updateSale({ valor: 0 });
+												updateCashback({ aplicar: false, valor: 0 });
+											}
+											if (isPrizeSaleOnlyFlow && currentStep === 3) {
+												updateCashback({ aplicar: false, valor: 0 });
+												updatePrizeRedemption(null);
+											}
+											if (isPrizeSaleOnlyFlow && currentStep === 2) {
+												setPrizeFlowIntent(null);
+												updateSale({ valor: 0 });
+											}
+											setCurrentStep((p) => p - 1);
+										}}
+										variant="outline"
+										size="lg"
+										className="flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold"
+									>
+										VOLTAR
+									</Button>
+								)}
+								{!(isPrizeMode && currentStep === 1) && !(isPrizeMode && currentStep === 2 && !isPrizeSaleOnlyFlow) && (
+									<Button
+										onClick={currentStep === confirmationStep ? submitTransaction : handleNextStep}
+										size="lg"
+										disabled={isSubmitting || (!isPrizeMode && isAttemptingToUseMoreCashbackThanAllowed)}
+										className={cn(
+											"flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
+											currentStep === confirmationStep && "bg-green-600 hover:bg-green-700",
+										)}
+									>
+										{currentStep === confirmationStep ? (isSubmitting ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
+										{currentStep === confirmationStep ? (
+											<Check className="ml-2 w-6 h-6 short:w-5 short:h-5" />
+										) : (
+											<ArrowRight className="ml-2 w-6 h-6 short:w-5 short:h-5" />
+										)}
+									</Button>
+								)}
+							</div>
+						)}
 					</div>
 				</div>
 			</div>
