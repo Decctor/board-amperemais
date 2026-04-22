@@ -61,17 +61,23 @@ export function PrizeSelectionStep({ prizes, availableBalance, terminology, onSe
 			<div className="w-full flex items-center flex-col justify-center gap-1.5">
 				<Button
 					type="button"
-					variant="ghost"
+					variant="none"
 					size="fit"
 					onClick={onContinueWithoutPrize}
-					className="flex flex-col w-fit h-14 short:h-11 rounded-2xl short:rounded-lg font-bold uppercase tracking-wide px-2 py-1"
+					className="group flex flex-col w-full max-w-sm mx-auto rounded-2xl short:rounded-xl font-bold uppercase tracking-wide px-4 py-3 short:px-3 short:py-2.5 gap-2
+						border-2 border-brand-secondary/20 bg-brand-secondary/5 text-brand-secondary
+						hover:border-brand-secondary hover:bg-brand-secondary/10 hover:shadow-lg hover:shadow-brand-secondary/15
+						transition-all cursor-pointer
+						focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary focus-visible:ring-offset-2"
 				>
-					<div className="flex items-center gap-1.5">
-						<ShoppingCart className="w-4 h-4 mr-2" />
-						Prosseguir sem resgate ?
+					<div className="flex items-center justify-center gap-3">
+						<div className="p-2 short:p-1.5 bg-brand-secondary/10 rounded-xl short:rounded-lg text-brand-secondary group-hover:bg-brand-secondary group-hover:text-brand-secondary-foreground transition-all">
+							<ShoppingCart className="w-4 h-4 shrink-0" />
+						</div>
+						<span className="text-center leading-tight">REGISTRAR ?</span>
 					</div>
-					<p className="text-center text-[0.65rem] lg:text-xs text-muted-foreground">
-						Registre apenas a venda para acumular {getCashbackUnitLabel(terminology)}.
+					<p className="text-center text-[0.65rem] lg:text-xs font-medium normal-case tracking-normal text-muted-foreground">
+						REGISTRE APENAS A VENDA PARA ACUMULAR {getCashbackUnitLabel(terminology)}.
 					</p>
 				</Button>
 			</div>

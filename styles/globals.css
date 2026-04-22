@@ -85,6 +85,9 @@
 	--color-sidebar-ring: hsl(var(--sidebar-ring));
 	--color-brand: #ffb900;
 	--color-brand-foreground: #000000;
+	/* Secundária da org (POI): sobrescrita em runtime por OrgColorsProvider */
+	--color-brand-secondary: #24549c;
+	--color-brand-secondary-foreground: #ffffff;
 }
 
 /*

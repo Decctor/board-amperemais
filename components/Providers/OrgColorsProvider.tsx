@@ -130,6 +130,8 @@ export function OrgColorsProvider({ children, corPrimaria, corPrimariaForeground
 		// Override --color-brand for POI and other pages using bg-brand class
 		root.style.setProperty("--color-brand", colors.primary);
 		root.style.setProperty("--color-brand-foreground", colors.primaryForeground);
+		root.style.setProperty("--color-brand-secondary", colors.secondary);
+		root.style.setProperty("--color-brand-secondary-foreground", colors.secondaryForeground);
 
 		// Also set HSL versions for more flexible styling
 		const primaryHsl = hexToHsl(colors.primary);
@@ -151,6 +153,8 @@ export function OrgColorsProvider({ children, corPrimaria, corPrimariaForeground
 			root.style.removeProperty("--org-secondary-foreground");
 			root.style.removeProperty("--color-brand");
 			root.style.removeProperty("--color-brand-foreground");
+			root.style.removeProperty("--color-brand-secondary");
+			root.style.removeProperty("--color-brand-secondary-foreground");
 			root.style.removeProperty("--org-primary-h");
 			root.style.removeProperty("--org-primary-s");
 			root.style.removeProperty("--org-primary-l");

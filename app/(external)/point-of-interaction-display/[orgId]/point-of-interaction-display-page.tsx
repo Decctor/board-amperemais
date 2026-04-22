@@ -6,7 +6,7 @@ import LogoHorizontalRecompraCRM from "@/utils/svgs/logos/RECOMPRA - COMPLETE - 
 import { Button } from "@/components/ui/button";
 import { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
-import { Camera, Gift, Scan, Smartphone } from "lucide-react";
+import { Camera, Gift, Printer, Scan, Smartphone } from "lucide-react";
 import { getCashbackUnitLabel } from "@/lib/formatting";
 import { SizeIcon } from "@radix-ui/react-icons";
 
@@ -134,6 +134,10 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 	const [mode, setMode] = useState<TDisplayMode>("A5");
 	const displayConfig = DISPLAY_MODE_CONFIG[mode];
 	const primaryGradientStyle = getPrimaryGradientStyle();
+
+	const handlePrint = () => {
+		window.print();
+	};
 
 	const steps = [
 		{
@@ -332,13 +336,18 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 						})}
 					</div>
 
+					<Button type="button" className="w-full gap-2" onClick={handlePrint}>
+						<Printer className="h-4 w-4" />
+						IMPRIMIR
+					</Button>
+
 					<div className="w-full flex items-center justify-between gap-3 rounded-xl bg-brand text-brand-foreground px-3 py-2">
 						<p className="text-xs font-medium">MODO ATUAL</p>
 						<p className="text-sm font-semibold">{mode}</p>
 					</div>
 				</aside>
 
-				<nav className="fixed bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-card/95 p-2 shadow-xl backdrop-blur lg:hidden print:hidden">
+				<nav className="fixed bottom-4 left-1/2 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-card/95 p-2 shadow-xl backdrop-blur lg:hidden print:hidden">
 					{DISPLAY_MODES.map((displayMode) => {
 						const isActive = displayMode === mode;
 
@@ -354,6 +363,10 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 							</Button>
 						);
 					})}
+					<Button type="button" className="h-11 gap-2 rounded-full px-4 text-sm font-semibold" onClick={handlePrint}>
+						<Printer className="h-4 w-4" />
+						IMPRIMIR
+					</Button>
 				</nav>
 			</div>
 		</div>
