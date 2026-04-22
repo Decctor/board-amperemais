@@ -19,14 +19,13 @@ dayjs.extend(timezone);
 
 const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"] as const;
 const INTERACTIONS_CRON_TIMEZONE = process.env.INTERACTIONS_CRON_TIMEZONE ?? "America/Sao_Paulo";
-const MAX_DURATION_SECONDS = 300;
 const INTERACTIONS_PAGE_SIZE = 250;
 const CLAIM_BATCH_SIZE = 100;
 const SEND_CONCURRENCY = 10;
 const RUNTIME_BUDGET_MS = 295000;
 
 export const config = {
-	maxDuration: MAX_DURATION_SECONDS,
+	maxDuration: 300,
 };
 
 type TOrganizationProcessingSummary = {
@@ -187,13 +186,7 @@ async function fetchPendingInteractionsPage({
 
 type TPendingInteraction = Awaited<ReturnType<typeof fetchPendingInteractionsPage>>[number];
 
-async function fetchCampaignsForOrganization({
-	organizationId,
-	campaignIds,
-}: {
-	organizationId: string;
-	campaignIds: string[];
-}) {
+async function fetchCampaignsForOrganization({ organizationId, campaignIds }: { organizationId: string; campaignIds: string[] }) {
 	if (campaignIds.length === 0) return [];
 
 	return db.query.campaigns.findMany({
@@ -320,11 +313,7 @@ async function getOrCreateChatId({
 	const chatIdPromise = (async () => {
 		const existingChat = await db.query.chats.findFirst({
 			where: (fields, { and, eq }) =>
-				and(
-					eq(fields.organizacaoId, organizationId),
-					eq(fields.clienteId, clientId),
-					eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhoneId),
-				),
+				and(eq(fields.organizacaoId, organizationId), eq(fields.clienteId, clientId), eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhoneId)),
 			columns: {
 				id: true,
 			},
