@@ -9,12 +9,7 @@ const GATEWAY_API_SECRET = process.env.INTERNAL_WHATSAPP_GATEWAY_API_SECRET;
 // Types
 export type ConnectionStatus = "disconnected" | "connecting" | "qr" | "connected";
 export type GatewayEnabledEvent = "connection.update" | "message.received" | "message.sent" | "message.updated" | "message.queue_failed";
-export const DEFAULT_GATEWAY_ENABLED_EVENTS: GatewayEnabledEvent[] = [
-	"connection.update",
-	"message.sent",
-	"message.updated",
-	"message.queue_failed",
-];
+export const DEFAULT_GATEWAY_ENABLED_EVENTS: GatewayEnabledEvent[] = ["connection.update", "message.sent", "message.updated", "message.queue_failed"];
 
 export type InitSessionResponse = {
 	sessionId: string;
@@ -83,7 +78,6 @@ export type SendMessageInput = {
 };
 
 export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePayload, options?: { fallbackText?: string }): SendMessageContent {
-	console.log("[INTERNAL_GATEWAY] Template payload", JSON.stringify(templatePayload, null, 2));
 	const components = templatePayload.template.components ?? [];
 	let media:
 		| {
@@ -272,7 +266,7 @@ export async function sendMessage(
 
 	try {
 		const messageLength = content.type === "text" ? content.text.length : content.text?.length;
-		const buttonsCount = content.type === "text" ? content.buttons?.length ?? 0 : 0;
+		const buttonsCount = content.type === "text" ? (content.buttons?.length ?? 0) : 0;
 		console.log("[INTERNAL_GATEWAY] Sending message:", { sessionId, to, messageLength, buttonsCount });
 
 		const response = await axios.post<SendMessageResponse>(

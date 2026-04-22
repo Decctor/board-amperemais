@@ -23,9 +23,9 @@ export function buildContextVariablesMap(
 	| "clientFavoriteProductGroup"
 	| "clientSuggestedProduct"
 > {
-	if (!ctx) {
-		console.warn("[TEMPLATE_VARS] buildContextVariablesMap called without context metadados; context variables will resolve to empty strings.");
-	}
+	// if (!ctx) {
+	// 	console.warn("[TEMPLATE_VARS] buildContextVariablesMap called without context metadados; context variables will resolve to empty strings.");
+	// }
 
 	return {
 		purchaseValue: formatToMoney(ctx?.compraValor ?? 0),
@@ -101,11 +101,7 @@ async function getOrCreateChatId({
 	const chatIdPromise = (async () => {
 		const existingChat = await db.query.chats.findFirst({
 			where: (fields, { and, eq }) =>
-				and(
-					eq(fields.organizacaoId, organizationId),
-					eq(fields.clienteId, clientId),
-					eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhoneId),
-				),
+				and(eq(fields.organizacaoId, organizationId), eq(fields.clienteId, clientId), eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhoneId)),
 			columns: {
 				id: true,
 			},
@@ -152,17 +148,7 @@ export async function sendReservedInteraction(
 		chatIdCache?: TChatPromiseCache;
 	},
 ): Promise<TSendReservedInteractionResult> {
-	const {
-		interactionId,
-		organizationId,
-		client,
-		campaign,
-		whatsappToken,
-		whatsappSessionId,
-		contextMetadados,
-		testing,
-		chatIdCache,
-	} = params;
+	const { interactionId, organizationId, client, campaign, whatsappToken, whatsappSessionId, contextMetadados, testing, chatIdCache } = params;
 	const effectivePhoneNumber = testing?.overridePhoneNumber ?? client.telefone;
 	let insertedChatMessageId: string | null = null;
 
@@ -199,12 +185,12 @@ export async function sendReservedInteraction(
 
 		const hasHubAccess = params.hasHubAccess ?? (await resolveHasHubAccess(organizationId));
 		const clientFavoriteProduct = client.metadataProdutoMaisCompradoId
-			? (
+			? ((
 					await db.query.products.findFirst({
 						where: (fields, { eq }) => eq(fields.id, client.metadataProdutoMaisCompradoId as string),
 						columns: { descricao: true },
 					})
-				)?.descricao ?? ""
+				)?.descricao ?? "")
 			: "";
 
 		const whatsappConnectionPhone = await db.query.whatsappConnectionPhones.findFirst({
@@ -311,12 +297,9 @@ export async function sendReservedInteraction(
 			if (testing?.disableInternalGateway) {
 				interactionJobId = `test-gateway-job-${interactionId}`;
 			} else {
-				const sentWhatsappTemplateResponse = await sendMessage(
-					whatsappSessionId,
-					formatPhoneForInternalGateway(effectivePhoneNumber),
-					templateContent,
-					{ clientMessageId: interactionId },
-				);
+				const sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(effectivePhoneNumber), templateContent, {
+					clientMessageId: interactionId,
+				});
 
 				if (!sentWhatsappTemplateResponse.success) {
 					throw new Error(sentWhatsappTemplateResponse.error || "Falha ao enfileirar mensagem no Gateway Interno.");

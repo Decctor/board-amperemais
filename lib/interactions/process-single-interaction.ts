@@ -33,7 +33,7 @@ export async function processSingleInteractionImmediately(params: TProcessSingle
 				campaignId: interaction.campanhaId,
 				cache: weeklyLimitCache,
 			});
-
+			console.log("[IMMEDIATE_PROCESS] WEEKLY QUOTA RESERVATION RESULT:", reservationResult);
 			if (reservationResult.status === "INTERACTION_NOT_FOUND") {
 				return { success: false, error: reservationResult.message ?? "Interacao nao encontrada para reservar quota semanal." };
 			}
