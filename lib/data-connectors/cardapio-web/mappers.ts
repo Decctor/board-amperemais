@@ -17,6 +17,8 @@ export interface MappedCardapioWebClient {
 	localizacaoBairro: TClientEntity["localizacaoBairro"];
 	localizacaoLogradouro: TClientEntity["localizacaoLogradouro"];
 	localizacaoNumero: TClientEntity["localizacaoNumero"];
+	localizacaoLatitude: TClientEntity["localizacaoLatitude"];
+	localizacaoLongitude: TClientEntity["localizacaoLongitude"];
 }
 
 export interface MappedCardapioWebProduct {
@@ -120,6 +122,8 @@ export function mapCardapioWebClient(
 		localizacaoBairro: deliveryAddress?.neighborhood || "",
 		localizacaoLogradouro: deliveryAddress?.street || "",
 		localizacaoNumero: deliveryAddress?.number || "",
+		localizacaoLatitude: deliveryAddress?.latitude || null,
+		localizacaoLongitude: deliveryAddress?.longitude || null,
 	};
 }
 

@@ -31,6 +31,8 @@ export const clients = newTable(
 		localizacaoLogradouro: text("localizacao_logradouro"),
 		localizacaoNumero: text("localizacao_numero"),
 		localizacaoComplemento: text("localizacao_complemento"),
+		localizacaoLatitude: text("localizacao_latitude"),
+		localizacaoLongitude: text("localizacao_longitude"),
 		// Others
 		canalAquisicao: text("canal_aquisicao"),
 		primeiraCompraData: timestamp("primeira_compra_data"),

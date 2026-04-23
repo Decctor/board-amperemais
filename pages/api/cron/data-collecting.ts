@@ -504,6 +504,14 @@ async function handleCardapioWebImportation(
 						organizacaoId: organizationId,
 						telefone: cardapioWebSale.cliente.telefone,
 						telefoneBase: cardapioWebSale.cliente.telefoneBase,
+						localizacaoCep: cardapioWebSale.cliente.localizacaoCep,
+						localizacaoEstado: cardapioWebSale.cliente.localizacaoEstado,
+						localizacaoCidade: cardapioWebSale.cliente.localizacaoCidade,
+						localizacaoBairro: cardapioWebSale.cliente.localizacaoBairro,
+						localizacaoLogradouro: cardapioWebSale.cliente.localizacaoLogradouro,
+						localizacaoNumero: cardapioWebSale.cliente.localizacaoNumero,
+						localizacaoLatitude: cardapioWebSale.cliente.localizacaoLatitude,
+						localizacaoLongitude: cardapioWebSale.cliente.localizacaoLongitude,
 						primeiraCompraData: isValidSale ? saleDate : null,
 						ultimaCompraData: isValidSale ? saleDate : null,
 						analiseRFMTitulo: "CLIENTES RECENTES",
@@ -1343,6 +1351,18 @@ async function handleCardapioWebImportation(
 				await tx
 					.update(clients)
 					.set({
+						...(cardapioWebSale.cliente
+							? {
+									localizacaoCep: cardapioWebSale.cliente.localizacaoCep,
+									localizacaoEstado: cardapioWebSale.cliente.localizacaoEstado,
+									localizacaoCidade: cardapioWebSale.cliente.localizacaoCidade,
+									localizacaoBairro: cardapioWebSale.cliente.localizacaoBairro,
+									localizacaoLogradouro: cardapioWebSale.cliente.localizacaoLogradouro,
+									localizacaoNumero: cardapioWebSale.cliente.localizacaoNumero,
+									localizacaoLatitude: cardapioWebSale.cliente.localizacaoLatitude,
+									localizacaoLongitude: cardapioWebSale.cliente.localizacaoLongitude,
+								}
+							: {}),
 						ultimaCompraData: saleDate,
 						ultimaCompraId: saleId,
 						metadataTotalCompras: finalTotalPurchaseCount,
