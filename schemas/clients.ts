@@ -147,7 +147,7 @@ export const ClientSearchQueryParams = z.object({
 		max: z.number({ invalid_type_error: "Tipo não válido para valor máximo da venda." }).optional().nullable(),
 	}),
 	saleNatures: z.array(
-		z.enum(["SN08", "SN03", "SN11", "SN20", "SN04", "SN09", "SN02", "COND", "SN99", "SN01", "SN05"], {
+		z.string({
 			required_error: "Natureza de venda não informado.",
 			invalid_type_error: "Tipo não válido para natureza de venda.",
 		}),

@@ -4,6 +4,8 @@ import { TSyncSegmentationsInput } from "@/app/api/segmentations/sync/route";
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import EditRFMConfig from "@/components/Modals/RFMConfig/EditRFMConfig";
+import NewRFMConfig from "@/components/Modals/RFMConfig/NewRFMConfig";
 import RFMAnalysisQueryParamsMenu from "@/components/RFMAnalysis/RFMAnalysisQueryParamsMenu";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
@@ -21,26 +23,38 @@ import { fetchClientExportation } from "@/lib/queries/exportations";
 import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
 import { cn } from "@/lib/utils";
 import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
-import { RFMLabels } from "@/utils/rfm";
+import { RFMLabels, type TRFMConfig } from "@/utils/rfm";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { BadgeDollarSign, Download, Filter, Grid3x3, Info, Mail, Megaphone, Phone, RefreshCcw, ShoppingCart, UsersRound } from "lucide-react";
+import {
+	BadgeDollarSign,
+	Download,
+	Filter,
+	Grid3x3,
+	Info,
+	Mail,
+	Megaphone,
+	Phone,
+	RefreshCcw,
+	Settings2,
+	ShoppingCart,
+	UsersRound,
+} from "lucide-react";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { toast } from "sonner";
 
-const initialPeriodStart = dayjs().startOf("month").toISOString();
-const initialPeriodEnd = dayjs().endOf("day").toISOString();
 type SegmentsPageProps = {
 	user: TAuthUserSession["user"];
+	orgRFMConfig: TRFMConfig | null;
 };
-export default function SegmentsPage({ user }: SegmentsPageProps) {
+export default function SegmentsPage({ user, orgRFMConfig }: SegmentsPageProps) {
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-stretch gap-3 flex-col md:flex-row">
 				<div className="w-full md:w-1/2">
-					<SegmentsPageMatrixRFM />
+					<SegmentsPageMatrixRFM user={user} orgRFMConfig={orgRFMConfig} />
 				</div>
 				<div className="w-full md:w-1/2">
 					<SegmentsPageClients />
@@ -384,10 +398,11 @@ function getSegmentLayout(label: string): SegmentLayout {
 	return {};
 }
 
-function SegmentsPageMatrixRFM() {
+function SegmentsPageMatrixRFM({ user, orgRFMConfig }: { user: TAuthUserSession["user"]; orgRFMConfig: TRFMConfig | null }) {
 	const queryClient = useQueryClient();
 
 	const [syncMenuIsOpen, setSyncMenuIsOpen] = useState(false);
+	const [configMenuIsOpen, setConfigMenuIsOpen] = useState(false);
 	const { data: rfmStats, queryKey } = useRFMLabelledStats();
 
 	function formatDecimal(value: number, fractionDigits = 1) {
@@ -410,9 +425,13 @@ function SegmentsPageMatrixRFM() {
 					<h1 className="text-xs font-medium tracking-tight uppercase">MATRIZ RFM</h1>
 				</div>
 				<div className="flex items-center gap-2">
+					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setConfigMenuIsOpen(true)}>
+						<Settings2 className="w-4 h-4 min-w-4 min-h-4" />
+						CONFIGURAR
+					</Button>
 					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setSyncMenuIsOpen(true)}>
 						<RefreshCcw className="w-4 h-4 min-w-4 min-h-4" />
-						SYNCRONIZAR
+						SINCRONIZAR
 					</Button>
 				</div>
 			</div>
@@ -535,6 +554,13 @@ function SegmentsPageMatrixRFM() {
 					}}
 				/>
 			) : null}
+			{configMenuIsOpen ? (
+				orgRFMConfig ? (
+					<EditRFMConfig user={user} rfmConfig={orgRFMConfig} closeModal={() => setConfigMenuIsOpen(false)} />
+				) : (
+					<NewRFMConfig user={user} closeModal={() => setConfigMenuIsOpen(false)} />
+				)
+			) : null}
 		</div>
 	);
 }
@@ -571,9 +597,9 @@ function SegmentsPageMatrixRFMSyncMenu({ closeMenu, callbacks }: SegmentsPageMat
 	});
 	return (
 		<ResponsiveMenuV2
-			menuTitle="SYNCRONIZAR SEGMENTAÇÕES"
+			menuTitle="SINCRONIZAR SEGMENTAÇÕES"
 			menuDescription="Sincronize as segmentações RFM para atualizar os dados da matriz."
-			menuActionButtonText="SYNCRONIZAR"
+			menuActionButtonText="SINCRONIZAR"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={() => handleSyncSegmentations({ runCampaigns: false })}
 			closeMenu={closeMenu}
