@@ -122,14 +122,8 @@ function PoiTransactionRequestCard({
 	const isRewardMode = resumo?.venda?.modo === "RECOMPENSA";
 
 	// Prize info: prefer data from approved transaction, fallback to summary
-	const prizeDescricao =
-		request.transacaoResgate?.resgateRecompensa?.descricao ??
-		resumo?.recompensa?.prizeTitulo ??
-		null;
-	const prizeImageUrl =
-		request.transacaoResgate?.resgateRecompensa?.imagemCapaUrl ??
-		resumo?.recompensa?.prizeImageUrl ??
-		null;
+	const prizeDescricao = request.transacaoResgate?.resgateRecompensa?.descricao ?? resumo?.recompensa?.prizeTitulo ?? null;
+	const prizeImageUrl = request.transacaoResgate?.resgateRecompensa?.imagemCapaUrl ?? resumo?.recompensa?.prizeImageUrl ?? null;
 
 	return (
 		<div className="bg-card border border-primary/20 flex w-full flex-col gap-1 rounded-xl px-3 py-4 shadow-2xs h-fit">
@@ -143,7 +137,7 @@ function PoiTransactionRequestCard({
 						</h1>
 					</div>
 					{isRewardMode && (
-						<span className="flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[0.65rem] font-bold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+						<span className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[0.65rem] font-bold text-brand dark:bg-brand/30 dark:text-brand">
 							<Gift className="h-3 w-3 min-h-3 min-w-3" />
 							RECOMPENSA
 						</span>
@@ -169,13 +163,7 @@ function PoiTransactionRequestCard({
 
 			{isRewardMode && (prizeDescricao || prizeImageUrl) && (
 				<div className="flex items-center gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800/40 dark:bg-purple-900/10">
-					{prizeImageUrl && (
-						<img
-							src={prizeImageUrl}
-							alt={prizeDescricao ?? "Prêmio"}
-							className="h-10 w-10 min-h-10 min-w-10 rounded-md object-cover"
-						/>
-					)}
+					{prizeImageUrl && <img src={prizeImageUrl} alt={prizeDescricao ?? "Prêmio"} className="h-10 w-10 min-h-10 min-w-10 rounded-md object-cover" />}
 					{!prizeImageUrl && (
 						<div className="flex h-10 w-10 min-h-10 min-w-10 items-center justify-center rounded-md bg-purple-100 dark:bg-purple-900/30">
 							<Gift className="h-5 w-5 text-purple-500" />
@@ -197,7 +185,9 @@ function PoiTransactionRequestCard({
 					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
 						<BadgePercent className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">
-							{isRewardMode ? `RESGATE: ${resumo?.recompensa?.prizeValue ?? resumo?.venda?.valorResgate ?? 0} créditos` : `RESGATE: ${formatToMoney(resumo?.venda?.valorResgate ?? 0)}`}
+							{isRewardMode
+								? `RESGATE: ${resumo?.recompensa?.prizeValue ?? resumo?.venda?.valorResgate ?? 0} créditos`
+								: `RESGATE: ${formatToMoney(resumo?.venda?.valorResgate ?? 0)}`}
 						</p>
 					</div>
 					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
