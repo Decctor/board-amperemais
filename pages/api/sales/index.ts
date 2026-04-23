@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
-import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
+import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import type { TSale } from "@/schemas/sales";
@@ -866,10 +866,24 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 	// Process interactions immediately after transaction (fire-and-forget)
 	if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
 		const weeklyLimitCache = createCampaignWeeklyLimitCache();
-		for (const processingData of result.immediateProcessingDataList) {
-			processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
-				console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
-			);
+		if (result.immediateProcessingDataList.length === 1) {
+			for (const processingData of result.immediateProcessingDataList) {
+				processSingleInteractionImmediately({ ...processingData, weeklyLimitCache }).catch((err) =>
+					console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err),
+				);
+			}
+		} else {
+			processOrganizationInteractionsBatch({
+				organizationId: input.orgId,
+				interactions: result.immediateProcessingDataList,
+				weeklyLimitCache,
+			}).then((processingSummary) => {
+				if (processingSummary.failed > 0 || processingSummary.blocked > 0) {
+					for (const failedResult of processingSummary.results.filter((itemResult) => !itemResult.success)) {
+						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.error);
+					}
+				}
+			});
 		}
 	}
 

@@ -1,5 +1,6 @@
 import { DASTJS_TIME_DURATION_UNITS_MAP } from "@/lib/dates";
-import { type ImmediateProcessingData, processMultipleInteractions } from "@/lib/interactions";
+import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
+import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { type TCampaignEntity, type TInteractionEntity, clients, interactions } from "@/services/drizzle/schema";
@@ -8,9 +9,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
-const IMMEDIATE_PROCESSING_BATCH_SIZE = 25;
 const IMMEDIATE_PROCESSING_CONCURRENCY = 5;
-const IMMEDIATE_PROCESSING_DELAY_BETWEEN_BATCHES_MS = 100;
 
 function getCurrentTimeBlock(currentTime = dayjs()): (typeof TIME_BLOCKS)[number] {
 	const currentHour = currentTime.hour();
@@ -243,28 +242,26 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 			// Process interactions immediately after transaction
 			if (immediateProcessingDataList.length > 0) {
 				console.log(`[ORG: ${organization.id}] [INFO] Processing ${immediateProcessingDataList.length} immediate interactions`);
-				const processingSummary = await processMultipleInteractions({
+				const processingSummary = await processOrganizationInteractionsBatch({
+					organizationId: organization.id,
 					interactions: immediateProcessingDataList,
-					options: {
-						batchSize: IMMEDIATE_PROCESSING_BATCH_SIZE,
-						concurrency: IMMEDIATE_PROCESSING_CONCURRENCY,
-						delayBetweenBatchesMs: IMMEDIATE_PROCESSING_DELAY_BETWEEN_BATCHES_MS,
-						continueOnError: true,
-					},
+					sendConcurrency: IMMEDIATE_PROCESSING_CONCURRENCY,
+					weeklyLimitCache: createCampaignWeeklyLimitCache(),
 				});
 
-				if (processingSummary.failed > 0) {
-					for (const failedResult of processingSummary.results.filter((itemResult) => !itemResult.result.success)) {
-						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.result.error);
+				if (processingSummary.failed > 0 || processingSummary.blocked > 0) {
+					for (const failedResult of processingSummary.results.filter((itemResult) => !itemResult.success)) {
+						console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.error);
 					}
 				}
 
 				console.log(`[ORG: ${organization.id}] [INFO] Finished immediate interactions processing`, {
 					total: processingSummary.total,
-					succeeded: processingSummary.succeeded,
+					succeeded: processingSummary.sent + processingSummary.queued,
 					failed: processingSummary.failed,
-					batchesProcessed: processingSummary.batchesProcessed,
 					durationMs: processingSummary.durationMs,
+					claimed: processingSummary.claimed,
+					blocked: processingSummary.blocked,
 				});
 			}
 		}

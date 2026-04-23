@@ -4,7 +4,7 @@ import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-ca
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
-import { type ImmediateProcessingData, processSingleInteractionImmediately } from "@/lib/interactions";
+import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-variables";
@@ -178,10 +178,7 @@ type TProcessPointOfInteractionTransactionParams = {
 	};
 };
 
-export async function processPointOfInteractionTransaction({
-	input,
-	operatorContext,
-}: TProcessPointOfInteractionTransactionParams) {
+export async function processPointOfInteractionTransaction({ input, operatorContext }: TProcessPointOfInteractionTransactionParams) {
 	console.log(`[POI ${input.orgId}] [NEW_TRANSACTION]`, input);
 	const result = await db.transaction(async (tx) => {
 		const program = await tx.query.cashbackPrograms.findFirst({
@@ -770,23 +767,32 @@ export async function processPointOfInteractionTransaction({
 
 	if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
 		const weeklyLimitCache = createCampaignWeeklyLimitCache();
-		// Create all processing promises
-		const processingPromises = result.immediateProcessingDataList.map(async (processingData) => {
-			console.log(`[POI] [IMMEDIATE_PROCESS] Processing interaction ${processingData.interactionId} for client ${processingData.client.id}`);
-			console.log(
-				`[POI] [IMMEDIATE_PROCESS] Client phone: ${processingData.client.telefone}, Template: ${processingData.campaign.whatsappTemplate?.nome || "unknown"}`,
-			);
 
-			try {
-				await processSingleInteractionImmediately({
-					...processingData,
-					weeklyLimitCache,
-				});
-				console.log(`[POI] [IMMEDIATE_PROCESS] Successfully processed interaction ${processingData.interactionId}`);
-			} catch (err) {
-				console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
-			}
-		});
+		const processingPromises =
+			result.immediateProcessingDataList.length === 1
+				? result.immediateProcessingDataList.map(async (processingData) => {
+						try {
+							await processSingleInteractionImmediately({
+								...processingData,
+								weeklyLimitCache,
+							});
+						} catch (err) {
+							console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
+						}
+					})
+				: [
+						processOrganizationInteractionsBatch({
+							organizationId: input.orgId,
+							interactions: result.immediateProcessingDataList,
+							weeklyLimitCache,
+						}).then((batchResult) => {
+							if (batchResult.failed > 0) {
+								for (const failedResult of batchResult.results.filter((itemResult) => !itemResult.success)) {
+									console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.error);
+								}
+							}
+						}),
+					];
 
 		// Use waitUntil to keep the function alive until all processing is complete
 		// This allows us to return the response immediately while ensuring the background work finishes
@@ -1148,12 +1154,7 @@ async function handleCampaignProcessingForFirstPurchase({
 				HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
 				HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 			});
-			if (
-				shouldProcessImmediately &&
-				campaign.whatsappTemplate &&
-				campaign.whatsappConexaoTelefone?.conexao &&
-				campaign.whatsappConexaoTelefoneId
-			) {
+			if (shouldProcessImmediately && campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
 				const clientData = await tx.query.clients.findFirst({
 					where: (fields, { eq }) => eq(fields.id, clientId),
 					columns: {
@@ -1308,7 +1309,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 				organizacaoId: orgId,
 				titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 				tipo: "ENVIO-MENSAGEM",
-				descricao: `Cliente acumulou R$ ${(clientCashbackToAccumulate).toFixed(2)} em cashback. Total acumulado: R$ ${(clientCashbackAvailableBalance).toFixed(2)}.`,
+				descricao: `Cliente acumulou R$ ${clientCashbackToAccumulate.toFixed(2)} em cashback. Total acumulado: R$ ${clientCashbackAvailableBalance.toFixed(2)}.`,
 				agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 				agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 				metadados: interactionContextMetadados,
