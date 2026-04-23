@@ -9,6 +9,215 @@ import {
 	TimeDurationUnitsEnum,
 } from "./enums";
 
+export const CampaignFilterLogicOperatorEnum = z.enum(["AND", "OR", "NOT"], {
+	required_error: "Operador lógico do filtro não informado.",
+	invalid_type_error: "Tipo não válido para o operador lógico do filtro.",
+});
+export type TCampaignFilterLogicOperatorEnum = z.infer<typeof CampaignFilterLogicOperatorEnum>;
+
+export const CampaignProductClientReferenceWindowEnum = z.enum(["GERAL", "30_DIAS", "90_DIAS"], {
+	required_error: "Janela do filtro não informada.",
+	invalid_type_error: "Tipo não válido para a janela do filtro.",
+});
+export type TCampaignProductClientReferenceWindowEnum = z.infer<typeof CampaignProductClientReferenceWindowEnum>;
+
+export const CampaignLocationFilterConfigSchema = z
+	.object({
+		estados: z
+			.array(
+				z
+					.string({
+						required_error: "Estado do filtro não informado.",
+						invalid_type_error: "Tipo não válido para o estado do filtro.",
+					})
+					.trim()
+					.min(1, "Estado do filtro não informado."),
+				{
+					required_error: "Estados do filtro não informados.",
+					invalid_type_error: "Tipo não válido para os estados do filtro.",
+				},
+			)
+			.optional(),
+		cidades: z
+			.array(
+				z
+					.string({
+						required_error: "Cidade do filtro não informada.",
+						invalid_type_error: "Tipo não válido para a cidade do filtro.",
+					})
+					.trim()
+					.min(1, "Cidade do filtro não informada."),
+				{
+					required_error: "Cidades do filtro não informadas.",
+					invalid_type_error: "Tipo não válido para as cidades do filtro.",
+				},
+			)
+			.optional(),
+		bairros: z
+			.array(
+				z
+					.string({
+						required_error: "Bairro do filtro não informado.",
+						invalid_type_error: "Tipo não válido para o bairro do filtro.",
+					})
+					.trim()
+					.min(1, "Bairro do filtro não informado."),
+				{
+					required_error: "Bairros do filtro não informados.",
+					invalid_type_error: "Tipo não válido para os bairros do filtro.",
+				},
+			)
+			.optional(),
+	})
+	.superRefine((value, ctx) => {
+		const hasAtLeastOneLevel = [value.estados, value.cidades, value.bairros].some((items) => Array.isArray(items) && items.length > 0);
+
+		if (!hasAtLeastOneLevel) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Informe ao menos um nível de localização para o filtro.",
+			});
+		}
+	});
+export type TCampaignLocationFilterConfig = z.infer<typeof CampaignLocationFilterConfigSchema>;
+
+export const CampaignTopBuyersProductFilterConfigSchema = z.object({
+	produtoId: z.string({
+		required_error: "Produto do filtro não informado.",
+		invalid_type_error: "Tipo não válido para o produto do filtro.",
+	}),
+	janela: CampaignProductClientReferenceWindowEnum,
+	top: z
+		.number({
+			required_error: "Top do filtro não informado.",
+			invalid_type_error: "Tipo não válido para o top do filtro.",
+		})
+		.int("Top do filtro deve ser um número inteiro.")
+		.positive("Top do filtro deve ser maior que zero."),
+});
+export type TCampaignTopBuyersProductFilterConfig = z.infer<typeof CampaignTopBuyersProductFilterConfigSchema>;
+
+export const CampaignFilterConditionSchema = z.discriminatedUnion("tipo", [
+	z.object({
+		id: z
+			.string({
+				required_error: "ID da condição do filtro não informado.",
+				invalid_type_error: "Tipo não válido para o ID da condição do filtro.",
+			})
+			.optional(),
+		tipo: z.literal("LOCALIZAÇÃO"),
+		configuracao: CampaignLocationFilterConfigSchema,
+	}),
+	z.object({
+		id: z
+			.string({
+				required_error: "ID da condição do filtro não informado.",
+				invalid_type_error: "Tipo não válido para o ID da condição do filtro.",
+			})
+			.optional(),
+		tipo: z.literal("TOP_COMPRADORES_PRODUTO"),
+		configuracao: CampaignTopBuyersProductFilterConfigSchema,
+	}),
+]);
+export type TCampaignFilterCondition = z.infer<typeof CampaignFilterConditionSchema>;
+
+export const CampaignFilterNodeSchema: z.ZodType<any> = z.lazy(() =>
+	z.union([
+		z
+			.object({
+				id: z
+					.string({
+						required_error: "ID do grupo de filtro não informado.",
+						invalid_type_error: "Tipo não válido para o ID do grupo de filtro.",
+					})
+					.optional(),
+				tipo: z.literal("GRUPO"),
+				operador: CampaignFilterLogicOperatorEnum,
+				itens: z.array(CampaignFilterNodeSchema, {
+					required_error: "Itens do grupo de filtro não informados.",
+					invalid_type_error: "Tipo não válido para os itens do grupo de filtro.",
+				}),
+			})
+			.superRefine((value, ctx) => {
+				if (value.operador === "NOT" && value.itens.length !== 1) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "Grupos com operador NOT devem possuir exatamente um item.",
+						path: ["itens"],
+					});
+				}
+
+				if ((value.operador === "AND" || value.operador === "OR") && value.itens.length === 0) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "Grupos com operador AND ou OR devem possuir ao menos um item.",
+						path: ["itens"],
+					});
+				}
+			}),
+		z.object({
+			tipo: z.literal("CONDICAO"),
+			condicao: CampaignFilterConditionSchema,
+		}),
+	]),
+);
+export type TCampaignFilterNode = z.infer<typeof CampaignFilterNodeSchema>;
+
+// Explicit recursive TS types. `CampaignFilterNodeSchema` is a `z.lazy` so its inferred
+// type collapses to `any`; these mirror the validated shape so state helpers and UI code
+// get real type safety while Zod still owns runtime validation.
+export type TCampaignFilterTreeNode =
+	| {
+			id?: string;
+			tipo: "GRUPO";
+			operador: TCampaignFilterLogicOperatorEnum;
+			itens: TCampaignFilterTreeNode[];
+	  }
+	| {
+			tipo: "CONDICAO";
+			condicao: TCampaignFilterCondition;
+	  };
+
+export const CampaignFiltersSchema = z
+	.object({
+		id: z
+			.string({
+				required_error: "ID do grupo raiz do filtro não informado.",
+				invalid_type_error: "Tipo não válido para o ID do grupo raiz do filtro.",
+			})
+			.optional(),
+		tipo: z.literal("GRUPO"),
+		operador: CampaignFilterLogicOperatorEnum,
+		itens: z.array(CampaignFilterNodeSchema, {
+			required_error: "Itens do filtro não informados.",
+			invalid_type_error: "Tipo não válido para os itens do filtro.",
+		}),
+	})
+	.superRefine((value, ctx) => {
+		if (value.operador === "NOT" && value.itens.length !== 1) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "O grupo raiz com operador NOT deve possuir exatamente um item.",
+				path: ["itens"],
+			});
+		}
+
+		if ((value.operador === "AND" || value.operador === "OR") && value.itens.length === 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "O grupo raiz com operador AND ou OR deve possuir ao menos um item.",
+				path: ["itens"],
+			});
+		}
+	});
+export type TCampaignFilters = z.infer<typeof CampaignFiltersSchema>;
+export type TCampaignFiltersTree = {
+	id?: string;
+	tipo: "GRUPO";
+	operador: TCampaignFilterLogicOperatorEnum;
+	itens: TCampaignFilterTreeNode[];
+};
+
 export const CampaignSchema = z.object({
 	ativo: z
 		.boolean({
@@ -184,6 +393,7 @@ export const CampaignSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	filtros: CampaignFiltersSchema.optional().nullable(),
 
 	dataInsercao: z
 		.string({
@@ -206,7 +416,7 @@ export const CampaignSegmentationSchema = z.object({
 });
 
 export const CampaignStateSchema = z.object({
-	campaign: CampaignSchema.omit({ dataInsercao: true, autorId: true }),
+	campaign: CampaignSchema.omit({ dataInsercao: true, autorId: true, filtros: true }),
 	segmentations: z.array(
 		CampaignSegmentationSchema.omit({ campanhaId: true }).extend({
 			id: z
@@ -223,5 +433,10 @@ export const CampaignStateSchema = z.object({
 				.optional(),
 		}),
 	),
+	filtros: CampaignFiltersSchema.optional().nullable(),
 });
-export type TCampaignState = z.infer<typeof CampaignStateSchema>;
+export type TCampaignState = Omit<z.infer<typeof CampaignStateSchema>, "filtros"> & {
+	// Override with the explicit recursive tree type so state helpers stay type-safe.
+	// The Zod schema still validates runtime shape identically.
+	filtros: TCampaignFiltersTree;
+};

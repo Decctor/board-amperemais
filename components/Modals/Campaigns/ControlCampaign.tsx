@@ -2,6 +2,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
 import { updateCampaign as updateCampaignMutation } from "@/lib/mutations/campaigns";
 import { useCampaignById } from "@/lib/queries/campaigns";
+import type { TCampaignFiltersTree } from "@/schemas/campaigns";
 import { useCampaignState } from "@/state-hooks/use-campaign-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -11,8 +12,10 @@ import CampaignsCashbackGenerationBlock from "./Blocks/CashbackGeneration";
 import CampaignsConfigBlock from "./Blocks/Config";
 import CampaignsConversionBlock from "./Blocks/Conversion";
 import CampaignsExecutionBlock from "./Blocks/Execution";
+import CampaignsFiltersBlock from "./Blocks/Filters";
 import CampaignsGeneralBlock from "./Blocks/General";
 import CampaignsTriggerBlock from "./Blocks/Trigger";
+import { normalizeFiltersForSubmit } from "./utils";
 
 type ControlCampaignProps = {
 	campaignId: string;
@@ -27,7 +30,20 @@ type ControlCampaignProps = {
 };
 export default function ControlCampaign({ campaignId, organizationId, closeModal, callbacks }: ControlCampaignProps) {
 	const queryClient = useQueryClient();
-	const { state, updateCampaign, addSegmentation, updateSegmentation, deleteSegmentation, resetState, redefineState } = useCampaignState();
+	const {
+		state,
+		updateCampaign,
+		addSegmentation,
+		updateSegmentation,
+		deleteSegmentation,
+		updateFiltersRoot,
+		addFilterCondition,
+		updateFilterCondition,
+		addFilterGroup,
+		updateFilterGroupOperator,
+		removeFilterNode,
+		redefineState,
+	} = useCampaignState();
 
 	const { data: campaign, queryKey, isLoading, isError, isSuccess, error } = useCampaignById({ id: campaignId });
 
@@ -53,7 +69,15 @@ export default function ControlCampaign({ campaignId, organizationId, closeModal
 		},
 	});
 	useEffect(() => {
-		if (campaign) redefineState({ campaign: campaign, segmentations: campaign.segmentacoes });
+		if (!campaign) return;
+		// Split the persisted campaign.filtros off from the campaign record so the state
+		// hook can keep it at the top level. Empty / null persisted filtros → empty root.
+		const { filtros: persistedFiltros, ...rest } = campaign;
+		const filtrosTree: TCampaignFiltersTree =
+			persistedFiltros && (persistedFiltros as TCampaignFiltersTree).tipo === "GRUPO"
+				? (persistedFiltros as TCampaignFiltersTree)
+				: { tipo: "GRUPO", operador: "AND", itens: [] };
+		redefineState({ campaign: rest, segmentations: campaign.segmentacoes, filtros: filtrosTree });
 	}, [campaign, redefineState]);
 	return (
 		<ResponsiveMenu
@@ -61,7 +85,13 @@ export default function ControlCampaign({ campaignId, organizationId, closeModal
 			menuDescription="Preencha os campos abaixo para editar a campanha"
 			menuActionButtonText="ATUALIZAR CAMPANHA"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => handleUpdateCampaignMutation({ campaignId: campaignId, campaign: state.campaign, segmentations: state.segmentations })}
+			actionFunction={() =>
+				handleUpdateCampaignMutation({
+					campaignId: campaignId,
+					campaign: { ...state.campaign, filtros: normalizeFiltersForSubmit(state.filtros) },
+					segmentations: state.segmentations,
+				})
+			}
 			actionIsLoading={isPending}
 			stateIsLoading={isLoading}
 			stateError={error ? getErrorMessage(error) : null}
@@ -75,6 +105,17 @@ export default function ControlCampaign({ campaignId, organizationId, closeModal
 				updateSegmentation={updateSegmentation}
 				deleteSegmentation={deleteSegmentation}
 			/>
+			{/** TODO: ENABLE BACK AFTER TESTING */}
+			{/* <CampaignsFiltersBlock
+				filtros={state.filtros}
+				campaignSegmentations={state.segmentations}
+				addFilterCondition={addFilterCondition}
+				updateFilterCondition={updateFilterCondition}
+				addFilterGroup={addFilterGroup}
+				updateFilterGroupOperator={updateFilterGroupOperator}
+				updateFiltersRoot={updateFiltersRoot}
+				removeFilterNode={removeFilterNode}
+			/> */}
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsExecutionBlock campaign={state.campaign} updateCampaign={updateCampaign} campaignSegmentations={state.segmentations} />
 			<CampaignsActionBlock organizationId={organizationId} campaign={state.campaign} updateCampaign={updateCampaign} />

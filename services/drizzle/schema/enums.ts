@@ -173,6 +173,53 @@ export const paymentMethodEnum = pgEnum("payment_method", [
 	"OUTRO",
 ]);
 
+export const fiscalDocumentEnvironmentEnum = pgEnum("fiscal_document_environment", ["HOMOLOGACAO", "PRODUCAO"]);
+
+export const fiscalDocumentLifecycleStatusEnum = pgEnum("fiscal_document_lifecycle_status", [
+	"RASCUNHO",
+	"PRONTO_PARA_ENVIO",
+	"EM_PROCESSAMENTO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"CANCELAMENTO_PENDENTE",
+	"CANCELADO",
+	"ERRO",
+]);
+
+export const fiscalDocumentEventTypeEnum = pgEnum("fiscal_document_event_type", [
+	"CRIADO",
+	"ENVIO_SOLICITADO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"SINCRONIZADO",
+	"CANCELAMENTO_SOLICITADO",
+	"CANCELADO",
+	"ERRO",
+]);
+
+export const fiscalOperationConsumerPresenceEnum = pgEnum("fiscal_operation_consumer_presence", [
+	"NAO_SE_APLICA",
+	"OPERACAO_PRESENCIAL",
+	"INTERNET",
+	"TELEATENDIMENTO",
+	"ENTREGA_DOMICILIO",
+]);
+
+export const fiscalOperationFinalityEnum = pgEnum("fiscal_operation_finality", ["NORMAL", "COMPLEMENTAR", "AJUSTE", "DEVOLUCAO"]);
+
+export const fiscalProductOriginEnum = pgEnum("fiscal_product_origin", [
+	"NACIONAL",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL",
+	"NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+	"NACIONAL_PROCESSOS_BASICOS",
+	"NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+]);
+
+export const fiscalClientTaxIndicatorEnum = pgEnum("fiscal_client_tax_indicator", ["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
+
 export const deliveryModeEnum = pgEnum("delivery_mode", ["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"]);
 
 export const purchaseStatusEnum = pgEnum("purchase_status", ["RASCUNHO", "CONFIRMADA", "RECEBIMENTO_PARCIAL", "RECEBIDA", "CANCELADA"]);
@@ -186,3 +233,5 @@ export const poiTransactionRequestStatusEnum = pgEnum("poi_transaction_request_s
 export const poiTransactionRequestTypeEnum = pgEnum("poi_transaction_request_type", ["NOVA_TRANSACAO"]);
 
 export const accountChartNatureEnum = pgEnum("account_chart_nature", ["ATIVO", "PASSIVO", "PATRIMONIO_LIQUIDO", "RECEITA", "CUSTO", "DESPESA"]);
+
+export const productClientReferenceWindowEnum = pgEnum("product_client_reference_window", ["GERAL", "30_DIAS", "90_DIAS"]);

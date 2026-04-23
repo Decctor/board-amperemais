@@ -4,6 +4,7 @@ import { cashbackProgramBalances, cashbackProgramTransactions } from "./cashback
 import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
+import { fiscalClientTaxIndicatorEnum } from "./enums";
 
 export const clients = newTable(
 	"clients",
@@ -15,6 +16,9 @@ export const clients = newTable(
 		idExterno: varchar("id_externo", { length: 255 }),
 		nome: text("nome").notNull(),
 		cpfCnpj: text("cpf_cnpj"),
+		inscricaoEstadual: text("inscricao_estadual"),
+		indicadorInscricaoEstadual: fiscalClientTaxIndicatorEnum("indicador_inscricao_estadual").default("NAO_CONTRIBUINTE"),
+		suframa: text("suframa"),
 		// Communication
 		telefone: text("telefone").notNull().default(""),
 		telefoneBase: text("telefone_base").notNull().default(""),

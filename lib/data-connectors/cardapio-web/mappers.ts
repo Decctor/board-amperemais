@@ -1,15 +1,22 @@
-import { formatPhoneAsBase, formatToPhone } from "@/lib/formatting";
+import { formatPhoneAsBase, formatToCEP, formatToPhone } from "@/lib/formatting";
 import type { TGetCardapioWebOrderDetailsOutput } from "./types";
+import { TClientEntity } from "@/services/drizzle/schema";
 
 // -----------------------------------------------------------------------------
 // TYPE DEFINITIONS FOR MAPPED ENTITIES
 // -----------------------------------------------------------------------------
 
 export interface MappedCardapioWebClient {
-	idExterno: string;
-	nome: string;
-	telefone: string;
-	telefoneBase: string;
+	idExterno: TClientEntity["idExterno"];
+	nome: TClientEntity["nome"];
+	telefone: TClientEntity["telefone"];
+	telefoneBase: TClientEntity["telefoneBase"];
+	localizacaoCep: TClientEntity["localizacaoCep"];
+	localizacaoEstado: TClientEntity["localizacaoEstado"];
+	localizacaoCidade: TClientEntity["localizacaoCidade"];
+	localizacaoBairro: TClientEntity["localizacaoBairro"];
+	localizacaoLogradouro: TClientEntity["localizacaoLogradouro"];
+	localizacaoNumero: TClientEntity["localizacaoNumero"];
 }
 
 export interface MappedCardapioWebProduct {
@@ -93,7 +100,10 @@ export interface MappedCardapioWebSale {
  * Maps CardapioWeb customer data to our internal client format.
  * Returns null if no customer data is provided (anonymous orders).
  */
-export function mapCardapioWebClient(customer: TGetCardapioWebOrderDetailsOutput["customer"]): MappedCardapioWebClient | null {
+export function mapCardapioWebClient(
+	customer: TGetCardapioWebOrderDetailsOutput["customer"],
+	deliveryAddress: TGetCardapioWebOrderDetailsOutput["delivery_address"],
+): MappedCardapioWebClient | null {
 	if (!customer) return null;
 
 	const phone = formatToPhone(customer.phone || "");
@@ -104,6 +114,12 @@ export function mapCardapioWebClient(customer: TGetCardapioWebOrderDetailsOutput
 		nome: customer.name || "CLIENTE CARDAPIO WEB",
 		telefone: phone,
 		telefoneBase: phoneBase,
+		localizacaoCep: deliveryAddress?.postal_code ? formatToCEP(deliveryAddress.postal_code) : null,
+		localizacaoEstado: deliveryAddress?.state?.toUpperCase() || null,
+		localizacaoCidade: deliveryAddress?.city?.toUpperCase() || null,
+		localizacaoBairro: deliveryAddress?.neighborhood || "",
+		localizacaoLogradouro: deliveryAddress?.street || "",
+		localizacaoNumero: deliveryAddress?.number || "",
 	};
 }
 
@@ -316,7 +332,7 @@ export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): Ma
 		onsite: "PRESENCIAL",
 		closed_table: "COMANDA",
 	};
-	const client = mapCardapioWebClient(order.customer);
+	const client = mapCardapioWebClient(order.customer, order.delivery_address);
 	return {
 		idExterno: order.id.toString(),
 		displayId: order.display_id.toString(),

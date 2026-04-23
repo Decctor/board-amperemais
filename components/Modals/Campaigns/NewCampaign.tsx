@@ -10,8 +10,10 @@ import CampaignsCashbackGenerationBlock from "./Blocks/CashbackGeneration";
 import CampaignsConfigBlock from "./Blocks/Config";
 import CampaignsConversionBlock from "./Blocks/Conversion";
 import CampaignsExecutionBlock from "./Blocks/Execution";
+import CampaignsFiltersBlock from "./Blocks/Filters";
 import CampaignsGeneralBlock from "./Blocks/General";
 import CampaignsTriggerBlock from "./Blocks/Trigger";
+import { normalizeFiltersForSubmit } from "./utils";
 
 type NewCampaignProps = {
 	user: TAuthUserSession["user"];
@@ -25,7 +27,19 @@ type NewCampaignProps = {
 	};
 };
 export default function NewCampaign({ user, organizationId, closeModal, callbacks }: NewCampaignProps) {
-	const { state, updateCampaign, addSegmentation, updateSegmentation, deleteSegmentation, resetState, redefineState } = useCampaignState();
+	const {
+		state,
+		updateCampaign,
+		addSegmentation,
+		updateSegmentation,
+		deleteSegmentation,
+		updateFiltersRoot,
+		addFilterCondition,
+		updateFilterCondition,
+		addFilterGroup,
+		updateFilterGroupOperator,
+		removeFilterNode,
+	} = useCampaignState();
 
 	const { mutate: handleCreateCampaignMutation, isPending } = useMutation({
 		mutationKey: ["create-campaign"],
@@ -53,7 +67,12 @@ export default function NewCampaign({ user, organizationId, closeModal, callback
 			menuDescription="Preencha os campos abaixo para criar uma nova campanha"
 			menuActionButtonText="CRIAR CAMPANHA"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => handleCreateCampaignMutation({ campaign: state.campaign, segmentations: state.segmentations })}
+			actionFunction={() =>
+				handleCreateCampaignMutation({
+					campaign: { ...state.campaign, filtros: normalizeFiltersForSubmit(state.filtros) },
+					segmentations: state.segmentations,
+				})
+			}
 			actionIsLoading={isPending}
 			stateIsLoading={false}
 			stateError={null}
@@ -68,6 +87,17 @@ export default function NewCampaign({ user, organizationId, closeModal, callback
 				updateSegmentation={updateSegmentation}
 				deleteSegmentation={deleteSegmentation}
 			/>
+			{/** TODO: ENABLE BACK AFTER TESTING */}
+			{/* <CampaignsFiltersBlock
+				filtros={state.filtros}
+				campaignSegmentations={state.segmentations}
+				addFilterCondition={addFilterCondition}
+				updateFilterCondition={updateFilterCondition}
+				addFilterGroup={addFilterGroup}
+				updateFilterGroupOperator={updateFilterGroupOperator}
+				updateFiltersRoot={updateFiltersRoot}
+				removeFilterNode={removeFilterNode}
+			/> */}
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsExecutionBlock campaign={state.campaign} updateCampaign={updateCampaign} campaignSegmentations={state.segmentations} />
 			<CampaignsActionBlock organizationId={organizationId} campaign={state.campaign} updateCampaign={updateCampaign} />

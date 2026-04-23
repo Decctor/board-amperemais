@@ -1,6 +1,6 @@
 import type { TAttributionModelEnum } from "@/schemas/enums";
 import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users, whatsappConnectionPhones, whatsappTemplates } from ".";
 import {
 	campaignExecutionDelayDirectionEnum,
@@ -11,6 +11,7 @@ import {
 	timeDurationUnitsEnum,
 } from "./enums";
 import { organizations } from "./organizations";
+import type { TCampaignFilters } from "@/schemas/campaigns";
 
 export const campaigns = newTable("campaigns", {
 	id: varchar("id", { length: 255 })
@@ -66,6 +67,8 @@ export const campaigns = newTable("campaigns", {
 	autorId: varchar("autor_id", { length: 255 })
 		.references(() => users.id)
 		.notNull(),
+
+	filtros: jsonb("filtros").$type<TCampaignFilters>(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 
 	// Attribution settings
