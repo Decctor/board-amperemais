@@ -171,4 +171,8 @@ export const cashbackProgramTransactionRelations = relations(cashbackProgramTran
 		fields: [cashbackProgramTransactions.campanhaId],
 		references: [campaigns.id],
 	}),
+	resgateRecompensa: one(cashbackProgramPrizes, {
+		fields: [cashbackProgramTransactions.resgateRecompensaId],
+		references: [cashbackProgramPrizes.id],
+	}),
 }));

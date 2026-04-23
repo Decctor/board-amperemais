@@ -5,7 +5,7 @@ import {
 import { appApiHandler } from "@/lib/app-api";
 import { buildPoiTransactionRequestSummary } from "@/lib/point-of-interaction/transaction-requests";
 import { db } from "@/services/drizzle";
-import { poiTransactionRequests } from "@/services/drizzle/schema";
+import { cashbackProgramPrizes, poiTransactionRequests } from "@/services/drizzle/schema";
 import { desc, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
@@ -18,7 +18,17 @@ export type TCreatePoiTransactionRequestInput = z.infer<typeof CreatePoiTransact
 
 async function createPoiTransactionRequest({ input }: { input: TCreatePoiTransactionRequestInput }) {
 	const tokenPublico = crypto.randomUUID();
-	const resumoSolicitacao = buildPoiTransactionRequestSummary(input.payload);
+
+	let prizeInfo: { titulo?: string | null; imagemCapaUrl?: string | null } | null = null;
+	if (input.payload.sale.prizeRedemption?.prizeId) {
+		const prize = await db.query.cashbackProgramPrizes.findFirst({
+			where: eq(cashbackProgramPrizes.id, input.payload.sale.prizeRedemption.prizeId),
+			columns: { titulo: true, imagemCapaUrl: true },
+		});
+		prizeInfo = prize ?? null;
+	}
+
+	const resumoSolicitacao = buildPoiTransactionRequestSummary(input.payload, prizeInfo);
 
 	const [request] = await db
 		.insert(poiTransactionRequests)

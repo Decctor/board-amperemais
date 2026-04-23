@@ -6,6 +6,7 @@ import { poiTransactionRequestStatusEnum, poiTransactionRequestTypeEnum } from "
 import { organizations, organizationMembers } from "./organizations";
 import { sales } from "./sales";
 import { sellers } from "./sellers";
+import { cashbackProgramTransactions } from "./cashback-programs";
 
 export const poiTransactionRequests = newTable(
 	"poi_transaction_requests",
@@ -63,6 +64,16 @@ export const poiTransactionRequestsRelations = relations(poiTransactionRequests,
 	operadorAprovadorVendedor: one(sellers, {
 		fields: [poiTransactionRequests.operadorAprovadorVendedorId],
 		references: [sellers.id],
+	}),
+	transacaoAcumulo: one(cashbackProgramTransactions, {
+		fields: [poiTransactionRequests.transacaoAcumuloId],
+		references: [cashbackProgramTransactions.id],
+		relationName: "transacaoAcumulo",
+	}),
+	transacaoResgate: one(cashbackProgramTransactions, {
+		fields: [poiTransactionRequests.transacaoResgateId],
+		references: [cashbackProgramTransactions.id],
+		relationName: "transacaoResgate",
 	}),
 }));
 

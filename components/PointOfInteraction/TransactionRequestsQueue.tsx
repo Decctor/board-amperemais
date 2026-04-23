@@ -10,7 +10,7 @@ import { rejectPoiTransactionRequest } from "@/lib/mutations/poi-transaction-req
 import { usePoiTransactionRequests } from "@/lib/queries/poi-transaction-requests";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgeDollarSign, BadgePercent, CheckCheck, GitPullRequestArrow, Phone, RefreshCcw, X } from "lucide-react";
+import { BadgeDollarSign, BadgePercent, CheckCheck, Gift, GitPullRequestArrow, Phone, RefreshCcw, X } from "lucide-react";
 import { BsCalendarPlus } from "react-icons/bs";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -117,9 +117,19 @@ function PoiTransactionRequestCard({
 	const resumo = request.resumoSolicitacao as {
 		cliente?: { nome?: string; telefone?: string };
 		venda?: { valorBruto?: number; valorResgate?: number; valorFinal?: number; modo?: string };
-		recompensa?: { prizeValue?: number; prizeSaleValue?: number } | null;
+		recompensa?: { prizeValue?: number; prizeSaleValue?: number; prizeTitulo?: string | null; prizeImageUrl?: string | null } | null;
 	};
 	const isRewardMode = resumo?.venda?.modo === "RECOMPENSA";
+
+	// Prize info: prefer data from approved transaction, fallback to summary
+	const prizeDescricao =
+		request.transacaoResgate?.resgateRecompensa?.descricao ??
+		resumo?.recompensa?.prizeTitulo ??
+		null;
+	const prizeImageUrl =
+		request.transacaoResgate?.resgateRecompensa?.imagemCapaUrl ??
+		resumo?.recompensa?.prizeImageUrl ??
+		null;
 
 	return (
 		<div className="bg-card border border-primary/20 flex w-full flex-col gap-1 rounded-xl px-3 py-4 shadow-2xs h-fit">
@@ -132,6 +142,12 @@ function PoiTransactionRequestCard({
 							{request.cliente?.telefone ?? resumo?.cliente?.telefone ?? "Telefone não informado"}
 						</h1>
 					</div>
+					{isRewardMode && (
+						<span className="flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[0.65rem] font-bold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+							<Gift className="h-3 w-3 min-h-3 min-w-3" />
+							RECOMPENSA
+						</span>
+					)}
 				</div>
 
 				<div className="flex items-center gap-3">
@@ -150,6 +166,27 @@ function PoiTransactionRequestCard({
 					</div>
 				</div>
 			</div>
+
+			{isRewardMode && (prizeDescricao || prizeImageUrl) && (
+				<div className="flex items-center gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800/40 dark:bg-purple-900/10">
+					{prizeImageUrl && (
+						<img
+							src={prizeImageUrl}
+							alt={prizeDescricao ?? "Prêmio"}
+							className="h-10 w-10 min-h-10 min-w-10 rounded-md object-cover"
+						/>
+					)}
+					{!prizeImageUrl && (
+						<div className="flex h-10 w-10 min-h-10 min-w-10 items-center justify-center rounded-md bg-purple-100 dark:bg-purple-900/30">
+							<Gift className="h-5 w-5 text-purple-500" />
+						</div>
+					)}
+					<div className="flex flex-col gap-0.5">
+						<p className="text-[0.65rem] font-semibold uppercase tracking-tight text-purple-700 dark:text-purple-300">Prêmio resgatado</p>
+						<p className="text-xs font-bold text-purple-900 dark:text-purple-100">{prizeDescricao}</p>
+					</div>
+				</div>
+			)}
 
 			<div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
 				<div className="flex items-center gap-3 flex-wrap">

@@ -35,6 +35,28 @@ async function getPoiTransactionRequests({ input, orgId }: { input: TGetPoiTrans
 					nome: true,
 				},
 			},
+			transacaoAcumulo: {
+				columns: {
+					id: true,
+					valor: true,
+				},
+				with: {},
+			},
+			transacaoResgate: {
+				columns: {
+					id: true,
+					valor: true,
+				},
+				with: {
+					resgateRecompensa: {
+						columns: {
+							id: true,
+							descricao: true,
+							imagemCapaUrl: true,
+						},
+					},
+				},
+			},
 		},
 		orderBy: [desc(poiTransactionRequests.dataInsercao)],
 	});
