@@ -106,7 +106,7 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 		})
 		.returning({ id: whatsappTemplates.id });
 
-	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; error?: string }> = [];
+	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; success: boolean; message?: string }> = [];
 
 	// 2. Create template in Meta API for each phone and insert child records
 
@@ -155,24 +155,27 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 			});
 
 			phoneResults.push({
+				success: true,
 				telefoneId: telefone.id,
 				whatsappTemplateId: metaWhatsappTemplateId,
+				message: metaWhatsappTemplateId ? "Template criado com sucesso na Meta." : "Template criado com sucesso.",
 			});
 
 			console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Created template for phone ${telefone.numero}: ${metaWhatsappTemplateId}`);
 		} catch (error) {
 			console.error(`[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to create template for phone ${telefone.numero}:`, error);
 			phoneResults.push({
+				success: false,
 				telefoneId: telefone.id,
 				whatsappTemplateId: null,
-				error: error instanceof Error ? error.message : "Erro desconhecido",
+				message: error instanceof Error ? error.message : "Erro desconhecido",
 			});
 		}
 	}
-	const successfulPhones = phoneResults.filter((r) => r.whatsappTemplateId !== null);
-	const failedPhones = phoneResults.filter((r) => r.whatsappTemplateId === null);
+	const successfulPhones = phoneResults.filter((r) => r.success);
+	const failedPhones = phoneResults.filter((r) => !r.success);
 	if (successfulPhones.length === 0 && failedPhones.length > 0) {
-		throw new createHttpError.BadRequest(failedPhones[0]?.error || "Erro ao criar template no WhatsApp.");
+		throw new createHttpError.BadRequest(failedPhones[0]?.message || "Oops, algo deu errado ao criar o template de mensagem.");
 	}
 	return {
 		data: {

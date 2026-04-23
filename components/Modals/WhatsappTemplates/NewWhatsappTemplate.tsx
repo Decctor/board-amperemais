@@ -35,9 +35,11 @@ function NewWhatsappTemplate({ organizationId, closeMenu, callbacks, triggerCont
 		},
 		onSuccess: async (data) => {
 			if (callbacks?.onSuccess) callbacks.onSuccess({ templateId: data.data.insertedId });
-			return toast.success(data.message);
+			toast.success(data.message);
+			return closeMenu();
 		},
 		onError: async (error) => {
+			console.log("[HANDLE CREATE WHATSAPP TEMPLATE ERROR]", error);
 			if (callbacks?.onError) callbacks.onError();
 			return toast.error(getErrorMessage(error));
 		},
