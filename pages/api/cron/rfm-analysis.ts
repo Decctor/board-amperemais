@@ -10,6 +10,7 @@ import { type DBTransaction, db } from "@/services/drizzle";
 import { clients, interactions, sales, utils } from "@/services/drizzle/schema";
 import { getRFMLabel } from "@/utils/rfm";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { formatDurationMs } from "@/lib/formatting";
 
 const intervalStart = dayjs().subtract(12, "month").startOf("day").toDate();
 const intervalEnd = dayjs().endOf("day").toDate();
@@ -207,12 +208,10 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 				.where(eq(clients.organizacaoId, organization.id))
 				.groupBy(clients.id);
 
-			console.log(
-				`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Loaded ${accumulatedResultsByClient.length} clients for RFM evaluation`,
-			);
+			console.log(`[ORG: ${organization.id}] [INFO] [RFM_ANALYSIS] Loaded ${accumulatedResultsByClient.length} clients for RFM evaluation`);
 
 			const utilsRFMReturn = await db.query.utils.findFirst({
-				where: eq(utils.identificador, "CONFIG_RFM"),
+				where: and(eq(utils.identificador, "CONFIG_RFM"), eq(utils.organizacaoId, organization.id)),
 			});
 
 			const rfmConfig = utilsRFMReturn?.valor.identificador === "CONFIG_RFM" ? utilsRFMReturn.valor : null;
@@ -576,13 +575,4 @@ export default async function handleRFMAnalysis(req: NextApiRequest, res: NextAp
 	);
 
 	return res.status(200).json("ANÁLISE RFM FEITA COM SUCESSO !");
-}
-
-function formatDurationMs(durationMs: number) {
-	if (durationMs < 1000) return `${durationMs}ms`;
-
-	const seconds = durationMs / 1000;
-	if (seconds < 60) return `${seconds.toFixed(2)}s`;
-
-	return `${(seconds / 60).toFixed(2)}min`;
 }

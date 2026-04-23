@@ -1,9 +1,13 @@
 "use client";
 
+import { TSyncSegmentationsInput } from "@/app/api/segmentations/sync/route";
+import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import RFMAnalysisQueryParamsMenu from "@/components/RFMAnalysis/RFMAnalysisQueryParamsMenu";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
+import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
+import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { Button } from "@/components/ui/button";
 import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -11,6 +15,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
+import { syncSegmentations } from "@/lib/mutations/segmentations";
 import { useClients, useClientsBySearch } from "@/lib/queries/clients";
 import { fetchClientExportation } from "@/lib/queries/exportations";
 import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
@@ -18,8 +23,9 @@ import { cn } from "@/lib/utils";
 import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
 import { RFMLabels } from "@/utils/rfm";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { BadgeDollarSign, Download, Filter, Grid3x3, Info, Mail, Megaphone, Phone, ShoppingCart, UsersRound } from "lucide-react";
+import { BadgeDollarSign, Download, Filter, Grid3x3, Info, Mail, Megaphone, Phone, RefreshCcw, ShoppingCart, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { toast } from "sonner";
@@ -379,7 +385,10 @@ function getSegmentLayout(label: string): SegmentLayout {
 }
 
 function SegmentsPageMatrixRFM() {
-	const { data: rfmStats } = useRFMLabelledStats();
+	const queryClient = useQueryClient();
+
+	const [syncMenuIsOpen, setSyncMenuIsOpen] = useState(false);
+	const { data: rfmStats, queryKey } = useRFMLabelledStats();
 
 	function formatDecimal(value: number, fractionDigits = 1) {
 		if (!Number.isFinite(value)) return "0";
@@ -390,6 +399,9 @@ function SegmentsPageMatrixRFM() {
 		}).format(value);
 	}
 
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
+
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between gap-2 flex-col lg:flex-row">
@@ -397,10 +409,16 @@ function SegmentsPageMatrixRFM() {
 					<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
 					<h1 className="text-xs font-medium tracking-tight uppercase">MATRIZ RFM</h1>
 				</div>
-				<div className="px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-primary/80 text-[0.65rem] font-medium tracking-tight text-center">
-					<Info className="w-3 h-3 min-w-3 min-h-3 shrink-0" />
-					<span>Análise RFM dos últimos 12 meses. Passe o mouse no bloco para detalhes.</span>
+				<div className="flex items-center gap-2">
+					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setSyncMenuIsOpen(true)}>
+						<RefreshCcw className="w-4 h-4 min-w-4 min-h-4" />
+						SYNCRONIZAR
+					</Button>
 				</div>
+			</div>
+			<div className="w-fit self-center px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-primary/80 text-[0.65rem] font-medium tracking-tight text-center">
+				<Info className="w-3 h-3 min-w-3 min-h-3 shrink-0" />
+				<span>Análise RFM dos últimos 12 meses. Passe o mouse no bloco para detalhes.</span>
 			</div>
 			<AspectRatio ratio={1}>
 				<div className="grid grid-cols-5 grid-rows-5 w-full h-full gap-0.5">
@@ -508,6 +526,68 @@ function SegmentsPageMatrixRFM() {
 					})}
 				</div>
 			</AspectRatio>
+			{syncMenuIsOpen ? (
+				<SegmentsPageMatrixRFMSyncMenu
+					closeMenu={() => setSyncMenuIsOpen(false)}
+					callbacks={{
+						onMutate: handleOnMutate,
+						onSettled: handleOnSettled,
+					}}
+				/>
+			) : null}
 		</div>
+	);
+}
+
+type SegmentsPageMatrixRFMSyncMenuProps = {
+	closeMenu: () => void;
+	callbacks?: {
+		onMutate?: (variables: TSyncSegmentationsInput) => void;
+		onSuccess?: () => void;
+		onError?: (error: Error) => void;
+		onSettled?: () => void;
+	};
+};
+function SegmentsPageMatrixRFMSyncMenu({ closeMenu, callbacks }: SegmentsPageMatrixRFMSyncMenuProps) {
+	const [params, setParams] = useState<TSyncSegmentationsInput>({
+		runCampaigns: false,
+	});
+
+	const { mutate: handleSyncSegmentations, isPending } = useMutation({
+		mutationKey: ["sync-segmentations"],
+		mutationFn: syncSegmentations,
+		onMutate: (variables) => {
+			callbacks?.onMutate?.(variables);
+		},
+		onSuccess: (data) => {
+			toast.success(data.message);
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+		onSettled: async () => {
+			callbacks?.onSettled?.();
+		},
+	});
+	return (
+		<ResponsiveMenuV2
+			menuTitle="SYNCRONIZAR SEGMENTAÇÕES"
+			menuDescription="Sincronize as segmentações RFM para atualizar os dados da matriz."
+			menuActionButtonText="SYNCRONIZAR"
+			menuCancelButtonText="CANCELAR"
+			actionFunction={() => handleSyncSegmentations({ runCampaigns: false })}
+			closeMenu={closeMenu}
+			actionIsLoading={isPending}
+			stateIsLoading={false}
+			stateError={null}
+		>
+			<p className="text-sm text-muted-foreground">Esta ação irá recomputar as segmentações RFM de toda a sua base de clientes.</p>
+			<CheckboxInput
+				checked={params.runCampaigns}
+				labelTrue="DESEJO EXECUTAR AS CAMPANHAS"
+				labelFalse="DESEJO EXECUTAR AS CAMPANHAS"
+				handleChange={(value) => setParams({ ...params, runCampaigns: value })}
+			/>
+		</ResponsiveMenuV2>
 	);
 }

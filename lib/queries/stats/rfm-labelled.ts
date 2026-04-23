@@ -8,5 +8,8 @@ async function fetchRFMLabelledStats() {
 }
 
 export function useRFMLabelledStats() {
-	return useQuery({ queryKey: ["rfm-labelled-stats"], queryFn: fetchRFMLabelledStats });
+	return {
+		...useQuery({ queryKey: ["rfm-labelled-stats"], queryFn: fetchRFMLabelledStats }),
+		queryKey: ["rfm-labelled-stats"],
+	};
 }
