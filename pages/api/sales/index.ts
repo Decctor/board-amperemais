@@ -5,6 +5,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
+import { canScheduleCampaignForClient } from "@/lib/interactions/can-schedule-campaign";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import type { TSale } from "@/schemas/sales";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -29,57 +30,6 @@ type GetResponse = {
 	data: TSale | TSale[];
 };
 
-/**
- * Helper function to check if a campaign can be scheduled for a client based on frequency rules
- * @param tx - Database transaction instance
- * @param clienteId - Client ID
- * @param campanhaId - Campaign ID
- * @param permitirRecorrencia - Whether the campaign allows recurrence
- * @param frequenciaIntervaloValor - Frequency interval value
- * @param frequenciaIntervaloMedida - Frequency interval unit (DIAS, HORAS, etc.)
- * @returns true if the campaign can be scheduled, false otherwise
- */
-async function canScheduleCampaignForClient(
-	tx: DBTransaction,
-	clienteId: string,
-	campanhaId: string,
-	permitirRecorrencia: boolean,
-	frequenciaIntervaloValor: number | null,
-	frequenciaIntervaloMedida: string | null,
-): Promise<boolean> {
-	// Check if campaign allows recurrence
-	if (!permitirRecorrencia) {
-		const previousInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId)),
-		});
-		if (previousInteraction) {
-			console.log(`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} does not allow recurrence. Skipping for client ${clienteId}.`);
-			return false;
-		}
-	}
-
-	// Check for time interval (Frequency Cap)
-	if (permitirRecorrencia && frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
-		// Map the enum to dayjs units
-		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
-
-		// Calculate the cutoff date based on the campaign's interval settings
-		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
-
-		const recentInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
-		});
-
-		if (recentInteraction) {
-			console.log(
-				`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} frequency limit reached for client ${clienteId}. Last interaction was at ${recentInteraction.dataInsercao}.`,
-			);
-			return false;
-		}
-	}
-
-	return true;
-}
 
 const GetSalesInputSchema = z.object({
 	id: z
@@ -766,6 +716,7 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 						tx,
 						input.clientId,
 						campaign.id,
+						input.orgId,
 						campaign.permitirRecorrencia,
 						campaign.frequenciaIntervaloValor,
 						campaign.frequenciaIntervaloMedida,

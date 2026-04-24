@@ -6,6 +6,7 @@ import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } fro
 import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
+import { canScheduleCampaignForClient } from "@/lib/interactions/can-schedule-campaign";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-variables";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
@@ -30,42 +31,6 @@ import z from "zod";
 /**
  * Helper function to check if a campaign can be scheduled for a client based on frequency rules
  */
-async function canScheduleCampaignForClient(
-	tx: DBTransaction,
-	clienteId: string,
-	campanhaId: string,
-	permitirRecorrencia: boolean,
-	frequenciaIntervaloValor: number | null,
-	frequenciaIntervaloMedida: string | null,
-): Promise<boolean> {
-	if (!permitirRecorrencia) {
-		const previousInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId)),
-		});
-		if (previousInteraction) {
-			console.log(`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} does not allow recurrence. Skipping for client ${clienteId}.`);
-			return false;
-		}
-	}
-
-	if (permitirRecorrencia && frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
-		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
-		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
-
-		const recentInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
-		});
-
-		if (recentInteraction) {
-			console.log(
-				`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} frequency limit reached for client ${clienteId}. Last interaction was at ${recentInteraction.dataInsercao}.`,
-			);
-			return false;
-		}
-	}
-
-	return true;
-}
 
 export const CreatePointOfInteractionTransactionInputSchema = z.object({
 	orgId: z
@@ -966,6 +931,7 @@ async function handleCampaignProcessingForNewPurchase({
 				tx,
 				clientId,
 				campaign.id,
+				orgId,
 				campaign.permitirRecorrencia,
 				campaign.frequenciaIntervaloValor,
 				campaign.frequenciaIntervaloMedida,
@@ -1113,6 +1079,7 @@ async function handleCampaignProcessingForFirstPurchase({
 				tx,
 				clientId,
 				campaign.id,
+				orgId,
 				campaign.permitirRecorrencia,
 				campaign.frequenciaIntervaloValor,
 				campaign.frequenciaIntervaloMedida,
@@ -1285,6 +1252,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 			tx,
 			clientId,
 			campaign.id,
+			orgId,
 			campaign.permitirRecorrencia,
 			campaign.frequenciaIntervaloValor,
 			campaign.frequenciaIntervaloMedida,
@@ -1428,6 +1396,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 				tx,
 				clientId,
 				campaign.id,
+				orgId,
 				campaign.permitirRecorrencia,
 				campaign.frequenciaIntervaloValor,
 				campaign.frequenciaIntervaloMedida,
@@ -1582,6 +1551,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 				tx,
 				clientId,
 				campaign.id,
+				orgId,
 				campaign.permitirRecorrencia,
 				campaign.frequenciaIntervaloValor,
 				campaign.frequenciaIntervaloMedida,

@@ -1,6 +1,7 @@
 import "@/utils/scripts/load-next-env";
 import { createCampaignWeeklyLimitCache, checkCampaignWeeklyInteractionLimit } from "@/lib/interactions/campaign-weekly-limits";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
+import { canScheduleCampaignForClient } from "@/lib/interactions/can-schedule-campaign";
 import { DASTJS_TIME_DURATION_UNITS_MAP } from "@/lib/dates";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { connection, type DBTransaction, db } from "@/services/drizzle";
@@ -97,26 +98,6 @@ function shouldCampaignRunToday(campaign: {
 	}
 }
 
-async function canScheduleCampaignForClient(
-	tx: DBTransaction,
-	clienteId: string,
-	campanhaId: string,
-	frequenciaIntervaloValor: number | null,
-	frequenciaIntervaloMedida: string | null,
-): Promise<boolean> {
-	if (frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
-		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
-		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
-
-		const recentInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
-		});
-
-		if (recentInteraction) return false;
-	}
-
-	return true;
-}
 
 function getArgValue(name: string): string | undefined {
 	const prefix = `--${name}=`;
@@ -250,7 +231,7 @@ async function createTestInteractions(
 		for (const client of targetClients) {
 			const canSchedule = options.ignoreFrequencyCap
 				? true
-				: await canScheduleCampaignForClient(tx, client.id, campaign.id, campaign.frequenciaIntervaloValor, campaign.frequenciaIntervaloMedida);
+				: await canScheduleCampaignForClient(tx, client.id, campaign.id, options.organizationId, campaign.permitirRecorrencia, campaign.frequenciaIntervaloValor, campaign.frequenciaIntervaloMedida);
 
 			if (!canSchedule) {
 				skippedByFrequencyCap += 1;

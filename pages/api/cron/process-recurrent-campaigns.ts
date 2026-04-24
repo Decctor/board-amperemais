@@ -1,6 +1,7 @@
 import { DASTJS_TIME_DURATION_UNITS_MAP } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
+import { canScheduleCampaignForClient } from "@/lib/interactions/can-schedule-campaign";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { type TCampaignEntity, type TInteractionEntity, clients, interactions } from "@/services/drizzle/schema";
@@ -69,32 +70,6 @@ function shouldCampaignRunToday(campaign: {
 	}
 }
 
-/**
- * Check if a campaign can be scheduled for a client based on frequency rules.
- */
-async function canScheduleCampaignForClient(
-	tx: DBTransaction,
-	clienteId: string,
-	campanhaId: string,
-	frequenciaIntervaloValor: number | null,
-	frequenciaIntervaloMedida: string | null,
-): Promise<boolean> {
-	// Check for time interval (Frequency Cap)
-	if (frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
-		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
-		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
-
-		const recentInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
-		});
-
-		if (recentInteraction) {
-			return false;
-		}
-	}
-
-	return true;
-}
 
 const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextApiResponse) => {
 	console.log("[INFO] [RECURRENT_CAMPAIGNS] Starting recurrent campaigns processing");
@@ -177,6 +152,8 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 							tx,
 							client.id,
 							campaign.id,
+							organization.id,
+							campaign.permitirRecorrencia,
 							campaign.frequenciaIntervaloValor,
 							campaign.frequenciaIntervaloMedida,
 						);

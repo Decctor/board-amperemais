@@ -2,6 +2,7 @@ import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-ca
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
+import { canScheduleCampaignForClient } from "@/lib/interactions/can-schedule-campaign";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { campaigns, clients, interactions, sales } from "@/services/drizzle/schema";
@@ -11,41 +12,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 const LOOKBACK_WEEKS = 8;
 
-/**
- * Helper function to check if a campaign can be scheduled for a client based on frequency rules
- */
-async function canScheduleCampaignForClient(
-	tx: DBTransaction,
-	clienteId: string,
-	campanhaId: string,
-	permitirRecorrencia: boolean,
-	frequenciaIntervaloValor: number | null,
-	frequenciaIntervaloMedida: string | null,
-): Promise<boolean> {
-	if (!permitirRecorrencia) {
-		const previousInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId)),
-		});
-		if (previousInteraction) {
-			return false;
-		}
-	}
-
-	if (permitirRecorrencia && frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
-		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
-		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
-
-		const recentInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
-		});
-
-		if (recentInteraction) {
-			return false;
-		}
-	}
-
-	return true;
-}
 
 /**
  * Compute the worst (lowest revenue) day-of-week for an organization
@@ -175,6 +141,7 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 							tx,
 							client.id,
 							campaign.id,
+							organization.id,
 							campaign.permitirRecorrencia,
 							campaign.frequenciaIntervaloValor,
 							campaign.frequenciaIntervaloMedida,
