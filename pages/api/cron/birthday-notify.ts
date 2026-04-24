@@ -2,6 +2,7 @@ import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-ca
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
+import { canScheduleCampaignForClient } from "@/lib/interactions/can-schedule-campaign";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { clients, interactions } from "@/services/drizzle/schema";
@@ -55,46 +56,6 @@ function scheduledBlockHasArrived(scheduledBlock: TTimeBlock, currentBlock: TTim
 	return getTimeBlockMinutes(scheduledBlock) <= getTimeBlockMinutes(currentBlock);
 }
 
-/**
- * Helper function to check if a campaign can be scheduled for a client based on frequency rules
- */
-async function canScheduleCampaignForClient(
-	tx: DBTransaction,
-	clienteId: string,
-	campanhaId: string,
-	permitirRecorrencia: boolean,
-	frequenciaIntervaloValor: number | null,
-	frequenciaIntervaloMedida: string | null,
-): Promise<boolean> {
-	// Check if campaign allows recurrence
-	if (!permitirRecorrencia) {
-		const previousInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId)),
-		});
-		if (previousInteraction) {
-			return false;
-		}
-	}
-
-	// Check for time interval (Frequency Cap)
-	if (permitirRecorrencia && frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
-		// Map the enum to dayjs units
-		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
-
-		// Calculate the cutoff date based on the campaign's interval settings
-		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
-
-		const recentInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
-		});
-
-		if (recentInteraction) {
-			return false;
-		}
-	}
-
-	return true;
-}
 
 const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) => {
 	console.log("[INFO] [BIRTHDAY_NOTIFY] Starting birthday notification cron job");
@@ -204,6 +165,7 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 							tx,
 							client.id,
 							campaign.id,
+							organization.id,
 							campaign.permitirRecorrencia,
 							campaign.frequenciaIntervaloValor,
 							campaign.frequenciaIntervaloMedida,
