@@ -5,11 +5,10 @@ import { fetchCardapioWebOrdersWithDetails } from "@/lib/data-connectors/cardapi
 import { type MappedCardapioWebSale, extractAllCardapioWebData } from "@/lib/data-connectors/cardapio-web/mappers";
 import type { TCardapioWebConfig } from "@/lib/data-connectors/cardapio-web/types";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
-import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import { formatPhoneAsBase, formatToCPForCNPJ } from "@/lib/formatting";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
-import { OnlineSoftwareSaleImportationSchema } from "@/schemas/online-importation.schema";
 import { type DBTransaction, db } from "@/services/drizzle";
 import {
 	cashbackProgramBalances,
