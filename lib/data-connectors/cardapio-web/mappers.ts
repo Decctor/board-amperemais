@@ -56,6 +56,7 @@ export interface MappedCardapioWebProductAddOnOption {
 
 export interface MappedCardapioWebSaleItem {
 	produtoIdExterno: string;
+	produtoCodigo: string;
 	quantidade: number;
 	valorVendaUnitario: number;
 	valorVendaTotalBruto: number;
@@ -98,6 +99,13 @@ export interface MappedCardapioWebSale {
 // MAPPING FUNCTIONS
 // -----------------------------------------------------------------------------
 
+function getCardapioWebClientName(customer: NonNullable<TGetCardapioWebOrderDetailsOutput["customer"]>, phone: string) {
+	const customerName = customer.name?.trim();
+	if (customerName) return customerName;
+	if (phone) return `CLIENTE CARDAPIO WEB ${phone}`;
+	return `CLIENTE CARDAPIO WEB ${customer.id}`;
+}
+
 /**
  * Maps CardapioWeb customer data to our internal client format.
  * Returns null if no customer data is provided (anonymous orders).
@@ -113,7 +121,7 @@ export function mapCardapioWebClient(
 
 	return {
 		idExterno: customer.id.toString(),
-		nome: customer.name || "CLIENTE CARDAPIO WEB",
+		nome: getCardapioWebClientName(customer, phone),
 		telefone: phone,
 		telefoneBase: phoneBase,
 		localizacaoCep: deliveryAddress?.postal_code ? formatToCEP(deliveryAddress.postal_code) : null,
@@ -167,7 +175,7 @@ export function extractUniqueProducts(orders: TGetCardapioWebOrderDetailsOutput[
  * Maps CardapioWeb sales channel to our internal partner format.
  * Partners in CardapioWeb context are the sales channels (iFood, WhatsApp, etc.)
  */
-export function mapCardapioWebPartner(order: TGetCardapioWebOrderDetailsOutput): MappedCardapioWebPartner | null {
+export function mapCardapioWebPartner(_order: TGetCardapioWebOrderDetailsOutput): MappedCardapioWebPartner | null {
 	return null; // Not the case for CardapioWeb, Sales Channels are handled differently
 	// const salesChannel = order.sales_channel;
 
@@ -289,9 +297,11 @@ export function extractUniqueProductAddOnOptions(orders: TGetCardapioWebOrderDet
 export function mapCardapioWebSaleItem(item: TGetCardapioWebOrderDetailsOutput["items"][number]): MappedCardapioWebSaleItem {
 	// Calculate discount from options if any have negative prices
 	const optionsTotal = item.options.reduce((acc, opt) => acc + opt.unit_price * opt.quantity, 0);
+	const productCode = (item.external_code || item.item_id?.toString()) ?? "N/A";
 
 	return {
 		produtoIdExterno: item.item_id?.toString() ?? "N/A",
+		produtoCodigo: productCode,
 		quantidade: item.quantity,
 		valorVendaUnitario: item.unit_price,
 		valorVendaTotalBruto: item.unit_price * item.quantity + optionsTotal,
@@ -317,8 +327,9 @@ export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): Ma
 	const totalDiscount = order.discounts.reduce((acc, d) => acc + d.total, 0);
 
 	// Determine if the sale is valid (completed and paid)
-	const isValidSale = order.status === "closed";
-	const isCanceled = order.status === "canceled";
+	const isZeroValueSale = order.total <= 0;
+	const isValidSale = order.status === "closed" && !isZeroValueSale;
+	const isCanceled = order.status === "canceled" || isZeroValueSale;
 
 	// Map natureza based on status (SN01 = valid sale, like ONLINE-SOFTWARE)
 	const natureza = isValidSale ? "SN01" : isCanceled ? "CANCELADO" : order.status.toUpperCase();

@@ -55,6 +55,7 @@ import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 import { toast } from "sonner";
+import { BsCalendarPlus } from "react-icons/bs";
 type CampaignsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -356,7 +357,7 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 						{interaction.erroEnvio && !interaction.dataExecucao ? (
 							<Button
 								size="sm"
-								variant="outline"
+								variant="ghost"
 								onClick={() => handleRetryInteraction()}
 								disabled={retryIsPending}
 								className="h-7 text-[0.65rem] font-semibold"
@@ -373,7 +374,13 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 				</div>
 				<p className="text-xs font-medium tracking-tight text-muted-foreground">{interaction.descricao}</p>
 			</div>
-			<div className="w-full flex items-center justify-end gap-2 flex-wrap">
+			<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+				<div className="flex items-center gap-2">
+					<div className="flex items-center gap-1">
+						<BsCalendarPlus className="w-4 h-4 min-w-4 min-h-4" />
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">DATA DE CRIAÇÃO: {formatDateAsLocale(interaction.dataInsercao, true)}</h1>
+					</div>
+				</div>
 				<div className="flex items-center gap-2">
 					<div className="flex items-center gap-1">
 						<Calendar className="w-4 h-4 min-w-4 min-h-4" />
@@ -381,14 +388,12 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 							AGENDADO PARA: {scheduleDateText} ({scheduleBlockText})
 						</h1>
 					</div>
-					<div
-						className={cn("flex items-center gap-1", {
-							"text-green-500 dark:text-green-400": !!interaction.dataExecucao,
-						})}
-					>
-						<Calendar className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">{executionDateText}</h1>
-					</div>
+					{interaction.dataExecucao ? (
+						<div className={"flex items-center gap-1 text-green-600 dark:text-green-400"}>
+							<Calendar className="w-4 h-4 min-w-4 min-h-4" />
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">{executionDateText}</h1>
+						</div>
+					) : null}
 				</div>
 			</div>
 		</div>
