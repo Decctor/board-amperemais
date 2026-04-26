@@ -88,7 +88,7 @@ export default function NewCampaign({ user, organizationId, closeModal, callback
 				deleteSegmentation={deleteSegmentation}
 			/>
 			{/** TODO: ENABLE BACK AFTER TESTING */}
-			{/* <CampaignsFiltersBlock
+			<CampaignsFiltersBlock
 				filtros={state.filtros}
 				campaignSegmentations={state.segmentations}
 				addFilterCondition={addFilterCondition}
@@ -97,7 +97,7 @@ export default function NewCampaign({ user, organizationId, closeModal, callback
 				updateFilterGroupOperator={updateFilterGroupOperator}
 				updateFiltersRoot={updateFiltersRoot}
 				removeFilterNode={removeFilterNode}
-			/> */}
+			/>
 			<CampaignsTriggerBlock campaign={state.campaign} updateCampaign={updateCampaign} />
 			<CampaignsExecutionBlock campaign={state.campaign} updateCampaign={updateCampaign} campaignSegmentations={state.segmentations} />
 			<CampaignsActionBlock organizationId={organizationId} campaign={state.campaign} updateCampaign={updateCampaign} />
