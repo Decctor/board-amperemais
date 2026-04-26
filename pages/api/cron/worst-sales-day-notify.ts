@@ -1,12 +1,13 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { campaigns, clients, interactions, sales } from "@/services/drizzle/schema";
+import { interactions, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq, gte, inArray, sql, sum, count } from "drizzle-orm";
+import { and, eq, gte, sql, sum } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const LOOKBACK_WEEKS = 8;
@@ -155,25 +156,18 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 							`Target DOW matches worst day (${worstDayOfWeek}). Scheduling interactions.`,
 					);
 
-					// Find target clients (filtered by campaign segmentations, like recurrent campaigns)
-					const segmentationValues = campaign.segmentacoes.map((s) => s.segmentacao);
+					const targetClientIds = await resolveCampaignAudienceClientIdsForCampaign({
+						executor: tx,
+						organizationId: organization.id,
+						campaign,
+					});
 
-					let targetClients: { id: string; nome: string | null }[];
-					if (segmentationValues.length > 0) {
-						targetClients = await tx
-							.select({ id: clients.id, nome: clients.nome })
-							.from(clients)
-							.where(and(eq(clients.organizacaoId, organization.id), inArray(clients.analiseRFMTitulo, segmentationValues)));
-					} else {
-						targetClients = await tx.select({ id: clients.id, nome: clients.nome }).from(clients).where(eq(clients.organizacaoId, organization.id));
-					}
+					console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${targetClientIds.length} matching clients.`);
 
-					console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${targetClients.length} matching clients.`);
-
-					for (const client of targetClients) {
+					for (const clientId of targetClientIds) {
 						const canSchedule = await canScheduleCampaignForClient(
 							tx,
-							client.id,
+							clientId,
 							campaign.id,
 							campaign.permitirRecorrencia,
 							campaign.frequenciaIntervaloValor,
@@ -184,7 +178,7 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 							const [insertedInteraction] = await tx
 								.insert(interactions)
 								.values({
-									clienteId: client.id,
+									clienteId: clientId,
 									campanhaId: campaign.id,
 									organizacaoId: organization.id,
 									titulo: `Pior dia de vendas: ${campaign.titulo}`,
@@ -199,7 +193,7 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 							const isImmediate = isAntes || campaign.execucaoAgendadaValor === 0;
 							if (isImmediate && campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
 								const clientData = await tx.query.clients.findFirst({
-									where: (fields, { eq }) => eq(fields.id, client.id),
+									where: (fields, { eq }) => eq(fields.id, clientId),
 									columns: {
 										id: true,
 										nome: true,
@@ -240,7 +234,7 @@ const handleWorstSalesDayNotify = async (req: NextApiRequest, res: NextApiRespon
 								await generateCashbackForCampaign({
 									tx,
 									organizationId: organization.id,
-									clientId: client.id,
+									clientId: clientId,
 									campaignId: campaign.id,
 									cashbackType: "FIXO",
 									cashbackValue: campaign.cashbackGeracaoValor,

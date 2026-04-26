@@ -19,6 +19,12 @@ type TCampaignAudiencePreview = {
 	clientIds: string[];
 };
 
+type TCampaignAudienceSource = {
+	id: string;
+	segmentacoes?: Array<{ segmentacao: string | null }>;
+	filtros?: TCampaignFilters | null;
+};
+
 type TCampaignAudienceResolutionContext = {
 	executor: TCampaignAudienceExecutor;
 	organizationId: string;
@@ -39,6 +45,15 @@ function unionSets(sets: Set<string>[]) {
 		for (const value of set) result.add(value);
 	}
 	return result;
+}
+
+async function mapWithConcurrency<TInput, TOutput>(items: TInput[], concurrency: number, mapper: (item: TInput) => Promise<TOutput>) {
+	const results: TOutput[] = [];
+	for (let index = 0; index < items.length; index += concurrency) {
+		const slice = items.slice(index, index + concurrency);
+		results.push(...(await Promise.all(slice.map(mapper))));
+	}
+	return results;
 }
 
 function isEffectivelyEmptyFilters(filters: TCampaignFilters | null | undefined) {
@@ -161,6 +176,52 @@ export async function resolveCampaignAudienceClientIds({
 	if (!filterClientIds) return Array.from(baseSet);
 
 	return Array.from(intersectSets(baseSet, filterClientIds));
+}
+
+export async function resolveCampaignAudienceClientIdsForCampaign({
+	executor = db,
+	organizationId,
+	campaign,
+}: {
+	executor?: TCampaignAudienceExecutor;
+	organizationId: string;
+	campaign: TCampaignAudienceSource;
+}) {
+	return resolveCampaignAudienceClientIds({
+		executor,
+		organizationId,
+		segmentations: campaign.segmentacoes?.map((segmentation) => segmentation.segmentacao).filter((segmentacao): segmentacao is string => !!segmentacao) ?? [],
+		filters: campaign.filtros,
+	});
+}
+
+export async function resolveCampaignAudiencesByCampaignId({
+	executor = db,
+	organizationId,
+	campaigns,
+	concurrency = 5,
+}: {
+	executor?: TCampaignAudienceExecutor;
+	organizationId: string;
+	campaigns: TCampaignAudienceSource[];
+	concurrency?: number;
+}) {
+	const entries = await mapWithConcurrency(campaigns, concurrency, async (campaign) => {
+		const clientIds = await resolveCampaignAudienceClientIdsForCampaign({
+			executor,
+			organizationId,
+			campaign,
+		});
+
+		return [campaign.id, new Set(clientIds)] as const;
+	});
+
+	return new Map(entries);
+}
+
+export function campaignAudienceHasClient(audiencesByCampaignId: Map<string, Set<string>>, campaignId: string, clientId: string | null) {
+	if (!clientId) return false;
+	return audiencesByCampaignId.get(campaignId)?.has(clientId) ?? false;
 }
 
 export async function countCampaignAudienceClients(params: TResolveCampaignAudienceClientIdsParams) {

@@ -2,11 +2,11 @@ import { apiHandler } from "@/lib/api";
 import { getCurrentSessionUncached } from "@/lib/authentication/pages-session";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
-import type { TSale } from "@/schemas/sales";
 import { type DBTransaction, db } from "@/services/drizzle";
 import {
 	cashbackProgramBalances,
@@ -20,14 +20,10 @@ import {
 	sales,
 } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler } from "next";
 import z from "zod";
-
-type GetResponse = {
-	data: TSale | TSale[];
-};
 
 /**
  * Helper function to check if a campaign can be scheduled for a client based on frequency rules
@@ -181,7 +177,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	const PAGE_SIZE = 25;
 	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const { id, page, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures, clientId, productGroups, productIds, totalMin, totalMax } =
+	const { id, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures, clientId, productGroups, productIds, totalMin, totalMax } =
 		input;
 
 	if (id) {
@@ -583,6 +579,11 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 				},
 			},
 		});
+		const audiencesByCampaignId = await resolveCampaignAudiencesByCampaignId({
+			executor: tx,
+			organizationId: input.orgId,
+			campaigns: campaignsForCashbackAccumulation,
+		});
 
 		// 3. If using cashback: validate balance and create redemption
 		let redemptionSnapshot: {
@@ -724,6 +725,8 @@ const createSaleRoute: NextApiHandler<TCreateSaleOutput> = async (req, res) => {
 			// 6.1. Check for applicable cashback accumulation campaigns
 			if (campaignsForCashbackAccumulation.length > 0) {
 				const applicableCampaigns = campaignsForCashbackAccumulation.filter((campaign) => {
+					if (!campaignAudienceHasClient(audiencesByCampaignId, campaign.id, input.clientId)) return false;
+
 					// Check if the new accumulated cashback meets the minimum threshold (if defined)
 					const meetsNewCashbackThreshold =
 						campaign.gatilhoNovoCashbackAcumuladoValorMinimo === null ||

@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 
+import { resolveCampaignAudienceClientIds } from "@/lib/campaigns/filters";
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
@@ -125,6 +126,17 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 
 	const campaignsForPermanenceInSegmentation = campaigns.filter((campaign) => campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO");
 	const campaignsForEntryInSegmentation = campaigns.filter((campaign) => campaign.gatilhoTipo === "ENTRADA-SEGMENTAÇÃO");
+	const filterAudienceEntries = await Promise.all(
+		campaigns.map(async (campaign) => {
+			const clientIds = await resolveCampaignAudienceClientIds({
+				organizationId: userOrgId,
+				segmentations: [],
+				filters: campaign.filtros,
+			});
+			return [campaign.id, new Set(clientIds)] as const;
+		}),
+	);
+	const filterAudiencesByCampaignId = new Map(filterAudienceEntries);
 
 	console.log(`[ORG: ${userOrgId}] ${campaignsForPermanenceInSegmentation.length} campanhas de permanência em segmentação encontradas.`);
 	console.log(`[ORG: ${userOrgId}] ${campaignsForEntryInSegmentation.length} campanhas de entrada em segmentação encontradas.`);
@@ -202,7 +214,11 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 				if (hasClientChangedRFMLabels) {
 					// If client has changed labels, checking for entry in campaing defined automations
 					const applicableCampaigns = campaignsForEntryInSegmentation.filter(
-						(c) => c.segmentacoes.some((s) => s.segmentacao === newRFMLabel) && c.gatilhoTipo === "ENTRADA-SEGMENTAÇÃO",
+						(c) =>
+							c.segmentacoes.length > 0 &&
+							c.segmentacoes.some((s) => s.segmentacao === newRFMLabel) &&
+							(filterAudiencesByCampaignId.get(c.id)?.has(results.clientId) ?? false) &&
+							c.gatilhoTipo === "ENTRADA-SEGMENTAÇÃO",
 					);
 					if (applicableCampaigns.length > 0)
 						console.log(`${applicableCampaigns.length} campanhas de entrada em segmentação aplicáveis encontradas para o cliente ${results.clientId}.`);
@@ -309,7 +325,8 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 					if (!lastRFMLabelModification) continue;
 					// If client has not changed labels, checking for permanence in campaing defined automations
 					const applicableCampaigns = campaignsForPermanenceInSegmentation.filter((c) => {
-						const isApplicableToSegmentation = c.segmentacoes.some((s) => s.segmentacao === newRFMLabel);
+						const isApplicableToSegmentation = c.segmentacoes.length > 0 && c.segmentacoes.some((s) => s.segmentacao === newRFMLabel);
+						const isApplicableToFilters = filterAudiencesByCampaignId.get(c.id)?.has(results.clientId) ?? false;
 						const isApplicableAsPermanence = c.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO";
 						if (!c.gatilhoTempoPermanenciaMedida || !c.gatilhoTempoPermanenciaValor) return false;
 						const isApplicableForPermanencePeriod =
@@ -318,7 +335,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 								end: dayjs().toDate(),
 								unit: c.gatilhoTempoPermanenciaMedida,
 							}) > c.gatilhoTempoPermanenciaValor;
-						if (isApplicableToSegmentation && isApplicableAsPermanence && isApplicableForPermanencePeriod) return true;
+						if (isApplicableToSegmentation && isApplicableToFilters && isApplicableAsPermanence && isApplicableForPermanencePeriod) return true;
 						return false;
 					});
 					if (applicableCampaigns.length > 0)

@@ -1,11 +1,11 @@
+import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { type TCampaignEntity, type TInteractionEntity, clients, interactions } from "@/services/drizzle/schema";
+import { type TCampaignEntity, type TInteractionEntity, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq, inArray } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
@@ -155,27 +155,18 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 				console.log(`[ORG: ${organization.id}] ${campaignsToRun.length} recurrent campaign(s) to process.`);
 
 				for (const campaign of campaignsToRun) {
-					// Get target segmentations for this campaign
-					const segmentationValues = campaign.segmentacoes.map((s) => s.segmentacao);
+					const targetClientIds = await resolveCampaignAudienceClientIdsForCampaign({
+						executor: tx,
+						organizationId: organization.id,
+						campaign,
+					});
 
-					// Find matching clients based on RFM segmentation
-					let targetClients: { id: string; nome: string | null }[];
-					if (segmentationValues.length > 0) {
-						targetClients = await tx
-							.select({ id: clients.id, nome: clients.nome })
-							.from(clients)
-							.where(and(eq(clients.organizacaoId, organization.id), inArray(clients.analiseRFMTitulo, segmentationValues)));
-					} else {
-						// No segmentations defined — target all clients in the organization
-						targetClients = await tx.select({ id: clients.id, nome: clients.nome }).from(clients).where(eq(clients.organizacaoId, organization.id));
-					}
+					console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${targetClientIds.length} matching clients.`);
 
-					console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${targetClients.length} matching clients.`);
-
-					for (const client of targetClients) {
+					for (const clientId of targetClientIds) {
 						const canSchedule = await canScheduleCampaignForClient(
 							tx,
-							client.id,
+							clientId,
 							campaign.id,
 							campaign.frequenciaIntervaloValor,
 							campaign.frequenciaIntervaloMedida,
@@ -186,7 +177,7 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 						const [insertedInteraction] = await tx
 							.insert(interactions)
 							.values({
-								clienteId: client.id,
+								clienteId: clientId,
 								campanhaId: campaign.id,
 								organizacaoId: organization.id,
 								titulo: `Recorrente: ${campaign.titulo}`,
@@ -200,7 +191,7 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 						// Prepare for immediate processing
 						if (campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
 							const clientData = await tx.query.clients.findFirst({
-								where: (fields, { eq }) => eq(fields.id, client.id),
+								where: (fields, { eq }) => eq(fields.id, clientId),
 								columns: {
 									id: true,
 									nome: true,

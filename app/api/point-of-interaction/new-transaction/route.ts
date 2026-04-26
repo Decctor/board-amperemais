@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureCashbackBalanceForClient } from "@/lib/cashback/accumulation";
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
+import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
@@ -11,7 +12,6 @@ import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-varia
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import {
-	cashbackProgramPrizes,
 	cashbackProgramTransactions,
 	cashbackPrograms,
 	clients,
@@ -220,6 +220,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			campaignsForCashbackAccumulation,
 			campaignsForTotalPurchaseCount,
 			campaignsForTotalPurchaseValue,
+			audiencesByCampaignId,
 		} = await getOrganizationCampaigns({
 			tx,
 			orgId: input.orgId,
@@ -577,6 +578,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				tx,
 				orgId: input.orgId,
 				cashbackAccumulationCampaigns: campaignsForCashbackAccumulation,
+				audiencesByCampaignId,
 				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 				clientId: clientId,
 				clientCashbackToAccumulate: clientNewAccumulatedCashbackValue,
@@ -688,11 +690,11 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					tx,
 					orgId: input.orgId,
 					campaignsForFirstPurchase: campaignsForFirstPurchase,
+					audiencesByCampaignId,
 					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 					saleId: transactionSaleId,
 					saleValue: effectiveSaleValue,
 					clientId: clientId,
-					clientRFMTitle: clientRfmTitle,
 					sellerName: operator.nome,
 					transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
 					clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
@@ -706,6 +708,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					tx,
 					orgId: input.orgId,
 					campaignsForNewPurchase: campaignsForNewPurchase,
+					audiencesByCampaignId,
 					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 					saleId: transactionSaleId,
 					saleValue: effectiveSaleValue,
@@ -722,11 +725,11 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				tx,
 				orgId: input.orgId,
 				campaignsForTotalPurchaseCount: campaignsForTotalPurchaseCount,
+				audiencesByCampaignId,
 				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 				saleId: transactionSaleId,
 				saleValue: effectiveSaleValue,
 				clientId: clientId,
-				clientRFMTitle: clientRfmTitle,
 				clientNewTotalPurchaseCount: clientCurrentPurchaseCount,
 				sellerName: operator.nome,
 				transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
@@ -739,11 +742,11 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				tx,
 				orgId: input.orgId,
 				campaignsForTotalPurchaseValue: campaignsForTotalPurchaseValue,
+				audiencesByCampaignId,
 				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 				saleId: transactionSaleId,
 				saleValue: effectiveSaleValue,
 				clientId: clientId,
-				clientRFMTitle: clientRfmTitle,
 				clientNewTotalPurchaseValue: clientCurrentPurchaseValue,
 				sellerName: operator.nome,
 				transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
@@ -866,6 +869,11 @@ async function getOrganizationCampaigns({ tx, orgId }: TGetOrganizationCampaigns
 	const campaignsForCashbackAccumulation = organizationCampaigns.filter((campaign) => campaign.gatilhoTipo === "CASHBACK-ACUMULADO");
 	const campaignsForTotalPurchaseCount = organizationCampaigns.filter((campaign) => campaign.gatilhoTipo === "QUANTIDADE-TOTAL-COMPRAS");
 	const campaignsForTotalPurchaseValue = organizationCampaigns.filter((campaign) => campaign.gatilhoTipo === "VALOR-TOTAL-COMPRAS");
+	const audiencesByCampaignId = await resolveCampaignAudiencesByCampaignId({
+		executor: tx,
+		organizationId: orgId,
+		campaigns: organizationCampaigns,
+	});
 
 	return {
 		campaignsForNewPurchase,
@@ -873,6 +881,7 @@ async function getOrganizationCampaigns({ tx, orgId }: TGetOrganizationCampaigns
 		campaignsForCashbackAccumulation,
 		campaignsForTotalPurchaseCount,
 		campaignsForTotalPurchaseValue,
+		audiencesByCampaignId,
 	};
 }
 type TGetOrganizationCampaignsOutput = Awaited<ReturnType<typeof getOrganizationCampaigns>>;
@@ -881,6 +890,7 @@ type THandleCampaignProcessingForNewPurchaseParams = {
 	tx: DBTransaction;
 	orgId: string;
 	campaignsForNewPurchase: TGetOrganizationCampaignsOutput["campaignsForNewPurchase"];
+	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	saleId: string;
 	saleValue: number;
@@ -897,6 +907,7 @@ async function handleCampaignProcessingForNewPurchase({
 	tx,
 	orgId,
 	campaignsForNewPurchase,
+	audiencesByCampaignId,
 	addToImmediateProcessingDataList,
 	saleId,
 	saleValue,
@@ -916,7 +927,7 @@ async function handleCampaignProcessingForNewPurchase({
 			campaign.gatilhoNovaCompraValorMinimo === undefined ||
 			saleValue >= campaign.gatilhoNovaCompraValorMinimo;
 
-		const meetsSegmentationTrigger = campaign.segmentacoes.some((s) => s.segmentacao === clientRFMTitle);
+		const meetsSegmentationTrigger = campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId);
 
 		return meetsNewPurchaseValueTrigger && meetsSegmentationTrigger;
 	});
@@ -1061,11 +1072,11 @@ type THandleCampaignProcessingForFirstPurchaseParams = {
 	tx: DBTransaction;
 	orgId: string;
 	campaignsForFirstPurchase: TGetOrganizationCampaignsOutput["campaignsForFirstPurchase"];
+	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	saleId: string;
 	saleValue: number;
 	clientId: string;
-	clientRFMTitle: string;
 	sellerName: string;
 	transactionAccumulatedCashback: number;
 	clientCashbackAvailableBalance: number;
@@ -1076,11 +1087,11 @@ async function handleCampaignProcessingForFirstPurchase({
 	tx,
 	orgId,
 	campaignsForFirstPurchase,
+	audiencesByCampaignId,
 	addToImmediateProcessingDataList,
 	saleId,
 	saleValue,
 	clientId,
-	clientRFMTitle,
 	sellerName,
 	transactionAccumulatedCashback,
 	clientCashbackAvailableBalance,
@@ -1088,7 +1099,7 @@ async function handleCampaignProcessingForFirstPurchase({
 	clientCashbackRedeemedBalanceTotal,
 }: THandleCampaignProcessingForFirstPurchaseParams) {
 	if (campaignsForFirstPurchase.length === 0) return;
-	const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) => campaign.segmentacoes.some((s) => s.segmentacao === clientRFMTitle));
+	const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) => campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId));
 
 	console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] ${applicableCampaigns.length} applicable campaigns after filtering`);
 
@@ -1213,6 +1224,7 @@ type THandleCampaignProcessingForCashbackAccumulationParams = {
 	tx: DBTransaction;
 	orgId: string;
 	cashbackAccumulationCampaigns: TGetOrganizationCampaignsOutput["campaignsForCashbackAccumulation"];
+	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	clientId: string;
 	clientCashbackToAccumulate: number;
@@ -1226,6 +1238,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 	tx,
 	orgId,
 	cashbackAccumulationCampaigns,
+	audiencesByCampaignId,
 	addToImmediateProcessingDataList,
 	clientId,
 	clientCashbackToAccumulate,
@@ -1239,6 +1252,8 @@ async function handleCampaignProcessingForCashbackAccumulation({
 	if (clientCashbackToAccumulate <= 0) return;
 
 	const applicableCampaigns = cashbackAccumulationCampaigns.filter((campaign) => {
+		if (!campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId)) return false;
+
 		const meetsNewCashbackThreshold =
 			campaign.gatilhoNovoCashbackAcumuladoValorMinimo === null ||
 			campaign.gatilhoNovoCashbackAcumuladoValorMinimo === undefined ||
@@ -1355,11 +1370,11 @@ type THandleCampaignProcessingForTotalPurchaseCountParams = {
 	tx: DBTransaction;
 	orgId: string;
 	campaignsForTotalPurchaseCount: TGetOrganizationCampaignsOutput["campaignsForTotalPurchaseCount"];
+	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	saleId: string;
 	saleValue: number;
 	clientId: string;
-	clientRFMTitle: string;
 	clientNewTotalPurchaseCount: number;
 	sellerName: string;
 	transactionAccumulatedCashback: number;
@@ -1371,11 +1386,11 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 	tx,
 	orgId,
 	campaignsForTotalPurchaseCount,
+	audiencesByCampaignId,
 	addToImmediateProcessingDataList,
 	saleId,
 	saleValue,
 	clientId,
-	clientRFMTitle,
 	clientNewTotalPurchaseCount,
 	sellerName,
 	transactionAccumulatedCashback,
@@ -1392,7 +1407,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 			clientNewTotalPurchaseCount === campaign.gatilhoQuantidadeTotalCompras;
 
 		// Check segmentation match
-		const meetsSegmentation = campaign.segmentacoes.length === 0 || campaign.segmentacoes.some((s) => s.segmentacao === clientRFMTitle);
+		const meetsSegmentation = campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId);
 
 		return meetsThreshold && meetsSegmentation;
 	});
@@ -1507,11 +1522,11 @@ type THandleCampaignProcessingForTotalPurchaseValueParams = {
 	tx: DBTransaction;
 	orgId: string;
 	campaignsForTotalPurchaseValue: TGetOrganizationCampaignsOutput["campaignsForTotalPurchaseValue"];
+	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
 	saleId: string;
 	saleValue: number;
 	clientId: string;
-	clientRFMTitle: string;
 	clientNewTotalPurchaseValue: number;
 	sellerName: string;
 	transactionAccumulatedCashback: number;
@@ -1524,11 +1539,11 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 	tx,
 	orgId,
 	campaignsForTotalPurchaseValue,
+	audiencesByCampaignId,
 	addToImmediateProcessingDataList,
 	saleId,
 	saleValue,
 	clientId,
-	clientRFMTitle,
 	clientNewTotalPurchaseValue,
 	sellerName,
 	transactionAccumulatedCashback,
@@ -1546,7 +1561,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 			clientNewTotalPurchaseValue === campaign.gatilhoValorTotalCompras; // TODO: Fix this. The validation should occur in obligatory "frequency" definitions
 
 		// Check segmentation match
-		const meetsSegmentation = campaign.segmentacoes.length === 0 || campaign.segmentacoes.some((s) => s.segmentacao === clientRFMTitle);
+		const meetsSegmentation = campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId);
 
 		return meetsThreshold && meetsSegmentation;
 	});

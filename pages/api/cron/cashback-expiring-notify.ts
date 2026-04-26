@@ -1,13 +1,13 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { campaigns, cashbackProgramBalances, cashbackProgramTransactions, interactions, organizations } from "@/services/drizzle/schema";
+import { interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq, gt, lte } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const DEFAULT_CASHBACK_EXPIRING_ANTECEDENCIA_VALOR = 3;
@@ -76,6 +76,7 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 					where: (fields, { and, eq }) =>
 						and(eq(fields.organizacaoId, organization.id), eq(fields.ativo, true), eq(fields.gatilhoTipo, "CASHBACK-EXPIRANDO")),
 					with: {
+						segmentacoes: true,
 						whatsappTemplate: true,
 						whatsappConexaoTelefone: {
 							columns: {
@@ -151,6 +152,17 @@ const handleCashbackExpiringNotify = async (req: NextApiRequest, res: NextApiRes
 							relevantExpirationDate: shouldUpdateRelevantDate ? relevantExpirationDate : current.relevantExpirationDate,
 							highestExpiringValue: shouldUpdateRelevantDate ? transaction.valorRestante : current.highestExpiringValue,
 						});
+					}
+
+					const audienceClientIds = new Set(
+						await resolveCampaignAudienceClientIdsForCampaign({
+							executor: tx,
+							organizationId: organization.id,
+							campaign,
+						}),
+					);
+					for (const clienteId of Array.from(cashbackByClient.keys())) {
+						if (!audienceClientIds.has(clienteId)) cashbackByClient.delete(clienteId);
 					}
 
 					console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${cashbackByClient.size} clients with expiring cashback.`);

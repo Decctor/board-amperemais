@@ -1,4 +1,5 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
@@ -132,6 +133,7 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 					where: (fields, { and, eq }) =>
 						and(eq(fields.organizacaoId, organization.id), eq(fields.ativo, true), eq(fields.gatilhoTipo, "ANIVERSARIO_CLIENTE")),
 					with: {
+						segmentacoes: true,
 						whatsappTemplate: true,
 						whatsappConexaoTelefone: {
 							columns: {
@@ -178,6 +180,13 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 					}
 
 					// Find clients whose birthday matches the target date (month and day)
+					const audienceClientIds = new Set(
+						await resolveCampaignAudienceClientIdsForCampaign({
+							executor: tx,
+							organizationId: organization.id,
+							campaign,
+						}),
+					);
 					const birthdayClients = await tx
 						.select({
 							id: clients.id,
@@ -191,15 +200,16 @@ const handleBirthdayNotify = async (req: NextApiRequest, res: NextApiResponse) =
 								sql`EXTRACT(DAY FROM ${clients.dataNascimento}) = ${targetDay}`,
 							),
 						);
+					const targetBirthdayClients = birthdayClients.filter((client) => audienceClientIds.has(client.id));
 
 					console.log(
 						`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Direction: ${campaign.execucaoAgendadaDirecao}, ` +
-							`Target birthday: ${targetMonth}/${targetDay}, Found ${birthdayClients.length} matching clients.`,
+							`Target birthday: ${targetMonth}/${targetDay}, Found ${targetBirthdayClients.length} matching clients.`,
 					);
-					organizationSummary.matchingClients += birthdayClients.length;
+					organizationSummary.matchingClients += targetBirthdayClients.length;
 
 					// Schedule notifications for each matching client
-					for (const client of birthdayClients) {
+					for (const client of targetBirthdayClients) {
 						const canSchedule = await canScheduleCampaignForClient(
 							tx,
 							client.id,
