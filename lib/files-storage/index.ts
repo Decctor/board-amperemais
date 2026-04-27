@@ -97,7 +97,9 @@ export function inferFileContentKind(file: File): TFileContentKind {
 }
 
 function removeDiacritics(value: string) {
-	return Array.from(value).filter((char) => char.normalize("NFD") === char).join("");
+	return Array.from(value)
+		.filter((char) => char.normalize("NFD") === char)
+		.join("");
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -108,7 +110,7 @@ function sanitizeFileName(fileName: string): string {
 			.toLowerCase()
 			// Remove caracteres especiais não permitidos pelo Supabase
 			// Mantém apenas: \w (letras, números, underscore), /, !, -, ., *, ', (, ), espaço, &, $, @, =, ;, :, +, ,, ?
-			.replace(/[^a-z0-9_\/!\-\.\*'\(\) &$@=;:+,?]/g, "")
+			.replace(/[^a-z0-9_/!\-.*'() &$@=;:+,?]/g, "")
 			// Remove caracteres problemáticos específicos
 			.replace(/[°]/g, "graus")
 			.replace(/[#]/g, "numero")
@@ -148,7 +150,7 @@ export async function uploadFile({ file, fileName, vinculationId, prefix = "sync
 
 		const formattedFileName = sanitizeFileName(fileName);
 		const datetime = new Date().toISOString();
-		const filePath = `/public/${prefix}/${vinculationId ? `(${vinculationId})` : ""}${formattedFileName} - ${datetime}`;
+		const filePath = `public/${prefix}/${vinculationId ? `(${vinculationId})` : ""}${formattedFileName} - ${datetime}`;
 
 		const { data, error } = await supabaseClient.storage.from("files").upload(filePath, file);
 
@@ -162,7 +164,7 @@ export async function uploadFile({ file, fileName, vinculationId, prefix = "sync
 		const format = contentType ? FileTypes[contentType]?.title || "INDEFINIDO" : "INDEFINIDO";
 		const size = file.size;
 
-		return { url: publicUrl, format, size };
+		return { url: publicUrl, storagePath: filePath, format, size };
 	} catch (error) {
 		console.error("Error uploading file:", error);
 		throw error;

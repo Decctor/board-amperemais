@@ -1,6 +1,13 @@
-import type { TFiscalOrganization, TProviderCompanySyncResult } from "@/lib/fiscal/types";
+import { downloadStoredFiscalAsset } from "@/lib/fiscal/storage";
+import type {
+	TFiscalOrganization,
+	TProviderCompanyCertificateSyncInput,
+	TProviderCompanyCertificateSyncResult,
+	TProviderCompanySyncResult,
+} from "@/lib/fiscal/types";
 import { createNuvemFiscalClient } from "./client";
 import { formatStringAsOnlyDigits } from "@/lib/formatting";
+import { mapTaxRegistration, nonEmptyString, onlyDigits } from "./mappers/utils";
 
 function mapOrganizationToNuvemFiscalCompany(organizacao: TFiscalOrganization) {
 	const fiscal = organizacao.fiscalConfiguracao;
@@ -11,9 +18,9 @@ function mapOrganizationToNuvemFiscalCompany(organizacao: TFiscalOrganization) {
 		nome_razao_social: fiscal.nomeRazaoSocial,
 		nome_fantasia: fiscal.nomeFantasia ?? undefined,
 		email: fiscal.emailFiscal ?? organizacao.email ?? undefined,
-		fone: fiscal.telefoneFiscal ?? organizacao.telefone ?? undefined,
-		inscricao_estadual: fiscal.inscricaoEstadual ?? undefined,
-		inscricao_municipal: fiscal.inscricaoMunicipal ?? undefined,
+		fone: onlyDigits(fiscal.telefoneFiscal ?? organizacao.telefone),
+		inscricao_estadual: mapTaxRegistration(fiscal.inscricaoEstadual),
+		inscricao_municipal: nonEmptyString(fiscal.inscricaoMunicipal),
 		endereco: {
 			logradouro: fiscal.endereco.logradouro,
 			numero: fiscal.endereco.numero,
@@ -74,4 +81,65 @@ export async function syncNuvemFiscalCompany(organizacao: TFiscalOrganization): 
 		cpfCnpj,
 		sincronizado: true,
 	};
+}
+
+function getNuvemFiscalCompanyIdentifier(organizacao: TFiscalOrganization) {
+	const cpfCnpj = organizacao.fiscalConfiguracao?.cpfCnpj;
+	if (!cpfCnpj) throw new Error("CPF/CNPJ fiscal nao configurado.");
+	return {
+		cpfCnpj,
+		cpfCnpjAsNumber: formatStringAsOnlyDigits(cpfCnpj),
+	};
+}
+
+function mapCertificateMetadata(storagePath: string, responseData: unknown): TProviderCompanyCertificateSyncResult["certificado"] {
+	const data = responseData && typeof responseData === "object" ? (responseData as Record<string, unknown>) : {};
+
+	const getString = (...keys: string[]) => {
+		for (const key of keys) {
+			const value = data[key];
+			if (typeof value === "string" && value.length > 0) return value;
+		}
+		return null;
+	};
+
+	return {
+		storagePath,
+		serialNumber: getString("serial_number", "serialNumber", "numero_serie", "numeroSerie"),
+		issuerName: getString("issuer_name", "issuerName", "emissor", "nome_emissor"),
+		subjectName: getString("subject_name", "subjectName", "sujeito", "nome_titular"),
+		thumbprint: getString("thumbprint", "impressao_digital"),
+		validFrom: getString("valid_from", "validFrom", "data_validade_inicial", "data_inicio_validade"),
+		validTo: getString("valid_to", "validTo", "data_validade_final", "data_fim_validade", "vencimento"),
+		uploadedAt: new Date().toISOString(),
+	};
+}
+
+export async function syncNuvemFiscalCompanyCertificate(
+	organizacao: TFiscalOrganization,
+	input: TProviderCompanyCertificateSyncInput,
+): Promise<TProviderCompanyCertificateSyncResult> {
+	const client = createNuvemFiscalClient({
+		baseUrl: organizacao.fiscalConfiguracao?.nuvemFiscal.api.baseUrl,
+		apiToken: organizacao.fiscalConfiguracao?.nuvemFiscal.api.apiToken,
+	});
+	const { cpfCnpj, cpfCnpjAsNumber } = getNuvemFiscalCompanyIdentifier(organizacao);
+	const certificateBuffer = await downloadStoredFiscalAsset(input.storagePath);
+	const certificado = Buffer.from(certificateBuffer).toString("base64");
+
+	try {
+		const { data } = await client.put(`/empresas/${cpfCnpjAsNumber}/certificado`, {
+			certificado,
+			password: input.password,
+		});
+		console.log("[DEBUG] [SYNC_NUVEM_FISCAL_COMPANY_CERTIFICATE] Successfully synchronized certificate.", JSON.stringify(data, null, 2));
+		return {
+			cpfCnpj,
+			sincronizado: true,
+			certificado: mapCertificateMetadata(input.storagePath, data),
+		};
+	} catch (error) {
+		console.error("[DEBUG] [SYNC_NUVEM_FISCAL_COMPANY_CERTIFICATE] Error synchronizing certificate.", JSON.stringify(error.response?.data, null, 2));
+		throw error;
+	}
 }

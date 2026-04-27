@@ -1,6 +1,18 @@
 import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
-import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode } from "./utils";
+import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode, mapTaxRegistration, nonEmptyString, onlyDigits } from "./utils";
+
+function mapDestinatario(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
+	if (!snapshot) return undefined;
+	const cpfCnpj = onlyDigits(String(snapshot.cpfCnpj ?? ""));
+	return {
+		CPF: cpfCnpj && cpfCnpj.length <= 11 ? cpfCnpj : undefined,
+		CNPJ: cpfCnpj && cpfCnpj.length > 11 ? cpfCnpj : undefined,
+		xNome: snapshot.nome,
+		email: snapshot.email,
+		indIEDest: 9,
+	};
+}
 
 export function mapSaleContextToNfePayload(context: TFiscalSaleContext, documento: TFiscalDocument) {
 	const fiscalConfig = context.organizacao.fiscalConfiguracao!;
@@ -27,13 +39,9 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 				verProc: "recompra-crm",
 			},
 			emit: {
-				CNPJ: fiscalConfig.cpfCnpj,
+				CNPJ: onlyDigits(fiscalConfig.cpfCnpj),
 				xNome: fiscalConfig.nomeRazaoSocial,
 				xFant: fiscalConfig.nomeFantasia ?? undefined,
-				IE: fiscalConfig.inscricaoEstadual ?? undefined,
-				IM: fiscalConfig.inscricaoMunicipal ?? undefined,
-				CNAE: fiscalConfig.cnae ?? undefined,
-				CRT: fiscalConfig.regimeTributario,
 				enderEmit: {
 					xLgr: fiscalConfig.endereco.logradouro,
 					nro: fiscalConfig.endereco.numero,
@@ -42,21 +50,17 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 					cMun: fiscalConfig.endereco.codigoMunicipio,
 					xMun: fiscalConfig.endereco.cidade,
 					UF: fiscalConfig.endereco.uf,
-					CEP: fiscalConfig.endereco.cep,
+					CEP: onlyDigits(fiscalConfig.endereco.cep),
 					cPais: fiscalConfig.endereco.codigoPais,
 					xPais: fiscalConfig.endereco.pais,
-					fone: fiscalConfig.telefoneFiscal ?? context.organizacao.telefone ?? undefined,
+					fone: onlyDigits(fiscalConfig.telefoneFiscal ?? context.organizacao.telefone),
 				},
+				IE: mapTaxRegistration(fiscalConfig.inscricaoEstadual),
+				IM: nonEmptyString(fiscalConfig.inscricaoMunicipal),
+				CNAE: onlyDigits(fiscalConfig.cnae),
+				CRT: fiscalConfig.regimeTributario,
 			},
-			dest: context.destinatarioSnapshot
-				? {
-						CPF: String(context.destinatarioSnapshot.cpfCnpj ?? "").length <= 11 ? context.destinatarioSnapshot.cpfCnpj : undefined,
-						CNPJ: String(context.destinatarioSnapshot.cpfCnpj ?? "").length > 11 ? context.destinatarioSnapshot.cpfCnpj : undefined,
-						xNome: context.destinatarioSnapshot.nome,
-						email: context.destinatarioSnapshot.email,
-						indIEDest: 9,
-					}
-				: undefined,
+			dest: mapDestinatario(context.destinatarioSnapshot),
 			det: context.venda.itens.map((item, index) => {
 				const perfil = context.perfisProdutos.find((profile) => profile.produtoId === item.produtoId);
 				return {

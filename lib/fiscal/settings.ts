@@ -68,6 +68,38 @@ export async function syncFiscalCompany(organizacaoId: string) {
 	return provider.sincronizarEmpresa(organization);
 }
 
+export async function syncFiscalCompanyCertificate({
+	organizacaoId,
+	storagePath,
+	password,
+}: {
+	organizacaoId: string;
+	storagePath: string;
+	password: string;
+}) {
+	const organization = await loadFiscalOrganization(organizacaoId);
+	if (!organization) throw new createHttpError.NotFound("Organizacao nao encontrada.");
+	if (!organization.fiscalConfiguracao) throw new createHttpError.BadRequest("Configuracao fiscal nao encontrada.");
+
+	const provider = resolveFiscalProvider(organization.fiscalProvedor);
+	const result = await provider.sincronizarCertificadoEmpresa(organization, { storagePath, password });
+	const fiscalConfiguracao = OrganizationFiscalConfigSchema.parse({
+		...organization.fiscalConfiguracao,
+		nuvemFiscal: {
+			...organization.fiscalConfiguracao.nuvemFiscal,
+			certificado: {
+				...organization.fiscalConfiguracao.nuvemFiscal.certificado,
+				...result.certificado,
+				password,
+			},
+		},
+	});
+
+	await db.update(organizations).set({ fiscalConfiguracao }).where(eq(organizations.id, organizacaoId));
+
+	return result;
+}
+
 export async function findActiveFiscalSeries({
 	organizacaoId,
 	tipoDocumento,

@@ -7,10 +7,13 @@ import {
 	BadgeCheck,
 	BookText,
 	Calendar,
+	Check,
+	CheckCheck,
 	CircleCheck,
 	CircleX,
 	Clock,
 	DollarSign,
+	FileIcon,
 	FileText,
 	Flag,
 	Globe,
@@ -27,7 +30,7 @@ import {
 	Zap,
 } from "lucide-react";
 import { useFiscalDocuments, useFiscalOperationProfiles, useFiscalSeries, useFiscalSettings } from "@/lib/queries/fiscal";
-import { syncFiscalCompany, updateFiscalSettings } from "@/lib/mutations/fiscal";
+import { syncFiscalCompany, syncFiscalCompanyCertificate, updateFiscalSettings } from "@/lib/mutations/fiscal";
 import { TUseInternalFiscalSettingsState, useInternalFiscalSettingsState } from "@/state-hooks/use-internal-fiscal-settings-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -64,8 +67,12 @@ import ControlFiscalSeries from "@/components/Modals/FiscalSeries/ControlFiscalS
 import { Input } from "@/components/ui/input";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { TGetFiscalDocumentsOutputDefault } from "@/app/api/fiscal/documents/route";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
+import { uploadFile } from "@/lib/files-storage";
+import NumberInput from "@/components/Inputs/NumberInput";
 type FiscalPageProps = {
 	user: TAuthUserSession["user"];
+	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	userHasFiscalViewPermission: boolean;
 	userHasFiscalConfigurePermission: boolean;
 	userHasFiscalEmitPermission: boolean;
@@ -73,6 +80,7 @@ type FiscalPageProps = {
 };
 export default function FiscalPage({
 	user,
+	organization,
 	userHasFiscalViewPermission,
 	userHasFiscalConfigurePermission,
 	userHasFiscalEmitPermission,
@@ -94,7 +102,7 @@ export default function FiscalPage({
 				</TabsList>
 				<TabsContent value="configuration" className="flex flex-col gap-3">
 					{userHasFiscalConfigurePermission ? (
-						<FiscalConfigurationsView userHasFiscalConfigurePermission={userHasFiscalConfigurePermission} />
+						<FiscalConfigurationsView organizationId={organization.id} userHasFiscalConfigurePermission={userHasFiscalConfigurePermission} />
 					) : (
 						<UnauthorizedPage message="Oops,  você não possui permissão para visualizar o módulo fiscal." />
 					)}
@@ -285,9 +293,10 @@ function FiscalDocumentCard({ document }: { document: TGetFiscalDocumentsOutputD
 }
 
 type FiscalConfigurationsViewProps = {
+	organizationId: string;
 	userHasFiscalConfigurePermission: boolean;
 };
-function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalConfigurationsViewProps) {
+function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermission }: FiscalConfigurationsViewProps) {
 	const canEdit = userHasFiscalConfigurePermission;
 	const queryClient = useQueryClient();
 	const { data, isLoading, isError, error, queryKey } = useFiscalSettings();
@@ -299,6 +308,8 @@ function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalCo
 		},
 	});
 
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	useEffect(() => {
 		if (data) {
 			redefineState({
@@ -316,9 +327,12 @@ function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalCo
 				fiscalEmissaoAutomatica: state.fiscalEmissaoAutomatica,
 				fiscalConfiguracao: state.fiscalConfiguracao,
 			}),
+		onMutate: () => {
+			handleOnMutate();
+		},
 		onSuccess: (response) => {
 			toast.success(response.message);
-			queryClient.invalidateQueries({ queryKey });
+			handleOnSettled();
 		},
 		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
 	});
@@ -363,7 +377,12 @@ function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalCo
 				</div>
 			</SectionWrapper>
 
-			<CompanyBasicInformation fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
+			<CompanyBasicInformation
+				organizationId={organizationId}
+				fiscalConfig={state.fiscalConfiguracao}
+				updateFiscalConfig={updateFiscalConfig}
+				callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+			/>
 			<CompanyFiscalSeries />
 			<CompanyFiscalOperationProfiles />
 		</div>
@@ -371,10 +390,16 @@ function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalCo
 }
 
 type CompanyBasicInformationProps = {
+	organizationId: string;
 	fiscalConfig: TUseInternalFiscalSettingsState["state"]["fiscalConfiguracao"];
 	updateFiscalConfig: TUseInternalFiscalSettingsState["updateFiscalConfig"];
+	callbacks: {
+		onMutate: () => void;
+		onSettled: () => void;
+	};
 };
-function CompanyBasicInformation({ fiscalConfig, updateFiscalConfig }: CompanyBasicInformationProps) {
+function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalConfig, callbacks }: CompanyBasicInformationProps) {
+	const [certificateMenuOpen, setCertificateMenuOpen] = useState(false);
 	async function setAddressDataByCEP(cep: string) {
 		const addressInfo = await getCEPInfo(cep);
 		const toastID = toast.loading("Buscando informações sobre o CEP...", {
@@ -551,7 +576,167 @@ function CompanyBasicInformation({ fiscalConfig, updateFiscalConfig }: CompanyBa
 					/>
 				</div>
 			</div>
+			<div className="w-full flex items-center gap-3 flex-col lg:flex-row">
+				<div className="w-full lg:w-1/3">
+					<TextInput label="CNAE" value={fiscalConfig.cnae ?? ""} placeholder="CNAE" handleChange={(value) => updateFiscalConfig({ cnae: value })} />
+				</div>
+				<div className="w-full lg:w-1/3">
+					<NumberInput
+						label="ID-CSC"
+						value={fiscalConfig.nuvemFiscal.nfce.idCsc ?? null}
+						placeholder="ID-CSC"
+						handleChange={(value) =>
+							updateFiscalConfig({ nuvemFiscal: { ...fiscalConfig.nuvemFiscal, nfce: { ...fiscalConfig.nuvemFiscal.nfce, idCsc: value } } })
+						}
+					/>
+				</div>
+				<div className="w-full lg:w-1/3">
+					<TextInput
+						label="CSC"
+						value={fiscalConfig.nuvemFiscal.nfce.csc ?? ""}
+						placeholder="CSC"
+						handleChange={(value) =>
+							updateFiscalConfig({ nuvemFiscal: { ...fiscalConfig.nuvemFiscal, nfce: { ...fiscalConfig.nuvemFiscal.nfce, csc: value } } })
+						}
+					/>
+				</div>
+			</div>
+			<div className={"flex w-full flex-col gap-1"}>
+				<Label htmlFor={"fiscal-certificate"} className={cn("text-sm font-medium tracking-tight text-primary/80")}>
+					CERTIFICADO FISCAL
+				</Label>
+
+				{fiscalConfig.nuvemFiscal.certificado.storagePath ? (
+					<Button variant="success-light" onClick={() => setCertificateMenuOpen(true)} className="w-fit flex items-center gap-1.5">
+						<CheckCheck className="w-4 h-4 min-w-4 min-h-4" />
+						CERTIFICADO ATIVO
+					</Button>
+				) : (
+					<Button variant="outline" onClick={() => setCertificateMenuOpen(true)} className="w-fit flex items-center gap-1.5">
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						CARREGAR CERTIFICADO
+					</Button>
+				)}
+			</div>
+			{certificateMenuOpen ? (
+				<FiscalCertificateMenu
+					fiscalConfigCertificate={fiscalConfig.nuvemFiscal.certificado}
+					organizationId={organizationId}
+					callbacks={callbacks}
+					closeMenu={() => setCertificateMenuOpen(false)}
+				/>
+			) : null}
 		</SectionWrapper>
+	);
+}
+
+type FiscalCertificateMenuProps = {
+	organizationId: string;
+	fiscalConfigCertificate: TUseInternalFiscalSettingsState["state"]["fiscalConfiguracao"]["nuvemFiscal"]["certificado"];
+	callbacks: {
+		onMutate: () => void;
+		onSettled: () => void;
+	};
+	closeMenu: () => void;
+};
+function FiscalCertificateMenu({ organizationId, fiscalConfigCertificate, callbacks, closeMenu }: FiscalCertificateMenuProps) {
+	const [certificateInformation, setCertificateInformation] = useState<{
+		file: File | null;
+		password: string | null;
+	}>({
+		file: null,
+		password: fiscalConfigCertificate.password ?? null,
+	});
+
+	async function handleSubmitCertificate(info: { file: File | null; password: string | null }) {
+		if (!info.file) throw new Error("Arquivo não selecionado.");
+		if (!info.password) throw new Error("Senha não informada.");
+
+		const { storagePath } = await uploadFile({
+			file: info.file,
+			fileName: `CERTIFICADO_FISCAL_${organizationId}`,
+			vinculationId: organizationId,
+		});
+
+		return await syncFiscalCompanyCertificate({
+			storagePath,
+			password: info.password,
+		});
+	}
+	const { mutate, isPending } = useMutation({
+		mutationKey: ["sync-fiscal-company-certificate"],
+		mutationFn: handleSubmitCertificate,
+		onMutate: () => {
+			callbacks.onMutate();
+		},
+		onSettled: () => {
+			callbacks.onSettled();
+		},
+		onSuccess: () => {
+			closeMenu();
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+	return (
+		<ResponsiveMenu
+			menuTitle="CERTIFICADO FISCAL"
+			menuDescription="Preencha os campos abaixo para carregar o certificado fiscal"
+			menuActionButtonText="CARREGAR CERTIFICADO"
+			menuCancelButtonText="CANCELAR"
+			closeMenu={closeMenu}
+			actionFunction={() => mutate(certificateInformation)}
+			actionIsLoading={isPending}
+			stateIsLoading={false}
+			stateError={null}
+		>
+			<div className="flex min-h-[250px] w-full min-w-[250px] items-center justify-center">
+				<label
+					className="relative flex min-h-[250px] w-full max-w-[250px] cursor-pointer overflow-hidden rounded-lg border border-border bg-muted/40"
+					htmlFor="fiscal-cert-dropzone"
+				>
+					{/* Input abaixo; a camada visual fica por cima com pointer-events-none para não ser coberta pelo controle nativo do arquivo (opacity-0 nem sempre “vê” o que está atrás). */}
+					<input
+						accept=".p12,.pfx"
+						className="absolute inset-0 z-10 h-full min-h-[250px] w-full cursor-pointer opacity-0"
+						id="fiscal-cert-dropzone"
+						multiple={false}
+						onChange={(e) => {
+							const file = e.target.files?.[0] ?? null;
+							setCertificateInformation((prev) => ({ ...prev, file }));
+						}}
+						tabIndex={-1}
+						type="file"
+					/>
+					<div className="pointer-events-none absolute inset-0 z-20 flex min-h-[250px] flex-col items-center justify-center gap-1 px-2 text-foreground">
+						{certificateInformation.file ? (
+							<>
+								<Check className="h-6 w-6 shrink-0" />
+								<p className="text-center text-xs font-medium">ARQUIVO SELECIONADO</p>
+								<p className="line-clamp-4 break-all text-center text-xs font-medium text-muted-foreground">{certificateInformation.file.name}</p>
+							</>
+						) : fiscalConfigCertificate.storagePath ? (
+							<>
+								<FileIcon className="h-6 w-6 shrink-0" />
+								<p className="text-center text-xs font-medium">CERTIFICADO DEFINIDO</p>
+							</>
+						) : (
+							<>
+								<Plus className="h-6 w-6 shrink-0" />
+								<p className="text-center text-xs font-medium">CARREGAR ARQUIVO</p>
+							</>
+						)}
+					</div>
+				</label>
+			</div>
+			<TextInput
+				label="SENHA"
+				value={certificateInformation.password ?? ""}
+				placeholder="Senha"
+				handleChange={(value) => setCertificateInformation((prev) => ({ ...prev, password: value }))}
+			/>
+		</ResponsiveMenu>
 	);
 }
 

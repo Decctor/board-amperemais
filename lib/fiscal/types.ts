@@ -96,6 +96,26 @@ export type TProviderCompanySyncResult = {
 	sincronizado: boolean;
 };
 
+export type TProviderCompanyCertificateSyncInput = {
+	storagePath: string;
+	password: string;
+};
+
+export type TProviderCompanyCertificateSyncResult = {
+	cpfCnpj: string;
+	sincronizado: boolean;
+	certificado: {
+		storagePath: string;
+		serialNumber?: string | null;
+		issuerName?: string | null;
+		subjectName?: string | null;
+		thumbprint?: string | null;
+		validFrom?: string | null;
+		validTo?: string | null;
+		uploadedAt: string;
+	};
+};
+
 export type TProviderDocumentDetails = {
 	id: string;
 	status: TFiscalDocumentStatusEnum;
@@ -121,4 +141,8 @@ export interface IFiscalProvider {
 	baixarXml(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
 	baixarPdf(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
 	sincronizarEmpresa(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult>;
+	sincronizarCertificadoEmpresa(
+		organizacao: TFiscalOrganization,
+		input: TProviderCompanyCertificateSyncInput,
+	): Promise<TProviderCompanyCertificateSyncResult>;
 }

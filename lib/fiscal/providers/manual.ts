@@ -1,4 +1,13 @@
-import type { IFiscalProvider, TCancelarDocumentoInput, TProviderCompanySyncResult, TProviderDocumentDetails, TFiscalOrganization, TFiscalSaleContext } from "../types";
+import type {
+	IFiscalProvider,
+	TCancelDocumentInput,
+	TProviderCompanyCertificateSyncInput,
+	TProviderCompanyCertificateSyncResult,
+	TProviderCompanySyncResult,
+	TProviderDocumentDetails,
+	TFiscalOrganization,
+	TFiscalSaleContext,
+} from "../types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
 
 export class ManualFiscalProvider implements IFiscalProvider {
@@ -32,7 +41,7 @@ export class ManualFiscalProvider implements IFiscalProvider {
 		return this.consultarDocumento(documento);
 	}
 
-	async cancelarDocumento(_input: TCancelarDocumentoInput, documento: TFiscalDocument): Promise<TProviderDocumentDetails> {
+	async cancelarDocumento(_input: TCancelDocumentInput, documento: TFiscalDocument): Promise<TProviderDocumentDetails> {
 		return {
 			id: documento.provedorDocumentoId ?? documento.id,
 			status: "CANCELADA",
@@ -58,6 +67,20 @@ export class ManualFiscalProvider implements IFiscalProvider {
 		return {
 			cpfCnpj: organizacao.fiscalConfiguracao?.cpfCnpj ?? organizacao.cnpj,
 			sincronizado: true,
+		};
+	}
+
+	async sincronizarCertificadoEmpresa(
+		organizacao: TFiscalOrganization,
+		input: TProviderCompanyCertificateSyncInput,
+	): Promise<TProviderCompanyCertificateSyncResult> {
+		return {
+			cpfCnpj: organizacao.fiscalConfiguracao?.cpfCnpj ?? organizacao.cnpj,
+			sincronizado: true,
+			certificado: {
+				storagePath: input.storagePath,
+				uploadedAt: new Date().toISOString(),
+			},
 		};
 	}
 }

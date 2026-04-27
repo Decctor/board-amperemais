@@ -1,5 +1,21 @@
 import type { TFiscalOperationConsumerPresenceEnum, TFiscalOperationFinalityEnum } from "@/schemas/enums";
 
+export function onlyDigits(value: string | null | undefined) {
+	return value?.replace(/\D/g, "") || undefined;
+}
+
+export function nonEmptyString(value: string | null | undefined) {
+	const trimmed = value?.trim();
+	return trimmed || undefined;
+}
+
+export function mapTaxRegistration(value: string | null | undefined) {
+	const trimmed = nonEmptyString(value);
+	if (!trimmed) return undefined;
+	if (trimmed.toUpperCase() === "ISENTO") return "ISENTO";
+	return onlyDigits(trimmed);
+}
+
 export function mapFiscalFinalityToNfeCode(finalidade: TFiscalOperationFinalityEnum): 1 | 2 | 3 | 4 {
 	switch (finalidade) {
 		case "NORMAL":

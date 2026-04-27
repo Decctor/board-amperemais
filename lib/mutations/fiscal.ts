@@ -1,4 +1,5 @@
 import type { TSyncFiscalCompanyOutput } from "@/app/api/fiscal/company/sync/route";
+import type { TSyncFiscalCertificateInput, TSyncFiscalCertificateOutput } from "@/app/api/fiscal/company/sync-certificate/route";
 import type { TCancelFiscalDocumentInput, TCancelFiscalDocumentOutput } from "@/app/api/fiscal/documents/cancel/route";
 import type { TCreateFiscalDocumentOutput, TEmitFiscalDocumentInput } from "@/app/api/fiscal/documents/route";
 import type { TSyncFiscalDocumentInput, TSyncFiscalDocumentOutput } from "@/app/api/fiscal/documents/sync/route";
@@ -24,6 +25,11 @@ export async function updateFiscalSettings(input: TUpdateFiscalSettingsInput) {
 
 export async function syncFiscalCompany() {
 	const { data } = await axios.post<TSyncFiscalCompanyOutput>("/api/fiscal/company/sync");
+	return data;
+}
+
+export async function syncFiscalCompanyCertificate(input: TSyncFiscalCertificateInput) {
+	const { data } = await axios.post<TSyncFiscalCertificateOutput>("/api/fiscal/company/sync-certificate", input);
 	return data;
 }
 

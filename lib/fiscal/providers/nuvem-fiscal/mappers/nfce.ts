@@ -1,6 +1,6 @@
 import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
-import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode } from "./utils";
+import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode, mapTaxRegistration, nonEmptyString, onlyDigits } from "./utils";
 
 const UF_TO_IBGE_CODE: Record<string, number> = {
 	AC: 12,
@@ -31,10 +31,6 @@ const UF_TO_IBGE_CODE: Record<string, number> = {
 	SP: 35,
 	TO: 17,
 };
-
-function onlyDigits(value: string | null | undefined) {
-	return value?.replace(/\D/g, "") || undefined;
-}
 
 function mapDestinatario(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
 	if (!snapshot) return undefined;
@@ -86,10 +82,6 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 				CNPJ: onlyDigits(fiscalConfig.cpfCnpj),
 				xNome: fiscalConfig.nomeRazaoSocial,
 				xFant: fiscalConfig.nomeFantasia ?? undefined,
-				IE: fiscalConfig.inscricaoEstadual ?? undefined,
-				IM: fiscalConfig.inscricaoMunicipal ?? undefined,
-				CNAE: fiscalConfig.cnae ?? undefined,
-				CRT: fiscalConfig.regimeTributario,
 				enderEmit: {
 					xLgr: fiscalConfig.endereco.logradouro,
 					nro: fiscalConfig.endereco.numero,
@@ -101,8 +93,11 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 					CEP: onlyDigits(fiscalConfig.endereco.cep),
 					cPais: fiscalConfig.endereco.codigoPais,
 					xPais: fiscalConfig.endereco.pais,
-					fone: onlyDigits(fiscalConfig.telefoneFiscal ?? context.organizacao.telefone),
+					fone: onlyDigits(fiscalConfig.telefoneFiscal ?? context.organizacao.telefone ?? ""),
 				},
+				IE: mapTaxRegistration(fiscalConfig.inscricaoEstadual),
+				IM: nonEmptyString(fiscalConfig.inscricaoMunicipal),
+				CRT: fiscalConfig.regimeTributario,
 			},
 			dest: mapDestinatario(context.destinatarioSnapshot),
 			det: context.venda.itens.map((item, index) => {
@@ -161,4 +156,3 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 		},
 	};
 }
-

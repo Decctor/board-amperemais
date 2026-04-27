@@ -79,6 +79,8 @@ export async function emitNuvemFiscalDocument(context: TFiscalSaleContext, docum
 	console.log("EMITIR DOCUMENTO", JSON.stringify(payload, null, 2));
 	try {
 		const { data } = await client.post<TNuvemFiscalDfeResponse>(path, payload);
+
+		console.log("[NUVEM_FISCAL] Document emitted successfully", JSON.stringify(data, null, 2));
 		return {
 			...mapDfeResponse(data),
 			provedorPayload: payload as Record<string, unknown>,

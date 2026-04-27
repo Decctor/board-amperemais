@@ -1,5 +1,5 @@
 import type { IFiscalProvider } from "@/lib/fiscal/types";
-import { syncNuvemFiscalCompany } from "./company";
+import { syncNuvemFiscalCompany, syncNuvemFiscalCompanyCertificate } from "./company";
 import { nuvemFiscalDocumentMethods } from "./documents";
 
 export class NuvemFiscalProvider implements IFiscalProvider {
@@ -10,4 +10,5 @@ export class NuvemFiscalProvider implements IFiscalProvider {
 	baixarXml = nuvemFiscalDocumentMethods.baixarXml;
 	baixarPdf = nuvemFiscalDocumentMethods.baixarPdf;
 	sincronizarEmpresa = syncNuvemFiscalCompany;
+	sincronizarCertificadoEmpresa = syncNuvemFiscalCompanyCertificate;
 }
