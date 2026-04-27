@@ -1,5 +1,7 @@
-import type { IFiscalProvider, TCancelarDocumentoInput, TProviderDocumentDetails, TFiscalOrganization, TFiscalSaleContext } from "@/lib/fiscal/types";
+import type { IFiscalProvider, TCancelDocumentInput, TProviderDocumentDetails, TFiscalOrganization, TFiscalSaleContext } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
+import axios from "axios";
+import { inspect } from "node:util";
 import { createNuvemFiscalClient } from "./client";
 import { mapSaleContextToNfcePayload } from "./mappers/nfce";
 import { mapSaleContextToNfePayload } from "./mappers/nfe";
@@ -43,6 +45,16 @@ function toEnvironment(value: "homologacao" | "producao") {
 	return value === "producao" ? "PRODUCAO" : "HOMOLOGACAO";
 }
 
+function formatNuvemFiscalErrorPayload(data: unknown): string {
+	if (data === undefined) return "undefined";
+	if (typeof data === "string") return data;
+	try {
+		return JSON.stringify(data, null, 2);
+	} catch {
+		return inspect(data, { depth: null, maxArrayLength: null, maxStringLength: null });
+	}
+}
+
 function mapDfeResponse(response: TNuvemFiscalDfeResponse): TProviderDocumentDetails {
 	return {
 		id: response.id,
@@ -64,11 +76,21 @@ export async function emitNuvemFiscalDocument(context: TFiscalSaleContext, docum
 	const client = getClient(context.organizacao);
 	const path = documento.tipo === "NFCE" ? "/nfce" : "/nfe";
 	const payload = documento.tipo === "NFCE" ? mapSaleContextToNfcePayload(context, documento) : mapSaleContextToNfePayload(context, documento);
-	const { data } = await client.post<TNuvemFiscalDfeResponse>(path, payload);
-	return {
-		...mapDfeResponse(data),
-		provedorPayload: payload as Record<string, unknown>,
-	};
+	console.log("EMITIR DOCUMENTO", JSON.stringify(payload, null, 2));
+	try {
+		const { data } = await client.post<TNuvemFiscalDfeResponse>(path, payload);
+		return {
+			...mapDfeResponse(data),
+			provedorPayload: payload as Record<string, unknown>,
+		};
+	} catch (error) {
+		if (axios.isAxiosError(error) && error.response?.data !== undefined) {
+			console.error(`[NUVEM_FISCAL] Error emitting document\n${formatNuvemFiscalErrorPayload(error.response.data)}`);
+		} else {
+			console.error("[NUVEM_FISCAL] Error emitting document", error);
+		}
+		throw error;
+	}
 }
 
 export async function consultNuvemFiscalDocument(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails> {
@@ -86,14 +108,14 @@ export async function syncNuvemFiscalDocument(documento: TFiscalDocument, organi
 }
 
 export async function cancelNuvemFiscalDocument(
-	input: TCancelarDocumentoInput,
+	input: TCancelDocumentInput,
 	documento: TFiscalDocument,
 	organizacao: TFiscalOrganization,
 ): Promise<TProviderDocumentDetails> {
 	const client = getClient(organizacao);
 	const path =
 		documento.tipo === "NFCE" ? `/nfce/${documento.provedorDocumentoId}/cancelamento` : `/nfe/${documento.provedorDocumentoId}/cancelamento`;
-	const { data } = await client.post<TNuvemFiscalCancelResponse>(path, { justificativa: input.motivo });
+	const { data } = await client.post<TNuvemFiscalCancelResponse>(path, { justificativa: input.reason });
 	return {
 		id: documento.provedorDocumentoId ?? documento.id,
 		status: data.status === "registrado" ? "CANCELADA" : documento.status,

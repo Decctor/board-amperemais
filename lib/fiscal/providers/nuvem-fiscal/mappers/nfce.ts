@@ -2,8 +2,55 @@ import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
 import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode } from "./utils";
 
+const UF_TO_IBGE_CODE: Record<string, number> = {
+	AC: 12,
+	AL: 27,
+	AM: 13,
+	AP: 16,
+	BA: 29,
+	CE: 23,
+	DF: 53,
+	ES: 32,
+	GO: 52,
+	MA: 21,
+	MG: 31,
+	MS: 50,
+	MT: 51,
+	PA: 15,
+	PB: 25,
+	PE: 26,
+	PI: 22,
+	PR: 41,
+	RJ: 33,
+	RN: 24,
+	RO: 11,
+	RR: 14,
+	RS: 43,
+	SC: 42,
+	SE: 28,
+	SP: 35,
+	TO: 17,
+};
+
+function onlyDigits(value: string | null | undefined) {
+	return value?.replace(/\D/g, "") || undefined;
+}
+
+function mapDestinatario(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
+	if (!snapshot) return undefined;
+	const cpfCnpj = onlyDigits(String(snapshot.cpfCnpj ?? ""));
+	return {
+		CPF: cpfCnpj && cpfCnpj.length <= 11 ? cpfCnpj : undefined,
+		CNPJ: cpfCnpj && cpfCnpj.length > 11 ? cpfCnpj : undefined,
+		xNome: snapshot.nome,
+		email: snapshot.email,
+		indIEDest: 9,
+	};
+}
+
 export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documento: TFiscalDocument) {
 	const fiscalConfig = context.organizacao.fiscalConfiguracao!;
+	const uf = fiscalConfig.endereco.uf.toUpperCase();
 	const payments = [
 		{
 			tPag: "99",
@@ -17,12 +64,15 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 		infNFe: {
 			versao: "4.00",
 			ide: {
+				cUF: UF_TO_IBGE_CODE[uf],
 				mod: 65,
 				natOp: context.operacao.naturezaOperacao,
 				serie: Number(context.serie.serie),
 				nNF: documento.numero ? Number(documento.numero) : context.serie.proximoNumero,
 				dhEmi: new Date().toISOString(),
+				tpNF: 1,
 				idDest: 1,
+				cMunFG: Number(fiscalConfig.endereco.codigoMunicipio),
 				tpImp: 4,
 				tpEmis: 1,
 				tpAmb: fiscalConfig.ambiente === "PRODUCAO" ? 1 : 2,
@@ -33,7 +83,7 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 				verProc: "recompra-crm",
 			},
 			emit: {
-				CNPJ: fiscalConfig.cpfCnpj,
+				CNPJ: onlyDigits(fiscalConfig.cpfCnpj),
 				xNome: fiscalConfig.nomeRazaoSocial,
 				xFant: fiscalConfig.nomeFantasia ?? undefined,
 				IE: fiscalConfig.inscricaoEstadual ?? undefined,
@@ -47,22 +97,14 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 					xBairro: fiscalConfig.endereco.bairro,
 					cMun: fiscalConfig.endereco.codigoMunicipio,
 					xMun: fiscalConfig.endereco.cidade,
-					UF: fiscalConfig.endereco.uf,
-					CEP: fiscalConfig.endereco.cep,
+					UF: uf,
+					CEP: onlyDigits(fiscalConfig.endereco.cep),
 					cPais: fiscalConfig.endereco.codigoPais,
 					xPais: fiscalConfig.endereco.pais,
-					fone: fiscalConfig.telefoneFiscal ?? context.organizacao.telefone ?? undefined,
+					fone: onlyDigits(fiscalConfig.telefoneFiscal ?? context.organizacao.telefone),
 				},
 			},
-			dest: context.destinatarioSnapshot
-				? {
-						CPF: String(context.destinatarioSnapshot.cpfCnpj ?? "").length <= 11 ? context.destinatarioSnapshot.cpfCnpj : undefined,
-						CNPJ: String(context.destinatarioSnapshot.cpfCnpj ?? "").length > 11 ? context.destinatarioSnapshot.cpfCnpj : undefined,
-						xNome: context.destinatarioSnapshot.nome,
-						email: context.destinatarioSnapshot.email,
-						indIEDest: 9,
-					}
-				: undefined,
+			dest: mapDestinatario(context.destinatarioSnapshot),
 			det: context.venda.itens.map((item, index) => {
 				const perfil = context.perfisProdutos.find((profile) => profile.produtoId === item.produtoId);
 				return {
@@ -81,7 +123,7 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 						uTrib: perfil?.unidadeComercial ?? "UN",
 						qTrib: item.quantidade,
 						vUnTrib: item.valorVendaUnitario,
-						vDesc: item.valorTotalDesconto,
+						vDesc: item.valorTotalDesconto > 0 ? item.valorTotalDesconto : undefined,
 						indTot: 1,
 					},
 					imposto: {
@@ -91,8 +133,24 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 			}),
 			total: {
 				ICMSTot: {
+					vBC: 0,
+					vICMS: 0,
+					vICMSDeson: 0,
+					vFCP: 0,
+					vBCST: 0,
+					vST: 0,
+					vFCPST: 0,
+					vFCPSTRet: 0,
 					vProd: context.venda.itens.reduce((acc, item) => acc + item.valorVendaTotalBruto, 0),
+					vFrete: 0,
+					vSeg: 0,
 					vDesc: context.venda.itens.reduce((acc, item) => acc + item.valorTotalDesconto, 0),
+					vII: 0,
+					vIPI: 0,
+					vIPIDevol: 0,
+					vPIS: 0,
+					vCOFINS: 0,
+					vOutro: 0,
 					vNF: context.venda.valorTotal,
 				},
 			},

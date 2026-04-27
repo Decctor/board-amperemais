@@ -167,6 +167,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 
 	// 5. Fiscal emission (async, non-blocking)
 	if (input.organization.fiscalEmissaoAutomatica) {
+		console.log("[PROCESS-SALE-CONFIRMATION] Emitting fiscal document");
 		try {
 			await emitFiscalDocument({
 				vendaId: input.saleId,
@@ -178,7 +179,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 			});
 		} catch (error) {
 			// Fiscal emission failure should not block sale confirmation
-			console.error("[FISCAL] Erro na emissão automática:", error);
+			// console.error("[PROCESS-SALE-CONFIRMATION] Erro na emissão automática:", error);
 		}
 	}
 
