@@ -7,9 +7,10 @@ import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-const NAV_LINKS = [
+const ANCHOR_LINKS = [
 	{ label: "Funcionalidades", href: "#funcionalidades" },
 	{ label: "Plataforma", href: "#plataforma" },
 	{ label: "Campanhas", href: "#campanhas" },
@@ -19,6 +20,8 @@ const NAV_LINKS = [
 export default function NavbarV2() {
 	const [scrolled, setScrolled] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
+	const pathname = usePathname();
+	const isHomePage = pathname === "/";
 
 	useEffect(() => {
 		const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -26,19 +29,25 @@ export default function NavbarV2() {
 		return () => window.removeEventListener("scroll", handleScroll);
 	}, []);
 
-	const handleAnchorClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string, isMobileMenu: boolean) => {
-		e.preventDefault();
-		captureClientEvent({
-			event: "landing_nav_click",
-			properties: {
-				target_section: href.replace("#", ""),
-				is_mobile_menu: isMobileMenu,
-			},
-		});
-		setMobileOpen(false);
-		const el = document.querySelector(href);
-		if (el) el.scrollIntoView({ behavior: "smooth" });
-	}, []);
+	const handleAnchorClick = useCallback(
+		(e: React.MouseEvent<HTMLAnchorElement>, href: string, isMobileMenu: boolean) => {
+			captureClientEvent({
+				event: "landing_nav_click",
+				properties: {
+					target_section: href.replace("#", ""),
+					is_mobile_menu: isMobileMenu,
+				},
+			});
+			setMobileOpen(false);
+			if (isHomePage) {
+				e.preventDefault();
+				const el = document.querySelector(href);
+				if (el) el.scrollIntoView({ behavior: "smooth" });
+			}
+			// On other pages: let the browser navigate to /#section
+		},
+		[isHomePage],
+	);
 
 	return (
 		<header
@@ -53,16 +62,19 @@ export default function NavbarV2() {
 				</Link>
 
 				<nav className="hidden md:flex items-center gap-8">
-					{NAV_LINKS.map((link) => (
+					{ANCHOR_LINKS.map((link) => (
 						<a
 							key={link.href}
-							href={link.href}
+							href={isHomePage ? link.href : `/${link.href}`}
 							onClick={(e) => handleAnchorClick(e, link.href, false)}
 							className="text-sm font-medium text-slate-600 hover:text-[#24549C] transition-colors"
 						>
 							{link.label}
 						</a>
 					))}
+					<Link href="/blog" className="text-sm font-medium text-slate-600 hover:text-[#24549C] transition-colors">
+						Blog
+					</Link>
 				</nav>
 
 				<div className="hidden md:flex items-center gap-4">
@@ -96,11 +108,19 @@ export default function NavbarV2() {
 			{mobileOpen && (
 				<motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="md:hidden bg-white border-b border-slate-200 shadow-lg">
 					<div className="container mx-auto max-w-7xl px-6 py-4 flex flex-col gap-4">
-						{NAV_LINKS.map((link) => (
-							<a key={link.href} href={link.href} onClick={(e) => handleAnchorClick(e, link.href, true)} className="text-sm font-medium text-slate-700 py-2">
+						{ANCHOR_LINKS.map((link) => (
+							<a
+								key={link.href}
+								href={isHomePage ? link.href : `/${link.href}`}
+								onClick={(e) => handleAnchorClick(e, link.href, true)}
+								className="text-sm font-medium text-slate-700 py-2"
+							>
 								{link.label}
 							</a>
 						))}
+						<Link href="/blog" onClick={() => setMobileOpen(false)} className="text-sm font-medium text-slate-700 py-2">
+							Blog
+						</Link>
 						<hr className="border-slate-200" />
 						<Link href="/auth/signin" className="text-sm font-medium text-slate-600 py-2">
 							Entrar

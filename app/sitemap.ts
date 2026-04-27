@@ -1,3 +1,5 @@
+import { BLOG_POSTS } from "@/app/_content/blog-posts";
+import { FEATURE_PAGES } from "@/app/_content/feature-pages";
 import { db } from "@/services/drizzle";
 import type { MetadataRoute } from "next";
 
@@ -17,6 +19,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
 	const ebooks = materials.filter((m) => m.tipo === "EBOOK");
 	const documents = materials.filter((m) => m.tipo !== "EBOOK");
+
+	const blogRoutes: MetadataRoute.Sitemap = [
+		{ url: `${BASE_URL}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
+		...BLOG_POSTS.map((post) => ({
+			url: `${BASE_URL}/blog/${post.slug}`,
+			lastModified: new Date(post.publishedAt),
+			changeFrequency: "monthly" as const,
+			priority: 0.8,
+		})),
+	];
+
+	const featureRoutes: MetadataRoute.Sitemap = FEATURE_PAGES.map((page) => ({
+		url: `${BASE_URL}/funcionalidades/${page.slug}`,
+		lastModified: new Date(),
+		changeFrequency: "monthly" as const,
+		priority: 0.85,
+	}));
 
 	const staticRoutes: MetadataRoute.Sitemap = [
 		{ url: `${BASE_URL}/presentation`, lastModified: new Date(), changeFrequency: "monthly", priority: 1 },
@@ -48,5 +67,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		priority: 0.6,
 	}));
 
-	return [...staticRoutes, ...courseRoutes, ...ebookRoutes, ...documentRoutes];
+	return [...blogRoutes, ...featureRoutes, ...staticRoutes, ...courseRoutes, ...ebookRoutes, ...documentRoutes];
 }
