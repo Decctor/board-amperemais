@@ -8,9 +8,9 @@ import { db } from "@/services/drizzle";
 import dayjs from "dayjs";
 import { and, eq } from "drizzle-orm";
 
-const TARGET_ORGANIZATION_ID = "27817d9a-cb04-4704-a1f4-15b81a3610d3";
-const START_DATE = "2025-10-01T00:00:00.000Z";
-const END_DATE = dayjs().subtract(1, "year").endOf("year").toISOString();
+const TARGET_ORGANIZATION_ID = "94d515f6-4c61-46e3-a05f-3f9fc4ad6d22";
+const START_DATE = "2025-12-01T00:00:00.000Z";
+const END_DATE = dayjs().toISOString();
 
 type ExistingClient = Pick<
 	TClientEntity,
@@ -85,7 +85,6 @@ function getClientUpdatePayload(existingClient: ExistingClient, cardapioWebClien
 		setIfChanged(payload, existingClient.nome, "nome", cardapioWebClient.nome);
 	}
 
-	setIfChanged(payload, existingClient.idExterno, "idExterno", cardapioWebClient.idExterno);
 	setIfChanged(payload, existingClient.telefone, "telefone", cardapioWebClient.telefone);
 	setIfChanged(payload, existingClient.telefoneBase, "telefoneBase", cardapioWebClient.telefoneBase);
 	setIfChanged(payload, existingClient.localizacaoCep, "localizacaoCep", cardapioWebClient.localizacaoCep);
@@ -116,7 +115,7 @@ function resolveExistingClient(
 		const clientByBasePhone = clientsByBasePhone.get(basePhone);
 		if (clientByBasePhone) return { dbClient: clientByBasePhone, matchedBy: "phone" };
 	}
-
+	console.log("No match found for sale:", sale.cliente?.idExterno, sale.cliente?.telefoneBase);
 	return null;
 }
 
@@ -256,6 +255,7 @@ export async function syncCardapioWebClientUpdates() {
 	const config = await db.query.organizations.findFirst({
 		where: (fields, { eq: equals }) => equals(fields.id, organizationId),
 		columns: {
+			nome: true,
 			integracaoConfiguracao: true,
 		},
 	});
@@ -266,6 +266,7 @@ export async function syncCardapioWebClientUpdates() {
 
 	console.log(`[SYNC-CARDAPIO-WEB-CLIENTS] Syncing clients for organization ${organizationId}`, {
 		organizationId,
+		organizationName: config.nome,
 		config,
 	});
 
