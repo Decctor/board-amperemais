@@ -145,7 +145,7 @@ export async function runDataCollectingV2({
 				config: organization.integracaoConfiguracao,
 				window,
 			});
-
+			console.log(`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Summary`, summary);
 			summaries.push(summary);
 			allImmediateProcessingData.push(...immediateProcessingDataList);
 		} catch (error) {

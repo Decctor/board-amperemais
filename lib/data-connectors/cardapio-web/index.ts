@@ -442,9 +442,9 @@ export async function fetchCardapioWebOrdersWithDetails(
 	const client = createCardapioWebClient(config);
 
 	// Step 1: Fetch all order summaries (handles pagination)
-	console.log(`[CARDAPIO-WEB] Buscando pedidos de ${startDate} até ${endDate}...`);
+	// console.log(`[CARDAPIO-WEB] Buscando pedidos de ${startDate} até ${endDate}...`);
 	const orderSummaries = await fetchAllCardapioWebOrders(client, startDate, endDate, ["closed", "canceled"]);
-	console.log(`[CARDAPIO-WEB] ${orderSummaries.length} pedidos encontrados.`);
+	// console.log(`[CARDAPIO-WEB] ${orderSummaries.length} pedidos encontrados.`);
 
 	if (orderSummaries.length === 0) {
 		return [];
@@ -452,9 +452,9 @@ export async function fetchCardapioWebOrdersWithDetails(
 
 	// Step 2: Fetch details for all orders (handles rate limiting via batches)
 	const orderIds = orderSummaries.map((order) => order.id);
-	console.log(`[CARDAPIO-WEB] Buscando detalhes de ${orderIds.length} pedidos...`);
+	// console.log(`[CARDAPIO-WEB] Buscando detalhes de ${orderIds.length} pedidos...`);
 	const orderDetails = await fetchOrderDetailsInBatches(client, orderIds);
-	console.log(`[CARDAPIO-WEB] Detalhes de ${orderDetails.length} pedidos carregados.`);
+	// console.log(`[CARDAPIO-WEB] Detalhes de ${orderDetails.length} pedidos carregados.`);
 
 	return orderDetails;
 }
