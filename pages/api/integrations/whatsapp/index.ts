@@ -17,7 +17,6 @@ import {
 	parseWebhookMessageEcho,
 } from "@/lib/whatsapp/parsing";
 import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
-import { InteractionsStatusEnum } from "@/schemas/interactions";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
@@ -181,12 +180,16 @@ const INTERACTION_STATUS_MAPPING: Record<AppWhatsappStatus, TInteractionsStatusE
 async function handleStatusUpdate(body: WebhookBody): Promise<void> {
 	const statusUpdate = parseStatusUpdate(body);
 	if (!statusUpdate) return;
-
 	const { status, whatsappStatus } = mapWhatsAppStatusToAppStatus(statusUpdate.status);
 
 	const previousInteraction = await db.query.interactions.findFirst({
 		where: sql`${interactions.metadados}->>'whatsappMessageId' = ${statusUpdate.whatsappMessageId}`,
 	});
+	const previousMetadata =
+		previousInteraction?.metadados && typeof previousInteraction.metadados === "object" && !Array.isArray(previousInteraction.metadados)
+			? (previousInteraction.metadados as Record<string, unknown>)
+			: {};
+
 	await db
 		.update(chatMessages)
 		.set({ status, whatsappMessageStatus: whatsappStatus })
@@ -196,9 +199,11 @@ async function handleStatusUpdate(body: WebhookBody): Promise<void> {
 		.update(interactions)
 		.set({
 			statusEnvio: INTERACTION_STATUS_MAPPING[whatsappStatus],
+			erroEnvio: whatsappStatus === "FALHOU" ? (statusUpdate.errorMessage ?? "Mensagem não entregue pelo WhatsApp.") : null,
 			metadados: {
-				...(previousInteraction?.metadados ?? {}),
+				...previousMetadata,
 				whatsappMessageId: statusUpdate.whatsappMessageId,
+				...(statusUpdate.errors && statusUpdate.errors.length > 0 ? { whatsappErrors: statusUpdate.errors } : {}),
 			},
 		})
 		.where(sql`${interactions.metadados}->>'whatsappMessageId' = ${statusUpdate.whatsappMessageId}`);

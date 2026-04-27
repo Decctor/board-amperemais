@@ -19,6 +19,7 @@ import type {
 	TTimeDurationUnitsEnum,
 } from "@/schemas/enums";
 import type { TInternalLeadOriginEnum, TInternalLeadStatusCRMEnum } from "@/schemas/enums";
+import { TInteractionsStatusEnum } from "@/schemas/interactions";
 import {
 	Archive,
 	ArrowDown,
@@ -259,6 +260,50 @@ export const InteractionsCronJobTimeBlocksOptions: { id: number; label: string; 
 	{ id: 6, label: "15:00", value: "15:00" },
 	{ id: 7, label: "18:00", value: "18:00" },
 	{ id: 8, label: "21:00", value: "21:00" },
+];
+
+export const InteractionsSentStatusOptions: {
+	id: number;
+	label: string;
+	value: TInteractionsStatusEnum;
+	icon: React.ReactNode;
+	className: string;
+}[] = [
+	{
+		id: 1,
+		label: "PENDENTE",
+		value: "PENDENTE",
+		icon: <Clock className="w-4 h-4" />,
+		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-600",
+	},
+	{
+		id: 2,
+		label: "ENVIADO",
+		value: "ENVIADO",
+		icon: <Check className="w-4 h-4" />,
+		className: "bg-blue-200 text-blue-600 border border-blue-600 hover:bg-blue-100 hover:text-blue-500 hover:border-blue-600",
+	},
+	{
+		id: 3,
+		label: "ENTREGUE",
+		value: "ENTREGUE",
+		icon: <CheckCheck className="w-4 h-4" />,
+		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-600",
+	},
+	{
+		id: 4,
+		label: "LIDO",
+		value: "LIDO",
+		icon: <CheckCheck className="w-4 h-4" />,
+		className: "bg-green-200 text-green-600 border border-green-600 hover:bg-green-100 hover:text-green-500 hover:border-green-600",
+	},
+	{
+		id: 5,
+		label: "FALHOU",
+		value: "FALHOU",
+		icon: <X className="w-4 h-4" />,
+		className: "bg-red-200 text-red-600 border border-red-600 hover:bg-red-100 hover:text-red-500 hover:border-red-600",
+	},
 ];
 
 export const CashbackProgramAccumulationTypeOptions: { id: number; label: string; value: TCashbackProgramAccumulationTypeEnum }[] = [

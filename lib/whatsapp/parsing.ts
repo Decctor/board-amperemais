@@ -48,7 +48,91 @@ type ParsedStatusUpdate = {
 	whatsappMessageId: string;
 	status: WhatsAppMessageStatus;
 	timestamp: number;
+	errorMessage?: string;
+	errors?: ParsedWhatsappStatusError[];
 };
+
+export type ParsedWhatsappStatusError = {
+	code?: number;
+	title?: string;
+	message?: string;
+	details?: string;
+};
+
+const WHATSAPP_STATUS_ERROR_MESSAGES: Record<number, string> = {
+	4: "Limite temporário de chamadas à API do WhatsApp atingido. Tente novamente mais tarde.",
+	10: "Permissão insuficiente para enviar a mensagem pelo WhatsApp.",
+	100: "A mensagem foi recusada por parâmetro inválido na requisição ao WhatsApp.",
+	368: "A conta ou número do WhatsApp foi temporariamente bloqueado por política da Meta.",
+	130429: "Limite de envio do WhatsApp atingido. Tente novamente mais tarde.",
+	131000: "Erro temporário do WhatsApp ao processar a mensagem.",
+	131005: "Acesso negado ao recurso do WhatsApp usado para enviar a mensagem.",
+	131008: "A mensagem foi recusada por falta de um parâmetro obrigatório.",
+	131009: "A mensagem foi recusada por parâmetro inválido.",
+	131016: "Serviço do WhatsApp temporariamente indisponível.",
+	131021: "O número de destino não pode ser o mesmo número da empresa.",
+	131026:
+		"Mensagem não entregue pelo WhatsApp. O número pode não ter WhatsApp, estar indisponível, ter bloqueado a empresa, usar uma versão antiga do app ou a Meta pode ter bloqueado a entrega por qualidade.",
+	131031: "Conta do WhatsApp Business bloqueada ou restrita pela Meta.",
+	131042: "Mensagem não enviada por problema de elegibilidade ou pagamento da conta WhatsApp Business.",
+	131047: "Mensagem fora da janela de atendimento de 24 horas. Use um template aprovado para retomar contato.",
+	131048: "Limite de envio por qualidade/spam atingido. Reduza o volume e revise a qualidade das mensagens.",
+	131049: "Mensagem não entregue pela Meta para manter uma experiência saudável para o usuário.",
+	131051: "Tipo de mensagem não suportado para este destinatário ou pela Cloud API.",
+	131052: "Falha ao baixar a mídia usada na mensagem.",
+	131053: "Falha ao enviar a mídia usada na mensagem.",
+	131056: "Limite de mensagens para este destinatário atingido. Tente novamente mais tarde.",
+	131064: "Mensagem bloqueada por classificação, política ou limite relacionado ao template.",
+	132000: "O template foi recusado porque os parâmetros enviados não correspondem ao modelo aprovado.",
+	132001: "Template do WhatsApp não encontrado para o idioma ou nome informado.",
+	132005: "Texto do template ficou grande demais após preencher os parâmetros.",
+	132007: "Template contém caracteres ou conteúdo não permitido pela Meta.",
+	132012: "Formato dos parâmetros do template não corresponde ao modelo aprovado.",
+	132015: "Template pausado pela Meta por baixa qualidade.",
+	132016: "Template desabilitado pela Meta por baixa qualidade.",
+	133004: "Servidor do WhatsApp temporariamente indisponível.",
+	133006: "Número do WhatsApp precisa ser verificado novamente.",
+	133010: "Número do WhatsApp não registrado na Cloud API.",
+	133016: "Limite de tentativas de registro do número atingido.",
+	135000: "Erro genérico ao processar a mensagem no WhatsApp.",
+};
+
+function parseStatusErrors(status: Record<string, unknown>): ParsedWhatsappStatusError[] {
+	const errors = status.errors as unknown[] | undefined;
+	if (!Array.isArray(errors)) return [];
+
+	return errors
+		.map((error) => {
+			const errorRecord = error && typeof error === "object" && !Array.isArray(error) ? (error as Record<string, unknown>) : null;
+			if (!errorRecord) return null;
+
+			const errorData =
+				errorRecord.error_data && typeof errorRecord.error_data === "object" && !Array.isArray(errorRecord.error_data)
+					? (errorRecord.error_data as Record<string, unknown>)
+					: null;
+
+			return {
+				code: typeof errorRecord.code === "number" ? errorRecord.code : undefined,
+				title: typeof errorRecord.title === "string" ? errorRecord.title : undefined,
+				message: typeof errorRecord.message === "string" ? errorRecord.message : undefined,
+				details: typeof errorData?.details === "string" ? errorData.details : undefined,
+			};
+		})
+		.filter((error) => !!error);
+}
+
+export function getWhatsappStatusErrorMessage(errors: ParsedWhatsappStatusError[]): string | undefined {
+	if (errors.length === 0) return undefined;
+
+	const error = errors[0];
+	const mappedMessage = error.code ? WHATSAPP_STATUS_ERROR_MESSAGES[error.code] : undefined;
+	if (mappedMessage) return error.code ? `${mappedMessage} (Código ${error.code})` : mappedMessage;
+
+	const fallbackMessage = error.details || error.message || error.title;
+	if (!fallbackMessage && !error.code) return "Mensagem não entregue pelo WhatsApp.";
+	if (!fallbackMessage) return `Mensagem não entregue pelo WhatsApp. Código ${error.code}.`;
+	return error.code ? `${fallbackMessage} (Código ${error.code})` : fallbackMessage;
+}
 
 export function parseStatusUpdate(statusPayload: unknown): ParsedStatusUpdate | null {
 	try {
@@ -61,10 +145,13 @@ export function parseStatusUpdate(statusPayload: unknown): ParsedStatusUpdate | 
 		const statuses = value?.statuses as unknown[] | undefined;
 		if (statuses && Array.isArray(statuses) && statuses.length > 0) {
 			const status = statuses[0] as Record<string, unknown>;
+			const errors = parseStatusErrors(status);
 			return {
 				whatsappMessageId: status.id as string,
 				status: status.status as WhatsAppMessageStatus,
 				timestamp: status.timestamp ? Number.parseInt(status.timestamp as string) * 1000 : Date.now(),
+				errorMessage: getWhatsappStatusErrorMessage(errors),
+				errors,
 			};
 		}
 

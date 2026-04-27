@@ -60,6 +60,7 @@ import {
 import Link from "next/link";
 import { memo, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { InteractionsSentStatusOptions } from "@/utils/select-options";
 
 type CampaignResultPageProps = {
 	campaignId: string;
@@ -760,21 +761,27 @@ function InteractionsSection({ campaignId }: { campaignId: string }) {
 						className="grow rounded-xl"
 					/>
 					<div className="w-full flex items-center gap-1.5 flex-wrap">
-						{interactionSentStatusOptions.map((opt) => (
-							<button
-								key={opt.key}
-								type="button"
-								onClick={() => updateFilters({ status: [opt.key as "AGENDADA" | "EXECUTADA"], page: 1 })}
-								className={cn(
-									"flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[0.65rem] font-bold uppercase transition-colors border",
-									filters.status.includes(opt.key as "AGENDADA" | "EXECUTADA")
-										? `${opt.bgClass} text-white border-transparent`
-										: "bg-secondary text-primary border-transparent hover:bg-secondary/80",
-								)}
-							>
-								{opt.label}
-							</button>
-						))}
+						{InteractionsSentStatusOptions.map((opt) => {
+							const isSelected = filters.status.includes(opt.value);
+							return (
+								<button
+									key={opt.id}
+									type="button"
+									onClick={() =>
+										updateFilters({
+											status: isSelected ? filters.status.filter((s) => s !== opt.value) : [...filters.status, opt.value],
+											page: 1,
+										})
+									}
+									className={cn(
+										"flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[0.65rem] font-bold uppercase transition-colors border",
+										isSelected && opt.className,
+									)}
+								>
+									{opt.label}
+								</button>
+							);
+						})}
 					</div>
 				</div>
 				<GeneralPaginationComponent
