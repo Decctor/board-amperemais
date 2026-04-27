@@ -43,6 +43,7 @@ function validateRecurrentCampaign(campaign: z.infer<typeof CampaignSchema>) {
 }
 
 function validateCampaignFrequencyInterval(campaign: z.infer<typeof CampaignSchema>) {
+	if (campaign.gatilhoTipo === "USO-UNICO") return;
 	if (!campaign.permitirRecorrencia) return;
 
 	if (!campaign.frequenciaIntervaloMedida || !campaign.frequenciaIntervaloValor || campaign.frequenciaIntervaloValor <= 0) {
@@ -67,6 +68,19 @@ function validateCashbackExpiringTrigger(campaign: z.infer<typeof CampaignSchema
 		campaign.gatilhoCashbackExpirandoAntecedenciaValor <= 0
 	) {
 		throw new createHttpError.BadRequest("Informe uma antecedência válida para cashback expirando.");
+	}
+}
+
+function validateSingleUseCampaign(campaign: z.infer<typeof CampaignSchema>) {
+	if (campaign.gatilhoTipo !== "USO-UNICO") return;
+
+	if (!campaign.gatilhoUsoUnicoDataReferencia) {
+		throw new createHttpError.BadRequest("Data de referência do uso único não informada.");
+	}
+
+	const date = dayjs(campaign.gatilhoUsoUnicoDataReferencia);
+	if (!date.isValid() || date.format("YYYY-MM-DD") !== campaign.gatilhoUsoUnicoDataReferencia) {
+		throw new createHttpError.BadRequest("Data de referência do uso único inválida.");
 	}
 }
 
@@ -147,6 +161,7 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 
 	// Validate recurrent campaign settings
 	validateRecurrentCampaign(input.campaign as z.infer<typeof CampaignSchema>);
+	validateSingleUseCampaign(input.campaign as z.infer<typeof CampaignSchema>);
 	validateCashbackExpiringTrigger(input.campaign as z.infer<typeof CampaignSchema>);
 	validateCampaignFrequencyInterval(input.campaign as z.infer<typeof CampaignSchema>);
 	validateExecutionDelayDirection(input.campaign as z.infer<typeof CampaignSchema>);
@@ -485,6 +500,7 @@ async function updateCampaign({ input, session }: { input: TUpdateCampaignInput;
 
 	// Validate recurrent campaign settings
 	validateRecurrentCampaign(input.campaign as z.infer<typeof CampaignSchema>);
+	validateSingleUseCampaign(input.campaign as z.infer<typeof CampaignSchema>);
 	validateCashbackExpiringTrigger(input.campaign as z.infer<typeof CampaignSchema>);
 	validateCampaignFrequencyInterval(input.campaign as z.infer<typeof CampaignSchema>);
 	validateExecutionDelayDirection(input.campaign as z.infer<typeof CampaignSchema>);

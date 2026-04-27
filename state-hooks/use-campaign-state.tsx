@@ -73,6 +73,7 @@ export function useCampaignState() {
 			recorrenciaIntervalo: 1,
 			recorrenciaDiasSemana: null,
 			recorrenciaDiasMes: null,
+			gatilhoUsoUnicoDataReferencia: null,
 			execucaoAgendadaMedida: "DIAS",
 			execucaoAgendadaValor: 0,
 			execucaoAgendadaDirecao: "DEPOIS",

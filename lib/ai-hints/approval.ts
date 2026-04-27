@@ -8,6 +8,7 @@ import {
 	validateCashbackExpiringTrigger,
 	validateExecutionDelayDirection,
 	validateRecurrentCampaign,
+	validateSingleUseCampaign,
 } from "@/lib/campaigns/validation";
 import { parseTemplateVariables } from "@/lib/ai-agent/marketing/template-variables";
 import { fetchAndUploadToMeta, isMediaHeaderType } from "@/lib/whatsapp/media-upload";
@@ -247,6 +248,7 @@ async function createCampaignFromApprovedHint({
 
 	validatePermanenciaSegmentacaoRequirement({ ...campaign, autorId: session.user.id, dataInsercao: new Date() });
 	validateRecurrentCampaign({ ...campaign, autorId: session.user.id, dataInsercao: new Date() });
+	validateSingleUseCampaign({ ...campaign, autorId: session.user.id, dataInsercao: new Date() });
 	validateCashbackExpiringTrigger({ ...campaign, autorId: session.user.id, dataInsercao: new Date() });
 	validateCampaignFrequencyInterval({ ...campaign, autorId: session.user.id, dataInsercao: new Date() });
 	validateExecutionDelayDirection({ ...campaign, autorId: session.user.id, dataInsercao: new Date() });
@@ -343,6 +345,7 @@ async function updateCampaignFromApprovedHint({
 
 	validatePermanenciaSegmentacaoRequirement({ ...effectiveCampaign, autorId: session.user.id, dataInsercao: new Date() });
 	validateRecurrentCampaign({ ...effectiveCampaign, autorId: session.user.id, dataInsercao: new Date() });
+	validateSingleUseCampaign({ ...effectiveCampaign, autorId: session.user.id, dataInsercao: new Date() });
 	validateCashbackExpiringTrigger({ ...effectiveCampaign, autorId: session.user.id, dataInsercao: new Date() });
 	validateCampaignFrequencyInterval({ ...effectiveCampaign, autorId: session.user.id, dataInsercao: new Date() });
 	validateExecutionDelayDirection({ ...effectiveCampaign, autorId: session.user.id, dataInsercao: new Date() });

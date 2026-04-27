@@ -44,6 +44,9 @@ export const campaigns = newTable("campaigns", {
 	// specific for "VALOR-TOTAL-COMPRAS"
 	gatilhoValorTotalCompras: doublePrecision("gatilho_valor_total_compras"), // defines the minimum required all-time total purchase value for trigger to fire
 
+	// specific for "USO-UNICO"
+	gatilhoUsoUnicoDataReferencia: text("gatilho_uso_unico_data_referencia"), // YYYY-MM-DD in the interactions cron timezone
+
 	execucaoAgendadaMedida: timeDurationUnitsEnum("execucao_agendada_medida").notNull().default("DIAS"),
 	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
 	execucaoAgendadaDirecao: campaignExecutionDelayDirectionEnum("execucao_agendada_direcao").notNull().default("DEPOIS"),

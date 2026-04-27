@@ -3,6 +3,7 @@ import { db } from "@/services/drizzle";
 import { type TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import { CampaignSchema } from "@/schemas/campaigns";
 import createHttpError from "http-errors";
+import dayjs from "dayjs";
 import z from "zod";
 
 const TRIGGERS_SUPPORTING_ANTES: TCampaignTriggerTypeEnum[] = ["ANIVERSARIO_CLIENTE", "PIOR-DIA-VENDAS"];
@@ -36,6 +37,7 @@ export function validateRecurrentCampaign(campaign: z.infer<typeof CampaignSchem
 }
 
 export function validateCampaignFrequencyInterval(campaign: z.infer<typeof CampaignSchema>) {
+	if (campaign.gatilhoTipo === "USO-UNICO") return;
 	if (!campaign.permitirRecorrencia) return;
 
 	if (
@@ -64,6 +66,19 @@ export function validateCashbackExpiringTrigger(campaign: z.infer<typeof Campaig
 		campaign.gatilhoCashbackExpirandoAntecedenciaValor <= 0
 	) {
 		throw new createHttpError.BadRequest("Informe uma antecedência válida para cashback expirando.");
+	}
+}
+
+export function validateSingleUseCampaign(campaign: z.infer<typeof CampaignSchema>) {
+	if (campaign.gatilhoTipo !== "USO-UNICO") return;
+
+	if (!campaign.gatilhoUsoUnicoDataReferencia) {
+		throw new createHttpError.BadRequest("Data de referência do uso único não informada.");
+	}
+
+	const date = dayjs(campaign.gatilhoUsoUnicoDataReferencia);
+	if (!date.isValid() || date.format("YYYY-MM-DD") !== campaign.gatilhoUsoUnicoDataReferencia) {
+		throw new createHttpError.BadRequest("Data de referência do uso único inválida.");
 	}
 }
 

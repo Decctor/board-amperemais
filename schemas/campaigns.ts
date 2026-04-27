@@ -298,6 +298,15 @@ export const CampaignSchema = z.object({
 		.positive("Valor total de compras deve ser positivo.")
 		.optional()
 		.nullable(),
+	// Specific for "USO-UNICO"
+	gatilhoUsoUnicoDataReferencia: z
+		.string({
+			required_error: "Data de referência do uso único não informada.",
+			invalid_type_error: "Tipo não válido para a data de referência do uso único.",
+		})
+		.regex(/^\d{4}-\d{2}-\d{2}$/, "Data de referência do uso único inválida.")
+		.optional()
+		.nullable(),
 
 	// Recurrent campaign schedule configuration (only used when gatilhoTipo === "RECORRENTE")
 	recorrenciaTipo: RecurrenceFrequencyEnum.optional().nullable(),

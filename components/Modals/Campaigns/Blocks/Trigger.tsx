@@ -1,11 +1,13 @@
 import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
+import DateInput from "@/components/Inputs/DateInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { useCampaignUtilPreviewWorstSalesDay } from "@/lib/queries/campaigns";
 import type { TCampaignState } from "@/schemas/campaigns";
 import type { TCampaignTriggerTypeEnum, TRecurrenceFrequencyEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { CampaignTriggerTypeOptions, DaysOfWeekOptions, RecurrenceFrequencyOptions, TimeDurationUnitsOptions } from "@/utils/select-options";
+import dayjs from "dayjs";
 import { Loader2, SparklesIcon } from "lucide-react";
 import { useMemo } from "react";
 
@@ -34,8 +36,16 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 	const selectedDiasMes = useMemo(() => parseDaysJson(campaign.recorrenciaDiasMes), [campaign.recorrenciaDiasMes]);
 
 	function handleTriggerTypeChange(value: TCampaignTriggerTypeEnum) {
+		if (value === "USO-UNICO") {
+			updateCampaign({
+				gatilhoTipo: value,
+				gatilhoUsoUnicoDataReferencia: campaign.gatilhoUsoUnicoDataReferencia ?? dayjs().format("YYYY-MM-DD"),
+			});
+			return;
+		}
+
 		if (value !== "CASHBACK-EXPIRANDO") {
-			updateCampaign({ gatilhoTipo: value });
+			updateCampaign({ gatilhoTipo: value, gatilhoUsoUnicoDataReferencia: null });
 			return;
 		}
 
@@ -45,6 +55,7 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 
 		updateCampaign({
 			gatilhoTipo: value,
+			gatilhoUsoUnicoDataReferencia: null,
 			...(shouldPrefillAntecedenciaValor ? { gatilhoCashbackExpirandoAntecedenciaValor: 3 } : {}),
 			...(shouldPrefillAntecedenciaMedida ? { gatilhoCashbackExpirandoAntecedenciaMedida: "DIAS" } : {}),
 		});
@@ -102,6 +113,19 @@ export default function CampaignsTriggerBlock({ campaign, updateCampaign }: Camp
 							width="100%"
 						/>
 					) : null}
+				</div>
+			) : null}
+			{campaign.gatilhoTipo === "USO-UNICO" ? (
+				<div className="w-full flex flex-col gap-2">
+					<p className="text-center text-sm tracking-tight text-muted-foreground">
+						A campanha será disparada uma única vez na data selecionada e no bloco de horário configurado.
+					</p>
+					<DateInput
+						label="DATA DO DISPARO"
+						value={campaign.gatilhoUsoUnicoDataReferencia ?? undefined}
+						handleChange={(value) => updateCampaign({ gatilhoUsoUnicoDataReferencia: value ?? null })}
+						width="100%"
+					/>
 				</div>
 			) : null}
 			{campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO" ? (

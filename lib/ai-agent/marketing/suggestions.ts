@@ -2,6 +2,7 @@ import { CampaignSchema } from "@/schemas/campaigns";
 import { db } from "@/services/drizzle";
 import { campaigns, organizations, whatsappConnectionPhones } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
+import dayjs from "dayjs";
 import createHttpError from "http-errors";
 import z from "zod";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
@@ -109,6 +110,7 @@ function validateRecurrentCampaign(campaign: TCampaignRulesValidationInput) {
 }
 
 function validateCampaignFrequencyInterval(campaign: TCampaignRulesValidationInput) {
+	if (campaign.gatilhoTipo === "USO-UNICO") return;
 	if (!campaign.permitirRecorrencia) return;
 
 	if (!campaign.frequenciaIntervaloMedida || !campaign.frequenciaIntervaloValor || campaign.frequenciaIntervaloValor <= 0) {
@@ -134,6 +136,19 @@ function validateCashbackExpiringTrigger(campaign: TCampaignRulesValidationInput
 	}
 }
 
+function validateSingleUseCampaign(campaign: TCampaignRulesValidationInput) {
+	if (campaign.gatilhoTipo !== "USO-UNICO") return;
+
+	if (!campaign.gatilhoUsoUnicoDataReferencia) {
+		throw new createHttpError.BadRequest("Data de referência do uso único não informada.");
+	}
+
+	const date = dayjs(campaign.gatilhoUsoUnicoDataReferencia);
+	if (!date.isValid() || date.format("YYYY-MM-DD") !== campaign.gatilhoUsoUnicoDataReferencia) {
+		throw new createHttpError.BadRequest("Data de referência do uso único inválida.");
+	}
+}
+
 function validateCashbackGeneration(campaign: TCampaignRulesValidationInput) {
 	if (!campaign.cashbackGeracaoAtivo) return;
 
@@ -155,6 +170,7 @@ function validateCashbackGeneration(campaign: TCampaignRulesValidationInput) {
 
 function validateCampaignRules(campaign: TCampaignRulesValidationInput) {
 	validateRecurrentCampaign(campaign);
+	validateSingleUseCampaign(campaign);
 	validateCampaignFrequencyInterval(campaign);
 	validateExecutionDelayDirection(campaign);
 	validateCashbackExpiringTrigger(campaign);

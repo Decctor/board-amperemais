@@ -14,6 +14,7 @@ type CampaignsExecutionBlockProps = {
 };
 export default function CampaignsExecutionBlock({ campaign, updateCampaign, campaignSegmentations }: CampaignsExecutionBlockProps) {
 	const isRecorrente = campaign.gatilhoTipo === "RECORRENTE";
+	const isUsoUnico = campaign.gatilhoTipo === "USO-UNICO";
 	const supportsAntes = (TRIGGERS_SUPPORTING_ANTES as readonly string[]).includes(campaign.gatilhoTipo);
 
 	const descriptionText =
@@ -23,7 +24,7 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 
 	return (
 		<ResponsiveMenuSection title="EXECUÇÃO" icon={<PlayIcon className="h-4 min-h-4 w-4 min-w-4" />}>
-			{!isRecorrente ? (
+			{!isRecorrente && !isUsoUnico ? (
 				<div className="w-full flex flex-col gap-1">
 					<p className="text-center text-sm tracking-tigh text-muted-foreground">{descriptionText}</p>
 					<div className="w-full flex items-center gap-2 flex-col lg:flex-row">
@@ -69,6 +70,8 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 				<p className="text-center text-sm tracking-tigh text-muted-foreground">
 					{isRecorrente
 						? "Defina em qual bloco de horário a campanha recorrente será executada."
+						: isUsoUnico
+							? "Defina em qual bloco de horário a campanha de uso único será executada."
 						: "Defina em qual bloco de horário deve ser executada a automação."}
 				</p>
 				<SelectInput

@@ -26,6 +26,7 @@ const TRIGGER_LABELS: Record<string, string> = {
 	"VALOR-TOTAL-COMPRAS": "Valor Total de Compras",
 	RECORRENTE: "Recorrente",
 	"PIOR-DIA-VENDAS": "Pior Dia de Vendas",
+	"USO-UNICO": "Uso Único",
 };
 
 const DURATION_UNIT_LABELS: Record<string, string> = {
