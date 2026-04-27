@@ -3,6 +3,11 @@ import Link from "next/link";
 
 type ArticleHeroProps = {
 	emoji: string;
+	image?: {
+		src: string;
+		alt: string;
+		caption?: string;
+	};
 	categoryLabel: string;
 	categoryHref: string;
 	title: string;
@@ -11,10 +16,8 @@ type ArticleHeroProps = {
 	readingTime?: string;
 };
 
-export function ArticleHero({ emoji, categoryLabel, categoryHref, title, description, publishedAt, readingTime }: ArticleHeroProps) {
-	const formattedDate = publishedAt
-		? new Date(publishedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })
-		: null;
+export function ArticleHero({ emoji, image, categoryLabel, categoryHref, title, description, publishedAt, readingTime }: ArticleHeroProps) {
+	const formattedDate = publishedAt ? new Date(publishedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" }) : null;
 
 	return (
 		<section className="bg-gradient-to-b from-slate-50 to-white pt-28 pb-12 px-6">
@@ -30,10 +33,14 @@ export function ArticleHero({ emoji, categoryLabel, categoryHref, title, descrip
 					</Link>
 				</div>
 
-				{/* Emoji cover */}
-				<div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-4xl mb-6 border border-blue-100">
-					{emoji}
-				</div>
+				{image ? (
+					<figure className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+						<img src={image.src} alt={image.alt} className="h-64 w-full object-cover" />
+						{image.caption && <figcaption className="px-4 py-3 text-sm text-slate-500">{image.caption}</figcaption>}
+					</figure>
+				) : (
+					<div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-4xl mb-6 border border-blue-100">{emoji}</div>
+				)}
 
 				{/* Title */}
 				<h1 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight tracking-tight mb-4">{title}</h1>

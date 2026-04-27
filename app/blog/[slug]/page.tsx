@@ -32,11 +32,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 			url: canonicalUrl,
 			type: "article",
 			publishedTime: post.publishedAt,
+			images: post.coverImage ? [{ url: post.coverImage.src, alt: post.coverImage.alt }] : undefined,
 		},
 		twitter: {
 			card: "summary_large_image",
 			title: post.title,
 			description: post.description,
+			images: post.coverImage ? [post.coverImage.src] : undefined,
 		},
 	};
 }
@@ -59,6 +61,7 @@ export default async function BlogPostPage({ params }: Props) {
 			name: "RecompraCRM",
 			url: "https://recompracrm.com.br",
 		},
+		image: post.coverImage?.src,
 		keywords: post.seo.keywords.join(", "),
 	};
 
@@ -69,6 +72,7 @@ export default async function BlogPostPage({ params }: Props) {
 
 			<ArticleHero
 				emoji={post.coverEmoji}
+				image={post.coverImage}
 				categoryLabel={post.categoryLabel}
 				categoryHref={`/blog?categoria=${post.category}`}
 				title={post.title}
@@ -84,16 +88,11 @@ export default async function BlogPostPage({ params }: Props) {
 
 					{/* Article body */}
 					{post.sections.map((section, i) => (
-						<ArticleSection key={i} section={section} />
+						<ArticleSection key={`${section.type}-${"heading" in section ? section.heading : "title" in section ? section.title : i}`} section={section} />
 					))}
 
 					{/* CTA */}
-					<ArticleCTA
-						headline={post.cta.headline}
-						sub={post.cta.sub}
-						buttonText={post.cta.buttonText}
-						whatsappMessage={post.cta.whatsappMessage}
-					/>
+					<ArticleCTA headline={post.cta.headline} sub={post.cta.sub} buttonText={post.cta.buttonText} whatsappMessage={post.cta.whatsappMessage} />
 
 					{/* Related posts */}
 					<RelatedPosts posts={relatedPosts} />
