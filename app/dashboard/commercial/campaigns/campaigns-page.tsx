@@ -56,12 +56,14 @@ import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 import { toast } from "sonner";
 import { BsCalendarPlus } from "react-icons/bs";
+import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTemplates";
+import { MessageCircleIcon } from "lucide-react";
 type CampaignsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
 };
 export default function CampaignsPage({ user, membership }: CampaignsPageProps) {
-	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "database", "interactions"]));
+	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "database", "interactions", "templates"]));
 
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -79,6 +81,10 @@ export default function CampaignsPage({ user, membership }: CampaignsPageProps) 
 						<MessageCircle className="w-4 h-4 min-w-4 min-h-4" />
 						Interações
 					</TabsTrigger>
+					<TabsTrigger value="templates" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<MessageCircleIcon className="w-4 h-4 min-w-4 min-h-4" />
+						Modelos de Mensagens
+					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="stats" className="flex flex-col gap-3">
 					<CampaignsStatsView />
@@ -88,6 +94,9 @@ export default function CampaignsPage({ user, membership }: CampaignsPageProps) 
 				</TabsContent>
 				<TabsContent value="interactions" className="flex flex-col gap-3">
 					<CampaignsInteractionsView />
+				</TabsContent>
+				<TabsContent value="templates" className="flex flex-col gap-3">
+					<SettingsWhatsappTemplates user={user} membership={membership} />
 				</TabsContent>
 			</Tabs>
 		</div>

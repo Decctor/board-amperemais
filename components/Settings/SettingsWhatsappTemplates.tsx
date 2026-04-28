@@ -72,7 +72,7 @@ export default function SettingsWhatsappTemplates({ user, membership }: Settings
 			<div className="w-full flex items-center justify-end gap-2">
 				<Button
 					size="sm"
-					variant="outline"
+					variant="ghost"
 					className="flex items-center gap-2"
 					onClick={() => handleSyncMutation({})}
 					disabled={isSyncingMutation || isLoading}
