@@ -22,6 +22,7 @@ import { Button } from "../ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/hover-card";
 import { FiltersShowcase } from "../ui/filters-showcase";
 import { ViewWhatsappTemplatePhone } from "../Modals/WhatsappTemplates/Phones/ViewWhatsappTemplatePhone";
+import TemplatePreview from "../Modals/WhatsappTemplates/Blocks/TemplatePreview";
 type SettingsWhatsappTemplatesProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -257,48 +258,65 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 						<span className={"text-sm leading-none font-bold tracking-tight font-mono"}>TEMPLATE</span>
 						<p className="text-xs px-2 py-1 rounded-lg bg-primary/10">{whatsappTemplate.nome}</p>
 					</div>
-					<HoverCard>
-						<HoverCardTrigger asChild>
-							<div className="flex items-center gap-2">
-								{whatsappConnectionPhones.length > 0 ? (
-									<div className="flex items-center gap-1 text-xs text-muted-foreground">
-										<Phone className="w-3 h-3" />
-										<span>
-											{whatsappTemplate.telefonesAprovados}/{whatsappConnectionPhones.length}
-										</span>
-									</div>
-								) : null}
+					<div className="flex items-center gap-2">
+						<HoverCard openDelay={200}>
+							<HoverCardTrigger asChild>
+								<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
+									<Eye className="h-3.5 w-3.5" />
+									PREVIEW
+								</Button>
+							</HoverCardTrigger>
+							<HoverCardContent
+								className="w-[360px] p-2 overflow-auto max-h-[70vh] scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
+								side="left"
+								align="end"
+							>
+								<TemplatePreview components={whatsappTemplate.componentes} />
+							</HoverCardContent>
+						</HoverCard>
+						<HoverCard>
+							<HoverCardTrigger asChild>
+								<div className="flex items-center gap-2">
+									{whatsappConnectionPhones.length > 0 ? (
+										<div className="flex items-center gap-1 text-xs text-muted-foreground">
+											<Phone className="w-3 h-3" />
+											<span>
+												{whatsappTemplate.telefonesAprovados}/{whatsappConnectionPhones.length}
+											</span>
+										</div>
+									) : null}
 
-								<div
-									className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
-										"bg-blue-500 text-white": whatsappTemplate.statusGeral === "APROVADO",
-										"bg-primary/20 text-primary": whatsappTemplate.statusGeral === "PENDENTE",
-										"bg-red-500 text-white": whatsappTemplate.statusGeral === "REJEITADO",
-										"bg-orange-500 text-white": whatsappTemplate.statusGeral === "PAUSADO",
-										"bg-gray-500 text-white": whatsappTemplate.statusGeral === "DESABILITADO" || whatsappTemplate.statusGeral === "RASCUNHO",
-									})}
-								>
-									{whatsappTemplate.statusGeral}
+									<div
+										className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
+											"bg-blue-500 text-white": whatsappTemplate.statusGeral === "APROVADO",
+											"bg-primary/20 text-primary": whatsappTemplate.statusGeral === "PENDENTE",
+											"bg-red-500 text-white": whatsappTemplate.statusGeral === "REJEITADO",
+											"bg-orange-500 text-white": whatsappTemplate.statusGeral === "PAUSADO",
+											"bg-gray-500 text-white": whatsappTemplate.statusGeral === "DESABILITADO" || whatsappTemplate.statusGeral === "RASCUNHO",
+										})}
+									>
+										{whatsappTemplate.statusGeral}
+									</div>
 								</div>
-							</div>
-						</HoverCardTrigger>
-						<HoverCardContent className="flex flex-col gap-3 w-72 p-3">
-							<h3 className="text-xs font-medium tracking-tight">TELEFONES CONECTADOS</h3>
-							<div className="w-full flex flex-col gap-2">
-								{whatsappConnectionPhones.map((telefone) => (
-									<PhoneItemCard
-										key={telefone.id}
-										connectionPhone={telefone}
-										handleCreateTemplatePhone={(phoneId) =>
-											handleCreateWhatsappTemplatePhoneMutation({ whatsappTemplatePhone: { templateId: whatsappTemplate.id, telefoneId: phoneId } })
-										}
-										isCreatingWhatsappTemplatePhone={isCreatingWhatsappTemplatePhone}
-										viewWhatsappTemplatePhone={viewWhatsappTemplatePhoneId}
-									/>
-								))}
-							</div>
-						</HoverCardContent>
-					</HoverCard>
+							</HoverCardTrigger>
+							<HoverCardContent className="flex flex-col gap-3 w-72 p-3">
+								<h3 className="text-xs font-medium tracking-tight">TELEFONES CONECTADOS</h3>
+								<div className="w-full flex flex-col gap-2">
+									{whatsappConnectionPhones.map((telefone) => (
+										<PhoneItemCard
+											key={telefone.id}
+											connectionPhone={telefone}
+											handleCreateTemplatePhone={(phoneId) =>
+												handleCreateWhatsappTemplatePhoneMutation({ whatsappTemplatePhone: { templateId: whatsappTemplate.id, telefoneId: phoneId } })
+											}
+											isCreatingWhatsappTemplatePhone={isCreatingWhatsappTemplatePhone}
+											viewWhatsappTemplatePhone={viewWhatsappTemplatePhoneId}
+										/>
+									))}
+								</div>
+							</HoverCardContent>
+						</HoverCard>
+					</div>
 				</div>
 
 				<div className="flex flex-wrap items-center gap-2">

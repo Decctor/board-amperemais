@@ -20,7 +20,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const WINDOW_OPTIONS: { value: TCampaignProductClientReferenceWindowEnum; label: string }[] = [
-	{ value: "GERAL", label: "GERAL (todo histórico)" },
+	{ value: "GERAL", label: "TODO HISTÓRICO" },
 	{ value: "30_DIAS", label: "ÚLTIMOS 30 DIAS" },
 	{ value: "90_DIAS", label: "ÚLTIMOS 90 DIAS" },
 ];
@@ -76,30 +76,36 @@ export default function TopBuyersProductEditor({ initialValue, onConfirm, closeM
 					<Label className="text-sm font-medium tracking-tight text-primary/80">JANELA</Label>
 					<div className="flex flex-wrap items-center gap-2">
 						{WINDOW_OPTIONS.map((option) => (
-							<button
+							<Button
 								key={option.value}
 								type="button"
+								variant={janela === option.value ? "brand" : "outline"}
+								size="sm"
+								className="flex items-center gap-1.5"
 								onClick={() => setJanela(option.value)}
-								className={cn(
-									"rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-									janela === option.value
-										? "border-primary bg-primary text-primary-foreground"
-										: "border-primary/20 text-primary/80 hover:bg-primary/5",
-								)}
 							>
 								{option.label}
-							</button>
+							</Button>
 						))}
 					</div>
 				</div>
-
-				<NumberInput
-					label="TOP (QUANTIDADE DE COMPRADORES)"
-					placeholder="Ex: 100"
-					value={top}
-					handleChange={(value) => setTop(Math.floor(value))}
-					required
-				/>
+				<div className="flex w-full flex-col gap-2">
+					<Label className="text-sm font-medium tracking-tight text-primary/80">TOP</Label>
+					<div className="w-full flex items-center flex-wrap gap-x-3 gap-y-1">
+						<Button variant={top === 10 ? "brand" : "outline"} size="sm" className="flex items-center gap-1.5" onClick={() => setTop(10)}>
+							<Crown className="w-4 h-4 min-w-4 min-h-4" />
+							TOP 10
+						</Button>
+						<Button variant={top === 50 ? "brand" : "outline"} size="sm" className="flex items-center gap-1.5" onClick={() => setTop(50)}>
+							<Crown className="w-4 h-4 min-w-4 min-h-4" />
+							TOP 50
+						</Button>
+						<Button variant={top === 100 ? "brand" : "outline"} size="sm" className="flex items-center gap-1.5" onClick={() => setTop(100)}>
+							<Crown className="w-4 h-4 min-w-4 min-h-4" />
+							TOP 100
+						</Button>
+					</div>
+				</div>
 			</ResponsiveMenuSection>
 		</ResponsiveMenu>
 	);
@@ -163,9 +169,7 @@ function ProductPicker({ value, onChange }: ProductPickerProps) {
 									>
 										<div className="flex min-w-0 flex-col">
 											<span className="truncate text-sm">{product.descricao}</span>
-											{product.codigo ? (
-												<span className="truncate text-xs text-muted-foreground">Código: {product.codigo}</span>
-											) : null}
+											{product.codigo ? <span className="truncate text-xs text-muted-foreground">Código: {product.codigo}</span> : null}
 										</div>
 										<Check className={cn("ml-auto", product.id === value ? "opacity-100" : "opacity-0")} />
 									</CommandItem>

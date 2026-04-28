@@ -132,24 +132,9 @@ export default function CampaignsFiltersBlock({
 		<ResponsiveMenuSection title="FILTROS" icon={<Filter className="h-4 min-h-4 w-4 min-w-4" />}>
 			<p className="text-xs italic text-muted-foreground">Combine filtros para refinar a audiência além das segmentações.</p>
 
-			<div className="flex items-center justify-between gap-2 rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
-				<p className="text-xs font-semibold uppercase tracking-wide text-primary/80">PRÉVIA DA AUDIÊNCIA</p>
-				{isAudiencePreviewLoading ? (
-					<AnimatedSpinner className="h-4 min-h-4 w-4 min-w-4" />
-				) : isAudiencePreviewError ? (
-					<span className="text-sm text-destructive">Oops. Algo deu errado ao calcular a audiência.</span>
-				) : (
-					<div className="flex flex-col gap-1">
-						<p className="text-sm">
-							<strong>{audiencePreview?.totalClients ?? 0}</strong> CLIENTE(S)
-						</p>
-					</div>
-				)}
-			</div>
-
 			<StructuralWarnings filtros={filtros} />
 
-			<RootOperatorSwitcher operador={filtros.operador} itemCount={filtros.itens.length} onChange={(op) => updateFiltersRoot({ operador: op })} />
+			{/* <RootOperatorSwitcher operador={filtros.operador} itemCount={filtros.itens.length} onChange={(op) => updateFiltersRoot({ operador: op })} /> */}
 
 			<FilterGroupBody
 				node={filtros}
@@ -194,6 +179,21 @@ export default function CampaignsFiltersBlock({
 					disabled={rootIsFullNot}
 					onClick={() => addFilterGroup([], "AND")}
 				/> */}
+			</div>
+
+			<div className="flex items-center justify-between gap-2 rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
+				<p className="text-xs font-semibold uppercase tracking-wide text-primary/80">PRÉVIA DA AUDIÊNCIA</p>
+				{isAudiencePreviewLoading ? (
+					<AnimatedSpinner className="h-4 min-h-4 w-4 min-w-4" />
+				) : isAudiencePreviewError ? (
+					<span className="text-sm text-destructive">Oops. Algo deu errado ao calcular a audiência.</span>
+				) : (
+					<div className="flex flex-col gap-1">
+						<p className="text-sm">
+							<strong>{audiencePreview?.totalClients ?? 0}</strong> CLIENTE(S)
+						</p>
+					</div>
+				)}
 			</div>
 
 			{editor?.kind === "location" ? (
