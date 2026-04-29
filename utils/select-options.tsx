@@ -208,19 +208,97 @@ export const CustomersAcquisitionChannels = [
 	{ id: 9, label: "Landing Page", value: "Landing Page" },
 ];
 
-export const CampaignTriggerTypeOptions: { id: number; label: string; value: TCampaignTriggerTypeEnum }[] = [
-	{ id: 1, label: "NOVA COMPRA", value: "NOVA-COMPRA" },
-	{ id: 2, label: "PRIMEIRA COMPRA", value: "PRIMEIRA-COMPRA" },
-	{ id: 3, label: "PERMANÊNCIA NA SEGMENTAÇÃO", value: "PERMANÊNCIA-SEGMENTAÇÃO" },
-	{ id: 4, label: "ENTRADA NA SEGMENTAÇÃO", value: "ENTRADA-SEGMENTAÇÃO" },
-	{ id: 5, label: "CASHBACK ACUMULADO", value: "CASHBACK-ACUMULADO" },
-	{ id: 6, label: "CASHBACK EXPIRANDO", value: "CASHBACK-EXPIRANDO" },
-	{ id: 7, label: "ANIVERSÁRIO DO CLIENTE", value: "ANIVERSARIO_CLIENTE" },
-	{ id: 8, label: "QUANTIDADE TOTAL DE COMPRAS", value: "QUANTIDADE-TOTAL-COMPRAS" },
-	{ id: 9, label: "VALOR TOTAL DE COMPRAS", value: "VALOR-TOTAL-COMPRAS" },
-	{ id: 10, label: "RECORRENTE (AGENDAMENTO)", value: "RECORRENTE" },
-	{ id: 11, label: "PIOR DIA DE VENDAS", value: "PIOR-DIA-VENDAS" },
-	{ id: 12, label: "USO ÚNICO", value: "USO-UNICO" },
+export const CampaignTriggerTypeOptions: {
+	id: number;
+	label: string;
+	value: TCampaignTriggerTypeEnum;
+	icon: React.ReactNode;
+	description: string;
+}[] = [
+	{
+		id: 1,
+		label: "NOVA COMPRA",
+		value: "NOVA-COMPRA",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente realizar uma nova compra.",
+	},
+	{
+		id: 2,
+		label: "PRIMEIRA COMPRA",
+		value: "PRIMEIRA-COMPRA",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente realizar sua primeira compra.",
+	},
+	{
+		id: 3,
+		label: "PERMANÊNCIA NA SEGMENTAÇÃO",
+		value: "PERMANÊNCIA-SEGMENTAÇÃO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente permanecer na segmentação por um determinado tempo.",
+	},
+	{
+		id: 4,
+		label: "ENTRADA NA SEGMENTAÇÃO",
+		value: "ENTRADA-SEGMENTAÇÃO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente entrar na segmentação.",
+	},
+	{
+		id: 5,
+		label: "CASHBACK ACUMULADO",
+		value: "CASHBACK-ACUMULADO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente acumular um determinado valor de cashback.",
+	},
+	{
+		id: 6,
+		label: "CASHBACK EXPIRANDO",
+		value: "CASHBACK-EXPIRANDO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente tiver um cashback expirando.",
+	},
+	{
+		id: 7,
+		label: "ANIVERSÁRIO DO CLIENTE",
+		value: "ANIVERSARIO_CLIENTE",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente fizer aniversário.",
+	},
+	{
+		id: 8,
+		label: "QUANTIDADE TOTAL DE COMPRAS",
+		value: "QUANTIDADE-TOTAL-COMPRAS",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente realizar um determinado número de compras.",
+	},
+	{
+		id: 9,
+		label: "VALOR TOTAL DE COMPRAS",
+		value: "VALOR-TOTAL-COMPRAS",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente realizar um determinado valor de compras.",
+	},
+	{
+		id: 10,
+		label: "RECORRENTE (AGENDAMENTO)",
+		value: "RECORRENTE",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada de acordo com um agendamento recorrente.",
+	},
+	{
+		id: 11,
+		label: "PIOR DIA DE VENDAS",
+		value: "PIOR-DIA-VENDAS",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada com base no pior dia de vendas da semana.",
+	},
+	{
+		id: 12,
+		label: "USO ÚNICO",
+		value: "USO-UNICO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada uma única vez na data selecionada e no bloco de horário configurado.",
+	},
 ];
 
 export const RecurrenceFrequencyOptions: { id: number; label: string; value: TRecurrenceFrequencyEnum }[] = [

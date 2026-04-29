@@ -347,6 +347,13 @@ async function getCampaigns({ input, session }: { input: TGetCampaignsInput; ses
 		where: and(...conditions),
 		with: {
 			segmentacoes: true,
+			whatsappTemplate: {
+				columns: {
+					id: true,
+					nome: true,
+					componentes: true,
+				},
+			},
 		},
 	});
 

@@ -37,6 +37,7 @@ import {
 	CircleCheck,
 	CircleX,
 	Clock,
+	Coins,
 	Database,
 	Grid3x3,
 	ListFilter,
@@ -45,19 +46,24 @@ import {
 	PencilIcon,
 	Plus,
 	RefreshCw,
+	SparklesIcon,
 	TrendingUp,
 	UserPlus,
 	UserRound,
 	UserRoundCheck,
 	Zap,
+	Eye,
 } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BsCalendarPlus } from "react-icons/bs";
 import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTemplates";
 import { MessageCircleIcon } from "lucide-react";
+import { CampaignTriggerTypeOptions } from "@/utils/select-options";
+import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 type CampaignsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -607,6 +613,9 @@ function CampaignsPageCampaignCard({ campaign, handleEditClick }: { campaign: TG
 		receita: 0,
 	};
 
+	const triggerType = useMemo(() => {
+		return CampaignTriggerTypeOptions.find((t) => t.value === campaign.gatilhoTipo);
+	}, [campaign.gatilhoTipo]);
 	return (
 		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex flex-col gap-0.5">
@@ -626,6 +635,21 @@ function CampaignsPageCampaignCard({ campaign, handleEditClick }: { campaign: TG
 						</TooltipProvider>
 					</div>
 					<div className="flex items-center gap-2">
+						<HoverCard openDelay={200}>
+							<HoverCardTrigger asChild>
+								<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
+									<Eye className="h-3.5 w-3.5" />
+									PREVIEW DO TEMPLATE
+								</Button>
+							</HoverCardTrigger>
+							<HoverCardContent
+								className="w-[360px] p-2 overflow-auto max-h-[70vh] scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
+								side="left"
+								align="center"
+							>
+								<TemplatePreview components={campaign.whatsappTemplate.componentes} />
+							</HoverCardContent>
+						</HoverCard>
 						{!campaign.whatsappConexaoTelefoneId ? (
 							<TooltipProvider>
 								<Tooltip>
@@ -653,7 +677,19 @@ function CampaignsPageCampaignCard({ campaign, handleEditClick }: { campaign: TG
 				</div>
 				<p className="text-xs font-medium tracking-tight text-muted-foreground">{campaign.descricao}</p>
 			</div>
-
+			{/** CONFIG BADGES */}
+			<div className="w-full flex items-center justify-start gap-2 flex-wrap">
+				<StatBadge
+					icon={<SparklesIcon className="w-4 h-4 min-w-4 min-h-4" />}
+					value={`GATILHO: ${triggerType?.label}`}
+					tooltipContent={triggerType?.description}
+				/>
+				<StatBadge
+					icon={<Coins className="w-4 h-4 min-w-4 min-h-4" />}
+					value={campaign.cashbackGeracaoAtivo ? "GERAÇÃO DE CASHBACK ATIVA" : "GERAÇÃO DE CASHBACK INATIVA"}
+					tooltipContent="Configuração de geração de cashback para clientes que ativarem esta campanha."
+				/>
+			</div>
 			<div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
 				<div className="flex items-center gap-2 flex-wrap py-1.5">
 					<StatBadge
