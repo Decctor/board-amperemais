@@ -65,7 +65,6 @@ async function failInteractionSend({
 		.set({
 			statusEnvio: "FALHOU",
 			erroEnvio: errorMessage,
-			dataExecucao: null,
 		})
 		.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
 }

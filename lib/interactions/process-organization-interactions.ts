@@ -1,4 +1,8 @@
-import { type TCampaignWeeklyLimitCache, createCampaignWeeklyLimitCache, reserveOrganizationWeeklyQuotaBatch } from "@/lib/interactions/campaign-weekly-limits";
+import {
+	type TCampaignWeeklyLimitCache,
+	createCampaignWeeklyLimitCache,
+	reserveOrganizationWeeklyQuotaBatch,
+} from "@/lib/interactions/campaign-weekly-limits";
 import { db } from "@/services/drizzle";
 import { sendReservedInteraction, type TChatPromiseCache } from "./send-reserved-interaction";
 import type {
@@ -84,12 +88,12 @@ export async function processOrganizationInteractionsBatch({
 					alreadyReservedInteractionIds: [],
 					missingInteractionIds: [],
 					blockedMessagesByInteractionId: new Map<string, string>(),
-			  }
+				}
 			: await reserveOrganizationWeeklyQuotaBatch({
 					organizationId,
 					interactionIds: deduplicatedInteractions.map((interaction) => interaction.interactionId),
 					cache: effectiveWeeklyLimitCache,
-			  });
+				});
 
 	for (const interactionId of claimResult.blockedInteractionIds) {
 		results.push({
@@ -173,14 +177,26 @@ export async function processOrganizationInteractionsBatch({
 			});
 		}
 	}
-
+	console.log(`[ORG: ${organizationId}] [INFO] [PROCESS_ORGANIZATION_INTERACTIONS_BATCH]`, {
+		totalTime: Date.now() - startedAt,
+		totalInteractions: deduplicatedInteractions.length,
+		claimedInteractions: claimResult.claimedInteractionIds.length,
+		blockedInteractions: claimResult.blockedInteractionIds.length,
+		sentInteractions: sent,
+		queuedInteractions: queued,
+		failedInteractions:
+			failed + claimResult.blockedInteractionIds.length + claimResult.alreadyReservedInteractionIds.length + claimResult.missingInteractionIds.length,
+		alreadyReservedInteractions: claimResult.alreadyReservedInteractionIds.length,
+		missingInteractions: claimResult.missingInteractionIds.length,
+	});
 	return {
 		total: deduplicatedInteractions.length,
 		claimed: claimResult.claimedInteractionIds.length,
 		blocked: claimResult.blockedInteractionIds.length,
 		sent,
 		queued,
-		failed: failed + claimResult.blockedInteractionIds.length + claimResult.alreadyReservedInteractionIds.length + claimResult.missingInteractionIds.length,
+		failed:
+			failed + claimResult.blockedInteractionIds.length + claimResult.alreadyReservedInteractionIds.length + claimResult.missingInteractionIds.length,
 		alreadyReserved: claimResult.alreadyReservedInteractionIds.length,
 		missing: claimResult.missingInteractionIds.length,
 		durationMs: Date.now() - startedAt,

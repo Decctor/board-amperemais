@@ -280,7 +280,6 @@ export async function sendMessage(
 			{ headers: getGatewayHeaders() },
 		);
 
-		console.log("[INTERNAL_GATEWAY] Message sent:", response.data);
 		return response.data;
 	} catch (error) {
 		console.error("[INTERNAL_GATEWAY] Error sending message:", error);

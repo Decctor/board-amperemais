@@ -668,11 +668,7 @@ export async function reserveCampaignWeeklyQuotaBatch({
 			})
 			.from(interactions)
 			.where(
-				and(
-					eq(interactions.organizacaoId, organizationId),
-					eq(interactions.campanhaId, campaignId),
-					inArray(interactions.id, uniqueInteractionIds),
-				),
+				and(eq(interactions.organizacaoId, organizationId), eq(interactions.campanhaId, campaignId), inArray(interactions.id, uniqueInteractionIds)),
 			)
 			.for("update");
 
@@ -721,11 +717,7 @@ export async function reserveCampaignWeeklyQuotaBatch({
 					erroEnvio: getCampaignWeeklyLimitFailureMessage(limitCheck.reason),
 				})
 				.where(
-					and(
-						eq(interactions.organizacaoId, organizationId),
-						eq(interactions.campanhaId, campaignId),
-						inArray(interactions.id, claimableInteractionIds),
-					),
+					and(eq(interactions.organizacaoId, organizationId), eq(interactions.campanhaId, campaignId), inArray(interactions.id, claimableInteractionIds)),
 				);
 
 			return {
@@ -757,11 +749,7 @@ export async function reserveCampaignWeeklyQuotaBatch({
 					dataExecucao: reservedAt,
 				})
 				.where(
-					and(
-						eq(interactions.organizacaoId, organizationId),
-						eq(interactions.campanhaId, campaignId),
-						inArray(interactions.id, claimedInteractionIds),
-					),
+					and(eq(interactions.organizacaoId, organizationId), eq(interactions.campanhaId, campaignId), inArray(interactions.id, claimedInteractionIds)),
 				);
 		}
 
@@ -785,11 +773,7 @@ export async function reserveCampaignWeeklyQuotaBatch({
 					erroEnvio: blockingMessage,
 				})
 				.where(
-					and(
-						eq(interactions.organizacaoId, organizationId),
-						eq(interactions.campanhaId, campaignId),
-						inArray(interactions.id, blockedInteractionIds),
-					),
+					and(eq(interactions.organizacaoId, organizationId), eq(interactions.campanhaId, campaignId), inArray(interactions.id, blockedInteractionIds)),
 				);
 
 			return {
@@ -888,7 +872,9 @@ export async function reserveOrganizationWeeklyQuotaBatch({
 
 		await tx.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).for("update");
 
-		const campaignIds = Array.from(new Set(claimableInteractions.map((interaction) => interaction.campaignId).filter((campaignId): campaignId is string => !!campaignId))).sort();
+		const campaignIds = Array.from(
+			new Set(claimableInteractions.map((interaction) => interaction.campaignId).filter((campaignId): campaignId is string => !!campaignId)),
+		).sort();
 
 		if (campaignIds.length > 0) {
 			await tx

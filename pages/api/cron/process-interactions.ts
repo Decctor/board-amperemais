@@ -112,6 +112,7 @@ async function fetchPendingInteractionsPage({
 				isNotNull(fields.campanhaId),
 				isNull(fields.dataExecucao),
 				sql`${fields.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
+				sql`${fields.statusEnvio} IS DISTINCT FROM 'FALHOU'`,
 			];
 
 			if (excludedIds.length > 0) {
