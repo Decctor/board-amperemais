@@ -11,7 +11,7 @@ import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
-import { usePointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
+import { usePointOfInteractionNewSaleState, type TPointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, BadgePercent, Check, Gift, Lock, ShoppingCart, Tag } from "lucide-react";
 import Image from "next/image";
@@ -36,8 +36,6 @@ import { ModeSelectionStep } from "./components/kiosk/mode-selection-step";
 import { PrizeConfirmationStep as KioskPrizeConfirmationStep } from "./components/kiosk/prize-confirmation-step";
 import { PrizeSelectionStep } from "./components/kiosk/prize-selection-step";
 import { SaleValueStep } from "./components/kiosk/sale-value-step";
-import { MobileConfirmationStep } from "./components/mobile/confirmation-step";
-import { MobilePrizeConfirmationStep } from "./components/mobile/prize-confirmation-step";
 import { MobileWaitingStep } from "./components/mobile/waiting-step";
 
 // Steps without the CLIENT step - client is now identified on the hub
@@ -47,15 +45,27 @@ const DISCOUNT_STEPS: TStepDefinition[] = [
 	{ id: 3, label: "CONFIRMAÇÃO", icon: Lock },
 ];
 
+const DISCOUNT_STEPS_MOBILE: TStepDefinition[] = [
+	{ id: 1, label: "VENDA", icon: Tag },
+	{ id: 2, label: "CASHBACK", icon: BadgePercent },
+];
+
 const PRIZE_STEPS: TStepDefinition[] = [
 	{ id: 1, label: "RECOMPENSA", icon: Gift },
 	{ id: 2, label: "CONFIRMAÇÃO", icon: Lock },
 ];
 
+const PRIZE_STEPS_MOBILE: TStepDefinition[] = [{ id: 1, label: "RECOMPENSA", icon: Gift }];
+
 const PRIZE_SALE_ONLY_STEPS: TStepDefinition[] = [
 	{ id: 1, label: "RECOMPENSA", icon: Gift },
 	{ id: 2, label: "VENDA", icon: Tag },
 	{ id: 3, label: "CONFIRMAÇÃO", icon: Lock },
+];
+
+const PRIZE_SALE_ONLY_STEPS_MOBILE: TStepDefinition[] = [
+	{ id: 1, label: "RECOMPENSA", icon: Gift },
+	{ id: 2, label: "VENDA", icon: Tag },
 ];
 
 type NewSaleContentProps = {
@@ -84,7 +94,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		updatePrizeRedemption,
 		updateOperatorIdentifier,
 		updateWatchTransactionRequest,
-		resetState,
+		redefineState,
 	} = usePointOfInteractionNewSaleState(org.id, mode);
 
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
@@ -103,11 +113,12 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const effectiveFlowMode: "discount" | "prize" = shouldShowFlowModeSelection ? (flowMode ?? "discount") : isPrizeModeAllowed ? "prize" : "discount";
 	const isPrizeMode = effectiveFlowMode === "prize";
 	const isPrizeSaleOnlyFlow = isPrizeMode && prizeFlowIntent === "sale-only";
-	const totalSteps = isPrizeMode ? (isPrizeSaleOnlyFlow ? 3 : 2) : 3;
+	const isMobileMode = mode === "mobile";
+	const baseTotalSteps = isPrizeMode ? (isPrizeSaleOnlyFlow ? 3 : 2) : 3;
+	const totalSteps = isMobileMode ? baseTotalSteps - 1 : baseTotalSteps;
 	const successStep = totalSteps + 1;
 	const waitingStep = totalSteps + 1;
 	const finalSuccessStep = mode === "mobile" ? waitingStep + 1 : successStep;
-	const isMobileMode = mode === "mobile";
 
 	// Load client data by ID (already validated on server)
 	const { data: client } = useClientByLookup({ initialParams: { orgId: org.id, phone: "", clientId: clientId } });
@@ -182,6 +193,22 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 			updatePrizeRedemption(null);
 		}
 		playAction();
+		if (isMobileMode && currentStep === totalSteps) {
+			if (isPrizeSaleOnlyFlow && currentStep === 2) {
+				const payload: TPointOfInteractionNewSaleState = {
+					...state,
+					sale: {
+						...state.sale,
+						cashback: { aplicar: false, valor: 0 },
+						prizeRedemption: null,
+					},
+				};
+				submitTransaction(payload);
+				return;
+			}
+			submitTransaction();
+			return;
+		}
 		setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
 	};
 
@@ -212,10 +239,23 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		if (availableCashback < prize.valor) return;
 		setPrizeFlowIntent("redeem");
 		setSelectedPrize(prize);
+		playAction();
+		const nextState: TPointOfInteractionNewSaleState = {
+			...state,
+			sale: {
+				...state.sale,
+				valor: prize.valorVenda,
+				cashback: { aplicar: true, valor: prize.valor },
+				prizeRedemption: { prizeId: prize.id, prizeValue: prize.valor, prizeSaleValue: prize.valorVenda },
+			},
+		};
+		if (isMobileMode) {
+			submitTransaction(nextState);
+			return;
+		}
 		updateSale({ valor: prize.valorVenda });
 		updateCashback({ aplicar: true, valor: prize.valor });
 		updatePrizeRedemption({ prizeId: prize.id, prizeValue: prize.valor, prizeSaleValue: prize.valorVenda });
-		playAction();
 		setCurrentStep(2);
 	};
 
@@ -257,13 +297,17 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		},
 	});
 
-	const submitTransaction = () => {
+	const submitTransaction = (payloadOverride?: TPointOfInteractionNewSaleState) => {
+		const payload = payloadOverride ?? state;
 		if (isMobileMode) {
-			createRequestMutation({ payload: state });
+			if (payloadOverride) {
+				redefineState(payloadOverride);
+			}
+			createRequestMutation({ payload });
 			return;
 		}
 
-		createSaleMutation(state);
+		createSaleMutation(payload);
 	};
 
 	const handleGoToHub = () => {
@@ -274,8 +318,18 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		handleGoToHub();
 	};
 
-	const headerSteps = isPrizeMode ? (isPrizeSaleOnlyFlow ? PRIZE_SALE_ONLY_STEPS : PRIZE_STEPS) : DISCOUNT_STEPS;
-	const confirmationStep = isPrizeMode ? (isPrizeSaleOnlyFlow ? 3 : 2) : 3;
+	const headerSteps = isMobileMode
+		? isPrizeMode
+			? isPrizeSaleOnlyFlow
+				? PRIZE_SALE_ONLY_STEPS_MOBILE
+				: PRIZE_STEPS_MOBILE
+			: DISCOUNT_STEPS_MOBILE
+		: isPrizeMode
+			? isPrizeSaleOnlyFlow
+				? PRIZE_SALE_ONLY_STEPS
+				: PRIZE_STEPS
+			: DISCOUNT_STEPS;
+	const confirmationStep = isMobileMode ? totalSteps : isPrizeMode ? (isPrizeSaleOnlyFlow ? 3 : 2) : 3;
 	const isSubmitting = isCreatingSale || isCreatingRequest;
 
 	return (
@@ -347,21 +401,16 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								onSubmit={handleNextStep}
 							/>
 						)}
-						{/* Step 3: Confirmation */}
-						{!showModeSelection &&
-							!isPrizeMode &&
-							currentStep === 3 &&
-							(isMobileMode ? (
-								<MobileConfirmationStep clientName={state.client.nome || client?.nome || ""} finalValue={finalValue} onSubmit={submitTransaction} />
-							) : (
-								<KioskConfirmationStep
-									clientName={state.client.nome || client?.nome || ""}
-									finalValue={finalValue}
-									operatorIdentifier={state.operatorIdentifier}
-									onOperatorIdentifierChange={updateOperatorIdentifier}
-									onSubmit={submitTransaction}
-								/>
-							))}
+						{/* Step 3: Confirmation (totem apenas; no mobile a solicitação é enviada no último passo de dados) */}
+						{!showModeSelection && !isPrizeMode && currentStep === 3 && !isMobileMode && (
+							<KioskConfirmationStep
+								clientName={state.client.nome || client?.nome || ""}
+								finalValue={finalValue}
+								operatorIdentifier={state.operatorIdentifier}
+								onOperatorIdentifierChange={updateOperatorIdentifier}
+								onSubmit={submitTransaction}
+							/>
+						)}
 
 						{/* Prize mode steps */}
 						{/* Step 1: Prize Selection */}
@@ -379,45 +428,28 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						{!showModeSelection && isPrizeSaleOnlyFlow && currentStep === 2 && (
 							<SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} />
 						)}
-						{/* Prize redeem: Step 2 = Confirmation */}
-						{!showModeSelection &&
-							isPrizeMode &&
-							currentStep === 2 &&
-							!isPrizeSaleOnlyFlow &&
-							(isMobileMode ? (
-								<MobilePrizeConfirmationStep
-									clientName={state.client.nome || client?.nome || ""}
-									selectedPrize={selectedPrize}
-									availableBalance={availableCashback}
-									terminology={org.terminologia}
-									onSubmit={submitTransaction}
-								/>
-							) : (
-								<KioskPrizeConfirmationStep
-									clientName={state.client.nome || client?.nome || ""}
-									selectedPrize={selectedPrize}
-									availableBalance={availableCashback}
-									terminology={org.terminologia}
-									operatorIdentifier={state.operatorIdentifier}
-									onOperatorIdentifierChange={updateOperatorIdentifier}
-									onSubmit={submitTransaction}
-								/>
-							))}
-						{/* Prize sale-only: Step 3 = Confirmation */}
-						{!showModeSelection &&
-							isPrizeSaleOnlyFlow &&
-							currentStep === 3 &&
-							(isMobileMode ? (
-								<MobileConfirmationStep clientName={state.client.nome || client?.nome || ""} finalValue={state.sale.valor} onSubmit={submitTransaction} />
-							) : (
-								<KioskConfirmationStep
-									clientName={state.client.nome || client?.nome || ""}
-									finalValue={state.sale.valor}
-									operatorIdentifier={state.operatorIdentifier}
-									onOperatorIdentifierChange={updateOperatorIdentifier}
-									onSubmit={submitTransaction}
-								/>
-							))}
+						{/* Prize redeem: Step 2 = Confirmation (totem apenas) */}
+						{!showModeSelection && isPrizeMode && currentStep === 2 && !isPrizeSaleOnlyFlow && !isMobileMode && (
+							<KioskPrizeConfirmationStep
+								clientName={state.client.nome || client?.nome || ""}
+								selectedPrize={selectedPrize}
+								availableBalance={availableCashback}
+								terminology={org.terminologia}
+								operatorIdentifier={state.operatorIdentifier}
+								onOperatorIdentifierChange={updateOperatorIdentifier}
+								onSubmit={submitTransaction}
+							/>
+						)}
+						{/* Prize sale-only: Step 3 = Confirmation (totem apenas) */}
+						{!showModeSelection && isPrizeSaleOnlyFlow && currentStep === 3 && !isMobileMode && (
+							<KioskConfirmationStep
+								clientName={state.client.nome || client?.nome || ""}
+								finalValue={state.sale.valor}
+								operatorIdentifier={state.operatorIdentifier}
+								onOperatorIdentifierChange={updateOperatorIdentifier}
+								onSubmit={submitTransaction}
+							/>
+						)}
 
 						{/* Mobile waiting step */}
 						{!showModeSelection && isMobileMode && currentStep === waitingStep && state.watchTransactionRequestToken && (
@@ -543,7 +575,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						)}
 
 						{/* Action Buttons */}
-						{!showModeSelection && currentStep <= confirmationStep && (!isMobileMode || currentStep < confirmationStep) && (
+						{!showModeSelection && currentStep <= totalSteps && (
 							<div className="flex gap-4 short:gap-3 mt-10 short:mt-4">
 								{currentStep > 1 && (
 									<Button
@@ -574,16 +606,16 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								)}
 								{!(isPrizeMode && currentStep === 1) && !(isPrizeMode && currentStep === 2 && !isPrizeSaleOnlyFlow) && (
 									<Button
-										onClick={currentStep === confirmationStep ? submitTransaction : handleNextStep}
+										onClick={currentStep === confirmationStep ? (isMobileMode ? handleNextStep : () => submitTransaction()) : handleNextStep}
 										size="lg"
 										disabled={isSubmitting || (!isPrizeMode && isAttemptingToUseMoreCashbackThanAllowed)}
 										className={cn(
 											"flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
-											currentStep === confirmationStep && "bg-green-600 hover:bg-green-700",
+											currentStep === confirmationStep && !isMobileMode && "bg-green-600 hover:bg-green-700",
 										)}
 									>
-										{currentStep === confirmationStep ? (isSubmitting ? "PROCESSANDO..." : "FINALIZAR") : "PRÓXIMO"}
-										{currentStep === confirmationStep ? (
+										{currentStep === confirmationStep ? (isSubmitting ? "PROCESSANDO..." : isMobileMode ? "PRÓXIMO" : "FINALIZAR") : "PRÓXIMO"}
+										{currentStep === confirmationStep && !isMobileMode ? (
 											<Check className="ml-2 w-6 h-6 short:w-5 short:h-5" />
 										) : (
 											<ArrowRight className="ml-2 w-6 h-6 short:w-5 short:h-5" />
