@@ -43,6 +43,13 @@ import Link from "next/link";
 type SaleByIdPageProps = {
 	user: TAuthUserSession["user"];
 	saleId: string;
+	orgHasERPAccess: boolean;
+	userFiscalPermissions: {
+		view: boolean;
+		configure: boolean;
+		emit: boolean;
+		cancel: boolean;
+	};
 };
 
 // Helper function to format time to conversion
@@ -67,7 +74,7 @@ const SITUACAO_COLORS: Record<string, string> = {
 	"05": "bg-gray-500/10 text-gray-600 dark:text-gray-400",
 };
 
-export default function SaleByIdPage({ user, saleId }: SaleByIdPageProps) {
+export default function SaleByIdPage({ user, saleId, orgHasERPAccess, userFiscalPermissions }: SaleByIdPageProps) {
 	const { data: sale, isLoading, isError, error, isSuccess } = useSalesById({ id: saleId });
 
 	if (isLoading) return <LoadingComponent />;
@@ -278,13 +285,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 	);
 }
 
-function ParticipantsSection({
-	vendedor,
-	parceiro,
-}: {
-	vendedor: TGetSalesOutputById["vendedor"];
-	parceiro: TGetSalesOutputById["parceiro"];
-}) {
+function ParticipantsSection({ vendedor, parceiro }: { vendedor: TGetSalesOutputById["vendedor"]; parceiro: TGetSalesOutputById["parceiro"] }) {
 	return (
 		<SectionWrapper title="PARTICIPANTES" icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}>
 			<div className="w-full flex flex-col gap-4">
@@ -424,11 +425,7 @@ function CampaignAttributionSection({
 	);
 }
 
-function CashbackTransactionsSection({
-	transactions,
-}: {
-	transactions: TGetSalesOutputById["transacoesCashback"];
-}) {
+function CashbackTransactionsSection({ transactions }: { transactions: TGetSalesOutputById["transacoesCashback"] }) {
 	if (transactions.length === 0)
 		return (
 			<SectionWrapper title="TRANSAÇÕES DE CASHBACK" icon={<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-emerald-600 dark:text-emerald-400" />}>
