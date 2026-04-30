@@ -68,12 +68,14 @@ async function fetchCampaignById(id: string) {
 
 type UseCampaignByIdParams = {
 	id: string;
+	enabled?: boolean;
 };
-export function useCampaignById({ id }: UseCampaignByIdParams) {
+export function useCampaignById({ id, enabled = true }: UseCampaignByIdParams) {
 	return {
 		...useQuery({
 			queryKey: ["campaign-by-id", id],
 			queryFn: async () => await fetchCampaignById(id),
+			enabled,
 		}),
 		queryKey: ["campaign-by-id", id],
 	};

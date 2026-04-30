@@ -11,8 +11,6 @@ import ClientHoverCard from "@/components/Clients/ClientHoverCard";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import ControlCampaign from "@/components/Modals/Campaigns/ControlCampaign";
-import NewCampaign from "@/components/Modals/Campaigns/NewCampaign";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
@@ -96,7 +94,7 @@ export default function CampaignsPage({ user, membership }: CampaignsPageProps) 
 					<CampaignsStatsView />
 				</TabsContent>
 				<TabsContent value="database" className="flex flex-col gap-3">
-					<CampaignsDatabaseView user={user} membership={membership} />
+					<CampaignsDatabaseView />
 				</TabsContent>
 				<TabsContent value="interactions" className="flex flex-col gap-3">
 					<CampaignsInteractionsView />
@@ -139,16 +137,12 @@ function CampaignsDatabaseFiltersShowcase({ filters, updateFilters }: CampaignsD
 		</FiltersShowcase.Root>
 	);
 }
-function CampaignsDatabaseView({ user, membership }: { user: TAuthUserSession["user"]; membership: NonNullable<TAuthUserSession["membership"]> }) {
-	const queryClient = useQueryClient();
+function CampaignsDatabaseView() {
 	const initialStatsPeriodAfter = dayjs().startOf("month").toDate();
 	const initialStatsPeriodBefore = dayjs().endOf("month").toDate();
 	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
-	const [newCampaignModalIsOpen, setNewCampaignModalIsOpen] = useState<boolean>(false);
-	const [editCampaignModalId, setEditCampaignModalId] = useState<string | null>(null);
 	const {
 		data: campaignsResult,
-		queryKey,
 		isLoading,
 		isError,
 		isSuccess,
@@ -163,8 +157,6 @@ function CampaignsDatabaseView({ user, membership }: { user: TAuthUserSession["u
 			statsPeriodBefore: initialStatsPeriodBefore,
 		},
 	});
-	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
-	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end gap-2">
@@ -172,9 +164,11 @@ function CampaignsDatabaseView({ user, membership }: { user: TAuthUserSession["u
 					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
 					FILTROS
 				</Button>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewCampaignModalIsOpen(true)}>
-					<Plus className="w-4 h-4 min-w-4 min-h-4" />
-					NOVA CAMPANHA
+				<Button className="flex items-center gap-2" size="sm" asChild>
+					<Link href="/dashboard/commercial/campaigns/builder">
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						NOVA CAMPANHA
+					</Link>
 				</Button>
 			</div>
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
@@ -208,7 +202,7 @@ function CampaignsDatabaseView({ user, membership }: { user: TAuthUserSession["u
 				<div className="w-full flex flex-col gap-1.5">
 					{campaignsResult && campaignsResult.length > 0 ? (
 						campaignsResult.map((campaign) => (
-							<CampaignsPageCampaignCard key={campaign.id} campaign={campaign} handleEditClick={() => setEditCampaignModalId(campaign.id)} />
+							<CampaignsPageCampaignCard key={campaign.id} campaign={campaign} />
 						))
 					) : (
 						<p className="w-full flex items-center justify-center">Nenhuma campanha encontrada</p>
@@ -216,22 +210,6 @@ function CampaignsDatabaseView({ user, membership }: { user: TAuthUserSession["u
 				</div>
 			) : null}
 
-			{newCampaignModalIsOpen ? (
-				<NewCampaign
-					user={user}
-					organizationId={membership.organizacao.id}
-					closeModal={() => setNewCampaignModalIsOpen(false)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
-			) : null}
-			{editCampaignModalId ? (
-				<ControlCampaign
-					campaignId={editCampaignModalId}
-					organizationId={membership.organizacao.id}
-					closeModal={() => setEditCampaignModalId(null)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
-			) : null}
 			{filterMenuIsOpen ? (
 				<CampaignsDatabaseFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
@@ -604,7 +582,7 @@ function CampaignsStatsView() {
 	);
 }
 
-function CampaignsPageCampaignCard({ campaign, handleEditClick }: { campaign: TGetCampaignsOutputDefault[number]; handleEditClick: () => void }) {
+function CampaignsPageCampaignCard({ campaign }: { campaign: TGetCampaignsOutputDefault[number] }) {
 	const stats = campaign.estatisticas ?? {
 		envios: 0,
 		entregues: 0,
@@ -719,9 +697,11 @@ function CampaignsPageCampaignCard({ campaign, handleEditClick }: { campaign: TG
 					/>
 				</div>
 				<div className="flex items-center gap-1.5">
-					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleEditClick}>
-						<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
-						EDITAR
+					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
+						<Link href={`/dashboard/commercial/campaigns/builder?campaignId=${campaign.id}`}>
+							<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
+							EDITAR
+						</Link>
 					</Button>
 					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
 						<Link href={`/dashboard/commercial/campaigns/id/${campaign.id}`}>
