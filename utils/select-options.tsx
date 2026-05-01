@@ -17,6 +17,7 @@ import type {
 	TPurchaseStatusEnum,
 	TRecurrenceFrequencyEnum,
 	TTimeDurationUnitsEnum,
+	TWhatsappTemplateStatusEnum,
 } from "@/schemas/enums";
 import type { TInternalLeadOriginEnum, TInternalLeadStatusCRMEnum } from "@/schemas/enums";
 import { TInteractionsStatusEnum } from "@/schemas/interactions";
@@ -24,10 +25,12 @@ import {
 	Archive,
 	ArrowDown,
 	ArrowUp,
+	Ban,
 	Banknote,
 	BookOpen,
 	Check,
 	CheckCheck,
+	CheckCircleIcon,
 	ClipboardIcon,
 	Clock,
 	CreditCard,
@@ -39,6 +42,7 @@ import {
 	MessageSquare,
 	Minus,
 	Package,
+	PauseCircleIcon,
 	Pencil,
 	Percent,
 	Phone,
@@ -52,6 +56,7 @@ import {
 	Video,
 	Wallet,
 	X,
+	XCircleIcon,
 } from "lucide-react";
 
 export const InternalActivityTypeOptions: { id: number; label: string; value: TInternalLeadActivityTypeEnum; icon: React.ReactNode }[] = [
@@ -645,3 +650,54 @@ export const FinancialTransactionTypeOptions: {
 		colors: { text: "text-red-600", background: "bg-red-200" },
 	},
 ];
+
+export const WhatsappTemplateStatusUIDetailsMap: Record<
+	TWhatsappTemplateStatusEnum,
+	{ id: number; label: string; value: TWhatsappTemplateStatusEnum; icon: React.ReactNode; colors: { text: string; background: string } }
+> = {
+	RASCUNHO: {
+		id: 1,
+		label: "RASCUNHO",
+		value: "RASCUNHO",
+		icon: <FileIcon className="w-4 h-4 text-gray-600" />,
+		colors: { text: "text-gray-600", background: "bg-gray-200" },
+	},
+	PENDENTE: {
+		id: 2,
+		label: "PENDENTE",
+		value: "PENDENTE",
+		icon: <Clock className="w-4 h-4 text-yellow-600" />,
+		colors: { text: "text-yellow-600", background: "bg-yellow-200" },
+	},
+	REJEITADO: {
+		id: 3,
+		label: "REJEITADO",
+		value: "REJEITADO",
+		icon: <XCircleIcon className="w-4 h-4 text-red-600" />,
+		colors: { text: "text-red-600", background: "bg-red-200" },
+	},
+	PAUSADO: {
+		id: 4,
+		label: "PAUSADO",
+		value: "PAUSADO",
+		icon: <PauseCircleIcon className="w-4 h-4 text-orange-600" />,
+		colors: { text: "text-orange-600", background: "bg-orange-200" },
+	},
+	DESABILITADO: {
+		id: 6,
+		label: "DESABILITADO",
+		value: "DESABILITADO",
+		icon: <Ban className="w-4 h-4 text-gray-600" />,
+		colors: { text: "text-gray-600", background: "bg-gray-200" },
+	},
+	APROVADO: {
+		id: 5,
+		label: "APROVADO",
+		value: "APROVADO",
+		icon: <CheckCircleIcon className="w-4 h-4 text-green-600" />,
+		colors: { text: "text-green-600", background: "bg-green-200" },
+	},
+};
+export function getWhatsappTemplateStatusUIDetails(status: TWhatsappTemplateStatusEnum) {
+	return WhatsappTemplateStatusUIDetailsMap[status];
+}
