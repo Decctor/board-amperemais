@@ -6,12 +6,18 @@ import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { type TCampaignEntity, type TInteractionEntity, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
+const INTERACTIONS_CRON_TIMEZONE = process.env.INTERACTIONS_CRON_TIMEZONE ?? "America/Sao_Paulo";
 const IMMEDIATE_PROCESSING_CONCURRENCY = 5;
 
-function getCurrentTimeBlock(currentTime = dayjs()): (typeof TIME_BLOCKS)[number] {
+function getCurrentTimeBlock(currentTime: dayjs.Dayjs): (typeof TIME_BLOCKS)[number] {
 	const currentHour = currentTime.hour();
 	const currentMinute = currentTime.minute();
 	const currentTotalMinutes = currentHour * 60 + currentMinute;
@@ -36,15 +42,17 @@ function getCurrentTimeBlock(currentTime = dayjs()): (typeof TIME_BLOCKS)[number
 /**
  * Checks if a recurrent campaign should run today based on its schedule configuration.
  */
-function shouldCampaignRunToday(campaign: {
-	recorrenciaTipo: string | null;
-	recorrenciaIntervalo: number | null;
-	recorrenciaDiasSemana: string | null;
-	recorrenciaDiasMes: string | null;
-	dataInsercao: Date;
-}): boolean {
-	const today = dayjs();
-	const campaignStart = dayjs(campaign.dataInsercao);
+function shouldCampaignRunToday(
+	campaign: {
+		recorrenciaTipo: string | null;
+		recorrenciaIntervalo: number | null;
+		recorrenciaDiasSemana: string | null;
+		recorrenciaDiasMes: string | null;
+		dataInsercao: Date;
+	},
+	today: dayjs.Dayjs,
+): boolean {
+	const campaignStart = dayjs(campaign.dataInsercao).tz(INTERACTIONS_CRON_TIMEZONE);
 	const interval = campaign.recorrenciaIntervalo || 1;
 
 	switch (campaign.recorrenciaTipo) {
@@ -100,10 +108,11 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 	console.log("[INFO] [RECURRENT_CAMPAIGNS] Starting recurrent campaigns processing");
 
 	try {
-		const currentTimeBlock = getCurrentTimeBlock();
-		const currentDateFormatted = dayjs().format("YYYY-MM-DD");
+		const nowInCronTimezone = dayjs().tz(INTERACTIONS_CRON_TIMEZONE);
+		const currentTimeBlock = getCurrentTimeBlock(nowInCronTimezone);
+		const currentDateFormatted = nowInCronTimezone.format("YYYY-MM-DD");
 
-		console.log(`[INFO] [RECURRENT_CAMPAIGNS] Current time block: ${currentTimeBlock}, date: ${currentDateFormatted}`);
+		console.log(`[INFO] [RECURRENT_CAMPAIGNS] Current time block: ${currentTimeBlock}, date: ${currentDateFormatted}, timezone: ${INTERACTIONS_CRON_TIMEZONE}`);
 
 		const organizationsList = await db.query.organizations.findMany({
 			columns: { id: true },
@@ -145,7 +154,7 @@ const handleProcessRecurrentCampaigns = async (_req: NextApiRequest, res: NextAp
 				}
 
 				// Filter campaigns that should run today based on their schedule
-				const campaignsToRun = recurrentCampaigns.filter((campaign) => shouldCampaignRunToday(campaign));
+				const campaignsToRun = recurrentCampaigns.filter((campaign) => shouldCampaignRunToday(campaign, nowInCronTimezone));
 
 				if (campaignsToRun.length === 0) {
 					console.log(`[ORG: ${organization.id}] No RECORRENTE campaigns scheduled for today. Skipping.`);
