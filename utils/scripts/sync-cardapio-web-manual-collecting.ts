@@ -1,7 +1,7 @@
-import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import "@/utils/scripts/load-next-env";
+
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
-import { processConversionAttribution } from "@/lib/conversions/attribution";
-import { fetchCardapioWebOrdersWithDetails } from "@/lib/data-connectors/cardapio-web";
+import { fetchCardapioWebOrdersWithDetails, type TCardapioWebOrderDetailsFetchFailure } from "@/lib/data-connectors/cardapio-web";
 import { type MappedCardapioWebSale, extractAllCardapioWebData } from "@/lib/data-connectors/cardapio-web/mappers";
 import type { TCardapioWebConfig } from "@/lib/data-connectors/cardapio-web/types";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
@@ -25,69 +25,33 @@ import {
 	utils,
 } from "@/services/drizzle/schema";
 import axios from "axios";
+import fs from "fs/promises";
+import path from "path";
 import dayjs from "dayjs";
 import dayjsCustomFormatter from "dayjs/plugin/customParseFormat";
 import { and, eq, gt } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
+import { fileURLToPath } from "url";
 dayjs.extend(dayjsCustomFormatter);
 
-const TARGET_ORGANIZATION_ID = "27817d9a-cb04-4704-a1f4-15b81a3610d3";
-const START_DATE = "2025-10-01T00:00:00.000Z";
-const END_DATE = dayjs().subtract(1, "year").endOf("year").toISOString();
+/** Raiz do repo (este arquivo está em `utils/scripts/`). */
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const CARDAPIO_WEB_DETAILS_FAILURES_DEFAULT_BASENAME = "cardapio-web-details-failures.json";
 
-/**
- * Helper function to check if a campaign can be scheduled for a client based on frequency rules
- * @param tx - Database transaction instance
- * @param clienteId - Client ID
- * @param campanhaId - Campaign ID
- * @param permitirRecorrencia - Whether the campaign allows recurrence
- * @param frequenciaIntervaloValor - Frequency interval value
- * @param frequenciaIntervaloMedida - Frequency interval unit (DIAS, HORAS, etc.)
- * @returns true if the campaign can be scheduled, false otherwise
- */
-async function canScheduleCampaignForClient(
-	tx: DBTransaction,
-	clienteId: string,
-	campanhaId: string,
-	permitirRecorrencia: boolean,
-	frequenciaIntervaloValor: number | null,
-	frequenciaIntervaloMedida: string | null,
-): Promise<boolean> {
-	// Check if campaign allows recurrence
-	if (!permitirRecorrencia) {
-		const previousInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId)),
-		});
-		if (previousInteraction) {
-			console.log(`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} does not allow recurrence. Skipping for client ${clienteId}.`);
-			return false;
-		}
+/** Caminho do JSON de falhas DETAILS: env opcional; senão, arquivo na raiz do repositório. */
+function resolveCardapioDetailsFailuresLogPath(): string {
+	const fromEnv = process.env.CARDAPIO_WEB_DETAILS_FAILURES_LOG?.trim();
+	if (fromEnv) {
+		return path.isAbsolute(fromEnv) ? fromEnv : path.resolve(process.cwd(), fromEnv);
 	}
-
-	// Check for time interval (Frequency Cap)
-	if (permitirRecorrencia && frequenciaIntervaloValor && frequenciaIntervaloValor > 0 && frequenciaIntervaloMedida) {
-		// Map the enum to dayjs units
-		const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[frequenciaIntervaloMedida as TTimeDurationUnitsEnum] || "day";
-
-		// Calculate the cutoff date based on the campaign's interval settings
-		const cutoffDate = dayjs().subtract(frequenciaIntervaloValor, dayjsUnit).toDate();
-
-		const recentInteraction = await tx.query.interactions.findFirst({
-			where: (fields, { and, eq, gt }) => and(eq(fields.clienteId, clienteId), eq(fields.campanhaId, campanhaId), gt(fields.dataInsercao, cutoffDate)),
-		});
-
-		if (recentInteraction) {
-			console.log(
-				`[CAMPAIGN_FREQUENCY] Campaign ${campanhaId} frequency limit reached for client ${clienteId}. Last interaction was at ${recentInteraction.dataInsercao}.`,
-			);
-			return false;
-		}
-	}
-
-	return true;
+	return path.join(REPO_ROOT, CARDAPIO_WEB_DETAILS_FAILURES_DEFAULT_BASENAME);
 }
+
+const TARGET_ORGANIZATION_ID = "94d515f6-4c61-46e3-a05f-3f9fc4ad6d22";
+const START_DATE = "2026-01-01T00:00:00.000Z";
+const END_DATE = dayjs().endOf("day").toISOString();
 
 /**
  * Type definition for cashback balance entries stored in the local Map cache
@@ -147,8 +111,23 @@ export async function handleCardapioWebImportation(
 
 	console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Fetching orders from ${START_DATE} to ${END_DATE}`);
 
+	const cardapioDetailsFailures: TCardapioWebOrderDetailsFetchFailure[] = [];
+
 	// Fetch all orders with details from CardapioWeb API
-	const orderDetails = await fetchCardapioWebOrdersWithDetails(config, START_DATE, END_DATE);
+	const orderDetails = await fetchCardapioWebOrdersWithDetails(config, START_DATE, END_DATE, {
+		onOrderDetailsFetchFailure: (record) => {
+			cardapioDetailsFailures.push(record);
+		},
+	});
+
+	if (cardapioDetailsFailures.length > 0) {
+		console.warn(
+			`[ORG: ${organizationId}] [CARDAPIO-WEB] ${cardapioDetailsFailures.length} pedido(s) sem detalhes (API/validação). IDs: ${cardapioDetailsFailures.map((f) => f.orderId).join(", ")}`,
+		);
+		const detailsFailuresLogPath = resolveCardapioDetailsFailuresLogPath();
+		await fs.writeFile(detailsFailuresLogPath, JSON.stringify(cardapioDetailsFailures, null, 2), "utf-8");
+		console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] Registro estruturado das falhas DETAILS gravado em: ${detailsFailuresLogPath}`);
+	}
 
 	if (orderDetails.length === 0) {
 		console.log(`[ORG: ${organizationId}] [CARDAPIO-WEB] No orders found.`);
@@ -927,6 +906,7 @@ export async function syncCardapioWebManualCollecting() {
 	const config = await db.query.organizations.findFirst({
 		where: (fields, { eq }) => eq(fields.id, TARGET_ORGANIZATION_ID),
 		columns: {
+			nome: true,
 			integracaoConfiguracao: true,
 		},
 	});
@@ -934,7 +914,7 @@ export async function syncCardapioWebManualCollecting() {
 	if (!config) {
 		throw new Error("Configuração não encontrada.");
 	}
-
+	console.log(`[SYNC-CARDAPIO-WEB-MANUAL-COLLECTING] Config found: ${config.nome}`);
 	const configData = config.integracaoConfiguracao as TCardapioWebConfig;
 	await handleCardapioWebImportation(TARGET_ORGANIZATION_ID, configData, [], [], [], undefined, []);
 

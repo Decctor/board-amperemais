@@ -569,7 +569,10 @@ export const GetCardapioWebOrderDetailsOutputSchema = z.object({
 			required_error: "Valor total do pedido não informado.",
 			invalid_type_error: "Tipo inválido para valor total do pedido.",
 		})
-		.min(0),
+		.min(0)
+		.optional()
+		.nullable()
+		.default(0),
 	created_at: z.string({
 		required_error: "Data de criação não informada.",
 		invalid_type_error: "Tipo inválido para data de criação.",

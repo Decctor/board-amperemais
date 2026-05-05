@@ -1,4 +1,5 @@
-import axios, { type AxiosInstance, type AxiosError } from "axios";
+import axios, { type AxiosInstance, type AxiosError, isAxiosError } from "axios";
+import { ZodError } from "zod";
 import {
 	CardapioWebConfigSchema,
 	GetCardapioWebCatalogOutputSchema,
@@ -254,6 +255,71 @@ async function executeWithRateLimitAndRetry<T>(fn: () => Promise<T>, rateLimiter
 	throw lastError;
 }
 
+const CARDAPIO_WEB_DETAILS_FAILURE_BODY_MAX_LEN = 900;
+
+/** Registro de falha ao buscar detalhes de um pedido (HTTP, validação Zod, etc.). */
+export type TCardapioWebOrderDetailsFetchFailure = {
+	orderId: number;
+	at: string;
+	kind: string;
+	message: string;
+	httpStatus?: number;
+	httpStatusText?: string;
+	responseBodyPreview?: string;
+	axiosCode?: string;
+	requestUrl?: string;
+	zodIssuesSample?: unknown[];
+};
+
+/** Opções para observabilidade sem I/O no conector (serverless-friendly). */
+export type TFetchOrderDetailsInBatchesOptions = {
+	/** Chamado a cada falha; use para enviar a um logger estruturado, fila, métricas ou gravar em disco no script local. */
+	onOrderDetailsFetchFailure?: (record: TCardapioWebOrderDetailsFetchFailure) => void | Promise<void>;
+};
+
+function describeCardapioWebDetailsFetchError(error: unknown): Omit<TCardapioWebOrderDetailsFetchFailure, "orderId" | "at"> {
+	if (isAxiosError(error)) {
+		const ax = error as AxiosError<unknown>;
+		const data = ax.response?.data;
+		let responseBodyPreview: string | undefined;
+		if (data !== undefined) {
+			try {
+				if (typeof data === "string") {
+					responseBodyPreview = data.slice(0, CARDAPIO_WEB_DETAILS_FAILURE_BODY_MAX_LEN);
+				} else {
+					responseBodyPreview = JSON.stringify(data).slice(0, CARDAPIO_WEB_DETAILS_FAILURE_BODY_MAX_LEN);
+				}
+			} catch {
+				responseBodyPreview = String(data).slice(0, CARDAPIO_WEB_DETAILS_FAILURE_BODY_MAX_LEN);
+			}
+		}
+		const base = ax.config?.baseURL ?? "";
+		const path = ax.config?.url ?? "";
+		const requestUrl = base || path ? `${base}${path}` : undefined;
+		return {
+			kind: "axios",
+			message: ax.message,
+			httpStatus: ax.response?.status,
+			httpStatusText: ax.response?.statusText,
+			responseBodyPreview,
+			axiosCode: ax.code,
+			requestUrl,
+		};
+	}
+	if (error instanceof ZodError) {
+		return {
+			kind: "zod_validation",
+			message: error.message,
+			zodIssuesSample: error.issues.slice(0, 12),
+		};
+	}
+	const err = error as Error | undefined;
+	return {
+		kind: "unknown",
+		message: err?.message ?? String(error),
+	};
+}
+
 /**
  * Creates an authenticated Axios instance for CardapioWeb API
  */
@@ -392,12 +458,17 @@ export async function fetchAllCardapioWebOrders(
  * - 1000 pedidos = ~3,3 minutos
  * - 3700 pedidos = ~12 minutos
  */
-export async function fetchOrderDetailsInBatches(client: AxiosInstance, orderIds: number[]): Promise<TGetCardapioWebOrderDetailsOutput[]> {
+export async function fetchOrderDetailsInBatches(
+	client: AxiosInstance,
+	orderIds: number[],
+	options?: TFetchOrderDetailsInBatchesOptions,
+): Promise<TGetCardapioWebOrderDetailsOutput[]> {
 	const results: TGetCardapioWebOrderDetailsOutput[] = [];
 	const rateLimiter = getCardapioWebDetailsRateLimiter();
 	let completed = 0;
 	let failed = 0;
 	const startTime = Date.now();
+	const failures: TCardapioWebOrderDetailsFetchFailure[] = [];
 
 	for (let i = 0; i < orderIds.length; i++) {
 		const orderId = orderIds[i];
@@ -408,8 +479,22 @@ export async function fetchOrderDetailsInBatches(client: AxiosInstance, orderIds
 			completed++;
 		} catch (error) {
 			failed++;
-			const err = error as Error;
-			console.error(`[CARDAPIO-WEB] Erro ao buscar pedido ${orderId}:`, err.message || error);
+			const detail = describeCardapioWebDetailsFetchError(error);
+			const record: TCardapioWebOrderDetailsFetchFailure = {
+				orderId,
+				at: new Date().toISOString(),
+				...detail,
+			};
+			failures.push(record);
+			// Uma linha JSON facilita grep e não perde contexto no scroll do terminal
+			console.error(`[CARDAPIO-WEB] Falha DETAILS pedido=${orderId}`, JSON.stringify(record));
+			if (options?.onOrderDetailsFetchFailure) {
+				try {
+					await options.onOrderDetailsFetchFailure(record);
+				} catch (hookError) {
+					console.error("[CARDAPIO-WEB] onOrderDetailsFetchFailure rejeitou:", hookError);
+				}
+			}
 		}
 
 		// Log progress every 50 orders
@@ -418,13 +503,22 @@ export async function fetchOrderDetailsInBatches(client: AxiosInstance, orderIds
 			const elapsed = Math.round((Date.now() - startTime) / 1000);
 			const rate = completed / (elapsed || 1);
 			const remaining = Math.round((orderIds.length - i - 1) / rate);
+			const falhasPedidos =
+				failed > 0 ? ` | ids com falha até agora: ${failures.map((f) => f.orderId).join(", ")}` : "";
 
 			console.log(
 				`[CARDAPIO-WEB] Detalhes: ${completed}/${orderIds.length} ` +
-					`(${failed} falhas) | ${elapsed}s elapsed | ~${remaining}s restante | ` +
+					`(${failed} falhas)${falhasPedidos} | ${elapsed}s elapsed | ~${remaining}s restante | ` +
 					`Rate: ${stats.requestsInWindow} req/min (DETAILS endpoint)`,
 			);
 		}
+	}
+
+	if (failures.length > 0) {
+		console.error(
+			`[CARDAPIO-WEB] Resumo final: ${failures.length} falha(s) no endpoint DETAILS.\n` +
+				JSON.stringify(failures, null, 2),
+		);
 	}
 
 	return results;
@@ -438,6 +532,7 @@ export async function fetchCardapioWebOrdersWithDetails(
 	config: TCardapioWebConfig,
 	startDate: string,
 	endDate: string,
+	detailsBatchOptions?: TFetchOrderDetailsInBatchesOptions,
 ): Promise<TGetCardapioWebOrderDetailsOutput[]> {
 	const client = createCardapioWebClient(config);
 
@@ -453,7 +548,7 @@ export async function fetchCardapioWebOrdersWithDetails(
 	// Step 2: Fetch details for all orders (handles rate limiting via batches)
 	const orderIds = orderSummaries.map((order) => order.id);
 	// console.log(`[CARDAPIO-WEB] Buscando detalhes de ${orderIds.length} pedidos...`);
-	const orderDetails = await fetchOrderDetailsInBatches(client, orderIds);
+	const orderDetails = await fetchOrderDetailsInBatches(client, orderIds, detailsBatchOptions);
 	// console.log(`[CARDAPIO-WEB] Detalhes de ${orderDetails.length} pedidos carregados.`);
 
 	return orderDetails;
