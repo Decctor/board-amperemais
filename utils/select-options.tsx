@@ -364,14 +364,14 @@ export const InteractionsSentStatusOptions: {
 		label: "ENVIADO",
 		value: "ENVIADO",
 		icon: <Check className="w-4 h-4" />,
-		className: "bg-blue-200 text-blue-600 border border-blue-600 hover:bg-blue-100 hover:text-blue-500 hover:border-blue-600",
+		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-600",
 	},
 	{
 		id: 3,
 		label: "ENTREGUE",
 		value: "ENTREGUE",
 		icon: <CheckCheck className="w-4 h-4" />,
-		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-600",
+		className: "bg-blue-200 text-blue-600 border border-blue-600 hover:bg-blue-100 hover:text-blue-500 hover:border-blue-600",
 	},
 	{
 		id: 4,

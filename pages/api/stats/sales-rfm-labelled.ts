@@ -148,8 +148,7 @@ const getSalesRFMLabelledRoute: NextApiHandler<GetResponse> = async (req, res) =
 			totalRevenue: salesStats.totalRevenue,
 			totalPurchasesQty: salesStats.totalPurchasesQty,
 			avgTicket: salesStats.totalPurchasesQty > 0 ? salesStats.totalRevenue / salesStats.totalPurchasesQty : 0,
-			avgPurchaseCycleDays:
-				cycleStats && cycleStats.totalIntervals > 0 ? cycleStats.totalDaysSpan / cycleStats.totalIntervals : 0,
+			avgPurchaseCycleDays: cycleStats && cycleStats.totalIntervals > 0 ? cycleStats.totalDaysSpan / cycleStats.totalIntervals : 0,
 			avgBasketSize: salesStats.totalPurchasesQty > 0 ? totalItemsQty / salesStats.totalPurchasesQty : 0,
 		};
 	}

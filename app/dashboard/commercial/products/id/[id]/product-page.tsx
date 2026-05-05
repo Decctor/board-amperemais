@@ -1,17 +1,16 @@
-"use client";
-import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
+﻿"use client";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import ProductFilterMenu from "@/components/Products/ProductFilterMenu";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
 import { useProductGraph, useProductStats } from "@/lib/queries/products";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
@@ -46,7 +45,6 @@ type ProductPageProps = {
 };
 
 export default function ProductPage({ user, id }: ProductPageProps) {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 
 	const {
 		data: stats,
@@ -69,25 +67,7 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end flex-col lg:flex-row gap-2">
-				<div className="w-full lg:w-[250px]">
-					<DateIntervalInput
-						label="Período"
-						labelClassName="hidden"
-						className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
-						value={{
-							after: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
-							before: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
-						}}
-						handleChange={(value) => updateFilters({ periodAfter: value.after?.toISOString(), periodBefore: value.before?.toISOString() })}
-					/>
-				</div>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
-			</div>
-			<ProductPageFiltersShowcase filters={filters} updateFilters={updateFilters} />
+			<ProductInlineFilters filters={filters} updateFilters={updateFilters} />
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && stats ? (
@@ -266,18 +246,130 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 					</div>
 				</>
 			) : null}
-			{filterMenuIsOpen ? (
-				<ProductFilterMenu
-					queryParams={{
-						sellerId: filters.sellerId,
-						partnerId: filters.partnerId,
-						saleNatures: filters.saleNatures,
-					}}
-					updateQueryParams={updateFilters}
-					closeMenu={() => setFilterMenuIsOpen(false)}
-				/>
-			) : null}
 		</div>
+	);
+}
+
+type ProductInlineFiltersProps = {
+	filters: {
+		periodAfter?: string | null | undefined;
+		periodBefore?: string | null | undefined;
+		sellerId?: string | null | undefined;
+		partnerId?: string | null | undefined;
+		saleNatures?: string[] | null | undefined;
+	};
+	updateFilters: (filters: Partial<ProductInlineFiltersProps["filters"]>) => void;
+};
+
+function ProductInlineFilters({ filters, updateFilters }: ProductInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
+	const partnerOptions = (filterOptions?.partners ?? []) as InteractiveFilterOption<string>[];
+	const hasSaleNatures = (filters.saleNatures ?? []).length > 0;
+	const hasSeller = Boolean(filters.sellerId);
+	const hasPartner = Boolean(filters.partnerId);
+
+	return (
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<Calendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.periodAfter, filters.periodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ periodAfter: null, periodBefore: null })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+							to: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ periodAfter: period.from?.toISOString() ?? null, periodBefore: period.to?.toISOString() ?? null })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasSaleNatures ? <ProductMultiFilter label="NATUREZAS" options={saleNatureOptions} value={filters.saleNatures ?? []} onChange={(saleNatures) => updateFilters({ saleNatures })} onClear={() => updateFilters({ saleNatures: null })} /> : null}
+			{hasSeller ? <ProductSingleFilter label="VENDEDOR" options={sellerOptions} value={filters.sellerId} onChange={(sellerId) => updateFilters({ sellerId })} onClear={() => updateFilters({ sellerId: null })} /> : null}
+			{hasPartner ? <ProductSingleFilter label="PARCEIRO" options={partnerOptions} value={filters.partnerId} onChange={(partnerId) => updateFilters({ partnerId })} onClear={() => updateFilters({ partnerId: null })} /> : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasSaleNatures ? <InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={saleNatureOptions} value={filters.saleNatures ?? []} onChange={(saleNatures) => updateFilters({ saleNatures })} onClear={() => updateFilters({ saleNatures: null })} clearLabel="TODAS" /></InteractiveFilter.AddFilterItem> : null}
+						{!hasSeller ? <InteractiveFilter.AddFilterItem id="seller" label="VENDEDOR" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.SingleContent options={sellerOptions} value={filters.sellerId ?? undefined} onChange={(sellerId) => updateFilters({ sellerId })} /></InteractiveFilter.AddFilterItem> : null}
+						{!hasPartner ? <InteractiveFilter.AddFilterItem id="partner" label="PARCEIRO" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.SingleContent options={partnerOptions} value={filters.partnerId ?? undefined} onChange={(partnerId) => updateFilters({ partnerId })} /></InteractiveFilter.AddFilterItem> : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
+	);
+}
+
+function ProductMultiFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel="TODAS" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function ProductSingleFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value?: string | null;
+	onChange: (value: string) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{options.find((option) => option.value === value)?.label ?? "TODOS"}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.SingleContent options={options} value={value ?? undefined} onChange={onChange} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
 	);
 }
 
@@ -595,49 +687,6 @@ function GroupedByWeekDay({ data }: { data: TGetProductStatsOutput["data"]["resu
 	);
 }
 
-type ProductPageFiltersShowcaseProps = {
-	filters: {
-		periodAfter?: string | null | undefined;
-		periodBefore?: string | null | undefined;
-		sellerId?: string | null | undefined;
-		partnerId?: string | null | undefined;
-		saleNatures?: string[] | null | undefined;
-	};
-	updateFilters: (filters: Partial<ProductPageFiltersShowcaseProps["filters"]>) => void;
-};
-function ProductPageFiltersShowcase({ filters, updateFilters }: ProductPageFiltersShowcaseProps) {
-	const { data: filterOptions } = useSaleQueryFilterOptions();
-
-	return (
-		<FiltersShowcase.Root>
-			{filters.periodAfter && filters.periodBefore && (
-				<FiltersShowcase.Item
-					label="PERÍODO"
-					value={`${formatDateAsLocale(filters.periodAfter)} a ${formatDateAsLocale(filters.periodBefore)}`}
-					onRemove={() => updateFilters({ periodAfter: null, periodBefore: null })}
-				/>
-			)}
-			{filters.saleNatures && filters.saleNatures.length > 0 && (
-				<FiltersShowcase.Item label="NATUREZAS DA VENDA" value={filters.saleNatures.join(", ")} onRemove={() => updateFilters({ saleNatures: null })} />
-			)}
-			{filters.sellerId && (
-				<FiltersShowcase.Item
-					label="VENDEDOR"
-					value={filterOptions?.sellers?.find((s) => s.id === filters.sellerId)?.label || filters.sellerId}
-					onRemove={() => updateFilters({ sellerId: null })}
-				/>
-			)}
-			{filters.partnerId && (
-				<FiltersShowcase.Item
-					label="PARCEIRO"
-					value={filterOptions?.partners?.find((p) => p.id === filters.partnerId)?.label || filters.partnerId}
-					onRemove={() => updateFilters({ partnerId: null })}
-				/>
-			)}
-		</FiltersShowcase.Root>
-	);
-}
-
 // Relationship Components
 function GroupedByClient({ data }: { data: TGetProductStatsOutput["data"]["resultadosAgrupados"]["cliente"] }) {
 	const [sortMode, setSortMode] = useState<"value" | "quantity">("value");
@@ -661,7 +710,7 @@ function GroupedByClient({ data }: { data: TGetProductStatsOutput["data"]["resul
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}º</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
 					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{client.clienteNome || "N/A"}</h1>
 				</div>
 				<div className="flex items-center gap-2">
@@ -732,7 +781,7 @@ function GroupedBySeller({ data }: { data: TGetProductStatsOutput["data"]["resul
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}º</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
 					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{seller.vendedorNome || "N/A"}</h1>
 				</div>
 				<div className="flex items-center gap-2">
@@ -803,7 +852,7 @@ function GroupedByPartner({ data }: { data: TGetProductStatsOutput["data"]["resu
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}º</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
 					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{partner.parceiroNome || "N/A"}</h1>
 				</div>
 				<div className="flex items-center gap-2">
@@ -878,7 +927,7 @@ function GroupedByRelatedProducts({ data }: { data: TGetProductStatsOutput["data
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}º</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
 					<div className="flex flex-col flex-1 min-w-0">
 						<h1 className="text-xs font-medium tracking-tight truncate">{product.produtoDescricao}</h1>
 						<p className="text-[10px] text-primary/60 truncate">{product.produtoCodigo}</p>
@@ -962,7 +1011,7 @@ function MarginAnalysis({ data }: { data: TGetProductStatsOutput["data"]["analis
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}º</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
 					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{name || "N/A"}</h1>
 				</div>
 				<div className="flex flex-col items-end">
@@ -1281,3 +1330,5 @@ function ProductGraphBlock({
 		</div>
 	);
 }
+
+

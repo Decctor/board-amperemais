@@ -1,8 +1,6 @@
-"use client";
+﻿"use client";
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import type { TGetCampaignsInput, TGetCampaignsOutputDefault } from "@/app/api/campaigns/route";
-import CampaignsDatabaseFilterMenu from "@/components/Campaigns/CampaignsDatabaseFilterMenu";
-import CampaignInteractionsFilterMenu from "@/components/Campaigns/CampaignInteractionsFilterMenu";
 import CampaignsBySegmentation from "@/components/Campaigns/CampaignsBySegmentation";
 import CampaignsFunnel from "@/components/Campaigns/CampaignsFunnel";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
@@ -14,7 +12,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,9 +57,11 @@ import { toast } from "sonner";
 import { BsCalendarPlus } from "react-icons/bs";
 import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTemplates";
 import { MessageCircleIcon } from "lucide-react";
-import { CampaignTriggerTypeOptions } from "@/utils/select-options";
+import { CampaignTriggerTypeOptions, InteractionsSentStatusOptions } from "@/utils/select-options";
+import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
 type CampaignsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -107,40 +107,182 @@ export default function CampaignsPage({ user, membership }: CampaignsPageProps) 
 	);
 }
 
-type CampaignsDatabaseFiltersShowcaseProps = {
+type CampaignsDatabaseInlineFiltersProps = {
 	filters: TGetCampaignsInput;
 	updateFilters: (filters: Partial<TGetCampaignsInput>) => void;
 };
-function CampaignsDatabaseFiltersShowcase({ filters, updateFilters }: CampaignsDatabaseFiltersShowcaseProps) {
+function CampaignsDatabaseInlineFilters({ filters, updateFilters }: CampaignsDatabaseInlineFiltersProps) {
+	const triggerOptions = CampaignTriggerTypeOptions as InteractiveFilterOption<TCampaignTriggerTypeEnum>[];
+	const hasTriggerTypes = (filters.triggerTypes ?? []).length > 0;
+	const hasActiveOnly = Boolean(filters.activeOnly);
+	const hasActionWhatsappOnly = Boolean(filters.actionWhatsappOnly);
+	const hasCashbackGenerationOnly = Boolean(filters.cashbackGenerationOnly);
+
 	return (
-		<FiltersShowcase.Root>
-			{filters.search && filters.search.trim().length > 0 ? (
-				<FiltersShowcase.Item label="PESQUISA" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<Calendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO DOS CARDS</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.statsPeriodAfter, filters.statsPeriodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
+							to: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ statsPeriodAfter: period.from ?? null, statsPeriodBefore: period.to ?? null })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasTriggerTypes ? (
+				<InteractiveFilter.Root className="w-fit">
+					<InteractiveFilter.Trigger>
+						<InteractiveFilter.Icon>
+							<Zap className="h-4 w-4" />
+							<InteractiveFilter.Label>GATILHOS</InteractiveFilter.Label>
+						</InteractiveFilter.Icon>
+						<InteractiveFilter.Value>{formatInteractiveOptionSummary(triggerOptions, filters.triggerTypes ?? [])}</InteractiveFilter.Value>
+						<InteractiveFilter.Clear onClear={() => updateFilters({ triggerTypes: [] })} />
+					</InteractiveFilter.Trigger>
+					<InteractiveFilter.Content className="w-80 p-0">
+						<CampaignTriggerFilterContent options={triggerOptions} filters={filters} updateFilters={updateFilters} />
+					</InteractiveFilter.Content>
+				</InteractiveFilter.Root>
 			) : null}
-			{filters.statsPeriodAfter && filters.statsPeriodBefore ? (
-				<FiltersShowcase.Item
-					label="PERÍODO DAS ESTASTÍCAS"
-					value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
-					onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
+
+			{hasActiveOnly ? (
+				<CampaignBooleanFilter
+					label="APENAS ATIVAS"
+					value={Boolean(filters.activeOnly)}
+					onChange={(activeOnly) => updateFilters({ activeOnly })}
+					onClear={() => updateFilters({ activeOnly: false })}
 				/>
 			) : null}
-			{filters.activeOnly ? <FiltersShowcase.Item label="APENAS ATIVAS" value="SIM" onRemove={() => updateFilters({ activeOnly: false })} /> : null}
-			{filters.triggerTypes && filters.triggerTypes.length > 0 ? (
-				<FiltersShowcase.Item label="TIPO DE GATILHO" value={filters.triggerTypes.join(", ")} onRemove={() => updateFilters({ triggerTypes: [] })} />
+			{hasActionWhatsappOnly ? (
+				<CampaignBooleanFilter
+					label="AÇÃO WHATSAPP"
+					value={Boolean(filters.actionWhatsappOnly)}
+					onChange={(actionWhatsappOnly) => updateFilters({ actionWhatsappOnly })}
+					onClear={() => updateFilters({ actionWhatsappOnly: false })}
+				/>
 			) : null}
-			{filters.actionWhatsappOnly ? (
-				<FiltersShowcase.Item label="APENAS COM ENVIO DE WHATSAPP" value="SIM" onRemove={() => updateFilters({ actionWhatsappOnly: false })} />
+			{hasCashbackGenerationOnly ? (
+				<CampaignBooleanFilter
+					label="GERA CASHBACK"
+					value={Boolean(filters.cashbackGenerationOnly)}
+					onChange={(cashbackGenerationOnly) => updateFilters({ cashbackGenerationOnly })}
+					onClear={() => updateFilters({ cashbackGenerationOnly: false })}
+				/>
 			) : null}
-			{filters.cashbackGenerationOnly ? (
-				<FiltersShowcase.Item label="APENAS COM GERACÃO DE CASHBACK" value="SIM" onRemove={() => updateFilters({ cashbackGenerationOnly: false })} />
-			) : null}
-		</FiltersShowcase.Root>
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasTriggerTypes ? (
+							<InteractiveFilter.AddFilterItem id="triggerTypes" label="GATILHOS" icon={<Zap className="h-4 w-4" />}>
+								<CampaignTriggerFilterContent options={triggerOptions} filters={filters} updateFilters={updateFilters} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasActiveOnly ? (
+							<InteractiveFilter.AddFilterItem id="activeOnly" label="APENAS ATIVAS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.BooleanContent
+									value={Boolean(filters.activeOnly)}
+									onChange={(activeOnly) => updateFilters({ activeOnly })}
+									label="APENAS ATIVAS"
+									trueLabel="ATIVAR"
+									falseLabel="DESATIVAR"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasActionWhatsappOnly ? (
+							<InteractiveFilter.AddFilterItem id="actionWhatsappOnly" label="AÇÃO WHATSAPP" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.BooleanContent
+									value={Boolean(filters.actionWhatsappOnly)}
+									onChange={(actionWhatsappOnly) => updateFilters({ actionWhatsappOnly })}
+									label="AÇÃO WHATSAPP"
+									trueLabel="ATIVAR"
+									falseLabel="DESATIVAR"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasCashbackGenerationOnly ? (
+							<InteractiveFilter.AddFilterItem id="cashbackGenerationOnly" label="GERA CASHBACK" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.BooleanContent
+									value={Boolean(filters.cashbackGenerationOnly)}
+									onChange={(cashbackGenerationOnly) => updateFilters({ cashbackGenerationOnly })}
+									label="GERA CASHBACK"
+									trueLabel="ATIVAR"
+									falseLabel="DESATIVAR"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
+	);
+}
+
+function CampaignTriggerFilterContent({
+	options,
+	filters,
+	updateFilters,
+}: {
+	options: InteractiveFilterOption<TCampaignTriggerTypeEnum>[];
+	filters: TGetCampaignsInput;
+	updateFilters: (filters: Partial<TGetCampaignsInput>) => void;
+}) {
+	return (
+		<InteractiveFilter.MultiContent
+			options={options}
+			value={filters.triggerTypes ?? []}
+			onChange={(triggerTypes) => updateFilters({ triggerTypes })}
+			onClear={() => updateFilters({ triggerTypes: [] })}
+			clearLabel="TODOS"
+		/>
+	);
+}
+
+function CampaignBooleanFilter({
+	label,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	value: boolean;
+	onChange: (value: boolean) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{value ? "SIM" : "NÃO"}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-64 p-0">
+				<InteractiveFilter.BooleanContent value={value} onChange={onChange} onClear={onClear} label={label} trueLabel="ATIVAR" falseLabel="DESATIVAR" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
 	);
 }
 function CampaignsDatabaseView() {
 	const initialStatsPeriodAfter = dayjs().startOf("month").toDate();
 	const initialStatsPeriodBefore = dayjs().endOf("month").toDate();
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
 	const {
 		data: campaignsResult,
 		isLoading,
@@ -160,10 +302,6 @@ function CampaignsDatabaseView() {
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end gap-2">
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
 				<Button className="flex items-center gap-2" size="sm" asChild>
 					<Link href="/dashboard/commercial/campaigns/builder">
 						<Plus className="w-4 h-4 min-w-4 min-h-4" />
@@ -195,30 +333,23 @@ function CampaignsDatabaseView() {
 					}
 				/>
 			</div>
-			<CampaignsDatabaseFiltersShowcase filters={filters} updateFilters={updateFilters} />
+			<CampaignsDatabaseInlineFilters filters={filters} updateFilters={updateFilters} />
 			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando campanhas...</p> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess ? (
 				<div className="w-full flex flex-col gap-1.5">
 					{campaignsResult && campaignsResult.length > 0 ? (
-						campaignsResult.map((campaign) => (
-							<CampaignsPageCampaignCard key={campaign.id} campaign={campaign} />
-						))
+						campaignsResult.map((campaign) => <CampaignsPageCampaignCard key={campaign.id} campaign={campaign} />)
 					) : (
 						<p className="w-full flex items-center justify-center">Nenhuma campanha encontrada</p>
 					)}
 				</div>
-			) : null}
-
-			{filterMenuIsOpen ? (
-				<CampaignsDatabaseFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
 		</div>
 	);
 }
 
 function CampaignsInteractionsView() {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const {
 		data: interactionsResult,
 		isLoading,
@@ -256,11 +387,8 @@ function CampaignsInteractionsView() {
 					}
 					className="grow rounded-xl"
 				/>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
 			</div>
+			<CampaignInteractionsInlineFilters filters={filters} updateFilters={updateFilters} />
 
 			<GeneralPaginationComponent
 				activePage={filters.page}
@@ -282,11 +410,125 @@ function CampaignsInteractionsView() {
 					)}
 				</div>
 			) : null}
-
-			{filterMenuIsOpen ? (
-				<CampaignInteractionsFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
-			) : null}
 		</div>
+	);
+}
+
+function CampaignInteractionsInlineFilters({
+	filters,
+	updateFilters,
+}: {
+	filters: ReturnType<typeof useCampaignInteractionsLogs>["filters"];
+	updateFilters: ReturnType<typeof useCampaignInteractionsLogs>["updateFilters"];
+}) {
+	const statusOptions = InteractionsSentStatusOptions as InteractiveFilterOption<(typeof filters.status)[number]>[];
+	const orderFieldOptions = [
+		{ id: "agendamentoData", label: "DATA DE AGENDAMENTO", value: "agendamentoData" },
+		{ id: "dataExecucao", label: "DATA DE EXECUÇÃO", value: "dataExecucao" },
+		{ id: "dataEnvio", label: "DATA DE ENVIO", value: "dataEnvio" },
+	] as const satisfies InteractiveFilterOption<NonNullable<typeof filters.orderByField>>[];
+	const orderDirectionOptions = [
+		{ id: "asc", label: "ORDEM CRESCENTE", value: "asc" },
+		{ id: "desc", label: "ORDEM DECRESCENTE", value: "desc" },
+	] as const satisfies InteractiveFilterOption<NonNullable<typeof filters.orderByDirection>>[];
+	const hasOrderByField = Boolean(filters.orderByField && filters.orderByField !== "agendamentoData");
+	const hasOrderByDirection = Boolean(filters.orderByDirection && filters.orderByDirection !== "desc");
+
+	return (
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<ListFilter className="h-4 w-4" />
+						<InteractiveFilter.Label>STATUS</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveOptionSummary(statusOptions, filters.status ?? [])}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ status: [], page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-72 p-0">
+					<InteractiveFilter.MultiContent
+						options={statusOptions}
+						value={filters.status ?? []}
+						onChange={(status) => updateFilters({ status, page: 1 })}
+						onClear={() => updateFilters({ status: [], page: 1 })}
+						clearLabel="TODOS"
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasOrderByField ? (
+				<CampaignInteractionSingleFilter
+					label="ORDENAR POR"
+					options={[...orderFieldOptions]}
+					value={filters.orderByField!}
+					onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
+				/>
+			) : null}
+			{hasOrderByDirection ? (
+				<CampaignInteractionSingleFilter
+					label="DIREÇÃO"
+					options={[...orderDirectionOptions]}
+					value={filters.orderByDirection!}
+					onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+				/>
+			) : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasOrderByField ? (
+							<InteractiveFilter.AddFilterItem id="orderByField" label="ORDENAR POR" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={[...orderFieldOptions]}
+									value={filters.orderByField}
+									onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasOrderByDirection ? (
+							<InteractiveFilter.AddFilterItem id="orderByDirection" label="DIREÇÃO" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={[...orderDirectionOptions]}
+									value={filters.orderByDirection}
+									onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
+	);
+}
+
+function CampaignInteractionSingleFilter<T extends string>({
+	label,
+	options,
+	value,
+	onChange,
+}: {
+	label: string;
+	options: InteractiveFilterOption<T>[];
+	value: T;
+	onChange: (value: T) => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{options.find((option) => option.value === value)?.label ?? "PADRÃO"}</InteractiveFilter.Value>
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.SingleContent options={options} value={value} onChange={onChange} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
 	);
 }
 
@@ -307,6 +549,9 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 	const scheduleDateText = interaction.agendamentoDataReferencia ? dayjs(interaction.agendamentoDataReferencia).format("DD/MM/YYYY") : "Não definido";
 	const scheduleBlockText = interaction.agendamentoBlocoReferencia ?? "--:--";
 	const executionDateText = interaction.dataExecucao ? formatDateAsLocale(interaction.dataExecucao, true) : "Não executada";
+	const sentStatusConfig = useMemo(() => {
+		return InteractionsSentStatusOptions.find((status) => status.value === interaction.statusEnvio);
+	}, [interaction.statusEnvio]);
 	const sentDateText = interaction.dataEnvio ? formatDateAsLocale(interaction.dataEnvio, true) : null;
 
 	return (
@@ -338,6 +583,13 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 								</Tooltip>
 							</TooltipProvider>
 						) : null}
+						{sentStatusConfig ? (
+							<div className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", sentStatusConfig?.className, "border-none")}>
+								{sentStatusConfig?.icon}
+								<p className="text-xs font-bold tracking-tight uppercase">{sentStatusConfig?.label}</p>
+							</div>
+						) : null}
+
 						<div
 							className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", {
 								"bg-blue-500 text-white": executionStatus === "AGENDADA",
@@ -371,7 +623,9 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 				<div className="flex items-center gap-2">
 					<div className="flex items-center gap-1">
 						<BsCalendarPlus className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">DATA DE CRIAÇÃO: {formatDateAsLocale(interaction.dataInsercao, true)}</h1>
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
+							DATA DE CRIAÇÃO: {formatDateAsLocale(interaction.dataInsercao, true)}
+						</h1>
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
@@ -605,7 +859,7 @@ function CampaignsPageCampaignCard({ campaign }: { campaign: TGetCampaignsOutput
 								<TooltipTrigger asChild>
 									<div className={cn("flex items-center gap-1.5 px-3 py-1.5 text-primary")}>
 										<Grid3x3 className="w-4 min-w-4 h-4 min-h-4" />
-										<p className="text-[0.65rem] font-bold tracking-tight uppercase">{campaign.segmentacoes.length} SEGMENTAÇÔES</p>
+										<p className="text-[0.65rem] font-bold tracking-tight uppercase">{campaign.segmentacoes.length} SEGMENTAÇÕES</p>
 									</div>
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs">Incluindo {campaign.segmentacoes.map((s) => s.segmentacao).join(", ")}</TooltipContent>

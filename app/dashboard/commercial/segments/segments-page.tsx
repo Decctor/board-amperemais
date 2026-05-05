@@ -1,25 +1,27 @@
-"use client";
+﻿"use client";
 
 import { TSyncSegmentationsInput } from "@/app/api/segmentations/sync/route";
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
+import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import EditRFMConfig from "@/components/Modals/RFMConfig/EditRFMConfig";
 import NewRFMConfig from "@/components/Modals/RFMConfig/NewRFMConfig";
-import RFMAnalysisQueryParamsMenu from "@/components/RFMAnalysis/RFMAnalysisQueryParamsMenu";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { Button } from "@/components/ui/button";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
+import { formatInteractiveCountSummary, formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
 import { syncSegmentations } from "@/lib/mutations/segmentations";
 import { useClients, useClientsBySearch } from "@/lib/queries/clients";
 import { fetchClientExportation } from "@/lib/queries/exportations";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
 import { cn } from "@/lib/utils";
 import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
@@ -30,7 +32,6 @@ import dayjs from "dayjs";
 import {
 	BadgeDollarSign,
 	Download,
-	Filter,
 	Grid3x3,
 	Info,
 	Mail,
@@ -40,10 +41,12 @@ import {
 	Settings2,
 	ShoppingCart,
 	UsersRound,
+	Filter,
 } from "lucide-react";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { toast } from "sonner";
+import { CustomersAcquisitionChannels } from "@/utils/select-options";
 
 type SegmentsPageProps = {
 	user: TAuthUserSession["user"];
@@ -69,7 +72,6 @@ export default function SegmentsPage({ user, orgRFMConfig }: SegmentsPageProps) 
  * CLIENTS RELATED COMPONENTS
  */
 function SegmentsPageClients() {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const {
 		data: clientsResult,
 		isSuccess,
@@ -127,14 +129,10 @@ function SegmentsPageClients() {
 						<Download className="w-4 h-4 min-w-4 min-h-4" />
 						EXPORTAR
 					</Button>
-					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setFilterMenuIsOpen(true)}>
-						<Filter className="w-4 h-4 min-w-4 min-h-4" />
-						FILTROS
-					</Button>
 				</div>
 			</div>
 
-			<SegmentsPageClientsFiltersShowcase filters={filters} updateFilters={updateFilters} />
+			<SegmentsClientsInlineFilters filters={filters} updateFilters={updateFilters} />
 			<div className="w-full flex-1 max-h-[700px] flex flex-col gap-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 px-2">
 				<GeneralPaginationComponent
 					activePage={filters.page}
@@ -163,67 +161,99 @@ function SegmentsPageClients() {
 					)
 				) : null}
 			</div>
-			{filterMenuIsOpen ? (
-				<RFMAnalysisQueryParamsMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
-			) : null}
 		</div>
 	);
 }
-type SegmentsPageClientsFiltersShowcaseProps = {
+
+type SegmentsClientsInlineFiltersProps = {
 	filters: TGetClientsInput;
 	updateFilters: (params: Partial<TGetClientsInput>) => void;
 };
-function SegmentsPageClientsFiltersShowcase({ filters, updateFilters }: SegmentsPageClientsFiltersShowcaseProps) {
+
+function SegmentsClientsInlineFilters({ filters, updateFilters }: SegmentsClientsInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const acquisitionChannelOptions = CustomersAcquisitionChannels as InteractiveFilterOption<string>[];
+	const segmentationOptions = RFMLabels.map((item, index) => ({ id: index + 1, label: item.text, value: item.text })) satisfies InteractiveFilterOption<string>[];
+	const hasAcquisitionChannels = (filters.acquisitionChannels ?? []).length > 0;
+	const hasSegmentationTitles = (filters.segmentationTitles ?? []).length > 0;
+	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
+	const hasExcludedSales = (filters.statsExcludedSalesIds ?? []).length > 0;
+
 	return (
-		<FiltersShowcase.Root>
-			{filters.search && filters.search.trim().length > 0 ? (
-				<FiltersShowcase.Item label="NOME" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
-			) : null}
-			{filters.acquisitionChannels.length > 0 ? (
-				<FiltersShowcase.Item
-					label="CANAL DE AQUISIÇÃO"
-					value={filters.acquisitionChannels.map((channel) => channel).join(", ")}
-					onRemove={() => updateFilters({ acquisitionChannels: [] })}
-				/>
-			) : null}
-			{filters.segmentationTitles.length > 0 ? (
-				<FiltersShowcase.Item
-					label="SEGMENTAÇÃO"
-					value={filters.segmentationTitles.map((title) => title).join(", ")}
-					onRemove={() => updateFilters({ segmentationTitles: [] })}
-				/>
-			) : null}
-			{filters.statsSaleNatures.length > 0 ? (
-				<FiltersShowcase.Item
-					label="NATUREZA DA VENDA"
-					value={filters.statsSaleNatures.map((nature) => nature).join(", ")}
-					onRemove={() => updateFilters({ statsSaleNatures: [] })}
-				/>
-			) : null}
-			{filters.statsPeriodAfter && filters.statsPeriodBefore ? (
-				<FiltersShowcase.Item
-					label="PERÍODO"
-					value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
-					onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
-				/>
-			) : null}
-			{filters.statsExcludedSalesIds.length > 0 ? (
-				<FiltersShowcase.Item
-					label="VENDAS EXCLUÍDAS"
-					value={filters.statsExcludedSalesIds.map((id) => id).join(", ")}
-					onRemove={() => updateFilters({ statsExcludedSalesIds: [] })}
-				/>
-			) : null}
-			{filters.orderByField && filters.orderByDirection ? (
-				<FiltersShowcase.Item
-					label="ORDENAÇÃO"
-					value={`${filters.orderByField} (${filters.orderByDirection})`}
-					onRemove={() => updateFilters({ orderByField: "nome", orderByDirection: "asc" })}
-				/>
-			) : null}
-		</FiltersShowcase.Root>
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<BsCalendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.statsPeriodAfter, filters.statsPeriodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null, page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent value={{ from: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined, to: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined }} onChange={(period) => updateFilters({ statsPeriodAfter: period.from ?? null, statsPeriodBefore: period.to ?? null, page: 1 })} />
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasAcquisitionChannels ? <SegmentsMultiFilter label="AQUISIÇÃO" options={acquisitionChannelOptions} value={filters.acquisitionChannels ?? []} onChange={(acquisitionChannels) => updateFilters({ acquisitionChannels, page: 1 })} onClear={() => updateFilters({ acquisitionChannels: [], page: 1 })} /> : null}
+			{hasSegmentationTitles ? <SegmentsMultiFilter label="SEGMENTAÇÃO" options={segmentationOptions} value={filters.segmentationTitles ?? []} onChange={(segmentationTitles) => updateFilters({ segmentationTitles, page: 1 })} onClear={() => updateFilters({ segmentationTitles: [], page: 1 })} /> : null}
+			{hasSaleNatures ? <SegmentsMultiFilter label="NATUREZAS" options={saleNatureOptions} value={filters.statsSaleNatures ?? []} onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })} onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })} /> : null}
+			{hasExcludedSales ? <SegmentsExcludedSalesFilter filters={filters} updateFilters={updateFilters} /> : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger><Filter className="h-4 w-4" /><InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label></InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasAcquisitionChannels ? <InteractiveFilter.AddFilterItem id="acquisition" label="AQUISIÇÃO" icon={<Filter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={acquisitionChannelOptions} value={filters.acquisitionChannels ?? []} onChange={(acquisitionChannels) => updateFilters({ acquisitionChannels, page: 1 })} onClear={() => updateFilters({ acquisitionChannels: [], page: 1 })} clearLabel="TODOS" /></InteractiveFilter.AddFilterItem> : null}
+						{!hasSegmentationTitles ? <InteractiveFilter.AddFilterItem id="segmentation" label="SEGMENTAÇÃO" icon={<Filter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={segmentationOptions} value={filters.segmentationTitles ?? []} onChange={(segmentationTitles) => updateFilters({ segmentationTitles, page: 1 })} onClear={() => updateFilters({ segmentationTitles: [], page: 1 })} clearLabel="TODOS" /></InteractiveFilter.AddFilterItem> : null}
+						{!hasSaleNatures ? <InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<Filter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={saleNatureOptions} value={filters.statsSaleNatures ?? []} onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })} onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })} clearLabel="TODAS" /></InteractiveFilter.AddFilterItem> : null}
+						{!hasExcludedSales ? <InteractiveFilter.AddFilterItem id="excludedSales" label="VENDAS EXCLUÍDAS" icon={<Filter className="h-4 w-4" />}><SegmentsExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} /></InteractiveFilter.AddFilterItem> : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
 	);
 }
+
+function SegmentsExcludedSalesFilter({ filters, updateFilters }: SegmentsClientsInlineFiltersProps) {
+	return <InteractiveFilter.Root className="w-fit"><InteractiveFilter.Trigger><InteractiveFilter.Icon><Filter className="h-4 w-4" /><InteractiveFilter.Label>VENDAS EXCLUÍDAS</InteractiveFilter.Label></InteractiveFilter.Icon><InteractiveFilter.Value>{formatInteractiveCountSummary(filters.statsExcludedSalesIds ?? [])}</InteractiveFilter.Value><InteractiveFilter.Clear onClear={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })} /></InteractiveFilter.Trigger><InteractiveFilter.Content className="w-80 p-3"><SegmentsExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} /></InteractiveFilter.Content></InteractiveFilter.Root>;
+}
+
+function SegmentsExcludedSalesFilterContent({ filters, updateFilters }: SegmentsClientsInlineFiltersProps) {
+	return <MultipleSalesSelectInput label="VENDAS EXCLUÍDAS" selected={filters.statsExcludedSalesIds ?? []} handleChange={(statsExcludedSalesIds) => updateFilters({ statsExcludedSalesIds: statsExcludedSalesIds as string[], page: 1 })} onReset={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })} resetOptionLabel="VENDAS EXCLUÍDAS" width="100%" />;
+}
+
+function SegmentsMultiFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<Filter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel="TODOS" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
 type SegmentsPageClientCardProps = {
 	client: TGetClientsOutputDefault["clients"][number];
 	period: { after: Date; before: Date };
@@ -617,3 +647,4 @@ function SegmentsPageMatrixRFMSyncMenu({ closeMenu, callbacks }: SegmentsPageMat
 		</ResponsiveMenuV2>
 	);
 }
+

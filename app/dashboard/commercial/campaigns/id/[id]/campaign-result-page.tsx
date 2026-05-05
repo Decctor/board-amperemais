@@ -3,7 +3,6 @@ import type { TGetCampaignStatsOutput } from "@/app/api/campaigns/stats/by-campa
 import type { TGetCampaignConversionsOutputItems } from "@/app/api/campaigns/conversions/route";
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import type { TGetConversionQualityOutput } from "@/app/api/campaigns/stats/conversion-quality/route";
-import CampaignInteractionsFilterMenu from "@/components/Campaigns/CampaignInteractionsFilterMenu";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import ClientHoverCard from "@/components/Clients/ClientHoverCard";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
@@ -709,8 +708,6 @@ function ConversionCard({ conversion }: { conversion: TGetCampaignConversionsOut
 }
 
 function InteractionsSection({ campaignId }: { campaignId: string }) {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
-
 	const {
 		data: interactionsResult,
 		isLoading,
@@ -800,10 +797,6 @@ function InteractionsSection({ campaignId }: { campaignId: string }) {
 						)
 					) : null}
 				</div>
-
-				{filterMenuIsOpen ? (
-					<CampaignInteractionsFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
-				) : null}
 			</div>
 		</div>
 	);
