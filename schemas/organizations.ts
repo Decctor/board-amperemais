@@ -38,16 +38,16 @@ export const OrganizationDefaultsSchema = z.object({
 	contabilidade: z.object({
 		lancamentosPadrao: z.object({
 			vendas: z.object({
-				debitoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de dÃ©bito padrÃ£o de vendas." }).nullable(),
-				debitoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de dÃ©bito padrÃ£o de vendas." }).nullable(),
-				creditoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de crÃ©dito padrÃ£o de vendas." }).nullable(),
-				creditoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de crÃ©dito padrÃ£o de vendas." }).nullable(),
+				debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de vendas." }).nullable(),
+				debitoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito padrão de vendas." }).nullable(),
+				creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de vendas." }).nullable(),
+				creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de vendas." }).nullable(),
 			}),
 			compras: z.object({
-				debitoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de dÃ©bito padrÃ£o de compras." }).nullable(),
-				debitoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de dÃ©bito padrÃ£o de compras." }).nullable(),
-				creditoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de crÃ©dito padrÃ£o de compras." }).nullable(),
-				creditoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de crÃ©dito padrÃ£o de compras." }).nullable(),
+				debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de compras." }).nullable(),
+				debitoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito padrão de compras." }).nullable(),
+				creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de compras." }).nullable(),
+				creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de compras." }).nullable(),
 			}),
 		}),
 	}),

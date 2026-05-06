@@ -3,13 +3,11 @@ import type { TGetCampaignStatsOutput } from "@/app/api/campaigns/stats/by-campa
 import type { TGetCampaignConversionsOutputItems } from "@/app/api/campaigns/conversions/route";
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import type { TGetConversionQualityOutput } from "@/app/api/campaigns/stats/conversion-quality/route";
-import CampaignInteractionsFilterMenu from "@/components/Campaigns/CampaignInteractionsFilterMenu";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import ClientHoverCard from "@/components/Clients/ClientHoverCard";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import ControlCampaign from "@/components/Modals/Campaigns/ControlCampaign";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
@@ -102,7 +100,6 @@ const INTERACTION_SENT_STATUS_CONFIG: Record<string, { label: string; bgClass: s
 	EXECUTADA: { label: "Executada", bgClass: "bg-green-500", textClass: "text-green-600 dark:text-green-400" },
 };
 export default function CampaignResultPage({ campaignId, membership, user: _user }: CampaignResultPageProps) {
-	const [editMenuIsOpen, setEditMenuIsOpen] = useState(false);
 	const initialStartDate = dayjs().startOf("month").toDate();
 	const initialEndDate = dayjs().endOf("month").toDate();
 
@@ -217,9 +214,11 @@ export default function CampaignResultPage({ campaignId, membership, user: _user
 							}}
 							handleChange={handleDateChange}
 						/>
-						<Button size="sm" className="flex items-center gap-2" onClick={() => setEditMenuIsOpen(true)}>
-							<Pencil className="w-4 h-4 min-w-4 min-h-4" />
-							EDITAR
+						<Button size="sm" className="flex items-center gap-2" asChild>
+							<Link href={`/dashboard/commercial/campaigns/builder?campaignId=${campaignId}`}>
+								<Pencil className="w-4 h-4 min-w-4 min-h-4" />
+								EDITAR
+							</Link>
 						</Button>
 					</div>
 				</div>
@@ -361,9 +360,6 @@ export default function CampaignResultPage({ campaignId, membership, user: _user
 					<ConversionsSection campaignId={campaignId} startDate={filters.startDate} endDate={filters.endDate} />
 				</div>
 			</div>
-			{editMenuIsOpen ? (
-				<ControlCampaign campaignId={campaignId} organizationId={membership.organizacao.id} closeModal={() => setEditMenuIsOpen(false)} callbacks={{}} />
-			) : null}
 		</div>
 	);
 }
@@ -712,8 +708,6 @@ function ConversionCard({ conversion }: { conversion: TGetCampaignConversionsOut
 }
 
 function InteractionsSection({ campaignId }: { campaignId: string }) {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
-
 	const {
 		data: interactionsResult,
 		isLoading,
@@ -803,10 +797,6 @@ function InteractionsSection({ campaignId }: { campaignId: string }) {
 						)
 					) : null}
 				</div>
-
-				{filterMenuIsOpen ? (
-					<CampaignInteractionsFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
-				) : null}
 			</div>
 		</div>
 	);

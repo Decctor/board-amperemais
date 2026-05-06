@@ -1,23 +1,31 @@
-"use client";
+﻿"use client";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import EditSeller from "@/components/Modals/Sellers/EditSeller";
 import NewSeller from "@/components/Modals/Sellers/NewSeller";
-import SalesTeamFilterMenu from "@/components/SalesTeam/SalesTeamFilterMenu";
-import SalesTeamFilterShowcase from "@/components/SalesTeam/SalesTeamFilterShowcase";
+import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
 import SellersGraphs from "@/components/Sellers/SellersGraphs";
 import SellersRanking from "@/components/Sellers/SellersRanking";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
+import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import {
+	formatInteractiveCountSummary,
+	formatInteractiveDateRangeSummary,
+	formatInteractiveNumberRangeSummary,
+	formatInteractiveOptionSummary,
+} from "@/lib/interactive-filter-formatting";
 import { useSellers, useSellersOverallStats } from "@/lib/queries/sellers";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
 import type { TGetSellersOutputDefault } from "@/pages/api/sellers";
 import type { TGetSellersDefaultInput } from "@/pages/api/sellers";
@@ -42,6 +50,7 @@ import {
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
+import { BsCalendar } from "react-icons/bs";
 
 type SellersPageProps = {
 	user: TAuthUserSession["user"];
@@ -77,7 +86,6 @@ function SellersDatabaseView({ user, membership }: { user: TAuthUserSession["use
 	const queryClient = useQueryClient();
 	const [newSellerModalIsOpen, setNewSellerModalIsOpen] = useState(false);
 	const [editSellerId, setEditSellerId] = useState<string | null>(null);
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const {
 		data: sellersResult,
 		queryKey,
@@ -102,11 +110,13 @@ function SellersDatabaseView({ user, membership }: { user: TAuthUserSession["use
 	const totalPages = sellersResult?.totalPages;
 	return (
 		<div className="w-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end gap-2">
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
+			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
+				<Input
+					value={filters.search ?? ""}
+					placeholder="Pesquisar vendedor..."
+					onChange={(event) => updateFilters({ search: event.target.value, page: 1 })}
+					className="grow rounded-xl"
+				/>
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewSellerModalIsOpen(true)}>
 					<Plus className="w-4 h-4 min-w-4 min-h-4" />
 					NOVO VENDEDOR
@@ -120,7 +130,7 @@ function SellersDatabaseView({ user, membership }: { user: TAuthUserSession["use
 				itemsMatchedText={sellersMatched > 0 ? `${sellersMatched} vendedores encontrados.` : `${sellersMatched} vendedor encontrado.`}
 				itemsShowingText={sellersShowing > 0 ? `Mostrando ${sellersShowing} vendedores.` : `Mostrando ${sellersShowing} vendedor.`}
 			/>
-			<SalesTeamFilterShowcase queryParams={filters} updateQueryParams={updateFilters} />
+			<SellersInlineFilters filters={filters} updateFilters={updateFilters} />
 
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
@@ -155,13 +165,275 @@ function SellersDatabaseView({ user, membership }: { user: TAuthUserSession["use
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
 			) : null}
-			{filterMenuIsOpen ? (
-				<SalesTeamFilterMenu queryParams={filters} updateQueryParams={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
-			) : null}
 			{newSellerModalIsOpen ? (
 				<NewSeller user={user} closeModal={() => setNewSellerModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 		</div>
+	);
+}
+
+type SellersInlineFiltersProps = {
+	filters: TGetSellersDefaultInput;
+	updateFilters: (filters: Partial<TGetSellersDefaultInput>) => void;
+};
+
+function SellersInlineFilters({ filters, updateFilters }: SellersInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const orderFieldOptions = [
+		{ id: "nome", label: "NOME", value: "nome" },
+		{ id: "dataInsercao", label: "DATA DE INSERÇÃO", value: "dataInsercao" },
+		{ id: "vendasValorTotal", label: "VALOR TOTAL DE VENDAS", value: "vendasValorTotal" },
+		{ id: "vendasQtdeTotal", label: "QUANTIDADE TOTAL DE VENDAS", value: "vendasQtdeTotal" },
+	] satisfies InteractiveFilterOption<NonNullable<TGetSellersDefaultInput["orderByField"]>>[];
+	const orderDirectionOptions = [
+		{ id: "asc", label: "CRESCENTE", value: "asc" },
+		{ id: "desc", label: "DECRESCENTE", value: "desc" },
+	] satisfies InteractiveFilterOption<NonNullable<TGetSellersDefaultInput["orderByDirection"]>>[];
+	const hasSellers = (filters.sellersIds ?? []).length > 0;
+	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
+	const hasTotal = filters.statsTotalMin != null || filters.statsTotalMax != null;
+	const hasExcludedSales = (filters.statsExcludedSalesIds ?? []).length > 0;
+	const hasOrderByField = Boolean(filters.orderByField);
+	const hasOrderByDirection = Boolean(filters.orderByDirection);
+
+	return (
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<BsCalendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.statsPeriodAfter, filters.statsPeriodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null, page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
+							to: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ statsPeriodAfter: period.from ?? null, statsPeriodBefore: period.to ?? null, page: 1 })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasSellers ? (
+				<SellersMultiFilter
+					label="VENDEDORES"
+					options={sellerOptions}
+					value={filters.sellersIds ?? []}
+					onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })}
+					onClear={() => updateFilters({ sellersIds: [], page: 1 })}
+				/>
+			) : null}
+			{hasSaleNatures ? (
+				<SellersMultiFilter
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={filters.statsSaleNatures ?? []}
+					onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
+					onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+				/>
+			) : null}
+			{hasTotal ? <SellersTotalFilter filters={filters} updateFilters={updateFilters} /> : null}
+			{hasExcludedSales ? <SellersExcludedSalesFilter filters={filters} updateFilters={updateFilters} /> : null}
+			{hasOrderByField ? (
+				<SellersSingleFilter
+					label="ORDENAR POR"
+					options={orderFieldOptions}
+					value={filters.orderByField!}
+					onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
+				/>
+			) : null}
+			{hasOrderByDirection ? (
+				<SellersSingleFilter
+					label="DIREÇÃO"
+					options={orderDirectionOptions}
+					value={filters.orderByDirection!}
+					onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+				/>
+			) : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasSellers ? (
+							<InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={sellerOptions}
+									value={filters.sellersIds ?? []}
+									onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })}
+									onClear={() => updateFilters({ sellersIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={saleNatureOptions}
+									value={filters.statsSaleNatures ?? []}
+									onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
+									onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+									clearLabel="TODAS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasTotal ? (
+							<InteractiveFilter.AddFilterItem id="total" label="VALOR" icon={<BadgeDollarSign className="h-4 w-4" />}>
+								<SellersTotalFilterContent filters={filters} updateFilters={updateFilters} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasExcludedSales ? (
+							<InteractiveFilter.AddFilterItem id="excludedSales" label="VENDAS EXCLUÍDAS" icon={<ListFilter className="h-4 w-4" />}>
+								<SellersExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasOrderByField ? (
+							<InteractiveFilter.AddFilterItem id="orderByField" label="ORDENAR POR" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={orderFieldOptions}
+									value={filters.orderByField ?? undefined}
+									onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasOrderByDirection ? (
+							<InteractiveFilter.AddFilterItem id="orderByDirection" label="DIREÇÃO" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={orderDirectionOptions}
+									value={filters.orderByDirection ?? undefined}
+									onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
+	);
+}
+
+function SellersSingleFilter<T extends string>({
+	label,
+	options,
+	value,
+	onChange,
+}: {
+	label: string;
+	options: InteractiveFilterOption<T>[];
+	value: T;
+	onChange: (value: T) => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{options.find((option) => option.value === value)?.label ?? "PADRÃO"}</InteractiveFilter.Value>
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.SingleContent options={options} value={value} onChange={onChange} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function SellersTotalFilter({ filters, updateFilters }: SellersInlineFiltersProps) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<BadgeDollarSign className="h-4 w-4" />
+					<InteractiveFilter.Label>VALOR</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveNumberRangeSummary(filters.statsTotalMin, filters.statsTotalMax)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateFilters({ statsTotalMin: null, statsTotalMax: null, page: 1 })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-0">
+				<SellersTotalFilterContent filters={filters} updateFilters={updateFilters} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function SellersTotalFilterContent({ filters, updateFilters }: SellersInlineFiltersProps) {
+	return (
+		<InteractiveFilter.NumberRangeContent
+			value={{ greaterThan: filters.statsTotalMin, lessThan: filters.statsTotalMax }}
+			onChange={({ greaterThan, lessThan }) => updateFilters({ statsTotalMin: greaterThan, statsTotalMax: lessThan, page: 1 })}
+			onClear={() => updateFilters({ statsTotalMin: null, statsTotalMax: null, page: 1 })}
+		/>
+	);
+}
+
+function SellersExcludedSalesFilter({ filters, updateFilters }: SellersInlineFiltersProps) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>VENDAS EXCLUÍDAS</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveCountSummary(filters.statsExcludedSalesIds ?? [])}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-3">
+				<SellersExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function SellersExcludedSalesFilterContent({ filters, updateFilters }: SellersInlineFiltersProps) {
+	return (
+		<MultipleSalesSelectInput
+			label="VENDAS EXCLUÍDAS"
+			selected={filters.statsExcludedSalesIds ?? []}
+			handleChange={(statsExcludedSalesIds) => updateFilters({ statsExcludedSalesIds: statsExcludedSalesIds as string[], page: 1 })}
+			onReset={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })}
+			resetOptionLabel="VENDAS EXCLUÍDAS"
+			width="100%"
+		/>
+	);
+}
+
+function SellersMultiFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel="TODOS" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
 	);
 }
 

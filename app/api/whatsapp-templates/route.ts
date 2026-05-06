@@ -612,7 +612,7 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 				},
 			},
 		},
-		orderBy: (fields, { asc }) => asc(fields.nome),
+		orderBy: (fields, { desc }) => desc(fields.dataInsercao),
 		offset: skip,
 		limit: PAGE_SIZE,
 	});

@@ -1,19 +1,16 @@
 "use client";
-import DateInput from "@/components/Inputs/DateInput";
-import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
-import TextInput from "@/components/Inputs/TextInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
@@ -36,7 +33,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import type { ReactNode } from "react";
 
 type SalesPageProps = {
 	user: TAuthUserSession["user"];
@@ -45,7 +42,6 @@ type SalesPageProps = {
 
 export default function SalesPage({ user: _user, organization }: SalesPageProps) {
 	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const {
 		data: salesResult,
 		isLoading,
@@ -80,10 +76,6 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 					onChange={(e) => updateParams({ search: e.target.value })}
 					className="grow rounded-xl"
 				/>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
 				<Button variant={"ghost"} className="flex items-center gap-2" size="sm" asChild>
 					<Link href="/dashboard/commercial/sales/bulk-insert">
 						<FileSpreadsheet className="w-4 h-4 min-w-4 min-h-4" />
@@ -99,6 +91,7 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 					</Button>
 				) : null}
 			</div>
+			<SalesInlineFilters filters={params} updateFilters={updateParams} />
 
 			<GeneralPaginationComponent
 				activePage={params.page}
@@ -109,8 +102,6 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 				itemsShowingText={salesShowing > 0 ? `Mostrando ${salesShowing} vendas.` : `Mostrando ${salesShowing} venda.`}
 			/>
 
-			<SalesFiltersShowcase filters={params} updateFilters={updateParams} />
-
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && sales ? (
@@ -120,8 +111,6 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 					<p className="w-full tracking-tight text-center">Nenhuma venda encontrada.</p>
 				)
 			) : null}
-
-			{filterMenuIsOpen ? <SalesFilterMenu queryParams={params} updateQueryParams={updateParams} closeMenu={() => setFilterMenuIsOpen(false)} /> : null}
 		</div>
 	);
 }
@@ -348,137 +337,151 @@ function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 	);
 }
 
-type SalesFiltersShowcaseProps = {
+type SalesInlineFiltersProps = {
 	filters: TGetSalesInput;
 	updateFilters: (filters: Partial<TGetSalesInput>) => void;
 };
 
-function SalesFiltersShowcase({ filters, updateFilters }: SalesFiltersShowcaseProps) {
+function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
+	const partnerOptions = (filterOptions?.partners ?? []) as InteractiveFilterOption<string>[];
+	const hasSaleNatures = (filters.saleNatures ?? []).length > 0;
+	const hasSellers = (filters.sellersIds ?? []).length > 0;
+	const hasPartners = (filters.partnersIds ?? []).length > 0;
+
 	return (
-		<FiltersShowcase.Root>
-			{filters.search && filters.search.trim().length > 0 && (
-				<FiltersShowcase.Item label="PESQUISA" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
-			)}
-			{filters.periodAfter && filters.periodBefore && (
-				<FiltersShowcase.Item
-					label="PERÍODO"
-					value={`${formatDateAsLocale(filters.periodAfter)} a ${formatDateAsLocale(filters.periodBefore)}`}
-					onRemove={() => updateFilters({ periodAfter: null, periodBefore: null })}
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<Calendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.periodAfter, filters.periodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ periodAfter: null, periodBefore: null, page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+							to: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ periodAfter: period.from ?? null, periodBefore: period.to ?? null, page: 1 })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasSaleNatures ? (
+				<SalesMultiFilter
+					icon={<Tag className="h-4 w-4" />}
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={filters.saleNatures ?? []}
+					onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
+					onClear={() => updateFilters({ saleNatures: [], page: 1 })}
+					clearLabel="NENHUMA"
 				/>
-			)}
-			{filters.saleNatures && filters.saleNatures.length > 0 && (
-				<FiltersShowcase.Item label="NATUREZAS" value={filters.saleNatures.join(", ")} onRemove={() => updateFilters({ saleNatures: [] })} />
-			)}
-			{filters.sellersIds && filters.sellersIds.length > 0 && (
-				<FiltersShowcase.Item
+			) : null}
+			{hasSellers ? (
+				<SalesMultiFilter
+					icon={<CircleUser className="h-4 w-4" />}
 					label="VENDEDORES"
-					value={`${filters.sellersIds.length} selecionado(s)`} // Showing count as names require lookup
-					onRemove={() => updateFilters({ sellersIds: [] })}
+					options={sellerOptions}
+					value={filters.sellersIds ?? []}
+					onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })}
+					onClear={() => updateFilters({ sellersIds: [], page: 1 })}
 				/>
-			)}
-			{filters.partnersIds && filters.partnersIds.length > 0 && (
-				<FiltersShowcase.Item
+			) : null}
+			{hasPartners ? (
+				<SalesMultiFilter
+					icon={<CircleUser className="h-4 w-4" />}
 					label="PARCEIROS"
-					value={`${filters.partnersIds.length} selecionado(s)`} // Showing count as names require lookup
-					onRemove={() => updateFilters({ partnersIds: [] })}
+					options={partnerOptions}
+					value={filters.partnersIds ?? []}
+					onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })}
+					onClear={() => updateFilters({ partnersIds: [], page: 1 })}
 				/>
-			)}
-		</FiltersShowcase.Root>
+			) : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<Tag className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={saleNatureOptions}
+									value={filters.saleNatures ?? []}
+									onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
+									onClear={() => updateFilters({ saleNatures: [], page: 1 })}
+									clearLabel="NENHUMA"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSellers ? (
+							<InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<CircleUser className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={sellerOptions}
+									value={filters.sellersIds ?? []}
+									onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })}
+									onClear={() => updateFilters({ sellersIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasPartners ? (
+							<InteractiveFilter.AddFilterItem id="partners" label="PARCEIROS" icon={<CircleUser className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={partnerOptions}
+									value={filters.partnersIds ?? []}
+									onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })}
+									onClear={() => updateFilters({ partnersIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
 	);
 }
 
-type SalesFilterMenuProps = {
-	queryParams: TGetSalesInput;
-	updateQueryParams: (params: Partial<TGetSalesInput>) => void;
-	closeMenu: () => void;
-};
-
-function SalesFilterMenu({ queryParams, updateQueryParams, closeMenu }: SalesFilterMenuProps) {
-	const [queryParamsHolder, setQueryParamsHolder] = useState<TGetSalesInput>(queryParams);
-	const { data: filterOptions } = useSaleQueryFilterOptions();
-
+function SalesMultiFilter({
+	icon,
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+	clearLabel = "TODOS",
+}: {
+	icon: ReactNode;
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+	clearLabel?: string;
+}) {
 	return (
-		<Sheet open onOpenChange={closeMenu}>
-			<SheetContent>
-				<div className="flex h-full w-full flex-col">
-					<SheetHeader>
-						<SheetTitle>FILTRAR VENDAS</SheetTitle>
-						<SheetDescription>Escolha aqui parâmetros para filtrar as vendas.</SheetDescription>
-					</SheetHeader>
-
-					<div className="flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
-						<div className="flex w-full flex-col gap-2">
-							<TextInput
-								label="PESQUISA"
-								value={queryParamsHolder.search ?? ""}
-								placeholder={"Nome do cliente..."}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, search: value }))}
-								width={"100%"}
-							/>
-							<MultipleSelectInput
-								label="NATUREZAS DE VENDA"
-								selected={queryParamsHolder.saleNatures ?? []}
-								options={filterOptions?.saleNatures || []}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, saleNatures: value as string[] }))}
-								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, saleNatures: [] }))}
-								resetOptionLabel="NENHUMA DEFINIDA"
-								width="100%"
-							/>
-							<MultipleSelectInput
-								label="VENDEDORES"
-								selected={queryParamsHolder.sellersIds ?? []}
-								options={filterOptions?.sellers || []}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: value as string[] }))}
-								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: [] }))}
-								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
-							/>
-							<MultipleSelectInput
-								label="PARCEIROS"
-								selected={queryParamsHolder.partnersIds ?? []}
-								options={filterOptions?.partners || []}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, partnersIds: value as string[] }))}
-								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, partnersIds: [] }))}
-								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
-							/>
-						</div>
-						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO POR PERÍODO</h1>
-							<DateInput
-								label="DEPOIS DE"
-								value={formatDateForInputValue(queryParamsHolder.periodAfter)}
-								handleChange={(value) =>
-									setQueryParamsHolder((prev) => ({
-										...prev,
-										periodAfter: formatDateOnInputChange(value, "date") as Date,
-									}))
-								}
-								width="100%"
-							/>
-							<DateInput
-								label="ANTES DE"
-								value={formatDateForInputValue(queryParamsHolder.periodBefore)}
-								handleChange={(value) =>
-									setQueryParamsHolder((prev) => ({
-										...prev,
-										periodBefore: formatDateOnInputChange(value, "date", "end") as Date,
-									}))
-								}
-								width="100%"
-							/>
-						</div>
-					</div>
-					<Button
-						onClick={() => {
-							updateQueryParams({ ...queryParamsHolder });
-							closeMenu();
-						}}
-					>
-						FILTRAR
-					</Button>
-				</div>
-			</SheetContent>
-		</Sheet>
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					{icon}
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel={clearLabel} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
 	);
 }

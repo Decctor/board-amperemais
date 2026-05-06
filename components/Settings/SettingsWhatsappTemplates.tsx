@@ -333,7 +333,7 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1">
 					<BsCalendarPlus className="w-4 h-4 min-w-4 min-h-4" />
-					<p className="text-xs font-medium text-primary/80">{formatDateAsLocale(whatsappTemplate.dataInsercao)}</p>
+					<p className="text-xs font-medium text-primary/80">{formatDateAsLocale(whatsappTemplate.dataInsercao, true)}</p>
 				</div>
 				{/** GENERAL TEMPLATES ARE NOT EDITABLE (THOSE WITHOUT ORGANIZATION ID) */}
 				{whatsappTemplate.organizacaoId ? (

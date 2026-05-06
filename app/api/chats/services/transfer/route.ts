@@ -3,25 +3,29 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { chatServices } from "@/services/drizzle/schema/chats";
-import { users } from "@/services/drizzle/schema/users";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 // ============= PATCH - Transfer service =============
 
-const transferServiceBodySchema = z.object({
-	userId: z.string().optional(), // If undefined, transfer to AI
+const TransferServiceInputSchema = z.object({
+	serviceId: z.string({
+		required_error: "ID do serviço não informado.",
+		invalid_type_error: "Tipo não válido para o ID do serviço.",
+	}),
+	userId: z
+		.string({
+			required_error: "ID do usuário não informado.",
+			invalid_type_error: "Tipo não válido para o ID do usuário.",
+		})
+		.optional(), // If undefined, transfer to AI
 });
 
-export type TTransferServiceInput = z.infer<typeof transferServiceBodySchema>;
+export type TTransferServiceInput = z.infer<typeof TransferServiceInputSchema>;
 
-async function transferService({
-	session,
-	serviceId,
-	input,
-}: { session: TAuthUserSession; serviceId: string; input: TTransferServiceInput }) {
+async function transferService({ session, input }: { session: TAuthUserSession; input: TTransferServiceInput }) {
 	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
@@ -30,7 +34,7 @@ async function transferService({
 
 	// Verify service belongs to organization
 	const service = await db.query.chatServices.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.id, serviceId), eq(fields.organizacaoId, organizacaoId)),
+		where: (fields, { and, eq }) => and(eq(fields.id, input.serviceId), eq(fields.organizacaoId, organizacaoId)),
 	});
 
 	if (!service) {
@@ -46,21 +50,21 @@ async function transferService({
 	let responsavelUsuarioId: string | null = null;
 
 	if (input.userId) {
-		// Transfer to user
-		const userId = input.userId; // Type narrowing
-		const user = await db.query.users.findFirst({
-			where: (fields, { and, eq }) => and(eq(fields.id, userId), eq(fields.organizacaoId, organizacaoId)),
+		// Transfer to user: scope by organization membership (users table has no organizacaoId)
+		const userId = input.userId;
+		const targetMembership = await db.query.organizationMembers.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.usuarioId, userId), eq(fields.organizacaoId, organizacaoId)),
 		});
 
-		if (!user) {
+		if (!targetMembership) {
 			throw new createHttpError.NotFound("Usuário não encontrado.");
 		}
 
-		if (!user.permissoes.atendimentos.receberTransferencias) {
+		if (!targetMembership.permissoes.atendimentos.receberTransferencias) {
 			throw new createHttpError.Forbidden("Este usuário não está apto a receber transferências de atendimentos.");
 		}
 		responsavelTipo = "USUÁRIO";
-		responsavelUsuarioId = user.id;
+		responsavelUsuarioId = userId;
 	} else {
 		// Transfer to AI
 		responsavelTipo = "AI";
@@ -74,11 +78,11 @@ async function transferService({
 			responsavelTipo,
 			responsavelUsuarioId,
 		})
-		.where(eq(chatServices.id, serviceId));
+		.where(eq(chatServices.id, input.serviceId));
 
 	return {
 		data: {
-			serviceId,
+			serviceId: input.serviceId,
 			responsavelTipo,
 			responsavelUsuarioId,
 		},
@@ -88,18 +92,17 @@ async function transferService({
 
 export type TTransferServiceOutput = Awaited<ReturnType<typeof transferService>>;
 
-async function transferServiceRoute(req: NextRequest, context: RouteContext<"/api/chats/services/[serviceId]/transfer">) {
+async function transferServiceRoute(req: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado.");
 
-	const { serviceId } = await context.params;
 	const body = await req.json();
-	const input = transferServiceBodySchema.parse(body);
+	const input = TransferServiceInputSchema.parse(body);
 
-	const result = await transferService({ session, serviceId, input });
+	const result = await transferService({ session, input });
 	return NextResponse.json(result, { status: 200 });
 }
 
 // ============= Export handlers =============
 
-export const PATCH = transferServiceRoute;
+export const PATCH = appApiHandler({ PATCH: transferServiceRoute });

@@ -325,9 +325,9 @@ export function mapCardapioWebSaleItem(item: TGetCardapioWebOrderDetailsOutput["
 export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): MappedCardapioWebSale {
 	// Calculate total discount from discounts array
 	const totalDiscount = order.discounts.reduce((acc, d) => acc + d.total, 0);
-
+	const total = order.total ?? 0;
 	// Determine if the sale is valid (completed and paid)
-	const isZeroValueSale = order.total <= 0;
+	const isZeroValueSale = total <= 0;
 	const isValidSale = order.status === "closed" && !isZeroValueSale;
 	const isCanceled = order.status === "canceled" || isZeroValueSale;
 
@@ -351,7 +351,7 @@ export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): Ma
 	return {
 		idExterno: order.id.toString(),
 		displayId: order.display_id.toString(),
-		valorTotal: order.total,
+		valorTotal: total,
 		custoTotal: 0, // Not provided by CardapioWeb
 		taxaEntrega: order.delivery_fee,
 		taxaServico: order.service_fee,

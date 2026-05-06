@@ -3,8 +3,7 @@ import type { TUpdateMessageInput, TUpdateMessageOutput } from "@/app/api/chats/
 import type { TCreateMessageInput, TCreateMessageOutput } from "@/app/api/chats/messages/route";
 import type { TSendWhatsappInput, TSendWhatsappOutput } from "@/app/api/chats/messages/send-whatsapp/route";
 import type { TCreateChatInput, TCreateChatOutput } from "@/app/api/chats/route";
-import type { TUpdateServiceInput, TUpdateServiceOutput } from "@/app/api/chats/services/[serviceId]/route";
-import type { TTransferServiceInput, TTransferServiceOutput } from "@/app/api/chats/services/[serviceId]/transfer/route";
+import type { TTransferServiceInput, TTransferServiceOutput } from "@/app/api/chats/services/transfer/route";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { toast } from "sonner";
@@ -41,8 +40,8 @@ export async function updateService(input: TUpdateServiceInput & { serviceId: st
 	return data;
 }
 
-export async function transferService(input: TTransferServiceInput & { serviceId: string }): Promise<TTransferServiceOutput> {
-	const { data } = await axios.patch<TTransferServiceOutput>(`/api/chats/services/${input.serviceId}/transfer`, { userId: input.userId });
+export async function transferService(input: TTransferServiceInput): Promise<TTransferServiceOutput> {
+	const { data } = await axios.patch<TTransferServiceOutput>("/api/chats/services/transfer", input);
 	return data;
 }
 
@@ -263,7 +262,7 @@ export function useUpdateService() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: ({ serviceId, ...input }: { serviceId: string } & TUpdateServiceInput) => updateService({ serviceId, ...input }),
+		mutationFn: (input: TUpdateServiceInput) => updateService(input),
 		onSuccess: (data, variables) => {
 			// Invalidate chat queries to refresh service status
 			queryClient.invalidateQueries({ queryKey: ["chat"] });
@@ -282,7 +281,7 @@ export function useTransferService() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (input: TTransferServiceInput & { serviceId: string }) => transferService(input),
+		mutationFn: (input: TTransferServiceInput) => transferService(input),
 		onSuccess: (data, variables) => {
 			// Invalidate chat queries to refresh service status
 			queryClient.invalidateQueries({ queryKey: ["chat"] });

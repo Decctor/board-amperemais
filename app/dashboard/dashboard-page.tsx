@@ -3,15 +3,16 @@ import StatsPeriodComparisonMenu from "@/components/Modals/Stats/StatsPeriodComp
 import GroupedStatsBlock from "@/components/SalesStats/Blocks/GroupedStatsBlock";
 import OverallStatsBlock from "@/components/SalesStats/Blocks/OverallStatsBlock";
 import SalesGraphBlock from "@/components/SalesStats/Blocks/SalesGraphBlock";
-import SalesQueryParamsMenu from "@/components/SalesStats/SalesQueryParamsMenu";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
+import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { formatDateAsLocale } from "@/lib/formatting";
-import { useUsers } from "@/lib/queries/users";
+import { formatInteractiveCountSummary, formatInteractiveDateRangeSummary, formatInteractiveNumberRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
+import { RFMLabels } from "@/utils/rfm";
 import dayjs from "dayjs";
-import { GitCompare, ListFilter } from "lucide-react";
+import { BadgeDollarSign, Calendar, GitCompare, ListFilter } from "lucide-react";
 import { useState } from "react";
 
 const initialPeriodStart = dayjs().startOf("month").toISOString();
@@ -32,17 +33,6 @@ function createDefaultDashboardGeneralQueryParams(initialSellers: string[]): TSa
 	};
 }
 
-function areStringArraysEqual(left: string[] = [], right: string[] = []) {
-	return left.length === right.length && left.every((value, index) => value === right[index]);
-}
-
-function areTotalFiltersEqual(
-	left: Partial<TSaleStatsGeneralQueryParams["total"]> | undefined,
-	right: Partial<TSaleStatsGeneralQueryParams["total"]> | undefined,
-) {
-	return (left?.min ?? null) === (right?.min ?? null) && (left?.max ?? null) === (right?.max ?? null);
-}
-
 type DashboardPageProps = {
 	user: TAuthUserSession["user"];
 	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
@@ -52,7 +42,6 @@ export function DashboardPage({ user, userOrg, membership }: DashboardPageProps)
 	const initialSellers = membership.permissoes.resultados.escopo ? membership.permissoes.resultados.escopo : [];
 	const defaultGeneralQueryParams = createDefaultDashboardGeneralQueryParams(initialSellers);
 
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const [comparisonMenuIsOpen, setComparisonMenuIsOpen] = useState(false);
 
 	const [generalQueryParams, setGeneralQueryParams] = useState<TSaleStatsGeneralQueryParams>(defaultGeneralQueryParams);
@@ -67,99 +56,209 @@ export function DashboardPage({ user, userOrg, membership }: DashboardPageProps)
 					<GitCompare className="w-4 h-4 min-w-4 min-h-4" />
 					COMPARAR PERÍODOS
 				</Button>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
 			</div>
-			<DashboardPageFiltersShowcase
-				defaultQueryParams={defaultGeneralQueryParams}
-				queryParams={generalQueryParams}
-				updateQueryParams={updateGeneralQueryParams}
-			/>
+			<DashboardInlineFilters membership={membership} queryParams={generalQueryParams} updateQueryParams={updateGeneralQueryParams} />
 			<OverallStatsBlock generalQueryParams={generalQueryParams} user={user} userMembership={membership} userOrg={userOrg} />
 			<SalesGraphBlock generalQueryParams={generalQueryParams} user={user} />
 			<GroupedStatsBlock generalQueryParams={generalQueryParams} user={user} userOrg={userOrg} />
-			{filterMenuIsOpen ? (
-				<SalesQueryParamsMenu
-					user={user}
-					membership={membership}
-					queryParams={generalQueryParams}
-					updateQueryParams={updateGeneralQueryParams}
-					closeMenu={() => setFilterMenuIsOpen(false)}
-				/>
-			) : null}
 			{comparisonMenuIsOpen ? <StatsPeriodComparisonMenu closeMenu={() => setComparisonMenuIsOpen(false)} /> : null}
 		</div>
 	);
 }
 
-type DashboardPageFiltersShowcaseProps = {
-	defaultQueryParams: TSaleStatsGeneralQueryParams;
+type DashboardInlineFiltersProps = {
+	membership: NonNullable<TAuthUserSession["membership"]>;
 	queryParams: TSaleStatsGeneralQueryParams;
 	updateQueryParams: (params: Partial<TSaleStatsGeneralQueryParams>) => void;
 };
-function DashboardPageFiltersShowcase({ defaultQueryParams, queryParams, updateQueryParams }: DashboardPageFiltersShowcaseProps) {
-	const { data: users } = useUsers({ initialFilters: {} });
 
-	const enabledRemovals = {
-		total: !areTotalFiltersEqual(defaultQueryParams.total, queryParams.total),
-		saleNatures: !areStringArraysEqual(defaultQueryParams.saleNatures, queryParams.saleNatures),
-		clientRFMTitles: !areStringArraysEqual(defaultQueryParams.clientRFMTitles, queryParams.clientRFMTitles),
-		productGroups: !areStringArraysEqual(defaultQueryParams.productGroups, queryParams.productGroups),
-		excludedSalesIds: !areStringArraysEqual(defaultQueryParams.excludedSalesIds, queryParams.excludedSalesIds),
-		sellers: !areStringArraysEqual(defaultQueryParams.sellers, queryParams.sellers),
-	};
+function DashboardInlineFilters({ membership, queryParams, updateQueryParams }: DashboardInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const selectableSellersIds = membership.permissoes.resultados.escopo ? membership.permissoes.resultados.escopo : null;
+	const sellerOptions = ((selectableSellersIds ? filterOptions?.sellers.filter((seller) => selectableSellersIds.includes(seller.id)) : filterOptions?.sellers) ?? []) as InteractiveFilterOption<string>[];
+	const productGroupOptions = (filterOptions?.productsGroups ?? []) as InteractiveFilterOption<string>[];
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const rfmOptions = RFMLabels.map((item, index) => ({ id: index + 1, label: item.text, value: item.text })) satisfies InteractiveFilterOption<string>[];
+	const hasSellers = queryParams.sellers.length > 0;
+	const hasSaleNatures = queryParams.saleNatures.length > 0;
+	const hasProductGroups = queryParams.productGroups.length > 0;
+	const hasRFM = queryParams.clientRFMTitles.length > 0;
+	const hasTotal = queryParams.total.min != null || queryParams.total.max != null;
+	const hasExcludedSales = queryParams.excludedSalesIds.length > 0;
+
 	return (
-		<FiltersShowcase.Root>
-			{queryParams.period.after && queryParams.period.before ? (
-				<FiltersShowcase.Item
-					label="PERÍODO"
-					value={`${formatDateAsLocale(queryParams.period.after)} a ${formatDateAsLocale(queryParams.period.before)}`}
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<Calendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(queryParams.period.after, queryParams.period.before)}</InteractiveFilter.Value>
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: queryParams.period.after ? new Date(queryParams.period.after) : undefined,
+							to: queryParams.period.before ? new Date(queryParams.period.before) : undefined,
+						}}
+						onChange={(period) =>
+							updateQueryParams({
+								period: {
+									after: period.from?.toISOString() ?? queryParams.period.after,
+									before: period.to?.toISOString() ?? queryParams.period.before,
+								},
+							})
+						}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasSellers ? <DashboardMultiFilter label="VENDEDORES" options={sellerOptions} value={queryParams.sellers} onChange={(sellers) => updateQueryParams({ sellers })} onClear={() => updateQueryParams({ sellers: [] })} /> : null}
+			{hasSaleNatures ? (
+				<DashboardMultiFilter
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={queryParams.saleNatures}
+					onChange={(saleNatures) => updateQueryParams({ saleNatures: saleNatures as TSaleStatsGeneralQueryParams["saleNatures"] })}
+					onClear={() => updateQueryParams({ saleNatures: [] })}
 				/>
 			) : null}
-			{queryParams.total.min || queryParams.total.max ? (
-				<FiltersShowcase.Item
-					label="VALOR"
-					value={`${queryParams.total.min ? `MIN: R$ ${queryParams.total.min}` : "N/A"} - ${queryParams.total.max ? `MAX: R$ ${queryParams.total.max}` : "N/A"}`}
-					onRemove={enabledRemovals.total ? () => updateQueryParams({ total: defaultQueryParams.total }) : undefined}
-				/>
-			) : null}
-			{queryParams.saleNatures.length > 0 ? (
-				<FiltersShowcase.Item
-					label="NATUREZA DA VENDA"
-					value={queryParams.saleNatures.map((nature) => nature).join(", ")}
-					onRemove={enabledRemovals.saleNatures ? () => updateQueryParams({ saleNatures: defaultQueryParams.saleNatures }) : undefined}
-				/>
-			) : null}
-			{queryParams.clientRFMTitles.length > 0 ? (
-				<FiltersShowcase.Item
-					label="CATEGORIA DE CLIENTES"
-					value={queryParams.clientRFMTitles.map((title) => title).join(", ")}
-					onRemove={enabledRemovals.clientRFMTitles ? () => updateQueryParams({ clientRFMTitles: defaultQueryParams.clientRFMTitles }) : undefined}
-				/>
-			) : null}
-			{queryParams.productGroups.length > 0 ? (
-				<FiltersShowcase.Item
-					label="GRUPO DE PRODUTOS"
-					value={queryParams.productGroups.map((group) => group).join(", ")}
-					onRemove={enabledRemovals.productGroups ? () => updateQueryParams({ productGroups: defaultQueryParams.productGroups }) : undefined}
-				/>
-			) : null}
-			{queryParams.excludedSalesIds.length > 0 ? (
-				<FiltersShowcase.Item
-					label="VENDAS EXCLUÍDAS"
-					value={queryParams.excludedSalesIds.map((id) => id).join(", ")}
-					onRemove={enabledRemovals.excludedSalesIds ? () => updateQueryParams({ excludedSalesIds: defaultQueryParams.excludedSalesIds }) : undefined}
-				/>
-			) : null}
-			{queryParams.sellers.length > 0 ? (
-				<FiltersShowcase.Item
-					label="VENDEDORES"
-					value={queryParams.sellers.map((seller) => users?.find((user) => user.id === seller)?.nome || seller).join(", ")}
-					onRemove={enabledRemovals.sellers ? () => updateQueryParams({ sellers: defaultQueryParams.sellers }) : undefined}
-				/>
-			) : null}
-		</FiltersShowcase.Root>
+			{hasProductGroups ? <DashboardMultiFilter label="GRUPOS" options={productGroupOptions} value={queryParams.productGroups} onChange={(productGroups) => updateQueryParams({ productGroups })} onClear={() => updateQueryParams({ productGroups: [] })} /> : null}
+			{hasRFM ? <DashboardMultiFilter label="RFM" options={rfmOptions} value={queryParams.clientRFMTitles} onChange={(clientRFMTitles) => updateQueryParams({ clientRFMTitles })} onClear={() => updateQueryParams({ clientRFMTitles: [] })} /> : null}
+			{hasTotal ? <DashboardTotalFilter queryParams={queryParams} updateQueryParams={updateQueryParams} /> : null}
+			{hasExcludedSales ? <DashboardExcludedSalesFilter queryParams={queryParams} updateQueryParams={updateQueryParams} /> : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasSellers ? (
+							<InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent options={sellerOptions} value={queryParams.sellers} onChange={(sellers) => updateQueryParams({ sellers })} onClear={() => updateQueryParams({ sellers: [] })} clearLabel="TODOS" />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent options={saleNatureOptions} value={queryParams.saleNatures} onChange={(saleNatures) => updateQueryParams({ saleNatures: saleNatures as TSaleStatsGeneralQueryParams["saleNatures"] })} onClear={() => updateQueryParams({ saleNatures: [] })} clearLabel="TODAS" />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasProductGroups ? (
+							<InteractiveFilter.AddFilterItem id="productGroups" label="GRUPOS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent options={productGroupOptions} value={queryParams.productGroups} onChange={(productGroups) => updateQueryParams({ productGroups })} onClear={() => updateQueryParams({ productGroups: [] })} clearLabel="TODOS" />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasRFM ? (
+							<InteractiveFilter.AddFilterItem id="rfm" label="RFM" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent options={rfmOptions} value={queryParams.clientRFMTitles} onChange={(clientRFMTitles) => updateQueryParams({ clientRFMTitles })} onClear={() => updateQueryParams({ clientRFMTitles: [] })} clearLabel="TODOS" />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasTotal ? (
+							<InteractiveFilter.AddFilterItem id="total" label="VALOR" icon={<BadgeDollarSign className="h-4 w-4" />}>
+								<DashboardTotalFilterContent queryParams={queryParams} updateQueryParams={updateQueryParams} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasExcludedSales ? (
+							<InteractiveFilter.AddFilterItem id="excludedSales" label="VENDAS EXCLUÍDAS" icon={<ListFilter className="h-4 w-4" />}>
+								<DashboardExcludedSalesFilterContent queryParams={queryParams} updateQueryParams={updateQueryParams} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
 	);
 }
+
+function DashboardTotalFilter({ queryParams, updateQueryParams }: Pick<DashboardInlineFiltersProps, "queryParams" | "updateQueryParams">) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<BadgeDollarSign className="h-4 w-4" />
+					<InteractiveFilter.Label>VALOR</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveNumberRangeSummary(queryParams.total.min, queryParams.total.max)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateQueryParams({ total: {} })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-0">
+				<DashboardTotalFilterContent queryParams={queryParams} updateQueryParams={updateQueryParams} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function DashboardTotalFilterContent({ queryParams, updateQueryParams }: Pick<DashboardInlineFiltersProps, "queryParams" | "updateQueryParams">) {
+	return (
+		<InteractiveFilter.NumberRangeContent
+			value={{ greaterThan: queryParams.total.min, lessThan: queryParams.total.max }}
+			onChange={({ greaterThan, lessThan }) => updateQueryParams({ total: { min: greaterThan ?? undefined, max: lessThan ?? undefined } })}
+			onClear={() => updateQueryParams({ total: {} })}
+		/>
+	);
+}
+
+function DashboardExcludedSalesFilter({ queryParams, updateQueryParams }: Pick<DashboardInlineFiltersProps, "queryParams" | "updateQueryParams">) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>VENDAS EXCLUÍDAS</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveCountSummary(queryParams.excludedSalesIds)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateQueryParams({ excludedSalesIds: [] })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-3">
+				<DashboardExcludedSalesFilterContent queryParams={queryParams} updateQueryParams={updateQueryParams} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function DashboardExcludedSalesFilterContent({ queryParams, updateQueryParams }: Pick<DashboardInlineFiltersProps, "queryParams" | "updateQueryParams">) {
+	return (
+		<MultipleSalesSelectInput
+			label="VENDAS EXCLUÍDAS"
+			selected={queryParams.excludedSalesIds}
+			handleChange={(excludedSalesIds) => updateQueryParams({ excludedSalesIds: excludedSalesIds as string[] })}
+			onReset={() => updateQueryParams({ excludedSalesIds: [] })}
+			resetOptionLabel="VENDAS EXCLUÍDAS"
+			width="100%"
+		/>
+	);
+}
+
+function DashboardMultiFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel="TODOS" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+

@@ -9,7 +9,7 @@ import { RFMLabels } from "@/utils/rfm";
 import { useCallback, useState } from "react";
 
 // Always keep a root GRUPO in state for ergonomics. Empty trees are translated to
-// `null` at submit time (see NewCampaign/ControlCampaign).
+// `null` at submit time (see campaign submit surfaces).
 function createEmptyFiltersTree(): TCampaignFiltersTree {
 	return { tipo: "GRUPO", operador: "AND", itens: [] };
 }
