@@ -38,8 +38,8 @@ import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 dayjs.extend(dayjsCustomFormatter);
 
-const TARGET_ORGANIZATION_ID = "c0af84e7-4882-4aac-8d6e-f28ee3541d0b";
-const START_DATE = "2026-05-01T00:00:00.000Z";
+const TARGET_ORGANIZATION_ID = "27817d9a-cb04-4704-a1f4-15b81a3610d3";
+const START_DATE = "2026-01-01T00:00:00.000Z";
 const END_DATE = "2026-05-04T23:59:59.999Z";
 
 const DB_IMPORTATION_COMPARISON_JSON_PATH = path.join(process.cwd(), "db-importation-comparison.json");
@@ -50,6 +50,43 @@ type TDbImportationComparisonSaleRow = {
 	importedSaleValue: number | null;
 	importedSaleDate: string | null;
 };
+
+/** Vinda da integração Cardápio Web que não possui venda correspondente no banco (mesmo idExterno + organização). */
+type TVendaSomenteCardapioRow = {
+	idExterno: string;
+	displayId: string;
+	valorTotal: number;
+	dataVenda: string;
+	natureza: string;
+	tipo: string;
+	timing: string;
+	salesChannel: string;
+	entregaModalidade: string;
+	documento: string | null;
+	isCanceled: boolean;
+	isValidSale: boolean;
+	cliente: { idExterno: string; nome: string; telefone: string | null } | null;
+	parceiro: { idExterno: string; nome: string } | null;
+};
+
+function toVendaSomenteCardapioRow(sale: MappedCardapioWebSale): TVendaSomenteCardapioRow {
+	return {
+		idExterno: sale.idExterno,
+		displayId: sale.displayId,
+		valorTotal: sale.valorTotal,
+		dataVenda: sale.dataVenda.toISOString(),
+		natureza: sale.natureza,
+		tipo: sale.tipo,
+		timing: sale.timing,
+		salesChannel: sale.salesChannel,
+		entregaModalidade: sale.entregaModalidade,
+		documento: sale.documento,
+		isCanceled: sale.isCanceled,
+		isValidSale: sale.isValidSale,
+		cliente: sale.cliente ? { idExterno: sale.cliente.idExterno, nome: sale.cliente.nome, telefone: sale.cliente.telefone } : null,
+		parceiro: sale.parceiro ? { idExterno: sale.parceiro.idExterno, nome: sale.parceiro.nome } : null,
+	};
+}
 
 /**
  * Helper function to check if a campaign can be scheduled for a client based on frequency rules
@@ -167,7 +204,7 @@ export async function handleCardapioWebImportation(organizationId: string, confi
 				acc[order.status] = { count: 0, totalValue: 0 };
 			}
 			acc[order.status].count = (acc[order.status].count || 0) + 1;
-			acc[order.status].totalValue = (acc[order.status].totalValue || 0) + order.total;
+			acc[order.status].totalValue = (acc[order.status].totalValue || 0) + (order.total || 0);
 			return acc;
 		},
 		{} as Record<string, { count: number; totalValue: number }>,
@@ -244,14 +281,27 @@ export async function handleCardapioWebImportation(organizationId: string, confi
 		salesByExternalIdEntries = Array.from(salesByExternalId.entries());
 	});
 
+	const idExternoPresentesNoBanco = new Set(salesByExternalIdEntries.map(([idExterno]) => idExterno));
+	const vendasSomenteCardapio = mappedSales.filter((sale) => !idExternoPresentesNoBanco.has(sale.idExterno)).map(toVendaSomenteCardapioRow);
+
+	console.log(
+		`[ORG: ${organizationId}] [CARDAPIO-WEB] Vendas só no Cardápio (sem registro no banco nesta org): ${vendasSomenteCardapio.length} / ${mappedSales.length}`,
+	);
+
 	const dbImportationComparisonPayload = {
 		geradoEm: new Date().toISOString(),
 		organizacaoId: organizationId,
 		intervalo: { inicio: START_DATE, fim: END_DATE },
+		resumo: {
+			totalVendasCardapioNoIntervalo: mappedSales.length,
+			totalVendasEncontradasNoBanco: idExternoPresentesNoBanco.size,
+			totalVendasSomenteCardapio: vendasSomenteCardapio.length,
+		},
 		vendasPorIdExterno: salesByExternalIdEntries.map(([idExterno, row]) => ({
 			idExterno,
 			...row,
 		})),
+		vendasSomenteCardapio,
 	};
 
 	await writeFile(DB_IMPORTATION_COMPARISON_JSON_PATH, JSON.stringify(dbImportationComparisonPayload, null, 2), "utf8");
