@@ -1,5 +1,6 @@
 import type { TRetryCampaignInteractionInput, TRetryCampaignInteractionOutput } from "@/app/api/campaigns/interactions/route";
 import type { TCreateCampaignInput, TCreateCampaignOutput, TUpdateCampaignInput, TUpdateCampaignOutput } from "@/app/api/campaigns/route";
+import type { TTestCampaignInput, TTestCampaignOutput } from "@/app/api/campaigns/test/route";
 import axios from "axios";
 
 export async function createCampaign(input: TCreateCampaignInput) {
@@ -28,6 +29,16 @@ export async function retryCampaignInteraction(input: TRetryCampaignInteractionI
 		return data;
 	} catch (error) {
 		console.log("Error running retryCampaignInteraction", error);
+		throw error;
+	}
+}
+
+export async function testCampaign(input: TTestCampaignInput) {
+	try {
+		const { data } = await axios.post<TTestCampaignOutput>("/api/campaigns/test", input);
+		return data;
+	} catch (error) {
+		console.log("Error running testCampaign", error);
 		throw error;
 	}
 }

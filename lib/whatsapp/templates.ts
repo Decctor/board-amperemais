@@ -74,7 +74,8 @@ export const WHATSAPP_TEMPLATES = {
 	GENERIC_INITIATION: {
 		id: "generic_initiation",
 		title: "Inicialização de Conversa",
-		language: "pt_BR",
+		// language: "pt_BR",
+		language: "en_US",
 		type: "marketing",
 		getPayload: (input: GenericInitiationParametersInput) => {
 			const { templateKey, toPhoneNumber, clientName } = GenericInitiationParametersInputSchema.parse(input);
@@ -626,11 +627,7 @@ type getWhatsappTemplatePayloadParams = {
 	};
 	variables: Record<keyof TWhatsappTemplateVariables, string>;
 };
-export function getWhatsappTemplatePayload({
-	toPhoneNumber,
-	template,
-	variables,
-}: getWhatsappTemplatePayloadParams): WhatsappTemplatePayloadResult {
+export function getWhatsappTemplatePayload({ toPhoneNumber, template, variables }: getWhatsappTemplatePayloadParams): WhatsappTemplatePayloadResult {
 	const components: TemplateComponent[] = [];
 
 	// Add header component if template has a media header with content
@@ -681,24 +678,16 @@ export function getWhatsappTemplatePayload({
 			})),
 		});
 	}
-	if (template.components.rodape) {
-		components.push({
-			type: "footer",
-			text: template.components.rodape.conteudo,
-		});
-	}
-	if (template.components.botoes) {
-		components.push({
-			type: "buttons",
-			buttons: template.components.botoes.map((button) => ({
-				type: "button",
-				text: button.texto,
-			})),
-		});
-	}
-
 	// Parse Tiptap content and replace variables
 	const formattedContent = parseTiptapContentAndReplaceVariables(template.content, variables);
+	const templatePayload: TemplatePayload["template"] = {
+		name: template.name,
+		language: {
+			// code: "pt_BR",
+			code: "en_US", // REMOVE THIS
+		},
+	};
+	if (components.length > 0) templatePayload.components = components;
 
 	return {
 		content: formattedContent,
@@ -706,13 +695,7 @@ export function getWhatsappTemplatePayload({
 			messaging_product: "whatsapp",
 			to: formatPhoneAsWhatsappId(toPhoneNumber),
 			type: "template",
-			template: {
-				name: template.name,
-				language: {
-					code: "pt_BR",
-				},
-				components,
-			},
+			template: templatePayload,
 		},
 	};
 }

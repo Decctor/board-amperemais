@@ -42,6 +42,7 @@ import {
 	PencilIcon,
 	Plus,
 	RefreshCw,
+	Send,
 	SparklesIcon,
 	TrendingUp,
 	UserPlus,
@@ -59,6 +60,7 @@ import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTem
 import { MessageCircleIcon } from "lucide-react";
 import { CampaignTriggerTypeOptions, InteractionsSentStatusOptions } from "@/utils/select-options";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
+import TestCampaign from "@/components/Modals/Campaigns/TestCampaign";
 import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
@@ -281,6 +283,7 @@ function CampaignBooleanFilter({
 	);
 }
 function CampaignsDatabaseView() {
+	const [testingCampaignId, setTestingCampaignId] = useState<string | null>(null);
 	const initialStatsPeriodAfter = dayjs().startOf("month").toDate();
 	const initialStatsPeriodBefore = dayjs().endOf("month").toDate();
 	const {
@@ -339,12 +342,15 @@ function CampaignsDatabaseView() {
 			{isSuccess ? (
 				<div className="w-full flex flex-col gap-1.5">
 					{campaignsResult && campaignsResult.length > 0 ? (
-						campaignsResult.map((campaign) => <CampaignsPageCampaignCard key={campaign.id} campaign={campaign} />)
+						campaignsResult.map((campaign) => (
+							<CampaignsPageCampaignCard key={campaign.id} campaign={campaign} onTestCampaign={() => setTestingCampaignId(campaign.id)} />
+						))
 					) : (
 						<p className="w-full flex items-center justify-center">Nenhuma campanha encontrada</p>
 					)}
 				</div>
 			) : null}
+			{testingCampaignId ? <TestCampaign campaignId={testingCampaignId} closeModal={() => setTestingCampaignId(null)} /> : null}
 		</div>
 	);
 }
@@ -836,7 +842,7 @@ function CampaignsStatsView() {
 	);
 }
 
-function CampaignsPageCampaignCard({ campaign }: { campaign: TGetCampaignsOutputDefault[number] }) {
+function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGetCampaignsOutputDefault[number]; onTestCampaign: () => void }) {
 	const stats = campaign.estatisticas ?? {
 		envios: 0,
 		entregues: 0,
@@ -951,6 +957,10 @@ function CampaignsPageCampaignCard({ campaign }: { campaign: TGetCampaignsOutput
 					/>
 				</div>
 				<div className="flex items-center gap-1.5">
+					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={onTestCampaign}>
+						<Send className="w-3 min-w-3 h-3 min-h-3" />
+						TESTAR
+					</Button>
 					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
 						<Link href={`/dashboard/commercial/campaigns/builder?campaignId=${campaign.id}`}>
 							<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />

@@ -307,6 +307,20 @@ async function getCampaigns({ input, session }: { input: TGetCampaignsInput; ses
 			where: (fields, { and, eq }) => and(eq(fields.id, campaignId), eq(fields.organizacaoId, userOrgId)),
 			with: {
 				segmentacoes: true,
+				whatsappTemplate: {
+					columns: {
+						id: true,
+						nome: true,
+						componentes: true,
+					},
+				},
+				whatsappConexaoTelefone: {
+					columns: {
+						id: true,
+						nome: true,
+						numero: true,
+					},
+				},
 			},
 		});
 		if (!campaign) throw new createHttpError.NotFound("Campanha não encontrada.");
