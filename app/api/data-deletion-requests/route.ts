@@ -7,7 +7,7 @@ const DataDeletionRequestInputSchema = z.object({
 	nome: z.string({ required_error: "Nome não informado.", invalid_type_error: "Tipo não válido para nome." }).trim().min(2, "Nome não informado."),
 	email: z.string({ required_error: "E-mail não informado.", invalid_type_error: "Tipo não válido para e-mail." }).trim().email("E-mail inválido."),
 	telefone: z.string({ invalid_type_error: "Tipo não válido para telefone." }).trim().optional().or(z.literal("")),
-	identificadorMeta: z.string({ invalid_type_error: "Tipo não válido para identificador Meta." }).trim().optional().or(z.literal("")),
+	cnpj: z.string({ invalid_type_error: "Tipo não válido para CNPJ." }).trim().optional().or(z.literal("")),
 	detalhes: z
 		.string({ required_error: "Detalhes da solicitação não informados.", invalid_type_error: "Tipo não válido para detalhes." })
 		.trim()
@@ -18,12 +18,7 @@ const DataDeletionRequestInputSchema = z.object({
 export type TDataDeletionRequestInput = z.infer<typeof DataDeletionRequestInputSchema>;
 
 function escapeHtml(value: string) {
-	return value
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("'", "&#039;");
+	return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
 
 function buildRequestEmail(input: TDataDeletionRequestInput) {
@@ -31,7 +26,7 @@ function buildRequestEmail(input: TDataDeletionRequestInput) {
 		nome: escapeHtml(input.nome),
 		email: escapeHtml(input.email),
 		telefone: input.telefone ? escapeHtml(input.telefone) : "Não informado",
-		identificadorMeta: input.identificadorMeta ? escapeHtml(input.identificadorMeta) : "Não informado",
+		cnpj: input.cnpj ? escapeHtml(input.cnpj) : "Não informado",
 		detalhes: escapeHtml(input.detalhes),
 	};
 
@@ -43,7 +38,7 @@ function buildRequestEmail(input: TDataDeletionRequestInput) {
 			`Nome: ${input.nome}`,
 			`E-mail: ${input.email}`,
 			`Telefone: ${input.telefone || "Não informado"}`,
-			`Identificador Meta: ${input.identificadorMeta || "Não informado"}`,
+			`CNPJ: ${input.cnpj || "Não informado"}`,
 			"",
 			"Detalhes:",
 			input.detalhes,
@@ -56,7 +51,7 @@ function buildRequestEmail(input: TDataDeletionRequestInput) {
 					<tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Nome</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${safeInput.nome}</td></tr>
 					<tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>E-mail</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${safeInput.email}</td></tr>
 					<tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Telefone</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${safeInput.telefone}</td></tr>
-					<tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Identificador Meta</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${safeInput.identificadorMeta}</td></tr>
+					<tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>CNPJ</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${safeInput.cnpj}</td></tr>
 				</table>
 				<h2 style="font-size: 16px; margin-top: 24px;">Detalhes</h2>
 				<p style="white-space: pre-wrap;">${safeInput.detalhes}</p>
