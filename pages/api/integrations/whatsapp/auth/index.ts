@@ -18,7 +18,7 @@ const handleArcticWhatsapp: NextApiHandler<any> = async (req, res) => {
 	// 		sessionInfoVersion: "3",
 	// 	}),
 	// );
-	const finalUrl = url.toString().replace("v16.0", "v21.0");
+	const finalUrl = url.toString().replace("v16.0", "v25.0");
 	console.log("[INFO] [ARCTIC_WHATSAPP] Redirecting to:", finalUrl);
 	res.redirect(finalUrl);
 };
