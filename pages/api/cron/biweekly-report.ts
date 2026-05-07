@@ -10,6 +10,10 @@ const biweeklyReportHandler: NextApiHandler = async (req, res) => {
 	const today = dayjs();
 	const isBiweeklyRunDay = today.date() === 15 || today.date() === today.endOf("month").date();
 
+	// disable biweekly report for now
+	return res.status(200).json({
+		message: "Biweekly report skipped: biweekly report is disabled for now.",
+	});
 	if (!isBiweeklyRunDay) {
 		return res.status(200).json({
 			message: "Biweekly report skipped: today is not the 15th or the last day of the month.",
