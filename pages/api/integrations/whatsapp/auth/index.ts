@@ -5,7 +5,7 @@ import type { NextApiHandler } from "next";
 
 const handleArcticWhatsapp: NextApiHandler<any> = async (req, res) => {
 	const state = arctic.generateState();
-	const scopes = ["email", "public_profile", "whatsapp_business_management", "whatsapp_business_messaging"];
+	const scopes = ["public_profile", "whatsapp_business_management", "whatsapp_business_messaging"];
 	const url = FacebookOAuth.createAuthorizationURL(state, scopes);
 	// url.searchParams.set("config_id", process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID as string);
 	// url.searchParams.set("response_type", "code");
