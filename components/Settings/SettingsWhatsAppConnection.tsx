@@ -46,7 +46,7 @@ export default function SettingsWhatsAppConnection({ user }: SettingsWhatsAppCon
 				<ErrorComponent msg="Não foi possível carregar suas conexões do WhatsApp." />
 			) : (
 				<div className="flex w-full flex-col gap-3">
-					<IntegrationWithInternalGateway connections={whatsappConnections || []} />
+					{/* <IntegrationWithInternalGateway connections={whatsappConnections || []} /> */}
 					<IntegrationWithMetaCloud connections={whatsappConnections || []} />
 				</div>
 			)}
@@ -262,81 +262,81 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 				/>
 			)}
 			<div className="border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
-			<div className="flex w-full items-start gap-3">
-				<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
-					<div className="ring-background z-10 flex h-16 min-h-16 w-16 min-w-16 items-center justify-center rounded-full bg-[#24549C] ring-2">
-						<RecompraCRMIconColorful className="h-8 w-8" />
-					</div>
-					<div className="ring-background flex h-16 min-h-16 w-16 min-w-16 items-center justify-center rounded-full bg-[#25D366] ring-2">
-						<WhatsappIcon className="h-8 w-8 text-white" />
-					</div>
-				</div>
-				<div className="flex grow flex-col gap-1.5 pt-1">
-					<div className="w-full flex flex-wrap items-center justify-between gap-2">
-						<div className="flex items-center gap-2">
-							<h1 className="text-xs font-bold tracking-tight lg:text-sm">WhatsApp Gateway do Recompra CRM</h1>
-							<ConnectionStatusBadge isActive={isActive} />
-							{isConnected && <GatewayStatusBadge status={gatewayStatus} />}
+				<div className="flex w-full items-start gap-3">
+					<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
+						<div className="ring-background z-10 flex h-16 min-h-16 w-16 min-w-16 items-center justify-center rounded-full bg-[#24549C] ring-2">
+							<RecompraCRMIconColorful className="h-8 w-8" />
 						</div>
-						{isConnected ? (
-							<>
-								{gatewayStatus !== "connected" && (
-									<Button
-										variant="outline"
+						<div className="ring-background flex h-16 min-h-16 w-16 min-w-16 items-center justify-center rounded-full bg-[#25D366] ring-2">
+							<WhatsappIcon className="h-8 w-8 text-white" />
+						</div>
+					</div>
+					<div className="flex grow flex-col gap-1.5 pt-1">
+						<div className="w-full flex flex-wrap items-center justify-between gap-2">
+							<div className="flex items-center gap-2">
+								<h1 className="text-xs font-bold tracking-tight lg:text-sm">WhatsApp Gateway do Recompra CRM</h1>
+								<ConnectionStatusBadge isActive={isActive} />
+								{isConnected && <GatewayStatusBadge status={gatewayStatus} />}
+							</div>
+							{isConnected ? (
+								<>
+									{gatewayStatus !== "connected" && (
+										<Button
+											variant="outline"
+											size="xs"
+											className="flex items-center gap-1"
+											onClick={() => queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] })}
+										>
+											<RefreshCw className="h-4 w-4" />
+											ATUALIZAR STATUS
+										</Button>
+									)}
+									<LoadingButton
+										variant="ghost"
 										size="xs"
-										className="flex items-center gap-1"
-										onClick={() => queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] })}
+										className="hover:bg-destructive/10 hover:text-destructive w-fit"
+										loading={isDisconnecting}
+										onClick={() => handleDisconnect(connection.id)}
 									>
-										<RefreshCw className="h-4 w-4" />
-										ATUALIZAR STATUS
-									</Button>
-								)}
-								<LoadingButton
-									variant="ghost"
-									size="xs"
-									className="hover:bg-destructive/10 hover:text-destructive w-fit"
-									loading={isDisconnecting}
-									onClick={() => handleDisconnect(connection.id)}
-								>
-									DESCONECTAR
-								</LoadingButton>
-							</>
-						) : (
-							<Button size="xs" className="flex items-center gap-1" onClick={() => setShowQRConnect(true)}>
-								<QrCode className="h-4 w-4" />
-								CONECTAR VIA QR CODE
-							</Button>
-						)}
-					</div>
-					<p className="text-primary/70 text-xs font-medium tracking-tight">
-						Conecte seu WhatsApp para uso não-oficial através do gateway do Recompra CRM para enviar e receber mensagens.
-					</p>
-				</div>
-			</div>
-
-			{isConnected && (
-				<div className="w-full flex flex-col gap-3">
-					<div className="flex w-full flex-col gap-2">
-						{connection.gatewayUltimaConexao && (
-							<ConnectionDetailRow icon={<Calendar className="h-4 w-4" />} label="ÚLTIMA CONEXÃO:">
-								<p className="text-xs font-bold">{formatDateAsLocale(new Date(connection.gatewayUltimaConexao), true) || "N/A"}</p>
-							</ConnectionDetailRow>
-						)}
-						<ConnectionDetailRow icon={<Phone className="h-4 w-4" />} label="TELEFONES CONECTADOS:">
-							<ConnectionPhonesList telefones={connection.telefones} />
-						</ConnectionDetailRow>
-					</div>
-
-					{gatewayStatus !== "connected" && (
-						<div className="mt-1 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-							<p className="text-xs text-yellow-800">
-								<strong>Atenção:</strong> Sua conexão com o WhatsApp está inativa. Para continuar enviando e recebendo mensagens, reconecte escaneando um novo
-								QR Code.
-							</p>
+										DESCONECTAR
+									</LoadingButton>
+								</>
+							) : (
+								<Button size="xs" className="flex items-center gap-1" onClick={() => setShowQRConnect(true)}>
+									<QrCode className="h-4 w-4" />
+									CONECTAR VIA QR CODE
+								</Button>
+							)}
 						</div>
-					)}
+						<p className="text-primary/70 text-xs font-medium tracking-tight">
+							Conecte seu WhatsApp para uso não-oficial através do gateway do Recompra CRM para enviar e receber mensagens.
+						</p>
+					</div>
 				</div>
-			)}
+
+				{isConnected && (
+					<div className="w-full flex flex-col gap-3">
+						<div className="flex w-full flex-col gap-2">
+							{connection.gatewayUltimaConexao && (
+								<ConnectionDetailRow icon={<Calendar className="h-4 w-4" />} label="ÚLTIMA CONEXÃO:">
+									<p className="text-xs font-bold">{formatDateAsLocale(new Date(connection.gatewayUltimaConexao), true) || "N/A"}</p>
+								</ConnectionDetailRow>
+							)}
+							<ConnectionDetailRow icon={<Phone className="h-4 w-4" />} label="TELEFONES CONECTADOS:">
+								<ConnectionPhonesList telefones={connection.telefones} />
+							</ConnectionDetailRow>
+						</div>
+
+						{gatewayStatus !== "connected" && (
+							<div className="mt-1 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+								<p className="text-xs text-yellow-800">
+									<strong>Atenção:</strong> Sua conexão com o WhatsApp está inativa. Para continuar enviando e recebendo mensagens, reconecte escaneando um
+									novo QR Code.
+								</p>
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 		</>
 	);
