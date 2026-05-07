@@ -14,6 +14,7 @@ export const CampaignTriggerTypeEnum = z.enum([
 	"VALOR-TOTAL-COMPRAS",
 	"RECORRENTE",
 	"PIOR-DIA-VENDAS",
+	"USO-UNICO",
 ]);
 export type TCampaignTriggerTypeEnum = z.infer<typeof CampaignTriggerTypeEnum>;
 export const CampaignExecutionDelayDirectionEnum = z.enum(["ANTES", "DEPOIS"]);
@@ -234,3 +235,15 @@ export const AccountChartNatureEnum = z.enum([
 	"DESPESA",
 ]);
 export type TAccountChartNatureEnum = z.infer<typeof AccountChartNatureEnum>;
+
+export const ShopModeEnum = z.enum(["CARDAPIO", "CATALOGO"]);
+export type TShopModeEnum = z.infer<typeof ShopModeEnum>;
+
+export const ShopProductsModeEnum = z.enum(["ATIVOS", "INCLUIR", "EXCLUIR"]);
+export type TShopProductsModeEnum = z.infer<typeof ShopProductsModeEnum>;
+
+export const ShopHeaderCoverTypeEnum = z.enum(["IMAGEM", "VIDEO"]);
+export type TShopHeaderCoverTypeEnum = z.infer<typeof ShopHeaderCoverTypeEnum>;
+
+export const ShopCompositionBlockTypeEnum = z.enum(["GRUPOS_PRODUTOS", "EM_DESTAQUE", "MAIS_PEDIDOS"]);
+export type TShopCompositionBlockTypeEnum = z.infer<typeof ShopCompositionBlockTypeEnum>;

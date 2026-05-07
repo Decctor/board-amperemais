@@ -28,3 +28,4 @@ export * from "./internal-lead-stage-history";
 export * from "./internal-leads";
 export * from "./purchases";
 export * from "./poi-transaction-requests";
+export * from "./shop";

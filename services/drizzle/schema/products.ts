@@ -1,12 +1,13 @@
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, index, integer, primaryKey, text, timestamp, varchar, vector } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
-import { stockMovementTypeEnum } from "./enums";
+import { productClientReferenceWindowEnum, stockMovementTypeEnum } from "./enums";
 import { organizations } from "./organizations";
 import { saleItems, sales } from "./sales";
 import { users } from "./users";
 import { purchaseItems, purchases } from "./purchases";
 import { productFiscalProfiles } from "./fiscal";
+import { clients } from "./clients";
 
 export const products = newTable(
 	"products",
@@ -44,6 +45,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
 	variantes: many(productVariants),
 	addOnsReferencias: many(productAddOnReferences),
 	perfisFiscais: many(productFiscalProfiles),
+	referenciasClientes: many(productClientReferences),
 }));
 
 export type TProductEntity = typeof products.$inferSelect;
@@ -296,3 +298,75 @@ export const productStockTransactionsRelations = relations(productStockTransacti
 
 export type TProductStockTransaction = typeof productStockTransactions.$inferSelect;
 export type TNewProductStockTransaction = typeof productStockTransactions.$inferInsert;
+
+export const productClientReferences = newTable(
+	"product_client_references",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, {
+				onDelete: "cascade",
+			})
+			.notNull(),
+		produtoId: varchar("produto_id", { length: 255 })
+			.references(() => products.id, {
+				onDelete: "cascade",
+			})
+			.notNull(),
+		produtoVarianteId: varchar("produto_variante_id", { length: 255 }).references(() => productVariants.id, {
+			onDelete: "set null",
+		}),
+		clienteId: varchar("cliente_id", { length: 255 })
+			.references(() => clients.id, {
+				onDelete: "cascade",
+			})
+			.notNull(),
+
+		// stats
+		totalComprasQuantidade: integer("total_compras_quantidade").default(0).notNull(),
+		totalComprasValor: doublePrecision("total_compras_valor").default(0).notNull(),
+		rankingValor: integer("ranking_valor").default(0).notNull(),
+
+		janela: productClientReferenceWindowEnum("janela").default("GERAL").notNull(),
+
+		primeiraCompraData: timestamp("primeira_compra_data"),
+		ultimaCompraData: timestamp("ultima_compra_data"),
+
+		dataUltimaAtualizacao: timestamp("data_ultima_atualizacao").defaultNow().notNull(),
+	},
+	(table) => ({
+		orgJanelaIdx: index("idx_product_client_references_org_janela").on(table.organizacaoId, table.janela),
+		produtoJanelaRankingIdx: index("idx_product_client_references_produto_janela_ranking").on(
+			table.organizacaoId,
+			table.produtoId,
+			table.janela,
+			table.rankingValor,
+		),
+		produtoVarianteJanelaRankingIdx: index("idx_product_client_references_variante_janela_ranking").on(
+			table.organizacaoId,
+			table.produtoVarianteId,
+			table.janela,
+			table.rankingValor,
+		),
+		clienteJanelaIdx: index("idx_product_client_references_cliente_janela").on(table.organizacaoId, table.clienteId, table.janela),
+		atualizacaoIdx: index("idx_product_client_references_data_atualizacao").on(table.organizacaoId, table.dataUltimaAtualizacao),
+	}),
+);
+export const productClientReferencesRelations = relations(productClientReferences, ({ one }) => ({
+	produto: one(products, {
+		fields: [productClientReferences.produtoId],
+		references: [products.id],
+	}),
+	produtoVariante: one(productVariants, {
+		fields: [productClientReferences.produtoVarianteId],
+		references: [productVariants.id],
+	}),
+	cliente: one(clients, {
+		fields: [productClientReferences.clienteId],
+		references: [clients.id],
+	}),
+}));
+
+export type TProductClientReference = typeof productClientReferences.$inferSelect;

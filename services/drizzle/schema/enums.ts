@@ -12,6 +12,7 @@ export const campaignTriggerTypeEnum = pgEnum("campaign_trigger_type", [
 	"VALOR-TOTAL-COMPRAS",
 	"RECORRENTE",
 	"PIOR-DIA-VENDAS",
+	"USO-UNICO",
 ]);
 
 export const campaignExecutionDelayDirectionEnum = pgEnum("campaign_execution_delay_direction", ["ANTES", "DEPOIS"]);
@@ -233,3 +234,13 @@ export const poiTransactionRequestStatusEnum = pgEnum("poi_transaction_request_s
 export const poiTransactionRequestTypeEnum = pgEnum("poi_transaction_request_type", ["NOVA_TRANSACAO"]);
 
 export const accountChartNatureEnum = pgEnum("account_chart_nature", ["ATIVO", "PASSIVO", "PATRIMONIO_LIQUIDO", "RECEITA", "CUSTO", "DESPESA"]);
+
+export const productClientReferenceWindowEnum = pgEnum("product_client_reference_window", ["GERAL", "30_DIAS", "90_DIAS"]);
+
+export const shopModeEnum = pgEnum("shop_mode", ["CARDAPIO", "CATALOGO"]);
+
+export const shopProductsModeEnum = pgEnum("shop_products_mode", ["ATIVOS", "INCLUIR", "EXCLUIR"]);
+
+export const shopHeaderCoverTypeEnum = pgEnum("shop_header_cover_type", ["IMAGEM", "VIDEO"]);
+
+export const shopCompositionBlockTypeEnum = pgEnum("shop_composition_block_type", ["GRUPOS_PRODUTOS", "EM_DESTAQUE", "MAIS_PEDIDOS"]);

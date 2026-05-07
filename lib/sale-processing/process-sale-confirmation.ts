@@ -2,7 +2,7 @@ import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { emitFiscalDocument } from "@/lib/fiscal/documents";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db } from "@/services/drizzle";
-import { cashbackProgramBalances, cashbackProgramTransactions, sales } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, sales } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -124,7 +124,17 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 			const programId = input.saleCashbackProgramId ?? balance.programaId;
 			if (!programId) throw new createHttpError.BadRequest("Programa de cashback não informado.");
 
-			const redemptionResult = await applyCashbackRedemptionFIFO({
+				const program = await tx.query.cashbackPrograms.findFirst({
+					where: and(eq(cashbackPrograms.id, programId), eq(cashbackPrograms.organizacaoId, input.organization.id), eq(cashbackPrograms.ativo, true)),
+				});
+				if (!program) throw new createHttpError.NotFound("Programa de cashback nÃ£o encontrado.");
+				if (!program.modalidadeDescontosPermitida) throw new createHttpError.BadRequest("Resgate de cashback nao permitido para esta venda.");
+				if (program.resgateLimiteTipo && program.resgateLimiteValor !== null && program.resgateLimiteValor !== undefined) {
+					const maxAllowed = program.resgateLimiteTipo === "FIXO" ? program.resgateLimiteValor : (sale.valorTotal * program.resgateLimiteValor) / 100;
+					if (redemptionValue > maxAllowed) throw new createHttpError.BadRequest("Valor de resgate excede o limite permitido.");
+				}
+
+				const redemptionResult = await applyCashbackRedemptionFIFO({
 				tx,
 				orgId: input.organization.id,
 				clientId,

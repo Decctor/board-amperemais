@@ -77,6 +77,8 @@ const TRIGGER_TYPE_LABELS: Record<TCampaignTriggerTypeEnum, string> = {
 	"QUANTIDADE-TOTAL-COMPRAS": "Qtd. Total de Compras",
 	"VALOR-TOTAL-COMPRAS": "Valor Total de Compras",
 	RECORRENTE: "Recorrente",
+	"PIOR-DIA-VENDAS": "Pior Dia de Vendas",
+	"USO-UNICO": "Uso Único",
 };
 
 const ATTRIBUTION_MODEL_LABELS: Record<string, string> = {

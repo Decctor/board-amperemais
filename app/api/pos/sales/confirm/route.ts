@@ -4,6 +4,8 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { processSaleConfirmation } from "@/lib/sale-processing";
 import { db } from "@/services/drizzle";
+import { sales } from "@/services/drizzle/schema";
+import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -22,13 +24,28 @@ export type TConfirmSaleInput = z.infer<typeof ConfirmSaleInputSchema>;
 async function confirmSale({ input, session }: { input: TConfirmSaleInput; session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
 
-	const organization = await db.query.organizations.findFirst({
-		where: (fields, { eq }) => eq(fields.id, orgId),
-	});
+	const [organization, saleDraft] = await Promise.all([
+		db.query.organizations.findFirst({
+			where: (fields, { eq }) => eq(fields.id, orgId),
+		}),
+		db.query.sales.findFirst({
+			where: and(eq(sales.id, input.id), eq(sales.organizacaoId, orgId)),
+			columns: { id: true, rascunhoMetadados: true },
+		}),
+	]);
 
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
 
 	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
+	if (!saleDraft) throw new createHttpError.NotFound("Venda nÃ£o encontrada.");
+	const shopMetadata = saleDraft.rascunhoMetadados as {
+		shop?: {
+			cashbackResgateSolicitado?: number;
+			cashbackProgramaId?: string | null;
+		};
+	} | null;
+	const effectiveCashbackResgate = input.cashbackResgate > 0 ? input.cashbackResgate : (shopMetadata?.shop?.cashbackResgateSolicitado ?? 0);
+	const effectiveCashbackProgramaId = input.cashbackProgramaId ?? shopMetadata?.shop?.cashbackProgramaId ?? null;
 
 	const result = await processSaleConfirmation({
 		organization,
@@ -51,8 +68,8 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		}),
 		saleAuthorId: session.user.id,
 		saleClientId: input.clienteId,
-		saleCashbackProgramId: input.cashbackProgramaId,
-		saleCashbackRedemptionValue: input.cashbackResgate,
+		saleCashbackProgramId: effectiveCashbackProgramaId,
+		saleCashbackRedemptionValue: effectiveCashbackResgate,
 		accountingEntryDebitAccountId: input.contaDebitoId,
 		accountingEntryCreditAccountId: input.contaCreditoId,
 	});

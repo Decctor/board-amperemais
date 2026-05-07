@@ -1,6 +1,7 @@
 import type { TAttributionModelEnum } from "@/schemas/enums";
+import type { TCampaignFilters } from "@/schemas/campaigns";
 import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable, users, whatsappConnectionPhones, whatsappTemplates } from ".";
 import {
 	campaignExecutionDelayDirectionEnum,
@@ -42,6 +43,8 @@ export const campaigns = newTable("campaigns", {
 
 	// specific for "VALOR-TOTAL-COMPRAS"
 	gatilhoValorTotalCompras: doublePrecision("gatilho_valor_total_compras"), // defines the minimum required all-time total purchase value for trigger to fire
+	// specific for "USO-UNICO"
+	gatilhoUsoUnicoDataReferencia: text("gatilho_uso_unico_data_referencia"), // YYYY-MM-DD in the interactions cron timezone
 
 	execucaoAgendadaMedida: timeDurationUnitsEnum("execucao_agendada_medida").notNull().default("DIAS"),
 	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
@@ -66,6 +69,7 @@ export const campaigns = newTable("campaigns", {
 	autorId: varchar("autor_id", { length: 255 })
 		.references(() => users.id)
 		.notNull(),
+	filtros: jsonb("filtros").$type<TCampaignFilters>(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 
 	// Attribution settings
