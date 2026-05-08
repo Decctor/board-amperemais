@@ -17,6 +17,7 @@ import type {
 	TPaymentMethodEnum,
 	TPurchaseStatusEnum,
 	TRecurrenceFrequencyEnum,
+	TShopModeEnum,
 	TTimeDurationUnitsEnum,
 } from "@/schemas/enums";
 import type { TInternalLeadOriginEnum, TInternalLeadStatusCRMEnum } from "@/schemas/enums";
@@ -28,6 +29,7 @@ import {
 	BookOpen,
 	Check,
 	CheckCheck,
+	ChefHat,
 	ClipboardIcon,
 	Clock,
 	CreditCard,
@@ -548,4 +550,9 @@ export const FinancialTransactionTypeOptions: {
 		icon: <ArrowDown className="w-4 h-4 text-red-600" />,
 		colors: { text: "text-red-600", background: "bg-red-200" },
 	},
+];
+
+export const ShopModeOptions: { id: number; label: string; value: TShopModeEnum; icon: React.ReactNode }[] = [
+	{ id: 1, label: "CARDÁPIO", value: "CARDAPIO", icon: <ChefHat className="w-4 h-4 min-w-4 min-h-4" /> },
+	{ id: 2, label: "CATÁLOGO", value: "CATALOGO", icon: <BookOpen className="w-4 h-4 min-w-4 min-h-4" /> },
 ];
