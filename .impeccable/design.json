@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-08T20:59:00Z",
+  "title": "Design System: RecompraCRM",
+  "extensions": {
+    "colorMeta": {
+      "grafite-operacional": {
+        "role": "primary",
+        "displayName": "Grafite Operacional",
+        "canonical": "oklch(12% 0 0)",
+        "tonalRamp": ["#262626", "#3d3d3d", "#525252", "#737373", "#8c8c8c", "#a6a6a6", "#d4d4d4", "#f2f2f2"]
+      },
+      "grafite-foreground": {
+        "role": "primary-on",
+        "displayName": "Grafite Foreground",
+        "canonical": "oklch(98% 0 0)",
+        "tonalRamp": ["#171717", "#404040", "#737373", "#a3a3a3", "#d4d4d4", "#e5e5e5", "#f5f5f5", "#fafafa"]
+      },
+      "ouro-comercial": {
+        "role": "secondary",
+        "displayName": "Ouro Comercial",
+        "canonical": "oklch(78% 0.18 84)",
+        "tonalRamp": ["#3d2900", "#6e4a00", "#9e6c00", "#cc8c00", "#ffb900", "#ffd166", "#ffe9a0", "#fff7d6"]
+      },
+      "ouro-foreground": {
+        "role": "secondary-on",
+        "displayName": "Ouro Foreground",
+        "canonical": "oklch(0% 0 0)",
+        "tonalRamp": ["#000000", "#262626", "#525252", "#737373", "#a3a3a3", "#d4d4d4", "#f5f5f5", "#ffffff"]
+      },
+      "canvas": {
+        "role": "neutral-bg",
+        "displayName": "Canvas",
+        "canonical": "oklch(100% 0 0)",
+        "tonalRamp": ["#171717", "#3d3d3d", "#737373", "#a3a3a3", "#d4d4d4", "#e5e5e5", "#f5f5f5", "#ffffff"]
+      },
+      "canvas-foreground": {
+        "role": "neutral-text",
+        "displayName": "Canvas Foreground",
+        "canonical": "oklch(4% 0 0)",
+        "tonalRamp": ["#0a0a0a", "#262626", "#525252", "#737373", "#a3a3a3", "#d4d4d4", "#f5f5f5", "#ffffff"]
+      },
+      "superficie": {
+        "role": "neutral-surface",
+        "displayName": "Superfície",
+        "canonical": "oklch(97% 0 0)",
+        "tonalRamp": ["#1a1a1a", "#404040", "#737373", "#a3a3a3", "#d4d4d4", "#e5e5e5", "#f0f0f0", "#f5f5f5"]
+      },
+      "muted": {
+        "role": "neutral-muted",
+        "displayName": "Muted",
+        "canonical": "oklch(49% 0 0)",
+        "tonalRamp": ["#1a1a1a", "#3d3d3d", "#525252", "#737373", "#8c8c8c", "#b3b3b3", "#d4d4d4", "#f2f2f2"]
+      },
+      "destrutivo": {
+        "role": "destructive",
+        "displayName": "Destrutivo",
+        "canonical": "oklch(60% 0.23 27)",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"]
+      },
+      "borda": {
+        "role": "neutral-border",
+        "displayName": "Borda",
+        "canonical": "oklch(91% 0 0)",
+        "tonalRamp": ["#1a1a1a", "#525252", "#8c8c8c", "#b3b3b3", "#d4d4d4", "#e5e5e5", "#f0f0f0", "#f7f7f7"]
+      },
+      "chart-coral": {
+        "role": "data-viz-1",
+        "displayName": "Coral",
+        "canonical": "oklch(60% 0.15 27)",
+        "tonalRamp": ["#5c1c12", "#8c2b1c", "#b83a28", "#e8614a", "#f08070", "#f5a89a", "#f9cfc9", "#fdecea"]
+      },
+      "chart-teal": {
+        "role": "data-viz-2",
+        "displayName": "Teal",
+        "canonical": "oklch(60% 0.1 185)",
+        "tonalRamp": ["#0d2e2b", "#184d47", "#1f6b63", "#299e8f", "#3dbdad", "#74d4c8", "#b0e8e2", "#ddf4f2"]
+      },
+      "chart-navy": {
+        "role": "data-viz-3",
+        "displayName": "Navy",
+        "canonical": "oklch(35% 0.07 215)",
+        "tonalRamp": ["#0d1c24", "#16303d", "#1d4358", "#264d5f", "#3a6a7d", "#6690a0", "#9ab8c4", "#d0e4ea"]
+      },
+      "chart-amber": {
+        "role": "data-viz-4",
+        "displayName": "Amber",
+        "canonical": "oklch(78% 0.14 80)",
+        "tonalRamp": ["#3d2900", "#6b4a00", "#997000", "#c89a20", "#e8c259", "#f0d48a", "#f7e8b8", "#fdf6e3"]
+      },
+      "chart-orange": {
+        "role": "data-viz-5",
+        "displayName": "Orange",
+        "canonical": "oklch(65% 0.16 50)",
+        "tonalRamp": ["#4a1c00", "#7a2f00", "#a84500", "#d06020", "#e87f3a", "#f0a570", "#f7cba8", "#fdeede"]
+      }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Modal titles, dialog headings, card titles. The highest heading level inside operational views." },
+      "body": { "displayName": "Body", "purpose": "List item text, descriptions, field values. Cap at 65–75ch in prose contexts." },
+      "label": { "displayName": "Label", "purpose": "SectionWrapper headers, tab labels, sidebar group names, stat field labels. Always uppercase. The workhorse of the hierarchy." },
+      "micro": { "displayName": "Micro", "purpose": "Meta timestamps, secondary counts, unit suffixes, pagination labels. Use sparingly." }
+    },
+    "shadows": [
+      {
+        "name": "hairline",
+        "value": "0 1px 2px rgba(0,0,0,0.05)",
+        "purpose": "Inputs, SectionWrappers, secondary containers. Default for bordered surfaces that need minimal lift."
+      },
+      {
+        "name": "card",
+        "value": "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
+        "purpose": "Primary Card components, primary buttons, active tab indicators. Signals content importance or clickability."
+      },
+      {
+        "name": "float",
+        "value": "0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05)",
+        "purpose": "Dropdowns, popovers, tooltips. The only context where a perceptible shadow distance is expected."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-state",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default easing for color/opacity transitions (button hover, tab switch). Duration 150ms."
+      },
+      {
+        "name": "ease-enter",
+        "value": "cubic-bezier(0, 0, 0.2, 1)",
+        "purpose": "Drawer and dialog entrance. Duration 200–250ms."
+      }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px", "purpose": "Breakpoint between mobile (Drawer) and desktop (Dialog) modal mode." },
+      { "name": "lg", "value": "1024px", "purpose": "Primary layout breakpoint for sidebar and grid expansions." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The default action button. Dark fill, used for all primary confirmation actions except loyalty/cashback CTAs.",
+      "html": "<button class=\"ds-btn-primary\">CRIAR</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; background-color: #171717; color: #fafafa; font-family: Raleway, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: normal; border: none; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); cursor: pointer; white-space: nowrap; transition: background-color 0.15s cubic-bezier(0.4,0,0.2,1), opacity 0.15s; } .ds-btn-primary:hover { background-color: #2a2a2a; } .ds-btn-primary:focus-visible { outline: 2px solid #0a0a0a; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
+    },
+    {
+      "name": "Brand Button",
+      "kind": "button",
+      "refersTo": "button-brand",
+      "description": "Cashback, campaign, and loyalty CTAs. Amber fill — used at most once per viewport.",
+      "html": "<button class=\"ds-btn-brand\">RESGATAR CASHBACK</button>",
+      "css": ".ds-btn-brand { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; background-color: #ffb900; color: #000000; font-family: Raleway, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; border: none; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); cursor: pointer; white-space: nowrap; transition: background-color 0.15s cubic-bezier(0.4,0,0.2,1); } .ds-btn-brand:hover { background-color: #e6a700; } .ds-btn-brand:focus-visible { outline: 2px solid #ffb900; outline-offset: 2px; } .ds-btn-brand:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Cancel and secondary actions. Transparent fill with a Borda stroke.",
+      "html": "<button class=\"ds-btn-outline\">CANCELAR</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; background-color: transparent; color: #0a0a0a; font-family: Raleway, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; border: 1px solid #e5e5e5; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; white-space: nowrap; transition: background-color 0.15s cubic-bezier(0.4,0,0.2,1), border-color 0.15s; } .ds-btn-outline:hover { background-color: #f5f5f5; } .ds-btn-outline:focus-visible { outline: 2px solid #0a0a0a; outline-offset: 2px; } .ds-btn-outline:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard text field. Transparent fill, Borda stroke, tight focus ring.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Buscar cliente...\" />",
+      "css": ".ds-input { display: flex; height: 36px; width: 100%; padding: 4px 12px; background-color: transparent; color: #0a0a0a; font-family: Raleway, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 400; border: 1px solid #e5e5e5; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box; } .ds-input::placeholder { color: #737373; } .ds-input:focus { outline: none; border-color: #171717; box-shadow: 0 0 0 1px #171717; } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Section Wrapper",
+      "kind": "card",
+      "refersTo": "section-wrapper",
+      "description": "The dominant content grouping on all dashboard pages. Uppercase label header, icon-optional, children below.",
+      "html": "<div class=\"ds-section-wrapper\"><div class=\"ds-section-header\"><svg class=\"ds-section-icon\" xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><line x1=\"8\" y1=\"21\" x2=\"16\" y2=\"21\"/><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"21\"/></svg><span class=\"ds-section-title\">ESTATÍSTICAS GERAIS</span></div><div class=\"ds-section-content\"><p style=\"color:#737373;font-size:14px;margin:0;\">Conteúdo da seção.</p></div></div>",
+      "css": ".ds-section-wrapper { display: flex; flex-direction: column; gap: 24px; width: 100%; background-color: #ffffff; border: 1px solid rgba(23,23,23,0.2); border-radius: 12px; padding: 16px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); box-sizing: border-box; } .ds-section-header { display: flex; align-items: center; gap: 4px; min-height: 32px; } .ds-section-icon { color: #0a0a0a; flex-shrink: 0; } .ds-section-title { font-family: Raleway, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #0a0a0a; } .ds-section-content { display: flex; flex-direction: column; gap: 12px; width: 100%; }"
+    },
+    {
+      "name": "Badge (Default)",
+      "kind": "chip",
+      "refersTo": "button-primary",
+      "description": "Status labels and active filter pills. Dark fill, compact.",
+      "html": "<span class=\"ds-badge-default\">Campeão</span><span class=\"ds-badge-secondary\">Inativo</span><span class=\"ds-badge-brand\">R$25,00</span>",
+      "css": ".ds-badge-default, .ds-badge-secondary, .ds-badge-brand { display: inline-flex; align-items: center; border-radius: 6px; padding: 2px 10px; font-family: Raleway, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; white-space: nowrap; transition: background-color 0.15s; } .ds-badge-default { background-color: #171717; color: #fafafa; border: 1px solid transparent; } .ds-badge-secondary { background-color: #f5f5f5; color: #0a0a0a; border: 1px solid transparent; } .ds-badge-brand { background-color: #ffb900; color: #000000; border: 1px solid transparent; }"
+    },
+    {
+      "name": "Tab Bar",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Statistics / Banco de Dados tab switcher. Superfície background, raised-white active state.",
+      "html": "<div class=\"ds-tabs-list\"><button class=\"ds-tab-trigger ds-tab-active\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"22 12 18 12 15 21 9 3 6 12 2 12\"/></svg>Estatísticas</button><button class=\"ds-tab-trigger\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg>Banco de Dados</button></div>",
+      "css": ".ds-tabs-list { display: inline-flex; align-items: center; gap: 6px; background-color: #f5f5f5; border-radius: 8px; padding: 4px 8px; } .ds-tab-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 8px; background-color: transparent; color: #737373; font-family: Raleway, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.15s, color 0.15s, box-shadow 0.15s; } .ds-tab-trigger:hover { color: #0a0a0a; background-color: rgba(255,255,255,0.7); } .ds-tab-trigger.ds-tab-active { background-color: #ffffff; color: #0a0a0a; box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Inteligência de Balcão",
+    "overview": "The system speaks to a shop owner or sales manager at their counter — not a startup founder in a coffee shop. Every screen is a working instrument: dense, fast, unforgiving of wasted space, because the person using it is checking cashback balances, reading campaign conversion funnels, or scanning 800 customers to find the ones going dormant. Design earns attention through clarity, not decoration.\n\nRestraint is structural, not aesthetic. The near-black / pure-white palette with a single amber accent mirrors the logic of a physical ledger: ink on paper, one highlight for what matters most. Color is information. The amber is scarce and deliberate — reserved for brand moments, calls to action, and cashback figures the client should notice. Everything else is structure.\n\nThis system explicitly rejects the generic SaaS dashboard aesthetic. It rejects deep-navy-and-gold fintech gradients. It rejects glassmorphism and surface blur used decoratively. It is built for the repetition of daily use by a retail team — not for the impression of a first product demo.",
+    "keyCharacteristics": [
+      "Single geometric sans (Raleway), constrained to two dominant sizes (12px label, 14px body)",
+      "Near-black / pure white / amber as the complete palette; no decorative color outside data viz",
+      "Hybrid elevation: tonal surface layering for content, minimal shadows only on raised/interactive components",
+      "Information density over whitespace; rhythm through consistent spacing units not padding uniformity",
+      "Mobile: sheet-and-drawer pattern (ResponsiveMenu) collapses all editing to bottom sheets"
+    ],
+    "rules": [
+      { "name": "The Amber Scarcity Rule", "body": "Ouro Comercial appears on at most one primary action or highlighted value per viewport. When every button is amber, none of them matters.", "section": "colors" },
+      { "name": "The Palette Closure Rule", "body": "The ten tokens are the complete color vocabulary. Introducing a new UI color requires changing DESIGN.md. No ad-hoc Tailwind color classes outside this set.", "section": "colors" },
+      { "name": "The Uppercase Register Rule", "body": "Section titles, tab labels, sidebar group headers, and stat labels are always uppercase at 12px/bold with letter-spacing 0.05em. Sentence-case headings belong in modal titles only.", "section": "typography" },
+      { "name": "The Two-Size Rule", "body": "Operational views use exactly two type sizes: 12px (label) and 14px (body/title). Micro (11px) is allowed only for genuine secondary metadata.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadows appear only on interactive components or to separate floating layers from their context. Never apply shadow decoratively to static containers.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use text-xs font-bold tracking-tight uppercase for every section title, group header, and stat field label",
+      "Do reserve Ouro Comercial (#ffb900) for at most one primary CTA or highlighted value per viewport",
+      "Do use SectionWrapper as the primary page-level content grouping primitive",
+      "Do use the outline variant for secondary/cancel actions and ghost for icon-only toolbar buttons",
+      "Do route all create and edit interactions through ResponsiveMenu (Dialog on desktop, Drawer on mobile)",
+      "Do size buttons at h-9 (36px) default; drop to h-7 xs only inside dense table rows",
+      "Do keep chart colors strictly within the five defined data-viz tokens"
+    ],
+    "donts": [
+      "Don't use gradient text (background-clip: text with a gradient fill)",
+      "Don't use glassmorphism (backdrop-filter blur) on any component",
+      "Don't use border-left greater than 1px as a colored accent stripe on cards, list items, or alerts",
+      "Don't dress up the Stat Unit Card with gradient backgrounds or colored header strips",
+      "Don't nest cards — no Card inside Card, no SectionWrapper inside SectionWrapper",
+      "Don't apply shadow-md or shadow-lg to static content containers",
+      "Don't use Ouro Comercial as a large surface background",
+      "Don't introduce Tailwind color utilities outside the ten defined palette tokens without updating DESIGN.md",
+      "Don't use the deep-navy-and-gold fintech aesthetic or any SaaS marketing dashboard look",
+      "Don't pursue a 'modern' or 'premium' feel through visual ornament — authority comes from data correctness and speed"
+    ]
+  }
+}

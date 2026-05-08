@@ -5,6 +5,7 @@ import CampaignsBySegmentation from "@/components/Campaigns/CampaignsBySegmentat
 import CampaignsFunnel from "@/components/Campaigns/CampaignsFunnel";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import CampaignsRanking from "@/components/Campaigns/CampaignsRanking";
+import { CampaignStatsConversionsBlock } from "@/components/Campaigns/CampaignStatsConversionsBlock";
 import ClientHoverCard from "@/components/Clients/ClientHoverCard";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
@@ -629,9 +630,7 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 				<div className="flex items-center gap-2">
 					<div className="flex items-center gap-1">
 						<BsCalendarPlus className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
-							DATA DE CRIAÇÃO: {formatDateAsLocale(interaction.dataInsercao, true)}
-						</h1>
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">DATA DE CRIAÇÃO: {formatDateAsLocale(interaction.dataInsercao, true)}</h1>
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
@@ -720,6 +719,7 @@ function CampaignsStatsView() {
 					}}
 				/>
 			</div>
+
 			{/* Primary KPIs */}
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
 				<StatUnitCard
@@ -811,6 +811,7 @@ function CampaignsStatsView() {
 					}}
 				/>
 			</div>
+			<CampaignStatsConversionsBlock startDate={filters.startDate} endDate={filters.endDate} />
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
 				<div className="w-full lg:w-1/2 h-full min-h-0">
 					<CampaignsGraphs

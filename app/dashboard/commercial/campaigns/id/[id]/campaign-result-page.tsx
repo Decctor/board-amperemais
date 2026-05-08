@@ -1,8 +1,8 @@
 "use client";
 import type { TGetCampaignStatsOutput } from "@/app/api/campaigns/stats/by-campaign/route";
-import type { TGetCampaignConversionsOutputItems } from "@/app/api/campaigns/conversions/route";
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import type { TGetConversionQualityOutput } from "@/app/api/campaigns/stats/conversion-quality/route";
+import { CampaignConversionCard, CONVERSION_TYPE_CONFIG } from "@/components/Campaigns/CampaignConversionCard";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import ClientHoverCard from "@/components/Clients/ClientHoverCard";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
@@ -85,14 +85,6 @@ const ATTRIBUTION_MODEL_LABELS: Record<string, string> = {
 	LAST_TOUCH: "Último Toque",
 	FIRST_TOUCH: "Primeiro Toque",
 	LINEAR: "Linear",
-};
-
-const CONVERSION_TYPE_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
-	AQUISICAO: { label: "Aquisição", bgClass: "bg-green-500", textClass: "text-green-600 dark:text-green-400" },
-	REATIVACAO: { label: "Reativação", bgClass: "bg-blue-500", textClass: "text-blue-600 dark:text-blue-400" },
-	ACELERACAO: { label: "Aceleração", bgClass: "bg-yellow-500", textClass: "text-yellow-600 dark:text-yellow-400" },
-	REGULAR: { label: "Regular", bgClass: "bg-gray-400", textClass: "text-gray-600 dark:text-gray-400" },
-	ATRASADA: { label: "Atrasada", bgClass: "bg-red-500", textClass: "text-red-600 dark:text-red-400" },
 };
 
 const INTERACTION_SENT_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
@@ -610,98 +602,13 @@ function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: st
 					{isSuccess ? (
 						<div className="w-full flex flex-col gap-1.5">
 							{items.length > 0 ? (
-								items.map((conversion) => <ConversionCard key={conversion.id} conversion={conversion} />)
+								items.map((conversion) => <CampaignConversionCard key={conversion.id} conversion={conversion} />)
 							) : (
 								<p className="w-full flex items-center justify-center text-sm text-muted-foreground py-4">Nenhuma conversão encontrada para este período.</p>
 							)}
 						</div>
 					) : null}
 				</div>
-			</div>
-		</div>
-	);
-}
-
-function ConversionCard({ conversion }: { conversion: TGetCampaignConversionsOutputItems[number] }) {
-	const config = CONVERSION_TYPE_CONFIG[conversion.tipoConversao ?? ""] ?? {
-		label: conversion.tipoConversao ?? "Desconhecido",
-		bgClass: "bg-gray-400",
-		textClass: "text-gray-600",
-	};
-
-	const tempoHoras = conversion.tempoParaConversaoMinutos ? Math.round((conversion.tempoParaConversaoMinutos / 60) * 10) / 10 : null;
-
-	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs">
-			<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-				<div className="flex items-center gap-3 flex-wrap">
-					<div className="flex items-center gap-1.5 bg-secondary rounded-xl px-3 py-1.5">
-						<UserRound className="w-4 h-4 min-w-4 min-h-4" />
-						<p className="text-[0.65rem] font-medium tracking-tight uppercase">{conversion.cliente?.nome ?? "Cliente não encontrado"}</p>
-					</div>
-					<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-white text-[0.65rem] font-bold uppercase", config.bgClass)}>
-						{config.label}
-					</div>
-				</div>
-				<div className="flex items-center gap-2 text-[0.65rem] font-medium flex-wrap">
-					{conversion.dataConversao && (
-						<div className="flex items-center gap-1 text-muted-foreground">
-							<Calendar className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-							{formatDateAsLocale(conversion.dataConversao)}
-						</div>
-					)}
-					{tempoHoras !== null && (
-						<div className="flex items-center gap-1 text-muted-foreground">
-							<Clock className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-							{tempoHoras} h após envio
-						</div>
-					)}
-				</div>
-			</div>
-			<div className="w-full flex items-center gap-3 flex-wrap">
-				<div className="flex flex-col gap-0.5">
-					<p className="text-[0.6rem] uppercase text-muted-foreground font-medium">Valor da Venda</p>
-					<p className="text-sm font-bold">{formatToMoney(conversion.vendaValor ?? 0)}</p>
-				</div>
-				<div className="w-px h-8 bg-border" />
-				<div className="flex flex-col gap-0.5">
-					<p className="text-[0.6rem] uppercase text-muted-foreground font-medium">Receita Atribuída</p>
-					<p className="text-sm font-bold">{formatToMoney(conversion.atribuicaoReceita ?? 0)}</p>
-				</div>
-				{conversion.deltaMonetarioPercentual !== null && conversion.deltaMonetarioPercentual !== undefined && (
-					<>
-						<div className="w-px h-8 bg-border" />
-						<div className="flex flex-col gap-0.5">
-							<p className="text-[0.6rem] uppercase text-muted-foreground font-medium">Δ Ticket</p>
-							<p
-								className={cn("text-sm font-bold", {
-									"text-green-600 dark:text-green-400": conversion.deltaMonetarioPercentual > 0,
-									"text-red-600 dark:text-red-400": conversion.deltaMonetarioPercentual < 0,
-								})}
-							>
-								{conversion.deltaMonetarioPercentual > 0 ? "+" : ""}
-								{formatDecimalPlaces(conversion.deltaMonetarioPercentual)}%
-							</p>
-						</div>
-					</>
-				)}
-				{conversion.deltaFrequencia !== null && conversion.deltaFrequencia !== undefined && (
-					<>
-						<div className="w-px h-8 bg-border" />
-						<div className="flex flex-col gap-0.5">
-							<p className="text-[0.6rem] uppercase text-muted-foreground font-medium">Δ Ciclo</p>
-							<p
-								className={cn("text-sm font-bold", {
-									"text-green-600 dark:text-green-400": conversion.deltaFrequencia > 0,
-									"text-red-600 dark:text-red-400": conversion.deltaFrequencia < 0,
-								})}
-							>
-								{conversion.deltaFrequencia > 0 ? "+" : ""}
-								{conversion.deltaFrequencia} dias
-							</p>
-						</div>
-					</>
-				)}
 			</div>
 		</div>
 	);

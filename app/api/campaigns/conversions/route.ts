@@ -3,9 +3,9 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { db } from "@/services/drizzle";
-import { campaignConversions, campaigns, clients } from "@/services/drizzle/schema";
+import { campaignConversions, clients } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, asc, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -113,12 +113,16 @@ async function getCampaignConversions({
 			dataConversao: true,
 			dataInteracao: true,
 			deltaFrequencia: true,
+			deltaMonetarioAbsoluto: true,
 			deltaMonetarioPercentual: true,
 			diasDesdeUltimaCompra: true,
 		},
 		with: {
 			cliente: {
 				columns: { id: true, nome: true },
+			},
+			campanha: {
+				columns: { id: true, titulo: true },
 			},
 		},
 	});
