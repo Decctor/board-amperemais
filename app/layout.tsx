@@ -10,13 +10,19 @@ const raleway = Raleway({
 	subsets: ["latin"],
 	variable: "--font-raleway",
 });
+const siteTitle = "CRM de Fidelização para Lojas | RecompraCRM";
+const siteMetaDescription =
+	"RecompraCRM é o sistema de fidelização com cashback automático para lojas físicas. Faça seus clientes voltarem com WhatsApp, CRM e relatórios inteligentes. Teste grátis!";
+const siteOgDescription =
+	"Sistema de fidelização com cashback automático para lojas físicas. Seus clientes voltam com RecompraCRM — CRM simples, WhatsApp integrado e relatórios em tempo real.";
+
 export const metadata: Metadata = {
 	metadataBase: new URL("https://recompracrm.com.br"),
 	title: {
-		default: "RecompraCRM",
+		default: siteTitle,
 		template: "%s | RecompraCRM",
 	},
-	description: "Plataforma de otimização de vendas e fidelização de clientes.",
+	description: siteMetaDescription,
 	icons: [{ rel: "icon", url: "/icon.png" }],
 	robots: { index: true, follow: true },
 	openGraph: {
@@ -24,14 +30,14 @@ export const metadata: Metadata = {
 		siteName: "RecompraCRM",
 		locale: "pt_BR",
 		url: "https://recompracrm.com.br",
-		title: "RecompraCRM",
-		description: "Plataforma de otimização de vendas e fidelização de clientes.",
+		title: siteTitle,
+		description: siteOgDescription,
 		images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "RecompraCRM" }],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "RecompraCRM",
-		description: "Plataforma de otimização de vendas e fidelização de clientes.",
+		title: siteTitle,
+		description: siteOgDescription,
 		images: ["/og-image.png"],
 	},
 };
