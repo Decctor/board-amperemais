@@ -39,11 +39,12 @@ export default function FooterV2() {
 						</div>
 
 						<h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight tracking-tight">
-							Junte-se às lojas que estão <span className="text-[#FFB900]">escalando o faturamento</span>
+							Sua loja já tem clientes. <br />
+							<span className="text-[#FFB900]">Agora, faça eles voltarem.</span>
 						</h2>
 
 						<p className="text-lg text-white/75 max-w-2xl mx-auto mb-10 leading-relaxed">
-							Retendo clientes e aumentando a recompra sem aumentar o custo de aquisição. Configure hoje e veja os primeiros resultados em menos de 30 dias.
+							Faça seus clientes voltarem e aumente o seu faturamento. <br /> Configure hoje e veja os primeiros resultados em menos de 30 dias.
 						</p>
 
 						{/* CTAs */}
@@ -89,10 +90,10 @@ export default function FooterV2() {
 
 						{/* Trust row */}
 						<div className="flex flex-wrap items-center justify-center gap-6 text-sm text-white/60 font-medium">
-							<span>✓ 15 dias grátis</span>
-							<span>✓ Sem cartão necessário</span>
-							<span>✓ Cancele quando quiser</span>
-							<span>✓ Suporte incluso</span>
+							<span className="tracking-tight">✓ Teste grátis de 15 dias</span>
+							<span className="tracking-tight">✓ Sem cartão de crédito necessário</span>
+							<span className="tracking-tight">✓ Cancele quando quiser</span>
+							<span className="tracking-tight">✓ Suporte incluso</span>
 						</div>
 					</motion.div>
 				</div>

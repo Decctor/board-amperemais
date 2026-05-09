@@ -2,7 +2,7 @@
 
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { cn } from "@/lib/utils";
-import LogoCompleteHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL TEXT-BLACK.svg";
+import LogoCompleteHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
@@ -11,10 +11,10 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const ANCHOR_LINKS = [
+	{ label: "Como funciona", href: "#como-funciona" },
+	{ label: "Resultados", href: "#resultado" },
 	{ label: "Funcionalidades", href: "#funcionalidades" },
-	{ label: "Plataforma", href: "#plataforma" },
-	{ label: "Campanhas", href: "#campanhas" },
-	{ label: "Planos", href: "#planos" },
+	{ label: "Preço", href: "#planos" },
 ];
 
 export default function NavbarV2() {
@@ -50,12 +50,7 @@ export default function NavbarV2() {
 	);
 
 	return (
-		<header
-			className={cn(
-				"fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-				scrolled ? "bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm" : "bg-transparent",
-			)}
-		>
+		<header className={cn("fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-brand-secondary rounded-bl-lg rounded-br-lg")}>
 			<div className="container mx-auto max-w-7xl px-6 lg:px-8 h-16 flex items-center justify-between">
 				<Link href="/" className="relative w-36 h-10">
 					<Image src={LogoCompleteHorizontalColorful} alt="RecompraCRM" fill className="object-contain" priority />
@@ -67,7 +62,7 @@ export default function NavbarV2() {
 							key={link.href}
 							href={isHomePage ? link.href : `/${link.href}`}
 							onClick={(e) => handleAnchorClick(e, link.href, false)}
-							className="text-sm font-medium text-slate-600 hover:text-[#24549C] transition-colors"
+							className="text-sm font-medium text-brand-secondary-foreground transition-colors"
 						>
 							{link.label}
 						</a>
@@ -78,8 +73,8 @@ export default function NavbarV2() {
 				</nav>
 
 				<div className="hidden md:flex items-center gap-4">
-					<Link href="/auth/signin" className="text-sm font-medium text-slate-600 hover:text-[#24549C] transition-colors">
-						Entrar
+					<Link href="/auth/signin" className="text-sm bg-brand text-brand-foreground px-4 py-2 rounded-lg font-bold transition-colors hover:bg-brand/90">
+						ENTRAR
 					</Link>
 					<a
 						href="https://wa.me/553499480791?text=Olá, gostaria de agendar uma demonstração."
@@ -94,9 +89,9 @@ export default function NavbarV2() {
 								},
 							})
 						}
-						className="bg-[#24549C] hover:bg-[#1e4682] text-white text-sm font-bold px-6 py-2.5 rounded-full shadow-lg shadow-blue-900/15 hover:shadow-blue-900/25 hover:-translate-y-0.5 transition-all duration-300"
+						className="bg-brand-secondary-foreground hover:bg-brand/90 hover:text-brand-foreground text-sm font-bold px-4 py-2 rounded-lg shadow-lg shadow-brand/15 hover:shadow-brand/25 hover:-translate-y-0.5 transition-all duration-300"
 					>
-						Agendar Demo
+						AGENDAR DEMO
 					</a>
 				</div>
 
