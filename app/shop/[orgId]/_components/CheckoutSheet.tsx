@@ -57,10 +57,7 @@ export default function CheckoutSheet() {
 		orderState.setCheckoutStep("CARRINHO");
 	};
 
-	const canSkipCashback =
-		!catalog.cashbackProgram ||
-		!catalog.cashbackProgram.modalidadeDescontosPermitida ||
-		!orderState.state.customer.id;
+	const canSkipCashback = !catalog.cashbackProgram || !catalog.cashbackProgram.modalidadeDescontosPermitida || !orderState.state.customer.id;
 
 	const handleNextFromDelivery = () => {
 		if (canSkipCashback) {
@@ -72,7 +69,7 @@ export default function CheckoutSheet() {
 
 	return (
 		<Drawer open={isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
-			<DrawerContent className="max-h-[90vh]">
+			<DrawerContent className="flex flex-col min-h-[95vh]">
 				<DrawerHeader className="text-left flex items-center gap-3">
 					<Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={handleBack}>
 						<ArrowLeft className="w-4 h-4" />
@@ -83,21 +80,14 @@ export default function CheckoutSheet() {
 					</div>
 				</DrawerHeader>
 
-				<div className="flex-1 overflow-auto px-4 pb-4">
-					{checkoutStep === "CLIENTE" && (
-						<CustomerIdentityStep onNext={() => orderState.nextStep()} />
-					)}
+				<div className="flex-1 overflow-auto px-4 pb-4 py-4">
+					{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={() => orderState.nextStep()} />}
 
 					{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}
 
 					{checkoutStep === "CASHBACK" && <CashbackStep onNext={() => orderState.nextStep()} />}
 
-					{checkoutStep === "REVISAO" && (
-						<OrderReviewStep
-							onSubmit={() => submitOrder()}
-							isSubmitting={isPending}
-						/>
-					)}
+					{checkoutStep === "REVISAO" && <OrderReviewStep onSubmit={() => submitOrder()} isSubmitting={isPending} />}
 				</div>
 
 				{isPending && (

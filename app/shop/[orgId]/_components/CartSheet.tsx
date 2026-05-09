@@ -14,50 +14,49 @@ export default function CartSheet() {
 	const { items } = orderState.state.cart;
 
 	const cartItemsWithDetails = useMemo(() => {
-		return items.map((item) => {
-			const product = catalog.products.find((p) => p.id === item.produtoId);
-			if (!product) return null;
+		return items
+			.map((item) => {
+				const product = catalog.products.find((p) => p.id === item.produtoId);
+				if (!product) return null;
 
-			const variant = item.produtoVarianteId
-				? product.variantes.find((v) => v.id === item.produtoVarianteId)
-				: null;
+				const variant = item.produtoVarianteId ? product.variantes.find((v) => v.id === item.produtoVarianteId) : null;
 
-			let unitPrice = variant?.precoVenda ?? product.precoVenda ?? 0;
+				let unitPrice = variant?.precoVenda ?? product.precoVenda ?? 0;
 
-			const allReferences = [...product.addOnsReferencias, ...(variant?.addOnsReferencias ?? [])];
-			const modifiersDetails = item.modificadores.map((mod) => {
-				for (const ref of allReferences) {
-					const option = ref.grupo.opcoes.find((o) => o.id === mod.opcaoId);
-					if (option) {
-						return {
-							nome: option.nome,
-							quantidade: mod.quantidade,
-							precoDelta: option.precoDelta,
-						};
-					}
-				}
-				return null;
-			}).filter(Boolean);
+				const allReferences = [...product.addOnsReferencias, ...(variant?.addOnsReferencias ?? [])];
+				const modifiersDetails = item.modificadores
+					.map((mod) => {
+						for (const ref of allReferences) {
+							const option = ref.grupo.opcoes.find((o) => o.id === mod.opcaoId);
+							if (option) {
+								return {
+									nome: option.nome,
+									quantidade: mod.quantidade,
+									precoDelta: option.precoDelta,
+								};
+							}
+						}
+						return null;
+					})
+					.filter(Boolean);
 
-			const modifiersPrice = modifiersDetails.reduce(
-				(sum, mod) => sum + (mod?.precoDelta ?? 0) * (mod?.quantidade ?? 1),
-				0
-			);
+				const modifiersPrice = modifiersDetails.reduce((sum, mod) => sum + (mod?.precoDelta ?? 0) * (mod?.quantidade ?? 1), 0);
 
-			const lineTotal = (unitPrice + modifiersPrice) * item.quantidade;
+				const lineTotal = (unitPrice + modifiersPrice) * item.quantidade;
 
-			return {
-				...item,
-				product,
-				variant,
-				unitPrice,
-				modifiersPrice,
-				modifiersDetails,
-				lineTotal,
-				displayName: variant ? `${product.descricao} - ${variant.nome}` : product.descricao,
-				imageUrl: variant?.imagemCapaUrl ?? product.imagemCapaUrl,
-			};
-		}).filter(Boolean);
+				return {
+					...item,
+					product,
+					variant,
+					unitPrice,
+					modifiersPrice,
+					modifiersDetails,
+					lineTotal,
+					displayName: variant ? `${product.descricao} - ${variant.nome}` : product.descricao,
+					imageUrl: variant?.imagemCapaUrl ?? product.imagemCapaUrl,
+				};
+			})
+			.filter(Boolean);
 	}, [items, catalog.products]);
 
 	const subtotal = cartItemsWithDetails.reduce((sum, item) => sum + (item?.lineTotal ?? 0), 0);
@@ -71,15 +70,13 @@ export default function CartSheet() {
 
 	return (
 		<Drawer open={isCartOpen} onOpenChange={setIsCartOpen}>
-			<DrawerContent className="max-h-[90vh]">
+			<DrawerContent className="flex flex-col min-h-[95vh]">
 				<DrawerHeader className="text-left">
 					<DrawerTitle className="text-lg font-black flex items-center gap-2">
 						<ShoppingCart className="w-5 h-5" />
 						Carrinho
 					</DrawerTitle>
-					<DrawerDescription>
-						{itemCount === 0 ? "Seu carrinho esta vazio" : `${itemCount} ${itemCount === 1 ? "item" : "itens"}`}
-					</DrawerDescription>
+					<DrawerDescription>{itemCount === 0 ? "Seu carrinho esta vazio" : `${itemCount} ${itemCount === 1 ? "item" : "itens"}`}</DrawerDescription>
 				</DrawerHeader>
 
 				{itemCount === 0 ? (
@@ -99,24 +96,14 @@ export default function CartSheet() {
 								{cartItemsWithDetails.map((item) => {
 									if (!item) return null;
 									return (
-										<div
-											key={item.tempId}
-											className="flex gap-3 p-3 rounded-xl border bg-card"
-										>
+										<div key={item.tempId} className="flex gap-3 p-3 rounded-xl border bg-card">
 											{item.imageUrl ? (
 												<div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-													<Image
-														src={item.imageUrl}
-														alt={item.displayName}
-														fill
-														className="object-cover"
-													/>
+													<Image src={item.imageUrl} alt={item.displayName} fill className="object-cover" />
 												</div>
 											) : (
 												<div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-													<span className="text-xl font-black text-muted-foreground/50">
-														{item.displayName.charAt(0).toUpperCase()}
-													</span>
+													<span className="text-xl font-black text-muted-foreground/50">{item.displayName.charAt(0).toUpperCase()}</span>
 												</div>
 											)}
 
@@ -125,9 +112,7 @@ export default function CartSheet() {
 
 												{item.modifiersDetails.length > 0 && (
 													<p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-														{item.modifiersDetails
-															.map((m) => (m?.quantidade ?? 1) > 1 ? `${m?.quantidade}x ${m?.nome}` : m?.nome)
-															.join(", ")}
+														{item.modifiersDetails.map((m) => ((m?.quantidade ?? 1) > 1 ? `${m?.quantidade}x ${m?.nome}` : m?.nome)).join(", ")}
 													</p>
 												)}
 
@@ -145,11 +130,7 @@ export default function CartSheet() {
 																}
 															}}
 														>
-															{item.quantidade <= 1 ? (
-																<Trash2 className="w-3.5 h-3.5 text-red-500" />
-															) : (
-																<Minus className="w-3.5 h-3.5" />
-															)}
+															{item.quantidade <= 1 ? <Trash2 className="w-3.5 h-3.5 text-red-500" /> : <Minus className="w-3.5 h-3.5" />}
 														</Button>
 														<span className="w-6 text-center font-bold text-sm">{item.quantidade}</span>
 														<Button

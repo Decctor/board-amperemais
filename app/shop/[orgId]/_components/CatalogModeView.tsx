@@ -50,6 +50,7 @@ export default function CatalogModeView() {
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 						<Input
+							id="shop-catalog-search-input"
 							placeholder="Buscar produtos..."
 							value={searchValue}
 							onChange={(e) => setSearchValue(e.target.value)}

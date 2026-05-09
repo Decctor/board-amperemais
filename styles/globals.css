@@ -85,6 +85,9 @@
 	--color-sidebar-ring: hsl(var(--sidebar-ring));
 	--color-brand: #ffb900;
 	--color-brand-foreground: #000000;
+	/* Must exist in @theme so bg-brand-secondary / text-brand-secondary-foreground are generated; OrgColorsProvider overwrites --color-brand-secondary* on :root */
+	--color-brand-secondary: #24549c;
+	--color-brand-secondary-foreground: #ffffff;
 }
 
 /*

@@ -51,10 +51,10 @@ export default function CartFloatingButton() {
 				className="w-full h-14 rounded-2xl shadow-lg gap-3 text-base font-bold"
 				onClick={() => setIsCartOpen(true)}
 			>
-				<div className="relative">
-					<ShoppingCart className="w-5 h-5" />
-					<span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-background text-primary text-xs font-black flex items-center justify-center">
-						{itemCount}
+				<div className="relative shrink-0">
+					<ShoppingCart className="h-5 w-5" />
+					<span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-background px-1 text-[10px] font-semibold tabular-nums leading-none text-primary ring-1 ring-primary/20">
+						{itemCount > 99 ? "99+" : itemCount}
 					</span>
 				</div>
 				<span className="flex-1 text-left">Ver carrinho</span>
