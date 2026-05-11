@@ -14,10 +14,10 @@ import OrderReviewStep from "./checkout/OrderReviewStep";
 import { useShop } from "./ShopProvider";
 
 const STEP_TITLES: Record<string, string> = {
-	CLIENTE: "Seus dados",
-	ENTREGA: "Forma de entrega",
-	CASHBACK: "Usar cashback",
-	REVISAO: "Revisar pedido",
+	CLIENTE: "SEUS DADOS",
+	ENTREGA: "FORMA DE ENTREGA",
+	CASHBACK: "USAR CASHBACK",
+	REVISAO: "REVISAR PEDIDO",
 };
 
 export default function CheckoutSheet() {
@@ -69,18 +69,18 @@ export default function CheckoutSheet() {
 
 	return (
 		<Drawer open={isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
-			<DrawerContent className="flex flex-col min-h-[95vh]">
+			<DrawerContent className="flex flex-col h-fit max-h-[90vh]">
 				<DrawerHeader className="text-left flex items-center gap-3">
 					<Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={handleBack}>
 						<ArrowLeft className="w-4 h-4" />
 					</Button>
 					<div className="flex-1">
 						<DrawerTitle className="text-lg font-black">{STEP_TITLES[checkoutStep]}</DrawerTitle>
-						<DrawerDescription>Finalizar pedido</DrawerDescription>
+						<DrawerDescription>FINALIZAR PEDIDO</DrawerDescription>
 					</div>
 				</DrawerHeader>
 
-				<div className="flex-1 overflow-auto px-4 pb-4 py-4">
+				<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-6 lg:px-0">
 					{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={() => orderState.nextStep()} />}
 
 					{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}

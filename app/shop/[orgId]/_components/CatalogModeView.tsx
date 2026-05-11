@@ -24,10 +24,7 @@ export default function CatalogModeView() {
 		if (searchValue.trim()) {
 			const search = searchValue.toLowerCase().trim();
 			filtered = filtered.filter(
-				(p) =>
-					p.descricao.toLowerCase().includes(search) ||
-					p.codigo?.toLowerCase().includes(search) ||
-					p.grupo?.toLowerCase().includes(search)
+				(p) => p.descricao.toLowerCase().includes(search) || p.codigo?.toLowerCase().includes(search) || p.grupo?.toLowerCase().includes(search),
 			);
 		}
 
@@ -73,7 +70,7 @@ export default function CatalogModeView() {
 					<ScrollArea className="w-full">
 						<div className="flex gap-2 px-4 pb-3">
 							<Button
-								variant={selectedGroup === null ? "default" : "outline"}
+								variant={selectedGroup === null ? "brand" : "outline"}
 								size="sm"
 								className="rounded-full flex-shrink-0 h-8 text-xs font-semibold"
 								onClick={() => setSelectedGroup(null)}
@@ -83,12 +80,9 @@ export default function CatalogModeView() {
 							{groups.map((group) => (
 								<Button
 									key={group}
-									variant={selectedGroup === group ? "default" : "outline"}
+									variant={selectedGroup === group ? "brand" : "outline"}
 									size="sm"
-									className={cn(
-										"rounded-full flex-shrink-0 h-8 text-xs font-semibold",
-										selectedGroup === group && "bg-primary text-primary-foreground"
-									)}
+									className={cn("rounded-full flex-shrink-0 h-8 text-xs font-semibold", selectedGroup === group && "bg-brand text-brand-foreground")}
 									onClick={() => setSelectedGroup(group)}
 								>
 									{group}
@@ -102,24 +96,18 @@ export default function CatalogModeView() {
 
 			{!isFiltering && (
 				<>
-					{featuredBlock && featuredBlock.produtos.length > 0 && (
-						<FeaturedSection products={featuredBlock.produtos} />
-					)}
+					{featuredBlock && featuredBlock.produtos.length > 0 && <FeaturedSection products={featuredBlock.produtos} />}
 
-					{mostOrderedBlock && mostOrderedBlock.produtos.length > 0 && (
-						<MostOrderedSection products={mostOrderedBlock.produtos} />
-					)}
+					{mostOrderedBlock && mostOrderedBlock.produtos.length > 0 && <MostOrderedSection products={mostOrderedBlock.produtos} />}
 				</>
 			)}
 
 			<section className="py-4">
 				<div className="px-4 mb-3">
-					<h2 className="font-black text-sm uppercase tracking-wide">
-						{selectedGroup || "Todos os produtos"}
-					</h2>
+					<h2 className="font-black text-sm uppercase tracking-wide">{selectedGroup || "Todos os produtos"}</h2>
 				</div>
 
-				<div className="px-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+				<div className="px-4 grid grid-cols-2 md:grid-cols-3 gap-3">
 					{filteredProducts.map((product) => (
 						<div key={product.id} className="w-full">
 							<ProductCard product={product} variant="full" />

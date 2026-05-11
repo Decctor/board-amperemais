@@ -1,6 +1,6 @@
 import type { TShopSettingsConfiguration } from "@/schemas/shop";
 import { relations } from "drizzle-orm";
-import { boolean, index, jsonb, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { shopModeEnum } from "./enums";
 import { organizations } from "./organizations";
@@ -17,6 +17,7 @@ export const shopSettings = newTable(
 			.unique(),
 		ativo: boolean("ativo").notNull().default(false),
 		modo: shopModeEnum("modo").notNull().default("CARDAPIO"),
+		linkQrCode: text("link_qr_code"),
 		configuracoes: jsonb("configuracoes").$type<TShopSettingsConfiguration>().notNull(),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 		dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),

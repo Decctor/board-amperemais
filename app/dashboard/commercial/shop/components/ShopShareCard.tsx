@@ -1,18 +1,18 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, Share } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import SectionWrapper from "@/components/ui/section-wrapper";
 
 type ShopShareCardProps = {
 	organizationId: string;
+	shopQrCode: string;
 	isActive: boolean;
 };
 
-export default function ShopShareCard({ organizationId, isActive }: ShopShareCardProps) {
+export default function ShopShareCard({ organizationId, shopQrCode, isActive }: ShopShareCardProps) {
 	const [copied, setCopied] = useState(false);
 
 	const shopUrl = typeof window !== "undefined" ? `${window.location.origin}/shop/${organizationId}` : `/shop/${organizationId}`;
@@ -33,31 +33,36 @@ export default function ShopShareCard({ organizationId, isActive }: ShopShareCar
 	};
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="text-base">Compartilhar loja</CardTitle>
-				<CardDescription>Envie o link para seus clientes</CardDescription>
-			</CardHeader>
-
-			<CardContent className="flex flex-col gap-4">
-				<div className="flex gap-2">
-					<Input value={shopUrl} readOnly className="text-sm" />
-					<Button variant="outline" size="icon" onClick={handleCopy}>
-						{copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+		<SectionWrapper title="COMPARTILHAR LOJA" icon={<Share className="w-4 h-4 min-w-4 min-h-4" />} wrapperClassName="h-full">
+			<div className="w-full flex items-center justify-center">
+				<div className="bg-white p-3 rounded-xl flex flex-col items-center shadow-inner w-64 h-64">
+					<div className="flex items-center justify-center rounded-lg overflow-hidden w-full h-full">
+						{shopQrCode ? (
+							<img src={shopQrCode} alt="QR Code" className="w-full h-full object-contain p-1" />
+						) : (
+							<p className="text-xs text-center px-2">QR Code indisponível</p>
+						)}
+					</div>
+				</div>
+			</div>
+			<div className="flex items-center justify-center gap-3">
+				<div className="w-full lg:w-1/2">
+					<Button variant="brand" className="w-full flex items-center gap-1.5" onClick={handleOpen} disabled={!isActive}>
+						<ExternalLink className="w-4 h-4" />
+						{isActive ? "ACESSAR LOJA" : "ATIVE A LOJA PARA VISUALIZAR"}
 					</Button>
 				</div>
+				<div className="w-full lg:w-1/2">
+					<Button variant="secondary" className="w-full flex items-center gap-1.5" onClick={handleCopy}>
+						<Copy className="w-4 h-4" />
+						COPIAR LINK
+					</Button>
+				</div>
+			</div>
 
-				<Button variant="outline" className="w-full gap-2" onClick={handleOpen} disabled={!isActive}>
-					<ExternalLink className="w-4 h-4" />
-					{isActive ? "Abrir loja" : "Ative a loja para visualizar"}
-				</Button>
-
-				{!isActive && (
-					<p className="text-xs text-amber-600 dark:text-amber-400 text-center">
-						Sua loja esta inativa. Ative para que os clientes possam acessar.
-					</p>
-				)}
-			</CardContent>
-		</Card>
+			{!isActive && (
+				<p className="text-xs text-amber-600 dark:text-amber-400 text-center">Sua loja esta inativa. Ative para que os clientes possam acessar.</p>
+			)}
+		</SectionWrapper>
 	);
 }

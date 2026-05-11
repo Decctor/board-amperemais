@@ -36,7 +36,6 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 			quantidade: 1,
 			modificadores: [],
 		});
-		toast.success(`${product.descricao} adicionado ao carrinho.`);
 	};
 
 	if (variant === "full") {

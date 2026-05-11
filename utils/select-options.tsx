@@ -18,6 +18,7 @@ import type {
 	TPurchaseStatusEnum,
 	TRecurrenceFrequencyEnum,
 	TShopModeEnum,
+	TShopProductsModeEnum,
 	TTimeDurationUnitsEnum,
 } from "@/schemas/enums";
 import type { TInternalLeadOriginEnum, TInternalLeadStatusCRMEnum } from "@/schemas/enums";
@@ -54,6 +55,9 @@ import {
 	Video,
 	Wallet,
 	X,
+	XCircle,
+	ListIcon,
+	CircleCheck,
 } from "lucide-react";
 
 export const InternalActivityTypeOptions: { id: number; label: string; value: TInternalLeadActivityTypeEnum; icon: React.ReactNode }[] = [
@@ -555,4 +559,9 @@ export const FinancialTransactionTypeOptions: {
 export const ShopModeOptions: { id: number; label: string; value: TShopModeEnum; icon: React.ReactNode }[] = [
 	{ id: 1, label: "CARDÁPIO", value: "CARDAPIO", icon: <ChefHat className="w-4 h-4 min-w-4 min-h-4" /> },
 	{ id: 2, label: "CATÁLOGO", value: "CATALOGO", icon: <BookOpen className="w-4 h-4 min-w-4 min-h-4" /> },
+];
+export const ShopProductsModeOptions: { id: number; label: string; value: TShopProductsModeEnum; icon: React.ReactNode }[] = [
+	{ id: 1, label: "ATIVOS", value: "ATIVOS", icon: <CircleCheck className="w-4 h-4 min-w-4 min-h-4" /> },
+	{ id: 2, label: "INCLUIR", value: "INCLUIR", icon: <ListIcon className="w-4 h-4 min-w-4 min-h-4" /> },
+	{ id: 3, label: "EXCLUIR", value: "EXCLUIR", icon: <XCircle className="w-4 h-4 min-w-4 min-h-4" /> },
 ];

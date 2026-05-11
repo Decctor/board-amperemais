@@ -701,6 +701,11 @@ export const AppRoutes = [
 		description: "Painel de acompanhamento e gestão do seu programa de cashback.",
 	},
 	{
+		path: "/dashboard/commercial/shop",
+		title: "Loja Digital",
+		description: "Painel de acompanhamento e gestão da sua loja digital.",
+	},
+	{
 		path: "/dashboard/team/sellers",
 		title: "Vendedores",
 		description: "Painel detalhadado dos seus vendedores.",

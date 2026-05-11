@@ -2,8 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatToMoney, formatToPhone } from "@/lib/formatting";
-import { CreditCard, MapPin, Package, Truck, User } from "lucide-react";
+import { formatCashbackValue, formatToMoney, formatToPhone, getCashbackUnitLabel } from "@/lib/formatting";
+import { CreditCard, MapPin, Package, Send, Truck, User } from "lucide-react";
 import { useMemo } from "react";
 import { useShop } from "../ShopProvider";
 
@@ -21,10 +21,7 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 			.map((item) => {
 				const product = catalog.products.find((p) => p.id === item.produtoId);
 				if (!product) return null;
-
-				const variant = item.produtoVarianteId
-					? product.variantes.find((v) => v.id === item.produtoVarianteId)
-					: null;
+				const variant = item.produtoVarianteId ? product.variantes.find((v) => v.id === item.produtoVarianteId) : null;
 
 				let unitPrice = variant?.precoVenda ?? product.precoVenda ?? 0;
 
@@ -45,24 +42,22 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 					})
 					.filter(Boolean);
 
-				const modifiersPrice = modifiersDetails.reduce(
-					(sum, mod) => sum + (mod?.precoDelta ?? 0) * (mod?.quantidade ?? 1),
-					0
-				);
+				const modifiersPrice = modifiersDetails.reduce((sum, mod) => sum + (mod?.precoDelta ?? 0) * (mod?.quantidade ?? 1), 0);
 
 				const lineTotal = (unitPrice + modifiersPrice) * item.quantidade;
 
 				return {
 					...item,
-					displayName: variant ? `${product.descricao} - ${variant.nome}` : product.descricao,
-					modifiersDetails,
-					lineTotal,
+					title: variant ? `${product.descricao} - ${variant.nome}` : product.descricao,
+					imagemUrl: variant?.imagemCapaUrl ?? product.imagemCapaUrl,
+					modificadores: modifiersDetails,
+					valorTotal: lineTotal,
 				};
 			})
 			.filter(Boolean);
 	}, [cart.items, catalog.products]);
 
-	const subtotal = cartItemsWithDetails.reduce((sum, item) => sum + (item?.lineTotal ?? 0), 0);
+	const subtotal = cartItemsWithDetails.reduce((sum, item) => sum + (item?.valorTotal ?? 0), 0);
 	const discount = cashback.resgateSolicitado;
 	const total = subtotal - discount;
 
@@ -94,20 +89,16 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 					<Truck className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
 				)}
 				<div className="flex-1 min-w-0">
-					<p className="font-semibold text-sm">
-						{delivery.modalidade === "RETIRADA" ? "Retirada no local" : "Entrega"}
-					</p>
-					{delivery.modalidade === "ENTREGA" && addressParts.length > 0 && (
-						<p className="text-sm text-muted-foreground">{addressParts.join(", ")}</p>
-					)}
+					<p className="font-semibold text-sm">{delivery.modalidade === "RETIRADA" ? "RETIRADA NO LOCAL" : "ENTREGA"}</p>
+					{delivery.modalidade === "ENTREGA" && addressParts.length > 0 && <p className="text-sm text-muted-foreground">{addressParts.join(", ")}</p>}
 				</div>
 			</div>
 
 			<div className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border">
 				<CreditCard className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
 				<div className="flex-1 min-w-0">
-					<p className="font-semibold text-sm">Pagamento no local</p>
-					<p className="text-sm text-muted-foreground">O pagamento sera feito na retirada ou entrega.</p>
+					<p className="font-semibold text-sm">PAGAMENTO NO LOCAL</p>
+					<p className="text-sm text-muted-foreground">O pagamento será feito na {delivery.modalidade === "RETIRADA" ? "retirada" : "entrega"}.</p>
 				</div>
 			</div>
 
@@ -122,17 +113,15 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 						<div key={item.tempId || index} className="flex justify-between items-start py-2">
 							<div className="flex-1 min-w-0">
 								<p className="font-medium text-sm">
-									{item.quantidade}x {item.displayName}
+									{item.quantidade}x {item.title}
 								</p>
-								{item.modifiersDetails.length > 0 && (
+								{item.modificadores.length > 0 && (
 									<p className="text-xs text-muted-foreground">
-										{item.modifiersDetails
-											.map((m) => ((m?.quantidade ?? 1) > 1 ? `${m?.quantidade}x ${m?.nome}` : m?.nome))
-											.join(", ")}
+										{item.modificadores.map((m) => ((m?.quantidade ?? 1) > 1 ? `${m?.quantidade}x ${m?.nome}` : m?.nome)).join(", ")}
 									</p>
 								)}
 							</div>
-							<span className="font-semibold text-sm ml-2">{formatToMoney(item.lineTotal)}</span>
+							<span className="font-semibold text-sm ml-2">{formatToMoney(item.valorTotal)}</span>
 						</div>
 					);
 				})}
@@ -148,8 +137,8 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 
 				{discount > 0 && (
 					<div className="flex justify-between items-center text-green-600">
-						<span className="text-sm">Desconto ({catalog.cashbackProgram?.terminologia || "cashback"})</span>
-						<span className="font-semibold">-{formatToMoney(discount)}</span>
+						<span className="text-sm">Desconto em Cashback</span>
+						<span className="font-semibold">-{formatCashbackValue(discount)}</span>
 					</div>
 				)}
 
@@ -159,12 +148,9 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 				</div>
 			</div>
 
-			<Button
-				className="w-full h-12 rounded-xl font-bold mt-4"
-				onClick={onSubmit}
-				disabled={isSubmitting}
-			>
-				Enviar pedido
+			<Button variant="brand" className="flex items-center gap-1.5 w-full h-12 rounded-xl font-bold mt-4" onClick={onSubmit} disabled={isSubmitting}>
+				ENVIAR PEDIDO
+				<Send className="h-4 w-4" />
 			</Button>
 		</div>
 	);

@@ -21,7 +21,13 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 	const [nome, setNome] = useState(customer.nome || "");
 	const [cpfCnpj, setCpfCnpj] = useState(customer.cpfCnpj || "");
 
-	const { data: client, isLoading: isLookingUp, isSuccess, params, updateParams } = useClientByLookup({
+	const {
+		data: client,
+		isLoading: isLookingUp,
+		isSuccess,
+		params,
+		updateParams,
+	} = useClientByLookup({
 		initialParams: {
 			orgId,
 			phone: customer.telefone ? formatToPhone(customer.telefone) : "",
@@ -69,24 +75,19 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 					animate={{ opacity: 1, scale: 1 }}
 					exit={{ opacity: 0, scale: 0.9 }}
 					transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-					className="flex w-full flex-col items-center gap-5 rounded-3xl border-2 border-green-200 bg-green-50 p-6"
+					className="flex w-full flex-col items-center gap-5 rounded-3xl border-2 border-brand/20 bg-brand/5 p-6"
 				>
-					<motion.div
-						initial={{ opacity: 0, y: 10 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.1, duration: 0.3 }}
-						className="text-center"
-					>
+					<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.3 }} className="text-center">
 						<motion.p
 							initial={{ scale: 0 }}
 							animate={{ scale: 1 }}
 							transition={{ delay: 0.15, type: "spring", stiffness: 500, damping: 25 }}
-							className="mb-1 text-xs font-bold uppercase tracking-widest text-green-600"
+							className="mb-1 text-xs font-bold uppercase tracking-widest text-brand"
 						>
-							✓ Perfil Encontrado
+							✓ PERFIL ENCONTRADO
 						</motion.p>
-						<p className="font-black text-2xl uppercase italic text-green-900">{client!.nome}</p>
-						<p className="font-bold text-green-600">{formatToPhone(client!.telefone)}</p>
+						<p className="font-black text-2xl uppercase italic text-brand">{client!.nome}</p>
+						<p className="font-bold text-brand">{formatToPhone(client!.telefone)}</p>
 					</motion.div>
 
 					<motion.div
@@ -95,16 +96,16 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 						transition={{ delay: 0.25, duration: 0.3 }}
 						className="flex w-full flex-col gap-2"
 					>
-						<Button className="h-12 w-full rounded-2xl font-black text-base" onClick={handleSubmitExisting}>
-							Continuar
+						<Button variant="brand" className="h-12 w-full rounded-2xl font-black text-base" onClick={handleSubmitExisting}>
+							CONTINUAR
 							<ArrowRight className="ml-1 h-4 w-4" />
 						</Button>
 						<Button
 							variant="ghost"
-							className="w-full text-green-700 hover:bg-green-100 hover:text-green-800"
+							className="w-full text-brand hover:bg-brand/10 hover:text-brand/80"
 							onClick={() => updateParams({ phone: "", clientId: null })}
 						>
-							Usar outro telefone
+							USAR OUTRO TELEFONE
 						</Button>
 					</motion.div>
 				</motion.div>
@@ -118,9 +119,7 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 					className="flex w-full flex-col gap-5"
 				>
 					<div className="flex flex-col gap-2">
-						<Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-							Número do WhatsApp
-						</Label>
+						<Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Número do WhatsApp</Label>
 						<div className="relative">
 							<Input
 								type="tel"
@@ -137,12 +136,7 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 							/>
 							<AnimatePresence>
 								{isLookingUp && (
-									<motion.div
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										className="absolute right-3 top-1/2 -translate-y-1/2"
-									>
+									<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute right-3 top-1/2 -translate-y-1/2">
 										<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
 									</motion.div>
 								)}
@@ -174,9 +168,7 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 								transition={{ duration: 0.3, ease: "easeOut" }}
 								className="flex flex-col gap-4 rounded-2xl border bg-muted/50 p-4"
 							>
-								<p className="text-pretty text-sm text-muted-foreground">
-									Parece que você ainda não tem um cadastro. Preencha seus dados para continuar.
-								</p>
+								<p className="text-pretty text-sm text-muted-foreground">Parece que você ainda não tem um cadastro. Preencha seus dados para continuar.</p>
 
 								<div className="flex flex-col gap-2">
 									<Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -197,8 +189,7 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 
 								<div className="flex flex-col gap-2">
 									<Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-										CPF/CNPJ{" "}
-										<span className="text-xs font-normal normal-case text-muted-foreground">(opcional)</span>
+										CPF/CNPJ <span className="text-xs font-normal normal-case text-muted-foreground">(opcional)</span>
 									</Label>
 									<Input
 										placeholder="000.000.000-00"
@@ -213,11 +204,7 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 									/>
 								</div>
 
-								<Button
-									className="h-12 w-full rounded-2xl font-black"
-									onClick={handleSubmitNew}
-									disabled={!nome.trim()}
-								>
+								<Button className="h-12 w-full rounded-2xl font-black" onClick={handleSubmitNew} disabled={!nome.trim()}>
 									Continuar
 									<ArrowRight className="ml-1 h-4 w-4" />
 								</Button>

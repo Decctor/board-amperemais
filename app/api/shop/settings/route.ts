@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { buildDefaultShopSettings, normalizeShopSettingsConfiguration } from "@/lib/shop/config";
+import { TAuthUserSession } from "@/lib/authentication/types";
+import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
 import { ShopModeEnum } from "@/schemas/enums";
 import { DEFAULT_SHOP_SETTINGS_CONFIGURATION, ShopSettingsConfigurationSchema } from "@/schemas/shop";
 import { db } from "@/services/drizzle";
@@ -41,25 +42,52 @@ async function validateShopProductIds({ orgId, productIds }: { orgId: string; pr
 	}
 }
 
-async function getShopSettingsRoute() {
-	const session = getSessionWithOrg(await getCurrentSessionUncached());
+async function getShopSettingsService({ session }: { session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
+	if (!orgId) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const settings = await db.query.shopSettings.findFirst({
 		where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
 	});
+	if (!settings) {
+		return {
+			data: null,
+			message: "Configurações da loja digital não encontradas.",
+		};
+	}
 
-	return NextResponse.json({
+	const productIds = settings.configuracoes.produtos.produtoIds;
+
+	const settingSelectedProducts =
+		productIds.length > 0
+			? await db.query.products.findMany({
+					where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, orgId), inArray(fields.id, productIds)),
+					columns: {
+						id: true,
+						descricao: true,
+						imagemCapaUrl: true,
+					},
+				})
+			: [];
+	return {
 		data: {
-			settings: settings
-				? {
-						...settings,
-						configuracoes: normalizeShopSettingsConfiguration(settings.configuracoes),
-					}
-				: buildDefaultShopSettings(orgId),
+			...settings,
+			produtos: settingSelectedProducts,
+			configuracoes: normalizeShopSettingsConfiguration(settings.configuracoes),
 		},
-		message: "Configuracoes da loja digital carregadas com sucesso.",
-	});
+		message: "Configurações da loja digital carregadas com sucesso.",
+	};
+}
+
+async function getShopSettingsRoute() {
+	const session = getSessionWithOrg(await getCurrentSessionUncached());
+	const orgId = session.membership!.organizacao.id;
+
+	if (!orgId) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const result = await getShopSettingsService({ session });
+
+	return NextResponse.json(result);
 }
 export type TGetShopSettingsOutput = Awaited<ReturnType<typeof getShopSettingsRoute>> extends NextResponse<infer T> ? T : never;
 

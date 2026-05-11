@@ -47,17 +47,14 @@ export default function CartFloatingButton() {
 
 	return (
 		<div className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:max-w-sm">
-			<Button
-				className="w-full h-14 rounded-2xl shadow-lg gap-3 text-base font-bold"
-				onClick={() => setIsCartOpen(true)}
-			>
+			<Button variant="brand" className="w-full h-14 rounded-2xl shadow-lg gap-3 text-base font-bold" onClick={() => setIsCartOpen(true)}>
 				<div className="relative shrink-0">
 					<ShoppingCart className="h-5 w-5" />
-					<span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-background px-1 text-[10px] font-semibold tabular-nums leading-none text-primary ring-1 ring-primary/20">
+					<span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand-secondary px-1 text-[10px] font-semibold tabular-nums leading-none text-brand-secondary-foreground ring-1 ring-brand-secondary/20">
 						{itemCount > 99 ? "99+" : itemCount}
 					</span>
 				</div>
-				<span className="flex-1 text-left">Ver carrinho</span>
+				<span className="flex-1 text-left">VER CARRINHO</span>
 				<span className="font-black">{formatToMoney(subtotal)}</span>
 			</Button>
 		</div>

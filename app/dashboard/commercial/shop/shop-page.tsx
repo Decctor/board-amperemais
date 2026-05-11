@@ -3,19 +3,14 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { useShopSettings } from "@/lib/queries/shop";
-import ShopOrdersQueue from "./components/ShopOrdersQueue";
-import ShopSettingsPanel from "./components/ShopSettingsPanel";
-import ShopShareCard from "./components/ShopShareCard";
 import { getErrorMessage } from "@/lib/errors";
 import SectionWrapper from "@/components/ui/section-wrapper";
-import { CircleCheck, Diamond, Pencil, Settings, Store, Truck, X, XCircle } from "lucide-react";
+import { CircleCheck, Copy, Diamond, ExternalLink, ListIcon, Pencil, Settings, ShoppingCart, Store, Truck, X, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TGetShopSettingsOutput } from "@/app/api/shop/settings/route";
-import { Badge } from "@/components/ui/badge";
 import { ShopModeOptions } from "@/utils/select-options";
-import { cn } from "@/lib/utils";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -27,6 +22,10 @@ import {
 import { updateShopSettings } from "@/lib/mutations/shop";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/utils";
+import Image from "next/image";
+import { ShopProductsModeOptions } from "@/utils/select-options";
+import { TShopProductsModeEnum } from "@/schemas/enums";
 
 type ShopPageProps = {
 	organizationId: string;
@@ -42,16 +41,40 @@ export default function ShopPage({ organizationId }: ShopPageProps) {
 	if (isLoading) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
 
+	if (!settings) return <ErrorComponent msg="Configurações da loja digital não encontradas." />;
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<ShopOrdersQueue />
-
+			<div className="w-full flex items-center justify-end">
+				<div className="flex items-center justify-center gap-3">
+					<div className="w-full lg:w-1/2">
+						<Button
+							variant="brand"
+							className="w-full flex items-center gap-1.5"
+							onClick={() => window.open(`/shop/${organizationId}`, "_blank")}
+							disabled={!settings?.ativo}
+						>
+							<ExternalLink className="w-4 h-4" />
+							{settings?.ativo ? "ACESSAR LOJA" : "ATIVE A LOJA PARA VISUALIZAR"}
+						</Button>
+					</div>
+					<div className="w-full lg:w-1/2">
+						<Button
+							variant="secondary"
+							className="w-full flex items-center gap-1.5"
+							onClick={() => copyToClipboard(`${window.location.origin}/shop/${organizationId}`)}
+						>
+							<Copy className="w-4 h-4" />
+							COPIAR LINK
+						</Button>
+					</div>
+				</div>
+			</div>
 			<div className="w-full flex items-strech gap-3 flex-col lg:flex-row">
 				<div className="w-full lg:w-1/2">
 					<ShopConfig settings={settings} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 				</div>
 				<div className="w-full lg:w-1/2">
-					<ShopShareCard organizationId={organizationId} isActive={settings?.ativo ?? false} />
+					<ShopConfigProducts settings={settings} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 				</div>
 			</div>
 		</div>
@@ -59,7 +82,7 @@ export default function ShopPage({ organizationId }: ShopPageProps) {
 }
 
 type ShopConfigProps = {
-	settings: TGetShopSettingsOutput["data"]["settings"];
+	settings: NonNullable<TGetShopSettingsOutput["data"]>;
 	callbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -68,10 +91,8 @@ type ShopConfigProps = {
 	};
 };
 function ShopConfig({ settings, callbacks }: ShopConfigProps) {
-	const [editMenuIsOpen, setEditMenuIsOpen] = useState(false);
-
 	const shopModeDetail = useMemo(() => {
-		return ShopModeOptions.find((option) => option.value === settings.modo)?.label ?? "NÃO DEFINIDO";
+		return ShopModeOptions.find((option) => option.value === settings?.modo)?.label ?? "NÃO DEFINIDO";
 	}, [settings.modo]);
 
 	const { mutate: handleUpdateShopSettings, isPending } = useMutation({
@@ -93,17 +114,7 @@ function ShopConfig({ settings, callbacks }: ShopConfigProps) {
 		},
 	});
 	return (
-		<SectionWrapper
-			title="CONFIGURAÇÕES DA LOJA"
-			icon={<Settings className="w-4 h-4 min-w-4 min-h-4" />}
-			actions={
-				<Button variant="ghost" size="xs" onClick={() => setEditMenuIsOpen(true)} className="flex items-center gap-1">
-					<Pencil className="w-4 h-4 min-w-4 min-h-4" />
-					EDITAR
-				</Button>
-			}
-			wrapperClassName="h-full"
-		>
+		<SectionWrapper title="CONFIGURAÇÕES DA LOJA" icon={<Settings className="w-4 h-4 min-w-4 min-h-4" />} wrapperClassName="h-full">
 			<div className="flex w-full grow flex-col gap-4">
 				<div className="w-full flex flex-col gap-3">
 					<div className="w-full flex flex-col gap-3">
@@ -264,6 +275,84 @@ function ShopConfig({ settings, callbacks }: ShopConfigProps) {
 						</div>
 					</div>
 				</div>
+			</div>
+		</SectionWrapper>
+	);
+}
+
+type ShopConfigProductsProps = {
+	settings: NonNullable<TGetShopSettingsOutput["data"]>;
+	callbacks?: {
+		onMutate?: () => void;
+		onSuccess?: () => void;
+		onError?: () => void;
+		onSettled?: () => void;
+	};
+};
+function ShopConfigProducts({ settings, callbacks }: ShopConfigProductsProps) {
+	const { mutate: handleUpdateShopSettings, isPending } = useMutation({
+		mutationKey: ["update-shop-settings"],
+		mutationFn: updateShopSettings,
+		onMutate: () => {
+			if (callbacks?.onMutate) callbacks.onMutate();
+		},
+		onSuccess: (data) => {
+			if (callbacks?.onSuccess) callbacks.onSuccess();
+			toast.success(data.message);
+		},
+		onError: (error) => {
+			if (callbacks?.onError) callbacks.onError();
+			toast.error(getErrorMessage(error));
+		},
+		onSettled: () => {
+			if (callbacks?.onSettled) callbacks.onSettled();
+		},
+	});
+	return (
+		<SectionWrapper title="PRODUTOS DISPONÍVEIS" icon={<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />} wrapperClassName="h-full">
+			<div className="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-brand/10 rounded-lg p-3 text-brand">
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant="ghost" disabled={isPending} size="fit" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
+							{settings.configuracoes.produtos.modo === "ATIVOS" ? (
+								<>
+									<CircleCheck className="w-4 h-4" />
+									<h3 className="text-sm font-semibold tracking-tighter">TODOS OS PRODUTOS</h3>
+								</>
+							) : settings.configuracoes.produtos.modo === "INCLUIR" ? (
+								<>
+									<ListIcon className="w-4 h-4" />
+									<h3 className="text-sm font-semibold tracking-tighter">PRODUTOS SELECIONADOS</h3>
+								</>
+							) : (
+								<>
+									<XCircle className="w-4 h-4" />
+									<h3 className="text-sm font-semibold tracking-tighter">PRODUTOS EXCLUÍDOS</h3>
+								</>
+							)}
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent>
+						<DropdownMenuLabel>MODO</DropdownMenuLabel>
+						<DropdownMenuSeparator />
+						{ShopProductsModeOptions.map((option) => (
+							<DropdownMenuItem
+								key={option.value}
+								onClick={() =>
+									handleUpdateShopSettings({
+										...settings,
+										configuracoes: { ...settings.configuracoes, produtos: { ...settings.configuracoes.produtos, modo: option.value } },
+									})
+								}
+							>
+								{option.icon}
+								{option.label}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuContent>
+				</DropdownMenu>
+
+				<p className="text-sm font-medium tracking-tighter">Exibindo todos os produtos ativos da organizacao.</p>
 			</div>
 		</SectionWrapper>
 	);

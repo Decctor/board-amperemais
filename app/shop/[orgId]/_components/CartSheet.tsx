@@ -74,7 +74,7 @@ export default function CartSheet() {
 				<DrawerHeader className="text-left">
 					<DrawerTitle className="text-lg font-black flex items-center gap-2">
 						<ShoppingCart className="w-5 h-5" />
-						Carrinho
+						CARRINHO
 					</DrawerTitle>
 					<DrawerDescription>{itemCount === 0 ? "Seu carrinho esta vazio" : `${itemCount} ${itemCount === 1 ? "item" : "itens"}`}</DrawerDescription>
 				</DrawerHeader>
@@ -86,12 +86,12 @@ export default function CartSheet() {
 						</div>
 						<p className="text-muted-foreground">Adicione produtos para comecar.</p>
 						<Button variant="outline" onClick={() => setIsCartOpen(false)}>
-							Continuar comprando
+							CONTINUAR COMPRANDO
 						</Button>
 					</div>
 				) : (
 					<>
-						<ScrollArea className="flex-1 overflow-auto px-4">
+						<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-0">
 							<div className="flex flex-col gap-3 pb-4">
 								{cartItemsWithDetails.map((item) => {
 									if (!item) return null;
@@ -150,16 +150,17 @@ export default function CartSheet() {
 									);
 								})}
 							</div>
-						</ScrollArea>
+						</div>
 
 						<div className="p-4 border-t flex flex-col gap-3">
 							<div className="flex items-center justify-between">
-								<span className="font-semibold">Subtotal</span>
+								<span className="font-semibold">SUBTOTAL</span>
 								<span className="text-xl font-black text-primary">{formatToMoney(subtotal)}</span>
 							</div>
 
-							<Button className="w-full h-12 rounded-xl font-bold" onClick={handleCheckout}>
-								Finalizar pedido
+							<Button variant="brand" className="flex items-center gap-1.5 w-full h-12 rounded-xl font-bold" onClick={handleCheckout}>
+								<ShoppingCart className="h-4 w-4" />
+								FINALIZAR PEDIDO
 							</Button>
 						</div>
 					</>

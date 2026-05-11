@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { formatToMoney } from "@/lib/formatting";
 import { useShopClientLookup } from "@/lib/queries/shop";
-import { cn } from "@/lib/utils";
-import { BadgePercent, Info } from "lucide-react";
+import { ArrowRight, BadgePercent, Info } from "lucide-react";
 import { useMemo } from "react";
 import { useShop } from "../ShopProvider";
 
@@ -25,7 +24,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 	});
 
 	const program = catalog.cashbackProgram;
-	const balance = lookupData?.cashbackSaldo ?? 0;
+	const balance = lookupData?.client?.saldos?.[0]?.saldoValorDisponivel ?? 0;
 
 	const subtotal = useMemo(() => {
 		let total = 0;
@@ -65,7 +64,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 
 		if (program.resgateLimiteTipo === "FIXO" && program.resgateLimiteValor) {
 			limit = Math.min(limit, program.resgateLimiteValor);
-		} else if (program.resgateLimiteTipo === "PORCENTAGEM" && program.resgateLimiteValor) {
+		} else if (program.resgateLimiteTipo === "PERCENTUAL" && program.resgateLimiteValor) {
 			limit = Math.min(limit, (subtotal * program.resgateLimiteValor) / 100);
 		}
 
@@ -81,7 +80,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 		orderState.updateCashback({ resgateSolicitado: Math.min(Math.max(0, numValue), maxRedemption) });
 	};
 
-	const terminology = program?.terminologia || "cashback";
+	const terminology = program?.terminologia || "DINHEIRO";
 
 	if (!program || balance <= 0) {
 		return (
@@ -91,15 +90,14 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 						<BadgePercent className="w-8 h-8 text-muted-foreground" />
 					</div>
 					<div>
-						<p className="font-semibold">Sem {terminology} disponivel</p>
-						<p className="text-sm text-muted-foreground mt-1">
-							Voce ainda nao possui saldo de {terminology} para utilizar.
-						</p>
+						<p className="font-semibold">SEM CASHBACK DISPONIVEL</p>
+						<p className="text-sm text-muted-foreground mt-1">Você ainda não possui saldo de cashback para utilizar.</p>
 					</div>
 				</div>
 
-				<Button className="w-full h-12 rounded-xl font-bold" onClick={onNext}>
-					Continuar sem {terminology}
+				<Button variant="brand" className="flex items-center gap-1.5 w-full h-12 rounded-xl font-bold" onClick={onNext}>
+					CONTINUAR SEM CASHBACK
+					<ArrowRight className="h-4 w-4" />
 				</Button>
 			</div>
 		);
@@ -119,14 +117,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 				<Label className="font-semibold">Quanto deseja usar?</Label>
 
 				<div className="flex flex-col gap-4 p-4 rounded-xl bg-muted/50 border">
-					<Slider
-						value={[cashback.resgateSolicitado]}
-						min={0}
-						max={maxRedemption}
-						step={0.01}
-						onValueChange={handleSliderChange}
-						className="w-full"
-					/>
+					<Slider value={[cashback.resgateSolicitado]} min={0} max={maxRedemption} step={0.01} onValueChange={handleSliderChange} className="w-full" />
 
 					<div className="flex items-center justify-between gap-4">
 						<span className="text-sm text-muted-foreground">R$ 0,00</span>
@@ -146,9 +137,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 				{cashback.resgateSolicitado > 0 && (
 					<div className="flex items-center justify-between p-4 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
 						<span className="font-semibold text-green-900 dark:text-green-100">Desconto solicitado</span>
-						<span className="font-black text-green-600 dark:text-green-400">
-							-{formatToMoney(cashback.resgateSolicitado)}
-						</span>
+						<span className="font-black text-green-600 dark:text-green-400">-{formatToMoney(cashback.resgateSolicitado)}</span>
 					</div>
 				)}
 			</div>
@@ -160,8 +149,9 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 				</p>
 			</div>
 
-			<Button className="w-full h-12 rounded-xl font-bold mt-auto" onClick={onNext}>
-				Continuar
+			<Button variant="brand" className="flex items-center gap-1.5 w-full h-12 rounded-xl font-bold mt-auto" onClick={onNext}>
+				CONTINUAR
+				<ArrowRight className="h-4 w-4" />
 			</Button>
 		</div>
 	);

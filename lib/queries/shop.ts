@@ -44,7 +44,7 @@ export function useShopClientLookup({ orgId, telefone }: { orgId: string; telefo
 
 async function fetchShopSettings() {
 	const { data } = await axios.get<TGetShopSettingsOutput>("/api/shop/settings");
-	return data.data.settings;
+	return data.data;
 }
 
 export function useShopSettings() {
