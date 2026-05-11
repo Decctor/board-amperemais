@@ -17,7 +17,21 @@ async function getCashbackPrograms({ session }: { session: TAuthUserSession }) {
 	const cashbackProgram = await db.query.cashbackPrograms.findFirst({
 		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
 		with: {
-			recompensas: true,
+			recompensas: {
+				with: {
+					produto: {
+						columns: {
+							grupo: true,
+							precoVenda: true,
+						},
+					},
+					produtoVariante: {
+						columns: {
+							precoVenda: true,
+						},
+					},
+				},
+			},
 		},
 	});
 
@@ -27,7 +41,7 @@ async function getCashbackPrograms({ session }: { session: TAuthUserSession }) {
 }
 export type TGetCashbackProgramOutput = Awaited<ReturnType<typeof getCashbackPrograms>>;
 
-const getCashbackProgramsRoute = async (request: NextRequest) => {
+const getCashbackProgramsRoute = async () => {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const result = await getCashbackPrograms({ session });

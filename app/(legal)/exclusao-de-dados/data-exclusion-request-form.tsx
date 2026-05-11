@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Send, ShieldAlert } from "lucide-react";
 import { FormEvent, useState } from "react";
-import { TDataDeletionRequestInput } from "../api/data-deletion-requests/route";
+import { TDataDeletionRequestInput } from "../../api/data-deletion-requests/route";
 import { useMutation } from "@tanstack/react-query";
 import { createDataDeletionRequest } from "@/lib/mutations/utils";
 import { toast } from "sonner";
@@ -48,7 +48,13 @@ export function DataExclusionRequestForm() {
 					As informações abaixo serão usadas apenas para processar o pedido de exclusão e entrar em contato sobre o andamento da solicitação.
 				</p>
 			</div>
-			<form onSubmit={() => mutate(infoHolder)} className="space-y-5">
+			<form
+				onSubmit={(e: FormEvent<HTMLFormElement>) => {
+					e.preventDefault();
+					mutate(infoHolder);
+				}}
+				className="space-y-5"
+			>
 				<TextInput
 					label="Nome"
 					value={infoHolder.nome}

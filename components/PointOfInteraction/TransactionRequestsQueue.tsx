@@ -67,7 +67,7 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVende
 			) : requests.length === 0 ? (
 				<p className="py-4 text-sm text-muted-foreground">Nenhuma solicitação pendente no momento.</p>
 			) : (
-				<div className="mt-4 grid gap-3 md:flex-1 md:min-h-0 md:overflow-y-auto md:pr-1">
+				<div className="mt-4 flex flex-col gap-3 md:flex-1 md:min-h-0 md:overflow-y-auto md:pr-1">
 					{requests.map((request) => (
 						<PoiTransactionRequestCard
 							key={request.id}

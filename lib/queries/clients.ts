@@ -7,7 +7,7 @@ import type { TGetClientsOverallStatsInput, TGetClientsOverallStatsOutput } from
 import type { TGetClientsRankingInput, TGetClientsRankingOutput } from "@/pages/api/clients/stats/ranking";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
 
 async function fetchClients(input: TGetClientsInput) {
@@ -184,9 +184,9 @@ export function useClientByLookup({ initialParams }: UseClientByLookupParams) {
 		clientId: initialParams?.clientId || null,
 	});
 
-	function updateParams(newParams: Partial<TClientByLookupInput>) {
+	const updateParams = useCallback((newParams: Partial<TClientByLookupInput>) => {
 		setParams((prevParams) => ({ ...prevParams, ...newParams }));
-	}
+	}, []);
 	const debouncedInput = useDebounceMemo(
 		{
 			orgId: params.orgId,

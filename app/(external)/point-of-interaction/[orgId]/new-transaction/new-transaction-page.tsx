@@ -11,7 +11,10 @@ import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
-import { usePointOfInteractionNewSaleState, type TPointOfInteractionNewSaleState } from "@/state-hooks/use-point-of-interaction-new-sale-state";
+import {
+	usePointOfInteractionNewSaleState,
+	type TPointOfInteractionNewSaleState,
+} from "@/state-hooks/use-point-of-interaction-new-public-transaction-request";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, BadgePercent, Check, Gift, Lock, ShoppingCart, Tag } from "lucide-react";
 import Image from "next/image";
@@ -132,9 +135,10 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 			properties: {
 				organization_id: org.id,
 				has_client_id: true,
+				mode: mode,
 			},
 		});
-	}, [org.id]);
+	}, [org.id, mode]);
 
 	// Memoized cashback calculations
 	const availableCashback = useMemo(() => getAvailableCashback(client?.saldos), [client?.saldos]);
