@@ -683,8 +683,8 @@ export function getWhatsappTemplatePayload({ toPhoneNumber, template, variables 
 	const templatePayload: TemplatePayload["template"] = {
 		name: template.name,
 		language: {
-			// code: "pt_BR",
-			code: "en_US", // REMOVE THIS
+			code: "pt_BR",
+			// code: "en_US", // REMOVE THIS
 		},
 	};
 	if (components.length > 0) templatePayload.components = components;
