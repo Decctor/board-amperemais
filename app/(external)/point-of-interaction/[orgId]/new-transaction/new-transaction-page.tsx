@@ -333,9 +333,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const isSubmitting = isCreatingSale || isCreatingRequest;
 
 	return (
-		<div
-			className={cn("w-full min-h-screen flex flex-col items-center", isMobileMode ? "bg-slate-50 px-4 py-5" : "p-6 md:p-10 short:p-3 short:min-h-0")}
-		>
+		<div className={cn("w-full min-h-screen flex flex-col items-center", isMobileMode ? "px-4 py-5" : "p-6 md:p-10 short:p-3 short:min-h-0")}>
 			<div className={cn("w-full flex flex-col gap-6 short:gap-3", isMobileMode ? "max-w-md" : "max-w-4xl")}>
 				{/* Header com Navegação */}
 				<div className="flex items-center gap-4 short:gap-1.5">
