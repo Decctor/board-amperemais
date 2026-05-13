@@ -351,11 +351,13 @@ export const InteractionsSentStatusOptions: {
 	value: TInteractionsStatusEnum;
 	icon: React.ReactNode;
 	className: string;
+	message: (overwrite?: string) => string;
 }[] = [
 	{
 		id: 1,
 		label: "PENDENTE",
 		value: "PENDENTE",
+		message: (overwrite) => overwrite ?? "Mensagem com envio ainda pendente.",
 		icon: <Clock className="w-4 h-4" />,
 		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-600",
 	},
@@ -363,6 +365,7 @@ export const InteractionsSentStatusOptions: {
 		id: 2,
 		label: "ENVIADO",
 		value: "ENVIADO",
+		message: (overwrite) => overwrite ?? "Mensagem enviada ao cliente.",
 		icon: <Check className="w-4 h-4" />,
 		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-600",
 	},
@@ -370,6 +373,7 @@ export const InteractionsSentStatusOptions: {
 		id: 3,
 		label: "ENTREGUE",
 		value: "ENTREGUE",
+		message: (overwrite) => overwrite ?? "Mensagem entregue ao cliente.",
 		icon: <CheckCheck className="w-4 h-4" />,
 		className: "bg-blue-200 text-blue-600 border border-blue-600 hover:bg-blue-100 hover:text-blue-500 hover:border-blue-600",
 	},
@@ -377,6 +381,7 @@ export const InteractionsSentStatusOptions: {
 		id: 4,
 		label: "LIDO",
 		value: "LIDO",
+		message: (overwrite) => overwrite ?? "Mensagem lida pelo cliente.",
 		icon: <CheckCheck className="w-4 h-4" />,
 		className: "bg-green-200 text-green-600 border border-green-600 hover:bg-green-100 hover:text-green-500 hover:border-green-600",
 	},
@@ -384,6 +389,7 @@ export const InteractionsSentStatusOptions: {
 		id: 5,
 		label: "FALHOU",
 		value: "FALHOU",
+		message: (overwrite) => overwrite ?? "O envio da mensagem falhou.",
 		icon: <X className="w-4 h-4" />,
 		className: "bg-red-200 text-red-600 border border-red-600 hover:bg-red-100 hover:text-red-500 hover:border-red-600",
 	},
