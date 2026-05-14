@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function SimpleHero() {
 	return (
 		<section className="bg-gradient-to-b from-slate-50 via-white to-blue-50/40 pt-28 pb-20 px-5 lg:px-8">
@@ -15,12 +17,12 @@ export default function SimpleHero() {
 					</p>
 
 					<div className="flex flex-wrap gap-3 mb-8">
-						<a
-							href="https://app.recompracrm.com.br/auth/signup"
+						<Link
+							href="/auth/signup"
 							className="inline-flex items-center bg-[#24549C] hover:bg-[#1e4682] text-white font-bold px-7 py-3.5 rounded-xl shadow-lg shadow-blue-900/15 hover:shadow-blue-900/25 hover:-translate-y-0.5 transition-all duration-200 text-[15px]"
 						>
 							Testar 15 dias grátis →
-						</a>
+						</Link>
 						<a
 							href="#como-funciona"
 							className="inline-flex items-center bg-white border-2 border-slate-200 hover:border-[#24549C]/30 text-slate-700 font-semibold px-7 py-3.5 rounded-xl hover:-translate-y-0.5 transition-all duration-200 text-[15px]"

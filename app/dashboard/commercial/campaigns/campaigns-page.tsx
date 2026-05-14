@@ -13,6 +13,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
@@ -52,6 +53,7 @@ import {
 	Zap,
 	Eye,
 	CalendarCheck,
+	MessageCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
@@ -59,7 +61,6 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BsCalendarPlus } from "react-icons/bs";
 import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTemplates";
-import { MessageCircleIcon } from "lucide-react";
 import { CampaignTriggerTypeOptions, InteractionsSentStatusOptions } from "@/utils/select-options";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import TestCampaign from "@/components/Modals/Campaigns/TestCampaign";
@@ -567,10 +568,12 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 					<div className="flex items-center gap-3">
 						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{interaction.campanha?.titulo ?? "CAMPANHA NÃO ENCONTRADA"}</h1>
 						<ClientHoverCard clientId={interaction.cliente.id}>
-							<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5  bg-secondary text-primary cursor-pointer")}>
-								<UserRound className="w-4 h-4 min-w-4 min-h-4" />
-								<p className={cn("text-[0.65rem] font-medium tracking-tight uppercase")}>{interaction.cliente.nome ?? "NÃO INFORMADO"}</p>
-							</div>
+							<Chip.Root variant="secondary" size="md" shape="xl" className="cursor-pointer">
+								<Chip.Icon>
+									<UserRound className="w-4 h-4 min-w-4 min-h-4" />
+								</Chip.Icon>
+								<Chip.Label caps>{interaction.cliente.nome ?? "NÃO INFORMADO"}</Chip.Label>
+							</Chip.Root>
 						</ClientHoverCard>
 					</div>
 					<div className="flex items-center gap-3">
@@ -588,12 +591,12 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 							<TooltipProvider>
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<div
-											className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", sentStatusConfig?.className, "border-none")}
-										>
-											{sentStatusConfig?.icon}
-											<p className="text-xs font-bold tracking-tight uppercase">{sentStatusConfig?.label}</p>
-										</div>
+										<Chip.Root variant="ghost" size="xs" shape="md" className={cn(sentStatusConfig?.className, "border-none")}>
+											<Chip.Icon>{sentStatusConfig?.icon}</Chip.Icon>
+											<Chip.Label caps weight="bold">
+												{sentStatusConfig?.label}
+											</Chip.Label>
+										</Chip.Root>
 									</TooltipTrigger>
 									<TooltipContent>
 										<p className="text-xs font-medium tracking-tight text-red-500">{sentStatusConfig?.message(interaction.erroEnvio)}</p>
@@ -614,17 +617,21 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 				</div>
 				<div className="flex items-center gap-2">
 					{interaction.dataExecucao ? (
-						<div className={"flex items-center gap-1.5 px-3 py-1 rounded-2xl bg-green-200 text-green-600 text-[0.65rem] font-medium"}>
-							<CalendarCheck className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="block py-0.5 text-center text-[0.65rem] font-medium italic">{executionDateText}</h1>
-						</div>
+						<Chip.Root variant="success" size="md" shape="pill">
+							<Chip.Icon>
+								<CalendarCheck className="w-4 h-4 min-w-4 min-h-4" />
+							</Chip.Icon>
+							<Chip.Label className="block py-0.5 text-center italic font-medium leading-tight">{executionDateText}</Chip.Label>
+						</Chip.Root>
 					) : (
-						<div className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1 rounded-2xl bg-secondary text-primary text-[0.65rem] font-medium">
-							<Calendar className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="block py-0.5 text-center text-[0.65rem] font-medium italic">
+						<Chip.Root variant="secondary" size="md" shape="pill" className="px-2 py-1 sm:px-3 sm:py-1.5">
+							<Chip.Icon>
+								<Calendar className="w-4 h-4 min-w-4 min-h-4" />
+							</Chip.Icon>
+							<Chip.Label className="block py-0.5 text-center italic font-medium leading-tight">
 								AGENDADO PARA: {scheduleDateText} ({scheduleBlockText})
-							</h1>
-						</div>
+							</Chip.Label>
+						</Chip.Root>
 					)}
 				</div>
 			</div>
@@ -844,10 +851,14 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<div className={cn("flex items-center gap-1.5 px-3 py-1.5 text-primary")}>
-										<Grid3x3 className="w-4 min-w-4 h-4 min-h-4" />
-										<p className="text-[0.65rem] font-bold tracking-tight uppercase">{campaign.segmentacoes.length} SEGMENTAÇÕES</p>
-									</div>
+									<Chip.Root variant="ghost" size="md" shape="xl" className="cursor-default text-primary">
+										<Chip.Icon>
+											<Grid3x3 className="w-4 min-w-4 h-4 min-h-4" />
+										</Chip.Icon>
+										<Chip.Label caps weight="bold">
+											{campaign.segmentacoes.length} SEGMENTAÇÕES
+										</Chip.Label>
+									</Chip.Root>
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs">Incluindo {campaign.segmentacoes.map((s) => s.segmentacao).join(", ")}</TooltipContent>
 							</Tooltip>
@@ -873,25 +884,24 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 							<TooltipProvider>
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 bg-amber-500 text-black")}>
-											<AlertTriangle className="w-4 min-w-4 h-4 min-h-4" />
-											<p className="text-[0.65rem] font-bold tracking-tight uppercase">WHATSAPP NÃO CONFIGURADO</p>
-										</div>
+										<Chip.Root variant="brand" size="md" shape="xl">
+											<Chip.Icon>
+												<AlertTriangle className="w-4 min-w-4 h-4 min-h-4" />
+											</Chip.Icon>
+											<Chip.Label caps weight="bold">WHATSAPP NÃO CONFIGURADO</Chip.Label>
+										</Chip.Root>
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs">Sem uma conexão de Whatsapp, a campanha não poderá ser executada.</TooltipContent>
 								</Tooltip>
 							</TooltipProvider>
 						) : null}
 
-						<div
-							className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 bg-secondary text-primary", {
-								"bg-green-500 dark:bg-green-600 text-white": campaign.ativo,
-								"bg-gray-500 dark:bg-gray-600 text-white": !campaign.ativo,
-							})}
-						>
-							<CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
-							<p className="text-[0.65rem] font-bold tracking-tight uppercase">{campaign.ativo ? "ATIVO" : "INATIVO"}</p>
-						</div>
+						<Chip.Root variant={campaign.ativo ? "positiveSolid" : "neutralSolid"} size="md" shape="xl">
+							<Chip.Icon>
+								<CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
+							</Chip.Icon>
+							<Chip.Label caps weight="bold">{campaign.ativo ? "ATIVO" : "INATIVO"}</Chip.Label>
+						</Chip.Root>
 					</div>
 				</div>
 				<p className="text-xs font-medium tracking-tight text-muted-foreground">{campaign.descricao}</p>
