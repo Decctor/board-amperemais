@@ -13,7 +13,7 @@ import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/
 import { useSellerStats } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
 import { isValidNumber } from "@/lib/validation";
-import type { TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
+import type { TGetSellerStatsOutput } from "@/app/api/sellers/stats/route";
 import dayjs from "dayjs";
 import { BadgeDollarSign, Calendar, CirclePlus, Code, GoalIcon, Mail, Pencil, Phone, ShoppingBag, UserRound } from "lucide-react";
 import { useState } from "react";

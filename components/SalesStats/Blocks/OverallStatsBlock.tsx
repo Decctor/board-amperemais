@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useOverallSalesStats } from "@/lib/queries/stats/overall";
 import { cn } from "@/lib/utils";
-import type { TOverallSalesStats } from "@/pages/api/stats/sales-overall";
+import type { TOverallSalesStats } from "@/app/api/stats/sales-overall/route";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { BadgeDollarSign, Percent, ShoppingBag, UserRoundX } from "lucide-react";
 import type React from "react";

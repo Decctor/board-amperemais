@@ -6,7 +6,7 @@ import TextInput from "../Inputs/TextInput";
 import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetClientsInput } from "@/pages/api/clients";
+import type { TGetClientsInput } from "@/app/api/clients/route";
 import { RFMLabels } from "@/utils/rfm";
 import { CustomersAcquisitionChannels } from "@/utils/select-options";
 import { ArrowDownNarrowWide, ArrowUpNarrowWide } from "lucide-react";

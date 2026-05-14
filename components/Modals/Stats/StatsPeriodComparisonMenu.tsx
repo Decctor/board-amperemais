@@ -31,7 +31,7 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useStatsComparison } from "@/lib/queries/stats/comparison";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TStatsComparisonOutput } from "@/pages/api/stats/comparison";
+import type { TStatsComparisonOutput } from "@/app/api/stats/comparison/route";
 import type { TSale } from "@/schemas/sales";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDownNarrowWide, BadgeDollarSign, Box, ChevronDown, ChevronUp, ShoppingBag, ShoppingCart, UserRound } from "lucide-react";

@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useProductsRanking } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
-import type { TGetProductsRankingInput } from "@/pages/api/products/stats/ranking";
+import type { TGetProductsRankingInput } from "@/app/api/products/stats/ranking/route";
 import { ArrowDown, ArrowUp, BadgeDollarSign, CirclePlus, Code, Crown, Diamond, Minus, ShoppingCart, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";

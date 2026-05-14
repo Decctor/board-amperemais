@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { useSellers } from "@/lib/queries/sellers";
-import type { TGetSellersOutputDefault } from "@/pages/api/sellers";
+import type { TGetSellersOutputDefault } from "@/app/api/sellers/route";
 import type { TUseGoalsState } from "@/state-hooks/use-goal-state";
 import { UsersRound } from "lucide-react";
 import { memo, useCallback } from "react";

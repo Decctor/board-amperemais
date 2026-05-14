@@ -15,8 +15,8 @@ import { useProductGraph, useProductStats } from "@/lib/queries/products";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
 import { isValidNumber } from "@/lib/validation";
-import type { TGetProductGraphOutput } from "@/pages/api/products/graph";
-import type { TGetProductStatsOutput } from "@/pages/api/products/stats";
+import type { TGetProductGraphOutput } from "@/app/api/products/graph/route";
+import type { TGetProductStatsOutput } from "@/app/api/products/stats/route";
 import dayjs from "dayjs";
 import {
 	BadgeDollarSign,

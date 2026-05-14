@@ -5,7 +5,6 @@ import { db } from "@/services/drizzle";
 import { chatMessages } from "@/services/drizzle/schema/chats";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
-import { NextApiRequestCookies } from "next/dist/server/api-utils";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 

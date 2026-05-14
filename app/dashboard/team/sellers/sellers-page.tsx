@@ -27,9 +27,9 @@ import {
 import { useSellers, useSellersOverallStats } from "@/lib/queries/sellers";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetSellersOutputDefault } from "@/pages/api/sellers";
-import type { TGetSellersDefaultInput } from "@/pages/api/sellers";
-import type { TGetSellersOverallStatsInput } from "@/pages/api/sellers/stats/overall";
+import type { TGetSellersOutputDefault } from "@/app/api/sellers/route";
+import type { TGetSellersDefaultInput } from "@/app/api/sellers/route";
+import type { TGetSellersOverallStatsInput } from "@/app/api/sellers/stats/overall/route";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {

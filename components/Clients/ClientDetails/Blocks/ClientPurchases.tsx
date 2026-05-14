@@ -5,7 +5,7 @@ import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { formatInteractiveDateRangeSummary, formatInteractiveNumberRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
-import type { TGetSalesInput, TGetSalesOutputByClientId } from "@/pages/api/sales";
+import type { TGetSalesInput, TGetSalesOutputByClientId } from "@/app/api/sales/route";
 
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

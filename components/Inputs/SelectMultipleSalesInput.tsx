@@ -3,7 +3,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useSalesSimplifiedSearch } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
-import type { TSalesSimplifiedSearchResult } from "@/pages/api/sales/simplified-search";
+import type { TSalesSimplifiedSearchResult } from "@/app/api/sales/simplified-search/route";
 import { BadgeDollarSign, Check, ChevronsUpDown } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";

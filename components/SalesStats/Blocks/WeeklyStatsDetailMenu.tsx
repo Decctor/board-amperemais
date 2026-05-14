@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useSalesDetailedAnalysis } from "@/lib/queries/stats/sales-detailed-analysis";
-import type { TSalesDetailedAnalysisInput } from "@/pages/api/stats/sales-detailed-analysis";
+import type { TSalesDetailedAnalysisInput } from "@/app/api/stats/sales-detailed-analysis/route";
 import dayjs from "dayjs";
 import { BadgeDollarSign, CalendarDays, CirclePlus, Clock, Package, ShoppingCart, Users } from "lucide-react";
 

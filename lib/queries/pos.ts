@@ -1,6 +1,6 @@
 import type { TGetSaleDraftOutput } from "@/app/api/pos/sales/route";
-import type { TGetPOSGroupsOutput } from "@/pages/api/pos/groups";
-import type { TGetPOSProductsInput, TGetPOSProductsOutput } from "@/pages/api/pos/products";
+import type { TGetPOSGroupsOutput } from "@/app/api/pos/groups/route";
+import type { TGetPOSProductsInput, TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useMemo, useState } from "react";

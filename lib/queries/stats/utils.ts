@@ -1,4 +1,4 @@
-import type { TSaleQueryFilterOptions } from "@/pages/api/stats/sales-query-params";
+import type { TSaleQueryFilterOptions } from "@/app/api/stats/sales-query-params/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 

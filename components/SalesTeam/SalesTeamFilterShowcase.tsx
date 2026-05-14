@@ -1,6 +1,6 @@
 import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import type { TGetSellersDefaultInput } from "@/pages/api/sellers";
+import type { TGetSellersDefaultInput } from "@/app/api/sellers/route";
 
 type SalesTeamFilterShowcaseProps = {
 	queryParams: TGetSellersDefaultInput;

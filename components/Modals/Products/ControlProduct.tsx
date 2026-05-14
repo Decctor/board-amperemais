@@ -3,7 +3,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { updateProduct } from "@/lib/mutations/products";
 import { useProductById } from "@/lib/queries/products";
-import type { TUpdateProductInput } from "@/pages/api/products";
+import type { TUpdateProductInput } from "@/app/api/products/route";
 import { type TProductState, useProductState } from "@/state-hooks/use-product-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";

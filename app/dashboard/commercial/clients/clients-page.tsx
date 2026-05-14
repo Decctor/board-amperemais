@@ -18,8 +18,8 @@ import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } fro
 import { useClients, useClientsOverallStats } from "@/lib/queries/clients";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
-import type { TGetClientsOverallStatsInput } from "@/pages/api/clients/stats/overall";
+import type { TGetClientsInput, TGetClientsOutputDefault } from "@/app/api/clients/route";
+import type { TGetClientsOverallStatsInput } from "@/app/api/clients/stats/overall/route";
 import dayjs from "dayjs";
 import {
 	FileSpreadsheet,

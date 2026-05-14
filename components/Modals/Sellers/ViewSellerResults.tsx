@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatNameAsInitials, formatToDateTime, formatToMoney } from "@/lib/formatting";
 import { useSellerStats } from "@/lib/queries/sellers";
-import type { TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
+import type { TGetSellerStatsOutput } from "@/app/api/sellers/stats/route";
 import { CalendarDays, ChartArea, DollarSign, ListOrdered, Mail, Phone, ShoppingCart, User } from "lucide-react";
 
 type ViewSellerResultsProps = {

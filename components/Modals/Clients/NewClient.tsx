@@ -3,7 +3,7 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
 import { createClient } from "@/lib/mutations/clients";
-import type { TCreateClientInput } from "@/pages/api/clients";
+import type { TCreateClientInput } from "@/app/api/clients/route";
 import { useClientState } from "@/state-hooks/use-client-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";

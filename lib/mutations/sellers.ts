@@ -1,4 +1,4 @@
-import type { TCreateSellerInput, TCreateSellerOutput, TUpdateSellerInput, TUpdateSellerOutput } from "@/pages/api/sellers";
+import type { TCreateSellerInput, TCreateSellerOutput, TUpdateSellerInput, TUpdateSellerOutput } from "@/app/api/sellers/route";
 import axios from "axios";
 
 export async function updateSeller(info: TUpdateSellerInput) {

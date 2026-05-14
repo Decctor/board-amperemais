@@ -2,7 +2,7 @@
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useSellersOverallStats } from "@/lib/queries/sellers";
-import type { TGetSellersDefaultInput } from "@/pages/api/sellers";
+import type { TGetSellersDefaultInput } from "@/app/api/sellers/route";
 import { Activity, BadgeDollarSign, Target, Ticket, Users } from "lucide-react";
 import SellersGraphs from "./SellersGraphs";
 import SellersRanking from "./SellersRanking";

@@ -3,7 +3,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatLocation, formatToMoney } from "@/lib/formatting";
 import { useClientStatsById } from "@/lib/queries/clients";
 import { isValidNumber } from "@/lib/validation";
-import type { TGetClientStatsOutput } from "@/pages/api/clients/stats/by-client";
+import type { TGetClientStatsOutput } from "@/app/api/clients/stats/by-client/route";
 import dayjs from "dayjs";
 import { BadgeDollarSign, Calendar, CirclePlus, IdCard, Mail, Phone, ShoppingBag, UserRound, MapPin, Megaphone, Grid3X3 } from "lucide-react";
 import { useState } from "react";

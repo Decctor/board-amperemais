@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import type { TGetPOSProductsOutput } from "@/pages/api/pos/products";
+import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import { Package, PackagePlus } from "lucide-react";
 import Image from "next/image";
 

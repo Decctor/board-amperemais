@@ -14,7 +14,7 @@ import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } fro
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetSalesInput, TGetSalesOutputDefault } from "@/pages/api/sales";
+import type { TGetSalesInput, TGetSalesOutputDefault } from "@/app/api/sales/route";
 import {
 	ArrowRight,
 	BadgeDollarSign,

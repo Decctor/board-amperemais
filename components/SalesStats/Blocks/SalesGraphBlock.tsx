@@ -7,7 +7,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatToMoney } from "@/lib/formatting";
 import { useSalesGraph } from "@/lib/queries/stats/sales-graph";
-import type { TSalesGraphOutput } from "@/pages/api/stats/sales-graph";
+import type { TSalesGraphOutput } from "@/app/api/stats/sales-graph/route";
 import type { TSaleStatsGeneralQueryParams, TSalesGraphFilters } from "@/schemas/query-params-utils";
 import { BadgeDollarSign, CirclePlus, Download } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";

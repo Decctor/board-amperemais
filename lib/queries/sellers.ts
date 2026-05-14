@@ -1,8 +1,8 @@
-import type { TGetSellersByIdInput, TGetSellersDefaultInput, TGetSellersInput, TGetSellersOutput } from "@/pages/api/sellers";
-import type { TGetSellerStatsInput, TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
-import type { TGetSellersGraphInput, TGetSellersGraphOutput } from "@/pages/api/sellers/stats/graph";
-import type { TGetSellersOverallStatsInput, TGetSellersOverallStatsOutput } from "@/pages/api/sellers/stats/overall";
-import type { TGetSellersRankingInput, TGetSellersRankingOutput } from "@/pages/api/sellers/stats/ranking";
+import type { TGetSellersByIdInput, TGetSellersDefaultInput, TGetSellersInput, TGetSellersOutput } from "@/app/api/sellers/route";
+import type { TGetSellerStatsInput, TGetSellerStatsOutput } from "@/app/api/sellers/stats/route";
+import type { TGetSellersGraphInput, TGetSellersGraphOutput } from "@/app/api/sellers/stats/graph/route";
+import type { TGetSellersOverallStatsInput, TGetSellersOverallStatsOutput } from "@/app/api/sellers/stats/overall/route";
+import type { TGetSellersRankingInput, TGetSellersRankingOutput } from "@/app/api/sellers/stats/ranking/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";

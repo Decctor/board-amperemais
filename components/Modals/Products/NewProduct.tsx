@@ -3,7 +3,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { createProduct } from "@/lib/mutations/products";
-import type { TCreateProductInput } from "@/pages/api/products";
+import type { TCreateProductInput } from "@/app/api/products/route";
 import { type TProductState, useProductState } from "@/state-hooks/use-product-state";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";

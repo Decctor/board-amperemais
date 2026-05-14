@@ -2,8 +2,8 @@ import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvide
 import { formatDateAsLocale, formatDecimalPlaces, formatNameAsInitials } from "@/lib/formatting";
 import { formatToMoney } from "@/lib/formatting";
 import { useGroupedSalesStats } from "@/lib/queries/stats/grouped";
-import type { TGroupedSalesStats } from "@/pages/api/stats/sales-grouped";
-import type { TSalesDetailedAnalysisInput } from "@/pages/api/stats/sales-detailed-analysis";
+import type { TGroupedSalesStats } from "@/app/api/stats/sales-grouped/route";
+import type { TSalesDetailedAnalysisInput } from "@/app/api/stats/sales-detailed-analysis/route";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { useEffect, useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";

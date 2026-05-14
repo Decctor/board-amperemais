@@ -6,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import type { TGetPOSProductsOutput } from "@/pages/api/pos/products";
+import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TCartItem, TCartItemModifier } from "@/state-hooks/use-sale-state";
 import { Check, Minus, Plus } from "lucide-react";
 import Image from "next/image";

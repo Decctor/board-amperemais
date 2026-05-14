@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useProductsGraph } from "@/lib/queries/products";
-import type { TGetProductsGraphInput } from "@/pages/api/products/stats/graph";
+import type { TGetProductsGraphInput } from "@/app/api/products/stats/graph/route";
 import { BadgeDollarSign, CirclePlus, Package, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";

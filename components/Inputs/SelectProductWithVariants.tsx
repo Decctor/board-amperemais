@@ -3,7 +3,7 @@ import { formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useProductsBySearchInfiniteQuery } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
-import type { TGetProductsBySearchOutput } from "@/pages/api/products/search";
+import type { TGetProductsBySearchOutput } from "@/app/api/products/search/route";
 import { BadgeCheck, Check, ChevronDown, ChevronRight, ChevronsUpDown, Package } from "lucide-react";
 import { useMemo, useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";

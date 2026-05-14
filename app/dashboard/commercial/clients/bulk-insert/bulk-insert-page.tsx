@@ -3,7 +3,7 @@
 import { getJSONFromExcelFile } from "@/lib/excel-utils";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { bulkCreateClients, suggestClientsSheetMapping } from "@/lib/mutations/clients";
-import type { TBulkCreateClientsOutput } from "@/pages/api/clients/bulk";
+import type { TBulkCreateClientsOutput } from "@/app/api/clients/bulk/route";
 import { BulkClientImportRowSchema, type TBulkClientImportRow, useBulkCreateClientsState } from "@/state-hooks/use-bulk-create-clients";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";

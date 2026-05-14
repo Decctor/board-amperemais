@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { formatDateAsLocale, formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import type { TGetGoalsOutputDefaultGoal } from "@/pages/api/goals";
+import type { TGetGoalsOutputDefaultGoal } from "@/app/api/goals/route";
 import dayjs from "dayjs";
 import { AnimatePresence, motion } from "framer-motion";
 import { BadgeDollarSign, ChevronDown, ChevronUp, Pencil, ShoppingCart, UserPlus } from "lucide-react";

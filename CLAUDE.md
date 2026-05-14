@@ -51,6 +51,47 @@ This file documents the architectural patterns, conventions, and "tastes" of thi
 
 **Location**: `/app/api/` (App Router)
 
+### Migration standard
+
+- New and migrated API routes must live under `/app/api/**/route.ts`; do not add new `pages/api` routes.
+- Route files follow four parts in order: input schema, service function, route handler, method export.
+- Input/output type names use the operation verb and resource: `TGetSalesInput`, `TCreateSaleOutput`, `TUpdateProductInput`, `TDeleteGoalOutput`.
+- Service functions receive typed `input` and `session` when authenticated, do all business/database work, and never read `NextRequest`, cookies, or return `NextResponse`.
+- Route handlers read the session with `getCurrentSessionUncached` from `@/lib/authentication/session`, parse query/body input, delegate to the service, and return `NextResponse.json`.
+- Export handlers through `appApiHandler`; do not use `apiHandler`, `NextApiRequest`, `NextApiResponse`, or `@/lib/authentication/pages-session` in App Router routes.
+- Client query/mutation types must import from `@/app/api/**/route`, never from `@/pages/api/**`.
+
+### GET query params
+
+Parse raw query params as strings in the route handler and transform them in the Zod input schema:
+
+```typescript
+const GetFoosInputSchema = z.object({
+	page: z
+		.string({ invalid_type_error: "Tipo inválido para página." })
+		.optional()
+		.nullable()
+		.transform((v) => (v ? Number(v) : 1)),
+	ids: z
+		.string({ invalid_type_error: "Tipo inválido para IDs." })
+		.optional()
+		.nullable()
+		.transform((v) => (v ? v.split(",") : [])),
+	activeOnly: z
+		.string({ invalid_type_error: "Tipo inválido para ativo." })
+		.optional()
+		.nullable()
+		.transform((v) => v === "true"),
+	periodAfter: z
+		.string({ invalid_type_error: "Tipo inválido para período." })
+		.optional()
+		.nullable()
+		.transform((v) => (v ? new Date(v) : null)),
+});
+```
+
+Client queries build URLs with `new URLSearchParams()`, omit null/undefined/empty values, join arrays with commas, and serialize dates with `.toISOString()`. Mutation files stay as plain Axios wrappers and do not import React Query hooks.
+
 ### Structure
 
 ```typescript

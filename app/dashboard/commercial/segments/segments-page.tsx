@@ -30,7 +30,7 @@ import { fetchClientExportation } from "@/lib/queries/exportations";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
 import { cn } from "@/lib/utils";
-import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
+import type { TGetClientsInput, TGetClientsOutputDefault } from "@/app/api/clients/route";
 import { RFMLabels, type TRFMConfig, getRFMConfigByLabel } from "@/utils/rfm";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

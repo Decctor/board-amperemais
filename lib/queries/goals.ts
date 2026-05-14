@@ -1,5 +1,5 @@
-import type { TGetGoalsByIdInput, TGetGoalsOutput, TGetGoalsOutputDefault } from "@/pages/api/goals";
-import type { TGetGoalsStatsOutput } from "@/pages/api/goals/stats";
+import type { TGetGoalsByIdInput, TGetGoalsOutput, TGetGoalsOutputDefault } from "@/app/api/goals/route";
+import type { TGetGoalsStatsOutput } from "@/app/api/goals/stats/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 

@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { formatDateOnInputChange } from "@/lib/formatting";
 import { formatDateForInputValue } from "@/lib/formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
-import type { TGetClientsInput } from "@/pages/api/clients";
+import type { TGetClientsInput } from "@/app/api/clients/route";
 import type { TClientSearchQueryParams } from "@/schemas/clients";
 import { TUserSession } from "@/schemas/users";
 import { RFMLabels } from "@/utils/rfm";

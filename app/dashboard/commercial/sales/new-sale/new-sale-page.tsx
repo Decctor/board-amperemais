@@ -7,7 +7,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { useIsMobile } from "@/lib/hooks/use-mobile";
 import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mutations/pos";
 import { usePOSGroups, usePOSProducts } from "@/lib/queries/pos";
-import type { TGetPOSProductsOutput } from "@/pages/api/pos/products";
+import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";

@@ -1,4 +1,4 @@
-import type { TRFMLabelledStats } from "@/pages/api/stats/sales-rfm-labelled";
+import type { TRFMLabelledStats } from "@/app/api/stats/sales-rfm-labelled/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 

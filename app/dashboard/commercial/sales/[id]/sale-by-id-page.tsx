@@ -13,7 +13,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDateBirthdayAsLocale, formatNameAsInitials, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useSalesById } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
-import type { TGetSalesOutputById } from "@/pages/api/sales";
+import type { TGetSalesOutputById } from "@/app/api/sales/route";
 import {
 	ArrowLeft,
 	ArrowRight,

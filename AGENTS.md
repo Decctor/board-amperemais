@@ -13,6 +13,31 @@ This file provides instructions for AI agents working on this codebase. Read CLA
 
 ---
 
+## App Router API Pattern
+
+All new and migrated API endpoints must live in `/app/api/**/route.ts`. Do not add new `pages/api` routes for product code.
+
+Each route file should be organized as:
+
+1. **Input schema** — Define route-specific Zod schemas in the route file unless reusing shared entity schemas. Export inferred types as `TGet<Resource>Input`, `TCreate<Resource>Input`, `TUpdate<Resource>Input`, and `TDelete<Resource>Input`.
+2. **Service function** — One function per operation, such as `getSales`, `createSale`, or `updateProduct`. It receives typed `input` and authenticated `session` when needed, performs validation and DB work, and does not read `NextRequest`, cookies, or return `NextResponse`.
+3. **Output type** — Export `Awaited<ReturnType<typeof serviceFn>>`, plus useful derived aliases like `TGetSalesOutputDefault` or `TGetSalesOutputById`.
+4. **Route handler** — Reads session with `getCurrentSessionUncached` from `/lib/authentication/session`, parses body/query params, delegates to the service function, and returns `NextResponse.json(result, { status })`.
+5. **Method export** — Export through `appApiHandler`, for example `export const GET = appApiHandler({ GET: getSalesRoute });`.
+
+GET query params should be parsed as strings first and transformed in Zod:
+
+- arrays: `z.string().optional().nullable().transform(v => v ? v.split(",") : [])`
+- numbers: `z.string().optional().nullable().transform(v => v ? Number(v) : null)`
+- booleans: `z.string().optional().nullable().transform(v => v === "true")`
+- dates: `z.string().optional().nullable().transform(v => v ? new Date(v) : null)`
+
+Consumers in `/lib/queries/**` must import types from `/app/api/**/route`, build query strings with `new URLSearchParams()`, omit empty values, join arrays with commas, and serialize dates with `.toISOString()`. Consumers in `/lib/mutations/**` stay as thin Axios wrappers and must not import React Query hooks.
+
+Migrated endpoints should not leave user-facing imports from `@/pages/api/**`.
+
+---
+
 ## Creating a New Feature (Checklist)
 
 When building a new admin feature, create files in this order:

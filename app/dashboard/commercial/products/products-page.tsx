@@ -28,8 +28,8 @@ import {
 import { useProducts, useProductsOverallStats } from "@/lib/queries/products";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetProductsDefaultInput, TGetProductsOutputDefault } from "@/pages/api/products";
-import type { TGetProductsOverallStatsInput } from "@/pages/api/products/stats/overall";
+import type { TGetProductsDefaultInput, TGetProductsOutputDefault } from "@/app/api/products/route";
+import type { TGetProductsOverallStatsInput } from "@/app/api/products/stats/overall/route";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {

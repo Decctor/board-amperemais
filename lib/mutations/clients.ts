@@ -2,8 +2,8 @@ import type {
 	TCreateClientViaPointOfInteractionInput,
 	TCreateClientViaPointOfInteractionOutput,
 } from "@/app/api/point-of-interaction/new-client/route";
-import type { TCreateClientInput, TCreateClientOutput } from "@/pages/api/clients";
-import type { TBulkCreateClientsInput, TBulkCreateClientsOutput } from "@/pages/api/clients/bulk";
+import type { TCreateClientInput, TCreateClientOutput } from "@/app/api/clients/route";
+import type { TBulkCreateClientsInput, TBulkCreateClientsOutput } from "@/app/api/clients/bulk/route";
 import type { TBulkClientsMapInput, TBulkClientsMapOutput } from "@/state-hooks/use-bulk-create-clients";
 import axios from "axios";
 

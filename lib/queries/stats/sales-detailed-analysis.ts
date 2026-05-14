@@ -1,11 +1,13 @@
-import type { TGetSalesDetailedAnalysisOutput, TSalesDetailedAnalysisInput } from "@/pages/api/stats/sales-detailed-analysis";
+import type { TGetSalesDetailedAnalysisOutput, TSalesDetailedAnalysisInput } from "@/app/api/stats/sales-detailed-analysis/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import dayjs from "dayjs";
 import { useState } from "react";
 async function fetchSalesDetailedAnalysis(filters: TSalesDetailedAnalysisInput) {
 	try {
-		const { data } = await axios.post<TGetSalesDetailedAnalysisOutput>("/api/stats/sales-detailed-analysis", filters);
+		const searchParams = new URLSearchParams();
+		searchParams.set("payload", JSON.stringify(filters));
+		const { data } = await axios.get<TGetSalesDetailedAnalysisOutput>(`/api/stats/sales-detailed-analysis?${searchParams.toString()}`);
 		return data.data;
 	} catch (error) {
 		console.log("Error running fetchSalesDetailedAnalysis");

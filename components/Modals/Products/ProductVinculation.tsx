@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { getErrorMessage } from "@/lib/errors";
 import { useProductsBySearch } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
-import type { TGetProductsBySearchOutput } from "@/pages/api/products/search";
+import type { TGetProductsBySearchOutput } from "@/app/api/products/search/route";
 import { Code, Diamond, LinkIcon } from "lucide-react";
 
 type ProductVinculationProps = {

@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { type ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { useGoalsStats } from "@/lib/queries/goals";
-import type { TGetGoalsStatsHistoricoItem } from "@/pages/api/goals/stats";
+import type { TGetGoalsStatsHistoricoItem } from "@/app/api/goals/stats/route";
 import { AnimatePresence, motion } from "framer-motion";
 import { BadgeDollarSign, CheckCircle2, ShoppingCart, Target, UserPlus } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";

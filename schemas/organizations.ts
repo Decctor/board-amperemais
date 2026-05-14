@@ -6,6 +6,7 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 	z.object({
 		tipo: z.literal("ONLINE-SOFTWARE"),
 		token: z.string({ invalid_type_error: "Tipo não válido para o token da integração." }),
+		url: z.string({ invalid_type_error: "Tipo não válido para a URL da integração." }),
 	}),
 	z.object({
 		tipo: z.literal("CARDAPIO-WEB"),

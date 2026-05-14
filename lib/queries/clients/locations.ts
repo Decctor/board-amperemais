@@ -3,7 +3,7 @@ import type {
 	TGetClientLocationByIdOutput,
 	TGetClientLocationsInput,
 	TGetClientLocationsOutput,
-} from "@/pages/api/clients/locations";
+} from "@/app/api/clients/locations/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 

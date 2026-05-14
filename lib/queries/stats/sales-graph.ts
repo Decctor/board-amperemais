@@ -1,10 +1,12 @@
-import type { TSalesGraphInput, TSalesGraphOutput } from "@/pages/api/stats/sales-graph";
+import type { TSalesGraphInput, TSalesGraphOutput } from "@/app/api/stats/sales-graph/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 async function fetchSalesGraph(filters: TSalesGraphInput) {
 	try {
-		const { data } = await axios.post("/api/stats/sales-graph", filters);
+		const searchParams = new URLSearchParams();
+		searchParams.set("payload", JSON.stringify(filters));
+		const { data } = await axios.get(`/api/stats/sales-graph?${searchParams.toString()}`);
 		return data.data as TSalesGraphOutput;
 	} catch (error) {
 		console.log("Error running fetchSalesGraph");

@@ -1,7 +1,7 @@
 import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetProductsDefaultInput } from "@/pages/api/products";
+import type { TGetProductsDefaultInput } from "@/app/api/products/route";
 import { ArrowDownNarrowWide } from "lucide-react";
 import { ArrowUpNarrowWide } from "lucide-react";
 import { useState } from "react";

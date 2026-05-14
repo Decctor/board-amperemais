@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
-import type { TGetProductStatsInput } from "@/pages/api/products/stats";
+import type { TGetProductStatsInput } from "@/app/api/products/stats/route";
 import { useState } from "react";
 import DateInput from "../Inputs/DateInput";
 

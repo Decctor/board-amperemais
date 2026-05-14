@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { useSellersRanking } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
-import type { TGetSellersRankingInput } from "@/pages/api/sellers/stats/ranking";
+import type { TGetSellersRankingInput } from "@/app/api/sellers/stats/ranking/route";
 import { ArrowDown, ArrowUp, BadgeDollarSign, CirclePlus, Crown, Minus, Target, Ticket, TrendingUp } from "lucide-react";
 import { useState } from "react";
 

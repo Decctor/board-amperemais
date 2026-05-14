@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { TBulkCreateClientsOutput } from "@/pages/api/clients/bulk";
+import type { TBulkCreateClientsOutput } from "@/app/api/clients/bulk/route";
 import { AlertTriangle, CheckCircle2, Sparkles, Users } from "lucide-react";
 
 type BulkInsertSuccessStageProps = {

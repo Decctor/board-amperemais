@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDecimalPlaces } from "@/lib/formatting";
 import { useClientsGraph } from "@/lib/queries/clients";
-import type { TGetClientsGraphInput } from "@/pages/api/clients/stats/graph";
+import type { TGetClientsGraphInput } from "@/app/api/clients/stats/graph/route";
 import { Activity, UserPlus, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";

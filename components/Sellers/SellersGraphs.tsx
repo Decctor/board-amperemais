@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useSellersGraph } from "@/lib/queries/sellers";
-import type { TGetSellersGraphInput } from "@/pages/api/sellers/stats/graph";
+import type { TGetSellersGraphInput } from "@/app/api/sellers/stats/graph/route";
 import { Activity, BadgeDollarSign, CirclePlus, Ticket, Users } from "lucide-react";
 import { useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";

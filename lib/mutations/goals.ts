@@ -1,4 +1,4 @@
-import type { TCreateGoalInput, TCreateGoalOutput, TUpdateGoalInput, TUpdateGoalOutput } from "@/pages/api/goals";
+import type { TCreateGoalInput, TCreateGoalOutput, TUpdateGoalInput, TUpdateGoalOutput } from "@/app/api/goals/route";
 import axios from "axios";
 
 export async function createGoal(input: TCreateGoalInput) {

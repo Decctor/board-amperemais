@@ -5,7 +5,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { getErrorMessage } from "@/lib/errors";
 import { createClientLocation } from "@/lib/mutations/clients/locations";
-import type { TCreateClientLocationInput } from "@/pages/api/clients/locations";
+import type { TCreateClientLocationInput } from "@/app/api/clients/locations/route";
 import { useClientLocationState } from "@/state-hooks/use-client-location-state";
 import { useMutation } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
