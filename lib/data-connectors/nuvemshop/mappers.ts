@@ -11,6 +11,12 @@ import type {
 } from "../types";
 import type { TNuvemshopOrder, TNuvemshopOrderProduct } from "./types";
 
+function stripBrazilCountryCode(phone: string) {
+	const digits = phone.replace(/\D/g, "");
+	if (digits.startsWith("55") && digits.length > 11) return digits.slice(2);
+	return digits;
+}
+
 function toStringId(value: string | number | null | undefined) {
 	if (value === null || value === undefined || value === "") return null;
 	return String(value);
@@ -44,7 +50,7 @@ function getClientPhone(order: TNuvemshopOrder) {
 }
 
 export function mapNuvemshopClient(order: TNuvemshopOrder): TCanonicalClient | null {
-	const phone = getClientPhone(order);
+	const phone = stripBrazilCountryCode(getClientPhone(order));
 	const basePhone = formatPhoneAsBase(phone);
 	const name = getClientName(order);
 	const externalId = toStringId(order.customer?.id);

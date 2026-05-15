@@ -119,7 +119,7 @@ function printSummary(batch: Awaited<ReturnType<typeof fetchNuvemshopImportBatch
 		sales: batch.sales.length,
 		validSales: validSales.length,
 		canceledSales: canceledSales.length,
-		products: batch.products.length,
+		products: batch.products,
 	});
 
 	console.log("\n[NUVEMSHOP_FETCH_TEST] Primeiras vendas");
@@ -133,6 +133,7 @@ function printSummary(batch: Awaited<ReturnType<typeof fetchNuvemshopImportBatch
 			isValidSale: sale.isValidSale,
 			isCanceled: sale.isCanceled,
 			clientName: sale.client?.name ?? null,
+			clientPhone: sale.client?.phone ?? null,
 			items: sale.items.length,
 		})),
 	);
