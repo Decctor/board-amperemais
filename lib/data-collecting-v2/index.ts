@@ -121,6 +121,8 @@ async function processOrganization({
 		};
 	});
 
+	await batch.postProcess?.();
+
 	return { summary, immediateProcessingDataList };
 }
 

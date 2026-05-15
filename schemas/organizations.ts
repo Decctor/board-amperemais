@@ -20,6 +20,22 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 		tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token da Nuvem Shop." }),
 		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo da Nuvem Shop." })),
 	}),
+	z.object({
+		tipo: z.literal("IFOOD"),
+		merchantIds: z.array(z.string({ invalid_type_error: "Tipo não válido para o ID da loja iFood." })).default([]),
+		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do iFood." }),
+		refreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de renovação do iFood." }),
+		tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token do iFood." }),
+		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo do iFood." })),
+		expiresAt: z
+			.string({ invalid_type_error: "Tipo não válido para a expiração do token do iFood." })
+			.datetime({ message: "Tipo não válido para a expiração do token do iFood." }),
+		authorizedAt: z
+			.string({ invalid_type_error: "Tipo não válido para a data de autorização do iFood." })
+			.datetime({ message: "Tipo não válido para a data de autorização do iFood." })
+			.optional()
+			.nullable(),
+	}),
 ]);
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
 

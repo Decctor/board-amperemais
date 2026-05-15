@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
 import NuvemshopLogo from "@/utils/images/integrations/nuvemshop-logo.png";
 import OnlineSoftwareLogo from "@/utils/images/integrations/online-software-logo.png";
+import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
 import { Chip } from "../ui/chip";
 import ViewIntegration from "../Modals/Integrations/ViewIntegration";
 import ConfigureIntegration from "../Modals/Integrations/ConfigureIntegration";
@@ -29,7 +30,7 @@ const INTEGRATIONS = [
 		logo: OnlineSoftwareLogo,
 		description:
 			"Líder regional no Triângulo Mineiro, este ERP é a escolha certa para materiais de construção, conveniência e vestuário. Sincronize vendas, produtos, clientes e parcerios com total eficiência.",
-		buttonText: "PROSSEGUIR COM ONLINE SOFTWARE",
+		buttonText: "CONECTAR COM ONLINE SOFTWARE",
 		brandColor: "#145c99",
 		brandClassName: "bg-[#145c99] text-white hover:bg-[#145c99]/80",
 	},
@@ -39,7 +40,7 @@ const INTEGRATIONS = [
 		logo: CardapioWebLogo,
 		description:
 			"A solução completa para Food Service. Perfeito para restaurantes, sorveterias e delivery. Integre sua gestão de pedidos e cardápios para escalar sua operação gastronômica (com suporte a iFood).",
-		buttonText: "PROSSEGUIR COM CARDÁPIO WEB",
+		buttonText: "CONECTAR COM CARDÁPIO WEB",
 		brandColor: "#a543fb",
 		brandClassName: "bg-[#a543fb] text-white hover:bg-[#a543fb]/80",
 	},
@@ -53,6 +54,16 @@ const INTEGRATIONS = [
 		brandColor: "#2d2e6f",
 		brandClassName: "bg-[#2d2e6f] text-white hover:bg-[#2d2e6f]/80",
 		authUrl: "/api/integrations/nuvemshop/auth",
+	},
+	{
+		id: "IFOOD",
+		name: "iFood",
+		logo: IfoodLogo,
+		description:
+			"Conecte sua loja iFood para receber eventos e pedidos no Recompra CRM, alimentando vendas, clientes, campanhas e cashback automaticamente.",
+		buttonText: "CONECTAR COM IFOOD",
+		brandColor: "#EA1D2C",
+		brandClassName: "bg-[#EA1D2C] text-white hover:bg-[#EA1D2C]/80",
 	},
 ] as const;
 
@@ -74,6 +85,7 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 	// Menu State
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [selectedIntegrationId, setSelectedIntegrationId] = useState<"ONLINE-SOFTWARE" | "CARDAPIO-WEB" | null>(null);
+	const [ifoodMenuIsOpen, setIfoodMenuIsOpen] = useState(false);
 	const [isSuccess, setIsSuccess] = useState(false);
 
 	// Initialize state from membership
@@ -204,6 +216,10 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 			window.location.href = integration.authUrl;
 			return;
 		}
+		if (integrationId === "IFOOD") {
+			setIfoodMenuIsOpen(true);
+			return;
+		}
 		if (integrationId === "NUVEM-SHOP") return;
 		setSelectedIntegrationId(integrationId);
 		setIsMenuOpen(true);
@@ -246,8 +262,17 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 								onClick={() => handleIntegrationSelect(integration.id)}
 							>
 								<div className="mb-6 flex items-start justify-between">
-									<div className="relative h-12 w-32 grayscale transition-all group-hover:grayscale-0">
-										<Image src={integration.logo} alt={integration.name} fill className="object-contain object-left" />
+									<div className="relative h-12 w-32">
+										{"logo" in integration ? (
+											<Image src={integration.logo} alt={integration.name} fill className="object-contain object-left" />
+										) : (
+											<div
+												className="flex h-12 w-12 items-center justify-center rounded-lg text-lg font-bold text-white"
+												style={{ backgroundColor: brandColor }}
+											>
+												iF
+											</div>
+										)}
 									</div>
 								</div>
 								<div className="w-full flex flex-col gap-1.5">
@@ -275,6 +300,7 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 			{isMenuOpen && selectedIntegrationId ? (
 				<ConfigureIntegration integrationType={selectedIntegrationId} closeMenu={() => setIsMenuOpen(false)} />
 			) : null}
+			{ifoodMenuIsOpen ? <IfoodIntegrationMenu closeMenu={() => setIfoodMenuIsOpen(false)} /> : null}
 			{editingIntegrationMenuIsOpen && state.organization.integracaoConfiguracao ? (
 				<ViewIntegration
 					initialOrganizationIntegrationConfig={state.organization.integracaoConfiguracao}
@@ -305,7 +331,7 @@ function ActiveIntegrationCard({
 		<div className="bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 			<div className="flex items-center justify-center">
 				<div className="relative w-20 h-20 lg:h-20 lg:w-20 lg:min-h-20 lg:min-w-20 overflow-hidden rounded-lg">
-					{integrationDetails.logo ? (
+					{"logo" in integrationDetails && integrationDetails.logo ? (
 						<Image src={integrationDetails.logo} alt={integrationDetails.name} fill={true} objectFit="contain" />
 					) : (
 						<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
@@ -325,7 +351,7 @@ function ActiveIntegrationCard({
 							<Chip.Label>CONECTADO</Chip.Label>
 						</Chip.Root>
 
-						{"authUrl" in integrationDetails ? null : (
+						{"authUrl" in integrationDetails || integration.tipo === "IFOOD" ? null : (
 							<Button variant="ghost" size="sm" onClick={handleEdit}>
 								<Pencil className="w-4 h-4 min-w-4 min-h-4" />
 							</Button>
@@ -349,5 +375,104 @@ function ActiveIntegrationCard({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+type TIfoodAuthorizationResponse = {
+	userCode: string;
+	verificationUrl?: string | null;
+	verificationUrlComplete?: string | null;
+	expiresIn?: number | null;
+};
+
+function IfoodIntegrationMenu({ closeMenu }: { closeMenu: () => void }) {
+	const [authorization, setAuthorization] = useState<TIfoodAuthorizationResponse | null>(null);
+	const [authorizationCode, setAuthorizationCode] = useState("");
+
+	const createAuthorizationMutation = useMutation({
+		mutationFn: async () => {
+			const response = await fetch("/api/integrations/ifood/auth", {
+				method: "POST",
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.error ?? "Não foi possível gerar o código de autorização do iFood.");
+			return data as TIfoodAuthorizationResponse;
+		},
+		onSuccess: (data) => {
+			setAuthorization(data);
+			toast.success("Código de autorização do iFood gerado com sucesso.");
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+
+	const completeAuthorizationMutation = useMutation({
+		mutationFn: async () => {
+			const response = await fetch("/api/integrations/ifood/auth/complete", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ authorizationCode }),
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.error ?? "Não foi possível conectar o iFood.");
+			return data;
+		},
+		onSuccess: () => {
+			toast.success("Integração iFood conectada com sucesso.");
+			window.location.reload();
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+
+	return (
+		<ResponsiveMenuV2
+			menuTitle="CONFIGURAR IFOOD"
+			menuDescription="Gere o código, autorize o aplicativo no portal do iFood e cole o código de autorização para concluir."
+			menuActionButtonText={authorization ? "FINALIZAR CONEXÃO" : "GERAR CÓDIGO"}
+			menuCancelButtonText="FECHAR"
+			closeMenu={closeMenu}
+			actionFunction={() => {
+				if (!authorization) return createAuthorizationMutation.mutate();
+				return completeAuthorizationMutation.mutate();
+			}}
+			actionIsLoading={createAuthorizationMutation.isPending || completeAuthorizationMutation.isPending}
+			stateIsLoading={false}
+		>
+			<div className="flex flex-col gap-4">
+				{authorization ? (
+					<div className="rounded-lg border bg-muted/30 p-4">
+						<p className="text-xs font-semibold text-muted-foreground">CÓDIGO IFOOD</p>
+						<p className="mt-1 text-2xl font-bold tracking-wide">{authorization.userCode}</p>
+						{authorization.verificationUrlComplete || authorization.verificationUrl ? (
+							<Button
+								type="button"
+								size="sm"
+								className="mt-3"
+								onClick={() => window.open(authorization.verificationUrlComplete ?? authorization.verificationUrl ?? "", "_blank")}
+							>
+								<LinkIcon className="h-4 w-4" />
+								ABRIR PORTAL IFOOD
+							</Button>
+						) : null}
+					</div>
+				) : (
+					<p className="text-sm text-muted-foreground">Clique em gerar código para iniciar a autorização distribuída do iFood.</p>
+				)}
+
+				{authorization ? (
+					<TextInput
+						label="CÓDIGO DE AUTORIZAÇÃO"
+						value={authorizationCode}
+						placeholder="Cole aqui o código recebido no portal do iFood..."
+						handleChange={setAuthorizationCode}
+					/>
+				) : null}
+			</div>
+		</ResponsiveMenuV2>
 	);
 }

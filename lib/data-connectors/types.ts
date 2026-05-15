@@ -147,6 +147,7 @@ export type TCanonicalImportBatch = {
 	productAddOns: TCanonicalProductAddOn[];
 	productAddOnOptions: TCanonicalProductAddOnOption[];
 	raw?: unknown;
+	postProcess?: () => Promise<void>;
 };
 
 export type TDataConnectorFetchInput<TConfig extends TOrganizationIntegrationConfig = TOrganizationIntegrationConfig> = {

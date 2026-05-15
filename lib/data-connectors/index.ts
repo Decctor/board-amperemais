@@ -1,7 +1,8 @@
 import { fetchCardapioWebImportBatch } from "./cardapio-web/canonical";
+import { fetchIfoodImportBatch } from "./ifood";
 import { fetchNuvemshopImportBatch } from "./nuvemshop";
 import { fetchOnlineSoftwareImportBatch } from "./online-software";
-import type { TDataConnectorFetchInput, TDataConnectorKind, TCanonicalImportBatch } from "./types";
+import type { TCanonicalImportBatch, TDataConnectorFetchInput, TDataConnectorKind } from "./types";
 
 export * from "./types";
 
@@ -25,10 +26,18 @@ export async function fetchConnectorImportBatch(input: TDataConnectorFetchInput)
 	if (input.config.tipo === "NUVEM-SHOP") {
 		return fetchNuvemshopImportBatch({
 			organizationId: input.organizationId,
+			config: input.config as unknown as Parameters<typeof fetchNuvemshopImportBatch>[0]["config"],
+			window: input.window,
+		});
+	}
+
+	if (input.config.tipo === "IFOOD") {
+		return fetchIfoodImportBatch({
+			organizationId: input.organizationId,
 			config: input.config,
 			window: input.window,
 		});
 	}
 
-	throw new Error(`Integração não suportada: ${(input.config as { tipo?: TDataConnectorKind }).tipo ?? "NÃO DEFINIDA"}`);
+	throw new Error(`Integracao nao suportada: ${(input.config as { tipo?: TDataConnectorKind }).tipo ?? "NAO DEFINIDA"}`);
 }
