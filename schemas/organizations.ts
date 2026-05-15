@@ -15,7 +15,7 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 	}),
 	z.object({
 		tipo: z.literal("NUVEM-SHOP"),
-		storeId: z.string({ invalid_type_error: "Tipo não válido para o ID da loja Nuvem Shop." }),
+		storeId: z.number({ invalid_type_error: "Tipo não válido para o ID da loja Nuvem Shop." }),
 		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso da Nuvem Shop." }),
 		tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token da Nuvem Shop." }),
 		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo da Nuvem Shop." })),

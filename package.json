@@ -17,6 +17,7 @@
 		"db:studio": "drizzle-kit studio",
 		"knip": "knip",
 		"test:weekly-quota-recurrent": "tsx ./utils/scripts/test-recurrent-campaign-weekly-quota.ts",
+		"test:nuvemshop-fetch": "tsx ./utils/scripts/test-nuvemshop-fetch.ts",
 		"marketing-agent:run": "tsx ./scripts/run-marketing-agent.ts",
 		"marketing-agent:test": "tsx ./scripts/test-marketing-agent.ts"
 	},

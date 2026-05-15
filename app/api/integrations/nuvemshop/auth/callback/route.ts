@@ -72,7 +72,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 			integracaoTipo: "NUVEM-SHOP",
 			integracaoConfiguracao: {
 				tipo: "NUVEM-SHOP",
-				storeId,
+				storeId: Number(storeId),
 				accessToken: tokenData.access_token,
 				tokenType: "bearer",
 				scope: tokenData.scope

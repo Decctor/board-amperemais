@@ -33,10 +33,10 @@ function getStoreIdFromPayload(payload: unknown) {
 	if (!payload || typeof payload !== "object" || !("store_id" in payload)) return null;
 	const storeId = (payload as { store_id?: unknown }).store_id;
 	if (storeId === null || storeId === undefined || storeId === "") return null;
-	return String(storeId);
+	return Number(storeId);
 }
 
-async function findOrganizationByNuvemshopStoreId(storeId: string | null): Promise<TNuvemshopWebhookOrganization | null> {
+async function findOrganizationByNuvemshopStoreId(storeId: number | null): Promise<TNuvemshopWebhookOrganization | null> {
 	if (!storeId) return null;
 
 	const nuvemshopOrganizations = await db.query.organizations.findMany({
@@ -53,7 +53,7 @@ async function findOrganizationByNuvemshopStoreId(storeId: string | null): Promi
 	return (
 		nuvemshopOrganizations.find((organization) => {
 			const config = organization.integracaoConfiguracao;
-			return !!config && typeof config === "object" && "storeId" in config && String(config.storeId) === storeId;
+			return !!config && typeof config === "object" && "storeId" in config && config.storeId === storeId;
 		}) ?? null
 	);
 }
