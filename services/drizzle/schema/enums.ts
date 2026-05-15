@@ -55,7 +55,7 @@ export const cashbackProgramTransactionTypeEnum = pgEnum("cashback_program_trans
 
 export const cashbackProgramTransactionStatusEnum = pgEnum("cashback_program_transaction_status", ["ATIVO", "CONSUMIDO", "EXPIRADO"]);
 
-export const organizationIntegrationTypeEnum = pgEnum("organization_integration_type", ["ONLINE-SOFTWARE", "CARDAPIO-WEB"]);
+export const organizationIntegrationTypeEnum = pgEnum("organization_integration_type", ["ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP"]);
 
 export const chatStatusEnum = pgEnum("chat_status", ["ABERTA", "FECHADA"]);
 
@@ -236,3 +236,11 @@ export const poiTransactionRequestTypeEnum = pgEnum("poi_transaction_request_typ
 export const accountChartNatureEnum = pgEnum("account_chart_nature", ["ATIVO", "PASSIVO", "PATRIMONIO_LIQUIDO", "RECEITA", "CUSTO", "DESPESA"]);
 
 export const productClientReferenceWindowEnum = pgEnum("product_client_reference_window", ["GERAL", "30_DIAS", "90_DIAS"]);
+
+export const shopModeEnum = pgEnum("shop_mode", ["CARDAPIO", "CATALOGO"]);
+
+export const shopProductsModeEnum = pgEnum("shop_products_mode", ["ATIVOS", "INCLUIR", "EXCLUIR"]);
+
+export const shopHeaderCoverTypeEnum = pgEnum("shop_header_cover_type", ["IMAGEM", "VIDEO"]);
+
+export const shopCompositionBlockTypeEnum = pgEnum("shop_composition_block_type", ["GRUPOS_PRODUTOS", "EM_DESTAQUE", "MAIS_PEDIDOS"]);

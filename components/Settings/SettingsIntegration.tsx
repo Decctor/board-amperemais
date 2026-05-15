@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
+import NuvemshopLogo from "@/utils/images/integrations/nuvemshop-logo.png";
 import OnlineSoftwareLogo from "@/utils/images/integrations/online-software-logo.png";
 import { Chip } from "../ui/chip";
 import ViewIntegration from "../Modals/Integrations/ViewIntegration";
@@ -41,6 +42,17 @@ const INTEGRATIONS = [
 		buttonText: "PROSSEGUIR COM CARDÁPIO WEB",
 		brandColor: "#a543fb",
 		brandClassName: "bg-[#a543fb] text-white hover:bg-[#a543fb]/80",
+	},
+	{
+		id: "NUVEM-SHOP",
+		name: "Nuvem Shop",
+		logo: NuvemshopLogo,
+		description:
+			"Conecte sua loja Nuvem Shop para sincronizar pedidos, clientes e produtos com o Recompra CRM através da autorização segura da plataforma.",
+		buttonText: "CONECTAR COM NUVEM SHOP",
+		brandColor: "#2d2e6f",
+		brandClassName: "bg-[#2d2e6f] text-white hover:bg-[#2d2e6f]/80",
+		authUrl: "/api/integrations/nuvemshop/auth",
 	},
 ] as const;
 
@@ -185,8 +197,14 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 		}
 	};
 
-	const handleIntegrationSelect = (integrationId: "ONLINE-SOFTWARE" | "CARDAPIO-WEB") => {
+	const handleIntegrationSelect = (integrationId: (typeof INTEGRATIONS)[number]["id"]) => {
 		if (!canEdit) return;
+		const integration = INTEGRATIONS.find((item) => item.id === integrationId);
+		if (integration && "authUrl" in integration) {
+			window.location.href = integration.authUrl;
+			return;
+		}
+		if (integrationId === "NUVEM-SHOP") return;
 		setSelectedIntegrationId(integrationId);
 		setIsMenuOpen(true);
 	};
@@ -245,7 +263,7 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 										}}
 									>
 										<LinkIcon className="h-4 w-4" />
-										CONECTAR
+										{integration.buttonText}
 									</Button>
 								</div>
 							</button>
@@ -307,9 +325,11 @@ function ActiveIntegrationCard({
 							<Chip.Label>CONECTADO</Chip.Label>
 						</Chip.Root>
 
-						<Button variant="ghost" size="sm" onClick={handleEdit}>
-							<Pencil className="w-4 h-4 min-w-4 min-h-4" />
-						</Button>
+						{"authUrl" in integrationDetails ? null : (
+							<Button variant="ghost" size="sm" onClick={handleEdit}>
+								<Pencil className="w-4 h-4 min-w-4 min-h-4" />
+							</Button>
+						)}
 
 						<Button variant="ghost-destructive" size="sm" onClick={handleDisconnect} disabled={disconnectIsLoading}>
 							<Unlink className="w-4 h-4 min-w-4 min-h-4" />
