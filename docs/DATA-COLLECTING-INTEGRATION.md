@@ -39,7 +39,7 @@ The data-collecting cronjob runs every 5 minutes and performs the following oper
 ### Key File
 
 ```
-pages/api/cron/data-collecting.ts
+app/api/cron/data-collecting/route.ts
 ```
 
 ### Execution Flow Summary
@@ -76,7 +76,7 @@ Cron Trigger (every 5 min)
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        DATA-COLLECTING CRONJOB                           │
-│                   pages/api/cron/data-collecting.ts                      │
+│                 app/api/cron/data-collecting/route.ts                    │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  1. Schema Validation (Zod)                                              │
 │  2. Entity Sync (Clients, Products, Sellers, Partners)                  │
@@ -98,7 +98,7 @@ Cron Trigger (every 5 min)
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| Main Handler | `pages/api/cron/data-collecting.ts` | Orchestrates the entire sync process |
+| Main Handler | `app/api/cron/data-collecting/route.ts` | Orchestrates the entire sync process |
 | Cashback Generator | `lib/cashback/generate-campaign-cashback.ts` | Creates cashback from campaigns |
 | Cashback Reversal | `lib/cashback/reverse-sale-cashback.ts` | Reverses cashback on sale cancellation |
 | Interaction Processor | `lib/interactions/process-single-interaction.ts` | Sends WhatsApp messages |
@@ -733,7 +733,7 @@ function mapStatusToValidity(status: string): boolean {
 Add the new integration to the main handler:
 
 ```typescript
-// pages/api/cron/data-collecting.ts
+// app/api/cron/data-collecting/route.ts
 
 import { fetch[ERPName]Sales } from "@/lib/data-connectors/[erp-name]"
 import { mapToInternalFormat } from "@/lib/data-connectors/[erp-name]/mapper"
@@ -1189,7 +1189,7 @@ for (const organization of organizations) {
 
 | File | Purpose |
 |------|---------|
-| `pages/api/cron/data-collecting.ts` | Main cronjob handler |
+| `app/api/cron/data-collecting/route.ts` | Main cronjob handler |
 | `lib/cashback/generate-campaign-cashback.ts` | Campaign cashback generation |
 | `lib/cashback/reverse-sale-cashback.ts` | Cashback reversal on cancellation |
 | `lib/interactions/process-single-interaction.ts` | WhatsApp message sending |
