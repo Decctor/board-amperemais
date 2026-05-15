@@ -15,7 +15,7 @@ const chipVariants = cva("inline-flex w-fit shrink-0 items-center border border-
 			ghost: "border-transparent bg-transparent text-primary",
 			brand: "bg-brand text-brand-foreground",
 			destructive: "bg-destructive/12 text-destructive dark:bg-destructive/20 dark:text-destructive",
-			success: "bg-chart-2/18 text-chart-2 dark:bg-chart-2/25 dark:text-chart-2",
+			success: "bg-green-200 text-green-600 dark:bg-green-200/25 dark:text-green-600",
 			positiveSolid: "bg-chart-2 text-primary-foreground dark:bg-chart-2",
 			neutralSolid: "bg-muted-foreground/85 text-background dark:bg-muted-foreground/75",
 			neutralOnDark: "bg-foreground text-background",
@@ -85,18 +85,16 @@ const chipLabelVariants = cva("-mb-px min-w-0 max-w-[min(100%,40rem)] truncate t
 
 type ChipRootProps = React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof chipVariants>;
 
-const ChipRoot = React.forwardRef<HTMLSpanElement, ChipRootProps>(
-	({ children, variant, size, shape, className, ...props }, ref) => {
-		const resolvedSize = (size ?? "sm") satisfies ChipSize;
-		return (
-			<ChipContext.Provider value={{ size: resolvedSize }}>
-				<span ref={ref} data-slot="chip" className={cn(chipVariants({ variant, size, shape }), className)} {...props}>
-					{children}
-				</span>
-			</ChipContext.Provider>
-		);
-	},
-);
+const ChipRoot = React.forwardRef<HTMLSpanElement, ChipRootProps>(({ children, variant, size, shape, className, ...props }, ref) => {
+	const resolvedSize = (size ?? "sm") satisfies ChipSize;
+	return (
+		<ChipContext.Provider value={{ size: resolvedSize }}>
+			<span ref={ref} data-slot="chip" className={cn(chipVariants({ variant, size, shape }), className)} {...props}>
+				{children}
+			</span>
+		</ChipContext.Provider>
+	);
+});
 ChipRoot.displayName = "Chip.Root";
 
 const ChipIcon = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTMLSpanElement>>(({ children, className, ...props }, ref) => {
@@ -115,19 +113,10 @@ type ChipLabelProps = Omit<React.HTMLAttributes<HTMLSpanElement>, "className"> &
 	weight?: "medium" | "semibold" | "bold";
 };
 
-const ChipLabel = React.forwardRef<HTMLSpanElement, ChipLabelProps>(
-	({ className, caps = false, weight = "medium", ...props }, ref) => {
-		const { size } = useChipContext();
-		return (
-			<span
-				ref={ref}
-				data-slot="chip-label"
-				className={cn("chip-label", chipLabelVariants({ size, weight, caps }), className)}
-				{...props}
-			/>
-		);
-	},
-);
+const ChipLabel = React.forwardRef<HTMLSpanElement, ChipLabelProps>(({ className, caps = false, weight = "medium", ...props }, ref) => {
+	const { size } = useChipContext();
+	return <span ref={ref} data-slot="chip-label" className={cn("chip-label", chipLabelVariants({ size, weight, caps }), className)} {...props} />;
+});
 ChipLabel.displayName = "Chip.Label";
 
 /** Composable chip (leading icon + label) with unified padding and scale; aligns with DESIGN.md § Chips / Badges when using default shape/size. */
