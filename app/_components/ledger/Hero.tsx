@@ -5,9 +5,9 @@ import { Reveal } from "./_primitives/Reveal";
 import { Stamp } from "./_primitives/Stamp";
 
 const HERO_PROOF = [
-	{ icon: Zap, label: "Gatilhos automáticos por evento" },
-	{ icon: MessageCircle, label: "WhatsApp ilimitado, sem cadastro do cliente" },
-	{ icon: Repeat, label: "Cashback que volta como nova compra" },
+	{ icon: Zap, label: "Configure uma vez, o sistema cuida do resto" },
+	{ icon: MessageCircle, label: "Mensagens automáticas no WhatsApp" },
+	{ icon: Repeat, label: "Cashback com facilidade e segurança" },
 ];
 
 export function LedgerHero() {
@@ -21,7 +21,9 @@ export function LedgerHero() {
 				{/* Left — text */}
 				<Reveal>
 					<div className="flex items-center gap-3 mb-7">
-						<span className="ledger-fade inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">01</span>
+						<span className="ledger-fade inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">
+							01
+						</span>
 						<span
 							className="ledger-fade text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#24549c]"
 							style={{ "--i": 1 } as React.CSSProperties}
@@ -34,14 +36,10 @@ export function LedgerHero() {
 
 					<h1 className="font-extrabold text-[#171717] tracking-[-0.025em] leading-[1.0] text-[44px] sm:text-[58px] lg:text-[72px]">
 						<span className="block ledger-write" style={{ "--i": 1 } as React.CSSProperties} data-stagger>
-							Você atende o balcão.
+							Seu cliente comprou,
 						</span>
-						<span
-							className="block ledger-fade text-[#24549c] mt-2 lg:mt-3"
-							style={{ "--i": 3 } as React.CSSProperties}
-							data-stagger
-						>
-							O sistema cuida do retorno.
+						<span className="block ledger-fade text-[#24549c] mt-2 lg:mt-3" style={{ "--i": 3 } as React.CSSProperties} data-stagger>
+							Será que ele vai voltar ?
 						</span>
 					</h1>
 
@@ -50,16 +48,12 @@ export function LedgerHero() {
 						style={{ "--i": 6 } as React.CSSProperties}
 						data-stagger
 					>
-						Toda venda dispara uma campanha automática. <strong className="text-[#171717]">WhatsApp na hora certa</strong>, cashback que volta como nova compra,
-						e um relacionamento que se constrói com seu cliente enquanto você trabalha. Sem você precisar lembrar de nada.
+						A maioria das lojas não sabe responder essa pergunta e perde venda sem perceber. O RecompraCRM transforma cada compra em relacionamento:
+						cashback no balcão, WhatsApp automático, e visão clara de quem está sumindo.
 					</p>
 
 					{/* CTAs */}
-					<div
-						className="ledger-fade mt-8 lg:mt-10 flex flex-wrap items-center gap-4"
-						style={{ "--i": 8 } as React.CSSProperties}
-						data-stagger
-					>
+					<div className="ledger-fade mt-8 lg:mt-10 flex flex-wrap items-center gap-4" style={{ "--i": 8 } as React.CSSProperties} data-stagger>
 						<Link
 							href="/auth/signup"
 							className="group inline-flex items-center gap-2 bg-[#24549c] hover:bg-[#1a3d7a] text-white px-7 py-4 rounded-2xl text-[14px] font-extrabold tracking-[0.04em] uppercase shadow-[0_16px_40px_-12px_rgba(36,84,156,0.45),0_6px_12px_rgba(36,84,156,0.22)] hover:shadow-[0_22px_48px_-10px_rgba(36,84,156,0.55),0_8px_16px_rgba(36,84,156,0.28)] hover:-translate-y-0.5 transition-all duration-200"
@@ -76,11 +70,7 @@ export function LedgerHero() {
 					</div>
 
 					{/* Proof row */}
-					<div
-						className="ledger-fade mt-10 lg:mt-12 grid grid-cols-1 sm:grid-cols-3 gap-3"
-						style={{ "--i": 10 } as React.CSSProperties}
-						data-stagger
-					>
+					<div className="ledger-fade mt-10 lg:mt-12 grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ "--i": 10 } as React.CSSProperties} data-stagger>
 						{HERO_PROOF.map((p) => (
 							<div
 								key={p.label}
@@ -103,11 +93,7 @@ export function LedgerHero() {
 						</div>
 
 						{/* Floating loyalty badge */}
-						<div
-							className="absolute -top-3 -left-3 sm:-left-5 z-10 ledger-fade"
-							style={{ "--i": 6 } as React.CSSProperties}
-							data-stagger
-						>
+						<div className="absolute -top-3 -left-3 sm:-left-5 z-10 ledger-fade" style={{ "--i": 6 } as React.CSSProperties} data-stagger>
 							<Stamp variant="amber" size="md" rotate={-4}>
 								<span className="ledger-pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-[#171717]" />
 								Cashback em ação
