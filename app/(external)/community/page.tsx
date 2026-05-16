@@ -88,10 +88,10 @@ export default function CommunityHubPage() {
 				{!isMaterialsLoading && featuredDocuments.length > 0 ? (
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 						{featuredDocuments.map((material) => (
-							<div key={material.id} className="rounded-xl border border-primary/15 bg-card p-4 shadow-2xs">
+							<div key={material.id} className="rounded-xl border border-border/15 bg-card p-4 shadow-2xs">
 								<h3 className="text-sm font-bold tracking-tight line-clamp-2">{material.titulo}</h3>
 								<p className="mt-1 text-xs text-muted-foreground line-clamp-3">{material.descricao}</p>
-								<a href={`/community/documents/${material.id}`} className="mt-3 inline-flex text-xs font-medium text-primary hover:text-primary/80">
+								<a href={`/community/documents/${material.id}`} className="mt-3 inline-flex text-xs font-medium text-foreground hover:text-foreground/80">
 									Ver detalhes
 								</a>
 							</div>
@@ -122,10 +122,10 @@ export default function CommunityHubPage() {
 				{!isMaterialsLoading && featuredEbooks.length > 0 ? (
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 						{featuredEbooks.map((material) => (
-							<div key={material.id} className="rounded-xl border border-primary/15 bg-card p-4 shadow-2xs">
+							<div key={material.id} className="rounded-xl border border-border/15 bg-card p-4 shadow-2xs">
 								<h3 className="text-sm font-bold tracking-tight line-clamp-2">{material.titulo}</h3>
 								<p className="mt-1 text-xs text-muted-foreground line-clamp-3">{material.descricao}</p>
-								<a href={`/community/ebooks/${material.id}`} className="mt-3 inline-flex text-xs font-medium text-primary hover:text-primary/80">
+								<a href={`/community/ebooks/${material.id}`} className="mt-3 inline-flex text-xs font-medium text-foreground hover:text-foreground/80">
 									Ver detalhes
 								</a>
 							</div>

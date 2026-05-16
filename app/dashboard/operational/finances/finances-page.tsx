@@ -142,10 +142,10 @@ function FinancesStatsView() {
 			</div>
 			<div className="flex w-full flex-col gap-6 lg:flex-row">
 				<div className="flex h-full max-h-full w-full flex-col gap-2 lg:w-[40%]">
-					<div className={"bg-card border-primary/20 flex w-full flex-col items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs"}>
+					<div className={"bg-card border-border flex w-full flex-col items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs"}>
 						<div className="flex w-full flex-row items-center justify-between gap-2">
 							<div className="flex items-center justify-start gap-2">
-								<div className={"flex h-7 w-7 p-1 items-center justify-center rounded-full bg-primary/20 text-primary"}>
+								<div className={"flex h-7 w-7 p-1 items-center justify-center rounded-full bg-primary/20 text-foreground"}>
 									<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />
 								</div>
 								<h1 className="text-xs font-medium leading-none tracking-tight">POR PLANO DE CONTAS</h1>
@@ -154,7 +154,7 @@ function FinancesStatsView() {
 								type="button"
 								onClick={() => setShowResultsByAccount((prev) => !prev)}
 								className={cn(
-									"flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full text-primary duration-300 ease-in-out hover:bg-primary/20",
+									"flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full text-foreground duration-300 ease-in-out hover:bg-primary/20",
 									{
 										"bg-primary/30": showResultsByAccount,
 									},
@@ -195,10 +195,10 @@ function FinancesStatsView() {
 							) : null}
 						</AnimatePresence>
 					</div>
-					<div className={"bg-card border-primary/20 flex w-full flex-col items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs"}>
+					<div className={"bg-card border-border flex w-full flex-col items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs"}>
 						<div className="flex w-full flex-row items-center justify-between gap-2">
 							<div className="flex items-center justify-start gap-2">
-								<div className={"flex h-7 w-7 p-1 items-center justify-center rounded-full bg-primary/20 text-primary"}>
+								<div className={"flex h-7 w-7 p-1 items-center justify-center rounded-full bg-primary/20 text-foreground"}>
 									<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />
 								</div>
 								<h1 className="text-xs font-medium leading-none tracking-tight">RESULTADO LÍQUIDO</h1>
@@ -206,7 +206,7 @@ function FinancesStatsView() {
 									type="button"
 									onClick={() => setShowLiquidResultDetails((prev) => !prev)}
 									className={cn(
-										"flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full text-primary duration-300 ease-in-out hover:bg-primary/20",
+										"flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full text-foreground duration-300 ease-in-out hover:bg-primary/20",
 										{
 											"bg-primary/30": showLiquidResultDetails,
 										},
@@ -330,9 +330,7 @@ function FinancesStatsView() {
 						}
 					/>
 				</div>
-				<div
-					className={"bg-card border-primary/20 flex w-full flex-col items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs lg:w-[60%]"}
-				>
+				<div className={"bg-card border-border flex w-full flex-col items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs lg:w-[60%]"}>
 					<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
 						<div className="flex items-center justify-start gap-2">
 							<ChartNoAxesColumnIncreasing className="w-4 h-4 min-w-4 min-h-4" />
@@ -511,7 +509,7 @@ type AccountingEntryCardProps = {
 function AccountingEntryCard({ entry }: AccountingEntryCardProps) {
 	const originTypeConfig = useMemo(() => AccountingEntryOriginTypeOptions.find((o) => o.value === entry.origemTipo) ?? null, [entry.origemTipo]);
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex items-center gap-2">
 					{originTypeConfig ? (
@@ -541,7 +539,7 @@ function AccountingEntryCard({ entry }: AccountingEntryCardProps) {
 
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex flex-wrap items-center gap-2">
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">COMPETÊNCIA: {formatDateAsLocale(entry.dataCompetencia)}</p>
 					</div>
@@ -792,7 +790,7 @@ function TransactionCard({ transaction, financialAccounts }: TransactionCardProp
 	});
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex items-center gap-2 flex-wrap">
 					{typeConfig ? (
@@ -838,12 +836,12 @@ function TransactionCard({ transaction, financialAccounts }: TransactionCardProp
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex flex-wrap items-center gap-2">
 					{transaction.dataEfetivacao ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<BsCalendarCheck className="w-3 min-w-3 h-3 min-h-3 text-green-600" />
 							<p className="text-xs font-medium tracking-tight uppercase">EFETIVADA: {formatDateAsLocale(transaction.dataEfetivacao)}</p>
 						</div>
 					) : transaction.dataPrevisao ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<BsCalendar className="w-3 min-w-3 h-3 min-h-3 text-amber-600" />
 							<p className="text-xs font-medium tracking-tight uppercase">PREVISÃO: {formatDateAsLocale(transaction.dataPrevisao)}</p>
 						</div>
@@ -867,7 +865,7 @@ function TransactionCard({ transaction, financialAccounts }: TransactionCardProp
 			</div>
 
 			{!isEffective && isEffectFormOpen ? (
-				<div className="mt-2 grid gap-3 rounded-xl border border-primary/10 bg-background/70 p-3 md:grid-cols-3">
+				<div className="mt-2 grid gap-3 rounded-xl border border-border bg-background/70 p-3 md:grid-cols-3">
 					<DateInput label="Data de efetivação" value={effectDate} handleChange={setEffectDate} />
 					<div className="flex flex-col gap-1">
 						<span className="text-[0.7rem] font-medium uppercase text-muted-foreground">Conta financeira</span>
@@ -1025,7 +1023,7 @@ function AccountCard({ account, statsPeriodAfter, statsPeriodBefore }: AccountCa
 	const stats = account.estatisticas;
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-4 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-4 py-4 shadow-2xs">
 			<div className="flex items-start justify-between gap-2">
 				<div className="flex items-center gap-2">
 					{typeConfig ? (
@@ -1058,7 +1056,7 @@ function AccountCard({ account, statsPeriodAfter, statsPeriodBefore }: AccountCa
 			</div>
 
 			{account.tipo === "BANCO" && (account.nomeBanco || account.agencia || account.numeroConta) ? (
-				<div className="flex flex-col gap-1 border-t border-primary/10 pt-2">
+				<div className="flex flex-col gap-1 border-t border-border pt-2">
 					{account.nomeBanco ? (
 						<div className="flex items-center justify-between">
 							<span className="text-[0.65rem] text-muted-foreground">Banco</span>
@@ -1157,9 +1155,7 @@ function AccountCardChart({ accountId, startDate, endDate }: AccountCardChartPro
 
 	const header = (
 		<div className="mb-1 flex items-center justify-between px-0.5">
-			<span className="text-[0.55rem] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-				{GRAPH_TYPE_LABELS[graphType]}
-			</span>
+			<span className="text-[0.55rem] font-semibold uppercase tracking-[0.05em] text-muted-foreground">{GRAPH_TYPE_LABELS[graphType]}</span>
 			<div className="flex items-center gap-0.5">
 				{GRAPH_TYPE_OPTIONS.map((opt) => (
 					<button
@@ -1169,9 +1165,7 @@ function AccountCardChart({ accountId, startDate, endDate }: AccountCardChartPro
 						onClick={() => setGraphType(opt.value)}
 						className={cn(
 							"flex h-5 w-5 items-center justify-center rounded-md transition-colors",
-							graphType === opt.value
-								? "bg-primary text-primary-foreground"
-								: "text-muted-foreground hover:bg-muted hover:text-foreground",
+							graphType === opt.value ? "bg-primary text-foreground-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
 						)}
 					>
 						{opt.icon}
@@ -1208,11 +1202,7 @@ function AccountCardChart({ accountId, startDate, endDate }: AccountCardChartPro
 		<div className="flex w-full flex-col flex-1">
 			{header}
 			<ChartContainer config={chartConfig} className="aspect-auto h-[88px] w-full">
-				<AreaChart
-					accessibilityLayer
-					data={graphType === "consolidated" ? consolidatedData : data}
-					margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
-				>
+				<AreaChart accessibilityLayer data={graphType === "consolidated" ? consolidatedData : data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
 					<defs>
 						<linearGradient id={`grad-entries-${accountId}`} x1="0" y1="0" x2="0" y2="1">
 							<stop offset="5%" stopColor="#16a34a" stopOpacity={0.35} />
@@ -1253,13 +1243,37 @@ function AccountCardChart({ accountId, startDate, endDate }: AccountCardChartPro
 					/>
 
 					{(graphType === "entries-and-exits" || graphType === "entries") && (
-						<Area type="monotone" dataKey="entries" stroke="#16a34a" strokeWidth={1.5} fill={`url(#grad-entries-${accountId})`} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
+						<Area
+							type="monotone"
+							dataKey="entries"
+							stroke="#16a34a"
+							strokeWidth={1.5}
+							fill={`url(#grad-entries-${accountId})`}
+							dot={false}
+							activeDot={{ r: 3, strokeWidth: 0 }}
+						/>
 					)}
 					{(graphType === "entries-and-exits" || graphType === "exits") && (
-						<Area type="monotone" dataKey="exits" stroke="#dc2626" strokeWidth={1.5} fill={`url(#grad-exits-${accountId})`} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
+						<Area
+							type="monotone"
+							dataKey="exits"
+							stroke="#dc2626"
+							strokeWidth={1.5}
+							fill={`url(#grad-exits-${accountId})`}
+							dot={false}
+							activeDot={{ r: 3, strokeWidth: 0 }}
+						/>
 					)}
 					{graphType === "consolidated" && (
-						<Area type="monotone" dataKey="net" stroke="#6366f1" strokeWidth={1.5} fill={`url(#grad-net-${accountId})`} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
+						<Area
+							type="monotone"
+							dataKey="net"
+							stroke="#6366f1"
+							strokeWidth={1.5}
+							fill={`url(#grad-net-${accountId})`}
+							dot={false}
+							activeDot={{ r: 3, strokeWidth: 0 }}
+						/>
 					)}
 				</AreaChart>
 			</ChartContainer>
@@ -1282,10 +1296,7 @@ type StatCardProps = {
 export function StatCard({ className, icon, iconWrapperClassName, label, value }: StatCardProps) {
 	return (
 		<div
-			className={cn(
-				"bg-card border-primary/20 flex w-full flex-row items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs",
-				className,
-			)}
+			className={cn("bg-card border-border flex w-full flex-row items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs", className)}
 		>
 			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
 				<div className="flex items-center justify-start gap-2">

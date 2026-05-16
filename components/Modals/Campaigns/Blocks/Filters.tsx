@@ -148,7 +148,7 @@ export default function CampaignsFiltersBlock({
 				onOpenTopBuyersAdd={openTopBuyersAddAt}
 			/>
 
-			<div className="flex w-full flex-wrap items-center gap-2 border-t border-primary/10 pt-3">
+			<div className="flex w-full flex-wrap items-center gap-2 border-t border-border pt-3">
 				<FastAddButton
 					icon={<MapPinned className="h-3.5 w-3.5" />}
 					label="ADICIONAR FILTRO DE ESTADO"
@@ -181,8 +181,8 @@ export default function CampaignsFiltersBlock({
 				/> */}
 			</div>
 
-			<div className="flex items-center justify-between gap-2 rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
-				<p className="text-xs font-semibold uppercase tracking-wide text-primary/80">PRÉVIA DA AUDIÊNCIA</p>
+			<div className="flex items-center justify-between gap-2 rounded-md border border-border bg-primary/5 px-3 py-2">
+				<p className="text-xs font-semibold uppercase tracking-wide text-foreground/80">PRÉVIA DA AUDIÊNCIA</p>
 				{isAudiencePreviewLoading ? (
 					<AnimatedSpinner className="h-4 min-h-4 w-4 min-w-4" />
 				) : isAudiencePreviewError ? (
@@ -249,7 +249,7 @@ function RootOperatorSwitcher({
 }) {
 	return (
 		<div className="flex w-full flex-col gap-1">
-			<Label className="text-sm font-medium tracking-tight text-primary/80">OPERADOR DO GRUPO RAIZ</Label>
+			<Label className="text-sm font-medium tracking-tight text-foreground/80">OPERADOR DO GRUPO RAIZ</Label>
 			<div className="flex flex-wrap items-center gap-2">
 				{(Object.keys(OPERATOR_LABELS) as TCampaignFilterLogicOperatorEnum[]).map((op) => {
 					const disabled = op === "NOT" && itemCount > 1;
@@ -263,7 +263,7 @@ function RootOperatorSwitcher({
 							title={disabled ? "Remova itens até restar um para usar NÃO" : OPERATOR_LABELS[op].description}
 							className={cn(
 								"rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
-								active ? "border-primary bg-primary text-primary-foreground" : "border-primary/20 text-primary/80 hover:bg-primary/5",
+								active ? "border-border bg-primary text-foreground-foreground" : "border-border text-foreground/80 hover:bg-primary/5",
 								disabled && "cursor-not-allowed opacity-50 hover:bg-transparent",
 							)}
 						>
@@ -319,7 +319,7 @@ function FilterGroupBody({
 }: FilterGroupBodyProps) {
 	if (isRoot && node.itens.length === 0) {
 		return (
-			<div className="rounded-md border border-dashed border-primary/30 p-3 text-center text-xs italic text-muted-foreground">
+			<div className="rounded-md border border-dashed border-border/30 p-3 text-center text-xs italic text-muted-foreground">
 				Nenhum filtro adicionado. Use os botões abaixo para começar.
 			</div>
 		);
@@ -328,7 +328,7 @@ function FilterGroupBody({
 	const groupIsFullNot = node.operador === "NOT" && node.itens.length >= 1;
 
 	return (
-		<div className={cn("flex w-full flex-col gap-2", !isRoot && "border-l-2 border-primary/20 pl-3")}>
+		<div className={cn("flex w-full flex-col gap-2", !isRoot && "border-l-2 border-border pl-3")}>
 			{!isRoot ? (
 				<GroupHeader
 					operador={node.operador}
@@ -417,7 +417,7 @@ function GroupHeader({
 							title={disabled ? "Remova itens até restar um para usar NÃO" : OPERATOR_LABELS[op].description}
 							className={cn(
 								"rounded border px-2 py-0.5 text-[10px] font-semibold tracking-wide transition-colors",
-								active ? "border-primary bg-primary text-primary-foreground" : "border-primary/20 text-primary/70 hover:bg-primary/10",
+								active ? "border-border bg-primary text-foreground-foreground" : "border-border text-foreground/70 hover:bg-primary/10",
 								disabled && "cursor-not-allowed opacity-50",
 							)}
 						>
@@ -440,12 +440,12 @@ function GroupHeader({
 
 function FilterConditionCard({ condicao, onEdit, onRemove }: { condicao: TCampaignFilterCondition; onEdit: () => void; onRemove: () => void }) {
 	return (
-		<div className="flex w-full items-start justify-between gap-2 rounded-md border border-primary/15 bg-background p-2">
+		<div className="flex w-full items-start justify-between gap-2 rounded-md border border-border/15 bg-background p-2">
 			<div className="flex min-w-0 flex-1 items-start gap-2">
 				{condicao.tipo === "LOCALIZAÇÃO" ? (
-					<MapPin className="h-4 min-h-4 w-4 min-w-4 text-primary/70" />
+					<MapPin className="h-4 min-h-4 w-4 min-w-4 text-foreground/70" />
 				) : (
-					<Crown className="h-4 min-h-4 w-4 min-w-4 text-primary/70" />
+					<Crown className="h-4 min-h-4 w-4 min-w-4 text-foreground/70" />
 				)}
 				<ConditionSummary condicao={condicao} />
 			</div>
@@ -454,7 +454,7 @@ function FilterConditionCard({ condicao, onEdit, onRemove }: { condicao: TCampai
 					type="button"
 					aria-label="Editar filtro"
 					onClick={onEdit}
-					className="rounded p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+					className="rounded p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
 				>
 					<Pencil className="h-3.5 w-3.5" />
 				</button>
@@ -475,14 +475,14 @@ function ConditionSummary({ condicao }: { condicao: TCampaignFilterCondition }) 
 	if (condicao.tipo === "LOCALIZAÇÃO") {
 		return (
 			<div className="flex min-w-0 flex-col">
-				<span className="text-xs font-semibold uppercase tracking-wide text-primary/80">Localização</span>
+				<span className="text-xs font-semibold uppercase tracking-wide text-foreground/80">Localização</span>
 				<LocationDetails condicao={condicao} />
 			</div>
 		);
 	}
 	return (
 		<div className="flex min-w-0 flex-col">
-			<span className="text-xs font-semibold uppercase tracking-wide text-primary/80">Top compradores de produto</span>
+			<span className="text-xs font-semibold uppercase tracking-wide text-foreground/80">Top compradores de produto</span>
 			<TopBuyersDetails condicao={condicao} />
 		</div>
 	);
@@ -500,7 +500,7 @@ function LocationDetails({ condicao }: { condicao: Extract<TCampaignFilterCondit
 		<div className="mt-1 flex flex-col gap-0.5 text-[11px] text-muted-foreground">
 			{nonEmpty.map((row) => (
 				<div key={row.label} className="truncate">
-					<span className="font-medium text-primary/60">{row.label}:</span> <strong>{row.values?.join(", ")}</strong>
+					<span className="font-medium text-foreground/60">{row.label}:</span> <strong>{row.values?.join(", ")}</strong>
 				</div>
 			))}
 		</div>

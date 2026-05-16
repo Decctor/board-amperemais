@@ -35,7 +35,7 @@ export default function PartnersRanking({ periodAfter, periodBefore, comparingPe
 	};
 	return (
 		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-primary/20 flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">{rankingBy ? RANKING_LABEL_MAP[rankingBy] : "TOP 10 PARCEIROS"}</h1>
 					<div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export default function PartnersRanking({ periodAfter, periodBefore, comparingPe
 							<div
 								key={partner.parceiroId}
 								className={cn(
-									"bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-3 shadow-2xs",
+									"bg-card border-border flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-3 shadow-2xs",
 									partner.rank === 1 && "border-yellow-500/50 bg-yellow-500/5",
 									partner.rank === 2 && "border-gray-400/50 bg-gray-400/5",
 									partner.rank === 3 && "border-orange-600/50 bg-orange-600/5",
@@ -167,12 +167,12 @@ export default function PartnersRanking({ periodAfter, periodBefore, comparingPe
 											<div className="flex items-center gap-1.5">
 												<div className="flex items-center gap-1">
 													<IdCard className="w-4 h-4 min-w-4 min-h-4" />
-													<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{partner.parceiroCpfCnpj}</h1>
+													<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{partner.parceiroCpfCnpj}</h1>
 												</div>
 												{partner.parceiroTelefone ? (
 													<div className="flex items-center gap-1">
 														<Phone className="w-4 h-4 min-w-4 min-h-4" />
-														<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{partner.parceiroTelefone}</h1>
+														<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{partner.parceiroTelefone}</h1>
 													</div>
 												) : null}
 											</div>
@@ -181,7 +181,7 @@ export default function PartnersRanking({ periodAfter, periodBefore, comparingPe
 									<div className="flex items-center gap-3">
 										{rankingBy === "sales-total-value" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(partner.totalRevenue)}</p>
 												</div>
@@ -192,7 +192,7 @@ export default function PartnersRanking({ periodAfter, periodBefore, comparingPe
 										) : null}
 										{rankingBy === "sales-total-qty" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(partner.totalSalesQty)}</p>
 												</div>
@@ -203,7 +203,7 @@ export default function PartnersRanking({ periodAfter, periodBefore, comparingPe
 										) : null}
 										{rankingBy === "average-ticket" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<Ticket className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(partner.averageTicket)}</p>
 												</div>
@@ -214,7 +214,7 @@ export default function PartnersRanking({ periodAfter, periodBefore, comparingPe
 										) : null}
 										{rankingBy === "margin" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<TrendingUp className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(partner.marginPercentage)}%</p>
 												</div>

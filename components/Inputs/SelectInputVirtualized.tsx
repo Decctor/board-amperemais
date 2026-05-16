@@ -69,7 +69,7 @@ function SelectInputVirtualized({
 
 	return isDesktop ? (
 		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
-			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 				{label}
 			</Label>
 			<Popover modal={modal} open={isOpen} onOpenChange={setIsOpen}>
@@ -81,7 +81,7 @@ function SelectInputVirtualized({
 						variant="outline"
 						aria-haspopup="listbox"
 						aria-expanded={isOpen}
-						className="w-full justify-between truncate border border-primary/20"
+						className="w-full justify-between truncate border border-border"
 					>
 						<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
 						<ChevronsUpDown className="opacity-50" />
@@ -107,7 +107,7 @@ function SelectInputVirtualized({
 		</div>
 	) : (
 		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
-			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 				{label}
 			</Label>
 			<Drawer open={isOpen} onOpenChange={setIsOpen}>
@@ -118,7 +118,7 @@ function SelectInputVirtualized({
 						variant="outline"
 						aria-haspopup="listbox"
 						aria-expanded={isOpen}
-						className="w-full justify-between border border-primary/20"
+						className="w-full justify-between border border-border"
 					>
 						<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
 						<ChevronsUpDown className="opacity-50" />

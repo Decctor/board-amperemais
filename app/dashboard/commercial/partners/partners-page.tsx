@@ -409,7 +409,7 @@ function PartnersPagePartnerCard({
 	handleEditClick: (id: string) => void;
 }) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between flex-col md:flex-row gap-3">
 				<div className="flex items-center gap-3">
 					<Avatar className="w-6 h-6 min-w-6 min-h-6">
@@ -442,25 +442,25 @@ function PartnersPagePartnerCard({
 							icon={<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />}
 							value={partner.estatisticas.vendasQtdeTotal}
 							tooltipContent="Quantidade total de vendas no período de filtro"
-							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-primary"
+							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-foreground"
 							valueClassName="font-bold"
 						/>
 						<StatBadge
 							icon={<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />}
 							value={formatToMoney(partner.estatisticas.vendasValorTotal)}
 							tooltipContent="Valor total de vendas no período de filtro"
-							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-primary"
+							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-foreground"
 							valueClassName="font-bold"
 						/>
 					</div>
 				</div>
 			</div>
 			<div className="w-full flex items-center justify-center lg:justify-end gap-2 flex-wrap">
-				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 					<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
 					<p className="text-xs font-medium tracking-tight uppercase">PRIMEIRA VENDA: {formatDateAsLocale(partner.estatisticas.dataPrimeiraVenda)}</p>
 				</div>
-				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 					<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
 					<p className="text-xs font-medium tracking-tight uppercase">ÚLTIMA VENDA: {formatDateAsLocale(partner.estatisticas.dataUltimaVenda)}</p>
 				</div>

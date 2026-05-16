@@ -14,7 +14,7 @@ export function BulkInsertIdleStage({ onFileSelect }: BulkInsertIdleStageProps) 
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex flex-col gap-0.5">
 				<div className="flex items-center gap-1.5">
-					<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-primary")}>
+					<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-foreground")}>
 						<Sparkles className="h-4 w-4" />
 						ETAPA 1
 					</div>
@@ -24,7 +24,7 @@ export function BulkInsertIdleStage({ onFileSelect }: BulkInsertIdleStageProps) 
 					O arquivo é lido localmente, a estrutura é analisada e o sistema sugere automaticamente o mapeamento das colunas para você revisar.
 				</p>
 			</div>
-			<label className="group relative flex min-h-[320px] cursor-pointer flex-col items-center justify-center gap-5 rounded-3xl border-2 border-dashed border-primary/20 bg-background/70 px-6 py-10 text-center transition-colors hover:border-primary/45 hover:bg-primary/[0.03]">
+			<label className="group relative flex min-h-[320px] cursor-pointer flex-col items-center justify-center gap-5 rounded-3xl border-2 border-dashed border-border bg-background/70 px-6 py-10 text-center transition-colors hover:border-border/45 hover:bg-primary/[0.03]">
 				<input
 					type="file"
 					accept=".xlsx,.xls,.csv"
@@ -35,7 +35,7 @@ export function BulkInsertIdleStage({ onFileSelect }: BulkInsertIdleStageProps) 
 						if (selectedFile) onFileSelect(selectedFile);
 					}}
 				/>
-				<div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105">
+				<div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-foreground transition-transform duration-300 group-hover:scale-105">
 					<FileUp className="h-9 w-9" />
 				</div>
 				<div className="space-y-2">
@@ -45,7 +45,7 @@ export function BulkInsertIdleStage({ onFileSelect }: BulkInsertIdleStageProps) 
 			</label>
 			<div className="w-full rounded-lg border bg-muted/25 p-5">
 				<div className="flex items-start gap-3">
-					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-foreground">
 						<FileSpreadsheet className="h-5 w-5" />
 					</div>
 					<div className="w-full flex flex-col gap-0.5">

@@ -65,7 +65,7 @@ function TemplateButtonsConfig({ buttons, onButtonsChange }: TemplateButtonsConf
 					? buttons.map((button, index) => (
 							<motion.div
 								key={index.toString()}
-								className="w-full flex flex-col gap-3 p-2 rounded-lg border border-primary/30"
+								className="w-full flex flex-col gap-3 p-2 rounded-lg border border-border/30"
 								variants={SlideMotionVariants}
 								initial="initial"
 								animate="animate"

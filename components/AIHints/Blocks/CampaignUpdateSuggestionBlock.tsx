@@ -133,7 +133,7 @@ function ChangeIntentBadge({ unchanged }: { unchanged: boolean }) {
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
-		<div className="flex items-start justify-between gap-2 py-1.5 border-b border-border/40 last:border-b-0">
+		<div className="flex items-start justify-between gap-2 py-1.5 border-b border-border last:border-b-0">
 			<span className="text-xs text-muted-foreground shrink-0">{label}</span>
 			<span className="text-xs text-foreground font-medium text-right">{value}</span>
 		</div>
@@ -179,7 +179,7 @@ export default function CampaignUpdateSuggestionBlock({ hint, callbacks }: Campa
 			{/* Target Campaign */}
 			<div className="flex flex-col gap-2">
 				<SectionLabel icon={<Target />} label="CAMPANHA ALVO" />
-				<div className="rounded-lg border border-border/40 bg-secondary/20 px-3 py-1 flex flex-col">
+				<div className="rounded-lg border border-border bg-secondary/20 px-3 py-1 flex flex-col">
 					<InfoRow label="Título" value={currentSummary.titulo} />
 					<InfoRow label="Gatilho atual" value={TRIGGER_LABELS[currentSummary.gatilhoTipo] ?? currentSummary.gatilhoTipo} />
 					<InfoRow label="Status atual" value={currentSummary.ativo ? "Ativa" : "Inativa"} />
@@ -197,7 +197,7 @@ export default function CampaignUpdateSuggestionBlock({ hint, callbacks }: Campa
 							const after = (proposedChanges as Record<string, unknown>)[key];
 							const unchanged = valuesAreEqualForDisplay(key, before, after);
 							return (
-								<div key={key} className="flex items-start justify-between gap-2 py-1.5 border-b border-border/40 last:border-b-0">
+								<div key={key} className="flex items-start justify-between gap-2 py-1.5 border-b border-border last:border-b-0">
 									<div className="flex min-w-0 flex-1 items-start gap-2">
 										<ChangeIntentBadge unchanged={unchanged} />
 										<span className="text-xs text-muted-foreground">{FIELD_LABELS[key] ?? key}</span>

@@ -160,9 +160,7 @@ export default function ControlCommunityCourseSection({ sectionId, closeModal, c
 			}
 		}
 
-		const uploadLessons = lessonsToSubmit
-			.map((lesson, index) => ({ lesson, index }))
-			.filter(({ lesson }) => !!lesson.videoHolder.file);
+		const uploadLessons = lessonsToSubmit.map((lesson, index) => ({ lesson, index })).filter(({ lesson }) => !!lesson.videoHolder.file);
 
 		const uploadMetricsByKey: Record<string, Pick<TLessonUploadProgress, "status" | "loadedBytes" | "totalBytes">> = {};
 		for (const { lesson, index } of uploadLessons) {
@@ -326,7 +324,7 @@ export default function ControlCommunityCourseSection({ sectionId, closeModal, c
 
 			<ResponsiveMenuSection title="AULAS DA SEÇÃO" icon={<FilePlus2 className="h-4 w-4 min-h-4 min-w-4" />}>
 				{overallUploadProgress.totalItems > 0 ? (
-					<div className="flex w-full flex-col gap-1 rounded-md border border-primary/20 bg-primary/5 p-2">
+					<div className="flex w-full flex-col gap-1 rounded-md border border-border bg-primary/5 p-2">
 						<p className="text-xs font-medium">Progresso geral de upload</p>
 						<Progress value={overallUploadProgress.progressPercent} className="h-2 w-full" />
 						<p className="text-[0.7rem] text-muted-foreground">
@@ -408,14 +406,14 @@ function SectionLessonCard({ lesson, uploadProgress, disableActions, handleRemov
 		error: "Falha no upload.",
 	};
 	return (
-		<div className="w-full flex flex-col gap-1.5 bg-card border-primary/20 rounded-xl border p-2 shadow-2xs">
+		<div className="w-full flex flex-col gap-1.5 bg-card border-border rounded-xl border p-2 shadow-2xs">
 			<div className="w-full flex items-center justify-between gap-2">
 				<h3 className="text-xs font-bold tracking-tight lg:text-sm">{lesson.titulo}</h3>
 				<p className="text-[0.65rem] rounded-md bg-primary/10 px-2 py-0.5">{contentTypeLabel}</p>
 			</div>
 			<p className="text-xs text-muted-foreground">{lesson.descricao || "Nenhuma descrição definida..."}</p>
 			{uploadProgress && (uploadProgress.status !== "idle" || uploadProgress.errorMessage) ? (
-				<div className="flex w-full flex-col gap-1 rounded-md border border-primary/20 bg-primary/5 p-2">
+				<div className="flex w-full flex-col gap-1 rounded-md border border-border bg-primary/5 p-2">
 					<p className="text-[0.7rem] font-medium">{uploadStatusLabelByStatus[uploadProgress.status]}</p>
 					<Progress value={uploadProgress.progressPercent} className="h-1.5 w-full" />
 					<p className="text-[0.65rem] text-muted-foreground">

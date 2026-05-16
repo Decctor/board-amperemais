@@ -45,7 +45,6 @@ type ProductPageProps = {
 };
 
 export default function ProductPage({ user, id }: ProductPageProps) {
-
 	const {
 		data: stats,
 		isLoading,
@@ -81,53 +80,53 @@ export default function ProductPage({ user, id }: ProductPageProps) {
 							<div className="flex items-center gap-2">
 								<Code className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">CÓDIGO:</span> {stats.produto.codigo}
+									<span className="text-foreground/60">CÓDIGO:</span> {stats.produto.codigo}
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
 								<Tag className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">GRUPO:</span> {stats.produto.grupo}
+									<span className="text-foreground/60">GRUPO:</span> {stats.produto.grupo}
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
 								<Package className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">UNIDADE:</span> {stats.produto.unidade}
+									<span className="text-foreground/60">UNIDADE:</span> {stats.produto.unidade}
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
 								<Package className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">QUANTIDADE:</span> {stats.produto.quantidade ? formatDecimalPlaces(stats.produto.quantidade) : "N/A"}
+									<span className="text-foreground/60">QUANTIDADE:</span> {stats.produto.quantidade ? formatDecimalPlaces(stats.produto.quantidade) : "N/A"}
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
 								<Package className="w-4 min-w-4 h-4 min-h-4" />
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">PREÇO DE VENDA:</span> {stats.produto.precoVenda ? formatToMoney(stats.produto.precoVenda) : "N/A"}
+									<span className="text-foreground/60">PREÇO DE VENDA:</span> {stats.produto.precoVenda ? formatToMoney(stats.produto.precoVenda) : "N/A"}
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">NCM:</span> {stats.produto.ncm}
+									<span className="text-foreground/60">NCM:</span> {stats.produto.ncm}
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">PRIMEIRA VENDA:</span> {stats.dataPrimeiraVenda ? formatDateAsLocale(stats.dataPrimeiraVenda) : "N/A"}
+									<span className="text-foreground/60">PRIMEIRA VENDA:</span> {stats.dataPrimeiraVenda ? formatDateAsLocale(stats.dataPrimeiraVenda) : "N/A"}
 								</p>
 							</div>
 							<div className="flex items-center gap-2">
 								<p className="text-sm font-medium tracking-tight">
-									<span className="text-primary/60">ÚLTIMA VENDA:</span> {stats.dataUltimaVenda ? formatDateAsLocale(stats.dataUltimaVenda) : "N/A"}
+									<span className="text-foreground/60">ÚLTIMA VENDA:</span> {stats.dataUltimaVenda ? formatDateAsLocale(stats.dataUltimaVenda) : "N/A"}
 								</p>
 							</div>
 						</div>
 						<div className="flex items-center gap-4 flex-wrap">
 							<div className="flex items-center gap-2">
 								<CalendarRange className="w-4 min-w-4 h-4 min-h-4" />
-								<p className="text-sm font-medium tracking-tight text-primary/60">DESDE O INÍCIO:</p>
+								<p className="text-sm font-medium tracking-tight text-foreground/60">DESDE O INÍCIO:</p>
 							</div>
 							<p className="text-sm font-medium tracking-tight">{formatToMoney(stats.geral.faturamentoBrutoTotal)} vendidos</p>
 							<p className="text-sm font-medium tracking-tight">{stats.geral.vendasQtdeTotal} vendas únicas</p>
@@ -292,9 +291,33 @@ function ProductInlineFilters({ filters, updateFilters }: ProductInlineFiltersPr
 				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasSaleNatures ? <ProductMultiFilter label="NATUREZAS" options={saleNatureOptions} value={filters.saleNatures ?? []} onChange={(saleNatures) => updateFilters({ saleNatures })} onClear={() => updateFilters({ saleNatures: null })} /> : null}
-			{hasSeller ? <ProductSingleFilter label="VENDEDOR" options={sellerOptions} value={filters.sellerId} onChange={(sellerId) => updateFilters({ sellerId })} onClear={() => updateFilters({ sellerId: null })} /> : null}
-			{hasPartner ? <ProductSingleFilter label="PARCEIRO" options={partnerOptions} value={filters.partnerId} onChange={(partnerId) => updateFilters({ partnerId })} onClear={() => updateFilters({ partnerId: null })} /> : null}
+			{hasSaleNatures ? (
+				<ProductMultiFilter
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={filters.saleNatures ?? []}
+					onChange={(saleNatures) => updateFilters({ saleNatures })}
+					onClear={() => updateFilters({ saleNatures: null })}
+				/>
+			) : null}
+			{hasSeller ? (
+				<ProductSingleFilter
+					label="VENDEDOR"
+					options={sellerOptions}
+					value={filters.sellerId}
+					onChange={(sellerId) => updateFilters({ sellerId })}
+					onClear={() => updateFilters({ sellerId: null })}
+				/>
+			) : null}
+			{hasPartner ? (
+				<ProductSingleFilter
+					label="PARCEIRO"
+					options={partnerOptions}
+					value={filters.partnerId}
+					onChange={(partnerId) => updateFilters({ partnerId })}
+					onClear={() => updateFilters({ partnerId: null })}
+				/>
+			) : null}
 
 			<InteractiveFilter.AddFilterRoot className="w-fit">
 				<InteractiveFilter.AddFilterTrigger>
@@ -303,9 +326,35 @@ function ProductInlineFilters({ filters, updateFilters }: ProductInlineFiltersPr
 				</InteractiveFilter.AddFilterTrigger>
 				<InteractiveFilter.AddFilterContent>
 					<InteractiveFilter.AddFilterSection heading="Filtros">
-						{!hasSaleNatures ? <InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={saleNatureOptions} value={filters.saleNatures ?? []} onChange={(saleNatures) => updateFilters({ saleNatures })} onClear={() => updateFilters({ saleNatures: null })} clearLabel="TODAS" /></InteractiveFilter.AddFilterItem> : null}
-						{!hasSeller ? <InteractiveFilter.AddFilterItem id="seller" label="VENDEDOR" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.SingleContent options={sellerOptions} value={filters.sellerId ?? undefined} onChange={(sellerId) => updateFilters({ sellerId })} /></InteractiveFilter.AddFilterItem> : null}
-						{!hasPartner ? <InteractiveFilter.AddFilterItem id="partner" label="PARCEIRO" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.SingleContent options={partnerOptions} value={filters.partnerId ?? undefined} onChange={(partnerId) => updateFilters({ partnerId })} /></InteractiveFilter.AddFilterItem> : null}
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={saleNatureOptions}
+									value={filters.saleNatures ?? []}
+									onChange={(saleNatures) => updateFilters({ saleNatures })}
+									onClear={() => updateFilters({ saleNatures: null })}
+									clearLabel="TODAS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSeller ? (
+							<InteractiveFilter.AddFilterItem id="seller" label="VENDEDOR" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={sellerOptions}
+									value={filters.sellerId ?? undefined}
+									onChange={(sellerId) => updateFilters({ sellerId })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasPartner ? (
+							<InteractiveFilter.AddFilterItem id="partner" label="PARCEIRO" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={partnerOptions}
+									value={filters.partnerId ?? undefined}
+									onChange={(partnerId) => updateFilters({ partnerId })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
 					</InteractiveFilter.AddFilterSection>
 				</InteractiveFilter.AddFilterContent>
 			</InteractiveFilter.AddFilterRoot>
@@ -403,14 +452,14 @@ function GroupedByMonthDay({ data }: { data: TGetProductStatsOutput["data"]["res
 				<TooltipTrigger asChild>
 					<div
 						key={index.toString()}
-						className="flex flex-col items-center justify-center p-2 rounded-md border border-primary/20 w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
+						className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 					>
 						<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">DIA {index + 1}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -421,7 +470,7 @@ function GroupedByMonthDay({ data }: { data: TGetProductStatsOutput["data"]["res
 								<span className="text-xs font-medium tracking-tight">FATURAMENTO</span>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">VALOR MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(avgValue)}</span>
@@ -430,7 +479,7 @@ function GroupedByMonthDay({ data }: { data: TGetProductStatsOutput["data"]["res
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">DIA {index + 1}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -443,7 +492,7 @@ function GroupedByMonthDay({ data }: { data: TGetProductStatsOutput["data"]["res
 
 	return (
 		<TooltipProvider>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR DIA DO MÊS</h1>
 					<Calendar className="w-4 h-4 min-w-4 min-h-4" />
@@ -514,14 +563,14 @@ function GroupedByMonth({ data }: { data: TGetProductStatsOutput["data"]["result
 				<TooltipTrigger asChild>
 					<div
 						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-primary/20 w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 					>
 						<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -532,7 +581,7 @@ function GroupedByMonth({ data }: { data: TGetProductStatsOutput["data"]["result
 								<span className="text-xs font-medium tracking-tight">FATURAMENTO</span>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">VALOR MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(avgValue)}</span>
@@ -541,7 +590,7 @@ function GroupedByMonth({ data }: { data: TGetProductStatsOutput["data"]["result
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -554,7 +603,7 @@ function GroupedByMonth({ data }: { data: TGetProductStatsOutput["data"]["result
 
 	return (
 		<TooltipProvider>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR MÊS</h1>
 					<Calendar className="w-4 h-4 min-w-4 min-h-4" />
@@ -620,14 +669,14 @@ function GroupedByWeekDay({ data }: { data: TGetProductStatsOutput["data"]["resu
 				<TooltipTrigger asChild>
 					<div
 						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-primary/20 w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 					>
 						<h1 className="text-xs font-bold tracking-tight uppercase">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h1>
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -638,7 +687,7 @@ function GroupedByWeekDay({ data }: { data: TGetProductStatsOutput["data"]["resu
 								<span className="text-xs font-medium tracking-tight">FATURAMENTO</span>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">VALOR MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(avgValue)}</span>
@@ -647,7 +696,7 @@ function GroupedByWeekDay({ data }: { data: TGetProductStatsOutput["data"]["resu
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -660,7 +709,7 @@ function GroupedByWeekDay({ data }: { data: TGetProductStatsOutput["data"]["resu
 
 	return (
 		<TooltipProvider>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR DIA DA SEMANA</h1>
 					<Calendar className="w-4 h-4 min-w-4 min-h-4" />
@@ -710,7 +759,7 @@ function GroupedByClient({ data }: { data: TGetProductStatsOutput["data"]["resul
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-border text-xs">{index + 1}Âº</div>
 					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{client.clienteNome || "N/A"}</h1>
 				</div>
 				<div className="flex items-center gap-2">
@@ -724,7 +773,7 @@ function GroupedByClient({ data }: { data: TGetProductStatsOutput["data"]["resul
 
 	return (
 		<TooltipProvider>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 CLIENTES</h1>
 					<UserRound className="w-4 h-4 min-w-4 min-h-4" />
@@ -734,7 +783,7 @@ function GroupedByClient({ data }: { data: TGetProductStatsOutput["data"]["resul
 						type="button"
 						onClick={() => setSortMode("value")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "value" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "value" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						VALOR
@@ -743,7 +792,7 @@ function GroupedByClient({ data }: { data: TGetProductStatsOutput["data"]["resul
 						type="button"
 						onClick={() => setSortMode("quantity")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "quantity" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "quantity" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						QUANTIDADE
@@ -781,7 +830,7 @@ function GroupedBySeller({ data }: { data: TGetProductStatsOutput["data"]["resul
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-border text-xs">{index + 1}Âº</div>
 					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{seller.vendedorNome || "N/A"}</h1>
 				</div>
 				<div className="flex items-center gap-2">
@@ -795,7 +844,7 @@ function GroupedBySeller({ data }: { data: TGetProductStatsOutput["data"]["resul
 
 	return (
 		<TooltipProvider>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 VENDEDORES</h1>
 					<Users className="w-4 h-4 min-w-4 min-h-4" />
@@ -805,7 +854,7 @@ function GroupedBySeller({ data }: { data: TGetProductStatsOutput["data"]["resul
 						type="button"
 						onClick={() => setSortMode("value")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "value" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "value" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						VALOR
@@ -814,7 +863,7 @@ function GroupedBySeller({ data }: { data: TGetProductStatsOutput["data"]["resul
 						type="button"
 						onClick={() => setSortMode("quantity")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "quantity" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "quantity" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						QUANTIDADE
@@ -852,7 +901,7 @@ function GroupedByPartner({ data }: { data: TGetProductStatsOutput["data"]["resu
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-border text-xs">{index + 1}Âº</div>
 					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{partner.parceiroNome || "N/A"}</h1>
 				</div>
 				<div className="flex items-center gap-2">
@@ -866,7 +915,7 @@ function GroupedByPartner({ data }: { data: TGetProductStatsOutput["data"]["resu
 
 	return (
 		<TooltipProvider>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">TOP 10 PARCEIROS</h1>
 					<Users className="w-4 h-4 min-w-4 min-h-4" />
@@ -876,7 +925,7 @@ function GroupedByPartner({ data }: { data: TGetProductStatsOutput["data"]["resu
 						type="button"
 						onClick={() => setSortMode("value")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "value" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "value" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						VALOR
@@ -885,7 +934,7 @@ function GroupedByPartner({ data }: { data: TGetProductStatsOutput["data"]["resu
 						type="button"
 						onClick={() => setSortMode("quantity")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "quantity" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "quantity" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						QUANTIDADE
@@ -927,10 +976,10 @@ function GroupedByRelatedProducts({ data }: { data: TGetProductStatsOutput["data
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-border text-xs">{index + 1}Âº</div>
 					<div className="flex flex-col flex-1 min-w-0">
 						<h1 className="text-xs font-medium tracking-tight truncate">{product.produtoDescricao}</h1>
-						<p className="text-[10px] text-primary/60 truncate">{product.produtoCodigo}</p>
+						<p className="text-[10px] text-foreground/60 truncate">{product.produtoCodigo}</p>
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
@@ -944,7 +993,7 @@ function GroupedByRelatedProducts({ data }: { data: TGetProductStatsOutput["data
 
 	return (
 		<TooltipProvider>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">PRODUTOS VENDIDOS JUNTO</h1>
 					<ShoppingBag className="w-4 h-4 min-w-4 min-h-4" />
@@ -954,7 +1003,7 @@ function GroupedByRelatedProducts({ data }: { data: TGetProductStatsOutput["data
 						type="button"
 						onClick={() => setSortMode("frequency")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "frequency" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "frequency" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						FREQUÊNCIA
@@ -963,7 +1012,7 @@ function GroupedByRelatedProducts({ data }: { data: TGetProductStatsOutput["data
 						type="button"
 						onClick={() => setSortMode("value")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "value" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "value" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						VALOR
@@ -972,7 +1021,7 @@ function GroupedByRelatedProducts({ data }: { data: TGetProductStatsOutput["data
 						type="button"
 						onClick={() => setSortMode("quantity")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							sortMode === "quantity" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							sortMode === "quantity" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						QTDE
@@ -982,7 +1031,7 @@ function GroupedByRelatedProducts({ data }: { data: TGetProductStatsOutput["data
 					{sortedData.length > 0 ? (
 						sortedData.slice(0, 10).map((item, index) => <ProductCard key={item.produtoId} index={index} product={item} mode={sortMode} />)
 					) : (
-						<p className="text-xs text-center text-primary/60">Nenhum produto relacionado encontrado</p>
+						<p className="text-xs text-center text-foreground/60">Nenhum produto relacionado encontrado</p>
 					)}
 				</div>
 			</div>
@@ -1011,12 +1060,12 @@ function MarginAnalysis({ data }: { data: TGetProductStatsOutput["data"]["analis
 		return (
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
-					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-primary text-xs">{index + 1}Âº</div>
+					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-border text-xs">{index + 1}Âº</div>
 					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{name || "N/A"}</h1>
 				</div>
 				<div className="flex flex-col items-end">
 					<span className="text-xs font-bold tracking-tight">{formatToMoney(item.margem)}</span>
-					<span className="text-[10px] text-primary/60">{formatDecimalPlaces(item.margemPercentual)}%</span>
+					<span className="text-[10px] text-foreground/60">{formatDecimalPlaces(item.margemPercentual)}%</span>
 				</div>
 			</div>
 		);
@@ -1024,7 +1073,7 @@ function MarginAnalysis({ data }: { data: TGetProductStatsOutput["data"]["analis
 
 	return (
 		<TooltipProvider>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">ANÁLISE DE MARGEM</h1>
 					<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
@@ -1034,7 +1083,7 @@ function MarginAnalysis({ data }: { data: TGetProductStatsOutput["data"]["analis
 						type="button"
 						onClick={() => setViewMode("seller")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							viewMode === "seller" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							viewMode === "seller" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						VENDEDOR
@@ -1043,7 +1092,7 @@ function MarginAnalysis({ data }: { data: TGetProductStatsOutput["data"]["analis
 						type="button"
 						onClick={() => setViewMode("client")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							viewMode === "client" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							viewMode === "client" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						CLIENTE
@@ -1052,7 +1101,7 @@ function MarginAnalysis({ data }: { data: TGetProductStatsOutput["data"]["analis
 						type="button"
 						onClick={() => setViewMode("partner")}
 						className={`px-2 py-1 text-[10px] font-medium tracking-tight rounded transition-colors ${
-							viewMode === "partner" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary hover:bg-primary/20"
+							viewMode === "partner" ? "bg-primary text-foreground-foreground" : "bg-primary/10 text-foreground hover:bg-primary/20"
 						}`}
 					>
 						PARCEIRO
@@ -1062,7 +1111,7 @@ function MarginAnalysis({ data }: { data: TGetProductStatsOutput["data"]["analis
 					{currentData.length > 0 ? (
 						currentData.slice(0, 10).map((item, index) => <MarginCard key={index.toString()} index={index} item={item} />)
 					) : (
-						<p className="text-xs text-center text-primary/60">Nenhum dado disponível</p>
+						<p className="text-xs text-center text-foreground/60">Nenhum dado disponível</p>
 					)}
 				</div>
 			</div>
@@ -1080,7 +1129,7 @@ function DiscountAnalysis({
 	faturamentoBruto: number;
 }) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">ANÁLISE DE DESCONTOS</h1>
 				<Percent className="w-4 h-4 min-w-4 min-h-4" />
@@ -1098,11 +1147,11 @@ function DiscountAnalysis({
 				</div>
 				<p
 					className={cn(
-						"text-sm text-center px-2 py-1 rounded-lg bg-primary/10 text-primary w-fit self-center",
+						"text-sm text-center px-2 py-1 rounded-lg bg-primary/10 text-foreground w-fit self-center",
 						percentualDescontoMedio > 15 && "text-yellow-800 bg-yellow-100",
 					)}
 				>
-					De <strong className="text-primary">{formatToMoney(faturamentoBruto)}</strong> potenciais, {formatToMoney(descontoTotal)} foram descontados
+					De <strong className="text-foreground">{formatToMoney(faturamentoBruto)}</strong> potenciais, {formatToMoney(descontoTotal)} foram descontados
 				</p>
 			</div>
 		</div>
@@ -1186,7 +1235,7 @@ function ProductGraphBlock({
 
 	return (
 		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">{CHART_LABEL[graphMetric]}</h1>
 					<div className="flex items-center gap-2">
@@ -1330,5 +1379,3 @@ function ProductGraphBlock({
 		</div>
 	);
 }
-
-

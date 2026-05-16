@@ -51,7 +51,7 @@ export default function LegalPage() {
 							</Button>
 						</Link>
 						<div className="flex items-center gap-2">
-							<Scale className="h-5 w-5 text-primary" />
+							<Scale className="h-5 w-5 text-foreground" />
 							<span className="font-bold text-lg tracking-tight">RecompraCRM Legal</span>
 						</div>
 					</div>
@@ -74,7 +74,7 @@ export default function LegalPage() {
 											<a
 												key={section.id}
 												href={`#${section.id}`}
-												className="flex items-center gap-2 text-sm text-gray-600 hover:text-primary hover:bg-primary/5 px-2 py-1.5 rounded-md transition-colors"
+												className="flex items-center gap-2 text-sm text-gray-600 hover:text-foreground hover:bg-primary/5 px-2 py-1.5 rounded-md transition-colors"
 											>
 												<span className="shrink-0">{section.icon}</span>
 												<span className="truncate">{section.title}</span>
@@ -110,7 +110,7 @@ export default function LegalPage() {
 							<section id="termos-uso" className="scroll-mt-24 space-y-8">
 								<div className="flex items-center gap-3 mb-6">
 									<div className="p-2 bg-primary/10 rounded-lg">
-										<FileText className="h-6 w-6 text-primary" />
+										<FileText className="h-6 w-6 text-foreground" />
 									</div>
 									<h2 className="text-2xl font-bold tracking-tight text-gray-900">2. Termos de Uso</h2>
 								</div>
@@ -275,7 +275,7 @@ export default function LegalPage() {
 							<section id="privacidade" className="scroll-mt-24 space-y-8">
 								<div className="flex items-center gap-3 mb-6">
 									<div className="p-2 bg-primary/10 rounded-lg">
-										<Shield className="h-6 w-6 text-primary" />
+										<Shield className="h-6 w-6 text-foreground" />
 									</div>
 									<h2 className="text-2xl font-bold tracking-tight text-gray-900">3. Política de Privacidade</h2>
 								</div>
@@ -821,19 +821,19 @@ export default function LegalPage() {
 
 							{/* Contato */}
 							<section id="contato" className="scroll-mt-24 bg-primary/5 rounded-xl p-8 text-center space-y-4">
-								<Mail className="w-8 h-8 text-primary mx-auto" />
+								<Mail className="w-8 h-8 text-foreground mx-auto" />
 								<h2 className="text-2xl font-bold tracking-tight text-gray-900">11. Contato e DPO</h2>
 								<p className="text-gray-600 max-w-lg mx-auto">Para exercício de direitos LGPD ou dúvidas, contate nosso Encarregado de Proteção de Dados.</p>
 								<div className="flex flex-col sm:flex-row gap-4 justify-center items-center font-medium text-sm">
 									<div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm">
 										<span className="text-gray-500">DPO:</span>
-										<a href="mailto:lucas@syncroniza.com.br" className="text-primary hover:underline">
+										<a href="mailto:lucas@syncroniza.com.br" className="text-foreground hover:underline">
 											lucas@syncroniza.com.br
 										</a>
 									</div>
 									<div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm">
 										<span className="text-gray-500">Suporte:</span>
-										<a href="mailto:suporte@syncroniza.com.br" className="text-primary hover:underline">
+										<a href="mailto:suporte@syncroniza.com.br" className="text-foreground hover:underline">
 											suporte@syncroniza.com.br
 										</a>
 									</div>

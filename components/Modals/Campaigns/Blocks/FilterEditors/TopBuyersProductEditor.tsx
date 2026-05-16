@@ -73,7 +73,7 @@ export default function TopBuyersProductEditor({ initialValue, onConfirm, closeM
 				<ProductPicker value={produtoId} onChange={setProdutoId} />
 
 				<div className="flex w-full flex-col gap-2">
-					<Label className="text-sm font-medium tracking-tight text-primary/80">JANELA</Label>
+					<Label className="text-sm font-medium tracking-tight text-foreground/80">JANELA</Label>
 					<div className="flex flex-wrap items-center gap-2">
 						{WINDOW_OPTIONS.map((option) => (
 							<Button
@@ -90,7 +90,7 @@ export default function TopBuyersProductEditor({ initialValue, onConfirm, closeM
 					</div>
 				</div>
 				<div className="flex w-full flex-col gap-2">
-					<Label className="text-sm font-medium tracking-tight text-primary/80">TOP</Label>
+					<Label className="text-sm font-medium tracking-tight text-foreground/80">TOP</Label>
 					<div className="w-full flex items-center flex-wrap gap-x-3 gap-y-1">
 						<Button variant={top === 10 ? "brand" : "outline"} size="sm" className="flex items-center gap-1.5" onClick={() => setTop(10)}>
 							<Crown className="w-4 h-4 min-w-4 min-h-4" />
@@ -130,7 +130,7 @@ function ProductPicker({ value, onChange }: ProductPickerProps) {
 
 	return (
 		<div className="flex w-full flex-col gap-1">
-			<Label className="text-sm font-medium tracking-tight text-primary/80">
+			<Label className="text-sm font-medium tracking-tight text-foreground/80">
 				PRODUTO<span className="text-red-500">*</span>
 			</Label>
 			<Popover open={open} onOpenChange={setOpen}>
@@ -140,7 +140,7 @@ function ProductPicker({ value, onChange }: ProductPickerProps) {
 						variant="outline"
 						aria-haspopup="listbox"
 						aria-expanded={open}
-						className="w-full justify-between truncate border border-primary/20"
+						className="w-full justify-between truncate border border-border"
 					>
 						<span className="truncate text-left">{selectedLabel}</span>
 						<ChevronsUpDown className="h-3 w-3 min-h-3 min-w-3" />

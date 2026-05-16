@@ -99,7 +99,7 @@ function MediaMessageDisplay({
 					</div>
 					{caption && (
 						<div className="p-4 border-t">
-							<p className="text-sm text-primary-foreground">{caption}</p>
+							<p className="text-sm text-foreground-foreground">{caption}</p>
 						</div>
 					)}
 				</DialogContent>
@@ -124,14 +124,14 @@ function MediaMessageDisplay({
 				{mediaType === "IMAGEM" ? <FileImage className="w-6 h-6 text-blue-600" /> : <FileText className="w-6 h-6 text-green-600" />}
 			</div>
 			<div className="flex-1 min-w-0">
-				<p className="text-sm font-medium text-primary-foreground truncate">{fileName || "Documento"}</p>
-				<div className="flex items-center gap-2 text-xs text-primary-foreground/80">
+				<p className="text-sm font-medium text-foreground-foreground truncate">{fileName || "Documento"}</p>
+				<div className="flex items-center gap-2 text-xs text-foreground-foreground/80">
 					{fileSize && <span>{formatFileSize(fileSize)}</span>}
 					{mimeType && fileSize && <span>•</span>}
 					{mimeType && <span>{getFileTypeTitle(mimeType)}</span>}
 				</div>
 			</div>
-			<Button variant="ghost" size="fit" onClick={handleDownload} disabled={!fileUrl} className="shrink-0 p-2 rounded-full text-primary-foreground">
+			<Button variant="ghost" size="fit" onClick={handleDownload} disabled={!fileUrl} className="shrink-0 p-2 rounded-full text-foreground-foreground">
 				<Download className="w-4 h-4" />
 			</Button>
 		</div>

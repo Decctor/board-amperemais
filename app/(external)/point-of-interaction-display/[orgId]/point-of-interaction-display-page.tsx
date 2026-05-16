@@ -309,9 +309,9 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 					<div className="flex flex-col gap-0.5">
 						<div className="flex items-center gap-1.5">
 							<SizeIcon className="w-4 h-4" />
-							<p className="text-sm font-semibold text-primary">FORMATO DO DISPLAY</p>
+							<p className="text-sm font-semibold text-foreground">FORMATO DO DISPLAY</p>
 						</div>
-						<p className="text-xs text-primary">Selecione o tamanho que deseja pré-visualizar.</p>
+						<p className="text-xs text-foreground">Selecione o tamanho que deseja pré-visualizar.</p>
 					</div>
 
 					<div className="flex flex-col gap-3">

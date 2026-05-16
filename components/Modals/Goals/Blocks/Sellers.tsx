@@ -83,7 +83,7 @@ type GoalSellerCardProps = {
 const GoalSellerCard = memo(
 	function GoalSellerCard({ seller, goalSeller, hasQtdeVendas, hasNovosClientes, updateGoalSeller }: GoalSellerCardProps) {
 		return (
-			<div className="w-full flex flex-col gap-2 p-2 border border-primary/20 rounded-md">
+			<div className="w-full flex flex-col gap-2 p-2 border border-border rounded-md">
 				<div className="flex items-center gap-2">
 					<Avatar className="w-6 h-6 min-w-6 min-h-6">
 						<AvatarImage src={seller.avatarUrl ?? undefined} />
@@ -99,7 +99,7 @@ const GoalSellerCard = memo(
 							placeholder="0"
 							value={goalSeller.objetivoValor}
 							onChange={(e) => updateGoalSeller({ ...goalSeller, objetivoValor: Number(e.target.value) })}
-							className="w-full text-xs rounded-md border border-primary/20 p-1"
+							className="w-full text-xs rounded-md border border-border p-1"
 						/>
 					</div>
 					{hasQtdeVendas ? (
@@ -110,7 +110,7 @@ const GoalSellerCard = memo(
 								placeholder="0"
 								value={goalSeller.objetivoQtdeVendas ?? ""}
 								onChange={(e) => updateGoalSeller({ ...goalSeller, objetivoQtdeVendas: Number(e.target.value) || null })}
-								className="w-full text-xs rounded-md border border-primary/20 p-1"
+								className="w-full text-xs rounded-md border border-border p-1"
 							/>
 						</div>
 					) : null}
@@ -122,7 +122,7 @@ const GoalSellerCard = memo(
 								placeholder="0"
 								value={goalSeller.objetivoNovosClientes ?? ""}
 								onChange={(e) => updateGoalSeller({ ...goalSeller, objetivoNovosClientes: Number(e.target.value) || null })}
-								className="w-full text-xs rounded-md border border-primary/20 p-1"
+								className="w-full text-xs rounded-md border border-border p-1"
 							/>
 						</div>
 					) : null}

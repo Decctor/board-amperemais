@@ -65,11 +65,11 @@ export default function TriggerPicker() {
 						transition={{ duration: SLIDE_DURATION, ease: "easeOut" }}
 						className="flex w-full flex-col gap-4"
 					>
-						<div className="flex w-full items-center justify-between gap-2 rounded-lg border border-primary/10 bg-card px-3 py-2.5">
+						<div className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2.5">
 							<div className="flex items-center gap-3 min-w-0">
 								{selectedTriggerMeta ? (
 									<>
-										<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+										<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-foreground-foreground">
 											<selectedTriggerMeta.icon className="h-4 w-4" />
 										</div>
 										<div className="min-w-0">

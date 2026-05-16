@@ -33,7 +33,7 @@ function OverallStatsBlock({ user, userMembership, userOrg, generalQueryParams }
 	}, [generalQueryParams]);
 	return (
 		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">ACOMPANHAMENTO DE META DO PERÍODO</h1>
 					<VscDiffAdded size={12} />
@@ -82,7 +82,7 @@ function RevenueBreakdownRow({ overallStats }: { overallStats: TOverallSalesStat
 				footer={
 					<div className="flex items-center gap-1">
 						<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-						<p className="text-xs font-bold text-primary">{formatDecimalPlaces(overallStats?.faturamentoViaClientesRecorrentes.porcentagem ?? 0)}%</p>
+						<p className="text-xs font-bold text-foreground">{formatDecimalPlaces(overallStats?.faturamentoViaClientesRecorrentes.porcentagem ?? 0)}%</p>
 					</div>
 				}
 				className="w-full lg:w-1/3"
@@ -102,7 +102,7 @@ function RevenueBreakdownRow({ overallStats }: { overallStats: TOverallSalesStat
 				footer={
 					<div className="flex items-center gap-1">
 						<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-						<p className="text-xs font-bold text-primary">{formatDecimalPlaces(overallStats?.faturamentoViaNovosClientes.porcentagem ?? 0)}%</p>
+						<p className="text-xs font-bold text-foreground">{formatDecimalPlaces(overallStats?.faturamentoViaNovosClientes.porcentagem ?? 0)}%</p>
 					</div>
 				}
 				className="w-full lg:w-1/3"
@@ -122,7 +122,9 @@ function RevenueBreakdownRow({ overallStats }: { overallStats: TOverallSalesStat
 				footer={
 					<div className="flex items-center gap-1">
 						<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-						<p className="text-xs font-bold text-primary">{formatDecimalPlaces(overallStats?.faturamentoViaClientesNaoIdentificados.porcentagem ?? 0)}%</p>
+						<p className="text-xs font-bold text-foreground">
+							{formatDecimalPlaces(overallStats?.faturamentoViaClientesNaoIdentificados.porcentagem ?? 0)}%
+						</p>
 					</div>
 				}
 				className="w-full lg:w-1/3"

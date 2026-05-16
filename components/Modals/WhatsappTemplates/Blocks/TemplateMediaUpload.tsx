@@ -125,9 +125,9 @@ function TemplateMediaUpload({
 	};
 
 	const renderIcon = () => {
-		if (headerType === "image") return <ImageIcon className="w-8 h-8 text-primary/50" />;
-		if (headerType === "video") return <VideoIcon className="w-8 h-8 text-primary/50" />;
-		return <FileText className="w-8 h-8 text-primary/50" />;
+		if (headerType === "image") return <ImageIcon className="w-8 h-8 text-foreground/50" />;
+		if (headerType === "video") return <VideoIcon className="w-8 h-8 text-foreground/50" />;
+		return <FileText className="w-8 h-8 text-foreground/50" />;
 	};
 
 	const renderPreview = () => {
@@ -193,25 +193,25 @@ function TemplateMediaUpload({
 					onDrop={handleDrop}
 					className={cn(
 						"w-full flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-						isDragging ? "border-primary bg-primary/5" : "border-primary/30 hover:border-primary/50",
+						isDragging ? "border-border bg-primary/5" : "border-border/30 hover:border-border/50",
 						disabled && "opacity-50 cursor-not-allowed",
 						uploadState === "uploading" && "cursor-wait",
 					)}
 				>
 					{uploadState === "uploading" ? (
 						<>
-							<Loader2 className="w-8 h-8 text-primary animate-spin" />
-							<p className="text-sm text-primary/70">Enviando arquivo...</p>
+							<Loader2 className="w-8 h-8 text-foreground animate-spin" />
+							<p className="text-sm text-foreground/70">Enviando arquivo...</p>
 						</>
 					) : (
 						<>
 							{renderIcon()}
 							<div className="flex flex-col items-center gap-1">
 								<div className="flex items-center gap-1">
-									<Upload className="w-4 h-4 text-primary/70" />
-									<p className="text-sm font-medium text-primary/70">Clique ou arraste um arquivo</p>
+									<Upload className="w-4 h-4 text-foreground/70" />
+									<p className="text-sm font-medium text-foreground/70">Clique ou arraste um arquivo</p>
 								</div>
-								<p className="text-xs text-primary/50">{constraints.description}</p>
+								<p className="text-xs text-foreground/50">{constraints.description}</p>
 							</div>
 						</>
 					)}

@@ -19,7 +19,7 @@ export function BulkInsertPreviewStage({ normalizedRows, parseErrors, onBack, on
 		<div className="flex w-full flex-col gap-3">
 			<div className="flex w-full flex-col gap-0.5">
 				<div className="flex items-center gap-1.5">
-					<div className={cn("flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-1.5 text-[0.65rem] text-primary")}>
+					<div className={cn("flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-1.5 text-[0.65rem] text-foreground")}>
 						<Sparkles className="h-4 w-4" />
 						ETAPA 3
 					</div>
@@ -62,7 +62,7 @@ export function BulkInsertPreviewStage({ normalizedRows, parseErrors, onBack, on
 				</div>
 			) : null}
 
-			<div className="flex w-full flex-col gap-3 rounded-xl border border-primary/20 bg-card px-3 py-4 shadow-2xs">
+			<div className="flex w-full flex-col gap-3 rounded-xl border border-border bg-card px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between">
 					<h3 className="text-xs font-medium uppercase tracking-tight">PRÉ-VISUALIZAÇÃO DAS PRIMEIRAS LINHAS VÁLIDAS</h3>
 					<Rows3 className="h-4 w-4" />
@@ -114,7 +114,7 @@ export function BulkInsertPreviewStage({ normalizedRows, parseErrors, onBack, on
 
 function MetricPanel({ icon, title, value, tone }: { icon: React.ReactNode; title: string; value: number; tone: "success" | "warning" }) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">{title}</h1>

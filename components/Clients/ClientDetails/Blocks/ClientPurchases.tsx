@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
-import { formatInteractiveDateRangeSummary, formatInteractiveNumberRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
+import {
+	formatInteractiveDateRangeSummary,
+	formatInteractiveNumberRangeSummary,
+	formatInteractiveOptionSummary,
+} from "@/lib/interactive-filter-formatting";
 import type { TGetSalesInput, TGetSalesOutputByClientId } from "@/app/api/sales/route";
 
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
@@ -63,7 +67,7 @@ export default function ClientPurchases({ clientId }: ClientPurchasesProps) {
 	const purchasesTotalPages = purchasesResult?.totalPages ?? 0;
 	const purchasesShowing = purchases.length;
 	return (
-		<div className="bg-card border-primary/20 flex h-full w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
+		<div className="bg-card border-border flex h-full w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
 			<div className="flex w-full shrink-0 items-center justify-between gap-2">
 				<h1 className="text-sm font-bold tracking-tight uppercase">Compras do Cliente</h1>
 			</div>
@@ -109,28 +113,118 @@ function ClientPurchasesInlineFilters({ filters, updateFilters }: ClientPurchase
 		<div className="flex w-full flex-wrap items-center gap-2">
 			<InteractiveFilter.Root className="w-fit">
 				<InteractiveFilter.Trigger>
-					<InteractiveFilter.Icon><Calendar className="h-4 w-4" /><InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label></InteractiveFilter.Icon>
+					<InteractiveFilter.Icon>
+						<Calendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
 					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.periodAfter, filters.periodBefore)}</InteractiveFilter.Value>
 					<InteractiveFilter.Clear onClear={() => updateFilters({ periodAfter: null, periodBefore: null, page: 1 })} />
 				</InteractiveFilter.Trigger>
-				<InteractiveFilter.Content className="w-auto p-0"><InteractiveFilter.DateRangeContent value={{ from: filters.periodAfter ? new Date(filters.periodAfter) : undefined, to: filters.periodBefore ? new Date(filters.periodBefore) : undefined }} onChange={(period) => updateFilters({ periodAfter: period.from ?? null, periodBefore: period.to ?? null, page: 1 })} /></InteractiveFilter.Content>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+							to: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ periodAfter: period.from ?? null, periodBefore: period.to ?? null, page: 1 })}
+					/>
+				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasSaleNatures ? <ClientPurchasesMultiFilter label="NATUREZAS" options={saleNatureOptions} value={filters.saleNatures ?? []} onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })} onClear={() => updateFilters({ saleNatures: [], page: 1 })} /> : null}
-			{hasSellers ? <ClientPurchasesMultiFilter label="VENDEDORES" options={sellerOptions} value={filters.sellersIds ?? []} onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })} onClear={() => updateFilters({ sellersIds: [], page: 1 })} /> : null}
-			{hasPartners ? <ClientPurchasesMultiFilter label="PARCEIROS" options={partnerOptions} value={filters.partnersIds ?? []} onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })} onClear={() => updateFilters({ partnersIds: [], page: 1 })} /> : null}
-			{hasProductGroups ? <ClientPurchasesMultiFilter label="GRUPOS" options={productGroupOptions} value={filters.productGroups ?? []} onChange={(productGroups) => updateFilters({ productGroups, page: 1 })} onClear={() => updateFilters({ productGroups: [], page: 1 })} /> : null}
+			{hasSaleNatures ? (
+				<ClientPurchasesMultiFilter
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={filters.saleNatures ?? []}
+					onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
+					onClear={() => updateFilters({ saleNatures: [], page: 1 })}
+				/>
+			) : null}
+			{hasSellers ? (
+				<ClientPurchasesMultiFilter
+					label="VENDEDORES"
+					options={sellerOptions}
+					value={filters.sellersIds ?? []}
+					onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })}
+					onClear={() => updateFilters({ sellersIds: [], page: 1 })}
+				/>
+			) : null}
+			{hasPartners ? (
+				<ClientPurchasesMultiFilter
+					label="PARCEIROS"
+					options={partnerOptions}
+					value={filters.partnersIds ?? []}
+					onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })}
+					onClear={() => updateFilters({ partnersIds: [], page: 1 })}
+				/>
+			) : null}
+			{hasProductGroups ? (
+				<ClientPurchasesMultiFilter
+					label="GRUPOS"
+					options={productGroupOptions}
+					value={filters.productGroups ?? []}
+					onChange={(productGroups) => updateFilters({ productGroups, page: 1 })}
+					onClear={() => updateFilters({ productGroups: [], page: 1 })}
+				/>
+			) : null}
 			{hasTotal ? <ClientPurchasesTotalFilter filters={filters} updateFilters={updateFilters} /> : null}
 
 			<InteractiveFilter.AddFilterRoot className="w-fit">
-				<InteractiveFilter.AddFilterTrigger><ListFilter className="h-4 w-4" /><InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label></InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
 				<InteractiveFilter.AddFilterContent>
 					<InteractiveFilter.AddFilterSection heading="Filtros">
-						{!hasSaleNatures ? <InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={saleNatureOptions} value={filters.saleNatures ?? []} onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })} onClear={() => updateFilters({ saleNatures: [], page: 1 })} clearLabel="TODAS" /></InteractiveFilter.AddFilterItem> : null}
-						{!hasSellers ? <InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={sellerOptions} value={filters.sellersIds ?? []} onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })} onClear={() => updateFilters({ sellersIds: [], page: 1 })} clearLabel="TODOS" /></InteractiveFilter.AddFilterItem> : null}
-						{!hasPartners ? <InteractiveFilter.AddFilterItem id="partners" label="PARCEIROS" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={partnerOptions} value={filters.partnersIds ?? []} onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })} onClear={() => updateFilters({ partnersIds: [], page: 1 })} clearLabel="TODOS" /></InteractiveFilter.AddFilterItem> : null}
-						{!hasProductGroups ? <InteractiveFilter.AddFilterItem id="groups" label="GRUPOS" icon={<ListFilter className="h-4 w-4" />}><InteractiveFilter.MultiContent options={productGroupOptions} value={filters.productGroups ?? []} onChange={(productGroups) => updateFilters({ productGroups, page: 1 })} onClear={() => updateFilters({ productGroups: [], page: 1 })} clearLabel="TODOS" /></InteractiveFilter.AddFilterItem> : null}
-						{!hasTotal ? <InteractiveFilter.AddFilterItem id="total" label="VALOR" icon={<BadgeDollarSign className="h-4 w-4" />}><ClientPurchasesTotalContent filters={filters} updateFilters={updateFilters} /></InteractiveFilter.AddFilterItem> : null}
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={saleNatureOptions}
+									value={filters.saleNatures ?? []}
+									onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
+									onClear={() => updateFilters({ saleNatures: [], page: 1 })}
+									clearLabel="TODAS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSellers ? (
+							<InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={sellerOptions}
+									value={filters.sellersIds ?? []}
+									onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })}
+									onClear={() => updateFilters({ sellersIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasPartners ? (
+							<InteractiveFilter.AddFilterItem id="partners" label="PARCEIROS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={partnerOptions}
+									value={filters.partnersIds ?? []}
+									onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })}
+									onClear={() => updateFilters({ partnersIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasProductGroups ? (
+							<InteractiveFilter.AddFilterItem id="groups" label="GRUPOS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={productGroupOptions}
+									value={filters.productGroups ?? []}
+									onChange={(productGroups) => updateFilters({ productGroups, page: 1 })}
+									onClear={() => updateFilters({ productGroups: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasTotal ? (
+							<InteractiveFilter.AddFilterItem id="total" label="VALOR" icon={<BadgeDollarSign className="h-4 w-4" />}>
+								<ClientPurchasesTotalContent filters={filters} updateFilters={updateFilters} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
 					</InteractiveFilter.AddFilterSection>
 				</InteractiveFilter.AddFilterContent>
 			</InteractiveFilter.AddFilterRoot>
@@ -139,11 +233,31 @@ function ClientPurchasesInlineFilters({ filters, updateFilters }: ClientPurchase
 }
 
 function ClientPurchasesTotalFilter({ filters, updateFilters }: ClientPurchasesInlineFiltersProps) {
-	return <InteractiveFilter.Root className="w-fit"><InteractiveFilter.Trigger><InteractiveFilter.Icon><BadgeDollarSign className="h-4 w-4" /><InteractiveFilter.Label>VALOR</InteractiveFilter.Label></InteractiveFilter.Icon><InteractiveFilter.Value>{formatInteractiveNumberRangeSummary(filters.totalMin, filters.totalMax)}</InteractiveFilter.Value><InteractiveFilter.Clear onClear={() => updateFilters({ totalMin: null, totalMax: null, page: 1 })} /></InteractiveFilter.Trigger><InteractiveFilter.Content className="w-80 p-0"><ClientPurchasesTotalContent filters={filters} updateFilters={updateFilters} /></InteractiveFilter.Content></InteractiveFilter.Root>;
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<BadgeDollarSign className="h-4 w-4" />
+					<InteractiveFilter.Label>VALOR</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveNumberRangeSummary(filters.totalMin, filters.totalMax)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateFilters({ totalMin: null, totalMax: null, page: 1 })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-0">
+				<ClientPurchasesTotalContent filters={filters} updateFilters={updateFilters} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
 }
 
 function ClientPurchasesTotalContent({ filters, updateFilters }: ClientPurchasesInlineFiltersProps) {
-	return <InteractiveFilter.NumberRangeContent value={{ greaterThan: filters.totalMin, lessThan: filters.totalMax }} onChange={({ greaterThan, lessThan }) => updateFilters({ totalMin: greaterThan, totalMax: lessThan, page: 1 })} onClear={() => updateFilters({ totalMin: null, totalMax: null, page: 1 })} />;
+	return (
+		<InteractiveFilter.NumberRangeContent
+			value={{ greaterThan: filters.totalMin, lessThan: filters.totalMax }}
+			onChange={({ greaterThan, lessThan }) => updateFilters({ totalMin: greaterThan, totalMax: lessThan, page: 1 })}
+			onClear={() => updateFilters({ totalMin: null, totalMax: null, page: 1 })}
+		/>
+	);
 }
 
 function ClientPurchasesMultiFilter({
@@ -178,12 +292,12 @@ function ClientPurchasesMultiFilter({
 
 function SaleCard({ sale }: { sale: TGetSalesOutputByClientId["sales"][number] }) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs hover:border-border hover:shadow-sm transition-all cursor-pointer">
 			<div className="flex flex-col md:flex-row justify-between gap-3">
 				{/* Client Info & Sale Basics */}
 				<div className="flex flex-col gap-1.5 grow">
 					<div className="flex items-center gap-2">
-						<CircleUser className="w-4 h-4 text-primary/70" />
+						<CircleUser className="w-4 h-4 text-foreground/70" />
 						<h1 className="text-sm font-bold tracking-tight uppercase">{sale.cliente?.nome ?? "AO CONSUMIDOR"}</h1>
 					</div>
 					<div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -342,7 +456,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutputByClientId["sales"][number] }
 								</HoverCardContent>
 							</HoverCard>
 						) : null}
-						<div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md w-fit">
+						<div className="flex items-center gap-1.5 bg-primary/10 text-foreground px-2.5 py-1 rounded-md w-fit">
 							<BadgeDollarSign className="w-4 h-4" />
 							<span className="font-bold text-sm">{formatToMoney(sale.valorTotal)}</span>
 						</div>
@@ -397,5 +511,3 @@ function SaleCard({ sale }: { sale: TGetSalesOutputByClientId["sales"][number] }
 		</div>
 	);
 }
-
-

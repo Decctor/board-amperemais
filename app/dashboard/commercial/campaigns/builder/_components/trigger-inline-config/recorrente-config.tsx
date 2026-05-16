@@ -41,7 +41,7 @@ export default function RecorrenteConfig() {
 					: "UNIDADES";
 
 	return (
-		<div className="flex w-full flex-col gap-3 rounded-lg border border-primary/10 bg-card p-4">
+		<div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card p-4">
 			<p className="text-xs text-muted-foreground">Configure a cadência da campanha recorrente.</p>
 			<div className="flex w-full flex-col gap-3 lg:flex-row">
 				<div className="w-full lg:w-1/2">

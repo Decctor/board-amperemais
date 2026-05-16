@@ -19,7 +19,7 @@ export default function MainUserBlock({ mainUser, updateMainUser, avatarHolder, 
 				{/* Avatar Upload */}
 				<div className="flex items-center justify-center min-h-[150px] min-w-[150px]">
 					<label
-						className="relative aspect-square w-full max-w-[150px] cursor-pointer overflow-hidden rounded-full border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors"
+						className="relative aspect-square w-full max-w-[150px] cursor-pointer overflow-hidden rounded-full border-2 border-dashed border-border hover:border-border transition-colors"
 						htmlFor="user-avatar-file"
 					>
 						<AvatarPreview avatarHolder={avatarHolder} avatarUrl={mainUser.avatarUrl} />
@@ -96,9 +96,9 @@ function AvatarPreview({
 
 	return (
 		<div className="flex flex-col items-center justify-center h-full w-full gap-2 p-4">
-			<User className="w-10 h-10 text-primary/40" />
-			<Upload className="w-5 h-5 text-primary/40" />
-			<p className="text-xs text-primary/60 text-center">Avatar</p>
+			<User className="w-10 h-10 text-foreground/40" />
+			<Upload className="w-5 h-5 text-foreground/40" />
+			<p className="text-xs text-foreground/60 text-center">Avatar</p>
 		</div>
 	);
 }

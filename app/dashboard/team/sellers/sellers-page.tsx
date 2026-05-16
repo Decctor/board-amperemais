@@ -582,7 +582,7 @@ type SellerCardProps = {
 };
 function SellersPageSellerCard({ seller, handleEditClick, userHasViewPermission, userHasEditPermission }: SellerCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between flex-col md:flex-row gap-3">
 				<div className="flex items-center gap-3">
 					<Avatar className="w-6 h-6 min-w-6 min-h-6">
@@ -609,14 +609,14 @@ function SellersPageSellerCard({ seller, handleEditClick, userHasViewPermission,
 							icon={<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />}
 							value={seller.estatisticas.vendasQtdeTotal}
 							tooltipContent="Quantidade total de vendas no período de filtro"
-							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-primary"
+							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-foreground"
 							valueClassName="font-bold"
 						/>
 						<StatBadge
 							icon={<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />}
 							value={formatToMoney(seller.estatisticas.vendasValorTotal)}
 							tooltipContent="Valor total de vendas no período de filtro"
-							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-primary"
+							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-foreground"
 							valueClassName="font-bold"
 						/>
 					</div>

@@ -95,13 +95,13 @@ type CashbackProgramPrizeCardProps = {
 };
 function CashbackProgramPrizeCard({ prize, terminology, handleRemoveClick, handleEditClick }: CashbackProgramPrizeCardProps) {
 	return (
-		<div className="w-full flex flex-col sm:flex-row gap-1.5 bg-card border-primary/20 rounded-xl border p-1.5 shadow-2xs">
+		<div className="w-full flex flex-col sm:flex-row gap-1.5 bg-card border-border rounded-xl border p-1.5 shadow-2xs">
 			<div className="flex items-center justify-center">
 				<div className="relative aspect-square w-16 h-16 max-w-16 max-h-16 min-w-16 min-h-16 rounded-lg overflow-hidden">
 					{prize.imagemCapaUrl ? (
 						<Image src={prize.imagemCapaUrl} alt={prize.titulo} fill className="object-cover" />
 					) : (
-						<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+						<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 							<Gift className="w-6 h-6" />
 						</div>
 					)}

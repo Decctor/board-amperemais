@@ -72,7 +72,7 @@ function SelectMultipleClientsInput({
 		selected.length === 0
 			? "NENHUM SELECIONADO"
 			: selected.length === 1
-				? selectedClientsById.get(selected[0])?.nome ?? "1 CLIENTE SELECIONADO"
+				? (selectedClientsById.get(selected[0])?.nome ?? "1 CLIENTE SELECIONADO")
 				: `${selected.length} CLIENTES SELECIONADOS`;
 
 	const renderTrigger = () => (
@@ -82,7 +82,7 @@ function SelectMultipleClientsInput({
 			disabled={!editable}
 			variant="outline"
 			aria-expanded={isOpen}
-			className={cn("w-full justify-between truncate border-primary/20", holderClassName)}
+			className={cn("w-full justify-between truncate border-border", holderClassName)}
 		>
 			{triggerLabel}
 			<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -102,7 +102,7 @@ function SelectMultipleClientsInput({
 
 				<CommandSeparator />
 
-				{isLoading && <div className="p-2 text-center text-xs text-primary/80">Carregando...</div>}
+				{isLoading && <div className="p-2 text-center text-xs text-foreground/80">Carregando...</div>}
 				{isError && <div className="p-2 text-center text-xs text-destructive">Erro ao buscar clientes.</div>}
 
 				{search.trim().length < 2 && !isLoading && (
@@ -112,7 +112,7 @@ function SelectMultipleClientsInput({
 				{isSuccess && searchClients && (
 					<CommandGroup>
 						{searchClients.length === 0 && search.trim().length >= 2 && (
-							<div className="p-2 text-center text-sm italic text-primary">Nenhum cliente encontrado.</div>
+							<div className="p-2 text-center text-sm italic text-foreground">Nenhum cliente encontrado.</div>
 						)}
 						{searchClients.map((client) => (
 							<CommandItem
@@ -147,7 +147,7 @@ function SelectMultipleClientsInput({
 		return (
 			<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
 				{showLabel && (
-					<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+					<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 						{label}
 					</Label>
 				)}
@@ -164,7 +164,7 @@ function SelectMultipleClientsInput({
 	return (
 		<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
 				</Label>
 			)}

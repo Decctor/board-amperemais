@@ -52,11 +52,7 @@ function TemplatePreview({ components }: TemplatePreviewProps) {
 										</div>
 									) : cabecalho.tipo === "image" ? (
 										cabecalho.conteudo ? (
-											<img
-												src={cabecalho.conteudo}
-												alt="Header preview"
-												className="w-full aspect-video object-cover"
-											/>
+											<img src={cabecalho.conteudo} alt="Header preview" className="w-full aspect-video object-cover" />
 										) : (
 											<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
 												<ImageIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
@@ -64,12 +60,7 @@ function TemplatePreview({ components }: TemplatePreviewProps) {
 										)
 									) : cabecalho.tipo === "video" ? (
 										cabecalho.conteudo ? (
-											<video
-												src={cabecalho.conteudo}
-												className="w-full aspect-video object-cover"
-												controls
-												muted
-											/>
+											<video src={cabecalho.conteudo} className="w-full aspect-video object-cover" controls muted />
 										) : (
 											<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
 												<VideoIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
@@ -128,28 +119,28 @@ function TemplatePreview({ components }: TemplatePreviewProps) {
 				{/* Info */}
 				<div className="w-full max-w-md space-y-2 mt-2">
 					<div className="flex items-center justify-between text-xs">
-						<span className="text-primary/60">Caracteres no corpo:</span>
-						<span className={bodyText.length > 1024 ? "text-red-500 font-semibold" : "text-primary/80"}>{bodyText.length} / 1024</span>
+						<span className="text-foreground/60">Caracteres no corpo:</span>
+						<span className={bodyText.length > 1024 ? "text-red-500 font-semibold" : "text-foreground/80"}>{bodyText.length} / 1024</span>
 					</div>
 
 					{cabecalho?.tipo === "text" && cabecalho.conteudo && (
 						<div className="flex items-center justify-between text-xs">
-							<span className="text-primary/60">Caracteres no cabeçalho:</span>
-							<span className={cabecalho.conteudo.length > 60 ? "text-red-500 font-semibold" : "text-primary/80"}>{cabecalho.conteudo.length} / 60</span>
+							<span className="text-foreground/60">Caracteres no cabeçalho:</span>
+							<span className={cabecalho.conteudo.length > 60 ? "text-red-500 font-semibold" : "text-foreground/80"}>{cabecalho.conteudo.length} / 60</span>
 						</div>
 					)}
 
 					{rodape?.conteudo && (
 						<div className="flex items-center justify-between text-xs">
-							<span className="text-primary/60">Caracteres no rodapé:</span>
-							<span className={rodape.conteudo.length > 60 ? "text-red-500 font-semibold" : "text-primary/80"}>{rodape.conteudo.length} / 60</span>
+							<span className="text-foreground/60">Caracteres no rodapé:</span>
+							<span className={rodape.conteudo.length > 60 ? "text-red-500 font-semibold" : "text-foreground/80"}>{rodape.conteudo.length} / 60</span>
 						</div>
 					)}
 
 					{botoes && botoes.length > 0 && (
 						<div className="flex items-center justify-between text-xs">
-							<span className="text-primary/60">Número de botões:</span>
-							<span className={botoes.length > 10 ? "text-red-500 font-semibold" : "text-primary/80"}>{botoes.length} / 10</span>
+							<span className="text-foreground/60">Número de botões:</span>
+							<span className={botoes.length > 10 ? "text-red-500 font-semibold" : "text-foreground/80"}>{botoes.length} / 10</span>
 						</div>
 					)}
 				</div>

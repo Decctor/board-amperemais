@@ -33,7 +33,9 @@ function GoalStatusBadge({ dataInicio, dataFim }: GoalStatusBadgeProps) {
 		);
 	}
 	return (
-		<span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold tracking-wide bg-muted text-muted-foreground border border-border">ENCERRADA</span>
+		<span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold tracking-wide bg-muted text-muted-foreground border border-border">
+			ENCERRADA
+		</span>
 	);
 }
 
@@ -68,7 +70,7 @@ function MetricBar({ label, icon, valueHit, valueGoal, formattedHit, formattedGo
 			<div className="w-full h-2 bg-muted rounded-full overflow-hidden">
 				<motion.div
 					className="h-full rounded-full"
-					style={{ backgroundColor: isOver ? "#16a34a" : barColor ?? "hsl(var(--primary))" }}
+					style={{ backgroundColor: isOver ? "#16a34a" : (barColor ?? "hsl(var(--primary))") }}
 					initial={{ width: 0 }}
 					animate={{ width: `${percentage}%` }}
 					transition={{ duration: 0.8, ease: "easeOut" }}
@@ -139,7 +141,7 @@ export default function GoalEnrichedCard({ goal, onEdit }: GoalEnrichedCardProps
 	const hasVendedores = goal.vendedores.length > 0;
 
 	return (
-		<div className="bg-card border border-primary/20 rounded-xl shadow-2xs overflow-hidden">
+		<div className="bg-card border border-border rounded-xl shadow-2xs overflow-hidden">
 			<div className="px-4 py-4 flex flex-col gap-3">
 				{/* Header */}
 				<div className="flex items-center justify-between gap-2 flex-wrap">

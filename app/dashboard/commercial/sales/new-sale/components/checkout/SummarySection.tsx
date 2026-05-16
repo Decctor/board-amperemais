@@ -107,9 +107,9 @@ type SummarySectionProps = {
 
 export default function SummarySection({ saleState, organizationCashbackProgram }: SummarySectionProps) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center gap-1.5">
-				<DollarSign className="w-4 h-4 text-primary" />
+				<DollarSign className="w-4 h-4 text-foreground" />
 				<h3 className="font-bold text-xs uppercase tracking-wide">Resumo</h3>
 			</div>
 			<div className="flex items-center justify-between text-sm">

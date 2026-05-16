@@ -13,11 +13,7 @@ import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export default function LessonViewerPage({
-	params,
-}: {
-	params: Promise<{ courseId: string; lessonId: string }>;
-}) {
+export default function LessonViewerPage({ params }: { params: Promise<{ courseId: string; lessonId: string }> }) {
 	const { courseId, lessonId } = use(params);
 	const { data: lesson, isLoading: lessonLoading } = useLesson(lessonId);
 	const { data: course } = useCourseDetail(courseId);
@@ -99,7 +95,7 @@ export default function LessonViewerPage({
 			<div className="flex items-center justify-center h-[calc(100dvh-3.5rem)]">
 				<div className="text-center">
 					<div className="rounded-full bg-primary/10 p-5 w-fit mx-auto mb-4">
-						<BookOpen className="w-10 h-10 text-primary/50" />
+						<BookOpen className="w-10 h-10 text-foreground/50" />
 					</div>
 					<h2 className="text-lg font-semibold mb-2">Aula não encontrada</h2>
 					<Button variant="outline" asChild size="sm">
@@ -126,7 +122,7 @@ export default function LessonViewerPage({
 	return (
 		<div className="flex flex-col h-[calc(100dvh-3.5rem)]">
 			{/* Header with breadcrumb */}
-			<div className="px-4 py-2 border-b border-primary/10 shrink-0">
+			<div className="px-4 py-2 border-b border-border shrink-0">
 				<CommunityHeader breadcrumbs={breadcrumbs} />
 			</div>
 
@@ -200,7 +196,7 @@ export default function LessonViewerPage({
 						) : null}
 
 						{/* Navigation */}
-						<div className="flex items-center justify-between pt-4 border-t border-primary/10 mt-auto">
+						<div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
 							{prevLesson ? (
 								<Link
 									href={`/community/courses/${courseId}/lessons/${prevLesson.id}`}
@@ -216,7 +212,7 @@ export default function LessonViewerPage({
 							{nextLesson ? (
 								<Link
 									href={`/community/courses/${courseId}/lessons/${nextLesson.id}`}
-									className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+									className="flex items-center gap-2 text-xs font-medium text-foreground hover:text-foreground/80 transition-colors"
 								>
 									<span className="hidden sm:inline truncate max-w-[200px]">{nextLesson.titulo}</span>
 									<span className="sm:hidden">Próxima</span>
@@ -225,7 +221,7 @@ export default function LessonViewerPage({
 							) : (
 								<Link
 									href={`/community/courses/${courseId}`}
-									className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+									className="flex items-center gap-2 text-xs font-medium text-foreground hover:text-foreground/80 transition-colors"
 								>
 									Voltar ao curso
 									<ChevronRight className="w-4 h-4 min-w-4 min-h-4" />
@@ -237,7 +233,7 @@ export default function LessonViewerPage({
 
 				{/* Sidebar - Course outline */}
 				<aside
-					className={`${sidebarOpen ? "w-80" : "w-0 overflow-hidden"} hidden lg:block border-l border-primary/10 bg-card transition-all duration-200 shrink-0`}
+					className={`${sidebarOpen ? "w-80" : "w-0 overflow-hidden"} hidden lg:block border-l border-border bg-card transition-all duration-200 shrink-0`}
 				>
 					{course && <LessonSidebarOutline courseId={courseId} courseTitle={course.titulo} sections={sections} activeLessonId={lessonId} />}
 				</aside>

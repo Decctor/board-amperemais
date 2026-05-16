@@ -232,15 +232,15 @@ function ProductAddOnGroupCard({
 	}
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border p-3 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-2 rounded-xl border p-3 shadow-2xs")}>
 			{/* HEADER DO GRUPO */}
 			<div className="flex w-full items-start justify-between gap-4 border-b border-border pb-2">
 				<div className="flex flex-col gap-0.5">
 					<h1 className="text-sm font-bold tracking-tight">{addOn.nome}</h1>
 					<p className="text-xs text-muted-foreground italic">{addOn.internoNome}</p>
 					<div className="flex items-center gap-2 mt-1">
-						<span className="text-[0.65rem] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">MÍN: {addOn.minOpcoes}</span>
-						<span className="text-[0.65rem] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">MÁX: {addOn.maxOpcoes}</span>
+						<span className="text-[0.65rem] font-medium bg-primary/10 text-foreground px-1.5 py-0.5 rounded-md">MÍN: {addOn.minOpcoes}</span>
+						<span className="text-[0.65rem] font-medium bg-primary/10 text-foreground px-1.5 py-0.5 rounded-md">MÁX: {addOn.maxOpcoes}</span>
 						<span
 							className={cn(
 								"text-[0.65rem] font-medium px-1.5 py-0.5 rounded-md",
@@ -279,7 +279,7 @@ function ProductAddOnGroupCard({
 					onClick={handleAddNewOption}
 					size="sm"
 					variant="outline"
-					className="w-full border-dashed border-primary/30 text-primary/70 hover:text-primary hover:border-primary/60 hover:bg-primary/5 h-8 text-xs"
+					className="w-full border-dashed border-border/30 text-foreground/70 hover:text-foreground hover:border-border/60 hover:bg-primary/5 h-8 text-xs"
 				>
 					<Plus className="w-3.5 h-3.5 mr-1" />
 					ADICIONAR OPÇÃO
@@ -300,12 +300,12 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 	return (
 		<div className="w-full grid grid-cols-12 gap-2 items-start bg-muted/30 p-2 rounded-lg border border-border/50">
 			{option.produtoConsumo ? (
-				<div className="col-span-12 flex items-center justify-between gap-2 p-1.5 bg-primary/10 rounded-md border border-primary/20 mb-1">
+				<div className="col-span-12 flex items-center justify-between gap-2 p-1.5 bg-primary/10 rounded-md border border-border mb-1">
 					<div className="flex items-center gap-2">
-						<LinkIcon className="w-3.5 h-3.5 text-primary" />
+						<LinkIcon className="w-3.5 h-3.5 text-foreground" />
 						<div className="flex flex-col">
-							<span className="text-[0.65rem] font-bold text-primary/80 uppercase tracking-tight">CONSUMO DE ESTOQUE VINCULADO A:</span>
-							<p className="text-xs font-medium text-primary line-clamp-1">{option.produtoConsumo}</p>
+							<span className="text-[0.65rem] font-bold text-foreground/80 uppercase tracking-tight">CONSUMO DE ESTOQUE VINCULADO A:</span>
+							<p className="text-xs font-medium text-foreground line-clamp-1">{option.produtoConsumo}</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
@@ -314,14 +314,14 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 							value={option.quantidadeConsumo}
 							handleChange={(v) => updateOption({ quantidadeConsumo: v })}
 							label="QTD. CONSUMO"
-							labelClassName="text-[0.65rem] text-primary/80"
-							holderClassName="!p-1.5 h-7 w-20 bg-background/50 border-primary/20"
+							labelClassName="text-[0.65rem] text-foreground/80"
+							holderClassName="!p-1.5 h-7 w-20 bg-background/50 border-border"
 						/>
 						<Button
 							onClick={() => updateOption({ produtoConsumo: null, produtoId: null, produtoVarianteId: null, quantidadeConsumo: 1 })}
 							size="icon"
 							variant="ghost"
-							className="h-7 w-7 text-primary/60 hover:text-destructive hover:bg-destructive/10"
+							className="h-7 w-7 text-foreground/60 hover:text-destructive hover:bg-destructive/10"
 							title="Desvincular Produto"
 						>
 							<Unplug className="w-3.5 h-3.5" />
@@ -334,7 +334,7 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 						onClick={() => setVinculationModalIsOpen(true)}
 						size="sm"
 						variant="ghost"
-						className="h-7 text-xs text-muted-foreground hover:text-primary gap-1.5 border border-dashed border-border hover:border-primary/50 bg-background/50 w-full"
+						className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5 border border-dashed border-border hover:border-border/50 bg-background/50 w-full"
 					>
 						<LinkIcon className="w-3 h-3" />
 						VINCULAR ITEM DE CONSUMO NO ESTOQUE

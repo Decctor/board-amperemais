@@ -145,7 +145,7 @@ function PaymentMethodCard({ methodOption, methodData, financialAccountOptions, 
 
 					{/* Efetivação tipo */}
 					<div className="flex flex-col gap-1">
-						<h3 className="text-sm font-medium tracking-tight text-primary/80">EFETIVAÇÃO PADRÃO</h3>
+						<h3 className="text-sm font-medium tracking-tight text-foreground/80">EFETIVAÇÃO PADRÃO</h3>
 						<div className="flex items-center gap-2">
 							{(["IMEDIATA", "PENDENTE"] as const).map((tipo) => (
 								<Button
@@ -564,7 +564,7 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 					/>
 					{/* Message limit */}
 					<div className={cn("flex w-full flex-col gap-1")}>
-						<h3 className={cn("text-sm font-medium tracking-tight text-primary/80")}>LIMITE DE ENVIOS DE MENSAGEM VIA CAMPANHA (POR SEMANA)</h3>
+						<h3 className={cn("text-sm font-medium tracking-tight text-foreground/80")}>LIMITE DE ENVIOS DE MENSAGEM VIA CAMPANHA (POR SEMANA)</h3>
 						<div className="w-full flex items-center justify-start flex-wrap gap-x-2 gap-y-1">
 							<Button
 								variant={!state.organization.configuracao.preferencias.limiteMensagensSemanaisViaCampanhas ? "default" : "ghost"}
@@ -788,7 +788,7 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 								{[0.2, 0.4, 0.6, 0.8, 1].map((opacity, index) => (
 									<div
 										key={index.toString()}
-										className="w-8 h-8 rounded border border-primary/20 flex items-center justify-center text-[0.6rem] font-bold"
+										className="w-8 h-8 rounded border border-border flex items-center justify-center text-[0.6rem] font-bold"
 										style={{ backgroundColor: hexToRgba(primaryColor, opacity) }}
 									>
 										{index + 1}

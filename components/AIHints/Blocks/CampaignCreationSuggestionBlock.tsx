@@ -57,7 +57,7 @@ function formatExecution(
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
-		<div className="flex items-start justify-between gap-2 py-1.5 border-b border-border/40 last:border-b-0">
+		<div className="flex items-start justify-between gap-2 py-1.5 border-b border-border last:border-b-0">
 			<span className="text-xs text-muted-foreground shrink-0">{label}</span>
 			<span className="text-xs text-foreground font-medium text-right">{value}</span>
 		</div>
@@ -96,7 +96,7 @@ export default function CampaignCreationSuggestionBlock({ hint, callbacks }: Cam
 			{/* Campaign Configuration */}
 			<div className="flex flex-col gap-2">
 				<SectionLabel icon={<Zap />} label="CONFIGURAÇÃO SUGERIDA" />
-				<div className="rounded-lg border border-border/40 bg-secondary/20 px-3 py-1 flex flex-col">
+				<div className="rounded-lg border border-border bg-secondary/20 px-3 py-1 flex flex-col">
 					<InfoRow label="Título" value={sugestao.titulo} />
 					<InfoRow label="Gatilho" value={TRIGGER_LABELS[sugestao.gatilhoTipo] ?? sugestao.gatilhoTipo} />
 					{sugestao.gatilhoTotalCashbackAcumuladoValorMinimo != null && (

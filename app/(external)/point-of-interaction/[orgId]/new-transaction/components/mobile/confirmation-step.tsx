@@ -32,15 +32,15 @@ export function MobileConfirmationStep({ clientName, finalValue, onSubmit }: Mob
 				</div>
 
 				<div className="space-y-3 text-sm">
-					<div className="flex items-start gap-3 rounded-2xl bg-primary-foreground text-primary px-4 py-3">
+					<div className="flex items-start gap-3 rounded-2xl bg-primary-foreground text-foreground px-4 py-3">
 						<ShieldCheck className="mt-0.5 min-h-4 min-w-4 w-4 h-4" />
 						<p className="font-bold">O pedido vai para a fila de aprovação da equipe.</p>
 					</div>
-					<div className="flex items-start gap-3 rounded-2xl bg-primary-foreground text-primary px-4 py-3">
+					<div className="flex items-start gap-3 rounded-2xl bg-primary-foreground text-foreground px-4 py-3">
 						<Clock3 className="mt-0.5 min-h-4 min-w-4 w-4 h-4" />
 						<p className="font-bold">Você recebe a atualização automaticamente assim que o operador responder.</p>
 					</div>
-					<div className="flex items-start gap-3 rounded-2xl bg-primary-foreground text-primary px-4 py-3">
+					<div className="flex items-start gap-3 rounded-2xl bg-primary-foreground text-foreground px-4 py-3">
 						<CheckCircle2 className="mt-0.5 min-h-4 min-w-4 w-4 h-4" />
 						<p className="font-bold">Depois da aprovação, mostramos o resultado da compra na mesma tela.</p>
 					</div>

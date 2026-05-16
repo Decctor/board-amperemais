@@ -36,7 +36,7 @@ export default function SettingsSegments({ user }: SettingsSegmentsProps) {
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						{/* Frequência Card */}
-						<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+						<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 							<div className="flex items-center justify-between">
 								<h1 className="text-xs font-medium tracking-tight uppercase">FREQUÊNCIA</h1>
 								<div className="flex items-center gap-2">
@@ -58,7 +58,7 @@ export default function SettingsSegments({ user }: SettingsSegmentsProps) {
 						</div>
 
 						{/* Recência Card */}
-						<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+						<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 							<div className="flex items-center justify-between">
 								<h1 className="text-xs font-medium tracking-tight uppercase">RECÊNCIA</h1>
 								<div className="flex items-center gap-2">
@@ -80,7 +80,7 @@ export default function SettingsSegments({ user }: SettingsSegmentsProps) {
 						</div>
 
 						{/* Monetário Card */}
-						<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+						<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 							<div className="flex items-center justify-between">
 								<h1 className="text-xs font-medium tracking-tight uppercase">MONETÁRIO</h1>
 								<div className="flex items-center gap-2">
@@ -107,7 +107,7 @@ export default function SettingsSegments({ user }: SettingsSegmentsProps) {
 			) : null}
 			{hasNoRFMConfigDefined ? (
 				<div className="flex flex-col items-center justify-center py-20 px-4 text-center gap-6 rounded-2xl border-2 border-dashed bg-muted/30">
-					<div className="p-4 rounded-full bg-primary/10 text-primary">
+					<div className="p-4 rounded-full bg-primary/10 text-foreground">
 						<Settings2 className="h-12 w-12" />
 					</div>
 					<div className="flex flex-col gap-2 max-w-md">

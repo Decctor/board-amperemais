@@ -330,7 +330,7 @@ type ProductVariantsBlockVariantProps = {
 };
 function ProductVariantsBlockVariant({ variant, handleEditClick, handleDeleteClick }: ProductVariantsBlockVariantProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-1.5 py-2 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-1.5 py-2 shadow-2xs")}>
 			<div className="flex items-center justify-center">
 				<div className="relative h-10 max-h-10 min-h-10 w-10 max-w-10 min-w-10 overflow-hidden rounded-lg">
 					{variant.imagemCapaUrl ? (
@@ -338,7 +338,7 @@ function ProductVariantsBlockVariant({ variant, handleEditClick, handleDeleteCli
 					) : variant.imagemCapaHolder.previewUrl ? (
 						<Image src={variant.imagemCapaHolder.previewUrl} alt="Imagem de capa da variante" fill={true} objectFit="cover" />
 					) : (
-						<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+						<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 							<GitBranch className="h-6 w-6" />
 						</div>
 					)}
@@ -350,17 +350,17 @@ function ProductVariantsBlockVariant({ variant, handleEditClick, handleDeleteCli
 						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{variant.nome}</h1>
 						<div className="flex items-center gap-1">
 							<CodeIcon className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{variant.codigo}</h1>
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{variant.codigo}</h1>
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
 						<div className="flex items-center gap-1">
 							<DollarSign className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">CUSTO: {formatToMoney(variant.precoCusto)}</h1>
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">CUSTO: {formatToMoney(variant.precoCusto)}</h1>
 						</div>
 						<div className="flex items-center gap-1">
 							<TagIcon className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">VENDA: {formatToMoney(variant.precoVenda)}</h1>
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">VENDA: {formatToMoney(variant.precoVenda)}</h1>
 						</div>
 					</div>
 				</div>

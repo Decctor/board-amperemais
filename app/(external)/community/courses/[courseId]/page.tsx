@@ -57,7 +57,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
 			<div className="w-full h-full flex items-center justify-center p-6">
 				<div className="text-center">
 					<div className="rounded-full bg-primary/10 p-5 w-fit mx-auto mb-4">
-						<BookOpen className="w-10 h-10 text-primary/50" />
+						<BookOpen className="w-10 h-10 text-foreground/50" />
 					</div>
 					<h2 className="text-lg font-semibold mb-2">Curso não encontrado</h2>
 					<p className="text-sm text-muted-foreground mb-4">Este curso não está disponível ou não existe.</p>
@@ -86,12 +86,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
 			{/* Course Header */}
 			<div className="flex flex-col lg:flex-row gap-6">
 				{/* Thumbnail */}
-				<div className="relative aspect-video lg:aspect-[4/3] lg:w-[420px] rounded-xl overflow-hidden bg-primary/5 shrink-0 border border-primary/10">
+				<div className="relative aspect-video lg:aspect-[4/3] lg:w-[420px] rounded-xl overflow-hidden bg-primary/5 shrink-0 border border-border">
 					{course.thumbnailUrl ? (
 						<Image src={course.thumbnailUrl} alt={course.titulo} fill className="object-cover" />
 					) : (
 						<div className="w-full h-full flex items-center justify-center">
-							<BookOpen className="w-16 h-16 text-primary/15" />
+							<BookOpen className="w-16 h-16 text-foreground/15" />
 						</div>
 					)}
 				</div>
@@ -159,8 +159,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
 
 				{/* Right - Content outline */}
 				<div className="w-full lg:w-1/2">
-					<div className="border border-primary/10 rounded-xl bg-card overflow-hidden">
-						<div className="px-4 py-3 border-b border-primary/10 bg-primary/[0.03]">
+					<div className="border border-border rounded-xl bg-card overflow-hidden">
+						<div className="px-4 py-3 border-b border-border bg-primary/[0.03]">
 							<h3 className="text-sm font-bold">Conteúdo do curso</h3>
 						</div>
 						<div className="p-3 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">

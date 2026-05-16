@@ -110,7 +110,7 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO POR INTERVALO DE QUANTIDADE</h1>
+							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-foreground/80">FILTRO POR INTERVALO DE QUANTIDADE</h1>
 							<div className="flex w-full flex-col items-center gap-2 lg:flex-row">
 								<div className="w-full lg:w-1/2">
 									<NumberInput
@@ -133,7 +133,7 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 							</div>
 						</div>
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO POR PERÍODO</h1>
+							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-foreground/80">FILTRO POR PERÍODO</h1>
 							<DateInput
 								label="DEPOIS DE"
 								value={formatDateForInputValue(queryParamsHolder.period.after)}

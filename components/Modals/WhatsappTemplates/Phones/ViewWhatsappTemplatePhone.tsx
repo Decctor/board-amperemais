@@ -95,7 +95,7 @@ export function ViewWhatsappTemplatePhone({ whatsappTemplatePhoneId, closeMenu, 
 							<div
 								className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
 									"bg-blue-500 text-white": whatsappTemplatePhone.status === "APROVADO",
-									"bg-primary/20 text-primary": whatsappTemplatePhone.status === "PENDENTE",
+									"bg-primary/20 text-foreground": whatsappTemplatePhone.status === "PENDENTE",
 									"bg-red-500 text-white": whatsappTemplatePhone.status === "REJEITADO",
 									"bg-orange-500 text-white": whatsappTemplatePhone.status === "PAUSADO",
 									"bg-gray-500 text-white": whatsappTemplatePhone.status === "DESABILITADO" || whatsappTemplatePhone.status === "RASCUNHO",
@@ -111,7 +111,7 @@ export function ViewWhatsappTemplatePhone({ whatsappTemplatePhoneId, closeMenu, 
 									"bg-green-500 text-white": whatsappTemplatePhone.qualidade === "ALTA",
 									"bg-yellow-500 text-white": whatsappTemplatePhone.qualidade === "MEDIA",
 									"bg-red-500 text-white": whatsappTemplatePhone.qualidade === "BAIXA",
-									"bg-primary/20 text-primary": whatsappTemplatePhone.qualidade === "PENDENTE",
+									"bg-primary/20 text-foreground": whatsappTemplatePhone.qualidade === "PENDENTE",
 								})}
 							>
 								{whatsappTemplatePhone.qualidade}

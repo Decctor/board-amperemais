@@ -810,13 +810,13 @@ function ProductCard({
 	const turnoverDays = turnoverResult?.days ?? null;
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-center">
 				<div className="relative h-16 max-h-16 min-h-16 w-16 max-w-16 min-w-16 overflow-hidden rounded-lg">
 					{product.imagemCapaUrl ? (
 						<Image src={product.imagemCapaUrl} alt="Imagem de capa do produto" fill={true} objectFit="cover" />
 					) : (
-						<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+						<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 							<ShoppingCart className="h-6 w-6" />
 						</div>
 					)}
@@ -828,12 +828,12 @@ function ProductCard({
 						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.descricao}</h1>
 						<div className="flex items-center gap-1">
 							<Code className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.codigo}</h1>
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.codigo}</h1>
 						</div>
 						{product.grupo ? (
 							<div className="flex items-center gap-1">
 								<Diamond className="w-4 h-4 min-w-4 min-h-4" />
-								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.grupo}</h1>
+								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.grupo}</h1>
 							</div>
 						) : null}
 					</div>
@@ -901,7 +901,7 @@ function ProductCard({
 					<div className="flex items-center gap-1.5">
 						<div className="flex items-center gap-1">
 							<DollarSign className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">
 								{product.precoVenda ? `${formatToMoney(product.precoVenda)} / ${product.unidade}` : "PREÇO DE VENDA NÃO DEFINIDO"}
 							</h1>
 						</div>

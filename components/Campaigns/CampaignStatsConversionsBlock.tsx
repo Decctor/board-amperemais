@@ -67,7 +67,7 @@ export function CampaignStatsConversionsBlock({ startDate, endDate }: CampaignSt
 	};
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between gap-2 flex-wrap">
 				<div className="flex flex-col gap-0.5 min-w-0">
 					<h2 className="text-xs font-bold tracking-tight uppercase">Últimas conversões no período</h2>
@@ -97,7 +97,7 @@ export function CampaignStatsConversionsBlock({ startDate, endDate }: CampaignSt
 								"flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[0.65rem] font-bold uppercase transition-colors border",
 								selectedTypes.includes(opt.key)
 									? `${opt.bgClass} text-white border-transparent`
-									: "bg-secondary text-primary border-transparent hover:bg-secondary/80",
+									: "bg-secondary text-foreground border-transparent hover:bg-secondary/80",
 							)}
 						>
 							{opt.label}

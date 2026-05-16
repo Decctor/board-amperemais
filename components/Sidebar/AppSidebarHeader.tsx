@@ -149,7 +149,7 @@ export default function AppSidebarHeader({ sessionUserOrg, user, mode = "app" }:
 											<Image src={membership.organizacao.logoUrl ?? LogoIcon} alt={membership.organizacao.nome} fill />
 										</div>
 										<span className="flex-1 truncate">{membership.organizacao.nome}</span>
-										{isActive && <Check className="size-4 text-primary" />}
+										{isActive && <Check className="size-4 text-foreground" />}
 									</div>
 								</DropdownMenuItem>
 							);

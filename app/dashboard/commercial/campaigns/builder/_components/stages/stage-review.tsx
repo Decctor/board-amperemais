@@ -18,7 +18,7 @@ type StageReviewProps = {
 
 function ReviewItem({ label, children }: { label: string; children: ReactNode }) {
 	return (
-		<div className="flex min-w-0 flex-col gap-1 rounded-lg border border-primary/10 bg-card px-3 py-2">
+		<div className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-card px-3 py-2">
 			<p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
 			<div className="text-sm font-medium text-foreground">{children}</div>
 		</div>

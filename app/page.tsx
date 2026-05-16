@@ -1,23 +1,27 @@
-import FooterV2 from "./_components/Footer";
+import "./_components/ledger/ledger.css";
 import LandingAnalyticsTracker from "./_components/LandingAnalyticsTracker";
-import NavbarV2 from "./_components/Navbar";
-import SimpleCase from "./_components/SimpleCase";
-import SimpleFeatures from "./_components/SimpleFeatures";
-import SimpleHero from "./_components/SimpleHero";
-import SimpleHowItWorks from "./_components/SimpleHowItWorks";
-import SimplePricing from "./_components/SimplePricing";
+import { LedgerCase } from "./_components/ledger/Case";
+import { LedgerClosingCTA, LedgerFooter } from "./_components/ledger/Footer";
+import { LedgerFeatures } from "./_components/ledger/Features";
+import { LedgerHero } from "./_components/ledger/Hero";
+import { LedgerHowItWorks } from "./_components/ledger/HowItWorks";
+import { LedgerNavbar } from "./_components/ledger/Navbar";
+import { LedgerPricing } from "./_components/ledger/Pricing";
 
 export default function LandingPage() {
 	return (
-		<div className="min-h-screen bg-white">
+		<div className="min-h-screen bg-[#fafaf7] text-[#171717] selection:bg-[#ffb900]/35 selection:text-[#171717]">
 			<LandingAnalyticsTracker />
-			<NavbarV2 />
-			<SimpleHero />
-			<SimpleHowItWorks />
-			<SimpleCase />
-			<SimpleFeatures />
-			<SimplePricing />
-			<FooterV2 />
+			<LedgerNavbar />
+			<main>
+				<LedgerHero />
+				<LedgerHowItWorks />
+				<LedgerCase />
+				<LedgerFeatures />
+				<LedgerPricing />
+				<LedgerClosingCTA />
+			</main>
+			<LedgerFooter />
 		</div>
 	);
 }

@@ -117,10 +117,7 @@ function SelectedBadges({ values, onRemove }: { values: string[]; onRemove: (val
 	return (
 		<div className="mt-2 flex w-full flex-wrap items-center gap-1.5">
 			{values.map((value) => (
-				<span
-					key={value}
-					className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs"
-				>
+				<span key={value} className="inline-flex items-center gap-1 rounded-md border border-border bg-primary/10 px-2 py-0.5 text-xs">
 					<span className="font-medium">{value}</span>
 					<button
 						type="button"
@@ -158,7 +155,7 @@ function BairrosChipInput({ values, autoFocus, onAdd, onRemove }: BairrosChipInp
 	return (
 		<div>
 			<div className="flex w-full flex-col gap-2">
-				<Label htmlFor="location-bairros" className="text-sm font-medium tracking-tight text-primary/80">
+				<Label htmlFor="location-bairros" className="text-sm font-medium tracking-tight text-foreground/80">
 					BAIRROS
 				</Label>
 				<div className="flex w-full flex-wrap items-center gap-2">
@@ -166,10 +163,7 @@ function BairrosChipInput({ values, autoFocus, onAdd, onRemove }: BairrosChipInp
 						<span className="text-xs italic text-muted-foreground">Nenhum bairro adicionado.</span>
 					) : (
 						values.map((value, idx) => (
-							<span
-								key={`${value}-${idx}`}
-								className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs"
-							>
+							<span key={`${value}-${idx}`} className="inline-flex items-center gap-1 rounded-md border border-border bg-primary/10 px-2 py-1 text-xs">
 								<span className="font-medium">{value}</span>
 								<button
 									type="button"
@@ -197,7 +191,7 @@ function BairrosChipInput({ values, autoFocus, onAdd, onRemove }: BairrosChipInp
 								commit();
 							}
 						}}
-						className="w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-primary"
+						className="w-full rounded-md border border-border p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-border"
 					/>
 					<Button type="button" size="sm" variant="outline" onClick={commit} className="flex items-center gap-1.5">
 						<Plus className="h-3.5 w-3.5" />

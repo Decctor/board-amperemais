@@ -258,7 +258,7 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 							<button
 								type="button"
 								key={integration.id}
-								className="w-[450px] bg-card border border-primary/20 flex flex-col gap-3 px-3 py-4 rounded-xl shadow-2xs"
+								className="w-[450px] bg-card border border-border flex flex-col gap-3 px-3 py-4 rounded-xl shadow-2xs"
 								onClick={() => handleIntegrationSelect(integration.id)}
 							>
 								<div className="mb-6 flex items-start justify-between">
@@ -328,13 +328,13 @@ function ActiveIntegrationCard({
 	disconnectIsLoading,
 }: ActiveIntegrationCardProps) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+		<div className="bg-card border-border flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 			<div className="flex items-center justify-center">
 				<div className="relative w-20 h-20 lg:h-20 lg:w-20 lg:min-h-20 lg:min-w-20 overflow-hidden rounded-lg">
 					{"logo" in integrationDetails && integrationDetails.logo ? (
 						<Image src={integrationDetails.logo} alt={integrationDetails.name} fill={true} objectFit="contain" />
 					) : (
-						<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+						<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 							<Settings2 className="h-6 w-6" />
 						</div>
 					)}
@@ -363,7 +363,7 @@ function ActiveIntegrationCard({
 					</div>
 				</div>
 				<div className="grow w-full flex flex-col gap-1.5">
-					<p className="text-sm text-primary/80">{integrationDetails.description}</p>
+					<p className="text-sm text-foreground/80">{integrationDetails.description}</p>
 				</div>
 				<div className="w-full flex items-center justify-end gap-2 flex-col lg:flex-row">
 					<div className="flex items-center gap-1.5">

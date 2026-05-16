@@ -85,7 +85,7 @@ function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
 	}, [generalQueryParams]);
 	return (
 		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">GRÁFICO DE VENDAS</h1>
 					<div className="flex items-center gap-2">

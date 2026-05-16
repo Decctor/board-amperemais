@@ -83,19 +83,12 @@ export default function TemplateStatus({ statusGeral, qualidadeGeral, telefones 
 				<CollapsibleContent className="w-full">
 					<div className="w-full flex flex-col gap-2 mt-2">
 						{telefones.map((telefone) => (
-							<div
-								key={telefone.id}
-								className="w-full flex flex-col gap-2 p-3 rounded-lg border border-primary/10 bg-card"
-							>
+							<div key={telefone.id} className="w-full flex flex-col gap-2 p-3 rounded-lg border border-border bg-card">
 								<div className="w-full flex items-center justify-between gap-2">
-									<span className="text-sm font-medium truncate">
-										{telefone.telefoneName || telefone.telefoneNumero || "Telefone"}
-									</span>
+									<span className="text-sm font-medium truncate">{telefone.telefoneName || telefone.telefoneNumero || "Telefone"}</span>
 									<StatusBadge status={telefone.status} />
 								</div>
-								{telefone.telefoneNumero && telefone.telefoneName && (
-									<span className="text-xs text-muted-foreground">{telefone.telefoneNumero}</span>
-								)}
+								{telefone.telefoneNumero && telefone.telefoneName && <span className="text-xs text-muted-foreground">{telefone.telefoneNumero}</span>}
 								<div className="w-full flex items-center gap-2">
 									<span className="text-xs text-muted-foreground">Qualidade:</span>
 									<QualityBadge quality={telefone.qualidade} />

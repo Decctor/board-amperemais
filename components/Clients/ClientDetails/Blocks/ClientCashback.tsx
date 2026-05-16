@@ -43,7 +43,7 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 	);
 
 	return (
-		<div className="bg-card border-primary/20 flex h-full w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
+		<div className="bg-card border-border flex h-full w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
 			<div className="w-full shrink-0 flex flex-col gap-1.5 rounded-xl border border-brand/30 bg-brand/20 px-3 py-3">
 				<div className="w-full flex items-center gap-1.5">
 					<BadgePercent className="w-4 h-4 text-brand" />
@@ -127,7 +127,7 @@ function TransactionCard({
 	return (
 		<HoverCard key={transaction.id}>
 			<HoverCardTrigger asChild>
-				<div className="flex items-center gap-3 p-3 rounded-lg border border-primary/10 hover:bg-primary/5 transition-colors cursor-pointer group">
+				<div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-primary/5 transition-colors cursor-pointer group">
 					<div
 						className={cn(
 							"h-10 w-10 min-h-10 min-w-10 rounded-full flex items-center justify-center border",

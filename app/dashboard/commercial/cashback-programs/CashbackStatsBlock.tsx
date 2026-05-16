@@ -7,7 +7,19 @@ import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { formatCashbackValue, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useDebounceMemo } from "@/lib/hooks/use-debounce";
 import { useCashbackProgramStats, useCashbackProgramsGraph } from "@/lib/queries/cashback-programs";
-import { BadgeDollarSign, CirclePlus, Clock, Percent, ShoppingCart, UserPlus, UserRoundPlus, UserRoundX, Users, UsersRound, XCircle } from "lucide-react";
+import {
+	BadgeDollarSign,
+	CirclePlus,
+	Clock,
+	Percent,
+	ShoppingCart,
+	UserPlus,
+	UserRoundPlus,
+	UserRoundX,
+	Users,
+	UsersRound,
+	XCircle,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { useDebounce } from "use-debounce";
@@ -77,7 +89,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
-							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromRecurrentClients.percentage || 0)}%</p>
+							<p className="text-foreground text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromRecurrentClients.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -100,7 +112,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
-							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromNewClients.percentage || 0)}%</p>
+							<p className="text-foreground text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromNewClients.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -123,7 +135,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
-							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromNonIdentifiedClients.percentage || 0)}%</p>
+							<p className="text-foreground text-xs font-bold">{formatDecimalPlaces(stats?.revenueFromNonIdentifiedClients.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -158,7 +170,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
-							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.salesWithCashbackCount.percentage || 0)}%</p>
+							<p className="text-foreground text-xs font-bold">{formatDecimalPlaces(stats?.salesWithCashbackCount.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/2"
@@ -173,7 +185,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
-							<p className="text-primary text-xs font-bold">{formatDecimalPlaces(stats?.salesWithCashbackValue.percentage || 0)}%</p>
+							<p className="text-foreground text-xs font-bold">{formatDecimalPlaces(stats?.salesWithCashbackValue.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/2"
@@ -381,7 +393,7 @@ function CashbackProgramsGraphBlock({ period, terminology }: CashbackProgramsGra
 	}, [graphsStats]);
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">{METRIC_LABELS[graphType].title}</h1>
 				<div className="flex items-center gap-2">

@@ -154,7 +154,7 @@ type ClientVinculationMenuCardProps = {
 
 function ClientVinculationMenuCard({ client, handleSelectClient }: ClientVinculationMenuCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-2 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-2 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
 				<div className="flex items-start flex-col gap-1">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>

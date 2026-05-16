@@ -51,7 +51,7 @@ function SelectInput({
 	return isDesktop ? (
 		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
 				</Label>
 			)}
@@ -63,7 +63,7 @@ function SelectInput({
 						variant="outline"
 						aria-haspopup="listbox"
 						aria-expanded={isOpen}
-						className="w-full justify-between truncate border border-primary/20"
+						className="w-full justify-between truncate border border-border"
 					>
 						<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
 						<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />
@@ -86,7 +86,7 @@ function SelectInput({
 	) : (
 		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
 				</Label>
 			)}
@@ -98,7 +98,7 @@ function SelectInput({
 						variant="outline"
 						aria-haspopup="listbox"
 						aria-expanded={isOpen}
-						className="w-full justify-between border border-primary/20"
+						className="w-full justify-between border border-border"
 					>
 						<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
 						<ChevronsUpDown className="w-3 h-3 min-w-3 min-h-3" />

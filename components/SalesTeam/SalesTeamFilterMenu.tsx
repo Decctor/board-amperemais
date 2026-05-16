@@ -95,14 +95,14 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-xs tracking-tight text-primary">ORDENAÇÃO</h1>
+							<h1 className="w-full text-xs tracking-tight text-foreground">ORDENAÇÃO</h1>
 							<div className="flex items-center gap-2 justify-center flex-wrap">
 								<button
 									type="button"
 									onClick={() => setQueryParamsHolder((prev) => ({ ...prev, orderByDirection: "asc" }))}
-									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-										"bg-primary/50  text-primary-foreground hover:bg-primary/40": queryParamsHolder.orderByDirection === "asc",
-										"bg-transparent text-primary hover:bg-primary/20": queryParamsHolder.orderByDirection !== "asc",
+									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+										"bg-primary/50  text-foreground-foreground hover:bg-primary/40": queryParamsHolder.orderByDirection === "asc",
+										"bg-transparent text-foreground hover:bg-primary/20": queryParamsHolder.orderByDirection !== "asc",
 									})}
 								>
 									<ArrowUpNarrowWide size={12} />
@@ -111,9 +111,9 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								<button
 									type="button"
 									onClick={() => setQueryParamsHolder((prev) => ({ ...prev, orderByDirection: "desc" }))}
-									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-										"bg-primary/50  text-primary-foreground hover:bg-primary/40": queryParamsHolder.orderByDirection === "desc",
-										"bg-transparent text-primary hover:bg-primary/20": queryParamsHolder.orderByDirection !== "desc",
+									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+										"bg-primary/50  text-foreground-foreground hover:bg-primary/40": queryParamsHolder.orderByDirection === "desc",
+										"bg-transparent text-foreground hover:bg-primary/20": queryParamsHolder.orderByDirection !== "desc",
 									})}
 								>
 									<ArrowDownNarrowWide size={12} />
@@ -125,8 +125,8 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 									key={option.value}
 									type="button"
 									className={cn("w-full flex items-center text-xs tracking-tight px-2 py-1 rounded-lg", {
-										"bg-primary/50  text-primary-foreground hover:bg-primary/40": queryParamsHolder.orderByField === option.value,
-										"bg-transparent text-primary hover:bg-primary/20": queryParamsHolder.orderByField !== option.value,
+										"bg-primary/50  text-foreground-foreground hover:bg-primary/40": queryParamsHolder.orderByField === option.value,
+										"bg-transparent text-foreground hover:bg-primary/20": queryParamsHolder.orderByField !== option.value,
 									})}
 									onClick={() =>
 										setQueryParamsHolder((prev) => ({
@@ -140,7 +140,7 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 							))}
 						</div>
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO DAS ESTATISTICAS POR VALOR TOTAL DE VENDAS</h1>
+							<h1 className="w-full text-xs tracking-tight text-foreground">FILTRO DAS ESTATISTICAS POR VALOR TOTAL DE VENDAS</h1>
 							<div className="flex w-full flex-col items-center gap-2 lg:flex-row">
 								<div className="w-full lg:w-1/2">
 									<NumberInput
@@ -163,7 +163,7 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 							</div>
 						</div>
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO POR PERÍODO DAS ESTASTÍCAS</h1>
+							<h1 className="w-full text-xs tracking-tight text-foreground">FILTRO POR PERÍODO DAS ESTASTÍCAS</h1>
 							<DateInput
 								label="DEPOIS DE"
 								value={formatDateForInputValue(queryParamsHolder.statsPeriodAfter)}

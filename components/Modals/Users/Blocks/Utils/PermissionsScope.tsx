@@ -72,7 +72,7 @@ function PermissionsScope({ referenceId, options, selected, handleScopeSelection
 	return (
 		<div className="relative flex flex-col">
 			<div className="flex flex-col lg:flex-row items-center gap-1">
-				<p className="text-[0.65rem] lg:text-xs text-primary/70">ESCOPO</p>
+				<p className="text-[0.65rem] lg:text-xs text-foreground/70">ESCOPO</p>
 				<div className="flex items-center gap-2">
 					<Button
 						type="button"
@@ -168,8 +168,8 @@ function PersonalizedScopeSelectionMenu({ options, selected, handleScopeSelectio
 							className={cn(
 								"flex w-full cursor-pointer items-center gap-2 rounded-md border text-xs font-medium px-2 py-1 hover:bg-text-foreground",
 								validateIsSelected({ id: option.id.toString(), selected })
-									? " border-primary text-primary bg-primary/10"
-									: "border-primary/40 opacity-40 bg-transparent text-primary/80",
+									? " border-border text-foreground bg-primary/10"
+									: "border-border opacity-40 bg-transparent text-foreground/80",
 							)}
 							size={"fit"}
 							variant={validateIsSelected({ id: option.id.toString(), selected }) ? "default" : "ghost"}
@@ -178,7 +178,7 @@ function PersonalizedScopeSelectionMenu({ options, selected, handleScopeSelectio
 								<AvatarImage src={option.image_url || undefined} alt={option.label} />
 								<AvatarFallback>{formatNameAsInitials(option.label)}</AvatarFallback>
 							</Avatar>
-							<p className="text-primary/80 text-xs font-medium">{option.label}</p>
+							<p className="text-foreground/80 text-xs font-medium">{option.label}</p>
 						</Button>
 					))}
 				</div>

@@ -53,7 +53,7 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ mater
 			<div className="w-full h-full flex items-center justify-center p-6">
 				<div className="text-center">
 					<div className="rounded-full bg-primary/10 p-5 w-fit mx-auto mb-4">
-						<FileText className="w-10 h-10 text-primary/50" />
+						<FileText className="w-10 h-10 text-foreground/50" />
 					</div>
 					<h2 className="text-lg font-semibold mb-2">Documento não encontrado</h2>
 					<p className="text-sm text-muted-foreground mb-4">Este conteúdo não está disponível ou não existe.</p>
@@ -68,16 +68,12 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ mater
 	return (
 		<div className="w-full h-full flex flex-col gap-6 p-6">
 			<CommunityHeader
-				breadcrumbs={[
-					{ label: "Início", href: "/community" },
-					{ label: "Documentos", href: "/community/documents" },
-					{ label: material.titulo },
-				]}
+				breadcrumbs={[{ label: "Início", href: "/community" }, { label: "Documentos", href: "/community/documents" }, { label: material.titulo }]}
 			/>
 
 			<div className="w-full flex flex-col lg:flex-row gap-6">
-				<div className="w-full lg:w-[360px] rounded-xl border border-primary/10 bg-primary/5 p-6 flex items-center justify-center">
-					<FileText className="w-20 h-20 text-primary/30" />
+				<div className="w-full lg:w-[360px] rounded-xl border border-border bg-primary/5 p-6 flex items-center justify-center">
+					<FileText className="w-20 h-20 text-foreground/30" />
 				</div>
 				<div className="flex-1 flex flex-col gap-3">
 					<h1 className="text-xl md:text-2xl font-black tracking-tight">{material.titulo}</h1>
@@ -93,7 +89,7 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ mater
 				</div>
 			</div>
 
-			<div className="rounded-xl border border-primary/10 bg-card p-4">
+			<div className="rounded-xl border border-border bg-card p-4">
 				<h2 className="text-sm font-bold mb-2">Resumo</h2>
 				<p className="text-sm text-muted-foreground whitespace-pre-line">{material.resumo || "Sem resumo disponível."}</p>
 				{material.asset?.storageUrl ? (

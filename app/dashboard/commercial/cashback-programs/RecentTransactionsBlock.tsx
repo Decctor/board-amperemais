@@ -64,7 +64,7 @@ export default function RecentTransactionsBlock({ period, terminology }: RecentT
 	};
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">TRANSAÇÕES RECENTES</h1>
 				<div className="flex items-center gap-1">
@@ -124,7 +124,7 @@ export default function RecentTransactionsBlock({ period, terminology }: RecentT
 					transactions.map((transaction) => (
 						<HoverCard key={transaction.id}>
 							<HoverCardTrigger asChild>
-								<div className="flex items-center gap-3 p-3 rounded-lg border border-primary/10 hover:bg-primary/5 transition-colors cursor-pointer group">
+								<div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-primary/5 transition-colors cursor-pointer group">
 									<div
 										className={cn(
 											"h-10 w-10 min-h-10 min-w-10 rounded-full flex items-center justify-center border",
@@ -240,7 +240,7 @@ export default function RecentTransactionsBlock({ period, terminology }: RecentT
 			</div>
 
 			{totalPages > 1 && (
-				<div className="flex items-center justify-between pt-2 border-t border-primary/10">
+				<div className="flex items-center justify-between pt-2 border-t border-border">
 					<div className="text-xs text-muted-foreground">
 						Página {page} de {totalPages} ({transactionsMatched} transações)
 					</div>

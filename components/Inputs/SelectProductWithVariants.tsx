@@ -92,7 +92,7 @@ function SelectProductWithVariants({
 			disabled={!editable}
 			variant="outline"
 			aria-expanded={isOpen}
-			className={cn("w-full justify-between truncate border-primary/20", holderClassName)}
+			className={cn("w-full justify-between truncate border-border", holderClassName)}
 		>
 			<span className="truncate">{selectedLabel}</span>
 			<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -111,7 +111,7 @@ function SelectProductWithVariants({
 				</CommandGroup>
 				<CommandSeparator />
 
-				{isLoading && <div className="p-3 text-center text-xs text-primary/80">Carregando produtos...</div>}
+				{isLoading && <div className="p-3 text-center text-xs text-foreground/80">Carregando produtos...</div>}
 				{isError && (
 					<div className="p-2">
 						<ErrorComponent msg={getErrorMessage(error)} />
@@ -120,11 +120,11 @@ function SelectProductWithVariants({
 
 				{!isLoading && !isError && (
 					<>
-						<div className="px-3 py-2 text-xs text-primary/80">
+						<div className="px-3 py-2 text-xs text-foreground/80">
 							{productsMatched > 1 ? `${productsMatched} produtos encontrados.` : `${productsMatched} produto encontrado.`}
 						</div>
 						<CommandGroup>
-							{products.length === 0 && <div className="p-2 text-center text-sm italic text-primary">Sem opções disponíveis.</div>}
+							{products.length === 0 && <div className="p-2 text-center text-sm italic text-foreground">Sem opções disponíveis.</div>}
 							<div className="flex flex-col gap-2 p-1">
 								{products.map((product) => {
 									const variants = product.variantes ?? [];
@@ -133,7 +133,7 @@ function SelectProductWithVariants({
 									const selectedProduct = value?.productId === product.id && !value?.productVariantId;
 
 									return (
-										<div key={product.id} className="rounded-lg border border-primary/20">
+										<div key={product.id} className="rounded-lg border border-border">
 											<button
 												type="button"
 												className={cn("flex w-full items-center gap-2 px-2 py-2 text-left", hasVariants ? "cursor-default" : "cursor-pointer hover:bg-accent")}
@@ -148,12 +148,12 @@ function SelectProductWithVariants({
 												</Avatar>
 												<div className="min-w-0 flex-1">
 													<p className="truncate text-sm font-medium">{product.descricao}</p>
-													<p className="truncate text-[0.7rem] text-primary/70">{product.codigo}</p>
+													<p className="truncate text-[0.7rem] text-foreground/70">{product.codigo}</p>
 												</div>
 
 												{hasVariants && (
 													<div className="flex items-center gap-1">
-														<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] text-primary">{variants.length} variantes</span>
+														<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] text-foreground">{variants.length} variantes</span>
 														<Button
 															type="button"
 															variant="ghost"
@@ -174,11 +174,11 @@ function SelectProductWithVariants({
 													</div>
 												)}
 
-												{selectedProduct && <Check className="h-4 w-4 text-primary" />}
+												{selectedProduct && <Check className="h-4 w-4 text-foreground" />}
 											</button>
 
 											{hasVariants && expanded && (
-												<div className="border-t border-primary/10 px-2 py-2">
+												<div className="border-t border-border px-2 py-2">
 													<div className="flex flex-col gap-1">
 														{variants.map((variant) => {
 															const selectedVariant = value?.productId === product.id && value?.productVariantId === variant.id;
@@ -198,12 +198,12 @@ function SelectProductWithVariants({
 																	</Avatar>
 																	<div className="min-w-0 flex-1">
 																		<p className="truncate text-xs font-medium">{variant.nome}</p>
-																		<div className="flex items-center gap-1 text-[0.65rem] text-primary/70">
+																		<div className="flex items-center gap-1 text-[0.65rem] text-foreground/70">
 																			{variant.codigo ? <span className="truncate">{variant.codigo}</span> : null}
 																			{variant.precoVenda ? <span>{formatToMoney(variant.precoVenda)}</span> : null}
 																		</div>
 																	</div>
-																	{selectedVariant ? <BadgeCheck className="h-4 w-4 text-primary" /> : null}
+																	{selectedVariant ? <BadgeCheck className="h-4 w-4 text-foreground" /> : null}
 																</button>
 															);
 														})}
@@ -233,7 +233,7 @@ function SelectProductWithVariants({
 		return (
 			<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
 				{showLabel && (
-					<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+					<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 						{label}
 					</Label>
 				)}
@@ -250,7 +250,7 @@ function SelectProductWithVariants({
 	return (
 		<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
 				</Label>
 			)}

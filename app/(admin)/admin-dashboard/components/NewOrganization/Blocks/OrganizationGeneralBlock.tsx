@@ -19,7 +19,7 @@ export default function OrganizationGeneralBlock({ organization, updateOrganizat
 				{/* Logo Upload */}
 				<div className="flex items-center justify-center min-h-[200px] min-w-[200px]">
 					<label
-						className="relative aspect-square w-full max-w-[200px] cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors"
+						className="relative aspect-square w-full max-w-[200px] cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-border hover:border-border transition-colors"
 						htmlFor="org-logo-file"
 					>
 						<LogoPreview logoHolder={logoHolder} logoUrl={organization.logoUrl} />
@@ -77,13 +77,7 @@ export default function OrganizationGeneralBlock({ organization, updateOrganizat
 	);
 }
 
-function LogoPreview({
-	logoHolder,
-	logoUrl,
-}: {
-	logoHolder: TUseOrganizationState["state"]["logoHolder"];
-	logoUrl: string | null | undefined;
-}) {
+function LogoPreview({ logoHolder, logoUrl }: { logoHolder: TUseOrganizationState["state"]["logoHolder"]; logoUrl: string | null | undefined }) {
 	const displayUrl = logoHolder.previewUrl || logoUrl;
 
 	if (displayUrl) {
@@ -92,9 +86,9 @@ function LogoPreview({
 
 	return (
 		<div className="flex flex-col items-center justify-center h-full w-full gap-2 p-4">
-			<Building2 className="w-12 h-12 text-primary/40" />
-			<Upload className="w-6 h-6 text-primary/40" />
-			<p className="text-xs text-primary/60 text-center">Clique para adicionar logo</p>
+			<Building2 className="w-12 h-12 text-foreground/40" />
+			<Upload className="w-6 h-6 text-foreground/40" />
+			<p className="text-xs text-foreground/60 text-center">Clique para adicionar logo</p>
 		</div>
 	);
 }

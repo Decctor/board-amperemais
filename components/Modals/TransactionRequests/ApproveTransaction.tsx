@@ -85,7 +85,7 @@ export function ApproveTransaction({ requestId, clientDisplayName, hasLinkedSell
 			drawerContentClassName="overflow-x-hidden"
 		>
 			<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden py-2">
-				<Label htmlFor="poi-approve-operator-password" className="text-sm font-medium tracking-tight text-primary/80">
+				<Label htmlFor="poi-approve-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
 					SENHA DO OPERADOR (5 DÍGITOS)
 					{!hasLinkedSeller ? <span className="text-red-500">*</span> : null}
 				</Label>

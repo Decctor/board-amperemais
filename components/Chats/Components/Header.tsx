@@ -46,7 +46,7 @@ export function Header({
 	const selectedPhoneNumberData = useMemo(() => phoneNumbers.find((phone) => phone.id === selectedPhoneNumber), [phoneNumbers, selectedPhoneNumber]);
 
 	return (
-		<div className={cn("w-full flex flex-col gap-3 px-4 py-3", "border-b border-primary/20 bg-card/50 backdrop-blur-sm", className)}>
+		<div className={cn("w-full flex flex-col gap-3 px-4 py-3", "border-b border-border bg-card/50 backdrop-blur-sm", className)}>
 			<div className="w-full flex items-center justify-between gap-3">
 				{/* Left section - Icon/Title */}
 				{showPhoneSelector && phoneNumbers.length > 0 ? (
@@ -98,7 +98,7 @@ export function Header({
 			{/* Search Input */}
 			{showSearch && onSearchChange && (
 				<div className="relative w-full">
-					<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-primary/40 pointer-events-none" />
+					<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-foreground/40 pointer-events-none" />
 					<Input
 						type="text"
 						placeholder="Buscar conversas..."
@@ -109,7 +109,7 @@ export function Header({
 					{searchQuery && (
 						<button
 							onClick={() => onSearchChange("")}
-							className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary/40 hover:text-primary transition-colors"
+							className="absolute right-3 top-1/2 transform -translate-y-1/2 text-foreground/40 hover:text-foreground transition-colors"
 							type="button"
 							aria-label="Limpar busca"
 						>

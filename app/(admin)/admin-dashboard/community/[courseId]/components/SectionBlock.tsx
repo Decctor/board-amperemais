@@ -26,16 +26,16 @@ type SectionBlockProps = {
 		onSuccess?: () => void;
 		onError?: () => void;
 		onSettled?: () => void;
-	}
+	};
 	lessonsCallbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
 		onError?: () => void;
 		onSettled?: () => void;
-	}
+	};
 };
 
-export default function SectionBlock({ section, index, totalSections, onMoveUp, onMoveDown, sectionCallbacks, lessonsCallbacks	 }: SectionBlockProps) {
+export default function SectionBlock({ section, index, totalSections, onMoveUp, onMoveDown, sectionCallbacks, lessonsCallbacks }: SectionBlockProps) {
 	const queryClient = useQueryClient();
 	const [isExpanded, setIsExpanded] = useState(true);
 	const [controlSectionMenuIsOpen, setControlSectionMenuIsOpen] = useState(false);
@@ -101,9 +101,9 @@ export default function SectionBlock({ section, index, totalSections, onMoveUp, 
 	}
 
 	return (
-		<div className="border border-primary/15 rounded-lg bg-card overflow-hidden">
+		<div className="border border-border/15 rounded-lg bg-card overflow-hidden">
 			{/* Section header */}
-			<div className="flex items-center gap-2 p-3 bg-primary/5 border-b border-primary/10">
+			<div className="flex items-center gap-2 p-3 bg-primary/5 border-b border-border">
 				{/* Reorder buttons */}
 				<div className="flex flex-col">
 					<button
@@ -161,10 +161,10 @@ export default function SectionBlock({ section, index, totalSections, onMoveUp, 
 						<div className="grid grid-cols-1 gap-2 md:grid-cols-3 xl:grid-cols-4">
 							<button
 								type="button"
-								onClick={() => setNewLessonMenuIsOpen(true)}	
-								className="bg-primary text-primary-foreground flex w-full flex-col gap-2 rounded-xl p-3 text-left shadow-2xs transition-colors"
+								onClick={() => setNewLessonMenuIsOpen(true)}
+								className="bg-primary text-foreground-foreground flex w-full flex-col gap-2 rounded-xl p-3 text-left shadow-2xs transition-colors"
 							>
-								<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-dashed border-primary/20 bg-primary/5">
+								<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-dashed border-border bg-primary/5">
 									<div className="flex h-full w-full items-center justify-center">
 										<Plus className="h-7 w-7" />
 									</div>
@@ -191,11 +191,11 @@ export default function SectionBlock({ section, index, totalSections, onMoveUp, 
 							<button
 								type="button"
 								onClick={() => setNewLessonMenuIsOpen(true)}
-								className="bg-primary text-primary-foreground flex w-full flex-col gap-2 rounded-xl border border-dashed p-3 text-left shadow-2xs transition-colors"
+								className="bg-primary text-foreground-foreground flex w-full flex-col gap-2 rounded-xl border border-dashed p-3 text-left shadow-2xs transition-colors"
 							>
-								<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-dashed border-primary/20 bg-primary/5">
+								<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-dashed border-border bg-primary/5">
 									<div className="flex h-full w-full items-center justify-center">
-										<Plus className="h-7 w-7 text-primary/70" />
+										<Plus className="h-7 w-7 text-foreground/70" />
 									</div>
 								</div>
 								<div className="flex min-h-[42px] items-center">
@@ -234,21 +234,9 @@ export default function SectionBlock({ section, index, totalSections, onMoveUp, 
 			)}
 
 			{newLessonMenuIsOpen && (
-				<NewCommunityCourseLesson
-					sectionId={section.id}
-					closeModal={() => setNewLessonMenuIsOpen(false)}
-					callbacks={lessonsCallbacks}
-				/>
+				<NewCommunityCourseLesson sectionId={section.id} closeModal={() => setNewLessonMenuIsOpen(false)} callbacks={lessonsCallbacks} />
 			)}
-			{
-				editLessonId && (
-					<ControlCommunityCourseLesson
-						lessonId={editLessonId}
-						closeModal={() => setEditLessonId(null)}
-						callbacks={lessonsCallbacks}
-					/>
-				)
-			}
+			{editLessonId && <ControlCommunityCourseLesson lessonId={editLessonId} closeModal={() => setEditLessonId(null)} callbacks={lessonsCallbacks} />}
 		</div>
 	);
 }

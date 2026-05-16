@@ -386,7 +386,7 @@ function CampaignConversionTypeDistributionSection({ distribution }: { distribut
 		(prev, next) => prev.item.tipo === next.item.tipo,
 	);
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">CONVERSÕES POR TIPO</h1>
@@ -406,7 +406,7 @@ function CampaignConversionTypeDistributionSection({ distribution }: { distribut
 
 function CampaignFrequencyImpactSection({ frequency }: { frequency: TGetConversionQualityOutput["data"]["impactoFrequencia"] }) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">IMPACTO NA FREQUÊNCIA</h1>
@@ -427,7 +427,7 @@ function CampaignFrequencyImpactSection({ frequency }: { frequency: TGetConversi
 }
 function CampaignMonetaryImpactSection({ monetary }: { monetary: TGetConversionQualityOutput["data"]["impactoMonetario"] }) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">IMPACTO NO TICKET</h1>
@@ -553,7 +553,7 @@ function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: st
 	};
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">CONVERSÕES</h1>
@@ -580,7 +580,7 @@ function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: st
 									"flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[0.65rem] font-bold uppercase transition-colors border",
 									selectedTypes.includes(opt.key)
 										? `${opt.bgClass} text-white border-transparent`
-										: "bg-secondary text-primary border-transparent hover:bg-secondary/80",
+										: "bg-secondary text-foreground border-transparent hover:bg-secondary/80",
 								)}
 							>
 								{opt.label}
@@ -644,7 +644,7 @@ function InteractionsSection({ campaignId }: { campaignId: string }) {
 		bgClass: val.bgClass,
 	}));
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">INTERAÇÕES</h1>
@@ -728,7 +728,7 @@ function InteractionLogCard({ interaction }: { interaction: TGetCampaignInteract
 	const executionDateText = interaction.dataExecucao ? formatDateAsLocale(interaction.dataExecucao, true) : "Não executada";
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="w-full flex flex-col gap-0.5">
 				<div className="w-full flex items-center justify-between gap-2">
 					<div className="flex items-center gap-3 flex-wrap">

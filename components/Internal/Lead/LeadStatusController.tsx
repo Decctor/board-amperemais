@@ -50,8 +50,8 @@ export default function LeadStatusController({ leadId, leadStatus, callbacks }: 
 						key={status.id}
 						variant="ghost"
 						size="xs"
-						className={cn("text-xs w-1/2 md:w-auto flex-1 rounded-full py-4 hover:bg-primary/80 hover:text-primary-foreground", {
-							"bg-primary text-primary-foreground": leadStatus === status.value,
+						className={cn("text-xs w-1/2 md:w-auto flex-1 rounded-full py-4 hover:bg-primary/80 hover:text-foreground-foreground", {
+							"bg-primary text-foreground-foreground": leadStatus === status.value,
 							"bg-secondary text-secondary-foreground": leadStatus !== status.value,
 						})}
 						onClick={() => updateLeadStatus({ leadId, lead: { statusCRM: status.value } })}

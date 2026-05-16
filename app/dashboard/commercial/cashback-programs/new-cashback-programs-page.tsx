@@ -19,7 +19,7 @@ export default function NewCashbackProgramsPage({ user, userOrg }: NewCashbackPr
 			<Card className="w-full max-w-lg border-dashed shadow-none bg-muted/30">
 				<CardHeader className="flex flex-col items-center text-center space-y-4 pb-2">
 					<div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-						<BadgePercent className="w-8 h-8 text-primary" />
+						<BadgePercent className="w-8 h-8 text-foreground" />
 					</div>
 					<div className="space-y-2">
 						<CardTitle className="text-xl">Programa de Cashback não configurado</CardTitle>

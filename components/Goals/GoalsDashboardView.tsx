@@ -52,7 +52,15 @@ function ActiveGoalBar({ label, icon, valueHit, valueGoal, formattedHit, formatt
 	);
 }
 
-function CustomHistoricoTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string; color: string }>; label?: string }) {
+function CustomHistoricoTooltip({
+	active,
+	payload,
+	label,
+}: {
+	active?: boolean;
+	payload?: Array<{ value: number; name: string; color: string }>;
+	label?: string;
+}) {
 	if (!active || !payload?.length) return null;
 	return (
 		<div className="bg-background border border-border rounded-lg p-3 shadow-lg text-xs">
@@ -151,7 +159,7 @@ export default function GoalsDashboardView() {
 						animate={{ opacity: 1, y: 0 }}
 						exit={{ opacity: 0, y: -8 }}
 						transition={{ duration: 0.3 }}
-						className="bg-card border border-primary/20 rounded-xl px-5 py-5 shadow-2xs flex flex-col gap-4"
+						className="bg-card border border-border rounded-xl px-5 py-5 shadow-2xs flex flex-col gap-4"
 					>
 						<div className="flex items-center gap-2">
 							<span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold tracking-wide bg-blue-100 text-blue-700 border border-blue-200">
@@ -241,7 +249,7 @@ export default function GoalsDashboardView() {
 
 			{/* Historical chart */}
 			{historico.length > 0 ? (
-				<div className="bg-card border border-primary/20 rounded-xl px-4 py-4 shadow-2xs flex flex-col gap-3">
+				<div className="bg-card border border-border rounded-xl px-4 py-4 shadow-2xs flex flex-col gap-3">
 					<h2 className="text-xs font-medium tracking-tight uppercase">HISTÓRICO DE METAS — VALOR</h2>
 					<ChartContainer config={chartConfig} className="h-56 w-full">
 						<BarChart data={chartData} barCategoryGap="30%" barGap={4}>
@@ -252,10 +260,7 @@ export default function GoalsDashboardView() {
 							<Bar dataKey="Objetivo" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} />
 							<Bar dataKey="Realizado" radius={[4, 4, 0, 0]}>
 								{chartData.map((entry, index) => (
-									<Cell
-										key={`cell-${index}`}
-										fill={entry.Realizado >= entry.Objetivo ? "#16a34a" : colors.primary}
-									/>
+									<Cell key={`cell-${index}`} fill={entry.Realizado >= entry.Objetivo ? "#16a34a" : colors.primary} />
 								))}
 							</Bar>
 						</BarChart>

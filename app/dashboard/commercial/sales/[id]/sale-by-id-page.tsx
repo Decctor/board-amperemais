@@ -120,33 +120,33 @@ function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 				<div className="w-full flex flex-col gap-1.5">
 					<div className="w-full flex items-center gap-1.5">
 						<Code className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">IDENTIFICADOR EXTERNO</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">IDENTIFICADOR EXTERNO</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{sale.idExterno}</h3>
 					</div>
 					<div className="w-full flex items-center gap-1.5">
 						<BadgeDollarSign className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">VALOR</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{formatToMoney(sale.valorTotal)}</h3>
 					</div>
 
 					<div className="w-full flex items-center gap-1.5">
 						<Calendar className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">DATA DA VENDA</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DATA DA VENDA</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{formatDateAsLocale(sale.dataVenda, true) || "DATA DA VENDA NÃO DEFINIDA"}</h3>
 					</div>
 					<div className="w-full flex items-center gap-1.5">
 						<Calendar className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">CANAL</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">CANAL</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{sale.canal || "CANAL NÃO DEFINIDO"}</h3>
 					</div>
 					<div className="w-full flex items-center gap-1.5">
 						<Truck className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">MODALIDADE</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">MODALIDADE</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{sale.entregaModalidade || "MODALIDADE NÃO DEFINIDA"}</h3>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<Tag className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">NATUREZA</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">NATUREZA</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{sale.natureza}</h3>
 					</div>
 				</div>
@@ -156,22 +156,22 @@ function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 				<div className="w-full flex flex-col gap-1.5">
 					<div className="flex items-center gap-1.5">
 						<FileText className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">DOCUMENTO</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DOCUMENTO</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{sale.documento}</h3>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<FileText className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">MODELO</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">MODELO</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{sale.modelo || "N/A"}</h3>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<FileText className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">SÉRIE</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">SÉRIE</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{sale.serie || "N/A"}</h3>
 					</div>
 					<div className="flex items-start gap-1.5">
 						<FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">CHAVE</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">CHAVE</h3>
 						<h3 className="text-sm font-semibold tracking-tight break-all">{sale.chave || "N/A"}</h3>
 					</div>
 				</div>
@@ -206,7 +206,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 				{/* Name */}
 				<div className="flex items-center gap-1.5">
 					<CircleUser className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">NOME</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">NOME</h3>
 					<h3 className="text-sm font-semibold tracking-tight">{client.nome}</h3>
 				</div>
 
@@ -214,7 +214,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 				{client.telefone && (
 					<div className="flex items-center gap-1.5">
 						<Phone className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">TELEFONE</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TELEFONE</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{formatToPhone(client.telefone)}</h3>
 					</div>
 				)}
@@ -223,7 +223,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 				{client.email && (
 					<div className="flex items-center gap-1.5">
 						<Mail className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-primary/80">EMAIL</h3>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">EMAIL</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{client.email}</h3>
 					</div>
 				)}
@@ -231,7 +231,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 				{/* Birth Date */}
 				<div className="flex items-center gap-1.5">
 					<Calendar className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">IDADE</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">IDADE</h3>
 					<h3 className="text-sm font-semibold tracking-tight">
 						{client.dataNascimento
 							? `${getAgeFromBirthdayDate(client.dataNascimento)} ANOS (NASCIDO EM: ${formatDateBirthdayAsLocale(client.dataNascimento, true)})`
@@ -240,7 +240,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 				</div>
 				<div className="flex items-center gap-1.5">
 					<Grid3X3 className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">SEGMENTAÇÃO RFM</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">SEGMENTAÇÃO RFM</h3>
 					<Badge variant="secondary" className="text-xs">
 						{client.analiseRFMTitulo}
 					</Badge>
@@ -268,7 +268,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 				{/* Location */}
 				<div className="flex items-center gap-1.5">
 					<MapPin className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">LOCALIZAÇÃO</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">LOCALIZAÇÃO</h3>
 					<h3 className="text-sm font-semibold tracking-tight">
 						{[client.localizacaoCidade, client.localizacaoEstado].filter(Boolean).join(", ") || "NÃO DEFINIDO"}
 					</h3>
@@ -278,13 +278,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 	);
 }
 
-function ParticipantsSection({
-	vendedor,
-	parceiro,
-}: {
-	vendedor: TGetSalesOutputById["vendedor"];
-	parceiro: TGetSalesOutputById["parceiro"];
-}) {
+function ParticipantsSection({ vendedor, parceiro }: { vendedor: TGetSalesOutputById["vendedor"]; parceiro: TGetSalesOutputById["parceiro"] }) {
 	return (
 		<SectionWrapper title="PARTICIPANTES" icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}>
 			<div className="w-full flex flex-col gap-4">
@@ -424,11 +418,7 @@ function CampaignAttributionSection({
 	);
 }
 
-function CashbackTransactionsSection({
-	transactions,
-}: {
-	transactions: TGetSalesOutputById["transacoesCashback"];
-}) {
+function CashbackTransactionsSection({ transactions }: { transactions: TGetSalesOutputById["transacoesCashback"] }) {
 	if (transactions.length === 0)
 		return (
 			<SectionWrapper title="TRANSAÇÕES DE CASHBACK" icon={<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-emerald-600 dark:text-emerald-400" />}>
@@ -606,7 +596,7 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 					)}
 					<div className="flex items-center justify-between text-sm font-bold pt-1">
 						<span>TOTAL:</span>
-						<span className="text-primary">{formatToMoney(item.valorVendaTotalLiquido)}</span>
+						<span className="text-foreground">{formatToMoney(item.valorVendaTotalLiquido)}</span>
 					</div>
 				</div>
 

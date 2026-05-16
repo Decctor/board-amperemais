@@ -57,7 +57,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 
 	return (
 		<div className={cn("flex w-full flex-col gap-6")}>
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-4 rounded-xl border px-4 py-5 shadow-2xs">
+			<div className="bg-card border-border flex w-full flex-col gap-4 rounded-xl border px-4 py-5 shadow-2xs">
 				<div className="flex items-center gap-2">
 					<Palette className="w-5 h-5" />
 					<h2 className="text-sm font-semibold">Personalização de Cores</h2>
@@ -81,7 +81,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 									id="primaryColor"
 									value={primaryColor}
 									onChange={(e) => setPrimaryColor(e.target.value)}
-									className="w-12 h-12 rounded-lg border border-primary/20 cursor-pointer"
+									className="w-12 h-12 rounded-lg border border-border cursor-pointer"
 								/>
 							</div>
 							<Input
@@ -114,7 +114,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 									id="secondaryColor"
 									value={secondaryColor}
 									onChange={(e) => setSecondaryColor(e.target.value)}
-									className="w-12 h-12 rounded-lg border border-primary/20 cursor-pointer"
+									className="w-12 h-12 rounded-lg border border-border cursor-pointer"
 								/>
 							</div>
 							<Input
@@ -134,7 +134,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 				</div>
 
 				{/* Preview Section */}
-				<div className="mt-4 p-4 border border-primary/20 rounded-lg">
+				<div className="mt-4 p-4 border border-border rounded-lg">
 					<h3 className="text-xs font-medium mb-3">Pré-visualização</h3>
 					<div className="flex flex-col gap-4">
 						{/* Progress Bar Preview */}
@@ -180,7 +180,7 @@ export default function SettingsOrgColors({ user, membership }: SettingsOrgColor
 								{[0.2, 0.4, 0.6, 0.8, 1].map((opacity, index) => (
 									<div
 										key={index.toString()}
-										className="w-8 h-8 rounded border border-primary/20 flex items-center justify-center text-[0.6rem] font-bold"
+										className="w-8 h-8 rounded border border-border flex items-center justify-center text-[0.6rem] font-bold"
 										style={{ backgroundColor: hexToRgba(primaryColor, opacity) }}
 									>
 										{index + 1}

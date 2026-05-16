@@ -49,7 +49,7 @@ function GoalGeneral({ goal, updateGoal, goalSellers }: GoalGeneralProps) {
 					</div>
 				</div>
 			) : null}
-			<div className="w-full border-t border-primary/10 pt-3 flex flex-col gap-3">
+			<div className="w-full border-t border-border pt-3 flex flex-col gap-3">
 				<p className="text-xs text-muted-foreground tracking-tight font-medium uppercase">Métricas adicionais (opcional)</p>
 				<NumberInput
 					label="META DE QUANTIDADE DE VENDAS"

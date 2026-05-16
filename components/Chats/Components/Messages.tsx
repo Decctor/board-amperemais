@@ -113,8 +113,8 @@ export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 		return (
 			<div className={cn("flex-1 flex items-center justify-center bg-background/50", className)} aria-busy="true" aria-live="polite">
 				<div className="flex flex-col items-center gap-2">
-					<Loader2 className="w-8 h-8 animate-spin text-primary/40" aria-hidden="true" />
-					<div className="text-sm text-primary/60">Carregando mensagens...</div>
+					<Loader2 className="w-8 h-8 animate-spin text-foreground/40" aria-hidden="true" />
+					<div className="text-sm text-foreground/60">Carregando mensagens...</div>
 				</div>
 			</div>
 		);
@@ -141,8 +141,8 @@ export function Messages({ className, emptyState }: ChatHubMessagesProps) {
 						<div className="w-20 h-20 rounded-full bg-primary/5 flex items-center justify-center mb-4">
 							<span className="text-4xl">💬</span>
 						</div>
-						<h3 className="text-base font-semibold text-primary/70 mb-1">Nenhuma mensagem ainda</h3>
-						<p className="text-sm text-primary/50">Envie a primeira mensagem para iniciar a conversa</p>
+						<h3 className="text-base font-semibold text-foreground/70 mb-1">Nenhuma mensagem ainda</h3>
+						<p className="text-sm text-foreground/50">Envie a primeira mensagem para iniciar a conversa</p>
 					</div>
 				)}
 			</div>
@@ -236,7 +236,7 @@ function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAs
 					"max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-2.5",
 					"shadow-sm transition-all duration-200 hover:shadow-md",
 					roundedClasses,
-					isUser ? "bg-linear-to-br from-blue-500 to-blue-600 text-white" : "bg-card border border-primary/10 text-primary",
+					isUser ? "bg-linear-to-br from-blue-500 to-blue-600 text-white" : "bg-card border border-border text-foreground",
 				)}
 			>
 				{/* Message Content */}
@@ -259,7 +259,7 @@ function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAs
 
 				{/* Timestamp and Status */}
 				{shouldShowTimestamp && (
-					<div className={cn("flex items-center gap-1.5 mt-1.5 justify-end", isUser ? "text-blue-100/90" : "text-primary/60")}>
+					<div className={cn("flex items-center gap-1.5 mt-1.5 justify-end", isUser ? "text-blue-100/90" : "text-foreground/60")}>
 						<time className="text-[10px] font-medium">
 							{new Date(message.dataEnvio).toLocaleTimeString("pt-BR", {
 								hour: "2-digit",
@@ -385,7 +385,7 @@ function ScrollToBottomButton() {
 			className={cn(
 				"absolute bottom-4 left-1/2 -translate-x-1/2",
 				"rounded-full shadow-lg border-2 border-background",
-				"bg-card hover:bg-card/90 text-primary",
+				"bg-card hover:bg-card/90 text-foreground",
 				"animate-in fade-in slide-in-from-bottom-2 duration-300",
 				"transition-transform hover:scale-105",
 			)}
@@ -427,7 +427,7 @@ function DateSeparator({ date }: DateSeparatorProps) {
 	return (
 		<div className="flex items-center justify-center my-4">
 			<div className="px-3 py-1 bg-primary/10 rounded-full">
-				<span className="text-xs font-medium text-primary/70">{formatDateLabel(date)}</span>
+				<span className="text-xs font-medium text-foreground/70">{formatDateLabel(date)}</span>
 			</div>
 		</div>
 	);

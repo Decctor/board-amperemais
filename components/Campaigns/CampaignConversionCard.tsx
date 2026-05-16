@@ -57,13 +57,13 @@ export function CampaignConversionCard({ conversion, showCampaignLink = false }:
 	const campaign = conversion.campanha;
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
 			{showCampaignLink && campaign?.id && campaign?.titulo ? (
 				<div className="flex items-center gap-2 border-b border-border pb-1.5">
 					<span className="text-[0.6rem] font-medium uppercase text-muted-foreground shrink-0">Campanha</span>
 					<Link
 						href={`/dashboard/commercial/campaigns/id/${campaign.id}`}
-						className="text-[0.7rem] font-semibold text-primary hover:underline truncate min-w-0"
+						className="text-[0.7rem] font-semibold text-foreground hover:underline truncate min-w-0"
 					>
 						{campaign.titulo}
 					</Link>

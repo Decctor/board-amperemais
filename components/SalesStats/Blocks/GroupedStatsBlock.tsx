@@ -187,7 +187,7 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 	);
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR ITEM</h1>
 				<div className="flex items-center gap-2">
@@ -263,7 +263,7 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 	);
 	const projectTypesChartConfig = { titulo: { label: "GRUPO" } };
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR GRUPO</h1>
 				<div className="flex items-center gap-2">
@@ -353,7 +353,7 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 	}
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE VENDEDORES</h1>
 				<div className="flex items-center gap-2">
@@ -413,9 +413,9 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 												<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
 
 												<div className="flex items-center gap-2 cursor-pointer">
-													<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-primary transition-colors">
+													<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-border transition-colors">
 														<AvatarImage src={item.vendedor.avatarUrl || undefined} alt={item.vendedor.nome} />
-														<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
+														<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
 													</Avatar>
 													<div className="flex flex-col">
 														<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.vendedor.nome || "NÃO DEFINIDO"}>
@@ -498,7 +498,7 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 	}, [data, type]);
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE PARCEIROS</h1>
 				<div className="flex items-center gap-2">
@@ -560,7 +560,7 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 												<div className="flex items-center gap-2 cursor-pointer">
 													<Avatar className="h-9 w-9 border-2 border-transparent transition-colors">
 														<AvatarImage src={item.parceiro.avatarUrl || undefined} alt={item.parceiro.nome} />
-														<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
+														<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
 													</Avatar>
 													<div className="flex flex-col">
 														<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.parceiro.nome}>
@@ -628,7 +628,7 @@ type WeeklyStatsBlockProps = {
 
 function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period, onSelectDrilldown }: WeeklyStatsBlockProps) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs min-h-[420px]">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs min-h-[420px]">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">ANÁLISE DE FATURAMENTO SEMANAL</h1>
 				<div className="flex items-center gap-2">
@@ -686,7 +686,7 @@ function GroupedByWeekDayStrip({
 				<TooltipTrigger asChild>
 					<button
 						type="button"
-						className="flex flex-col items-center justify-center py-2 px-1 rounded-md border border-primary/20 min-h-[44px] min-w-0 flex-1 transition-all hover:scale-[1.02] cursor-pointer"
+						className="flex flex-col items-center justify-center py-2 px-1 rounded-md border border-border min-h-[44px] min-w-0 flex-1 transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 						onClick={() =>
 							onSelectDrilldown({
@@ -698,14 +698,14 @@ function GroupedByWeekDayStrip({
 					>
 						<span className="text-[0.6rem] font-bold tracking-tight uppercase">{WEEKDAY_MAP_HEATMAP[index as keyof typeof WEEKDAY_MAP_HEATMAP]}</span>
 						{result ? (
-							<span className="text-[0.6rem] font-medium text-primary/80 truncate max-w-full text-center">{formatToMoney(result.total)}</span>
+							<span className="text-[0.6rem] font-medium text-foreground/80 truncate max-w-full text-center">{formatToMoney(result.total)}</span>
 						) : (
-							<span className="text-[0.6rem] text-primary/80">—</span>
+							<span className="text-[0.6rem] text-foreground/80">—</span>
 						)}
 					</button>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">{WEEKDAY_MAP_FULL[index as keyof typeof WEEKDAY_MAP_FULL]}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -722,7 +722,7 @@ function GroupedByWeekDayStrip({
 								</div>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
@@ -731,7 +731,7 @@ function GroupedByWeekDayStrip({
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">{WEEKDAY_MAP_FULL[index as keyof typeof WEEKDAY_MAP_FULL]}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -816,7 +816,7 @@ function RevenueHeatmapCore({
 					<div className="flex-1 min-w-0 min-h-0 flex items-center justify-center p-0.5">
 						<button
 							type="button"
-							className="w-full aspect-square max-w-full max-h-full rounded-full transition-all hover:scale-110 hover:z-10 cursor-pointer border border-primary/10"
+							className="w-full aspect-square max-w-full max-h-full rounded-full transition-all hover:scale-110 hover:z-10 cursor-pointer border border-border"
 							style={{ backgroundColor: bgColor }}
 							onClick={() =>
 								onSelectDrilldown({
@@ -831,7 +831,7 @@ function RevenueHeatmapCore({
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold">
 								{WEEKDAY_MAP_HEATMAP[diaSemana as keyof typeof WEEKDAY_MAP_HEATMAP]} às {formatHourLabel(hora)}
@@ -850,7 +850,7 @@ function RevenueHeatmapCore({
 								</div>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
@@ -859,7 +859,7 @@ function RevenueHeatmapCore({
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">
 								{WEEKDAY_MAP_HEATMAP[diaSemana as keyof typeof WEEKDAY_MAP_HEATMAP]} às {formatHourLabel(hora)}
@@ -935,14 +935,14 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 				<TooltipTrigger asChild>
 					<div
 						key={index.toString()}
-						className="flex flex-col items-center justify-center p-2 rounded-md border border-primary/20 w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
+						className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 					>
 						<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">DIA {index + 1}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -959,7 +959,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 								</div>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
@@ -968,7 +968,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">DIA {index + 1}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -980,7 +980,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
+			<div className={"bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR DIA DO MÊS</h1>
 					<div className="flex items-center gap-2">
@@ -1056,14 +1056,14 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 				<TooltipTrigger asChild>
 					<div
 						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-primary/20 w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 					>
 						<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -1080,7 +1080,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 								</div>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
@@ -1089,7 +1089,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -1101,7 +1101,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
+			<div className={"bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR MÊS</h1>
 					<div className="flex items-center gap-2">
@@ -1168,7 +1168,7 @@ function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] 
 	);
 	const chartConfig = { titulo: { label: "CANAL" } };
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR CANAL</h1>
 				<div className="flex items-center gap-2">
@@ -1267,7 +1267,7 @@ function ResultsByFulfillmentMethodGraph({ data }: { data: TGroupedSalesStats["p
 	);
 	const chartConfig = { titulo: { label: "MODALIDADE" } };
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR MODALIDADE</h1>
 				<div className="flex items-center gap-2">

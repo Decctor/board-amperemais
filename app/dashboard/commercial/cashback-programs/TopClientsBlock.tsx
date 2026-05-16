@@ -24,7 +24,7 @@ export default function TopClientsBlock({ terminology }: { terminology: TCashbac
 	}, [clients, sortBy]);
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE CLIENTES</h1>
 				<div className="flex items-center gap-2">
@@ -71,8 +71,8 @@ export default function TopClientsBlock({ terminology }: { terminology: TCashbac
 											<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
 
 											<div className="flex items-center gap-2 cursor-pointer">
-												<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-primary transition-colors">
-													<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(client.cliente.nome)}</AvatarFallback>
+												<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-border transition-colors">
+													<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(client.cliente.nome)}</AvatarFallback>
 												</Avatar>
 												<div className="flex flex-col">
 													<span className="text-sm font-medium truncate max-w-[100px] leading-none" title={client.cliente.nome}>

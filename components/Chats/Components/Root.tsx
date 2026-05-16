@@ -49,7 +49,7 @@ export function Root({
 		<ChatHubContext.Provider value={contextValue}>
 			<div
 				className={cn(
-					"w-full max-h-[calc(100vh-100px)] grow flex flex-col items-center justify-center rounded-lg shadow-lg border border-primary/20 overflow-hidden",
+					"w-full max-h-[calc(100vh-100px)] grow flex flex-col items-center justify-center rounded-lg shadow-lg border border-border overflow-hidden",
 					className,
 				)}
 			>

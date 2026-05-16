@@ -85,14 +85,16 @@ export default function TestCampaign({ campaignId, closeModal, callbacks }: Test
 			lockClose={isPending}
 		>
 			<ResponsiveMenuSection title="CAMPANHA" icon={<Sparkles size={15} />}>
-				<div className="grid w-full gap-2 rounded-lg border border-primary/10 bg-muted/20 p-3 lg:grid-cols-[1fr_auto]">
+				<div className="grid w-full gap-2 rounded-lg border border-border bg-muted/20 p-3 lg:grid-cols-[1fr_auto]">
 					<div className="flex min-w-0 flex-col gap-1">
 						<h2 className="truncate text-sm font-bold tracking-tight">{campaign?.titulo}</h2>
 						<p className="text-xs font-medium text-muted-foreground">{campaign?.descricao || "Sem descrição."}</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-1.5 lg:justify-end">
-						<div className="rounded-md bg-secondary px-2 py-1 text-[0.65rem] font-bold uppercase text-primary">{triggerType?.label ?? "Gatilho não definido"}</div>
-						<div className="rounded-md bg-secondary px-2 py-1 text-[0.65rem] font-bold uppercase text-primary">
+						<div className="rounded-md bg-secondary px-2 py-1 text-[0.65rem] font-bold uppercase text-foreground">
+							{triggerType?.label ?? "Gatilho não definido"}
+						</div>
+						<div className="rounded-md bg-secondary px-2 py-1 text-[0.65rem] font-bold uppercase text-foreground">
 							Criada em {campaign?.dataInsercao ? formatDateAsLocale(campaign.dataInsercao, false) : "--"}
 						</div>
 					</div>
@@ -101,15 +103,15 @@ export default function TestCampaign({ campaignId, closeModal, callbacks }: Test
 
 			<ResponsiveMenuSection title="WHATSAPP" icon={<MessageCircle size={15} />}>
 				<div className="grid w-full gap-2 lg:grid-cols-2">
-					<div className="flex items-center gap-2 rounded-lg border border-primary/10 bg-muted/20 p-3">
-						<Phone className="h-4 w-4 min-w-4 text-primary" />
+					<div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3">
+						<Phone className="h-4 w-4 min-w-4 text-foreground" />
 						<div className="flex min-w-0 flex-col">
 							<p className="truncate text-xs font-bold tracking-tight">{phone?.nome ?? "Telefone não configurado"}</p>
 							<p className="text-xs text-muted-foreground">{phone?.numero ?? "Configure um telefone antes de testar."}</p>
 						</div>
 					</div>
-					<div className="flex items-center gap-2 rounded-lg border border-primary/10 bg-muted/20 p-3">
-						<CheckCircle2 className="h-4 w-4 min-w-4 text-primary" />
+					<div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3">
+						<CheckCircle2 className="h-4 w-4 min-w-4 text-foreground" />
 						<div className="flex min-w-0 flex-col">
 							<p className="truncate text-xs font-bold tracking-tight">{template?.nome ?? "Template não configurado"}</p>
 							<p className="text-xs text-muted-foreground">Modelo usado no envio de teste.</p>
@@ -131,7 +133,7 @@ export default function TestCampaign({ campaignId, closeModal, callbacks }: Test
 					handleChange={setSelectedClientIds}
 					onReset={() => setSelectedClientIds([])}
 				/>
-				<div className="flex items-center justify-between rounded-lg border border-primary/10 bg-muted/20 px-3 py-2">
+				<div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2">
 					<p className="text-xs font-medium text-muted-foreground">
 						{selectedClientIds.length === 1 ? "1 cliente selecionado" : `${selectedClientIds.length} clientes selecionados`}
 					</p>

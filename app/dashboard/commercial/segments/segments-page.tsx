@@ -127,7 +127,7 @@ function SegmentsPageClients() {
 		}
 	}
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs h-full")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs h-full")}>
 			<div className="flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<UsersRound className="w-4 h-4 min-w-4 min-h-4" />
@@ -393,7 +393,7 @@ function SegmentsPageClientCard({ client, period }: SegmentsPageClientCardProps)
 
 	const rfmStyling = useMemo(() => getRFMConfigByLabel(client.analiseRFMTitulo), [client.analiseRFMTitulo]);
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 				<div className="min-w-0 flex-1 space-y-1.5">
 					<p className="truncate text-sm font-semibold tracking-tight text-foreground">{client.nome}</p>
@@ -653,7 +653,7 @@ function SegmentsPageMatrixRFM({ user, orgRFMConfig }: { user: TAuthUserSession[
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between gap-2 flex-col lg:flex-row">
 				<div className="flex items-center gap-2">
 					<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
@@ -670,7 +670,7 @@ function SegmentsPageMatrixRFM({ user, orgRFMConfig }: { user: TAuthUserSession[
 					</Button>
 				</div>
 			</div>
-			<div className="w-fit self-center px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-primary/80 text-[0.65rem] font-medium tracking-tight text-center">
+			<div className="w-fit self-center px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-foreground/80 text-[0.65rem] font-medium tracking-tight text-center">
 				<Info className="w-3 h-3 min-w-3 min-h-3 shrink-0" />
 				<span>Análise RFM dos últimos 12 meses. Passe o mouse no bloco para detalhes.</span>
 			</div>

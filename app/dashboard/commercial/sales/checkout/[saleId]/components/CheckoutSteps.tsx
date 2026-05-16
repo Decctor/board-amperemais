@@ -22,22 +22,14 @@ export default function CheckoutSteps({ currentStep, stepLabels }: CheckoutSteps
 							<div
 								className={cn(
 									"w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors",
-									isActive && "bg-primary text-primary-foreground",
-									isCompleted && "bg-primary text-primary-foreground",
+									isActive && "bg-primary text-foreground-foreground",
+									isCompleted && "bg-primary text-foreground-foreground",
 									!isActive && !isCompleted && "bg-secondary text-muted-foreground",
 								)}
 							>
 								{isCompleted ? <Check className="w-4 h-4" /> : stepNumber}
 							</div>
-							<span
-								className={cn(
-									"text-sm font-medium hidden sm:block",
-									isActive && "text-foreground",
-									!isActive && "text-muted-foreground",
-								)}
-							>
-								{label}
-							</span>
+							<span className={cn("text-sm font-medium hidden sm:block", isActive && "text-foreground", !isActive && "text-muted-foreground")}>{label}</span>
 						</div>
 					</div>
 				);

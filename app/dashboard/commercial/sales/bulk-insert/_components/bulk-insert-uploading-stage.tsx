@@ -11,7 +11,7 @@ export function BulkInsertUploadingStage({ uploadProgress }: BulkInsertUploading
 	return (
 		<Card className="shadow-sm">
 			<CardContent className="flex min-h-[420px] flex-col items-center justify-center gap-6 p-6 text-center">
-				<div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary">
+				<div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-foreground">
 					<div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
 					<Database className="relative h-8 w-8 animate-pulse" />
 				</div>

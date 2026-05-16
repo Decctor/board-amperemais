@@ -45,14 +45,14 @@ export default function CourseCard({ course, onEdit }: CourseCardProps) {
 	});
 
 	return (
-		<div className="bg-card border border-primary/10 rounded-xl overflow-hidden shadow-2xs hover:shadow-md transition-all group">
+		<div className="bg-card border border-border rounded-xl overflow-hidden shadow-2xs hover:shadow-md transition-all group">
 			{/* Thumbnail */}
 			<div className="relative aspect-video bg-primary/5 overflow-hidden">
 				{course.thumbnailUrl ? (
 					<Image src={course.thumbnailUrl} alt={course.titulo} fill className="object-cover" />
 				) : (
 					<div className="w-full h-full flex items-center justify-center">
-						<BookOpen className="w-12 h-12 text-primary/20" />
+						<BookOpen className="w-12 h-12 text-foreground/20" />
 					</div>
 				)}
 				<div className="absolute top-2 right-2 flex gap-1.5">
@@ -66,9 +66,7 @@ export default function CourseCard({ course, onEdit }: CourseCardProps) {
 			<div className="p-4 flex flex-col gap-3">
 				<div className="flex-1 min-w-0">
 					<h3 className="font-semibold text-base truncate">{course.titulo}</h3>
-					{course.descricao && (
-						<p className="text-sm text-muted-foreground mt-1 line-clamp-2">{course.descricao}</p>
-					)}
+					{course.descricao && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{course.descricao}</p>}
 				</div>
 
 				{/* Meta info */}
@@ -77,12 +75,16 @@ export default function CourseCard({ course, onEdit }: CourseCardProps) {
 						<AccessIcon className={`w-3.5 h-3.5 ${accessConfig.className}`} />
 						<span>{accessConfig.label}</span>
 					</div>
-					<span>{totalSections} {totalSections === 1 ? "seção" : "seções"}</span>
-					<span>{totalLessons} {totalLessons === 1 ? "aula" : "aulas"}</span>
+					<span>
+						{totalSections} {totalSections === 1 ? "seção" : "seções"}
+					</span>
+					<span>
+						{totalLessons} {totalLessons === 1 ? "aula" : "aulas"}
+					</span>
 				</div>
 
 				{/* Actions */}
-				<div className="flex items-center gap-2 pt-2 border-t border-primary/10">
+				<div className="flex items-center gap-2 pt-2 border-t border-border">
 					<Link href={`/admin-dashboard/community/${course.id}`} className="flex-1">
 						<Button variant="outline" size="sm" className="w-full gap-1.5">
 							<Eye className="w-3.5 h-3.5" />

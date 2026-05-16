@@ -26,7 +26,7 @@ export default function AppHeader() {
 							</Link>
 						</Button>
 					) : null}
-					<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-primary">{title}</h1>
+					<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">{title}</h1>
 				</div>
 				<div className="flex items-center gap-2">
 					<AIHintsBadge />

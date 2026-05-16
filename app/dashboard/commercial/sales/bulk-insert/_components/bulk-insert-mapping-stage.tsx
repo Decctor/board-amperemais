@@ -42,7 +42,7 @@ export function BulkInsertMappingStage({
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex flex-col gap-0.5">
 				<div className="flex items-center gap-1.5">
-					<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-primary")}>
+					<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-foreground")}>
 						<Sparkles className="h-4 w-4" />
 						ETAPA 2
 					</div>
@@ -56,7 +56,7 @@ export function BulkInsertMappingStage({
 				) : null}
 			</div>
 			<div className="w-full flex flex-col-reverse md:flex-row gap-3">
-				<div className="w-full md:w-2/3 bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+				<div className="w-full md:w-2/3 bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 					<div className="flex items-center justify-between">
 						<h1 className="text-xs font-medium tracking-tight uppercase">MAPEAMENTO DOS CAMPOS</h1>
 						<div className="flex items-center gap-2">
@@ -81,7 +81,7 @@ export function BulkInsertMappingStage({
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<div
-														className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-primary", {
+														className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-foreground", {
 															"bg-green-200 text-green-600": isMapped,
 															"bg-red-200 text-red-600": isRequired && !isMapped,
 															"bg-yellow-200 text-yellow-600": !isRequired && !isMapped,

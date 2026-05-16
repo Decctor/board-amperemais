@@ -33,7 +33,7 @@ function StageShellTitle({
 	rightSlot?: ReactNode;
 }) {
 	return (
-		<header className="flex w-full items-start justify-between gap-3 border-b border-primary/10 pb-3">
+		<header className="flex w-full items-start justify-between gap-3 border-b border-border pb-3">
 			<div className="flex items-start gap-3">
 				<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand">
 					<Icon className="h-4 w-4" />
@@ -81,7 +81,7 @@ function StageShellFooter({
 	onFinal,
 }: StageShellFooterProps) {
 	return (
-		<footer className="mt-2 flex w-full flex-col gap-2 border-t border-primary/10 pt-3">
+		<footer className="mt-2 flex w-full flex-col gap-2 border-t border-border pt-3">
 			{nextDisabled && nextDisabledReason ? <p className="text-xs text-amber-600 dark:text-amber-400 text-end">{nextDisabledReason}</p> : null}
 			<div className="flex w-full items-center justify-between gap-2">
 				<div>

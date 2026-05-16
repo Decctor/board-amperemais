@@ -17,7 +17,7 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 	}
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs md:h-full">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs md:h-full">
 			<div className="flex flex-col">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">UTILITÁRIOS</h1>
@@ -38,11 +38,11 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 							className="h-full w-full object-contain"
 						/>
 					) : (
-						<p className="text-primary/70 text-center text-[0.6rem] font-medium uppercase">QR indisponível</p>
+						<p className="text-foreground/70 text-center text-[0.6rem] font-medium uppercase">QR indisponível</p>
 					)}
 				</div>
 				<div className="w-full flex items-center justify-center">
-					<div className="flex items-center gap-3 px-2 py-1 rounded-lg bg-primary/10 text-primary">
+					<div className="flex items-center gap-3 px-2 py-1 rounded-lg bg-primary/10 text-foreground">
 						<p className="text-xs font-medium tracking-tight">LINK POI KIOSK</p>
 						<div className="flex items-center gap-1.5">
 							<Button
@@ -72,11 +72,11 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 							className="h-full w-full object-contain"
 						/>
 					) : (
-						<p className="text-primary/70 text-center text-[0.6rem] font-medium uppercase">QR indisponível</p>
+						<p className="text-foreground/70 text-center text-[0.6rem] font-medium uppercase">QR indisponível</p>
 					)}
 				</div>
 				<div className="w-full flex items-center justify-center">
-					<div className="flex items-center gap-3 px-2 py-1 rounded-lg bg-primary/10 text-primary">
+					<div className="flex items-center gap-3 px-2 py-1 rounded-lg bg-primary/10 text-foreground">
 						<p className="text-xs font-medium tracking-tight">LINK POI MOBILE</p>
 						<div className="flex items-center gap-1.5">
 							<Button
@@ -97,7 +97,7 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 				</div>
 			</div>
 
-			<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-primary/10">
+			<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-border">
 				<h1 className="text-xs font-medium tracking-tight uppercase">MATERIAL PARA DISPLAY</h1>
 				<p className="text-[0.65rem] text-muted-foreground mb-2">Display pronto para impressão no formato A5 para engajar seus clientes.</p>
 				<div className="w-full flex items-center justify-center">

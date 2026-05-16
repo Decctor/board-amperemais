@@ -1,7 +1,12 @@
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { type TWhatsappTemplateVariable, VARIABLE_CONTEXT_GROUP_LABELS, WhatsappTemplateVariables, getVariablesForTrigger } from "@/lib/whatsapp/template-variables";
+import {
+	type TWhatsappTemplateVariable,
+	VARIABLE_CONTEXT_GROUP_LABELS,
+	WhatsappTemplateVariables,
+	getVariablesForTrigger,
+} from "@/lib/whatsapp/template-variables";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import type { TWhatsappTemplateBodyParameter } from "@/schemas/whatsapp-templates";
 import Mention from "@tiptap/extension-mention";
@@ -50,8 +55,8 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametros, onPara
 					char: "{",
 				},
 				renderLabel({ node }) {
-					const label = availableVariables.find((v) => v.value === node.attrs.id)?.label
-						?? WhatsappTemplateVariables.find((v) => v.value === node.attrs.id)?.label;
+					const label =
+						availableVariables.find((v) => v.value === node.attrs.id)?.label ?? WhatsappTemplateVariables.find((v) => v.value === node.attrs.id)?.label;
 					return `{{${label?.toUpperCase()}}}`;
 				},
 			}),
@@ -175,7 +180,7 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametros, onPara
 	});
 	return (
 		<ResponsiveMenuSection title="CORPO DA MENSAGEM" icon={<FileText size={15} />}>
-			<div className="flex items-center flex-wrap gap-2 border-b border-primary/10 p-3">
+			<div className="flex items-center flex-wrap gap-2 border-b border-border p-3">
 				<div className="flex gap-1">
 					<Button
 						type="button"
@@ -237,7 +242,7 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametros, onPara
 					<DropdownMenuContent align="start" sideOffset={8} className="z-110 w-[320px] overflow-hidden p-0">
 						<div className="border-b bg-muted/40 px-3 py-2.5">
 							<div className="flex items-center gap-2">
-								<div className="rounded-md bg-primary/10 p-1.5 text-primary">
+								<div className="rounded-md bg-primary/10 p-1.5 text-foreground">
 									<Braces className="h-3.5 w-3.5" />
 								</div>
 								<div className="flex flex-col">
@@ -247,32 +252,34 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametros, onPara
 							</div>
 						</div>
 						<div className="max-h-[300px] overflow-y-auto p-1 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-						{Array.from(variablesByGroup.entries()).map(([groupKey, groupVariables]) => (
-							<div key={groupKey}>
-								<div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-									{VARIABLE_CONTEXT_GROUP_LABELS[groupKey as keyof typeof VARIABLE_CONTEXT_GROUP_LABELS] ?? groupKey}
-								</div>
-								{groupVariables.map((variable) => (
-									<DropdownMenuItem key={variable.id} onSelect={() => insertNamedVariable(variable.value)} className="items-start rounded-md px-2 py-2">
-										<div className="flex w-full items-start justify-between gap-3">
-											<div className="flex min-w-0 flex-col">
-												<span className="truncate font-medium">{variable.label}</span>
-												<span className="truncate text-xs text-muted-foreground">{`{{${variable.value}}}`}</span>
+							{Array.from(variablesByGroup.entries()).map(([groupKey, groupVariables]) => (
+								<div key={groupKey}>
+									<div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+										{VARIABLE_CONTEXT_GROUP_LABELS[groupKey as keyof typeof VARIABLE_CONTEXT_GROUP_LABELS] ?? groupKey}
+									</div>
+									{groupVariables.map((variable) => (
+										<DropdownMenuItem key={variable.id} onSelect={() => insertNamedVariable(variable.value)} className="items-start rounded-md px-2 py-2">
+											<div className="flex w-full items-start justify-between gap-3">
+												<div className="flex min-w-0 flex-col">
+													<span className="truncate font-medium">{variable.label}</span>
+													<span className="truncate text-xs text-muted-foreground">{`{{${variable.value}}}`}</span>
+												</div>
+												<span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">#{variable.id}</span>
 											</div>
-											<span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">#{variable.id}</span>
-										</div>
-									</DropdownMenuItem>
-								))}
-							</div>
-						))}
+										</DropdownMenuItem>
+									))}
+								</div>
+							))}
 						</div>
 						<DropdownMenuSeparator className="my-0" />
-						<div className="px-3 py-2 text-[11px] text-muted-foreground">Dica: digite <span className="font-mono">{"{"}</span> no editor para abrir sugestões rápidas.</div>
+						<div className="px-3 py-2 text-[11px] text-muted-foreground">
+							Dica: digite <span className="font-mono">{"{"}</span> no editor para abrir sugestões rápidas.
+						</div>
 					</DropdownMenuContent>
 				</DropdownMenu>
 
 				<div className="ml-auto flex items-center gap-2">
-					<span className={`text-sm font-medium ${isOverLimit ? "text-red-500" : "text-primary/60"}`}>
+					<span className={`text-sm font-medium ${isOverLimit ? "text-red-500" : "text-foreground/60"}`}>
 						{charCount} / {maxChars}
 					</span>
 				</div>
@@ -281,7 +288,7 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametros, onPara
 			<EditorContent editor={editor} className="prose max-w-none p-6 min-h-[200px]" suppressHydrationWarning />
 
 			{parametros.length > 0 && (
-				<div className="border-t border-primary/10 p-3 space-y-3">
+				<div className="border-t border-border p-3 space-y-3">
 					<h4 className="text-sm font-semibold">Variáveis e Exemplos</h4>
 					{parametros.map((param, index) => {
 						// Find the variable label from all variables (not just available ones)

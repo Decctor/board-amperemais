@@ -90,13 +90,13 @@ function NumberInput({
 	const containerClassName = useMemo(() => `flex w-full flex-col gap-1 lg:w-[${width || "350px"}]`, [width]);
 
 	// Memoiza className do label
-	const labelClasses = useMemo(() => cn("text-sm font-medium tracking-tight text-primary/80", labelClassName), [labelClassName]);
+	const labelClasses = useMemo(() => cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName), [labelClassName]);
 
 	// Memoiza className do input
 	const inputClasses = useMemo(
 		() =>
 			cn(
-				"w-full rounded-md dark:bg-[#121212] border border-primary/20 p-3 text-sm shadow-sm outline-none duration-500 ease-in-out placeholder:italic focus:border-primary",
+				"w-full rounded-md dark:bg-[#121212] border border-border p-3 text-sm shadow-sm outline-none duration-500 ease-in-out placeholder:italic focus:border-border",
 				holderClassName,
 			),
 		[holderClassName],
@@ -121,7 +121,7 @@ function NumberInput({
 				pattern="[0-9]*[,.]?[0-9]*"
 				placeholder={placeholder}
 				className={cn(
-					"w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-primary",
+					"w-full rounded-md border border-border p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-border",
 					holderClassName,
 				)}
 			/>

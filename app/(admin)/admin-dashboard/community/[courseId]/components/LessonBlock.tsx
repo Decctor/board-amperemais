@@ -82,13 +82,8 @@ export default function LessonBlock({ lesson, index, totalLessons, onMoveUp, onM
 	});
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border p-3 shadow-2xs">
-			<div
-				className={cn(
-					"relative aspect-video w-full overflow-hidden rounded-lg",
-					muxStatus?.mediaClassName ?? "bg-primary/5 text-muted-foreground",
-				)}
-			>
+		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border p-3 shadow-2xs">
+			<div className={cn("relative aspect-video w-full overflow-hidden rounded-lg", muxStatus?.mediaClassName ?? "bg-primary/5 text-muted-foreground")}>
 				{canShowThumbnail && lesson.muxPlaybackId && isPreviewOpen ? (
 					<>
 						<MuxPlayer
@@ -121,15 +116,8 @@ export default function LessonBlock({ lesson, index, totalLessons, onMoveUp, onM
 								<PlayCircle className="h-5 w-5" />
 							</div>
 						</div>
-						<div className="absolute top-2 right-2 rounded bg-black/60 px-2 py-1 text-[10px] font-semibold text-white">
-							Clique para prévia
-						</div>
-						<button
-							type="button"
-							onClick={() => setIsPreviewOpen(true)}
-							className="absolute inset-0"
-							aria-label="Abrir pré-visualização do vídeo"
-						/>
+						<div className="absolute top-2 right-2 rounded bg-black/60 px-2 py-1 text-[10px] font-semibold text-white">Clique para prévia</div>
+						<button type="button" onClick={() => setIsPreviewOpen(true)} className="absolute inset-0" aria-label="Abrir pré-visualização do vídeo" />
 					</>
 				) : (
 					<div className="flex h-full w-full flex-col items-center justify-center gap-1">
@@ -141,7 +129,7 @@ export default function LessonBlock({ lesson, index, totalLessons, onMoveUp, onM
 
 			<div className="flex items-start justify-between gap-2">
 				<div className="flex items-center gap-1">
-					<div className="p-2 rounded-full bg-secondary text-primary font-bold text-[0.65rem]">#{index + 1}</div>
+					<div className="p-2 rounded-full bg-secondary text-foreground font-bold text-[0.65rem]">#{index + 1}</div>
 					<h3 className="truncate text-sm font-bold tracking-tight">{lesson.titulo}</h3>
 				</div>
 				{muxStatus ? (

@@ -2,13 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	ACCESS_CONFIG,
-	type TCourseSummary,
-	formatTotalDuration,
-	getTotalDurationSeconds,
-	getTotalLessons,
-} from "@/lib/community-helpers";
+import { ACCESS_CONFIG, type TCourseSummary, formatTotalDuration, getTotalDurationSeconds, getTotalLessons } from "@/lib/community-helpers";
 import { BookOpen, Clock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,15 +19,10 @@ export function CourseCard({ course }: CourseCardProps) {
 
 	return (
 		<Link href={`/community/courses/${course.id}`} className="block group h-full">
-			<Card className="h-full overflow-hidden border-primary/20 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/40">
+			<Card className="h-full overflow-hidden border-border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-border">
 				<div className="relative aspect-video overflow-hidden bg-muted">
 					{course.thumbnailUrl ? (
-						<Image
-							src={course.thumbnailUrl}
-							alt={course.titulo}
-							fill
-							className="object-cover transition-transform duration-500 group-hover:scale-105"
-						/>
+						<Image src={course.thumbnailUrl} alt={course.titulo} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
 					) : (
 						<div className="absolute inset-0 flex items-center justify-center bg-primary/5">
 							<BookOpen className="h-12 w-12 text-muted-foreground/20" />
@@ -48,12 +37,8 @@ export function CourseCard({ course }: CourseCardProps) {
 				</div>
 
 				<CardHeader className="pb-2">
-					<CardTitle className="line-clamp-1 text-sm font-bold group-hover:text-primary transition-colors">
-						{course.titulo}
-					</CardTitle>
-					<CardDescription className="line-clamp-2 text-xs mt-1">
-						{course.descricao || "Sem descrição disponível."}
-					</CardDescription>
+					<CardTitle className="line-clamp-1 text-sm font-bold group-hover:text-foreground transition-colors">{course.titulo}</CardTitle>
+					<CardDescription className="line-clamp-2 text-xs mt-1">{course.descricao || "Sem descrição disponível."}</CardDescription>
 				</CardHeader>
 
 				<CardFooter className="mt-auto border-t bg-muted/20 p-3">

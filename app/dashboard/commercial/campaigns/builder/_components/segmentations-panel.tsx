@@ -38,7 +38,7 @@ export default function SegmentationsPanel({
 	return (
 		<div className="flex w-full flex-col gap-2">
 			<div className="flex flex-col">
-				<h3 className="text-sm font-semibold tracking-tight text-primary/80">{title}</h3>
+				<h3 className="text-sm font-semibold tracking-tight text-foreground/80">{title}</h3>
 				{description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
 			</div>
 			<div className="grid w-full grid-cols-1 gap-1.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -51,7 +51,7 @@ export default function SegmentationsPanel({
 							type="button"
 							onClick={() => handleSegmentationToggle(label.text)}
 							className={cn(
-								"group inline-flex min-w-0 items-center justify-between gap-3 rounded-lg border border-primary/10 px-2.5 py-3 text-left text-xs font-medium transition-colors hover:border-primary/30",
+								"group inline-flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border px-2.5 py-3 text-left text-xs font-medium transition-colors hover:border-border/30",
 								isActive && cn(label.backgroundCollor, label.textCollor, "border-transparent"),
 							)}
 							aria-pressed={isActive}

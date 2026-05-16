@@ -20,22 +20,22 @@ export default function UsersGeneralBlock({ infoHolder, updateInfoHolder, avatar
 			<div className="w-full flex items-center flex-col  gap-2">
 				<div className="w-full flex items-center gap-1.5">
 					<UserRound className="h-4 min-h-4 w-4 min-w-4" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">NOME</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">NOME</h3>
 					<h3 className="text-sm font-semibold tracking-tight">{infoHolder.nome}</h3>
 				</div>
 				<div className="w-full flex items-center gap-1.5">
 					<Mail className="h-4 min-h-4 w-4 min-w-4" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">EMAIL</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">EMAIL</h3>
 					<h3 className="text-sm font-semibold tracking-tight">{infoHolder.email}</h3>
 				</div>
 				<div className="w-full flex items-center gap-1.5">
 					<Phone className="h-4 min-h-4 w-4 min-w-4" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">TELEFONE</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TELEFONE</h3>
 					<h3 className="text-sm font-semibold tracking-tight">{infoHolder.telefone}</h3>
 				</div>
 				<div className="w-full flex items-center gap-1.5">
 					<Calendar className="h-4 min-h-4 w-4 min-w-4" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">DATA DE NASCIMENTO</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DATA DE NASCIMENTO</h3>
 					<h3 className="text-sm font-semibold tracking-tight">
 						{infoHolder.dataNascimento ? formatDateForInputValue(infoHolder.dataNascimento) : "NÃO INFORMADO"}
 					</h3>

@@ -10,10 +10,9 @@ import SegmentationsPanel from "../segmentations-panel";
 export default function PermanenciaSegmentacaoConfig() {
 	const { state, updateCampaign } = useBuilderCampaign();
 	return (
-		<div className="flex w-full flex-col gap-3 rounded-lg border border-primary/10 bg-card p-4">
+		<div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card p-4">
 			<p className="text-xs text-muted-foreground">
-				Defina por quanto tempo o cliente precisa permanecer em uma das segmentações monitoradas para que a campanha seja
-				disparada.
+				Defina por quanto tempo o cliente precisa permanecer em uma das segmentações monitoradas para que a campanha seja disparada.
 			</p>
 			<div className="flex w-full flex-col gap-3 lg:flex-row">
 				<div className="w-full lg:w-1/2">
@@ -22,9 +21,7 @@ export default function PermanenciaSegmentacaoConfig() {
 						value={state.campaign.gatilhoTempoPermanenciaMedida}
 						resetOptionLabel="SELECIONE A MEDIDA"
 						options={TimeDurationUnitsOptions}
-						handleChange={(value) =>
-							updateCampaign({ gatilhoTempoPermanenciaMedida: value as TTimeDurationUnitsEnum })
-						}
+						handleChange={(value) => updateCampaign({ gatilhoTempoPermanenciaMedida: value as TTimeDurationUnitsEnum })}
 						onReset={() => updateCampaign({ gatilhoTempoPermanenciaMedida: null })}
 						width="100%"
 					/>
@@ -39,10 +36,7 @@ export default function PermanenciaSegmentacaoConfig() {
 					/>
 				</div>
 			</div>
-			<SegmentationsPanel
-				title="SEGMENTAÇÕES MONITORADAS"
-				description="Selecione as segmentações que serão acompanhadas pelo gatilho."
-			/>
+			<SegmentationsPanel title="SEGMENTAÇÕES MONITORADAS" description="Selecione as segmentações que serão acompanhadas pelo gatilho." />
 		</div>
 	);
 }

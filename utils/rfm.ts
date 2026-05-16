@@ -99,7 +99,7 @@ export const RFMLabels = [
 		text: "POTENCIAIS CLIENTES LEAIS",
 		backgroundCollor: "bg-[#5C4033]",
 		textCollor: "text-white",
-		borderCollor: "border-primary",
+		borderCollor: "border-border",
 		combinations: [
 			[3, 4, 4],
 			[3, 3, 5], // Crescimento em frequência

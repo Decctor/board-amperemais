@@ -181,7 +181,7 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 				<div className="flex w-full min-w-0 flex-col items-center gap-4 px-1 py-2">
 					{showPairingFeedback ? (
 						<div className="flex min-h-64 w-full flex-col items-center justify-center gap-4 px-4 text-center">
-							<Loader2 className="text-primary h-10 w-10 animate-spin" />
+							<Loader2 className="text-foreground h-10 w-10 animate-spin" />
 							<p className="text-foreground text-sm font-bold tracking-wide uppercase">{liveStatus === "connecting" ? "CONECTANDO" : "TENTANDO CONEXÃO"}</p>
 							<p className="text-muted-foreground max-w-sm text-xs">
 								{liveStatus === "connecting"
@@ -203,7 +203,7 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 								)}
 								{statusQuery.isFetching && qrCode && (
 									<div className="absolute inset-0 flex items-center justify-center rounded-lg bg-white/50">
-										<Loader2 className="text-primary h-8 w-8 animate-spin" />
+										<Loader2 className="text-foreground h-8 w-8 animate-spin" />
 									</div>
 								)}
 							</div>

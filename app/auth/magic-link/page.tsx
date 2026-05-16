@@ -33,7 +33,7 @@ async function MagicLinkVerifyWaitingPage({ searchParams }: { searchParams: { id
 						{searchParamsValues.details ? (
 							<p className="w-full text-center font-bold text-blue-800 text-sm tracking-tight">{searchParamsValues.details}</p>
 						) : null}
-						<p className="w-full text-center font-medium text-primary/80 text-sm tracking-tight">
+						<p className="w-full text-center font-medium text-foreground/80 text-sm tracking-tight">
 							Clique no link de acesso enviado para o email: <strong>{token?.usuarioEmail}</strong>
 						</p>
 						<div className="my-4 flex items-center">
@@ -42,7 +42,7 @@ async function MagicLinkVerifyWaitingPage({ searchParams }: { searchParams: { id
 							<div className="grow border-muted border-t" />
 						</div>
 						<MagicLinkVerifyWaitingPageForm verificationTokenId={token.id} />
-						<p className="w-full text-center font-medium text-primary/80 text-sm tracking-tight">
+						<p className="w-full text-center font-medium text-foreground/80 text-sm tracking-tight">
 							O link expira em: <strong>{expiresInMinutes.toFixed(0)} minutos.</strong>
 						</p>
 					</CardContent>

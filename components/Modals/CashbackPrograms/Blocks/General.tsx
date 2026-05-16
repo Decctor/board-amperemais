@@ -26,7 +26,7 @@ export default function CashbackProgramsGeneralBlock({ cashbackProgram, updateCa
 			</div>
 
 			<div className="w-full flex flex-col items-center gap-1 my-2">
-				<h3 className={"text-start text-sm font-medium tracking-tight text-primary/80"}>TERMINOLOGIA</h3>
+				<h3 className={"text-start text-sm font-medium tracking-tight text-foreground/80"}>TERMINOLOGIA</h3>
 				<div className="w-full flex items-center gap-2 justify-center flex-wrap">
 					{CashbackProgramTerminologyOptions.map((option) => (
 						<Button

@@ -10,11 +10,7 @@ import NoticiaBoaQuadradoPost from "./components/designs/noticia-boa/noticia-boa
 import NoticiaBoaReelsPost from "./components/designs/noticia-boa/noticia-boa-reels";
 import ExportButton from "./components/export-button";
 import PostPreviewShell from "./components/post-preview-shell";
-import {
-	DEFAULT_MEDIA_EXPORT_PIXEL_RATIO,
-	MEDIA_EXPORT_PIXEL_RATIO_OPTIONS,
-	type TMediaExportPixelRatio,
-} from "./export-config";
+import { DEFAULT_MEDIA_EXPORT_PIXEL_RATIO, MEDIA_EXPORT_PIXEL_RATIO_OPTIONS, type TMediaExportPixelRatio } from "./export-config";
 
 // ─── Size Presets ────────────────────────────────────────────────
 const SIZE_PRESETS = [
@@ -59,9 +55,7 @@ const DESIGNS: MediaDesignEntry[] = [
 export default function MediaPlaygroundPage() {
 	const [selectedDesign, setSelectedDesign] = useState(DESIGNS[0].key);
 	const [selectedSize, setSelectedSize] = useState<SizePresetKey>(SIZE_PRESETS[0].key);
-	const [exportPixelRatio, setExportPixelRatio] = useState<TMediaExportPixelRatio>(
-		DEFAULT_MEDIA_EXPORT_PIXEL_RATIO,
-	);
+	const [exportPixelRatio, setExportPixelRatio] = useState<TMediaExportPixelRatio>(DEFAULT_MEDIA_EXPORT_PIXEL_RATIO);
 	const contentRef = useRef<HTMLDivElement>(null);
 
 	const design = DESIGNS.find((d) => d.key === selectedDesign) ?? DESIGNS[0];
@@ -76,9 +70,7 @@ export default function MediaPlaygroundPage() {
 			{/* ─── Header ────────────────────────────────────── */}
 			<div className="flex flex-col gap-1">
 				<h1 className="text-xl font-bold tracking-tight">Media Playground</h1>
-				<p className="text-sm text-muted-foreground">
-					Crie e exporte posts para Instagram com componentes do app.
-				</p>
+				<p className="text-sm text-muted-foreground">Crie e exporte posts para Instagram com componentes do app.</p>
 			</div>
 
 			{/* ─── Controls ──────────────────────────────────── */}
@@ -89,7 +81,7 @@ export default function MediaPlaygroundPage() {
 					<select
 						value={selectedDesign}
 						onChange={(e) => setSelectedDesign(e.target.value)}
-						className="bg-card border border-primary/20 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+						className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
 					>
 						{DESIGNS.map((d) => (
 							<option key={d.key} value={d.key}>
@@ -109,9 +101,7 @@ export default function MediaPlaygroundPage() {
 								key={preset.key}
 								onClick={() => setSelectedSize(preset.key)}
 								className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-									selectedSize === preset.key
-										? "bg-primary text-primary-foreground shadow-sm"
-										: "text-muted-foreground hover:text-foreground"
+									selectedSize === preset.key ? "bg-primary text-foreground-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
 								}`}
 							>
 								{preset.label}
@@ -128,7 +118,7 @@ export default function MediaPlaygroundPage() {
 						<select
 							value={exportPixelRatio}
 							onChange={(e) => setExportPixelRatio(Number(e.target.value) as TMediaExportPixelRatio)}
-							className="bg-card border border-primary/20 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-32"
+							className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-32"
 							aria-label="Resolução de exportação"
 							title="Escala do PNG — valores maiores geram arquivo mais nítido e pesado"
 						>
@@ -151,7 +141,7 @@ export default function MediaPlaygroundPage() {
 			</div>
 
 			{/* ─── Preview ───────────────────────────────────── */}
-			<div className="w-full flex justify-center py-4 bg-secondary/30 rounded-xl border border-dashed border-primary/10">
+			<div className="w-full flex justify-center py-4 bg-secondary/30 rounded-xl border border-dashed border-border">
 				<PostPreviewShell width={size.width} height={size.height} contentRef={contentRef}>
 					<DesignComponent width={size.width} height={size.height} />
 				</PostPreviewShell>

@@ -161,10 +161,10 @@ export default function PaymentsSection({ saleState }: PaymentsSectionProps) {
 	const supportedMethodOptions = SalePaymentMethodsOptions.filter((method) => saleState.organizationPaymentMethodsConfig[method.value]?.suportado);
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center gap-1.5 justify-between">
 				<div className="flex items-center gap-1.5">
-					<Wallet className="w-4 h-4 text-primary" />
+					<Wallet className="w-4 h-4 text-foreground" />
 					<h3 className="font-bold text-xs tracking-wide">PAGAMENTO</h3>
 				</div>
 				<Button

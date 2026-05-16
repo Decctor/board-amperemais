@@ -473,7 +473,7 @@ function ClientsStatsView() {
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromRecurrentClients.percentage || 0)}%</p>
+							<p className="text-xs font-bold text-foreground">{formatDecimalPlaces(clientsOverallStats?.revenueFromRecurrentClients.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -496,7 +496,7 @@ function ClientsStatsView() {
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromNewClients.percentage || 0)}%</p>
+							<p className="text-xs font-bold text-foreground">{formatDecimalPlaces(clientsOverallStats?.revenueFromNewClients.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -519,7 +519,9 @@ function ClientsStatsView() {
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromNonIdentifiedClients.percentage || 0)}%</p>
+							<p className="text-xs font-bold text-foreground">
+								{formatDecimalPlaces(clientsOverallStats?.revenueFromNonIdentifiedClients.percentage || 0)}%
+							</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -553,7 +555,7 @@ type ClientCardProps = {
 function ClientPageCard({ client }: ClientCardProps) {
 	const clientCashbackBalance = client.saldos.length > 0 ? client.saldos[0] : null;
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
@@ -599,19 +601,19 @@ function ClientPageCard({ client }: ClientCardProps) {
 			<div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
 				<div className="flex items-center gap-2">
 					{client.estatisticas.primeiraCompraData ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
 							<p className="text-xs font-medium tracking-tight uppercase">PRIMEIRA VENDA: {formatDateAsLocale(client.estatisticas.primeiraCompraData)}</p>
 						</div>
 					) : null}
 					{client.estatisticas.ultimaCompraData ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
 							<p className="text-xs font-medium tracking-tight uppercase">ÚLTIMA VENDA: {formatDateAsLocale(client.estatisticas.ultimaCompraData)}</p>
 						</div>
 					) : null}
 					{client.metadataGrupoProdutoMaisComprado ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<ShoppingCart className="w-3 min-w-3 h-3 min-h-3" />
 							<p className="text-xs font-medium tracking-tight uppercase">PREFERÊNCIA: {client.metadataGrupoProdutoMaisComprado}</p>
 						</div>

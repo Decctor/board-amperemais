@@ -38,8 +38,8 @@ export default function CampaignsConfigBlock({ campaign, updateCampaign }: Campa
 				{campaign.permitirRecorrencia ? (
 					<>
 						<p className="text-center text-sm tracking-tight text-muted-foreground">
-							Mesmo que o gatilho dispare várias vezes para o mesmo cliente, enviamos no máximo uma mensagem dentro deste
-							período. Depois desse intervalo, pode voltar a enviar se disparar de novo.
+							Mesmo que o gatilho dispare várias vezes para o mesmo cliente, enviamos no máximo uma mensagem dentro deste período. Depois desse intervalo,
+							pode voltar a enviar se disparar de novo.
 						</p>
 						<div className="w-full flex flex-col gap-2 items-center lg:flex-row">
 							<div className="w-full lg:w-1/2">
@@ -65,15 +65,14 @@ export default function CampaignsConfigBlock({ campaign, updateCampaign }: Campa
 						</div>
 						{!campaign.frequenciaIntervaloValor || campaign.frequenciaIntervaloValor <= 0 ? (
 							<div className="w-full rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm text-amber-900">
-								Informe um intervalo maior que zero. Sem isso, cada vez que o gatilho rodar pode gerar novo envio ao mesmo
-								cliente.
+								Informe um intervalo maior que zero. Sem isso, cada vez que o gatilho rodar pode gerar novo envio ao mesmo cliente.
 							</div>
 						) : null}
 					</>
 				) : null}
 
 				<div className={"flex w-full flex-col gap-1"}>
-					<h3 className={cn("text-sm font-medium tracking-tight text-primary/80")}>LIMITE DE ENVIOS POR SEMANA</h3>
+					<h3 className={cn("text-sm font-medium tracking-tight text-foreground/80")}>LIMITE DE ENVIOS POR SEMANA</h3>
 
 					<div className="w-full flex items-center justify-center flex-wrap gap-x-2 gap-y-1">
 						<Button

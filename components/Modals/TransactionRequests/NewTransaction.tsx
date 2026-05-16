@@ -226,7 +226,7 @@ export function NewTransaction({ sessionOrgId, sessionUser, closeMenu, callbacks
 				)}
 				<NewTransactionSummaryBlock state={state} finalValue={finalValue} terminology={terminology} selectedPrize={selectedPrize} />
 				<ResponsiveMenuSection title="OPERADOR" icon={<LockKeyhole className="h-4 min-h-4 w-4 min-w-4" />}>
-					<p className="text-sm font-medium tracking-tight text-primary/80">SENHA DO OPERADOR (5 DÍGITOS)</p>
+					<p className="text-sm font-medium tracking-tight text-foreground/80">SENHA DO OPERADOR (5 DÍGITOS)</p>
 					<InputOTP
 						maxLength={OPERATOR_PASSWORD_LENGTH}
 						pattern={REGEXP_ONLY_DIGITS}
@@ -386,7 +386,7 @@ function NewTransactionPrizeFlow({ prizes, selectedPrize, availableCashback, ter
 									disabled={isDisabled}
 									onClick={() => onSelectPrize(prize)}
 									className={`flex min-h-28 w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
-										isSelected ? "border-brand bg-brand/10" : "border-primary/15 bg-card hover:border-brand/50"
+										isSelected ? "border-brand bg-brand/10" : "border-border/15 bg-card hover:border-brand/50"
 									} ${isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
 								>
 									<div className="relative h-16 w-16 min-w-16 overflow-hidden rounded-xl bg-secondary">

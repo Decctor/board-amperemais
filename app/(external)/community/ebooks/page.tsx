@@ -17,19 +17,14 @@ export default function EbooksPage() {
 
 	return (
 		<div className="w-full h-full flex flex-col gap-6 p-6">
-			<CommunityHeader
-				breadcrumbs={[
-					{ label: "Início", href: "/community" },
-					{ label: "eBooks" },
-				]}
-			/>
+			<CommunityHeader breadcrumbs={[{ label: "Início", href: "/community" }, { label: "eBooks" }]} />
 			<div className="flex flex-col gap-1">
-				<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-primary">eBooks</h1>
+				<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">eBooks</h1>
 				<p className="text-sm text-muted-foreground">Materiais de leitura exclusivos para aprofundar seu conhecimento.</p>
 			</div>
 
 			<div className="w-full max-w-md relative">
-				<div className="flex items-center bg-background rounded-xl border border-primary/20 shadow-2xs">
+				<div className="flex items-center bg-background rounded-xl border border-border shadow-2xs">
 					<Search className="ml-3 h-4 w-4 min-w-4 min-h-4 text-muted-foreground" />
 					<Input
 						type="text"
@@ -68,7 +63,7 @@ export default function EbooksPage() {
 					{materials.map((material) => (
 						<div
 							key={material.id}
-							className="group rounded-xl border border-primary/15 bg-card p-4 shadow-2xs hover:border-primary/40 hover:shadow-md transition-all"
+							className="group rounded-xl border border-border/15 bg-card p-4 shadow-2xs hover:border-border hover:shadow-md transition-all"
 						>
 							<div className="flex items-center justify-between gap-2 mb-2">
 								<Badge variant="secondary" className="text-[10px]">

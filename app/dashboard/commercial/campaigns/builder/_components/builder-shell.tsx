@@ -174,7 +174,7 @@ function BuilderShellContent({ initialCampaignId, membership }: BuilderShellProp
 		<div className="mx-auto flex w-full flex-col gap-4 px-3 py-4 lg:px-6">
 			<BuilderHeader backToUrl="/dashboard/commercial/campaigns?view=database" />
 			<BuilderStepper />
-			<div className="rounded-xl border border-primary/10 bg-background p-3 shadow-sm lg:p-5">
+			<div className="rounded-xl border border-border bg-background p-3 shadow-sm lg:p-5">
 				{currentStage === "trigger" ? <StageTrigger validation={activeValidation} /> : null}
 				{currentStage === "send" ? <StageSend organizationId={membership.organizacao.id} validation={activeValidation} /> : null}
 				{currentStage === "audience" ? <StageAudience validation={activeValidation} /> : null}

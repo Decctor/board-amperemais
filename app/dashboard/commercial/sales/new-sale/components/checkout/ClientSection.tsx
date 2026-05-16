@@ -10,10 +10,10 @@ type ClientSectionProps = {
 
 export default function ClientSection({ saleState, onOpenVinculationMenu }: ClientSectionProps) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-1.5">
-					<UserRound className="w-4 h-4 text-primary" />
+					<UserRound className="w-4 h-4 text-foreground" />
 					<h3 className="font-bold text-xs tracking-wide">CLIENTE</h3>
 				</div>
 				<div className="flex items-center gap-1">

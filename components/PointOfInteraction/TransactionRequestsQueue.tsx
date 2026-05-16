@@ -49,7 +49,7 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVende
 	const hasLinkedSeller = !!usuarioVendedorId;
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs md:h-full md:min-h-0">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs md:h-full md:min-h-0">
 			<div className="flex flex-col">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">SOLICITAÇÕES</h1>
@@ -126,7 +126,7 @@ function PoiTransactionRequestCard({
 	const prizeImageUrl = request.transacaoResgate?.resgateRecompensa?.imagemCapaUrl ?? resumo?.recompensa?.prizeImageUrl ?? null;
 
 	return (
-		<div className="bg-card border border-primary/20 flex w-full flex-col gap-1 rounded-xl px-3 py-4 shadow-2xs h-fit">
+		<div className="bg-card border border-border flex w-full flex-col gap-1 rounded-xl px-3 py-4 shadow-2xs h-fit">
 			<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{request.cliente?.nome ?? resumo?.cliente?.nome ?? "Cliente não identificado"}</h1>
@@ -145,12 +145,12 @@ function PoiTransactionRequestCard({
 				</div>
 
 				<div className="flex items-center gap-3">
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BsCalendarPlus className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">{formatDateAsLocale(request.dataInsercao, true)}</p>
 					</div>
 					<div
-						className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-primary", {
+						className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-foreground", {
 							"bg-amber-100 text-amber-700": request.status === "PENDENTE",
 							"bg-green-100 text-green-700": request.status === "APROVADO",
 							"bg-red-100 text-red-700": request.status === "REJEITADO",
@@ -178,11 +178,11 @@ function PoiTransactionRequestCard({
 
 			<div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
 				<div className="flex items-center gap-3 flex-wrap">
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">BRUTO: {formatToMoney(resumo?.venda?.valorBruto ?? 0)}</p>
 					</div>
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BadgePercent className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">
 							{isRewardMode
@@ -190,7 +190,7 @@ function PoiTransactionRequestCard({
 								: `RESGATE: ${formatToMoney(resumo?.venda?.valorResgate ?? 0)}`}
 						</p>
 					</div>
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">FINAL: {formatToMoney(resumo?.venda?.valorFinal ?? 0)}</p>
 					</div>
@@ -213,7 +213,7 @@ function PoiTransactionRequestCard({
 						<span className="rounded-full bg-secondary px-2.5 py-1 font-medium text-muted-foreground">
 							{formatDateAsLocale(request.dataInsercao, true)}
 						</span>
-						{resumo?.venda?.modo ? <span className="rounded-full bg-primary/10 px-2.5 py-1 font-bold text-primary">{resumo.venda.modo}</span> : null}
+						{resumo?.venda?.modo ? <span className="rounded-full bg-primary/10 px-2.5 py-1 font-bold text-foreground">{resumo.venda.modo}</span> : null}
 					</div>
 					<div>
 						<h3 className="text-sm font-black uppercase tracking-tight">{request.cliente?.nome ?? resumo?.cliente?.nome ?? "Cliente não identificado"}</h3>

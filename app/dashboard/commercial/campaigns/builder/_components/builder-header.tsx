@@ -15,7 +15,7 @@ export default function BuilderHeader({ backToUrl }: BuilderHeaderProps) {
 	const { campaign } = state;
 
 	return (
-		<header className="flex w-full flex-col gap-3 rounded-2xl border border-primary/10 bg-card px-4 py-3 shadow-sm">
+		<header className="flex w-full flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
 			<div className="flex w-full items-start justify-between gap-3 flex-col lg:flex-row">
 				<div className="flex items-center gap-2">
 					<Button type="button" variant="ghost" size="sm" className="flex items-center gap-1.5" asChild>

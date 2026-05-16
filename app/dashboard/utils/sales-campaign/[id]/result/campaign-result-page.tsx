@@ -27,10 +27,10 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 			{/* Campaign Header */}
 			<div className="w-full flex flex-col gap-2">
 				<div className="flex items-center gap-3">
-					<Trophy className="w-8 h-8 text-primary" />
+					<Trophy className="w-8 h-8 text-foreground" />
 					<h1 className="text-2xl font-bold tracking-tight">{campaignStats.campaign.titulo}</h1>
 				</div>
-				<div className="flex items-center gap-2 text-sm text-primary/70">
+				<div className="flex items-center gap-2 text-sm text-foreground/70">
 					<Calendar className="w-4 h-4" />
 					<span>
 						{formatDateAsLocale(campaignStats.campaign.periodo.inicio)} até {formatDateAsLocale(campaignStats.campaign.periodo.fim)}
@@ -42,7 +42,7 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<StatUnitCard
 					title="Total de Vendas (Quantidade)"
-					icon={<ShoppingCart className="w-5 h-5 text-primary" />}
+					icon={<ShoppingCart className="w-5 h-5 text-foreground" />}
 					current={{
 						value: campaignStats.totalSales.quantidade,
 						format: (n) => n.toString(),
@@ -50,7 +50,7 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 				/>
 				<StatUnitCard
 					title="Total de Vendas (Valor)"
-					icon={<BadgeDollarSign className="w-5 h-5 text-primary" />}
+					icon={<BadgeDollarSign className="w-5 h-5 text-foreground" />}
 					current={{
 						value: campaignStats.totalSales.valor,
 						format: (n) => formatToMoney(n),
@@ -59,7 +59,7 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 			</div>
 
 			{/* Campaign Products Performance */}
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between">
 					<h2 className="text-xs font-medium tracking-tight uppercase">Desempenho dos Produtos da Campanha</h2>
 					<PackageCheck className="w-4 h-4 min-w-4 min-h-4" />
@@ -67,26 +67,27 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 				<div className="grid grid-cols-1 gap-3">
 					{campaignStats.productsPerformance.length > 0 ? (
 						campaignStats.productsPerformance.map((product) => (
-							<div key={product.produtoId} className={cn("flex w-full flex-col gap-3 rounded-lg border border-primary/20 px-4 py-3 hover:bg-primary/5 transition-colors duration-300")}>
+							<div
+								key={product.produtoId}
+								className={cn("flex w-full flex-col gap-3 rounded-lg border border-border px-4 py-3 hover:bg-primary/5 transition-colors duration-300")}
+							>
 								<div className="w-full flex items-center justify-between gap-2 flex-wrap">
 									<div className="flex items-center gap-2 flex-wrap">
 										<h3 className="text-sm font-bold tracking-tight">{product.produtoNome}</h3>
 									</div>
 									<div className="flex items-center gap-2 flex-wrap">
-										<div  className="flex items-center gap-1.5 px-2 py-1 line-through text-primary text-xs">
-											DE: {formatToMoney(product.valorBase)}
-										</div>
+										<div className="flex items-center gap-1.5 px-2 py-1 line-through text-foreground text-xs">DE: {formatToMoney(product.valorBase)}</div>
 										<div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-green-100 text-green-600 text-xs font-bold">
 											POR: {formatToMoney(product.valorPromocional)}
 										</div>
 									</div>
 								</div>
 								<div className="w-full flex items-center gap-3 flex-wrap">
-									<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+									<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 										<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
 										<p className="text-xs font-bold tracking-tight uppercase">QTDE: {formatDecimalPlaces(product.quantidadeVendida)}</p>
 									</div>
-									<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+									<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 										<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
 										<p className="text-xs font-bold tracking-tight uppercase">VALOR: {formatToMoney(product.valorVendido)}</p>
 									</div>
@@ -94,7 +95,7 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 							</div>
 						))
 					) : (
-						<p className="text-sm text-center text-primary/60">Nenhum produto da campanha teve vendas no período.</p>
+						<p className="text-sm text-center text-foreground/60">Nenhum produto da campanha teve vendas no período.</p>
 					)}
 				</div>
 			</div>
@@ -102,7 +103,7 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 			{/* Rankings Section */}
 			<div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
 				{/* Seller Ranking */}
-				<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+				<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 					<div className="flex items-center justify-between">
 						<h2 className="text-xs font-medium tracking-tight uppercase">Top 5 Vendedores</h2>
 						<Users className="w-4 h-4 min-w-4 min-h-4" />
@@ -110,7 +111,10 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 					<div className="flex flex-col gap-2">
 						{campaignStats.rankingVendedores.length > 0 ? (
 							campaignStats.rankingVendedores.map((seller) => (
-								<div key={seller.vendedorId || seller.vendedorNome} className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg">
+								<div
+									key={seller.vendedorId || seller.vendedorNome}
+									className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg"
+								>
 									<div className="flex items-center gap-2 flex-1 min-w-0">
 										<div
 											className={cn(
@@ -121,27 +125,27 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 														? "bg-gray-400 text-white"
 														: seller.posicao === 3
 															? "bg-orange-600 text-white"
-															: "bg-primary/20 text-primary",
+															: "bg-primary/20 text-foreground",
 											)}
 										>
 											{seller.posicao}
 										</div>
 										<div className="flex flex-col flex-1 min-w-0">
 											<p className="text-xs font-semibold truncate">{seller.vendedorNome}</p>
-											<p className="text-[0.65rem] text-primary/60">{seller.vendasQtde} vendas</p>
+											<p className="text-[0.65rem] text-foreground/60">{seller.vendasQtde} vendas</p>
 										</div>
 									</div>
-									<div className="text-xs font-bold text-primary">{formatToMoney(seller.vendasValor)}</div>
+									<div className="text-xs font-bold text-foreground">{formatToMoney(seller.vendasValor)}</div>
 								</div>
 							))
 						) : (
-							<p className="text-xs text-center text-primary/60">Nenhuma venda registrada.</p>
+							<p className="text-xs text-center text-foreground/60">Nenhuma venda registrada.</p>
 						)}
 					</div>
 				</div>
 
 				{/* Partner Ranking */}
-				<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+				<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 					<div className="flex items-center justify-between">
 						<h2 className="text-xs font-medium tracking-tight uppercase">Top 5 Parceiros</h2>
 						<Store className="w-4 h-4 min-w-4 min-h-4" />
@@ -149,7 +153,10 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 					<div className="flex flex-col gap-2">
 						{campaignStats.rankingParceiros.length > 0 ? (
 							campaignStats.rankingParceiros.map((partner) => (
-								<div key={partner.parceiroId || partner.parceiroNome} className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg">
+								<div
+									key={partner.parceiroId || partner.parceiroNome}
+									className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg"
+								>
 									<div className="flex items-center gap-2 flex-1 min-w-0">
 										<div
 											className={cn(
@@ -160,27 +167,27 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 														? "bg-gray-400 text-white"
 														: partner.posicao === 3
 															? "bg-orange-600 text-white"
-															: "bg-primary/20 text-primary",
+															: "bg-primary/20 text-foreground",
 											)}
 										>
 											{partner.posicao}
 										</div>
 										<div className="flex flex-col flex-1 min-w-0">
 											<p className="text-xs font-semibold truncate">{partner.parceiroNome}</p>
-											<p className="text-[0.65rem] text-primary/60">{partner.vendasQtde} vendas</p>
+											<p className="text-[0.65rem] text-foreground/60">{partner.vendasQtde} vendas</p>
 										</div>
 									</div>
-									<div className="text-xs font-bold text-primary">{formatToMoney(partner.vendasValor)}</div>
+									<div className="text-xs font-bold text-foreground">{formatToMoney(partner.vendasValor)}</div>
 								</div>
 							))
 						) : (
-							<p className="text-xs text-center text-primary/60">Nenhuma venda registrada.</p>
+							<p className="text-xs text-center text-foreground/60">Nenhuma venda registrada.</p>
 						)}
 					</div>
 				</div>
 
 				{/* Product Ranking */}
-				<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
+				<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 					<div className="flex items-center justify-between">
 						<h2 className="text-xs font-medium tracking-tight uppercase">Top 5 Produtos</h2>
 						<Award className="w-4 h-4 min-w-4 min-h-4" />
@@ -188,7 +195,10 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 					<div className="flex flex-col gap-2">
 						{campaignStats.rankingProdutos.length > 0 ? (
 							campaignStats.rankingProdutos.map((product) => (
-								<div key={product.produtoId} className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg">
+								<div
+									key={product.produtoId}
+									className="w-full flex items-center justify-between gap-2 hover:bg-primary/5 transition-colors duration-300 px-2 py-1 rounded-lg"
+								>
 									<div className="flex items-center gap-2 flex-1 min-w-0">
 										<div
 											className={cn(
@@ -199,21 +209,21 @@ export default function CampaignResultPage({ user, campaignId }: CampaignResultP
 														? "bg-gray-400 text-white"
 														: product.posicao === 3
 															? "bg-orange-600 text-white"
-															: "bg-primary/20 text-primary",
+															: "bg-primary/20 text-foreground",
 											)}
 										>
 											{product.posicao}
 										</div>
 										<div className="flex flex-col flex-1 min-w-0">
 											<p className="text-xs font-semibold truncate">{product.produtoNome}</p>
-											<p className="text-[0.65rem] text-primary/60">{formatDecimalPlaces(product.quantidadeVendida)} unidades</p>
+											<p className="text-[0.65rem] text-foreground/60">{formatDecimalPlaces(product.quantidadeVendida)} unidades</p>
 										</div>
 									</div>
-									<div className="text-xs font-bold text-primary">{formatToMoney(product.valorVendido)}</div>
+									<div className="text-xs font-bold text-foreground">{formatToMoney(product.valorVendido)}</div>
 								</div>
 							))
 						) : (
-							<p className="text-xs text-center text-primary/60">Nenhuma venda registrada.</p>
+							<p className="text-xs text-center text-foreground/60">Nenhuma venda registrada.</p>
 						)}
 					</div>
 				</div>

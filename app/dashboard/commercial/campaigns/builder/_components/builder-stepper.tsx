@@ -61,7 +61,7 @@ export default function BuilderStepper() {
 									{isComplete ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
 								</span>
 								<span className="flex min-w-0 flex-col">
-									<span className={cn("truncate text-[10px] font-semibold uppercase tracking-wide", isActive ? "text-primary" : "text-muted-foreground")}>
+									<span className={cn("truncate text-[10px] font-semibold uppercase tracking-wide", isActive ? "text-foreground" : "text-muted-foreground")}>
 										Etapa {idx + 1}
 									</span>
 									<span className={cn("truncate text-xs font-medium", isActive ? "text-foreground" : "text-foreground/70")}>{stage.label}</span>

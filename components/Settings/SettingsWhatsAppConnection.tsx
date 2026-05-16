@@ -31,16 +31,16 @@ export default function SettingsWhatsAppConnection({ user }: SettingsWhatsAppCon
 
 	return (
 		<div className="flex h-full grow flex-col gap-3">
-			<div className="border-primary/20 flex w-full flex-col items-center justify-between border-b pb-2 lg:flex-row">
+			<div className="border-border flex w-full flex-col items-center justify-between border-b pb-2 lg:flex-row">
 				<div className="flex flex-col">
 					<h1 className="text-lg font-bold">Conexão com o WhatsApp</h1>
-					<p className="text-primary/60 text-sm">Gerencie a conexão do WhatsApp</p>
+					<p className="text-foreground/60 text-sm">Gerencie a conexão do WhatsApp</p>
 				</div>
 			</div>
 
 			{isPending ? (
 				<div className="flex w-full items-center justify-center py-8">
-					<Loader2 className="text-primary/60 h-6 w-6 animate-spin" />
+					<Loader2 className="text-foreground/60 h-6 w-6 animate-spin" />
 				</div>
 			) : isError ? (
 				<ErrorComponent msg="Não foi possível carregar suas conexões do WhatsApp." />
@@ -114,7 +114,7 @@ function ConnectionDetailRow({ icon, label, children }: ConnectionDetailRowProps
 		<div className="flex flex-col items-start gap-x-2 gap-y-1 lg:flex-row lg:items-center">
 			<div className="flex items-center gap-2">
 				{icon}
-				<p className="text-primary/80 text-xs">{label}</p>
+				<p className="text-foreground/80 text-xs">{label}</p>
 			</div>
 			<div className="flex flex-wrap items-center gap-1.5">{children}</div>
 		</div>
@@ -125,13 +125,13 @@ type ConnectionPhonesListProps = {
 	telefones: TWhatsappConnection["telefones"];
 };
 function ConnectionPhonesList({ telefones }: ConnectionPhonesListProps) {
-	if (!telefones.length) return <span className="text-primary/50 text-xs italic">Nenhum telefone vinculado</span>;
+	if (!telefones.length) return <span className="text-foreground/50 text-xs italic">Nenhum telefone vinculado</span>;
 	return (
 		<>
 			{telefones.map((telefone) => (
 				<div key={telefone.numero} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10">
-					<span className="text-primary/80 text-xs">{telefone.nome}:</span>
-					<span className="text-primary/80 text-xs font-bold">{formatToPhone(telefone.numero)}</span>
+					<span className="text-foreground/80 text-xs">{telefone.nome}:</span>
+					<span className="text-foreground/80 text-xs font-bold">{formatToPhone(telefone.numero)}</span>
 				</div>
 			))}
 		</>
@@ -163,7 +163,7 @@ function IntegrationWithMetaCloud({ connections }: IntegrationWithMetaCloudProps
 	});
 
 	return (
-		<div className="border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex w-full items-start gap-3">
 				<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
 					<div className="ring-background z-10 flex h-16 min-h-16 w-16 min-w-16 items-center justify-center rounded-full bg-[#0869E1] ring-2">
@@ -198,7 +198,7 @@ function IntegrationWithMetaCloud({ connections }: IntegrationWithMetaCloudProps
 							</Link>
 						)}
 					</div>
-					<p className="text-primary/70 text-xs font-medium tracking-tight">Conecte seu WhatsApp Cloud API para enviar e receber mensagens.</p>
+					<p className="text-foreground/70 text-xs font-medium tracking-tight">Conecte seu WhatsApp Cloud API para enviar e receber mensagens.</p>
 				</div>
 			</div>
 
@@ -213,7 +213,7 @@ function IntegrationWithMetaCloud({ connections }: IntegrationWithMetaCloudProps
 						{/* {connection.metaEscopo && (
 							<ConnectionDetailRow icon={<Key className="h-4 w-4" />} label="Permissões concedidas:">
 								{connection.metaEscopo.split(",").map((scope) => (
-									<Badge key={scope} className="bg-primary/10 text-primary/80 rounded-md px-2 py-1 text-xs">
+									<Badge key={scope} className="bg-primary/10 text-foreground/80 rounded-md px-2 py-1 text-xs">
 										{PERMISSION_LABELS_MAP[scope] ?? scope}
 									</Badge>
 								))}
@@ -261,7 +261,7 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 					}}
 				/>
 			)}
-			<div className="border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex w-full items-start gap-3">
 					<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
 						<div className="ring-background z-10 flex h-16 min-h-16 w-16 min-w-16 items-center justify-center rounded-full bg-[#24549C] ring-2">
@@ -308,7 +308,7 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 								</Button>
 							)}
 						</div>
-						<p className="text-primary/70 text-xs font-medium tracking-tight">
+						<p className="text-foreground/70 text-xs font-medium tracking-tight">
 							Conecte seu WhatsApp para uso não-oficial através do gateway do Recompra CRM para enviar e receber mensagens.
 						</p>
 					</div>

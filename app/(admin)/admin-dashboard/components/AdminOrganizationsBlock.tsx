@@ -33,8 +33,8 @@ export default function AdminOrganizationsBlock({ user }: TAdminOrganizationsBlo
 					))}
 				</div>
 			) : (
-				<div className="bg-card border-primary/20 flex w-full flex-col items-center justify-center gap-2 rounded-xl border p-8">
-					<p className="text-sm text-primary/60">Nenhuma organização cadastrada ainda.</p>
+				<div className="bg-card border-border flex w-full flex-col items-center justify-center gap-2 rounded-xl border p-8">
+					<p className="text-sm text-foreground/60">Nenhuma organização cadastrada ainda.</p>
 				</div>
 			)}
 		</div>

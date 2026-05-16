@@ -18,7 +18,7 @@ import { formatToCNPJ, formatToPhone } from "@/lib/formatting";
 import { Button } from "@/components/ui/button";
 
 const fieldClassName =
-	"w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-primary focus-visible:ring-ring/30";
+	"w-full rounded-md border border-border p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-border focus-visible:ring-ring/30";
 
 type SubmitStatus = { type: "idle"; message: "" } | { type: "success"; message: string } | { type: "error"; message: string };
 
@@ -41,7 +41,7 @@ export function DataExclusionRequestForm() {
 		},
 	});
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="space-y-2">
 				<h2 className="text-lg font-bold tracking-tight">ENVIAR SOLICITAÇÃO</h2>
 				<p className="text-sm leading-relaxed text-muted-foreground">

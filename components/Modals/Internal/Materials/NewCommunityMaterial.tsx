@@ -165,7 +165,7 @@ export function NewCommunityMaterial({ closeModal, callbacks }: NewCommunityMate
 			lockClose={isPending}
 		>
 			{hasSelectedFile && (uploadProgress.status !== "idle" || uploadProgress.errorMessage) ? (
-				<div className="flex w-full flex-col gap-1 rounded-md border border-primary/20 bg-primary/5 p-2">
+				<div className="flex w-full flex-col gap-1 rounded-md border border-border bg-primary/5 p-2">
 					<p className="text-xs font-medium">{uploadStatusLabelByStatus[uploadProgress.status]}</p>
 					<Progress value={uploadProgress.progressPercent} className="h-2 w-full" />
 					<p className="text-[0.7rem] text-muted-foreground">

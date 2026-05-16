@@ -562,7 +562,7 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 	}, [interaction.statusEnvio]);
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex flex-col gap-0.5">
 				<div className="w-full flex items-center justify-between gap-2">
 					<div className="flex items-center gap-3">
@@ -843,7 +843,7 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 		return CampaignTriggerTypeOptions.find((t) => t.value === campaign.gatilhoTipo);
 	}, [campaign.gatilhoTipo]);
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex flex-col gap-0.5">
 				<div className="w-full flex items-center justify-between gap-2 flex-col-reverse lg:flex-row">
 					<div className="flex items-center gap-2">
@@ -851,7 +851,7 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<Chip.Root variant="ghost" size="md" shape="xl" className="cursor-default text-primary">
+									<Chip.Root variant="ghost" size="md" shape="xl" className="cursor-default text-foreground">
 										<Chip.Icon>
 											<Grid3x3 className="w-4 min-w-4 h-4 min-h-4" />
 										</Chip.Icon>
@@ -888,7 +888,9 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 											<Chip.Icon>
 												<AlertTriangle className="w-4 min-w-4 h-4 min-h-4" />
 											</Chip.Icon>
-											<Chip.Label caps weight="bold">WHATSAPP NÃO CONFIGURADO</Chip.Label>
+											<Chip.Label caps weight="bold">
+												WHATSAPP NÃO CONFIGURADO
+											</Chip.Label>
 										</Chip.Root>
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs">Sem uma conexão de Whatsapp, a campanha não poderá ser executada.</TooltipContent>
@@ -900,7 +902,9 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 							<Chip.Icon>
 								<CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
 							</Chip.Icon>
-							<Chip.Label caps weight="bold">{campaign.ativo ? "ATIVO" : "INATIVO"}</Chip.Label>
+							<Chip.Label caps weight="bold">
+								{campaign.ativo ? "ATIVO" : "INATIVO"}
+							</Chip.Label>
 						</Chip.Root>
 					</div>
 				</div>

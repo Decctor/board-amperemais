@@ -54,13 +54,13 @@ function ContextBanner({ params, updateParams }: ContextBannerProps) {
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			<div className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1.5">
-				<CalendarDays className="h-3.5 min-h-3.5 w-3.5 min-w-3.5 text-primary" />
-				<span className="text-xs font-semibold tracking-tight text-primary">{WEEKDAY_FULL[weekdayKey].toUpperCase()}</span>
+				<CalendarDays className="h-3.5 min-h-3.5 w-3.5 min-w-3.5 text-foreground" />
+				<span className="text-xs font-semibold tracking-tight text-foreground">{WEEKDAY_FULL[weekdayKey].toUpperCase()}</span>
 			</div>
 			{hasHour ? (
 				<div className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1.5">
-					<Clock className="h-3.5 min-h-3.5 w-3.5 min-w-3.5 text-primary" />
-					<span className="text-xs font-semibold tracking-tight text-primary">
+					<Clock className="h-3.5 min-h-3.5 w-3.5 min-w-3.5 text-foreground" />
+					<span className="text-xs font-semibold tracking-tight text-foreground">
 						{params.hourIntervalStart}:00 — {params.hourIntervalEnd}:00
 					</span>
 				</div>
@@ -140,7 +140,7 @@ function RankedList({ rows, emptyMessage }: { rows: RankedRow[]; emptyMessage: s
 
 	if (rows.length === 0) {
 		return (
-			<div className="flex items-center justify-center rounded-xl border border-dashed border-primary/20 py-8">
+			<div className="flex items-center justify-center rounded-xl border border-dashed border-border py-8">
 				<p className="text-xs text-muted-foreground">{emptyMessage}</p>
 			</div>
 		);

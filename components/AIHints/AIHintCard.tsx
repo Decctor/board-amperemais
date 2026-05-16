@@ -43,7 +43,7 @@ export function AIHintCard({ hint, isOpened, onClick, onViewDetails }: AIHintCar
 		<div
 			className={cn(
 				"group flex items-start gap-3 p-3 transition-all duration-300 rounded-xl border border-transparent cursor-pointer",
-				isOpened && "bg-secondary/40 border-border/40",
+				isOpened && "bg-secondary/40 border-border",
 				!isOpened && "opacity-70 hover:opacity-100",
 			)}
 			onClick={onClick}
@@ -58,7 +58,12 @@ export function AIHintCard({ hint, isOpened, onClick, onViewDetails }: AIHintCar
 		>
 			{/* Icon */}
 			<div className="flex-shrink-0">
-				<div className={cn("h-8 w-8 rounded-full flex items-center justify-center", isOpened ? "bg-brand text-brand-foreground" : "bg-secondary text-muted-foreground")}>
+				<div
+					className={cn(
+						"h-8 w-8 rounded-full flex items-center justify-center",
+						isOpened ? "bg-brand text-brand-foreground" : "bg-secondary text-muted-foreground",
+					)}
+				>
 					{icon}
 				</div>
 			</div>
@@ -85,8 +90,8 @@ export function AIHintCard({ hint, isOpened, onClick, onViewDetails }: AIHintCar
 								<p className="text-xs text-muted-foreground leading-relaxed">{hint.conteudo.descricao}</p>
 
 								{/* Action Button */}
-								{hint.conteudo.acaoSugerida && (
-									hint.conteudo.urlAcao ? (
+								{hint.conteudo.acaoSugerida &&
+									(hint.conteudo.urlAcao ? (
 										<Button
 											asChild
 											size="sm"
@@ -114,8 +119,7 @@ export function AIHintCard({ hint, isOpened, onClick, onViewDetails }: AIHintCar
 												<ArrowRight className="w-3 h-3" />
 											</span>
 										</Button>
-									) : null
-								)}
+									) : null)}
 
 								{/* Feedback & Dismiss Row */}
 								<div className="flex items-center justify-between pt-2 border-t border-border/50">
@@ -140,7 +144,13 @@ export function AIHintCard({ hint, isOpened, onClick, onViewDetails }: AIHintCar
 											<ThumbsDown className="w-3.5 h-3.5" />
 										</Button>
 									</div>
-									<Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive" onClick={handleDismiss} disabled={isDismissing}>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+										onClick={handleDismiss}
+										disabled={isDismissing}
+									>
 										<X className="w-3.5 h-3.5 mr-1" />
 										Descartar
 									</Button>

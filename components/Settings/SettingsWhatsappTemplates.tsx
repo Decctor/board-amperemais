@@ -204,7 +204,7 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 					<div className="w-full flex items-center gap-2 justify-between">
 						<div className="flex items-center gap-1.5">
 							<Phone className="w-3 h-3 min-w-3 min-h-3" />
-							<span className="text-xs font-medium text-primary/80">{connectionPhone.nome}</span>
+							<span className="text-xs font-medium text-foreground/80">{connectionPhone.nome}</span>
 						</div>
 						<div className="flex items-center gap-1.5">
 							{phoneTemplateData ? (
@@ -212,7 +212,7 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 									<div
 										className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
 											"bg-blue-500 text-white": phoneTemplateData.status === "APROVADO",
-											"bg-primary/20 text-primary": phoneTemplateData.status === "PENDENTE",
+											"bg-primary/20 text-foreground": phoneTemplateData.status === "PENDENTE",
 											"bg-red-500 text-white": phoneTemplateData.status === "REJEITADO",
 											"bg-orange-500 text-white": phoneTemplateData.status === "PAUSADO",
 											"bg-gray-500 text-white": phoneTemplateData.status === "DESABILITADO" || phoneTemplateData.status === "RASCUNHO",
@@ -222,7 +222,7 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 									</div>
 									<div className="flex items-center gap-1">
 										<CircleGauge className="w-4 h-4 min-w-4 min-h-4" />
-										<p className="text-[0.65rem] font-medium text-primary/80">{phoneTemplateData.qualidade}</p>
+										<p className="text-[0.65rem] font-medium text-foreground/80">{phoneTemplateData.qualidade}</p>
 									</div>
 									<Button
 										variant="ghost"
@@ -251,7 +251,7 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 		[whatsappTemplate.telefones, whatsappConnectionPhones],
 	);
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex flex-col gap-2">
 				<div className="w-full flex items-center justify-between gap-2">
 					<div className="flex flex-wrap items-center gap-2">
@@ -289,7 +289,7 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 									<div
 										className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
 											"bg-blue-500 text-white": whatsappTemplate.statusGeral === "APROVADO",
-											"bg-primary/20 text-primary": whatsappTemplate.statusGeral === "PENDENTE",
+											"bg-primary/20 text-foreground": whatsappTemplate.statusGeral === "PENDENTE",
 											"bg-red-500 text-white": whatsappTemplate.statusGeral === "REJEITADO",
 											"bg-orange-500 text-white": whatsappTemplate.statusGeral === "PAUSADO",
 											"bg-gray-500 text-white": whatsappTemplate.statusGeral === "DESABILITADO" || whatsappTemplate.statusGeral === "RASCUNHO",
@@ -322,18 +322,18 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 				<div className="flex flex-wrap items-center gap-2">
 					<div className="flex items-center gap-1">
 						<Diamond className="w-4 h-4 min-w-4 min-h-4" />
-						<p className="text-xs font-medium text-primary/80">{whatsappTemplate.categoria}</p>
+						<p className="text-xs font-medium text-foreground/80">{whatsappTemplate.categoria}</p>
 					</div>
 					<div className="flex items-center gap-1">
 						<CircleGauge className="w-4 h-4 min-w-4 min-h-4" />
-						<p className="text-xs font-medium text-primary/80">{whatsappTemplate.qualidadeGeral}</p>
+						<p className="text-xs font-medium text-foreground/80">{whatsappTemplate.qualidadeGeral}</p>
 					</div>
 				</div>
 			</div>
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1">
 					<BsCalendarPlus className="w-4 h-4 min-w-4 min-h-4" />
-					<p className="text-xs font-medium text-primary/80">{formatDateAsLocale(whatsappTemplate.dataInsercao, true)}</p>
+					<p className="text-xs font-medium text-foreground/80">{formatDateAsLocale(whatsappTemplate.dataInsercao, true)}</p>
 				</div>
 				{/** GENERAL TEMPLATES ARE NOT EDITABLE (THOSE WITHOUT ORGANIZATION ID) */}
 				{whatsappTemplate.organizacaoId ? (

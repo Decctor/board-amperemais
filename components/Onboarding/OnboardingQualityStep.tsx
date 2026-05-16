@@ -19,7 +19,7 @@ export function OnboardingQualityStep({ step, isActive, isOpened, onClick, onAct
 		<div
 			className={cn(
 				"group flex items-start gap-4 p-3 transition-all duration-300 rounded-xl border border-transparent cursor-pointer",
-				isOpened && "bg-secondary/40 border-border/40",
+				isOpened && "bg-secondary/40 border-border",
 				!isOpened && !step.completed && "opacity-60 hover:opacity-100",
 			)}
 			onClick={onClick}
@@ -51,7 +51,7 @@ export function OnboardingQualityStep({ step, isActive, isOpened, onClick, onAct
 					className={cn(
 						"text-sm font-semibold leading-none transition-colors uppercase",
 						step.completed ? "text-foreground/80 line-through decoration-muted-foreground" : "text-foreground",
-						isActive && "text-primary",
+						isActive && "text-foreground",
 					)}
 				>
 					{step.title}

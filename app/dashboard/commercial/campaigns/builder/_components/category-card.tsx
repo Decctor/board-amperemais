@@ -30,22 +30,22 @@ export default function CategoryCard({ icon: Icon, label, tagline, description, 
 			<div className="flex w-full items-start justify-between gap-2">
 				<div
 					className={cn(
-						"flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors",
+						"flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-foreground transition-colors",
 						selected && "bg-brand text-brand-foreground",
 					)}
 				>
 					<Icon className="h-5 w-5" />
 				</div>
-				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary/80">
+				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground/80">
 					{triggerCount} {triggerCount === 1 ? "gatilho" : "gatilhos"}
 				</span>
 			</div>
 			<div className="flex flex-col gap-1">
 				<h3 className="text-base font-semibold tracking-tight">{label}</h3>
-				<p className="text-xs font-medium uppercase tracking-wide text-primary/60">{tagline}</p>
+				<p className="text-xs font-medium uppercase tracking-wide text-foreground/60">{tagline}</p>
 				<p className="text-xs text-muted-foreground line-clamp-3">{description}</p>
 			</div>
-			<div className="mt-auto flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary/70 transition-colors group-hover:text-primary">
+			<div className="mt-auto flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition-colors group-hover:text-foreground">
 				Selecionar
 				<ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
 			</div>

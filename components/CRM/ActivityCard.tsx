@@ -49,7 +49,7 @@ export default function InternalActivityCard({ activity, callbacks }: InternalAc
 		mutationFn: updateActivity,
 	});
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-2 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-2 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1.5">
 					{TIPO_ICONS[activity.tipo]}
@@ -88,7 +88,7 @@ export default function InternalActivityCard({ activity, callbacks }: InternalAc
 					)}
 
 					{!activity.dataConclusao && activity.dataAgendada ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<BsCalendarEvent className="w-4 min-w-4 h-4 min-h-4" />
 							<p className="text-xs font-medium tracking-tight uppercase">PARA: {formatDateAsLocale(activity.dataAgendada, true)}</p>
 						</div>

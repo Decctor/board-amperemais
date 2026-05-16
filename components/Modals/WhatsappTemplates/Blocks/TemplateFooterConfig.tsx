@@ -40,14 +40,14 @@ function TemplateFooterConfig({ footer, onFooterChange }: TemplateFooterConfigPr
 					</Button>
 				) : (
 					<motion.div
-						className="w-full flex flex-col gap-3 p-2 rounded-lg border border-primary/30"
+						className="w-full flex flex-col gap-3 p-2 rounded-lg border border-border/30"
 						variants={SlideMotionVariants}
 						initial="initial"
 						animate="animate"
 						exit="exit"
 					>
 						<div className="w-full flex items-center justify-between">
-							<h1 className="text-sm font-medium tracking-tight text-primary/80">CONFIGURAÇÃO DO RODAPÉ</h1>
+							<h1 className="text-sm font-medium tracking-tight text-foreground/80">CONFIGURAÇÃO DO RODAPÉ</h1>
 							<Button type="button" variant="ghost" size="sm" onClick={handleRemoveFooter}>
 								<X className="w-4 h-4" />
 							</Button>

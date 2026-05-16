@@ -23,10 +23,10 @@ export default function GoalsEmptyState({ onCreateGoal }: GoalsEmptyStateProps) 
 	};
 
 	const features = [
-		{ icon: <BadgeDollarSign className="w-3.5 h-3.5 text-primary" />, label: "Meta de valor total vendido" },
-		{ icon: <CheckCircle2 className="w-3.5 h-3.5 text-primary" />, label: "Meta de quantidade de vendas" },
-		{ icon: <Users className="w-3.5 h-3.5 text-primary" />, label: "Meta de novos clientes" },
-		{ icon: <Target className="w-3.5 h-3.5 text-primary" />, label: "Acompanhamento por vendedor" },
+		{ icon: <BadgeDollarSign className="w-3.5 h-3.5 text-foreground" />, label: "Meta de valor total vendido" },
+		{ icon: <CheckCircle2 className="w-3.5 h-3.5 text-foreground" />, label: "Meta de quantidade de vendas" },
+		{ icon: <Users className="w-3.5 h-3.5 text-foreground" />, label: "Meta de novos clientes" },
+		{ icon: <Target className="w-3.5 h-3.5 text-foreground" />, label: "Acompanhamento por vendedor" },
 	];
 
 	return (
@@ -39,8 +39,8 @@ export default function GoalsEmptyState({ onCreateGoal }: GoalsEmptyStateProps) 
 			<motion.div className="flex flex-col items-center gap-3 text-center max-w-md" variants={itemVariants}>
 				<div className="relative w-20 h-20 mb-2">
 					<div className="absolute inset-0 rounded-full bg-primary/10 blur-xl opacity-60" />
-					<div className="relative w-full h-full rounded-full flex items-center justify-center border shadow-lg ring-4 ring-background bg-primary/10 border-primary/20">
-						<Target className="w-10 h-10 text-primary" />
+					<div className="relative w-full h-full rounded-full flex items-center justify-center border shadow-lg ring-4 ring-background bg-primary/10 border-border">
+						<Target className="w-10 h-10 text-foreground" />
 					</div>
 					<div className="absolute -right-1 -top-1 bg-amber-400 rounded-full p-1.5 shadow-md">
 						<Sparkles className="w-4 h-4 text-white fill-white" />
@@ -53,7 +53,7 @@ export default function GoalsEmptyState({ onCreateGoal }: GoalsEmptyStateProps) 
 			</motion.div>
 
 			<motion.div className="w-full max-w-sm" variants={itemVariants}>
-				<div className="bg-card border border-primary/20 rounded-xl p-5 shadow-sm flex flex-col gap-4">
+				<div className="bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col gap-4">
 					<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">O que você pode acompanhar</p>
 					<div className="flex flex-col gap-2.5">
 						{features.map((f, i) => (

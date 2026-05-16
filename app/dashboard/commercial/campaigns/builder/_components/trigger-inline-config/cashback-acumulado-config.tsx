@@ -6,7 +6,7 @@ import { useBuilderCampaign } from "../builder-provider";
 export default function CashbackAcumuladoConfig() {
 	const { state, updateCampaign } = useBuilderCampaign();
 	return (
-		<div className="flex w-full flex-col gap-3 rounded-lg border border-primary/10 bg-card px-4 py-3">
+		<div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3">
 			<p className="text-xs text-muted-foreground">
 				Defina os limites para o disparo. Pode ser combinação de novo cashback acumulado e total acumulado.
 			</p>

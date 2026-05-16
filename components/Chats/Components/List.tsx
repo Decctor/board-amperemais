@@ -78,8 +78,8 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 	if (!selectedPhoneNumber) {
 		return (
 			<div className={cn("flex flex-col items-center justify-center p-8 text-center", className)}>
-				<MessageCircle className="w-12 h-12 text-primary/20 mb-3" />
-				<p className="text-sm text-primary/60 italic">Selecione um número de telefone para ver os chats</p>
+				<MessageCircle className="w-12 h-12 text-foreground/20 mb-3" />
+				<p className="text-sm text-foreground/60 italic">Selecione um número de telefone para ver os chats</p>
 			</div>
 		);
 	}
@@ -109,9 +109,9 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 	if (chats.length === 0) {
 		return (
 			<div className={cn("flex flex-col items-center justify-center p-8 text-center", className)}>
-				<MessageCircle className="w-12 h-12 text-primary/20 mb-3" />
-				<p className="text-sm text-primary/60 font-medium">{searchQuery ? "Nenhum chat encontrado" : "Nenhum chat ainda"}</p>
-				<p className="text-xs text-primary/40 mt-1">{searchQuery ? "Tente outro termo de busca" : "Inicie uma nova conversa clicando no botão +"}</p>
+				<MessageCircle className="w-12 h-12 text-foreground/20 mb-3" />
+				<p className="text-sm text-foreground/60 font-medium">{searchQuery ? "Nenhum chat encontrado" : "Nenhum chat ainda"}</p>
+				<p className="text-xs text-foreground/40 mt-1">{searchQuery ? "Tente outro termo de busca" : "Inicie uma nova conversa clicando no botão +"}</p>
 			</div>
 		);
 	}
@@ -129,13 +129,13 @@ export function List({ className, onChatSelect, searchQuery = "" }: ChatHubListP
 				{/* Loading More Indicator */}
 				{isFetchingNextPage && (
 					<div className="flex items-center justify-center py-4">
-						<Loader2 className="w-5 h-5 animate-spin text-primary/60" />
+						<Loader2 className="w-5 h-5 animate-spin text-foreground/60" />
 					</div>
 				)}
 
 				{/* Load More Button (alternative to infinite scroll) */}
 				{!isFetchingNextPage && hasNextPage && (
-					<Button variant="ghost" onClick={() => fetchNextPage()} className="w-full mt-2 text-primary/60 hover:text-primary hover:bg-primary/5">
+					<Button variant="ghost" onClick={() => fetchNextPage()} className="w-full mt-2 text-foreground/60 hover:text-foreground hover:bg-primary/5">
 						Carregar mais conversas
 					</Button>
 				)}
@@ -165,22 +165,22 @@ function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) {
 	function getMediaMessageFormattedValue(mediaType: "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO") {
 		if (mediaType === "IMAGEM")
 			return {
-				icon: <ImageIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+				icon: <ImageIcon className="w-3.5 h-3.5 text-foreground/60 shrink-0" />,
 				value: "IMAGEM",
 			};
 		if (mediaType === "VIDEO")
 			return {
-				icon: <VideoIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+				icon: <VideoIcon className="w-3.5 h-3.5 text-foreground/60 shrink-0" />,
 				value: "VÍDEO",
 			};
 		if (mediaType === "AUDIO")
 			return {
-				icon: <AudioWaveformIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+				icon: <AudioWaveformIcon className="w-3.5 h-3.5 text-foreground/60 shrink-0" />,
 				value: "ÁUDIO",
 			};
 
 		return {
-			icon: <FileIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />,
+			icon: <FileIcon className="w-3.5 h-3.5 text-foreground/60 shrink-0" />,
 			value: "DOCUMENTO",
 		};
 	}
@@ -204,7 +204,7 @@ function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) {
 			{/* Avatar */}
 			<Avatar className="w-12 h-12 min-w-12 min-h-12 ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
 				<AvatarImage src={chat.cliente?.avatarUrl ?? undefined} alt={chat.cliente?.nome ?? ""} />
-				<AvatarFallback className="bg-linear-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+				<AvatarFallback className="bg-linear-to-br from-primary/20 to-primary/10 text-foreground font-semibold">
 					{formatNameAsInitials(chat.cliente?.nome ?? "?")}
 				</AvatarFallback>
 			</Avatar>
@@ -213,9 +213,11 @@ function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) {
 			<div className="grow flex flex-col min-w-0 gap-1">
 				{/* Header: Name and Time */}
 				<div className="flex items-center justify-between gap-2 w-full">
-					<h3 className={cn("font-semibold text-sm truncate text-left", hasUnread && "text-primary")}>{chat.cliente?.nome || "Cliente desconhecido"}</h3>
+					<h3 className={cn("font-semibold text-sm truncate text-left", hasUnread && "text-foreground")}>
+						{chat.cliente?.nome || "Cliente desconhecido"}
+					</h3>
 					{chat.ultimaMensagemData && (
-						<span className={cn("text-xs shrink-0", hasUnread ? "text-primary font-medium" : "text-primary/60")}>{lastMessageDate}</span>
+						<span className={cn("text-xs shrink-0", hasUnread ? "text-foreground font-medium" : "text-foreground/60")}>{lastMessageDate}</span>
 					)}
 				</div>
 
@@ -223,13 +225,15 @@ function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) {
 				<div className="flex items-center justify-between gap-2 w-full">
 					<div className="flex items-center gap-1.5 min-w-0 flex-1">
 						{chat.ultimaMensagemConteudoTipo === "TEXTO" ? (
-							<p className={cn("text-xs truncate text-left", hasUnread ? "text-primary/80 font-medium" : "text-primary/60")}>
+							<p className={cn("text-xs truncate text-left", hasUnread ? "text-foreground/80 font-medium" : "text-foreground/60")}>
 								{chat.ultimaMensagemConteudoTexto || "Nenhuma mensagem ainda"}
 							</p>
 						) : (
 							<>
 								{mediaMessageFormattedValue.icon}
-								<p className={cn("text-xs truncate", hasUnread ? "text-primary/80 font-medium" : "text-primary/60")}>{mediaMessageFormattedValue.value}</p>
+								<p className={cn("text-xs truncate", hasUnread ? "text-foreground/80 font-medium" : "text-foreground/60")}>
+									{mediaMessageFormattedValue.value}
+								</p>
 							</>
 						)}
 					</div>

@@ -178,7 +178,7 @@ export default function SalesPromoCampaignItemsBlock({
 						/>
 					))
 				) : (
-					<p className="w-full text-center text-sm italic text-primary">Nenhum item adicionado.</p>
+					<p className="w-full text-center text-sm italic text-foreground">Nenhum item adicionado.</p>
 				)}
 			</div>
 			{newCompositionItemMenuIsOpen && <NewItemMenu addItem={addItem} closeMenu={() => setNewCompositionItemMenuIsOpen(false)} />}
@@ -200,7 +200,7 @@ type ItemCardProps = {
 };
 function ItemCard({ item, handleRemoveClick, handleEditClick }: ItemCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-2 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-2 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{item.titulo}</h1>
@@ -209,7 +209,7 @@ function ItemCard({ item, handleRemoveClick, handleEditClick }: ItemCardProps) {
 			<div className="flex items-center gap-2 self-center">
 				{item.valorPromocional ? (
 					<>
-						<p className="line-through text-xs text-primary/80">DE {formatToMoney(item.valorBase)}</p>
+						<p className="line-through text-xs text-foreground/80">DE {formatToMoney(item.valorBase)}</p>
 						<p className="text-xs font-medium">{formatToMoney(item.valorPromocional)}</p>
 					</>
 				) : (
@@ -223,7 +223,7 @@ function ItemCard({ item, handleRemoveClick, handleEditClick }: ItemCardProps) {
 			) : null}
 			<div className="w-full flex items-center justify-between">
 				<div className="flex items-center gap-2">
-					<p className="text-xs text-primary/80">ETIQUETA: {item.etiqueta}</p>
+					<p className="text-xs text-foreground/80">ETIQUETA: {item.etiqueta}</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Button variant="ghost" className="flex items-center gap-1.5 p-2 rounded-full hover:bg-destructive/10" size="fit" onClick={handleRemoveClick}>

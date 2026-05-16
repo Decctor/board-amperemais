@@ -117,12 +117,12 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 
 function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs hover:border-border hover:shadow-sm transition-all cursor-pointer">
 			<div className="flex flex-col md:flex-row justify-between gap-3">
 				{/* Client Info & Sale Basics */}
 				<div className="flex flex-col gap-1.5 grow">
 					<div className="flex items-center gap-2">
-						<CircleUser className="w-4 h-4 text-primary/70" />
+						<CircleUser className="w-4 h-4 text-foreground/70" />
 						<h1 className="text-sm font-bold tracking-tight uppercase">{sale.cliente?.nome ?? "AO CONSUMIDOR"}</h1>
 					</div>
 					<div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -281,7 +281,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 								</HoverCardContent>
 							</HoverCard>
 						) : null}
-						<div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md w-fit">
+						<div className="flex items-center gap-1.5 bg-primary/10 text-foreground px-2.5 py-1 rounded-md w-fit">
 							<BadgeDollarSign className="w-4 h-4" />
 							<span className="font-bold text-sm">{formatToMoney(sale.valorTotal)}</span>
 						</div>
