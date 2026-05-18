@@ -1,7 +1,7 @@
 import { OrganizationFiscalConfigSchema, type TOrganizationFiscalConfig } from "@/schemas/fiscal";
 import { db } from "@/services/drizzle";
 import { fiscalOperationProfiles, fiscalSeries, organizations } from "@/services/drizzle/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { ManualFiscalProvider } from "./providers/manual";
 import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
@@ -39,6 +39,34 @@ export async function updateFiscalSettings({
 	fiscalConfiguracao: TOrganizationFiscalConfig;
 }) {
 	const parsedConfig = OrganizationFiscalConfigSchema.parse(fiscalConfiguracao);
+	if (fiscalEmissaoAutomatica) {
+		if (fiscalProvedor !== "NUVEM_FISCAL") {
+			throw new createHttpError.BadRequest("Emissao fiscal automatica exige provedor Nuvem Fiscal.");
+		}
+		if (!parsedConfig.nuvemFiscal?.nfce?.csc || !parsedConfig.nuvemFiscal?.nfce?.idCsc) {
+			throw new createHttpError.BadRequest("CSC e ID CSC da NFC-e devem estar configurados para emissao automatica.");
+		}
+		if (!parsedConfig.nuvemFiscal?.certificado?.storagePath) {
+			throw new createHttpError.BadRequest("Certificado digital deve estar configurado para emissao automatica.");
+		}
+
+		const operation = await findDefaultOperationProfileForType({
+			organizacaoId,
+			tipoDocumento: "NFCE",
+			profileId: parsedConfig.operacaoPadraoPorTipo?.NFCE ?? null,
+		});
+		if (!operation) throw new createHttpError.BadRequest("Perfil de operacao NFC-e deve estar configurado para emissao automatica.");
+
+		const series =
+			operation.seriePadrao ??
+			(await findActiveFiscalSeries({
+				organizacaoId,
+				tipoDocumento: "NFCE",
+				ambiente: parsedConfig.ambiente,
+			}));
+		if (!series) throw new createHttpError.BadRequest("Serie NFC-e ativa deve estar configurada para emissao automatica.");
+	}
+
 	const [updated] = await db
 		.update(organizations)
 		.set({
@@ -152,19 +180,14 @@ export async function upsertFiscalSeries(input: typeof fiscalSeries.$inferInsert
 }
 
 export async function consumeFiscalSeriesNumber(seriesId: string) {
-	const current = await db.query.fiscalSeries.findFirst({
-		where: (fields, operators) => operators.eq(fields.id, seriesId),
-	});
-	if (!current) return null;
-
 	const [updated] = await db
 		.update(fiscalSeries)
 		.set({
-			proximoNumero: current.proximoNumero + 1,
+			proximoNumero: sql`${fiscalSeries.proximoNumero} + 1`,
 		})
 		.where(eq(fiscalSeries.id, seriesId))
 		.returning();
-	return updated;
+	return updated ?? null;
 }
 
 export async function listFiscalOperationProfiles(organizacaoId: string) {

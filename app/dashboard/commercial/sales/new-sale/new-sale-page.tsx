@@ -85,7 +85,10 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 	const { mutate: finalizeSale, isPending: isFinalizingSale } = useMutation({
 		mutationKey: ["create-and-confirm-sale"],
 		mutationFn: createAndConfirmSale,
-		onSuccess: () => {
+		onSuccess: (data) => {
+			if (data.data.confirmation.fiscal.status === "ERRO") {
+				toast.warning(`Venda finalizada, mas a emissao fiscal falhou: ${data.data.confirmation.fiscal.error}`);
+			}
 			saleState.setSuccess({
 				mode: "FINALIZADA",
 				title: "Venda finalizada com sucesso",

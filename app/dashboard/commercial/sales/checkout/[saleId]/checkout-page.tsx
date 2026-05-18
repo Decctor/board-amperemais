@@ -68,6 +68,9 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 		mutationFn: confirmSale,
 		onSuccess: (data) => {
 			toast.success(data.message);
+			if (data.data.fiscal.status === "ERRO") {
+				toast.warning(`Venda confirmada, mas a emissao fiscal falhou: ${data.data.fiscal.error}`);
+			}
 			router.push("/dashboard/commercial/sales/new-sale");
 		},
 		onError: (err) => {
@@ -118,8 +121,6 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 
 	const handleConfirm = () => {
 		if (!sale) return;
-		// TODO: contaDebitoId and contaCreditoId should come from org settings
-		// For now, these are required in the API but we'll need a config UI
 		confirm({
 			id: saleId,
 			clienteId: sale.cliente?.id ?? null,
@@ -133,8 +134,6 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 			})),
 			cashbackResgate: checkoutState.state.cashbackResgate,
 			cashbackProgramaId: checkoutState.state.cashbackProgramaId,
-			contaDebitoId: "TODO_CONTA_DEBITO",
-			contaCreditoId: "TODO_CONTA_CREDITO",
 		});
 	};
 

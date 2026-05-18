@@ -2,6 +2,7 @@ import { db } from "@/services/drizzle";
 import { fiscalDocumentEvents, fiscalDocuments } from "@/services/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
+import { getErrorMessage } from "../errors";
 import { buildFiscalReference } from "./constants";
 import { FiscalReadinessError } from "./errors";
 import { ManualFiscalProvider } from "./providers/manual";
@@ -307,64 +308,79 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 	}
 
 	const documento = await createOrUpdateDraftDocument({ input, referencia, statusInterno: "RASCUNHO" });
-	const context = await buildSaleFiscalContext(input);
-	assertFiscalReadiness(context);
+	try {
+		const context = await buildSaleFiscalContext(input);
+		assertFiscalReadiness(context);
 
-	await patchFiscalDocument(documento.id, {
-		statusInterno: "PRONTO_PARA_ENVIO",
-		ambiente: context.organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO",
-		referencia,
-		provedor: context.organizacao.fiscalProvedor ?? "MANUAL",
-		serie: context.serie.serie,
-		numero: String(context.serie.proximoNumero),
-		snapshotOrigemVenda: JSON.stringify({
-			venda: context.venda,
-			destinatario: context.destinatarioSnapshot,
-		}),
-		tentativasEnvio: (documento.tentativasEnvio ?? 0) + 1,
-	});
+		await patchFiscalDocument(documento.id, {
+			statusInterno: "PRONTO_PARA_ENVIO",
+			ambiente: context.organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO",
+			referencia,
+			provedor: context.organizacao.fiscalProvedor ?? "MANUAL",
+			serie: context.serie.serie,
+			numero: String(context.serie.proximoNumero),
+			snapshotOrigemVenda: JSON.stringify({
+				venda: context.venda,
+				destinatario: context.destinatarioSnapshot,
+			}),
+			tentativasEnvio: (documento.tentativasEnvio ?? 0) + 1,
+		});
 
-	await addFiscalDocumentEvent({
-		documentoFiscalId: documento.id,
-		tipo: "CRIADO",
-		descricao: `Documento fiscal preparado para emissao ${input.origem.toLowerCase()}.`,
-		autorId: input.autorId ?? null,
-	});
-	await addFiscalDocumentEvent({
-		documentoFiscalId: documento.id,
-		tipo: "ENVIO_SOLICITADO",
-		descricao: "Envio ao provedor fiscal solicitado.",
-		autorId: input.autorId ?? null,
-	});
+		await addFiscalDocumentEvent({
+			documentoFiscalId: documento.id,
+			tipo: "CRIADO",
+			descricao: `Documento fiscal preparado para emissao ${input.origem.toLowerCase()}.`,
+			autorId: input.autorId ?? null,
+		});
+		await addFiscalDocumentEvent({
+			documentoFiscalId: documento.id,
+			tipo: "ENVIO_SOLICITADO",
+			descricao: "Envio ao provedor fiscal solicitado.",
+			autorId: input.autorId ?? null,
+		});
 
-	const provider = resolveFiscalProvider(context.organizacao.fiscalProvedor);
-	const latestDocument = (await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia })) ?? documento;
-	const providerDetails = await provider.emitirDocumento(context, latestDocument);
-	const updatedDocument = await applyProviderDocumentDetails(documento.id, providerDetails);
+		const provider = resolveFiscalProvider(context.organizacao.fiscalProvedor);
+		const latestDocument = (await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia })) ?? documento;
+		const providerDetails = await provider.emitirDocumento(context, latestDocument);
+		const updatedDocument = await applyProviderDocumentDetails(documento.id, providerDetails);
 
-	await addFiscalDocumentEvent({
-		documentoFiscalId: documento.id,
-		tipo: providerDetails.statusInterno === "AUTORIZADO" ? "AUTORIZADO" : providerDetails.statusInterno === "REJEITADO" ? "REJEITADO" : "ERRO",
-		descricao: `Documento retornou do provedor com status ${providerDetails.statusInterno}.`,
-		payload: providerDetails.provedorRetorno,
-		autorId: input.autorId ?? null,
-	});
+		await addFiscalDocumentEvent({
+			documentoFiscalId: documento.id,
+			tipo: providerDetails.statusInterno === "AUTORIZADO" ? "AUTORIZADO" : providerDetails.statusInterno === "REJEITADO" ? "REJEITADO" : "ERRO",
+			descricao: `Documento retornou do provedor com status ${providerDetails.statusInterno}.`,
+			payload: providerDetails.provedorRetorno,
+			autorId: input.autorId ?? null,
+		});
 
-	if (providerDetails.statusInterno === "AUTORIZADO" && updatedDocument) {
-		await persistAuthorizedAssets(updatedDocument, context.organizacao.id);
-		await consumeFiscalSeriesNumber(context.serie.id);
+		if (providerDetails.statusInterno === "AUTORIZADO" && updatedDocument) {
+			await persistAuthorizedAssets(updatedDocument, context.organizacao.id);
+			await consumeFiscalSeriesNumber(context.serie.id);
+		}
+
+		const finalDocument = updatedDocument ?? (await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia })) ?? documento;
+		return {
+			documentoId: finalDocument.id,
+			status: finalDocument.status,
+			statusInterno: finalDocument.statusInterno,
+			chaveAcesso: finalDocument.chaveAcesso,
+			numero: finalDocument.numero,
+			serie: finalDocument.serie,
+			protocolo: finalDocument.protocolo,
+		};
+	} catch (error) {
+		const message = getErrorMessage(error);
+		await patchFiscalDocument(documento.id, {
+			statusInterno: "ERRO",
+			mensagens: [message],
+		});
+		await addFiscalDocumentEvent({
+			documentoFiscalId: documento.id,
+			tipo: "ERRO",
+			descricao: message,
+			autorId: input.autorId ?? null,
+		});
+		throw error;
 	}
-
-	const finalDocument = updatedDocument ?? (await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia })) ?? documento;
-	return {
-		documentoId: finalDocument.id,
-		status: finalDocument.status,
-		statusInterno: finalDocument.statusInterno,
-		chaveAcesso: finalDocument.chaveAcesso,
-		numero: finalDocument.numero,
-		serie: finalDocument.serie,
-		protocolo: finalDocument.protocolo,
-	};
 }
 
 export async function syncFiscalDocument(input: TSyncDocumentInput) {

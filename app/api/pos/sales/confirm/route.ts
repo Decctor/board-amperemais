@@ -11,13 +11,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 const ConfirmSaleInputSchema = z.object({
-	id: z.string({ required_error: "ID da venda não informado." }),
-	clienteId: z.string({ invalid_type_error: "Tipo não válido para ID do cliente." }).optional().nullable(),
-	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })).min(1, { message: "Pelo menos um pagamento é obrigatório." }),
-	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
-	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
-	contaDebitoId: z.string({ required_error: "Conta de débito não informada." }),
-	contaCreditoId: z.string({ required_error: "Conta de crédito não informada." }),
+	id: z.string({ required_error: "ID da venda nao informado." }),
+	clienteId: z.string({ invalid_type_error: "Tipo nao valido para ID do cliente." }).optional().nullable(),
+	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })).min(1, { message: "Pelo menos um pagamento e obrigatorio." }),
+	cashbackResgate: z.number({ invalid_type_error: "Tipo nao valido para resgate de cashback." }).default(0),
+	cashbackProgramaId: z.string({ invalid_type_error: "Tipo nao valido para ID do programa de cashback." }).optional().nullable(),
+	contaDebitoId: z.string({ invalid_type_error: "Tipo nao valido para conta de debito." }).optional().nullable(),
+	contaCreditoId: z.string({ invalid_type_error: "Tipo nao valido para conta de credito." }).optional().nullable(),
 });
 export type TConfirmSaleInput = z.infer<typeof ConfirmSaleInputSchema>;
 
@@ -34,10 +34,17 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		}),
 	]);
 
-	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
+	if (!organization) throw new createHttpError.NotFound("Organizacao nao encontrada.");
+	if (!saleDraft) throw new createHttpError.NotFound("Venda nao encontrada.");
+
+	const organizationSaleDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.vendas;
+	const accountingEntryDebitAccountId = input.contaDebitoId ?? organizationSaleDefaults.debitoContaId;
+	const accountingEntryCreditAccountId = input.contaCreditoId ?? organizationSaleDefaults.creditoContaId;
+	if (!accountingEntryDebitAccountId || !accountingEntryCreditAccountId) {
+		throw new createHttpError.InternalServerError("A organizacao nao possui contas padrao de vendas configuradas.");
+	}
 
 	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
-	if (!saleDraft) throw new createHttpError.NotFound("Venda nÃ£o encontrada.");
 	const shopMetadata = saleDraft.rascunhoMetadados as {
 		shop?: {
 			cashbackResgateSolicitado?: number;
@@ -53,7 +60,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		salePayments: input.pagamentos.map((pagamento) => {
 			const methodDefaults = organizationPaymentMethodDefaults[pagamento.metodo];
 			if (!methodDefaults?.suportado) {
-				throw new createHttpError.BadRequest(`O método de pagamento ${pagamento.metodo} não está habilitado para esta organização.`);
+				throw new createHttpError.BadRequest(`O metodo de pagamento ${pagamento.metodo} nao esta habilitado para esta organizacao.`);
 			}
 
 			return {
@@ -70,8 +77,8 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		saleClientId: input.clienteId,
 		saleCashbackProgramId: effectiveCashbackProgramaId,
 		saleCashbackRedemptionValue: effectiveCashbackResgate,
-		accountingEntryDebitAccountId: input.contaDebitoId,
-		accountingEntryCreditAccountId: input.contaCreditoId,
+		accountingEntryDebitAccountId,
+		accountingEntryCreditAccountId,
 	});
 
 	return {
@@ -83,8 +90,8 @@ export type TConfirmSaleOutput = Awaited<ReturnType<typeof confirmSale>>;
 
 async function confirmSaleRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
+	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
 
 	const { searchParams } = new URL(request.url);
 	const body = await request.json();
