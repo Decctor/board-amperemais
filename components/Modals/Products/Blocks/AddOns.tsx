@@ -21,6 +21,7 @@ type ProductAddOnsBlockProps = {
 	addProductAddOnOption: TUseProductState["addProductAddOnOption"];
 	updateProductAddOnOption: TUseProductState["updateProductAddOnOption"];
 	removeProductAddOnOption: TUseProductState["removeProductAddOnOption"];
+	embedded?: boolean;
 };
 
 export default function ProductAddOnsBlock({
@@ -31,6 +32,7 @@ export default function ProductAddOnsBlock({
 	addProductAddOnOption,
 	updateProductAddOnOption,
 	removeProductAddOnOption,
+	embedded = false,
 }: ProductAddOnsBlockProps) {
 	const [newAddOnMenuIsOpen, setNewAddOnMenuIsOpen] = useState(false);
 	const [editAddOnIndex, setEditAddOnIndex] = useState<number | null>(null);
@@ -38,8 +40,8 @@ export default function ProductAddOnsBlock({
 	const validAddOns = addOns.map((addOn, index) => ({ ...addOn, originalIndex: index })).filter((addOn) => !addOn.deletar);
 	const editingAddOn = isValidNumber(editAddOnIndex) ? addOns[editAddOnIndex as number] : null;
 
-	return (
-		<ResponsiveMenuSection title="ADICIONAIS" icon={<Layers className="h-4 min-h-4 w-4 min-w-4" />}>
+	const content = (
+		<>
 			<div className="flex w-full items-center justify-end gap-2">
 				<Button onClick={() => setNewAddOnMenuIsOpen((prev) => !prev)} size="fit" variant="ghost" className="flex items-center gap-1 px-2 py-1 text-xs">
 					<Plus className="w-4 h-4 min-w-4 min-h-4" />
@@ -83,6 +85,14 @@ export default function ProductAddOnsBlock({
 					}}
 				/>
 			) : null}
+		</>
+	);
+
+	if (embedded) return content;
+
+	return (
+		<ResponsiveMenuSection title="ADICIONAIS" icon={<Layers className="h-4 min-h-4 w-4 min-w-4" />}>
+			{content}
 		</ResponsiveMenuSection>
 	);
 }

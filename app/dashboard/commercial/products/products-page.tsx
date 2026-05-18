@@ -4,7 +4,6 @@ import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInp
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
-import ControlProduct from "@/components/Modals/Products/ControlProduct";
 import NewProduct from "@/components/Modals/Products/NewProduct";
 import ProductsGraphs from "@/components/Products/ProductsGraphs";
 import ProductsRanking from "@/components/Products/ProductsRanking";
@@ -109,7 +108,6 @@ function ProductsDatabaseView({ user, organization }: ProductsDatabaseViewProps)
 	const orgHasStockTracking = organization.configuracao.preferencias.rastreamentoEstoque;
 	const queryClient = useQueryClient();
 	const [newProductModalIsOpen, setNewProductModalIsOpen] = useState<boolean>(false);
-	const [editProductModalId, setEditProductModalId] = useState<string | null>(null);
 	const {
 		data: productsResult,
 		queryKey,
@@ -176,7 +174,6 @@ function ProductsDatabaseView({ user, organization }: ProductsDatabaseViewProps)
 						<ProductCard
 							key={product.id}
 							product={product}
-							handleEditClick={() => setEditProductModalId(product.id)}
 							periodAfter={filters.statsPeriodAfter}
 							periodBefore={filters.statsPeriodBefore}
 							showStockData={orgHasStockTracking}
@@ -185,14 +182,6 @@ function ProductsDatabaseView({ user, organization }: ProductsDatabaseViewProps)
 				) : (
 					<p className="w-full tracking-tight text-center">Nenhum produto encontrado.</p>
 				)
-			) : null}
-			{editProductModalId ? (
-				<ControlProduct
-					productId={editProductModalId}
-					user={user}
-					closeModal={() => setEditProductModalId(null)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
 			) : null}
 			{newProductModalIsOpen ? (
 				<NewProduct user={user} closeModal={() => setNewProductModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
@@ -740,13 +729,11 @@ function ProductsStatsView() {
 
 function ProductCard({
 	product,
-	handleEditClick,
 	periodAfter,
 	periodBefore,
 	showStockData,
 }: {
 	product: TGetProductsOutputDefault["products"][number];
-	handleEditClick: () => void;
 	periodAfter: Date | null;
 	periodBefore: Date | null;
 	showStockData: boolean;
@@ -907,9 +894,11 @@ function ProductCard({
 						</div>
 					</div>
 					<div className="flex items-center gap-1.5">
-						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleEditClick}>
-							<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
-							EDITAR
+						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
+							<Link href={`/dashboard/commercial/products/id/${product.id}?tab=cadastro`}>
+								<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
+								EDITAR
+							</Link>
 						</Button>
 						<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
 							<Link href={`/dashboard/commercial/products/id/${product.id}`}>

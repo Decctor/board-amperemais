@@ -18,6 +18,7 @@ type ProductVariantsBlockProps = {
 	updateVariant: TUseProductState["updateProductVariant"];
 	updateVariantImageHolder: TUseProductState["updateProductVariantImageHolder"];
 	removeVariant: TUseProductState["removeProductVariant"];
+	embedded?: boolean;
 };
 export default function ProductVariantsBlock({
 	variants,
@@ -25,13 +26,14 @@ export default function ProductVariantsBlock({
 	updateVariant,
 	updateVariantImageHolder: _updateVariantImageHolder,
 	removeVariant,
+	embedded = false,
 }: ProductVariantsBlockProps) {
 	const [newVariantMenuIsOpen, setNewVariantMenuIsOpen] = useState(false);
 	const [editVariantIndex, setEditVariantIndex] = useState<number | null>(null);
 	const validVariants = variants.map((variant, index) => ({ ...variant, originalIndex: index })).filter((variant) => !variant.deletar);
 	const editingVariant = isValidNumber(editVariantIndex) ? variants[editVariantIndex as number] : null;
-	return (
-		<ResponsiveMenuSection title="VARIANTES" icon={<GitBranch className="h-4 min-h-4 w-4 min-w-4" />}>
+	const content = (
+		<>
 			<div className="flex w-full items-center justify-end gap-2">
 				<Button onClick={() => setNewVariantMenuIsOpen((prev) => !prev)} size="fit" variant="ghost" className="flex items-center gap-1 px-2 py-1 text-xs">
 					<Plus className="w-4 h-4 min-w-4 min-h-4" />
@@ -69,6 +71,14 @@ export default function ProductVariantsBlock({
 					}}
 				/>
 			) : null}
+		</>
+	);
+
+	if (embedded) return content;
+
+	return (
+		<ResponsiveMenuSection title="VARIANTES" icon={<GitBranch className="h-4 min-h-4 w-4 min-w-4" />}>
+			{content}
 		</ResponsiveMenuSection>
 	);
 }

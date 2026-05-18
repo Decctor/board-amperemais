@@ -121,8 +121,9 @@ async function fetchProductStats(input: TGetProductStatsInput) {
 type UseProductStatsParams = {
 	productId: string;
 	initialFilters?: Partial<Omit<TGetProductStatsInput, "productId">>;
+	enabled?: boolean;
 };
-export function useProductStats({ productId, initialFilters }: UseProductStatsParams) {
+export function useProductStats({ productId, initialFilters, enabled = true }: UseProductStatsParams) {
 	const [filters, setFilters] = useState<Omit<TGetProductStatsInput, "productId">>({
 		periodAfter: initialFilters?.periodAfter || null,
 		periodBefore: initialFilters?.periodBefore || null,
@@ -138,6 +139,7 @@ export function useProductStats({ productId, initialFilters }: UseProductStatsPa
 		...useQuery({
 			queryKey: ["product-stats", productId, debouncedFilters],
 			queryFn: () => fetchProductStats({ productId, ...debouncedFilters }),
+			enabled,
 		}),
 		queryKey: ["product-stats", productId, debouncedFilters],
 		filters,
