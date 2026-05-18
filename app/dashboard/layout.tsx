@@ -13,8 +13,8 @@ import { type ReactNode, Suspense } from "react";
 
 export const metadata: Metadata = {
 	title: {
-		default: "RecompraCRM",
-		template: "%s",
+		absolute: "RecompraCRM",
+		template: "%s | RecompraCRM",
 	},
 	robots: { index: false, follow: false },
 };
