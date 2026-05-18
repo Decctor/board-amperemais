@@ -10,7 +10,7 @@ const raleway = Raleway({
 	subsets: ["latin"],
 	variable: "--font-raleway",
 });
-const siteTitle = "CRM de Fidelização para Lojas | RecompraCRM";
+const siteTitle = "RecompraCRM | CRM de Fidelização para Lojas ";
 const siteMetaDescription =
 	"RecompraCRM é o sistema de fidelização com cashback automático para lojas físicas. Faça seus clientes voltarem com WhatsApp, CRM e relatórios inteligentes. Teste grátis!";
 const siteOgDescription =
