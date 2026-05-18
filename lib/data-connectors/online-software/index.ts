@@ -11,7 +11,8 @@ function formatOnlineSoftwareDate(date: Date) {
 }
 
 export async function fetchOnlineSoftwareSales(config: TOnlineSoftwareConfig, window: TCanonicalImportWindow) {
-	const { data } = await axios.post<TOnlineSoftwareSalesApiResponse>(ONLINE_SOFTWARE_SALES_API_URL, {
+	const onlineSoftwareEndpointUrl = config.url ?? ONLINE_SOFTWARE_SALES_API_URL;
+	const { data } = await axios.post<TOnlineSoftwareSalesApiResponse>(onlineSoftwareEndpointUrl, {
 		token: config.token,
 		rotina: "listarVendas001",
 		dtinicio: formatOnlineSoftwareDate(window.startDate),
