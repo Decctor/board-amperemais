@@ -56,22 +56,32 @@ import { useMemo, useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { toast } from "sonner";
 import { CustomersAcquisitionChannels } from "@/utils/select-options";
+import SegmentsPageRFMHealth from "./rfm-health-section";
 
 type SegmentsPageProps = {
 	user: TAuthUserSession["user"];
 	orgRFMConfig: TRFMConfig | null;
 };
 export default function SegmentsPage({ user, orgRFMConfig }: SegmentsPageProps) {
+	const [configMenuIsOpen, setConfigMenuIsOpen] = useState(false);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-stretch gap-3 flex-col md:flex-row">
 				<div className="w-full md:w-1/2">
-					<SegmentsPageMatrixRFM user={user} orgRFMConfig={orgRFMConfig} />
+					<SegmentsPageMatrixRFM onOpenConfig={() => setConfigMenuIsOpen(true)} />
 				</div>
 				<div className="w-full md:w-1/2">
 					<SegmentsPageClients />
 				</div>
 			</div>
+			<SegmentsPageRFMHealth onOpenConfig={() => setConfigMenuIsOpen(true)} />
+			{configMenuIsOpen ? (
+				orgRFMConfig ? (
+					<EditRFMConfig user={user} rfmConfig={orgRFMConfig} closeModal={() => setConfigMenuIsOpen(false)} />
+				) : (
+					<NewRFMConfig user={user} closeModal={() => setConfigMenuIsOpen(false)} />
+				)
+			) : null}
 		</div>
 	);
 }
@@ -633,11 +643,10 @@ function getSegmentLayout(label: string): SegmentLayout {
 	return {};
 }
 
-function SegmentsPageMatrixRFM({ user, orgRFMConfig }: { user: TAuthUserSession["user"]; orgRFMConfig: TRFMConfig | null }) {
+function SegmentsPageMatrixRFM({ onOpenConfig }: { onOpenConfig: () => void }) {
 	const queryClient = useQueryClient();
 
 	const [syncMenuIsOpen, setSyncMenuIsOpen] = useState(false);
-	const [configMenuIsOpen, setConfigMenuIsOpen] = useState(false);
 	const { data: rfmStats, queryKey } = useRFMLabelledStats();
 
 	function formatDecimal(value: number, fractionDigits = 1) {
@@ -660,7 +669,7 @@ function SegmentsPageMatrixRFM({ user, orgRFMConfig }: { user: TAuthUserSession[
 					<h1 className="text-xs font-medium tracking-tight uppercase">MATRIZ RFM</h1>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setConfigMenuIsOpen(true)}>
+					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={onOpenConfig}>
 						<Settings2 className="w-4 h-4 min-w-4 min-h-4" />
 						CONFIGURAR
 					</Button>
@@ -788,13 +797,6 @@ function SegmentsPageMatrixRFM({ user, orgRFMConfig }: { user: TAuthUserSession[
 						onSettled: handleOnSettled,
 					}}
 				/>
-			) : null}
-			{configMenuIsOpen ? (
-				orgRFMConfig ? (
-					<EditRFMConfig user={user} rfmConfig={orgRFMConfig} closeModal={() => setConfigMenuIsOpen(false)} />
-				) : (
-					<NewRFMConfig user={user} closeModal={() => setConfigMenuIsOpen(false)} />
-				)
 			) : null}
 		</div>
 	);

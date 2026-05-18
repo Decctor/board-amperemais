@@ -216,7 +216,24 @@ export const getRFMConfigByLabel = (label: string | null | undefined): TRFMLabel
 };
 
 export const getRFMLabel = ({ monetary, frequency, recency }: { monetary: number; frequency: number; recency: number }) => {
-	const label = RFMLabels.find((l) => l.combinations.some((c) => c[0] === monetary && c[1] === frequency && c[2] === recency));
+	const valueScore = Math.round((frequency + monetary) / 2);
 
-	return label?.text || "PERDIDOS";
+	if (recency >= 4 && frequency >= 4 && monetary >= 4) return "CAMPEÕES";
+	if (recency >= 4 && valueScore >= 4) return "CLIENTES LEAIS";
+	if (recency >= 4 && frequency <= 2) return "CLIENTES RECENTES";
+	if (recency >= 4) return "PROMISSORES";
+
+	if (recency === 3 && valueScore >= 4) return "POTENCIAIS CLIENTES LEAIS";
+	if (recency === 3 && valueScore >= 3) return "PRECISAM DE ATENÇÃO";
+	if (recency === 3) return "PRESTES A DORMIR";
+
+	if (recency === 2 && valueScore >= 4) return "NÃO PODE PERDÊ-LOS";
+	if (recency === 2 && valueScore >= 3) return "EM RISCO";
+	if (recency === 2) return "HIBERNANDO";
+
+	if (monetary >= 5) return "NÃO PODE PERDÊ-LOS";
+	if (valueScore >= 4) return "NÃO PODE PERDÊ-LOS";
+	if (valueScore >= 2) return "HIBERNANDO";
+
+	return "PERDIDOS";
 };

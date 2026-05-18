@@ -2,6 +2,7 @@ import type { TUtilsValue } from "@/schemas/utils";
 import { jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
+import { relations } from "drizzle-orm";
 
 export const utils = newTable("utils", {
 	id: varchar("id", { length: 255 })
@@ -15,3 +16,10 @@ export const utils = newTable("utils", {
 });
 export type TUtilEntity = typeof utils.$inferSelect;
 export type TNewUtilEntity = typeof utils.$inferInsert;
+
+export const utilsRelations = relations(utils, ({ one }) => ({
+	organizacao: one(organizations, {
+		fields: [utils.organizacaoId],
+		references: [organizations.id],
+	}),
+}));
