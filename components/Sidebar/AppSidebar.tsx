@@ -53,6 +53,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				items: null,
 				checkAccess: () => true,
 			},
+			{
+				title: "Campanhas de Vendas",
+				url: "/dashboard/commercial/campaigns",
+				icon: <Megaphone className="w-4 h-4" />,
+				items: null,
+				checkAccess: () => true,
+			},
 		],
 	},
 	{
@@ -119,13 +126,7 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				items: null,
 				checkAccess: () => true,
 			},
-			{
-				title: "Campanhas de Vendas",
-				url: "/dashboard/commercial/campaigns",
-				icon: <Megaphone className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
+
 			{
 				title: "Programas de Cashback",
 				url: "/dashboard/commercial/cashback-programs",
