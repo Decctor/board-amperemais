@@ -112,7 +112,7 @@ async function getPoiTransactionRequestStatus({ input }: { input: TGetPoiTransac
 						: request.status === "APROVADO"
 							? "Solicitação aprovada com sucesso."
 							: "Sua solicitação está aguardando aprovação do operador.",
-				erroProcessamento: request.status === "ERRO" ? request.erroProcessamento : null,
+			erroProcessamento: request.status === "ERRO" ? request.erroProcessamento : null,
 			resumoSolicitacao: request.resumoSolicitacao,
 		},
 		message: "Status da solicitação obtido com sucesso.",

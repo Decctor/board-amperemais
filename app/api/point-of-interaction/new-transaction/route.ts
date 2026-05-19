@@ -11,15 +11,7 @@ import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-variables";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import {
-	cashbackProgramTransactions,
-	cashbackPrograms,
-	clients,
-	interactions,
-	partners,
-	saleItems,
-	sales,
-} from "@/services/drizzle/schema";
+import { cashbackProgramTransactions, cashbackPrograms, clients, interactions, partners, saleItems, sales } from "@/services/drizzle/schema";
 import { waitUntil } from "@vercel/functions";
 import dayjs from "dayjs";
 import { and, eq } from "drizzle-orm";
@@ -104,7 +96,7 @@ export const CreatePointOfInteractionTransactionInputSchema = z.object({
 				required_error: "Valor da transação não informado.",
 				invalid_type_error: "Tipo não válido para valor da transação.",
 			})
-			.positive("Valor da transação deve ser positivo.")
+			.gte(0, "Valor da transação deve ser positivo.")
 			.describe("O valor da transação."),
 		cashback: z
 			.object({

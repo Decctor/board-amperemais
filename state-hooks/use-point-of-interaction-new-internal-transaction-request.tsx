@@ -54,7 +54,7 @@ export const PointOfInteractionNewInternalTransactionRequestStateSchema = z.obje
 				.optional()
 				.nullable(),
 		})
-		.refine((data) => data.valor > 0, {
+		.refine((data) => data.valor >= 0, {
 			message: "Valor da venda deve ser positivo.",
 			path: ["valor"],
 		}),
