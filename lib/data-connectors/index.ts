@@ -1,3 +1,4 @@
+import { blingDataConnector } from "./bling";
 import { fetchCardapioWebImportBatch } from "./cardapio-web/canonical";
 import { fetchIfoodImportBatch } from "./ifood";
 import { fetchNuvemshopImportBatch } from "./nuvemshop";
@@ -33,6 +34,14 @@ export async function fetchConnectorImportBatch(input: TDataConnectorFetchInput)
 
 	if (input.config.tipo === "IFOOD") {
 		return fetchIfoodImportBatch({
+			organizationId: input.organizationId,
+			config: input.config,
+			window: input.window,
+		});
+	}
+
+	if (input.config.tipo === "BLING") {
+		return blingDataConnector.fetchImportBatch({
 			organizationId: input.organizationId,
 			config: input.config,
 			window: input.window,

@@ -36,6 +36,19 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 			.optional()
 			.nullable(),
 	}),
+	z.object({
+		tipo: z.literal("BLING"),
+		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do Bling." }),
+		refreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de renovação do Bling." }),
+		tokenType: z.string({ invalid_type_error: "Tipo não válido para o tipo do token do Bling." }).default("Bearer"),
+		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo do Bling." })).default([]),
+		expiresAt: z
+			.string({ invalid_type_error: "Tipo não válido para a expiração do token do Bling." })
+			.datetime({ message: "Tipo não válido para a expiração do token do Bling." }),
+		connectedAt: z
+			.string({ invalid_type_error: "Tipo não válido para a data de conexão do Bling." })
+			.datetime({ message: "Tipo não válido para a data de conexão do Bling." }),
+	}),
 ]);
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
 

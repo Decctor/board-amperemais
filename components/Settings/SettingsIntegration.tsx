@@ -7,7 +7,6 @@ import { updateOrganization } from "@/lib/mutations/organizations";
 import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
 import { useOrganizationState } from "@/state-hooks/use-organization-state";
 import { useMutation } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import { Calendar, CheckCircle2, LinkIcon, Pencil, Settings2, Unlink } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -19,6 +18,7 @@ import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
 import NuvemshopLogo from "@/utils/images/integrations/nuvemshop-logo.png";
 import OnlineSoftwareLogo from "@/utils/images/integrations/online-software-logo.png";
 import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
+import BlingLogo from "@/utils/images/integrations/bling-logo.png";
 import { Chip } from "../ui/chip";
 import ViewIntegration from "../Modals/Integrations/ViewIntegration";
 import ConfigureIntegration from "../Modals/Integrations/ConfigureIntegration";
@@ -65,6 +65,16 @@ const INTEGRATIONS = [
 		brandColor: "#EA1D2C",
 		brandClassName: "bg-[#EA1D2C] text-white hover:bg-[#EA1D2C]/80",
 	},
+	{
+		id: "BLING",
+		name: "Bling",
+		logo: BlingLogo,
+		description: "Conecte sua conta Bling para sincronizar pedidos de venda, clientes e produtos com o Recompra CRM em modo somente leitura.",
+		buttonText: "CONECTAR COM BLING",
+		brandColor: "#34AD61",
+		brandClassName: "bg-[#34AD61] text-white hover:bg-[#34AD61]/80",
+		authUrl: "/api/integrations/bling/auth",
+	},
 ] as const;
 
 type SettingsIntegrationProps = {
@@ -72,21 +82,16 @@ type SettingsIntegrationProps = {
 	membership: NonNullable<TAuthUserSession["membership"]>;
 };
 
-export default function SettingsIntegration({ user, membership }: SettingsIntegrationProps) {
-	const { state, updateOrganization: updateOrgState, redefineState } = useOrganizationState();
+export default function SettingsIntegration({ membership }: SettingsIntegrationProps) {
+	const { state, redefineState } = useOrganizationState();
 	const permissions = membership.permissoes.empresa;
 	const canEdit = permissions.editar;
 	const [editingIntegrationMenuIsOpen, setEditingIntegrationMenuIsOpen] = useState(false);
-	// Local state for credential fields
-	const [token, setToken] = useState("");
-	const [merchantId, setMerchantId] = useState("");
-	const [apiKey, setApiKey] = useState("");
 
 	// Menu State
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [selectedIntegrationId, setSelectedIntegrationId] = useState<"ONLINE-SOFTWARE" | "CARDAPIO-WEB" | null>(null);
 	const [ifoodMenuIsOpen, setIfoodMenuIsOpen] = useState(false);
-	const [isSuccess, setIsSuccess] = useState(false);
 
 	// Initialize state from membership
 	useEffect(() => {
@@ -103,83 +108,6 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 		}
 		// oxlint-disable-next-line react/exhaustive-deps -- Initialize state only once
 	}, []);
-
-	// Pre-fill credentials when opening menu for the *currently active* integration
-	// OR reset if it's a new one.
-	useEffect(() => {
-		if (isMenuOpen && selectedIntegrationId) {
-			setIsSuccess(false); // Reset success state on open
-			const currentConfig = membership.organizacao.integracaoConfiguracao;
-			const isCurrentIntegration = membership.organizacao.integracaoTipo === selectedIntegrationId;
-
-			if (isCurrentIntegration && currentConfig) {
-				if (selectedIntegrationId === "ONLINE-SOFTWARE" && currentConfig.tipo === "ONLINE-SOFTWARE") {
-					setToken(currentConfig.token || "");
-					setMerchantId("");
-					setApiKey("");
-				} else if (selectedIntegrationId === "CARDAPIO-WEB" && currentConfig.tipo === "CARDAPIO-WEB") {
-					setMerchantId(currentConfig.merchantId || "");
-					setApiKey(currentConfig.apiKey || "");
-					setToken("");
-				} else {
-					// Fallback if types mismatch for some reason, though logic above prevents it mostly
-					setToken("");
-					setMerchantId("");
-					setApiKey("");
-				}
-			} else {
-				// Reset if it's a new integration selection
-				setToken("");
-				setMerchantId("");
-				setApiKey("");
-			}
-		}
-	}, [isMenuOpen, selectedIntegrationId, membership.organizacao]);
-
-	const updateIntegrationMutation = useMutation({
-		mutationFn: async () => {
-			let integracaoConfiguracao: TOrganizationIntegrationConfig | null = null;
-
-			if (selectedIntegrationId === "ONLINE-SOFTWARE") {
-				if (!token.trim()) {
-					throw new Error("O token é obrigatório para a integração Online Software.");
-				}
-				integracaoConfiguracao = {
-					tipo: "ONLINE-SOFTWARE",
-					token: token.trim(),
-					url: "",
-				};
-			} else if (selectedIntegrationId === "CARDAPIO-WEB") {
-				if (!merchantId.trim() || !apiKey.trim()) {
-					throw new Error("O Merchant ID e API Key são obrigatórios para a integração Cardápio Web.");
-				}
-				integracaoConfiguracao = {
-					tipo: "CARDAPIO-WEB",
-					merchantId: merchantId.trim(),
-					apiKey: apiKey.trim(),
-				};
-			}
-
-			// We need to pass the selected type here, not the state one, because state one updates only on success/reload logic effectively in the old code,
-			// but here we want to update to what is being configured.
-			return await updateOrganization({
-				organization: {
-					integracaoTipo: selectedIntegrationId,
-					integracaoConfiguracao: integracaoConfiguracao,
-				},
-			});
-		},
-		onSuccess: () => {
-			toast.success("Integração configurada com sucesso!");
-			setIsSuccess(true);
-			setTimeout(() => {
-				window.location.reload();
-			}, 3000);
-		},
-		onError: (error) => {
-			toast.error(getErrorMessage(error));
-		},
-	});
 
 	// Disconnect Mutation
 	const disconnectIntegrationMutation = useMutation({
@@ -221,6 +149,7 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 			return;
 		}
 		if (integrationId === "NUVEM-SHOP") return;
+		if (integrationId === "BLING") return;
 		setSelectedIntegrationId(integrationId);
 		setIsMenuOpen(true);
 	};
@@ -251,7 +180,6 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 			) : (
 				<div className="w-full flex items-center flex-wrap gap-x-6 gap-y-4">
 					{INTEGRATIONS.map((integration) => {
-						const isSelected = state.organization.integracaoTipo === integration.id;
 						const brandColor = integration.brandColor;
 
 						return (
@@ -270,7 +198,7 @@ export default function SettingsIntegration({ user, membership }: SettingsIntegr
 												className="flex h-12 w-12 items-center justify-center rounded-lg text-lg font-bold text-white"
 												style={{ backgroundColor: brandColor }}
 											>
-												iF
+												{integration.name.slice(0, 2)}
 											</div>
 										)}
 									</div>
