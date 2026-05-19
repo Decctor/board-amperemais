@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
 import { CampaignSchema, CampaignSegmentationSchema } from "@/schemas/campaigns";
@@ -386,7 +387,7 @@ async function getCampaigns({ input, session }: { input: TGetCampaignsInput; ses
 		eq(interactions.organizacaoId, userOrgId),
 		eq(interactions.tipo, "ENVIO-MENSAGEM"),
 		inArray(interactions.campanhaId, campaignIds),
-		sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
+		inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
 	];
 	if (input.statsPeriodAfter) interactionsConditions.push(gte(interactions.dataInsercao, input.statsPeriodAfter));
 	if (input.statsPeriodBefore) interactionsConditions.push(lte(interactions.dataInsercao, input.statsPeriodBefore));
@@ -394,7 +395,7 @@ async function getCampaigns({ input, session }: { input: TGetCampaignsInput; ses
 	const interactionsStats = await db
 		.select({
 			campaignId: interactions.campanhaId,
-			sentCount: sum(sql<number>`CASE WHEN ${interactions.statusEnvio} IN ('ENVIADO', 'ENTREGUE', 'LIDO') THEN 1 ELSE 0 END`),
+			sentCount: count(interactions.id),
 			deliveredCount: sum(sql<number>`CASE WHEN ${interactions.statusEnvio} IN ('ENTREGUE', 'LIDO') THEN 1 ELSE 0 END`),
 		})
 		.from(interactions)

@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { getBestNumberOfPointsBetweenDates, getDateBuckets, getEvenlySpacedDates } from "@/lib/dates";
 import { db } from "@/services/drizzle";
 import { campaignConversions, interactions } from "@/services/drizzle/schema";
@@ -91,7 +92,7 @@ async function getGraphDataForPeriod({
 				and(
 					eq(interactions.organizacaoId, userOrgId),
 					eq(interactions.tipo, "ENVIO-MENSAGEM"),
-					inArray(interactions.statusEnvio, ["ENVIADO", "ENTREGUE", "LIDO"]),
+					inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
 					gte(interactions.dataInsercao, period.after),
 					lte(interactions.dataInsercao, period.before),
 					...(campanhaId ? [eq(interactions.campanhaId, campanhaId)] : []),

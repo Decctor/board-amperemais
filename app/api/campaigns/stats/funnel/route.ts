@@ -1,10 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { db } from "@/services/drizzle";
 import { campaignConversions, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, asc, count, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -51,7 +52,7 @@ async function getCampaignFunnel({ input, session }: { input: TGetCampaignFunnel
 			and(
 				eq(interactions.organizacaoId, userOrgId),
 				eq(interactions.tipo, "ENVIO-MENSAGEM"),
-				sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
+				inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
 				gte(interactions.dataInsercao, startDate),
 				lte(interactions.dataInsercao, endDate),
 			),
@@ -70,7 +71,7 @@ async function getCampaignFunnel({ input, session }: { input: TGetCampaignFunnel
 			and(
 				eq(interactions.organizacaoId, userOrgId),
 				eq(interactions.tipo, "ENVIO-MENSAGEM"),
-				sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
+				inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
 				gte(interactions.dataInsercao, startDate),
 				lte(interactions.dataInsercao, endDate),
 			),

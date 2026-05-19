@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { checkCampaignWeeklyInteractionLimit } from "@/lib/interactions/campaign-weekly-limits";
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
@@ -63,7 +64,7 @@ async function getCampaignStats({ input, session }: { input: TGetCampaignStatsIn
 				clientesAlcancados: countDistinct(interactions.clienteId),
 			})
 			.from(interactions)
-			.where(and(...dateRangeConditions, inArray(interactions.statusEnvio, ["ENVIADO", "ENTREGUE", "LIDO"]))),
+			.where(and(...dateRangeConditions, inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]))),
 		db
 			.select({
 				statusEnvio: interactions.statusEnvio,

@@ -1,9 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
-import { and, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -71,8 +72,11 @@ async function fetchRankingForPeriod({
 	});
 
 	// Build interaction conditions
-	const interactionConditions = [eq(interactions.organizacaoId, userOrgId), eq(interactions.tipo, "ENVIO-MENSAGEM")];
-	interactionConditions.push(sql`${interactions.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`);
+	const interactionConditions = [
+		eq(interactions.organizacaoId, userOrgId),
+		eq(interactions.tipo, "ENVIO-MENSAGEM"),
+		inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
+	];
 	if (startDate) interactionConditions.push(gte(interactions.dataInsercao, startDate));
 	if (endDate) interactionConditions.push(lte(interactions.dataInsercao, endDate));
 
