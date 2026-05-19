@@ -3,6 +3,7 @@ import { Reveal } from "./_primitives/Reveal";
 import { Stamp } from "./_primitives/Stamp";
 import RecompraCRMLogoIcon from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 type FeatureEntry = {
 	index: string;
@@ -15,35 +16,37 @@ type FeatureEntry = {
 	mockup: React.ReactNode;
 };
 
+const WHATSAPP_CAMPAIGN_HEADER_IMAGE_URL = "";
+
 export function LedgerFeatures() {
 	const entries: FeatureEntry[] = [
 		{
 			index: "01",
-			header: "Ponto de Interação",
-			title: "Fidelidade digital no seu balcão. Sem complicação.",
+			header: "Campanhas inteligentes",
+			title: "Gatilhos e filtros para agir no momento exato.",
 			desc:
-				"Tablet fixo ou QR Code no celular do cliente. Ele informa o WhatsApp, você lança o valor, o cashback é aplicado. Em segundos — sem treinamento de equipe, sem app para baixar.",
+				"Não é só escolher uma lista e disparar. O RecompraCRM combina gatilhos de comportamento com filtros de audiência para cada comunicação chegar no contexto certo.",
 			bullets: [
-				"Aprovação de resgate com senha do operador",
-				"QR Code para uso no celular do próprio cliente",
-				"Aprovação ou recusa em tempo real pelo painel admin",
-				"Desconto direto ou troca por prêmios físicos",
+				"Gatilhos por primeira compra, nova compra, aniversário e RFM",
+				"Filtros por recência, frequência, valor gasto, cidade e produto",
+				"Campanhas recorrentes ou ações pontuais de lançamento",
+				"Resultado por campanha: enviados, lidos, convertidos e receita",
 			],
-			stamp: "8 segundos",
-			stampVariant: "soft-blue",
-			mockup: <PoiMockup />,
+			stamp: "Hora certa",
+			stampVariant: "soft-amber",
+			mockup: <CampaignMockup />,
 		},
 		{
 			index: "02",
-			header: "WhatsApp Automático",
-			title: "Seu WhatsApp vendendo enquanto você atende o balcão.",
+			header: "WhatsApp da loja",
+			title: "A comunicação sai pelo número e pela identidade da sua marca.",
 			desc:
-				"Configure uma vez. O sistema avisa quando o cashback está pra vencer, manda mensagem quando o cliente some há 30 dias, celebra o aniversário. Você não lembra de nada.",
+				"Campanhas automáticas não precisam parecer disparos genéricos. A mensagem chega pelo canal da própria empresa, com textos, imagens, vídeos e linguagem configurados para aquela marca.",
 			bullets: [
-				"Gatilhos por evento: 1ª compra, inatividade, aniversário",
-				"Cashback expirando em X dias — reativação automática",
+				"Envio pelo número conectado da própria empresa",
+				"Header visual da marca em campanhas com imagem",
+				"Templates com variáveis como nome, saldo e última compra",
 				"Funil de conversão com taxa de retorno por campanha",
-				"Sem limite de contatos ou disparos",
 			],
 			stamp: "Lido ✓✓",
 			stampVariant: "success",
@@ -67,19 +70,19 @@ export function LedgerFeatures() {
 		},
 		{
 			index: "04",
-			header: "Campanhas com Filtro",
-			title: "Mande a mensagem certa para a pessoa certa.",
+			header: "Programa de fidelidade",
+			title: "Cashback e resgate para operações com venda presencial.",
 			desc:
-				"Quer avisar só quem não compra há 45 dias? Só os de uma cidade específica? Só quem já gastou mais de R$ 500? Você filtra, o sistema dispara.",
+				"Para empresas com atendimento presencial, o ponto de interação fecha o ciclo de fidelidade: o cliente acumula, consulta e resgata benefícios sem baixar aplicativo.",
 			bullets: [
-				"Filtro por recência, frequência, valor gasto, cidade",
-				"Campanhas recorrentes: todo domingo, para inativos há 30 dias",
-				"Preview da audiência antes de enviar",
-				"Resultado por campanha: enviados, lidos, convertidos, receita",
+				"Cashback acumulado a partir de vendas registradas",
+				"Resgate no ponto de interação com senha do operador",
+				"QR Code para uso no celular do próprio cliente",
+				"Desconto direto ou troca por prêmios físicos",
 			],
-			stamp: "143 alvos",
-			stampVariant: "soft-amber",
-			mockup: <CampaignMockup />,
+			stamp: "Fidelidade",
+			stampVariant: "soft-blue",
+			mockup: <PoiMockup />,
 		},
 	];
 
@@ -227,6 +230,8 @@ function PoiMockup() {
 }
 
 function WhatsAppMockup() {
+	const headerImageStyle = WHATSAPP_CAMPAIGN_HEADER_IMAGE_URL ? { backgroundImage: `url(${WHATSAPP_CAMPAIGN_HEADER_IMAGE_URL})` } : undefined;
+
 	return (
 		<div className="max-w-[340px] mx-auto rounded-3xl bg-white border border-[#e5e5e5] shadow-[0_28px_60px_-20px_rgba(36,84,156,0.28),0_4px_8px_rgba(0,0,0,0.04)] overflow-hidden">
 			{/* Header */}
@@ -235,8 +240,8 @@ function WhatsAppMockup() {
 					<Image src={RecompraCRMLogoIcon} alt="RecompraCRM" fill />
 				</div>
 				<div className="flex-1">
-					<p className="text-[13px] font-extrabold leading-tight">RecompraCRM</p>
-					<p className="text-[11px] text-white/65">online · 14:23</p>
+					<p className="text-[13px] font-extrabold leading-tight">Loja Exemplo</p>
+					<p className="text-[11px] text-white/65">conta oficial · 14:23</p>
 				</div>
 			</div>
 			<div className="bg-[#ECE5DD] p-4 space-y-2">
@@ -245,13 +250,26 @@ function WhatsAppMockup() {
 				</div>
 
 				<div className="bg-white rounded-2xl rounded-tl-md p-3 max-w-[88%] shadow-sm">
+					<div
+						className={cn(
+							"mb-3 aspect-[15/8] overflow-hidden rounded-xl border border-[#e5e5e5] bg-cover bg-center",
+							WHATSAPP_CAMPAIGN_HEADER_IMAGE_URL ? "" : "bg-[linear-gradient(135deg,#24549c_0%,#1a3d7a_62%,#ffb900_62%,#ffb900_100%)]",
+						)}
+						style={headerImageStyle}
+						aria-label="Imagem de cabeçalho da campanha"
+					>
+						{!WHATSAPP_CAMPAIGN_HEADER_IMAGE_URL ? (
+							<div className="flex h-full items-end p-3">
+								<p className="max-w-[16ch] text-[14px] font-extrabold leading-tight text-white">Semana especial para clientes da loja</p>
+							</div>
+						) : null}
+					</div>
 					<p className="text-[13px] text-[#171717] leading-snug">
-						Oi, <strong>Maria</strong>! Você tem <strong className="text-[#24549c] bg-[#ffb900]/30 px-1 rounded">R$ 28,50</strong> de cashback na Loja
-						Exemplo. Vence em
-						<strong> 3 dias</strong>.
+						Oi, <strong>Maria</strong>! A Loja Exemplo separou uma condição para você aproveitar com seu saldo de{" "}
+						<strong className="text-[#24549c] bg-[#ffb900]/30 px-1 rounded">R$ 28,50</strong>.
 					</p>
 					<div className="mt-2.5 pt-2 border-t border-[#e5e5e5]">
-						<p className="text-[#24549c] text-[12px] font-extrabold text-center">Ver meu saldo →</p>
+						<p className="text-[#24549c] text-[12px] font-extrabold text-center">Ver condição →</p>
 					</div>
 					<p className="text-[10px] text-[#171717]/40 text-right mt-1.5 ledger-tabular">09:14 ✓✓</p>
 				</div>

@@ -3,11 +3,12 @@ import { ArrowRight, MessageCircle, Repeat, Zap } from "lucide-react";
 import { CampaignFlow } from "./_primitives/CampaignFlow";
 import { Reveal } from "./_primitives/Reveal";
 import { Stamp } from "./_primitives/Stamp";
+import { WhatsappIcon } from "@/components/icons";
 
 const HERO_PROOF = [
 	{ icon: Zap, label: "Configure uma vez, o sistema cuida do resto" },
-	{ icon: MessageCircle, label: "Mensagens automáticas no WhatsApp" },
-	{ icon: Repeat, label: "Cashback com facilidade e segurança" },
+	{ icon: WhatsappIcon, label: "WhatsApp da própria loja, com a identidade dela" },
+	{ icon: Repeat, label: "Gatilhos para vender, reter e reativar" },
 ];
 
 export function LedgerHero() {
@@ -29,17 +30,17 @@ export function LedgerHero() {
 							style={{ "--i": 1 } as React.CSSProperties}
 							data-stagger
 						>
-							Retenção automática
+							CRM de recorrência
 						</span>
 						<span className="ledger-fade flex-1 h-px bg-[#24549c]/15" style={{ "--i": 2 } as React.CSSProperties} data-stagger />
 					</div>
 
 					<h1 className="font-extrabold text-[#171717] tracking-[-0.025em] leading-[1.0] text-[44px] sm:text-[58px] lg:text-[72px]">
 						<span className="block ledger-write" style={{ "--i": 1 } as React.CSSProperties} data-stagger>
-							Seu cliente comprou,
+							Cada venda vira
 						</span>
 						<span className="block ledger-fade text-[#24549c] mt-2 lg:mt-3" style={{ "--i": 3 } as React.CSSProperties} data-stagger>
-							Será que ele vai voltar ?
+							a próxima compra.
 						</span>
 					</h1>
 
@@ -48,8 +49,8 @@ export function LedgerHero() {
 						style={{ "--i": 6 } as React.CSSProperties}
 						data-stagger
 					>
-						A maioria das lojas não sabe responder essa pergunta e perde venda sem perceber. O RecompraCRM transforma cada compra em relacionamento:
-						cashback no balcão, WhatsApp automático, e visão clara de quem está sumindo.
+						O RecompraCRM transforma dados de compra em campanhas automáticas de venda, retenção e reativação. Funciona com ponto de interação, QR Code e
+						integrações como iFood, Nuvem Shop e outras que conectam o varejo ao relacionamento certo.
 					</p>
 
 					{/* CTAs */}
@@ -96,7 +97,7 @@ export function LedgerHero() {
 						<div className="absolute -top-3 -left-3 sm:-left-5 z-10 ledger-fade" style={{ "--i": 6 } as React.CSSProperties} data-stagger>
 							<Stamp variant="amber" size="md" rotate={-4}>
 								<span className="ledger-pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-[#171717]" />
-								Cashback em ação
+								Campanha em ação
 							</Stamp>
 						</div>
 					</div>

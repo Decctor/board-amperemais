@@ -4,30 +4,33 @@ import { Stamp } from "./_primitives/Stamp";
 const ENTRIES = [
 	{
 		index: "01",
-		header: "Identificação",
-		title: "Cliente entra. Sistema reconhece.",
-		desc: "Tablet no balcão ou QR Code no celular do próprio cliente. Ele informa o WhatsApp e a base inteira é consultada na hora — histórico de compras, cashback disponível, último contato. Sem app, sem cadastro longo, sem cartão fidelidade.",
-		stamp: "8 segundos",
+		header: "Dados",
+		title: "O sistema recebe a informação da venda.",
+		desc:
+			"A informação pode vir do ponto de interação em tablet, de um QR Code ou da integração com o app preferido da empresa, como iFood, Nuvem Shop e outras conexões. Cada compra traz matéria-prima valiosa: identificação do cliente, valor da venda e, quando disponível, os itens comprados.",
+		stamp: "PDI + integrações",
 		stampVariant: "soft-blue" as const,
-		aux: "Tempo médio de identificação no balcão",
+		aux: "Entrada de dados para alimentar o relacionamento",
 	},
 	{
 		index: "02",
-		header: "Cashback",
-		title: "A venda gera cashback automático.",
-		desc: "Você define a porcentagem uma única vez. A cada venda lançada, o cashback é creditado na hora e o cliente recebe a confirmação no WhatsApp dele. Sem papel, sem planilha, sem controle manual — e auditado por senha de operador.",
-		stamp: "+R$ 9,35",
+		header: "Inteligência",
+		title: "O CRM decide quem deve receber o quê, e quando.",
+		desc:
+			"A inteligência atua em gatilhos como nova compra, primeira compra, aniversário, cashback expirando e movimentos RFM. Depois combina isso com filtros de segmentação, localização, top compradores do produto X, frequência e valor gasto. O resultado é comunicação para a pessoa certa, na hora certa.",
+		stamp: "Gatilhos + filtros",
 		stampVariant: "soft-amber" as const,
-		aux: "Crédito médio gerado por venda",
+		aux: "O poder do CRM está na precisão da audiência",
 	},
 	{
 		index: "03",
-		header: "Retorno",
-		title: "Campanha dispara na hora certa.",
-		desc: "O cliente sumiu há 30 dias. O cashback vai vencer. É aniversário. O segmento mudou. Cada gatilho dispara a mensagem certa, no canal certo, no horário certo. Você não precisa lembrar de nada — só conferir o resultado no fim do mês.",
-		stamp: "Lido ✓✓",
+		header: "Automação",
+		title: "A comunicação sai com a marca e o número da loja.",
+		desc:
+			"A empresa não precisa ficar olhando clientes em risco e criando mensagem manualmente. O RecompraCRM monta e dispara comunicações automáticas, com textos personalizados, imagens, vídeos e a identidade escolhida pela loja. Nada de e-mail frio ou SMS desconhecido: a conversa acontece no canal da própria marca.",
+		stamp: "WhatsApp da loja",
 		stampVariant: "success" as const,
-		aux: "Status do disparo automático no WhatsApp",
+		aux: "Automação sem perder a voz da empresa",
 	},
 ];
 
@@ -38,7 +41,9 @@ export function LedgerHowItWorks() {
 				{/* Section header */}
 				<Reveal className="mb-14 lg:mb-20">
 					<div className="flex items-center gap-3 mb-6">
-						<span className="ledger-fade inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">02</span>
+						<span className="ledger-fade inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">
+							02
+						</span>
 						<span
 							className="ledger-fade text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#24549c]"
 							style={{ "--i": 1 } as React.CSSProperties}
@@ -50,14 +55,10 @@ export function LedgerHowItWorks() {
 					</div>
 					<h2 className="font-extrabold text-[#171717] tracking-[-0.02em] leading-[1.05] text-[34px] sm:text-[42px] lg:text-[56px] max-w-[20ch]">
 						<span className="block ledger-write" style={{ "--i": 1 } as React.CSSProperties} data-stagger>
-							Três passos.
+							Dados entram.
 						</span>
-						<span
-							className="block text-[#171717]/55 ledger-fade mt-1"
-							style={{ "--i": 4 } as React.CSSProperties}
-							data-stagger
-						>
-							Sua loja começa a reter clientes desde o primeiro dia.
+						<span className="block text-[#171717]/55 ledger-fade mt-1" style={{ "--i": 4 } as React.CSSProperties} data-stagger>
+							O CRM transforma em recompra.
 						</span>
 					</h2>
 				</Reveal>
