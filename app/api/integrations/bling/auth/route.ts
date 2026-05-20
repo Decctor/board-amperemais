@@ -1,0 +1,54 @@
+import { appApiHandler } from "@/lib/app-api";
+import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getBlingRedirectUri } from "@/lib/data-connectors/bling/client";
+import { BLING_AUTHORIZATION_URL } from "@/lib/data-connectors/bling/types";
+import { generateState } from "arctic";
+import { cookies } from "next/headers";
+import { NextResponse, type NextRequest } from "next/server";
+import z from "zod";
+
+export const BLING_OAUTH_STATE_COOKIE_NAME = "bling_oauth_state";
+
+const CreateBlingAuthorizationInputSchema = z.object({});
+export type TCreateBlingAuthorizationInput = z.infer<typeof CreateBlingAuthorizationInputSchema>;
+
+async function createBlingAuthorization(_input: TCreateBlingAuthorizationInput) {
+	const clientId = process.env.BLING_CLIENT_ID;
+	if (!clientId) throw new Error("BLING_CLIENT_ID não configurado.");
+
+	const cookieStore = await cookies();
+	const state = generateState();
+	const url = new URL(BLING_AUTHORIZATION_URL);
+	url.searchParams.set("response_type", "code");
+	url.searchParams.set("client_id", clientId);
+	url.searchParams.set("redirect_uri", getBlingRedirectUri());
+	url.searchParams.set("state", state);
+
+	cookieStore.set(BLING_OAUTH_STATE_COOKIE_NAME, state, {
+		secure: true,
+		path: "/",
+		httpOnly: true,
+		maxAge: 60 * 10,
+		sameSite: "lax",
+	});
+
+	return url;
+}
+export type TCreateBlingAuthorizationOutput = Awaited<ReturnType<typeof createBlingAuthorization>>;
+
+async function createBlingAuthorizationRoute(_request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) return NextResponse.json({ error: "Você não está autenticado." }, { status: 401 });
+	if (!session.membership?.organizacao.id) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização." }, { status: 400 });
+
+	const input = CreateBlingAuthorizationInputSchema.parse({});
+	const url = await createBlingAuthorization(input);
+	return NextResponse.redirect(url);
+}
+
+export const GET = appApiHandler({
+	GET: createBlingAuthorizationRoute,
+});
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";

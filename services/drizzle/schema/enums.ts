@@ -55,7 +55,13 @@ export const cashbackProgramTransactionTypeEnum = pgEnum("cashback_program_trans
 
 export const cashbackProgramTransactionStatusEnum = pgEnum("cashback_program_transaction_status", ["ATIVO", "CONSUMIDO", "EXPIRADO"]);
 
-export const organizationIntegrationTypeEnum = pgEnum("organization_integration_type", ["ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD"]);
+export const organizationIntegrationTypeEnum = pgEnum("organization_integration_type", [
+	"ONLINE-SOFTWARE",
+	"CARDAPIO-WEB",
+	"NUVEM-SHOP",
+	"IFOOD",
+	"BLING",
+]);
 
 export const chatStatusEnum = pgEnum("chat_status", ["ABERTA", "FECHADA"]);
 
