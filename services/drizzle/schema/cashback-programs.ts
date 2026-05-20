@@ -163,6 +163,14 @@ export const cashbackProgramTransactionRelations = relations(cashbackProgramTran
 		fields: [cashbackProgramTransactions.clienteId],
 		references: [clients.id],
 	}),
+	operador: one(users, {
+		fields: [cashbackProgramTransactions.operadorId],
+		references: [users.id],
+	}),
+	operadorVendedor: one(sellers, {
+		fields: [cashbackProgramTransactions.operadorVendedorId],
+		references: [sellers.id],
+	}),
 	programa: one(cashbackPrograms, {
 		fields: [cashbackProgramTransactions.programaId],
 		references: [cashbackPrograms.id],
