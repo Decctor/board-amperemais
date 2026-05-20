@@ -100,7 +100,10 @@ export async function fetchNuvemshopImportBatch({
 	config: TNuvemshopConfig;
 	window: TCanonicalImportWindow;
 }) {
-	const parsedConfig = NuvemshopConfigSchema.parse(config);
+	const parsedConfig = NuvemshopConfigSchema.parse({
+		...config,
+		storeId: String(config.storeId),
+	});
 	const orders = await fetchAllNuvemshopOrders(parsedConfig, window);
 	return toCanonicalNuvemshopImportBatch({ organizationId, window, orders });
 }

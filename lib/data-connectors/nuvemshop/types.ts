@@ -73,7 +73,11 @@ export const NuvemshopOrderProductSchema = z
 			const numberValue = Number(value);
 			return Number.isFinite(numberValue) ? numberValue : 0;
 		}),
-		properties: z.array(z.unknown()).optional().default([]),
+		properties: z
+			.union([z.array(z.unknown()), z.record(z.unknown())])
+			.optional()
+			.default([])
+			.transform((value) => (Array.isArray(value) ? value : [value])),
 	})
 	.passthrough();
 export type TNuvemshopOrderProduct = z.infer<typeof NuvemshopOrderProductSchema>;

@@ -2,8 +2,10 @@ import { fetchConnectorImportBatch, type TCanonicalImportWindow } from "@/lib/da
 import { processOrganizationInteractionsBatch, type ImmediateProcessingData } from "@/lib/interactions";
 import { db } from "@/services/drizzle";
 import { campaigns, organizations } from "@/services/drizzle/schema";
+import { isAxiosError } from "axios";
 import dayjs from "dayjs";
 import { and, eq, inArray, or } from "drizzle-orm";
+import { z } from "zod";
 import { resolveCampaignAudiences } from "./campaign-audiences";
 import { processDataCollectingV2Effects } from "./effects";
 import { syncAuxiliaryEntities } from "./sync-auxiliary-entities";
@@ -21,6 +23,49 @@ function getDefaultImportWindow(): TCanonicalImportWindow {
 	return {
 		startDate: referenceDate.startOf("day").toDate(),
 		endDate: referenceDate.endOf("day").toDate(),
+	};
+}
+
+function serializeDataCollectingError(error: unknown) {
+	if (error instanceof z.ZodError) {
+		return {
+			type: "ZodError",
+			message: error.message,
+			issues: error.issues.map((issue) => ({
+				path: issue.path.join("."),
+				message: issue.message,
+				code: issue.code,
+				expected: "expected" in issue ? issue.expected : undefined,
+				received: "received" in issue ? issue.received : undefined,
+			})),
+		};
+	}
+
+	if (isAxiosError(error)) {
+		return {
+			type: "AxiosError",
+			message: error.message,
+			code: error.code,
+			status: error.response?.status,
+			statusText: error.response?.statusText,
+			url: error.config?.url,
+			method: error.config?.method,
+			params: error.config?.params,
+			responseData: error.response?.data,
+		};
+	}
+
+	if (error instanceof Error) {
+		return {
+			type: error.name,
+			message: error.message,
+			stack: error.stack,
+		};
+	}
+
+	return {
+		type: typeof error,
+		value: String(error),
 	};
 }
 
@@ -152,7 +197,7 @@ export async function runDataCollectingV2({
 			allImmediateProcessingData.push(...immediateProcessingDataList);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Erro desconhecido ao processar organização.";
-			console.error(`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Integration ${organization.integracaoTipo} failed`, error);
+			console.error(`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Integration ${organization.integracaoTipo} failed`, serializeDataCollectingError(error));
 			errors.push({
 				organizationId: organization.id,
 				integrationType: organization.integracaoTipo,
@@ -179,7 +224,7 @@ export async function runDataCollectingV2({
 					for (const failedResult of failedResults) {
 						console.error(
 							`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Immediate interaction ${failedResult.interactionId} finished with status ${failedResult.status}`,
-							failedResult.error,
+							serializeDataCollectingError(failedResult.error),
 						);
 					}
 
@@ -191,7 +236,7 @@ export async function runDataCollectingV2({
 				}
 			} catch (error) {
 				const message = error instanceof Error ? error.message : "Erro desconhecido ao processar interações imediatas.";
-				console.error(`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Immediate interactions processing failed`, error);
+				console.error(`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Immediate interactions processing failed`, serializeDataCollectingError(error));
 				errors.push({
 					organizationId,
 					integrationType: organization?.integracaoTipo ?? null,

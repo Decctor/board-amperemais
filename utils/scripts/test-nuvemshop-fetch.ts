@@ -59,7 +59,7 @@ function parseOptions(): TScriptOptions {
 
 	return {
 		organizationId: getArgValue("org") ?? process.env.NUVEMSHOP_TEST_ORGANIZATION_ID ?? null,
-		startDate: parseDateArg("start", now.subtract(1, "day").toDate()),
+		startDate: parseDateArg("start", now.subtract(60, "day").toDate()),
 		endDate: parseDateArg("end", now.toDate()),
 		outputPath: getArgValue("out"),
 		raw: hasFlag("raw"),
@@ -98,6 +98,7 @@ async function getConfigFromOrganization(organizationId: string): Promise<TNuvem
 		throw new Error(`Configuração Nuvem Shop inválida para organização: ${organizationId}`);
 	}
 
+	console.log("organization.integracaoConfiguracao", organization.integracaoConfiguracao);
 	return {
 		...organization.integracaoConfiguracao,
 		storeId: String(organization.integracaoConfiguracao.storeId),
@@ -177,6 +178,16 @@ async function main() {
 
 main().catch((error) => {
 	console.error("[NUVEMSHOP_FETCH_TEST] Falha ao buscar dados da Nuvem Shop.");
-	console.error(error);
+	if (error?.isAxiosError) {
+		console.error({
+			message: error.message,
+			status: error.response?.status,
+			data: error.response?.data,
+			url: error.config?.url,
+			params: error.config?.params,
+		});
+	} else {
+		console.error(error instanceof Error ? error.message : String(error));
+	}
 	process.exit(1);
 });
