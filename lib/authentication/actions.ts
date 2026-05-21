@@ -49,6 +49,28 @@ export async function login(_: TLoginResult, input: FormData): Promise<TLoginRes
 			formError: "Usuário ou senha incorretos.",
 		};
 	}
+	// Bypassing the magic link for the demo user
+	if (user.email === "demouser@meta.com") {
+		const sessionToken = await generateSessionToken();
+		const session = await createSession({
+			token: sessionToken,
+			userId: user.id,
+		});
+		console.log("SESSION CREATED", session);
+		try {
+			await setSetSessionCookie({
+				token: sessionToken,
+				expiresAt: session.dataExpiracao,
+			});
+		} catch (error) {
+			console.log("ERROR", error);
+			const errorMsg = "Um erro desconhecido ocorreu.";
+			return {
+				formError: errorMsg,
+			};
+		}
+		return redirect("/dashboard");
+	}
 
 	// Creating magic link to send to the user
 	const verificationToken = randomBytes(32).toString("hex");
@@ -123,23 +145,16 @@ export async function signUpWithEmail(_: TSignUpWithEmailResult, input: FormData
 	const insertedUserResponse = await db
 		.insert(users)
 		.values({
-			nome,
-			email,
+			nome: nome,
+			email: email,
 			telefone: "",
 			usuario: formatAsSlug(nome),
-			permissoes: {
-				resultados: {
-					visualizar: true,
-					criarMetas: true,
-					visualizarMetas: true,
-					editarMetas: true,
-					excluirMetas: true,
-					escopo: [],
-				},
-				usuarios: { visualizar: true, criar: true, editar: true, excluir: true },
-				atendimentos: { visualizar: true, iniciar: true, responder: true, finalizar: true },
-			},
 			senha: "",
+			googleId: null,
+			googleRefreshToken: null,
+			googleAccessToken: null,
+			dataNascimento: null,
+			dataInsercao: dayjs().toDate(),
 		})
 		.returning({ id: users.id });
 

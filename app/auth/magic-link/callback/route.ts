@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 	});
 	console.log("SESSION CREATED", session);
 	try {
-		setSetSessionCookie({
+		await setSetSessionCookie({
 			token: sessionToken,
 			expiresAt: session.dataExpiracao,
 		});
