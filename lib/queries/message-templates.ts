@@ -1,0 +1,54 @@
+import { TGetMessageTemplatesInput, TGetMessageTemplatesOutput } from "@/app/api/message-templates/route";
+import axios from "axios";
+import { useState } from "react";
+import { useDebounceMemo } from "../hooks/use-debounce";
+import { useQuery } from "@tanstack/react-query";
+
+async function fetchMessageTemplates(input: Exclude<TGetMessageTemplatesInput, "id">) {
+	const searchParams = new URLSearchParams();
+	if (input.search) searchParams.set("search", input.search);
+	if (input.page) searchParams.set("page", input.page.toString());
+	const { data } = await axios.get<TGetMessageTemplatesOutput>(`/api/message-templates?${searchParams.toString()}`);
+	const result = data.data.default;
+	if (!result) throw new Error("Templates não encontrados.");
+	return result;
+}
+
+async function fetchMessageTemplateById(id: string) {
+	const { data } = await axios.get<TGetMessageTemplatesOutput>(`/api/message-templates?id=${id}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("Template não encontrado.");
+	return result;
+}
+
+type UseMessageTemplatesParams = {
+	initialParams: Exclude<TGetMessageTemplatesInput, "id">;
+};
+export function useMessageTemplates({ initialParams }: UseMessageTemplatesParams) {
+	const [params, setParams] = useState<Exclude<TGetMessageTemplatesInput, "id">>(initialParams);
+	const debouncedSearch = useDebounceMemo({ search: params.search }, 1200);
+
+	function updateParams(newParams: Partial<Exclude<TGetMessageTemplatesInput, "id">>) {
+		setParams((prevParams) => ({ ...prevParams, ...newParams }));
+	}
+	const finalParams = { ...params, ...debouncedSearch };
+	return {
+		...useQuery({
+			queryKey: ["message-templates", finalParams],
+			queryFn: async () => await fetchMessageTemplates(finalParams),
+		}),
+		queryKey: ["message-templates", finalParams],
+		params,
+		updateParams,
+	};
+}
+
+export function useMessageTemplateById(id: string) {
+	return {
+		...useQuery({
+			queryKey: ["message-template-by-id", id],
+			queryFn: async () => await fetchMessageTemplateById(id),
+		}),
+		queryKey: ["message-template-by-id", id],
+	};
+}

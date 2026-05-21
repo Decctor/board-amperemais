@@ -19,6 +19,7 @@ import {
 	submitMessageTemplateToWhatsappPhone,
 	withComputedMessageTemplateStatus,
 } from "./_lib";
+import { createSimplifiedSearchCondition } from "@/lib/search";
 
 const CreateMessageTemplateInputSchema = z.object({
 	template: z.object({
@@ -193,7 +194,8 @@ async function updateMessageTemplate({ input, session }: { input: TUpdateMessage
 
 	return {
 		data: { updatedId: existingTemplate.id, phoneResults: { successful, failed, details: phoneResults } },
-		message: failed > 0 ? `Template atualizado com ${successful} telefone(s) e ${failed} falha(s).` : "Template atualizado com sucesso em todos os telefones.",
+		message:
+			failed > 0 ? `Template atualizado com ${successful} telefone(s) e ${failed} falha(s).` : "Template atualizado com sucesso em todos os telefones.",
 	};
 }
 export type TUpdateMessageTemplateOutput = Awaited<ReturnType<typeof updateMessageTemplate>>;
@@ -247,13 +249,23 @@ async function deleteMessageTemplateRoute(request: NextRequest) {
 }
 
 const GetMessageTemplatesInputSchema = z.object({
-	id: z.string().optional().nullable(),
+	id: z
+		.string({
+			invalid_type_error: "Tipo inválido para ID do template.",
+		})
+		.optional()
+		.nullable(),
 	page: z
 		.string()
 		.optional()
 		.nullable()
 		.transform((value) => (value ? Number(value) : 1)),
-	search: z.string().optional().nullable(),
+	search: z
+		.string({
+			invalid_type_error: "Tipo inválido para busca.",
+		})
+		.optional()
+		.nullable(),
 });
 export type TGetMessageTemplatesInput = z.infer<typeof GetMessageTemplatesInputSchema>;
 
@@ -274,10 +286,16 @@ async function getMessageTemplates({ input, session }: { input: TGetMessageTempl
 	const page = input.page || 1;
 	const conditions: SQL[] = [eq(messageTemplates.organizacaoId, organizationId)];
 	if (input.search?.trim()) {
-		conditions.push(sql`(${messageTemplates.nome} ILIKE '%' || ${input.search} || '%')`);
+		conditions.push(createSimplifiedSearchCondition(messageTemplates.nome, input.search));
 	}
 
-	const [{ count: matchedCount = 0 } = { count: 0 }] = await db.select({ count: count() }).from(messageTemplates).where(and(...conditions));
+	const templatesMatchedResult = await db
+		.select({ count: count() })
+		.from(messageTemplates)
+		.where(and(...conditions));
+
+	const templatesMatchedCount = templatesMatchedResult[0].count as number;
+
 	const templates = await db.query.messageTemplates.findMany({
 		where: and(...conditions),
 		with: { autor: { columns: { id: true, nome: true, avatarUrl: true } } },
@@ -291,8 +309,8 @@ async function getMessageTemplates({ input, session }: { input: TGetMessageTempl
 			byId: null,
 			default: {
 				messageTemplates: templates.map(withComputedMessageTemplateStatus),
-				messageTemplatesMatched: matchedCount,
-				totalPages: Math.ceil(matchedCount / PAGE_SIZE),
+				messageTemplatesMatched: templatesMatchedCount,
+				totalPages: Math.ceil(templatesMatchedCount / PAGE_SIZE),
 			},
 		},
 		message: "Templates encontrados com sucesso.",
