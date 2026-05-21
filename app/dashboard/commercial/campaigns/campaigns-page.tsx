@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { retryCampaignInteraction } from "@/lib/mutations/campaigns";
 import { useCampaignInteractionsLogs, useCampaignStatsOverall, useCampaigns, useConversionQuality } from "@/lib/queries/campaigns";
@@ -877,7 +878,7 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 								side="left"
 								align="center"
 							>
-								<TemplatePreview components={campaign.whatsappTemplate.componentes} />
+								<TemplatePreview content={whatsappTemplateComponentsToMessageContent(campaign.whatsappTemplate.componentes)} />
 							</HoverCardContent>
 						</HoverCard>
 						{!campaign.whatsappConexaoTelefoneId ? (

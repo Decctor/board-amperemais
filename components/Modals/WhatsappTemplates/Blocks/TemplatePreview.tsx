@@ -1,37 +1,134 @@
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import { convertHtmlToWhatsappText } from "@/lib/whatsapp/template-management";
-import type { TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
-import { Eye, FileText as FileTextIcon, ImageIcon, VideoIcon } from "lucide-react";
+import { DynamicHeaderImagePreview, type OrganizationTemplateTheme } from "@/app/dashboard/communication/_components/dynamic-header-image-preview";
+import {
+	MESSAGE_TEMPLATE_BODY_MAX_LENGTH,
+	MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT,
+	MESSAGE_TEMPLATE_FOOTER_MAX_LENGTH,
+	MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH,
+} from "@/lib/message-templates/constants";
+import { convertHtmlToWhatsappText } from "@/lib/message-templates/formatting";
+import { replaceMessageTemplateVariablesWithExamples } from "@/lib/message-templates/parsing";
+import type { TMessageTemplateContent } from "@/schemas/message-templates";
+import { Eye, FileText as FileTextIcon, ImageIcon, MapPin, VideoIcon } from "lucide-react";
 
 type TemplatePreviewProps = {
-	components?: TWhatsappTemplateComponents | null;
+	content?: TMessageTemplateContent | null;
+	organizationTheme?: OrganizationTemplateTheme;
 };
 
-function TemplatePreview({ components }: TemplatePreviewProps) {
-	if (!components) return null;
+function getButtonIcon(tipo: TMessageTemplateContent["botoes"][number]["tipo"]) {
+	if (tipo === "RESPOSTA RÁPIDA") return "↩️ ";
+	if (tipo === "TELEFONE") return "📞 ";
+	if (tipo === "URL" || tipo === "URL_PRESET") return "🔗 ";
+	return "";
+}
 
-	const { cabecalho, corpo, rodape, botoes } = components;
+function MessageTemplateHeaderPreview({
+	cabecalho,
+	organizationTheme,
+	parameters,
+}: {
+	cabecalho: NonNullable<TMessageTemplateContent["cabecalho"]>;
+	organizationTheme?: OrganizationTemplateTheme;
+	parameters: TMessageTemplateContent["corpo"]["parametros"];
+}) {
+	if (cabecalho.tipo === "NENHUM") return null;
 
-	// Convert HTML content to plain text with WhatsApp formatting
-	const bodyText = convertHtmlToWhatsappText(corpo.conteudo);
-
-	// Replace variables with example values
-	let bodyWithExamples = bodyText;
-	for (const param of corpo.parametros) {
-		const placeholder = `{{${param.nome}}}`;
-		const exemplo = param.exemplo || `{{${param.nome}}}`;
-		bodyWithExamples = bodyWithExamples.replace(new RegExp(placeholder, "g"), exemplo);
+	if (cabecalho.tipo === "TEXTO") {
+		const headerText = replaceMessageTemplateVariablesWithExamples(cabecalho.conteudoTexto ?? "", parameters);
+		return (
+			<div className="px-3 pt-3">
+				<p className="font-semibold text-sm text-gray-900">{headerText || "Texto do cabeçalho"}</p>
+			</div>
+		);
 	}
 
-	// Get current time for timestamp
+	if (cabecalho.tipo === "IMAGEM_DINAMICA") {
+		if (!organizationTheme) {
+			return (
+				<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
+					<ImageIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
+				</div>
+			);
+		}
+		return (
+			<DynamicHeaderImagePreview
+				presetId={cabecalho.imagemDinamicaPreset ?? "CASHBACK_AVAILABLE_BALANCE"}
+				organizationTheme={organizationTheme}
+			/>
+		);
+	}
+
+	if (cabecalho.tipo === "LOCALIZAÇÃO") {
+		const location = cabecalho.conteudoLocalizacao;
+		return (
+			<div className="px-3 pt-3">
+				<div className="flex items-start gap-2 rounded bg-gray-100 p-2">
+					<MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#00a884]" />
+					<div className="min-w-0">
+						<p className="text-sm font-semibold text-gray-900">{location?.titulo || "Localização"}</p>
+						<p className="text-xs text-gray-600">{location?.endereco || "Endereço"}</p>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	const mediaUrl = cabecalho.conteudoMidiaUrl;
+
+	if (cabecalho.tipo === "IMAGEM") {
+		return mediaUrl ? (
+			<img src={mediaUrl} alt="Header preview" className="w-full aspect-video object-cover" />
+		) : (
+			<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
+				<ImageIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
+			</div>
+		);
+	}
+
+	if (cabecalho.tipo === "VIDEO") {
+		return mediaUrl ? (
+			<video src={mediaUrl} className="w-full aspect-video object-cover" controls muted>
+				<track kind="captions" />
+			</video>
+		) : (
+			<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
+				<VideoIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
+			</div>
+		);
+	}
+
+	if (cabecalho.tipo === "DOCUMENTO") {
+		return (
+			<div className="px-3 pt-3">
+				<div className="flex items-center gap-2 rounded bg-gray-500 p-2">
+					<FileTextIcon className="h-8 w-8 text-white" />
+					<div className="flex-1 min-w-0">
+						<p className="text-sm font-medium text-white">Documento</p>
+						<p className="text-xs text-white">{mediaUrl ? "Anexo" : "PDF"}</p>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	return null;
+}
+
+function TemplatePreview({ content, organizationTheme }: TemplatePreviewProps) {
+	if (!content) return null;
+
+	const { cabecalho, corpo, rodape, botoes } = content;
+	const bodyText = convertHtmlToWhatsappText(corpo.conteudo);
+	const bodyWithExamples = replaceMessageTemplateVariablesWithExamples(bodyText, corpo.parametros);
+	const footerText = rodape ? replaceMessageTemplateVariablesWithExamples(rodape, corpo.parametros) : null;
 	const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+	const headerTextLength = cabecalho?.tipo === "TEXTO" ? (cabecalho.conteudoTexto?.length ?? 0) : 0;
 
 	return (
 		<ResponsiveMenuSection title="PREVIEW" icon={<Eye size={15} />}>
 			<div className="w-full h-full flex flex-col items-center justify-center gap-4 pb-4">
-				{/* WhatsApp Background */}
 				<div className="relative w-full max-w-md min-w-[300px] rounded-lg overflow-hidden bg-[#e5ddd5]">
-					{/* Background pattern - similar to WhatsApp */}
 					<div
 						className="absolute inset-0 opacity-10"
 						style={{
@@ -40,109 +137,82 @@ function TemplatePreview({ components }: TemplatePreviewProps) {
 						}}
 					/>
 
-					{/* WhatsApp Message Bubble */}
 					<div className="relative p-4 min-h-[300px] flex items-center justify-center">
 						<div className="bg-white rounded-lg shadow-md overflow-hidden max-w-[85%] relative">
-							{/* Header */}
-							{cabecalho && (
+							{cabecalho && cabecalho.tipo !== "NENHUM" ? (
 								<div className="w-full">
-									{cabecalho.tipo === "text" ? (
-										<div className="px-3 pt-3">
-											<p className="font-semibold text-sm text-gray-900">{cabecalho.conteudo || "Texto do cabeçalho"}</p>
-										</div>
-									) : cabecalho.tipo === "image" ? (
-										cabecalho.conteudo ? (
-											<img src={cabecalho.conteudo} alt="Header preview" className="w-full aspect-video object-cover" />
-										) : (
-											<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
-												<ImageIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
-											</div>
-										)
-									) : cabecalho.tipo === "video" ? (
-										cabecalho.conteudo ? (
-											<video src={cabecalho.conteudo} className="w-full aspect-video object-cover" controls muted />
-										) : (
-											<div className="w-full aspect-video bg-gray-500 flex items-center justify-center">
-												<VideoIcon className="w-16 h-16 text-white" strokeWidth={1.5} />
-											</div>
-										)
-									) : cabecalho.tipo === "document" ? (
-										<div className="px-3 pt-3">
-											<div className="flex items-center gap-2 p-2 bg-gray-500 rounded">
-												<FileTextIcon className="w-8 h-8 text-white" />
-												<div className="flex-1">
-													<p className="text-sm font-medium text-white">Documento</p>
-													<p className="text-xs text-white">PDF</p>
-												</div>
-											</div>
-										</div>
-									) : null}
+									<MessageTemplateHeaderPreview cabecalho={cabecalho} organizationTheme={organizationTheme} parameters={corpo.parametros} />
 								</div>
-							)}
+							) : null}
 
-							{/* Body */}
 							<div className="px-3 py-2 pt-3">
 								<div className="whitespace-pre-wrap text-sm text-gray-900 break-words">{bodyWithExamples || "Digite o conteúdo da mensagem..."}</div>
 
-								{/* Footer */}
-								{rodape && (
+								{footerText ? (
 									<div className="mt-2">
-										<p className="text-xs text-[#00a884]">{rodape.conteudo}</p>
+										<p className="text-xs text-[#00a884]">{footerText}</p>
 									</div>
-								)}
+								) : null}
 
-								{/* Timestamp */}
 								<div className="flex items-center justify-end gap-1 mt-1">
 									<span className="text-[10px] text-gray-500">{currentTime}</span>
 								</div>
 							</div>
 
-							{/* Buttons */}
-							{botoes && botoes.length > 0 && (
+							{botoes.length > 0 ? (
 								<div className="border-t border-gray-200">
 									{botoes.map((botao, index) => (
 										<div key={index.toString()} className="border-b border-gray-200 last:border-b-0 py-2.5 px-4 text-center">
 											<button type="button" className="text-sm font-medium text-[#00a884] disabled:cursor-default w-full" disabled>
-												{botao.tipo === "quick_reply" && "↩️ "}
-												{botao.tipo === "url" && "🔗 "}
-												{botao.tipo === "phone_number" && "📞 "}
+												{getButtonIcon(botao.tipo)}
 												{botao.texto || "Texto do botão"}
 											</button>
 										</div>
 									))}
 								</div>
-							)}
+							) : null}
 						</div>
 					</div>
 				</div>
 
-				{/* Info */}
 				<div className="w-full max-w-md space-y-2 mt-2">
 					<div className="flex items-center justify-between text-xs">
 						<span className="text-foreground/60">Caracteres no corpo:</span>
-						<span className={bodyText.length > 1024 ? "text-red-500 font-semibold" : "text-foreground/80"}>{bodyText.length} / 1024</span>
+						<span className={bodyText.length > MESSAGE_TEMPLATE_BODY_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"}>
+							{bodyText.length} / {MESSAGE_TEMPLATE_BODY_MAX_LENGTH}
+						</span>
 					</div>
 
-					{cabecalho?.tipo === "text" && cabecalho.conteudo && (
+					{cabecalho?.tipo === "TEXTO" && cabecalho.conteudoTexto ? (
 						<div className="flex items-center justify-between text-xs">
 							<span className="text-foreground/60">Caracteres no cabeçalho:</span>
-							<span className={cabecalho.conteudo.length > 60 ? "text-red-500 font-semibold" : "text-foreground/80"}>{cabecalho.conteudo.length} / 60</span>
+							<span
+								className={
+									headerTextLength > MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"
+								}
+							>
+								{headerTextLength} / {MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH}
+							</span>
 						</div>
-					)}
+					) : null}
 
-					{rodape?.conteudo && (
+					{footerText ? (
 						<div className="flex items-center justify-between text-xs">
 							<span className="text-foreground/60">Caracteres no rodapé:</span>
-							<span className={rodape.conteudo.length > 60 ? "text-red-500 font-semibold" : "text-foreground/80"}>{rodape.conteudo.length} / 60</span>
+							<span className={footerText.length > MESSAGE_TEMPLATE_FOOTER_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"}>
+								{footerText.length} / {MESSAGE_TEMPLATE_FOOTER_MAX_LENGTH}
+							</span>
 						</div>
-					)}
+					) : null}
 
-					{botoes && botoes.length > 0 && (
+					{botoes.length > 0 ? (
 						<div className="flex items-center justify-between text-xs">
 							<span className="text-foreground/60">Número de botões:</span>
-							<span className={botoes.length > 10 ? "text-red-500 font-semibold" : "text-foreground/80"}>{botoes.length} / 10</span>
+							<span className={botoes.length > MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT ? "text-red-500 font-semibold" : "text-foreground/80"}>
+								{botoes.length} / {MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT}
+							</span>
 						</div>
-					)}
+					) : null}
 				</div>
 			</div>
 		</ResponsiveMenuSection>

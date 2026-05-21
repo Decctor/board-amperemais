@@ -7,6 +7,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
+import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
 import { useQueryClient } from "@tanstack/react-query";
@@ -183,7 +184,7 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 									</Button>
 								</HoverCardTrigger>
 								<HoverCardContent className="w-[360px] p-2 overflow-auto max-h-[70vh]" side="left" align="end">
-									<TemplatePreview components={selectedTemplateComponents} />
+									<TemplatePreview content={whatsappTemplateComponentsToMessageContent(selectedTemplateComponents)} />
 								</HoverCardContent>
 							</HoverCard>
 						) : null}

@@ -6,6 +6,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
+import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { testCampaign } from "@/lib/mutations/campaigns";
 import { useCampaignById } from "@/lib/queries/campaigns";
@@ -143,7 +144,7 @@ export default function TestCampaign({ campaignId, closeModal, callbacks }: Test
 				</div>
 			</ResponsiveMenuSection>
 
-			<TemplatePreview components={template?.componentes} />
+			<TemplatePreview content={template?.componentes ? whatsappTemplateComponentsToMessageContent(template.componentes) : null} />
 		</ResponsiveMenu>
 	);
 }

@@ -2,6 +2,7 @@ import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connectio
 import type { TGetWhatsappTemplatesInput, TGetWhatsappTemplatesOutputDefault } from "@/app/api/whatsapp-templates/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { createWhatsappTemplatePhone, syncWhatsappTemplates } from "@/lib/mutations/whatsapp-templates";
 import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
@@ -271,7 +272,7 @@ function WhatsappTemplateCard({ whatsappTemplate, whatsappConnectionPhones, onEd
 								side="left"
 								align="end"
 							>
-								<TemplatePreview components={whatsappTemplate.componentes} />
+								<TemplatePreview content={whatsappTemplateComponentsToMessageContent(whatsappTemplate.componentes)} />
 							</HoverCardContent>
 						</HoverCard>
 						<HoverCard>
