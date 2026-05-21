@@ -4,7 +4,7 @@ import { CommercialStatsSection } from "@/components/Stats/CommercialStatsSectio
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { BadgeDollarSign, Megaphone } from "lucide-react";
-
+import WhatsappConnectionsPills from "@/components/WhatsappConnections/ConnectionsPills";
 type DashboardPageProps = {
 	user: TAuthUserSession["user"];
 	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
@@ -14,6 +14,9 @@ type DashboardPageProps = {
 export function DashboardPage({ user, userOrg, membership }: DashboardPageProps) {
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
+			<div className="w-full flex items-center justify-end">
+				<WhatsappConnectionsPills />
+			</div>
 			<Tabs defaultValue="campanhas">
 				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
 					<TabsTrigger value="campanhas" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">

@@ -12,7 +12,7 @@ async function fetchWhatsappConnection() {
 	}
 }
 
-export function useWhatsappConnection() {
+export function useWhatsappConnections() {
 	return {
 		...useQuery({
 			queryKey: ["whatsapp-connection"],
