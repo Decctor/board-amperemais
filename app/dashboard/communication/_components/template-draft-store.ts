@@ -5,6 +5,7 @@ import { WhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
 export type TTemplateChannel = "WHATSAPP" | "EMAIL";
 export type TTemplateStatus = "RASCUNHO" | "ATIVO" | "ARQUIVADO";
 export type TTemplateCategory = "AUTENTICAÇÃO" | "MARKETING" | "UTILIDADE";
+export type TTemplateDynamicHeaderPreset = "CASHBACK_AVAILABLE_BALANCE";
 
 export type TTemplateParameterDraft = {
 	identificadorInterno: string;
@@ -30,9 +31,10 @@ export type TMessageTemplateDraft = {
 		preheader: string;
 	};
 	cabecalho: {
-		tipo: "NENHUM" | "TEXTO" | "IMAGEM" | "VIDEO" | "DOCUMENTO";
+		tipo: "NENHUM" | "TEXTO" | "IMAGEM" | "VIDEO" | "DOCUMENTO" | "IMAGEM_DINAMICA";
 		conteudoTexto: string;
 		conteudoMidiaUrl: string;
+		imagemDinamicaPreset: TTemplateDynamicHeaderPreset;
 	};
 	corpo: {
 		conteudo: string;
@@ -45,6 +47,18 @@ export type TMessageTemplateDraft = {
 };
 
 export const MESSAGE_TEMPLATE_DRAFTS_STORAGE_KEY = "recompra:message-template-drafts";
+
+export const MessageTemplateDynamicHeaderPresetOptions: Array<{
+	id: TTemplateDynamicHeaderPreset;
+	label: string;
+	description: string;
+}> = [
+	{
+		id: "CASHBACK_AVAILABLE_BALANCE",
+		label: "Saldo de cashback",
+		description: "Imagem personalizada com logo, cores da loja e saldo disponível do cliente.",
+	},
+];
 
 export const MessageTemplateNativeVariables = WhatsappTemplateVariables.map((variable) => ({
 	identificador: variable.value,
@@ -98,6 +112,7 @@ export function buildEmptyMessageTemplateDraft(organizationName: string): TMessa
 			tipo: "NENHUM",
 			conteudoTexto: "",
 			conteudoMidiaUrl: "",
+			imagemDinamicaPreset: "CASHBACK_AVAILABLE_BALANCE",
 		},
 		corpo: {
 			conteudo: `Olá {{clientName}}, temos uma condição especial esperando por você na ${organizationName}.`,

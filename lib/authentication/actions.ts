@@ -127,19 +127,12 @@ export async function signUpWithEmail(_: TSignUpWithEmailResult, input: FormData
 			email,
 			telefone: "",
 			usuario: formatAsSlug(nome),
-			permissoes: {
-				resultados: {
-					visualizar: true,
-					criarMetas: true,
-					visualizarMetas: true,
-					editarMetas: true,
-					excluirMetas: true,
-					escopo: [],
-				},
-				usuarios: { visualizar: true, criar: true, editar: true, excluir: true },
-				atendimentos: { visualizar: true, iniciar: true, responder: true, finalizar: true },
-			},
+			dataNascimento: null,
+			dataInsercao: dayjs().toDate(),
 			senha: "",
+			googleId: null,
+			googleRefreshToken: null,
+			googleAccessToken: null,
 		})
 		.returning({ id: users.id });
 

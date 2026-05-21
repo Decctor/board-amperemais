@@ -7,20 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import TemplateMediaUpload from "@/components/Modals/WhatsappTemplates/Blocks/TemplateMediaUpload";
 import { getDefaultAppOrigin, getMessageTemplateButtonPreset, MESSAGE_TEMPLATE_BUTTON_PRESET_OPTIONS } from "@/lib/message-templates/button-presets";
 import { cn } from "@/lib/utils";
-import {
-	ArrowLeft,
-	BadgeCheck,
-	Braces,
-	Check,
-	Eye,
-	FileText,
-	LinkIcon,
-	Mail,
-	Plus,
-	Save,
-	Smartphone,
-	Trash2,
-} from "lucide-react";
+import { ArrowLeft, BadgeCheck, Braces, Check, Eye, FileText, ImageIcon, LinkIcon, Mail, Plus, Save, Smartphone, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -30,20 +17,29 @@ import {
 	extractUnknownTemplateVariables,
 	findStoredMessageTemplateDraft,
 	getDefaultMessageTemplateVariableExample,
+	MessageTemplateDynamicHeaderPresetOptions,
 	MessageTemplateNativeVariables,
 	upsertStoredMessageTemplateDraft,
 	type TMessageTemplateDraft,
 	type TTemplateButtonDraft,
 	type TTemplateChannel,
 	type TTemplateCategory,
+	type TTemplateDynamicHeaderPreset,
 	type TTemplateParameterDraft,
 	type TTemplateStatus,
 } from "../../_components/template-draft-store";
+import { DynamicHeaderImagePreview, type OrganizationTemplateTheme } from "../../_components/dynamic-header-image-preview";
+import { WhatsappIcon } from "@/components/icons";
 
 type MessageTemplateBuilderProps = {
 	templateId: string | null;
 	organizationId: string;
 	organizationName: string;
+	organizationLogoUrl: string | null;
+	organizationPrimaryColor: string | null;
+	organizationPrimaryForeground: string | null;
+	organizationSecondaryColor: string | null;
+	organizationSecondaryForeground: string | null;
 };
 
 const channelOptions: Array<{ id: TTemplateChannel; label: string; icon: React.ElementType; description: string }> = [
@@ -53,11 +49,46 @@ const channelOptions: Array<{ id: TTemplateChannel; label: string; icon: React.E
 
 const categoryOptions: TTemplateCategory[] = ["MARKETING", "UTILIDADE", "AUTENTICAÇÃO"];
 const statusOptions: TTemplateStatus[] = ["RASCUNHO", "ATIVO", "ARQUIVADO"];
+const headerTypeOptions: Array<{ id: TMessageTemplateDraft["cabecalho"]["tipo"]; label: string }> = [
+	{ id: "NENHUM", label: "Nenhum" },
+	{ id: "TEXTO", label: "Texto" },
+	{ id: "IMAGEM", label: "Imagem" },
+	{ id: "VIDEO", label: "Vídeo" },
+	{ id: "DOCUMENTO", label: "Documento" },
+	{ id: "IMAGEM_DINAMICA", label: "Imagem dinâmica" },
+];
 
-export default function MessageTemplateBuilder({ templateId, organizationId, organizationName }: MessageTemplateBuilderProps) {
+export default function MessageTemplateBuilder({
+	templateId,
+	organizationId,
+	organizationName,
+	organizationLogoUrl,
+	organizationPrimaryColor,
+	organizationPrimaryForeground,
+	organizationSecondaryColor,
+	organizationSecondaryForeground,
+}: MessageTemplateBuilderProps) {
 	const router = useRouter();
 	const [draft, setDraft] = useState<TMessageTemplateDraft>(() => buildEmptyMessageTemplateDraft(organizationName));
 	const [hydrated, setHydrated] = useState(false);
+	const organizationTheme = useMemo<OrganizationTemplateTheme>(
+		() => ({
+			name: organizationName,
+			logoUrl: organizationLogoUrl,
+			primaryColor: organizationPrimaryColor || "#24549c",
+			primaryForeground: organizationPrimaryForeground || "#f8fafc",
+			secondaryColor: organizationSecondaryColor || "#ffb900",
+			secondaryForeground: organizationSecondaryForeground || "#171717",
+		}),
+		[
+			organizationLogoUrl,
+			organizationName,
+			organizationPrimaryColor,
+			organizationPrimaryForeground,
+			organizationSecondaryColor,
+			organizationSecondaryForeground,
+		],
+	);
 
 	useEffect(() => {
 		if (templateId) {
@@ -98,7 +129,12 @@ export default function MessageTemplateBuilder({ templateId, organizationId, org
 			const existingById = new Map(current.corpo.parametros.map((parametro) => [parametro.identificadorInterno, parametro]));
 			const nextParametros = detectedVariables.map((identificadorInterno, index) => {
 				const existing = existingById.get(identificadorInterno);
-				if (existing) return { ...existing, identificadorExterno: String(index + 1), exemplo: existing.exemplo || getDefaultMessageTemplateVariableExample(identificadorInterno) };
+				if (existing)
+					return {
+						...existing,
+						identificadorExterno: String(index + 1),
+						exemplo: existing.exemplo || getDefaultMessageTemplateVariableExample(identificadorInterno),
+					};
 				return {
 					identificadorInterno,
 					identificadorExterno: String(index + 1),
@@ -227,7 +263,7 @@ export default function MessageTemplateBuilder({ templateId, organizationId, org
 						<ArrowLeft className="h-4 w-4" />
 					</Button>
 					<div className="min-w-0">
-						<p className="text-muted-foreground text-xs font-bold uppercase">Builder de template universal</p>
+						<p className="text-muted-foreground text-xs font-bold uppercase">BUILDER DE TEMPLATE UNIVERSAL</p>
 						<h1 className="truncate text-xl font-bold">{templateId ? "Editar template" : "Novo template de mensagem"}</h1>
 					</div>
 				</div>
@@ -243,7 +279,7 @@ export default function MessageTemplateBuilder({ templateId, organizationId, org
 			</header>
 
 			<div className="grid min-h-[calc(100vh-12rem)] gap-4 xl:grid-cols-[minmax(280px,0.8fr)_minmax(520px,1.5fr)_minmax(340px,1fr)]">
-				<BuilderPanel icon={<BadgeCheck className="h-4 w-4" />} title="Configuração" description="Identidade, canais e regras de envio.">
+				<BuilderPanel icon={<BadgeCheck className="h-4 w-4" />} title="CONFIGURAÇÃO" description="Identidade, canais e regras de envio.">
 					<div className="flex flex-col gap-4">
 						<Field label="Nome interno">
 							<Input value={draft.nome} onChange={(event) => updateDraft({ nome: event.target.value })} placeholder="cashback_expirando_7_dias" />
@@ -316,10 +352,18 @@ export default function MessageTemplateBuilder({ templateId, organizationId, org
 									E-mail
 								</p>
 								<Field label="Assunto">
-									<Input value={draft.email.assunto} onChange={(event) => updateEmail({ assunto: event.target.value })} placeholder="{{clientName}}, temos novidades" />
+									<Input
+										value={draft.email.assunto}
+										onChange={(event) => updateEmail({ assunto: event.target.value })}
+										placeholder="{{clientName}}, temos novidades"
+									/>
 								</Field>
 								<Field label="Preheader">
-									<Input value={draft.email.preheader} onChange={(event) => updateEmail({ preheader: event.target.value })} placeholder="Texto de apoio exibido na caixa de entrada." />
+									<Input
+										value={draft.email.preheader}
+										onChange={(event) => updateEmail({ preheader: event.target.value })}
+										placeholder="Texto de apoio exibido na caixa de entrada."
+									/>
 								</Field>
 								<p className="text-muted-foreground text-xs">
 									Remetente previsto: <strong>{slugifySender(organizationName)}@recompracrm.com.br</strong>
@@ -329,37 +373,50 @@ export default function MessageTemplateBuilder({ templateId, organizationId, org
 					</div>
 				</BuilderPanel>
 
-				<BuilderPanel icon={<FileText className="h-4 w-4" />} title="Conteúdo universal" description="O mesmo texto alimenta WhatsApp e e-mail.">
+				<BuilderPanel icon={<FileText className="h-4 w-4" />} title="CONTEÚDO UNIVERSAL" description="O mesmo texto alimenta WhatsApp e e-mail.">
 					<div className="flex flex-col gap-4">
-						<div className="grid gap-3 sm:grid-cols-[160px_1fr]">
-							<Field label="Cabeçalho">
-								<Select value={draft.cabecalho.tipo} onValueChange={(value) => updateCabecalho({ tipo: value as TMessageTemplateDraft["cabecalho"]["tipo"] })}>
-									<SelectTrigger className="w-full">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										{["NENHUM", "TEXTO", "IMAGEM", "VIDEO", "DOCUMENTO"].map((type) => (
-											<SelectItem key={type} value={type}>
-												{type}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+						<Field label="Cabeçalho">
+							<Select
+								value={draft.cabecalho.tipo}
+								onValueChange={(value) =>
+									updateCabecalho({
+										tipo: value as TMessageTemplateDraft["cabecalho"]["tipo"],
+										conteudoMidiaUrl: value === "IMAGEM_DINAMICA" ? "" : draft.cabecalho.conteudoMidiaUrl,
+										imagemDinamicaPreset: draft.cabecalho.imagemDinamicaPreset || "CASHBACK_AVAILABLE_BALANCE",
+									})
+								}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{headerTypeOptions.map((type) => (
+										<SelectItem key={type.id} value={type.id}>
+											{type.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</Field>
+						{draft.cabecalho.tipo === "TEXTO" ? (
+							<Field label="Texto do cabeçalho">
+								<Input value={draft.cabecalho.conteudoTexto} onChange={(event) => updateCabecalho({ conteudoTexto: event.target.value })} />
 							</Field>
-							{draft.cabecalho.tipo === "TEXTO" ? (
-								<Field label="Texto do cabeçalho">
-									<Input value={draft.cabecalho.conteudoTexto} onChange={(event) => updateCabecalho({ conteudoTexto: event.target.value })} />
-								</Field>
-							) : draft.cabecalho.tipo !== "NENHUM" ? (
-								<HeaderMediaUpload
-									headerType={draft.cabecalho.tipo}
-									currentUrl={draft.cabecalho.conteudoMidiaUrl}
-									organizationId={organizationId}
-									onUploaded={(url) => updateCabecalho({ conteudoMidiaUrl: url })}
-									onRemoved={() => updateCabecalho({ conteudoMidiaUrl: "" })}
-								/>
-							) : null}
-						</div>
+						) : draft.cabecalho.tipo === "IMAGEM_DINAMICA" ? (
+							<DynamicHeaderPresetPicker
+								presetId={draft.cabecalho.imagemDinamicaPreset || "CASHBACK_AVAILABLE_BALANCE"}
+								organizationTheme={organizationTheme}
+								onChange={(presetId) => updateCabecalho({ imagemDinamicaPreset: presetId })}
+							/>
+						) : draft.cabecalho.tipo !== "NENHUM" ? (
+							<HeaderMediaUpload
+								headerType={draft.cabecalho.tipo}
+								currentUrl={draft.cabecalho.conteudoMidiaUrl}
+								organizationId={organizationId}
+								onUploaded={(url) => updateCabecalho({ conteudoMidiaUrl: url })}
+								onRemoved={() => updateCabecalho({ conteudoMidiaUrl: "" })}
+							/>
+						) : null}
 
 						<Field label="Corpo da mensagem">
 							<VariableTextarea
@@ -394,13 +451,7 @@ export default function MessageTemplateBuilder({ templateId, organizationId, org
 							</div>
 							{draft.botoes.length > 0 ? (
 								draft.botoes.map((button, index) => (
-									<ButtonEditor
-										key={index}
-										button={button}
-										index={index}
-										updateButton={updateButton}
-										removeButton={removeButton}
-									/>
+									<ButtonEditor key={index} button={button} index={index} updateButton={updateButton} removeButton={removeButton} />
 								))
 							) : (
 								<p className="text-muted-foreground text-xs">Nenhum botão configurado.</p>
@@ -435,11 +486,17 @@ export default function MessageTemplateBuilder({ templateId, organizationId, org
 					</div>
 				</BuilderPanel>
 
-				<BuilderPanel icon={<Eye className="h-4 w-4" />} title="Preview e validação" description="Confira a leitura em cada canal.">
+				<BuilderPanel icon={<Eye className="h-4 w-4" />} title="PREVIEW E VALIDAÇÃO" description="Confira a leitura em cada canal.">
 					<div className="flex flex-col gap-4">
-						{draft.canais.includes("WHATSAPP") ? <WhatsappPreview draft={draft} warnings={whatsappWarnings} /> : null}
+						{draft.canais.includes("WHATSAPP") ? <WhatsappPreview draft={draft} organizationTheme={organizationTheme} warnings={whatsappWarnings} /> : null}
 						{draft.canais.includes("EMAIL") ? (
-							<EmailPreview draft={draft} organizationId={organizationId} organizationName={organizationName} warnings={emailWarnings} />
+							<EmailPreview
+								draft={draft}
+								organizationId={organizationId}
+								organizationName={organizationName}
+								organizationTheme={organizationTheme}
+								warnings={emailWarnings}
+							/>
 						) : null}
 					</div>
 				</BuilderPanel>
@@ -448,7 +505,17 @@ export default function MessageTemplateBuilder({ templateId, organizationId, org
 	);
 }
 
-function BuilderPanel({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {
+function BuilderPanel({
+	icon,
+	title,
+	description,
+	children,
+}: {
+	icon: React.ReactNode;
+	title: string;
+	description: string;
+	children: React.ReactNode;
+}) {
 	return (
 		<section className="border-border bg-card flex min-h-0 flex-col rounded-lg border shadow-xs">
 			<div className="border-border border-b px-4 py-3">
@@ -496,6 +563,44 @@ function HeaderMediaUpload({
 				onMediaRemoved={onRemoved}
 				organizationId={organizationId}
 			/>
+		</div>
+	);
+}
+
+function DynamicHeaderPresetPicker({
+	presetId,
+	organizationTheme,
+	onChange,
+}: {
+	presetId: TTemplateDynamicHeaderPreset;
+	organizationTheme: OrganizationTemplateTheme;
+	onChange: (presetId: TTemplateDynamicHeaderPreset) => void;
+}) {
+	const selectedPreset =
+		MessageTemplateDynamicHeaderPresetOptions.find((preset) => preset.id === presetId) ?? MessageTemplateDynamicHeaderPresetOptions[0];
+
+	return (
+		<div className="sm:col-span-2">
+			<div className="flex flex-col gap-3">
+				<Field label="Preset da imagem">
+					<Select value={presetId} onValueChange={(value) => onChange(value as TTemplateDynamicHeaderPreset)}>
+						<SelectTrigger className="w-full">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{MessageTemplateDynamicHeaderPresetOptions.map((preset) => (
+								<SelectItem key={preset.id} value={preset.id}>
+									{preset.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</Field>
+				<div className="text-muted-foreground flex gap-2 rounded-lg bg-background p-3 text-xs leading-5">
+					<ImageIcon className="mt-0.5 h-4 w-4 shrink-0" />
+					<p>{selectedPreset?.description}</p>
+				</div>
+			</div>
 		</div>
 	);
 }
@@ -619,7 +724,9 @@ function VariableTextarea({ value, onChange, placeholder }: { value: string; onC
 							>
 								<span className="flex items-center justify-between gap-2">
 									<span className="text-xs font-bold uppercase">{variable.label}</span>
-									<span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[0.6rem] font-bold">{getVariableContextLabel(variable.contexto)}</span>
+									<span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[0.6rem] font-bold">
+										{getVariableContextLabel(variable.contexto)}
+									</span>
 								</span>
 								<span className="font-mono text-[0.7rem]">{`{{${variable.identificador}}}`}</span>
 								<span className="text-muted-foreground line-clamp-2 text-[0.7rem]">{variable.description}</span>
@@ -723,7 +830,11 @@ function ButtonEditor({
 					<SelectItem value="TELEFONE">TELEFONE</SelectItem>
 				</SelectContent>
 			</Select>
-			<Input value={button.texto} onChange={(event) => updateButton(index, { ...button, texto: event.target.value } as TTemplateButtonDraft)} placeholder="Texto" />
+			<Input
+				value={button.texto}
+				onChange={(event) => updateButton(index, { ...button, texto: event.target.value } as TTemplateButtonDraft)}
+				placeholder="Texto"
+			/>
 			{"url" in button ? (
 				<Input value={button.url} onChange={(event) => updateButton(index, { ...button, url: event.target.value })} placeholder="https://" />
 			) : "telefone" in button ? (
@@ -738,22 +849,37 @@ function ButtonEditor({
 	);
 }
 
-function WhatsappPreview({ draft, warnings }: { draft: TMessageTemplateDraft; warnings: string[] }) {
+function WhatsappPreview({
+	draft,
+	organizationTheme,
+	warnings,
+}: {
+	draft: TMessageTemplateDraft;
+	organizationTheme: OrganizationTemplateTheme;
+	warnings: string[];
+}) {
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex items-center gap-2 text-sm font-bold">
-				<Smartphone className="h-4 w-4 text-emerald-600" />
+				<WhatsappIcon className="h-4 w-4 text-emerald-600" />
 				WhatsApp
 			</div>
 			<div className="rounded-2xl bg-[#e8f5e9] p-3">
 				<div className="ml-auto flex max-w-[92%] flex-col gap-2 rounded-xl bg-white p-3 text-sm shadow-sm">
 					{draft.cabecalho.tipo === "TEXTO" && draft.cabecalho.conteudoTexto ? (
 						<p className="font-bold">{renderResolvedTemplateWithHighlights(draft.cabecalho.conteudoTexto, draft.corpo.parametros)}</p>
+					) : draft.cabecalho.tipo === "IMAGEM_DINAMICA" ? (
+						<DynamicHeaderImagePreview
+							presetId={draft.cabecalho.imagemDinamicaPreset || "CASHBACK_AVAILABLE_BALANCE"}
+							organizationTheme={organizationTheme}
+						/>
 					) : draft.cabecalho.tipo !== "NENHUM" ? (
 						<MediaPreview type={draft.cabecalho.tipo} url={draft.cabecalho.conteudoMidiaUrl} />
 					) : null}
 					<p className="whitespace-pre-wrap leading-5">{renderResolvedTemplateWithHighlights(draft.corpo.conteudo, draft.corpo.parametros)}</p>
-					{draft.rodape ? <p className="text-muted-foreground border-t pt-2 text-xs">{renderResolvedTemplateWithHighlights(draft.rodape, draft.corpo.parametros)}</p> : null}
+					{draft.rodape ? (
+						<p className="text-muted-foreground border-t pt-2 text-xs">{renderResolvedTemplateWithHighlights(draft.rodape, draft.corpo.parametros)}</p>
+					) : null}
 					{draft.botoes.length > 0 ? (
 						<div className="flex flex-col gap-1 border-t pt-2">
 							{draft.botoes.map((button, index) => (
@@ -775,11 +901,13 @@ function EmailPreview({
 	draft,
 	organizationId,
 	organizationName,
+	organizationTheme,
 	warnings,
 }: {
 	draft: TMessageTemplateDraft;
 	organizationId: string;
 	organizationName: string;
+	organizationTheme: OrganizationTemplateTheme;
 	warnings: string[];
 }) {
 	return (
@@ -790,13 +918,26 @@ function EmailPreview({
 			</div>
 			<div className="border-border overflow-hidden rounded-xl border bg-white text-zinc-950">
 				<div className="border-b bg-zinc-50 p-3">
-					<p className="text-xs text-zinc-500">De: {organizationName} &lt;{slugifySender(organizationName)}@recompracrm.com.br&gt;</p>
-					<p className="mt-1 text-sm font-bold">{renderResolvedTemplateWithHighlights(draft.email.assunto || "Assunto do e-mail", draft.corpo.parametros)}</p>
-					{draft.email.preheader ? <p className="text-xs text-zinc-500">{renderResolvedTemplateWithHighlights(draft.email.preheader, draft.corpo.parametros)}</p> : null}
+					<p className="text-xs text-zinc-500">
+						De: {organizationName} &lt;{slugifySender(organizationName)}@recompracrm.com.br&gt;
+					</p>
+					<p className="mt-1 text-sm font-bold">
+						{renderResolvedTemplateWithHighlights(draft.email.assunto || "Assunto do e-mail", draft.corpo.parametros)}
+					</p>
+					{draft.email.preheader ? (
+						<p className="text-xs text-zinc-500">{renderResolvedTemplateWithHighlights(draft.email.preheader, draft.corpo.parametros)}</p>
+					) : null}
 				</div>
 				<div className="p-4">
 					{draft.cabecalho.tipo === "TEXTO" && draft.cabecalho.conteudoTexto ? (
 						<h3 className="mb-3 text-lg font-bold">{renderResolvedTemplateWithHighlights(draft.cabecalho.conteudoTexto, draft.corpo.parametros)}</h3>
+					) : draft.cabecalho.tipo === "IMAGEM_DINAMICA" ? (
+						<div className="mb-4">
+							<DynamicHeaderImagePreview
+								presetId={draft.cabecalho.imagemDinamicaPreset || "CASHBACK_AVAILABLE_BALANCE"}
+								organizationTheme={organizationTheme}
+							/>
+						</div>
 					) : draft.cabecalho.tipo !== "NENHUM" ? (
 						<div className="mb-4">
 							<MediaPreview type={draft.cabecalho.tipo} url={draft.cabecalho.conteudoMidiaUrl} />
@@ -804,7 +945,9 @@ function EmailPreview({
 					) : null}
 					<p className="whitespace-pre-wrap text-sm leading-6">{renderResolvedTemplateWithHighlights(draft.corpo.conteudo, draft.corpo.parametros)}</p>
 					{draft.botoes[0] ? <EmailPreviewButton button={draft.botoes[0]} organizationId={organizationId} /> : null}
-					{draft.rodape ? <p className="mt-5 border-t pt-3 text-xs text-zinc-500">{renderResolvedTemplateWithHighlights(draft.rodape, draft.corpo.parametros)}</p> : null}
+					{draft.rodape ? (
+						<p className="mt-5 border-t pt-3 text-xs text-zinc-500">{renderResolvedTemplateWithHighlights(draft.rodape, draft.corpo.parametros)}</p>
+					) : null}
 				</div>
 			</div>
 			<Warnings warnings={warnings} />
@@ -825,7 +968,11 @@ function EmailPreviewButton({ button, organizationId }: { button: TTemplateButto
 				: "#";
 
 	return (
-		<a href={href} className="mt-4 inline-flex rounded-md bg-zinc-950 px-4 py-2 text-xs font-bold text-white" onClick={(event) => event.preventDefault()}>
+		<a
+			href={href}
+			className="mt-4 inline-flex rounded-md bg-zinc-950 px-4 py-2 text-xs font-bold text-white"
+			onClick={(event) => event.preventDefault()}
+		>
 			{button.texto}
 		</a>
 	);
@@ -846,7 +993,12 @@ function MediaPreview({ type, url }: { type: TMessageTemplateDraft["cabecalho"][
 		);
 	}
 	return (
-		<a href={url} target="_blank" rel="noreferrer" className="bg-muted text-muted-foreground flex h-20 items-center justify-center rounded-lg text-xs font-semibold">
+		<a
+			href={url}
+			target="_blank"
+			rel="noreferrer"
+			className="bg-muted text-muted-foreground flex h-20 items-center justify-center rounded-lg text-xs font-semibold"
+		>
 			Documento anexado
 		</a>
 	);
@@ -894,7 +1046,14 @@ function getWhatsappWarnings(draft: TMessageTemplateDraft) {
 	const warnings: string[] = [];
 	if (draft.corpo.conteudo.length > 1024) warnings.push("O corpo está longo para WhatsApp.");
 	if (draft.botoes.length > 3) warnings.push("WhatsApp costuma funcionar melhor com até 3 botões.");
-	if (draft.cabecalho.tipo !== "NENHUM" && draft.cabecalho.tipo !== "TEXTO" && !draft.cabecalho.conteudoMidiaUrl) warnings.push("Envie a mídia do cabeçalho.");
+	if (
+		draft.cabecalho.tipo !== "NENHUM" &&
+		draft.cabecalho.tipo !== "TEXTO" &&
+		draft.cabecalho.tipo !== "IMAGEM_DINAMICA" &&
+		!draft.cabecalho.conteudoMidiaUrl
+	) {
+		warnings.push("Envie a mídia do cabeçalho.");
+	}
 	return warnings;
 }
 

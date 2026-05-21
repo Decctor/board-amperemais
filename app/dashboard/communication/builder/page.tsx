@@ -18,6 +18,11 @@ export default async function MessageTemplateBuilderPage({ searchParams }: Messa
 			templateId={typeof templateId === "string" && templateId.trim().length > 0 ? templateId : null}
 			organizationId={authSession.membership.organizacao.id}
 			organizationName={authSession.membership.organizacao.nome}
+			organizationLogoUrl={authSession.membership.organizacao.logoUrl}
+			organizationPrimaryColor={authSession.membership.organizacao.corPrimaria}
+			organizationPrimaryForeground={authSession.membership.organizacao.corPrimariaForeground}
+			organizationSecondaryColor={authSession.membership.organizacao.corSecundaria}
+			organizationSecondaryForeground={authSession.membership.organizacao.corSecundariaForeground}
 		/>
 	);
 }
