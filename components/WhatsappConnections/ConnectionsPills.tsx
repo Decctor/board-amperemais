@@ -43,10 +43,17 @@ export default function WhatsappConnectionsPills() {
 					{connectionPhones.map((connection) => (
 						<ConnectionPill key={connection.phoneId} connection={connection} />
 					))}
-					<Button variant={connectionPhones.length > 0 ? "secondary" : "default"} size="sm" className="flex items-center gap-1.5" asChild>
-						<Link href="/api/integrations/whatsapp/auth" prefetch={false}>
-							<PlusIcon className="w-4 h-4 min-w-4 min-h-4" />
-							ADICIONAR NÚMERO
+					<Button
+						variant={connectionPhones.length > 0 ? "secondary" : "default"}
+						size="sm"
+						className="gap-0 px-2 transition-all duration-500 ease-out hover:gap-1.5 hover:px-3"
+						asChild
+					>
+						<Link href="/api/integrations/whatsapp/auth" prefetch={false} aria-label="Adicionar número">
+							<PlusIcon className="h-4 w-4 shrink-0" />
+							<span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 ease-out group-hover/button:max-w-36 group-hover/button:opacity-100 group-focus-visible/button:max-w-36 group-focus-visible/button:opacity-100">
+								ADICIONAR NÚMERO
+							</span>
 						</Link>
 					</Button>
 				</>
