@@ -5,7 +5,8 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { hexToHsl, hexToRgba } from "@/components/Providers/OrgColorsProvider";
 import LogoRecompraHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL.svg";
-import { getDefaultMessageTemplateVariableExample, type TTemplateDynamicHeaderPreset } from "./template-draft-store";
+import { type TMessageTemplateDynamicHeaderPresetId } from "@/lib/message-templates/headers/dynamic-presets";
+import { getDefaultMessageTemplateVariableExample } from "@/lib/message-templates/variables";
 
 const RECOMPRA_BRAND_BLUE = "#24549C";
 
@@ -23,7 +24,7 @@ export function DynamicHeaderImagePreview({
 	organizationTheme,
 	className,
 }: {
-	presetId: TTemplateDynamicHeaderPreset;
+	presetId: TMessageTemplateDynamicHeaderPresetId;
 	organizationTheme: OrganizationTemplateTheme;
 	className?: string;
 }) {
@@ -173,7 +174,7 @@ function parseCurrencyDisplay(value: string) {
 	return { prefix: "R$", amount: match[2].trim() };
 }
 
-function getDynamicHeaderPresetSample(presetId: TTemplateDynamicHeaderPreset) {
+function getDynamicHeaderPresetSample(presetId: TMessageTemplateDynamicHeaderPresetId) {
 	if (presetId === "CASHBACK_AVAILABLE_BALANCE") {
 		return {
 			clientName: getDefaultMessageTemplateVariableExample("clientName"),

@@ -3,6 +3,7 @@ import z from "zod";
 export const MessageTemplateStatusEnum = z.enum(["RASCUNHO", "ATIVO", "ARQUIVADO"]);
 export const MessageTemplateCategoryEnum = z.enum(["AUTENTICAÇÃO", "MARKETING", "UTILIDADE"]);
 export const MessageTemplateButtonPresetEnum = z.enum(["CLIENT_POI_PROFILE"]);
+export const MessageTemplateDynamicHeaderPresetEnum = z.enum(["CASHBACK_AVAILABLE_BALANCE"]);
 
 const MessageTemplateContentSchema = z.object({
 	// Email only
@@ -17,10 +18,11 @@ const MessageTemplateContentSchema = z.object({
 
 	cabecalho: z
 		.object({
-			tipo: z.enum(["TEXTO", "IMAGEM", "VIDEO", "DOCUMENTO", "LOCALIZAÇÃO"], {
+			tipo: z.enum(["NENHUM", "TEXTO", "IMAGEM", "VIDEO", "DOCUMENTO", "IMAGEM_DINAMICA", "LOCALIZAÇÃO"], {
 				required_error: "Tipo de cabeçalho não informado.",
 				invalid_type_error: "Tipo não válido para o tipo de cabeçalho.",
 			}),
+			imagemDinamicaPreset: MessageTemplateDynamicHeaderPresetEnum.optional().nullable(),
 			// Applicable to "TEXTO" type
 			conteudoTexto: z
 				.string({

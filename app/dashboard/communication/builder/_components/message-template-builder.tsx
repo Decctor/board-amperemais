@@ -405,7 +405,6 @@ export default function MessageTemplateBuilder({
 						) : draft.cabecalho.tipo === "IMAGEM_DINAMICA" ? (
 							<DynamicHeaderPresetPicker
 								presetId={draft.cabecalho.imagemDinamicaPreset || "CASHBACK_AVAILABLE_BALANCE"}
-								organizationTheme={organizationTheme}
 								onChange={(presetId) => updateCabecalho({ imagemDinamicaPreset: presetId })}
 							/>
 						) : draft.cabecalho.tipo !== "NENHUM" ? (
@@ -569,11 +568,9 @@ function HeaderMediaUpload({
 
 function DynamicHeaderPresetPicker({
 	presetId,
-	organizationTheme,
 	onChange,
 }: {
 	presetId: TTemplateDynamicHeaderPreset;
-	organizationTheme: OrganizationTemplateTheme;
 	onChange: (presetId: TTemplateDynamicHeaderPreset) => void;
 }) {
 	const selectedPreset =
