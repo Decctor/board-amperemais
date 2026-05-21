@@ -4,6 +4,14 @@ import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProce
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import {
+	buildWhatsappTemplateSyncPatch,
+	getMetaWhatsappTemplate,
+	META_CATEGORY_TO_MESSAGE_TEMPLATE,
+	type TMessageTemplateApprovalStatus,
+	type TMessageTemplateCategory,
+	type TMessageTemplateQuality,
+} from "@/lib/message-templates";
+import {
 	type AppWhatsappStatus,
 	isMessageEchoEvent,
 	isMessageEvent,
@@ -19,13 +27,16 @@ import {
 } from "@/lib/whatsapp/parsing";
 import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
+import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
 import { db } from "@/services/drizzle";
 import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
 import { interactions } from "@/services/drizzle/schema/interactions";
-import { whatsappTemplatePhones } from "@/services/drizzle/schema/whatsapp-templates";
+import { messageTemplates } from "@/services/drizzle/schema/message-templates";
+import { whatsappConnectionPhones } from "@/services/drizzle/schema/whatsapp-connections";
+import { whatsappTemplatePhones, whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
 import { supabaseClient } from "@/services/supabase";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
@@ -131,7 +142,7 @@ export const POST = appApiHandler({
 
 /**
  * Handle template status/quality/category updates
- * Now targets the whatsappTemplatePhones child table instead of parent
+ * Keeps the legacy WhatsApp-only tables and the universal message template metadata in sync.
  */
 async function handleTemplateEvent(body: WebhookBody): Promise<void> {
 	const statusUpdate = parseTemplateStatusUpdate(body);
@@ -145,6 +156,11 @@ async function handleTemplateEvent(body: WebhookBody): Promise<void> {
 				dataAtualizacao: new Date(),
 			})
 			.where(eq(whatsappTemplatePhones.whatsappTemplateId, statusUpdate.messageTemplateId));
+		await updateUniversalTemplatePhoneMetadata(statusUpdate.messageTemplateId, {
+			status: statusUpdate.status,
+			rejeicao: statusUpdate.reason ?? null,
+		});
+		await syncUniversalTemplateComponentsFromMeta(statusUpdate.messageTemplateId);
 	}
 
 	const qualityUpdate = parseTemplateQualityUpdate(body);
@@ -157,18 +173,143 @@ async function handleTemplateEvent(body: WebhookBody): Promise<void> {
 				dataAtualizacao: new Date(),
 			})
 			.where(eq(whatsappTemplatePhones.whatsappTemplateId, qualityUpdate.messageTemplateId));
+		await updateUniversalTemplatePhoneMetadata(qualityUpdate.messageTemplateId, {
+			qualidade: qualityUpdate.quality,
+		});
 	}
 
-	// Note: Category updates still apply to the parent template, but since category
-	// is the same across all phones, we need to update via the parent.
-	// For now, we'll skip category updates as they're less common and the parent
-	// table no longer has whatsappTemplateId. If needed, we can lookup the parent
-	// via the child table and update it.
 	const categoryUpdate = parseTemplateCategoryUpdate(body);
 	if (categoryUpdate?.category) {
 		console.log("[WHATSAPP_WEBHOOK] Template category update received:", categoryUpdate);
-		// Category updates would need to find the parent template through the child
-		// and update it there. For now, logging only.
+		await updateLegacyTemplateCategory(categoryUpdate.messageTemplateId, categoryUpdate.category);
+		await updateUniversalTemplateCategory(categoryUpdate.messageTemplateId, categoryUpdate.category);
+		await syncUniversalTemplateComponentsFromMeta(categoryUpdate.messageTemplateId);
+	}
+}
+
+function mapMetaWebhookCategory(category: string): TMessageTemplateCategory | null {
+	const normalizedCategory = category.toUpperCase() as keyof typeof META_CATEGORY_TO_MESSAGE_TEMPLATE;
+	return META_CATEGORY_TO_MESSAGE_TEMPLATE[normalizedCategory] ?? null;
+}
+
+async function updateLegacyTemplateCategory(messageTemplateId: string, category: string): Promise<void> {
+	const mappedCategory = mapMetaWebhookCategory(category);
+	if (!mappedCategory) return;
+
+	const linkedPhones = await db.query.whatsappTemplatePhones.findMany({
+		where: eq(whatsappTemplatePhones.whatsappTemplateId, messageTemplateId),
+		columns: { templateId: true },
+	});
+	const templateIds = Array.from(new Set(linkedPhones.map((phone) => phone.templateId)));
+	if (templateIds.length === 0) return;
+
+	await db.update(whatsappTemplates).set({ categoria: mappedCategory }).where(inArray(whatsappTemplates.id, templateIds));
+}
+
+async function findUniversalTemplatesByMetaTemplateId(messageTemplateId: string) {
+	return db.query.messageTemplates.findMany({
+		where: sql`EXISTS (
+			SELECT 1
+			FROM jsonb_each(${messageTemplates.metadados}->'porNumeroTelefone') AS entry(key, value)
+			WHERE value->>'idExterno' = ${messageTemplateId}
+		)`,
+	});
+}
+
+async function updateUniversalTemplatePhoneMetadata(
+	messageTemplateId: string,
+	update: { status?: TMessageTemplateApprovalStatus; qualidade?: TMessageTemplateQuality; rejeicao?: string | null },
+): Promise<void> {
+	const templates = await findUniversalTemplatesByMetaTemplateId(messageTemplateId);
+	for (const template of templates) {
+		const nextPhoneMetadata = Object.fromEntries(
+			Object.entries(template.metadados.porNumeroTelefone).map(([phoneId, metadata]) => [
+				phoneId,
+				metadata.idExterno === messageTemplateId
+					? {
+							...metadata,
+							...(update.status ? { status: update.status } : {}),
+							...(update.qualidade ? { qualidade: update.qualidade } : {}),
+						}
+					: metadata,
+			]),
+		) satisfies TMessageTemplateMetadata["porNumeroTelefone"];
+
+		await db
+			.update(messageTemplates)
+			.set({
+				metadados: {
+					...template.metadados,
+					porNumeroTelefone: nextPhoneMetadata,
+				},
+				alerta: update.rejeicao ?? template.alerta,
+				dataAtualizacao: new Date(),
+			})
+			.where(eq(messageTemplates.id, template.id));
+	}
+}
+
+async function updateUniversalTemplateCategory(messageTemplateId: string, category: string): Promise<void> {
+	const mappedCategory = mapMetaWebhookCategory(category);
+	if (!mappedCategory) return;
+
+	const templates = await findUniversalTemplatesByMetaTemplateId(messageTemplateId);
+	for (const template of templates) {
+		await db
+			.update(messageTemplates)
+			.set({
+				categoria: mappedCategory,
+				dataAtualizacao: new Date(),
+			})
+			.where(eq(messageTemplates.id, template.id));
+	}
+}
+
+async function syncUniversalTemplateComponentsFromMeta(messageTemplateId: string): Promise<void> {
+	const templates = await findUniversalTemplatesByMetaTemplateId(messageTemplateId);
+	for (const template of templates) {
+		const matchingPhoneIds = Object.entries(template.metadados.porNumeroTelefone)
+			.filter(([, metadata]) => metadata.idExterno === messageTemplateId)
+			.map(([phoneId]) => phoneId);
+
+		for (const phoneId of matchingPhoneIds) {
+			try {
+				const phone = await db.query.whatsappConnectionPhones.findFirst({
+					where: eq(whatsappConnectionPhones.id, phoneId),
+					with: { conexao: { columns: { token: true } } },
+				});
+				if (!phone?.conexao?.token) continue;
+
+				const metaTemplate = await getMetaWhatsappTemplate({
+					accessToken: phone.conexao.token,
+					templateId: messageTemplateId,
+				});
+				const patch = buildWhatsappTemplateSyncPatch({
+					template,
+					connectionId: phoneId,
+					metaTemplate,
+					preserveLocalContent: false,
+				});
+
+				await db
+					.update(messageTemplates)
+					.set({
+						nome: patch.nome,
+						categoria: patch.categoria,
+						linguagem: patch.linguagem,
+						conteudo: patch.conteudo,
+						metadados: patch.metadados,
+						dataAtualizacao: new Date(),
+					})
+					.where(eq(messageTemplates.id, template.id));
+			} catch (error) {
+				console.error("[WHATSAPP_WEBHOOK] Failed to sync universal template components:", {
+					messageTemplateId,
+					phoneId,
+					error,
+				});
+			}
+		}
 	}
 }
 

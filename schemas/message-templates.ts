@@ -5,7 +5,7 @@ export const MessageTemplateCategoryEnum = z.enum(["AUTENTICAÇÃO", "MARKETING"
 export const MessageTemplateButtonPresetEnum = z.enum(["CLIENT_POI_PROFILE"]);
 export const MessageTemplateDynamicHeaderPresetEnum = z.enum(["CASHBACK_AVAILABLE_BALANCE"]);
 
-const MessageTemplateContentSchema = z.object({
+export const MessageTemplateContentSchema = z.object({
 	// Email only
 	assunto: z.string({
 		required_error: "Assunto não informado.",
@@ -167,7 +167,7 @@ const MessageTemplateContentSchema = z.object({
 	),
 });
 export type TMessageTemplateContent = z.infer<typeof MessageTemplateContentSchema>;
-const MessageTemplateMetadataSchema = z.object({
+export const MessageTemplateMetadataSchema = z.object({
 	porNumeroTelefone: z.record(
 		z.string({
 			required_error: "ID da integração não informado.",

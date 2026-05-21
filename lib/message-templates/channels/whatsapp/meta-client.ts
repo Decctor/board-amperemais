@@ -55,6 +55,50 @@ export async function getMetaWhatsappTemplate({
 	}
 }
 
+export async function editMetaWhatsappTemplate({
+	accessToken,
+	templateId,
+	payload,
+}: {
+	accessToken: string;
+	templateId: string;
+	payload: Partial<TMetaCreateTemplatePayload>;
+}): Promise<{ success: boolean }> {
+	try {
+		const response = await axios.post(`${GRAPH_API_BASE_URL}/${templateId}`, payload, {
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+				"Content-Type": "application/json",
+			},
+		});
+		return response.data;
+	} catch (error) {
+		throw new Error(getMetaApiErrorMessage(error, "Erro ao editar template no WhatsApp."));
+	}
+}
+
+export async function deleteMetaWhatsappTemplate({
+	accessToken,
+	whatsappBusinessAccountId,
+	templateName,
+}: {
+	accessToken: string;
+	whatsappBusinessAccountId: string;
+	templateName: string;
+}): Promise<{ success: boolean }> {
+	try {
+		const response = await axios.delete(`${GRAPH_API_BASE_URL}/${whatsappBusinessAccountId}/message_templates`, {
+			params: { name: templateName },
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+			},
+		});
+		return response.data;
+	} catch (error) {
+		throw new Error(getMetaApiErrorMessage(error, "Erro ao excluir template no WhatsApp."));
+	}
+}
+
 export async function listMetaWhatsappTemplates({
 	accessToken,
 	whatsappBusinessAccountId,
