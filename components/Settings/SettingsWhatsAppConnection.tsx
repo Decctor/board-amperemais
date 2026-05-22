@@ -6,7 +6,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToPhone } from "@/lib/formatting";
 import { disconnectInternalGateway } from "@/lib/mutations/internal-gateway";
 import { deleteWhatsappConnection } from "@/lib/mutations/whatsapp-connections";
-import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
+import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, Calendar, Cloud, Key, Loader2, Phone, QrCode, RefreshCw, Wifi, WifiOff } from "lucide-react";
@@ -27,7 +27,7 @@ type SettingsWhatsAppConnectionProps = {
 };
 
 export default function SettingsWhatsAppConnection({ user }: SettingsWhatsAppConnectionProps) {
-	const { data: whatsappConnections, isPending, isError } = useWhatsappConnection();
+	const { data: whatsappConnections, isPending, isError } = useWhatsappConnections();
 
 	return (
 		<div className="flex h-full grow flex-col gap-3">

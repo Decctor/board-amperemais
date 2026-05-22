@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { createWhatsappTemplatePhone, syncWhatsappTemplates } from "@/lib/mutations/whatsapp-templates";
-import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
+import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,7 +32,7 @@ export default function SettingsWhatsappTemplates({ user, membership }: Settings
 	const [newWhatsappTemplateModalIsOpen, setNewWhatsappTemplateModalIsOpen] = useState(false);
 	const [editWhatsappTemplateId, setEditWhatsappTemplateId] = useState<string | null>(null);
 
-	const { data: whatsappConnections } = useWhatsappConnection();
+	const { data: whatsappConnections } = useWhatsappConnections();
 	const {
 		data: whatsappTemplatesResult,
 		queryKey,

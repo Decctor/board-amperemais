@@ -5,7 +5,7 @@ import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
+import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
 import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
@@ -28,7 +28,7 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 	const [editTemplateId, setEditTemplateId] = useState<string | null>(null);
 	const queryClient = useQueryClient();
 
-	const { data: whatsappConnections } = useWhatsappConnection();
+	const { data: whatsappConnections } = useWhatsappConnections();
 	const {
 		data: whatsappTemplatesResult,
 		updateParams,

@@ -2,7 +2,7 @@
 
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
+import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import ChatsHub from "./ChatsHub";
@@ -13,7 +13,7 @@ type ChatsMainProps = {
 };
 
 export default function ChatsMain({ user, organizationId }: ChatsMainProps) {
-	const { data: whatsappConnections, isPending, isError, error } = useWhatsappConnection();
+	const { data: whatsappConnections, isPending, isError, error } = useWhatsappConnections();
 
 	if (isPending) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
