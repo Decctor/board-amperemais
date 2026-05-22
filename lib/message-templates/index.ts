@@ -1,4 +1,5 @@
 export * from "./adapters/whatsapp-components";
+export * from "./adapters/whatsapp-template";
 export * from "./constants";
 export * from "./formatting";
 export * from "./parsing";

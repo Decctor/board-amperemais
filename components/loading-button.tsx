@@ -12,8 +12,8 @@ interface LoadingButtonProps extends ButtonProps {
 
 const LoadingButton = forwardRef<HTMLButtonElement, LoadingButtonProps>(({ loading = false, className, children, ...props }, ref) => {
 	return (
-		<Button ref={ref} {...props} disabled={props.disabled ? props.disabled : loading} className={cn(className, "relative")}>
-			<span className={cn(loading ? "opacity-0" : "")}>{children}</span>
+		<Button ref={ref} {...props} disabled={props.disabled || loading} className={cn(className, "relative")}>
+			{loading ? <span className="inline-flex items-center justify-center gap-[inherit] opacity-0">{children}</span> : children}
 			{loading ? (
 				<div className="absolute inset-0 grid place-items-center">
 					<AnimatedSpinner className="h-6 w-6" />

@@ -26,6 +26,7 @@ export type TMessageTemplateWhatsappPhone = {
 	numero: string;
 	nome: string;
 	whatsappBusinessAccountId: string | null;
+	whatsappTelefoneId: string | null;
 	conexao: {
 		id: string;
 		token: string | null;

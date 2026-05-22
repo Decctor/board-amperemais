@@ -43,7 +43,7 @@ export function useMessageTemplates({ initialParams }: UseMessageTemplatesParams
 	};
 }
 
-export function useMessageTemplateById(id: string) {
+export function useMessageTemplateById({ id }: { id: string }) {
 	return {
 		...useQuery({
 			queryKey: ["message-template-by-id", id],

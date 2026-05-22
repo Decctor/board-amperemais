@@ -22,15 +22,7 @@ import {
 import { createSimplifiedSearchCondition } from "@/lib/search";
 
 const CreateMessageTemplateInputSchema = z.object({
-	template: z.object({
-		nome: z.string({ required_error: "Nome do template não informado." }),
-		status: z.enum(["RASCUNHO", "ATIVO", "ARQUIVADO"]).optional().default("RASCUNHO"),
-		alerta: z.string().optional().nullable(),
-		metadados: MessageTemplateMetadataSchema.optional(),
-		conteudo: MessageTemplateContentSchema,
-		linguagem: z.string().optional().default("pt_BR"),
-		categoria: z.enum(["AUTENTICAÇÃO", "MARKETING", "UTILIDADE"]),
-	}),
+	messageTemplate: MessageTemplateSchema.omit({ autorId: true, dataInsercao: true }),
 	submitWhatsapp: z.boolean().optional().default(true),
 });
 export type TCreateMessageTemplateInput = z.infer<typeof CreateMessageTemplateInputSchema>;
@@ -39,20 +31,21 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const content = normalizeContentForStorage(input.template.conteudo);
+	const content = normalizeContentForStorage(input.messageTemplate.conteudo);
 	assertWhatsappValidation(content);
 
 	const [insertedTemplate] = await db
 		.insert(messageTemplates)
 		.values({
+			...input.messageTemplate,
 			organizacaoId: organizationId,
-			nome: input.template.nome,
-			status: input.template.status,
-			alerta: input.template.alerta,
-			metadados: input.template.metadados ?? createEmptyMessageTemplateMetadata(),
+			nome: input.messageTemplate.nome,
+			status: input.messageTemplate.status,
+			alerta: input.messageTemplate.alerta,
+			metadados: input.messageTemplate.metadados ?? createEmptyMessageTemplateMetadata(),
 			conteudo: content,
-			linguagem: input.template.linguagem,
-			categoria: input.template.categoria,
+			linguagem: input.messageTemplate.linguagem,
+			categoria: input.messageTemplate.categoria,
 			autorId: session.user.id,
 		})
 		.returning();
@@ -117,7 +110,8 @@ export type TCreateMessageTemplateOutput = Awaited<ReturnType<typeof createMessa
 async function createMessageTemplateRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	const input = CreateMessageTemplateInputSchema.parse(await request.json());
+	const payload = await request.json();
+	const input = CreateMessageTemplateInputSchema.parse(payload);
 	const result = await createMessageTemplate({ input, session });
 	return NextResponse.json(result, { status: 201 });
 }

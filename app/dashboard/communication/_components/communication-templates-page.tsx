@@ -1,45 +1,26 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-	CalendarPlus,
-	CircleGauge,
-	Copy,
-	Diamond,
-	Edit3,
-	Eye,
-	Link,
-	Mail,
-	MessageSquareText,
-	Pencil,
-	Phone,
-	Plus,
-	Search,
-	Send,
-	Smartphone,
-	Sparkles,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { buildEmptyMessageTemplateDraft, type TMessageTemplateDraft, type TTemplateChannel } from "./template-draft-store";
+import { CircleGauge, Diamond, Eye, Pencil, Phone, Plus, Send } from "lucide-react";
 import { useMessageTemplates } from "@/lib/queries/message-templates";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { TGetMessageTemplatesOutputDefault } from "@/app/api/message-templates/route";
-import { PencilIcon } from "lucide-react";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { BsCalendarPlus } from "react-icons/bs";
+import { TemplatePhoneHoverItem } from "@/components/Modals/WhatsappTemplates/Phones/TemplatePhoneHoverItem";
 import { ViewWhatsappTemplatePhone } from "@/components/Modals/WhatsappTemplates/Phones/ViewWhatsappTemplatePhone";
 import { useMemo, useState } from "react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
 import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
 import { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
-import { LoadingButton } from "@/components/loading-button";
-
+import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import TestMessageTemplate from "@/components/Modals/MessageTemplates/TestMessageTemplate";
 type CommunicationTemplatesPageProps = {
 	organizationName: string;
 };
@@ -55,7 +36,9 @@ function getWhatsappConnectionPhones(whatsappConnections: TGetWhatsappConnection
 	);
 }
 type TGetWhatsappConnectionPhones = ReturnType<typeof getWhatsappConnectionPhones>;
-export default function CommunicationTemplatesPage({ organizationName }: CommunicationTemplatesPageProps) {
+export default function CommunicationTemplatesPage({ organizationName: _organizationName }: CommunicationTemplatesPageProps) {
+	const queryClient = useQueryClient();
+
 	const { data: whatsappConnections } = useWhatsappConnection();
 	const {
 		data: templatesResult,
@@ -64,17 +47,22 @@ export default function CommunicationTemplatesPage({ organizationName }: Communi
 		isError,
 		error,
 		params,
+		queryKey,
 		updateParams,
 	} = useMessageTemplates({ initialParams: { search: "", page: 1 } });
 	const templates = templatesResult?.messageTemplates ?? [];
 	const templatesMatched = templatesResult?.messageTemplatesMatched;
 	const totalPages = templatesResult?.totalPages;
+
+	const whatsappConnectionPhones = useMemo(() => getWhatsappConnectionPhones(whatsappConnections ?? []), [whatsappConnections]);
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex flex-col gap-3">
 				<div className="w-full flex items-center justify-end gap-2">
-					<Button className="flex items-center gap-2" size="sm" asChild>
-						<Link href="/dashboard/communication/builder">
+					<Button size="sm" asChild>
+						<Link href="/dashboard/communication/builder" className="flex items-center gap-2">
 							<Plus className="w-4 h-4 min-w-4 min-h-4" />
 							NOVO TEMPLATE
 						</Link>
@@ -83,7 +71,7 @@ export default function CommunicationTemplatesPage({ organizationName }: Communi
 				<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 					<Input
 						value={params.search ?? ""}
-						placeholder="Pesquisar campanha..."
+						placeholder="Pesquisar template..."
 						onChange={(e) => updateParams({ search: e.target.value })}
 						className="grow rounded-xl"
 					/>
@@ -98,12 +86,19 @@ export default function CommunicationTemplatesPage({ organizationName }: Communi
 					itemsShowingText={`${templates.length} ${templates.length === 1 ? "template exibido." : "templates exibidos."}`}
 				/>
 			</div>
-			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando campanhas...</p> : null}
+			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando templates...</p> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess ? (
 				<div className="w-full flex flex-col gap-1.5">
 					{templates.length > 0 ? (
-						templates.map((template) => <TemplateCard key={template.id} template={template} callbacks={{}} />)
+						templates.map((template) => (
+							<TemplateCard
+								key={template.id}
+								template={template}
+								callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+								whatsappConnectionPhones={whatsappConnectionPhones}
+							/>
+						))
 					) : (
 						<p className="w-full flex items-center justify-center">Nenhuma template encontrada</p>
 					)}
@@ -122,18 +117,11 @@ type TemplateCardProps = {
 		onError?: () => void;
 		onSettled?: () => void;
 	};
-	handleEditClick: () => void;
 };
 
-function TemplateCard({ template, whatsappConnectionPhones, callbacks, handleEditClick }: TemplateCardProps) {
+function TemplateCard({ template, whatsappConnectionPhones, callbacks }: TemplateCardProps) {
 	const [viewWhatsappTemplatePhoneId, setViewWhatsappTemplatePhoneId] = useState<string | null>(null);
-
-	const statusClassName =
-		template.status === "ATIVO"
-			? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
-			: template.status === "ARQUIVADO"
-				? "bg-zinc-500/10 text-zinc-700 border-zinc-500/20"
-				: "bg-amber-500/10 text-amber-700 border-amber-500/20";
+	const [testingTemplate, setTestingTemplate] = useState(false);
 
 	const byPhone = useMemo(
 		() =>
@@ -149,70 +137,6 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks, handleEdi
 	);
 	const byPhoneApprovedCount = useMemo(() => byPhone.filter((phone) => phone.status === "APROVADO").length, [byPhone]);
 
-	const PhoneItemCard = useMemo(
-		() =>
-			({
-				connectionPhone,
-				handleCreateTemplatePhone,
-				isCreatingWhatsappTemplatePhone,
-				viewWhatsappTemplatePhone,
-			}: {
-				connectionPhone: Exclude<TGetWhatsappConnectionsOutput["data"], null>[number]["telefones"][number];
-				handleCreateTemplatePhone: (id: string) => void;
-				isCreatingWhatsappTemplatePhone: boolean;
-				viewWhatsappTemplatePhone: string | null;
-			}) => {
-				const phoneTemplateData = byPhone.find((phone) => phone.id === connectionPhone.id);
-				return (
-					<div className="w-full flex items-center gap-2 justify-between">
-						<div className="flex items-center gap-1.5">
-							<Phone className="w-3 h-3 min-w-3 min-h-3" />
-							<span className="text-xs font-medium text-foreground/80">{connectionPhone.nome}</span>
-						</div>
-						<div className="flex items-center gap-1.5">
-							{phoneTemplateData ? (
-								<div className="flex items-center gap-1.5">
-									<div
-										className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
-											"bg-blue-500 text-white": phoneTemplateData.status === "APROVADO",
-											"bg-primary/20 text-foreground": phoneTemplateData.status === "PENDENTE",
-											"bg-red-500 text-white": phoneTemplateData.status === "REJEITADO",
-											"bg-orange-500 text-white": phoneTemplateData.status === "PAUSADO",
-											"bg-gray-500 text-white": phoneTemplateData.status === "DESABILITADO" || phoneTemplateData.status === "RASCUNHO",
-										})}
-									>
-										{phoneTemplateData.status}
-									</div>
-									<div className="flex items-center gap-1">
-										<CircleGauge className="w-4 h-4 min-w-4 min-h-4" />
-										<p className="text-[0.65rem] font-medium text-foreground/80">{phoneTemplateData.qualidade}</p>
-									</div>
-									<Button
-										variant="ghost"
-										size="fit"
-										className="flex items-center gap-1.5 text-[0.65rem] px-2 py-1 rounded-xl"
-										onClick={() => setViewWhatsappTemplatePhoneId(phoneTemplateData.id)}
-									>
-										<Eye className="w-4 h-4 min-w-4 min-h-4" />
-									</Button>
-								</div>
-							) : (
-								<LoadingButton
-									onClick={() => handleCreateTemplatePhone(connectionPhone.id)}
-									variant="ghost"
-									size="fit"
-									className="flex items-center gap-1.5 text-[0.65rem] px-2 py-1 rounded-xl"
-									loading={isCreatingWhatsappTemplatePhone}
-								>
-									ADICIONAR
-								</LoadingButton>
-							)}
-						</div>
-					</div>
-				);
-			},
-		[whatsappTemplate.telefones, whatsappConnectionPhones],
-	);
 	return (
 		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex flex-col gap-2">
@@ -262,27 +186,36 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks, handleEdi
 									</div>
 								</div>
 							</HoverCardTrigger>
-							<HoverCardContent className="flex flex-col gap-3 w-72 p-3">
-								<h3 className="text-xs font-medium tracking-tight">TELEFONES CONECTADOS</h3>
-								<div className="w-full flex flex-col gap-2">
-									{whatsappConnectionPhones.map((telefone) => (
-										<PhoneItemCard
-											key={telefone.phoneId}
-											connectionPhone={{
-												id: telefone.phoneId,
-												nome: telefone.phoneNumber,
-												conexaoId: telefone.connectionId,
-												whatsappBusinessAccountId: null,
-												whatsappTelefoneId: null,
-												numero: telefone.phoneNumber,
-											}}
-											handleCreateTemplatePhone={(phoneId) => {
-												console.log(phoneId);
-											}}
-											isCreatingWhatsappTemplatePhone={false}
-											viewWhatsappTemplatePhone={viewWhatsappTemplatePhoneId}
-										/>
-									))}
+							<HoverCardContent className="flex w-80 flex-col gap-2.5 p-3">
+								<div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
+									<h3 className="text-xs font-medium tracking-tight">TELEFONES CONECTADOS</h3>
+									<span className="text-[0.65rem] text-muted-foreground">
+										{byPhoneApprovedCount}/{whatsappConnectionPhones.length} aprovados
+									</span>
+								</div>
+								<div className="flex max-h-[min(50vh,280px)] w-full flex-col gap-2 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
+									{whatsappConnectionPhones.map((telefone) => {
+										const phoneTemplateData = byPhone.find((phone) => phone.id === telefone.phoneId);
+										return (
+											<TemplatePhoneHoverItem
+												key={telefone.phoneId}
+												phoneLabel={telefone.phoneNumber}
+												templatePhone={
+													phoneTemplateData
+														? {
+																id: phoneTemplateData.id,
+																status: phoneTemplateData.status,
+																qualidade: phoneTemplateData.qualidade,
+															}
+														: null
+												}
+												onAdd={() => {
+													console.log(telefone.phoneId);
+												}}
+												onView={setViewWhatsappTemplatePhoneId}
+											/>
+										);
+									})}
 								</div>
 							</HoverCardContent>
 						</HoverCard>
@@ -307,12 +240,21 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks, handleEdi
 				</div>
 				{/** GENERAL TEMPLATES ARE NOT EDITABLE (THOSE WITHOUT ORGANIZATION ID) */}
 				{template.organizacaoId ? (
-					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleEditClick}>
-						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
-						EDITAR
-					</Button>
+					<div className="flex items-center gap-1">
+						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => setTestingTemplate(true)}>
+							<Send className="w-3 min-w-3 h-3 min-h-3" />
+							TESTAR
+						</Button>
+						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
+							<Link href={`/dashboard/communication/builder?templateId=${template.id}`}>
+								<Pencil className="w-3 min-w-3 h-3 min-h-3" />
+								EDITAR
+							</Link>
+						</Button>
+					</div>
 				) : null}
 			</div>
+			{testingTemplate ? <TestMessageTemplate template={template} closeModal={() => setTestingTemplate(false)} callbacks={callbacks} /> : null}
 			{viewWhatsappTemplatePhoneId ? (
 				<ViewWhatsappTemplatePhone
 					whatsappTemplatePhoneId={viewWhatsappTemplatePhoneId}
