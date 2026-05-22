@@ -1,4 +1,4 @@
-import { Body, Button, Container, Head, Heading, Hr, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
+import { Body, Button, Container, Head, Heading, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
 import {
 	convertHtmlToPlainMessageText,
 	getDefaultAppOrigin,
@@ -25,6 +25,63 @@ type MessageTemplateEmailProps = {
 };
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL || "";
+const FALLBACK_PRIMARY = "#24549C";
+const FALLBACK_ON_PRIMARY = "#ffffff";
+
+function parseHex(input: string | null | undefined): { r: number; g: number; b: number } {
+	const source = (input || FALLBACK_PRIMARY).trim().replace(/^#/, "");
+	const full = source.length === 3 ? source.split("").map((c) => c + c).join("") : source.padEnd(6, "0").slice(0, 6);
+	const num = Number.parseInt(full, 16);
+	if (Number.isNaN(num)) return { r: 36, g: 84, b: 156 };
+	return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
+function toHex({ r, g, b }: { r: number; g: number; b: number }) {
+	const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+	return `#${[clamp(r), clamp(g), clamp(b)].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function darken(hex: string, amount: number) {
+	const { r, g, b } = parseHex(hex);
+	return toHex({ r: r * (1 - amount), g: g * (1 - amount), b: b * (1 - amount) });
+}
+
+function lighten(hex: string, amount: number) {
+	const { r, g, b } = parseHex(hex);
+	return toHex({ r: r + (255 - r) * amount, g: g + (255 - g) * amount, b: b + (255 - b) * amount });
+}
+
+function rgba(hex: string, alpha: number) {
+	const { r, g, b } = parseHex(hex);
+	return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function buildPalette(primaryColor: string | null | undefined, primaryForeground: string | null | undefined) {
+	const primary = primaryColor || FALLBACK_PRIMARY;
+	const onPrimary = primaryForeground || FALLBACK_ON_PRIMARY;
+	return {
+		primary,
+		onPrimary,
+		primaryLight: lighten(primary, 0.12),
+		primaryDarker: darken(primary, 0.18),
+		primaryDeep: darken(primary, 0.42),
+		primaryAbyss: darken(primary, 0.58),
+		canvasTint: lighten(primary, 0.96),
+		canvasWash: lighten(primary, 0.92),
+		surfaceSoft: lighten(primary, 0.88),
+		mediaWash: lighten(primary, 0.94),
+		hairline: rgba(primary, 0.14),
+		hairlineSoft: rgba(primary, 0.08),
+		shadowSoft: rgba(primary, 0.18),
+		shadowStrong: rgba(primary, 0.32),
+		buttonShadow: rgba(darken(primary, 0.3), 0.45),
+		onPrimaryMuted: "rgba(255,255,255,0.74)",
+		onPrimaryStrong: "rgba(255,255,255,0.95)",
+		onPrimaryHairline: "rgba(255,255,255,0.22)",
+	};
+}
+
+type Palette = ReturnType<typeof buildPalette>;
 
 function resolveText(text: string | null | undefined, variables: TMessageTemplateRuntimeValues) {
 	return replaceMessageTemplateVariables(text ?? "", variables);
@@ -56,272 +113,455 @@ function resolveButtonHref({
 	return "#";
 }
 
-function HeaderBlock({
+function BrandHeader({
 	content,
 	variables,
-	headerMediaUrl,
 	organization,
+	palette,
 }: {
 	content: TMessageTemplateContent;
 	variables: TMessageTemplateRuntimeValues;
-	headerMediaUrl?: string | null;
 	organization: MessageTemplateEmailProps["organization"];
+	palette: Palette;
 }) {
 	const header = content.cabecalho;
-	if (!header || header.tipo === "NENHUM") return null;
+	const hasTextoHeader = header?.tipo === "TEXTO" && header.conteudoTexto;
+	const drenchedBackground = `linear-gradient(135deg, ${palette.primaryLight} 0%, ${palette.primary} 48%, ${palette.primaryDarker} 100%)`;
 
-	if (header.tipo === "TEXTO" && header.conteudoTexto) {
-		return (
-			<Section style={textHeader}>
-				<Heading style={textHeaderTitle}>{resolveText(header.conteudoTexto, variables)}</Heading>
-			</Section>
-		);
-	}
+	return (
+		<Section
+			style={{
+				background: drenchedBackground,
+				backgroundColor: palette.primary,
+				padding: hasTextoHeader ? "44px 32px 40px" : "48px 32px 44px",
+				textAlign: "center" as const,
+			}}
+		>
+			{organization.logoUrl ? (
+				<Img
+					src={organization.logoUrl}
+					width={hasTextoHeader ? "52" : "68"}
+					height={hasTextoHeader ? "52" : "68"}
+					alt={organization.name}
+					style={{
+						borderRadius: "16px",
+						display: "block",
+						margin: hasTextoHeader ? "0 auto 14px" : "0 auto 18px",
+						objectFit: "cover" as const,
+						backgroundColor: palette.onPrimary,
+						padding: "4px",
+						boxShadow: `0 8px 20px -8px ${rgba(palette.primaryDeep, 0.5)}`,
+					}}
+				/>
+			) : null}
+
+			<Text
+				style={{
+					color: hasTextoHeader ? palette.onPrimaryMuted : palette.onPrimary,
+					fontSize: hasTextoHeader ? "12px" : "16px",
+					fontWeight: hasTextoHeader ? 700 : 800,
+					letterSpacing: hasTextoHeader ? "0.18em" : "0.02em",
+					lineHeight: 1.2,
+					margin: "0",
+					textTransform: hasTextoHeader ? ("uppercase" as const) : ("none" as const),
+				}}
+			>
+				{organization.name}
+			</Text>
+
+			{hasTextoHeader ? (
+				<>
+					<div
+						style={{
+							width: "36px",
+							height: "3px",
+							margin: "20px auto 22px",
+							borderRadius: "999px",
+							backgroundColor: palette.onPrimaryHairline,
+						}}
+					/>
+					<Heading
+						as="h1"
+						style={{
+							color: palette.onPrimary,
+							fontSize: "32px",
+							fontWeight: 800,
+							letterSpacing: "-0.02em",
+							lineHeight: 1.15,
+							margin: "0 auto",
+							maxWidth: "460px",
+						}}
+					>
+						{resolveText(header.conteudoTexto ?? "", variables)}
+					</Heading>
+				</>
+			) : (
+				<div
+					style={{
+						width: "32px",
+						height: "3px",
+						margin: "16px auto 0",
+						borderRadius: "999px",
+						backgroundColor: palette.onPrimaryHairline,
+					}}
+				/>
+			)}
+		</Section>
+	);
+}
+
+function HeaderMedia({
+	content,
+	headerMediaUrl,
+	palette,
+}: {
+	content: TMessageTemplateContent;
+	headerMediaUrl?: string | null;
+	palette: Palette;
+}) {
+	const header = content.cabecalho;
+	if (!header || header.tipo === "NENHUM" || header.tipo === "TEXTO") return null;
 
 	const mediaUrl = header.tipo === "IMAGEM_DINAMICA" ? headerMediaUrl : header.conteudoMidiaUrl;
+
 	if ((header.tipo === "IMAGEM" || header.tipo === "IMAGEM_DINAMICA") && mediaUrl) {
 		return (
-			<Section style={imageHeader}>
-				<Img src={mediaUrl} width="600" alt="Cabeçalho do email" style={coverImage} />
+			<Section style={{ padding: "0", lineHeight: "0", backgroundColor: palette.canvasTint }}>
+				<Img src={mediaUrl} width="600" alt="Cabeçalho da mensagem" style={coverImage} />
 			</Section>
 		);
 	}
 
 	if (header.tipo === "VIDEO" && mediaUrl) {
-		return (
-			<Section style={fallbackHeader}>
-				<Text style={fallbackHeaderText}>Há um vídeo associado a esta mensagem.</Text>
-				<Link href={mediaUrl} style={fallbackHeaderLink}>
-					Abrir vídeo
-				</Link>
-			</Section>
-		);
+		return <MediaFallback palette={palette} label="Conteúdo em vídeo" link={mediaUrl} linkText="Assistir ao vídeo" />;
 	}
 
 	if (header.tipo === "DOCUMENTO" && mediaUrl) {
-		return (
-			<Section style={fallbackHeader}>
-				<Text style={fallbackHeaderText}>Há um documento associado a esta mensagem.</Text>
-				<Link href={mediaUrl} style={fallbackHeaderLink}>
-					Abrir documento
-				</Link>
-			</Section>
-		);
+		return <MediaFallback palette={palette} label="Documento anexado" link={mediaUrl} linkText="Abrir documento" />;
 	}
 
 	if (header.tipo === "LOCALIZAÇÃO" && header.conteudoLocalizacao) {
 		return (
-			<Section style={fallbackHeader}>
-				<Text style={locationTitle}>{header.conteudoLocalizacao.titulo}</Text>
-				<Text style={fallbackHeaderText}>{header.conteudoLocalizacao.endereco}</Text>
+			<Section
+				style={{
+					backgroundColor: palette.mediaWash,
+					borderBottom: `1px solid ${palette.hairlineSoft}`,
+					padding: "28px 32px",
+					textAlign: "left" as const,
+				}}
+			>
+				<Text
+					style={{
+						color: palette.primaryDarker,
+						fontSize: "11px",
+						fontWeight: 800,
+						letterSpacing: "0.18em",
+						lineHeight: 1,
+						margin: "0 0 10px",
+						textTransform: "uppercase" as const,
+					}}
+				>
+					Localização
+				</Text>
+				<Text
+					style={{
+						color: "#111827",
+						fontSize: "20px",
+						fontWeight: 800,
+						letterSpacing: "-0.01em",
+						lineHeight: 1.25,
+						margin: "0 0 6px",
+					}}
+				>
+					{header.conteudoLocalizacao.titulo}
+				</Text>
+				<Text style={{ color: "#4b5563", fontSize: "14px", lineHeight: 1.55, margin: "0" }}>{header.conteudoLocalizacao.endereco}</Text>
 			</Section>
 		);
 	}
 
+	return null;
+}
+
+function MediaFallback({ palette, label, link, linkText }: { palette: Palette; label: string; link: string; linkText: string }) {
 	return (
-		<Section style={fallbackHeader}>
-			<Text style={fallbackHeaderText}>{organization.name}</Text>
+		<Section
+			style={{
+				backgroundColor: palette.mediaWash,
+				borderBottom: `1px solid ${palette.hairlineSoft}`,
+				padding: "28px 32px",
+				textAlign: "center" as const,
+			}}
+		>
+			<Text
+				style={{
+					color: palette.primaryDarker,
+					fontSize: "11px",
+					fontWeight: 800,
+					letterSpacing: "0.18em",
+					lineHeight: 1,
+					margin: "0 0 12px",
+					textTransform: "uppercase" as const,
+				}}
+			>
+				{label}
+			</Text>
+			<Link
+				href={link}
+				style={{
+					color: palette.primary,
+					fontSize: "15px",
+					fontWeight: 700,
+					textDecoration: "none",
+				}}
+			>
+				{linkText} →
+			</Link>
+		</Section>
+	);
+}
+
+function BodyButtons({
+	content,
+	variables,
+	organizationId,
+	clientId,
+	origin,
+	palette,
+}: {
+	content: TMessageTemplateContent;
+	variables: TMessageTemplateRuntimeValues;
+	organizationId: string;
+	clientId?: string | null;
+	origin: string;
+	palette: Palette;
+}) {
+	if (content.botoes.length === 0) return null;
+
+	return (
+		<Section style={{ margin: "32px 0 8px", textAlign: "center" as const }}>
+			{content.botoes.map((button, index) => {
+				const isPrimary = index === 0;
+				return (
+					<div key={`${button.tipo}-${button.texto}-${index}`} style={{ margin: "0 0 12px" }}>
+						<Button
+							href={resolveButtonHref({ button, organizationId, clientId, origin })}
+							style={
+								isPrimary
+									? {
+											background: `linear-gradient(135deg, ${palette.primaryLight} 0%, ${palette.primary} 55%, ${palette.primaryDarker} 100%)`,
+											backgroundColor: palette.primary,
+											border: `1px solid ${palette.primaryDarker}`,
+											borderRadius: "14px",
+											color: palette.onPrimary,
+											display: "inline-block",
+											fontSize: "15px",
+											fontWeight: 800,
+											letterSpacing: "0.01em",
+											padding: "15px 32px",
+											textDecoration: "none",
+											boxShadow: `0 12px 24px -10px ${palette.buttonShadow}`,
+										}
+									: {
+											backgroundColor: "#ffffff",
+											border: `1.5px solid ${palette.hairline}`,
+											borderRadius: "14px",
+											color: palette.primaryDarker,
+											display: "inline-block",
+											fontSize: "14px",
+											fontWeight: 700,
+											letterSpacing: "0.01em",
+											padding: "13px 28px",
+											textDecoration: "none",
+										}
+							}
+						>
+							{resolveText(button.texto, variables)}
+						</Button>
+					</div>
+				);
+			})}
 		</Section>
 	);
 }
 
 export default function MessageTemplateEmail({ content, variables, organization, clientId, origin, headerMediaUrl }: MessageTemplateEmailProps) {
 	const effectiveOrigin = origin || getDefaultAppOrigin();
-	const primaryColor = organization.primaryColor || "#24549C";
-	const primaryForeground = organization.primaryForeground || "#ffffff";
+	const palette = buildPalette(organization.primaryColor, organization.primaryForeground);
+	const bodyText = convertHtmlToPlainMessageText(resolveText(content.corpo.conteudo, variables));
+	const rodapeText = content.rodape ? resolveText(content.rodape, variables) : null;
+	const linkUrl = baseUrl || effectiveOrigin;
 
 	return (
 		<Html>
 			<Head />
 			<Preview>{resolveText(content.preheader, variables)}</Preview>
-			<Body style={main}>
-				<Container style={container}>
-					<Section style={brandHeader}>
-						{organization.logoUrl ? <Img src={organization.logoUrl} width="56" height="56" alt={organization.name} style={logo} /> : null}
-						<Text style={brandName}>{organization.name}</Text>
-					</Section>
+			<Body
+				style={{
+					margin: "0",
+					padding: "32px 12px",
+					background: `linear-gradient(180deg, ${palette.canvasTint} 0%, ${palette.canvasWash} 100%)`,
+					backgroundColor: palette.canvasTint,
+					fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, sans-serif',
+				}}
+			>
+				<Container
+					style={{
+						backgroundColor: "#ffffff",
+						borderRadius: "24px",
+						margin: "0 auto",
+						maxWidth: "600px",
+						overflow: "hidden",
+						boxShadow: `0 28px 64px -20px ${palette.shadowStrong}, 0 8px 20px -8px ${palette.shadowSoft}, 0 0 0 1px ${palette.hairlineSoft}`,
+					}}
+				>
+					<div
+						style={{
+							height: "6px",
+							background: `linear-gradient(90deg, ${palette.primaryLight} 0%, ${palette.primary} 50%, ${palette.primaryDarker} 100%)`,
+							backgroundColor: palette.primary,
+						}}
+					/>
 
-					<HeaderBlock content={content} variables={variables} headerMediaUrl={headerMediaUrl} organization={organization} />
+					<BrandHeader content={content} variables={variables} organization={organization} palette={palette} />
 
-					<Section style={contentSection}>
-						<Text style={bodyText}>{convertHtmlToPlainMessageText(resolveText(content.corpo.conteudo, variables))}</Text>
+					<HeaderMedia content={content} headerMediaUrl={headerMediaUrl} palette={palette} />
 
-						{content.botoes.length > 0 ? (
-							<Section style={buttonsSection}>
-								{content.botoes.map((button, index) => (
-									<Button
-										key={`${button.tipo}-${button.texto}-${index}`}
-										style={{ ...buttonStyle, backgroundColor: primaryColor, color: primaryForeground }}
-										href={resolveButtonHref({
-											button,
-											organizationId: organization.id,
-											clientId,
-											origin: effectiveOrigin,
-										})}
-									>
-										{resolveText(button.texto, variables)}
-									</Button>
-								))}
-							</Section>
-						) : null}
+					<Section style={{ padding: "40px 36px 12px" }}>
+						<Text
+							style={{
+								color: "#1f2937",
+								fontSize: "16px",
+								lineHeight: "1.7",
+								whiteSpace: "pre-wrap" as const,
+								margin: "0",
+							}}
+						>
+							{bodyText}
+						</Text>
 
-						{content.rodape ? (
+						<BodyButtons
+							content={content}
+							variables={variables}
+							organizationId={organization.id}
+							clientId={clientId}
+							origin={effectiveOrigin}
+							palette={palette}
+						/>
+
+						{rodapeText ? (
 							<>
-								<Hr style={hr} />
-								<Text style={footerText}>{resolveText(content.rodape, variables)}</Text>
+								<div
+									style={{
+										height: "1px",
+										background: `linear-gradient(90deg, transparent 0%, ${palette.hairline} 50%, transparent 100%)`,
+										margin: "32px 0 20px",
+									}}
+								/>
+								<Text
+									style={{
+										color: "#6b7280",
+										fontSize: "13px",
+										fontStyle: "italic" as const,
+										lineHeight: "1.55",
+										margin: "0",
+										textAlign: "center" as const,
+									}}
+								>
+									{rodapeText}
+								</Text>
 							</>
 						) : null}
 					</Section>
 
-					<Section style={footer}>
-						<Text style={footerCopyright}>
-							{organization.name} via RecompraCRM
-							<br />
-							<Link href={baseUrl || effectiveOrigin} style={{ ...link, color: primaryColor }}>
-								{(baseUrl || effectiveOrigin).replace(/^https?:\/\//, "")}
-							</Link>
+					<Section
+						style={{
+							background: `linear-gradient(160deg, ${palette.primaryDeep} 0%, ${palette.primaryAbyss} 100%)`,
+							backgroundColor: palette.primaryDeep,
+							padding: "32px 32px 36px",
+							textAlign: "center" as const,
+							marginTop: "32px",
+						}}
+					>
+						<Text
+							style={{
+								color: palette.onPrimaryMuted,
+								fontSize: "11px",
+								fontWeight: 800,
+								letterSpacing: "0.22em",
+								lineHeight: 1,
+								margin: "0 0 12px",
+								textTransform: "uppercase" as const,
+							}}
+						>
+							Enviado por
 						</Text>
+						<Text
+							style={{
+								color: palette.onPrimary,
+								fontSize: "16px",
+								fontWeight: 800,
+								letterSpacing: "-0.005em",
+								lineHeight: 1.3,
+								margin: "0 0 4px",
+							}}
+						>
+							{organization.name}
+						</Text>
+						<Text
+							style={{
+								color: palette.onPrimaryMuted,
+								fontSize: "12px",
+								lineHeight: 1.5,
+								margin: "0 0 20px",
+							}}
+						>
+							via RecompraCRM
+						</Text>
+						<div
+							style={{
+								width: "28px",
+								height: "2px",
+								margin: "0 auto 18px",
+								borderRadius: "999px",
+								backgroundColor: palette.onPrimaryHairline,
+							}}
+						/>
+						<Link
+							href={linkUrl}
+							style={{
+								color: palette.onPrimaryStrong,
+								fontSize: "12px",
+								fontWeight: 700,
+								letterSpacing: "0.04em",
+								textDecoration: "none",
+							}}
+						>
+							{linkUrl.replace(/^https?:\/\//, "")}
+						</Link>
 					</Section>
 				</Container>
+
+				<Text
+					style={{
+						color: rgba(palette.primaryDeep, 0.5),
+						fontSize: "11px",
+						lineHeight: 1.5,
+						margin: "18px auto 0",
+						maxWidth: "600px",
+						textAlign: "center" as const,
+					}}
+				>
+					Você está recebendo esta mensagem porque é cliente de {organization.name}.
+				</Text>
 			</Body>
 		</Html>
 	);
 }
-
-const main = {
-	backgroundColor: "#f6f9fc",
-	fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
-};
-
-const container = {
-	backgroundColor: "#ffffff",
-	margin: "0 auto",
-	marginBottom: "64px",
-	maxWidth: "600px",
-	overflow: "hidden",
-};
-
-const brandHeader = {
-	padding: "24px 28px",
-	textAlign: "center" as const,
-};
-
-const logo = {
-	borderRadius: "14px",
-	display: "block",
-	margin: "0 auto 10px",
-	objectFit: "cover" as const,
-};
-
-const brandName = {
-	color: "#111827",
-	fontSize: "15px",
-	fontWeight: "700",
-	margin: "0",
-};
-
-const imageHeader = {
-	padding: "0",
-	lineHeight: "0",
-};
 
 const coverImage = {
 	width: "100%",
 	maxWidth: "600px",
 	height: "auto",
 	display: "block",
-};
-
-const textHeader = {
-	backgroundColor: "#f3f6fb",
-	padding: "42px 32px",
-	textAlign: "center" as const,
-};
-
-const textHeaderTitle = {
-	color: "#111827",
-	fontSize: "28px",
-	fontWeight: "800",
-	lineHeight: "36px",
-	margin: "0",
-};
-
-const fallbackHeader = {
-	backgroundColor: "#f3f6fb",
-	padding: "28px 32px",
-	textAlign: "center" as const,
-};
-
-const fallbackHeaderText = {
-	color: "#4b5563",
-	fontSize: "15px",
-	lineHeight: "24px",
-	margin: "0 0 10px",
-};
-
-const fallbackHeaderLink = {
-	color: "#24549C",
-	fontSize: "14px",
-	fontWeight: "700",
-};
-
-const locationTitle = {
-	color: "#111827",
-	fontSize: "18px",
-	fontWeight: "700",
-	margin: "0 0 8px",
-};
-
-const contentSection = {
-	padding: "34px 28px 12px",
-};
-
-const bodyText = {
-	color: "#374151",
-	fontSize: "16px",
-	lineHeight: "26px",
-	whiteSpace: "pre-wrap" as const,
-	margin: "0",
-};
-
-const buttonsSection = {
-	margin: "30px 0 20px",
-	textAlign: "center" as const,
-};
-
-const buttonStyle = {
-	borderRadius: "8px",
-	display: "inline-block",
-	fontSize: "15px",
-	fontWeight: "700",
-	margin: "6px",
-	padding: "12px 24px",
-	textDecoration: "none",
-};
-
-const hr = {
-	borderColor: "#e6ebf1",
-	margin: "28px 0 16px",
-};
-
-const footerText = {
-	color: "#6b7280",
-	fontSize: "12px",
-	lineHeight: "18px",
-	margin: "0",
-};
-
-const footer = {
-	padding: "12px 28px 34px",
-	textAlign: "center" as const,
-};
-
-const footerCopyright = {
-	color: "#9ca3af",
-	fontSize: "12px",
-	lineHeight: "20px",
-};
-
-const link = {
-	textDecoration: "underline",
 };

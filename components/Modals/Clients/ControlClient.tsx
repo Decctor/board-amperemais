@@ -2,17 +2,19 @@
 
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
-import { createClient } from "@/lib/mutations/clients";
-import type { TCreateClientInput } from "@/app/api/clients/route";
 import { useClientState } from "@/state-hooks/use-client-state";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { updateClient as updateClientMutation } from "@/lib/mutations/clients";
 import ClientGeneralBlock from "./Blocks/General";
 import ClientLocationsBlock from "./Blocks/Locations";
 import ClientProfileBlock from "./Blocks/Profile";
 import ClientSocialsBlock from "./Blocks/Socials";
+import { useClientById } from "@/lib/queries/clients";
+import { useEffect } from "react";
 
-type NewClientProps = {
+type ControlClientProps = {
+	clientId: string;
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -22,19 +24,13 @@ type NewClientProps = {
 	};
 };
 
-function buildCreateClientInput(input: TCreateClientInput): TCreateClientInput {
-	return {
-		client: input.client,
-		clientLocations: input.clientLocations,
-	};
-}
+function ControlClient({ clientId, closeModal, callbacks }: ControlClientProps) {
+	const { data: client, isLoading, isError, error } = useClientById({ id: clientId });
+	const { state, updateClient, addClientLocation, updateClientLocation, removeClientLocation, resetState, redefineState } = useClientState();
 
-function NewClient({ closeModal, callbacks }: NewClientProps) {
-	const { state, updateClient, addClientLocation, updateClientLocation, removeClientLocation, resetState } = useClientState();
-
-	const { mutate: handleCreateClient, isPending } = useMutation({
-		mutationKey: ["create-client"],
-		mutationFn: createClient,
+	const { mutate: handleUpdateClient, isPending } = useMutation({
+		mutationKey: ["update-client", clientId],
+		mutationFn: updateClientMutation,
 		onMutate: async () => {
 			if (callbacks?.onMutate) callbacks.onMutate();
 			return;
@@ -61,37 +57,39 @@ function NewClient({ closeModal, callbacks }: NewClientProps) {
 			return;
 		}
 
-		handleCreateClient(
-			buildCreateClientInput({
-				client: state.client,
-				clientLocations: state.clientLocations
-					.filter((location) => !location.deletar)
-					.map((location) => ({
-						titulo: location.titulo,
-						localizacaoCep: location.localizacaoCep,
-						localizacaoEstado: location.localizacaoEstado,
-						localizacaoCidade: location.localizacaoCidade,
-						localizacaoBairro: location.localizacaoBairro,
-						localizacaoLogradouro: location.localizacaoLogradouro,
-						localizacaoNumero: location.localizacaoNumero,
-						localizacaoComplemento: location.localizacaoComplemento,
-						localizacaoLatitude: location.localizacaoLatitude,
-						localizacaoLongitude: location.localizacaoLongitude,
-					})),
-			}),
-		);
+		handleUpdateClient({
+			clientId,
+			client: state.client,
+			clientLocations: state.clientLocations.map((location) => ({
+				id: location.id ?? undefined,
+				deletar: location.deletar ?? false,
+				titulo: location.titulo,
+				localizacaoCep: location.localizacaoCep,
+				localizacaoEstado: location.localizacaoEstado,
+				localizacaoCidade: location.localizacaoCidade,
+				localizacaoBairro: location.localizacaoBairro,
+				localizacaoLogradouro: location.localizacaoLogradouro,
+				localizacaoNumero: location.localizacaoNumero,
+				localizacaoComplemento: location.localizacaoComplemento,
+				localizacaoLatitude: location.localizacaoLatitude,
+				localizacaoLongitude: location.localizacaoLongitude,
+			})),
+		});
 	}
 
+	useEffect(() => {
+		if (client) redefineState({ client: client, clientLocations: client.localizacoes });
+	}, [client, redefineState]);
 	return (
 		<ResponsiveMenu
-			menuTitle="NOVO CLIENTE"
-			menuDescription="Preencha os dados para cadastrar um novo cliente."
-			menuActionButtonText="CRIAR CLIENTE"
+			menuTitle="EDITAR CLIENTE"
+			menuDescription="Preencha os dados para editar o cliente."
+			menuActionButtonText="ATUALIZAR CLIENTE"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={handleSubmit}
 			actionIsLoading={isPending}
-			stateIsLoading={false}
-			stateError={null}
+			stateIsLoading={isLoading}
+			stateError={isError ? getErrorMessage(error) : null}
 			closeMenu={closeModal}
 			dialogVariant="md"
 			drawerVariant="md"
@@ -109,4 +107,4 @@ function NewClient({ closeModal, callbacks }: NewClientProps) {
 	);
 }
 
-export default NewClient;
+export default ControlClient;

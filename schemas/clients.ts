@@ -4,15 +4,22 @@ import type { TSale } from "./sales";
 
 export const ClientSchema = z.object({
 	idExterno: z.string({ invalid_type_error: "Tipo não válido para ID externo." }).optional().nullable(),
+	organizacaoId: z.string({ invalid_type_error: "Tipo não válido para ID da organização." }),
 	nome: z.string({
 		required_error: "Nome do cliente não informado.",
 		invalid_type_error: "Tipo não válido para o nome do cliente.",
 	}),
 	cpfCnpj: z.string({ invalid_type_error: "Tipo não válido para CPF/CNPJ." }).optional().nullable(),
+	anotacoes: z.string({ invalid_type_error: "Tipo nao valido para anotacoes." }).optional().nullable(),
 	// Communication
 	telefone: z.string({ invalid_type_error: "Tipo não válido para telefone." }).optional().nullable(),
 	telefoneBase: z.string({ invalid_type_error: "Tipo não válido para telefone base." }),
-	email: z.string({ invalid_type_error: "Tipo não válido para email." }),
+	email: z.string({ invalid_type_error: "Tipo não válido para email." }).optional().nullable(),
+	// Socials
+	websiteUrl: z.string({ invalid_type_error: "Tipo nao valido para website." }).optional().nullable(),
+	instagram: z.string({ invalid_type_error: "Tipo nao valido para Instagram." }).optional().nullable(),
+	linkedin: z.string({ invalid_type_error: "Tipo nao valido para LinkedIn." }).optional().nullable(),
+	twitter: z.string({ invalid_type_error: "Tipo nao valido para X/Twitter." }).optional().nullable(),
 	// Clients main location
 	localizacaoCep: z.string({ invalid_type_error: "Tipo não válido para CEP." }).optional().nullable(),
 	localizacaoEstado: z.string({ invalid_type_error: "Tipo não válido para estado." }).optional().nullable(),
@@ -29,18 +36,24 @@ export const ClientSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	primeiraCompraId: z.string({
-		invalid_type_error: "Tipo não válido para ID da primeira compra.",
-	}),
+	primeiraCompraId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da primeira compra.",
+		})
+		.optional()
+		.nullable(),
 	ultimaCompraData: z
 		.date({
 			invalid_type_error: "Tipo não válido para data da ultima compra.",
 		})
 		.optional()
 		.nullable(),
-	ultimaCompraId: z.string({
-		invalid_type_error: "Tipo não válido para ID da ultima compra.",
-	}),
+	ultimaCompraId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da ultima compra.",
+		})
+		.optional()
+		.nullable(),
 	analiseRFMTitulo: z
 		.string({
 			invalid_type_error: "Tipo não válido para título RFM.",
@@ -79,13 +92,33 @@ export const ClientSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
+	dataFundacao: z
+		.string({
+			invalid_type_error: "Tipo nao valido para data de fundacao.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	profissao: z.string({ invalid_type_error: "Tipo nao valido para profissao." }).optional().nullable(),
+	ondeTrabalha: z.string({ invalid_type_error: "Tipo nao valido para local de trabalho." }).optional().nullable(),
+	estadoCivil: z.string({ invalid_type_error: "Tipo nao valido para estado civil." }).optional().nullable(),
+	deficiencia: z.string({ invalid_type_error: "Tipo nao valido para deficiencia." }).optional().nullable(),
+	dataSincronizacaoExterna: z
+		.string({
+			invalid_type_error: "Tipo nao valido para data de sincronizacao externa.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 	dataInsercao: z
 		.string({
 			required_error: "Data de inserção do cliente não informada.",
 			invalid_type_error: "Tipo não válido para data de inserção.",
 		})
 		.datetime({ message: "Tipo não válido para data de inserção." })
-		.transform((val) => new Date(val))
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null))
 		.default(new Date().toISOString()),
 });
 

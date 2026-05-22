@@ -12,10 +12,13 @@ export const clients = newTable(
 		id: varchar("id", { length: 255 })
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
-		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
 		idExterno: varchar("id_externo", { length: 255 }),
 		nome: text("nome").notNull(),
 		cpfCnpj: text("cpf_cnpj"),
+		anotacoes: text("anotacoes"),
 		inscricaoEstadual: text("inscricao_estadual"),
 		indicadorInscricaoEstadual: fiscalClientTaxIndicatorEnum("indicador_inscricao_estadual").default("NAO_CONTRIBUINTE"),
 		suframa: text("suframa"),
@@ -23,6 +26,11 @@ export const clients = newTable(
 		telefone: text("telefone").notNull().default(""),
 		telefoneBase: text("telefone_base").notNull().default(""),
 		email: text("email"),
+		// Socials
+		websiteUrl: text("website_url"),
+		instagram: text("instagram"),
+		linkedin: text("linkedin"),
+		twitter: text("twitter"),
 		// Location
 		localizacaoCep: text("localizacao_cep"),
 		localizacaoEstado: text("localizacao_estado"),
@@ -55,6 +63,12 @@ export const clients = newTable(
 		metadataUltimaAtualizacao: timestamp("metadata_ultima_atualizacao"), // Last metadata update timestamp
 
 		dataNascimento: timestamp("data_nascimento"),
+		dataFundacao: timestamp("data_fundacao"),
+		profissao: text("profissao"),
+		ondeTrabalha: text("onde_trabalha"),
+		estadoCivil: text("estado_civil"),
+		deficiencia: text("deficiencia"),
+		dataSincronizacaoExterna: timestamp("data_sincronizacao_externa"),
 		dataInsercao: timestamp("data_insercao").defaultNow(),
 	},
 	(table) => ({
@@ -96,7 +110,7 @@ export const clientsRelations = relations(clients, ({ many }) => ({
 	compras: many(sales),
 	saldos: many(cashbackProgramBalances),
 	transacoesCashback: many(cashbackProgramTransactions),
-	clientLocations: many(clientLocations),
+	localizacoes: many(clientLocations),
 }));
 export type TClientEntity = typeof clients.$inferSelect;
 export type TNewClientEntity = typeof clients.$inferInsert;
