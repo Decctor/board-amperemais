@@ -82,8 +82,7 @@ function validateTriggerStage(campaign: TCampaign, segmentations: TSegmentations
 }
 
 function validateSendStage(campaign: TCampaign): TStageValidationResult {
-	if (!campaign.whatsappConexaoTelefoneId) return { valid: false, reason: "Selecione um telefone do WhatsApp." };
-	if (!campaign.whatsappTemplateId) return { valid: false, reason: "Selecione um template do WhatsApp." };
+	if (!campaign.whatsappTemplateId) return { valid: false, reason: "Selecione um template de mensagem." };
 	if (!campaign.execucaoAgendadaBloco) return { valid: false, reason: "Selecione o bloco de horário." };
 	const requiresDelay = campaign.gatilhoTipo !== "RECORRENTE" && campaign.gatilhoTipo !== "USO-UNICO";
 	if (requiresDelay && (campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined)) {

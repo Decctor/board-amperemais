@@ -1,14 +1,14 @@
 import type { TCanonicalImportBatch, TCanonicalSale } from "@/lib/data-connectors";
 import type { TCampaignFilters } from "@/schemas/campaigns";
 import type { DBTransaction } from "@/services/drizzle";
-import type { TCampaignEntity, TCampaignSegmentationEntity, TWhatsappConnection, TWhatsappConnectionPhone, TWhatsappTemplate } from "@/services/drizzle/schema";
+import type { TCampaignEntity, TCampaignSegmentationEntity, TMessageTemplate, TWhatsappConnection, TWhatsappConnectionPhone } from "@/services/drizzle/schema";
 
 export type TDataCollectingV2Executor = DBTransaction;
 
 export type TCampaignWithAudienceRelations = TCampaignEntity & {
 	segmentacoes: TCampaignSegmentationEntity[];
 	filtros: TCampaignFilters | null;
-	whatsappTemplate?: TWhatsappTemplate | null;
+	whatsappTemplate?: TMessageTemplate | null;
 	whatsappConexaoTelefone?: (TWhatsappConnectionPhone & { conexao?: Pick<TWhatsappConnection, "token" | "gatewaySessaoId"> | null }) | null;
 };
 

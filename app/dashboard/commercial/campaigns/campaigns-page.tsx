@@ -21,7 +21,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { retryCampaignInteraction } from "@/lib/mutations/campaigns";
 import { useCampaignInteractionsLogs, useCampaignStatsOverall, useCampaigns, useConversionQuality } from "@/lib/queries/campaigns";
@@ -61,7 +60,7 @@ import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BsCalendarPlus } from "react-icons/bs";
-import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTemplates";
+import CommunicationTemplatesPage from "@/app/dashboard/communication/_components/communication-templates-page";
 import { CampaignTriggerTypeOptions, InteractionsSentStatusOptions } from "@/utils/select-options";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import TestCampaign from "@/components/Modals/Campaigns/TestCampaign";
@@ -106,7 +105,7 @@ export default function CampaignsPage({ user, membership }: CampaignsPageProps) 
 					<CampaignsInteractionsView />
 				</TabsContent>
 				<TabsContent value="templates" className="flex flex-col gap-3">
-					<SettingsWhatsappTemplates user={user} membership={membership} />
+					<CommunicationTemplatesPage organizationName={membership.organizacao.nome} />
 				</TabsContent>
 			</Tabs>
 		</div>
@@ -878,7 +877,7 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 								side="left"
 								align="center"
 							>
-								<TemplatePreview content={whatsappTemplateComponentsToMessageContent(campaign.whatsappTemplate.componentes)} />
+								<TemplatePreview content={campaign.whatsappTemplate.conteudo} />
 							</HoverCardContent>
 						</HoverCard>
 						{!campaign.whatsappConexaoTelefoneId ? (
@@ -894,7 +893,7 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 											</Chip.Label>
 										</Chip.Root>
 									</TooltipTrigger>
-									<TooltipContent className="max-w-xs">Sem uma conexão de Whatsapp, a campanha não poderá ser executada.</TooltipContent>
+									<TooltipContent className="max-w-xs">Sem uma conexão de WhatsApp, a campanha seguirá apenas por e-mail quando houver endereço disponível.</TooltipContent>
 								</Tooltip>
 							</TooltipProvider>
 						) : null}

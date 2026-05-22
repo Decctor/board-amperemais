@@ -231,7 +231,7 @@ export async function buildCampaignCurrentSummary({
 		ativo: campaign.ativo,
 		segmentations: campaign.segmentacoes.map((item) => item.segmentacao),
 		whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
-		whatsappTemplateText: campaign.whatsappTemplate ? getWhatsappTemplatePlainText(campaign.whatsappTemplate.componentes) : null,
+		whatsappTemplateText: campaign.whatsappTemplate ? getWhatsappTemplatePlainText(campaign.whatsappTemplate.conteudo) : null,
 	});
 }
 

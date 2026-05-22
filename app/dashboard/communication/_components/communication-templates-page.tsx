@@ -12,15 +12,16 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { BsCalendarPlus } from "react-icons/bs";
 import { TemplatePhoneHoverItem } from "@/components/Modals/WhatsappTemplates/Phones/TemplatePhoneHoverItem";
-import { ViewWhatsappTemplatePhone } from "@/components/Modals/WhatsappTemplates/Phones/ViewWhatsappTemplatePhone";
 import { useMemo, useState } from "react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
 import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
 import { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import TestMessageTemplate from "@/components/Modals/MessageTemplates/TestMessageTemplate";
+import { createMessageTemplatePhone, syncMessageTemplatePhone } from "@/lib/mutations/message-templates";
+import { toast } from "sonner";
 type CommunicationTemplatesPageProps = {
 	organizationName: string;
 };
@@ -120,8 +121,38 @@ type TemplateCardProps = {
 };
 
 function TemplateCard({ template, whatsappConnectionPhones, callbacks }: TemplateCardProps) {
-	const [viewWhatsappTemplatePhoneId, setViewWhatsappTemplatePhoneId] = useState<string | null>(null);
 	const [testingTemplate, setTestingTemplate] = useState(false);
+	const [pendingPhoneId, setPendingPhoneId] = useState<string | null>(null);
+
+	const { mutate: createPhoneMutation } = useMutation({
+		mutationKey: ["create-message-template-phone", template.id],
+		mutationFn: createMessageTemplatePhone,
+		onMutate: (input) => {
+			setPendingPhoneId(input.telefoneId);
+			callbacks.onMutate?.();
+		},
+		onSuccess: (response) => toast.success(response.message),
+		onError: (error) => toast.error(getErrorMessage(error)),
+		onSettled: () => {
+			setPendingPhoneId(null);
+			callbacks.onSettled?.();
+		},
+	});
+
+	const { mutate: syncPhoneMutation } = useMutation({
+		mutationKey: ["sync-message-template-phone", template.id],
+		mutationFn: syncMessageTemplatePhone,
+		onMutate: (input) => {
+			setPendingPhoneId(input.telefoneId);
+			callbacks.onMutate?.();
+		},
+		onSuccess: (response) => toast.success(response.message),
+		onError: (error) => toast.error(getErrorMessage(error)),
+		onSettled: () => {
+			setPendingPhoneId(null);
+			callbacks.onSettled?.();
+		},
+	});
 
 	const byPhone = useMemo(
 		() =>
@@ -207,12 +238,13 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 																status: phoneTemplateData.status,
 																qualidade: phoneTemplateData.qualidade,
 															}
-														: null
+													: null
 												}
 												onAdd={() => {
-													console.log(telefone.phoneId);
+													createPhoneMutation({ messageTemplateId: template.id, telefoneId: telefone.phoneId });
 												}}
-												onView={setViewWhatsappTemplatePhoneId}
+												onView={(telefoneId) => syncPhoneMutation({ messageTemplateId: template.id, telefoneId })}
+												isAdding={pendingPhoneId === telefone.phoneId}
 											/>
 										);
 									})}
@@ -255,13 +287,6 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 				) : null}
 			</div>
 			{testingTemplate ? <TestMessageTemplate template={template} closeModal={() => setTestingTemplate(false)} callbacks={callbacks} /> : null}
-			{viewWhatsappTemplatePhoneId ? (
-				<ViewWhatsappTemplatePhone
-					whatsappTemplatePhoneId={viewWhatsappTemplatePhoneId}
-					closeMenu={() => setViewWhatsappTemplatePhoneId(null)}
-					callbacks={callbacks}
-				/>
-			) : null}
 		</div>
 	);
 }

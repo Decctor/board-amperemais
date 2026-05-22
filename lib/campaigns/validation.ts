@@ -88,13 +88,17 @@ export async function validateCampaignTemplateTriggerCompatibility(
 ) {
 	if (!whatsappTemplateId) return;
 
-	const template = await db.query.whatsappTemplates.findFirst({
+	const template = await db.query.messageTemplates.findFirst({
 		where: (fields, { eq }) => eq(fields.id, whatsappTemplateId),
-		columns: { componentes: true },
+		columns: { conteudo: true },
 	});
 	if (!template) return;
 
-	const parametros = template.componentes.corpo.parametros;
+	const parametros = template.conteudo.corpo.parametros.map((parametro) => ({
+		nome: parametro.identificadorInterno,
+		exemplo: parametro.exemplo,
+		identificador: parametro.identificadorInterno,
+	}));
 	const validation = validateTemplateForTrigger(parametros, gatilhoTipo);
 	if (!validation.valid) {
 		throw new createHttpError.BadRequest(

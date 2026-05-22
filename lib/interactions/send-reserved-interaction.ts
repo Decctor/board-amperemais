@@ -1,8 +1,14 @@
+import { EmailTemplate, sendEmailWithResend } from "@/lib/email";
 import { formatToMoney } from "@/lib/formatting";
+import {
+	buildWhatsappTemplateSendPayload,
+	convertHtmlToWhatsappText,
+	replaceMessageTemplateVariables,
+	type TMessageTemplateRuntimeContext,
+} from "@/lib/message-templates";
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "@/lib/whatsapp/internal-gateway";
 import type { TInteractionContextMetadados, TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
-import { getWhatsappTemplatePayload } from "@/lib/whatsapp/templates";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats, interactions } from "@/services/drizzle/schema";
@@ -23,10 +29,6 @@ export function buildContextVariablesMap(
 	| "clientFavoriteProductGroup"
 	| "clientSuggestedProduct"
 > {
-	// if (!ctx) {
-	// 	console.warn("[TEMPLATE_VARS] buildContextVariablesMap called without context metadados; context variables will resolve to empty strings.");
-	// }
-
 	return {
 		purchaseValue: formatToMoney(ctx?.compraValor ?? 0),
 		purchaseCashbackAccumulated: formatToMoney(ctx?.compraCashbackAcumulado ?? 0),
@@ -52,12 +54,7 @@ async function failInteractionSend({
 	insertedChatMessageId?: string | null;
 }) {
 	if (insertedChatMessageId) {
-		await db
-			.update(chatMessages)
-			.set({
-				whatsappMessageStatus: "FALHOU",
-			})
-			.where(eq(chatMessages.id, insertedChatMessageId));
+		await db.update(chatMessages).set({ whatsappMessageStatus: "FALHOU" }).where(eq(chatMessages.id, insertedChatMessageId));
 	}
 
 	await db
@@ -69,13 +66,41 @@ async function failInteractionSend({
 		.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
 }
 
-async function resolveHasHubAccess(organizationId: string) {
+async function blockInteractionSend({
+	interactionId,
+	organizationId,
+	errorMessage,
+}: {
+	interactionId: string;
+	organizationId: string;
+	errorMessage: string;
+}) {
+	await db
+		.update(interactions)
+		.set({
+			statusEnvio: "BLOQUEADA",
+			erroEnvio: errorMessage,
+		})
+		.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
+}
+
+async function resolveOrganizationMessagingContext(organizationId: string) {
 	const organization = await db.query.organizations.findFirst({
 		where: (fields, { eq }) => eq(fields.id, organizationId),
-		columns: { configuracao: true },
+		columns: {
+			id: true,
+			nome: true,
+			logoUrl: true,
+			corPrimaria: true,
+			corPrimariaForeground: true,
+			configuracao: true,
+		},
 	});
 
-	return organization?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
+	return {
+		organization,
+		hasHubAccess: organization?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false,
+	};
 }
 
 async function getOrCreateChatId({
@@ -93,22 +118,16 @@ async function getOrCreateChatId({
 }) {
 	const cacheKey = `${organizationId}:${clientId}:${whatsappConnectionPhoneId}`;
 	const cachedChatPromise = chatIdCache?.get(cacheKey);
-	if (cachedChatPromise) {
-		return cachedChatPromise;
-	}
+	if (cachedChatPromise) return cachedChatPromise;
 
 	const chatIdPromise = (async () => {
 		const existingChat = await db.query.chats.findFirst({
 			where: (fields, { and, eq }) =>
 				and(eq(fields.organizacaoId, organizationId), eq(fields.clienteId, clientId), eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhoneId)),
-			columns: {
-				id: true,
-			},
+			columns: { id: true },
 		});
 
-		if (existingChat) {
-			return existingChat.id;
-		}
+		if (existingChat) return existingChat.id;
 
 		const [newChat] = await db
 			.insert(chats)
@@ -125,20 +144,36 @@ async function getOrCreateChatId({
 		return newChat?.id ?? null;
 	})();
 
-	if (chatIdCache) {
-		chatIdCache.set(cacheKey, chatIdPromise);
-	}
+	if (chatIdCache) chatIdCache.set(cacheKey, chatIdPromise);
 
 	try {
 		const chatId = await chatIdPromise;
-		if (!chatId) {
-			chatIdCache?.delete(cacheKey);
-		}
+		if (!chatId) chatIdCache?.delete(cacheKey);
 		return chatId;
 	} catch (error) {
 		chatIdCache?.delete(cacheKey);
 		throw error;
 	}
+}
+
+function getInteractionMetadata(metadados: unknown) {
+	return metadados && typeof metadados === "object" && !Array.isArray(metadados) ? (metadados as Record<string, unknown>) : {};
+}
+
+function buildWhatsappPlainContent({
+	template,
+	variables,
+}: {
+	template: ImmediateProcessingData["campaign"]["whatsappTemplate"];
+	variables: TMessageTemplateRuntimeContext["variaveis"];
+}) {
+	const header =
+		template.conteudo.cabecalho?.tipo === "TEXTO" && template.conteudo.cabecalho.conteudoTexto
+			? convertHtmlToWhatsappText(replaceMessageTemplateVariables(template.conteudo.cabecalho.conteudoTexto, variables))
+			: "";
+	const body = convertHtmlToWhatsappText(replaceMessageTemplateVariables(template.conteudo.corpo.conteudo, variables));
+	const footer = template.conteudo.rodape ? convertHtmlToWhatsappText(replaceMessageTemplateVariables(template.conteudo.rodape, variables)) : "";
+	return [header, body, footer].filter(Boolean).join("\n\n");
 }
 
 export async function sendReservedInteraction(
@@ -154,35 +189,15 @@ export async function sendReservedInteraction(
 	try {
 		const interaction = await db.query.interactions.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, interactionId), eq(fields.organizacaoId, organizationId)),
-			columns: {
-				id: true,
-				metadados: true,
-			},
+			columns: { id: true, metadados: true },
 		});
 
 		if (!interaction) {
-			return {
-				success: false,
-				status: "FAILED",
-				error: "Interacao nao encontrada para processamento.",
-			};
+			return { success: false, status: "FAILED", error: "Interacao nao encontrada para processamento." };
 		}
 
-		if (!effectivePhoneNumber) {
-			await failInteractionSend({
-				interactionId,
-				organizationId,
-				errorMessage: "Cliente nao tem telefone valido.",
-			});
-
-			return {
-				success: false,
-				status: "FAILED",
-				error: "Cliente nao tem telefone valido.",
-			};
-		}
-
-		const hasHubAccess = params.hasHubAccess ?? (await resolveHasHubAccess(organizationId));
+		const organizationContext = await resolveOrganizationMessagingContext(organizationId);
+		const hasHubAccess = params.hasHubAccess ?? organizationContext.hasHubAccess;
 		const clientFavoriteProduct = client.metadataProdutoMaisCompradoId
 			? ((
 					await db.query.products.findFirst({
@@ -192,128 +207,134 @@ export async function sendReservedInteraction(
 				)?.descricao ?? "")
 			: "";
 
-		const whatsappConnectionPhone = await db.query.whatsappConnectionPhones.findFirst({
-			where: (fields, { eq }) => eq(fields.id, campaign.whatsappConexaoTelefoneId),
-			columns: {
-				id: true,
-				whatsappTelefoneId: true,
-			},
-		});
-
-		if (!whatsappConnectionPhone) {
-			await failInteractionSend({
-				interactionId,
-				organizationId,
-				errorMessage: "Telefone de conexao do WhatsApp nao encontrado.",
-			});
-
-			return {
-				success: false,
-				status: "FAILED",
-				error: "Telefone de conexao do WhatsApp nao encontrado.",
-			};
-		}
-
 		const contextVars = buildContextVariablesMap(contextMetadados);
 		const whatsappTemplateVariablesValuesMap: Record<keyof TWhatsappTemplateVariables, string> = {
 			clientEmail: client.email ?? "",
 			clientName: client.nome,
-			clientPhoneNumber: effectivePhoneNumber,
+			clientPhoneNumber: effectivePhoneNumber ?? "",
 			clientSegmentation: client.analiseRFMTitulo ?? "",
 			clientFavoriteProduct,
 			clientFavoriteProductGroup: client.metadataGrupoProdutoMaisComprado ?? "",
 			clientSuggestedProduct: "",
 			...contextVars,
 		};
+		const runtimeContext: TMessageTemplateRuntimeContext = {
+			origin: process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL || "",
+			organizacaoId: organizationId,
+			clienteId: client.id,
+			interactionId,
+			variaveis: whatsappTemplateVariablesValuesMap,
+			cabecalhoMidiaUrl:
+				campaign.whatsappTemplate.conteudo.cabecalho?.tipo === "IMAGEM_DINAMICA"
+					? undefined
+					: campaign.whatsappTemplate.conteudo.cabecalho?.conteudoMidiaUrl,
+		};
 
-		const payload = getWhatsappTemplatePayload({
-			template: {
-				name: campaign.whatsappTemplate.nome,
-				content: campaign.whatsappTemplate.componentes.corpo.conteudo,
-				components: campaign.whatsappTemplate.componentes,
-			},
-			variables: whatsappTemplateVariablesValuesMap,
-			toPhoneNumber: effectivePhoneNumber,
+		const renderedWhatsappContent = buildWhatsappPlainContent({
+			template: campaign.whatsappTemplate,
+			variables: runtimeContext.variaveis,
 		});
 
-		if (hasHubAccess) {
-			const chatId = await getOrCreateChatId({
-				organizationId,
-				clientId: client.id,
-				whatsappConnectionPhoneId: campaign.whatsappConexaoTelefoneId,
-				whatsappPhoneId: whatsappConnectionPhone.whatsappTelefoneId,
-				chatIdCache,
-			});
-
-			if (!chatId) {
-				throw new Error("Falha ao resolver o chat da interacao.");
-			}
-
-			const insertedChatMessageResponse = await db
-				.insert(chatMessages)
-				.values({
-					organizacaoId: organizationId,
-					chatId,
-					autorTipo: "USUÁRIO",
-					autorUsuarioId: campaign.autorId,
-					conteudoTexto: payload.content,
-					conteudoMidiaTipo: "TEXTO",
-				})
-				.returning({ id: chatMessages.id });
-
-			insertedChatMessageId = insertedChatMessageResponse[0]?.id ?? null;
-
-			if (!insertedChatMessageId) {
-				throw new Error("Falha ao inserir a mensagem no chat.");
-			}
-		}
-
+		const channelErrors: Record<string, string> = {};
+		const channelsAttempted: string[] = [];
+		const channelsSkipped: string[] = [];
 		let whatsappMessageId: string | undefined;
+		let emailMessageId: string | undefined;
 		let interactionStatusEnvio: "PENDENTE" | "ENVIADO" = "ENVIADO";
 		let interactionClientMessageId: string | undefined;
 		let interactionJobId: string | undefined;
 
-		if (whatsappToken && whatsappConnectionPhone.whatsappTelefoneId) {
-			if (testing?.disableWhatsappCloudApi) {
-				whatsappMessageId = `test-whatsapp-message-${interactionId}`;
-			} else {
-				const sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
-					fromPhoneNumberId: whatsappConnectionPhone.whatsappTelefoneId,
-					templatePayload: payload.data,
-					whatsappToken,
+		if (!effectivePhoneNumber) {
+			channelsSkipped.push("WHATSAPP: cliente sem telefone");
+		} else if (!campaign.whatsappConexaoTelefoneId) {
+			channelsSkipped.push("WHATSAPP: telefone de conexao nao configurado");
+		} else {
+			channelsAttempted.push("WHATSAPP");
+			try {
+				const whatsappConnectionPhone = await db.query.whatsappConnectionPhones.findFirst({
+					where: (fields, { eq }) => eq(fields.id, campaign.whatsappConexaoTelefoneId as string),
+					columns: { id: true, whatsappTelefoneId: true },
 				});
-				whatsappMessageId = sentWhatsappTemplateResponse.whatsappMessageId;
-			}
-		} else if (whatsappSessionId) {
-			const gatewayPayload = {
-				...payload.data,
-				to: formatPhoneForInternalGateway(effectivePhoneNumber),
-			};
-			const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload, {
-				fallbackText: payload.content,
-			});
+				if (!whatsappConnectionPhone) throw new Error("Telefone de conexao do WhatsApp nao encontrado.");
 
-			if (testing?.disableInternalGateway) {
-				interactionJobId = `test-gateway-job-${interactionId}`;
-			} else {
-				const sentWhatsappTemplateResponse = await sendMessage(whatsappSessionId, formatPhoneForInternalGateway(effectivePhoneNumber), templateContent, {
-					clientMessageId: interactionId,
+				const payload = buildWhatsappTemplateSendPayload({
+					template: campaign.whatsappTemplate,
+					toPhoneNumber: effectivePhoneNumber,
+					runtimeContext,
 				});
 
-				if (!sentWhatsappTemplateResponse.success) {
-					throw new Error(sentWhatsappTemplateResponse.error || "Falha ao enfileirar mensagem no Gateway Interno.");
+				if (hasHubAccess) {
+					const chatId = await getOrCreateChatId({
+						organizationId,
+						clientId: client.id,
+						whatsappConnectionPhoneId: campaign.whatsappConexaoTelefoneId,
+						whatsappPhoneId: whatsappConnectionPhone.whatsappTelefoneId,
+						chatIdCache,
+					});
+					if (!chatId) throw new Error("Falha ao resolver o chat da interacao.");
+
+					const insertedChatMessageResponse = await db
+						.insert(chatMessages)
+						.values({
+							organizacaoId: organizationId,
+							chatId,
+							whatsappTemplateId: campaign.whatsappTemplate.id,
+							autorTipo: "USUÁRIO",
+							autorUsuarioId: campaign.autorId,
+							conteudoTexto: renderedWhatsappContent,
+							conteudoMidiaTipo: "TEXTO",
+						})
+						.returning({ id: chatMessages.id });
+
+					insertedChatMessageId = insertedChatMessageResponse[0]?.id ?? null;
+					if (!insertedChatMessageId) throw new Error("Falha ao inserir a mensagem no chat.");
 				}
 
-				interactionJobId = sentWhatsappTemplateResponse.jobId;
-			}
+				if (whatsappToken && whatsappConnectionPhone.whatsappTelefoneId) {
+					if (testing?.disableWhatsappCloudApi) {
+						whatsappMessageId = `test-whatsapp-message-${interactionId}`;
+					} else {
+						const sentWhatsappTemplateResponse = await sendTemplateWhatsappMessage({
+							fromPhoneNumberId: whatsappConnectionPhone.whatsappTelefoneId,
+							templatePayload: payload,
+							whatsappToken,
+						});
+						whatsappMessageId = sentWhatsappTemplateResponse.whatsappMessageId;
+					}
+				} else if (whatsappSessionId) {
+					const gatewayPayload = { ...payload, to: formatPhoneForInternalGateway(effectivePhoneNumber) };
+					const templateContent = parseTemplatePayloadToGatewayContent(gatewayPayload, { fallbackText: renderedWhatsappContent });
 
-			interactionStatusEnvio = "PENDENTE";
-			interactionClientMessageId = interactionId;
-		} else {
-			throw new Error("WhatsApp token or session ID is required.");
+					if (testing?.disableInternalGateway) {
+						interactionJobId = `test-gateway-job-${interactionId}`;
+					} else {
+						const sentWhatsappTemplateResponse = await sendMessage(
+							whatsappSessionId,
+							formatPhoneForInternalGateway(effectivePhoneNumber),
+							templateContent,
+							{
+								clientMessageId: interactionId,
+							},
+						);
+						if (!sentWhatsappTemplateResponse.success) {
+							throw new Error(sentWhatsappTemplateResponse.error || "Falha ao enfileirar mensagem no Gateway Interno.");
+						}
+						interactionJobId = sentWhatsappTemplateResponse.jobId;
+					}
+
+					interactionStatusEnvio = "PENDENTE";
+					interactionClientMessageId = interactionId;
+				} else {
+					throw new Error("WhatsApp token or session ID is required.");
+				}
+			} catch (error) {
+				channelErrors.WHATSAPP = error instanceof Error ? error.message : "Falha desconhecida no WhatsApp.";
+				if (insertedChatMessageId)
+					await db.update(chatMessages).set({ whatsappMessageStatus: "FALHOU" }).where(eq(chatMessages.id, insertedChatMessageId));
+			}
 		}
 
-		if (hasHubAccess && insertedChatMessageId) {
+		if (hasHubAccess && insertedChatMessageId && !channelErrors.WHATSAPP) {
 			await db
 				.update(chatMessages)
 				.set({
@@ -323,40 +344,97 @@ export async function sendReservedInteraction(
 				.where(eq(chatMessages.id, insertedChatMessageId));
 		}
 
+		if (!client.email) {
+			channelsSkipped.push("EMAIL: cliente sem email");
+		} else {
+			channelsAttempted.push("EMAIL");
+			try {
+				const emailContent = {
+					...campaign.whatsappTemplate.conteudo,
+					assunto: replaceMessageTemplateVariables(campaign.whatsappTemplate.conteudo.assunto, runtimeContext.variaveis),
+					preheader: replaceMessageTemplateVariables(campaign.whatsappTemplate.conteudo.preheader, runtimeContext.variaveis),
+				};
+				const emailResult = await sendEmailWithResend(
+					client.email,
+					EmailTemplate.MessageTemplate,
+					{
+						content: emailContent,
+						variables: runtimeContext.variaveis,
+						organization: {
+							id: organizationId,
+							name: organizationContext.organization?.nome ?? "RecompraCRM",
+							logoUrl: organizationContext.organization?.logoUrl,
+							primaryColor: organizationContext.organization?.corPrimaria,
+							primaryForeground: organizationContext.organization?.corPrimariaForeground,
+						},
+						clientId: client.id,
+						origin: runtimeContext.origin,
+						headerMediaUrl: runtimeContext.cabecalhoMidiaUrl,
+					},
+					{
+						from: {
+							name: organizationContext.organization?.nome,
+							prefix: organizationContext.organization?.nome,
+						},
+					},
+				);
+				emailMessageId = (emailResult.data as { id?: string } | null | undefined)?.id;
+			} catch (error) {
+				channelErrors.EMAIL = error instanceof Error ? error.message : "Falha desconhecida no e-mail.";
+			}
+		}
+
+		const successfulChannels = [whatsappMessageId || interactionJobId ? "WHATSAPP" : null, emailMessageId ? "EMAIL" : null].filter(
+			(channel): channel is string => Boolean(channel),
+		);
+
+		if (channelsAttempted.length === 0) {
+			await blockInteractionSend({
+				interactionId,
+				organizationId,
+				errorMessage: "Cliente nao possui telefone nem e-mail para envio.",
+			});
+			return { success: false, status: "FAILED", error: "Cliente nao possui telefone nem e-mail para envio." };
+		}
+
+		if (successfulChannels.length === 0) {
+			const errorMessage = Object.values(channelErrors).join(" | ") || "Houve uma falha ao enviar a mensagem.";
+			await failInteractionSend({ interactionId, organizationId, errorMessage, insertedChatMessageId });
+			return { success: false, status: "FAILED", error: errorMessage };
+		}
+
 		await db
 			.update(interactions)
 			.set({
 				statusEnvio: interactionStatusEnvio,
-				erroEnvio: null,
+				erroEnvio: Object.keys(channelErrors).length > 0 ? Object.values(channelErrors).join(" | ") : null,
 				metadados: {
-					...interaction.metadados,
+					...getInteractionMetadata(interaction.metadados),
 					...(interactionClientMessageId ? { clientMessageId: interactionClientMessageId } : {}),
 					...(interactionJobId ? { jobId: interactionJobId } : {}),
 					...(insertedChatMessageId ? { chatMessageId: insertedChatMessageId } : {}),
 					...(whatsappMessageId ? { whatsappMessageId } : {}),
+					...(emailMessageId ? { emailMessageId } : {}),
 					whatsappTemplateId: campaign.whatsappTemplate.id,
+					messageTemplateId: campaign.whatsappTemplate.id,
+					channelsAttempted,
+					channelsSkipped,
+					channelsSent: successfulChannels,
+					channelErrors,
 				},
 			})
 			.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
 
-		return {
-			success: true,
-			status: interactionStatusEnvio === "PENDENTE" ? "QUEUED" : "SENT",
-		};
+		return { success: true, status: interactionStatusEnvio === "PENDENTE" ? "QUEUED" : "SENT" };
 	} catch (error) {
 		console.error(`[INTERACTIONS] Failed to send interaction ${interactionId}:`, error);
-
 		await failInteractionSend({
 			interactionId,
 			organizationId,
-			errorMessage: "Houve uma falha ao enviar a mensagem via WhatsApp.",
+			errorMessage: "Houve uma falha ao enviar a mensagem.",
 			insertedChatMessageId,
 		});
 
-		return {
-			success: false,
-			status: "FAILED",
-			error: error instanceof Error ? error.message : "Unknown error",
-		};
+		return { success: false, status: "FAILED", error: error instanceof Error ? error.message : "Unknown error" };
 	}
 }

@@ -3,7 +3,6 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
-import { whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";

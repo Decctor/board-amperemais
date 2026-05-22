@@ -193,7 +193,7 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 
 							// Check for immediate processing
 							const isImmediate = isAntes || campaign.execucaoAgendadaValor === 0;
-							if (isImmediate && campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
+							if (isImmediate && campaign.whatsappTemplate) {
 								const clientData = await tx.query.clients.findFirst({
 									where: (fields, { eq }) => eq(fields.id, clientId),
 									columns: {

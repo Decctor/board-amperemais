@@ -1,5 +1,5 @@
 import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-variables";
-import type { TClientEntity, TWhatsappTemplate } from "@/services/drizzle/schema";
+import type { TClientEntity, TMessageTemplate } from "@/services/drizzle/schema";
 
 export type ImmediateProcessingData = {
 	interactionId: string;
@@ -15,8 +15,8 @@ export type ImmediateProcessingData = {
 	};
 	campaign: {
 		autorId: string;
-		whatsappConexaoTelefoneId: string;
-		whatsappTemplate: TWhatsappTemplate;
+		whatsappConexaoTelefoneId: string | null;
+		whatsappTemplate: TMessageTemplate;
 	};
 	whatsappToken?: string;
 	whatsappSessionId?: string;

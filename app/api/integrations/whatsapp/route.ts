@@ -34,9 +34,8 @@ import { clients } from "@/services/drizzle/schema/clients";
 import { interactions } from "@/services/drizzle/schema/interactions";
 import { messageTemplates } from "@/services/drizzle/schema/message-templates";
 import { whatsappConnectionPhones } from "@/services/drizzle/schema/whatsapp-connections";
-import { whatsappTemplatePhones, whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
 import { supabaseClient } from "@/services/supabase";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
@@ -142,20 +141,12 @@ export const POST = appApiHandler({
 
 /**
  * Handle template status/quality/category updates
- * Keeps the legacy WhatsApp-only tables and the universal message template metadata in sync.
+ * Keeps the universal message template metadata in sync with Meta webhook events.
  */
 async function handleTemplateEvent(body: WebhookBody): Promise<void> {
 	const statusUpdate = parseTemplateStatusUpdate(body);
 	if (statusUpdate?.status) {
 		console.log("[WHATSAPP_WEBHOOK] Template status update:", statusUpdate);
-		await db
-			.update(whatsappTemplatePhones)
-			.set({
-				status: statusUpdate.status,
-				...(statusUpdate.reason && { rejeicao: statusUpdate.reason }),
-				dataAtualizacao: new Date(),
-			})
-			.where(eq(whatsappTemplatePhones.whatsappTemplateId, statusUpdate.messageTemplateId));
 		await updateUniversalTemplatePhoneMetadata(statusUpdate.messageTemplateId, {
 			status: statusUpdate.status,
 			rejeicao: statusUpdate.reason ?? null,
@@ -166,13 +157,6 @@ async function handleTemplateEvent(body: WebhookBody): Promise<void> {
 	const qualityUpdate = parseTemplateQualityUpdate(body);
 	if (qualityUpdate?.quality) {
 		console.log("[WHATSAPP_WEBHOOK] Template quality update:", qualityUpdate);
-		await db
-			.update(whatsappTemplatePhones)
-			.set({
-				qualidade: qualityUpdate.quality,
-				dataAtualizacao: new Date(),
-			})
-			.where(eq(whatsappTemplatePhones.whatsappTemplateId, qualityUpdate.messageTemplateId));
 		await updateUniversalTemplatePhoneMetadata(qualityUpdate.messageTemplateId, {
 			qualidade: qualityUpdate.quality,
 		});
@@ -181,7 +165,6 @@ async function handleTemplateEvent(body: WebhookBody): Promise<void> {
 	const categoryUpdate = parseTemplateCategoryUpdate(body);
 	if (categoryUpdate?.category) {
 		console.log("[WHATSAPP_WEBHOOK] Template category update received:", categoryUpdate);
-		await updateLegacyTemplateCategory(categoryUpdate.messageTemplateId, categoryUpdate.category);
 		await updateUniversalTemplateCategory(categoryUpdate.messageTemplateId, categoryUpdate.category);
 		await syncUniversalTemplateComponentsFromMeta(categoryUpdate.messageTemplateId);
 	}
@@ -190,20 +173,6 @@ async function handleTemplateEvent(body: WebhookBody): Promise<void> {
 function mapMetaWebhookCategory(category: string): TMessageTemplateCategory | null {
 	const normalizedCategory = category.toUpperCase() as keyof typeof META_CATEGORY_TO_MESSAGE_TEMPLATE;
 	return META_CATEGORY_TO_MESSAGE_TEMPLATE[normalizedCategory] ?? null;
-}
-
-async function updateLegacyTemplateCategory(messageTemplateId: string, category: string): Promise<void> {
-	const mappedCategory = mapMetaWebhookCategory(category);
-	if (!mappedCategory) return;
-
-	const linkedPhones = await db.query.whatsappTemplatePhones.findMany({
-		where: eq(whatsappTemplatePhones.whatsappTemplateId, messageTemplateId),
-		columns: { templateId: true },
-	});
-	const templateIds = Array.from(new Set(linkedPhones.map((phone) => phone.templateId)));
-	if (templateIds.length === 0) return;
-
-	await db.update(whatsappTemplates).set({ categoria: mappedCategory }).where(inArray(whatsappTemplates.id, templateIds));
 }
 
 async function findUniversalTemplatesByMetaTemplateId(messageTemplateId: string) {

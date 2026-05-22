@@ -6,7 +6,6 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
-import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { testCampaign } from "@/lib/mutations/campaigns";
 import { useCampaignById } from "@/lib/queries/campaigns";
@@ -108,7 +107,7 @@ export default function TestCampaign({ campaignId, closeModal, callbacks }: Test
 						<Phone className="h-4 w-4 min-w-4 text-foreground" />
 						<div className="flex min-w-0 flex-col">
 							<p className="truncate text-xs font-bold tracking-tight">{phone?.nome ?? "Telefone não configurado"}</p>
-							<p className="text-xs text-muted-foreground">{phone?.numero ?? "Configure um telefone antes de testar."}</p>
+							<p className="text-xs text-muted-foreground">{phone?.numero ?? "Sem telefone: o teste segue apenas por e-mail."}</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3">
@@ -119,10 +118,10 @@ export default function TestCampaign({ campaignId, closeModal, callbacks }: Test
 						</div>
 					</div>
 				</div>
-				{!phone || !template ? (
+				{!template ? (
 					<div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
 						<AlertTriangle className="h-4 w-4 min-w-4" />
-						<p className="text-xs font-medium">A campanha precisa ter telefone e template configurados para enviar testes.</p>
+						<p className="text-xs font-medium">A campanha precisa ter um template de mensagem configurado para enviar testes.</p>
 					</div>
 				) : null}
 			</ResponsiveMenuSection>
@@ -144,7 +143,7 @@ export default function TestCampaign({ campaignId, closeModal, callbacks }: Test
 				</div>
 			</ResponsiveMenuSection>
 
-			<TemplatePreview content={template?.componentes ? whatsappTemplateComponentsToMessageContent(template.componentes) : null} />
+			<TemplatePreview content={template?.conteudo ?? null} />
 		</ResponsiveMenu>
 	);
 }

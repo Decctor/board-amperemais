@@ -9,10 +9,12 @@ import { StageShell } from "../stage-shell";
 
 type StageSendProps = {
 	organizationId: string;
+	organizationName: string;
+	organizationLogoUrl: string | null;
 	validation: TStageValidationResult;
 };
 
-export default function StageSend({ organizationId, validation }: StageSendProps) {
+export default function StageSend({ organizationId, organizationName, organizationLogoUrl, validation }: StageSendProps) {
 	const { back, next } = useBuilderUi();
 	const { state, updateCampaign } = useBuilderCampaign();
 
@@ -21,7 +23,7 @@ export default function StageSend({ organizationId, validation }: StageSendProps
 			<StageShell.Title
 				icon={Send}
 				label="Envio"
-				description="Configure o tempo de execução, telefone e template de WhatsApp."
+				description="Configure o tempo de execução, remetente WhatsApp e template de mensagem."
 			/>
 			<StageShell.Body>
 				<CampaignsExecutionBlock
@@ -31,6 +33,8 @@ export default function StageSend({ organizationId, validation }: StageSendProps
 				/>
 				<CampaignsActionBlock
 					organizationId={organizationId}
+					organizationName={organizationName}
+					organizationLogoUrl={organizationLogoUrl}
 					campaign={state.campaign}
 					updateCampaign={updateCampaign}
 				/>

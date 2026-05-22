@@ -5,7 +5,7 @@ import SettingsProfile from "@/components/Settings/SettingsProfile";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
 import SettingsWhatsAppConnection from "@/components/Settings/SettingsWhatsAppConnection";
-import SettingsWhatsappTemplates from "@/components/Settings/SettingsWhatsappTemplates";
+import CommunicationTemplatesPage from "@/app/dashboard/communication/_components/communication-templates-page";
 import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
@@ -19,7 +19,7 @@ type SettingsPageProps = {
 export default function SettingsPage({ user, membership }: SettingsPageProps) {
 	const [view, setView] = useQueryState(
 		"view",
-		parseAsStringEnum(["profile", "users", "meta-oauth", "whatsapp-templates", "segments", "organization", "integration"]),
+		parseAsStringEnum(["profile", "users", "meta-oauth", "message-templates", "segments", "organization", "integration"]),
 	);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -84,13 +84,13 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						CONEXÃO COM WHATSAPP
 					</Button>
 					<Button
-						variant={view === "whatsapp-templates" ? "secondary" : "ghost"}
+						variant={view === "message-templates" ? "secondary" : "ghost"}
 						className="flex items-center gap-2 whitespace-nowrap"
 						size="sm"
-						onClick={() => setView("whatsapp-templates")}
+						onClick={() => setView("message-templates")}
 					>
 						<MessageCircleIcon className="w-4 h-4 min-w-4 min-h-4" />
-						TEMPLATES WHATSAPP
+						TEMPLATES DE MENSAGEM
 					</Button>
 					<Button
 						variant={view === "segments" ? "secondary" : "ghost"}
@@ -112,7 +112,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 				)
 			) : null}
 			{view === "meta-oauth" ? <SettingsWhatsAppConnection user={user} /> : null}
-			{view === "whatsapp-templates" ? <SettingsWhatsappTemplates user={user} membership={membership} /> : null}
+			{view === "message-templates" ? <CommunicationTemplatesPage organizationName={membership.organizacao.nome} /> : null}
 			{view === "segments" ? <SettingsSegments user={user} /> : null}
 			{view === "organization" ? <SettingsOrg user={user} membership={membership} /> : null}
 			{view === "integration" ? <SettingsIntegration user={user} membership={membership} /> : null}

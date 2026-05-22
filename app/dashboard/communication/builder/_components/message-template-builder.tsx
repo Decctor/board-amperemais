@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TemplateMediaUpload from "@/components/Modals/WhatsappTemplates/Blocks/TemplateMediaUpload";
-import { getDefaultAppOrigin, getMessageTemplateButtonPreset, MESSAGE_TEMPLATE_BUTTON_PRESET_OPTIONS } from "@/lib/message-templates/button-presets";
+import { getDefaultAppOrigin, getMessageTemplateButtonPreset, MESSAGE_TEMPLATE_BUTTON_PRESET_OPTIONS } from "@/lib/message-templates/buttons/presets";
 import { ArrowLeft, BadgeCheck, Braces, Eye, FileText, ImageIcon, LinkIcon, Mail, Plus, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";

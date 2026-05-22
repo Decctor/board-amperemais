@@ -1,3 +1,11 @@
+import {
+	applyWhatsappSubmissionResultToMetadata,
+	assertWhatsappValidation,
+	createEmptyMessageTemplateMetadata,
+	getOrganizationWhatsappPhones,
+	normalizeContentForStorage,
+	submitMessageTemplateToWhatsappPhone,
+} from "@/app/api/message-templates/_lib";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import {
 	getEffectiveCampaignWeeklyLimit,
@@ -10,19 +18,21 @@ import {
 	validateRecurrentCampaign,
 	validateSingleUseCampaign,
 } from "@/lib/campaigns/validation";
-import { parseTemplateVariables } from "@/lib/ai-agent/marketing/template-variables";
-import { fetchAndUploadToMeta, isMediaHeaderType } from "@/lib/whatsapp/media-upload";
-import { createWhatsappTemplate as createWhatsappTemplateInMeta } from "@/lib/whatsapp/template-management";
+import { extractUnknownMessageTemplateVariables, normalizeMessageTemplateContentParameters } from "@/lib/message-templates";
 import { AIHintSchema, ApproveHintOutputSchema, type TAIHint, type TApproveHintInput, type TApproveHintOutput } from "@/schemas/ai-hints";
 import { CampaignSchema } from "@/schemas/campaigns";
-import { type TWhatsappTemplate, type TWhatsappTemplateBodyParameter, type TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
+import type { TMessageTemplateContent } from "@/schemas/message-templates";
 import { db } from "@/services/drizzle";
-import { aiHints, campaignSegmentations, campaigns, whatsappTemplatePhones, whatsappTemplates } from "@/services/drizzle/schema";
+import { aiHints, campaignSegmentations, campaigns, messageTemplates } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
 
-type TWhatsappTemplatePayload = Omit<TWhatsappTemplate, "autorId" | "dataInsercao">;
+type TMessageTemplatePayload = {
+	nome: string;
+	categoria: "MARKETING";
+	conteudo: TMessageTemplateContent;
+};
 
 function sanitizeTemplateNamePart(value: string) {
 	return value
@@ -40,86 +50,38 @@ function buildUniqueTemplateName(base: string) {
 	return `ai_hint_${sanitized}_${suffix}`.slice(0, 512);
 }
 
-function buildBodyParameters(templateText: string): TWhatsappTemplateBodyParameter[] {
-	const { variables, unknownVariables } = parseTemplateVariables(templateText);
+function buildMessageTemplateContentFromSuggestion({
+	bodyText,
+	subject,
+	preheader,
+	baseContent,
+}: {
+	bodyText: string;
+	subject: string;
+	preheader: string;
+	baseContent?: TMessageTemplateContent | null;
+}): TMessageTemplateContent {
+	const unknownVariables = extractUnknownMessageTemplateVariables([bodyText]);
 	if (unknownVariables.length > 0) {
 		throw new createHttpError.BadRequest(`Variáveis desconhecidas no template: ${unknownVariables.join(", ")}.`);
 	}
 
-	return variables.map((variable, index) => ({
-		nome: String(index + 1),
-		identificador: variable.identificador,
-		exemplo: variable.identificador,
-	}));
-}
-
-function buildTemplateComponentsFromSuggestion({
-	bodyText,
-	baseComponents,
-}: {
-	bodyText: string;
-	baseComponents?: TWhatsappTemplateComponents | null;
-}): TWhatsappTemplateComponents {
-	return {
-		cabecalho: baseComponents?.cabecalho ?? null,
+	return normalizeMessageTemplateContentParameters({
+		assunto: baseContent?.assunto?.trim() || subject,
+		preheader: baseContent?.preheader?.trim() || preheader,
+		cabecalho: baseContent?.cabecalho ?? null,
 		corpo: {
 			conteudo: bodyText,
-			parametros: buildBodyParameters(bodyText),
+			parametros: baseContent?.corpo.parametros ?? [],
 		},
-		rodape: baseComponents?.rodape ?? null,
-		botoes: baseComponents?.botoes ?? null,
-	};
+		rodape: baseContent?.rodape ?? null,
+		botoes: baseContent?.botoes ?? [],
+	});
 }
 
 function validatePermanenciaSegmentacaoRequirement(campaign: z.infer<typeof CampaignSchema>) {
 	if (campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO" && (!campaign.gatilhoTempoPermanenciaMedida || !campaign.gatilhoTempoPermanenciaValor)) {
 		throw new createHttpError.BadRequest("Defina um tempo de permanência para a segmentação.");
-	}
-}
-
-async function resolveTemplateMediaHeaderForMeta({
-	template,
-	whatsappToken,
-	logScope,
-}: {
-	template: TWhatsappTemplatePayload;
-	whatsappToken: string;
-	logScope: string;
-}) {
-	const header = template.componentes.cabecalho;
-	if (!header || !isMediaHeaderType(header.tipo) || !header.conteudo) {
-		return template;
-	}
-
-	const metaAppId = process.env.NEXT_PUBLIC_META_APP_ID;
-	if (!metaAppId) {
-		throw new createHttpError.InternalServerError("Meta app ID não configurado.");
-	}
-
-	try {
-		const { headerHandle } = await fetchAndUploadToMeta({
-			fileUrl: header.conteudo,
-			appId: metaAppId,
-			accessToken: whatsappToken,
-		});
-
-		console.log(`[INFO] [${logScope}] Media uploaded successfully. Header handle: ${headerHandle}`);
-
-		return {
-			...template,
-			componentes: {
-				...template.componentes,
-				cabecalho: {
-					...header,
-					exemplo: headerHandle,
-				},
-			},
-		};
-	} catch (uploadError) {
-		console.error(`[ERROR] [${logScope}] Failed to upload media to Meta:`, uploadError);
-		throw new createHttpError.BadRequest(
-			`Erro ao fazer upload da mídia para o WhatsApp: ${uploadError instanceof Error ? uploadError.message : "Erro desconhecido"}`,
-		);
 	}
 }
 
@@ -130,82 +92,71 @@ async function createTemplateRegistry({
 }: {
 	organizationId: string;
 	userId: string;
-	template: TWhatsappTemplatePayload;
+	template: TMessageTemplatePayload;
 }) {
-	const orgWhatsappConnection = await db.query.whatsappConnections.findFirst({
-		where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
-		with: {
-			telefones: true,
-		},
-	});
-	if (!orgWhatsappConnection) throw new createHttpError.NotFound("Conexão WhatsApp não encontrada.");
-	if (orgWhatsappConnection.telefones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
+	const content = normalizeContentForStorage(template.conteudo);
+	assertWhatsappValidation(content);
 
 	const [insertedTemplate] = await db
-		.insert(whatsappTemplates)
+		.insert(messageTemplates)
 		.values({
 			nome: template.nome,
 			categoria: template.categoria,
-			componentes: template.componentes,
+			status: "ATIVO",
+			alerta: null,
+			metadados: createEmptyMessageTemplateMetadata(),
+			conteudo: content,
+			linguagem: "pt_BR",
 			autorId: userId,
 			organizacaoId: organizationId,
 		})
-		.returning({ id: whatsappTemplates.id });
+		.returning();
 
 	if (!insertedTemplate) throw new createHttpError.InternalServerError("Erro ao criar template.");
 
-	const connectionType = orgWhatsappConnection.tipoConexao;
-	const whatsappToken = orgWhatsappConnection.token;
+	const phones = await getOrganizationWhatsappPhones(organizationId);
+	let nextMetadata = insertedTemplate.metadados;
+	let nextContent = insertedTemplate.conteudo;
 	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; error?: string }> = [];
 
-	for (const telefone of orgWhatsappConnection.telefones) {
+	for (const phone of phones) {
 		try {
-			let metaWhatsappTemplateId: string | null = null;
-			if (connectionType === "META_CLOUD_API" && whatsappToken) {
-				if (!telefone.whatsappBusinessAccountId) continue;
-
-				const templateForMeta = await resolveTemplateMediaHeaderForMeta({
-					template,
-					whatsappToken,
-					logScope: "AI_HINT_APPROVE_TEMPLATE_CREATE",
-				});
-
-				const metaResponse = await createWhatsappTemplateInMeta({
-					whatsappToken,
-					whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
-					template: templateForMeta,
-				});
-				metaWhatsappTemplateId = metaResponse.whatsappTemplateId;
-			}
-
-			await db.insert(whatsappTemplatePhones).values({
-				templateId: insertedTemplate.id,
-				telefoneId: telefone.id,
-				whatsappTemplateId: metaWhatsappTemplateId,
-				status: metaWhatsappTemplateId ? "PENDENTE" : "APROVADO",
-				qualidade: metaWhatsappTemplateId ? "PENDENTE" : "ALTA",
+			const result = await submitMessageTemplateToWhatsappPhone({
+				template: { ...insertedTemplate, metadados: nextMetadata, conteudo: nextContent },
+				phone,
+				organizationId,
+				origin: "ai_hint",
+				mode: "create",
 			});
-
+			nextMetadata = applyWhatsappSubmissionResultToMetadata({
+				metadata: nextMetadata,
+				phoneId: phone.id,
+				idExterno: result.idExterno,
+			});
+			if (result.content) nextContent = result.content;
 			phoneResults.push({
-				telefoneId: telefone.id,
-				whatsappTemplateId: metaWhatsappTemplateId,
+				telefoneId: phone.id,
+				whatsappTemplateId: result.idExterno,
+				error: result.success ? undefined : result.message,
 			});
 		} catch (error) {
-			console.error(`[ERROR] [AI_HINT_APPROVE_TEMPLATE_CREATE] Failed for phone ${telefone.numero}:`, error);
+			console.error(`[ERROR] [AI_HINT_APPROVE_TEMPLATE_CREATE] Failed for phone ${phone.numero}:`, error);
 			phoneResults.push({
-				telefoneId: telefone.id,
+				telefoneId: phone.id,
 				whatsappTemplateId: null,
 				error: error instanceof Error ? error.message : "Erro desconhecido",
 			});
 		}
 	}
 
-	const successfulPhones = phoneResults.filter((result) => result.whatsappTemplateId !== null);
-	const failedPhones = phoneResults.filter((result) => result.whatsappTemplateId === null);
-
-	if (connectionType === "META_CLOUD_API" && successfulPhones.length === 0 && failedPhones.length > 0) {
-		throw new createHttpError.BadRequest(failedPhones[0]?.error || "Erro ao criar template no WhatsApp.");
-	}
+	await db
+		.update(messageTemplates)
+		.set({
+			metadados: nextMetadata,
+			conteudo: nextContent,
+			dataAtualizacao: new Date(),
+		})
+		.where(eq(messageTemplates.id, insertedTemplate.id));
 
 	return {
 		templateId: insertedTemplate.id,
@@ -262,11 +213,13 @@ async function createCampaignFromApprovedHint({
 		organizationId,
 	});
 
-	const templatePayload: TWhatsappTemplatePayload = {
+	const templatePayload: TMessageTemplatePayload = {
 		nome: buildUniqueTemplateName(suggestion.titulo),
 		categoria: "MARKETING",
-		componentes: buildTemplateComponentsFromSuggestion({
+		conteudo: buildMessageTemplateContentFromSuggestion({
 			bodyText: suggestion.whatsappTemplateText,
+			subject: suggestion.titulo,
+			preheader: suggestion.objetivoEsperado || suggestion.descricao || "Mensagem da campanha",
 		}),
 	};
 
@@ -307,7 +260,7 @@ async function createCampaignFromApprovedHint({
 			whatsappTemplateId: templateId,
 		};
 	} catch (error) {
-		await db.delete(whatsappTemplates).where(eq(whatsappTemplates.id, templateId));
+		await db.delete(messageTemplates).where(eq(messageTemplates.id, templateId));
 		throw error;
 	}
 }
@@ -334,7 +287,7 @@ async function updateCampaignFromApprovedHint({
 	});
 
 	if (!existingCampaign) throw new createHttpError.NotFound("Campanha da sugestão não encontrada.");
-	if (!existingCampaign.whatsappTemplate) throw new createHttpError.NotFound("Template do WhatsApp da campanha não encontrado.");
+	if (!existingCampaign.whatsappTemplate) throw new createHttpError.NotFound("Template de mensagem da campanha não encontrado.");
 
 	const currentCampaign = CampaignSchema.omit({ dataInsercao: true, autorId: true }).parse(existingCampaign);
 	const effectiveCampaign = CampaignSchema.omit({ dataInsercao: true, autorId: true }).parse({
@@ -360,12 +313,14 @@ async function updateCampaignFromApprovedHint({
 		organizationId,
 	});
 
-	const templatePayload: TWhatsappTemplatePayload = {
+	const templatePayload: TMessageTemplatePayload = {
 		nome: buildUniqueTemplateName(existingCampaign.whatsappTemplate.nome),
-		categoria: existingCampaign.whatsappTemplate.categoria,
-		componentes: buildTemplateComponentsFromSuggestion({
+		categoria: "MARKETING",
+		conteudo: buildMessageTemplateContentFromSuggestion({
 			bodyText: suggestion.whatsappTemplateText,
-			baseComponents: existingCampaign.whatsappTemplate.componentes,
+			subject: suggestion.campaignTitle,
+			preheader: suggestion.impactoEsperado || suggestion.justificativa || "Atualização da campanha",
+			baseContent: existingCampaign.whatsappTemplate.conteudo,
 		}),
 	};
 
@@ -405,7 +360,7 @@ async function updateCampaignFromApprovedHint({
 			whatsappTemplateId: templateId,
 		};
 	} catch (error) {
-		await db.delete(whatsappTemplates).where(eq(whatsappTemplates.id, templateId));
+		await db.delete(messageTemplates).where(eq(messageTemplates.id, templateId));
 		throw error;
 	}
 }

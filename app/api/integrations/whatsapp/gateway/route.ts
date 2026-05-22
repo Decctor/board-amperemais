@@ -11,7 +11,7 @@ import { db } from "@/services/drizzle";
 import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
 import { interactions } from "@/services/drizzle/schema/interactions";
-import { whatsappTemplatePhones } from "@/services/drizzle/schema/whatsapp-templates";
+import { messageTemplates } from "@/services/drizzle/schema/message-templates";
 import { supabaseClient } from "@/services/supabase";
 import { waitUntil } from "@vercel/functions";
 import { eq, sql } from "drizzle-orm";
@@ -156,16 +156,7 @@ async function handleConnectionUpdate(body: Extract<WebhookBody, { event: "conne
 	const connection = await db.query.whatsappConnections.findFirst({
 		where: (fields, { eq }) => eq(fields.gatewaySessaoId, sessionId),
 		with: {
-			telefones: {
-				with: {
-					templates: {
-						columns: {
-							id: true,
-							templateId: true,
-						},
-					},
-				},
-			},
+			telefones: true,
 		},
 	});
 
@@ -190,23 +181,37 @@ async function handleConnectionUpdate(body: Extract<WebhookBody, { event: "conne
 	await db.update(whatsappConnections).set(updateData).where(eq(whatsappConnections.id, connection.id));
 
 	if (data.status === "connected") {
-		const orgTemplates = await db.query.whatsappTemplates.findMany({
+		const orgTemplates = await db.query.messageTemplates.findMany({
 			where: (fields, { eq }) => eq(fields.organizacaoId, connection.organizacaoId),
 		});
 
-		const syncTemplateTasks = orgTemplates.flatMap((template) =>
-			connection.telefones.map(async (phone) => {
-				const alreadyLinked = phone.templates.some((t) => t.templateId === template.id);
-				if (alreadyLinked) return;
-				await db.insert(whatsappTemplatePhones).values({
-					templateId: template.id,
-					telefoneId: phone.id,
-					whatsappTemplateId: null,
+		const syncTemplateTasks = orgTemplates.map(async (template) => {
+			const nextPhoneMetadata = { ...template.metadados.porNumeroTelefone };
+			let changed = false;
+
+			for (const phone of connection.telefones) {
+				if (nextPhoneMetadata[phone.id]) continue;
+				nextPhoneMetadata[phone.id] = {
+					idExterno: "",
 					status: "APROVADO",
 					qualidade: "ALTA",
-				});
-			}),
-		);
+				};
+				changed = true;
+			}
+
+			if (!changed) return;
+
+			await db
+				.update(messageTemplates)
+				.set({
+					metadados: {
+						...template.metadados,
+						porNumeroTelefone: nextPhoneMetadata,
+					},
+					dataAtualizacao: new Date(),
+				})
+				.where(eq(messageTemplates.id, template.id));
+		});
 		await Promise.all(syncTemplateTasks);
 	}
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Connection status updated:", {

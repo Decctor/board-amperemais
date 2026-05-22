@@ -1010,16 +1010,14 @@ async function handleCampaignProcessingForNewPurchase({
 
 			console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
 				SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
-				HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
+				HAS_MESSAGE_TEMPLATE: !!campaign.whatsappTemplate,
 				HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 				HAS_CLIENT_DATA: !!clientData,
 			});
 			if (
 				shouldProcessImmediately &&
 				campaign.whatsappTemplate &&
-				campaign.whatsappConexaoTelefone?.conexao &&
-				clientData &&
-				campaign.whatsappConexaoTelefoneId
+				clientData
 			) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,
@@ -1154,10 +1152,10 @@ async function handleCampaignProcessingForFirstPurchase({
 				campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
 			console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
 				SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
-				HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
+				HAS_MESSAGE_TEMPLATE: !!campaign.whatsappTemplate,
 				HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 			});
-			if (shouldProcessImmediately && campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
+			if (shouldProcessImmediately && campaign.whatsappTemplate) {
 				const clientData = await tx.query.clients.findFirst({
 					where: (fields, { eq }) => eq(fields.id, clientId),
 					columns: {
@@ -1329,16 +1327,14 @@ async function handleCampaignProcessingForCashbackAccumulation({
 
 		console.log(`[POI] [ORG: ${orgId}] [CASHBACK-ACUMULADO] SHOULD PROCESS IMMEDIATELY PARAMS:`, {
 			SHOULD_PROCESS_IMMEDIATELY: shouldProcessImmediately,
-			HAS_WHATSAPP_TEMPLATE: !!campaign.whatsappTemplate,
+			HAS_MESSAGE_TEMPLATE: !!campaign.whatsappTemplate,
 			HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 			HAS_CLIENT_DATA: !!clientData,
 		});
 		if (
 			shouldProcessImmediately &&
 			campaign.whatsappTemplate &&
-			campaign.whatsappConexaoTelefone?.conexao &&
-			clientData &&
-			campaign.whatsappConexaoTelefoneId
+			clientData
 		) {
 			console.log(`[POI] [ORG: ${orgId}] [CASHBACK-ACUMULADO] Adding to immediate processing list`);
 			addToImmediateProcessingDataList({
@@ -1472,9 +1468,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 			if (
 				shouldProcessImmediately &&
 				campaign.whatsappTemplate &&
-				campaign.whatsappConexaoTelefone?.conexao &&
-				clientData &&
-				campaign.whatsappConexaoTelefoneId
+				clientData
 			) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,
@@ -1626,9 +1620,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 			if (
 				shouldProcessImmediately &&
 				campaign.whatsappTemplate &&
-				campaign.whatsappConexaoTelefone?.conexao &&
-				clientData &&
-				campaign.whatsappConexaoTelefoneId
+				clientData
 			) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,

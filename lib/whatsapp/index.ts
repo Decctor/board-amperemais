@@ -1,6 +1,6 @@
 import axios from "axios";
 import createHttpError from "http-errors";
-import type { TemplatePayload } from "@/lib/whatsapp/templates";
+import type { TWhatsappTemplateSendPayload } from "@/lib/message-templates/channels/whatsapp/types";
 
 const GRAPH_API_BASE_URL = "https://graph.facebook.com/v22.0";
 
@@ -81,7 +81,7 @@ export async function sendBasicWhatsappMessage({
 
 type SendTemplateWhatsappMessageParams = {
 	fromPhoneNumberId: string;
-	templatePayload: TemplatePayload;
+	templatePayload: TWhatsappTemplateSendPayload | Record<string, unknown>;
 	whatsappToken: string;
 };
 

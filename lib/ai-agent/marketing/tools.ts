@@ -133,7 +133,7 @@ export async function getCampaignPerformanceById({
 			? {
 					id: campaign.whatsappTemplate.id,
 					nome: campaign.whatsappTemplate.nome,
-					texto: getWhatsappTemplatePlainText(campaign.whatsappTemplate.componentes),
+					texto: getWhatsappTemplatePlainText(campaign.whatsappTemplate.conteudo),
 				}
 			: null,
 		periodoAnalise: {

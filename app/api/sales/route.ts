@@ -819,9 +819,7 @@ const createSaleRoute: PagesRouteHandler<TCreateSaleOutput> = async (req, res) =
 					if (
 						campaign.execucaoAgendadaValor === 0 &&
 						campaign.whatsappTemplate &&
-						campaign.whatsappConexaoTelefone?.conexao &&
-						clientData &&
-						campaign.whatsappConexaoTelefoneId
+						clientData
 					) {
 						immediateProcessingDataList.push({
 							interactionId: insertedInteraction.id,

@@ -314,9 +314,7 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 							// Check for immediate processing (execucaoAgendadaValor === 0)
 							if (
 								campaign.execucaoAgendadaValor === 0 &&
-								campaign.whatsappTemplate &&
-								campaign.whatsappConexaoTelefone?.conexao &&
-								campaign.whatsappConexaoTelefoneId
+								campaign.whatsappTemplate
 							) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({
@@ -451,9 +449,7 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 							// Check for immediate processing (execucaoAgendadaValor === 0)
 							if (
 								campaign.execucaoAgendadaValor === 0 &&
-								campaign.whatsappTemplate &&
-								campaign.whatsappConexaoTelefone?.conexao &&
-								campaign.whatsappConexaoTelefoneId
+								campaign.whatsappTemplate
 							) {
 								// Query client data for immediate processing
 								const clientData = await tx.query.clients.findFirst({

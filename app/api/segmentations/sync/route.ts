@@ -259,9 +259,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 						// Check for immediate processing (execucaoAgendadaValor === 0)
 						if (
 							campaign.execucaoAgendadaValor === 0 &&
-							campaign.whatsappTemplate &&
-							campaign.whatsappConexaoTelefone?.conexao &&
-							campaign.whatsappConexaoTelefoneId
+							campaign.whatsappTemplate
 						) {
 							// Query client data for immediate processing
 							const clientData = await tx.query.clients.findFirst({
@@ -394,9 +392,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 						// Check for immediate processing (execucaoAgendadaValor === 0)
 						if (
 							campaign.execucaoAgendadaValor === 0 &&
-							campaign.whatsappTemplate &&
-							campaign.whatsappConexaoTelefone?.conexao &&
-							campaign.whatsappConexaoTelefoneId
+							campaign.whatsappTemplate
 						) {
 							// Query client data for immediate processing
 							const clientData = await tx.query.clients.findFirst({

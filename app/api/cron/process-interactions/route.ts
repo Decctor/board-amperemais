@@ -207,25 +207,7 @@ async function markInteractionsAsFailed({
 
 function getCampaignConfigurationError(campaign: TProcessingCampaign, interaction: TPendingInteraction): string | null {
 	if (!campaign.whatsappTemplate) {
-		return "Campanha sem template de WhatsApp configurado.";
-	}
-
-	const whatsappConnectionPhone = interaction.campanha?.whatsappConexaoTelefone;
-	if (!whatsappConnectionPhone) {
-		return "Campanha sem telefone de conexao do WhatsApp configurado.";
-	}
-
-	const whatsappConnection = whatsappConnectionPhone.conexao;
-	if (!whatsappConnection) {
-		return "Campanha sem conexao de WhatsApp disponivel.";
-	}
-
-	if (whatsappConnection.tipoConexao === "META_CLOUD_API" && (!whatsappConnection.token || !interaction.campanha?.whatsappConexaoTelefoneId)) {
-		return "Configuracao da Cloud API do WhatsApp esta incompleta.";
-	}
-
-	if (whatsappConnection.tipoConexao === "INTERNAL_GATEWAY" && !whatsappConnection.gatewaySessaoId) {
-		return "Configuracao do Gateway Interno do WhatsApp esta incompleta.";
+		return "Campanha sem template de mensagem configurado.";
 	}
 
 	return null;
@@ -256,7 +238,7 @@ function buildImmediateProcessingData({
 		},
 		campaign: {
 			autorId: campaign.autorId,
-			whatsappConexaoTelefoneId: interaction.campanha?.whatsappConexaoTelefoneId ?? "",
+			whatsappConexaoTelefoneId: interaction.campanha?.whatsappConexaoTelefoneId ?? null,
 			whatsappTemplate: campaign.whatsappTemplate,
 		},
 		whatsappToken: whatsappConnection?.tipoConexao === "META_CLOUD_API" ? (whatsappConnection.token ?? undefined) : undefined,
