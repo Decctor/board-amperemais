@@ -1,6 +1,6 @@
 "use client";
 
-import { WhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
+import { MessageTemplateVariables } from "@/lib/message-templates";
 
 export type TTemplateChannel = "WHATSAPP" | "EMAIL";
 export type TTemplateStatus = "RASCUNHO" | "ATIVO" | "ARQUIVADO";
@@ -60,7 +60,7 @@ export const MessageTemplateDynamicHeaderPresetOptions: Array<{
 	},
 ];
 
-export const MessageTemplateNativeVariables = WhatsappTemplateVariables.map((variable) => ({
+export const MessageTemplateNativeVariables = MessageTemplateVariables.map((variable) => ({
 	identificador: variable.value,
 	label: variable.label,
 	description: variable.description,

@@ -39,7 +39,7 @@ Regras críticas:
 - Não invente telefones, gatilhos, segmentações ou variáveis não existentes no contexto e no estudo.
 - Ao propor um template, use variáveis no formato {{clientName}}.
 - O campo limiteEnviosSemanais representa o volume total de mensagens individuais que a campanha pode enviar por semana, e não a quantidade de execuções, clientes ou recorrências. Evite valores muito baixos como 1, 2 ou 3, salvo se o usuário pedir explicitamente um limite operacional extremamente restritivo.
-- O campo whatsappTemplateText deve conter apenas o texto do corpo da mensagem sugerida, sem prefixos como "Corpo:", e sem recriar ou editar cabeçalho, rodapé, botões, mídia ou estrutura do template.
+- O campo messageTemplateText deve conter apenas o texto do corpo da mensagem sugerida, sem prefixos como "Corpo:", e sem recriar ou editar cabeçalho, rodapé, botões, mídia ou estrutura do template.
 - Se a campanha atual já tiver cabeçalho, rodapé, botões ou mídia, preserve essas estruturas como estão. A sugestão de copy deve se limitar ao corpo da mensagem.
 - O campo message deve resumir a sugestão validada de forma clara e útil para um usuário interno.
 - suggestionType deve refletir a ferramenta chamada com sucesso.

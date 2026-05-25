@@ -1,8 +1,8 @@
 import { AlertCircle, CheckCircle2, Clock, List, Pencil, Sparkles, Target, Users } from "lucide-react";
-import { SectionLabel } from "./SectionLabel";
-import WhatsappTextPreview from "./WhatsappTextPreview";
 import { TGetHintsOutputById } from "@/app/api/ai-hints/route";
 import { ApprovalOrDismiss } from "./ApprovalOrDismiss";
+import { SectionLabel } from "./SectionLabel";
+import WhatsappTextPreview from "./WhatsappTextPreview";
 
 type CampaignUpdateSuggestionBlockProps = {
 	hint: TGetHintsOutputById;
@@ -95,23 +95,14 @@ function formatValue(key: string, value: unknown): string {
 	) {
 		return DURATION_UNIT_LABELS[value] ?? value;
 	}
-	if (key === "execucaoAgendadaDirecao" && typeof value === "string") {
-		return EXECUTION_DIRECTION_LABELS[value] ?? value;
-	}
-	if (key === "atribuicaoModelo" && typeof value === "string") {
-		return ATTRIBUTION_MODEL_LABELS[value] ?? value;
-	}
-	if (key === "recorrenciaTipo" && typeof value === "string") {
-		return RECURRENCE_TYPE_LABELS[value] ?? value;
-	}
-	if (key === "cashbackGeracaoTipo" && typeof value === "string") {
-		return CASHBACK_TYPE_LABELS[value] ?? value;
-	}
+	if (key === "execucaoAgendadaDirecao" && typeof value === "string") return EXECUTION_DIRECTION_LABELS[value] ?? value;
+	if (key === "atribuicaoModelo" && typeof value === "string") return ATTRIBUTION_MODEL_LABELS[value] ?? value;
+	if (key === "recorrenciaTipo" && typeof value === "string") return RECURRENCE_TYPE_LABELS[value] ?? value;
+	if (key === "cashbackGeracaoTipo" && typeof value === "string") return CASHBACK_TYPE_LABELS[value] ?? value;
 	if (Array.isArray(value)) return value.join(", ");
 	return String(value);
 }
 
-/** Same semantic value after formatting (avoids false “diff” when modelo echoes unchanged fields). */
 function valuesAreEqualForDisplay(key: string, before: unknown, after: unknown): boolean {
 	return formatValue(key, before) === formatValue(key, after);
 }
@@ -124,6 +115,7 @@ function ChangeIntentBadge({ unchanged }: { unchanged: boolean }) {
 			</span>
 		);
 	}
+
 	return (
 		<span className="inline-flex shrink-0 items-center rounded-full border border-amber-300/70 bg-amber-100/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/45 dark:text-amber-200">
 			ALTERAR
@@ -133,9 +125,9 @@ function ChangeIntentBadge({ unchanged }: { unchanged: boolean }) {
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
-		<div className="flex items-start justify-between gap-2 py-1.5 border-b border-border last:border-b-0">
-			<span className="text-xs text-muted-foreground shrink-0">{label}</span>
-			<span className="text-xs text-foreground font-medium text-right">{value}</span>
+		<div className="flex items-start justify-between gap-2 border-b border-border py-1.5 last:border-b-0">
+			<span className="shrink-0 text-xs text-muted-foreground">{label}</span>
+			<span className="text-right text-xs font-medium text-foreground">{value}</span>
 		</div>
 	);
 }
@@ -148,27 +140,24 @@ export default function CampaignUpdateSuggestionBlock({ hint, callbacks }: Campa
 	const { currentSummary, currentConfig, proposedChanges } = sugestao;
 	const currentValues = (currentConfig ?? currentSummary) as Record<string, unknown>;
 
-	// Get only keys present in proposedChanges (excluding undefined)
 	const changedKeys = Object.entries(proposedChanges)
-		.filter(([, v]) => v !== undefined)
-		.map(([k]) => k);
+		.filter(([, value]) => value !== undefined)
+		.map(([key]) => key);
 
 	return (
-		<div className="flex flex-col gap-5 w-full">
-			{/* Executive Summary */}
+		<div className="flex w-full flex-col gap-5">
 			<div className="flex flex-col gap-2">
 				<SectionLabel icon={<Sparkles />} label="RESUMO EXECUTIVO" />
-				<p className="text-sm text-foreground/75 leading-relaxed pl-1">{resumoExecutivo}</p>
+				<p className="pl-1 text-sm leading-relaxed text-foreground/75">{resumoExecutivo}</p>
 			</div>
 
-			{/* Analysis Criteria */}
 			{criterios.length > 0 && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<List />} label="CRITÉRIOS DE ANÁLISE" />
 					<ul className="flex flex-col gap-1.5">
 						{criterios.map((criterio, i) => (
-							<li key={i.toString()} className="flex items-start gap-2 text-xs text-foreground/80 leading-relaxed">
-								<CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+							<li key={i.toString()} className="flex items-start gap-2 text-xs leading-relaxed text-foreground/80">
+								<CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
 								<span>{criterio}</span>
 							</li>
 						))}
@@ -176,10 +165,9 @@ export default function CampaignUpdateSuggestionBlock({ hint, callbacks }: Campa
 				</div>
 			)}
 
-			{/* Target Campaign */}
 			<div className="flex flex-col gap-2">
 				<SectionLabel icon={<Target />} label="CAMPANHA ALVO" />
-				<div className="rounded-lg border border-border bg-secondary/20 px-3 py-1 flex flex-col">
+				<div className="flex flex-col rounded-lg border border-border bg-secondary/20 px-3 py-1">
 					<InfoRow label="Título" value={currentSummary.titulo} />
 					<InfoRow label="Gatilho atual" value={TRIGGER_LABELS[currentSummary.gatilhoTipo] ?? currentSummary.gatilhoTipo} />
 					<InfoRow label="Status atual" value={currentSummary.ativo ? "Ativa" : "Inativa"} />
@@ -187,29 +175,29 @@ export default function CampaignUpdateSuggestionBlock({ hint, callbacks }: Campa
 				</div>
 			</div>
 
-			{/* Proposed Changes */}
 			{changedKeys.length > 0 && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<Pencil />} label="ALTERAÇÕES PROPOSTAS" />
-					<div className="rounded-lg border border-amber-200/60 bg-amber-50/30 dark:border-amber-800/30 dark:bg-amber-900/10 px-3 py-1 flex flex-col">
+					<div className="flex flex-col rounded-lg border border-amber-200/60 bg-amber-50/30 px-3 py-1 dark:border-amber-800/30 dark:bg-amber-900/10">
 						{changedKeys.map((key) => {
 							const before = currentValues[key];
 							const after = (proposedChanges as Record<string, unknown>)[key];
 							const unchanged = valuesAreEqualForDisplay(key, before, after);
+
 							return (
-								<div key={key} className="flex items-start justify-between gap-2 py-1.5 border-b border-border last:border-b-0">
+								<div key={key} className="flex items-start justify-between gap-2 border-b border-border py-1.5 last:border-b-0">
 									<div className="flex min-w-0 flex-1 items-start gap-2">
 										<ChangeIntentBadge unchanged={unchanged} />
 										<span className="text-xs text-muted-foreground">{FIELD_LABELS[key] ?? key}</span>
 									</div>
-									<div className="flex items-center gap-1.5 text-right min-w-0 justify-end">
+									<div className="flex min-w-0 items-center justify-end gap-1.5 text-right">
 										{unchanged ? (
 											<span className="text-xs font-medium text-foreground">{formatValue(key, after)}</span>
 										) : (
 											<>
-												<span className="text-[11px] text-muted-foreground line-through shrink-0">{formatValue(key, before)}</span>
-												<span className="text-[11px] text-amber-600 dark:text-amber-400 shrink-0">→</span>
-												<span className="text-xs font-medium text-foreground wrap-break-word">{formatValue(key, after)}</span>
+												<span className="shrink-0 text-[11px] text-muted-foreground line-through">{formatValue(key, before)}</span>
+												<span className="shrink-0 text-[11px] text-amber-600 dark:text-amber-400">→</span>
+												<span className="wrap-break-word text-xs font-medium text-foreground">{formatValue(key, after)}</span>
 											</>
 										)}
 									</div>
@@ -220,7 +208,6 @@ export default function CampaignUpdateSuggestionBlock({ hint, callbacks }: Campa
 				</div>
 			)}
 
-			{/* New Segments */}
 			{sugestao.segmentations && sugestao.segmentations.length > 0 && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<Users />} label="NOVOS SEGMENTOS-ALVO" />
@@ -237,28 +224,24 @@ export default function CampaignUpdateSuggestionBlock({ hint, callbacks }: Campa
 				</div>
 			)}
 
-			{/* WhatsApp Template Preview */}
-			{sugestao.whatsappTemplateText && <WhatsappTextPreview text={sugestao.whatsappTemplateText} />}
+			{sugestao.messageTemplateText && <WhatsappTextPreview text={sugestao.messageTemplateText} />}
 
-			{/* Expected Impact */}
 			{sugestao.impactoEsperado && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<Target />} label="IMPACTO ESPERADO" />
-					<p className="text-sm text-foreground/75 leading-relaxed pl-1">{sugestao.impactoEsperado}</p>
+					<p className="pl-1 text-sm leading-relaxed text-foreground/75">{sugestao.impactoEsperado}</p>
 				</div>
 			)}
 
-			{/* Justification */}
 			{sugestao.justificativa && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<AlertCircle />} label="JUSTIFICATIVA" />
-					<p className="text-sm text-foreground/75 leading-relaxed pl-1">{sugestao.justificativa}</p>
+					<p className="pl-1 text-sm leading-relaxed text-foreground/75">{sugestao.justificativa}</p>
 				</div>
 			)}
 
-			{/* Disclaimer */}
 			<div className="flex items-center gap-1.5 rounded-lg border border-border/30 bg-muted/30 px-3 py-2">
-				<Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+				<Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 				<span className="text-xs text-muted-foreground">Esta é uma sugestão de atualização — as alterações não são aplicadas automaticamente.</span>
 			</div>
 

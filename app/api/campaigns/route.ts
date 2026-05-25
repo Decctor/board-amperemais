@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
-import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
+import { validateTemplateForTrigger } from "@/lib/message-templates";
 import { CampaignSchema, CampaignSegmentationSchema } from "@/schemas/campaigns";
 import { CampaignTriggerTypeEnum, type TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";

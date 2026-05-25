@@ -161,6 +161,10 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
 		fields: [chatMessages.servicoId],
 		references: [chatServices.id],
 	}),
+	whatsappTemplate: one(messageTemplates, {
+		fields: [chatMessages.whatsappTemplateId],
+		references: [messageTemplates.id],
+	}),
 }));
 export type TChatMessageEntity = typeof chatMessages.$inferSelect;
 export type TNewChatMessageEntity = typeof chatMessages.$inferInsert;

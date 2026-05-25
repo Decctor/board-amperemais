@@ -71,11 +71,11 @@ async function testCampaign({
 
 	if (selectedClients.length === 0) throw new createHttpError.BadRequest("Nenhum cliente válido encontrado.");
 
-	const results: { clientId: string; clientName: string; success: boolean; error?: string }[] = [];
+	const results: { clientId: string; clientName: string; success: boolean; error?: string; channelsAttempted: string[]; channelsSkipped: string[]; channelsSent: string[]; channelErrors: Record<string, string> }[] = [];
 
 	for (const client of selectedClients) {
 		if (!client.telefone && !client.email) {
-			results.push({ clientId: client.id, clientName: client.nome, success: false, error: "Cliente não possui telefone nem e-mail." });
+			results.push({ clientId: client.id, clientName: client.nome, success: false, error: "Cliente não possui telefone nem e-mail.", channelsAttempted: [], channelsSkipped: ["WHATSAPP: cliente sem telefone", "EMAIL: cliente sem email"], channelsSent: [], channelErrors: {} });
 			continue;
 		}
 
@@ -95,7 +95,7 @@ async function testCampaign({
 			.returning({ id: interactions.id });
 
 		if (!insertedInteraction) {
-			results.push({ clientId: client.id, clientName: client.nome, success: false, error: "Falha ao criar interação de teste." });
+			results.push({ clientId: client.id, clientName: client.nome, success: false, error: "Falha ao criar interação de teste.", channelsAttempted: [], channelsSkipped: [], channelsSent: [], channelErrors: {} });
 			continue;
 		}
 
@@ -126,6 +126,10 @@ async function testCampaign({
 			clientName: client.nome,
 			success: processingResult.success,
 			error: processingResult.error,
+			channelsAttempted: processingResult.channelsAttempted ?? [],
+			channelsSkipped: processingResult.channelsSkipped ?? [],
+			channelsSent: processingResult.channelsSent ?? [],
+			channelErrors: processingResult.channelErrors ?? {},
 		});
 	}
 

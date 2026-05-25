@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import type { TGetCampaignsInput, TGetCampaignsOutputDefault } from "@/app/api/campaigns/route";
 import CampaignsBySegmentation from "@/components/Campaigns/CampaignsBySegmentation";
@@ -64,7 +64,7 @@ import CommunicationTemplatesPage from "@/app/dashboard/communication/_component
 import { CampaignTriggerTypeOptions, InteractionsSentStatusOptions } from "@/utils/select-options";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import TestCampaign from "@/components/Modals/Campaigns/TestCampaign";
-import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
+import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
 type CampaignsPageProps = {

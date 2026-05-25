@@ -11,10 +11,10 @@ import { TGetMessageTemplatesOutputDefault } from "@/app/api/message-templates/r
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { BsCalendarPlus } from "react-icons/bs";
-import { TemplatePhoneHoverItem } from "@/components/Modals/WhatsappTemplates/Phones/TemplatePhoneHoverItem";
+import { TemplatePhoneHoverItem } from "@/components/MessageTemplates/TemplatePhoneHoverItem";
 import { useMemo, useState } from "react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
+import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
 import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
 import { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -160,7 +160,7 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 				const phoneInfo = whatsappConnectionPhones.find((phone) => phone.phoneId === phoneId);
 				return {
 					id: phoneId,
-					numero: phoneInfo?.phoneNumber ?? "NÃO ENCONTRADO",
+                    numero: phoneInfo?.phoneNumber ?? "NÃO ENCONTRADO",
 					...phoneData,
 				};
 			}),

@@ -3,14 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MessageTemplateNativeVariables, getDefaultMessageTemplateVariableExample } from "@/lib/message-templates";
-import { WhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
+import { MessageTemplateVariables } from "@/lib/message-templates";
 import type { TMessageTemplateContent } from "@/schemas/message-templates";
 import Mention from "@tiptap/extension-mention";
 import { type JSONContent, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Braces, ChevronDown, Italic, List, ListOrdered } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createSuggestion } from "@/components/Modals/WhatsappTemplates/Blocks/suggestion";
+import { createSuggestion } from "@/components/MessageTemplates/suggestion";
 
 type MessageTemplateBodyEditorProps = {
 	content: string;
@@ -100,7 +100,7 @@ export function MessageTemplateBodyEditor({ content, onContentChange, parametros
 	const [charCount, setCharCount] = useState(0);
 	const parametrosRef = useRef(parametros);
 	const onParametrosChangeRef = useRef(onParametrosChange);
-	const suggestionConfig = useMemo(() => createSuggestion(WhatsappTemplateVariables), []);
+	const suggestionConfig = useMemo(() => createSuggestion(MessageTemplateVariables), []);
 	const editorContent = useMemo(() => normalizeContentForEditor(content), [content]);
 
 	useEffect(() => {

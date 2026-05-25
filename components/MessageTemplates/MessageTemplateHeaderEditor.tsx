@@ -1,10 +1,9 @@
 "use client";
 
-import TemplateMediaUpload from "@/components/Modals/WhatsappTemplates/Blocks/TemplateMediaUpload";
-import { Button } from "@/components/ui/button";
+import { MessageTemplateDynamicHeaderPresetOptions, type TTemplateDynamicHeaderPreset } from "@/app/dashboard/communication/_components/template-draft-store";
+import TemplateMediaUpload from "@/components/MessageTemplates/TemplateMediaUpload";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageTemplateDynamicHeaderPresetOptions, type TTemplateDynamicHeaderPreset } from "@/app/dashboard/communication/_components/template-draft-store";
 import type { TUseMessageTemplateState } from "@/state-hooks/use-message-template-state";
 import { ImageIcon } from "lucide-react";
 import { MessageTemplateField } from "./MessageTemplateFields";
@@ -144,7 +143,7 @@ function DynamicHeaderPresetPicker({ presetId, onChange }: { presetId: TTemplate
 						</SelectContent>
 					</Select>
 				</MessageTemplateField>
-				<div className="text-muted-foreground flex gap-2 rounded-lg bg-background p-3 text-xs leading-5">
+				<div className="flex gap-2 rounded-lg bg-background p-3 text-xs leading-5 text-muted-foreground">
 					<ImageIcon className="mt-0.5 h-4 w-4 shrink-0" />
 					<p>{selectedPreset?.description}</p>
 				</div>

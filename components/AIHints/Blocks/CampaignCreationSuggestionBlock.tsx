@@ -1,10 +1,8 @@
-import type { AIHintCampaignCreationSuggestionSchema } from "@/schemas/ai-hints";
 import { AlertCircle, CheckCircle2, Clock, List, Sparkles, Target, Users, Zap } from "lucide-react";
-import type { z } from "zod";
+import { TGetHintsOutputById } from "@/app/api/ai-hints/route";
+import { ApprovalOrDismiss } from "./ApprovalOrDismiss";
 import { SectionLabel } from "./SectionLabel";
 import WhatsappTextPreview from "./WhatsappTextPreview";
-import { ApprovalOrDismiss } from "./ApprovalOrDismiss";
-import { TGetHintsOutputById } from "@/app/api/ai-hints/route";
 
 type CampaignCreationSuggestionBlockProps = {
 	hint: TGetHintsOutputById;
@@ -16,7 +14,6 @@ type CampaignCreationSuggestionBlockProps = {
 	};
 };
 
-// Human-readable labels for trigger types
 const TRIGGER_LABELS: Record<string, string> = {
 	"NOVA-COMPRA": "Nova Compra",
 	"PRIMEIRA-COMPRA": "Primeira Compra",
@@ -57,9 +54,9 @@ function formatExecution(
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
-		<div className="flex items-start justify-between gap-2 py-1.5 border-b border-border last:border-b-0">
-			<span className="text-xs text-muted-foreground shrink-0">{label}</span>
-			<span className="text-xs text-foreground font-medium text-right">{value}</span>
+		<div className="flex items-start justify-between gap-2 border-b border-border py-1.5 last:border-b-0">
+			<span className="shrink-0 text-xs text-muted-foreground">{label}</span>
+			<span className="text-right text-xs font-medium text-foreground">{value}</span>
 		</div>
 	);
 }
@@ -71,21 +68,19 @@ export default function CampaignCreationSuggestionBlock({ hint, callbacks }: Cam
 	const { resumoExecutivo, criterios, sugestao } = dados;
 
 	return (
-		<div className="flex flex-col gap-5 w-full">
-			{/* Executive Summary */}
+		<div className="flex w-full flex-col gap-5">
 			<div className="flex flex-col gap-2">
 				<SectionLabel icon={<Sparkles />} label="RESUMO EXECUTIVO" />
-				<p className="text-sm text-foreground/75 leading-relaxed pl-1">{resumoExecutivo}</p>
+				<p className="pl-1 text-sm leading-relaxed text-foreground/75">{resumoExecutivo}</p>
 			</div>
 
-			{/* Analysis Criteria */}
 			{criterios.length > 0 && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<List />} label="CRITÉRIOS DE ANÁLISE" />
 					<ul className="flex flex-col gap-1.5">
 						{criterios.map((criterio, i) => (
-							<li key={i.toString()} className="flex items-start gap-2 text-xs text-foreground/80 leading-relaxed">
-								<CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+							<li key={i.toString()} className="flex items-start gap-2 text-xs leading-relaxed text-foreground/80">
+								<CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
 								<span>{criterio}</span>
 							</li>
 						))}
@@ -93,10 +88,9 @@ export default function CampaignCreationSuggestionBlock({ hint, callbacks }: Cam
 				</div>
 			)}
 
-			{/* Campaign Configuration */}
 			<div className="flex flex-col gap-2">
 				<SectionLabel icon={<Zap />} label="CONFIGURAÇÃO SUGERIDA" />
-				<div className="rounded-lg border border-border bg-secondary/20 px-3 py-1 flex flex-col">
+				<div className="flex flex-col rounded-lg border border-border bg-secondary/20 px-3 py-1">
 					<InfoRow label="Título" value={sugestao.titulo} />
 					<InfoRow label="Gatilho" value={TRIGGER_LABELS[sugestao.gatilhoTipo] ?? sugestao.gatilhoTipo} />
 					{sugestao.gatilhoTotalCashbackAcumuladoValorMinimo != null && (
@@ -128,7 +122,6 @@ export default function CampaignCreationSuggestionBlock({ hint, callbacks }: Cam
 				</div>
 			</div>
 
-			{/* Segments */}
 			{sugestao.segmentations && sugestao.segmentations.length > 0 && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<Users />} label="SEGMENTOS-ALVO" />
@@ -145,32 +138,29 @@ export default function CampaignCreationSuggestionBlock({ hint, callbacks }: Cam
 				</div>
 			)}
 
-			{/* WhatsApp Template Preview */}
-			{sugestao.whatsappTemplateText && <WhatsappTextPreview text={sugestao.whatsappTemplateText} />}
+			{sugestao.messageTemplateText && <WhatsappTextPreview text={sugestao.messageTemplateText} />}
 
-			{/* Objective */}
 			{sugestao.objetivoEsperado && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<Target />} label="OBJETIVO ESPERADO" />
-					<p className="text-sm text-foreground/75 leading-relaxed pl-1">{sugestao.objetivoEsperado}</p>
+					<p className="pl-1 text-sm leading-relaxed text-foreground/75">{sugestao.objetivoEsperado}</p>
 				</div>
 			)}
 
-			{/* Justification */}
 			{sugestao.justificativa && (
 				<div className="flex flex-col gap-2">
 					<SectionLabel icon={<AlertCircle />} label="JUSTIFICATIVA" />
-					<p className="text-sm text-foreground/75 leading-relaxed pl-1">{sugestao.justificativa}</p>
+					<p className="pl-1 text-sm leading-relaxed text-foreground/75">{sugestao.justificativa}</p>
 				</div>
 			)}
 
-			{/* Timing indicator */}
 			<div className="flex items-center gap-1.5 rounded-lg border border-border/30 bg-muted/30 px-3 py-2">
-				<Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+				<Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 				<span className="text-xs text-muted-foreground">
 					Esta campanha não é criada automaticamente — revise os detalhes e crie-a quando estiver pronto.
 				</span>
 			</div>
+
 			<ApprovalOrDismiss hint={hint} callbacks={callbacks} />
 		</div>
 	);

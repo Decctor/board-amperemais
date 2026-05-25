@@ -1,4 +1,4 @@
-import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-variables";
+import type { TInteractionContextMetadados } from "@/lib/message-templates";
 import type { TClientEntity, TMessageTemplate } from "@/services/drizzle/schema";
 
 export type ImmediateProcessingData = {
@@ -33,6 +33,10 @@ export type TWeeklyLimitMode = "enforce" | "skip";
 export type ProcessSingleInteractionResult = {
 	success: boolean;
 	error?: string;
+	channelsAttempted?: string[];
+	channelsSkipped?: string[];
+	channelsSent?: string[];
+	channelErrors?: Record<string, string>;
 };
 
 export type TSendReservedInteractionStatus = "SENT" | "QUEUED" | "FAILED";
@@ -41,6 +45,10 @@ export type TSendReservedInteractionResult = {
 	success: boolean;
 	status: TSendReservedInteractionStatus;
 	error?: string;
+	channelsAttempted?: string[];
+	channelsSkipped?: string[];
+	channelsSent?: string[];
+	channelErrors?: Record<string, string>;
 };
 
 export type TProcessOrganizationInteractionsBatchItemStatus =

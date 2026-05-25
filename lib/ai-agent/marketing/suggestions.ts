@@ -61,7 +61,7 @@ function validateTemplateTextForTrigger(templateText: string, triggerType: TCamp
 	}
 }
 
-function normalizeSuggestedWhatsappTemplateText(templateText: string) {
+function normalizeSuggestedMessageTemplateText(templateText: string) {
 	const trimmedTemplateText = templateText.trim();
 	const bodySectionMatch = trimmedTemplateText.match(TEMPLATE_BODY_SECTION_PATTERN);
 	if (bodySectionMatch?.[1]?.trim()) {
@@ -71,10 +71,10 @@ function normalizeSuggestedWhatsappTemplateText(templateText: string) {
 	return trimmedTemplateText;
 }
 
-function validateSuggestedWhatsappTemplateText(templateText: string) {
+function validateSuggestedMessageTemplateText(templateText: string) {
 	if (TEMPLATE_NON_BODY_SECTION_PATTERN.test(templateText)) {
 		throw new createHttpError.BadRequest(
-			"O campo whatsappTemplateText deve conter apenas o corpo da mensagem, sem cabeçalho, rodapé, botões ou outras seções estruturais.",
+			"O campo messageTemplateText deve conter apenas o corpo da mensagem, sem cabeçalho, rodapé, botões ou outras seções estruturais.",
 		);
 	}
 }
@@ -188,9 +188,9 @@ export async function normalizeCampaignCreationSuggestion({
 	if (parsedSuggestion.whatsappConexaoTelefoneId) {
 		await ensureWhatsappPhoneBelongsToOrganization(organizacaoId, parsedSuggestion.whatsappConexaoTelefoneId);
 	}
-	const normalizedWhatsappTemplateText = normalizeSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
-	validateSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
-	validateTemplateTextForTrigger(normalizedWhatsappTemplateText, parsedSuggestion.gatilhoTipo);
+	const normalizedMessageTemplateText = normalizeSuggestedMessageTemplateText(parsedSuggestion.messageTemplateText);
+	validateSuggestedMessageTemplateText(parsedSuggestion.messageTemplateText);
+	validateTemplateTextForTrigger(normalizedMessageTemplateText, parsedSuggestion.gatilhoTipo);
 
 	const campaignValidationShape = CampaignAiValidationSchema.parse(parsedSuggestion);
 	validateCampaignRules(campaignValidationShape);
@@ -198,7 +198,7 @@ export async function normalizeCampaignCreationSuggestion({
 	return {
 		...parsedSuggestion,
 		segmentations: Array.from(new Set(parsedSuggestion.segmentations.map((segmentation) => segmentation.trim()).filter(Boolean))),
-		whatsappTemplateText: normalizedWhatsappTemplateText,
+		messageTemplateText: normalizedMessageTemplateText,
 		justificativa: parsedSuggestion.justificativa.trim(),
 		objetivoEsperado: parsedSuggestion.objetivoEsperado?.trim() || null,
 	};
@@ -231,7 +231,7 @@ export async function buildCampaignCurrentSummary({
 		ativo: campaign.ativo,
 		segmentations: campaign.segmentacoes.map((item) => item.segmentacao),
 		whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
-		whatsappTemplateText: campaign.whatsappTemplate ? getWhatsappTemplatePlainText(campaign.whatsappTemplate.conteudo) : null,
+		messageTemplateText: campaign.whatsappTemplate ? getWhatsappTemplatePlainText(campaign.whatsappTemplate.conteudo) : null,
 	});
 }
 
@@ -276,9 +276,9 @@ export async function normalizeCampaignUpdateSuggestion({
 	if (effectiveWhatsappPhoneId) {
 		await ensureWhatsappPhoneBelongsToOrganization(organizacaoId, effectiveWhatsappPhoneId);
 	}
-	const normalizedWhatsappTemplateText = normalizeSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
-	validateSuggestedWhatsappTemplateText(parsedSuggestion.whatsappTemplateText);
-	validateTemplateTextForTrigger(normalizedWhatsappTemplateText, effectiveTriggerType);
+	const normalizedMessageTemplateText = normalizeSuggestedMessageTemplateText(parsedSuggestion.messageTemplateText);
+	validateSuggestedMessageTemplateText(parsedSuggestion.messageTemplateText);
+	validateTemplateTextForTrigger(normalizedMessageTemplateText, effectiveTriggerType);
 
 	const campaignValidationShape = CampaignAiValidationSchema.parse({
 		...currentConfig,
@@ -298,7 +298,7 @@ export async function normalizeCampaignUpdateSuggestion({
 		currentConfig,
 		proposedChanges: parsedChanges,
 		segmentations: Array.from(new Set(parsedSuggestion.segmentations.map((segmentation) => segmentation.trim()).filter(Boolean))),
-		whatsappTemplateText: normalizedWhatsappTemplateText,
+		messageTemplateText: normalizedMessageTemplateText,
 		justificativa: parsedSuggestion.justificativa.trim(),
 		impactoEsperado: parsedSuggestion.impactoEsperado?.trim() || null,
 	});

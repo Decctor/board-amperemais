@@ -3,6 +3,37 @@ import { InteractionTypeEnum, InteractionsCronJobTimeBlocksEnum } from "./enums"
 
 export const InteractionsStatusEnum = z.enum(["PENDENTE", "ENVIADO", "ENTREGUE", "LIDO", "FALHOU", "BLOQUEADA"]);
 export type TInteractionsStatusEnum = z.infer<typeof InteractionsStatusEnum>;
+export const InteractionDeliveryChannelEnum = z.enum(["WHATSAPP", "EMAIL"]);
+export type TInteractionDeliveryChannelEnum = z.infer<typeof InteractionDeliveryChannelEnum>;
+
+export const InteractionMetadataSchema = z.object({
+	cashbackAcumuladoValor: z.number().optional().nullable(),
+	compraValor: z.number().optional(),
+	compraCashbackAcumulado: z.number().optional(),
+	compraCashbackNovoSaldo: z.number().optional(),
+	compraVendedorNome: z.string().optional(),
+	cashbackSaldoDisponivel: z.number().optional(),
+	cashbackTotalAcumuladoVida: z.number().optional(),
+	cashbackTotalResgatadoVida: z.number().optional(),
+	cashbackExpirandoValor: z.number().optional(),
+	cashbackExpirandoData: z.string().optional(),
+	whatsappMensagemId: z.string().optional().nullable(),
+	whatsappMessageId: z.string().optional().nullable(),
+	whatsappTemplateId: z.string().optional().nullable(),
+	messageTemplateId: z.string().optional().nullable(),
+	emailMessageId: z.string().optional().nullable(),
+	clientMessageId: z.string().optional().nullable(),
+	jobId: z.string().optional().nullable(),
+	chatMessageId: z.string().optional().nullable(),
+	whatsappStatus: z.string().optional().nullable(),
+	emailStatus: z.string().optional().nullable(),
+	channelsAttempted: z.array(InteractionDeliveryChannelEnum).optional(),
+	channelsSkipped: z.array(z.string()).optional(),
+	channelsSent: z.array(InteractionDeliveryChannelEnum).optional(),
+	channelErrors: z.record(z.string()).optional(),
+});
+export type TInteractionMetadata = z.infer<typeof InteractionMetadataSchema>;
+
 export const InteractionSchema = z.object({
 	clienteId: z.string({
 		required_error: "ID do cliente não informado.",
@@ -61,29 +92,7 @@ export const InteractionSchema = z.object({
 		.transform((val) => new Date(val))
 		.optional()
 		.nullable(),
-	metadados: z.object({
-		cashbackAcumuladoValor: z
-			.number({
-				required_error: "Valor de cashback acumulado não informado.",
-				invalid_type_error: "Tipo não válido para o valor de cashback acumulado.",
-			})
-			.optional()
-			.nullable(),
-		whatsappMensagemId: z
-			.string({
-				required_error: "ID da mensagem do WhatsApp não informado.",
-				invalid_type_error: "Tipo não válido para o ID da mensagem do WhatsApp.",
-			})
-			.optional()
-			.nullable(),
-		whatsappTemplateId: z
-			.string({
-				required_error: "ID do template do WhatsApp não informado.",
-				invalid_type_error: "Tipo não válido para o ID do template do WhatsApp.",
-			})
-			.optional()
-			.nullable(),
-	}),
+	metadados: InteractionMetadataSchema.optional().nullable(),
 
 	// Delivery status tracking
 	statusEnvio: InteractionsStatusEnum.optional().nullable(),

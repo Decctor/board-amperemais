@@ -1,4 +1,4 @@
-import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
+import { validateTemplateForTrigger } from "@/lib/message-templates";
 import { db } from "@/services/drizzle";
 import { type TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import { CampaignSchema } from "@/schemas/campaigns";

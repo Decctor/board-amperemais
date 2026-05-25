@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { processSingleInteractionImmediately } from "@/lib/interactions";
-import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-variables";
+import type { TInteractionContextMetadados } from "@/lib/message-templates";
 import { InteractionsStatusEnum } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema/clients";

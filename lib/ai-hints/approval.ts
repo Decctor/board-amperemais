@@ -217,7 +217,7 @@ async function createCampaignFromApprovedHint({
 		nome: buildUniqueTemplateName(suggestion.titulo),
 		categoria: "MARKETING",
 		conteudo: buildMessageTemplateContentFromSuggestion({
-			bodyText: suggestion.whatsappTemplateText,
+			bodyText: suggestion.messageTemplateText,
 			subject: suggestion.titulo,
 			preheader: suggestion.objetivoEsperado || suggestion.descricao || "Mensagem da campanha",
 		}),
@@ -317,7 +317,7 @@ async function updateCampaignFromApprovedHint({
 		nome: buildUniqueTemplateName(existingCampaign.whatsappTemplate.nome),
 		categoria: "MARKETING",
 		conteudo: buildMessageTemplateContentFromSuggestion({
-			bodyText: suggestion.whatsappTemplateText,
+			bodyText: suggestion.messageTemplateText,
 			subject: suggestion.campaignTitle,
 			preheader: suggestion.impactoEsperado || suggestion.justificativa || "Atualização da campanha",
 			baseContent: existingCampaign.whatsappTemplate.conteudo,

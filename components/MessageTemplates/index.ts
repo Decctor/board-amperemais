@@ -5,6 +5,9 @@ export { MessageTemplateField, MessageTemplatePanel, MessageTemplateValidationNo
 export { MessageTemplateConfigurationSection, MessageTemplateContentSection } from "./MessageTemplateFormSections";
 export { MessageTemplateHeaderEditor, MessageTemplateHeaderTypeSelect, messageTemplateHeaderTypeOptions } from "./MessageTemplateHeaderEditor";
 export { MessageTemplateEmailPreview, MessageTemplateWhatsappPreview } from "./MessageTemplatePreviews";
+export { default as TemplateMediaUpload } from "./TemplateMediaUpload";
+export { TemplatePhoneHoverItem } from "./TemplatePhoneHoverItem";
+export { default as TemplatePreview } from "./TemplatePreview";
 export {
 	buildOrganizationTemplateTheme,
 	getMessageTemplateButtonPreviewHref,
