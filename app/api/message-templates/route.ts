@@ -58,7 +58,7 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 	}
 
 	const phones = await getOrganizationWhatsappPhones(organizationId);
-	if (phones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
+	// if (phones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
 	let nextMetadata = insertedTemplate.metadados;
 	let nextContent = insertedTemplate.conteudo;

@@ -46,7 +46,7 @@ const headerTypeOptions: Array<{
 	{ id: "IMAGEM", label: "Imagem" },
 	{ id: "VIDEO", label: "Vídeo" },
 	{ id: "DOCUMENTO", label: "Documento" },
-	{ id: "IMAGEM_DINAMICA", label: "Imagem dinâmica" },
+	// { id: "IMAGEM_DINAMICA", label: "Imagem dinâmica" }, // TODO: Re-enable this option when WhatsApp API supports it
 ];
 export default function MessageTemplateBuilder({
 	template,
