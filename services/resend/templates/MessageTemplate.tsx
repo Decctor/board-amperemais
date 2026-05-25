@@ -1,6 +1,6 @@
 import { Body, Button, Container, Head, Heading, Html, Img, Link, Preview, Section, Text } from "@react-email/components";
 import {
-	convertHtmlToPlainMessageText,
+	convertHtmlToEmailHtml,
 	getDefaultAppOrigin,
 	getMessageTemplateButtonPreset,
 	replaceMessageTemplateVariables,
@@ -85,6 +85,14 @@ type Palette = ReturnType<typeof buildPalette>;
 
 function resolveText(text: string | null | undefined, variables: TMessageTemplateRuntimeValues) {
 	return replaceMessageTemplateVariables(text ?? "", variables);
+}
+
+function resolveHtml(text: string | null | undefined, variables: TMessageTemplateRuntimeValues) {
+	return convertHtmlToEmailHtml(resolveText(text, variables));
+}
+
+function RichTextBlock({ html, style }: { html: string; style: React.CSSProperties }) {
+	return <div style={style} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 function resolveButtonHref({
@@ -388,8 +396,8 @@ function BodyButtons({
 export default function MessageTemplateEmail({ content, variables, organization, clientId, origin, headerMediaUrl }: MessageTemplateEmailProps) {
 	const effectiveOrigin = origin || getDefaultAppOrigin();
 	const palette = buildPalette(organization.primaryColor, organization.primaryForeground);
-	const bodyText = convertHtmlToPlainMessageText(resolveText(content.corpo.conteudo, variables));
-	const rodapeText = content.rodape ? resolveText(content.rodape, variables) : null;
+	const bodyHtml = resolveHtml(content.corpo.conteudo, variables);
+	const rodapeHtml = content.rodape ? resolveHtml(content.rodape, variables) : null;
 	const linkUrl = baseUrl || effectiveOrigin;
 
 	return (
@@ -428,17 +436,15 @@ export default function MessageTemplateEmail({ content, variables, organization,
 					<HeaderMedia content={content} headerMediaUrl={headerMediaUrl} palette={palette} />
 
 					<Section style={{ padding: "40px 36px 12px" }}>
-						<Text
+						<RichTextBlock
+							html={bodyHtml}
 							style={{
 								color: "#1f2937",
 								fontSize: "16px",
 								lineHeight: "1.7",
-								whiteSpace: "pre-wrap" as const,
 								margin: "0",
 							}}
-						>
-							{bodyText}
-						</Text>
+						/>
 
 						<BodyButtons
 							content={content}
@@ -449,7 +455,7 @@ export default function MessageTemplateEmail({ content, variables, organization,
 							palette={palette}
 						/>
 
-						{rodapeText ? (
+						{rodapeHtml ? (
 							<>
 								<div
 									style={{
@@ -458,18 +464,17 @@ export default function MessageTemplateEmail({ content, variables, organization,
 										margin: "32px 0 20px",
 									}}
 								/>
-								<Text
+								<RichTextBlock
+									html={rodapeHtml}
 									style={{
 										color: "#6b7280",
 										fontSize: "13px",
-										fontStyle: "italic" as const,
+										fontStyle: "italic",
 										lineHeight: "1.55",
 										margin: "0",
-										textAlign: "center" as const,
+										textAlign: "center",
 									}}
-								>
-									{rodapeText}
-								</Text>
+								/>
 							</>
 						) : null}
 					</Section>

@@ -33,8 +33,8 @@ export type TCreateIfoodAuthorizationOutput = Awaited<ReturnType<typeof createIf
 
 async function createIfoodAuthorizationRoute(_request: NextRequest) {
 	const session = await getCurrentSessionUncached();
-	if (!session) return NextResponse.json({ error: "VocÃª nÃ£o estÃ¡ autenticado." }, { status: 401 });
-	if (!session.membership?.organizacao.id) return NextResponse.json({ error: "VocÃª precisa estar vinculado a uma organizaÃ§Ã£o." }, { status: 400 });
+	if (!session) return NextResponse.json({ error: "Você não está autenticado." }, { status: 401 });
+	if (!session.membership?.organizacao.id) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização." }, { status: 400 });
 
 	const input = CreateIfoodAuthorizationInputSchema.parse({});
 	const result = await createIfoodAuthorization(input);

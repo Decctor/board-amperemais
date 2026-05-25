@@ -1,29 +1,102 @@
 import type { TMessageTemplateContent, TMessageTemplateMetadata } from "@/schemas/message-templates";
 import type { TMessageTemplateParameter, TMessageTemplateRuntimeValues } from "./types";
-import { getDefaultMessageTemplateVariableExample, isAllowedMessageTemplateVariable } from "./variables";
+import {
+	getDefaultMessageTemplateVariableExample,
+	isAllowedMessageTemplateVariable,
+	MessageTemplateNativeVariables,
+} from "./variables";
 
 const TEMPLATE_VARIABLE_REGEX = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+const TEMPLATE_VARIABLE_TOKEN_REGEX = /\{\{\s*([^}]+?)\s*\}\}/g;
+const MENTION_SPAN_REGEX = /<span[^>]*data-type=["']mention["'][^>]*>[\s\S]*?<\/span>/gi;
+
+export function replaceMessageTemplateMentionSpansWithVariables(text: string) {
+	return text.replace(MENTION_SPAN_REGEX, (match) => {
+		const dataIdMatch = match.match(/data-id=["']([^"']+)["']/i);
+		if (dataIdMatch?.[1]) return `{{${dataIdMatch[1]}}}`;
+
+		const dataLabelMatch = match.match(/data-label=["']([^"']+)["']/i);
+		if (dataLabelMatch?.[1] && isAllowedMessageTemplateVariable(dataLabelMatch[1])) return `{{${dataLabelMatch[1]}}}`;
+
+		return match;
+	});
+}
+
+function resolveMessageTemplateVariableToken(token: string) {
+	const trimmed = token.trim();
+	if (isAllowedMessageTemplateVariable(trimmed)) return trimmed;
+
+	const normalizedToken = trimmed.toLowerCase();
+	const byIdentificador = MessageTemplateNativeVariables.find((item) => item.identificador.toLowerCase() === normalizedToken);
+	if (byIdentificador) return byIdentificador.identificador;
+
+	const byLabel = MessageTemplateNativeVariables.find((item) => item.label.toLowerCase() === normalizedToken);
+	if (byLabel) return byLabel.identificador;
+
+	return null;
+}
+
+function normalizeMessageTemplateVariableTokensInText(text: string) {
+	let normalizedText = replaceMessageTemplateMentionSpansWithVariables(text);
+
+	return normalizedText.replace(TEMPLATE_VARIABLE_TOKEN_REGEX, (match, token) => {
+		const identificadorInterno = resolveMessageTemplateVariableToken(token);
+		return identificadorInterno ? `{{${identificadorInterno}}}` : match;
+	});
+}
+
+function extractOrderedMessageTemplateVariablesFromText(text: string) {
+	const normalizedText = replaceMessageTemplateMentionSpansWithVariables(text);
+	const identifiers: string[] = [];
+	const seen = new Set<string>();
+
+	for (const match of normalizedText.matchAll(TEMPLATE_VARIABLE_TOKEN_REGEX)) {
+		const token = match[1]?.trim();
+		if (!token) continue;
+
+		const identificadorInterno = resolveMessageTemplateVariableToken(token);
+		if (!identificadorInterno || seen.has(identificadorInterno)) continue;
+
+		seen.add(identificadorInterno);
+		identifiers.push(identificadorInterno);
+	}
+
+	return identifiers;
+}
 
 export function extractMessageTemplateVariables(sources: Array<string | null | undefined>) {
-	const identifiers = new Set<string>();
+	const identifiers: string[] = [];
+	const seen = new Set<string>();
+
 	for (const source of sources) {
 		if (!source) continue;
-		for (const match of source.matchAll(TEMPLATE_VARIABLE_REGEX)) {
-			if (match[1] && isAllowedMessageTemplateVariable(match[1])) identifiers.add(match[1]);
+		for (const identificadorInterno of extractOrderedMessageTemplateVariablesFromText(source)) {
+			if (seen.has(identificadorInterno)) continue;
+			seen.add(identificadorInterno);
+			identifiers.push(identificadorInterno);
 		}
 	}
-	return Array.from(identifiers);
+
+	return identifiers;
 }
 
 export function extractUnknownMessageTemplateVariables(sources: Array<string | null | undefined>) {
-	const identifiers = new Set<string>();
+	const identifiers: string[] = [];
+	const seen = new Set<string>();
+
 	for (const source of sources) {
 		if (!source) continue;
-		for (const match of source.matchAll(TEMPLATE_VARIABLE_REGEX)) {
-			if (match[1] && !isAllowedMessageTemplateVariable(match[1])) identifiers.add(match[1]);
+
+		const normalizedText = replaceMessageTemplateMentionSpansWithVariables(source);
+		for (const match of normalizedText.matchAll(TEMPLATE_VARIABLE_TOKEN_REGEX)) {
+			const token = match[1]?.trim();
+			if (!token || resolveMessageTemplateVariableToken(token) || seen.has(token)) continue;
+			seen.add(token);
+			identifiers.push(token);
 		}
 	}
-	return Array.from(identifiers);
+
+	return identifiers;
 }
 
 export function getMessageTemplateVariableSources(content: TMessageTemplateContent) {
@@ -69,7 +142,9 @@ export function replaceMessageTemplateVariablesWithExamples(text: string, parame
 }
 
 export function replaceMessageTemplateVariables(text: string, values: TMessageTemplateRuntimeValues) {
-	return text.replace(TEMPLATE_VARIABLE_REGEX, (match, identifier) => {
+	const normalizedText = normalizeMessageTemplateVariableTokensInText(text);
+
+	return normalizedText.replace(TEMPLATE_VARIABLE_REGEX, (match, identifier) => {
 		const value = values[identifier];
 		if (value === null || value === undefined) return match;
 		if (value instanceof Date) return value.toISOString();
@@ -78,8 +153,10 @@ export function replaceMessageTemplateVariables(text: string, values: TMessageTe
 }
 
 export function convertInternalVariablesToPositional(text: string, parameters: TMessageTemplateParameter[]) {
+	const normalizedText = normalizeMessageTemplateVariableTokensInText(text);
 	const positionByInternalId = new Map(parameters.map((parameter, index) => [parameter.identificadorInterno, parameter.identificadorExterno || String(index + 1)]));
-	return text.replace(TEMPLATE_VARIABLE_REGEX, (match, identifier) => {
+
+	return normalizedText.replace(TEMPLATE_VARIABLE_REGEX, (match, identifier) => {
 		const position = positionByInternalId.get(identifier);
 		return position ? `{{${position}}}` : match;
 	});

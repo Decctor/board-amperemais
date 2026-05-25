@@ -88,7 +88,7 @@ export default function CampaignsActionBlock({
 		const validation = validateTemplateForTrigger(getTemplateTriggerValidationParameters(selectedTemplate), campaign.gatilhoTipo);
 		if (!validation.valid) {
 			updateCampaign({ whatsappTemplateId: "" });
-			toast.warning("Template desmarcado: as variÃ¡veis dele nÃ£o sÃ£o compatÃ­veis com o novo tipo de gatilho.");
+			toast.warning("Template desmarcado: as variáveis dele não são compatíveis com o novo tipo de gatilho.");
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [campaign.gatilhoTipo]);
@@ -137,8 +137,8 @@ export default function CampaignsActionBlock({
             <ResponsiveMenuSection title="AÇÃO" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
 				<div className="flex w-full flex-col gap-3">
 					<p className="text-muted-foreground text-center text-sm leading-snug tracking-tight">
-						Quando o gatilho disparar para um cliente elegÃ­vel, esta campanha tenta enviar o template pelo WhatsApp e por e-mail. O telefone abaixo define
-						o remetente do WhatsApp; se o cliente nÃ£o tiver telefone ou e-mail, aquele canal Ã© ignorado.
+						Quando o gatilho disparar para um cliente elegível, esta campanha tenta enviar o template pelo WhatsApp e por e-mail. O telefone abaixo define
+						o remetente do WhatsApp; se o cliente não tiver telefone ou e-mail, aquele canal é ignorado.
 					</p>
 
 					<SelectInput
@@ -152,7 +152,7 @@ export default function CampaignsActionBlock({
 					/>
 
 					<p className="text-muted-foreground text-center text-xs leading-snug">
-						A lista de templates Ã© filtrada pelo tipo de gatilho da campanha: sÃ³ entram modelos cujas variÃ¡veis esse gatilho consegue preencher.
+						A lista de templates é filtrada pelo tipo de gatilho da campanha: só entram modelos cujas variáveis esse gatilho consegue preencher.
 					</p>
 
 					<SelectInput
@@ -184,7 +184,7 @@ export default function CampaignsActionBlock({
 								<HoverCardTrigger asChild>
 									<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
 										<Eye className="h-3.5 w-3.5" />
-										PRÃ‰-VISUALIZAR
+										PRÉ-VISUALIZAR
 									</Button>
 								</HoverCardTrigger>
 								<HoverCardContent className="max-h-[70vh] w-[360px] overflow-auto p-2" side="left" align="end">
@@ -214,9 +214,9 @@ export default function CampaignsActionBlock({
 										<Info className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
 										<span>
 											{hiddenCount === 1
-												? "Mais um template nÃ£o aparece aqui porque usa variÃ¡veis que este tipo de gatilho nÃ£o fornece."
-												: `Mais ${hiddenCount} templates nÃ£o aparecem aqui porque usam variÃ¡veis que este tipo de gatilho nÃ£o fornece.`}{" "}
-											Passe o cursor para ver o nome de cada um e quais variÃ¡veis sÃ£o.
+												? "Mais um template não aparece aqui porque usa variáveis que este tipo de gatilho não fornece."
+												: `Mais ${hiddenCount} templates não aparecem aqui porque usam variáveis que este tipo de gatilho não fornece.`}{" "}
+											Passe o cursor para ver o nome de cada um e quais variáveis são.
 										</span>
 									</div>
 								</TooltipTrigger>
@@ -228,7 +228,7 @@ export default function CampaignsActionBlock({
 												<div key={template.id} className="rounded-lg border border-border/60 bg-muted/35 px-2.5 py-2">
 													<p className="text-xs font-semibold text-foreground">{template.nome}</p>
 													<p className="text-muted-foreground mt-1 text-xs leading-snug">
-														VariÃ¡veis que este gatilho nÃ£o preenche: {template.incompatibleVariables.join(", ")}.
+														Variáveis que este gatilho não preenche: {template.incompatibleVariables.join(", ")}.
 													</p>
 												</div>
 											))}

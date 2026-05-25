@@ -132,8 +132,11 @@ async function updateMessageTemplate({ input, session }: { input: TUpdateMessage
 	});
 	if (!existingTemplate) throw new createHttpError.NotFound("Template não encontrado.");
 
+	console.log("[UPDATE_MESSAGE_TEMPLATE] Content pre-normalization:", JSON.stringify(input.messageTemplate.conteudo, null, 2));
+
 	const content = input.messageTemplate.conteudo ? normalizeContentForStorage(input.messageTemplate.conteudo) : existingTemplate.conteudo;
 	assertWhatsappValidation(content);
+	console.log("[UPDATE_MESSAGE_TEMPLATE] Content post-normalization:", JSON.stringify(content, null, 2));
 
 	const updateSet = {
 		nome: input.messageTemplate.nome ?? existingTemplate.nome,

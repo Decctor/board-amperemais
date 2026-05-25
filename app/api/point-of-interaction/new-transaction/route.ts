@@ -62,64 +62,64 @@ async function canScheduleCampaignForClient(
 export const CreatePointOfInteractionTransactionInputSchema = z.object({
 	orgId: z
 		.string({
-			required_error: "ID da organizaÃ§Ã£o nÃ£o informado.",
-			invalid_type_error: "Tipo nÃ£o vÃ¡lido para ID da organizaÃ§Ã£o.",
+			required_error: "ID da organização não informado.",
+			invalid_type_error: "Tipo não válido para ID da organização.",
 		})
-		.describe("A organizaÃ§Ã£o a partir da qual a transaÃ§Ã£o foi requisitada."),
+		.describe("A organização a partir da qual a transação foi requisitada."),
 	client: z
 		.object({
 			id: z
 				.string({
-					invalid_type_error: "Tipo nÃ£o vÃ¡lido para ID do cliente.",
+					invalid_type_error: "Tipo não válido para ID do cliente.",
 				})
 				.optional()
 				.nullable(),
 			nome: z.string({
-				required_error: "Nome do cliente nÃ£o informado.",
-				invalid_type_error: "Tipo nÃ£o vÃ¡lido para nome do cliente.",
+				required_error: "Nome do cliente não informado.",
+				invalid_type_error: "Tipo não válido para nome do cliente.",
 			}),
 			cpfCnpj: z
 				.string({
-					invalid_type_error: "Tipo nÃ£o vÃ¡lido para CPF/CNPJ.",
+					invalid_type_error: "Tipo não válido para CPF/CNPJ.",
 				})
 				.optional()
 				.nullable(),
 			telefone: z.string({
-				required_error: "Telefone nÃ£o informado.",
-				invalid_type_error: "Tipo nÃ£o vÃ¡lido para telefone.",
+				required_error: "Telefone não informado.",
+				invalid_type_error: "Tipo não válido para telefone.",
 			}),
 		})
-		.describe("O cliente que realizou a transaÃ§Ã£o."),
+		.describe("O cliente que realizou a transação."),
 	sale: z.object({
 		valor: z
 			.number({
-				required_error: "Valor da transaÃ§Ã£o nÃ£o informado.",
-				invalid_type_error: "Tipo nÃ£o vÃ¡lido para valor da transaÃ§Ã£o.",
+				required_error: "Valor da transação não informado.",
+				invalid_type_error: "Tipo não válido para valor da transação.",
 			})
-			.gte(0, "Valor da transaÃ§Ã£o deve ser positivo.")
-			.describe("O valor da transaÃ§Ã£o."),
+			.gte(0, "Valor da transação deve ser positivo.")
+			.describe("O valor da transação."),
 		cashback: z
 			.object({
 				aplicar: z
 					.boolean({
-						required_error: "Se deve aplicar cashback nÃ£o informado.",
-						invalid_type_error: "Tipo nÃ£o vÃ¡lido para se deve aplicar cashback.",
+						required_error: "Se deve aplicar cashback não informado.",
+						invalid_type_error: "Tipo não válido para se deve aplicar cashback.",
 					})
 					.default(false)
 					.describe("Se deve aplicar cashback."),
 				valor: z
 					.number({
-						required_error: "Valor do cashback nÃ£o informado.",
-						invalid_type_error: "Tipo nÃ£o vÃ¡lido para valor do cashback.",
+						required_error: "Valor do cashback não informado.",
+						invalid_type_error: "Tipo não válido para valor do cashback.",
 					})
 					.nonnegative()
 					.default(0)
 					.describe("O valor do cashback."),
 			})
-			.describe("Os dados do cashback da transaÃ§Ã£o."),
+			.describe("Os dados do cashback da transação."),
 		partnerCode: z
 			.string({
-				invalid_type_error: "Tipo nÃ£o vÃ¡lido para cÃ³digo de parceiro.",
+				invalid_type_error: "Tipo não válido para código de parceiro.",
 			})
 			.optional()
 			.nullable(),
@@ -134,10 +134,10 @@ export const CreatePointOfInteractionTransactionInputSchema = z.object({
 	}),
 	operatorIdentifier: z
 		.string({
-			required_error: "Identificador do operador nÃ£o informado.",
-			invalid_type_error: "Tipo nÃ£o vÃ¡lido para identificador do operador.",
+			required_error: "Identificador do operador não informado.",
+			invalid_type_error: "Tipo não válido para identificador do operador.",
 		})
-		.describe("O identificador do operador que aprovou a transaÃ§Ã£o."),
+		.describe("O identificador do operador que aprovou a transação."),
 });
 export type TCreatePointOfInteractionTransactionInput = z.infer<typeof CreatePointOfInteractionTransactionInputSchema>;
 
@@ -186,7 +186,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 		});
 
 		if (!program) {
-			throw new createHttpError.NotFound("Programa de cashback nÃ£o encontrado.");
+			throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 		}
 
 		const cashbackProgramIsActive = program.ativo;
@@ -197,7 +197,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 		// Transactions only require redemption processing when cashback is applied and has a positive value
 		const requestedCashbackRedemption = input.sale.cashback.aplicar && input.sale.cashback.valor > 0;
 		if (!cashbackProgramIsActive && requestedCashbackRedemption) {
-			throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates nÃ£o estÃ£o disponÃ­veis.");
+			throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
 		}
 		const transactionRequiresRedemptionProcessing = cashbackProgramIsActive && requestedCashbackRedemption;
 		console.log({
@@ -237,10 +237,10 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					return and(eq(fields.senhaOperador, operatorIdentifier), eq(fields.organizacaoId, input.orgId));
 				}
 
-				throw new createHttpError.Unauthorized("Operador nÃ£o informado.");
+				throw new createHttpError.Unauthorized("Operador não informado.");
 			},
 		});
-		if (!operator) throw new createHttpError.Unauthorized("Operador nÃ£o encontrado.");
+		if (!operator) throw new createHttpError.Unauthorized("Operador não encontrado.");
 
 		const operatorMembership = await tx.query.organizationMembers.findFirst({
 			where: (fields, { and, eq }) => {
@@ -286,7 +286,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				where: (fields, { and, eq }) => and(eq(fields.telefoneBase, clientPhoneAsBase), eq(fields.organizacaoId, input.orgId)),
 			});
 
-			if (existingClientForPhone) throw new createHttpError.BadRequest("Cliente jÃ¡ existe para este telefone.");
+			if (existingClientForPhone) throw new createHttpError.BadRequest("Cliente já existe para este telefone.");
 
 			const insertedClientResponse = await tx
 				.insert(clients)
@@ -322,7 +322,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			const client = await tx.query.clients.findFirst({
 				where: (fields, { and, eq }) => and(eq(fields.id, clientId as string), eq(fields.organizacaoId, input.orgId)),
 			});
-			if (!client) throw new createHttpError.NotFound("Cliente nÃ£o encontrado.");
+			if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
 
 			const ensuredBalance = await ensureCashbackBalanceForClient({
 				tx,
@@ -350,7 +350,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			});
 
 			if (!matchedPartner) {
-				throw new createHttpError.BadRequest("CÃ³digo de parceiro nÃ£o encontrado.");
+				throw new createHttpError.BadRequest("Código de parceiro não encontrado.");
 			}
 
 			salePartnerId = matchedPartner.id;
@@ -413,15 +413,15 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				},
 			});
 			if (!prize) {
-				throw new createHttpError.BadRequest("Recompensa nÃ£o encontrada ou inativa.");
+				throw new createHttpError.BadRequest("Recompensa não encontrada ou inativa.");
 			}
 			if (!prize.produtoId && !prize.produtoVarianteId) {
-				throw new createHttpError.BadRequest("A recompensa selecionada nÃ£o possui vÃ­nculo com produto ou variante.");
+				throw new createHttpError.BadRequest("A recompensa selecionada não possui vínculo com produto ou variante.");
 			}
 
 			const prizeSaleValue = prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? null;
 			if (prizeSaleValue === null || prizeSaleValue === undefined) {
-				throw new createHttpError.BadRequest("A recompensa selecionada nÃ£o possui valor comercial configurado.");
+				throw new createHttpError.BadRequest("A recompensa selecionada não possui valor comercial configurado.");
 			}
 
 			validatedPrize = {
@@ -469,7 +469,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					}
 					if (effectiveRedemptionValue > maxAllowedRedemption) {
 						throw new createHttpError.BadRequest(
-							`Valor de resgate excede o limite permitido. MÃ¡ximo: ${formatCashbackValue(maxAllowedRedemption, program.terminologia)}`,
+							`Valor de resgate excede o limite permitido. Máximo: ${formatCashbackValue(maxAllowedRedemption, program.terminologia)}`,
 						);
 					}
 				}
@@ -518,7 +518,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				})
 				.returning({ id: cashbackProgramTransactions.id });
 			const insertedRedemptionTransactionId = insertedRedemptionTransactionResponse[0]?.id;
-			if (!insertedRedemptionTransactionId) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar transaÃ§Ã£o de resgate.");
+			if (!insertedRedemptionTransactionId) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar transação de resgate.");
 			transactionRedemptionId = insertedRedemptionTransactionId;
 		}
 		// FOURTH STEP: Processing cashback accumulation (if applicable)
@@ -806,7 +806,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			visualClientAccumulatedCashbackValue: result.visualClientAccumulatedCashbackValue,
 			visualClientNewOverallAvailableBalance: result.visualClientNewOverallAvailableBalance,
 		},
-		message: "TransaÃ§Ã£o processada com sucesso.",
+		message: "Transação processada com sucesso.",
 	};
 }
 
@@ -927,7 +927,7 @@ async function handleCampaignProcessingForNewPurchase({
 	console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] ${applicableCampaigns.length} applicable campaigns after filtering`);
 
 	if (applicableCampaigns.length > 0) {
-		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de nova compra aplicÃ¡veis encontradas para o cliente ${clientId}.`);
+		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${clientId}.`);
 
 		// Query client data for immediate processing
 		const clientData = await tx.query.clients.findFirst({
@@ -944,7 +944,7 @@ async function handleCampaignProcessingForNewPurchase({
 		});
 
 		if (!clientData) {
-			throw new createHttpError.NotFound("Cliente nÃ£o encontrado.");
+			throw new createHttpError.NotFound("Cliente não encontrado.");
 		}
 
 		console.log(
@@ -993,9 +993,9 @@ async function handleCampaignProcessingForNewPurchase({
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: orgId,
-					titulo: `Envio de mensagem automÃ¡tica via campanha ${campaign.titulo}`,
+					titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 					tipo: "ENVIO-MENSAGEM",
-					descricao: `Cliente se enquadrou no parÃ¢metro de nova compra ${clientRFMTitle}.`,
+					descricao: `Cliente se enquadrou no parâmetro de nova compra ${clientRFMTitle}.`,
 					agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 					agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
 					metadados: interactionContextMetadados,
@@ -1094,7 +1094,7 @@ async function handleCampaignProcessingForFirstPurchase({
 	console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] ${applicableCampaigns.length} applicable campaigns after filtering`);
 
 	if (applicableCampaigns.length > 0) {
-		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de primeira compra aplicÃ¡veis encontradas para o cliente ${clientId}.`);
+		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de primeira compra aplicáveis encontradas para o cliente ${clientId}.`);
 
 		const interactionContextMetadados: TInteractionContextMetadados = {
 			compraValor: saleValue,
@@ -1136,7 +1136,7 @@ async function handleCampaignProcessingForFirstPurchase({
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: orgId,
-					titulo: `Envio de mensagem automÃ¡tica via campanha ${campaign.titulo}`,
+					titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 					tipo: "ENVIO-MENSAGEM",
 					descricao: "Cliente realizou sua primeira compra.",
 					agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
@@ -1170,7 +1170,7 @@ async function handleCampaignProcessingForFirstPurchase({
 				});
 
 				if (!clientData) {
-					throw new createHttpError.NotFound("Cliente nÃ£o encontrado.");
+					throw new createHttpError.NotFound("Cliente não encontrado.");
 				}
 				console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] Adding to immediate processing list`);
 				addToImmediateProcessingDataList({
@@ -1258,7 +1258,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 	});
 
 	if (applicableCampaigns.length > 0) {
-		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de cashback acumulado aplicÃ¡veis encontradas para o cliente.`);
+		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de cashback acumulado aplicáveis encontradas para o cliente.`);
 	}
 
 	const interactionContextMetadados: TInteractionContextMetadados = {
@@ -1312,7 +1312,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 				clienteId: clientId,
 				campanhaId: campaign.id,
 				organizacaoId: orgId,
-				titulo: `Envio de mensagem automÃ¡tica via campanha ${campaign.titulo}`,
+				titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 				tipo: "ENVIO-MENSAGEM",
 				descricao: `Cliente acumulou R$ ${clientCashbackToAccumulate.toFixed(2)} em cashback. Total acumulado: R$ ${clientCashbackAvailableBalance.toFixed(2)}.`,
 				agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
@@ -1453,7 +1453,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: orgId,
-					titulo: `Envio de mensagem automÃ¡tica via campanha ${campaign.titulo}`,
+					titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 					tipo: "ENVIO-MENSAGEM",
 					descricao: `Cliente atingiu ${clientNewTotalPurchaseCount} compras totais (gatilho: ${campaign.gatilhoQuantidadeTotalCompras}).`,
 					agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
@@ -1605,7 +1605,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: orgId,
-					titulo: `Envio de mensagem automÃ¡tica via campanha ${campaign.titulo}`,
+					titulo: `Envio de mensagem automática via campanha ${campaign.titulo}`,
 					tipo: "ENVIO-MENSAGEM",
 					descricao: `Cliente atingiu R$ ${clientNewTotalPurchaseValue.toFixed(2)} em compras totais (gatilho: R$ ${campaign.gatilhoValorTotalCompras?.toFixed(2)}).`,
 					agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),

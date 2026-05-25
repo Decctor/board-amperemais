@@ -65,7 +65,7 @@ export function DynamicHeaderImagePreview({
 					<BrandHeader organizationTheme={organizationTheme} palette={palette} />
 
 					<div className="max-w-[88%]">
-						<p className="text-[clamp(0.46rem,1.72cqw,0.58rem)] font-bold uppercase tracking-[0.14em]" style={{ color: palette.foregroundMuted }}>
+						<p className="text-[clamp(0.46rem,1.72cqw,0.58rem)] font-bold uppercase tracking-[0.14em]" style={{ color: palette.foregroundSoft }}>
 							{sample.clientName}, olha seu saldo
 						</p>
 
@@ -149,18 +149,15 @@ function CardFooter({ expirationLabel, palette }: { expirationLabel: string; pal
 		<div
 			className="flex items-center justify-between gap-3 px-[clamp(0.78rem,4cqw,1.12rem)] py-[clamp(0.38rem,1.85cqw,0.52rem)]"
 			style={{
-				backgroundColor: withAlpha(palette.primaryDeep, 0.82),
-				borderTop: `1px solid ${withAlpha(palette.primaryDeep, 0.35)}`,
+				backgroundColor: RECOMPRA_BRAND_BLUE,
+				borderTop: `1px solid white`,
 			}}
 		>
 			<span className="min-w-0 truncate text-[clamp(0.5rem,1.85cqw,0.62rem)] font-semibold leading-tight" style={{ color: palette.foregroundSoft }}>
 				{expirationLabel}
 			</span>
-			<div
-				className="flex shrink-0 items-center rounded-full px-[clamp(0.55rem,2.5cqw,0.75rem)] py-[clamp(0.24rem,1.15cqw,0.34rem)]"
-				style={{ backgroundColor: RECOMPRA_BRAND_BLUE }}
-			>
-				<div className="relative h-[clamp(0.7rem,2.75cqw,0.92rem)] w-[clamp(3.1rem,15cqw,4.2rem)]">
+			<div className="flex shrink-0 items-center">
+				<div className="relative h-[clamp(1rem,2.75cqw,0.92rem)] w-[clamp(4rem,15cqw,4.2rem)]">
 					<Image src={LogoRecompraHorizontalColorful} alt="RecompraCRM" fill className="object-contain object-center" sizes="96px" />
 				</div>
 			</div>
