@@ -52,8 +52,8 @@ export default function CommunicationTemplatesPage({ organizationName: _organiza
 		updateParams,
 	} = useMessageTemplates({ initialParams: { search: "", page: 1 } });
 	const templates = templatesResult?.messageTemplates ?? [];
-	const templatesMatched = templatesResult?.messageTemplatesMatched;
-	const totalPages = templatesResult?.totalPages;
+	const templatesMatched = templatesResult?.messageTemplatesMatched ?? 0;
+	const totalPages = templatesResult?.totalPages ?? 0;
 
 	const whatsappConnectionPhones = useMemo(() => getWhatsappConnectionPhones(whatsappConnections ?? []), [whatsappConnections]);
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
@@ -83,7 +83,7 @@ export default function CommunicationTemplatesPage({ organizationName: _organiza
 					queryLoading={isLoading}
 					selectPage={(page) => updateParams({ page })}
 					totalPages={totalPages ?? 0}
-					itemsMatchedText={`${templatesMatched} ${templatesMatched === 1 ? "template encontrada." : "templates encontradas."}`}
+					itemsMatchedText={`${templatesMatched} ${templatesMatched === 1 ? "template encontrado." : "templates encontrados."}`}
 					itemsShowingText={`${templates.length} ${templates.length === 1 ? "template exibido." : "templates exibidos."}`}
 				/>
 			</div>
@@ -160,7 +160,7 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 				const phoneInfo = whatsappConnectionPhones.find((phone) => phone.phoneId === phoneId);
 				return {
 					id: phoneId,
-                    numero: phoneInfo?.phoneNumber ?? "NÃO ENCONTRADO",
+					numero: phoneInfo?.phoneNumber ?? "NÃO ENCONTRADO",
 					...phoneData,
 				};
 			}),
@@ -238,7 +238,7 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 																status: phoneTemplateData.status,
 																qualidade: phoneTemplateData.qualidade,
 															}
-													: null
+														: null
 												}
 												onAdd={() => {
 													createPhoneMutation({ messageTemplateId: template.id, telefoneId: telefone.phoneId });
