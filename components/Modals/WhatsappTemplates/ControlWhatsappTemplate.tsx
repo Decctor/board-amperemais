@@ -1,6 +1,7 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { updateWhatsappTemplate } from "@/lib/mutations/whatsapp-templates";
 import { useWhatsappTemplateById } from "@/lib/queries/whatsapp-templates";
 import { useWhatsappTemplateState } from "@/state-hooks/use-whatsapp-template-state";
@@ -96,7 +97,7 @@ function ControlWhatsappTemplate({ whatsappTemplateId, organizationId, closeMenu
 					/>
 				</div>
 				<div className="w-full lg:w-1/3 p-2 rounded-lg border border-border/30 shadow-sm flex flex-col lg:h-full lg:sticky lg:top-0">
-					<TemplatePreview components={state.whatsappTemplate.componentes} />
+					<TemplatePreview content={whatsappTemplateComponentsToMessageContent(state.whatsappTemplate.componentes)} />
 				</div>
 			</div>
 		</ResponsiveMenu>

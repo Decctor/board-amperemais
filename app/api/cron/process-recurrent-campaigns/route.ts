@@ -200,7 +200,7 @@ async function getProcessRecurrentCampaignsRoute(_req: NextRequest) {
 							.returning({ id: interactions.id });
 
 						// Prepare for immediate processing
-						if (campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId) {
+						if (campaign.whatsappTemplate) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, clientId),
 								columns: {

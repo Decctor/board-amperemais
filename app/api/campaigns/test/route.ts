@@ -52,11 +52,9 @@ async function testCampaign({
 	});
 
 	if (!campaign) throw new createHttpError.NotFound("Campanha não encontrada.");
-	if (!campaign.whatsappTemplate) throw new createHttpError.BadRequest("Template do WhatsApp não encontrado para essa campanha.");
-	if (!campaign.whatsappConexaoTelefoneId) throw new createHttpError.BadRequest("Telefone de conexão do WhatsApp não configurado para essa campanha.");
+	if (!campaign.whatsappTemplate) throw new createHttpError.BadRequest("Template de mensagem não encontrado para essa campanha.");
 
-	const whatsappConnection = campaign.whatsappConexaoTelefone?.conexao;
-	if (!whatsappConnection) throw new createHttpError.BadRequest("Conexão de WhatsApp não encontrada.");
+	const whatsappConnection = campaign.whatsappConexaoTelefone?.conexao ?? null;
 
 	const selectedClients = await db.query.clients.findMany({
 		where: and(eq(clients.organizacaoId, userOrgId), inArray(clients.id, input.clientIds)),
@@ -73,11 +71,11 @@ async function testCampaign({
 
 	if (selectedClients.length === 0) throw new createHttpError.BadRequest("Nenhum cliente válido encontrado.");
 
-	const results: { clientId: string; clientName: string; success: boolean; error?: string }[] = [];
+	const results: { clientId: string; clientName: string; success: boolean; error?: string; channelsAttempted: string[]; channelsSkipped: string[]; channelsSent: string[]; channelErrors: Record<string, string> }[] = [];
 
 	for (const client of selectedClients) {
-		if (!client.telefone) {
-			results.push({ clientId: client.id, clientName: client.nome, success: false, error: "Cliente não possui telefone." });
+		if (!client.telefone && !client.email) {
+			results.push({ clientId: client.id, clientName: client.nome, success: false, error: "Cliente não possui telefone nem e-mail.", channelsAttempted: [], channelsSkipped: ["WHATSAPP: cliente sem telefone", "EMAIL: cliente sem email"], channelsSent: [], channelErrors: {} });
 			continue;
 		}
 
@@ -97,7 +95,7 @@ async function testCampaign({
 			.returning({ id: interactions.id });
 
 		if (!insertedInteraction) {
-			results.push({ clientId: client.id, clientName: client.nome, success: false, error: "Falha ao criar interação de teste." });
+			results.push({ clientId: client.id, clientName: client.nome, success: false, error: "Falha ao criar interação de teste.", channelsAttempted: [], channelsSkipped: [], channelsSent: [], channelErrors: {} });
 			continue;
 		}
 
@@ -115,11 +113,11 @@ async function testCampaign({
 			},
 			campaign: {
 				autorId: userId,
-				whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
+				whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId ?? null,
 				whatsappTemplate: campaign.whatsappTemplate,
 			},
-			whatsappToken: whatsappConnection.tipoConexao === "META_CLOUD_API" ? (whatsappConnection.token ?? undefined) : undefined,
-			whatsappSessionId: whatsappConnection.tipoConexao === "INTERNAL_GATEWAY" ? (whatsappConnection.gatewaySessaoId ?? undefined) : undefined,
+			whatsappToken: whatsappConnection?.tipoConexao === "META_CLOUD_API" ? (whatsappConnection.token ?? undefined) : undefined,
+			whatsappSessionId: whatsappConnection?.tipoConexao === "INTERNAL_GATEWAY" ? (whatsappConnection.gatewaySessaoId ?? undefined) : undefined,
 			weeklyLimitMode: "skip",
 		});
 
@@ -128,6 +126,10 @@ async function testCampaign({
 			clientName: client.nome,
 			success: processingResult.success,
 			error: processingResult.error,
+			channelsAttempted: processingResult.channelsAttempted ?? [],
+			channelsSkipped: processingResult.channelsSkipped ?? [],
+			channelsSent: processingResult.channelsSent ?? [],
+			channelErrors: processingResult.channelErrors ?? {},
 		});
 	}
 

@@ -26,7 +26,7 @@ const IFOOD_ACKNOWLEDGMENT_CHUNK_SIZE = 2000;
 function getIfoodCredentials() {
 	const clientId = process.env.IFOOD_CLIENT_ID;
 	const clientSecret = process.env.IFOOD_CLIENT_SECRET;
-	if (!clientId || !clientSecret) throw new Error("Credenciais do iFood nÃ£o configuradas.");
+	if (!clientId || !clientSecret) throw new Error("Credenciais do iFood não configuradas.");
 	return { clientId, clientSecret };
 }
 

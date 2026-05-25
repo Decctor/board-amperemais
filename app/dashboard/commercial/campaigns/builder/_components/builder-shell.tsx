@@ -176,7 +176,14 @@ function BuilderShellContent({ initialCampaignId, membership }: BuilderShellProp
 			<BuilderStepper />
 			<div className="rounded-xl border border-border bg-background p-3 shadow-sm lg:p-5">
 				{currentStage === "trigger" ? <StageTrigger validation={activeValidation} /> : null}
-				{currentStage === "send" ? <StageSend organizationId={membership.organizacao.id} validation={activeValidation} /> : null}
+				{currentStage === "send" ? (
+					<StageSend
+						organizationId={membership.organizacao.id}
+						organizationName={membership.organizacao.nome}
+						organizationLogoUrl={membership.organizacao.logoUrl}
+						validation={activeValidation}
+					/>
+				) : null}
 				{currentStage === "audience" ? <StageAudience validation={activeValidation} /> : null}
 				{currentStage === "effects" ? <StageEffects validation={activeValidation} /> : null}
 				{currentStage === "settings" ? <StageSettings validation={activeValidation} /> : null}

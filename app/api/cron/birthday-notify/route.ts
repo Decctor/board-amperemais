@@ -242,7 +242,7 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 							const isImmediateCandidate = isAntes || campaign.execucaoAgendadaValor === 0;
 							const scheduledBlockArrived = scheduledBlockHasArrived(campaign.execucaoAgendadaBloco as TTimeBlock, currentTimeBlock);
 							const isImmediate = isImmediateCandidate && scheduleIsToday && scheduledBlockArrived;
-							const hasDeliveryConfig = !!(campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId);
+							const hasDeliveryConfig = !!campaign.whatsappTemplate;
 
 							if (isImmediate && hasDeliveryConfig) {
 								// Query client data for immediate processing
@@ -275,7 +275,7 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 										},
 										campaign: {
 											autorId: campaign.autorId,
-											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId as string, // checked via hasDeliveryConfig, Typescript coundn't infer it
+											whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 											whatsappTemplate: campaign.whatsappTemplate,
 										},
 										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,

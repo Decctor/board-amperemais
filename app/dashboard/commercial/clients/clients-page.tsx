@@ -43,7 +43,9 @@ import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { CustomersAcquisitionChannels } from "@/utils/select-options";
 import { RFMLabels } from "@/utils/rfm";
-
+import ControlClient from "@/components/Modals/Clients/ControlClient";
+import { Pencil } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 type ClientsPageProps = {
 	user: TAuthUserSession["user"];
 };
@@ -74,8 +76,11 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 }
 
 function ClientsDatabaseView() {
+	const queryClient = useQueryClient();
+	const [editingClientId, setEditingClientId] = useState<string | null>(null);
 	const {
 		data: clientsResult,
+		queryKey,
 		isSuccess,
 		isLoading,
 		isError,
@@ -92,6 +97,9 @@ function ClientsDatabaseView() {
 	const clientsShowing = clients ? clients.length : 0;
 	const clientsMatched = clientsResult?.clientsMatched || 0;
 	const totalPages = clientsResult?.totalPages;
+
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center gap-2">
@@ -121,10 +129,20 @@ function ClientsDatabaseView() {
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && clients ? (
 				clients.length > 0 ? (
-					clients.map((client, index: number) => <ClientPageCard key={client.id} client={client} />)
+					clients.map((client, index: number) => <ClientPageCard key={client.id} client={client} handleEditClick={() => setEditingClientId(client.id)} />)
 				) : (
 					<p className="w-full tracking-tight text-center">Nenhum cliente encontrado.</p>
 				)
+			) : null}
+			{editingClientId ? (
+				<ControlClient
+					clientId={editingClientId}
+					closeModal={() => setEditingClientId(null)}
+					callbacks={{
+						onMutate: handleOnMutate,
+						onSettled: handleOnSettled,
+					}}
+				/>
 			) : null}
 		</div>
 	);
@@ -551,9 +569,11 @@ function ClientsStatsView() {
 
 type ClientCardProps = {
 	client: TGetClientsOutputDefault["clients"][number];
+	handleEditClick: () => void;
 };
-function ClientPageCard({ client }: ClientCardProps) {
+function ClientPageCard({ client, handleEditClick }: ClientCardProps) {
 	const clientCashbackBalance = client.saldos.length > 0 ? client.saldos[0] : null;
+
 	return (
 		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
@@ -619,13 +639,18 @@ function ClientPageCard({ client }: ClientCardProps) {
 						</div>
 					) : null}
 				</div>
-
-				<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-					<Link href={`/dashboard/commercial/clients/id/${client.id}`}>
-						<Info className="w-3 min-w-3 h-3 min-h-3" />
-						DETALHES
-					</Link>
-				</Button>
+				<div className="flex items-center gap-3">
+					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleEditClick}>
+						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
+						EDITAR
+					</Button>
+					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+						<Link href={`/dashboard/commercial/clients/id/${client.id}`}>
+							<Info className="w-3 min-w-3 h-3 min-h-3" />
+							DETALHES
+						</Link>
+					</Button>
+				</div>
 			</div>
 		</div>
 	);

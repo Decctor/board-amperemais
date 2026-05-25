@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
-import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
+import { validateTemplateForTrigger } from "@/lib/message-templates";
 import { CampaignSchema, CampaignSegmentationSchema } from "@/schemas/campaigns";
 import { CampaignTriggerTypeEnum, type TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
@@ -87,12 +87,16 @@ function validateSingleUseCampaign(campaign: z.infer<typeof CampaignSchema>) {
 
 async function validateCampaignTemplateTriggerCompatibility(whatsappTemplateId: string | null | undefined, gatilhoTipo: TCampaignTriggerTypeEnum) {
 	if (!whatsappTemplateId) return;
-	const template = await db.query.whatsappTemplates.findFirst({
+	const template = await db.query.messageTemplates.findFirst({
 		where: (fields, { eq }) => eq(fields.id, whatsappTemplateId),
-		columns: { componentes: true },
+		columns: { conteudo: true },
 	});
 	if (!template) return;
-	const parametros = template.componentes.corpo.parametros;
+	const parametros = template.conteudo.corpo.parametros.map((parametro) => ({
+		nome: parametro.identificadorInterno,
+		exemplo: parametro.exemplo,
+		identificador: parametro.identificadorInterno,
+	}));
 	const validation = validateTemplateForTrigger(parametros, gatilhoTipo);
 	if (!validation.valid) {
 		throw new createHttpError.BadRequest(
@@ -312,7 +316,7 @@ async function getCampaigns({ input, session }: { input: TGetCampaignsInput; ses
 					columns: {
 						id: true,
 						nome: true,
-						componentes: true,
+						conteudo: true,
 					},
 				},
 				whatsappConexaoTelefone: {
@@ -366,7 +370,7 @@ async function getCampaigns({ input, session }: { input: TGetCampaignsInput; ses
 				columns: {
 					id: true,
 					nome: true,
-					componentes: true,
+					conteudo: true,
 				},
 			},
 		},

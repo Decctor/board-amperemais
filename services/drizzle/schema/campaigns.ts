@@ -1,7 +1,7 @@
 import type { TAttributionModelEnum } from "@/schemas/enums";
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { newTable, users, whatsappConnectionPhones, whatsappTemplates } from ".";
+import { messageTemplates, newTable, users, whatsappConnectionPhones } from ".";
 import {
 	campaignExecutionDelayDirectionEnum,
 	campaignTriggerTypeEnum,
@@ -65,7 +65,7 @@ export const campaigns = newTable("campaigns", {
 		onDelete: "set null",
 	}),
 	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 })
-		.references(() => whatsappTemplates.id)
+		.references(() => messageTemplates.id)
 		.notNull(),
 	autorId: varchar("autor_id", { length: 255 })
 		.references(() => users.id)
@@ -93,9 +93,13 @@ export const campaigns = newTable("campaigns", {
 });
 export const campaignRelations = relations(campaigns, ({ many, one }) => ({
 	segmentacoes: many(campaignSegmentations),
-	whatsappTemplate: one(whatsappTemplates, {
+	whatsappTemplate: one(messageTemplates, {
 		fields: [campaigns.whatsappTemplateId],
-		references: [whatsappTemplates.id],
+		references: [messageTemplates.id],
+	}),
+	messageTemplate: one(messageTemplates, {
+		fields: [campaigns.whatsappTemplateId],
+		references: [messageTemplates.id],
 	}),
 	whatsappConexaoTelefone: one(whatsappConnectionPhones, {
 		fields: [campaigns.whatsappConexaoTelefoneId],

@@ -3,8 +3,8 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { DEFAULT_GATEWAY_ENABLED_EVENTS, deleteSession, generateSessionId, initSession } from "@/lib/whatsapp/internal-gateway";
 import { db } from "@/services/drizzle";
+import { messageTemplates } from "@/services/drizzle/schema/message-templates";
 import { whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
-import { whatsappTemplatePhones, whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -129,11 +129,32 @@ async function deleteInternalGatewayConnection({ session, connectionId }: { sess
 		}
 	}
 
+	const organizationTemplates = await db.query.messageTemplates.findMany({
+		where: eq(messageTemplates.organizacaoId, organizacaoId),
+	});
+	const phoneIds = new Set(connection.telefones.map((phone) => phone.id));
+
+	for (const template of organizationTemplates) {
+		const remainingMetadata = Object.fromEntries(
+			Object.entries(template.metadados.porNumeroTelefone).filter(([phoneId]) => !phoneIds.has(phoneId)),
+		);
+		if (Object.keys(remainingMetadata).length !== Object.keys(template.metadados.porNumeroTelefone).length) {
+			await db
+				.update(messageTemplates)
+				.set({
+					metadados: {
+						...template.metadados,
+						porNumeroTelefone: remainingMetadata,
+					},
+					dataAtualizacao: new Date(),
+				})
+				.where(eq(messageTemplates.id, template.id));
+		}
+	}
+
 	// Delete connection from database (cascades to phones)
 	await db.delete(whatsappConnections).where(and(eq(whatsappConnections.id, connectionId), eq(whatsappConnections.organizacaoId, organizacaoId)));
-	for (const phone of connection.telefones) {
-		await db.delete(whatsappTemplatePhones).where(eq(whatsappTemplatePhones.telefoneId, phone.id));
-	}
+
 	return {
 		data: { deletedId: connectionId },
 		message: "Conexão do Gateway Interno removida com sucesso.",

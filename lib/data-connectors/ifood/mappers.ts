@@ -14,7 +14,7 @@ import type { TIfoodEvent, TIfoodOrder, TIfoodOrderItem } from "./types";
 function pickOrderDate(order: TIfoodOrder) {
 	const rawDate = order.concludedAt || order.confirmedAt || order.createdAt;
 	const parsedDate = rawDate ? dayjs(rawDate) : null;
-	if (!parsedDate?.isValid()) throw new Error(`Data invÃ¡lida recebida do iFood. orderId="${order.id}"`);
+	if (!parsedDate?.isValid()) throw new Error(`Data inválida recebida do iFood. orderId="${order.id}"`);
 	return parsedDate.toDate();
 }
 

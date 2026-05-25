@@ -67,10 +67,20 @@ export async function processSingleInteractionImmediately(params: TProcessSingle
 			return {
 				success: false,
 				error: sendResult.error ?? "Falha ao processar interacao.",
+				channelsAttempted: sendResult.channelsAttempted,
+				channelsSkipped: sendResult.channelsSkipped,
+				channelsSent: sendResult.channelsSent,
+				channelErrors: sendResult.channelErrors,
 			};
 		}
 
-		return { success: true };
+		return {
+			success: true,
+			channelsAttempted: sendResult.channelsAttempted,
+			channelsSkipped: sendResult.channelsSkipped,
+			channelsSent: sendResult.channelsSent,
+			channelErrors: sendResult.channelErrors,
+		};
 	} catch (error) {
 		console.error(`[IMMEDIATE_PROCESS] Error processing interaction ${interactionId}:`, error);
 		return {

@@ -1,5 +1,6 @@
 import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { getErrorMessage } from "@/lib/errors";
+import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { useWhatsappTemplatePhoneById } from "@/lib/queries/whatsapp-templates";
 import { cn } from "@/lib/utils";
 import TemplatePreview from "../Blocks/TemplatePreview";
@@ -125,7 +126,7 @@ export function ViewWhatsappTemplatePhone({ whatsappTemplatePhoneId, closeMenu, 
 						) : null}
 					</ResponsiveMenuSection>
 
-					<TemplatePreview components={whatsappTemplatePhone.template.componentes} />
+					<TemplatePreview content={whatsappTemplateComponentsToMessageContent(whatsappTemplatePhone.template.componentes)} />
 
 					<ResponsiveMenuSection title="AÇÕES" icon={<Settings size={15} />}>
 						<div className="w-full flex items-center flex-col lg:flex-row justify-center gap-x-3 gap-y-3">

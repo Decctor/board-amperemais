@@ -1,5 +1,4 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatPhoneAsBase } from "@/lib/formatting";
@@ -11,6 +10,9 @@ import { clientLocations } from "@/services/drizzle/schema/clients";
 import { and, asc, count, desc, eq, gte, inArray, lte, max, min, notInArray, or, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
+import { NextRequest, NextResponse } from "next/server";
+import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { normalizeSocialProfile, normalizeWebsiteUrl } from "@/lib/socials";
 
 const GetClientsInputSchema = z.object({
 	// By ID params
@@ -84,12 +86,16 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	if ("id" in input) {
+	console.log("INPUT:", input);
+	if ("id" in input && input.id) {
 		const clientId = input.id;
 		if (!clientId) throw new createHttpError.BadRequest("ID do cliente não informado.");
 
 		const client = await db.query.clients.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, clientId), eq(fields.organizacaoId, userOrgId)),
+			with: {
+				localizacoes: true,
+			},
 		});
 		if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
 		return {
@@ -261,29 +267,49 @@ export type TGetClientsOutput = Awaited<ReturnType<typeof getClients>>;
 export type TGetClientsOutputDefault = Exclude<TGetClientsOutput["data"]["default"], null>;
 export type TGetClientsOutputById = Exclude<TGetClientsOutput["data"]["byId"], null>;
 
-const getClientsRoute: PagesRouteHandler<TGetClientsOutput> = async (req, res) => {
+const getClientsRoute = async (req: NextRequest) => {
 	const sessionUser = await getCurrentSessionUncached();
 
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	const searchParams = await req.nextUrl.searchParams;
+
 	// if (!session.user.permissoes.parceiros.criar) throw new createHttpError.BadRequest("Você não possui permissão para acessar esse recurso.");
-	const input = GetClientsInputSchema.parse(req.query);
+	const input = GetClientsInputSchema.parse({
+		id: searchParams.get("id") ?? undefined,
+		page: searchParams.get("page") ?? undefined,
+		search: searchParams.get("search") ?? undefined,
+		acquisitionChannels: searchParams.get("acquisitionChannels") ?? undefined,
+		segmentationTitles: searchParams.get("segmentationTitles") ?? undefined,
+		statsPeriodAfter: searchParams.get("statsPeriodAfter") ?? undefined,
+		statsPeriodBefore: searchParams.get("statsPeriodBefore") ?? undefined,
+		statsSaleNatures: searchParams.get("statsSaleNatures") ?? undefined,
+		statsExcludedSalesIds: searchParams.get("statsExcludedSalesIds") ?? undefined,
+		orderByField: searchParams.get("orderByField") ?? undefined,
+		orderByDirection: searchParams.get("orderByDirection") ?? undefined,
+	});
 	const result = await getClients({ input, session: sessionUser });
-	return res.status(200).json(result);
+	return NextResponse.json(result);
 };
 
-type PostResponse = {
-	data: { insertedId: string };
-	message: string;
-};
-
-const CreateClientEntityInputSchema = ClientSchema.extend({
-	dataInsercao: z.coerce.date({
-		required_error: "Data de inserção do cliente não informada.",
-		invalid_type_error: "Tipo não válido para data de inserção.",
-	}),
+const CreateClientEntityInputSchema = ClientSchema.omit({
+	organizacaoId: true,
+	dataInsercao: true,
+}).extend({
 	dataNascimento: z.coerce
 		.date({
 			invalid_type_error: "Tipo não válido para data de nascimento.",
+		})
+		.optional()
+		.nullable(),
+	dataFundacao: z.coerce
+		.date({
+			invalid_type_error: "Tipo nao valido para data de fundacao.",
+		})
+		.optional()
+		.nullable(),
+	dataSincronizacaoExterna: z.coerce
+		.date({
+			invalid_type_error: "Tipo nao valido para data de sincronizacao externa.",
 		})
 		.optional()
 		.nullable(),
@@ -301,16 +327,10 @@ const CreateClientInputSchema = z.object({
 });
 
 export type TCreateClientInput = z.infer<typeof CreateClientInputSchema>;
-export type TCreateClientOutput = PostResponse;
 
-const createClientRoute: PagesRouteHandler<PostResponse> = async (req, res) => {
-	const sessionUser = await getCurrentSessionUncached();
-	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
-
-	const userOrgId = sessionUser.membership?.organizacao.id;
+async function createClientService({ input, session }: { input: TCreateClientInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-
-	const input = CreateClientInputSchema.parse(req.body);
 
 	const insertedId = await db.transaction(async (tx) => {
 		const firstLocation = input.clientLocations[0] ?? null;
@@ -322,6 +342,10 @@ const createClientRoute: PagesRouteHandler<PostResponse> = async (req, res) => {
 				organizacaoId: userOrgId,
 				telefone: input.client.telefone ?? "",
 				telefoneBase: formatPhoneAsBase(input.client.telefone ?? ""),
+				websiteUrl: normalizeWebsiteUrl(input.client.websiteUrl),
+				instagram: normalizeSocialProfile(input.client.instagram, "instagram"),
+				linkedin: normalizeSocialProfile(input.client.linkedin, "linkedin"),
+				twitter: normalizeSocialProfile(input.client.twitter, "twitter"),
 				localizacaoCep: firstLocation?.localizacaoCep ?? input.client.localizacaoCep,
 				localizacaoEstado: firstLocation?.localizacaoEstado ?? input.client.localizacaoEstado,
 				localizacaoCidade: firstLocation?.localizacaoCidade ?? input.client.localizacaoCidade,
@@ -357,18 +381,140 @@ const createClientRoute: PagesRouteHandler<PostResponse> = async (req, res) => {
 		return insertedClientId;
 	});
 
-	if (!insertedId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar cliente.");
+	return {
+		data: {
+			insertedId,
+		},
+		message: "Cliente criado com sucesso.",
+	};
+}
+export type TCreateClientOutput = Awaited<ReturnType<typeof createClientService>>;
+const createClientRoute = async (req: NextRequest) => {
+	const sessionUser = await getCurrentSessionUncached();
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	return res.status(201).json({ data: { insertedId }, message: "Cliente criado com sucesso." });
+	const userOrgId = sessionUser.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const payload = await req.json();
+	const input = CreateClientInputSchema.parse(payload);
+	const result = await createClientService({ input, session: sessionUser });
+	return NextResponse.json(result);
 };
-const routeHandlers = {
-	POST: createClientRoute,
-	GET: getClientsRoute,
-} satisfies Partial<Record<"GET" | "POST" | "PUT" | "PATCH" | "DELETE", PagesRouteHandler<any>>>;
+const UpdateClientEntityInputSchema = ClientSchema.omit({
+	organizacaoId: true,
+	dataInsercao: true,
+}).extend({
+	dataNascimento: z.coerce
+		.date({
+			invalid_type_error: "Tipo não válido para data de nascimento.",
+		})
+		.optional()
+		.nullable(),
+	dataFundacao: z.coerce
+		.date({
+			invalid_type_error: "Tipo nao valido para data de fundacao.",
+		})
+		.optional()
+		.nullable(),
+	dataSincronizacaoExterna: z.coerce
+		.date({
+			invalid_type_error: "Tipo nao valido para data de sincronizacao externa.",
+		})
+		.optional()
+		.nullable(),
+});
+const UpdateClientInputSchema = z.object({
+	clientId: z.string({
+		required_error: "ID do cliente não informado.",
+		invalid_type_error: "Tipo não válido para ID do cliente.",
+	}),
+	client: UpdateClientEntityInputSchema,
+	clientLocations: z.array(
+		ClientLocationSchema.omit({
+			organizacaoId: true,
+			clienteId: true,
+			dataInsercao: true,
+		}).extend({
+			id: z
+				.string({
+					required_error: "ID da localização não informado.",
+					invalid_type_error: "Tipo não válido para ID da localização.",
+				})
+				.optional(),
+			deletar: z
+				.boolean({
+					invalid_type_error: "Tipo não válido para marcador de exclusão.",
+				})
+				.optional()
+				.nullable(),
+		}),
+	),
+});
+export type TUpdateClientInput = z.infer<typeof UpdateClientInputSchema>;
 
+async function updateClientService({ input, session }: { input: TUpdateClientInput; session: TAuthUserSession }) {
+	const userOrgId = session.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const transactionResult = await db.transaction(async (tx) => {
+		const updatedClient = await tx
+			.update(clients)
+			.set({
+				...input.client,
+				organizacaoId: userOrgId,
+				telefone: input.client.telefone ?? "",
+				telefoneBase: formatPhoneAsBase(input.client.telefone ?? ""),
+				websiteUrl: normalizeWebsiteUrl(input.client.websiteUrl),
+				instagram: normalizeSocialProfile(input.client.instagram, "instagram"),
+				linkedin: normalizeSocialProfile(input.client.linkedin, "linkedin"),
+				twitter: normalizeSocialProfile(input.client.twitter, "twitter"),
+			})
+			.where(and(eq(clients.id, input.clientId), eq(clients.organizacaoId, userOrgId)))
+			.returning({ id: clients.id });
+
+		if (!updatedClient) throw new createHttpError.NotFound("Cliente não encontrado.");
+		const updatedClientId = updatedClient[0]?.id;
+
+		await handleSimpleChildRowsProcessing({
+			trx: tx,
+			table: clientLocations,
+			entities: input.clientLocations,
+			fatherEntityKey: "clienteId",
+			fatherEntityId: updatedClientId,
+			organizacaoId: userOrgId,
+		});
+
+		return {
+			updatedId: updatedClientId,
+		};
+	});
+	return {
+		data: {
+			updatedId: transactionResult.updatedId,
+		},
+		message: "Cliente atualizado com sucesso.",
+	};
+}
+export type TUpdateClientOutput = Awaited<ReturnType<typeof updateClientService>>;
+const updateClientRoute = async (req: NextRequest) => {
+	const sessionUser = await getCurrentSessionUncached();
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
+
+	const userOrgId = sessionUser.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	const payload = await req.json();
+	const input = UpdateClientInputSchema.parse(payload);
+	const result = await updateClientService({ input, session: sessionUser });
+	return NextResponse.json(result);
+};
 export const POST = appApiHandler({
-	POST: (request) => runPagesRouteHandler({ request, handler: routeHandlers.POST! }),
+	POST: (request) => createClientRoute(request),
 });
 export const GET = appApiHandler({
-	GET: (request) => runPagesRouteHandler({ request, handler: routeHandlers.GET! }),
+	GET: (request) => getClientsRoute(request),
+});
+export const PUT = appApiHandler({
+	PUT: (request) => updateClientRoute(request),
 });

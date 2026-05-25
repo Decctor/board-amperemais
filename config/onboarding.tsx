@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { FaGoogle, FaInstagram, FaLinkedin, FaUserGroup, FaYoutube } from "react-icons/fa6";
 
-export const RecompraCRMDefaultWhatsappTemplates = {
+export const RecompraCRMDefaultMessageTemplates = {
 	recompracrm_primeira_compra: {
 		id: "75f3be7d-6b93-43ec-b2dc-e3ecb461945f",
 		nome: "recompracrm_primeira_compra",
@@ -396,7 +396,7 @@ export const RecompraCRMDefaultCampaigns: TRecompraCRMDefaultCampaign[] = [
 			cashbackGeracaoValor: 15,
 			cashbackGeracaoExpiracaoMedida: "DIAS",
 			cashbackGeracaoExpiracaoValor: 10,
-			whatsappTemplateId: RecompraCRMDefaultWhatsappTemplates.recompracrm_primeira_compra.id,
+			whatsappTemplateId: RecompraCRMDefaultMessageTemplates.recompracrm_primeira_compra.id,
 			whatsappConexaoTelefoneId: null,
 		},
 		campaignSegmentations: [
@@ -465,7 +465,7 @@ export const RecompraCRMDefaultCampaigns: TRecompraCRMDefaultCampaign[] = [
 			cashbackGeracaoValor: 15,
 			cashbackGeracaoExpiracaoMedida: "DIAS",
 			cashbackGeracaoExpiracaoValor: 10,
-			whatsappTemplateId: RecompraCRMDefaultWhatsappTemplates.recompracrm_segunda_compra.id,
+			whatsappTemplateId: RecompraCRMDefaultMessageTemplates.recompracrm_segunda_compra.id,
 			whatsappConexaoTelefoneId: null,
 		},
 		campaignSegmentations: [
@@ -534,7 +534,7 @@ export const RecompraCRMDefaultCampaigns: TRecompraCRMDefaultCampaign[] = [
 			cashbackGeracaoValor: 15,
 			cashbackGeracaoExpiracaoMedida: "DIAS",
 			cashbackGeracaoExpiracaoValor: 10,
-			whatsappTemplateId: RecompraCRMDefaultWhatsappTemplates.recompracrm_presente_aniversario.id,
+			whatsappTemplateId: RecompraCRMDefaultMessageTemplates.recompracrm_presente_aniversario.id,
 			whatsappConexaoTelefoneId: null,
 		},
 		campaignSegmentations: [
@@ -603,7 +603,7 @@ export const RecompraCRMDefaultCampaigns: TRecompraCRMDefaultCampaign[] = [
 			cashbackGeracaoValor: 15,
 			cashbackGeracaoExpiracaoMedida: "DIAS",
 			cashbackGeracaoExpiracaoValor: 10,
-			whatsappTemplateId: RecompraCRMDefaultWhatsappTemplates.recompracrm_recuperacao_clientes.id,
+			whatsappTemplateId: RecompraCRMDefaultMessageTemplates.recompracrm_recuperacao_clientes.id,
 			whatsappConexaoTelefoneId: null,
 		},
 		campaignSegmentations: [

@@ -1,11 +1,13 @@
 import { appApiHandler } from "@/lib/app-api";
-import { FacebookOAuth } from "@/lib/authentication/oauth";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { syncWhatsappTemplates } from "@/lib/whatsapp/template-management";
+import {
+	applyWhatsappSubmissionResultToMetadata,
+	getOrganizationWhatsappPhones,
+	submitMessageTemplateToWhatsappPhone,
+} from "@/app/api/message-templates/_lib";
 import { db } from "@/services/drizzle";
-import { type TNewWhatsappConnection, whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema";
+import { messageTemplates, type TNewWhatsappConnection, whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema";
 import { campaigns } from "@/services/drizzle/schema/campaigns";
-import type { OAuth2Tokens } from "arctic";
 import { and, eq, isNull } from "drizzle-orm";
 
 import dayjs from "dayjs";
@@ -205,25 +207,48 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 			.where(and(eq(campaigns.organizacaoId, userOrgId), isNull(campaigns.whatsappConexaoTelefoneId)));
 	}
 
-	// Sync templates for each connected phone
-	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Starting automatic template sync for connected phones");
-	for (const phone of insertedPhones) {
-		try {
-			if (!phone.whatsappBusinessAccountId || !phone.id) continue;
-			const syncResult = await syncWhatsappTemplates({
-				whatsappToken: accessToken ?? "",
-				whatsappBusinessAccountId: phone.whatsappBusinessAccountId,
-				phoneId: phone.id,
-				organizationId: userOrgId,
-				userId: sessionUser.user.id,
-				db,
-			});
-			console.log(
-				`[INFO] [WHATSAPP_CONNECT_CALLBACK] Template sync completed for phone ${phone.id}. Created: ${syncResult.created}, Updated: ${syncResult.updated}, Errors: ${syncResult.errors}`,
-			);
-		} catch (error) {
-			console.error(`[ERROR] [WHATSAPP_CONNECT_CALLBACK] Failed to sync templates for phone ${phone.id}:`, error);
-			// Don't fail the connection if template sync fails
+	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Starting automatic message template submission for connected phones");
+	const insertedPhoneIds = new Set(insertedPhones.map((phone) => phone.id));
+	const phonesToSync = (await getOrganizationWhatsappPhones(userOrgId)).filter((phone) => insertedPhoneIds.has(phone.id));
+	const organizationTemplates = await db.query.messageTemplates.findMany({
+		where: eq(messageTemplates.organizacaoId, userOrgId),
+	});
+
+	for (const template of organizationTemplates) {
+		let nextMetadata = template.metadados;
+		let nextContent = template.conteudo;
+
+		for (const phone of phonesToSync) {
+			try {
+				if (nextMetadata.porNumeroTelefone[phone.id]?.idExterno) continue;
+				const result = await submitMessageTemplateToWhatsappPhone({
+					template: { ...template, metadados: nextMetadata, conteudo: nextContent },
+					phone,
+					organizationId: userOrgId,
+					origin: "whatsapp_auth_callback",
+					mode: "create",
+				});
+				nextMetadata = applyWhatsappSubmissionResultToMetadata({
+					metadata: nextMetadata,
+					phoneId: phone.id,
+					idExterno: result.idExterno,
+				});
+				if (result.content) nextContent = result.content;
+				console.log(`[INFO] [WHATSAPP_CONNECT_CALLBACK] Message template ${template.id} submitted for phone ${phone.id}`);
+			} catch (error) {
+				console.error(`[ERROR] [WHATSAPP_CONNECT_CALLBACK] Failed to submit message template ${template.id} for phone ${phone.id}:`, error);
+			}
+		}
+
+		if (nextMetadata !== template.metadados || nextContent !== template.conteudo) {
+			await db
+				.update(messageTemplates)
+				.set({
+					metadados: nextMetadata,
+					conteudo: nextContent,
+					dataAtualizacao: new Date(),
+				})
+				.where(eq(messageTemplates.id, template.id));
 		}
 	}
 

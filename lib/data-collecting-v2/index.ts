@@ -110,7 +110,7 @@ async function loadCampaigns(organizationId: string): Promise<TCampaignWithAudie
 		},
 	});
 
-	return result as TCampaignWithAudienceRelations[];
+	return result as unknown as TCampaignWithAudienceRelations[];
 }
 
 async function processOrganization({

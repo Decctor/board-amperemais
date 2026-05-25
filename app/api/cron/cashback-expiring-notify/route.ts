@@ -225,9 +225,7 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 
 						if (
 							campaign.execucaoAgendadaValor === 0 &&
-							campaign.whatsappTemplate &&
-							campaign.whatsappConexaoTelefone?.conexao &&
-							campaign.whatsappConexaoTelefoneId
+							campaign.whatsappTemplate
 						) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, clienteId),

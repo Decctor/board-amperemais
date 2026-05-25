@@ -50,7 +50,7 @@ export const IfoodTokenResponseSchema = IfoodTokenRawResponseSchema.transform((v
 	if (!accessToken || !refreshToken) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
-			message: "Resposta de autenticaÃ§Ã£o do iFood sem tokens.",
+			message: "Resposta de autenticação do iFood sem tokens.",
 		});
 		return z.NEVER;
 	}

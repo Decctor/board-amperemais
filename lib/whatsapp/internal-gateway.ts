@@ -1,4 +1,3 @@
-import type { TemplateParameter, TemplatePayload } from "@/lib/whatsapp/templates";
 import axios from "axios";
 import createHttpError from "http-errors";
 
@@ -77,7 +76,39 @@ export type SendMessageInput = {
 	clientMessageId?: string;
 };
 
-export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePayload, options?: { fallbackText?: string }): SendMessageContent {
+type GatewayTemplateParameter =
+	| {
+			type: "text";
+			text: string;
+	  }
+	| {
+			type: "image";
+			image: { link: string };
+	  }
+	| {
+			type: "video";
+			video: { link: string };
+	  }
+	| {
+			type: "document";
+			document: { link: string; filename?: string };
+	  }
+	| Record<string, unknown>;
+
+type GatewayTemplatePayload = {
+	to?: string;
+	type?: "template";
+	template: {
+		name: string;
+		language?: { code: string };
+		components?: Array<{
+			type: string;
+			parameters?: GatewayTemplateParameter[];
+		}>;
+	};
+};
+
+export function parseTemplatePayloadToGatewayContent(templatePayload: GatewayTemplatePayload, options?: { fallbackText?: string }): SendMessageContent {
 	const components = templatePayload.template.components ?? [];
 	let media:
 		| {
@@ -87,15 +118,15 @@ export function parseTemplatePayloadToGatewayContent(templatePayload: TemplatePa
 		  }
 		| undefined;
 
-	const isImageParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "image" }> => {
+	const isImageParam = (param: GatewayTemplateParameter): param is Extract<GatewayTemplateParameter, { type: "image" }> => {
 		const image = (param as { image?: { link?: unknown } }).image;
 		return param.type === "image" && typeof image?.link === "string";
 	};
-	const isVideoParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "video" }> => {
+	const isVideoParam = (param: GatewayTemplateParameter): param is Extract<GatewayTemplateParameter, { type: "video" }> => {
 		const video = (param as { video?: { link?: unknown } }).video;
 		return param.type === "video" && typeof video?.link === "string";
 	};
-	const isDocumentParam = (param: TemplateParameter): param is Extract<TemplateParameter, { type: "document" }> => {
+	const isDocumentParam = (param: GatewayTemplateParameter): param is Extract<GatewayTemplateParameter, { type: "document" }> => {
 		const document = (param as { document?: { link?: unknown } }).document;
 		return param.type === "document" && typeof document?.link === "string";
 	};

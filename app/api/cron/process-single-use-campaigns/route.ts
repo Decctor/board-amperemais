@@ -144,7 +144,7 @@ async function getProcessSingleUseCampaignsRoute(_req: NextRequest) {
 
 					console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${targetClientIds.length} matching clients.`);
 
-					const hasDeliveryConfig = !!(campaign.whatsappTemplate && campaign.whatsappConexaoTelefone?.conexao && campaign.whatsappConexaoTelefoneId);
+					const hasDeliveryConfig = !!campaign.whatsappTemplate;
 
 					for (const clientId of targetClientIds) {
 						const [insertedInteraction] = await tx
@@ -192,7 +192,7 @@ async function getProcessSingleUseCampaignsRoute(_req: NextRequest) {
 									},
 									campaign: {
 										autorId: campaign.autorId,
-										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId as string,
+										whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 										whatsappTemplate: campaign.whatsappTemplate,
 									},
 									whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,

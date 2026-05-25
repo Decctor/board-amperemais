@@ -17,22 +17,55 @@ const AIHintBaseSchema = z.object({
 	urlAcao: z.string().optional().nullable(),
 });
 
+function normalizeLegacyTemplateText<T>(value: T): T {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+
+	const normalized = { ...(value as Record<string, unknown>) };
+	const suggestion = normalized.sugestao;
+
+	if (suggestion && typeof suggestion === "object" && !Array.isArray(suggestion)) {
+		const suggestionRecord = { ...(suggestion as Record<string, unknown>) };
+		if (suggestionRecord.messageTemplateText == null && typeof suggestionRecord.whatsappTemplateText === "string") {
+			suggestionRecord.messageTemplateText = suggestionRecord.whatsappTemplateText;
+		}
+
+		const currentSummary = suggestionRecord.currentSummary;
+		if (currentSummary && typeof currentSummary === "object" && !Array.isArray(currentSummary)) {
+			const currentSummaryRecord = { ...(currentSummary as Record<string, unknown>) };
+			if (currentSummaryRecord.messageTemplateText == null && typeof currentSummaryRecord.whatsappTemplateText === "string") {
+				currentSummaryRecord.messageTemplateText = currentSummaryRecord.whatsappTemplateText;
+			}
+			suggestionRecord.currentSummary = currentSummaryRecord;
+		}
+
+		normalized.sugestao = suggestionRecord;
+	}
+
+	return normalized as T;
+}
+
 export const AIHintCampaignCreationSuggestionSchema = AIHintBaseSchema.extend({
 	tipo: z.literal("campaign-creation-suggestion"),
-	dados: z.object({
-		resumoExecutivo: z.string(),
-		criterios: z.array(z.string()),
-		sugestao: CampaignCreationSuggestionSchema,
-	}),
+	dados: z.preprocess(
+		(value) => normalizeLegacyTemplateText(value),
+		z.object({
+			resumoExecutivo: z.string(),
+			criterios: z.array(z.string()),
+			sugestao: CampaignCreationSuggestionSchema,
+		}),
+	),
 });
 
 export const AIHintCampaignUpdatesSuggestionSchema = AIHintBaseSchema.extend({
 	tipo: z.literal("campaign-updates-suggestion"),
-	dados: z.object({
-		resumoExecutivo: z.string(),
-		criterios: z.array(z.string()),
-		sugestao: CampaignUpdateSuggestionSchema,
-	}),
+	dados: z.preprocess(
+		(value) => normalizeLegacyTemplateText(value),
+		z.object({
+			resumoExecutivo: z.string(),
+			criterios: z.array(z.string()),
+			sugestao: CampaignUpdateSuggestionSchema,
+		}),
+	),
 });
 
 export const AIHintContentSchema = z.discriminatedUnion("tipo", [AIHintCampaignCreationSuggestionSchema, AIHintCampaignUpdatesSuggestionSchema]);

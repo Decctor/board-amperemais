@@ -108,7 +108,7 @@ export const CampaignCreationSuggestionSchema = CampaignEditableAiSuggestionConf
 			invalid_type_error: "Tipo inválido para segmentação.",
 		}),
 	),
-	whatsappTemplateText: z.string({
+	messageTemplateText: z.string({
 		required_error: "Texto do template não informado.",
 		invalid_type_error: "Tipo inválido para o texto do template.",
 	}).describe(
@@ -143,7 +143,7 @@ export const CampaignCurrentSummarySchema = z.object({
 	ativo: z.boolean(),
 	segmentations: z.array(z.string()),
 	whatsappConexaoTelefoneId: z.string().nullable(),
-	whatsappTemplateText: z.string().nullable(),
+	messageTemplateText: z.string().nullable(),
 });
 export type TCampaignCurrentSummary = z.infer<typeof CampaignCurrentSummarySchema>;
 
@@ -170,7 +170,7 @@ export const CampaignUpdateSuggestionInputSchema = z.object({
 			invalid_type_error: "Tipo inválido para segmentação.",
 		}),
 	),
-	whatsappTemplateText: z.string({
+	messageTemplateText: z.string({
 		required_error: "Texto do template não informado.",
 		invalid_type_error: "Tipo inválido para o texto do template.",
 	}).describe(

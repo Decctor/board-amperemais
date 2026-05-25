@@ -134,9 +134,7 @@ async function pushImmediateProcessingDataIfNeeded({
 }) {
 	if (
 		campaign.execucaoAgendadaValor !== 0 ||
-		!campaign.whatsappTemplate ||
-		!campaign.whatsappConexaoTelefone?.conexao ||
-		!campaign.whatsappConexaoTelefoneId
+		!campaign.whatsappTemplate
 	) {
 		return false;
 	}
@@ -165,8 +163,8 @@ async function pushImmediateProcessingDataIfNeeded({
 			whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
 			whatsappTemplate: campaign.whatsappTemplate,
 		},
-		whatsappToken: campaign.whatsappConexaoTelefone.conexao.token ?? undefined,
-		whatsappSessionId: campaign.whatsappConexaoTelefone.conexao.gatewaySessaoId ?? undefined,
+		whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+		whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 		contextMetadados: metadata,
 	});
 

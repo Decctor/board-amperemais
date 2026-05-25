@@ -1,4 +1,4 @@
-import { getVariablesForTrigger, WhatsappTemplateVariables, type TWhatsappTemplateVariables } from "@/lib/whatsapp/template-variables";
+import { getVariablesForTrigger, MessageTemplateVariables, type TMessageTemplateVariables } from "@/lib/message-templates";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 
 export type TParsedTemplateVariable = {
@@ -6,8 +6,8 @@ export type TParsedTemplateVariable = {
 	identificador: string;
 };
 
-const VARIABLE_IDENTIFIER_MAP = new Map(WhatsappTemplateVariables.map((variable) => [variable.value, variable]));
-type TVariableIdentifier = keyof TWhatsappTemplateVariables;
+const VARIABLE_IDENTIFIER_MAP = new Map(MessageTemplateVariables.map((variable) => [variable.value, variable]));
+type TVariableIdentifier = keyof TMessageTemplateVariables;
 
 export function parseTemplateVariables(templateText: string): {
 	variables: TParsedTemplateVariable[];
