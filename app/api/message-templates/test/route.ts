@@ -100,6 +100,7 @@ async function testMessageTemplate({ input, organizationId }: { input: TTestMess
 	}> = [];
 
 	for (const client of selectedClients) {
+		console.log("[TEST_MESSAGE_TEMPLATE] Sending test to client:", client.nome);
 		const variables = buildRuntimeVariables(client);
 		const clientResult = {
 			clientId: client.id,
@@ -179,6 +180,8 @@ async function testMessageTemplate({ input, organizationId }: { input: TTestMess
 				clientResult.email = { skipped: false, success: false, error: error instanceof Error ? error.message : "Erro desconhecido no email." };
 			}
 		}
+
+		console.log("[TEST_MESSAGE_TEMPLATE] Client result:", JSON.stringify(clientResult, null, 2));
 
 		results.push(clientResult);
 	}
