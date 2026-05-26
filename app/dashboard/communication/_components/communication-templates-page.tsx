@@ -15,7 +15,7 @@ import { TemplatePhoneHoverItem } from "@/components/MessageTemplates/TemplatePh
 import { useMemo, useState } from "react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
-import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
+import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -40,7 +40,7 @@ type TGetWhatsappConnectionPhones = ReturnType<typeof getWhatsappConnectionPhone
 export default function CommunicationTemplatesPage({ organizationName: _organizationName }: CommunicationTemplatesPageProps) {
 	const queryClient = useQueryClient();
 
-	const { data: whatsappConnections } = useWhatsappConnection();
+	const { data: whatsappConnections } = useWhatsappConnections();
 	const {
 		data: templatesResult,
 		isLoading,
