@@ -25,6 +25,7 @@ import { useMutation } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/errors";
 import { submitMessageTemplate } from "@/lib/mutations/message-templates";
 import { LoadingButton } from "@/components/loading-button";
+import { formatAsSlug } from "@/lib/formatting";
 type MessageTemplateBuilderProps = {
 	template: TGetBuilderMessageTemplateById;
 	organizationId: string;
@@ -161,10 +162,10 @@ export default function MessageTemplateBuilder({
 			<div className="grid min-h-[calc(100vh-12rem)] gap-4 xl:grid-cols-[minmax(280px,0.8fr)_minmax(520px,1.5fr)_minmax(340px,1fr)]">
 				<BuilderPanel icon={<BadgeCheck className="h-4 w-4" />} title="CONFIGURAÇÃO" description="Identidade, canais e regras de envio.">
 					<div className="flex flex-col gap-4">
-						<Field label="Nome interno">
+						<Field label="Nome do Template">
 							<Input
 								value={state.messageTemplate.nome}
-								onChange={(event) => updateTemplate({ nome: event.target.value })}
+								onChange={(event) => updateTemplate({ nome: formatAsSlug(event.target.value) })}
 								placeholder="cashback_expirando_7_dias"
 							/>
 						</Field>
