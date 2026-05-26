@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { CircleGauge, Diamond, Eye, Pencil, Phone, Plus, Send } from "lucide-react";
+import { CircleGauge, Diamond, Eye, Pencil, Phone, Plus, RefreshCw, Send } from "lucide-react";
 import { useMessageTemplates } from "@/lib/queries/message-templates";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
@@ -20,7 +20,9 @@ import { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/ro
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import TestMessageTemplate from "@/components/Modals/MessageTemplates/TestMessageTemplate";
-import { createMessageTemplatePhone, syncMessageTemplatePhone } from "@/lib/mutations/message-templates";
+import { ViewMessageTemplatePhone } from "@/components/Modals/MessageTemplates/ViewMessageTemplatePhone";
+import { LoadingButton } from "@/components/loading-button";
+import { createMessageTemplatePhone, syncMessageTemplates } from "@/lib/mutations/message-templates";
 import { toast } from "sonner";
 type CommunicationTemplatesPageProps = {
 	organizationName: string;
@@ -56,12 +58,37 @@ export default function CommunicationTemplatesPage({ organizationName: _organiza
 	const totalPages = templatesResult?.totalPages ?? 0;
 
 	const whatsappConnectionPhones = useMemo(() => getWhatsappConnectionPhones(whatsappConnections ?? []), [whatsappConnections]);
+	const hasMetaCloudApiConnection = useMemo(
+		() => (whatsappConnections ?? []).some((connection) => connection.tipoConexao === "META_CLOUD_API"),
+		[whatsappConnections],
+	);
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
+	const { mutate: syncTemplatesMutation, isPending: isSyncingTemplates } = useMutation({
+		mutationKey: ["sync-message-templates"],
+		mutationFn: syncMessageTemplates,
+		onMutate: handleOnMutate,
+		onSuccess: (response) => toast.success(response.message),
+		onError: (error) => toast.error(getErrorMessage(error)),
+		onSettled: handleOnSettled,
+	});
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex flex-col gap-3">
 				<div className="w-full flex items-center justify-end gap-2">
+					{hasMetaCloudApiConnection ? (
+						<LoadingButton
+							size="sm"
+							variant="secondary"
+							className="flex items-center gap-2"
+							onClick={() => syncTemplatesMutation({})}
+							loading={isSyncingTemplates}
+							disabled={isSyncingTemplates}
+						>
+							<RefreshCw className="w-4 h-4 min-w-4 min-h-4" />
+							SINCRONIZAR TEMPLATES
+						</LoadingButton>
+					) : null}
 					<Button size="sm" asChild>
 						<Link href="/dashboard/communication/builder" className="flex items-center gap-2">
 							<Plus className="w-4 h-4 min-w-4 min-h-4" />
@@ -123,25 +150,10 @@ type TemplateCardProps = {
 function TemplateCard({ template, whatsappConnectionPhones, callbacks }: TemplateCardProps) {
 	const [testingTemplate, setTestingTemplate] = useState(false);
 	const [pendingPhoneId, setPendingPhoneId] = useState<string | null>(null);
-
+	const [viewPhoneTelefoneId, setViewPhoneTelefoneId] = useState<string | null>(null);
 	const { mutate: createPhoneMutation } = useMutation({
 		mutationKey: ["create-message-template-phone", template.id],
 		mutationFn: createMessageTemplatePhone,
-		onMutate: (input) => {
-			setPendingPhoneId(input.telefoneId);
-			callbacks.onMutate?.();
-		},
-		onSuccess: (response) => toast.success(response.message),
-		onError: (error) => toast.error(getErrorMessage(error)),
-		onSettled: () => {
-			setPendingPhoneId(null);
-			callbacks.onSettled?.();
-		},
-	});
-
-	const { mutate: syncPhoneMutation } = useMutation({
-		mutationKey: ["sync-message-template-phone", template.id],
-		mutationFn: syncMessageTemplatePhone,
 		onMutate: (input) => {
 			setPendingPhoneId(input.telefoneId);
 			callbacks.onMutate?.();
@@ -243,7 +255,7 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 												onAdd={() => {
 													createPhoneMutation({ messageTemplateId: template.id, telefoneId: telefone.phoneId });
 												}}
-												onView={(telefoneId) => syncPhoneMutation({ messageTemplateId: template.id, telefoneId })}
+												onView={setViewPhoneTelefoneId}
 												isAdding={pendingPhoneId === telefone.phoneId}
 											/>
 										);
@@ -286,6 +298,14 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 					</div>
 				) : null}
 			</div>
+			{viewPhoneTelefoneId ? (
+				<ViewMessageTemplatePhone
+					messageTemplateId={template.id}
+					telefoneId={viewPhoneTelefoneId}
+					closeMenu={() => setViewPhoneTelefoneId(null)}
+					callbacks={callbacks}
+				/>
+			) : null}
 			{testingTemplate ? <TestMessageTemplate template={template} closeModal={() => setTestingTemplate(false)} callbacks={callbacks} /> : null}
 		</div>
 	);

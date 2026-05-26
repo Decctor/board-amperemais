@@ -92,6 +92,10 @@ async function testMessageTemplate({ input, organizationId }: { input: TTestMess
 	const whatsappPhone = approvedPhones[0] ?? null;
 	const origin = getDefaultAppOrigin();
 
+	console.log("[TEST_MESSAGE_TEMPLATE] Debug:", {
+		templateMetadata: template.metadados,
+		organizationPhones: phones,
+	});
 	const results: Array<{
 		clientId: string;
 		clientName: string;

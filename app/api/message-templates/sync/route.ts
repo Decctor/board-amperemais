@@ -8,8 +8,8 @@ import createHttpError from "http-errors";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import z from "zod";
-import { buildWhatsappTemplateSyncPatch } from "@/lib/message-templates";
-import { getOrganizationWhatsappPhones, listMetaTemplatesForPhone, syncMessageTemplateFromMetaForPhone } from "../_lib";
+import { buildRemoteTemplateIndexes, buildWhatsappTemplateSyncPatch, resolveRemoteTemplate } from "@/lib/message-templates";
+import { getOrganizationWhatsappPhones, listMetaTemplatesForPhone } from "../_lib";
 
 const SyncMessageTemplatesInputSchema = z.object({
 	telefoneId: z.string({ invalid_type_error: "Tipo inválido para ID do telefone." }).optional().nullable(),
@@ -42,26 +42,25 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 
 	for (const phone of phonesToSync) {
 		const remoteTemplates = await listMetaTemplatesForPhone(phone);
-		const remoteById = new Map(remoteTemplates.map((template) => [template.id, template]));
+		const remoteIndexes = buildRemoteTemplateIndexes(remoteTemplates);
 
 		for (const template of templates) {
-			const metadata = template.metadados.porNumeroTelefone[phone.id];
-			if (!metadata?.idExterno) {
+			const metadataForPhone = template.metadados.porNumeroTelefone[phone.id];
+			const remote = resolveRemoteTemplate({ indexes: remoteIndexes, template, metadataForPhone });
+
+			if (!remote) {
 				skipped += 1;
 				details.push({ telefoneId: phone.id, templateName: template.nome, action: "skipped" });
 				continue;
 			}
 
 			try {
-				const remote = remoteById.get(metadata.idExterno);
-				const patch = remote
-					? buildWhatsappTemplateSyncPatch({
-							template,
-							connectionId: phone.id,
-							metaTemplate: remote,
-							preserveLocalContent: true,
-						})
-					: await syncMessageTemplateFromMetaForPhone({ template, phone });
+				const patch = buildWhatsappTemplateSyncPatch({
+					template,
+					connectionId: phone.id,
+					metaTemplate: remote,
+					preserveLocalContent: true,
+				});
 
 				await db
 					.update(messageTemplates)

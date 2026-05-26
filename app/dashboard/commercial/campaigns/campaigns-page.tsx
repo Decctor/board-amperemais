@@ -587,23 +587,21 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 								{retryIsPending ? "REENVIANDO..." : "TENTAR NOVAMENTE"}
 							</Button>
 						) : null}
-						{interaction.erroEnvio ? (
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Chip.Root variant="ghost" size="xs" shape="md" className={cn(sentStatusConfig?.className, "border-none")}>
-											<Chip.Icon>{sentStatusConfig?.icon}</Chip.Icon>
-											<Chip.Label caps weight="bold">
-												{sentStatusConfig?.label}
-											</Chip.Label>
-										</Chip.Root>
-									</TooltipTrigger>
-									<TooltipContent>
-										<p className="text-xs font-medium tracking-tight text-red-500">{sentStatusConfig?.message(interaction.erroEnvio)}</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						) : null}
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Chip.Root variant="ghost" size="xs" shape="md" className={cn(sentStatusConfig?.className, "border-none")}>
+										<Chip.Icon>{sentStatusConfig?.icon}</Chip.Icon>
+										<Chip.Label caps weight="bold">
+											{sentStatusConfig?.label}
+										</Chip.Label>
+									</Chip.Root>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p className="text-xs font-medium tracking-tight text-red-500">{sentStatusConfig?.message(interaction.erroEnvio || undefined)}</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 					</div>
 				</div>
 				<p className="text-xs font-medium tracking-tight text-muted-foreground">{interaction.descricao}</p>
@@ -893,7 +891,9 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 											</Chip.Label>
 										</Chip.Root>
 									</TooltipTrigger>
-									<TooltipContent className="max-w-xs">Sem uma conexão de WhatsApp, a campanha seguirá apenas por e-mail quando houver endereço disponível.</TooltipContent>
+									<TooltipContent className="max-w-xs">
+										Sem uma conexão de WhatsApp, a campanha seguirá apenas por e-mail quando houver endereço disponível.
+									</TooltipContent>
 								</Tooltip>
 							</TooltipProvider>
 						) : null}
