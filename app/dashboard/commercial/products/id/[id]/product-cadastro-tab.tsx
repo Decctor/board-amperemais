@@ -4,6 +4,7 @@ import ProductAddOnsSection from "@/components/Products/Detail/blocks/product-ad
 import ProductGeneralSection from "@/components/Products/Detail/blocks/product-general-section";
 import ProductStockPricingSection from "@/components/Products/Detail/blocks/product-stock-pricing-section";
 import ProductVariantsSection from "@/components/Products/Detail/blocks/product-variants-section";
+import ProductFiscalProfilesSection from "@/components/Products/Detail/blocks/product-fiscal-profiles-section";
 import { useProductUpdate } from "@/components/Products/Detail/shared/use-product-update";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
@@ -11,14 +12,20 @@ import { getErrorMessage } from "@/lib/errors";
 import { useProductById } from "@/lib/queries/products";
 import { type TProductState, useProductState } from "@/state-hooks/use-product-state";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TAuthUserSession } from "@/lib/authentication/types";
 
 type ProductCadastroTabProps = {
+	sessionUser: TAuthUserSession["user"];
+	sessionUserMembership: NonNullable<TAuthUserSession["membership"]>;
 	productId: string;
 };
 
 type EditingBlockId = "general" | "stock" | null;
 
-export default function ProductCadastroTab({ productId }: ProductCadastroTabProps) {
+export default function ProductCadastroTab({ sessionUser, sessionUserMembership, productId }: ProductCadastroTabProps) {
+	const orgHasERPAccess = sessionUserMembership?.organizacao.configuracao.recursos.erp.acesso;
+	const userHasFiscalViewPermission = sessionUserMembership?.permissoes.fiscal.visualizar;
+	const userHasFiscalConfigurePermission = sessionUserMembership?.permissoes.fiscal.configurar;
 	const { data: product, queryKey, isLoading, isError, error } = useProductById({ id: productId });
 	const {
 		state,
@@ -34,6 +41,9 @@ export default function ProductCadastroTab({ productId }: ProductCadastroTabProp
 		addProductAddOnOption,
 		updateProductAddOnOption,
 		removeProductAddOnOption,
+		addProductFiscalProfile,
+		updateProductFiscalProfile,
+		removeProductFiscalProfile,
 		resetState,
 	} = useProductState({});
 
@@ -53,7 +63,12 @@ export default function ProductCadastroTab({ productId }: ProductCadastroTabProp
 
 	useEffect(() => {
 		if (product) {
-			resetState(product);
+			resetState({
+				product: product.product,
+				productFiscalProfiles: product.product.perfisFiscais,
+				productVariants: product.productVariants,
+				productAddOns: product.productAddOns,
+			});
 			setEditingBlockId(null);
 			draftSnapshotRef.current = null;
 		}
@@ -64,7 +79,13 @@ export default function ProductCadastroTab({ productId }: ProductCadastroTabProp
 			if (editingBlockId && editingBlockId !== blockId) {
 				const confirmed = window.confirm("Há alterações em outro bloco. Deseja descartar e editar este bloco?");
 				if (!confirmed) return;
-				if (product) resetState(product);
+				if (product)
+					resetState({
+						product: product.product,
+						productFiscalProfiles: product.product.perfisFiscais,
+						productVariants: product.productVariants,
+						productAddOns: product.productAddOns,
+					});
 			}
 			draftSnapshotRef.current = structuredClone(state);
 			setEditingBlockId(blockId);
@@ -76,7 +97,12 @@ export default function ProductCadastroTab({ productId }: ProductCadastroTabProp
 		if (draftSnapshotRef.current) {
 			resetState(draftSnapshotRef.current);
 		} else if (product) {
-			resetState(product);
+			resetState({
+				product: product.product,
+				productFiscalProfiles: product.product.perfisFiscais,
+				productVariants: product.productVariants,
+				productAddOns: product.productAddOns,
+			});
 		}
 		setEditingBlockId(null);
 		draftSnapshotRef.current = null;
@@ -131,6 +157,18 @@ export default function ProductCadastroTab({ productId }: ProductCadastroTabProp
 				isPending={isPending}
 				onSave={saveState}
 			/>
+			{orgHasERPAccess ? (
+				<ProductFiscalProfilesSection
+					productFiscalProfiles={state.productFiscalProfiles}
+					addProductFiscalProfile={addProductFiscalProfile}
+					updateProductFiscalProfile={updateProductFiscalProfile}
+					removeProductFiscalProfile={removeProductFiscalProfile}
+					userHasFiscalViewPermission={userHasFiscalViewPermission}
+					userHasFiscalConfigurePermission={userHasFiscalConfigurePermission}
+					isPending={isPending}
+					onSave={saveState}
+				/>
+			) : null}
 		</div>
 	);
 }

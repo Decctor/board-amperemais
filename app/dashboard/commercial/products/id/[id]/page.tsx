@@ -8,5 +8,7 @@ export default async function Product({ params }: { params: Promise<{ id: string
 	if (!id) return <ErrorComponent msg="ID inválido" />;
 	const sessionUser = await getCurrentSession();
 	if (!sessionUser) redirect("/auth/signin");
-	return <ProductPage user={sessionUser.user} id={id} />;
+	const userMembership = sessionUser.membership;
+	if (!userMembership) redirect("/onboarding");
+	return <ProductPage user={sessionUser.user} userMembership={userMembership} id={id} />;
 }

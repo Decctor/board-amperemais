@@ -6,8 +6,6 @@ import {
 	accountingEntryOriginTypeEnum,
 	bankAccountTypeEnum,
 	financialAccountTypeEnum,
-	fiscalDocumentEnvironmentEnum,
-	fiscalDocumentLifecycleStatusEnum,
 	financialTransactionTypeEnum,
 	fiscalDocumentEnvironmentEnum,
 	fiscalDocumentLifecycleStatusEnum,

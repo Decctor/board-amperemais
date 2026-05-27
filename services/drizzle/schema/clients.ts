@@ -2,7 +2,6 @@ import { relations, sql } from "drizzle-orm";
 import { doublePrecision, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { cashbackProgramBalances, cashbackProgramTransactions } from "./cashback-programs";
 import { newTable } from "./common";
-import { fiscalClientTaxIndicatorEnum } from "./enums";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
 import { fiscalClientTaxIndicatorEnum } from "./enums";

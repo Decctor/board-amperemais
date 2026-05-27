@@ -9,10 +9,11 @@ import { parseAsStringEnum, useQueryState } from "nuqs";
 import { PencilIcon, ChartBarIcon } from "lucide-react";
 type ProductPageProps = {
 	user: TAuthUserSession["user"];
+	userMembership: NonNullable<TAuthUserSession["membership"]>;
 	id: string;
 };
 
-export default function ProductPage({ user: _user, id }: ProductPageProps) {
+export default function ProductPage({ user, userMembership, id }: ProductPageProps) {
 	const [tab, setTab] = useQueryState("tab", parseAsStringEnum(["cadastro", "estatisticas"]).withDefault("estatisticas"));
 
 	return (
@@ -30,7 +31,7 @@ export default function ProductPage({ user: _user, id }: ProductPageProps) {
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="cadastro" className="mt-4">
-					<ProductCadastroTab productId={id} />
+					<ProductCadastroTab sessionUser={user} sessionUserMembership={userMembership} productId={id} />
 				</TabsContent>
 				<TabsContent value="estatisticas" className="mt-4">
 					<ProductStatsTab productId={id} enabled={tab === "estatisticas"} />
