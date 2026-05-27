@@ -127,6 +127,23 @@ export function useFinancesAccountingEntries({ initialFilters }: UseFinancesAcco
 // FINANCIAL TRANSACTIONS
 // ============================================================================
 
+async function fetchFinancialTransactionById(id: string) {
+	const { data } = await axios.get<TGetFinancialTransactionsOutput>(`/api/finances/financial-transactions?id=${id}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("Oops, houve um erro ao buscar a transação financeira.");
+	return result;
+}
+
+export function useFinancialTransactionById(id: string) {
+	return {
+		...useQuery({
+			queryKey: ["finances-financial-transaction-by-id", id],
+			queryFn: () => fetchFinancialTransactionById(id),
+		}),
+		queryKey: ["finances-financial-transaction-by-id", id],
+	};
+}
+
 type FinancialTransactionsFilters = {
 	page: number;
 	search: string;
