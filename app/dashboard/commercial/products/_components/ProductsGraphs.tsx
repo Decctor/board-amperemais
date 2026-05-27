@@ -1,13 +1,13 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { type ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useProductsGraph } from "@/lib/queries/products";
 import type { TGetProductsGraphInput } from "@/app/api/products/stats/graph/route";
 import { BadgeDollarSign, CirclePlus, Package, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { type ChartConfig, ChartContainer, ChartTooltip } from "../ui/chart";
 
 type CustomGraphTooltipProps = {
 	active?: boolean;

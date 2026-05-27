@@ -17,12 +17,6 @@ type ProductsRankingProps = {
 };
 
 export default function ProductsRanking({ periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore }: ProductsRankingProps) {
-	console.log("[INFO] [PRODUCTS RANKING] Starting:", {
-		periodAfter,
-		periodBefore,
-		comparingPeriodAfter,
-		comparingPeriodBefore,
-	});
 	const [rankingBy, setRankingBy] = useState<TGetProductsRankingInput["rankingBy"]>("sales-total-value");
 
 	const { data: rankingData, isLoading: rankingLoading } = useProductsRanking({

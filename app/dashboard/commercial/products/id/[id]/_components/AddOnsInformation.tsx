@@ -6,24 +6,94 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+import { useMutation } from "@tanstack/react-query";
+import { createProductAddOn, updateProductAddOn } from "@/lib/mutations/products";
+import { TUseProductAddOnState } from "@/state-hooks/use-product-state";
+import AddOnMenu from "@/components/Modals/Products/AddOns/AddOnMenu";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errors";
 
 type ProductAddOnsInformationProps = {
 	product: TGetProductsOutputById;
+	sectionWrapperClassName?: string;
+	callbacks: {
+		onMutate?: () => void;
+		onSuccess?: () => void;
+		onError?: (error: Error) => void;
+		onSettled?: () => void;
+	};
 };
-export default function ProductAddOnsInformation({ product }: ProductAddOnsInformationProps) {
+export default function ProductAddOnsInformation({ product, sectionWrapperClassName, callbacks }: ProductAddOnsInformationProps) {
 	const [newAddOnMenuIsOpen, setNewAddOnMenuIsOpen] = useState(false);
-	const [editMenuIsOpen, setEditMenuIsOpen] = useState(false);
+	const [editingAddOnId, setEditingAddOnId] = useState<string | null>(null);
+
+	async function handleCreationAddOnSubmiting(state: TUseProductAddOnState["state"]) {
+		return await createProductAddOn({
+			productId: product.id,
+			addOn: {
+				...state,
+				opcoes: state.opcoes.map((option) => ({
+					...option,
+					deletar: false,
+				})),
+			},
+		});
+	}
+
+	async function handleEditAddOnSubmiting({ state, productAddOnId }: { state: TUseProductAddOnState["state"]; productAddOnId: string }) {
+		return await updateProductAddOn({
+			productId: product.id,
+			productAddOnId,
+			addOn: state,
+		});
+	}
+
+	const { mutate: createAddOnMutation, isPending: isCreatingAddOn } = useMutation({
+		mutationKey: ["create-product-add-on", product.id],
+		mutationFn: handleCreationAddOnSubmiting,
+		onMutate: () => {
+			callbacks.onMutate?.();
+		},
+		onSuccess: () => {
+			callbacks.onSuccess?.();
+			setNewAddOnMenuIsOpen(false);
+			toast.success("Adicional criado com sucesso");
+		},
+		onError: (error) => {
+			callbacks.onError?.(error);
+			return toast.error(getErrorMessage(error));
+		},
+		onSettled: () => {
+			callbacks.onSettled?.();
+		},
+	});
+	const { mutate: updateAddOnMutation, isPending: isUpdatingAddOn } = useMutation({
+		mutationKey: ["update-product-add-on", product.id],
+		mutationFn: handleEditAddOnSubmiting,
+		onMutate: () => {
+			callbacks.onMutate?.();
+		},
+		onSuccess: () => {
+			callbacks.onSuccess?.();
+			setEditingAddOnId(null);
+			toast.success("Adicional atualizado com sucesso");
+		},
+		onError: (error) => {
+			callbacks.onError?.(error);
+			return toast.error(getErrorMessage(error));
+		},
+		onSettled: () => {
+			callbacks.onSettled?.();
+		},
+	});
+
 	return (
 		<SectionWrapper
 			icon={<Layers className="w-4 h-4 min-w-4 min-h-4" />}
 			title="ADICIONAIS"
+			wrapperClassName={sectionWrapperClassName}
 			actions={
 				<div className="flex items-center gap-3">
-					<Button variant="ghost" size="xs" onClick={() => setEditMenuIsOpen(true)} className="flex items-center gap-1">
-						<Pencil className="w-4 h-4 min-w-4 min-h-4" />
-						EDITAR
-					</Button>
 					<Button variant="ghost" size="xs" onClick={() => setNewAddOnMenuIsOpen(true)} className="flex items-center gap-1">
 						<Plus className="w-4 h-4 min-w-4 min-h-4" />
 						ADICIONAR
@@ -31,9 +101,11 @@ export default function ProductAddOnsInformation({ product }: ProductAddOnsInfor
 				</div>
 			}
 		>
-			<div className="w-full flex flex-col gap-3">
+			<div className="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-y-auto">
 				{product.addOnsReferencias.length > 0 ? (
-					product.addOnsReferencias.map((addOn) => <ProductAddOnGroupCard key={addOn.id} addOn={addOn} handleEditClick={() => setEditMenuIsOpen(true)} />)
+					product.addOnsReferencias.map((addOn) => (
+						<ProductAddOnGroupCard key={addOn.grupo.id} addOn={addOn} handleEditClick={() => setEditingAddOnId(addOn.grupo.id)} />
+					))
 				) : (
 					<Empty>
 						<EmptyHeader>
@@ -46,6 +118,22 @@ export default function ProductAddOnsInformation({ product }: ProductAddOnsInfor
 					</Empty>
 				)}
 			</div>
+			{editingAddOnId ? (
+				<AddOnMenu
+					addOnId={editingAddOnId}
+					closeMenu={() => setEditingAddOnId(null)}
+					submitAddOn={(state) => updateAddOnMutation({ state, productAddOnId: editingAddOnId })}
+					submitAddOnIsLoading={isUpdatingAddOn}
+				/>
+			) : null}
+			{newAddOnMenuIsOpen ? (
+				<AddOnMenu
+					addOnId={undefined}
+					closeMenu={() => setNewAddOnMenuIsOpen(false)}
+					submitAddOn={(state) => createAddOnMutation(state)}
+					submitAddOnIsLoading={isCreatingAddOn}
+				/>
+			) : null}
 		</SectionWrapper>
 	);
 }
@@ -85,7 +173,7 @@ function ProductAddOnGroupCard({ addOn, handleEditClick }: ProductAddOnGroupCard
 
 			{/* LISTA DE OPÇÕES */}
 			<div className="flex flex-col w-full gap-2 mt-1">
-				{addOn.grupo.opcoes.map((option, index) => (
+				{addOn.grupo.opcoes.map((option) => (
 					<ProductAddOnOptionCard key={option.id || `temp-opt-${option.id}`} option={option} />
 				))}
 			</div>

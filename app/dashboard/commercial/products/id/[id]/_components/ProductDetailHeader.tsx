@@ -1,25 +1,14 @@
-"use client";
-
-import ErrorComponent from "@/components/Layouts/ErrorComponent";
-import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import type { TGetProductsOutputById } from "@/app/api/products/route";
 import { Button } from "@/components/ui/button";
-import { getErrorMessage } from "@/lib/errors";
-import { useProductById } from "@/lib/queries/products";
 import { ArrowLeft, Code } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 type ProductDetailHeaderProps = {
-	productId: string;
+	product: TGetProductsOutputById;
 };
 
-export default function ProductDetailHeader({ productId }: ProductDetailHeaderProps) {
-	const { data: product, isLoading, isError, error } = useProductById({ id: productId });
-
-	if (isLoading) return <LoadingComponent />;
-	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
-	if (!product) return null;
-
+export default function ProductDetailHeader({ product }: ProductDetailHeaderProps) {
 	return (
 		<div className="flex w-full flex-col gap-4">
 			<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-primary/10 flex items-center gap-1 px-2 py-2 w-fit">

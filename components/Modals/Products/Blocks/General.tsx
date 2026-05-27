@@ -2,16 +2,16 @@ import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import type { TUseProductState } from "@/state-hooks/use-product-state";
+import type { TProductCoreState, TUseProductCoreState } from "@/state-hooks/use-product-state";
 import { UnitsOfMeasurementOptions } from "@/utils/select-options";
 import { ImageIcon, LayoutGrid } from "lucide-react";
 import Image from "next/image";
 import { useId } from "react";
 
 type ProductStateGeneralBlockProps = {
-	product: TUseProductState["state"]["product"];
-	updateProduct: TUseProductState["updateProduct"];
-	updateProductImageHolder: TUseProductState["updateProductImageHolder"];
+	product: TProductCoreState;
+	updateProduct: TUseProductCoreState["updateProduct"];
+	updateProductImageHolder: TUseProductCoreState["updateProductImageHolder"];
 	showPricing?: boolean;
 	embedded?: boolean;
 };
@@ -111,9 +111,9 @@ function ProductGeneralBlockImage({
 	updateImageHolder,
 	inputId,
 }: {
-	imageUrl: TUseProductState["state"]["product"]["imagemCapaUrl"];
-	imageHolder: TUseProductState["state"]["product"]["imagemCapaHolder"];
-	updateImageHolder: TUseProductState["updateProductImageHolder"];
+	imageUrl: TProductCoreState["imagemCapaUrl"];
+	imageHolder: TProductCoreState["imagemCapaHolder"];
+	updateImageHolder: TUseProductCoreState["updateProductImageHolder"];
 	inputId: string;
 }) {
 	return (
@@ -144,8 +144,8 @@ function UsersGeneralBlockAvatarPreview({
 	imageUrl,
 	imageHolder,
 }: {
-	imageUrl: TUseProductState["state"]["product"]["imagemCapaUrl"];
-	imageHolder: TUseProductState["state"]["product"]["imagemCapaHolder"];
+	imageUrl: TProductCoreState["imagemCapaUrl"];
+	imageHolder: TProductCoreState["imagemCapaHolder"];
 }) {
 	if (imageHolder.previewUrl) {
 		return <Image alt="Capa do produto." fill={true} objectFit="cover" src={imageHolder.previewUrl} />;

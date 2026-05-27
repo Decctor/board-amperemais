@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 type ProductVariantsInformationProps = {
 	product: TGetProductsOutputById;
+	sectionWrapperClassName?: string;
 	callbacks: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -24,12 +25,11 @@ type ProductVariantsInformationProps = {
 		onSettled?: () => void;
 	};
 };
-export default function ProductVariantsInformation({ product, callbacks }: ProductVariantsInformationProps) {
+export default function ProductVariantsInformation({ product, sectionWrapperClassName, callbacks }: ProductVariantsInformationProps) {
 	const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
 	const [newVariantMenuIsOpen, setNewVariantMenuIsOpen] = useState(false);
 
 	async function handleCreationVariantSubmiting(state: TUseProductVariantState["state"]) {
-		console.log("Handling creation variant submiting", state);
 		let coverImageUrl = state.imagemCapaUrl;
 
 		if (state.imagemCapaHolder.file) {
@@ -58,7 +58,6 @@ export default function ProductVariantsInformation({ product, callbacks }: Produ
 		});
 	}
 	async function handleEditVariantSubmiting({ state, productVariantId }: { state: TUseProductVariantState["state"]; productVariantId: string }) {
-		console.log("Handling edit variant submiting", state, productVariantId);
 		let coverImageUrl = state.imagemCapaUrl;
 
 		if (state.imagemCapaHolder.file) {
@@ -129,6 +128,7 @@ export default function ProductVariantsInformation({ product, callbacks }: Produ
 		<SectionWrapper
 			icon={<GitBranch className="w-4 h-4 min-w-4 min-h-4" />}
 			title="VARIANTES"
+			wrapperClassName={sectionWrapperClassName}
 			actions={
 				<div className="flex items-center gap-3">
 					<Button variant="ghost" size="xs" onClick={() => setNewVariantMenuIsOpen(true)} className="flex items-center gap-1">
@@ -138,7 +138,7 @@ export default function ProductVariantsInformation({ product, callbacks }: Produ
 				</div>
 			}
 		>
-			<div className="w-full flex flex-col gap-3">
+			<div className="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-y-auto">
 				{product.variantes.length > 0 ? (
 					product.variantes.map((variant) => (
 						<ProductVariantCard key={variant.id} variant={variant} handleEditClick={() => setEditingVariantId(variant.id)} />

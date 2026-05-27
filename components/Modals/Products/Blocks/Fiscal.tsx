@@ -1,7 +1,11 @@
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
-import { ProductFiscalProfileCard } from "@/components/Products/Detail/blocks/product-fiscal-profile-card";
+import {
+	ProductFiscalProfileCard,
+	type ProductFiscalProfileCardProps,
+	type TProductFiscalProfileCardData,
+} from "@/components/Products/Shared/ProductFiscalProfileCard
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
@@ -27,12 +31,19 @@ function emptyProductFiscalProfile(): TUseProductState["state"]["productFiscalPr
 	};
 }
 
-type ProductFiscalProfileCardComponentProps = {
-	fiscalProfile: TUseProductState["state"]["productFiscalProfiles"][number];
-	userHasFiscalConfigurePermission: boolean;
-	handleEditClick: () => void;
-	handleDeleteClick: () => void;
-};
+type ProductFiscalProfileCardComponentProps = ProductFiscalProfileCardProps;
+
+function mapStateFiscalProfileToCardData(profile: TUseProductState["state"]["productFiscalProfiles"][number]): TProductFiscalProfileCardData {
+	return {
+		origemMercadoria: profile.origemMercadoria,
+		ncm: profile.ncm,
+		cest: profile.cest != null ? profile.cest : null,
+		cfopPadrao: profile.cfopPadrao != null ? profile.cfopPadrao : null,
+		unidadeComercial: profile.unidadeComercial,
+		codigoBeneficioFiscal: profile.codigoBeneficioFiscal != null ? profile.codigoBeneficioFiscal : null,
+		ativo: profile.ativo,
+	};
+}
 
 type ProductStateFiscalBlockProps = {
 	userHasFiscalViewPermission: boolean;
@@ -81,7 +92,7 @@ export default function ProductStateFiscalBlock({
 				validFiscalProfiles.map((profile) => (
 					<FiscalProfileCard
 						key={profile.id || `temp-profile-${profile.originalIndex}`}
-						fiscalProfile={profile}
+						fiscalProfile={mapStateFiscalProfileToCardData(profile)}
 						userHasFiscalConfigurePermission={userHasFiscalConfigurePermission}
 						handleEditClick={() => setEditFiscalProfileIndex(profile.originalIndex)}
 						handleDeleteClick={() => removeProductFiscalProfile(profile.originalIndex)}

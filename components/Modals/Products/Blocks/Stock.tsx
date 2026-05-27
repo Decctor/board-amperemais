@@ -2,12 +2,12 @@ import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { formatDecimalPlaces } from "@/lib/formatting";
-import type { TUseProductState } from "@/state-hooks/use-product-state";
+import type { TProductCoreState, TUseProductCoreState } from "@/state-hooks/use-product-state";
 import { BadgeDollarSign, Package } from "lucide-react";
 
 type ProductStateStockBlockProps = {
-	product: TUseProductState["state"]["product"];
-	updateProduct: TUseProductState["updateProduct"];
+	product: TProductCoreState;
+	updateProduct: TUseProductCoreState["updateProduct"];
 	showPricing?: boolean;
 	embedded?: boolean;
 };
@@ -63,7 +63,7 @@ export default function ProductStateStockBlock({ product, updateProduct, showPri
 	);
 }
 
-export function ProductStockBlockView({ product }: { product: TUseProductState["state"]["product"] }) {
+export function ProductStockBlockView({ product }: { product: TProductCoreState }) {
 	return (
 		<div className="w-full flex flex-col gap-1.5">
 			<div className="w-full flex items-center gap-1.5">

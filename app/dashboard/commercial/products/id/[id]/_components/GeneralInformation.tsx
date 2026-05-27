@@ -1,18 +1,24 @@
 import { TGetProductsOutputById } from "@/app/api/products/route";
+import ProductCoreMenu from "@/components/Modals/Products/Core/ProductCoreMenu";
 import { SectionWrapper, SectionWrapperDataRow } from "@/components/ui/section-wrapper";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { Tag, Code, LayoutGrid, Package, BadgeDollarSign, Pencil, Percent } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import ControlPartialProduct from "@/components/Modals/Products/ControlPartialProduct";
-import type { TAuthUserSession } from "@/lib/authentication/types";
+
 type ProductGeneralInformationProps = {
 	product: TGetProductsOutputById;
-	sessionUser: TAuthUserSession["user"];
-	sessionUserMembership: NonNullable<TAuthUserSession["membership"]>;
+	callbacks?: {
+		onMutate?: () => void;
+		onSuccess?: () => void;
+		onError?: (error: Error) => void;
+		onSettled?: () => void;
+	};
 };
-export default function ProductGeneralInformation({ product, sessionUser, sessionUserMembership }: ProductGeneralInformationProps) {
+
+export default function ProductGeneralInformation({ product, callbacks }: ProductGeneralInformationProps) {
 	const [editMenuIsOpen, setEditMenuIsOpen] = useState(false);
+
 	return (
 		<SectionWrapper
 			icon={<LayoutGrid className="w-4" />}
@@ -69,13 +75,7 @@ export default function ProductGeneralInformation({ product, sessionUser, sessio
 				</div>
 			) : null}
 			{editMenuIsOpen ? (
-				<ControlPartialProduct
-					sessionUser={sessionUser}
-					sessionUserMembership={sessionUserMembership}
-					initialUpdateType="general"
-					productId={product.id}
-					closeModal={() => setEditMenuIsOpen(false)}
-				/>
+				<ProductCoreMenu product={product} closeMenu={() => setEditMenuIsOpen(false)} callbacks={callbacks} />
 			) : null}
 		</SectionWrapper>
 	);

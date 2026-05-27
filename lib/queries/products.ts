@@ -1,9 +1,7 @@
-import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsInput, TGetProductsOutput } from "@/app/api/products/route";
-import type {
-	TGetProductVariantsOutput,
-	TGetProductVariantsOutputById,
-	TGetProductVariantsOutputByProductId,
-} from "@/app/api/products/variants/route";
+import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsOutput } from "@/app/api/products/route";
+import type { TGetProductVariantsOutput } from "@/app/api/products/variants/route";
+import type { TGetProductAddOnsOutput } from "@/app/api/products/add-ons/route";
+import type { TGetProductFiscalProfilesOutput } from "@/app/api/products/fiscal-profiles/route";
 import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/app/api/products/by-codes/route";
 import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/app/api/products/graph/route";
 import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/app/api/products/search/route";
@@ -11,7 +9,6 @@ import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/app/api/pr
 import type { TGetProductsGraphInput, TGetProductsGraphOutput } from "@/app/api/products/stats/graph/route";
 import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } from "@/app/api/products/stats/overall/route";
 import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/app/api/products/stats/ranking/route";
-import type { TProductStatsQueryParams } from "@/schemas/products";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useMemo, useState } from "react";
@@ -392,5 +389,101 @@ export function useProductVariantById({ productVariantId }: { productVariantId: 
 			queryFn: () => fetchProductVariantById(productVariantId),
 		}),
 		queryKey: ["product-variant-by-id", productVariantId],
+	};
+}
+
+async function fetchProductAddOnsByProductId(productId: string) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productId", productId);
+		const { data } = await axios.get<TGetProductAddOnsOutput>(`/api/products/add-ons?${searchParams.toString()}`);
+		const result = data.data.byProductId;
+		if (!result) throw new Error("Adicionais do produto não encontrados.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductAddOnsByProductId", error);
+		throw error;
+	}
+}
+
+async function fetchProductAddOnById(productAddOnId: string) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productAddOnId", productAddOnId);
+		const { data } = await axios.get<TGetProductAddOnsOutput>(`/api/products/add-ons?${searchParams.toString()}`);
+		const result = data.data.byId;
+		if (!result) throw new Error("Adicional não encontrado.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductAddOnById", error);
+		throw error;
+	}
+}
+
+export function useProductAddOnsByProductId({ productId }: { productId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-add-ons-by-product-id", productId],
+			queryFn: () => fetchProductAddOnsByProductId(productId),
+		}),
+		queryKey: ["product-add-ons-by-product-id", productId],
+	};
+}
+
+export function useProductAddOnById({ productAddOnId }: { productAddOnId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-add-on-by-id", productAddOnId],
+			queryFn: () => fetchProductAddOnById(productAddOnId),
+		}),
+		queryKey: ["product-add-on-by-id", productAddOnId],
+	};
+}
+
+async function fetchProductFiscalProfilesByProductId(productId: string) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productId", productId);
+		const { data } = await axios.get<TGetProductFiscalProfilesOutput>(`/api/products/fiscal-profiles?${searchParams.toString()}`);
+		const result = data.data.byProductId;
+		if (!result) throw new Error("Perfis fiscais do produto não encontrados.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductFiscalProfilesByProductId", error);
+		throw error;
+	}
+}
+
+async function fetchProductFiscalProfileById(productFiscalProfileId: string) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productFiscalProfileId", productFiscalProfileId);
+		const { data } = await axios.get<TGetProductFiscalProfilesOutput>(`/api/products/fiscal-profiles?${searchParams.toString()}`);
+		const result = data.data.byId;
+		if (!result) throw new Error("Perfil fiscal não encontrado.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductFiscalProfileById", error);
+		throw error;
+	}
+}
+
+export function useProductFiscalProfilesByProductId({ productId }: { productId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-fiscal-profiles-by-product-id", productId],
+			queryFn: () => fetchProductFiscalProfilesByProductId(productId),
+		}),
+		queryKey: ["product-fiscal-profiles-by-product-id", productId],
+	};
+}
+
+export function useProductFiscalProfileById({ productFiscalProfileId }: { productFiscalProfileId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-fiscal-profile-by-id", productFiscalProfileId],
+			queryFn: () => fetchProductFiscalProfileById(productFiscalProfileId),
+		}),
+		queryKey: ["product-fiscal-profile-by-id", productFiscalProfileId],
 	};
 }

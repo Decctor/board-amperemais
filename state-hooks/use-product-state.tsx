@@ -732,3 +732,272 @@ export function useProductVariantState({ initialState }: UseProductVariantStateP
 	};
 }
 export type TUseProductVariantState = ReturnType<typeof useProductVariantState>;
+
+export const ProductAddOnStateSchema = ProductAddOnSchema.omit({ organizacaoId: true }).extend({
+	opcoes: z.array(
+		ProductAddOnOptionSchema.omit({ organizacaoId: true, produtoAddOnId: true }).extend({
+			produtoConsumo: z
+				.string({
+					required_error: "ID do produto de consumo não informado.",
+					invalid_type_error: "Tipo não válido para ID do produto de consumo.",
+				})
+				.optional()
+				.nullable(),
+			id: z
+				.string({
+					required_error: "ID da opção não informado.",
+					invalid_type_error: "Tipo não válido para ID da opção.",
+				})
+				.optional(),
+			deletar: z
+				.boolean({
+					required_error: "Deletar opção não informado.",
+					invalid_type_error: "Tipo não válido para deletar opção.",
+				})
+				.optional(),
+		}),
+	),
+	id: z
+		.string({
+			required_error: "ID do adicional não informado.",
+			invalid_type_error: "Tipo não válido para ID do adicional.",
+		})
+		.optional(),
+	deletar: z
+		.boolean({
+			required_error: "Deletar adicional não informado.",
+			invalid_type_error: "Tipo não válido para deletar adicional.",
+		})
+		.optional(),
+});
+export type TSingleProductAddOnState = z.infer<typeof ProductAddOnStateSchema>;
+
+type UseProductAddOnStateProps = {
+	initialState?: Partial<TSingleProductAddOnState>;
+};
+
+export function useProductAddOnState({ initialState }: UseProductAddOnStateProps) {
+	const initialStateComplete = useMemo<TSingleProductAddOnState>(
+		() => ({
+			id: initialState?.id,
+			nome: initialState?.nome ?? "",
+			internoNome: initialState?.internoNome ?? "",
+			minOpcoes: initialState?.minOpcoes ?? 0,
+			maxOpcoes: initialState?.maxOpcoes ?? 1,
+			ativo: initialState?.ativo ?? true,
+			opcoes: initialState?.opcoes ?? [],
+			deletar: initialState?.deletar,
+		}),
+		[initialState],
+	);
+	const [state, setState] = useState<TSingleProductAddOnState>(initialStateComplete);
+
+	const updateAddOn = useCallback((updates: Partial<Omit<TSingleProductAddOnState, "opcoes">>) => {
+		setState((prev) => ({ ...prev, ...updates }));
+	}, []);
+
+	const addOption = useCallback((option?: Partial<TSingleProductAddOnState["opcoes"][number]>) => {
+		setState((prev) => ({
+			...prev,
+			opcoes: [
+				...prev.opcoes,
+				{
+					nome: option?.nome ?? "",
+					codigo: option?.codigo ?? "",
+					precoDelta: option?.precoDelta ?? 0,
+					maxQtdePorItem: option?.maxQtdePorItem ?? 1,
+					ativo: option?.ativo ?? true,
+					quantidadeConsumo: option?.quantidadeConsumo ?? 1,
+					produtoConsumo: option?.produtoConsumo ?? null,
+					produtoId: option?.produtoId ?? null,
+					produtoVarianteId: option?.produtoVarianteId ?? null,
+				},
+			],
+		}));
+	}, []);
+
+	const updateOption = useCallback((optionIndex: number, updates: Partial<TSingleProductAddOnState["opcoes"][number]>) => {
+		setState((prev) => ({
+			...prev,
+			opcoes: prev.opcoes.map((option, index) => (index === optionIndex ? { ...option, ...updates } : option)),
+		}));
+	}, []);
+
+	const removeOption = useCallback((optionIndex: number) => {
+		setState((prev) => {
+			const option = prev.opcoes[optionIndex];
+			if (option?.id) {
+				return {
+					...prev,
+					opcoes: prev.opcoes.map((item, index) => (index === optionIndex ? { ...item, deletar: true } : item)),
+				};
+			}
+
+			return {
+				...prev,
+				opcoes: prev.opcoes.filter((_, index) => index !== optionIndex),
+			};
+		});
+	}, []);
+
+	const resetState = useCallback(() => {
+		setState(initialStateComplete);
+	}, [initialStateComplete]);
+
+	const redefineState = useCallback((newState: TSingleProductAddOnState) => {
+		setState(newState);
+	}, []);
+
+	return {
+		state,
+		updateAddOn,
+		addOption,
+		updateOption,
+		removeOption,
+		resetState,
+		redefineState,
+	};
+}
+export type TUseProductAddOnState = ReturnType<typeof useProductAddOnState>;
+
+export const ProductFiscalProfileStateSchema = ProductFiscalProfileSchema.omit({
+	organizacaoId: true,
+	produtoId: true,
+	produtoVarianteId: true,
+}).extend({
+	id: z
+		.string({
+			required_error: "ID do perfil fiscal não informado.",
+			invalid_type_error: "Tipo não válido para ID do perfil fiscal.",
+		})
+		.optional(),
+	deletar: z
+		.boolean({
+			required_error: "Deletar perfil fiscal não informado.",
+			invalid_type_error: "Tipo não válido para deletar perfil fiscal.",
+		})
+		.optional(),
+});
+export type TSingleProductFiscalProfileState = z.infer<typeof ProductFiscalProfileStateSchema>;
+
+type UseProductFiscalProfileStateProps = {
+	initialState?: Partial<TSingleProductFiscalProfileState>;
+};
+
+export function useProductFiscalProfileState({ initialState }: UseProductFiscalProfileStateProps) {
+	const initialStateComplete = useMemo<TSingleProductFiscalProfileState>(
+		() => ({
+			id: initialState?.id,
+			origemMercadoria: initialState?.origemMercadoria ?? "NACIONAL",
+			ncm: initialState?.ncm ?? "",
+			cest: initialState?.cest ?? null,
+			cfopPadrao: initialState?.cfopPadrao ?? null,
+			unidadeComercial: initialState?.unidadeComercial ?? "UN",
+			codigoBeneficioFiscal: initialState?.codigoBeneficioFiscal ?? null,
+			ativo: initialState?.ativo ?? true,
+			dataInsercao: initialState?.dataInsercao ?? new Date(),
+			deletar: initialState?.deletar,
+		}),
+		[initialState],
+	);
+	const [state, setState] = useState<TSingleProductFiscalProfileState>(initialStateComplete);
+
+	const updateFiscalProfile = useCallback((updates: Partial<Omit<TSingleProductFiscalProfileState, "id">>) => {
+		setState((prev) => ({ ...prev, ...updates }));
+	}, []);
+
+	const resetState = useCallback(() => {
+		setState(initialStateComplete);
+	}, [initialStateComplete]);
+
+	const redefineState = useCallback((newState: TSingleProductFiscalProfileState) => {
+		setState(newState);
+	}, []);
+
+	return {
+		state,
+		updateFiscalProfile,
+		resetState,
+		redefineState,
+	};
+}
+export type TUseProductFiscalProfileState = ReturnType<typeof useProductFiscalProfileState>;
+
+export const ProductCoreStateSchema = ProductSchema.omit({ organizacaoId: true }).extend({
+	imagemCapaHolder: z.object({
+		file: z.instanceof(File).optional().nullable(),
+		previewUrl: z
+			.string({
+				required_error: "URL da imagem capa do produto não informada.",
+				invalid_type_error: "Tipo não válido para URL da imagem capa do produto.",
+			})
+			.optional()
+			.nullable(),
+	}),
+});
+
+export type TProductCoreState = z.infer<typeof ProductCoreStateSchema>;
+
+type UseProductCoreStateProps = {
+	initialState?: Partial<TProductCoreState>;
+};
+
+export function useProductCoreState({ initialState }: UseProductCoreStateProps = {}) {
+	const initialStateComplete = useMemo<TProductCoreState>(
+		() => ({
+			descricao: initialState?.descricao ?? "",
+			codigo: initialState?.codigo ?? "",
+			unidade: initialState?.unidade ?? "UN",
+			ncm: initialState?.ncm ?? "",
+			tipo: initialState?.tipo ?? "",
+			grupo: initialState?.grupo ?? "",
+			imagemCapaUrl: initialState?.imagemCapaUrl ?? null,
+			precoCusto: initialState?.precoCusto ?? null,
+			precoVenda: initialState?.precoVenda ?? null,
+			quantidade: initialState?.quantidade ?? null,
+			rastreamentoEstoqueAtivo: initialState?.rastreamentoEstoqueAtivo ?? false,
+			imagemCapaHolder: {
+				file: initialState?.imagemCapaHolder?.file ?? null,
+				previewUrl: initialState?.imagemCapaHolder?.previewUrl ?? null,
+			},
+		}),
+		[initialState],
+	);
+
+	const [state, setState] = useState<TProductCoreState>(initialStateComplete);
+
+	const updateProduct = useCallback((updates: Partial<Omit<TProductCoreState, "imagemCapaHolder">>) => {
+		setState((prev) => ({
+			...prev,
+			...updates,
+		}));
+	}, []);
+
+	const updateProductImageHolder = useCallback((holder: Partial<TProductCoreState["imagemCapaHolder"]>) => {
+		setState((prev) => ({
+			...prev,
+			imagemCapaHolder: {
+				...prev.imagemCapaHolder,
+				...holder,
+			},
+		}));
+	}, []);
+
+	const resetState = useCallback(() => {
+		setState(initialStateComplete);
+	}, [initialStateComplete]);
+
+	const redefineState = useCallback((newState: TProductCoreState) => {
+		setState(newState);
+	}, []);
+
+	return {
+		state,
+		updateProduct,
+		updateProductImageHolder,
+		resetState,
+		redefineState,
+	};
+}
+
+export type TUseProductCoreState = ReturnType<typeof useProductCoreState>;

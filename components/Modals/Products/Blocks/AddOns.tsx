@@ -307,23 +307,29 @@ type ProductAddOnOptionCardProps = {
 
 function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductAddOnOptionCardProps) {
 	const [vinculationModalIsOpen, setVinculationModalIsOpen] = useState(false);
+
+	const inputLabelClass = "text-[0.65rem] whitespace-nowrap";
+	const inputHolderClass = "!p-2 h-8";
+	const inputWidth = "100%";
+
 	return (
-		<div className="w-full grid grid-cols-12 gap-2 items-start bg-muted/30 p-2 rounded-lg border border-border/50">
+		<div className="flex w-full flex-col gap-2 rounded-lg border border-border/50 bg-muted/30 p-2">
 			{option.produtoConsumo ? (
-				<div className="col-span-12 flex items-center justify-between gap-2 p-1.5 bg-primary/10 rounded-md border border-border mb-1">
-					<div className="flex items-center gap-2">
-						<LinkIcon className="w-3.5 h-3.5 text-foreground" />
-						<div className="flex flex-col">
-							<span className="text-[0.65rem] font-bold text-foreground/80 uppercase tracking-tight">CONSUMO DE ESTOQUE VINCULADO A:</span>
-							<p className="text-xs font-medium text-foreground line-clamp-1">{option.produtoConsumo}</p>
+				<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-primary/10 p-1.5">
+					<div className="flex min-w-0 flex-1 items-center gap-2">
+						<LinkIcon className="h-3.5 w-3.5 shrink-0 text-foreground" />
+						<div className="flex min-w-0 flex-col">
+							<span className="text-[0.65rem] font-bold uppercase tracking-tight text-foreground/80">CONSUMO DE ESTOQUE VINCULADO A:</span>
+							<p className="line-clamp-1 text-xs font-medium text-foreground">{option.produtoConsumo}</p>
 						</div>
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex shrink-0 items-center gap-2">
 						<NumberInput
 							placeholder="1"
 							value={option.quantidadeConsumo}
 							handleChange={(v) => updateOption({ quantidadeConsumo: v })}
 							label="QTD. CONSUMO"
+							width={inputWidth}
 							labelClassName="text-[0.65rem] text-foreground/80"
 							holderClassName="!p-1.5 h-7 w-20 bg-background/50 border-border"
 						/>
@@ -331,86 +337,91 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 							onClick={() => updateOption({ produtoConsumo: null, produtoId: null, produtoVarianteId: null, quantidadeConsumo: 1 })}
 							size="icon"
 							variant="ghost"
-							className="h-7 w-7 text-foreground/60 hover:text-destructive hover:bg-destructive/10"
+							className="h-7 w-7 text-foreground/60 hover:bg-destructive/10 hover:text-destructive"
 							title="Desvincular Produto"
 						>
-							<Unplug className="w-3.5 h-3.5" />
+							<Unplug className="h-3.5 w-3.5" />
 						</Button>
 					</div>
 				</div>
 			) : (
-				<div className="col-span-12 flex items-center justify-center py-1 mb-1">
+				<div className="flex items-center justify-center py-1">
 					<Button
 						onClick={() => setVinculationModalIsOpen(true)}
 						size="sm"
 						variant="ghost"
-						className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5 border border-dashed border-border hover:border-border/50 bg-background/50 w-full"
+						className="h-7 w-full gap-1.5 border border-dashed border-border bg-background/50 text-xs text-muted-foreground hover:border-border/50 hover:text-foreground"
 					>
-						<LinkIcon className="w-3 h-3" />
+						<LinkIcon className="h-3 w-3" />
 						VINCULAR ITEM DE CONSUMO NO ESTOQUE
 					</Button>
 				</div>
 			)}
 
-			<div className="col-span-12 sm:col-span-6 lg:col-span-5">
-				<TextInput
-					placeholder="Nome da Opção"
-					value={option.nome}
-					handleChange={(v) => updateOption({ nome: v })}
-					label="NOME"
-					labelClassName="text-[0.65rem]"
-					holderClassName="!p-2 h-8"
-				/>
-			</div>
-			<div className="col-span-6 sm:col-span-3 lg:col-span-2">
-				<TextInput
-					placeholder="Cód. SKU"
-					value={option.codigo}
-					handleChange={(v) => updateOption({ codigo: v })}
-					label="CÓD. SKU"
-					labelClassName="text-[0.65rem]"
-					holderClassName="!p-2 h-8"
-				/>
-			</div>
-			<div className="col-span-6 sm:col-span-3 lg:col-span-2">
-				<NumberInput
-					placeholder="0,00"
-					value={option.precoDelta}
-					handleChange={(v) => updateOption({ precoDelta: v })}
-					label="DIFERENÇA DE PREÇO"
-					labelClassName="text-[0.65rem]"
-					holderClassName="!p-2 h-8"
-				/>
-			</div>
-			<div className="col-span-6 sm:col-span-3 lg:col-span-2">
-				<NumberInput
-					placeholder="1"
-					value={option.maxQtdePorItem}
-					handleChange={(v) => updateOption({ maxQtdePorItem: v })}
-					label="MAX QTD."
-					labelClassName="text-[0.65rem]"
-					holderClassName="!p-2 h-8"
-				/>
-			</div>
-			<div className="col-span-6 sm:col-span-3 lg:col-span-1 flex items-center justify-end h-full pt-1 gap-1">
-				<Button
-					onClick={() => updateOption({ ativo: !option.ativo })}
-					size="icon"
-					variant="ghost"
-					className={cn("h-8 w-8", option.ativo ? "text-emerald-500 hover:text-emerald-600" : "text-muted-foreground")}
-					title={option.ativo ? "Ativo" : "Inativo"}
-				>
-					<Check className={cn("w-4 h-4", !option.ativo && "opacity-20")} />
-				</Button>
-				<Button
-					onClick={removeOption}
-					size="icon"
-					variant="ghost"
-					className="h-8 w-8 hover:text-destructive hover:bg-destructive/10"
-					title="Remover Opção"
-				>
-					<Trash2 className="w-4 h-4" />
-				</Button>
+			<TextInput
+				placeholder="Nome da Opção"
+				value={option.nome}
+				handleChange={(v) => updateOption({ nome: v })}
+				label="NOME"
+				width={inputWidth}
+				labelClassName={inputLabelClass}
+				holderClassName={inputHolderClass}
+			/>
+
+			<div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,0.75fr)_auto] sm:items-end">
+				<div className="min-w-0">
+					<TextInput
+						placeholder="Cód. SKU"
+						value={option.codigo}
+						handleChange={(v) => updateOption({ codigo: v })}
+						label="CÓD. SKU"
+						width={inputWidth}
+						labelClassName={inputLabelClass}
+						holderClassName={inputHolderClass}
+					/>
+				</div>
+				<div className="min-w-0">
+					<NumberInput
+						placeholder="0,00"
+						value={option.precoDelta}
+						handleChange={(v) => updateOption({ precoDelta: v })}
+						label="DIF. PREÇO"
+						width={inputWidth}
+						labelClassName={inputLabelClass}
+						holderClassName={inputHolderClass}
+					/>
+				</div>
+				<div className="min-w-0">
+					<NumberInput
+						placeholder="1"
+						value={option.maxQtdePorItem}
+						handleChange={(v) => updateOption({ maxQtdePorItem: v })}
+						label="MAX QTD."
+						width={inputWidth}
+						labelClassName={inputLabelClass}
+						holderClassName={inputHolderClass}
+					/>
+				</div>
+				<div className="col-span-2 flex shrink-0 items-center justify-end gap-1 sm:col-span-1 sm:pb-0.5">
+					<Button
+						onClick={() => updateOption({ ativo: !option.ativo })}
+						size="icon"
+						variant="ghost"
+						className={cn("h-8 w-8", option.ativo ? "text-emerald-500 hover:text-emerald-600" : "text-muted-foreground")}
+						title={option.ativo ? "Ativo" : "Inativo"}
+					>
+						<Check className={cn("h-4 w-4", !option.ativo && "opacity-20")} />
+					</Button>
+					<Button
+						onClick={removeOption}
+						size="icon"
+						variant="ghost"
+						className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+						title="Remover Opção"
+					>
+						<Trash2 className="h-4 w-4" />
+					</Button>
+				</div>
 			</div>
 			{vinculationModalIsOpen ? (
 				<ProductVinculation
