@@ -1,7 +1,7 @@
 import type { TGetLeadsOutputById, TUpdateLeadInput } from "@/app/api/admin/crm/leads/route";
 import ControlLead from "@/components/Modals/Internal/Leads/ControlLead";
 import { Button } from "@/components/ui/button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { formatToMoney } from "@/lib/formatting";
 import { getProbabilityTier } from "@/utils/select-options";
 import { BriefcaseBusiness, Building2, DollarSign, Funnel, Globe, IdCard, Mail, Pencil, Percent, Phone, TextIcon, User } from "lucide-react";

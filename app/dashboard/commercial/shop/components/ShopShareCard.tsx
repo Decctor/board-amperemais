@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, ExternalLink, Share } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 
 type ShopShareCardProps = {
 	organizationId: string;

@@ -1,6 +1,6 @@
 import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
 import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import z from "zod";
 
 export const ProductStateSchema = z.object({
@@ -156,7 +156,6 @@ export const ProductStateSchema = z.object({
 });
 
 export type TProductState = z.infer<typeof ProductStateSchema>;
-export type TProductVariantState = TProductState["productVariants"][number];
 export type TProductAddOnState = TProductState["productAddOns"][number];
 export type TProductAddOnOptionState = TProductAddOnState["opcoes"][number];
 export type TVariantAddOnState = TProductVariantState["addOns"][number];
@@ -500,9 +499,7 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 			if (fiscalProfile?.id) {
 				return {
 					...prev,
-					productFiscalProfiles: prev.productFiscalProfiles.map((profile, i) =>
-						i === fiscalProfileIndex ? { ...profile, deletar: true } : profile,
-					),
+					productFiscalProfiles: prev.productFiscalProfiles.map((profile, i) => (i === fiscalProfileIndex ? { ...profile, deletar: true } : profile)),
 				};
 			}
 			// Se é novo (sem id), remove da lista
@@ -549,9 +546,7 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 				if (fiscalProfileFound?.id) {
 					return {
 						...variant,
-						perfisFiscais: variant.perfisFiscais.map((profile, fpIdx) =>
-							fpIdx === profileIndex ? { ...profile, deletar: true } : profile,
-						),
+						perfisFiscais: variant.perfisFiscais.map((profile, fpIdx) => (fpIdx === profileIndex ? { ...profile, deletar: true } : profile)),
 					};
 				}
 				// Se é novo (sem id), remove da lista
@@ -568,6 +563,9 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 		setState(newState);
 	}, []);
 
+	const redefineState = useCallback((newState: TProductState) => {
+		setState(newState);
+	}, []);
 	return {
 		state,
 		// Produto principal
@@ -604,6 +602,133 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 		removeVariantFiscalProfile,
 		// Utilitários
 		resetState,
+		redefineState,
 	};
 };
 export type TUseProductState = ReturnType<typeof useProductState>;
+
+export const ProductVariantStateSchema = ProductVariantSchema.omit({ organizacaoId: true, produtoId: true }).extend({
+	imagemCapaHolder: z.object({
+		file: z.instanceof(File).optional().nullable(),
+		previewUrl: z
+			.string({
+				required_error: "URL da imagem capa da variante não informada.",
+				invalid_type_error: "Tipo não válido para URL da imagem capa da variante.",
+			})
+			.optional()
+			.nullable(),
+	}),
+	perfisFiscais: z.array(
+		ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true }).extend({
+			id: z
+				.string({
+					required_error: "ID do perfil fiscal não informado.",
+					invalid_type_error: "Tipo não válido para ID do perfil fiscal.",
+				})
+				.optional(),
+			deletar: z
+				.boolean({
+					required_error: "Deletar perfil fiscal não informado.",
+					invalid_type_error: "Tipo não válido para deletar perfil fiscal.",
+				})
+				.optional(),
+		}),
+	),
+	addOns: z.array(
+		ProductAddOnSchema.omit({ organizacaoId: true }).extend({
+			opcoes: z.array(
+				ProductAddOnOptionSchema.omit({ organizacaoId: true, produtoAddOnId: true }).extend({
+					produtoConsumo: z
+						.string({
+							required_error: "ID do produto de consumo não informado.",
+							invalid_type_error: "Tipo não válido para ID do produto de consumo.",
+						})
+						.optional()
+						.nullable(),
+					id: z
+						.string({
+							required_error: "ID da opção não informado.",
+							invalid_type_error: "Tipo não válido para ID da opção.",
+						})
+						.optional(),
+					deletar: z
+						.boolean({
+							required_error: "Deletar opção não informado.",
+							invalid_type_error: "Tipo não válido para deletar opção.",
+						})
+						.optional(),
+				}),
+			),
+			id: z
+				.string({
+					required_error: "ID do adicional não informado.",
+					invalid_type_error: "Tipo não válido para ID do adicional.",
+				})
+				.optional(),
+			deletar: z
+				.boolean({
+					required_error: "Deletar adicional não informado.",
+					invalid_type_error: "Tipo não válido para deletar adicional.",
+				})
+				.optional(),
+		}),
+	),
+});
+export type TProductVariantState = z.infer<typeof ProductVariantStateSchema>;
+
+type UseProductVariantStateProps = {
+	initialState?: Partial<TProductVariantState>;
+};
+
+export function useProductVariantState({ initialState }: UseProductVariantStateProps) {
+	const initialStateComplete = useMemo(
+		() => ({
+			nome: initialState?.nome ?? "",
+			codigo: initialState?.codigo ?? "",
+			precoCusto: initialState?.precoCusto ?? 0,
+			precoVenda: initialState?.precoVenda ?? 0,
+			quantidade: initialState?.quantidade ?? 0,
+			ativo: initialState?.ativo ?? true,
+			rastreamentoEstoqueAtivo: initialState?.rastreamentoEstoqueAtivo ?? false,
+			imagemCapaHolder: initialState?.imagemCapaHolder ?? { file: null, previewUrl: null },
+			perfisFiscais: initialState?.perfisFiscais ?? [],
+			addOns: initialState?.addOns ?? [],
+		}),
+		[initialState],
+	);
+	const [state, setState] = useState<TProductVariantState>(initialStateComplete);
+
+	const updateVariant = useCallback((updates: Partial<TProductVariantState>) => {
+		setState((prev) => ({
+			...prev,
+			...updates,
+		}));
+	}, []);
+
+	function updateVariantImageHolder(updates: Partial<TProductVariantState["imagemCapaHolder"]>) {
+		setState((prev) => ({
+			...prev,
+			imagemCapaHolder: {
+				...prev.imagemCapaHolder,
+				...updates,
+			},
+		}));
+	}
+
+	const resetState = useCallback(() => {
+		setState(initialStateComplete);
+	}, [initialStateComplete]);
+
+	const redefineState = useCallback((newState: TProductVariantState) => {
+		setState(newState);
+	}, []);
+
+	return {
+		state,
+		updateVariant,
+		updateVariantImageHolder,
+		resetState,
+		redefineState,
+	};
+}
+export type TUseProductVariantState = ReturnType<typeof useProductVariantState>;

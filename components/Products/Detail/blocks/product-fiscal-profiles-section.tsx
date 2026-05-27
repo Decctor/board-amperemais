@@ -2,7 +2,7 @@
 
 import ProductFiscalBlock from "@/components/Modals/Products/Blocks/Fiscal";
 import { LoadingButton } from "@/components/loading-button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import type { TUseProductState } from "@/state-hooks/use-product-state";
 import { FileText } from "lucide-react";
 

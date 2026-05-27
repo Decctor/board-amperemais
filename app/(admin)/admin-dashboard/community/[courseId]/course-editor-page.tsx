@@ -3,7 +3,7 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import NewCommunityCourseSection from "@/components/Modals/Internal/Courses/Sections/NewCommunityCourseSection";
 import { Button } from "@/components/ui/button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { getErrorMessage } from "@/lib/errors";
 import { reorderCommunityItems } from "@/lib/mutations/community-admin";

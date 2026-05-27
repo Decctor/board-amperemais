@@ -29,22 +29,22 @@ export default function ProductDetailHeader({ productId }: ProductDetailHeaderPr
 				</Link>
 			</Button>
 			<div className="flex w-full flex-col items-center gap-3 lg:flex-row lg:items-start">
-				{product.product.imagemCapaUrl ? (
+				{product.imagemCapaUrl ? (
 					<div className="relative h-20 w-20 min-h-20 min-w-20 overflow-hidden rounded-2xl border border-border">
-						<Image src={product.product.imagemCapaUrl} alt={product.product.descricao} fill className="object-cover" />
+						<Image src={product.imagemCapaUrl} alt={product.descricao} fill className="object-cover" />
 					</div>
 				) : null}
 				<div className="flex flex-col items-center gap-2 lg:items-start">
 					<div className="flex flex-col items-center gap-2 lg:flex-row">
 						<div className="flex items-center gap-1 rounded-lg bg-secondary px-2 py-2 text-center text-[0.65rem] font-bold italic text-foreground/80">
 							<Code className="h-4 min-h-4 w-4 min-w-4" />
-							<p>{product.product.codigo}</p>
+							<p>{product.codigo}</p>
 						</div>
-						<h1 className="text-xl font-extrabold leading-none tracking-tight md:text-2xl">{product.product.descricao}</h1>
+						<h1 className="text-xl font-extrabold leading-none tracking-tight md:text-2xl">{product.descricao}</h1>
 					</div>
-					{product.product.grupo ? (
+					{product.grupo ? (
 						<p className="text-sm text-muted-foreground">
-							Grupo: <span className="font-medium text-foreground">{product.product.grupo}</span>
+							Grupo: <span className="font-medium text-foreground">{product.grupo}</span>
 						</p>
 					) : null}
 				</div>

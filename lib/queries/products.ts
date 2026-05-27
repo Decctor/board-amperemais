@@ -1,4 +1,9 @@
 import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsInput, TGetProductsOutput } from "@/app/api/products/route";
+import type {
+	TGetProductVariantsOutput,
+	TGetProductVariantsOutputById,
+	TGetProductVariantsOutputByProductId,
+} from "@/app/api/products/variants/route";
 import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/app/api/products/by-codes/route";
 import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/app/api/products/graph/route";
 import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/app/api/products/search/route";
@@ -344,4 +349,48 @@ export function useProductsRanking(input: TGetProductsRankingInput) {
 		queryKey: ["products-ranking", input],
 		queryFn: () => fetchProductsRanking(input),
 	});
+}
+
+async function fetchProductVariantsByProductId(productId: string) {
+	try {
+		const { data } = await axios.get<TGetProductVariantsOutput>(`/api/products/variants?productId=${productId}`);
+		const result = data.data.byProductId;
+		if (!result) throw new Error("Variantes do produto não encontradas.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductVariantsByProductId", error);
+		throw error;
+	}
+}
+
+async function fetchProductVariantById(productVariantId: string) {
+	try {
+		const { data } = await axios.get<TGetProductVariantsOutput>(`/api/products/variants?productVariantId=${productVariantId}`);
+		const result = data.data.byId;
+		if (!result) throw new Error("Variante não encontrada.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductVariantById", error);
+		throw error;
+	}
+}
+
+export function useProductVariantsByProductId({ productId }: { productId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-variants-by-product-id", productId],
+			queryFn: () => fetchProductVariantsByProductId(productId),
+		}),
+		queryKey: ["product-variants-by-product-id", productId],
+	};
+}
+
+export function useProductVariantById({ productVariantId }: { productVariantId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-variant-by-id", productVariantId],
+			queryFn: () => fetchProductVariantById(productVariantId),
+		}),
+		queryKey: ["product-variant-by-id", productVariantId],
+	};
 }

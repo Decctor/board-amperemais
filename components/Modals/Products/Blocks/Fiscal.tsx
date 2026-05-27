@@ -34,7 +34,7 @@ type ProductFiscalProfileCardComponentProps = {
 	handleDeleteClick: () => void;
 };
 
-type ProductFiscalBlockProps = {
+type ProductStateFiscalBlockProps = {
 	userHasFiscalViewPermission: boolean;
 	userHasFiscalConfigurePermission: boolean;
 	productFiscalProfiles: TUseProductState["state"]["productFiscalProfiles"];
@@ -45,7 +45,7 @@ type ProductFiscalBlockProps = {
 	FiscalProfileCard?: ComponentType<ProductFiscalProfileCardComponentProps>;
 };
 
-export default function ProductFiscalBlock({
+export default function ProductStateFiscalBlock({
 	userHasFiscalViewPermission,
 	userHasFiscalConfigurePermission,
 	productFiscalProfiles,
@@ -54,7 +54,7 @@ export default function ProductFiscalBlock({
 	removeProductFiscalProfile,
 	embedded = false,
 	FiscalProfileCard = ProductFiscalProfileCard,
-}: ProductFiscalBlockProps) {
+}: ProductStateFiscalBlockProps) {
 	if (!userHasFiscalViewPermission) return null;
 	const [newFiscalProfileMenuIsOpen, setNewFiscalProfileMenuIsOpen] = useState(false);
 	const [editFiscalProfileIndex, setEditFiscalProfileIndex] = useState<number | null>(null);

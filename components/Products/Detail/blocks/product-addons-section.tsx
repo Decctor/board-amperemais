@@ -2,7 +2,7 @@
 
 import ProductAddOnsBlock from "@/components/Modals/Products/Blocks/AddOns";
 import { LoadingButton } from "@/components/loading-button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import type { TUseProductState } from "@/state-hooks/use-product-state";
 import { Layers } from "lucide-react";
 

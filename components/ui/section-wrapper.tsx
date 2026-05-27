@@ -8,7 +8,7 @@ type SectionWrapperProps = PropsWithChildren<{
 	wrapperClassName?: string;
 }>;
 
-export default function SectionWrapper({ children, title, icon, actions, wrapperClassName }: SectionWrapperProps) {
+export function SectionWrapper({ children, title, icon, actions, wrapperClassName }: SectionWrapperProps) {
 	return (
 		<div className={cn("bg-card border-border flex w-full min-h-0 flex-col gap-6 rounded-xl border px-3 py-4 shadow-xs", wrapperClassName)}>
 			<div className="flex items-center justify-between min-h-8">
@@ -19,6 +19,16 @@ export default function SectionWrapper({ children, title, icon, actions, wrapper
 				{actions}
 			</div>
 			<div className="flex w-full min-h-0 flex-1 flex-col gap-3">{children}</div>
+		</div>
+	);
+}
+
+export function SectionWrapperDataRow({ icon, label, value }: { label: string; value: string; icon?: React.ReactNode }) {
+	return (
+		<div className="flex w-full items-center gap-1.5">
+			{icon}
+			<h3 className="text-sm font-semibold tracking-tighter text-foreground/80 shrink-0">{label}</h3>
+			<h3 className="text-sm font-semibold tracking-tight">{value}</h3>
 		</div>
 	);
 }

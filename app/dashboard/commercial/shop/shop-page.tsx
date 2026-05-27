@@ -4,7 +4,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { useShopSettings } from "@/lib/queries/shop";
 import { getErrorMessage } from "@/lib/errors";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { CircleCheck, Copy, Diamond, ExternalLink, ListIcon, Pencil, Settings, ShoppingCart, Store, Truck, X, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";

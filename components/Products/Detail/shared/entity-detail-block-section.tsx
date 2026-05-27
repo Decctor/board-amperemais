@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { LoadingButton } from "@/components/loading-button";
 import { Pencil } from "lucide-react";
 import type { ReactNode } from "react";

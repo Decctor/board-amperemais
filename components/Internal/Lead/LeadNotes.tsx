@@ -3,7 +3,7 @@ import NoteCard from "@/components/CRM/NoteCard";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { getErrorMessage } from "@/lib/errors";
 import { useInternalLeadNotes } from "@/lib/queries/crm";
 import { useQueryClient } from "@tanstack/react-query";

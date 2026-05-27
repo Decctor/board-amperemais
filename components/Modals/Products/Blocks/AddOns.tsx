@@ -13,7 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import ProductVinculation from "../ProductVinculation";
 
-type ProductAddOnsBlockProps = {
+type ProductStateAddOnsBlockProps = {
 	addOns: TUseProductState["state"]["productAddOns"];
 	addProductAddOn: TUseProductState["addProductAddOn"];
 	updateProductAddOn: TUseProductState["updateProductAddOn"];
@@ -24,7 +24,7 @@ type ProductAddOnsBlockProps = {
 	embedded?: boolean;
 };
 
-export default function ProductAddOnsBlock({
+export default function ProductStateAddOnsBlock({
 	addOns,
 	addProductAddOn,
 	updateProductAddOn,
@@ -33,7 +33,7 @@ export default function ProductAddOnsBlock({
 	updateProductAddOnOption,
 	removeProductAddOnOption,
 	embedded = false,
-}: ProductAddOnsBlockProps) {
+}: ProductStateAddOnsBlockProps) {
 	const [newAddOnMenuIsOpen, setNewAddOnMenuIsOpen] = useState(false);
 	const [editAddOnIndex, setEditAddOnIndex] = useState<number | null>(null);
 

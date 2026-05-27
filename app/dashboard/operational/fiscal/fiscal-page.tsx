@@ -39,7 +39,7 @@ import { getErrorMessage } from "@/lib/errors";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { Button } from "@/components/ui/button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { StatBadge } from "@/components/ui/stat-badge";

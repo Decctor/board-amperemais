@@ -329,44 +329,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 
 		return {
 			data: {
-				byId: {
-					product: {
-						descricao: product.descricao,
-						imagemCapaUrl: product.imagemCapaUrl,
-						codigo: product.codigo,
-						unidade: product.unidade,
-						ncm: product.ncm,
-						tipo: product.tipo,
-						grupo: product.grupo,
-						rastreamentoEstoqueAtivo: product.rastreamentoEstoqueAtivo ?? false,
-						quantidade: product.quantidade,
-						precoVenda: product.precoVenda,
-						precoCusto: product.precoCusto,
-						imagemCapaHolder: {
-							file: null,
-							previewUrl: product.imagemCapaUrl,
-						},
-						perfisFiscais: product.perfisFiscais,
-					},
-					productVariants: product.variantes.map((variant) => ({
-						id: variant.id,
-						nome: variant.nome,
-						codigo: variant.codigo ?? "",
-						imagemCapaUrl: variant.imagemCapaUrl,
-						precoVenda: variant.precoVenda,
-						precoCusto: variant.precoCusto ?? 0,
-						quantidade: variant.quantidade ?? 0,
-						ativo: variant.ativo ?? true,
-						rastreamentoEstoqueAtivo: variant.rastreamentoEstoqueAtivo ?? false,
-						imagemCapaHolder: {
-							file: null,
-							previewUrl: variant.imagemCapaUrl,
-						},
-						addOns: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo).map(mapAddOnReferenceToState),
-						perfisFiscais: variant.perfisFiscais,
-					})),
-					productAddOns: product.addOnsReferencias.filter((reference) => reference.grupo.ativo).map(mapAddOnReferenceToState),
-				},
+				byId: product,
 				default: undefined,
 			},
 		};

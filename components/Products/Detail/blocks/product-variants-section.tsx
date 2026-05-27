@@ -2,7 +2,7 @@
 
 import ProductVariantsBlock from "@/components/Modals/Products/Blocks/Variants";
 import { LoadingButton } from "@/components/loading-button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import type { TUseProductState } from "@/state-hooks/use-product-state";
 import { GitBranch } from "lucide-react";
 

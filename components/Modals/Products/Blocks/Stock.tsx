@@ -5,14 +5,14 @@ import { formatDecimalPlaces } from "@/lib/formatting";
 import type { TUseProductState } from "@/state-hooks/use-product-state";
 import { BadgeDollarSign, Package } from "lucide-react";
 
-type ProductStockBlockProps = {
+type ProductStateStockBlockProps = {
 	product: TUseProductState["state"]["product"];
 	updateProduct: TUseProductState["updateProduct"];
 	showPricing?: boolean;
 	embedded?: boolean;
 };
 
-export default function ProductStockBlock({ product, updateProduct, showPricing = false, embedded = false }: ProductStockBlockProps) {
+export default function ProductStateStockBlock({ product, updateProduct, showPricing = false, embedded = false }: ProductStateStockBlockProps) {
 	const formContent = (
 		<div className="w-full flex flex-col gap-3">
 			{showPricing ? (
