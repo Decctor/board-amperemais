@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
-import { ArrowRight, BookOpen, CalendarDays, ListFilter } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, BookOpen, CalendarDays, ListFilter, Pencil, Plus } from "lucide-react";
 import type { TGetAccountingEntriesOutputDefault } from "@/app/api/finances/accounting-entries/route";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InteractiveFilter } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import ControlAccountingEntry from "@/components/Modals/AccountingEntries/ControlAccountingEntry";
+import NewAccountingEntry from "@/components/Modals/AccountingEntries/NewAccountingEntry";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { getErrorMessage } from "@/lib/errors";
@@ -18,6 +21,8 @@ import { AccountingEntryOriginTypeOptions } from "@/utils/select-options";
 import { BsCalendar } from "react-icons/bs";
 
 export default function FinancesAccountingEntriesView() {
+	const [newEntryMenuIsOpen, setNewEntryMenuIsOpen] = useState(false);
+	const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 	const { data, isLoading, isError, isSuccess, error, filters, updateFilters } = useFinancesAccountingEntries({
 		initialFilters: { page: 1, search: "" },
 	});
@@ -37,12 +42,18 @@ export default function FinancesAccountingEntriesView() {
 	}, [filters.periodAfter, filters.periodBefore]);
 	return (
 		<div className="flex w-full flex-col gap-3">
-			<Input
-				value={filters.search ?? ""}
-				placeholder="Pesquisar lançamento..."
-				onChange={(e) => updateFilters({ search: e.target.value, page: 1 })}
-				className="grow rounded-xl"
-			/>
+			<div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+				<Input
+					value={filters.search ?? ""}
+					placeholder="Pesquisar lançamento..."
+					onChange={(e) => updateFilters({ search: e.target.value, page: 1 })}
+					className="grow rounded-xl"
+				/>
+				<Button type="button" className="gap-1.5" onClick={() => setNewEntryMenuIsOpen(true)}>
+					<Plus className="h-4 w-4" />
+					Novo lançamento
+				</Button>
+			</div>
 			<div className="flex flex-col gap-3 lg:flex-row lg:items-end justify-end">
 				<InteractiveFilter.Root className="w-fit">
 					<InteractiveFilter.Trigger>
@@ -109,7 +120,7 @@ export default function FinancesAccountingEntriesView() {
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && entries ? (
 				entries.length > 0 ? (
-					entries.map((entry) => <AccountingEntryCard key={entry.id} entry={entry} />)
+					entries.map((entry) => <AccountingEntryCard key={entry.id} entry={entry} onEditClick={() => setEditingEntryId(entry.id)} />)
 				) : (
 					<Empty>
 						<EmptyHeader>
@@ -123,14 +134,18 @@ export default function FinancesAccountingEntriesView() {
 					</Empty>
 				)
 			) : null}
+
+			{newEntryMenuIsOpen ? <NewAccountingEntry closeModal={() => setNewEntryMenuIsOpen(false)} /> : null}
+			{editingEntryId ? <ControlAccountingEntry entryId={editingEntryId} closeModal={() => setEditingEntryId(null)} /> : null}
 		</div>
 	);
 }
 
 type AccountingEntryCardProps = {
 	entry: TGetAccountingEntriesOutputDefault["entries"][number];
+	onEditClick: () => void;
 };
-function AccountingEntryCard({ entry }: AccountingEntryCardProps) {
+function AccountingEntryCard({ entry, onEditClick }: AccountingEntryCardProps) {
 	const originTypeConfig = useMemo(() => AccountingEntryOriginTypeOptions.find((o) => o.value === entry.origemTipo) ?? null, [entry.origemTipo]);
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
@@ -178,6 +193,10 @@ function AccountingEntryCard({ entry }: AccountingEntryCardProps) {
 					) : null}
 					<span className="text-[0.65rem] text-muted-foreground">{formatDateAsLocale(entry.dataInsercao, true)}</span>
 				</div>
+				<Button type="button" size="sm" variant="ghost" className="gap-1.5" onClick={onEditClick}>
+					<Pencil className="h-4 w-4" />
+					EDITAR
+				</Button>
 			</div>
 		</div>
 	);
