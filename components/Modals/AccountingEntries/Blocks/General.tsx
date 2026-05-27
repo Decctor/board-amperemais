@@ -11,9 +11,18 @@ import { BookOpen } from "lucide-react";
 type AccountingEntryGeneralBlockProps = {
 	entry: TUseInternalAccountingEntryState["state"]["entry"];
 	updateEntry: TUseInternalAccountingEntryState["updateEntry"];
+	titleEditable?: boolean;
+	competenceEditable?: boolean;
+	annotationsEditable?: boolean;
 };
 
-export default function AccountingEntryGeneralBlock({ entry, updateEntry }: AccountingEntryGeneralBlockProps) {
+export default function AccountingEntryGeneralBlock({
+	entry,
+	updateEntry,
+	titleEditable = true,
+	competenceEditable = true,
+	annotationsEditable = true,
+}: AccountingEntryGeneralBlockProps) {
 	return (
 		<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<BookOpen className="h-4 w-4" />}>
 			<TextInput
@@ -23,6 +32,7 @@ export default function AccountingEntryGeneralBlock({ entry, updateEntry }: Acco
 				handleChange={(value) => updateEntry({ titulo: value })}
 				width="100%"
 				required
+				editable={titleEditable}
 			/>
 			<DateInput
 				label="DATA DE COMPETÊNCIA"
@@ -30,12 +40,14 @@ export default function AccountingEntryGeneralBlock({ entry, updateEntry }: Acco
 				handleChange={(value) => updateEntry({ dataCompetencia: formatDateOnInputChange(value, "date") ?? entry.dataCompetencia })}
 				width="100%"
 				required
+				editable={competenceEditable}
 			/>
 			<TextareaInput
 				label="ANOTAÇÕES"
 				placeholder="Preencha observações úteis para o lançamento..."
 				value={entry.anotacoes ?? ""}
 				handleChange={(value) => updateEntry({ anotacoes: value })}
+				editable={annotationsEditable}
 			/>
 		</ResponsiveMenuSection>
 	);

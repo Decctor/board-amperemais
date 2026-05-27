@@ -26,6 +26,7 @@ type AccountingEntryFinancialTransactionsBlockProps = {
 	updateFinancialTransaction: TUseInternalAccountingEntryState["updateFinancialTransaction"];
 	removeFinancialTransaction: TUseInternalAccountingEntryState["removeFinancialTransaction"];
 	redefineFinancialTransactions: TUseInternalAccountingEntryState["redefineFinancialTransactions"];
+	editable?: boolean;
 };
 
 export default function AccountingEntryFinancialTransactionsBlock({
@@ -35,6 +36,7 @@ export default function AccountingEntryFinancialTransactionsBlock({
 	updateFinancialTransaction,
 	removeFinancialTransaction,
 	redefineFinancialTransactions,
+	editable = true,
 }: AccountingEntryFinancialTransactionsBlockProps) {
 	const [transactionMenuIsOpen, setTransactionMenuIsOpen] = useState(false);
 	const [multiMenuIsOpen, setMultiMenuIsOpen] = useState(false);
@@ -52,16 +54,18 @@ export default function AccountingEntryFinancialTransactionsBlock({
 						SOMA: <strong className={cn(totalMatches ? "text-emerald-700" : "text-amber-700")}>{formatToMoney(transactionsTotal)}</strong> / LANÇAMENTO:{" "}
 						<strong>{formatToMoney(entryTotalValue)}</strong>
 					</div>
-					<div className="flex items-center gap-1.5">
-						<Button type="button" size="sm" variant="secondary" className="gap-1.5" onClick={() => setMultiMenuIsOpen(true)}>
-							<Layers3 className="h-4 w-4" />
-							MÚLTIPLAS
-						</Button>
-						<Button type="button" size="sm" className="gap-1.5" onClick={() => setTransactionMenuIsOpen(true)}>
-							<Plus className="h-4 w-4" />
-							ADICIONAR
-						</Button>
-					</div>
+					{editable ? (
+						<div className="flex items-center gap-1.5">
+							<Button type="button" size="sm" variant="secondary" className="gap-1.5" onClick={() => setMultiMenuIsOpen(true)}>
+								<Layers3 className="h-4 w-4" />
+								MÚLTIPLAS
+							</Button>
+							<Button type="button" size="sm" className="gap-1.5" onClick={() => setTransactionMenuIsOpen(true)}>
+								<Plus className="h-4 w-4" />
+								ADICIONAR
+							</Button>
+						</div>
+					) : null}
 				</div>
 				{!totalMatches ? <p className="text-xs text-amber-700">A soma das transações precisa bater o valor do lançamento.</p> : null}
 			</div>
@@ -75,6 +79,7 @@ export default function AccountingEntryFinancialTransactionsBlock({
 								transaction={transaction}
 								onEditClick={() => setEditingIndex(index)}
 								onRemoveClick={() => removeFinancialTransaction(index)}
+								editable={editable}
 							/>
 						),
 					)
@@ -85,7 +90,7 @@ export default function AccountingEntryFinancialTransactionsBlock({
 				)}
 			</div>
 
-			{transactionMenuIsOpen ? (
+			{editable && transactionMenuIsOpen ? (
 				<FinancialTransactionDraftMenu
 					closeMenu={() => setTransactionMenuIsOpen(false)}
 					commitFinancialTransaction={(transaction) => {
@@ -95,7 +100,7 @@ export default function AccountingEntryFinancialTransactionsBlock({
 				/>
 			) : null}
 
-			{editingIndex !== null ? (
+			{editable && editingIndex !== null ? (
 				<FinancialTransactionDraftMenu
 					initialTransaction={entryFinancialTransactions[editingIndex]}
 					closeMenu={() => setEditingIndex(null)}
@@ -106,7 +111,7 @@ export default function AccountingEntryFinancialTransactionsBlock({
 				/>
 			) : null}
 
-			{multiMenuIsOpen ? (
+			{editable && multiMenuIsOpen ? (
 				<AddMultiFinancialTransactionsMenu
 					entryTotalValue={entryTotalValue}
 					closeMenu={() => setMultiMenuIsOpen(false)}
@@ -124,9 +129,10 @@ type TransactionCardProps = {
 	transaction: TAccountingEntryFinancialTransactionState;
 	onEditClick: () => void;
 	onRemoveClick: () => void;
+	editable: boolean;
 };
 
-function TransactionCard({ transaction, onEditClick, onRemoveClick }: TransactionCardProps) {
+function TransactionCard({ transaction, onEditClick, onRemoveClick, editable }: TransactionCardProps) {
 	const typeConfig = useMemo(() => FinancialTransactionTypeOptions.find((o) => o.value === transaction.tipo) ?? null, [transaction.tipo]);
 	const paymentMethodConfig = useMemo(() => SalePaymentMethodsOptions.find((o) => o.value === transaction.metodo) ?? null, [transaction.metodo]);
 	const isEffective = !!transaction.dataEfetivacao;
@@ -171,15 +177,17 @@ function TransactionCard({ transaction, onEditClick, onRemoveClick }: Transactio
 				) : null}
 			</div>
 
-			<div className="flex justify-end gap-1.5">
-				<Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onEditClick}>
-					<Pencil className="h-4 w-4" />
-					EDITAR
-				</Button>
-				<Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={onRemoveClick} aria-label="Remover transação">
-					<Trash2 className="h-4 w-4" />
-				</Button>
-			</div>
+			{editable ? (
+				<div className="flex justify-end gap-1.5">
+					<Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onEditClick}>
+						<Pencil className="h-4 w-4" />
+						EDITAR
+					</Button>
+					<Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={onRemoveClick} aria-label="Remover transação">
+						<Trash2 className="h-4 w-4" />
+					</Button>
+				</div>
+			) : null}
 		</div>
 	);
 }

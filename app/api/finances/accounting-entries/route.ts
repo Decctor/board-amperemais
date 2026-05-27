@@ -199,6 +199,24 @@ const UpdateAccountingEntryInputSchema = z.object({
 export type TUpdateAccountingEntryInput = z.infer<typeof UpdateAccountingEntryInputSchema>;
 
 type TAccountingEntryTransactionInput = TUpdateAccountingEntryInput["entryFinancialTransactions"][number];
+type TExistingAccountingEntryForUpdate = NonNullable<Awaited<ReturnType<typeof getExistingAccountingEntryForUpdate>>>;
+
+async function getExistingAccountingEntryForUpdate({ entryId, orgId }: { entryId: string; orgId: string }) {
+	return db.query.accountingEntries.findFirst({
+		where: and(eq(accountingEntries.id, entryId), eq(accountingEntries.organizacaoId, orgId)),
+		columns: {
+			id: true,
+			origemTipo: true,
+			titulo: true,
+			anotacoes: true,
+			idContaDebito: true,
+			idContaCredito: true,
+			valor: true,
+			valorPrevisto: true,
+			dataCompetencia: true,
+		},
+	});
+}
 
 function validateTransactionTotal({ entryValue, transactions }: { entryValue: number; transactions: { valor: number; deletar?: boolean | null }[] }) {
 	const activeTransactions = transactions.filter((transaction) => !transaction.deletar);
@@ -207,6 +225,38 @@ function validateTransactionTotal({ entryValue, transactions }: { entryValue: nu
 	const total = activeTransactions.reduce((acc, transaction) => acc + (transaction.valor || 0), 0);
 	if (Math.abs(total - entryValue) > 0.02) {
 		throw new createHttpError.BadRequest("A soma das transações financeiras precisa bater o valor do lançamento.");
+	}
+}
+
+function datesMatch(a: Date | string | null | undefined, b: Date | string | null | undefined) {
+	if (!a && !b) return true;
+	if (!a || !b) return false;
+	return new Date(a).getTime() === new Date(b).getTime();
+}
+
+function nullableNumbersMatch(a: number | null | undefined, b: number | null | undefined) {
+	return (a ?? null) === (b ?? null);
+}
+
+function assertLockedEntryFieldsUnchanged({
+	inputEntry,
+	existingEntry,
+}: {
+	inputEntry: TUpdateAccountingEntryInput["entry"];
+	existingEntry: TExistingAccountingEntryForUpdate;
+}) {
+	const lockedFieldChanged =
+		inputEntry.titulo !== existingEntry.titulo ||
+		inputEntry.idContaDebito !== existingEntry.idContaDebito ||
+		inputEntry.idContaCredito !== existingEntry.idContaCredito ||
+		inputEntry.valor !== existingEntry.valor ||
+		!nullableNumbersMatch(inputEntry.valorPrevisto, existingEntry.valorPrevisto) ||
+		!datesMatch(inputEntry.dataCompetencia, existingEntry.dataCompetencia);
+
+	if (lockedFieldChanged) {
+		throw new createHttpError.BadRequest(
+			"Lançamentos originados por venda ou estorno não permitem alterar título, valor, competência ou contas contábeis.",
+		);
 	}
 }
 
@@ -338,35 +388,45 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 	if (!userMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const orgId = userMembership.organizacao.id;
-	validateTransactionTotal({ entryValue: input.entry.valor, transactions: input.entryFinancialTransactions });
-
-	const existingEntry = await db.query.accountingEntries.findFirst({
-		where: and(eq(accountingEntries.id, input.entryId), eq(accountingEntries.organizacaoId, orgId)),
-		columns: { id: true, origemTipo: true },
-	});
+	const existingEntry = await getExistingAccountingEntryForUpdate({ entryId: input.entryId, orgId });
 	if (!existingEntry) throw new createHttpError.NotFound("Lançamento contábil não encontrado.");
-	if (existingEntry.origemTipo !== "MANUAL") {
-		throw new createHttpError.BadRequest("Apenas lançamentos manuais podem ser editados por aqui.");
+
+	const canUpdateAccountingFields = existingEntry.origemTipo === "MANUAL";
+	const canUpdateTransactions = existingEntry.origemTipo === "MANUAL" || existingEntry.origemTipo === "VENDA";
+
+	if (canUpdateAccountingFields) {
+		validateTransactionTotal({ entryValue: input.entry.valor, transactions: input.entryFinancialTransactions });
+	} else {
+		assertLockedEntryFieldsUnchanged({ inputEntry: input.entry, existingEntry });
+		if (canUpdateTransactions) {
+			validateTransactionTotal({ entryValue: existingEntry.valor, transactions: input.entryFinancialTransactions });
+		}
 	}
 
 	const transactionReturn = await db.transaction(async (tx) => {
-		await validateAccountingEntryRelations({
-			tx,
-			orgId,
-			entry: input.entry,
-			transactions: input.entryFinancialTransactions,
-		});
+		if (canUpdateAccountingFields) {
+			await validateAccountingEntryRelations({
+				tx,
+				orgId,
+				entry: input.entry,
+				transactions: input.entryFinancialTransactions,
+			});
+		}
 
 		const [updatedEntry] = await tx
 			.update(accountingEntries)
 			.set({
-				titulo: input.entry.titulo,
 				anotacoes: input.entry.anotacoes ?? null,
-				idContaDebito: input.entry.idContaDebito,
-				idContaCredito: input.entry.idContaCredito,
-				valor: input.entry.valor,
-				valorPrevisto: input.entry.valorPrevisto ?? null,
-				dataCompetencia: input.entry.dataCompetencia,
+				...(canUpdateAccountingFields
+					? {
+							titulo: input.entry.titulo,
+							idContaDebito: input.entry.idContaDebito,
+							idContaCredito: input.entry.idContaCredito,
+							valor: input.entry.valor,
+							valorPrevisto: input.entry.valorPrevisto ?? null,
+							dataCompetencia: input.entry.dataCompetencia,
+						}
+					: {}),
 			})
 			.where(and(eq(accountingEntries.id, input.entryId), eq(accountingEntries.organizacaoId, orgId)))
 			.returning({ id: accountingEntries.id });
@@ -374,6 +434,15 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 		if (!updatedEntry?.id) {
 			throw new createHttpError.InternalServerError("Erro ao atualizar lançamento contábil.");
 		}
+
+		if (!canUpdateTransactions) return updatedEntry.id;
+
+		await validateAccountingEntryRelations({
+			tx,
+			orgId,
+			entry: existingEntry,
+			transactions: input.entryFinancialTransactions,
+		});
 
 		for (const transaction of input.entryFinancialTransactions) {
 			if (transaction.id && transaction.deletar) {

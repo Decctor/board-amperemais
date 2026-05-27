@@ -8,9 +8,10 @@ import { DollarSign } from "lucide-react";
 type AccountingEntryValuesBlockProps = {
 	entry: TUseInternalAccountingEntryState["state"]["entry"];
 	updateEntry: TUseInternalAccountingEntryState["updateEntry"];
+	editable?: boolean;
 };
 
-export default function AccountingEntryValuesBlock({ entry, updateEntry }: AccountingEntryValuesBlockProps) {
+export default function AccountingEntryValuesBlock({ entry, updateEntry, editable = true }: AccountingEntryValuesBlockProps) {
 	return (
 		<ResponsiveMenuSection title="VALORES" icon={<DollarSign className="h-4 w-4" />}>
 			<NumberInput
@@ -20,6 +21,7 @@ export default function AccountingEntryValuesBlock({ entry, updateEntry }: Accou
 				placeholder="Preencha o valor realizado..."
 				width="100%"
 				required
+				editable={editable}
 			/>
 			<NumberInput
 				label="VALOR PREVISTO"
@@ -27,6 +29,7 @@ export default function AccountingEntryValuesBlock({ entry, updateEntry }: Accou
 				handleChange={(value) => updateEntry({ valorPrevisto: value > 0 ? value : null })}
 				placeholder="Preencha o valor previsto..."
 				width="100%"
+				editable={editable}
 			/>
 		</ResponsiveMenuSection>
 	);

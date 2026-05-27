@@ -10,9 +10,10 @@ import { useMemo } from "react";
 type AccountingEntryAccountsBlockProps = {
 	entry: TUseInternalAccountingEntryState["state"]["entry"];
 	updateEntry: TUseInternalAccountingEntryState["updateEntry"];
+	editable?: boolean;
 };
 
-export default function AccountingEntryAccountsBlock({ entry, updateEntry }: AccountingEntryAccountsBlockProps) {
+export default function AccountingEntryAccountsBlock({ entry, updateEntry, editable = true }: AccountingEntryAccountsBlockProps) {
 	const { data: accountCharts } = useAccountCharts({ initialFilters: {} });
 
 	const options = useMemo(
@@ -36,6 +37,7 @@ export default function AccountingEntryAccountsBlock({ entry, updateEntry }: Acc
 				handleChange={(value) => updateEntry({ idContaDebito: value })}
 				width="100%"
 				required
+				editable={editable}
 			/>
 			<SelectInput
 				label="CONTA DE CRÉDITO"
@@ -46,6 +48,7 @@ export default function AccountingEntryAccountsBlock({ entry, updateEntry }: Acc
 				handleChange={(value) => updateEntry({ idContaCredito: value })}
 				width="100%"
 				required
+				editable={editable}
 			/>
 		</ResponsiveMenuSection>
 	);
