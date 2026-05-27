@@ -28,9 +28,9 @@ const drawerVariants = cva("flex flex-col", {
 	variants: {
 		drawerVariant: {
 			fit: "flex flex-col h-fit max-h-fit",
-			sm: "flex flex-col h-fit max-h-[70vh]",
-			md: "flex flex-col h-fit max-h-[80vh]",
-			lg: "flex flex-col h-fit max-h-[90vh]",
+			sm: "flex flex-col h-fit min-h-[50dvh] max-h-[70dvh]",
+			md: "flex flex-col h-fit min-h-[50dvh] max-h-[80dvh]",
+			lg: "flex flex-col h-fit min-h-[70dvh] max-h-[90dvh]",
 		},
 	},
 	defaultVariants: {

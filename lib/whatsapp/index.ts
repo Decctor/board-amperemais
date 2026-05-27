@@ -1,6 +1,6 @@
 import axios from "axios";
 import createHttpError from "http-errors";
-import type { TemplatePayload } from "@/lib/whatsapp/templates";
+import type { TWhatsappTemplateSendPayload } from "@/lib/message-templates/channels/whatsapp/types";
 
 const GRAPH_API_BASE_URL = "https://graph.facebook.com/v22.0";
 
@@ -81,7 +81,7 @@ export async function sendBasicWhatsappMessage({
 
 type SendTemplateWhatsappMessageParams = {
 	fromPhoneNumberId: string;
-	templatePayload: TemplatePayload;
+	templatePayload: TWhatsappTemplateSendPayload | Record<string, unknown>;
 	whatsappToken: string;
 };
 
@@ -106,7 +106,6 @@ export async function sendTemplateWhatsappMessage({
 		}
 
 		const { GRAPH_MESSAGES_API_URL } = getMetaGraphAPIUrl(fromPhoneNumberId);
-		console.log("[INFO] [WHATSAPP_TEMPLATE_SEND] Sending template:", JSON.stringify(templatePayload, null, 2));
 		const response = await axios.post(GRAPH_MESSAGES_API_URL, templatePayload, {
 			headers: {
 				Authorization: `Bearer ${whatsappToken}`,

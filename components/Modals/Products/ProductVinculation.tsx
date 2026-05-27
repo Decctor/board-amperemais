@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { getErrorMessage } from "@/lib/errors";
 import { useProductsBySearch } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
-import type { TGetProductsBySearchOutput } from "@/pages/api/products/search";
+import type { TGetProductsBySearchOutput } from "@/app/api/products/search/route";
 import { Code, Diamond, LinkIcon } from "lucide-react";
 
 type ProductVinculationProps = {
@@ -65,7 +65,7 @@ export default function ProductVinculation({ handleSelection, closeModal }: Prod
 								<ProductVinculationProductCard key={product.id} product={product} handleClick={(variantId) => handleSelection(product, variantId)} />
 							))
 						) : (
-							<p className="w-full text-center text-sm italic text-primary">Sem opções disponíveis.</p>
+							<p className="w-full text-center text-sm italic text-foreground">Sem opções disponíveis.</p>
 						)
 					) : null}
 				</div>
@@ -77,27 +77,30 @@ export default function ProductVinculation({ handleSelection, closeModal }: Prod
 function ProductVinculationProductCard({
 	product,
 	handleClick,
-}: { product: TGetProductsBySearchOutput["data"]["products"][number]; handleClick: (variant?: { id: string; nome: string }) => void }) {
+}: {
+	product: TGetProductsBySearchOutput["data"]["products"][number];
+	handleClick: (variant?: { id: string; nome: string }) => void;
+}) {
 	const variants = product.variantes || [];
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.descricao}</h1>
 					<div className="flex items-center gap-1">
 						<Code className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.codigo}</h1>
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.codigo}</h1>
 					</div>
 					{product.grupo ? (
 						<div className="flex items-center gap-1">
 							<Diamond className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.grupo}</h1>
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.grupo}</h1>
 						</div>
 					) : null}
 				</div>
 			</div>
 			{variants.length > 0 ? (
-				<div className="flex flex-col gap-1 pl-4 mt-2 border-l-2 border-primary/10">
+				<div className="flex flex-col gap-1 pl-4 mt-2 border-l-2 border-border">
 					{variants.map((variant) => (
 						<div key={variant.id} className="flex items-center justify-between gap-2 py-1">
 							<div className="flex flex-col">

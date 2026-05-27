@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatNameAsInitials, formatToDateTime, formatToMoney } from "@/lib/formatting";
 import { useSellerStats } from "@/lib/queries/sellers";
-import type { TGetSellerStatsOutput } from "@/pages/api/sellers/stats";
+import type { TGetSellerStatsOutput } from "@/app/api/sellers/stats/route";
 import { CalendarDays, ChartArea, DollarSign, ListOrdered, Mail, Phone, ShoppingCart, User } from "lucide-react";
 
 type ViewSellerResultsProps = {
@@ -58,17 +58,17 @@ function ViewSellerResultsHeader({ seller }: { seller: TGetSellerStatsOutput["da
 						<AvatarImage src={seller.avatarUrl ?? undefined} />
 						<AvatarFallback>{formatNameAsInitials(seller.name)}</AvatarFallback>
 					</Avatar>
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">VENDEDOR</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VENDEDOR</h3>
 					<h3 className="text-sm font-semibold">{seller.name}</h3>
 				</div>
 				<div className="w-full flex items-center gap-1.5">
 					<Phone className="w-3 min-w-3 h-3 min-h-3" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">TELEFONE</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TELEFONE</h3>
 					<h3 className="text-sm font-semibold">{seller.phone ?? "NÃO INFORMADO"}</h3>
 				</div>
 				<div className="w-full flex items-center gap-1.5">
 					<Mail className="w-3 min-w-3 h-3 min-h-3" />
-					<h3 className="text-sm font-semibold tracking-tighter text-primary/80">EMAIL</h3>
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">EMAIL</h3>
 					<h3 className="text-sm font-semibold">{seller.email ?? "NÃO INFORMADO"}</h3>
 				</div>
 			</div>

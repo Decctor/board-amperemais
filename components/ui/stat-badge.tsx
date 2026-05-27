@@ -2,6 +2,7 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+import { Chip } from "./chip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 type StatBadgeProps = {
@@ -16,10 +17,12 @@ type StatBadgeProps = {
 
 export function StatBadge({ icon, value, tooltipContent, className, valueClassName, tooltipClassName, tooltipContentClassName }: StatBadgeProps) {
 	const content = (
-		<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-primary", className)}>
-			{icon}
-			<p className={cn("text-xs font-medium tracking-tight uppercase", valueClassName)}>{value}</p>
-		</div>
+		<Chip.Root variant="secondary" size="md" shape="xl" className={className}>
+			<Chip.Icon>{icon}</Chip.Icon>
+			<Chip.Label caps className={valueClassName}>
+				{value}
+			</Chip.Label>
+		</Chip.Root>
 	);
 
 	if (!tooltipContent) {

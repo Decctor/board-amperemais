@@ -68,7 +68,7 @@ export default function MaterialAssetBlock({
 				/>
 			) : (
 				<div className="flex flex-col gap-1.5">
-					<Label htmlFor={inputId} className="text-sm font-medium tracking-tight text-primary/80">
+					<Label htmlFor={inputId} className="text-sm font-medium tracking-tight text-foreground/80">
 						ARQUIVO
 					</Label>
 					<input
@@ -89,22 +89,14 @@ export default function MaterialAssetBlock({
 							});
 						}}
 					/>
-					<div className="flex items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/5 p-2">
-						<span className="min-w-0 truncate text-xs text-muted-foreground">
-							{communityAssetFileHolder.file?.name ?? "Nenhum arquivo selecionado"}
-						</span>
+					<div className="flex items-center justify-between gap-2 rounded-md border border-border bg-primary/5 p-2">
+						<span className="min-w-0 truncate text-xs text-muted-foreground">{communityAssetFileHolder.file?.name ?? "Nenhum arquivo selecionado"}</span>
 						<div className="flex items-center gap-1">
 							<Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={openFilePicker}>
 								Selecionar
 							</Button>
 							{communityAssetFileHolder.file ? (
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									className="h-7 gap-1 px-2 text-destructive hover:text-destructive"
-									onClick={clearFile}
-								>
+								<Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-destructive hover:text-destructive" onClick={clearFile}>
 									<X className="h-3.5 w-3.5" />
 									Remover
 								</Button>

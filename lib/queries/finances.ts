@@ -8,6 +8,44 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useDebounceMemo } from "../hooks/use-debounce";
+import type { TGetAccountChartsInputDefault, TGetAccountChartsOutput } from "@/app/api/finances/account-charts/route";
+
+// ============================================================================
+// ACCOUNT CHARTS
+// ============================================================================
+
+async function getAccountCharts(input: TGetAccountChartsInputDefault) {
+	const searchParams = new URLSearchParams();
+	if (input.search) searchParams.set("search", input.search);
+	const { data } = await axios.get<TGetAccountChartsOutput>(`/api/finances/account-charts?${searchParams.toString()}`);
+	const defaultData = data.data.default;
+	if (!defaultData) throw new Error("Oops, houve um erro ao buscar as contas contábeis.");
+	return defaultData;
+}
+
+type UseAccountChartsParams = {
+	initialFilters?: Partial<TGetAccountChartsInputDefault>;
+};
+export function useAccountCharts({ initialFilters }: UseAccountChartsParams) {
+	const [filters, setFilters] = useState<TGetAccountChartsInputDefault>({
+		search: initialFilters?.search || "",
+	});
+
+	function updateFilters(newFilters: Partial<TGetAccountChartsInputDefault>) {
+		setFilters((prev) => ({ ...prev, ...newFilters }));
+	}
+	const debouncedSearch = useDebounceMemo({ search: filters.search }, 500);
+	const finalFilters = { ...filters, ...debouncedSearch };
+	return {
+		...useQuery({
+			queryKey: ["finances-account-charts", finalFilters],
+			queryFn: () => getAccountCharts(finalFilters),
+		}),
+		queryKey: ["finances-account-charts", finalFilters],
+		filters,
+		updateFilters,
+	};
+}
 
 async function getFinancesOverallStats(input: TGetFinancesOverallStatsInput) {
 	const searchParams = new URLSearchParams();

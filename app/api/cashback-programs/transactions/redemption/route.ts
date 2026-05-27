@@ -75,6 +75,10 @@ async function processRedemption(input: z.infer<typeof RedemptionInputSchema>): 
 			throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 		}
 
+		if (!program.ativo) {
+			throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
+		}
+
 		// 4. Validate redemption limit
 		if (program.resgateLimiteTipo && program.resgateLimiteValor !== null) {
 			let maxAllowedRedemption: number;

@@ -252,7 +252,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 	}
 
 	return (
-		<div className={cn("w-full px-4 py-3 bg-card/80 backdrop-blur-sm border-t border-primary/10", className)}>
+		<div className={cn("w-full px-4 py-3 bg-card/80 backdrop-blur-sm border-t border-border", className)}>
 			<div className="flex flex-col gap-2 max-w-5xl mx-auto">
 				{/* Expiration Warning Banner (when approaching 24h limit) */}
 				{!isConversationExpired && expirationInfo?.isWarning && (
@@ -314,7 +314,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 					<div
 						className={cn(
 							"flex items-end gap-2 px-3 py-2 rounded-2xl transition-all duration-200",
-							"bg-background/50 border-2 border-transparent hover:border-primary/20 focus-within:border-primary/30",
+							"bg-background/50 border-2 border-transparent hover:border-border focus-within:border-border/30",
 							"shadow-sm hover:shadow-md focus-within:shadow-lg",
 							isConversationExpired && "opacity-60",
 						)}
@@ -340,7 +340,7 @@ export function Input({ className, placeholder = "Digite uma mensagem...", maxRo
 							className={cn(
 								"flex-1 px-3 py-2 rounded-lg resize-none text-sm",
 								"bg-transparent focus:outline-none",
-								"placeholder:text-primary/40",
+								"placeholder:text-foreground/40",
 								"transition-colors duration-200",
 								"disabled:cursor-not-allowed",
 							)}
@@ -405,9 +405,9 @@ function TemplateSelectorContent({ onSelectTemplate, onClose, isSending }: Templ
 	return (
 		<>
 			{/* Template Header */}
-			<div className="flex items-center justify-between p-4 border-b border-primary/10 bg-linear-to-r dark:from-primary/5 to-transparent">
+			<div className="flex items-center justify-between p-4 border-b border-border bg-linear-to-r dark:from-primary/5 to-transparent">
 				<div className="flex items-center gap-2">
-					<FileText className="w-4 h-4 text-primary" />
+					<FileText className="w-4 h-4 text-foreground" />
 					<h3 className="font-semibold text-sm">Templates WhatsApp</h3>
 				</div>
 				<Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>

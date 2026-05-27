@@ -58,6 +58,8 @@ export default function NewGoal({ user, closeModal, callbacks }: NewGoalProps) {
 			<GoalGeneral goal={state.goal} updateGoal={updateGoal} goalSellers={state.goalSellers} />
 			<GoalSellers
 				goalTotalValue={state.goal.objetivoValor}
+				goalQtdeVendas={state.goal.objetivoQtdeVendas}
+				goalNovosClientes={state.goal.objetivoNovosClientes}
 				goalSellers={state.goalSellers}
 				updateGoalSeller={updateGoalSeller}
 				updateManyGoalSellers={updateManyGoalSellers}

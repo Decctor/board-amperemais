@@ -1,5 +1,5 @@
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
-import type { TClientByLookupOutput } from "@/pages/api/clients/lookup";
+import type { TClientByLookupOutput } from "@/app/api/clients/lookup/route";
 import type { LucideIcon } from "lucide-react";
 
 export type TPrize = {

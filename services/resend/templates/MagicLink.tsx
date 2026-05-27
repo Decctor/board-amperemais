@@ -8,6 +8,8 @@ interface MagicLinkTemplateProps {
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL || "";
+const emailCoverUrl =
+	"https://wawrqfehfafrrnfsycgs.supabase.co/storage/v1/object/public/files/public/RECOMPRA%20-%20CAPA%20EMAIL.jpg";
 
 export default function MagicLinkTemplate({ magicLink, verificationCode, expiresInMinutes }: MagicLinkTemplateProps) {
 	return (
@@ -17,7 +19,7 @@ export default function MagicLinkTemplate({ magicLink, verificationCode, expires
 			<Body style={main}>
 				<Container style={container}>
 					<Section style={header}>
-						<Img src={`${baseUrl}/logo.png`} width="150" height="auto" alt="RecompraCRM" style={logo} />
+						<Img src={emailCoverUrl} width="600" alt="RecompraCRM" style={coverImage} />
 					</Section>
 
 					<Section style={content}>
@@ -73,22 +75,27 @@ const main = {
 const container = {
 	backgroundColor: "#ffffff",
 	margin: "0 auto",
-	padding: "40px 20px",
+	padding: "0",
 	marginBottom: "64px",
+	maxWidth: "600px",
 };
 
 const header = {
-	padding: "20px 0",
-	textAlign: "center" as const,
+	padding: "0",
+	margin: "0",
+	lineHeight: "0",
 };
 
-const logo = {
-	margin: "0 auto",
+const coverImage = {
+	width: "100%",
+	maxWidth: "600px",
+	height: "auto",
 	display: "block",
+	margin: "0",
 };
 
 const content = {
-	padding: "0 20px",
+	padding: "40px 20px 0",
 };
 
 const h1 = {
@@ -177,6 +184,7 @@ const hr = {
 
 const footer = {
 	textAlign: "center" as const,
+	padding: "0 20px 40px",
 };
 
 const footerCopyright = {

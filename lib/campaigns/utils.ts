@@ -1,9 +1,13 @@
+import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import { and, eq, gte, sql, sum } from "drizzle-orm";
 
 import { DBTransaction } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 
 import dayjs from "dayjs";
+
+/** Statuses that count as a campaign message send in analytics (envios / interações). */
+export const CAMPAIGN_SENT_INTERACTION_STATUSES = ["ENVIADO", "ENTREGUE", "LIDO"] as const satisfies readonly TInteractionsStatusEnum[];
 
 const LOOKBACK_WEEKS = 8;
 /**

@@ -1,45 +1,87 @@
-"use client";
+﻿"use client";
 
+import { TSyncSegmentationsInput } from "@/app/api/segmentations/sync/route";
+import CheckboxInput from "@/components/Inputs/CheckboxInput";
+import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import RFMAnalysisQueryParamsMenu from "@/components/RFMAnalysis/RFMAnalysisQueryParamsMenu";
+import EditRFMConfig from "@/components/Modals/RFMConfig/EditRFMConfig";
+import NewRFMConfig from "@/components/Modals/RFMConfig/NewRFMConfig";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
+import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
+import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Separator } from "@/components/ui/separator";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
+import {
+	formatInteractiveCountSummary,
+	formatInteractiveDateRangeSummary,
+	formatInteractiveOptionSummary,
+} from "@/lib/interactive-filter-formatting";
+import { syncSegmentations } from "@/lib/mutations/segmentations";
 import { useClients, useClientsBySearch } from "@/lib/queries/clients";
 import { fetchClientExportation } from "@/lib/queries/exportations";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
 import { cn } from "@/lib/utils";
-import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
-import { RFMLabels } from "@/utils/rfm";
+import type { TGetClientsInput, TGetClientsOutputDefault } from "@/app/api/clients/route";
+import { RFMLabels, type TRFMConfig, getRFMConfigByLabel } from "@/utils/rfm";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { BadgeDollarSign, Download, Filter, Grid3x3, Info, Mail, Megaphone, Phone, ShoppingCart, UsersRound } from "lucide-react";
-import { useState } from "react";
+import {
+	BadgeDollarSign,
+	BadgePercent,
+	Download,
+	Grid3x3,
+	Info,
+	Mail,
+	Megaphone,
+	Package,
+	Phone,
+	RefreshCcw,
+	Settings2,
+	ShoppingCart,
+	UsersRound,
+	Filter,
+	Grid3X3,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { BsCalendar } from "react-icons/bs";
 import { toast } from "sonner";
+import { CustomersAcquisitionChannels } from "@/utils/select-options";
+import SegmentsPageRFMHealth from "./rfm-health-section";
 
-const initialPeriodStart = dayjs().startOf("month").toISOString();
-const initialPeriodEnd = dayjs().endOf("day").toISOString();
 type SegmentsPageProps = {
 	user: TAuthUserSession["user"];
+	orgRFMConfig: TRFMConfig | null;
 };
-export default function SegmentsPage({ user }: SegmentsPageProps) {
+export default function SegmentsPage({ user, orgRFMConfig }: SegmentsPageProps) {
+	const [configMenuIsOpen, setConfigMenuIsOpen] = useState(false);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<div className="w-full flex items-stretch gap-3 flex-col md:flex-row">
 				<div className="w-full md:w-1/2">
-					<SegmentsPageMatrixRFM />
+					<SegmentsPageMatrixRFM onOpenConfig={() => setConfigMenuIsOpen(true)} />
 				</div>
 				<div className="w-full md:w-1/2">
 					<SegmentsPageClients />
 				</div>
 			</div>
+			<SegmentsPageRFMHealth onOpenConfig={() => setConfigMenuIsOpen(true)} />
+			{configMenuIsOpen ? (
+				orgRFMConfig ? (
+					<EditRFMConfig user={user} rfmConfig={orgRFMConfig} closeModal={() => setConfigMenuIsOpen(false)} />
+				) : (
+					<NewRFMConfig user={user} closeModal={() => setConfigMenuIsOpen(false)} />
+				)
+			) : null}
 		</div>
 	);
 }
@@ -49,7 +91,6 @@ export default function SegmentsPage({ user }: SegmentsPageProps) {
  * CLIENTS RELATED COMPONENTS
  */
 function SegmentsPageClients() {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
 	const {
 		data: clientsResult,
 		isSuccess,
@@ -96,7 +137,7 @@ function SegmentsPageClients() {
 		}
 	}
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs h-full")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs h-full")}>
 			<div className="flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<UsersRound className="w-4 h-4 min-w-4 min-h-4" />
@@ -107,14 +148,10 @@ function SegmentsPageClients() {
 						<Download className="w-4 h-4 min-w-4 min-h-4" />
 						EXPORTAR
 					</Button>
-					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setFilterMenuIsOpen(true)}>
-						<Filter className="w-4 h-4 min-w-4 min-h-4" />
-						FILTROS
-					</Button>
 				</div>
 			</div>
 
-			<SegmentsPageClientsFiltersShowcase filters={filters} updateFilters={updateFilters} />
+			<SegmentsClientsInlineFilters filters={filters} updateFilters={updateFilters} />
 			<div className="w-full flex-1 max-h-[700px] flex flex-col gap-2 overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 px-2">
 				<GeneralPaginationComponent
 					activePage={filters.page}
@@ -128,7 +165,7 @@ function SegmentsPageClients() {
 				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 				{isSuccess && clients ? (
 					clients.length > 0 ? (
-						clients.map((client, index: number) => (
+						clients.map((client) => (
 							<SegmentsPageClientCard
 								key={client.id}
 								client={client}
@@ -143,126 +180,354 @@ function SegmentsPageClients() {
 					)
 				) : null}
 			</div>
-			{filterMenuIsOpen ? (
-				<RFMAnalysisQueryParamsMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
-			) : null}
 		</div>
 	);
 }
-type SegmentsPageClientsFiltersShowcaseProps = {
+
+type SegmentsClientsInlineFiltersProps = {
 	filters: TGetClientsInput;
 	updateFilters: (params: Partial<TGetClientsInput>) => void;
 };
-function SegmentsPageClientsFiltersShowcase({ filters, updateFilters }: SegmentsPageClientsFiltersShowcaseProps) {
+
+function SegmentsClientsInlineFilters({ filters, updateFilters }: SegmentsClientsInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const acquisitionChannelOptions = CustomersAcquisitionChannels as InteractiveFilterOption<string>[];
+	const segmentationOptions = RFMLabels.map((item, index) => ({
+		id: index + 1,
+		label: item.text,
+		value: item.text,
+	})) satisfies InteractiveFilterOption<string>[];
+	const hasAcquisitionChannels = (filters.acquisitionChannels ?? []).length > 0;
+	const hasSegmentationTitles = (filters.segmentationTitles ?? []).length > 0;
+	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
+	const hasExcludedSales = (filters.statsExcludedSalesIds ?? []).length > 0;
+
 	return (
-		<FiltersShowcase.Root>
-			{filters.search && filters.search.trim().length > 0 ? (
-				<FiltersShowcase.Item label="NOME" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
-			) : null}
-			{filters.acquisitionChannels.length > 0 ? (
-				<FiltersShowcase.Item
-					label="CANAL DE AQUISIÇÃO"
-					value={filters.acquisitionChannels.map((channel) => channel).join(", ")}
-					onRemove={() => updateFilters({ acquisitionChannels: [] })}
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<BsCalendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.statsPeriodAfter, filters.statsPeriodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null, page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
+							to: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ statsPeriodAfter: period.from ?? null, statsPeriodBefore: period.to ?? null, page: 1 })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasAcquisitionChannels ? (
+				<SegmentsMultiFilter
+					label="AQUISIÇÃO"
+					options={acquisitionChannelOptions}
+					value={filters.acquisitionChannels ?? []}
+					onChange={(acquisitionChannels) => updateFilters({ acquisitionChannels, page: 1 })}
+					onClear={() => updateFilters({ acquisitionChannels: [], page: 1 })}
 				/>
 			) : null}
-			{filters.segmentationTitles.length > 0 ? (
-				<FiltersShowcase.Item
+			{hasSegmentationTitles ? (
+				<SegmentsMultiFilter
 					label="SEGMENTAÇÃO"
-					value={filters.segmentationTitles.map((title) => title).join(", ")}
-					onRemove={() => updateFilters({ segmentationTitles: [] })}
+					options={segmentationOptions}
+					value={filters.segmentationTitles ?? []}
+					onChange={(segmentationTitles) => updateFilters({ segmentationTitles, page: 1 })}
+					onClear={() => updateFilters({ segmentationTitles: [], page: 1 })}
 				/>
 			) : null}
-			{filters.statsSaleNatures.length > 0 ? (
-				<FiltersShowcase.Item
-					label="NATUREZA DA VENDA"
-					value={filters.statsSaleNatures.map((nature) => nature).join(", ")}
-					onRemove={() => updateFilters({ statsSaleNatures: [] })}
+			{hasSaleNatures ? (
+				<SegmentsMultiFilter
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={filters.statsSaleNatures ?? []}
+					onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
+					onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
 				/>
 			) : null}
-			{filters.statsPeriodAfter && filters.statsPeriodBefore ? (
-				<FiltersShowcase.Item
-					label="PERÍODO"
-					value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
-					onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
-				/>
-			) : null}
-			{filters.statsExcludedSalesIds.length > 0 ? (
-				<FiltersShowcase.Item
-					label="VENDAS EXCLUÍDAS"
-					value={filters.statsExcludedSalesIds.map((id) => id).join(", ")}
-					onRemove={() => updateFilters({ statsExcludedSalesIds: [] })}
-				/>
-			) : null}
-			{filters.orderByField && filters.orderByDirection ? (
-				<FiltersShowcase.Item
-					label="ORDENAÇÃO"
-					value={`${filters.orderByField} (${filters.orderByDirection})`}
-					onRemove={() => updateFilters({ orderByField: "nome", orderByDirection: "asc" })}
-				/>
-			) : null}
-		</FiltersShowcase.Root>
+			{hasExcludedSales ? <SegmentsExcludedSalesFilter filters={filters} updateFilters={updateFilters} /> : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<Filter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasAcquisitionChannels ? (
+							<InteractiveFilter.AddFilterItem id="acquisition" label="AQUISIÇÃO" icon={<Filter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={acquisitionChannelOptions}
+									value={filters.acquisitionChannels ?? []}
+									onChange={(acquisitionChannels) => updateFilters({ acquisitionChannels, page: 1 })}
+									onClear={() => updateFilters({ acquisitionChannels: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSegmentationTitles ? (
+							<InteractiveFilter.AddFilterItem id="segmentation" label="SEGMENTAÇÃO" icon={<Filter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={segmentationOptions}
+									value={filters.segmentationTitles ?? []}
+									onChange={(segmentationTitles) => updateFilters({ segmentationTitles, page: 1 })}
+									onClear={() => updateFilters({ segmentationTitles: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<Filter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={saleNatureOptions}
+									value={filters.statsSaleNatures ?? []}
+									onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
+									onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+									clearLabel="TODAS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasExcludedSales ? (
+							<InteractiveFilter.AddFilterItem id="excludedSales" label="VENDAS EXCLUÍDAS" icon={<Filter className="h-4 w-4" />}>
+								<SegmentsExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
 	);
 }
+
+function SegmentsExcludedSalesFilter({ filters, updateFilters }: SegmentsClientsInlineFiltersProps) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<Filter className="h-4 w-4" />
+					<InteractiveFilter.Label>VENDAS EXCLUÍDAS</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveCountSummary(filters.statsExcludedSalesIds ?? [])}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-3">
+				<SegmentsExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function SegmentsExcludedSalesFilterContent({ filters, updateFilters }: SegmentsClientsInlineFiltersProps) {
+	return (
+		<MultipleSalesSelectInput
+			label="VENDAS EXCLUÍDAS"
+			selected={filters.statsExcludedSalesIds ?? []}
+			handleChange={(statsExcludedSalesIds) => updateFilters({ statsExcludedSalesIds: statsExcludedSalesIds as string[], page: 1 })}
+			onReset={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })}
+			resetOptionLabel="VENDAS EXCLUÍDAS"
+			width="100%"
+		/>
+	);
+}
+
+function SegmentsMultiFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<Filter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel="TODOS" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
 type SegmentsPageClientCardProps = {
 	client: TGetClientsOutputDefault["clients"][number];
 	period: { after: Date; before: Date };
 };
-function SegmentsPageClientCard({ client, period }: SegmentsPageClientCardProps) {
-	function getRFMColor(rfmLabel: string) {
-		const rfm = RFMLabels.find((x) => x.text === rfmLabel);
-		return rfm?.backgroundCollor || "bg-gray-400";
-	}
 
+function formatUltimaCompraRecenciaPhrase(ultimaCompra: Date | string | null | undefined): string {
+	if (!ultimaCompra) return "Sem compra registrada";
+
+	const d = typeof ultimaCompra === "string" ? dayjs(ultimaCompra) : dayjs(ultimaCompra);
+	const days = dayjs().startOf("day").diff(d.startOf("day"), "day");
+
+	if (days <= 0) return "Última compra: hoje";
+	if (days === 1) return "Última compra: há 1 dia";
+	return `Última compra: há ${days} dias`;
+}
+
+function SegmentsPageClientCard({ client, period }: SegmentsPageClientCardProps) {
+	const rfmRecencia = client.analiseRFMNotasRecencia?.trim();
+	const rfmFrequencia = client.analiseRFMNotasFrequencia?.trim();
+	const rfmMonetario = client.analiseRFMNotasMonetario?.trim();
+	const hasRfmScores = Boolean(rfmRecencia && rfmFrequencia && rfmMonetario);
+
+	const lifetimeCompras = client.metadataTotalCompras ?? 0;
+	const lifetimeValor = client.metadataValorTotalCompras != null ? Number(client.metadataValorTotalCompras) : 0;
+	const hasLifetimeStats = lifetimeCompras > 0 || lifetimeValor > 0;
+
+	const cashbackDisponivel =
+		client.saldos?.reduce(
+			(acc, s) => acc + (typeof s.saldoValorDisponivel === "number" ? s.saldoValorDisponivel : Number(s.saldoValorDisponivel ?? 0)),
+			0,
+		) ?? 0;
+
+	const periodLabelShort = `${formatDateAsLocale(period.after) ?? ""} até ${formatDateAsLocale(period.before) ?? ""}`;
+
+	const rfmStyling = useMemo(() => getRFMConfigByLabel(client.analiseRFMTitulo), [client.analiseRFMTitulo]);
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
-			<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
-				<div className="flex items-center gap-2 flex-wrap">
-					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
-					<div className="flex items-center gap-1">
-						<Phone className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.telefone}</h1>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+			<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+				<div className="min-w-0 flex-1 space-y-1.5">
+					<p className="truncate text-sm font-semibold tracking-tight text-foreground">{client.nome}</p>
+					<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] text-muted-foreground">
+						<span className="inline-flex items-center gap-1">
+							<Phone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+							<span className="tabular-nums">{client.telefone}</span>
+						</span>
+						{client.email ? (
+							<span className="inline-flex min-w-0 items-center gap-1">
+								<Mail className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+								<span className="truncate">{client.email}</span>
+							</span>
+						) : null}
+						{client.canalAquisicao ? (
+							<span className="inline-flex items-center gap-1">
+								<Megaphone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+								<span>{client.canalAquisicao}</span>
+							</span>
+						) : null}
 					</div>
-					{client.email ? (
-						<div className="flex items-center gap-1">
-							<Mail className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.email}</h1>
-						</div>
-					) : null}
-					{client.canalAquisicao ? (
-						<div className="flex items-center gap-1">
-							<Megaphone width={15} height={15} />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.canalAquisicao || "N/A"}</h1>
-						</div>
-					) : null}
 				</div>
-				<div className="flex items-center gap-2 flex-wrap">
-					<h1 className={cn("px-2 py-0.5 rounded-lg text-white text-[0.6rem]", getRFMColor(client.analiseRFMTitulo || ""))}>{client.analiseRFMTitulo}</h1>
+				<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+					{client.analiseRFMTitulo ? (
+						<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem]", rfmStyling.backgroundCollor, rfmStyling.textCollor)}>
+							<Grid3X3 className="w-4 h-4 min-w-4 min-h-4" />
+							<p className={cn("text-xs font-medium tracking-tight uppercase")}>{client.analiseRFMTitulo}</p>
+						</div>
+					) : null}
 				</div>
 			</div>
-			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
-				<div className="flex w-full flex-wrap items-center justify-center gap-2 lg:grow lg:justify-start">
-					<div className="flex items-center gap-1">
-						<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">ÚLTIMA COMPRA</h1>
-						<h1 className="py-0.5 text-center text-[0.65rem] font-bold  text-primary">{formatDateAsLocale(client.ultimaCompraData) || "N/A"}</h1>
-					</div>
-					<div className="flex items-center gap-1">
-						<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">PRIMEIRA COMPRA</h1>
-						<h1 className="py-0.5 text-center text-[0.65rem] font-bold  text-primary">{formatDateAsLocale(client.primeiraCompraData) || "N/A"}</h1>
+
+			{hasRfmScores ? (
+				<div className="flex flex-wrap items-center gap-2">
+					<span className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Notas RFM</span>
+					<div className="flex flex-wrap gap-1">
+						<Badge variant="secondary" className="font-mono text-[0.65rem] tabular-nums">
+							R {rfmRecencia}
+						</Badge>
+						<Badge variant="secondary" className="font-mono text-[0.65rem] tabular-nums">
+							F {rfmFrequencia}
+						</Badge>
+						<Badge variant="secondary" className="font-mono text-[0.65rem] tabular-nums">
+							M {rfmMonetario}
+						</Badge>
 					</div>
 				</div>
-				<div className="flex w-full flex-wrap items-center justify-center gap-2 lg:min-w-fit lg:justify-end">
-					<div className="flex items-center gap-1">
-						<ShoppingCart width={14} height={14} />
-						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">Nº DE COMPRAS NO PERÍODO</h1>
-						<h1 className="py-0.5 text-center text-[0.65rem] font-bold  text-primary">{client.estatisticas.comprasQtdeTotal}</h1>
+			) : null}
+
+			<Separator />
+
+			<div className="flex flex-col gap-2">
+				<p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Relação com a loja</p>
+				<div className="grid gap-2 sm:grid-cols-2">
+					<div className="rounded-md border border-border bg-muted/30 px-2.5 py-2">
+						<p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Recência</p>
+						<p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{formatUltimaCompraRecenciaPhrase(client.ultimaCompraData)}</p>
+						{client.ultimaCompraData ? <p className="mt-0.5 text-[0.65rem] text-muted-foreground">{formatDateAsLocale(client.ultimaCompraData)}</p> : null}
 					</div>
-					<div className="flex items-center gap-1">
-						<BadgeDollarSign width={14} height={14} />
-						<h1 className="py-0.5 text-center text-[0.6rem] font-medium italic text-primary/80">TOTAL COMPRO NO PERÍODO</h1>
-						<h1 className="py-0.5 text-center text-[0.65rem] font-bold  text-primary">{formatToMoney(client.estatisticas.comprasValorTotal)}</h1>
+					<div className="rounded-md border border-border bg-muted/30 px-2.5 py-2">
+						<p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Histórico de compras</p>
+						{hasLifetimeStats ? (
+							<>
+								<p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+									{lifetimeCompras} {lifetimeCompras === 1 ? "compra" : "compras"} · {formatToMoney(lifetimeValor)}
+								</p>
+								{client.metadataGrupoProdutoMaisComprado ? (
+									<p className="mt-1 flex items-start gap-1 text-[0.65rem] text-muted-foreground">
+										<Package className="mt-0.5 size-3 shrink-0" aria-hidden />
+										<span>Mais comprado: {client.metadataGrupoProdutoMaisComprado}</span>
+									</p>
+								) : null}
+							</>
+						) : (
+							<p className="mt-1 text-sm font-medium text-muted-foreground">Sem totais agregados ainda.</p>
+						)}
+					</div>
+				</div>
+				{cashbackDisponivel > 0 ? (
+					<div className="flex items-center gap-2 rounded-md border border-brand/30 bg-brand/20 px-2.5 py-2">
+						<BadgePercent className="size-3.5 shrink-0 text-brand" aria-hidden />
+						<span className="text-[0.65rem] font-bold uppercase tracking-wide text-brand">Cashback disponível</span>
+						<span className="ml-auto text-sm font-black tabular-nums text-brand">{formatToMoney(cashbackDisponivel)}</span>
+					</div>
+				) : null}
+			</div>
+
+			<Separator />
+
+			<div className="flex flex-col gap-2">
+				<p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">No período filtrado</p>
+				<p className="text-[0.65rem] text-muted-foreground">{periodLabelShort}</p>
+				<div className="flex w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+					<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-2">
+						<div className="flex items-baseline gap-2">
+							<BsCalendar className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+							<div>
+								<p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Primeira compra no período</p>
+								<p className="text-sm font-semibold tabular-nums text-foreground">{formatDateAsLocale(client.estatisticas.primeiraCompraData) || "—"}</p>
+							</div>
+						</div>
+						<div className="flex items-baseline gap-2">
+							<BsCalendar className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+							<div>
+								<p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Última compra no período</p>
+								<p className="text-sm font-semibold tabular-nums text-foreground">{formatDateAsLocale(client.estatisticas.ultimaCompraData) || "—"}</p>
+							</div>
+						</div>
+					</div>
+					<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-2 lg:justify-end">
+						<div className="flex items-baseline gap-2">
+							<ShoppingCart className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+							<div>
+								<p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Compras no período</p>
+								<p className="text-sm font-semibold tabular-nums text-foreground">{client.estatisticas.comprasQtdeTotal}</p>
+							</div>
+						</div>
+						<div className="flex items-baseline gap-2">
+							<BadgeDollarSign className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+							<div>
+								<p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Total comprado no período</p>
+								<p className="text-sm font-semibold tabular-nums text-foreground">{formatToMoney(client.estatisticas.comprasValorTotal)}</p>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -378,8 +643,11 @@ function getSegmentLayout(label: string): SegmentLayout {
 	return {};
 }
 
-function SegmentsPageMatrixRFM() {
-	const { data: rfmStats } = useRFMLabelledStats();
+function SegmentsPageMatrixRFM({ onOpenConfig }: { onOpenConfig: () => void }) {
+	const queryClient = useQueryClient();
+
+	const [syncMenuIsOpen, setSyncMenuIsOpen] = useState(false);
+	const { data: rfmStats, queryKey } = useRFMLabelledStats();
 
 	function formatDecimal(value: number, fractionDigits = 1) {
 		if (!Number.isFinite(value)) return "0";
@@ -390,17 +658,30 @@ function SegmentsPageMatrixRFM() {
 		}).format(value);
 	}
 
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
+
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between gap-2 flex-col lg:flex-row">
 				<div className="flex items-center gap-2">
 					<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
 					<h1 className="text-xs font-medium tracking-tight uppercase">MATRIZ RFM</h1>
 				</div>
-				<div className="px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-primary/80 text-[0.65rem] font-medium tracking-tight text-center">
-					<Info className="w-3 h-3 min-w-3 min-h-3 shrink-0" />
-					<span>Análise RFM dos últimos 12 meses. Passe o mouse no bloco para detalhes.</span>
+				<div className="flex items-center gap-2">
+					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={onOpenConfig}>
+						<Settings2 className="w-4 h-4 min-w-4 min-h-4" />
+						CONFIGURAR
+					</Button>
+					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setSyncMenuIsOpen(true)}>
+						<RefreshCcw className="w-4 h-4 min-w-4 min-h-4" />
+						SINCRONIZAR
+					</Button>
 				</div>
+			</div>
+			<div className="w-fit self-center px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-foreground/80 text-[0.65rem] font-medium tracking-tight text-center">
+				<Info className="w-3 h-3 min-w-3 min-h-3 shrink-0" />
+				<span>Análise RFM dos últimos 12 meses. Passe o mouse no bloco para detalhes.</span>
 			</div>
 			<AspectRatio ratio={1}>
 				<div className="grid grid-cols-5 grid-rows-5 w-full h-full gap-0.5">
@@ -508,6 +789,68 @@ function SegmentsPageMatrixRFM() {
 					})}
 				</div>
 			</AspectRatio>
+			{syncMenuIsOpen ? (
+				<SegmentsPageMatrixRFMSyncMenu
+					closeMenu={() => setSyncMenuIsOpen(false)}
+					callbacks={{
+						onMutate: handleOnMutate,
+						onSettled: handleOnSettled,
+					}}
+				/>
+			) : null}
 		</div>
+	);
+}
+
+type SegmentsPageMatrixRFMSyncMenuProps = {
+	closeMenu: () => void;
+	callbacks?: {
+		onMutate?: (variables: TSyncSegmentationsInput) => void;
+		onSuccess?: () => void;
+		onError?: (error: Error) => void;
+		onSettled?: () => void;
+	};
+};
+function SegmentsPageMatrixRFMSyncMenu({ closeMenu, callbacks }: SegmentsPageMatrixRFMSyncMenuProps) {
+	const [params, setParams] = useState<TSyncSegmentationsInput>({
+		runCampaigns: false,
+	});
+
+	const { mutate: handleSyncSegmentations, isPending } = useMutation({
+		mutationKey: ["sync-segmentations"],
+		mutationFn: syncSegmentations,
+		onMutate: (variables) => {
+			callbacks?.onMutate?.(variables);
+		},
+		onSuccess: (data) => {
+			toast.success(data.message);
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+		onSettled: async () => {
+			callbacks?.onSettled?.();
+		},
+	});
+	return (
+		<ResponsiveMenuV2
+			menuTitle="SINCRONIZAR SEGMENTAÇÕES"
+			menuDescription="Sincronize as segmentações RFM para atualizar os dados da matriz."
+			menuActionButtonText="SINCRONIZAR"
+			menuCancelButtonText="CANCELAR"
+			actionFunction={() => handleSyncSegmentations({ runCampaigns: false })}
+			closeMenu={closeMenu}
+			actionIsLoading={isPending}
+			stateIsLoading={false}
+			stateError={null}
+		>
+			<p className="text-sm text-muted-foreground">Esta ação irá recomputar as segmentações RFM de toda a sua base de clientes.</p>
+			<CheckboxInput
+				checked={params.runCampaigns}
+				labelTrue="DESEJO EXECUTAR AS CAMPANHAS"
+				labelFalse="DESEJO EXECUTAR AS CAMPANHAS"
+				handleChange={(value) => setParams({ ...params, runCampaigns: value })}
+			/>
+		</ResponsiveMenuV2>
 	);
 }

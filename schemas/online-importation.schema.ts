@@ -65,30 +65,54 @@ const OnlineSoftwareSaleItemSchema = z.object({
 		required_error: "Tipo não informado.",
 		invalid_type_error: "Tipo não válido para o tipo.",
 	}),
-	vfrete: z.string({
-		required_error: "Valor do frete não informado.",
-		invalid_type_error: "Tipo não válido para o valor do frete.",
-	}),
-	vseg: z.string({
-		required_error: "Valor do seguro não informado.",
-		invalid_type_error: "Tipo não válido para o valor do seguro.",
-	}),
-	voutro: z.string({
-		required_error: "Valor de outros não informado.",
-		invalid_type_error: "Tipo não válido para o valor de outros.",
-	}),
-	vipi: z.string({
-		required_error: "Valor do IPI não informado.",
-		invalid_type_error: "Tipo não válido para o valor do IPI.",
-	}),
-	vicmsst: z.string({
-		required_error: "Valor do ICMS ST não informado.",
-		invalid_type_error: "Tipo não válido para o valor do ICMS ST.",
-	}),
-	vicms_desonera: z.string({
-		required_error: "Valor do ICMS desonerado não informado.",
-		invalid_type_error: "Tipo não válido para o valor do ICMS desonerado.",
-	}),
+	vfrete: z
+		.string({
+			required_error: "Valor do frete não informado.",
+			invalid_type_error: "Tipo não válido para o valor do frete.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => value ?? "0.00"),
+	vseg: z
+		.string({
+			required_error: "Valor do seguro não informado.",
+			invalid_type_error: "Tipo não válido para o valor do seguro.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => value ?? "0.00"),
+	voutro: z
+		.string({
+			required_error: "Valor de outros não informado.",
+			invalid_type_error: "Tipo não válido para o valor de outros.",
+		})
+		.nullable()
+		.optional()
+		.transform((value) => value ?? "0.00"),
+	vipi: z
+		.string({
+			required_error: "Valor do IPI não informado.",
+			invalid_type_error: "Tipo não válido para o valor do IPI.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => value ?? "0.00"),
+	vicmsst: z
+		.string({
+			required_error: "Valor do ICMS ST não informado.",
+			invalid_type_error: "Tipo não válido para o valor do ICMS ST.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => value ?? "0.00"),
+	vicms_desonera: z
+		.string({
+			required_error: "Valor do ICMS desonerado não informado.",
+			invalid_type_error: "Tipo não válido para o valor do ICMS desonerado.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => value ?? "0.00"),
 	ncm: z.string({
 		required_error: "NCM não informado.",
 		invalid_type_error: "Tipo não válido para o NCM.",
@@ -145,6 +169,13 @@ export const OnlineSoftwareSaleImportationSchema = z.object({
 		required_error: "Movimento não informado.",
 		invalid_type_error: "Tipo não válido para o movimento.",
 	}),
+	datahora: z
+		.string({
+			required_error: "Data e hora não informada.",
+			invalid_type_error: "Tipo não válido para a data e hora.",
+		})
+		.optional()
+		.nullable(),
 	data: z.string({
 		required_error: "Data não informada.",
 		invalid_type_error: "Tipo não válido para a data.",

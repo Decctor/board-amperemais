@@ -15,10 +15,7 @@ export function ContentSectionHeader({ title, href, linkText = "Explorar tudo" }
 				<h2 className="text-lg font-bold tracking-tight">{title}</h2>
 			</div>
 			{href && (
-				<Link
-					href={href}
-					className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-				>
+				<Link href={href} className="flex items-center gap-1 text-xs font-medium text-foreground hover:text-foreground/80 transition-colors">
 					{linkText}
 					<ChevronRight className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
 				</Link>

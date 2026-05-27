@@ -226,7 +226,7 @@ export function AudioPlayer({ audioUrl, className, variant = "received", onDownl
 
 				{/* Time Display */}
 				<div
-					className={cn("flex items-center justify-between text-[10px] font-medium px-0.5", variant === "sent" ? "text-green-100/80" : "text-primary")}
+					className={cn("flex items-center justify-between text-[10px] font-medium px-0.5", variant === "sent" ? "text-green-100/80" : "text-foreground")}
 				>
 					<span>{formatTime(currentTime)}</span>
 					<span>{formatTime(duration)}</span>

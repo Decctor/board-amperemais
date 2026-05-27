@@ -1,7 +1,11 @@
 import { db } from "@/services/drizzle";
 import { clients, goals, goalsSellers, partners, products, saleItems, sales, sellers } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
+import "dayjs/locale/pt-br";
 import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, lte, notInArray, or, sql, sum } from "drizzle-orm";
+import type { TReportFrequency, TReportTimelinePoint } from "./types";
+
+dayjs.locale("pt-br");
 
 type PeriodParams = {
 	after: Date;
@@ -485,5 +489,93 @@ export async function getProductGroupRankings({ after, before, organizacaoId }: 
 		grupo: group.grupo || "N/A",
 		quantidade: group.quantidade ? Number(group.quantidade) : 0,
 		faturamento: group.total ? Number(group.total) : 0,
+	}));
+}
+
+type GetSalesTimelineForReportParams = PeriodParams & {
+	frequency: TReportFrequency;
+};
+
+function getDailyTimelineLabels(after: Date) {
+	return Array.from({ length: 24 }, (_, hour) => {
+		const label = `${String(hour).padStart(2, "0")}h`;
+		const bucket = dayjs(after).hour(hour).startOf("hour");
+		return { key: bucket.toISOString(), label };
+	});
+}
+
+function getWeeklyTimelineLabels(after: Date) {
+	const weekdayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+	return Array.from({ length: 7 }, (_, index) => {
+		const bucket = dayjs(after).add(index, "day").startOf("day");
+		return { key: bucket.toISOString(), label: weekdayLabels[index] };
+	});
+}
+
+function getDateRangeTimelineLabels(after: Date, before: Date) {
+	const totalDays = dayjs(before).startOf("day").diff(dayjs(after).startOf("day"), "day") + 1;
+	return Array.from({ length: totalDays }, (_, index) => {
+		const bucket = dayjs(after).add(index, "day").startOf("day");
+		return { key: bucket.toISOString(), label: bucket.format("DD") };
+	});
+}
+
+function getTimelineBuckets({ frequency, after, before }: { frequency: TReportFrequency; after: Date; before: Date }) {
+	if (frequency === "daily") return getDailyTimelineLabels(after);
+	if (frequency === "weekly") return getWeeklyTimelineLabels(after);
+	return getDateRangeTimelineLabels(after, before);
+}
+
+function getTimelineGroupingSql(frequency: TReportFrequency) {
+	if (frequency === "daily") return sql<string>`date_trunc('hour', ${sales.dataVenda})::text`;
+	return sql<string>`date_trunc('day', ${sales.dataVenda})::text`;
+}
+
+async function getTimelineTotals({
+	after,
+	before,
+	organizacaoId,
+	frequency,
+}: {
+	after: Date;
+	before: Date;
+	organizacaoId: string;
+	frequency: TReportFrequency;
+}) {
+	const bucketSql = getTimelineGroupingSql(frequency);
+
+	const rows = await db
+		.select({
+			bucket: bucketSql,
+			total: sum(sales.valorTotal),
+		})
+		.from(sales)
+		.where(and(eq(sales.organizacaoId, organizacaoId), eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before)))
+		.groupBy(bucketSql)
+		.orderBy(bucketSql);
+
+	return new Map(rows.map((row) => [dayjs(row.bucket).toISOString(), row.total ? Number(row.total) : 0]));
+}
+
+export async function getSalesTimelineForReport({
+	after,
+	before,
+	comparisonAfter,
+	comparisonBefore,
+	organizacaoId,
+	frequency,
+}: GetSalesTimelineForReportParams): Promise<TReportTimelinePoint[]> {
+	const [currentTotals, previousTotals] = await Promise.all([
+		getTimelineTotals({ after, before, organizacaoId, frequency }),
+		getTimelineTotals({ after: comparisonAfter, before: comparisonBefore, organizacaoId, frequency }),
+	]);
+
+	const currentBuckets = getTimelineBuckets({ frequency, after, before });
+	const previousBuckets = getTimelineBuckets({ frequency, after: comparisonAfter, before: comparisonBefore });
+
+	return currentBuckets.map((bucket, index) => ({
+		label: bucket.label,
+		current: currentTotals.get(bucket.key) ?? 0,
+		previous: previousTotals.get(previousBuckets[index]?.key ?? "") ?? 0,
 	}));
 }

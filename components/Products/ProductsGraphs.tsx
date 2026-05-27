@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useProductsGraph } from "@/lib/queries/products";
-import type { TGetProductsGraphInput } from "@/pages/api/products/stats/graph";
+import type { TGetProductsGraphInput } from "@/app/api/products/stats/graph/route";
 import { BadgeDollarSign, CirclePlus, Package, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
@@ -84,7 +84,7 @@ export default function ProductsGraphs({ periodAfter, periodBefore }: ProductsGr
 
 	return (
 		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-primary/20 flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">GRÁFICO DE PRODUTOS</h1>
 					<div className="flex items-center gap-2">

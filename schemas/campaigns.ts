@@ -163,6 +163,9 @@ export const CampaignFilterNodeSchema: z.ZodType<any> = z.lazy(() =>
 );
 export type TCampaignFilterNode = z.infer<typeof CampaignFilterNodeSchema>;
 
+// Explicit recursive TS types. `CampaignFilterNodeSchema` is a `z.lazy` so its inferred
+// type collapses to `any`; these mirror the validated shape so state helpers and UI code
+// get real type safety while Zod still owns runtime validation.
 export type TCampaignFilterTreeNode =
 	| {
 			id?: string;
@@ -353,10 +356,13 @@ export const CampaignSchema = z.object({
 		.default(0),
 	frequenciaIntervaloMedida: TimeDurationUnitsEnum.optional().nullable().default("DIAS"),
 	// Whatsapp specific
-	whatsappConexaoTelefoneId: z.string({
-		required_error: "ID da conexão do WhatsApp não informado.",
-		invalid_type_error: "Tipo não válido para o ID da conexão do WhatsApp.",
-	}),
+	whatsappConexaoTelefoneId: z
+		.string({
+			required_error: "ID da conexão do WhatsApp não informado.",
+			invalid_type_error: "Tipo não válido para o ID da conexão do WhatsApp.",
+		})
+		.optional()
+		.nullable(),
 	whatsappTemplateId: z.string({
 		required_error: "ID do template do WhatsApp não informado.",
 		invalid_type_error: "Tipo não válido para o ID do template do WhatsApp.",
@@ -439,5 +445,7 @@ export const CampaignStateSchema = z.object({
 	filtros: CampaignFiltersSchema.optional().nullable(),
 });
 export type TCampaignState = Omit<z.infer<typeof CampaignStateSchema>, "filtros"> & {
+	// Override with the explicit recursive tree type so state helpers stay type-safe.
+	// The Zod schema still validates runtime shape identically.
 	filtros: TCampaignFiltersTree;
 };

@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { useSellersRanking } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
-import type { TGetSellersRankingInput } from "@/pages/api/sellers/stats/ranking";
+import type { TGetSellersRankingInput } from "@/app/api/sellers/stats/ranking/route";
 import { ArrowDown, ArrowUp, BadgeDollarSign, CirclePlus, Crown, Minus, Target, Ticket, TrendingUp } from "lucide-react";
 import { useState } from "react";
 
@@ -36,7 +36,7 @@ export default function SellersRanking({ periodAfter, periodBefore, comparingPer
 	};
 	return (
 		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-primary/20 flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">{rankingBy ? RANKING_LABEL_MAP[rankingBy] : "TOP 10 VENDEDORES"}</h1>
 					<div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export default function SellersRanking({ periodAfter, periodBefore, comparingPer
 							<div
 								key={seller.vendedorId}
 								className={cn(
-									"bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-3 shadow-2xs",
+									"bg-card border-border flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-3 shadow-2xs",
 									seller.rank === 1 && "border-yellow-500/50 bg-yellow-500/5",
 									seller.rank === 2 && "border-gray-400/50 bg-gray-400/5",
 									seller.rank === 3 && "border-orange-600/50 bg-orange-600/5",
@@ -175,7 +175,7 @@ export default function SellersRanking({ periodAfter, periodBefore, comparingPer
 									<div className="flex items-center gap-3">
 										{rankingBy === "sales-total-value" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.totalRevenue)}</p>
 												</div>
@@ -186,7 +186,7 @@ export default function SellersRanking({ periodAfter, periodBefore, comparingPer
 										) : null}
 										{rankingBy === "sales-total-qty" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(seller.totalSalesQty)}</p>
 												</div>
@@ -197,7 +197,7 @@ export default function SellersRanking({ periodAfter, periodBefore, comparingPer
 										) : null}
 										{rankingBy === "average-ticket" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<Ticket className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(seller.averageTicket)}</p>
 												</div>

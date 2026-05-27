@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useProductsRanking } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
-import type { TGetProductsRankingInput } from "@/pages/api/products/stats/ranking";
+import type { TGetProductsRankingInput } from "@/app/api/products/stats/ranking/route";
 import { ArrowDown, ArrowUp, BadgeDollarSign, CirclePlus, Code, Crown, Diamond, Minus, ShoppingCart, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -35,7 +35,7 @@ export default function ProductsRanking({ periodAfter, periodBefore, comparingPe
 
 	return (
 		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-primary/20 flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE PRODUTOS - TOP 10</h1>
 					<div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export default function ProductsRanking({ periodAfter, periodBefore, comparingPe
 							<div
 								key={product.produtoId}
 								className={cn(
-									"bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs",
+									"bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs",
 									product.rank === 1 && "border-yellow-500/50 bg-yellow-500/5",
 									product.rank === 2 && "border-gray-400/50 bg-gray-400/5",
 									product.rank === 3 && "border-orange-600/50 bg-orange-600/5",
@@ -124,7 +124,7 @@ export default function ProductsRanking({ periodAfter, periodBefore, comparingPe
 											{product.imagemCapaUrl ? (
 												<Image src={product.imagemCapaUrl} alt="Imagem de capa do produto" fill={true} objectFit="cover" />
 											) : (
-												<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+												<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 													<ShoppingCart className="h-4 w-4" />
 												</div>
 											)}
@@ -172,14 +172,14 @@ export default function ProductsRanking({ periodAfter, periodBefore, comparingPe
 											</div>
 											<div className="flex items-center gap-1">
 												<Code className="w-4 h-4 min-w-4 min-h-4" />
-												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.codigo}</h1>
+												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.codigo}</h1>
 											</div>
 										</div>
 									</div>
 									<div className="flex items-center gap-3">
 										{rankingBy === "sales-total-value" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(product.totalRevenue)}</p>
 												</div>
@@ -190,7 +190,7 @@ export default function ProductsRanking({ periodAfter, periodBefore, comparingPe
 										) : null}
 										{rankingBy === "sales-total-qty" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(product.totalQuantity)}</p>
 												</div>
@@ -201,7 +201,7 @@ export default function ProductsRanking({ periodAfter, periodBefore, comparingPe
 										) : null}
 										{rankingBy === "sales-total-margin" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<TrendingUp className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(product.marginPercentage)}%</p>
 												</div>

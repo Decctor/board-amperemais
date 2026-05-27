@@ -169,12 +169,12 @@ type CommunityCourseCardProps = {
 };
 function CommunityCourseCard({ communityCourse, handleEditClick }: CommunityCourseCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full aspect-square relative rounded-lg overflow-hidden">
 				{communityCourse.thumbnailUrl ? (
 					<Image src={communityCourse.thumbnailUrl} alt={communityCourse.titulo} fill className="object-cover" />
 				) : (
-					<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+					<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 						<VideoIcon className="w-6 h-6" />
 					</div>
 				)}
@@ -188,7 +188,7 @@ function CommunityCourseCard({ communityCourse, handleEditClick }: CommunityCour
 			</div>
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1">
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BsCalendarPlus className="w-3 min-w-3 h-3 min-h-3" />
 						<p className="text-xs font-medium tracking-tight uppercase">{formatDateAsLocale(communityCourse.dataInsercao)}</p>
 					</div>
@@ -216,12 +216,12 @@ type CommunityMaterialCardProps = {
 };
 function CommunityMaterialCard({ communityMaterial, handleEditClick }: CommunityMaterialCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full aspect-square relative rounded-lg overflow-hidden">
 				{communityMaterial.capaUrl ? (
 					<Image src={communityMaterial.capaUrl} alt={communityMaterial.titulo} fill className="object-cover" />
 				) : (
-					<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+					<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 						<FileText className="w-6 h-6" />
 					</div>
 				)}
@@ -235,7 +235,7 @@ function CommunityMaterialCard({ communityMaterial, handleEditClick }: Community
 			</div>
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1">
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BsCalendarPlus className="w-3 min-w-3 h-3 min-h-3" />
 						<p className="text-xs font-medium tracking-tight uppercase">{formatDateAsLocale(communityMaterial.dataInsercao)}</p>
 					</div>
@@ -261,7 +261,7 @@ function EmptyState({ title, description }: { title: string; description: string
 	return (
 		<div className="w-full self-center flex flex-col items-center justify-center py-20 text-center">
 			<div className="rounded-full bg-primary/10 p-4 mb-4">
-				<svg className="w-8 h-8 text-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+				<svg className="w-8 h-8 text-foreground/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
 					<title>{title}</title>
 					<path
 						strokeLinecap="round"

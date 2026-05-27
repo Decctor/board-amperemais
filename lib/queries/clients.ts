@@ -1,13 +1,13 @@
-import type { TGetClientsInput, TGetClientsOutput } from "@/pages/api/clients";
-import type { TClientByLookupInput, TClientByLookupOutput } from "@/pages/api/clients/lookup";
-import type { TSearchClientsOutput } from "@/pages/api/clients/search";
-import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/pages/api/clients/stats/by-client";
-import type { TGetClientsGraphInput, TGetClientsGraphOutput } from "@/pages/api/clients/stats/graph";
-import type { TGetClientsOverallStatsInput, TGetClientsOverallStatsOutput } from "@/pages/api/clients/stats/overall";
-import type { TGetClientsRankingInput, TGetClientsRankingOutput } from "@/pages/api/clients/stats/ranking";
+import type { TGetClientsInput, TGetClientsOutput } from "@/app/api/clients/route";
+import type { TClientByLookupInput, TClientByLookupOutput } from "@/app/api/clients/lookup/route";
+import type { TSearchClientsOutput } from "@/app/api/clients/search/route";
+import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/app/api/clients/stats/by-client/route";
+import type { TGetClientsGraphInput, TGetClientsGraphOutput } from "@/app/api/clients/stats/graph/route";
+import type { TGetClientsOverallStatsInput, TGetClientsOverallStatsOutput } from "@/app/api/clients/stats/overall/route";
+import type { TGetClientsRankingInput, TGetClientsRankingOutput } from "@/app/api/clients/stats/ranking/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
 
 async function fetchClients(input: TGetClientsInput) {
@@ -184,9 +184,9 @@ export function useClientByLookup({ initialParams }: UseClientByLookupParams) {
 		clientId: initialParams?.clientId || null,
 	});
 
-	function updateParams(newParams: Partial<TClientByLookupInput>) {
+	const updateParams = useCallback((newParams: Partial<TClientByLookupInput>) => {
 		setParams((prevParams) => ({ ...prevParams, ...newParams }));
-	}
+	}, []);
 	const debouncedInput = useDebounceMemo(
 		{
 			orgId: params.orgId,

@@ -9,6 +9,8 @@ import {
 	fiscalDocumentEnvironmentEnum,
 	fiscalDocumentLifecycleStatusEnum,
 	financialTransactionTypeEnum,
+	fiscalDocumentEnvironmentEnum,
+	fiscalDocumentLifecycleStatusEnum,
 	fiscalDocumentStatusEnum,
 	fiscalDocumentTypeEnum,
 	paymentMethodEnum,

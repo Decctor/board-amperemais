@@ -36,7 +36,7 @@ function TextInput({
 	return (
 		<div className={`flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
 			{showLabel ? (
-				<Label htmlFor={inputIdentifier} className={cn("text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+				<Label htmlFor={inputIdentifier} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
 					{required ? <span className="text-red-500">*</span> : null}
 				</Label>
@@ -55,7 +55,7 @@ function TextInput({
 				type={inputType}
 				placeholder={placeholder}
 				className={cn(
-					"w-full rounded-md border border-primary/20 p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-primary",
+					"w-full rounded-md border border-border p-3 text-sm shadow-xs outline-hidden duration-500 ease-in-out placeholder:italic focus:border-border",
 					holderClassName,
 				)}
 			/>

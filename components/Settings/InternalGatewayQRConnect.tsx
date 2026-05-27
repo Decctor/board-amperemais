@@ -1,18 +1,15 @@
 "use client";
 
 import type { TGetInternalGatewayStatusOutput } from "@/app/api/whatsapp-connections/internal-gateway/[connectionId]/status/route";
-import type { TInitializeInternalGatewayInput, TInitializeInternalGatewayOutput } from "@/app/api/whatsapp-connections/internal-gateway/route";
-import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
 import { initializeInternalGatewayConnection } from "@/lib/mutations/internal-gateway";
+import type { ConnectionStatus } from "@/lib/whatsapp/internal-gateway";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { ArrowLeft, CheckCircle2, Loader2, QrCode, RefreshCw, Smartphone } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { CheckCircle2, Loader2, Smartphone } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import TextInput from "../Inputs/TextInput";
 
@@ -31,7 +28,6 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 	const [connectionId, setConnectionId] = useState<string | null>(null);
 	const [qrCode, setQrCode] = useState<string | null>(null);
 
-	// Initialize connection mutation
 	const { mutate: initializeInternalGatewayConnectionMutation, isPending: isInitializingInternalGatewayConnection } = useMutation({
 		mutationFn: initializeInternalGatewayConnection,
 		onSuccess: (data) => {
@@ -45,7 +41,6 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 		},
 	});
 
-	// Poll connection status
 	const statusQuery = useQuery({
 		queryKey: ["internal-gateway-status", connectionId],
 		queryFn: async () => {
@@ -59,21 +54,20 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 			if (data?.data?.status === "connected") {
 				return false;
 			}
-			return 3000; // Poll every 3 seconds
+			return 3000;
 		},
 	});
 
-	// Handle status changes
+	const liveStatus = statusQuery.data?.data?.status as ConnectionStatus | undefined;
+
 	useEffect(() => {
 		if (statusQuery.data?.data) {
 			const { status, qrCode: newQrCode } = statusQuery.data.data;
 
-			// Update QR code if it changed
 			if (newQrCode && newQrCode !== qrCode) {
 				setQrCode(newQrCode);
 			}
 
-			// Handle connected status
 			if (status === "connected") {
 				setStep("success");
 				queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] });
@@ -86,119 +80,152 @@ export function InternalGatewayQRConnect({ onBack, onSuccess }: InternalGatewayQ
 		onSuccess();
 	}, [onSuccess]);
 
-	// Form step
-	if (step === "form") {
-		return (
-			<Card>
-				<CardHeader>
-					<div className="flex items-center gap-2">
-						<Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
-							<ArrowLeft className="h-4 w-4" />
-						</Button>
-						<div>
-							<CardTitle className="text-base">Conectar via QR Code</CardTitle>
-							<CardDescription className="text-xs">Preencha as informações do telefone</CardDescription>
-						</div>
-					</div>
-				</CardHeader>
-				<CardContent>
-					<div className="w-full flex flex-col gap-1.5">
-						<TextInput
-							label="Nome do telefone"
-							placeholder="Preencha o nome a ser dado à conexão..."
-							value={phoneName}
-							handleChange={(value) => setPhoneName(value)}
-							disabled={isInitializingInternalGatewayConnection}
-						/>
-						<TextInput
-							label="Número do telefone"
-							placeholder="Preencha o número do telefone a ser conectado..."
-							value={phoneNumber}
-							handleChange={(value) => setPhoneNumber(value)}
-							disabled={isInitializingInternalGatewayConnection}
-						/>
-						<LoadingButton
-							className="w-full"
-							loading={isInitializingInternalGatewayConnection}
-							disabled={isInitializingInternalGatewayConnection || !phoneName.trim() || !phoneNumber.trim()}
-							onClick={() => initializeInternalGatewayConnectionMutation({ phoneName, phoneNumber })}
-						>
-							GERAR QR CODE
-						</LoadingButton>
-					</div>
-				</CardContent>
-			</Card>
-		);
-	}
+	const submitForm = useCallback(() => {
+		const name = phoneName.trim();
+		const number = phoneNumber.trim();
+		if (!name || !number) {
+			toast.error("Preencha o nome e o número do telefone.");
+			return;
+		}
+		initializeInternalGatewayConnectionMutation({ phoneName: name, phoneNumber: number });
+	}, [phoneName, phoneNumber, initializeInternalGatewayConnectionMutation]);
 
-	// QR code step
-	if (step === "qr") {
-		return (
-			<Card>
-				<CardHeader>
-					<div className="flex items-center gap-2">
-						<Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
-							<ArrowLeft className="h-4 w-4" />
+	const { menuTitle, menuDescription } = useMemo(() => {
+		if (step === "form") {
+			return {
+				menuTitle: "CONECTAR VIA QR CODE",
+				menuDescription: "Preencha as informações do telefone para gerar o código.",
+			};
+		}
+		if (step === "success") {
+			return {
+				menuTitle: "WHATSAPP CONECTADO",
+				menuDescription: "A conexão foi estabelecida com sucesso.",
+			};
+		}
+		if (liveStatus === "disconnected") {
+			return {
+				menuTitle: "TENTANDO CONEXÃO",
+				menuDescription: "Aguarde enquanto estabelecemos a sessão após o escaneamento.",
+			};
+		}
+		if (liveStatus === "connecting") {
+			return {
+				menuTitle: "CONECTANDO",
+				menuDescription: "Finalizando a vinculação com o WhatsApp.",
+			};
+		}
+		return {
+			menuTitle: "ESCANEIE O QR CODE",
+			menuDescription: "Abra o WhatsApp no seu celular e escaneie o código.",
+		};
+	}, [step, liveStatus]);
+
+	const showQrPhase = liveStatus === "qr" || (liveStatus === undefined && !!qrCode);
+	const showPairingFeedback = liveStatus === "disconnected" || liveStatus === "connecting";
+
+	const actionIsLoading = step === "form" ? isInitializingInternalGatewayConnection : step === "qr" ? statusQuery.isFetching : false;
+
+	return (
+		<ResponsiveMenuV2
+			menuTitle={menuTitle}
+			menuDescription={menuDescription}
+			menuCancelButtonText="Fechar"
+			menuActionButtonText={step === "form" ? "GERAR QR CODE" : "Atualizar QR Code"}
+			actionFunction={step === "form" ? submitForm : () => void statusQuery.refetch()}
+			closeMenu={onBack}
+			stateIsLoading={false}
+			actionIsLoading={actionIsLoading}
+			dialogVariant="fit"
+			drawerVariant="md"
+			dialogContentClassName="w-[min(100vw-2rem,28rem)] max-w-[min(100vw-2rem,28rem)]"
+			drawerContentClassName="max-h-[90dvh]"
+			successContent={
+				step === "success" ? (
+					<div className="flex flex-col items-center gap-4 py-4 text-center">
+						<div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
+							<CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-500" />
+						</div>
+						<div className="space-y-1">
+							<h3 className="text-lg font-semibold">Conexão estabelecida!</h3>
+							<p className="text-muted-foreground text-sm">Seu WhatsApp foi conectado com sucesso.</p>
+						</div>
+						<Button className="mt-2" onClick={handleSuccessClose}>
+							Concluir
 						</Button>
-						<div>
-							<CardTitle className="text-base">Escaneie o QR Code</CardTitle>
-							<CardDescription className="text-xs">Abra o WhatsApp no seu celular e escaneie</CardDescription>
-						</div>
 					</div>
-				</CardHeader>
-				<CardContent className="flex flex-col items-center gap-4">
-					{qrCode ? (
-						<div className="relative">
-							<div className="rounded-lg border bg-white p-4">
-								<img src={qrCode} alt="QR Code para conectar WhatsApp" className="h-64 w-64" />
-							</div>
-							{statusQuery.isFetching && (
-								<div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-lg">
-									<Loader2 className="h-8 w-8 animate-spin text-primary" />
-								</div>
-							)}
+				) : undefined
+			}
+			dialogShowFooter={!liveStatus}
+		>
+			{step === "form" && (
+				<div className="flex w-full min-w-0 flex-col gap-3 px-1">
+					<TextInput
+						label="Nome do telefone"
+						placeholder="Preencha o nome a ser dado à conexão..."
+						value={phoneName}
+						handleChange={(value) => setPhoneName(value)}
+						disabled={isInitializingInternalGatewayConnection}
+					/>
+					<TextInput
+						label="Número do telefone"
+						placeholder="Preencha o número do telefone a ser conectado..."
+						value={phoneNumber}
+						handleChange={(value) => setPhoneNumber(value)}
+						disabled={isInitializingInternalGatewayConnection}
+					/>
+				</div>
+			)}
+
+			{step === "qr" && (
+				<div className="flex w-full min-w-0 flex-col items-center gap-4 px-1 py-2">
+					{showPairingFeedback ? (
+						<div className="flex min-h-64 w-full flex-col items-center justify-center gap-4 px-4 text-center">
+							<Loader2 className="text-foreground h-10 w-10 animate-spin" />
+							<p className="text-foreground text-sm font-bold tracking-wide uppercase">{liveStatus === "connecting" ? "CONECTANDO" : "TENTANDO CONEXÃO"}</p>
+							<p className="text-muted-foreground max-w-sm text-xs">
+								{liveStatus === "connecting"
+									? "Sincronizando com o WhatsApp. Isso costuma levar poucos segundos."
+									: "Reestabelecendo a sessão após o escaneamento do QR Code."}
+							</p>
 						</div>
+					) : showQrPhase ? (
+						<>
+							<div className="relative">
+								{qrCode ? (
+									<div className="rounded-lg border bg-white p-4">
+										<img src={qrCode} alt="QR Code para conectar WhatsApp" className="h-56 w-56 sm:h-64 sm:w-64" />
+									</div>
+								) : (
+									<div className="flex h-56 w-56 items-center justify-center rounded-lg border bg-muted sm:h-64 sm:w-64">
+										<Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+									</div>
+								)}
+								{statusQuery.isFetching && qrCode && (
+									<div className="absolute inset-0 flex items-center justify-center rounded-lg bg-white/50">
+										<Loader2 className="text-foreground h-8 w-8 animate-spin" />
+									</div>
+								)}
+							</div>
+							<div className="text-muted-foreground flex items-center gap-2 text-sm">
+								<Smartphone className="h-4 w-4 shrink-0" />
+								<span>Aguardando escaneamento...</span>
+							</div>
+							<div className="text-muted-foreground text-center text-xs leading-relaxed">
+								<p>1. Abra o WhatsApp no seu celular</p>
+								<p>2. Toque em Menu ou Configurações</p>
+								<p>3. Toque em &quot;Aparelhos conectados&quot;</p>
+								<p>4. Toque em &quot;Conectar um aparelho&quot;</p>
+								<p>5. Aponte seu celular para esta tela</p>
+							</div>
+						</>
 					) : (
-						<div className="flex h-64 w-64 items-center justify-center rounded-lg border bg-muted">
-							<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+						<div className="flex min-h-64 w-full items-center justify-center">
+							<Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
 						</div>
 					)}
-
-					<div className="flex items-center gap-2 text-sm text-muted-foreground">
-						<Smartphone className="h-4 w-4" />
-						<span>Aguardando escaneamento...</span>
-					</div>
-
-					<div className="text-center text-xs text-muted-foreground">
-						<p>1. Abra o WhatsApp no seu celular</p>
-						<p>2. Toque em Menu ou Configurações</p>
-						<p>3. Toque em &quot;Aparelhos conectados&quot;</p>
-						<p>4. Toque em &quot;Conectar um aparelho&quot;</p>
-						<p>5. Aponte seu celular para esta tela</p>
-					</div>
-
-					<Button variant="outline" size="sm" onClick={() => statusQuery.refetch()} disabled={statusQuery.isFetching}>
-						<RefreshCw className={`h-4 w-4 mr-2 ${statusQuery.isFetching ? "animate-spin" : ""}`} />
-						Atualizar QR Code
-					</Button>
-				</CardContent>
-			</Card>
-		);
-	}
-
-	// Success step
-	return (
-		<Card>
-			<CardContent className="flex flex-col items-center gap-4 py-8">
-				<div className="rounded-full bg-green-100 p-3">
-					<CheckCircle2 className="h-8 w-8 text-green-600" />
 				</div>
-				<div className="text-center">
-					<h3 className="font-semibold">Conexão estabelecida!</h3>
-					<p className="text-sm text-muted-foreground">Seu WhatsApp foi conectado com sucesso.</p>
-				</div>
-				<Button onClick={handleSuccessClose}>Concluir</Button>
-			</CardContent>
-		</Card>
+			)}
+		</ResponsiveMenuV2>
 	);
 }

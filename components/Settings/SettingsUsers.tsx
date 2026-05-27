@@ -50,7 +50,7 @@ export default function SettingsUsers({ user, membership }: SettingsUsersProps) 
 				</div>
 			</div>
 			{pendingInvitations && pendingInvitations.length > 0 ? (
-				<div className="w-full flex flex-col gap-2 p-3 bg-card border-primary/20 border rounded-xl">
+				<div className="w-full flex flex-col gap-2 p-3 bg-card border-border border rounded-xl">
 					<div className="flex items-center gap-2">
 						<h2 className="text-xs font-bold tracking-tight uppercase text-muted-foreground">CONVITES PENDENTES</h2>
 					</div>
@@ -59,7 +59,7 @@ export default function SettingsUsers({ user, membership }: SettingsUsersProps) 
 						{pendingInvitations.map((invitation) => (
 							<div key={invitation.id} className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
-									<div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
+									<div className="bg-primary/10 text-foreground flex h-8 w-8 items-center justify-center rounded-lg">
 										<Mail className="h-4 w-4" />
 									</div>
 									<div className="flex flex-col">
@@ -113,13 +113,13 @@ type UserCardProps = {
 };
 function UserCard({ user, handleClick, userHasEditPermission }: UserCardProps) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full")}>
+		<div className={cn("bg-card border-border flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full")}>
 			<div className="flex items-center justify-center">
 				<div className="relative w-20 h-20 lg:h-20 lg:w-20 lg:min-h-20 lg:min-w-20 overflow-hidden rounded-lg">
 					{user.avatarUrl ? (
 						<Image src={user.avatarUrl} alt={user.nome} fill={true} objectFit="cover" />
 					) : (
-						<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+						<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 							<UserRound className="h-6 w-6" />
 						</div>
 					)}
@@ -130,15 +130,15 @@ function UserCard({ user, handleClick, userHasEditPermission }: UserCardProps) {
 				<div className="w-full flex flex-items-center gap-1.5 grow flex-wrap">
 					<div className="flex items-center gap-1">
 						<Phone className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{user.telefone ?? "TELEFONE NÃO INFORMADO"}</h1>
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{user.telefone ?? "TELEFONE NÃO INFORMADO"}</h1>
 					</div>
 					<div className="flex items-center gap-1">
 						<Mail className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{user.email ?? "EMAIL NÃO INFORMADO"}</h1>
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{user.email ?? "EMAIL NÃO INFORMADO"}</h1>
 					</div>
 					<div className="flex items-center gap-1">
 						<Cake className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">
+						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">
 							{formatDateBirthdayAsLocale(user.dataNascimento, true) ?? "DATA DE NASCIMENTO NÃO INFORMADA"}
 						</h1>
 					</div>

@@ -1,4 +1,4 @@
-import type { TCreateRFMConfigInput, TCreateRFMConfigOutput, TUpdateRFMConfigInput, TUpdateRFMConfigOutput } from "@/pages/api/settings/rfm";
+import type { TCreateRFMConfigInput, TCreateRFMConfigOutput, TUpdateRFMConfigInput, TUpdateRFMConfigOutput } from "@/app/api/settings/rfm/route";
 import axios from "axios";
 
 export async function updateRFMConfig(info: TUpdateRFMConfigInput) {

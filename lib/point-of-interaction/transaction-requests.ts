@@ -18,12 +18,17 @@ export type TPoiTransactionRequestSummary = {
 		prizeId: string;
 		prizeValue: number;
 		prizeSaleValue: number;
+		prizeTitulo?: string | null;
+		prizeImageUrl?: string | null;
 	} | null;
 	resultadoProcessamento?: TCreatePointOfInteractionTransactionOutput["data"] | null;
 	statusPublico?: TPoiTransactionRequestStatusEnum;
 };
 
-export function buildPoiTransactionRequestSummary(input: TCreatePointOfInteractionTransactionRequestInput): TPoiTransactionRequestSummary {
+export function buildPoiTransactionRequestSummary(
+	input: TCreatePointOfInteractionTransactionRequestInput,
+	prizeInfo?: { titulo?: string | null; imagemCapaUrl?: string | null } | null,
+): TPoiTransactionRequestSummary {
 	return {
 		cliente: {
 			id: input.client.id ?? null,
@@ -46,6 +51,8 @@ export function buildPoiTransactionRequestSummary(input: TCreatePointOfInteracti
 				prizeId: input.sale.prizeRedemption.prizeId,
 				prizeValue: input.sale.prizeRedemption.prizeValue,
 				prizeSaleValue: input.sale.prizeRedemption.prizeSaleValue,
+				prizeTitulo: prizeInfo?.titulo ?? null,
+				prizeImageUrl: prizeInfo?.imagemCapaUrl ?? null,
 			}
 			: null,
 	};

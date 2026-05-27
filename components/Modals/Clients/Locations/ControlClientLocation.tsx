@@ -6,7 +6,7 @@ import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { getErrorMessage } from "@/lib/errors";
 import { updateClientLocation } from "@/lib/mutations/clients/locations";
 import { useClientLocationById } from "@/lib/queries/clients/locations";
-import type { TUpdateClientLocationInput } from "@/pages/api/clients/locations";
+import type { TUpdateClientLocationInput } from "@/app/api/clients/locations/route";
 import { useClientLocationState } from "@/state-hooks/use-client-location-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";

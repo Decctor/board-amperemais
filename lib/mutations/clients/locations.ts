@@ -3,7 +3,7 @@ import type {
 	TCreateClientLocationOutput,
 	TUpdateClientLocationInput,
 	TUpdateClientLocationOutput,
-} from "@/pages/api/clients/locations";
+} from "@/app/api/clients/locations/route";
 import axios from "axios";
 
 export async function createClientLocation(input: TCreateClientLocationInput) {

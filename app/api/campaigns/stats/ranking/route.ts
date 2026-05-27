@@ -1,9 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
-import { and, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -71,21 +72,38 @@ async function fetchRankingForPeriod({
 	});
 
 	// Build interaction conditions
-	const interactionConditions = [eq(interactions.organizacaoId, userOrgId), eq(interactions.tipo, "ENVIO-MENSAGEM")];
+	const interactionConditions = [
+		eq(interactions.organizacaoId, userOrgId),
+		eq(interactions.tipo, "ENVIO-MENSAGEM"),
+		inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
+	];
 	if (startDate) interactionConditions.push(gte(interactions.dataInsercao, startDate));
 	if (endDate) interactionConditions.push(lte(interactions.dataInsercao, endDate));
 
-	// Get interactions per campaign
+	// Get interactions per campaign grouped by statusEnvio to compute taxaEntrega/taxaLeitura
 	const interactionsData = await db
 		.select({
 			campanhaId: interactions.campanhaId,
+			statusEnvio: interactions.statusEnvio,
 			total: count(interactions.id),
 		})
 		.from(interactions)
 		.where(and(...interactionConditions))
-		.groupBy(interactions.campanhaId);
+		.groupBy(interactions.campanhaId, interactions.statusEnvio);
 
-	const interactionsMap = new Map(interactionsData.map((i) => [i.campanhaId, Number(i.total)]));
+	// Build map: campanhaId -> { enviados, entregues, lidos }
+	const interactionsMap = new Map<string, { enviados: number; entregues: number; lidos: number }>();
+	for (const row of interactionsData) {
+		if (!row.campanhaId) continue;
+		if (!interactionsMap.has(row.campanhaId)) {
+			interactionsMap.set(row.campanhaId, { enviados: 0, entregues: 0, lidos: 0 });
+		}
+		const entry = interactionsMap.get(row.campanhaId)!;
+		const n = Number(row.total);
+		entry.enviados += n;
+		if (row.statusEnvio === "ENTREGUE" || row.statusEnvio === "LIDO") entry.entregues += n;
+		if (row.statusEnvio === "LIDO") entry.lidos += n;
+	}
 
 	// Build conversion conditions
 	const conversionConditions = [eq(campaignConversions.organizacaoId, userOrgId)];
@@ -115,9 +133,12 @@ async function fetchRankingForPeriod({
 
 	// Build campaign stats
 	const campaignStats = allCampaigns.map((campaign) => {
-		const interacoes = interactionsMap.get(campaign.id) ?? 0;
+		const counts = interactionsMap.get(campaign.id) ?? { enviados: 0, entregues: 0, lidos: 0 };
+		const interacoes = counts.enviados;
 		const conversionData = conversionsMap.get(campaign.id) ?? { conversions: 0, revenue: 0 };
 		const taxaConversao = interacoes > 0 ? (conversionData.conversions / interacoes) * 100 : 0;
+		const taxaEntrega = interacoes > 0 ? (counts.entregues / interacoes) * 100 : 0;
+		const taxaLeitura = counts.entregues > 0 ? (counts.lidos / counts.entregues) * 100 : 0;
 
 		return {
 			campanhaId: campaign.id,
@@ -127,6 +148,8 @@ async function fetchRankingForPeriod({
 			conversoes: conversionData.conversions,
 			receita: conversionData.revenue,
 			taxaConversao: Math.round(taxaConversao * 100) / 100,
+			taxaEntrega: Math.round(taxaEntrega * 100) / 100,
+			taxaLeitura: Math.round(taxaLeitura * 100) / 100,
 		};
 	});
 
@@ -175,6 +198,8 @@ async function getCampaignRanking({ input, session }: { input: TGetCampaignRanki
 				conversoesComparison: null,
 				receitaComparison: null,
 				taxaConversaoComparison: null,
+				taxaEntregaComparison: null,
+				taxaLeituraComparison: null,
 			})),
 			message: "Ranking de campanhas recuperado com sucesso.",
 		};
@@ -198,6 +223,8 @@ async function getCampaignRanking({ input, session }: { input: TGetCampaignRanki
 				conversoes: item.conversoes,
 				receita: item.receita,
 				taxaConversao: item.taxaConversao,
+				taxaEntrega: item.taxaEntrega,
+				taxaLeitura: item.taxaLeitura,
 			},
 		]),
 	);
@@ -216,6 +243,8 @@ async function getCampaignRanking({ input, session }: { input: TGetCampaignRanki
 			conversoesComparison: comparisonData?.conversoes ?? null,
 			receitaComparison: comparisonData?.receita ?? null,
 			taxaConversaoComparison: comparisonData?.taxaConversao ?? null,
+			taxaEntregaComparison: comparisonData?.taxaEntrega ?? null,
+			taxaLeituraComparison: comparisonData?.taxaLeitura ?? null,
 		};
 	});
 

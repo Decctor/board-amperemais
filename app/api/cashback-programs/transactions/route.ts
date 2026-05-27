@@ -33,6 +33,15 @@ type TTransaction = {
 	saldoValorPosterior: number;
 	dataInsercao: Date;
 	expiracaoData: Date | null;
+	operadorVendedor: {
+		id: string;
+		nome: string;
+	} | null;
+	resgateRecompensa: {
+		id: string;
+		titulo: string;
+		imagemCapaUrl: string | null;
+	} | null;
 	cliente: {
 		id: string;
 		nome: string;
@@ -111,6 +120,19 @@ async function getCashbackProgramTransactions({
 		limit: input.limit,
 		offset: offset,
 		with: {
+			operadorVendedor: {
+				columns: {
+					id: true,
+					nome: true,
+				},
+			},
+			resgateRecompensa: {
+				columns: {
+					id: true,
+					titulo: true,
+					imagemCapaUrl: true,
+				},
+			},
 			cliente: {
 				columns: {
 					id: true,
@@ -120,24 +142,24 @@ async function getCashbackProgramTransactions({
 			venda: {
 				columns: {
 					id: true,
-					valorTotal:true,
-					canal:true, 
-					entregaModalidade:true,
+					valorTotal: true,
+					canal: true,
+					entregaModalidade: true,
 				},
 				with: {
 					vendedor: {
 						columns: {
-							id:true,
-							nome:true,
-						}
+							id: true,
+							nome: true,
+						},
 					},
 					parceiro: {
 						columns: {
-							id:true,
-							nome:true,
-						}
-					}
-				}
+							id: true,
+							nome: true,
+						},
+					},
+				},
 			},
 		},
 	});
@@ -151,6 +173,20 @@ async function getCashbackProgramTransactions({
 			saldoValorPosterior: t.saldoValorPosterior,
 			dataInsercao: t.dataInsercao,
 			expiracaoData: t.expiracaoData,
+
+			operadorVendedor: t.operadorVendedor
+				? {
+						id: t.operadorVendedor.id,
+						nome: t.operadorVendedor.nome,
+					}
+				: null,
+			resgateRecompensa: t.resgateRecompensa
+				? {
+						id: t.resgateRecompensa.id,
+						titulo: t.resgateRecompensa.titulo,
+						imagemCapaUrl: t.resgateRecompensa.imagemCapaUrl,
+					}
+				: null,
 			cliente: {
 				id: t.cliente.id,
 				nome: t.cliente.nome,
@@ -165,15 +201,15 @@ async function getCashbackProgramTransactions({
 							? {
 									id: t.venda.vendedor.id,
 									nome: t.venda.vendedor.nome,
-							  }
+								}
 							: null,
 						parceiro: t.venda.parceiro
 							? {
 									id: t.venda.parceiro.id,
 									nome: t.venda.parceiro.nome,
-							  }
+								}
 							: null,
-				  }
+					}
 				: null,
 		})),
 		transactionsMatched: total,

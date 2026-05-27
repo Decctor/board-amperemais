@@ -1,4 +1,4 @@
-import type { TStatsComparisonInput, TStatsComparisonOutput } from "@/pages/api/stats/comparison";
+import type { TStatsComparisonInput, TStatsComparisonOutput } from "@/app/api/stats/comparison/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -6,7 +6,9 @@ import { useState } from "react";
 
 async function fetchStatsComparison(input: TStatsComparisonInput) {
 	try {
-		const { data } = await axios.post("/api/stats/comparison", input);
+		const searchParams = new URLSearchParams();
+		searchParams.set("payload", JSON.stringify(input));
+		const { data } = await axios.get(`/api/stats/comparison?${searchParams.toString()}`);
 
 		return data.data as TStatsComparisonOutput;
 	} catch (error) {

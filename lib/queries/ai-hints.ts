@@ -1,25 +1,77 @@
-import type { TGenerateHintsOutput, TGetHintsOutput, TAIHint, TAIHintFeedbackType, TAIHintSubject } from "@/schemas/ai-hints";
+import type { TCheckAvailableAiHintsUsageOutput } from "@/app/api/ai-hints/check-avaliable-usage/route";
+import type { TGetHintsInput, TGetHintsOutput } from "@/app/api/ai-hints/route";
+import type { TAIHintFeedbackType } from "@/schemas/ai-hints";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect } from "react";
+import { useState } from "react";
 
 // ═══════════════════════════════════════════════════════════════
 // FETCH FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
 
-async function fetchHints(params: { assunto?: TAIHintSubject; status?: string; limite?: number }) {
+async function fetchHints(input: Exclude<TGetHintsInput, "id">) {
 	const searchParams = new URLSearchParams();
-	if (params.assunto) searchParams.set("assunto", params.assunto);
-	if (params.status) searchParams.set("status", params.status);
-	if (params.limite) searchParams.set("limite", params.limite.toString());
+	if (input.subject) searchParams.set("subject", input.subject);
+	if (input.status) searchParams.set("status", input.status);
+	if (input.limit) searchParams.set("limit", input.limit.toString());
 
 	const { data } = await axios.get<TGetHintsOutput>(`/api/ai-hints?${searchParams.toString()}`);
+	const defaultHints = data.data.default;
+	if (!defaultHints) throw new Error("Oops, houve um erro ao buscar as dicas.");
+	return defaultHints;
+}
+async function fetchHintById(input: Pick<TGetHintsInput, "id">) {
+	const { data } = await axios.get<TGetHintsOutput>(`/api/ai-hints?id=${input.id}`);
+	const hint = data.data.byId;
+	if (!hint) throw new Error("Dica não encontrada.");
+	return hint;
+}
+
+type UseHintsParams = {
+	initialParams?: Partial<Exclude<TGetHintsInput, "id">>;
+};
+export function useAIHints({ initialParams }: UseHintsParams = {}) {
+	const [params, setParams] = useState<Exclude<TGetHintsInput, "id">>({
+		subject: initialParams?.subject || undefined,
+		status: initialParams?.status || "active",
+		limit: initialParams?.limit || 5,
+	});
+	function updateParams(newParams: Partial<Exclude<TGetHintsInput, "id">>) {
+		setParams((prevParams) => ({ ...prevParams, ...newParams }));
+	}
+	return {
+		...useQuery({
+			queryKey: ["ai-hints", params],
+			queryFn: () => fetchHints(params),
+		}),
+		queryKey: ["ai-hints", params],
+		params,
+		updateParams,
+	};
+}
+export function useAIHintById({ id }: Pick<TGetHintsInput, "id">) {
+	return {
+		...useQuery({
+			queryKey: ["ai-hint-by-id", id],
+			queryFn: () => fetchHintById({ id }),
+		}),
+		queryKey: ["ai-hint-by-id", id],
+	};
+}
+
+async function checkAiHintsUsage() {
+	const { data } = await axios.get<TCheckAvailableAiHintsUsageOutput>("/api/ai-hints/check-avaliable-usage");
 	return data.data;
 }
 
-async function generateHints(params: { assunto: TAIHintSubject; contextoAdicional?: string }) {
-	const { data } = await axios.post<TGenerateHintsOutput>("/api/ai-hints/generate", params);
-	return data;
+export function useCheckAiHintsUsage() {
+	return {
+		...useQuery({
+			queryKey: ["ai-hints-usage"],
+			queryFn: checkAiHintsUsage,
+		}),
+		queryKey: ["ai-hints-usage"],
+	};
 }
 
 async function dismissHint(hintId: string) {
@@ -33,75 +85,6 @@ async function submitFeedback(params: { hintId: string; tipo: TAIHintFeedbackTyp
 		comentario: params.comentario,
 	});
 	return data;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// HOOKS
-// ═══════════════════════════════════════════════════════════════
-
-interface UseAIHintsParams {
-	assunto?: TAIHintSubject;
-	enabled?: boolean;
-	autoGenerate?: boolean;
-}
-
-export function useAIHints({ assunto, enabled = true, autoGenerate = true }: UseAIHintsParams = {}) {
-	const queryClient = useQueryClient();
-
-	const hintsQuery = useQuery({
-		queryKey: ["ai-hints", assunto],
-		queryFn: () => fetchHints({ assunto, status: "active" }),
-		enabled,
-		staleTime: 5 * 60 * 1000, // 5 minutes
-	});
-
-	const generateMutation = useMutation({
-		mutationFn: generateHints,
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["ai-hints", assunto] });
-			queryClient.invalidateQueries({ queryKey: ["ai-hints", undefined] });
-		},
-	});
-
-	// Auto-generate hints if none exist and feature is enabled
-	useEffect(() => {
-		if (
-			autoGenerate &&
-			enabled &&
-			assunto &&
-			hintsQuery.data !== undefined &&
-			hintsQuery.data.length === 0 &&
-			!generateMutation.isPending &&
-			!generateMutation.isSuccess
-		) {
-			generateMutation.mutate({ assunto });
-		}
-	}, [autoGenerate, enabled, assunto, hintsQuery.data, generateMutation.isPending, generateMutation.isSuccess]);
-
-	return {
-		hints: hintsQuery.data ?? [],
-		isLoading: hintsQuery.isLoading,
-		isGenerating: generateMutation.isPending,
-		error: hintsQuery.error,
-		refetch: hintsQuery.refetch,
-		generate: (contextoAdicional?: string) => {
-			if (assunto) {
-				generateMutation.mutate({ assunto, contextoAdicional });
-			}
-		},
-	};
-}
-
-export function useGenerateHints() {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: generateHints,
-		onSuccess: (_, variables) => {
-			queryClient.invalidateQueries({ queryKey: ["ai-hints", variables.assunto] });
-			queryClient.invalidateQueries({ queryKey: ["ai-hints", undefined] });
-		},
-	});
 }
 
 export function useDismissHint() {
@@ -133,7 +116,7 @@ export function useHintFeedback() {
 export function useAllActiveHints() {
 	return useQuery({
 		queryKey: ["ai-hints", undefined],
-		queryFn: () => fetchHints({ status: "active", limite: 10 }),
+		queryFn: () => fetchHints({ status: "active", limit: 10 }),
 		staleTime: 5 * 60 * 1000,
 	});
 }

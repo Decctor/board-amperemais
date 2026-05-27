@@ -1,0 +1,256 @@
+import { CampaignSchema } from "@/schemas/campaigns";
+import {
+	AttributionModelEnum,
+	CampaignExecutionDelayDirectionEnum,
+	CampaignTriggerTypeEnum,
+	CashbackProgramAccumulationTypeEnum,
+	InteractionsCronJobTimeBlocksEnum,
+	RecurrenceFrequencyEnum,
+	TimeDurationUnitsEnum,
+} from "@/schemas/enums";
+import z from "zod";
+
+export const MarketingAgentStatusSchema = z.enum([
+	"analysis-only",
+	"campaign-creation-suggestion",
+	"campaign-updates-suggestion",
+	"needs-user-input",
+]);
+export type TMarketingAgentStatus = z.infer<typeof MarketingAgentStatusSchema>;
+
+export const MarketingAgentIntentSchema = z.enum([
+	"analyze-org",
+	"analyze-campaign",
+	"create-campaign",
+	"update-campaign",
+	"unknown",
+]);
+export type TMarketingAgentIntent = z.infer<typeof MarketingAgentIntentSchema>;
+
+export const MarketingAgentInputSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo inválido para o ID da organização.",
+	}),
+	traceId: z
+		.string({
+			invalid_type_error: "Tipo inválido para o trace ID.",
+		})
+		.optional()
+		.nullable(),
+	brief: z.string({
+		required_error: "Briefing não informado.",
+		invalid_type_error: "Tipo inválido para o briefing.",
+	}),
+	campaignId: z
+		.string({
+			invalid_type_error: "Tipo inválido para o ID da campanha.",
+		})
+		.optional()
+		.nullable(),
+	periodStart: z
+		.date({
+			invalid_type_error: "Tipo inválido para a data inicial.",
+		})
+		.optional()
+		.nullable(),
+	periodEnd: z
+		.date({
+			invalid_type_error: "Tipo inválido para a data final.",
+		})
+		.optional()
+		.nullable(),
+	debug: z
+		.boolean({
+			invalid_type_error: "Tipo inválido para debug.",
+		})
+		.optional()
+		.default(false),
+	persistSuggestion: z
+		.boolean({
+			invalid_type_error: "Tipo inválido para persistência da sugestão.",
+		})
+		.optional()
+		.default(false),
+	requireActionableSuggestion: z
+		.boolean({
+			invalid_type_error: "Tipo inválido para a exigência de sugestão acionável.",
+		})
+		.optional()
+		.default(false),
+});
+export type TMarketingAgentInput = z.infer<typeof MarketingAgentInputSchema>;
+
+const CampaignEditableAiSuggestionConfigSchema = CampaignSchema.omit({
+	autorId: true,
+	dataInsercao: true,
+	whatsappTemplateId: true,
+}).extend({
+	whatsappConexaoTelefoneId: CampaignSchema.shape.whatsappConexaoTelefoneId.nullable(),
+	gatilhoTipo: CampaignTriggerTypeEnum,
+	execucaoAgendadaMedida: TimeDurationUnitsEnum,
+	execucaoAgendadaDirecao: CampaignExecutionDelayDirectionEnum,
+	execucaoAgendadaBloco: InteractionsCronJobTimeBlocksEnum,
+	limiteEnviosSemanais: CampaignSchema.shape.limiteEnviosSemanais.describe(
+		"Volume total de mensagens individuais que a campanha pode enviar por semana. Nao representa quantidade de clientes, execucoes ou recorrencias.",
+	),
+	recorrenciaTipo: RecurrenceFrequencyEnum.optional().nullable(),
+	frequenciaIntervaloMedida: TimeDurationUnitsEnum.optional().nullable(),
+	atribuicaoModelo: AttributionModelEnum,
+	cashbackGeracaoTipo: CashbackProgramAccumulationTypeEnum.optional().nullable(),
+	cashbackGeracaoExpiracaoMedida: TimeDurationUnitsEnum.optional().nullable(),
+});
+
+export const CampaignCreationSuggestionSchema = CampaignEditableAiSuggestionConfigSchema.extend({
+	segmentations: z.array(
+		z.string({
+			required_error: "Segmentação não informada.",
+			invalid_type_error: "Tipo inválido para segmentação.",
+		}),
+	),
+	messageTemplateText: z.string({
+		required_error: "Texto do template não informado.",
+		invalid_type_error: "Tipo inválido para o texto do template.",
+	}).describe(
+		"Somente o corpo da mensagem sugerida, sem prefixos como 'Corpo:' e sem incluir ou alterar cabecalho, rodape, botoes ou midia.",
+	),
+	justificativa: z.string({
+		required_error: "Justificativa não informada.",
+		invalid_type_error: "Tipo inválido para justificativa.",
+	}),
+	objetivoEsperado: z
+		.string({
+			invalid_type_error: "Tipo inválido para o objetivo esperado.",
+		})
+		.optional()
+		.nullable(),
+});
+export type TCampaignCreationSuggestion = z.infer<typeof CampaignCreationSuggestionSchema>;
+
+export const CampaignUpdateProposedChangesSchema = CampaignEditableAiSuggestionConfigSchema.partial().refine(
+	(value) => Object.keys(value).length > 0,
+	{
+		message: "Informe ao menos uma alteração proposta para a campanha.",
+	},
+);
+export type TCampaignUpdateProposedChanges = z.infer<typeof CampaignUpdateProposedChangesSchema>;
+
+export const CampaignCurrentSummarySchema = z.object({
+	id: z.string(),
+	titulo: z.string(),
+	descricao: z.string().nullable(),
+	gatilhoTipo: CampaignTriggerTypeEnum,
+	ativo: z.boolean(),
+	segmentations: z.array(z.string()),
+	whatsappConexaoTelefoneId: z.string().nullable(),
+	messageTemplateText: z.string().nullable(),
+});
+export type TCampaignCurrentSummary = z.infer<typeof CampaignCurrentSummarySchema>;
+
+export const CampaignCurrentConfigSchema = CampaignEditableAiSuggestionConfigSchema;
+export type TCampaignCurrentConfig = z.infer<typeof CampaignCurrentConfigSchema>;
+
+export const CampaignUpdateSuggestionInputSchema = z.object({
+	campaignId: z.string({
+		required_error: "ID da campanha não informado.",
+		invalid_type_error: "Tipo inválido para o ID da campanha.",
+	}),
+	campaignTitle: z
+		.string({
+			invalid_type_error: "Tipo inválido para o título da campanha.",
+		})
+		.optional()
+		.nullable(),
+	currentSummary: CampaignCurrentSummarySchema.optional().nullable(),
+	currentConfig: CampaignCurrentConfigSchema.optional().nullable(),
+	proposedChanges: CampaignUpdateProposedChangesSchema,
+	segmentations: z.array(
+		z.string({
+			required_error: "Segmentação não informada.",
+			invalid_type_error: "Tipo inválido para segmentação.",
+		}),
+	),
+	messageTemplateText: z.string({
+		required_error: "Texto do template não informado.",
+		invalid_type_error: "Tipo inválido para o texto do template.",
+	}).describe(
+		"Somente o corpo da mensagem sugerida para a atualizacao. Preserve cabecalho, rodape, botoes e outras estruturas existentes.",
+	),
+	justificativa: z.string({
+		required_error: "Justificativa não informada.",
+		invalid_type_error: "Tipo inválido para justificativa.",
+	}),
+	impactoEsperado: z
+		.string({
+			invalid_type_error: "Tipo inválido para o impacto esperado.",
+		})
+		.optional()
+		.nullable(),
+});
+export type TCampaignUpdateSuggestionInput = z.infer<typeof CampaignUpdateSuggestionInputSchema>;
+
+export const CampaignUpdateSuggestionSchema = CampaignUpdateSuggestionInputSchema.extend({
+	campaignTitle: z.string({
+		required_error: "Título da campanha não informado.",
+		invalid_type_error: "Tipo inválido para o título da campanha.",
+	}),
+	currentSummary: CampaignCurrentSummarySchema,
+});
+export type TCampaignUpdateSuggestion = z.infer<typeof CampaignUpdateSuggestionSchema>;
+
+export const MarketingSuggestionSchema = z.discriminatedUnion("tipo", [
+	z.object({
+		tipo: z.literal("campaign-creation-suggestion"),
+		payload: CampaignCreationSuggestionSchema,
+	}),
+	z.object({
+		tipo: z.literal("campaign-updates-suggestion"),
+		payload: CampaignUpdateSuggestionSchema,
+	}),
+]);
+export type TMarketingSuggestion = z.infer<typeof MarketingSuggestionSchema>;
+
+export const MarketingAgentGeneratedOutputSchema = z.object({
+	status: MarketingAgentStatusSchema,
+	message: z.string(),
+	inferredIntent: MarketingAgentIntentSchema,
+	insights: z.array(z.string()),
+	missingInformation: z.array(z.string()),
+	suggestion: MarketingSuggestionSchema.nullable(),
+});
+export type TMarketingAgentGeneratedOutput = z.infer<typeof MarketingAgentGeneratedOutputSchema>;
+
+export const MarketingActionableSuggestionTypeSchema = z.enum(["campaign-creation-suggestion", "campaign-updates-suggestion"]);
+export type TMarketingActionableSuggestionType = z.infer<typeof MarketingActionableSuggestionTypeSchema>;
+
+export const MarketingAnalystRecommendedActionSchema = z.object({
+	suggestionType: MarketingActionableSuggestionTypeSchema.nullable(),
+	campaignId: z.string().nullable(),
+	rationale: z.string().nullable(),
+});
+export type TMarketingAnalystRecommendedAction = z.infer<typeof MarketingAnalystRecommendedActionSchema>;
+
+export const MarketingAnalystOutputSchema = z.object({
+	status: MarketingAgentStatusSchema,
+	inferredIntent: MarketingAgentIntentSchema,
+	message: z.string(),
+	detailedAnalysis: z.string(),
+	insights: z.array(z.string()),
+	missingInformation: z.array(z.string()),
+	recommendedAction: MarketingAnalystRecommendedActionSchema,
+});
+export type TMarketingAnalystOutput = z.infer<typeof MarketingAnalystOutputSchema>;
+
+export const MarketingExecutorOutputSchema = z.object({
+	suggestionType: MarketingActionableSuggestionTypeSchema.nullable(),
+	message: z.string(),
+});
+export type TMarketingExecutorOutput = z.infer<typeof MarketingExecutorOutputSchema>;
+
+export const MarketingAgentMetadataSchema = z.object({
+	model: z.string(),
+	steps: z.number(),
+	tokensUsed: z.number(),
+	toolsUsed: z.array(z.string()),
+});
+export type TMarketingAgentMetadata = z.infer<typeof MarketingAgentMetadataSchema>;

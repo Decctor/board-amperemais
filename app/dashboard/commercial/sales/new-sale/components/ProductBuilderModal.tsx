@@ -6,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import type { TGetPOSProductsOutput } from "@/pages/api/pos/products";
+import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TCartItem, TCartItemModifier } from "@/state-hooks/use-sale-state";
 import { Check, Minus, Plus } from "lucide-react";
 import Image from "next/image";
@@ -277,7 +277,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 															<RadioGroupItem value={option.id} id={option.id} onClick={() => toggleModifier(option.id, grupo.maxOpcoes)} checked={isSelected} />
 															<Label htmlFor={option.id} className="flex-1 flex justify-between cursor-pointer py-2">
 																<span className="font-medium">{option.nome}</span>
-																{option.precoDelta !== 0 && <span className="text-sm font-bold text-primary">+{formatToMoney(option.precoDelta)}</span>}
+																{option.precoDelta !== 0 && <span className="text-sm font-bold text-foreground">+{formatToMoney(option.precoDelta)}</span>}
 															</Label>
 														</div>
 													);
@@ -298,7 +298,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 																<Label htmlFor={option.id} className="cursor-pointer font-medium">
 																	{option.nome}
 																</Label>
-																{option.precoDelta !== 0 && <span className="text-sm font-bold text-primary">+{formatToMoney(option.precoDelta)}</span>}
+																{option.precoDelta !== 0 && <span className="text-sm font-bold text-foreground">+{formatToMoney(option.precoDelta)}</span>}
 															</div>
 
 															{/* Quantity Stepper if maxQtdePorItem > 1 */}
@@ -356,7 +356,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 					{/* Total */}
 					<div className="bg-primary/10 rounded-2xl p-4 flex items-center justify-between">
 						<span className="font-bold text-sm uppercase tracking-wide">Total</span>
-						<span className="text-2xl font-black text-primary">{formatToMoney(getFinalPrice())}</span>
+						<span className="text-2xl font-black text-foreground">{formatToMoney(getFinalPrice())}</span>
 					</div>
 
 					{/* Validation Message */}

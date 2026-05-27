@@ -22,22 +22,78 @@ const CreateWhatsappTemplateInputSchema = z.object({
 });
 export type TCreateWhatsappTemplateInput = z.infer<typeof CreateWhatsappTemplateInputSchema>;
 
+type TWhatsappTemplatePayload = Omit<TWhatsappTemplate, "autorId" | "dataInsercao">;
+
+async function resolveTemplateMediaHeaderForMeta({
+	template,
+	whatsappToken,
+	logScope,
+}: {
+	template: TWhatsappTemplatePayload;
+	whatsappToken: string;
+	logScope: string;
+}): Promise<TWhatsappTemplatePayload> {
+	const header = template.componentes.cabecalho;
+	if (!header || !isMediaHeaderType(header.tipo) || !header.conteudo) {
+		return template;
+	}
+
+	const metaAppId = process.env.NEXT_PUBLIC_META_APP_ID;
+	if (!metaAppId) {
+		throw new createHttpError.InternalServerError("Meta app ID não configurado.");
+	}
+
+	try {
+		const { headerHandle } = await fetchAndUploadToMeta({
+			fileUrl: header.conteudo,
+			appId: metaAppId,
+			accessToken: whatsappToken,
+		});
+
+		console.log(`[INFO] [${logScope}] Media uploaded successfully. Header handle: ${headerHandle}`);
+
+		return {
+			...template,
+			componentes: {
+				...template.componentes,
+				cabecalho: {
+					...header,
+					exemplo: headerHandle,
+				},
+			},
+		};
+	} catch (uploadError) {
+		console.error(`[ERROR] [${logScope}] Failed to upload media to Meta:`, uploadError);
+		throw new createHttpError.BadRequest(
+			`Erro ao fazer upload da mídia para o WhatsApp: ${uploadError instanceof Error ? uploadError.message : "Erro desconhecido"}`,
+		);
+	}
+}
+
 async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsappTemplateInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const orgWhatsappConnection = await db.query.whatsappConnections.findFirst({
+	const orgConnections = await db.query.whatsappConnections.findMany({
 		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
+		columns: {
+			id: true,
+			token: true,
+			tipoConexao: true,
+		},
 		with: {
 			telefones: true,
 		},
 	});
-	if (!orgWhatsappConnection) throw new createHttpError.NotFound("Conexão WhatsApp não encontrada.");
-	if (orgWhatsappConnection.telefones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
-	const whatsappConnectionType = orgWhatsappConnection.tipoConexao;
-	const whatsappToken = orgWhatsappConnection.token;
+	const allPhones = orgConnections.flatMap((connection) => connection.telefones.map((p) => ({ ...p, conexao: connection })));
+	if (allPhones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
+	console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Inserting parent template...", {
+		orgId: userOrgId,
+		templateName: input.template.nome,
+		phones: allPhones.length,
+	});
 	// 1. Insert parent template first
 	const [insertedTemplate] = await db
 		.insert(whatsappTemplates)
@@ -50,62 +106,41 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 		})
 		.returning({ id: whatsappTemplates.id });
 
-	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; error?: string }> = [];
+	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; success: boolean; message?: string }> = [];
 
 	// 2. Create template in Meta API for each phone and insert child records
 
-	for (const telefone of orgWhatsappConnection.telefones) {
+	for (const telefone of allPhones) {
 		try {
+			console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Creating template for phone...", {
+				phoneId: telefone.id,
+				phoneNumber: telefone.numero,
+				phoneConnectionType: telefone.conexao.tipoConexao,
+			});
+			const phoneConnection = telefone.conexao;
+			const whatsappConnectionType = phoneConnection.tipoConexao;
+			const whatsappToken = phoneConnection.token;
 			let metaWhatsappTemplateId: string | null = null;
 			if (whatsappConnectionType === "META_CLOUD_API" && whatsappToken) {
 				if (!telefone.whatsappBusinessAccountId) continue;
 
-				// Process template to upload media header if needed
-				let templateToCreate: Omit<TWhatsappTemplate, "autorId" | "dataInsercao"> = input.template;
-
-				if (input.template.componentes.cabecalho) {
-					const header = input.template.componentes.cabecalho;
-
-					if (isMediaHeaderType(header.tipo) && header.conteudo) {
-						try {
-							const metaAppId = process.env.NEXT_PUBLIC_META_APP_ID;
-							if (!metaAppId) {
-								throw new createHttpError.InternalServerError("Meta app ID não configurado.");
-							}
-
-							// Upload media to Meta and get header_handle
-							const { headerHandle } = await fetchAndUploadToMeta({
-								fileUrl: header.conteudo,
-								appId: metaAppId,
-								accessToken: whatsappToken,
-							});
-
-							// Create a copy of the template with the header_handle in exemplo field
-							templateToCreate = {
-								...input.template,
-								componentes: {
-									...input.template.componentes,
-									cabecalho: {
-										...header,
-										exemplo: headerHandle,
-									},
-								},
-							};
-
-							console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Media uploaded successfully. Header handle: ${headerHandle}`);
-						} catch (uploadError) {
-							console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to upload media to Meta:", uploadError);
-							throw new createHttpError.BadRequest(
-								`Erro ao fazer upload da mídia para o WhatsApp: ${uploadError instanceof Error ? uploadError.message : "Erro desconhecido"}`,
-							);
-						}
-					}
-				}
-
+				const templateToCreate = await resolveTemplateMediaHeaderForMeta({
+					template: input.template,
+					whatsappToken,
+					logScope: "WHATSAPP_TEMPLATE_CREATE",
+				});
+				console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Template components resolved:", {
+					phoneId: telefone.id,
+					template: templateToCreate,
+				});
 				const metaResponse = await createWhatsappTemplateInMeta({
 					whatsappToken,
 					whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
 					template: templateToCreate,
+				});
+				console.log("[INFO] [WHATSAPP_TEMPLATE_CREATE] Template created in Meta API:", {
+					phoneId: telefone.id,
+					metaResponse: metaResponse,
 				});
 				metaWhatsappTemplateId = metaResponse.whatsappTemplateId;
 			}
@@ -120,24 +155,27 @@ async function createWhatsappTemplate({ input, session }: { input: TCreateWhatsa
 			});
 
 			phoneResults.push({
+				success: true,
 				telefoneId: telefone.id,
 				whatsappTemplateId: metaWhatsappTemplateId,
+				message: metaWhatsappTemplateId ? "Template criado com sucesso na Meta." : "Template criado com sucesso.",
 			});
 
 			console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Created template for phone ${telefone.numero}: ${metaWhatsappTemplateId}`);
 		} catch (error) {
 			console.error(`[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to create template for phone ${telefone.numero}:`, error);
 			phoneResults.push({
+				success: false,
 				telefoneId: telefone.id,
 				whatsappTemplateId: null,
-				error: error instanceof Error ? error.message : "Erro desconhecido",
+				message: error instanceof Error ? error.message : "Erro desconhecido",
 			});
 		}
 	}
-	const successfulPhones = phoneResults.filter((r) => r.whatsappTemplateId !== null);
-	const failedPhones = phoneResults.filter((r) => r.whatsappTemplateId === null);
+	const successfulPhones = phoneResults.filter((r) => r.success);
+	const failedPhones = phoneResults.filter((r) => !r.success);
 	if (successfulPhones.length === 0 && failedPhones.length > 0) {
-		throw new createHttpError.BadRequest(failedPhones[0]?.error || "Erro ao criar template no WhatsApp.");
+		throw new createHttpError.BadRequest(failedPhones[0]?.message || "Oops, algo deu errado ao criar o template de mensagem.");
 	}
 	return {
 		data: {
@@ -180,17 +218,15 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 	if (Object.keys(input.whatsappTemplate).length === 0) throw new createHttpError.BadRequest("Nenhum campo para atualizar.");
 
 	// First, we will check for org connection with whatsapp
-	const orgWhatsappConnection = await db.query.whatsappConnections.findFirst({
+	const orgWhatsappConnections = await db.query.whatsappConnections.findMany({
 		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
 		with: {
 			telefones: true,
 		},
 	});
-	if (!orgWhatsappConnection) throw new createHttpError.NotFound("Conexão WhatsApp não encontrada.");
-	if (orgWhatsappConnection.telefones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
-	const whatsappConnectionType = orgWhatsappConnection.tipoConexao;
-	const whatsappToken = orgWhatsappConnection.token;
+	const allPhones = orgWhatsappConnections.flatMap((connection) => connection.telefones.map((phone) => ({ ...phone, conexao: connection })));
+	if (allPhones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
 	// Second, we will update it locally (in db)
 
@@ -212,9 +248,7 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 	});
 	if (!updatedTemplate) throw new createHttpError.NotFound("Template não encontrado.");
 
-	const updatedComponents = updatedTemplate.componentes;
-	const updatedCategory = updatedTemplate.categoria;
-	const shouldUpdateInMeta = Boolean(updatedComponents || updatedCategory);
+	const shouldUpdateInMeta = typeof input.whatsappTemplate.componentes !== "undefined" || typeof input.whatsappTemplate.categoria !== "undefined";
 
 	// If no remote-editable field changed, we can return early
 	if (!shouldUpdateInMeta) {
@@ -226,7 +260,7 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 		};
 	}
 
-	if (whatsappConnectionType !== "META_CLOUD_API" || !whatsappToken) {
+	if (!allPhones.some((phone) => phone.conexao.tipoConexao === "META_CLOUD_API" && phone.conexao.token)) {
 		return {
 			data: {
 				updatedId: input.whatsappTemplateId,
@@ -235,70 +269,37 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 		};
 	}
 
-	console.log("[INFO] [WHATSAPP_TEMPLATE_UPDATE] Updating template in Meta for phones", orgWhatsappConnection.telefones.map((t) => t.numero).join(", "));
 	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; success: boolean; error?: string }> = [];
 
 	// Third, for Meta Cloud API connection, update each phone template in Meta
-	for (const telefone of orgWhatsappConnection.telefones) {
+	for (const telefone of allPhones) {
 		try {
-			if (!telefone.whatsappBusinessAccountId) continue;
-			console.log("[INFO] Updating template in Meta for phone", telefone.numero);
+			const isMetaCloudApiPhone = telefone.conexao.tipoConexao === "META_CLOUD_API";
+			const phoneWhatsappToken = telefone.conexao.token;
+			const updatedTemplateForPhone =
+				isMetaCloudApiPhone && phoneWhatsappToken
+					? await resolveTemplateMediaHeaderForMeta({
+							template: updatedTemplate,
+							whatsappToken: phoneWhatsappToken,
+							logScope: "WHATSAPP_TEMPLATE_UPDATE",
+						})
+					: updatedTemplate;
+
+			console.log("[INFO] Updating template for phone", telefone.numero);
 			const existingTemplatePhone = await db.query.whatsappTemplatePhones.findFirst({
 				where: (fields, { and, eq }) => and(eq(fields.templateId, input.whatsappTemplateId), eq(fields.telefoneId, telefone.id)),
 			});
 
-			if (!existingTemplatePhone || !existingTemplatePhone.whatsappTemplateId) {
-
+			if (!existingTemplatePhone) {
 				let metaWhatsappTemplateId: string | null = null;
-				if (whatsappConnectionType === "META_CLOUD_API" && whatsappToken) {
+				if (isMetaCloudApiPhone) {
+					if (!phoneWhatsappToken) throw new createHttpError.NotFound("Token WhatsApp não encontrado.");
 					if (!telefone.whatsappBusinessAccountId) continue;
 
-					// Process template to upload media header if needed
-					let templateToCreate: Omit<TWhatsappTemplate, "autorId" | "dataInsercao"> = updatedTemplate;
-
-					if (updatedTemplate.componentes?.cabecalho) {
-						const header = updatedTemplate.componentes?.cabecalho;
-
-						if (isMediaHeaderType(header.tipo) && header.conteudo) {
-							try {
-								const metaAppId = process.env.NEXT_PUBLIC_META_APP_ID;
-								if (!metaAppId) {
-									throw new createHttpError.InternalServerError("Meta app ID não configurado.");
-								}
-
-								// Upload media to Meta and get header_handle
-								const { headerHandle } = await fetchAndUploadToMeta({
-									fileUrl: header.conteudo,
-									appId: metaAppId,
-									accessToken: whatsappToken,
-								});
-
-								// Create a copy of the template with the header_handle in exemplo field
-								templateToCreate = {
-									...updatedTemplate,
-									componentes: {
-										...updatedTemplate.componentes,
-										cabecalho: {
-											...header,
-											exemplo: headerHandle,
-										},
-									},
-								};
-
-								console.log(`[INFO] [WHATSAPP_TEMPLATE_CREATE] Media uploaded successfully. Header handle: ${headerHandle}`);
-							} catch (uploadError) {
-								console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE] Failed to upload media to Meta:", uploadError);
-								throw new createHttpError.BadRequest(
-									`Erro ao fazer upload da mídia para o WhatsApp: ${uploadError instanceof Error ? uploadError.message : "Erro desconhecido"}`,
-								);
-							}
-						}
-					}
-
 					const metaResponse = await createWhatsappTemplateInMeta({
-						whatsappToken,
+						whatsappToken: phoneWhatsappToken,
 						whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
-						template: templateToCreate,
+						template: updatedTemplateForPhone,
 					});
 					metaWhatsappTemplateId = metaResponse.whatsappTemplateId;
 				}
@@ -312,22 +313,75 @@ async function updateWhatsappTemplate({ input, session }: { input: TUpdateWhatsa
 					qualidade: metaWhatsappTemplateId ? "PENDENTE" : "ALTA",
 				});
 
+				phoneResults.push({
+					telefoneId: telefone.id,
+					whatsappTemplateId: metaWhatsappTemplateId,
+					success: true,
+				});
 				continue;
-			} else {
-				try {
-					await editWhatsappTemplateInMeta({
-						whatsappToken,
-						templateId: existingTemplatePhone.whatsappTemplateId,
-						category: updatedCategory ? WHATSAPP_CATEGORY_MAP[updatedCategory] : undefined,
-						components: updatedComponents ? convertLocalComponentsToMetaComponents(updatedComponents) : undefined,
-					});
-
-				} catch (error) {
-					console.error(`[ERROR] [WHATSAPP_TEMPLATE_UPDATE] Failed to in Meta's update call for template ${existingTemplatePhone.whatsappTemplateId} for phone ${telefone.numero}:`, error);
-					throw error;
-				}
 			}
 
+			if (!existingTemplatePhone.whatsappTemplateId) {
+				if (isMetaCloudApiPhone) {
+					if (!phoneWhatsappToken) throw new createHttpError.NotFound("Token WhatsApp não encontrado.");
+					if (!telefone.whatsappBusinessAccountId) continue;
+
+					const metaResponse = await createWhatsappTemplateInMeta({
+						whatsappToken: phoneWhatsappToken,
+						whatsappBusinessAccountId: telefone.whatsappBusinessAccountId,
+						template: updatedTemplateForPhone,
+					});
+
+					await db
+						.update(whatsappTemplatePhones)
+						.set({
+							whatsappTemplateId: metaResponse.whatsappTemplateId,
+							status: "PENDENTE",
+							qualidade: "PENDENTE",
+						})
+						.where(eq(whatsappTemplatePhones.id, existingTemplatePhone.id));
+
+					phoneResults.push({
+						telefoneId: telefone.id,
+						whatsappTemplateId: metaResponse.whatsappTemplateId,
+						success: true,
+					});
+					continue;
+				}
+
+				phoneResults.push({
+					telefoneId: telefone.id,
+					whatsappTemplateId: null,
+					success: true,
+				});
+				continue;
+			}
+
+			if (!isMetaCloudApiPhone) {
+				phoneResults.push({
+					telefoneId: telefone.id,
+					whatsappTemplateId: existingTemplatePhone.whatsappTemplateId,
+					success: true,
+				});
+				continue;
+			}
+
+			if (!phoneWhatsappToken) throw new createHttpError.NotFound("Token WhatsApp não encontrado.");
+
+			try {
+				await editWhatsappTemplateInMeta({
+					whatsappToken: phoneWhatsappToken,
+					templateId: existingTemplatePhone.whatsappTemplateId,
+					category: updatedTemplateForPhone.categoria ? WHATSAPP_CATEGORY_MAP[updatedTemplateForPhone.categoria] : undefined,
+					components: updatedTemplateForPhone.componentes ? convertLocalComponentsToMetaComponents(updatedTemplateForPhone.componentes) : undefined,
+				});
+			} catch (error) {
+				console.error(
+					`[ERROR] [WHATSAPP_TEMPLATE_UPDATE] Failed to in Meta's update call for template ${existingTemplatePhone.whatsappTemplateId} for phone ${telefone.numero}:`,
+					error,
+				);
+				throw error;
+			}
 
 			// After a successful edit in Meta, status/quality should return to pending review.
 			await db
@@ -401,7 +455,11 @@ const GetWhatsappTemplatesInputSchema = z.object({
 		.nullable()
 		.transform((val) => Number(val)),
 	search: z.string({ invalid_type_error: "Tipo inválido para busca." }).optional().nullable(),
-	includeRecompraTemplates: z.string().optional().nullable().transform((val) => val === "true"),
+	includeRecompraTemplates: z
+		.string()
+		.optional()
+		.nullable()
+		.transform((val) => val === "true"),
 	whatsappConnectionPhoneId: z.string({ invalid_type_error: "Tipo inválido para ID do telefone." }).optional().nullable(),
 });
 export type TGetWhatsappTemplatesInput = z.infer<typeof GetWhatsappTemplatesInputSchema>;
@@ -519,7 +577,7 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 	const totalPages = Math.ceil(matchedWhatsappTemplatesCount / PAGE_SIZE);
 
 	const whatsappTemplatesResult = await db.query.whatsappTemplates.findMany({
-		where: and(...conditions,),
+		where: and(...conditions),
 		columns: {
 			id: true,
 			nome: true,
@@ -554,7 +612,7 @@ async function getWhatsappTemplates({ input, session }: { input: TGetWhatsappTem
 				},
 			},
 		},
-		orderBy: (fields, { asc }) => asc(fields.nome),
+		orderBy: (fields, { desc }) => desc(fields.dataInsercao),
 		offset: skip,
 		limit: PAGE_SIZE,
 	});

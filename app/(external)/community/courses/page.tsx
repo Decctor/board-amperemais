@@ -6,13 +6,7 @@ import { EmptyContentPlaceholder } from "@/components/Community/EmptyContentPlac
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-	ACCESS_CONFIG,
-	type TCourseSummary,
-	formatTotalDuration,
-	getTotalDurationSeconds,
-	getTotalLessons,
-} from "@/lib/community-helpers";
+import { ACCESS_CONFIG, type TCourseSummary, formatTotalDuration, getTotalDurationSeconds, getTotalLessons } from "@/lib/community-helpers";
 import { useCourses } from "@/lib/queries/community";
 import { BookOpen, Clock, PlayCircle, Search } from "lucide-react";
 import Image from "next/image";
@@ -26,9 +20,7 @@ export default function CoursesListingPage() {
 
 	const filteredCourses = searchQuery
 		? courses.filter(
-				(c) =>
-					c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					c.descricao?.toLowerCase().includes(searchQuery.toLowerCase()),
+				(c) => c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) || c.descricao?.toLowerCase().includes(searchQuery.toLowerCase()),
 			)
 		: courses;
 
@@ -37,24 +29,17 @@ export default function CoursesListingPage() {
 
 	return (
 		<div className="w-full h-full flex flex-col gap-6 p-6">
-			<CommunityHeader
-				breadcrumbs={[
-					{ label: "Início", href: "/community" },
-					{ label: "Cursos" },
-				]}
-			/>
+			<CommunityHeader breadcrumbs={[{ label: "Início", href: "/community" }, { label: "Cursos" }]} />
 
 			{/* Page Header */}
 			<div className="flex flex-col gap-1">
-				<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-primary">Cursos</h1>
-				<p className="text-sm text-muted-foreground">
-					Explore todos os cursos disponíveis para impulsionar seu conhecimento.
-				</p>
+				<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">Cursos</h1>
+				<p className="text-sm text-muted-foreground">Explore todos os cursos disponíveis para impulsionar seu conhecimento.</p>
 			</div>
 
 			{/* Search */}
 			<div className="w-full max-w-md relative">
-				<div className="flex items-center bg-background rounded-xl border border-primary/20 shadow-2xs">
+				<div className="flex items-center bg-background rounded-xl border border-border shadow-2xs">
 					<Search className="ml-3 h-4 w-4 min-w-4 min-h-4 text-muted-foreground" />
 					<Input
 						type="text"
@@ -93,7 +78,7 @@ export default function CoursesListingPage() {
 			{/* Featured Course */}
 			{!isLoading && featuredCourse && (
 				<section>
-					<div className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-2xs transition-all hover:shadow-lg hover:border-primary/40">
+					<div className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-2xs transition-all hover:shadow-lg hover:border-border">
 						<div className="grid lg:grid-cols-2 gap-0">
 							<div className="relative h-56 lg:h-auto overflow-hidden">
 								{featuredCourse.thumbnailUrl ? (
@@ -123,11 +108,7 @@ export default function CoursesListingPage() {
 									})()}
 								</div>
 								<h3 className="text-2xl font-bold mb-3">{featuredCourse.titulo}</h3>
-								{featuredCourse.descricao && (
-									<p className="text-sm text-muted-foreground mb-6 line-clamp-3">
-										{featuredCourse.descricao}
-									</p>
-								)}
+								{featuredCourse.descricao && <p className="text-sm text-muted-foreground mb-6 line-clamp-3">{featuredCourse.descricao}</p>}
 								<div className="flex items-center gap-4 text-xs text-muted-foreground mb-6">
 									<span className="flex items-center gap-1.5">
 										<BookOpen className="h-4 w-4 min-w-4 min-h-4" />
@@ -155,9 +136,7 @@ export default function CoursesListingPage() {
 			{/* Course Grid */}
 			{!isLoading && gridCourses.length > 0 && (
 				<section className="flex flex-col gap-4">
-					<h2 className="text-base font-bold tracking-tight">
-						{searchQuery ? "Resultados da busca" : "Todos os cursos"}
-					</h2>
+					<h2 className="text-base font-bold tracking-tight">{searchQuery ? "Resultados da busca" : "Todos os cursos"}</h2>
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 						{gridCourses.map((course) => (
 							<CourseCard key={course.id} course={course} />

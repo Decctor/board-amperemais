@@ -1,7 +1,7 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { getErrorMessage } from "@/lib/errors";
-import type { TGetPOSProductsOutput } from "@/pages/api/pos/products";
+import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import ProductCard from "../ProductCard";
 
 type ProductsGridBlockProps = {

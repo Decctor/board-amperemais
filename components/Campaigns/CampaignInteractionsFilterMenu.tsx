@@ -54,14 +54,14 @@ export default function CampaignInteractionsFilterMenu({ filters, updateFilters,
 						</div>
 
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">ORDENAÇÃO</h1>
+							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-foreground/80">ORDENAÇÃO</h1>
 							<div className="flex items-center justify-center gap-2 flex-wrap">
 								<button
 									type="button"
 									onClick={() => setFiltersHolder((prev) => ({ ...prev, orderByDirection: "asc" }))}
-									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-										"bg-primary/50 text-primary-foreground hover:bg-primary/40": filtersHolder.orderByDirection === "asc",
-										"bg-transparent text-primary hover:bg-primary/20": filtersHolder.orderByDirection !== "asc",
+									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+										"bg-primary/50 text-foreground-foreground hover:bg-primary/40": filtersHolder.orderByDirection === "asc",
+										"bg-transparent text-foreground hover:bg-primary/20": filtersHolder.orderByDirection !== "asc",
 									})}
 								>
 									<ArrowUpNarrowWide size={12} />
@@ -70,9 +70,9 @@ export default function CampaignInteractionsFilterMenu({ filters, updateFilters,
 								<button
 									type="button"
 									onClick={() => setFiltersHolder((prev) => ({ ...prev, orderByDirection: "desc" }))}
-									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-										"bg-primary/50 text-primary-foreground hover:bg-primary/40": filtersHolder.orderByDirection === "desc",
-										"bg-transparent text-primary hover:bg-primary/20": filtersHolder.orderByDirection !== "desc",
+									className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+										"bg-primary/50 text-foreground-foreground hover:bg-primary/40": filtersHolder.orderByDirection === "desc",
+										"bg-transparent text-foreground hover:bg-primary/20": filtersHolder.orderByDirection !== "desc",
 									})}
 								>
 									<ArrowDownNarrowWide size={12} />
@@ -85,8 +85,8 @@ export default function CampaignInteractionsFilterMenu({ filters, updateFilters,
 									key={option.value}
 									type="button"
 									className={cn("w-full flex items-center text-xs tracking-tight px-2 py-1 rounded-lg", {
-										"bg-primary/50 text-primary-foreground hover:bg-primary/40": filtersHolder.orderByField === option.value,
-										"bg-transparent text-primary hover:bg-primary/20": filtersHolder.orderByField !== option.value,
+										"bg-primary/50 text-foreground-foreground hover:bg-primary/40": filtersHolder.orderByField === option.value,
+										"bg-transparent text-foreground hover:bg-primary/20": filtersHolder.orderByField !== option.value,
 									})}
 									onClick={() =>
 										setFiltersHolder((prev) => ({

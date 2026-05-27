@@ -21,7 +21,7 @@ export function GeneralBlock({ seller, updateSeller, avatarHolder, updateAvatar 
 			</div>
 			<div className="flex w-full flex-col gap-1.5">
 				<div className="w-full flex items-center justify-center">
-					<div className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 text-primary">
+					<div className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 text-foreground">
 						<Code className="h-4 min-h-4 w-4 min-w-4" />
 						<h1 className="w-fit text-start font-medium text-xs tracking-tight">{seller.identificador}</h1>
 					</div>

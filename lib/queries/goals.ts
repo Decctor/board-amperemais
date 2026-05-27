@@ -1,9 +1,10 @@
-import type { TGetGoalsByIdInput, TGetGoalsOutput } from "@/pages/api/goals";
+import type { TGetGoalsByIdInput, TGetGoalsOutput, TGetGoalsOutputDefault } from "@/app/api/goals/route";
+import type { TGetGoalsStatsOutput } from "@/app/api/goals/stats/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-async function fetchGoals() {
-	const { data } = await axios.get<TGetGoalsOutput>("/api/goals");
+async function fetchGoals({ page = 1 }: { page?: number }) {
+	const { data } = await axios.get<TGetGoalsOutput>(`/api/goals?page=${page}`);
 	if (!data.data.default) throw new Error("Não foi possível buscar as metas.");
 	return data.data.default;
 }
@@ -12,14 +13,19 @@ async function fetchGoalById(input: TGetGoalsByIdInput) {
 	if (!data.data.byId) throw new Error("Não foi possível buscar a meta.");
 	return data.data.byId;
 }
+async function fetchGoalsStats() {
+	const { data } = await axios.get<TGetGoalsStatsOutput>("/api/goals/stats");
+	return data.data;
+}
 
-export function useGoals() {
+export function useGoals({ page = 1 }: { page?: number } = {}) {
+	const queryKey = ["goals", page];
 	return {
 		...useQuery({
-			queryKey: ["goals"],
-			queryFn: async () => await fetchGoals(),
+			queryKey,
+			queryFn: async () => await fetchGoals({ page }),
 		}),
-		queryKey: ["goals"],
+		queryKey,
 	};
 }
 
@@ -32,3 +38,15 @@ export function useGoalById({ id }: TGetGoalsByIdInput) {
 		queryKey: ["goal-by-id", id],
 	};
 }
+
+export function useGoalsStats() {
+	return {
+		...useQuery({
+			queryKey: ["goals-stats"],
+			queryFn: async () => await fetchGoalsStats(),
+		}),
+		queryKey: ["goals-stats"],
+	};
+}
+
+export type TUseGoalsDefaultData = TGetGoalsOutputDefault;

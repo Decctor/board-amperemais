@@ -1,4 +1,4 @@
-import type { TGetRFMConfigOutput } from "@/pages/api/settings/rfm";
+import type { TGetRFMConfigOutput } from "@/app/api/settings/rfm/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 

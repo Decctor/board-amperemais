@@ -30,11 +30,7 @@ const BOOLEAN_OPTIONS = [
 	},
 ] as const;
 
-export default function CampaignsDatabaseFilterMenu({
-	filters,
-	updateFilters,
-	closeMenu,
-}: CampaignsDatabaseFilterMenuProps) {
+export default function CampaignsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: CampaignsDatabaseFilterMenuProps) {
 	const [filtersHolder, setFiltersHolder] = useState<Omit<TGetCampaignsInput, "id">>(filters);
 
 	return (
@@ -75,15 +71,15 @@ export default function CampaignsDatabaseFilterMenu({
 						</div>
 
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">OUTROS FILTROS</h1>
+							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-foreground/80">OUTROS FILTROS</h1>
 							<div className="flex flex-wrap items-center justify-center gap-2">
 								{BOOLEAN_OPTIONS.map((option) => (
 									<button
 										key={option.key}
 										type="button"
 										className={cn("rounded-lg px-2 py-1 text-xs tracking-tight duration-300 ease-in-out", {
-											"bg-primary/50 text-primary-foreground hover:bg-primary/40": Boolean(filtersHolder[option.key]),
-											"bg-transparent text-primary hover:bg-primary/20": !filtersHolder[option.key],
+											"bg-primary/50 text-foreground-foreground hover:bg-primary/40": Boolean(filtersHolder[option.key]),
+											"bg-transparent text-foreground hover:bg-primary/20": !filtersHolder[option.key],
 										})}
 										onClick={() =>
 											setFiltersHolder((prev) => ({
@@ -99,7 +95,7 @@ export default function CampaignsDatabaseFilterMenu({
 						</div>
 
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO DAS ESTATÍSTICAS POR PERÍODO</h1>
+							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-foreground/80">FILTRO DAS ESTATÍSTICAS POR PERÍODO</h1>
 							<DateInput
 								label="DEPOIS DE"
 								value={formatDateForInputValue(filtersHolder.statsPeriodAfter)}

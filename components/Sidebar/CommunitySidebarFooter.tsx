@@ -90,7 +90,7 @@ export default function CommunitySidebarFooter({ user }: CommunitySidebarFooterP
 					<SidebarMenuButton asChild size="lg" className="group-data-[collapsible=icon]:justify-center">
 						<Link href="/auth/signin" className="flex items-center gap-2">
 							<div className="w-8 h-8 min-w-8 min-h-8 rounded-lg bg-primary flex items-center justify-center">
-								<LogIn className="w-4 h-4 min-w-4 min-h-4 text-primary-foreground" />
+								<LogIn className="w-4 h-4 min-w-4 min-h-4 text-foreground-foreground" />
 							</div>
 							<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
 								<span className="truncate font-medium">Entrar</span>

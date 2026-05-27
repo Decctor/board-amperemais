@@ -1,19 +1,16 @@
-"use client";
+﻿"use client";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
-import SelectInput from "@/components/Inputs/SelectInput";
-import TextInput from "@/components/Inputs/TextInput";
+import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
-import ControlProduct from "@/components/Modals/Products/ControlProduct";
 import NewProduct from "@/components/Modals/Products/NewProduct";
-import ProductsFilterMenu from "@/components/Products/ProductsFilterMenu";
 import ProductsGraphs from "@/components/Products/ProductsGraphs";
 import ProductsRanking from "@/components/Products/ProductsRanking";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,10 +18,17 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import {
+	formatInteractiveCountSummary,
+	formatInteractiveDateRangeSummary,
+	formatInteractiveNumberRangeSummary,
+	formatInteractiveOptionSummary,
+} from "@/lib/interactive-filter-formatting";
 import { useProducts, useProductsOverallStats } from "@/lib/queries/products";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetProductsDefaultInput, TGetProductsOutputDefault } from "@/pages/api/products";
-import type { TGetProductsOverallStatsInput } from "@/pages/api/products/stats/overall";
+import type { TGetProductsDefaultInput, TGetProductsOutputDefault } from "@/app/api/products/route";
+import type { TGetProductsOverallStatsInput } from "@/app/api/products/stats/overall/route";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
@@ -32,6 +36,7 @@ import {
 	AlertCircle,
 	AlertTriangle,
 	BadgeDollarSign,
+	Calendar,
 	CirclePlus,
 	Clock,
 	Code,
@@ -104,9 +109,7 @@ type ProductsDatabaseViewProps = {
 function ProductsDatabaseView({ user, userMembership, organization }: ProductsDatabaseViewProps) {
 	const orgHasStockTracking = organization.configuracao.preferencias.rastreamentoEstoque;
 	const queryClient = useQueryClient();
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
 	const [newProductModalIsOpen, setNewProductModalIsOpen] = useState<boolean>(false);
-	const [editProductModalId, setEditProductModalId] = useState<string | null>(null);
 	const {
 		data: productsResult,
 		queryKey,
@@ -151,10 +154,6 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 					onChange={(e) => updateFilters({ search: e.target.value })}
 					className="grow rounded-xl"
 				/>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewProductModalIsOpen(true)}>
 					<Plus className="w-4 h-4 min-w-4 min-h-4" />
 					NOVO PRODUTO
@@ -168,7 +167,7 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 				itemsMatchedText={productsMatched > 0 ? `${productsMatched} produtos encontrados.` : `${productsMatched} produto encontrado.`}
 				itemsShowingText={productsShowing > 0 ? `Mostrando ${productsShowing} produtos.` : `Mostrando ${productsShowing} produto.`}
 			/>
-			<ProductsFiltersShowcase filters={filters} updateFilters={updateFilters} />
+			<ProductsInlineFilters filters={filters} updateFilters={updateFilters} />
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && products ? (
@@ -177,7 +176,6 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 						<ProductCard
 							key={product.id}
 							product={product}
-							handleEditClick={() => setEditProductModalId(product.id)}
 							periodAfter={filters.statsPeriodAfter}
 							periodBefore={filters.statsPeriodBefore}
 							showStockData={orgHasStockTracking}
@@ -186,18 +184,6 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 				) : (
 					<p className="w-full tracking-tight text-center">Nenhum produto encontrado.</p>
 				)
-			) : null}
-			{editProductModalId ? (
-				<ControlProduct
-					productId={editProductModalId}
-					user={user}
-					userMembership={userMembership}
-					closeModal={() => setEditProductModalId(null)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
-			) : null}
-			{filterMenuIsOpen ? (
-				<ProductsFilterMenu queryParams={filters} updateQueryParams={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
 			) : null}
 			{newProductModalIsOpen ? (
 				<NewProduct
@@ -208,6 +194,355 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 				/>
 			) : null}
 		</div>
+	);
+}
+
+type ProductsInlineFiltersProps = {
+	filters: TGetProductsDefaultInput;
+	updateFilters: (filters: Partial<TGetProductsDefaultInput>) => void;
+};
+
+function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const groupOptions = (filterOptions?.productsGroups ?? []) as InteractiveFilterOption<string>[];
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
+	const stockStatusOptions = [
+		{ id: "out", label: "SEM ESTOQUE", value: "out" },
+		{ id: "low", label: "ESTOQUE BAIXO", value: "low" },
+		{ id: "healthy", label: "ESTOQUE SAUDÁVEL", value: "healthy" },
+		{ id: "overstocked", label: "EXCESSO DE ESTOQUE", value: "overstocked" },
+	] satisfies InteractiveFilterOption<string>[];
+	const orderFieldOptions = [
+		{ id: "descricao", label: "DESCRIÇÃO", value: "descricao" },
+		{ id: "codigo", label: "CÓDIGO", value: "codigo" },
+		{ id: "grupo", label: "GRUPO", value: "grupo" },
+		{ id: "vendasValorTotal", label: "VALOR TOTAL DE VENDAS", value: "vendasValorTotal" },
+		{ id: "vendasQtdeTotal", label: "QUANTIDADE TOTAL DE VENDAS", value: "vendasQtdeTotal" },
+		{ id: "quantidade", label: "QUANTIDADE EM ESTOQUE", value: "quantidade" },
+	] satisfies InteractiveFilterOption<NonNullable<TGetProductsDefaultInput["orderByField"]>>[];
+	const orderDirectionOptions = [
+		{ id: "asc", label: "CRESCENTE", value: "asc" },
+		{ id: "desc", label: "DECRESCENTE", value: "desc" },
+	] satisfies InteractiveFilterOption<NonNullable<TGetProductsDefaultInput["orderByDirection"]>>[];
+	const hasGroups = (filters.groups ?? []).length > 0;
+	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
+	const hasSellers = (filters.statsSellerIds ?? []).length > 0;
+	const hasStock = (filters.stockStatus ?? []).length > 0;
+	const hasPrice = filters.priceMin != null || filters.priceMax != null;
+	const hasStatsTotal = filters.statsTotalMin != null || filters.statsTotalMax != null;
+	const hasExcludedSales = (filters.statsExcludedSalesIds ?? []).length > 0;
+	const hasOrderByField = Boolean(filters.orderByField && filters.orderByField !== "descricao");
+	const hasOrderByDirection = Boolean(filters.orderByDirection && filters.orderByDirection !== "asc");
+
+	return (
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<Calendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.statsPeriodAfter, filters.statsPeriodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null, page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
+							to: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ statsPeriodAfter: period.from ?? null, statsPeriodBefore: period.to ?? null, page: 1 })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasGroups ? (
+				<ProductsMultiFilter
+					label="GRUPOS"
+					options={groupOptions}
+					value={filters.groups ?? []}
+					onChange={(groups) => updateFilters({ groups, page: 1 })}
+					onClear={() => updateFilters({ groups: [], page: 1 })}
+				/>
+			) : null}
+			{hasSaleNatures ? (
+				<ProductsMultiFilter
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={filters.statsSaleNatures ?? []}
+					onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
+					onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+				/>
+			) : null}
+			{hasSellers ? (
+				<ProductsMultiFilter
+					label="VENDEDORES"
+					options={sellerOptions}
+					value={filters.statsSellerIds ?? []}
+					onChange={(statsSellerIds) => updateFilters({ statsSellerIds, page: 1 })}
+					onClear={() => updateFilters({ statsSellerIds: [], page: 1 })}
+				/>
+			) : null}
+			{hasStock ? (
+				<ProductsMultiFilter
+					label="ESTOQUE"
+					options={stockStatusOptions}
+					value={filters.stockStatus ?? []}
+					onChange={(stockStatus) => updateFilters({ stockStatus, page: 1 })}
+					onClear={() => updateFilters({ stockStatus: [], page: 1 })}
+				/>
+			) : null}
+			{hasPrice ? (
+				<ProductsNumberRangeFilter
+					label="PREÇO"
+					min={filters.priceMin}
+					max={filters.priceMax}
+					onChange={({ greaterThan, lessThan }) => updateFilters({ priceMin: greaterThan, priceMax: lessThan, page: 1 })}
+					onClear={() => updateFilters({ priceMin: null, priceMax: null, page: 1 })}
+				/>
+			) : null}
+			{hasStatsTotal ? (
+				<ProductsNumberRangeFilter
+					label="VALOR VENDIDO"
+					min={filters.statsTotalMin}
+					max={filters.statsTotalMax}
+					onChange={({ greaterThan, lessThan }) => updateFilters({ statsTotalMin: greaterThan, statsTotalMax: lessThan, page: 1 })}
+					onClear={() => updateFilters({ statsTotalMin: null, statsTotalMax: null, page: 1 })}
+				/>
+			) : null}
+			{hasExcludedSales ? <ProductsExcludedSalesFilter filters={filters} updateFilters={updateFilters} /> : null}
+			{hasOrderByField ? (
+				<ProductsSingleFilter
+					label="ORDENAR POR"
+					options={orderFieldOptions}
+					value={filters.orderByField ?? "descricao"}
+					onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
+				/>
+			) : null}
+			{hasOrderByDirection ? (
+				<ProductsSingleFilter
+					label="DIREÇÃO"
+					options={orderDirectionOptions}
+					value={filters.orderByDirection ?? "asc"}
+					onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+				/>
+			) : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasGroups ? (
+							<InteractiveFilter.AddFilterItem id="groups" label="GRUPOS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={groupOptions}
+									value={filters.groups ?? []}
+									onChange={(groups) => updateFilters({ groups, page: 1 })}
+									onClear={() => updateFilters({ groups: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={saleNatureOptions}
+									value={filters.statsSaleNatures ?? []}
+									onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
+									onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+									clearLabel="TODAS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSellers ? (
+							<InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={sellerOptions}
+									value={filters.statsSellerIds ?? []}
+									onChange={(statsSellerIds) => updateFilters({ statsSellerIds, page: 1 })}
+									onClear={() => updateFilters({ statsSellerIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasStock ? (
+							<InteractiveFilter.AddFilterItem id="stock" label="ESTOQUE" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={stockStatusOptions}
+									value={filters.stockStatus ?? []}
+									onChange={(stockStatus) => updateFilters({ stockStatus, page: 1 })}
+									onClear={() => updateFilters({ stockStatus: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasPrice ? (
+							<InteractiveFilter.AddFilterItem id="price" label="PREÇO" icon={<BadgeDollarSign className="h-4 w-4" />}>
+								<InteractiveFilter.NumberRangeContent
+									value={{ greaterThan: filters.priceMin, lessThan: filters.priceMax }}
+									onChange={({ greaterThan, lessThan }) => updateFilters({ priceMin: greaterThan, priceMax: lessThan, page: 1 })}
+									onClear={() => updateFilters({ priceMin: null, priceMax: null, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasStatsTotal ? (
+							<InteractiveFilter.AddFilterItem id="statsTotal" label="VALOR VENDIDO" icon={<BadgeDollarSign className="h-4 w-4" />}>
+								<InteractiveFilter.NumberRangeContent
+									value={{ greaterThan: filters.statsTotalMin, lessThan: filters.statsTotalMax }}
+									onChange={({ greaterThan, lessThan }) => updateFilters({ statsTotalMin: greaterThan, statsTotalMax: lessThan, page: 1 })}
+									onClear={() => updateFilters({ statsTotalMin: null, statsTotalMax: null, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasExcludedSales ? (
+							<InteractiveFilter.AddFilterItem id="excludedSales" label="VENDAS EXCLUÍDAS" icon={<ListFilter className="h-4 w-4" />}>
+								<ProductsExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasOrderByField ? (
+							<InteractiveFilter.AddFilterItem id="orderByField" label="ORDENAR POR" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={orderFieldOptions}
+									value={filters.orderByField ?? "descricao"}
+									onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasOrderByDirection ? (
+							<InteractiveFilter.AddFilterItem id="orderByDirection" label="DIREÇÃO" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={orderDirectionOptions}
+									value={filters.orderByDirection ?? "asc"}
+									onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
+	);
+}
+
+function ProductsSingleFilter<T extends string>({
+	label,
+	options,
+	value,
+	onChange,
+}: {
+	label: string;
+	options: InteractiveFilterOption<T>[];
+	value: T;
+	onChange: (value: T) => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{options.find((option) => option.value === value)?.label ?? "PADRÃO"}</InteractiveFilter.Value>
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.SingleContent options={options} value={value} onChange={onChange} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function ProductsExcludedSalesFilter({ filters, updateFilters }: ProductsInlineFiltersProps) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>VENDAS EXCLUÍDAS</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveCountSummary(filters.statsExcludedSalesIds ?? [])}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-3">
+				<ProductsExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function ProductsExcludedSalesFilterContent({ filters, updateFilters }: ProductsInlineFiltersProps) {
+	return (
+		<MultipleSalesSelectInput
+			label="VENDAS EXCLUÍDAS"
+			selected={filters.statsExcludedSalesIds ?? []}
+			handleChange={(statsExcludedSalesIds) => updateFilters({ statsExcludedSalesIds: statsExcludedSalesIds as string[], page: 1 })}
+			onReset={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })}
+			resetOptionLabel="VENDAS EXCLUÍDAS"
+			width="100%"
+		/>
+	);
+}
+
+function ProductsMultiFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel="TODOS" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function ProductsNumberRangeFilter({
+	label,
+	min,
+	max,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	min?: number | null;
+	max?: number | null;
+	onChange: (value: { greaterThan?: number | null; lessThan?: number | null }) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<BadgeDollarSign className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveNumberRangeSummary(min, max)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-0">
+				<InteractiveFilter.NumberRangeContent value={{ greaterThan: min, lessThan: max }} onChange={onChange} onClear={onClear} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
 	);
 }
 
@@ -401,13 +736,11 @@ function ProductsStatsView() {
 
 function ProductCard({
 	product,
-	handleEditClick,
 	periodAfter,
 	periodBefore,
 	showStockData,
 }: {
 	product: TGetProductsOutputDefault["products"][number];
-	handleEditClick: () => void;
 	periodAfter: Date | null;
 	periodBefore: Date | null;
 	showStockData: boolean;
@@ -471,13 +804,13 @@ function ProductCard({
 	const turnoverDays = turnoverResult?.days ?? null;
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-center">
 				<div className="relative h-16 max-h-16 min-h-16 w-16 max-w-16 min-w-16 overflow-hidden rounded-lg">
 					{product.imagemCapaUrl ? (
 						<Image src={product.imagemCapaUrl} alt="Imagem de capa do produto" fill={true} objectFit="cover" />
 					) : (
-						<div className="bg-primary/50 text-primary-foreground flex h-full w-full items-center justify-center">
+						<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
 							<ShoppingCart className="h-6 w-6" />
 						</div>
 					)}
@@ -489,12 +822,12 @@ function ProductCard({
 						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.descricao}</h1>
 						<div className="flex items-center gap-1">
 							<Code className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.codigo}</h1>
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.codigo}</h1>
 						</div>
 						{product.grupo ? (
 							<div className="flex items-center gap-1">
 								<Diamond className="w-4 h-4 min-w-4 min-h-4" />
-								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{product.grupo}</h1>
+								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.grupo}</h1>
 							</div>
 						) : null}
 					</div>
@@ -562,15 +895,17 @@ function ProductCard({
 					<div className="flex items-center gap-1.5">
 						<div className="flex items-center gap-1">
 							<DollarSign className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">
 								{product.precoVenda ? `${formatToMoney(product.precoVenda)} / ${product.unidade}` : "PREÇO DE VENDA NÃO DEFINIDO"}
 							</h1>
 						</div>
 					</div>
 					<div className="flex items-center gap-1.5">
-						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleEditClick}>
-							<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
-							EDITAR
+						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
+							<Link href={`/dashboard/commercial/products/id/${product.id}?tab=cadastro`}>
+								<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
+								EDITAR
+							</Link>
 						</Button>
 						<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
 							<Link href={`/dashboard/commercial/products/id/${product.id}`}>
@@ -582,82 +917,5 @@ function ProductCard({
 				</div>
 			</div>
 		</div>
-	);
-}
-
-type ProductsFiltersShowcaseProps = {
-	filters: TGetProductsDefaultInput;
-	updateFilters: (filters: Partial<TGetProductsDefaultInput>) => void;
-};
-function ProductsFiltersShowcase({ filters, updateFilters }: ProductsFiltersShowcaseProps) {
-	const ORDERING_FIELDS_MAP = {
-		descricao: "DESCRIÇÃO",
-		codigo: "CÓDIGO",
-		grupo: "GRUPO",
-		vendasValorTotal: "VALOR TOTAL DE VENDAS",
-		vendasQtdeTotal: "QUANTIDADE TOTAL DE VENDAS",
-		quantidade: "QUANTIDADE EM ESTOQUE",
-	};
-	const ORDERING_DIRECTION_MAP = {
-		asc: "CRESCENTE",
-		desc: "DECRESCENTE",
-	};
-	const STOCK_STATUS_MAP = {
-		out: "SEM ESTOQUE",
-		low: "ESTOQUE BAIXO",
-		healthy: "ESTOQUE SAUDÁVEL",
-		overstocked: "EXCESSO DE ESTOQUE",
-	};
-	return (
-		<FiltersShowcase.Root>
-			{filters.search && filters.search.trim().length > 0 && (
-				<FiltersShowcase.Item label="PESQUISA" value={filters.search} onRemove={() => updateFilters({ search: "" })} />
-			)}
-			{filters.groups.length > 0 && (
-				<FiltersShowcase.Item label="GRUPOS" value={filters.groups.join(", ")} onRemove={() => updateFilters({ groups: [] })} />
-			)}
-			{filters.statsTotalMin || filters.statsTotalMax ? (
-				<FiltersShowcase.Item
-					label="ESTATÍSTICAS - VALOR"
-					value={`${filters.statsTotalMin ? `> ${formatToMoney(filters.statsTotalMin)}` : ""}${filters.statsTotalMin && filters.statsTotalMax ? " & " : ""}${filters.statsTotalMax ? `< ${formatToMoney(filters.statsTotalMax)}` : ""}`}
-					onRemove={() => updateFilters({ statsTotalMin: null, statsTotalMax: null })}
-				/>
-			) : null}
-			{filters.statsPeriodAfter && filters.statsPeriodBefore && (
-				<FiltersShowcase.Item
-					label="ESTATÍSTICAS - PERÍODO"
-					value={`${formatDateAsLocale(filters.statsPeriodAfter)} a ${formatDateAsLocale(filters.statsPeriodBefore)}`}
-					onRemove={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null })}
-				/>
-			)}
-			{filters.statsSaleNatures.length > 0 && (
-				<FiltersShowcase.Item
-					label="ESTATÍSTICAS - NATUREZAS DAS VENDAS"
-					value={filters.statsSaleNatures.join(", ")}
-					onRemove={() => updateFilters({ statsSaleNatures: [] })}
-				/>
-			)}
-			{filters.stockStatus && filters.stockStatus.length > 0 && (
-				<FiltersShowcase.Item
-					label="STATUS DE ESTOQUE"
-					value={filters.stockStatus.map((status: string) => STOCK_STATUS_MAP[status as keyof typeof STOCK_STATUS_MAP] || status).join(", ")}
-					onRemove={() => updateFilters({ stockStatus: [] })}
-				/>
-			)}
-			{(filters.priceMin || filters.priceMax) && (
-				<FiltersShowcase.Item
-					label="FAIXA DE PREÇO"
-					value={`${filters.priceMin ? `≥ ${formatToMoney(filters.priceMin)}` : ""}${filters.priceMin && filters.priceMax ? " & " : ""}${filters.priceMax ? `≤ ${formatToMoney(filters.priceMax)}` : ""}`}
-					onRemove={() => updateFilters({ priceMin: null, priceMax: null })}
-				/>
-			)}
-			{filters.orderByField && filters.orderByDirection && (
-				<FiltersShowcase.Item
-					label="ORDENAÇÃO"
-					value={`${ORDERING_FIELDS_MAP[filters.orderByField]} - ${ORDERING_DIRECTION_MAP[filters.orderByDirection]}`}
-					onRemove={() => updateFilters({ orderByField: null, orderByDirection: null })}
-				/>
-			)}
-		</FiltersShowcase.Root>
 	);
 }

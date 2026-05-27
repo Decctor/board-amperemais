@@ -43,7 +43,7 @@ This AI agent is a high-agency customer service and sales assistant built for th
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│   Next.js API   │  (pages/api/integrations/ai/generate-response.ts)
+│   Next.js API   │  (app/api/integrations/ai/generate-response/route.ts)
 │   Endpoint      │  - Enriches client data from Drizzle DB
 └────────┬────────┘
          │
@@ -81,7 +81,7 @@ This AI agent is a high-agency customer service and sales assistant built for th
 ### Integration Files
 
 **API Endpoints:**
-- `pages/api/integrations/ai/generate-response.ts` - API endpoint that receives chat context
+- `app/api/integrations/ai/generate-response/route.ts` - API endpoint that receives chat context
 
 **Convex:**
 - `convex/actions/ai.ts` - Convex action that orchestrates AI response generation

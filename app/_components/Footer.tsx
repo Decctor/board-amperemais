@@ -39,11 +39,12 @@ export default function FooterV2() {
 						</div>
 
 						<h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight tracking-tight">
-							Junte-se às lojas que estão <span className="text-[#FFB900]">escalando o faturamento</span>
+							Sua loja já tem clientes. <br />
+							<span className="text-[#FFB900]">Agora, faça eles voltarem.</span>
 						</h2>
 
 						<p className="text-lg text-white/75 max-w-2xl mx-auto mb-10 leading-relaxed">
-							Retendo clientes e aumentando a recompra sem aumentar o custo de aquisição. Configure hoje e veja os primeiros resultados em menos de 30 dias.
+							Faça seus clientes voltarem e aumente o seu faturamento. <br /> Configure hoje e veja os primeiros resultados em menos de 30 dias.
 						</p>
 
 						{/* CTAs */}
@@ -89,10 +90,10 @@ export default function FooterV2() {
 
 						{/* Trust row */}
 						<div className="flex flex-wrap items-center justify-center gap-6 text-sm text-white/60 font-medium">
-							<span>✓ 15 dias grátis</span>
-							<span>✓ Sem cartão necessário</span>
-							<span>✓ Cancele quando quiser</span>
-							<span>✓ Suporte incluso</span>
+							<span className="tracking-tight">✓ Teste grátis de 15 dias</span>
+							<span className="tracking-tight">✓ Sem cartão de crédito necessário</span>
+							<span className="tracking-tight">✓ Cancele quando quiser</span>
+							<span className="tracking-tight">✓ Suporte incluso</span>
 						</div>
 					</motion.div>
 				</div>
@@ -101,7 +102,7 @@ export default function FooterV2() {
 			{/* Footer */}
 			<footer className="bg-slate-50 border-t border-slate-200">
 				<div className="container mx-auto max-w-7xl px-6 lg:px-8 py-12">
-					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 mb-10">
 						{/* Brand */}
 						<div className="md:col-span-1">
 							<h3 className="font-black text-lg text-slate-900 mb-3">RecompraCRM</h3>
@@ -135,14 +136,57 @@ export default function FooterV2() {
 							</ul>
 						</div>
 
-						{/* Recursos */}
+						{/* Funcionalidades */}
 						<div>
-							<h4 className="font-bold text-slate-900 mb-3 text-sm">Recursos</h4>
+							<h4 className="font-bold text-slate-900 mb-3 text-sm">Funcionalidades</h4>
 							<ul className="space-y-2 text-sm text-slate-500">
-								<li>Cashback e Pontos</li>
-								<li>Campanhas Automáticas</li>
-								<li>WhatsApp Hub</li>
-								<li>Business Intelligence</li>
+								<li>
+									<Link href="/funcionalidades/programa-de-cashback" className="hover:text-[#24549C] transition-colors">
+										Cashback e Pontos
+									</Link>
+								</li>
+								<li>
+									<Link href="/funcionalidades/campanhas-whatsapp" className="hover:text-[#24549C] transition-colors">
+										Campanhas WhatsApp
+									</Link>
+								</li>
+								<li>
+									<Link href="/funcionalidades/ponto-de-interacao" className="hover:text-[#24549C] transition-colors">
+										Ponto de Interação
+									</Link>
+								</li>
+								<li>
+									<Link href="/funcionalidades/business-intelligence" className="hover:text-[#24549C] transition-colors">
+										Business Intelligence
+									</Link>
+								</li>
+							</ul>
+						</div>
+
+						{/* Blog */}
+						<div>
+							<h4 className="font-bold text-slate-900 mb-3 text-sm">Blog</h4>
+							<ul className="space-y-2 text-sm text-slate-500">
+								<li>
+									<Link href="/blog" className="hover:text-[#24549C] transition-colors">
+										Todos os Artigos
+									</Link>
+								</li>
+								<li>
+									<Link href="/blog/como-recompracrm-pode-ajudar-sua-sorveteria" className="hover:text-[#24549C] transition-colors">
+										Sorveterias
+									</Link>
+								</li>
+								<li>
+									<Link href="/blog/como-recompracrm-pode-ajudar-seu-petshop" className="hover:text-[#24549C] transition-colors">
+										Pet Shops
+									</Link>
+								</li>
+								<li>
+									<Link href="/blog/como-recompracrm-pode-ajudar-sua-loja-de-roupas" className="hover:text-[#24549C] transition-colors">
+										Lojas de Roupas
+									</Link>
+								</li>
 							</ul>
 						</div>
 

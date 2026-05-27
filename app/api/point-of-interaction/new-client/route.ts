@@ -17,6 +17,7 @@ const CreateClientViaPointOfInteractionInputSchema = z.object({
 		nome: true,
 		telefone: true,
 		cpfCnpj: true,
+		dataNascimento: true,
 	}),
 });
 export type TCreateClientViaPointOfInteractionInput = z.infer<typeof CreateClientViaPointOfInteractionInputSchema>;
@@ -50,6 +51,7 @@ async function createClientViaPointOfInteraction({ input }: { input: TCreateClie
 				cpfCnpj: client.cpfCnpj ?? null,
 				telefone: client.telefone ?? "",
 				telefoneBase: clientPhoneAsBase,
+				dataNascimento: client.dataNascimento ? new Date(client.dataNascimento) : null,
 				canalAquisicao: "PONTO DE INTERAÇÃO",
 			})
 			.returning({ id: clients.id });

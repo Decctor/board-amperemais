@@ -3,7 +3,6 @@ import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
 export const LUCAS_WHATSAPP_NUMBER = "5534996626855";
 export const ARTHUR_WHATSAPP_NUMBER = "5534999480791";
-export const JULIANA_WHATSAPP_NUMBER = "5534998225216";
 type TNotifyFoundersOnNewOrganizationInput = {
 	organization: {
 		nome: TOrganizationEntity["nome"];
@@ -36,6 +35,5 @@ export async function notifyInternalsOnNewOrganization({ organization, subscript
 	await Promise.all([
 		sendMessage(sessionId, LUCAS_WHATSAPP_NUMBER, { type: "text", text }),
 		sendMessage(sessionId, ARTHUR_WHATSAPP_NUMBER, { type: "text", text }),
-		sendMessage(sessionId, JULIANA_WHATSAPP_NUMBER, { type: "text", text }),
 	]);
 }

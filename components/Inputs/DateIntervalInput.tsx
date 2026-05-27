@@ -17,14 +17,14 @@ type DateIntervalInputProps = {
 function DateIntervalInput({ label, labelClassName, className, value, handleChange }: DateIntervalInputProps) {
 	return (
 		<div className={cn("flex flex-col gap-1")}>
-			<Label className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>{label}</Label>
+			<Label className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>{label}</Label>
 			<Popover>
 				<PopoverTrigger asChild>
 					<Button
 						id="date"
 						variant={"outline"}
 						className={cn(
-							"w-full justify-start rounded-md border border-primary/20 bg-[#fff] text-left text-sm font-normal shadow-xs outline-hidden ease-in-out focus:border-primary dark:bg-[#121212]",
+							"w-full justify-start rounded-md border border-border bg-[#fff] text-left text-sm font-normal shadow-xs outline-hidden ease-in-out focus:border-border dark:bg-[#121212]",
 							!value.after && !value.before && "text-muted-foreground",
 							className,
 						)}

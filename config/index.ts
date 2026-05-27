@@ -4,6 +4,8 @@ import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
 export const SESSION_COOKIE_NAME = "syncrono-session";
 
+export const HINTS_AMMOUNT_VALIDATION_THRESHOLD = 5;
+
 export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 	usuarios: {
 		visualizar: true,

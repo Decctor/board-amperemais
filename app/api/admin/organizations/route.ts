@@ -25,28 +25,38 @@ const ProductExcelSchema = z.object({
 
 // Get Organizations
 async function getOrganizations() {
-	const orgsWithUserCount = await db
-		.select({
-			id: organizations.id,
-			nome: organizations.nome,
-			cnpj: organizations.cnpj,
-			logoUrl: organizations.logoUrl,
-			telefone: organizations.telefone,
-			email: organizations.email,
-			dataInsercao: organizations.dataInsercao,
-			userCount: sql<number>`count(${organizationMembers.id})::int`,
-		})
-		.from(organizations)
-		.leftJoin(organizationMembers, sql`${organizationMembers.organizacaoId} = ${organizations.id}`)
-		.groupBy(organizations.id)
-		.orderBy(sql`${organizations.dataInsercao} DESC`);
+	const orgs = await db.query.organizations.findMany({
+		columns: {
+			id: true,
+			nome: true,
+			cnpj: true,
+			logoUrl: true,
+			telefone: true,
+			email: true,
+			dataInsercao: true,
+		},
+		with: {
+			membros: {
+				with: {
+					usuario: {
+						columns: {
+							id: true,
+							nome: true,
+							avatarUrl: true,
+						},
+					},
+				},
+			},
+		},
+		orderBy: (fields, { desc }) => desc(fields.dataInsercao),
+	});
 
 	return {
-		data: orgsWithUserCount,
+		data: orgs,
 		message: "Organizações obtidas com sucesso.",
 	};
 }
-export type TGetOrganizationsOutput = Awaited<ReturnType<typeof getOrganizations>>;
+export type TGetOrganizationsAdminOutput = Awaited<ReturnType<typeof getOrganizations>>;
 
 async function getOrganizationsRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();

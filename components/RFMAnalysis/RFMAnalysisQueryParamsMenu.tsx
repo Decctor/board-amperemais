@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { formatDateOnInputChange } from "@/lib/formatting";
 import { formatDateForInputValue } from "@/lib/formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
-import type { TGetClientsInput } from "@/pages/api/clients";
+import type { TGetClientsInput } from "@/app/api/clients/route";
 import type { TClientSearchQueryParams } from "@/schemas/clients";
 import { TUserSession } from "@/schemas/users";
 import { RFMLabels } from "@/utils/rfm";
@@ -70,7 +70,7 @@ function RFMAnalysisQueryParamsMenu({ filters, updateFilters, closeMenu }: RFMAn
 								width="100%"
 							/>
 						</div>
-						<h1 className="w-full text-center text-[0.75rem] tracking-tight text-primary/80">FILTRO PARA COMPRAS</h1>
+						<h1 className="w-full text-center text-[0.75rem] tracking-tight text-foreground/80">FILTRO PARA COMPRAS</h1>
 						<MultipleSalesSelectInput
 							label="VENDAS EXCLUÍDAS"
 							selected={filtersHolder.statsExcludedSalesIds}
@@ -100,7 +100,7 @@ function RFMAnalysisQueryParamsMenu({ filters, updateFilters, closeMenu }: RFMAn
 						/>
 
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-primary/80">FILTRO POR PERÍODO</h1>
+							<h1 className="w-full text-center text-[0.65rem] tracking-tight text-foreground/80">FILTRO POR PERÍODO</h1>
 							<DateInput
 								label="DEPOIS DE"
 								value={formatDateForInputValue(filtersHolder.statsPeriodAfter)}

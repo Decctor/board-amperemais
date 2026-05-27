@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
-import type { TGetProductStatsInput } from "@/pages/api/products/stats";
+import type { TGetProductStatsInput } from "@/app/api/products/stats/route";
 import { useState } from "react";
 import DateInput from "../Inputs/DateInput";
 
@@ -59,7 +59,7 @@ export default function ProductFilterMenu({ queryParams, updateQueryParams, clos
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO POR PERÍODO DAS ESTASTÍCAS</h1>
+							<h1 className="w-full text-xs tracking-tight text-foreground">FILTRO POR PERÍODO DAS ESTASTÍCAS</h1>
 							<DateInput
 								label="DEPOIS DE"
 								value={formatDateForInputValue(queryParamsHolder.periodAfter)}

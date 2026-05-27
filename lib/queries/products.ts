@@ -1,11 +1,11 @@
-import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsInput, TGetProductsOutput } from "@/pages/api/products";
-import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/pages/api/products/by-codes";
-import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/pages/api/products/graph";
-import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/pages/api/products/search";
-import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/pages/api/products/stats";
-import type { TGetProductsGraphInput, TGetProductsGraphOutput } from "@/pages/api/products/stats/graph";
-import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } from "@/pages/api/products/stats/overall";
-import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/pages/api/products/stats/ranking";
+import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsInput, TGetProductsOutput } from "@/app/api/products/route";
+import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/app/api/products/by-codes/route";
+import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/app/api/products/graph/route";
+import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/app/api/products/search/route";
+import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/app/api/products/stats/route";
+import type { TGetProductsGraphInput, TGetProductsGraphOutput } from "@/app/api/products/stats/graph/route";
+import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } from "@/app/api/products/stats/overall/route";
+import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/app/api/products/stats/ranking/route";
 import type { TProductStatsQueryParams } from "@/schemas/products";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -121,8 +121,9 @@ async function fetchProductStats(input: TGetProductStatsInput) {
 type UseProductStatsParams = {
 	productId: string;
 	initialFilters?: Partial<Omit<TGetProductStatsInput, "productId">>;
+	enabled?: boolean;
 };
-export function useProductStats({ productId, initialFilters }: UseProductStatsParams) {
+export function useProductStats({ productId, initialFilters, enabled = true }: UseProductStatsParams) {
 	const [filters, setFilters] = useState<Omit<TGetProductStatsInput, "productId">>({
 		periodAfter: initialFilters?.periodAfter || null,
 		periodBefore: initialFilters?.periodBefore || null,
@@ -138,6 +139,7 @@ export function useProductStats({ productId, initialFilters }: UseProductStatsPa
 		...useQuery({
 			queryKey: ["product-stats", productId, debouncedFilters],
 			queryFn: () => fetchProductStats({ productId, ...debouncedFilters }),
+			enabled,
 		}),
 		queryKey: ["product-stats", productId, debouncedFilters],
 		filters,

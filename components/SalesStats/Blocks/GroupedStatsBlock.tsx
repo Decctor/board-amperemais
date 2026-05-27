@@ -1,89 +1,99 @@
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
-import { formatDateAsLocale, formatDecimalPlaces, formatLongString, formatNameAsInitials } from "@/lib/formatting";
+import { formatDateAsLocale, formatDecimalPlaces, formatNameAsInitials } from "@/lib/formatting";
 import { formatToMoney } from "@/lib/formatting";
 import { useGroupedSalesStats } from "@/lib/queries/stats/grouped";
-import type { TGroupedSalesStats } from "@/pages/api/stats/sales-grouped";
+import type { TGroupedSalesStats } from "@/app/api/stats/sales-grouped/route";
+import type { TSalesDetailedAnalysisInput } from "@/app/api/stats/sales-detailed-analysis/route";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { useEffect, useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { type ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { StatEmptyState } from "@/components/SalesStats/StatEmptyState";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { isValidNumber } from "@/lib/validation";
-import { BadgeDollarSign, Calendar, CirclePlus, Download, Flame } from "lucide-react";
-import { FaRankingStar } from "react-icons/fa6";
-import { VariableSizeList as List, VariableSizeList } from "react-window";
-import { Bar, BarChart, LabelList, Pie, PieChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { BadgeDollarSign, Calendar, CirclePlus, Download, Flame, Radio, Truck, UserRound, Users } from "lucide-react";
+import { VariableSizeList } from "react-window";
+import { Pie, PieChart } from "recharts";
 import { toast } from "sonner";
+import WeeklyStatsDetailMenu from "./WeeklyStatsDetailMenu";
+
 type GroupedStatsBlockProps = {
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 	user: TAuthUserSession["user"];
 	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 };
-function GroupedStatsBlock({ generalQueryParams, user, userOrg }: GroupedStatsBlockProps) {
+function GroupedStatsBlock({ generalQueryParams, user: _user, userOrg }: GroupedStatsBlockProps) {
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
+	const [selectedWeeklyDrilldown, setSelectedWeeklyDrilldown] = useState<TSalesDetailedAnalysisInput | null>(null);
 
 	const [debouncedQueryParams] = useDebounce(queryParams, 1000);
 
-	const { data: groupedStats, isLoading: groupedStatsLoading } = useGroupedSalesStats(debouncedQueryParams);
+	const { data: groupedStats } = useGroupedSalesStats(debouncedQueryParams);
 
 	useEffect(() => {
 		setQueryParams(generalQueryParams);
+		setSelectedWeeklyDrilldown(null);
 	}, [generalQueryParams]);
 	return (
-		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
-				<div className="w-full lg:w-[50%]">
-					<ResultsByPartnerGraph data={groupedStats?.porParceiro || []} />
-				</div>
-				<div className="w-full lg:w-[50%]">
-					<ResultsBySellerGraph data={groupedStats?.porVendedor || []} />
-				</div>
-			</div>
-			{userOrg?.assinaturaPlano === "CRESCIMENTO" ? (
+		<>
+			<div className="w-full flex flex-col gap-2 py-2">
 				<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
 					<div className="w-full lg:w-[50%]">
-						<ResultsByItemGraph data={groupedStats?.porItem || []} />
+						<ResultsByPartnerGraph data={groupedStats?.porParceiro || []} />
 					</div>
 					<div className="w-full lg:w-[50%]">
-						<ResultsByProductGroupGraph data={groupedStats?.porGrupo || []} />
+						<ResultsBySellerGraph data={groupedStats?.porVendedor || []} />
 					</div>
 				</div>
-			) : null}
+				{userOrg?.assinaturaPlano === "CRESCIMENTO" ? (
+					<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
+						<div className="w-full lg:w-[50%]">
+							<ResultsByItemGraph data={groupedStats?.porItem || []} />
+						</div>
+						<div className="w-full lg:w-[50%]">
+							<ResultsByProductGroupGraph data={groupedStats?.porGrupo || []} />
+						</div>
+					</div>
+				) : null}
 
-			<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
-				<div className="w-full lg:w-[50%]">
-					<ResultsByChannelGraph data={groupedStats?.porCanal || []} />
+				<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
+					<div className="w-full lg:w-[50%]">
+						<ResultsByChannelGraph data={groupedStats?.porCanal || []} />
+					</div>
+					<div className="w-full lg:w-[50%]">
+						<ResultsByFulfillmentMethodGraph data={groupedStats?.porEntregaModalidade || []} />
+					</div>
 				</div>
-				<div className="w-full lg:w-[50%]">
-					<ResultsByFulfillmentMethodGraph data={groupedStats?.porEntregaModalidade || []} />
-				</div>
-			</div>
 
-			<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
-				<div className="w-full lg:w-1/2">
-					<GroupedByMonthDay data={groupedStats?.porDiaDoMes || []} />
+				<div className="flex w-full flex-col lg:flex-row gap-2 items-stretch">
+					<div className="w-full lg:w-1/2">
+						<GroupedByMonthDay data={groupedStats?.porDiaDoMes || []} />
+					</div>
+					<div className="w-full lg:w-1/2">
+						<GroupedByMonth data={groupedStats?.porMes || []} />
+					</div>
 				</div>
-				<div className="w-full lg:w-1/2">
-					<GroupedByMonth data={groupedStats?.porMes || []} />
+
+				<div className="w-full">
+					<WeeklyStatsBlock
+						porDiaDaSemana={groupedStats?.porDiaDaSemana || []}
+						porDiaSemanaHora={groupedStats?.porDiaSemanaHora || []}
+						period={queryParams.period}
+						onSelectDrilldown={setSelectedWeeklyDrilldown}
+					/>
 				</div>
 			</div>
-			<div className="w-full">
-				<WeeklyStatsBlock
-					porDiaDaSemana={groupedStats?.porDiaDaSemana || []}
-					porDiaSemanaHora={groupedStats?.porDiaSemanaHora || []}
-					period={queryParams.period}
-				/>
-			</div>
-		</div>
+			{selectedWeeklyDrilldown ? <WeeklyStatsDetailMenu params={selectedWeeklyDrilldown} closeMenu={() => setSelectedWeeklyDrilldown(null)} /> : null}
+		</>
 	);
 }
 
@@ -114,20 +124,12 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 			return toast.error(msg);
 		}
 	}
-	const ProductsList = ({
-		height,
-		width,
-		list,
-	}: {
-		height: number | string;
-		width: number | string;
-		list: TGroupedSalesStats["porItem"];
-	}) => (
+	const ProductsList = ({ height, width, list }: { height: number | string; width: number | string; list: TGroupedSalesStats["porItem"] }) => (
 		<VariableSizeList
 			height={height}
 			width={width}
 			itemCount={list ? list.length : 0}
-			itemSize={(index) => 30} // Adjust the item height as needed
+			itemSize={(_index) => 30} // Adjust the item height as needed
 			className="overflow-y-auto overscroll-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
 		>
 			{({ index, style }) => {
@@ -185,7 +187,7 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 	);
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR ITEM</h1>
 				<div className="flex items-center gap-2">
@@ -261,7 +263,7 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 	);
 	const projectTypesChartConfig = { titulo: { label: "GRUPO" } };
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR GRUPO</h1>
 				<div className="flex items-center gap-2">
@@ -327,7 +329,6 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"] }) {
 	const [type, setType] = useState<"qtde" | "total">("total");
 
-	console.log("ResultsBySellerGraph data", data);
 	const dataSorted = useMemo(() => [...data].sort((a, b) => (type === "total" ? b.total - a.total : b.qtde - a.qtde)), [data, type]);
 
 	const maxValue = useMemo(() => {
@@ -352,7 +353,7 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 	}
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE VENDEDORES</h1>
 				<div className="flex items-center gap-2">
@@ -392,71 +393,78 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 			</div>
 
 			<ScrollArea className="h-[450px] w-full pr-4">
-				<div className="flex flex-col gap-4 py-2">
-					{dataSorted.map((item, index) => {
-						const value = type === "total" ? item.total : item.qtde;
-						const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
-						console.log("VENDEDOR: ", item.vendedor);
+				{dataSorted.length === 0 ? (
+					<StatEmptyState
+						className="min-h-[420px]"
+						icon={UserRound}
+						title="Nenhum vendedor no ranking"
+						description="Não há vendas por vendedor no período e filtros selecionados. Ajuste os filtros ou escolha outro intervalo para ver o ranking."
+					/>
+				) : (
+					<div className="flex flex-col gap-4 py-2">
+						{dataSorted.map((item, index) => {
+							const value = type === "total" ? item.total : item.qtde;
+							const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+							return (
+								<HoverCard key={item.vendedor.id}>
+									<HoverCardTrigger asChild>
+										<div key={item.vendedor.id} className="flex items-center gap-4 w-full group">
+											<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
+												<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
 
-						return (
-							<HoverCard key={item.vendedor.id}>
-								<HoverCardTrigger asChild>
-									<div key={item.vendedor.id} className="flex items-center gap-4 w-full group">
-										<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
-											<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
-
-											<div className="flex items-center gap-2 cursor-pointer">
-												<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-primary transition-colors">
-													<AvatarImage src={item.vendedor.avatarUrl || undefined} alt={item.vendedor.nome} />
-													<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
-												</Avatar>
-												<div className="flex flex-col">
-													<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.vendedor.nome}>
-														{item.vendedor.nome}
-													</span>
-													<span className="text-[0.6rem] text-muted-foreground">ID: {item.vendedor.identificador}</span>
+												<div className="flex items-center gap-2 cursor-pointer">
+													<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-border transition-colors">
+														<AvatarImage src={item.vendedor.avatarUrl || undefined} alt={item.vendedor.nome} />
+														<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
+													</Avatar>
+													<div className="flex flex-col">
+														<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.vendedor.nome || "NÃO DEFINIDO"}>
+															{item.vendedor.nome || "NÃO DEFINIDO"}
+														</span>
+														<span className="text-[0.6rem] text-muted-foreground">ID: {item.vendedor.identificador || "N/A"}</span>
+													</div>
 												</div>
 											</div>
-										</div>
 
-										<div className="flex-1 flex flex-col justify-center h-full">
-											<Progress value={percentage} className="h-2 w-full" />
-										</div>
+											<div className="flex-1 flex flex-col justify-center h-full">
+												<Progress value={percentage} className="h-2 w-full" />
+											</div>
 
-										<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
-									</div>
-								</HoverCardTrigger>
-								<HoverCardContent className="flex flex-col w-80">
-									<div className="w-full flex items-center gap-2">
-										<Avatar className="h-12 w-12 min-h-12 min-w-12">
-											<AvatarImage src={item.vendedor.avatarUrl || undefined} />
-											<AvatarFallback>{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
-										</Avatar>
-										<h2 className="text-sm font-semibold">{item.vendedor.nome}</h2>
-									</div>
-									<div className="w-full flex flex-col gap-1">
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
-											<p className="text-xs font-medium">{item.vendedor.identificador}</p>
+											<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
-											<p className="text-xs font-medium">{item.qtde}</p>
+									</HoverCardTrigger>
+									<HoverCardContent className="flex flex-col w-80">
+										<div className="w-full flex items-center gap-2">
+											<Avatar className="h-12 w-12 min-h-12 min-w-12">
+												<AvatarImage src={item.vendedor.avatarUrl || undefined} />
+												<AvatarFallback>{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
+											</Avatar>
+											<h2 className="text-sm font-semibold">{item.vendedor.nome}</h2>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
-											<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
+										<div className="w-full flex flex-col gap-1">
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
+												<p className="text-xs font-medium">{item.vendedor.identificador}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
+												<p className="text-xs font-medium">{item.qtde}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
+												<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
+												<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
+											</div>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
-											<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
-										</div>
-									</div>
-								</HoverCardContent>
-							</HoverCard>
-						);
-					})}
-				</div>
+									</HoverCardContent>
+								</HoverCard>
+							);
+						})}
+					</div>
+				)}
 			</ScrollArea>
 		</div>
 	);
@@ -490,7 +498,7 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 	}, [data, type]);
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE PARCEIROS</h1>
 				<div className="flex items-center gap-2">
@@ -530,73 +538,82 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 			</div>
 
 			<ScrollArea className="h-[450px] w-full pr-4">
-				<div className="flex flex-col gap-4 py-2">
-					{dataSorted.map((item, index) => {
-						const value = type === "total" ? item.total : item.qtde;
-						const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+				{dataSorted.length === 0 ? (
+					<StatEmptyState
+						className="min-h-[420px]"
+						icon={Users}
+						title="Nenhum parceiro no ranking"
+						description="Não há vendas por parceiro no período e filtros selecionados. Ajuste os filtros ou escolha outro intervalo para ver o ranking."
+					/>
+				) : (
+					<div className="flex flex-col gap-4 py-2">
+						{dataSorted.map((item, index) => {
+							const value = type === "total" ? item.total : item.qtde;
+							const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
 
-						return (
-							<HoverCard key={item.parceiro.id}>
-								<HoverCardTrigger asChild>
-									<div className="flex items-center gap-4 w-full hover:bg-primary/10 rounded-lg transition-all px-2 py-">
-										<div className="flex items-center gap-3 w-fit min-w-fit lg:w-[250px] lg:min-w-[250px]">
-											<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
-											<div className="flex items-center gap-2 cursor-pointer">
-												<Avatar className="h-9 w-9 border-2 border-transparent transition-colors">
-													<AvatarImage src={item.parceiro.avatarUrl || undefined} alt={item.parceiro.nome} />
-													<AvatarFallback className="font-bold text-primary">{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
-												</Avatar>
-												<div className="flex flex-col">
-													<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.parceiro.nome}>
-														{item.parceiro.nome}
-													</span>
-													<span className="text-[0.6rem] text-muted-foreground">ID: {item.parceiro.identificador}</span>
+							return (
+								<HoverCard key={item.parceiro.id}>
+									<HoverCardTrigger asChild>
+										<div className="flex items-center gap-4 w-full hover:bg-primary/10 rounded-lg transition-all px-2 py-">
+											<div className="flex items-center gap-3 w-fit min-w-fit lg:w-[250px] lg:min-w-[250px]">
+												<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
+												<div className="flex items-center gap-2 cursor-pointer">
+													<Avatar className="h-9 w-9 border-2 border-transparent transition-colors">
+														<AvatarImage src={item.parceiro.avatarUrl || undefined} alt={item.parceiro.nome} />
+														<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
+													</Avatar>
+													<div className="flex flex-col">
+														<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.parceiro.nome}>
+															{item.parceiro.nome}
+														</span>
+														<span className="text-[0.6rem] text-muted-foreground">ID: {item.parceiro.identificador}</span>
+													</div>
 												</div>
 											</div>
-										</div>
 
-										<div className="hidden lg:flex flex-1 flex-col justify-center h-full">
-											<Progress value={percentage} className="h-2 w-full" />
-										</div>
+											<div className="hidden lg:flex flex-1 flex-col justify-center h-full">
+												<Progress value={percentage} className="h-2 w-full" />
+											</div>
 
-										<div className="w-fit lg:w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
-									</div>
-								</HoverCardTrigger>
-								<HoverCardContent className="flex flex-col w-80">
-									<div className="w-full flex items-center gap-2">
-										<Avatar className="h-12 w-12 min-h-12 min-w-12">
-											<AvatarImage src={item.parceiro.avatarUrl || undefined} />
-											<AvatarFallback>{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
-										</Avatar>
-										<h2 className="text-sm font-semibold">{item.parceiro.nome}</h2>
-									</div>
-									<div className="w-full flex flex-col gap-1">
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
-											<p className="text-xs font-medium">{item.parceiro.identificador}</p>
+											<div className="w-fit lg:w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">CPF/CNPJ</p>
-											<p className="text-xs font-medium">{item.parceiro.cpfCnpj}</p>
+									</HoverCardTrigger>
+									<HoverCardContent className="flex flex-col w-80">
+										<div className="w-full flex items-center gap-2">
+											<Avatar className="h-12 w-12 min-h-12 min-w-12">
+												<AvatarImage src={item.parceiro.avatarUrl || undefined} />
+												<AvatarFallback>{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
+											</Avatar>
+											<h2 className="text-sm font-semibold">{item.parceiro.nome}</h2>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
-											<p className="text-xs font-medium">{item.qtde}</p>
+										<div className="w-full flex flex-col gap-1">
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">IDENTIFICADOR</p>
+												<p className="text-xs font-medium">{item.parceiro.identificador}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">CPF/CNPJ</p>
+												<p className="text-xs font-medium">{item.parceiro.cpfCnpj}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">Nº DE VENDAS</p>
+												<p className="text-xs font-medium">{item.qtde}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
+												<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
+											</div>
+											<div className="w-full flex items-center gap-2 justify-between">
+												<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
+												<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
+											</div>
 										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">VALOR VENDIDO</p>
-											<p className="text-xs font-medium">{formatToMoney(item.total)}</p>
-										</div>
-										<div className="w-full flex items-center gap-2 justify-between">
-											<p className="text-xs text-muted-foreground">TICKET MÉDIO</p>
-											<p className="text-xs font-medium">{formatToMoney(item.total / item.qtde)}</p>
-										</div>
-									</div>
-								</HoverCardContent>
-							</HoverCard>
-						);
-					})}
-				</div>
+									</HoverCardContent>
+								</HoverCard>
+							);
+						})}
+					</div>
+				)}
 			</ScrollArea>
 		</div>
 	);
@@ -606,11 +623,12 @@ type WeeklyStatsBlockProps = {
 	porDiaDaSemana: TGroupedSalesStats["porDiaDaSemana"];
 	porDiaSemanaHora: TGroupedSalesStats["porDiaSemanaHora"];
 	period: TSaleStatsGeneralQueryParams["period"];
+	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
 };
 
-function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period }: WeeklyStatsBlockProps) {
+function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period, onSelectDrilldown }: WeeklyStatsBlockProps) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs min-h-[420px]">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs min-h-[420px]">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">ANÁLISE DE FATURAMENTO SEMANAL</h1>
 				<div className="flex items-center gap-2">
@@ -619,13 +637,13 @@ function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period }: WeeklySt
 			</div>
 
 			<p className="text-[0.65rem] text-muted-foreground italic shrink-0">
-				A intensidade da cor indica o volume de faturamento em cada horário. Passe o mouse sobre as células para ver os detalhes.
+				A intensidade da cor indica o volume de faturamento em cada horário. Passe o mouse para ver os detalhes e clique para abrir a análise segmentada.
 			</p>
 			{/* Faixa resumo por dia (7 células) + Heatmap (ocupa espaço restante) */}
 			<div className="flex flex-col gap-3 flex-1 min-h-0">
-				<GroupedByWeekDayStrip data={porDiaDaSemana} />
+				<GroupedByWeekDayStrip data={porDiaDaSemana} period={period} onSelectDrilldown={onSelectDrilldown} />
 				<div className="flex-1 min-h-0 flex flex-col overflow-x-auto overflow-y-hidden">
-					<RevenueHeatmapCore data={porDiaSemanaHora} />
+					<RevenueHeatmapCore data={porDiaSemanaHora} period={period} onSelectDrilldown={onSelectDrilldown} />
 				</div>
 			</div>
 		</div>
@@ -633,7 +651,15 @@ function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period }: WeeklySt
 }
 
 /** Faixa horizontal com 7 dias: total por dia da semana (resumo acima do heatmap) */
-function GroupedByWeekDayStrip({ data }: { data: TGroupedSalesStats["porDiaDaSemana"] }) {
+function GroupedByWeekDayStrip({
+	data,
+	period,
+	onSelectDrilldown,
+}: {
+	data: TGroupedSalesStats["porDiaDaSemana"];
+	period: TSaleStatsGeneralQueryParams["period"];
+	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
+}) {
 	const { colors } = useOrgColors();
 	const maxValue = Math.max(...data.map((item) => item.total), 0);
 	const minValue = Math.min(...data.map((item) => item.total), 0);
@@ -658,20 +684,28 @@ function GroupedByWeekDayStrip({ data }: { data: TGroupedSalesStats["porDiaDaSem
 		return (
 			<Tooltip delayDuration={150}>
 				<TooltipTrigger asChild>
-					<div
-						className="flex flex-col items-center justify-center py-2 px-1 rounded-md border border-primary/20 min-h-[44px] min-w-0 flex-1 transition-all hover:scale-[1.02] cursor-pointer"
+					<button
+						type="button"
+						className="flex flex-col items-center justify-center py-2 px-1 rounded-md border border-border min-h-[44px] min-w-0 flex-1 transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
+						onClick={() =>
+							onSelectDrilldown({
+								weekday: index,
+								periodStart: period.after,
+								periodEnd: period.before,
+							})
+						}
 					>
 						<span className="text-[0.6rem] font-bold tracking-tight uppercase">{WEEKDAY_MAP_HEATMAP[index as keyof typeof WEEKDAY_MAP_HEATMAP]}</span>
 						{result ? (
-							<span className="text-[0.6rem] font-medium text-primary/80 truncate max-w-full text-center">{formatToMoney(result.total)}</span>
+							<span className="text-[0.6rem] font-medium text-foreground/80 truncate max-w-full text-center">{formatToMoney(result.total)}</span>
 						) : (
-							<span className="text-[0.6rem] text-primary/80">—</span>
+							<span className="text-[0.6rem] text-foreground/80">—</span>
 						)}
-					</div>
+					</button>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">{WEEKDAY_MAP_FULL[index as keyof typeof WEEKDAY_MAP_FULL]}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -688,7 +722,7 @@ function GroupedByWeekDayStrip({ data }: { data: TGroupedSalesStats["porDiaDaSem
 								</div>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
@@ -697,7 +731,7 @@ function GroupedByWeekDayStrip({ data }: { data: TGroupedSalesStats["porDiaDaSem
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">{WEEKDAY_MAP_FULL[index as keyof typeof WEEKDAY_MAP_FULL]}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -738,7 +772,15 @@ function formatHourLabel(hour: number): string {
 }
 
 /** Grid do heatmap (sem card): dias x horas */
-function RevenueHeatmapCore({ data }: { data: TGroupedSalesStats["porDiaSemanaHora"] }) {
+function RevenueHeatmapCore({
+	data,
+	period,
+	onSelectDrilldown,
+}: {
+	data: TGroupedSalesStats["porDiaSemanaHora"];
+	period: TSaleStatsGeneralQueryParams["period"];
+	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
+}) {
 	const { colors } = useOrgColors();
 	const dataMap = useMemo(() => {
 		const map = new Map<string, { qtde: number; total: number }>();
@@ -772,14 +814,24 @@ function RevenueHeatmapCore({ data }: { data: TGroupedSalesStats["porDiaSemanaHo
 			<Tooltip delayDuration={150}>
 				<TooltipTrigger asChild>
 					<div className="flex-1 min-w-0 min-h-0 flex items-center justify-center p-0.5">
-						<div
-							className="w-full aspect-square max-w-full max-h-full rounded-full transition-all hover:scale-110 hover:z-10 cursor-pointer border border-primary/10"
+						<button
+							type="button"
+							className="w-full aspect-square max-w-full max-h-full rounded-full transition-all hover:scale-110 hover:z-10 cursor-pointer border border-border"
 							style={{ backgroundColor: bgColor }}
+							onClick={() =>
+								onSelectDrilldown({
+									weekday: diaSemana,
+									hourIntervalStart: hora,
+									hourIntervalEnd: hora + 1,
+									periodStart: period.after,
+									periodEnd: period.before,
+								})
+							}
 						/>
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold">
 								{WEEKDAY_MAP_HEATMAP[diaSemana as keyof typeof WEEKDAY_MAP_HEATMAP]} às {formatHourLabel(hora)}
@@ -798,7 +850,7 @@ function RevenueHeatmapCore({ data }: { data: TGroupedSalesStats["porDiaSemanaHo
 								</div>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
@@ -807,7 +859,7 @@ function RevenueHeatmapCore({ data }: { data: TGroupedSalesStats["porDiaSemanaHo
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">
 								{WEEKDAY_MAP_HEATMAP[diaSemana as keyof typeof WEEKDAY_MAP_HEATMAP]} às {formatHourLabel(hora)}
@@ -883,14 +935,14 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 				<TooltipTrigger asChild>
 					<div
 						key={index.toString()}
-						className="flex flex-col items-center justify-center p-2 rounded-md border border-primary/20 w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
+						className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 					>
 						<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">DIA {index + 1}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -907,7 +959,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 								</div>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
@@ -916,7 +968,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">DIA {index + 1}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -928,7 +980,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
+			<div className={"bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR DIA DO MÊS</h1>
 					<div className="flex items-center gap-2">
@@ -1004,14 +1056,14 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 				<TooltipTrigger asChild>
 					<div
 						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-primary/20 w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
 						style={{ backgroundColor: bgColor }}
 					>
 						<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-primary-foreground p-3 min-w-[180px]">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -1028,7 +1080,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 								</div>
 								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
 							</div>
-							<div className="border-t border-primary-foreground/80 mt-1 pt-2 flex flex-col gap-1">
+							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
 								<div className="flex items-center justify-between gap-4">
 									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
 									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
@@ -1037,7 +1089,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-primary-foreground p-3">
+					<TooltipContent className="bg-primary text-foreground-foreground p-3">
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -1049,7 +1101,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 	}
 	return (
 		<TooltipProvider>
-			<div className={"bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
+			<div className={"bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full"}>
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">POR MÊS</h1>
 					<div className="flex items-center gap-2">
@@ -1116,7 +1168,7 @@ function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] 
 	);
 	const chartConfig = { titulo: { label: "CANAL" } };
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR CANAL</h1>
 				<div className="flex items-center gap-2">
@@ -1155,25 +1207,34 @@ function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] 
 				</div>
 			</div>
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
-				<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
-					<PieChart>
-						<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-						<Pie
-							data={graphData}
-							dataKey={type}
-							nameKey="titulo"
-							label={(x) => {
-								return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
-							}}
-							innerRadius={60}
-							strokeWidth={2}
-						/>
-						<ChartLegend
-							content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
-							className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
-						/>
-					</PieChart>
-				</ChartContainer>
+				{data.length === 0 ? (
+					<StatEmptyState
+						className="min-h-[260px] w-full flex-1"
+						icon={Radio}
+						title="Nenhum canal no período"
+						description="Não há vendas por canal no período e filtros selecionados. Ajuste os filtros ou escolha outro intervalo para ver a participação."
+					/>
+				) : (
+					<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
+						<PieChart>
+							<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+							<Pie
+								data={graphData}
+								dataKey={type}
+								nameKey="titulo"
+								label={(x) => {
+									return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
+								}}
+								innerRadius={60}
+								strokeWidth={2}
+							/>
+							<ChartLegend
+								content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
+								className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
+							/>
+						</PieChart>
+					</ChartContainer>
+				)}
 			</div>
 		</div>
 	);
@@ -1206,7 +1267,7 @@ function ResultsByFulfillmentMethodGraph({ data }: { data: TGroupedSalesStats["p
 	);
 	const chartConfig = { titulo: { label: "MODALIDADE" } };
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<h1 className="text-xs font-medium tracking-tight uppercase">PARTICIPAÇÃO POR MODALIDADE</h1>
 				<div className="flex items-center gap-2">
@@ -1245,25 +1306,34 @@ function ResultsByFulfillmentMethodGraph({ data }: { data: TGroupedSalesStats["p
 				</div>
 			</div>
 			<div className="px-6 py-2 flex w-full flex-col gap-2 h-[300px] lg:h-[350px] max-h-[300px] lg:max-h-[350px] items-center justify-center">
-				<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
-					<PieChart>
-						<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-						<Pie
-							data={graphData}
-							dataKey={type}
-							nameKey="titulo"
-							label={(x) => {
-								return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
-							}}
-							innerRadius={60}
-							strokeWidth={2}
-						/>
-						<ChartLegend
-							content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
-							className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
-						/>
-					</PieChart>
-				</ChartContainer>
+				{data.length === 0 ? (
+					<StatEmptyState
+						className="min-h-[260px] w-full flex-1"
+						icon={Truck}
+						title="Nenhuma modalidade no período"
+						description="Não há vendas por modalidade de entrega no período e filtros selecionados. Ajuste os filtros ou escolha outro intervalo para ver a participação."
+					/>
+				) : (
+					<ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
+						<PieChart>
+							<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+							<Pie
+								data={graphData}
+								dataKey={type}
+								nameKey="titulo"
+								label={(x) => {
+									return `${formatDecimalPlaces((100 * (x.value as number)) / total)}%`;
+								}}
+								innerRadius={60}
+								strokeWidth={2}
+							/>
+							<ChartLegend
+								content={<ChartLegendContent payload={graphData} verticalAlign="bottom" />}
+								className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
+							/>
+						</PieChart>
+					</ChartContainer>
+				)}
 			</div>
 		</div>
 	);

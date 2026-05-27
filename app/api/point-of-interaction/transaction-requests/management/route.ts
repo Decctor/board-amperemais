@@ -17,7 +17,10 @@ export type TGetPoiTransactionRequestsInput = z.infer<typeof GetPoiTransactionRe
 
 async function getPoiTransactionRequests({ input, orgId }: { input: TGetPoiTransactionRequestsInput; orgId: string }) {
 	const requests = await db.query.poiTransactionRequests.findMany({
-		where: and(eq(poiTransactionRequests.organizacaoId, orgId), inArray(poiTransactionRequests.status, input.status as Array<"PENDENTE" | "PROCESSANDO" | "APROVADO" | "REJEITADO" | "ERRO">)),
+		where: and(
+			eq(poiTransactionRequests.organizacaoId, orgId),
+			inArray(poiTransactionRequests.status, input.status as Array<"PENDENTE" | "PROCESSANDO" | "APROVADO" | "REJEITADO" | "ERRO">),
+		),
 		with: {
 			cliente: {
 				columns: {
@@ -30,6 +33,28 @@ async function getPoiTransactionRequests({ input, orgId }: { input: TGetPoiTrans
 				columns: {
 					id: true,
 					nome: true,
+				},
+			},
+			transacaoAcumulo: {
+				columns: {
+					id: true,
+					valor: true,
+				},
+				with: {},
+			},
+			transacaoResgate: {
+				columns: {
+					id: true,
+					valor: true,
+				},
+				with: {
+					resgateRecompensa: {
+						columns: {
+							id: true,
+							descricao: true,
+							imagemCapaUrl: true,
+						},
+					},
 				},
 			},
 		},
@@ -46,6 +71,7 @@ async function getPoiTransactionRequests({ input, orgId }: { input: TGetPoiTrans
 export type TGetPoiTransactionRequestsOutput = Awaited<ReturnType<typeof getPoiTransactionRequests>>;
 
 async function getPoiTransactionRequestsRoute(request: NextRequest) {
+	console.log("[INFO] [GET POI TRANSACTION REQUESTS] Request received");
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");

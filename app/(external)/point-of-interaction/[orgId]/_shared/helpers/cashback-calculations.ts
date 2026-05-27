@@ -1,20 +1,31 @@
 import type { TRedemptionLimit } from "../types";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 
-type ClientSaldo = {
+type TClientLookUp = {
 	saldoValorDisponivel: number;
 	programa?: {
 		terminologia?: TCashbackProgramTerminologyEnum | null;
 		resgateLimiteTipo: string | null;
 		resgateLimiteValor: number | null;
+		acumuloPermitirViaPontoIntegracao: boolean;
+		acumuloPermitirViaIntegracao: boolean;
 	} | null;
 };
+export function getCashbackAccumulationConfig(saldos: TClientLookUp[] | undefined | null): {
+	acumuloPermitirViaPontoIntegracao: boolean;
+	acumuloPermitirViaIntegracao: boolean;
+} {
+	return {
+		acumuloPermitirViaPontoIntegracao: saldos?.[0]?.programa?.acumuloPermitirViaPontoIntegracao ?? false,
+		acumuloPermitirViaIntegracao: saldos?.[0]?.programa?.acumuloPermitirViaIntegracao ?? false,
+	};
+}
 
-export function getAvailableCashback(saldos: ClientSaldo[] | undefined | null): number {
+export function getAvailableCashback(saldos: TClientLookUp[] | undefined | null): number {
 	return saldos?.[0]?.saldoValorDisponivel ?? 0;
 }
 
-export function getRedemptionLimitConfig(saldos: ClientSaldo[] | undefined | null): TRedemptionLimit {
+export function getRedemptionLimitConfig(saldos: TClientLookUp[] | undefined | null): TRedemptionLimit {
 	const programa = saldos?.[0]?.programa;
 	return {
 		terminologia: programa?.terminologia ?? "DINHEIRO",

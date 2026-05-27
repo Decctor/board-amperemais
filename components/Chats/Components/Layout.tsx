@@ -22,7 +22,7 @@ export function Layout({ listPanel, contentPanel, className }: ChatHubLayoutProp
 				// Desktop Layout - Two columns side by side
 				<>
 					{/* List Panel - Left Side */}
-					<div className="flex flex-col w-1/3 h-full border-r border-primary/20 bg-background/30">{listPanel}</div>
+					<div className="flex flex-col w-1/3 h-full border-r border-border bg-background/30">{listPanel}</div>
 
 					{/* Content Panel - Right Side */}
 					<div className="flex flex-col w-2/3 h-full bg-background/50">{contentPanel}</div>

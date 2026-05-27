@@ -19,6 +19,18 @@ export const GoalSchema = z.object({
 		required_error: "Objetivo de valor da meta não informado.",
 		invalid_type_error: "Tipo inválido para objetivo de valor da meta.",
 	}),
+	objetivoQtdeVendas: z
+		.number({
+			invalid_type_error: "Tipo inválido para objetivo de quantidade de vendas da meta.",
+		})
+		.nullable()
+		.optional(),
+	objetivoNovosClientes: z
+		.number({
+			invalid_type_error: "Tipo inválido para objetivo de novos clientes da meta.",
+		})
+		.nullable()
+		.optional(),
 	dataInsercao: z
 		.string({
 			required_error: "Data de inserção da meta não informada.",
@@ -41,4 +53,16 @@ export const GoalSellerSchema = z.object({
 		required_error: "Objetivo de valor da meta do vendedor não informado.",
 		invalid_type_error: "Tipo inválido para objetivo de valor da meta do vendedor.",
 	}),
+	objetivoQtdeVendas: z
+		.number({
+			invalid_type_error: "Tipo inválido para objetivo de quantidade de vendas do vendedor.",
+		})
+		.nullable()
+		.optional(),
+	objetivoNovosClientes: z
+		.number({
+			invalid_type_error: "Tipo inválido para objetivo de novos clientes do vendedor.",
+		})
+		.nullable()
+		.optional(),
 });

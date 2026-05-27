@@ -1,17 +1,19 @@
 "use client";
 
-import { Calendar } from "@/components/ui/calendar";
-import { Check, X } from "lucide-react";
-import * as React from "react";
 import type { Locale } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Check, ChevronLeft, X } from "lucide-react";
+import * as React from "react";
 
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
+import { Calendar } from "./calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "./command";
 import { Drawer, DrawerContent, DrawerTrigger } from "./drawer";
+import { Input } from "./input";
+import { Label } from "./label";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 type InteractiveFilterMode = "auto" | "popover" | "drawer";
@@ -23,12 +25,31 @@ type InteractiveFilterContextValue = {
 	disabled: boolean;
 };
 
+type InteractiveAddFilterItemState = {
+	id: string;
+	label: string;
+};
+
+type InteractiveAddFilterContextValue = InteractiveFilterContextValue & {
+	activeItem: InteractiveAddFilterItemState | null;
+	setActiveItem: (item: InteractiveAddFilterItemState | null) => void;
+};
+
 const InteractiveFilterContext = React.createContext<InteractiveFilterContextValue | null>(null);
+const InteractiveAddFilterContext = React.createContext<InteractiveAddFilterContextValue | null>(null);
 
 function useInteractiveFilterContext() {
 	const context = React.useContext(InteractiveFilterContext);
 	if (!context) {
 		throw new Error("InteractiveFilter components must be used inside InteractiveFilter.Root");
+	}
+	return context;
+}
+
+function useInteractiveAddFilterContext() {
+	const context = React.useContext(InteractiveAddFilterContext);
+	if (!context) {
+		throw new Error("InteractiveFilter add filter components must be used inside InteractiveFilter.AddFilterRoot");
 	}
 	return context;
 }
@@ -43,6 +64,10 @@ type InteractiveFilterRootProps = {
 	disabled?: boolean;
 };
 
+function resolveInteractiveFilterMode(mode: InteractiveFilterMode, isDesktop: boolean): Exclude<InteractiveFilterMode, "auto"> {
+	return mode === "auto" ? (isDesktop ? "popover" : "drawer") : mode;
+}
+
 function InteractiveFilterRoot({
 	children,
 	className,
@@ -53,7 +78,7 @@ function InteractiveFilterRoot({
 	disabled = false,
 }: InteractiveFilterRootProps) {
 	const isDesktop = useMediaQuery("(min-width: 768px)");
-	const resolvedMode: Exclude<InteractiveFilterMode, "auto"> = mode === "auto" ? (isDesktop ? "popover" : "drawer") : mode;
+	const resolvedMode = resolveInteractiveFilterMode(mode, isDesktop);
 	const [internalOpen, setInternalOpen] = React.useState(defaultOpen);
 	const isControlled = open !== undefined;
 	const currentOpen = isControlled ? open : internalOpen;
@@ -82,6 +107,51 @@ function InteractiveFilterRoot({
 	);
 }
 
+function InteractiveFilterAddFilterRoot({
+	children,
+	className,
+	mode = "auto",
+	open,
+	defaultOpen = false,
+	onOpenChange,
+	disabled = false,
+}: InteractiveFilterRootProps) {
+	const isDesktop = useMediaQuery("(min-width: 768px)");
+	const resolvedMode = resolveInteractiveFilterMode(mode, isDesktop);
+	const [internalOpen, setInternalOpen] = React.useState(defaultOpen);
+	const [activeItem, setActiveItem] = React.useState<InteractiveAddFilterItemState | null>(null);
+	const isControlled = open !== undefined;
+	const currentOpen = isControlled ? open : internalOpen;
+
+	function handleOpenChange(nextOpen: boolean) {
+		if (disabled && nextOpen) return;
+		if (!isControlled) setInternalOpen(nextOpen);
+		if (!nextOpen) setActiveItem(null);
+		onOpenChange?.(nextOpen);
+	}
+
+	const contextValue: InteractiveAddFilterContextValue = {
+		mode: resolvedMode,
+		open: currentOpen,
+		setOpen: handleOpenChange,
+		disabled,
+		activeItem,
+		setActiveItem,
+	};
+
+	const Wrapper = resolvedMode === "popover" ? Popover : Drawer;
+
+	return (
+		<InteractiveAddFilterContext.Provider value={contextValue}>
+			<InteractiveFilterContext.Provider value={contextValue}>
+				<Wrapper open={currentOpen} onOpenChange={handleOpenChange}>
+					<div className={cn("flex w-fit items-center", className)}>{children}</div>
+				</Wrapper>
+			</InteractiveFilterContext.Provider>
+		</InteractiveAddFilterContext.Provider>
+	);
+}
+
 type InteractiveFilterTriggerProps = {
 	children: React.ReactNode;
 	className?: string;
@@ -96,6 +166,26 @@ function InteractiveFilterTrigger({ children, className }: InteractiveFilterTrig
 			<Button
 				type="button"
 				variant="ghost"
+				disabled={disabled}
+				aria-haspopup="dialog"
+				aria-expanded={open}
+				className={cn("h-auto w-fit items-center gap-3 px-3 py-2", className)}
+			>
+				{children}
+			</Button>
+		</TriggerPrimitive>
+	);
+}
+
+function InteractiveFilterAddFilterTrigger({ children, className }: InteractiveFilterTriggerProps) {
+	const { mode, disabled, open } = useInteractiveAddFilterContext();
+	const TriggerPrimitive = mode === "popover" ? PopoverTrigger : DrawerTrigger;
+
+	return (
+		<TriggerPrimitive asChild>
+			<Button
+				type="button"
+				variant="secondary"
 				disabled={disabled}
 				aria-haspopup="dialog"
 				aria-expanded={open}
@@ -201,6 +291,77 @@ function InteractiveFilterContent({ children, className, drawerClassName, align 
 	);
 }
 
+type InteractiveFilterAddFilterContentProps = InteractiveFilterContentProps & {
+	searchPlaceholder?: string;
+	emptyLabel?: string;
+	backLabel?: string;
+};
+
+function InteractiveFilterAddFilterContent({
+	children,
+	className,
+	drawerClassName,
+	align = "start",
+	searchPlaceholder = "Adicionar filtro...",
+	emptyLabel = "Nenhum filtro encontrado.",
+	backLabel = "VOLTAR",
+}: InteractiveFilterAddFilterContentProps) {
+	const { mode, activeItem, setActiveItem } = useInteractiveAddFilterContext();
+	const activeHeader = activeItem ? (
+		<button
+			type="button"
+			className="flex items-center gap-2 border-b px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-muted/40"
+			onClick={() => setActiveItem(null)}
+		>
+			<ChevronLeft className="h-4 w-4 text-muted-foreground" />
+			<span className="text-muted-foreground">{backLabel}</span>
+			<span className="truncate text-foreground">{activeItem.label}</span>
+		</button>
+	) : null;
+
+	if (mode === "popover") {
+		return (
+			<PopoverContent align={align} className={cn("w-72 p-0", className)}>
+				{activeItem ? (
+					<div className="flex flex-col">
+						{activeHeader}
+						{children}
+					</div>
+				) : (
+					<Command className="w-full" loop>
+						<CommandInput placeholder={searchPlaceholder} className="h-9 w-full" />
+						<CommandList className="w-full">
+							<CommandEmpty className="w-full p-3">{emptyLabel}</CommandEmpty>
+							{children}
+						</CommandList>
+					</Command>
+				)}
+			</PopoverContent>
+		);
+	}
+
+	return (
+		<DrawerContent className={cn("max-h-[80vh] w-full max-w-none p-0", drawerClassName)}>
+			<div className="mt-4 w-full border-t">
+				{activeItem ? (
+					<div className="flex flex-col">
+						{activeHeader}
+						{children}
+					</div>
+				) : (
+					<Command className="w-full" loop>
+						<CommandInput placeholder={searchPlaceholder} className="h-10 w-full" />
+						<CommandList className="w-full">
+							<CommandEmpty className="w-full p-3">{emptyLabel}</CommandEmpty>
+							{children}
+						</CommandList>
+					</Command>
+				)}
+			</div>
+		</DrawerContent>
+	);
+}
+
 export type InteractiveFilterOption<T extends string | number = string> = {
 	id: string | number;
 	value: T;
@@ -218,6 +379,7 @@ type InteractiveFilterMultiContentProps<T extends string | number = string> = {
 	searchPlaceholder?: string;
 	emptyLabel?: string;
 	clearLabel?: string;
+	closeOnChange?: boolean;
 };
 
 function InteractiveFilterMultiContent<T extends string | number = string>({
@@ -229,6 +391,7 @@ function InteractiveFilterMultiContent<T extends string | number = string>({
 	searchPlaceholder = "Buscar...",
 	emptyLabel = "Nenhuma opção encontrada.",
 	clearLabel,
+	closeOnChange = false,
 }: InteractiveFilterMultiContentProps<T>) {
 	const { setOpen } = useInteractiveFilterContext();
 	const normalizedSelectedValues = React.useMemo(() => value.map((item) => String(item)), [value]);
@@ -253,6 +416,7 @@ function InteractiveFilterMultiContent<T extends string | number = string>({
 			.filter((normalizedValue): normalizedValue is T => normalizedValue !== undefined);
 
 		onChange(nextValues);
+		if (closeOnChange) setOpen(false);
 	}
 
 	function handleClear() {
@@ -280,12 +444,7 @@ function InteractiveFilterMultiContent<T extends string | number = string>({
 						const optionValue = String(option.value);
 						const isSelected = normalizedSelectedValues.includes(optionValue);
 						return (
-							<CommandItem
-								key={option.id}
-								value={optionValue}
-								keywords={option.keywords ?? [option.label, optionValue]}
-								onSelect={handleToggleValue}
-							>
+							<CommandItem key={option.id} value={optionValue} keywords={option.keywords ?? [option.label, optionValue]} onSelect={handleToggleValue}>
 								{option.startContent}
 								<span className="truncate">{option.label}</span>
 								<Check className={cn("ml-auto", isSelected ? "opacity-100" : "opacity-0")} />
@@ -357,12 +516,7 @@ function InteractiveFilterSingleContent<T extends string | number = string>({
 						const optionValue = String(option.value);
 						const isSelected = normalizedValue === optionValue;
 						return (
-							<CommandItem
-								key={option.id}
-								value={optionValue}
-								keywords={option.keywords ?? [option.label, optionValue]}
-								onSelect={handleSelect}
-							>
+							<CommandItem key={option.id} value={optionValue} keywords={option.keywords ?? [option.label, optionValue]} onSelect={handleSelect}>
 								{option.startContent}
 								<span className="truncate">{option.label}</span>
 								<Check className={cn("ml-auto", isSelected ? "opacity-100" : "opacity-0")} />
@@ -372,6 +526,50 @@ function InteractiveFilterSingleContent<T extends string | number = string>({
 				</CommandGroup>
 			</CommandList>
 		</Command>
+	);
+}
+
+type InteractiveFilterAddFilterSectionProps = {
+	children: React.ReactNode;
+	heading?: string;
+};
+
+function InteractiveFilterAddFilterSection({ children, heading }: InteractiveFilterAddFilterSectionProps) {
+	const { activeItem } = useInteractiveAddFilterContext();
+
+	if (activeItem) {
+		return <>{children}</>;
+	}
+
+	return (
+		<CommandGroup heading={heading} className="w-full">
+			{children}
+		</CommandGroup>
+	);
+}
+
+type InteractiveFilterAddFilterItemProps = {
+	id: string;
+	label: string;
+	icon?: React.ReactNode;
+	keywords?: string[];
+	className?: string;
+	children: React.ReactNode;
+};
+
+function InteractiveFilterAddFilterItem({ id, label, icon, keywords, className, children }: InteractiveFilterAddFilterItemProps) {
+	const { activeItem, setActiveItem } = useInteractiveAddFilterContext();
+
+	if (activeItem) {
+		if (activeItem.id !== id) return null;
+		return <div className={cn("w-full", className)}>{children}</div>;
+	}
+
+	return (
+		<CommandItem value={label} keywords={keywords ?? [label, id]} onSelect={() => setActiveItem({ id, label })} className={cn("gap-2", className)}>
+			{icon}
+			<span className="truncate">{label}</span>
+		</CommandItem>
 	);
 }
 
@@ -413,6 +611,180 @@ function InteractiveFilterDateRangeContent({
 	);
 }
 
+type InteractiveFilterTextContentProps = {
+	value: string | null | undefined;
+	onChange: (nextValue: string) => void;
+	onClear?: () => void;
+	placeholder?: string;
+	submitLabel?: string;
+	clearLabel?: string;
+	autoCloseOnSubmit?: boolean;
+};
+
+function InteractiveFilterTextContent({
+	value,
+	onChange,
+	onClear,
+	placeholder = "Digite um valor...",
+	submitLabel = "Aplicar",
+	clearLabel = "Limpar",
+	autoCloseOnSubmit = true,
+}: InteractiveFilterTextContentProps) {
+	const { setOpen } = useInteractiveFilterContext();
+	const [internalValue, setInternalValue] = React.useState(value ?? "");
+
+	React.useEffect(() => {
+		setInternalValue(value ?? "");
+	}, [value]);
+
+	function handleSubmit() {
+		onChange(internalValue.trim());
+		if (autoCloseOnSubmit) setOpen(false);
+	}
+
+	function handleClear() {
+		setInternalValue("");
+		if (onClear) onClear();
+		else onChange("");
+		setOpen(false);
+	}
+
+	return (
+		<div className="flex flex-col gap-3 p-3">
+			<Input value={internalValue} placeholder={placeholder} onChange={(event) => setInternalValue(event.target.value)} />
+			<div className="flex items-center justify-end gap-2">
+				<Button type="button" variant="ghost" size="sm" onClick={handleClear}>
+					{clearLabel}
+				</Button>
+				<Button type="button" size="sm" onClick={handleSubmit}>
+					{submitLabel}
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+type InteractiveFilterBooleanContentProps = {
+	value: boolean;
+	onChange: (nextValue: boolean) => void;
+	onClear?: () => void;
+	label: string;
+	description?: string;
+	trueLabel?: string;
+	falseLabel?: string;
+	autoCloseOnChange?: boolean;
+};
+
+function InteractiveFilterBooleanContent({
+	value,
+	onChange,
+	label,
+	description,
+	trueLabel = "ATIVAR",
+	falseLabel = "DESATIVAR",
+	autoCloseOnChange = true,
+}: InteractiveFilterBooleanContentProps) {
+	const { setOpen } = useInteractiveFilterContext();
+
+	function handleCheckedChange(checked: boolean) {
+		onChange(checked);
+		if (autoCloseOnChange) setOpen(false);
+	}
+
+	return (
+		<div className="flex flex-col gap-3 p-3">
+			<div className="flex items-start gap-3">
+				<div className="grid gap-1.5">
+					<Label htmlFor={label} className="text-sm font-medium">
+						{label}
+					</Label>
+					{description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+				</div>
+			</div>
+			<div className="flex items-center justify-end gap-2">
+				<Button type="button" size="sm" onClick={() => handleCheckedChange(!value)}>
+					{value ? falseLabel : trueLabel}
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+export type InteractiveFilterNumberRange = {
+	greaterThan?: number | null;
+	lessThan?: number | null;
+};
+
+type InteractiveFilterNumberRangeContentProps = {
+	value: InteractiveFilterNumberRange;
+	onChange: (nextValue: InteractiveFilterNumberRange) => void;
+	onClear?: () => void;
+	minPlaceholder?: string;
+	maxPlaceholder?: string;
+	submitLabel?: string;
+	clearLabel?: string;
+	autoCloseOnSubmit?: boolean;
+};
+
+function InteractiveFilterNumberRangeContent({
+	value,
+	onChange,
+	onClear,
+	minPlaceholder = "Valor mínimo",
+	maxPlaceholder = "Valor máximo",
+	submitLabel = "Aplicar",
+	clearLabel = "Limpar",
+	autoCloseOnSubmit = true,
+}: InteractiveFilterNumberRangeContentProps) {
+	const { setOpen } = useInteractiveFilterContext();
+	const [minValue, setMinValue] = React.useState(value.greaterThan?.toString() ?? "");
+	const [maxValue, setMaxValue] = React.useState(value.lessThan?.toString() ?? "");
+
+	React.useEffect(() => {
+		setMinValue(value.greaterThan?.toString() ?? "");
+		setMaxValue(value.lessThan?.toString() ?? "");
+	}, [value.greaterThan, value.lessThan]);
+
+	function parseNumber(nextValue: string) {
+		if (!nextValue.trim()) return null;
+		const normalizedValue = Number(nextValue.replace(",", "."));
+		return Number.isFinite(normalizedValue) ? normalizedValue : null;
+	}
+
+	function handleSubmit() {
+		onChange({
+			greaterThan: parseNumber(minValue),
+			lessThan: parseNumber(maxValue),
+		});
+		if (autoCloseOnSubmit) setOpen(false);
+	}
+
+	function handleClear() {
+		setMinValue("");
+		setMaxValue("");
+		if (onClear) onClear();
+		else onChange({ greaterThan: null, lessThan: null });
+		setOpen(false);
+	}
+
+	return (
+		<div className="flex flex-col gap-3 p-3">
+			<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+				<Input type="number" inputMode="decimal" value={minValue} placeholder={minPlaceholder} onChange={(event) => setMinValue(event.target.value)} />
+				<Input type="number" inputMode="decimal" value={maxValue} placeholder={maxPlaceholder} onChange={(event) => setMaxValue(event.target.value)} />
+			</div>
+			<div className="flex items-center justify-end gap-2">
+				<Button type="button" variant="ghost" size="sm" onClick={handleClear}>
+					{clearLabel}
+				</Button>
+				<Button type="button" size="sm" onClick={handleSubmit}>
+					{submitLabel}
+				</Button>
+			</div>
+		</div>
+	);
+}
+
 export const InteractiveFilter = {
 	Root: InteractiveFilterRoot,
 	Trigger: InteractiveFilterTrigger,
@@ -424,4 +796,12 @@ export const InteractiveFilter = {
 	MultiContent: InteractiveFilterMultiContent,
 	SingleContent: InteractiveFilterSingleContent,
 	DateRangeContent: InteractiveFilterDateRangeContent,
+	TextContent: InteractiveFilterTextContent,
+	BooleanContent: InteractiveFilterBooleanContent,
+	NumberRangeContent: InteractiveFilterNumberRangeContent,
+	AddFilterRoot: InteractiveFilterAddFilterRoot,
+	AddFilterTrigger: InteractiveFilterAddFilterTrigger,
+	AddFilterContent: InteractiveFilterAddFilterContent,
+	AddFilterSection: InteractiveFilterAddFilterSection,
+	AddFilterItem: InteractiveFilterAddFilterItem,
 };

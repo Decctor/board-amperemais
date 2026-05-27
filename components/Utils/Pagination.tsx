@@ -25,7 +25,7 @@ function GeneralPaginationComponent({
 		<div className="my-2 flex w-full flex-col items-center gap-3">
 			{totalPages > 1 ? (
 				<>
-					<p className="w-full text-center text-sm leading-none tracking-tight text-primary/80">
+					<p className="w-full text-center text-sm leading-none tracking-tight text-foreground/80">
 						Um número grande de resultados foi encontrado, separamos em páginas para facilitar a visualização. Clique na página desejada para visualizar os
 						demais resultados.
 					</p>
@@ -36,7 +36,7 @@ function GeneralPaginationComponent({
 								if (activePage - 1 > 0) return selectPage(activePage - 1);
 								return;
 							}}
-							className="font-sans flex select-none items-center gap-2 rounded-full px-6 py-3 text-center align-middle text-xs font-bold uppercase text-primary transition-all disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none hover:bg-primary/10 active:bg-primary/20"
+							className="font-sans flex select-none items-center gap-2 rounded-full px-6 py-3 text-center align-middle text-xs font-bold uppercase text-foreground transition-all disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none hover:bg-primary/10 active:bg-primary/20"
 							type="button"
 						>
 							<svg
@@ -61,7 +61,7 @@ function GeneralPaginationComponent({
 								if (activePage + 1 <= totalPages) selectPage(activePage + 1);
 								else return;
 							}}
-							className="font-sans flex select-none items-center gap-2 rounded-full px-6 py-3 text-center align-middle text-xs font-bold uppercase text-primary transition-all disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none hover:bg-primary/10 active:bg-primary/20"
+							className="font-sans flex select-none items-center gap-2 rounded-full px-6 py-3 text-center align-middle text-xs font-bold uppercase text-foreground transition-all disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none hover:bg-primary/10 active:bg-primary/20"
 							type="button"
 						>
 							{showSteppersText ? "PRÓXIMA" : null}
@@ -81,8 +81,8 @@ function GeneralPaginationComponent({
 				</>
 			) : null}
 			<div className="flex w-full flex-col gap-1">
-				<p className="w-full text-center text-sm leading-none tracking-tight text-primary/80">{itemsMatchedText ? itemsMatchedText : "..."}</p>
-				<p className="w-full text-center text-sm leading-none tracking-tight text-primary/80">{itemsShowingText ? itemsShowingText : "..."}</p>
+				<p className="w-full text-center text-sm leading-none tracking-tight text-foreground/80">{itemsMatchedText ? itemsMatchedText : "..."}</p>
+				<p className="w-full text-center text-sm leading-none tracking-tight text-foreground/80">{itemsShowingText ? itemsShowingText : "..."}</p>
 			</div>
 		</div>
 	);

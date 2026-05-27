@@ -1,11 +1,13 @@
-import type { TOverallSalesStats } from "@/pages/api/stats/sales-overall";
+import type { TOverallSalesStats } from "@/app/api/stats/sales-overall/route";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 async function fetchOverallSalesStats(filters: TSaleStatsGeneralQueryParams) {
 	try {
-		const { data } = await axios.post("/api/stats/sales-overall", filters);
+		const searchParams = new URLSearchParams();
+		searchParams.set("payload", JSON.stringify(filters));
+		const { data } = await axios.get(`/api/stats/sales-overall?${searchParams.toString()}`);
 		return data.data as TOverallSalesStats;
 	} catch (error) {
 		console.log("Error running fetchOverallSalesStats");

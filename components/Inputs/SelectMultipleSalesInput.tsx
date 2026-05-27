@@ -3,7 +3,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useSalesSimplifiedSearch } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
-import type { TSalesSimplifiedSearchResult } from "@/pages/api/sales/simplified-search";
+import type { TSalesSimplifiedSearchResult } from "@/app/api/sales/simplified-search/route";
 import { BadgeDollarSign, Check, ChevronsUpDown } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
@@ -98,7 +98,7 @@ function MultipleSalesSelectInput<T>({
 			disabled={!editable}
 			variant="outline"
 			aria-expanded={isOpen}
-			className={cn("w-full justify-between truncate border-primary/20", holderClassName)}
+			className={cn("w-full justify-between truncate border-border", holderClassName)}
 		>
 			{selectedIds && selectedIds.length > 0 && sales
 				? sales.filter((item) => selectedIds.includes(item.id)).length > 1
@@ -122,7 +122,7 @@ function MultipleSalesSelectInput<T>({
 
 				<CommandSeparator />
 
-				{isLoading && <div className="p-2 text-center text-xs text-primary/80">Carregando...</div>}
+				{isLoading && <div className="p-2 text-center text-xs text-foreground/80">Carregando...</div>}
 				{isError && (
 					<div className="p-2">
 						<ErrorComponent msg={getErrorMessage(error)} />
@@ -144,7 +144,7 @@ function MultipleSalesSelectInput<T>({
 							/>
 						</div>
 						<CommandGroup>
-							{isSuccess && sales?.length === 0 && <div className="p-2 text-center text-sm italic text-primary">Sem opções disponíveis.</div>}
+							{isSuccess && sales?.length === 0 && <div className="p-2 text-center text-sm italic text-foreground">Sem opções disponíveis.</div>}
 							{sales?.map((item) => (
 								<CommandItem
 									key={item.id}
@@ -163,7 +163,7 @@ function MultipleSalesSelectInput<T>({
 										<p className="text-sm font-medium truncate flex-1 min-w-0">{item.cliente?.nome || "AO CONSUMIDOR"}</p>
 										<div className="flex items-center gap-1 shrink-0">
 											<BadgeDollarSign size={12} />
-											<p className="text-xs text-primary/80">{formatToMoney(item.valorTotal)}</p>
+											<p className="text-xs text-foreground/80">{formatToMoney(item.valorTotal)}</p>
 										</div>
 									</div>
 									{selectedIds?.includes(item.id) ? (
@@ -182,7 +182,7 @@ function MultipleSalesSelectInput<T>({
 		return (
 			<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
 				{showLabel && (
-					<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+					<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 						{label}
 					</Label>
 				)}
@@ -199,7 +199,7 @@ function MultipleSalesSelectInput<T>({
 	return (
 		<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
 				</Label>
 			)}

@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useOverallSalesStats } from "@/lib/queries/stats/overall";
 import { cn } from "@/lib/utils";
-import type { TOverallSalesStats } from "@/pages/api/stats/sales-overall";
+import type { TOverallSalesStats } from "@/app/api/stats/sales-overall/route";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { BadgeDollarSign, Percent, ShoppingBag, UserRoundX } from "lucide-react";
 import type React from "react";
@@ -16,10 +16,12 @@ import { useDebounce } from "use-debounce";
 
 type OverallStatsBlockProps = {
 	user: TAuthUserSession["user"];
+	userMembership: NonNullable<TAuthUserSession["membership"]>;
 	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	generalQueryParams: TSaleStatsGeneralQueryParams;
 };
-function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBlockProps) {
+function OverallStatsBlock({ user, userMembership, userOrg, generalQueryParams }: OverallStatsBlockProps) {
+	const isUserAllowedToSeeSensitiveData = userMembership.permissoes.resultados.visualizarSensiveis;
 	const [queryParams, setQueryParams] = useState<TSaleStatsGeneralQueryParams>(generalQueryParams);
 	const { getPrimaryGradientStyle } = useOrgColors();
 
@@ -31,7 +33,7 @@ function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBl
 	}, [generalQueryParams]);
 	return (
 		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">ACOMPANHAMENTO DE META DO PERÍODO</h1>
 					<VscDiffAdded size={12} />
@@ -51,7 +53,7 @@ function OverallStatsBlock({ user, userOrg, generalQueryParams }: OverallStatsBl
 			{userOrg?.assinaturaPlano === "ESSENCIAL" ? (
 				<OverallStatsBlockStarter overallStats={overallStats} />
 			) : (
-				<OverallStatsBlockPlus overallStats={overallStats} />
+				<OverallStatsBlockPlus overallStats={overallStats} isUserAllowedToSeeSensitiveData={isUserAllowedToSeeSensitiveData} />
 			)}
 		</div>
 	);
@@ -80,7 +82,7 @@ function RevenueBreakdownRow({ overallStats }: { overallStats: TOverallSalesStat
 				footer={
 					<div className="flex items-center gap-1">
 						<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-						<p className="text-xs font-bold text-primary">{formatDecimalPlaces(overallStats?.faturamentoViaClientesRecorrentes.porcentagem ?? 0)}%</p>
+						<p className="text-xs font-bold text-foreground">{formatDecimalPlaces(overallStats?.faturamentoViaClientesRecorrentes.porcentagem ?? 0)}%</p>
 					</div>
 				}
 				className="w-full lg:w-1/3"
@@ -100,7 +102,7 @@ function RevenueBreakdownRow({ overallStats }: { overallStats: TOverallSalesStat
 				footer={
 					<div className="flex items-center gap-1">
 						<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-						<p className="text-xs font-bold text-primary">{formatDecimalPlaces(overallStats?.faturamentoViaNovosClientes.porcentagem ?? 0)}%</p>
+						<p className="text-xs font-bold text-foreground">{formatDecimalPlaces(overallStats?.faturamentoViaNovosClientes.porcentagem ?? 0)}%</p>
 					</div>
 				}
 				className="w-full lg:w-1/3"
@@ -120,7 +122,9 @@ function RevenueBreakdownRow({ overallStats }: { overallStats: TOverallSalesStat
 				footer={
 					<div className="flex items-center gap-1">
 						<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-						<p className="text-xs font-bold text-primary">{formatDecimalPlaces(overallStats?.faturamentoViaClientesNaoIdentificados.porcentagem ?? 0)}%</p>
+						<p className="text-xs font-bold text-foreground">
+							{formatDecimalPlaces(overallStats?.faturamentoViaClientesNaoIdentificados.porcentagem ?? 0)}%
+						</p>
 					</div>
 				}
 				className="w-full lg:w-1/3"
@@ -177,8 +181,9 @@ function OverallStatsBlockStarter({ overallStats }: OverallStatsBlockStarterProp
 
 type OverallStatsBlockPlusProps = {
 	overallStats: TOverallSalesStats | undefined;
+	isUserAllowedToSeeSensitiveData: boolean;
 };
-function OverallStatsBlockPlus({ overallStats }: OverallStatsBlockPlusProps) {
+function OverallStatsBlockPlus({ overallStats, isUserAllowedToSeeSensitiveData }: OverallStatsBlockPlusProps) {
 	return (
 		<>
 			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
@@ -189,39 +194,43 @@ function OverallStatsBlockPlus({ overallStats }: OverallStatsBlockPlusProps) {
 					previous={
 						overallStats?.qtdeVendas.anterior ? { value: overallStats?.qtdeVendas.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined
 					}
-					className="w-full lg:w-1/4"
+					className={isUserAllowedToSeeSensitiveData ? "w-full lg:w-1/4" : "w-full lg:w-1/2"}
 				/>
 				<StatUnitCard
 					title="Faturamento"
 					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: overallStats?.faturamento.atual || 0, format: (n) => formatToMoney(n) }}
 					previous={overallStats?.faturamento.anterior ? { value: overallStats.faturamento.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
-					className="w-full lg:w-1/4"
+					className={isUserAllowedToSeeSensitiveData ? "w-full lg:w-1/4" : "w-full lg:w-1/2"}
 				/>
-				<StatUnitCard
-					title="Margem Bruta"
-					icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: overallStats?.margemBruta.atual || 0, format: (n) => formatToMoney(n) }}
-					previous={overallStats?.margemBruta.anterior ? { value: overallStats.margemBruta.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
-					className="w-full lg:w-1/4"
-				/>
-				<StatUnitCard
-					title="Margem"
-					icon={<Percent className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: (100 * (overallStats?.margemBruta.atual || 0)) / (overallStats?.faturamento.atual || 0),
-						format: (n) => formatDecimalPlaces(n),
-					}}
-					previous={
-						overallStats?.margemBruta.anterior && overallStats?.faturamento.anterior
-							? {
-									value: (100 * (overallStats.margemBruta.anterior || 0)) / (overallStats.faturamento.anterior || 0),
-									format: (n) => formatDecimalPlaces(n),
-								}
-							: undefined
-					}
-					className="w-full lg:w-1/4"
-				/>
+				{isUserAllowedToSeeSensitiveData ? (
+					<>
+						<StatUnitCard
+							title="Margem Bruta"
+							icon={<BsFileEarmarkText className="w-4 h-4 min-w-4 min-h-4" />}
+							current={{ value: overallStats?.margemBruta.atual || 0, format: (n) => formatToMoney(n) }}
+							previous={overallStats?.margemBruta.anterior ? { value: overallStats.margemBruta.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
+							className="w-full lg:w-1/4"
+						/>
+						<StatUnitCard
+							title="Margem"
+							icon={<Percent className="w-4 h-4 min-w-4 min-h-4" />}
+							current={{
+								value: (100 * (overallStats?.margemBruta.atual || 0)) / (overallStats?.faturamento.atual || 0),
+								format: (n) => formatDecimalPlaces(n),
+							}}
+							previous={
+								overallStats?.margemBruta.anterior && overallStats?.faturamento.anterior
+									? {
+											value: (100 * (overallStats.margemBruta.anterior || 0)) / (overallStats.faturamento.anterior || 0),
+											format: (n) => formatDecimalPlaces(n),
+										}
+									: undefined
+							}
+							className="w-full lg:w-1/4"
+						/>
+					</>
+				) : null}
 			</div>
 			<div className="flex w-full flex-col items-center justify-around gap-2 lg:flex-row">
 				<StatUnitCard

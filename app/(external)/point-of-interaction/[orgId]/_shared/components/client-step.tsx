@@ -4,8 +4,8 @@ import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
 import { formatCashbackValue, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { useAutoScrollOnFocus } from "@/lib/hooks/use-auto-scroll-on-focus";
-import { Loader2, Phone, UserPlus } from "lucide-react";
-import React from "react";
+import { Loader2, Phone, UserPlus, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState } from "react";
 import { useAutoAdvanceTimer } from "../hooks/use-auto-advance-timer";
 import { usePoiSounds } from "../hooks/use-poi-sounds";
 import type { TClientData, TNewClientFormData } from "../types";
@@ -43,6 +43,7 @@ export function ClientStep({
 	newClientAction,
 }: ClientStepProps) {
 	const handleScrollOnFocus = useAutoScrollOnFocus(300);
+	const [showOptionalFields, setShowOptionalFields] = useState(false);
 	const { playAction } = usePoiSounds();
 
 	const { countdown, countdownSeconds, isAdvancing, wasCancelled, cancel, resetCancellation } = useAutoAdvanceTimer({
@@ -201,15 +202,34 @@ export function ClientStep({
 							onFocus={handleScrollOnFocus}
 							width="100%"
 						/>
-						<TextInput
-							label="CPF/CNPJ"
-							inputType="tel"
-							placeholder="Digite o CPF/CNPJ do cliente"
-							value={newClientData.cpfCnpj || ""}
-							handleChange={(value) => onNewClientChange({ cpfCnpj: formatToCPForCNPJ(value) })}
-							onFocus={handleScrollOnFocus}
-							width="100%"
-						/>
+						<div className="w-full flex items-center justify-center">
+							<Button
+								variant="ghost"
+								size="fit"
+								className="w-fit flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
+								onClick={(e) => {
+									e.preventDefault();
+									setShowOptionalFields((prev) => !prev);
+								}}
+							>
+								{showOptionalFields ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+								MOSTRAR OUTROS DADOS
+							</Button>
+						</div>
+						{showOptionalFields ? (
+							<TextInput
+								label="CPF/CNPJ"
+								inputType="tel"
+								placeholder="Digite o CPF/CNPJ do cliente"
+								value={newClientData.cpfCnpj ?? ""}
+								handleChange={(value) => onNewClientChange({ cpfCnpj: formatToCPForCNPJ(value) })}
+								onFocus={(e) => {
+									setTimeout(() => {
+										e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+									}, 300);
+								}}
+							/>
+						) : null}
 					</div>
 					{newClientAction ? (
 						<Button

@@ -46,6 +46,11 @@ export async function generateCashbackForCampaign({
 		return null;
 	}
 
+	if (!program.ativo) {
+		console.log(`[CAMPAIGN_CASHBACK] Cashback program is inactive for organization ${organizationId}. Skipping cashback generation.`);
+		return null;
+	}
+
 	// 2. Calculate cashback amount
 	let cashbackAmount: number;
 	if (cashbackType === "PERCENTUAL") {

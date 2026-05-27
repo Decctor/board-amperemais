@@ -1,34 +1,15 @@
+import { CampaignCreationSuggestionSchema, CampaignUpdateSuggestionSchema } from "@/lib/ai-agent/marketing/schemas";
 import { z } from "zod";
 
-// ═══════════════════════════════════════════════════════════════
-// HINT SUBJECTS (where hints appear)
-// ═══════════════════════════════════════════════════════════════
-
-export const AIHintSubjectSchema = z.enum(["dashboard", "campaigns", "clients", "sales", "sellers"]);
-
+export const AIHintSubjectSchema = z.enum(["campaigns"]);
 export type TAIHintSubject = z.infer<typeof AIHintSubjectSchema>;
 
-// ═══════════════════════════════════════════════════════════════
-// HINT STATUS
-// ═══════════════════════════════════════════════════════════════
-
 export const AIHintStatusSchema = z.enum(["active", "dismissed", "expired"]);
-
 export type TAIHintStatus = z.infer<typeof AIHintStatusSchema>;
 
-// ═══════════════════════════════════════════════════════════════
-// FEEDBACK TYPE
-// ═══════════════════════════════════════════════════════════════
-
 export const AIHintFeedbackTypeSchema = z.enum(["like", "dislike"]);
-
 export type TAIHintFeedbackType = z.infer<typeof AIHintFeedbackTypeSchema>;
 
-// ═══════════════════════════════════════════════════════════════
-// HINT CONTENT - DISCRIMINATED UNION
-// ═══════════════════════════════════════════════════════════════
-
-// Base fields all hints share
 const AIHintBaseSchema = z.object({
 	titulo: z.string().max(100),
 	descricao: z.string().max(500),
@@ -36,149 +17,60 @@ const AIHintBaseSchema = z.object({
 	urlAcao: z.string().optional().nullable(),
 });
 
-// ─────────────────────────────────────────────────────────────────
-// CAMPAIGN HINTS
-// ─────────────────────────────────────────────────────────────────
+function normalizeLegacyTemplateText<T>(value: T): T {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return value;
 
-export const AIHintCampaignSuggestionSchema = AIHintBaseSchema.extend({
-	tipo: z.literal("campaign-suggestion"),
-	dados: z.object({
-		gatilhoSugerido: z.enum(["nova-compra", "permanencia-segmentacao", "cashback-acumulado", "aniversario"]).optional().nullable(),
-		segmentosAlvo: z.array(z.string()).optional().nullable(),
-		cashbackSugerido: z.number().min(0).max(100).optional().nullable(),
-		motivacao: z.string().optional().nullable(),
-	}),
+	const normalized = { ...(value as Record<string, unknown>) };
+	const suggestion = normalized.sugestao;
+
+	if (suggestion && typeof suggestion === "object" && !Array.isArray(suggestion)) {
+		const suggestionRecord = { ...(suggestion as Record<string, unknown>) };
+		if (suggestionRecord.messageTemplateText == null && typeof suggestionRecord.whatsappTemplateText === "string") {
+			suggestionRecord.messageTemplateText = suggestionRecord.whatsappTemplateText;
+		}
+
+		const currentSummary = suggestionRecord.currentSummary;
+		if (currentSummary && typeof currentSummary === "object" && !Array.isArray(currentSummary)) {
+			const currentSummaryRecord = { ...(currentSummary as Record<string, unknown>) };
+			if (currentSummaryRecord.messageTemplateText == null && typeof currentSummaryRecord.whatsappTemplateText === "string") {
+				currentSummaryRecord.messageTemplateText = currentSummaryRecord.whatsappTemplateText;
+			}
+			suggestionRecord.currentSummary = currentSummaryRecord;
+		}
+
+		normalized.sugestao = suggestionRecord;
+	}
+
+	return normalized as T;
+}
+
+export const AIHintCampaignCreationSuggestionSchema = AIHintBaseSchema.extend({
+	tipo: z.literal("campaign-creation-suggestion"),
+	dados: z.preprocess(
+		(value) => normalizeLegacyTemplateText(value),
+		z.object({
+			resumoExecutivo: z.string(),
+			criterios: z.array(z.string()),
+			sugestao: CampaignCreationSuggestionSchema,
+		}),
+	),
 });
 
-export const AIHintCampaignOptimizationSchema = AIHintBaseSchema.extend({
-	tipo: z.literal("campaign-optimization"),
-	dados: z.object({
-		campanhaId: z.string().optional().nullable(),
-		campanhaNome: z.string(),
-		problemaIdentificado: z.string(),
-		metricasAtuais: z
-			.object({
-				taxaConversao: z.number().optional().nullable(),
-				ticketMedio: z.number().optional().nullable(),
-				alcance: z.number().optional().nullable(),
-			})
-			.optional()
-			.nullable(),
-		melhoriaEsperada: z.string(),
-	}),
+export const AIHintCampaignUpdatesSuggestionSchema = AIHintBaseSchema.extend({
+	tipo: z.literal("campaign-updates-suggestion"),
+	dados: z.preprocess(
+		(value) => normalizeLegacyTemplateText(value),
+		z.object({
+			resumoExecutivo: z.string(),
+			criterios: z.array(z.string()),
+			sugestao: CampaignUpdateSuggestionSchema,
+		}),
+	),
 });
 
-// ─────────────────────────────────────────────────────────────────
-// RFM / CLIENT HINTS
-// ─────────────────────────────────────────────────────────────────
-
-export const AIHintRFMActionSchema = AIHintBaseSchema.extend({
-	tipo: z.literal("rfm-action"),
-	dados: z.object({
-		segmento: z.string(),
-		quantidadeClientes: z.number(),
-		valorPotencial: z.number().optional().nullable(),
-		urgencia: z.enum(["baixa", "media", "alta", "critica"]),
-		estrategia: z.string(),
-	}),
-});
-
-export const AIHintClientReactivationSchema = AIHintBaseSchema.extend({
-	tipo: z.literal("client-reactivation"),
-	dados: z.object({
-		clientesEmRisco: z.number(),
-		diasSemCompraMedia: z.number(),
-		valorHistorico: z.number().optional().nullable(),
-		abordagemSugerida: z.string(),
-	}),
-});
-
-// ─────────────────────────────────────────────────────────────────
-// SALES HINTS
-// ─────────────────────────────────────────────────────────────────
-
-export const AIHintSalesTrendSchema = AIHintBaseSchema.extend({
-	tipo: z.literal("sales-trend"),
-	dados: z.object({
-		tendencia: z.enum(["crescimento", "estavel", "queda"]),
-		variacaoPercentual: z.number(),
-		periodoComparacao: z.string(),
-		fatoresIdentificados: z.array(z.string()).optional().nullable(),
-		oportunidade: z.string().optional().nullable(),
-	}),
-});
-
-export const AIHintProductInsightSchema = AIHintBaseSchema.extend({
-	tipo: z.literal("product-insight"),
-	dados: z.object({
-		produtoId: z.string().optional().nullable(),
-		produtoNome: z.string(),
-		insight: z.enum(["best-seller", "declining", "seasonal-opportunity", "cross-sell"]),
-		detalhes: z.string(),
-	}),
-});
-
-// ─────────────────────────────────────────────────────────────────
-// SELLER HINTS
-// ─────────────────────────────────────────────────────────────────
-
-export const AIHintSellerPerformanceSchema = AIHintBaseSchema.extend({
-	tipo: z.literal("seller-performance"),
-	dados: z.object({
-		vendedorId: z.string().optional().nullable(),
-		vendedorNome: z.string().optional().nullable(),
-		tipoInsight: z.enum(["top-performer", "needs-coaching", "improving", "opportunity"]),
-		metricas: z
-			.object({
-				vendasPeriodo: z.number().optional().nullable(),
-				ticketMedio: z.number().optional().nullable(),
-				taxaConversao: z.number().optional().nullable(),
-			})
-			.optional()
-			.nullable(),
-		recomendacao: z.string(),
-	}),
-});
-
-// ─────────────────────────────────────────────────────────────────
-// GENERAL / DASHBOARD HINTS
-// ─────────────────────────────────────────────────────────────────
-
-export const AIHintGeneralSchema = AIHintBaseSchema.extend({
-	tipo: z.literal("general"),
-	dados: z.object({
-		categoria: z.enum(["opportunity", "warning", "celebration", "tip"]),
-		prioridade: z.enum(["baixa", "media", "alta"]),
-		contextoAdicional: z.string().optional().nullable(),
-	}),
-});
-
-// ═══════════════════════════════════════════════════════════════
-// COMBINED UNION
-// ═══════════════════════════════════════════════════════════════
-
-export const AIHintContentSchema = z.discriminatedUnion("tipo", [
-	// Campaign hints
-	AIHintCampaignSuggestionSchema,
-	AIHintCampaignOptimizationSchema,
-	// RFM/Client hints
-	AIHintRFMActionSchema,
-	AIHintClientReactivationSchema,
-	// Sales hints
-	AIHintSalesTrendSchema,
-	AIHintProductInsightSchema,
-	// Seller hints
-	AIHintSellerPerformanceSchema,
-	// General
-	AIHintGeneralSchema,
-]);
-
+export const AIHintContentSchema = z.discriminatedUnion("tipo", [AIHintCampaignCreationSuggestionSchema, AIHintCampaignUpdatesSuggestionSchema]);
 export type TAIHintContent = z.infer<typeof AIHintContentSchema>;
 export type TAIHintType = TAIHintContent["tipo"];
-
-// ═══════════════════════════════════════════════════════════════
-// FULL HINT SCHEMA (for API responses)
-// ═══════════════════════════════════════════════════════════════
 
 export const AIHintSchema = z.object({
 	id: z.string(),
@@ -190,17 +82,14 @@ export const AIHintSchema = z.object({
 	tokensUtilizados: z.number().nullable(),
 	relevancia: z.number().min(0).max(1).nullable(),
 	status: AIHintStatusSchema,
+	aprovadaPor: z.string().nullable(),
+	dataAprovacao: z.date().nullable(),
 	descartadaPor: z.string().nullable(),
 	dataDescarte: z.date().nullable(),
 	dataExpiracao: z.date().nullable(),
 	dataInsercao: z.date(),
 });
-
 export type TAIHint = z.infer<typeof AIHintSchema>;
-
-// ═══════════════════════════════════════════════════════════════
-// INPUT SCHEMAS
-// ═══════════════════════════════════════════════════════════════
 
 export const GenerateHintsInputSchema = z.object({
 	assunto: AIHintSubjectSchema,
@@ -213,12 +102,10 @@ export const DismissHintInputSchema = z.object({
 });
 export type TDismissHintInput = z.infer<typeof DismissHintInputSchema>;
 
-export const GetHintsInputSchema = z.object({
-	assunto: AIHintSubjectSchema.optional(),
-	status: AIHintStatusSchema.optional().default("active"),
-	limite: z.coerce.number().min(1).max(20).optional().default(5),
+export const ApproveHintInputSchema = z.object({
+	id: z.string(),
 });
-export type TGetHintsInput = z.infer<typeof GetHintsInputSchema>;
+export type TApproveHintInput = z.infer<typeof ApproveHintInputSchema>;
 
 export const HintFeedbackInputSchema = z.object({
 	id: z.string(),
@@ -226,10 +113,6 @@ export const HintFeedbackInputSchema = z.object({
 	comentario: z.string().optional(),
 });
 export type THintFeedbackInput = z.infer<typeof HintFeedbackInputSchema>;
-
-// ═══════════════════════════════════════════════════════════════
-// OUTPUT SCHEMAS
-// ═══════════════════════════════════════════════════════════════
 
 export const GetHintsOutputSchema = z.object({
 	data: z.array(AIHintSchema),
@@ -245,3 +128,15 @@ export const GenerateHintsOutputSchema = z.object({
 	message: z.string(),
 });
 export type TGenerateHintsOutput = z.infer<typeof GenerateHintsOutputSchema>;
+
+export const ApproveHintOutputSchema = z.object({
+	data: z.object({
+		hintId: z.string(),
+		operation: z.enum(["campaign-created", "campaign-updated"]),
+		campaignId: z.string(),
+		whatsappTemplateId: z.string(),
+		templateOperation: z.literal("created"),
+	}),
+	message: z.string(),
+});
+export type TApproveHintOutput = z.infer<typeof ApproveHintOutputSchema>;

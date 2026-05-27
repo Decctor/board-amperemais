@@ -93,7 +93,7 @@ export function renderPaginationPageItemsIcons({
 			}}
 			className={cn(
 				pageButtonVariants({ size: pageIconSize, className: "" }),
-				activePage === p ? "border-primary bg-primary text-secondary" : "border-transparent text-primary hover:bg-primary/10",
+				activePage === p ? "border-border bg-primary text-secondary" : "border-transparent text-foreground hover:bg-primary/10",
 			)}
 		>
 			{p}

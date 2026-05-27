@@ -14,7 +14,7 @@ import {
 import { organizations } from "./organizations";
 import { users } from "./users";
 import { whatsappConnectionPhones, whatsappConnections } from "./whatsapp-connections";
-import { whatsappTemplates } from "./whatsapp-templates";
+import { messageTemplates } from "./message-templates";
 
 export const chats = newTable("chats", {
 	id: varchar("id", { length: 255 })
@@ -114,7 +114,7 @@ export const chatMessages = newTable("chat_messages", {
 	chatId: varchar("chat_id", { length: 255 })
 		.references(() => chats.id, { onDelete: "cascade" })
 		.notNull(),
-	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }).references(() => whatsappTemplates.id, {
+	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 }).references(() => messageTemplates.id, {
 		onDelete: "set null",
 	}),
 	autorTipo: chatMessageAuthorTypeEnum("autor_tipo").notNull().default("USUÁRIO"), // User, AI, Business-App or Client
@@ -160,6 +160,10 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
 	servico: one(chatServices, {
 		fields: [chatMessages.servicoId],
 		references: [chatServices.id],
+	}),
+	whatsappTemplate: one(messageTemplates, {
+		fields: [chatMessages.whatsappTemplateId],
+		references: [messageTemplates.id],
 	}),
 }));
 export type TChatMessageEntity = typeof chatMessages.$inferSelect;

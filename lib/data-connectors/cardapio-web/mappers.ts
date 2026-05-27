@@ -1,15 +1,24 @@
-import { formatPhoneAsBase, formatToPhone } from "@/lib/formatting";
+import { formatPhoneAsBase, formatToCEP, formatToPhone } from "@/lib/formatting";
 import type { TGetCardapioWebOrderDetailsOutput } from "./types";
+import { TClientEntity } from "@/services/drizzle/schema";
 
 // -----------------------------------------------------------------------------
 // TYPE DEFINITIONS FOR MAPPED ENTITIES
 // -----------------------------------------------------------------------------
 
 export interface MappedCardapioWebClient {
-	idExterno: string;
-	nome: string;
-	telefone: string;
-	telefoneBase: string;
+	idExterno: TClientEntity["idExterno"];
+	nome: TClientEntity["nome"];
+	telefone: TClientEntity["telefone"];
+	telefoneBase: TClientEntity["telefoneBase"];
+	localizacaoCep: TClientEntity["localizacaoCep"];
+	localizacaoEstado: TClientEntity["localizacaoEstado"];
+	localizacaoCidade: TClientEntity["localizacaoCidade"];
+	localizacaoBairro: TClientEntity["localizacaoBairro"];
+	localizacaoLogradouro: TClientEntity["localizacaoLogradouro"];
+	localizacaoNumero: TClientEntity["localizacaoNumero"];
+	localizacaoLatitude: TClientEntity["localizacaoLatitude"];
+	localizacaoLongitude: TClientEntity["localizacaoLongitude"];
 }
 
 export interface MappedCardapioWebProduct {
@@ -47,6 +56,7 @@ export interface MappedCardapioWebProductAddOnOption {
 
 export interface MappedCardapioWebSaleItem {
 	produtoIdExterno: string;
+	produtoCodigo: string;
 	quantidade: number;
 	valorVendaUnitario: number;
 	valorVendaTotalBruto: number;
@@ -89,11 +99,21 @@ export interface MappedCardapioWebSale {
 // MAPPING FUNCTIONS
 // -----------------------------------------------------------------------------
 
+function getCardapioWebClientName(customer: NonNullable<TGetCardapioWebOrderDetailsOutput["customer"]>, phone: string) {
+	const customerName = customer.name?.trim();
+	if (customerName) return customerName;
+	if (phone) return `CLIENTE CARDAPIO WEB ${phone}`;
+	return `CLIENTE CARDAPIO WEB ${customer.id}`;
+}
+
 /**
  * Maps CardapioWeb customer data to our internal client format.
  * Returns null if no customer data is provided (anonymous orders).
  */
-export function mapCardapioWebClient(customer: TGetCardapioWebOrderDetailsOutput["customer"]): MappedCardapioWebClient | null {
+export function mapCardapioWebClient(
+	customer: TGetCardapioWebOrderDetailsOutput["customer"],
+	deliveryAddress: TGetCardapioWebOrderDetailsOutput["delivery_address"],
+): MappedCardapioWebClient | null {
 	if (!customer) return null;
 
 	const phone = formatToPhone(customer.phone || "");
@@ -101,9 +121,17 @@ export function mapCardapioWebClient(customer: TGetCardapioWebOrderDetailsOutput
 
 	return {
 		idExterno: customer.id.toString(),
-		nome: customer.name || "CLIENTE CARDAPIO WEB",
+		nome: getCardapioWebClientName(customer, phone),
 		telefone: phone,
 		telefoneBase: phoneBase,
+		localizacaoCep: deliveryAddress?.postal_code ? formatToCEP(deliveryAddress.postal_code) : null,
+		localizacaoEstado: deliveryAddress?.state?.toUpperCase() || null,
+		localizacaoCidade: deliveryAddress?.city?.toUpperCase() || null,
+		localizacaoBairro: deliveryAddress?.neighborhood || "",
+		localizacaoLogradouro: deliveryAddress?.street || "",
+		localizacaoNumero: deliveryAddress?.number || "",
+		localizacaoLatitude: deliveryAddress?.latitude || null,
+		localizacaoLongitude: deliveryAddress?.longitude || null,
 	};
 }
 
@@ -147,7 +175,7 @@ export function extractUniqueProducts(orders: TGetCardapioWebOrderDetailsOutput[
  * Maps CardapioWeb sales channel to our internal partner format.
  * Partners in CardapioWeb context are the sales channels (iFood, WhatsApp, etc.)
  */
-export function mapCardapioWebPartner(order: TGetCardapioWebOrderDetailsOutput): MappedCardapioWebPartner | null {
+export function mapCardapioWebPartner(_order: TGetCardapioWebOrderDetailsOutput): MappedCardapioWebPartner | null {
 	return null; // Not the case for CardapioWeb, Sales Channels are handled differently
 	// const salesChannel = order.sales_channel;
 
@@ -269,9 +297,11 @@ export function extractUniqueProductAddOnOptions(orders: TGetCardapioWebOrderDet
 export function mapCardapioWebSaleItem(item: TGetCardapioWebOrderDetailsOutput["items"][number]): MappedCardapioWebSaleItem {
 	// Calculate discount from options if any have negative prices
 	const optionsTotal = item.options.reduce((acc, opt) => acc + opt.unit_price * opt.quantity, 0);
+	const productCode = (item.external_code || item.item_id?.toString()) ?? "N/A";
 
 	return {
 		produtoIdExterno: item.item_id?.toString() ?? "N/A",
+		produtoCodigo: productCode,
 		quantidade: item.quantity,
 		valorVendaUnitario: item.unit_price,
 		valorVendaTotalBruto: item.unit_price * item.quantity + optionsTotal,
@@ -295,10 +325,11 @@ export function mapCardapioWebSaleItem(item: TGetCardapioWebOrderDetailsOutput["
 export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): MappedCardapioWebSale {
 	// Calculate total discount from discounts array
 	const totalDiscount = order.discounts.reduce((acc, d) => acc + d.total, 0);
-
+	const total = order.total ?? 0;
 	// Determine if the sale is valid (completed and paid)
-	const isValidSale = order.status === "closed";
-	const isCanceled = order.status === "canceled";
+	const isZeroValueSale = total <= 0;
+	const isValidSale = order.status === "closed" && !isZeroValueSale;
+	const isCanceled = order.status === "canceled" || isZeroValueSale;
 
 	// Map natureza based on status (SN01 = valid sale, like ONLINE-SOFTWARE)
 	const natureza = isValidSale ? "SN01" : isCanceled ? "CANCELADO" : order.status.toUpperCase();
@@ -316,11 +347,11 @@ export function mapCardapioWebSale(order: TGetCardapioWebOrderDetailsOutput): Ma
 		onsite: "PRESENCIAL",
 		closed_table: "COMANDA",
 	};
-	const client = mapCardapioWebClient(order.customer);
+	const client = mapCardapioWebClient(order.customer, order.delivery_address);
 	return {
 		idExterno: order.id.toString(),
 		displayId: order.display_id.toString(),
-		valorTotal: order.total,
+		valorTotal: total,
 		custoTotal: 0, // Not provided by CardapioWeb
 		taxaEntrega: order.delivery_fee,
 		taxaServico: order.service_fee,

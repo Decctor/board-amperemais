@@ -54,7 +54,7 @@ export default function VideoInput({
 
 	return (
 		<div className={cn("flex w-full flex-col gap-1.5", holderClassName)}>
-			<Label htmlFor={inputId} className={cn("text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+			<Label htmlFor={inputId} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 				{label}
 			</Label>
 
@@ -81,7 +81,7 @@ export default function VideoInput({
 			/>
 
 			{videoHolder.previewUrl ? (
-				<div className="relative w-full overflow-hidden rounded-lg border border-primary/20 bg-card">
+				<div className="relative w-full overflow-hidden rounded-lg border border-border bg-card">
 					<video className="h-[220px] w-full object-cover" controls src={videoHolder.previewUrl}>
 						<track kind="captions" srcLang="pt-BR" label="Sem legendas disponíveis" />
 					</video>
@@ -90,7 +90,7 @@ export default function VideoInput({
 				<button
 					type="button"
 					onClick={openFilePicker}
-					className="relative w-full cursor-pointer overflow-hidden rounded-lg border border-dashed border-primary/20 bg-card"
+					className="relative w-full cursor-pointer overflow-hidden rounded-lg border border-dashed border-border bg-card"
 				>
 					<div className="flex h-[220px] w-full flex-col items-center justify-center gap-2 bg-primary/5 text-muted-foreground">
 						<UploadCloud className="h-7 w-7" />
@@ -110,13 +110,7 @@ export default function VideoInput({
 							<Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={openFilePicker}>
 								Alterar
 							</Button>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="h-7 gap-1 px-2 text-destructive hover:text-destructive"
-								onClick={clearVideo}
-							>
+							<Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-destructive hover:text-destructive" onClick={clearVideo}>
 								<X className="h-3.5 w-3.5" />
 								Remover
 							</Button>

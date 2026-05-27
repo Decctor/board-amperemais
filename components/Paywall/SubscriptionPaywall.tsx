@@ -131,7 +131,7 @@ function PaywallOrgSwitcher({ disabled }: { disabled?: boolean }) {
 										<Image src={membership.organizacao.logoUrl ?? LogoIcon} alt={membership.organizacao.nome} fill className="object-cover" />
 									</div>
 									<span className="flex-1 truncate">{membership.organizacao.nome}</span>
-									{isActive && <Check className="size-4 text-primary" aria-hidden />}
+									{isActive && <Check className="size-4 text-foreground" aria-hidden />}
 								</div>
 							</DropdownMenuItem>
 						);

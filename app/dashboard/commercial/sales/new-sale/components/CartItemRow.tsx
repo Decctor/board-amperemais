@@ -25,7 +25,7 @@ export default function CartItemRow({ item, onUpdateQuantity, onRemove }: CartIt
 
 			{/* Modifiers */}
 			{item.modificadores.length > 0 && (
-				<div className="flex flex-col gap-1 pl-2 border-l-2 border-primary/30">
+				<div className="flex flex-col gap-1 pl-2 border-l-2 border-border/30">
 					{item.modificadores.map((mod, idx) => (
 						<div key={`${mod.opcaoId}-${idx}`} className="flex items-center justify-between text-xs">
 							<span className="text-muted-foreground">
@@ -59,7 +59,7 @@ export default function CartItemRow({ item, onUpdateQuantity, onRemove }: CartIt
 
 				{/* Line Total */}
 				<div className="text-right">
-					<p className="font-black text-primary">{formatToMoney(item.valorTotalLiquido)}</p>
+					<p className="font-black text-foreground">{formatToMoney(item.valorTotalLiquido)}</p>
 					{item.valorDesconto > 0 && <p className="text-xs text-muted-foreground line-through">{formatToMoney(item.valorTotalBruto)}</p>}
 				</div>
 			</div>

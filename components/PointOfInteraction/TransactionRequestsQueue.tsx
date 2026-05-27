@@ -1,41 +1,38 @@
 "use client";
 
 import type { TGetPoiTransactionRequestsOutput } from "@/app/api/point-of-interaction/transaction-requests/management/route";
+import { ApproveTransaction } from "@/components/Modals/TransactionRequests/ApproveTransaction";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { usePoiTransactionRequestsRealtime } from "@/lib/hooks/use-supabase-realtime";
-import { approvePoiTransactionRequest, rejectPoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
+import { rejectPoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
 import { usePoiTransactionRequests } from "@/lib/queries/poi-transaction-requests";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgeDollarSign, BadgePercent, CheckCheck, GitPullRequestArrow, Phone, RefreshCcw, ShieldCheck, ShieldX, Smartphone, X } from "lucide-react";
-import { BsCalendar, BsCalendarPlus } from "react-icons/bs";
+import { BadgeDollarSign, BadgePercent, CheckCheck, Gift, GitPullRequestArrow, Phone, RefreshCcw, X } from "lucide-react";
+import { BsCalendarPlus } from "react-icons/bs";
+import { useState } from "react";
 import { toast } from "sonner";
 
 type PointOfInteractionTransactionRequestsQueueProps = {
 	orgId: string;
+	usuarioVendedorId: string | null;
 };
 
-export function PointOfInteractionTransactionRequestsQueue({ orgId }: PointOfInteractionTransactionRequestsQueueProps) {
+type ApprovalTarget = {
+	requestId: string;
+	clientDisplayName: string;
+};
+
+export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVendedorId }: PointOfInteractionTransactionRequestsQueueProps) {
 	const queryClient = useQueryClient();
 	const { data: requests = [], isLoading, queryKey } = usePoiTransactionRequests();
+	const [approvalTarget, setApprovalTarget] = useState<ApprovalTarget | null>(null);
 
 	usePoiTransactionRequestsRealtime({
 		orgId,
 		queryKey,
-	});
-
-	const { mutate: approveRequest, isPending: isApproving } = useMutation({
-		mutationFn: approvePoiTransactionRequest,
-		onSuccess: () => {
-			toast.success("Solicitação aprovada com sucesso.");
-			queryClient.invalidateQueries({ queryKey });
-			queryClient.invalidateQueries({ queryKey: ["sales"] });
-		},
-		onError: (error) => {
-			toast.error(getErrorMessage(error));
-		},
 	});
 
 	const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
@@ -49,8 +46,10 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId }: PointOfInt
 		},
 	});
 
+	const hasLinkedSeller = !!usuarioVendedorId;
+
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs md:h-full md:min-h-0">
+		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs md:h-full md:min-h-0">
 			<div className="flex flex-col">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">SOLICITAÇÕES</h1>
@@ -68,18 +67,38 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId }: PointOfInt
 			) : requests.length === 0 ? (
 				<p className="py-4 text-sm text-muted-foreground">Nenhuma solicitação pendente no momento.</p>
 			) : (
-				<div className="mt-4 grid gap-3 md:flex-1 md:min-h-0 md:overflow-y-auto md:pr-1">
+				<div className="mt-4 flex flex-col gap-3 md:flex-1 md:min-h-0 md:overflow-y-auto md:pr-1">
 					{requests.map((request) => (
 						<PoiTransactionRequestCard
 							key={request.id}
 							request={request}
-							onApprove={() => approveRequest(request.id)}
+							onApprove={() =>
+								setApprovalTarget({
+									requestId: request.id,
+									clientDisplayName: request.cliente?.nome ?? "Cliente não identificado",
+								})
+							}
 							onReject={() => rejectRequest(request.id)}
-							disabled={isApproving || isRejecting}
+							disabled={isRejecting}
 						/>
 					))}
 				</div>
 			)}
+
+			{approvalTarget ? (
+				<ApproveTransaction
+					requestId={approvalTarget.requestId}
+					clientDisplayName={approvalTarget.clientDisplayName}
+					hasLinkedSeller={hasLinkedSeller}
+					closeModal={() => setApprovalTarget(null)}
+					callbacks={{
+						onSuccess: () => {
+							queryClient.invalidateQueries({ queryKey });
+							queryClient.invalidateQueries({ queryKey: ["sales"] });
+						},
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }
@@ -98,12 +117,16 @@ function PoiTransactionRequestCard({
 	const resumo = request.resumoSolicitacao as {
 		cliente?: { nome?: string; telefone?: string };
 		venda?: { valorBruto?: number; valorResgate?: number; valorFinal?: number; modo?: string };
-		recompensa?: { prizeValue?: number; prizeSaleValue?: number } | null;
+		recompensa?: { prizeValue?: number; prizeSaleValue?: number; prizeTitulo?: string | null; prizeImageUrl?: string | null } | null;
 	};
 	const isRewardMode = resumo?.venda?.modo === "RECOMPENSA";
 
+	// Prize info: prefer data from approved transaction, fallback to summary
+	const prizeDescricao = request.transacaoResgate?.resgateRecompensa?.descricao ?? resumo?.recompensa?.prizeTitulo ?? null;
+	const prizeImageUrl = request.transacaoResgate?.resgateRecompensa?.imagemCapaUrl ?? resumo?.recompensa?.prizeImageUrl ?? null;
+
 	return (
-		<div className="bg-card border border-primary/20 flex w-full flex-col gap-1 rounded-xl px-3 py-4 shadow-2xs h-fit">
+		<div className="bg-card border border-border flex w-full flex-col gap-1 rounded-xl px-3 py-4 shadow-2xs h-fit">
 			<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{request.cliente?.nome ?? resumo?.cliente?.nome ?? "Cliente não identificado"}</h1>
@@ -113,15 +136,21 @@ function PoiTransactionRequestCard({
 							{request.cliente?.telefone ?? resumo?.cliente?.telefone ?? "Telefone não informado"}
 						</h1>
 					</div>
+					{isRewardMode && (
+						<span className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[0.65rem] font-bold text-brand dark:bg-brand/30 dark:text-brand">
+							<Gift className="h-3 w-3 min-h-3 min-w-3" />
+							RECOMPENSA
+						</span>
+					)}
 				</div>
 
 				<div className="flex items-center gap-3">
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BsCalendarPlus className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">{formatDateAsLocale(request.dataInsercao, true)}</p>
 					</div>
 					<div
-						className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-primary", {
+						className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-foreground", {
 							"bg-amber-100 text-amber-700": request.status === "PENDENTE",
 							"bg-green-100 text-green-700": request.status === "APROVADO",
 							"bg-red-100 text-red-700": request.status === "REJEITADO",
@@ -132,19 +161,36 @@ function PoiTransactionRequestCard({
 				</div>
 			</div>
 
+			{isRewardMode && (prizeDescricao || prizeImageUrl) && (
+				<div className="flex items-center gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800/40 dark:bg-purple-900/10">
+					{prizeImageUrl && <img src={prizeImageUrl} alt={prizeDescricao ?? "Prêmio"} className="h-10 w-10 min-h-10 min-w-10 rounded-md object-cover" />}
+					{!prizeImageUrl && (
+						<div className="flex h-10 w-10 min-h-10 min-w-10 items-center justify-center rounded-md bg-purple-100 dark:bg-purple-900/30">
+							<Gift className="h-5 w-5 text-purple-500" />
+						</div>
+					)}
+					<div className="flex flex-col gap-0.5">
+						<p className="text-[0.65rem] font-semibold uppercase tracking-tight text-purple-700 dark:text-purple-300">Prêmio resgatado</p>
+						<p className="text-xs font-bold text-purple-900 dark:text-purple-100">{prizeDescricao}</p>
+					</div>
+				</div>
+			)}
+
 			<div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
 				<div className="flex items-center gap-3 flex-wrap">
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">BRUTO: {formatToMoney(resumo?.venda?.valorBruto ?? 0)}</p>
 					</div>
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BadgePercent className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">
-							{isRewardMode ? `RESGATE: ${resumo?.recompensa?.prizeValue ?? resumo?.venda?.valorResgate ?? 0} créditos` : `RESGATE: ${formatToMoney(resumo?.venda?.valorResgate ?? 0)}`}
+							{isRewardMode
+								? `RESGATE: ${resumo?.recompensa?.prizeValue ?? resumo?.venda?.valorResgate ?? 0} créditos`
+								: `RESGATE: ${formatToMoney(resumo?.venda?.valorResgate ?? 0)}`}
 						</p>
 					</div>
-					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+					<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 						<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
 						<p className="text-xs font-medium tracking-tight uppercase">FINAL: {formatToMoney(resumo?.venda?.valorFinal ?? 0)}</p>
 					</div>
@@ -167,7 +213,7 @@ function PoiTransactionRequestCard({
 						<span className="rounded-full bg-secondary px-2.5 py-1 font-medium text-muted-foreground">
 							{formatDateAsLocale(request.dataInsercao, true)}
 						</span>
-						{resumo?.venda?.modo ? <span className="rounded-full bg-primary/10 px-2.5 py-1 font-bold text-primary">{resumo.venda.modo}</span> : null}
+						{resumo?.venda?.modo ? <span className="rounded-full bg-primary/10 px-2.5 py-1 font-bold text-foreground">{resumo.venda.modo}</span> : null}
 					</div>
 					<div>
 						<h3 className="text-sm font-black uppercase tracking-tight">{request.cliente?.nome ?? resumo?.cliente?.nome ?? "Cliente não identificado"}</h3>

@@ -1,44 +1,63 @@
 import SelectInput from "@/components/Inputs/SelectInput";
-import NewWhatsappTemplate from "@/components/Modals/WhatsappTemplates/NewWhatsappTemplate";
-import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
+import ControlMessageTemplate from "@/components/Modals/MessageTemplates/ControlMessageTemplate";
+import NewMessageTemplate from "@/components/Modals/MessageTemplates/NewMessageTemplate";
+import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useWhatsappConnection } from "@/lib/queries/whatsapp-connections";
-import { useWhatsappTemplates } from "@/lib/queries/whatsapp-templates";
-import { validateTemplateForTrigger } from "@/lib/whatsapp/template-variables";
+import { useMessageTemplates } from "@/lib/queries/message-templates";
+import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
+import { cn } from "@/lib/utils";
+import { validateTemplateForTrigger } from "@/lib/message-templates";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
+import { getWhatsappTemplateStatusUIDetails } from "@/utils/select-options";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, Info, Plus, Send } from "lucide-react";
+import { Eye, Info, Pencil, Plus, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type CampaignsActionBlockProps = {
 	organizationId: string;
+	organizationName: string;
+	organizationLogoUrl: string | null;
 	campaign: TUseCampaignState["state"]["campaign"];
 	updateCampaign: TUseCampaignState["updateCampaign"];
 };
 
-export default function CampaignsActionBlock({ organizationId, campaign, updateCampaign }: CampaignsActionBlockProps) {
+function getTemplateTriggerValidationParameters(template: NonNullable<ReturnType<typeof useMessageTemplates>["data"]>["messageTemplates"][number]) {
+	return template.conteudo.corpo.parametros.map((parametro) => ({
+		nome: parametro.identificadorInterno,
+		exemplo: parametro.exemplo,
+		identificador: parametro.identificadorInterno,
+	}));
+}
+
+export default function CampaignsActionBlock({
+	organizationId,
+	organizationName,
+	organizationLogoUrl,
+	campaign,
+	updateCampaign,
+}: CampaignsActionBlockProps) {
 	const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+	const [editTemplateId, setEditTemplateId] = useState<string | null>(null);
 	const queryClient = useQueryClient();
 
-	const { data: whatsappConnection } = useWhatsappConnection();
-	const { data: whatsappTemplatesResult, updateParams } = useWhatsappTemplates({
-		initialParams: { page: 1, search: "", whatsappConnectionPhoneId: campaign.whatsappConexaoTelefoneId, includeRecompraTemplates: true },
-	});
+	const { data: whatsappConnections } = useWhatsappConnections();
+	const { data: messageTemplatesResult, queryKey } = useMessageTemplates({ initialParams: { page: 1, search: "" } });
 
 	const whatsappConnectionPhones =
-		whatsappConnection?.telefones.map((v) => ({
-			id: v.id,
-			label: `(${v.numero}) - ${v.nome}`,
-			value: v.id,
-		})) ?? [];
+		whatsappConnections
+			?.flatMap((connection) => connection.telefones)
+			.map((phone) => ({
+				id: phone.id,
+				label: `(${phone.numero}) - ${phone.nome}`,
+				value: phone.id,
+			})) ?? [];
 
-	const allTemplates = whatsappTemplatesResult?.whatsappTemplates ?? [];
+	const allTemplates = messageTemplatesResult?.messageTemplates ?? [];
 
-	// Filter templates by trigger compatibility
 	const { compatibleTemplates, hiddenTemplates, hiddenCount } = useMemo(() => {
 		if (!campaign.gatilhoTipo) return { compatibleTemplates: allTemplates, hiddenTemplates: [], hiddenCount: 0 };
 
@@ -46,7 +65,7 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 		const hidden = [];
 
 		for (const template of allTemplates) {
-			const validation = validateTemplateForTrigger(template.bodyParametros, campaign.gatilhoTipo);
+			const validation = validateTemplateForTrigger(getTemplateTriggerValidationParameters(template), campaign.gatilhoTipo);
 			if (validation.valid) {
 				compatible.push(template);
 				continue;
@@ -62,123 +81,154 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 		return { compatibleTemplates: compatible, hiddenTemplates: hidden, hiddenCount: hidden.length };
 	}, [allTemplates, campaign.gatilhoTipo]);
 
-	// Clear template when trigger type changes and selected template becomes incompatible
 	useEffect(() => {
 		if (!campaign.whatsappTemplateId || !campaign.gatilhoTipo || allTemplates.length === 0) return;
-		const selectedTemplate = allTemplates.find((t) => t.id === campaign.whatsappTemplateId);
+		const selectedTemplate = allTemplates.find((template) => template.id === campaign.whatsappTemplateId);
 		if (!selectedTemplate) return;
-		const validation = validateTemplateForTrigger(selectedTemplate.bodyParametros, campaign.gatilhoTipo);
+		const validation = validateTemplateForTrigger(getTemplateTriggerValidationParameters(selectedTemplate), campaign.gatilhoTipo);
 		if (!validation.valid) {
 			updateCampaign({ whatsappTemplateId: "" });
-			toast.warning("Template removido: variáveis incompatíveis com o novo gatilho.");
+			toast.warning("Template desmarcado: as variáveis dele não são compatíveis com o novo tipo de gatilho.");
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [campaign.gatilhoTipo]);
 
-	// Find the selected template for status/quality display
-	const selectedTemplate = useMemo(() => allTemplates.find((t) => t.id === campaign.whatsappTemplateId), [allTemplates, campaign.whatsappTemplateId]);
-	const selectedTemplateComponents = selectedTemplate?.componentes;
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
+	const selectedTemplate = useMemo(() => allTemplates.find((template) => template.id === campaign.whatsappTemplateId), [allTemplates, campaign.whatsappTemplateId]);
 
-	const rejectionReason = selectedTemplate?.rejeicao ?? null;
 	return (
 		<>
-			{showCreateTemplate && (
-				<NewWhatsappTemplate
+			{showCreateTemplate ? (
+				<NewMessageTemplate
 					organizationId={organizationId}
-					triggerContext={campaign.gatilhoTipo ?? undefined}
-					closeMenu={() => setShowCreateTemplate(false)}
+					organizationName={organizationName}
+					organizationLogoUrl={organizationLogoUrl}
+					closeModal={() => setShowCreateTemplate(false)}
 					callbacks={{
-						onSuccess: ({ templateId }) => {
-							if (templateId) updateCampaign({ whatsappTemplateId: templateId });
-							queryClient.invalidateQueries({ queryKey: ["whatsapp-templates"] });
+						onMutate: handleOnMutate,
+						onSuccess: () => {
+							handleOnSettled();
 							setShowCreateTemplate(false);
 						},
+						onSettled: handleOnSettled,
 					}}
 				/>
-			)}
-			<ResponsiveMenuSection title="AÇÃO" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
-				<div className="w-full flex flex-col gap-1">
-					<p className="text-center text-sm tracking-tight text-muted-foreground">Defina o template do WhatsApp que deve ser enviado.</p>
+			) : null}
+
+			{editTemplateId ? (
+				<ControlMessageTemplate
+					messageTemplateId={editTemplateId}
+					organizationId={organizationId}
+					organizationName={organizationName}
+					organizationLogoUrl={organizationLogoUrl}
+					closeModal={() => setEditTemplateId(null)}
+					callbacks={{
+						onMutate: handleOnMutate,
+						onSuccess: () => {
+							handleOnSettled();
+							setEditTemplateId(null);
+						},
+						onSettled: handleOnSettled,
+					}}
+				/>
+			) : null}
+
+            <ResponsiveMenuSection title="AÇÃO" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
+				<div className="flex w-full flex-col gap-3">
+					<p className="text-muted-foreground text-center text-sm leading-snug tracking-tight">
+						Quando o gatilho disparar para um cliente elegível, esta campanha tenta enviar o template pelo WhatsApp e por e-mail. O telefone abaixo define
+						o remetente do WhatsApp; se o cliente não tiver telefone ou e-mail, aquele canal é ignorado.
+					</p>
+
 					<SelectInput
-						label="TELEFONE DO WHATSAPP"
+						label="TELEFONE DO WHATSAPP (REMETENTE)"
 						value={campaign.whatsappConexaoTelefoneId}
-						resetOptionLabel="SELECIONE O TELEFONE"
+						resetOptionLabel="SEM REMETENTE WHATSAPP"
 						options={whatsappConnectionPhones}
-						handleChange={(value) => {
-							updateCampaign({ whatsappConexaoTelefoneId: value, whatsappTemplateId: "" });
-							updateParams({ whatsappConnectionPhoneId: value });
-						}}
-						onReset={() => {
-							updateCampaign({ whatsappConexaoTelefoneId: "", whatsappTemplateId: "" });
-							updateParams({ whatsappConnectionPhoneId: undefined });
-						}}
+						handleChange={(value) => updateCampaign({ whatsappConexaoTelefoneId: value })}
+						onReset={() => updateCampaign({ whatsappConexaoTelefoneId: "" })}
 						width="100%"
 					/>
-					<div className="flex items-end gap-2">
-						<div className="flex-1 min-w-0">
-							<SelectInput
-								label="TEMPLATE DO WHATSAPP"
-								value={campaign.whatsappTemplateId}
-								editable={!!campaign.whatsappConexaoTelefoneId}
-								resetOptionLabel={campaign.whatsappConexaoTelefoneId ? "SELECIONE O TEMPLATE" : "SELECIONE UM TELEFONE PRIMEIRO"}
-								options={compatibleTemplates.map((template) => ({ id: template.id, label: template.nome, value: template.id }))}
-								handleChange={(value) => updateCampaign({ whatsappTemplateId: value })}
-								onReset={() => updateCampaign({ whatsappTemplateId: "" })}
-								width="100%"
-							/>
-						</div>
-					</div>
-					<div className="w-full flex items-center justify-end gap-3">
-						{selectedTemplate && selectedTemplateComponents ? (
+
+					<p className="text-muted-foreground text-center text-xs leading-snug">
+						A lista de templates é filtrada pelo tipo de gatilho da campanha: só entram modelos cujas variáveis esse gatilho consegue preencher.
+					</p>
+
+					<SelectInput
+						label="TEMPLATE DE MENSAGEM"
+						value={campaign.whatsappTemplateId}
+						resetOptionLabel="SELECIONE O TEMPLATE"
+						options={compatibleTemplates.map((template) => {
+							const details = getWhatsappTemplateStatusUIDetails(template.statusGeral);
+							return {
+								startContent: details ? (
+									<div className={cn("flex items-center gap-1.5 rounded-lg px-2 py-1", details.colors.background)}>
+										{details.icon}
+										<span className={cn("text-[0.65rem] font-semibold uppercase", details.colors.text)}>{details.label}</span>
+									</div>
+								) : null,
+								id: template.id,
+								label: template.nome,
+								value: template.id,
+							};
+						})}
+						handleChange={(value) => updateCampaign({ whatsappTemplateId: value })}
+						onReset={() => updateCampaign({ whatsappTemplateId: "" })}
+						width="100%"
+					/>
+
+					<div className="flex w-full items-center justify-end gap-3">
+						{selectedTemplate ? (
 							<HoverCard openDelay={200}>
 								<HoverCardTrigger asChild>
 									<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
 										<Eye className="h-3.5 w-3.5" />
-										PREVIEW
+										PRÉ-VISUALIZAR
 									</Button>
 								</HoverCardTrigger>
-								<HoverCardContent className="w-[360px] p-2 overflow-auto max-h-[70vh]" side="left" align="end">
-									<TemplatePreview components={selectedTemplateComponents} />
+								<HoverCardContent className="max-h-[70vh] w-[360px] overflow-auto p-2" side="left" align="end">
+									<TemplatePreview content={selectedTemplate.conteudo} />
 								</HoverCardContent>
 							</HoverCard>
 						) : null}
-						<Button
-							type="button"
-							size="sm"
-							variant="ghost"
-							className="flex items-center gap-1.5"
-							onClick={() => setShowCreateTemplate(true)}
-							disabled={!campaign.whatsappConexaoTelefoneId}
-						>
+
+						{selectedTemplate ? (
+							<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5" onClick={() => setEditTemplateId(selectedTemplate.id)}>
+								<Pencil className="h-3.5 w-3.5" />
+								EDITAR
+							</Button>
+						) : null}
+
+						<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5" onClick={() => setShowCreateTemplate(true)}>
 							<Plus className="h-3.5 w-3.5" />
 							CRIAR
 						</Button>
 					</div>
-					{hiddenCount > 0 && (
+
+					{hiddenCount > 0 ? (
 						<TooltipProvider>
 							<Tooltip delayDuration={150}>
 								<TooltipTrigger asChild>
-									<div className="flex cursor-help items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/60">
+									<div className="text-muted-foreground hover:bg-muted/60 flex cursor-help items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs leading-snug transition-colors">
 										<Info className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
 										<span>
-											{hiddenCount} {hiddenCount === 1 ? "template foi ocultado" : "templates foram ocultados"} por uso de variáveis incompatíveis com o gatilho
-											selecionado.
+											{hiddenCount === 1
+												? "Mais um template não aparece aqui porque usa variáveis que este tipo de gatilho não fornece."
+												: `Mais ${hiddenCount} templates não aparecem aqui porque usam variáveis que este tipo de gatilho não fornece.`}{" "}
+											Passe o cursor para ver o nome de cada um e quais variáveis são.
 										</span>
 									</div>
 								</TooltipTrigger>
-								<TooltipContent
-									side="top"
-									align="start"
-									className="w-[360px] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl"
-								>
-									<div className="flex max-h-72 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
-										<p className="text-xs font-semibold uppercase tracking-wide text-foreground">Motivos do bloqueio</p>
+								<TooltipContent side="top" align="start" className="w-[360px] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl">
+									<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex max-h-72 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1">
+										<p className="text-xs font-semibold uppercase tracking-wide text-foreground">Templates fora da lista</p>
 										<div className="flex flex-col gap-2">
 											{hiddenTemplates.map((template) => (
 												<div key={template.id} className="rounded-lg border border-border/60 bg-muted/35 px-2.5 py-2">
 													<p className="text-xs font-semibold text-foreground">{template.nome}</p>
-													<p className="mt-1 text-xs text-muted-foreground">
-														Variáveis incompatíveis: {template.incompatibleVariables.join(", ")}.
+													<p className="text-muted-foreground mt-1 text-xs leading-snug">
+														Variáveis que este gatilho não preenche: {template.incompatibleVariables.join(", ")}.
 													</p>
 												</div>
 											))}
@@ -187,49 +237,9 @@ export default function CampaignsActionBlock({ organizationId, campaign, updateC
 								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
-					)}
-					{selectedTemplate && (
-						<div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/10 bg-muted/30 px-3 py-2">
-							<span className="text-xs text-muted-foreground">Status:</span>
-							<StatusBadge status={selectedTemplate.statusGeral} />
-							<span className="text-xs text-muted-foreground ml-1">Qualidade:</span>
-							<QualityBadge quality={selectedTemplate.qualidadeGeral} />
-							{selectedTemplate.statusGeral === "REJEITADO" && rejectionReason && (
-								<p className="w-full text-xs text-red-600 dark:text-red-400 mt-1">Motivo da rejeição: {rejectionReason}</p>
-							)}
-							{selectedTemplate.statusGeral === "PENDENTE" && (
-								<p className="w-full text-xs text-yellow-600 dark:text-yellow-400 mt-1">Este template está aguardando aprovação da Meta.</p>
-							)}
-						</div>
-					)}
+					) : null}
 				</div>
 			</ResponsiveMenuSection>
 		</>
-	);
-}
-
-function StatusBadge({ status }: { status: string }) {
-	const colorMap: Record<string, string> = {
-		APROVADO: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-		PENDENTE: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-		REJEITADO: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-		RASCUNHO: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
-		PAUSADO: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-		DESABILITADO: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-	};
-	return (
-		<span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${colorMap[status] ?? "bg-gray-100 text-gray-700"}`}>{status}</span>
-	);
-}
-
-function QualityBadge({ quality }: { quality: string }) {
-	const colorMap: Record<string, string> = {
-		ALTA: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-		MEDIA: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-		BAIXA: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-		PENDENTE: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
-	};
-	return (
-		<span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${colorMap[quality] ?? "bg-gray-100 text-gray-700"}`}>{quality}</span>
 	);
 }

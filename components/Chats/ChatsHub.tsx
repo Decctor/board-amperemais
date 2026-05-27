@@ -1,6 +1,6 @@
 "use client";
 
-import type { TGetWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
+import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { useCreateChat } from "@/lib/mutations/chats";
 import { useState } from "react";
@@ -11,7 +11,7 @@ type ChatsHubProps = {
 	user: TAuthUserSession["user"];
 	organizationId: string;
 	userHasMessageSendingPermission: boolean;
-	whatsappConnection: TGetWhatsappConnectionOutput["data"];
+	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
 };
 
 /**
@@ -29,10 +29,15 @@ type ChatsHubProps = {
  * - Type-safe with TypeScript
  * - Composable architecture
  */
-export default function ChatsHub({ user, organizationId, userHasMessageSendingPermission, whatsappConnection }: ChatsHubProps) {
+export default function ChatsHub({ user, organizationId, userHasMessageSendingPermission, whatsappConnections }: ChatsHubProps) {
 	return (
-		<ChatHub.Root user={user} organizationId={organizationId} userHasMessageSendingPermission={userHasMessageSendingPermission} whatsappConnection={whatsappConnection}>
-			<ChatHubContent whatsappConnection={whatsappConnection} />
+		<ChatHub.Root
+			user={user}
+			organizationId={organizationId}
+			userHasMessageSendingPermission={userHasMessageSendingPermission}
+			whatsappConnections={whatsappConnections}
+		>
+			<ChatHubContent whatsappConnections={whatsappConnections} />
 		</ChatHub.Root>
 	);
 }
@@ -40,7 +45,7 @@ export default function ChatsHub({ user, organizationId, userHasMessageSendingPe
 /**
  * Inner component that has access to ChatHub context
  */
-function ChatHubContent({ whatsappConnection }: { whatsappConnection: TGetWhatsappConnectionOutput["data"] }) {
+function ChatHubContent({ whatsappConnections }: { whatsappConnections: TGetWhatsappConnectionsOutput["data"] }) {
 	const [newChatMenuIsOpen, setNewChatMenuIsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 
@@ -56,7 +61,7 @@ function ChatHubContent({ whatsappConnection }: { whatsappConnection: TGetWhatsa
 					<>
 						{/* List Header - Phone selector and new chat button */}
 						<ChatHub.Header
-							whatsappConnection={whatsappConnection}
+							whatsappConnections={whatsappConnections}
 							onNewChat={handleNewChat}
 							showSearch={true}
 							searchQuery={searchQuery}

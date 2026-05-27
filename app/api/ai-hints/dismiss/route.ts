@@ -1,46 +1,78 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { dismissHint as dismissHintService } from "@/lib/ai-hints/service";
 import { DismissHintInputSchema } from "@/schemas/ai-hints";
-import { db } from "@/services/drizzle";
-import { aiHints } from "@/services/drizzle/schema";
-import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
+import z from "zod";
+import { TAuthUserSession } from "@/lib/authentication/types";
 
-async function dismissHint(request: NextRequest) {
-	const session = await getCurrentSessionUncached();
-	if (!session?.membership) {
-		throw new createHttpError.Unauthorized("Você não está autenticado.");
-	}
-
-	const orgId = session.membership.organizacao.id;
+export type TDismissHintInput = z.infer<typeof DismissHintInputSchema>;
+async function dismissHint({ input, session }: { input: TDismissHintInput; session: TAuthUserSession }) {
 	const userId = session.user.id;
-	const url = new URL(request.url);
+	const userOrgId = session.membership?.organizacao.id;
+	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const input = DismissHintInputSchema.parse({
-		id: url.searchParams.get("id"),
-	});
-
-	// Verify hint belongs to org
-	const hint = await db.query.aiHints.findFirst({
-		where: and(eq(aiHints.id, input.id), eq(aiHints.organizacaoId, orgId)),
+	const hint = await dismissHintService({
+		organizacaoId: userOrgId,
+		hintId: input.id,
+		userId,
 	});
 
 	if (!hint) {
 		throw new createHttpError.NotFound("Dica não encontrada.");
 	}
 
-	// Update hint status to dismissed
-	await db
-		.update(aiHints)
-		.set({
-			status: "dismissed",
-			descartadaPor: userId,
-			dataDescarte: new Date(),
-		})
-		.where(eq(aiHints.id, input.id));
+	return {
+		data: {
+			hint,
+		},
+		message: "Dica descartada com sucesso.",
+	};
+}
+export type TDismissHintOutput = Awaited<ReturnType<typeof dismissHint>>;
 
-	return NextResponse.json({ message: "Dica descartada com sucesso." }, { status: 200 });
+function getDismissHintInput(request: NextRequest): TDismissHintInput {
+	return DismissHintInputSchema.parse({
+		id: request.nextUrl.searchParams.get("id"),
+	});
 }
 
-export const POST = appApiHandler({ POST: dismissHint });
+async function dismissHintRoutePOST(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session?.membership) {
+		throw new createHttpError.Unauthorized("Você não está autenticado.");
+	}
+
+	const input = getDismissHintInput(request);
+	console.log("[INFO] Dismissing hints of id", input.id);
+	const result = await dismissHint({
+		input,
+		session,
+	});
+
+	return NextResponse.json(result);
+}
+async function dismissHintRouteGET(request: NextRequest) {
+	const baseRedirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/ai-hints/approval-dismiss`;
+	try {
+		const session = await getCurrentSessionUncached();
+		if (!session?.membership) {
+			const msg = encodeURIComponent("Você não está autenticado.");
+			return NextResponse.redirect(`${baseRedirectUrl}?type=error&message=${msg}`);
+		}
+
+		const input = getDismissHintInput(request);
+		console.log("[INFO] Dismissing hints of id", input.id);
+		const result = await dismissHint({ input, session });
+
+		const msg = encodeURIComponent(result.message);
+		return NextResponse.redirect(`${baseRedirectUrl}?type=dismiss&message=${msg}`);
+	} catch (error) {
+		const msg = encodeURIComponent(error instanceof Error ? error.message : "Algo deu errado.");
+		return NextResponse.redirect(`${baseRedirectUrl}?type=error&message=${msg}`);
+	}
+}
+
+export const GET = appApiHandler({ GET: dismissHintRouteGET });
+export const POST = appApiHandler({ POST: dismissHintRoutePOST });

@@ -214,7 +214,7 @@ const result = await generateText({
 
 ---
 
-### 5. `/pages/api/integrations/ai/process-media.ts`
+### 5. `/app/api/integrations/ai/process-media/route.ts`
 
 **Same changes as file #4** - Replace `@ai-sdk/openai` with `gateway()` from `ai`.
 
@@ -308,7 +308,7 @@ If issues arise:
 npm install ai@^5.0.78 @ai-sdk/openai@^2.0.53
 
 # Restore code
-git checkout -- lib/ai-hints lib/ai-agent lib/ai-media-processing pages/api/integrations/ai
+git checkout -- lib/ai-hints lib/ai-agent lib/ai-media-processing app/api/integrations/ai
 
 # Restore environment
 # Re-add OPENAI_API_KEY to .env
@@ -345,7 +345,7 @@ git checkout -- lib/ai-hints lib/ai-agent lib/ai-media-processing pages/api/inte
 - [ ] `lib/ai-agent/index.ts` - Replace OpenAI with gateway + stable Agent API
 - [ ] `lib/ai-agent/tools.ts` - Verify `parameters` vs `inputSchema`
 - [ ] `lib/ai-media-processing/index.ts` - Replace OpenAI with gateway
-- [ ] `pages/api/integrations/ai/process-media.ts` - Replace OpenAI with gateway
+- [ ] `app/api/integrations/ai/process-media/route.ts` - Replace OpenAI with gateway
 
 ### Testing
 - [ ] Test AI Hints generation

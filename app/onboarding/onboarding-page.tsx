@@ -1,15 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
 import { createOrganization } from "@/lib/mutations/organizations";
 import { isValidCNPJ } from "@/lib/validation";
-import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
+import { TOrganizationOnboardingState, useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import z from "zod";
@@ -18,6 +17,7 @@ import { GeneralInfoStage } from "./_components/GeneralInfoStage";
 import { NicheOriginStage } from "./_components/NicheOriginStage";
 import { OnboardingLayout } from "./_components/OnboardingLayout";
 import { SubscriptionPlansStage } from "./_components/SubscriptionPlansStage";
+import { uploadFile } from "@/lib/files-storage";
 
 type OnboardingPageProps = {
 	user: unknown; // We might need this later, keeping prop signature
@@ -40,7 +40,7 @@ const ONBOARDING_STAGE_EVENTS: Record<string, string> = {
 	"subscription-plans-section": "onboarding_view_subscription_plans_section",
 };
 
-export function OnboardingPage({ user }: OnboardingPageProps) {
+export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 	const { state, updateOrganization, updateOrganizationLogoHolder, updateOrganizationOnboarding, goToNextStage, goToPreviousStage } =
 		useOrganizationOnboardingState({});
 	const trackedStagesRef = useRef<Set<string>>(new Set());
@@ -58,8 +58,26 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 		});
 	}, [state.stage]);
 
+	async function handleCreateOrganization(state: TOrganizationOnboardingState) {
+		let logoUrl: string | null = null;
+		if (state.organizationLogoHolder.file) {
+			const { url } = await uploadFile({
+				file: state.organizationLogoHolder.file,
+				fileName: state.organization.nome,
+				prefix: "organizations",
+			});
+			logoUrl = url;
+		}
+		return await createOrganization({
+			organization: {
+				...state.organization,
+				logoUrl: logoUrl,
+			},
+			subscription: state.subscription,
+		});
+	}
 	const mutation = useMutation({
-		mutationFn: createOrganization,
+		mutationFn: handleCreateOrganization,
 		onSuccess: (data) => {
 			// Redirect to the provided URL (either dashboard or Stripe checkout)
 			window.location.href = data.data.redirectTo;
@@ -117,10 +135,7 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 						state={state}
 						handleSelectPlan={(info) => {
 							updateOrganizationOnboarding({ subscription: info });
-							mutation.mutate({
-								organization: state.organization,
-								subscription: info,
-							});
+							mutation.mutate(state);
 						}}
 						isMutationPending={mutation.isPending}
 						goToPreviousStage={handleBack}
@@ -172,7 +187,7 @@ export function OnboardingPage({ user }: OnboardingPageProps) {
 				</div>
 				<div
 					key={state.stage}
-					className="w-full flex flex-col gap-6 grow overflow-y-auto px-1 min-h-0 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
+					className="min-h-0 grow w-full flex flex-col gap-6 overflow-visible px-1 md:overflow-y-auto md:overscroll-y-contain scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
 				>
 					{renderStageContent()}
 				</div>

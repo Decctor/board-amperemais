@@ -38,11 +38,11 @@ const responsiveMenuV2Variants = cva("flex flex-col", {
 const drawerVariants = cva("flex flex-col", {
 	variants: {
 		drawerVariant: {
-			fit: "flex flex-col min-h-fit h-fit max-h-[90vh]",
-			sm: "flex flex-col min-h-fit h-fit max-h-[70vh]",
-			md: "flex flex-col min-h-fit h-fit max-h-[80vh]",
-			lg: "flex flex-col min-h-fit h-fit max-h-[90vh]",
-			xl: "flex flex-col min-h-fit h-fit max-h-[95vh]",
+			fit: "flex flex-col h-fit max-h-[90dvh]",
+			sm: "flex flex-col h-fit min-h-[50dvh] max-h-[70dvh]",
+			md: "flex flex-col h-fit min-h-[50dvh] max-h-[80dvh]",
+			lg: "flex flex-col h-fit min-h-[70dvh] max-h-[90dvh]",
+			xl: "flex flex-col h-fit min-h-[80dvh] max-h-[95dvh]",
 		},
 	},
 	defaultVariants: {
@@ -104,7 +104,7 @@ const MenuContentSwitcher = ({
 				<motion.div
 					key="main-content"
 					{...contentAnimation}
-					className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-0"
+					className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 py-2 lg:px-0"
 				>
 					{children}
 				</motion.div>

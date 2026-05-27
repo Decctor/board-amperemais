@@ -7,11 +7,48 @@ export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", 
 	z.object({
 		tipo: z.literal("ONLINE-SOFTWARE"),
 		token: z.string({ invalid_type_error: "Tipo não válido para o token da integração." }),
+		url: z.string({ invalid_type_error: "Tipo não válido para a URL da integração." }),
 	}),
 	z.object({
 		tipo: z.literal("CARDAPIO-WEB"),
 		merchantId: z.string({ invalid_type_error: "Tipo não válido para o ID do merchant." }),
 		apiKey: z.string({ invalid_type_error: "Tipo não válido para a API Key." }),
+	}),
+	z.object({
+		tipo: z.literal("NUVEM-SHOP"),
+		storeId: z.number({ invalid_type_error: "Tipo não válido para o ID da loja Nuvem Shop." }),
+		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso da Nuvem Shop." }),
+		tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token da Nuvem Shop." }),
+		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo da Nuvem Shop." })),
+	}),
+	z.object({
+		tipo: z.literal("IFOOD"),
+		merchantIds: z.array(z.string({ invalid_type_error: "Tipo não válido para o ID da loja iFood." })).default([]),
+		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do iFood." }),
+		refreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de renovação do iFood." }),
+		tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token do iFood." }),
+		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo do iFood." })),
+		expiresAt: z
+			.string({ invalid_type_error: "Tipo não válido para a expiração do token do iFood." })
+			.datetime({ message: "Tipo não válido para a expiração do token do iFood." }),
+		authorizedAt: z
+			.string({ invalid_type_error: "Tipo não válido para a data de autorização do iFood." })
+			.datetime({ message: "Tipo não válido para a data de autorização do iFood." })
+			.optional()
+			.nullable(),
+	}),
+	z.object({
+		tipo: z.literal("BLING"),
+		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do Bling." }),
+		refreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de renovação do Bling." }),
+		tokenType: z.string({ invalid_type_error: "Tipo não válido para o tipo do token do Bling." }).default("Bearer"),
+		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo do Bling." })).default([]),
+		expiresAt: z
+			.string({ invalid_type_error: "Tipo não válido para a expiração do token do Bling." })
+			.datetime({ message: "Tipo não válido para a expiração do token do Bling." }),
+		connectedAt: z
+			.string({ invalid_type_error: "Tipo não válido para a data de conexão do Bling." })
+			.datetime({ message: "Tipo não válido para a data de conexão do Bling." }),
 	}),
 ]);
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
@@ -39,16 +76,16 @@ export const OrganizationDefaultsSchema = z.object({
 	contabilidade: z.object({
 		lancamentosPadrao: z.object({
 			vendas: z.object({
-				debitoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de dÃ©bito padrÃ£o de vendas." }).nullable(),
-				debitoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de dÃ©bito padrÃ£o de vendas." }).nullable(),
-				creditoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de crÃ©dito padrÃ£o de vendas." }).nullable(),
-				creditoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de crÃ©dito padrÃ£o de vendas." }).nullable(),
+				debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de vendas." }).nullable(),
+				debitoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito padrão de vendas." }).nullable(),
+				creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de vendas." }).nullable(),
+				creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de vendas." }).nullable(),
 			}),
 			compras: z.object({
-				debitoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de dÃ©bito padrÃ£o de compras." }).nullable(),
-				debitoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de dÃ©bito padrÃ£o de compras." }).nullable(),
-				creditoContaId: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a conta de crÃ©dito padrÃ£o de compras." }).nullable(),
-				creditoContaKey: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para a chave da conta de crÃ©dito padrÃ£o de compras." }).nullable(),
+				debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de compras." }).nullable(),
+				debitoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito padrão de compras." }).nullable(),
+				creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de compras." }).nullable(),
+				creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de compras." }).nullable(),
 			}),
 		}),
 	}),
@@ -150,6 +187,10 @@ export const OrganizationConfigurationSchema = z.object({
 			.nullable()
 			.optional()
 			.default(null),
+		relatoriosDestinatariosIds: z
+			.array(z.string({ invalid_type_error: "Tipo não válido para o ID do destinatário de relatórios." }))
+			.optional()
+			.nullable(),
 	}),
 	defaults: OrganizationDefaultsSchema,
 });
@@ -210,7 +251,7 @@ export const OrganizationSchema = z.object({
 			invalid_type_error: "Tipo não válido para se os dados da organização foram via integrações.",
 		})
 		.default(false),
-	origemDadosPadrao: DefaultDataSourceEnum.default("RECEPTOR"),
+	origemDadosPadrao: DefaultDataSourceEnum.default("RECEPTOR").nullable(),
 	// Integration
 	integracaoTipo: OrganizationIntegrationTypeEnum.optional().nullable(),
 	integracaoConfiguracao: OrganizationIntegrationConfigSchema.optional().nullable(),
@@ -308,6 +349,10 @@ export const OrganizationMemberPermissionsSchema = z.object({
 		visualizar: z.boolean({
 			required_error: "Permissão de visualização de resultados não informada.",
 			invalid_type_error: "Tipo não válido para a permissão de visualização de resultados.",
+		}),
+		visualizarSensiveis: z.boolean({
+			required_error: "Permissão de visualização de dados sensíveis não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização de dados sensíveis.",
 		}),
 		// Goals
 		criarMetas: z.boolean({

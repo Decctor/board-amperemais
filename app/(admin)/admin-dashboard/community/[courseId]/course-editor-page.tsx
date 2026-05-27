@@ -120,7 +120,7 @@ export default function CourseEditorPage({ courseId }: CourseEditorPageProps) {
 							))}
 						</div>
 					) : (
-						<div className="border border-dashed border-primary/20 rounded-lg py-8 text-center text-muted-foreground text-sm">
+						<div className="border border-dashed border-border rounded-lg py-8 text-center text-muted-foreground text-sm">
 							Nenhuma seção criada ainda. Adicione a primeira seção abaixo.
 						</div>
 					)}

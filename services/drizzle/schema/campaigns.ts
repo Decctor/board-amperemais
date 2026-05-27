@@ -2,7 +2,7 @@ import type { TAttributionModelEnum } from "@/schemas/enums";
 import type { TCampaignFilters } from "@/schemas/campaigns";
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { newTable, users, whatsappConnectionPhones, whatsappTemplates } from ".";
+import { messageTemplates, newTable, users, whatsappConnectionPhones } from ".";
 import {
 	campaignExecutionDelayDirectionEnum,
 	campaignTriggerTypeEnum,
@@ -12,6 +12,7 @@ import {
 	timeDurationUnitsEnum,
 } from "./enums";
 import { organizations } from "./organizations";
+import type { TCampaignFilters } from "@/schemas/campaigns";
 
 export const campaigns = newTable("campaigns", {
 	id: varchar("id", { length: 255 })
@@ -46,6 +47,9 @@ export const campaigns = newTable("campaigns", {
 	// specific for "USO-UNICO"
 	gatilhoUsoUnicoDataReferencia: text("gatilho_uso_unico_data_referencia"), // YYYY-MM-DD in the interactions cron timezone
 
+	// specific for "USO-UNICO"
+	gatilhoUsoUnicoDataReferencia: text("gatilho_uso_unico_data_referencia"), // YYYY-MM-DD in the interactions cron timezone
+
 	execucaoAgendadaMedida: timeDurationUnitsEnum("execucao_agendada_medida").notNull().default("DIAS"),
 	execucaoAgendadaValor: integer("execucao_agendada_valor").notNull().default(0),
 	execucaoAgendadaDirecao: campaignExecutionDelayDirectionEnum("execucao_agendada_direcao").notNull().default("DEPOIS"),
@@ -64,7 +68,7 @@ export const campaigns = newTable("campaigns", {
 		onDelete: "set null",
 	}),
 	whatsappTemplateId: varchar("whatsapp_template_id", { length: 255 })
-		.references(() => whatsappTemplates.id)
+		.references(() => messageTemplates.id)
 		.notNull(),
 	autorId: varchar("autor_id", { length: 255 })
 		.references(() => users.id)
@@ -91,9 +95,13 @@ export const campaigns = newTable("campaigns", {
 });
 export const campaignRelations = relations(campaigns, ({ many, one }) => ({
 	segmentacoes: many(campaignSegmentations),
-	whatsappTemplate: one(whatsappTemplates, {
+	whatsappTemplate: one(messageTemplates, {
 		fields: [campaigns.whatsappTemplateId],
-		references: [whatsappTemplates.id],
+		references: [messageTemplates.id],
+	}),
+	messageTemplate: one(messageTemplates, {
+		fields: [campaigns.whatsappTemplateId],
+		references: [messageTemplates.id],
 	}),
 	whatsappConexaoTelefone: one(whatsappConnectionPhones, {
 		fields: [campaigns.whatsappConexaoTelefoneId],

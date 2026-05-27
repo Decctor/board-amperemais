@@ -4,6 +4,7 @@ import { newTable } from "./common";
 import { whatsappConnectionTypeEnum } from "./enums";
 import { organizations } from "./organizations";
 import { users } from "./users";
+import { whatsappTemplatePhones } from "./whatsapp-templates";
 
 export const whatsappConnections = newTable("whatsapp_connections", {
 	id: varchar("id", { length: 255 })
@@ -53,11 +54,12 @@ export const whatsappConnectionPhones = newTable("whatsapp_connection_phones", {
 	numero: text("numero").notNull(),
 	permitirAtendimentoIa: boolean("permitir_atendimento_ia").notNull().default(false),
 });
-export const whatsappConnectionPhonesRelations = relations(whatsappConnectionPhones, ({ one }) => ({
+export const whatsappConnectionPhonesRelations = relations(whatsappConnectionPhones, ({ one, many }) => ({
 	conexao: one(whatsappConnections, {
 		fields: [whatsappConnectionPhones.conexaoId],
 		references: [whatsappConnections.id],
 	}),
+	templates: many(whatsappTemplatePhones),
 }));
 
 export type TWhatsappConnectionPhone = typeof whatsappConnectionPhones.$inferSelect;

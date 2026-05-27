@@ -75,7 +75,7 @@ export const VariableList = forwardRef((props: VariableListProps, ref) => {
 		<div className="bg-popover/95 backdrop-blur-sm text-popover-foreground rounded-md border border-border/80 shadow-lg min-w-[240px] max-h-[280px] overflow-hidden">
 			<div className="border-b border-border/60 bg-muted/40 px-2.5 py-2">
 				<div className="flex items-center gap-2">
-					<div className="rounded bg-primary/10 p-1 text-primary">
+					<div className="rounded bg-primary/10 p-1 text-foreground">
 						<Braces className="h-3.5 w-3.5" />
 					</div>
 					<div className="flex flex-col">

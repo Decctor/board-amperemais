@@ -23,7 +23,7 @@ import { captureServerEvent } from "@/lib/analytics/posthog-server";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { OrganizationSchema } from "@/schemas/organizations";
+import { OrganizationConfigurationSchema, OrganizationDefaultsSchema, OrganizationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
 import {
 	authSessions,
@@ -283,8 +283,8 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 		if (orgNicheData) {
 			await tx.insert(cashbackPrograms).values({
 				organizacaoId: createdOrgId,
-				ativo: true,
-				titulo: `Program de Cashback ${organization.nome}`,
+				ativo: false, // initialize as false to avoid "auto-generating cashback" unintentionally
+				titulo: `Programa de Cashback ${organization.nome}`,
 				descricao: "Nosso programa de fidelidade.",
 				...orgNicheData.cashbackProgramDefault,
 			});
@@ -533,6 +533,13 @@ async function createOrganizationRoute(request: NextRequest) {
 	return NextResponse.json(result);
 }
 
+const UpdateOrganizationConfigSchema = z
+	.object({
+		preferencias: OrganizationConfigurationSchema.shape.preferencias.partial().optional(),
+		defaults: OrganizationDefaultsSchema.partial().optional(),
+	})
+	.optional();
+
 const UpdateOrganizationInputSchema = z.object({
 	organization: OrganizationSchema.omit({
 		dataInsercao: true,
@@ -544,19 +551,47 @@ const UpdateOrganizationInputSchema = z.object({
 		poiQrCodeKioskDataUrl: true,
 		poiQrCodeMobileDataUrl: true,
 	}).partial(),
+	configuracao: UpdateOrganizationConfigSchema,
 });
 export type TUpdateOrganizationInput = z.infer<typeof UpdateOrganizationInputSchema>;
 
 async function updateOrganization({ input, session }: { input: TUpdateOrganizationInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const { organization } = input;
+	const { organization, configuracao } = input;
 	console.log("[INFO] [UPDATE_ORGANIZATION] Updating organization:", JSON.stringify(organization, null, 2));
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let updatePayload: Record<string, any> = { ...organization };
+
+	if (configuracao) {
+		const currentOrg = await db.query.organizations.findFirst({
+			where: eq(organizations.id, userOrgId),
+			columns: { configuracao: true },
+		});
+		if (!currentOrg) throw new createHttpError.NotFound("Organização não encontrada.");
+
+		const currentConfig = currentOrg.configuracao;
+		const mergedConfig = {
+			...currentConfig,
+			preferencias: configuracao.preferencias ? { ...currentConfig.preferencias, ...configuracao.preferencias } : currentConfig.preferencias,
+			defaults: configuracao.defaults
+				? {
+						contabilidade: configuracao.defaults.contabilidade
+							? { ...currentConfig.defaults.contabilidade, ...configuracao.defaults.contabilidade }
+							: currentConfig.defaults.contabilidade,
+						pagamentos: configuracao.defaults.pagamentos
+							? { ...currentConfig.defaults.pagamentos, ...configuracao.defaults.pagamentos }
+							: currentConfig.defaults.pagamentos,
+					}
+				: currentConfig.defaults,
+		};
+		updatePayload = { ...updatePayload, configuracao: mergedConfig };
+	}
+
 	const updatedOrganization = await db
 		.update(organizations)
-		.set({
-			...organization,
-		})
+		.set(updatePayload)
 		.where(eq(organizations.id, userOrgId))
 		.returning({ id: organizations.id });
 

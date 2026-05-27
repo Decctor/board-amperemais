@@ -2,7 +2,8 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { processSingleInteractionImmediately } from "@/lib/interactions";
-import type { TInteractionContextMetadados } from "@/lib/whatsapp/template-variables";
+import type { TInteractionContextMetadados } from "@/lib/message-templates";
+import { InteractionsStatusEnum } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema/clients";
 import { interactions } from "@/services/drizzle/schema/interactions";
@@ -11,7 +12,6 @@ import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
-const interactionExecutionStatusSchema = z.enum(["AGENDADA", "EXECUTADA"]);
 const orderByFieldSchema = z.enum(["agendamentoData", "dataExecucao", "dataEnvio"]);
 const orderByDirectionSchema = z.enum(["asc", "desc"]);
 
@@ -36,7 +36,7 @@ const GetCampaignInteractionsInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((v) => (v ? v.split(",") : []))
-		.pipe(z.array(interactionExecutionStatusSchema)),
+		.pipe(z.array(InteractionsStatusEnum)),
 	orderByField: orderByFieldSchema.optional().nullable(),
 	orderByDirection: orderByDirectionSchema.optional().nullable(),
 	campanhaId: z.string().optional().nullable(),
@@ -78,14 +78,7 @@ async function getCampaignInteractions({ input, session }: { input: TGetCampaign
 	}
 
 	if (input.status && input.status.length > 0) {
-		const filterIncludesScheduled = input.status.includes("AGENDADA");
-		const filterIncludesExecuted = input.status.includes("EXECUTADA");
-
-		// No-op when both statuses are selected, otherwise apply the selected subset.
-		if (!(filterIncludesScheduled && filterIncludesExecuted)) {
-			if (filterIncludesScheduled) conditions.push(isNull(interactions.dataExecucao));
-			if (filterIncludesExecuted) conditions.push(isNotNull(interactions.dataExecucao));
-		}
+		conditions.push(inArray(interactions.statusEnvio, input.status));
 	}
 
 	const [{ interactionsMatched }] = await db

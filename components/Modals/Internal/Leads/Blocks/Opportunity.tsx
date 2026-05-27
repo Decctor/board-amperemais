@@ -37,7 +37,7 @@ export default function LeadsOpportunityBlock({ lead, updateLead }: LeadsOpportu
 				handleChange={(v) => updateLead({ valor: v })}
 			/>
 			<div className="flex flex-col gap-2">
-				<span className="text-sm font-medium tracking-tight text-primary/80">PROBABILIDADE DE FECHAMENTO</span>
+				<span className="text-sm font-medium tracking-tight text-foreground/80">PROBABILIDADE DE FECHAMENTO</span>
 				<div className="flex flex-wrap gap-2">
 					{InternalLeadProbabilityOptions.map((option) => {
 						const isSelected = lead.probabilidade === option.value;

@@ -16,7 +16,7 @@ function MagicLinkVerifyWaitingPageForm({ verificationTokenId }: MagicLinkVerify
 
 	return (
 		<form action={async () => await actionMethod({ code, verificationTokenId })} className="flex flex-col items-center gap-4">
-			<Label className="self-center text-center font-medium text-primary/80 text-sm tracking-tight" htmlFor="code">
+			<Label className="self-center text-center font-medium text-foreground/80 text-sm tracking-tight" htmlFor="code">
 				Digite o código de verificação:
 			</Label>
 			<div className="flex justify-center">

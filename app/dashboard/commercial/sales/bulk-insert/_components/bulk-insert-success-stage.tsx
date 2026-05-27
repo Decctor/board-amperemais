@@ -16,7 +16,7 @@ export function BulkInsertSuccessStage({ result, onRestart, onComplete }: BulkIn
 		<div className="flex w-full flex-col gap-3">
 			<div className="flex w-full flex-col gap-0.5">
 				<div className="flex flex-wrap items-center gap-1.5">
-					<div className={cn("flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-1.5 text-[0.65rem] text-primary")}>
+					<div className={cn("flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-1.5 text-[0.65rem] text-foreground")}>
 						<Sparkles className="h-4 w-4" />
 						CONCLUÍDO
 					</div>
@@ -92,9 +92,7 @@ export function BulkInsertSuccessStage({ result, onRestart, onComplete }: BulkIn
 								Linha {error.row}: {error.message}
 							</li>
 						))}
-						{result.errors.length > 10 ? (
-							<li className="pl-1">... e mais {result.errors.length - 10} ocorrência(s).</li>
-						) : null}
+						{result.errors.length > 10 ? <li className="pl-1">... e mais {result.errors.length - 10} ocorrência(s).</li> : null}
 					</ul>
 				</div>
 			) : null}
@@ -109,19 +107,9 @@ export function BulkInsertSuccessStage({ result, onRestart, onComplete }: BulkIn
 	);
 }
 
-function ResultMetricPanel({
-	icon,
-	title,
-	value,
-	tone,
-}: {
-	icon: React.ReactNode;
-	title: string;
-	value: number;
-	tone: "success" | "warning";
-}) {
+function ResultMetricPanel({ icon, title, value, tone }: { icon: React.ReactNode; title: string; value: number; tone: "success" | "warning" }) {
 	return (
-		<div className="flex w-full flex-col gap-1 rounded-xl border border-primary/20 bg-card px-3 py-4 shadow-2xs">
+		<div className="flex w-full flex-col gap-1 rounded-xl border border-border bg-card px-3 py-4 shadow-2xs">
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<p className="text-xs font-medium uppercase tracking-tight">{title}</p>

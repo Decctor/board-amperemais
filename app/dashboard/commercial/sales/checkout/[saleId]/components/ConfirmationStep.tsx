@@ -48,7 +48,7 @@ export default function ConfirmationStep({ sale, checkoutState }: ConfirmationSt
 
 			{/* Client */}
 			<div className="flex items-center gap-3 p-4 rounded-xl border">
-				<User className="w-5 h-5 text-primary" />
+				<User className="w-5 h-5 text-foreground" />
 				<div>
 					<p className="text-xs text-muted-foreground uppercase tracking-wide">Cliente</p>
 					<p className="font-bold">{sale.cliente?.nome ?? "Não identificado"}</p>
@@ -57,18 +57,13 @@ export default function ConfirmationStep({ sale, checkoutState }: ConfirmationSt
 
 			{/* Items Summary */}
 			<div className="flex items-start gap-3 p-4 rounded-xl border">
-				<Package className="w-5 h-5 text-primary mt-0.5" />
+				<Package className="w-5 h-5 text-foreground mt-0.5" />
 				<div className="flex-1">
-					<p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-						Itens ({sale.itens.length})
-					</p>
+					<p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Itens ({sale.itens.length})</p>
 					{sale.itens.map((item) => (
 						<div key={item.id} className="flex justify-between text-sm py-1">
 							<span>
-								{item.quantidade}x{" "}
-								{item.produtoVariante
-									? `${item.produto?.descricao} - ${item.produtoVariante.nome}`
-									: item.produto?.descricao}
+								{item.quantidade}x {item.produtoVariante ? `${item.produto?.descricao} - ${item.produtoVariante.nome}` : item.produto?.descricao}
 							</span>
 							<span className="font-bold">{formatToMoney(item.valorVendaTotalLiquido)}</span>
 						</div>
@@ -78,19 +73,17 @@ export default function ConfirmationStep({ sale, checkoutState }: ConfirmationSt
 
 			{/* Delivery */}
 			<div className="flex items-center gap-3 p-4 rounded-xl border">
-				<MapPin className="w-5 h-5 text-primary" />
+				<MapPin className="w-5 h-5 text-foreground" />
 				<div>
 					<p className="text-xs text-muted-foreground uppercase tracking-wide">Entrega</p>
 					<p className="font-bold">{DELIVERY_MODE_LABELS[checkoutState.state.entregaModalidade]}</p>
-					{checkoutState.state.comandaNumero && (
-						<p className="text-sm text-muted-foreground">Comanda: {checkoutState.state.comandaNumero}</p>
-					)}
+					{checkoutState.state.comandaNumero && <p className="text-sm text-muted-foreground">Comanda: {checkoutState.state.comandaNumero}</p>}
 				</div>
 			</div>
 
 			{/* Payments */}
 			<div className="flex items-start gap-3 p-4 rounded-xl border">
-				<CreditCard className="w-5 h-5 text-primary mt-0.5" />
+				<CreditCard className="w-5 h-5 text-foreground mt-0.5" />
 				<div className="flex-1">
 					<p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Pagamentos</p>
 					{checkoutState.state.pagamentos.map((p) => (

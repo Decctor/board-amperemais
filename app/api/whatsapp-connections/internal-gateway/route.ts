@@ -3,8 +3,8 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { DEFAULT_GATEWAY_ENABLED_EVENTS, deleteSession, generateSessionId, initSession } from "@/lib/whatsapp/internal-gateway";
 import { db } from "@/services/drizzle";
+import { messageTemplates } from "@/services/drizzle/schema/message-templates";
 import { whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
-import { whatsappTemplates } from "@/services/drizzle/schema/whatsapp-templates";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -19,13 +19,7 @@ const initializeConnectionSchema = z.object({
 
 export type TInitializeInternalGatewayInput = z.infer<typeof initializeConnectionSchema>;
 
-async function initializeInternalGatewayConnection({
-	session,
-	input,
-}: {
-	session: TAuthUserSession;
-	input: TInitializeInternalGatewayInput;
-}) {
+async function initializeInternalGatewayConnection({ session, input }: { session: TAuthUserSession; input: TInitializeInternalGatewayInput }) {
 	const organizacaoId = session.membership?.organizacao.id;
 	const userId = session.user?.id;
 
@@ -39,15 +33,6 @@ async function initializeInternalGatewayConnection({
 
 	// Use a transaction to prevent race conditions
 	return await db.transaction(async (tx) => {
-		// Check if organization already has a connection
-		const existingConnection = await tx.query.whatsappConnections.findFirst({
-			where: (fields, { eq }) => eq(fields.organizacaoId, organizacaoId),
-		});
-
-		if (existingConnection) {
-			throw new createHttpError.BadRequest("Sua organização já possui uma conexão WhatsApp ativa. Desconecte a conexão atual antes de criar uma nova.");
-		}
-
 		// Generate session ID
 		const sessionId = generateSessionId(organizacaoId);
 
@@ -111,13 +96,7 @@ async function postHandler(req: NextRequest) {
 
 // ============= DELETE - Remove Internal Gateway Connection =============
 
-async function deleteInternalGatewayConnection({
-	session,
-	connectionId,
-}: {
-	session: TAuthUserSession;
-	connectionId: string;
-}) {
+async function deleteInternalGatewayConnection({ session, connectionId }: { session: TAuthUserSession; connectionId: string }) {
 	const organizacaoId = session.membership?.organizacao.id;
 
 	if (!organizacaoId) {
@@ -127,6 +106,9 @@ async function deleteInternalGatewayConnection({
 	// Get connection to verify ownership and get session ID
 	const connection = await db.query.whatsappConnections.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, connectionId), eq(fields.organizacaoId, organizacaoId)),
+		with: {
+			telefones: true,
+		},
 	});
 
 	if (!connection) {
@@ -147,11 +129,31 @@ async function deleteInternalGatewayConnection({
 		}
 	}
 
+	const organizationTemplates = await db.query.messageTemplates.findMany({
+		where: eq(messageTemplates.organizacaoId, organizacaoId),
+	});
+	const phoneIds = new Set(connection.telefones.map((phone) => phone.id));
+
+	for (const template of organizationTemplates) {
+		const remainingMetadata = Object.fromEntries(
+			Object.entries(template.metadados.porNumeroTelefone).filter(([phoneId]) => !phoneIds.has(phoneId)),
+		);
+		if (Object.keys(remainingMetadata).length !== Object.keys(template.metadados.porNumeroTelefone).length) {
+			await db
+				.update(messageTemplates)
+				.set({
+					metadados: {
+						...template.metadados,
+						porNumeroTelefone: remainingMetadata,
+					},
+					dataAtualizacao: new Date(),
+				})
+				.where(eq(messageTemplates.id, template.id));
+		}
+	}
+
 	// Delete connection from database (cascades to phones)
 	await db.delete(whatsappConnections).where(and(eq(whatsappConnections.id, connectionId), eq(whatsappConnections.organizacaoId, organizacaoId)));
-
-	// Also delete any templates for this organization
-	await db.delete(whatsappTemplates).where(eq(whatsappTemplates.organizacaoId, organizacaoId));
 
 	return {
 		data: { deletedId: connectionId },

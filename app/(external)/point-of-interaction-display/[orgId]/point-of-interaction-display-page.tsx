@@ -6,7 +6,7 @@ import LogoHorizontalRecompraCRM from "@/utils/svgs/logos/RECOMPRA - COMPLETE - 
 import { Button } from "@/components/ui/button";
 import { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
-import { Camera, Gift, Scan, Smartphone } from "lucide-react";
+import { Camera, Gift, Printer, Scan, Smartphone } from "lucide-react";
 import { getCashbackUnitLabel } from "@/lib/formatting";
 import { SizeIcon } from "@radix-ui/react-icons";
 
@@ -59,8 +59,8 @@ const DISPLAY_MODE_CONFIG: Record<
 		widthMm: 210,
 		heightMm: 297,
 		headerClassName: "pt-10 pb-14 px-10",
-		logoWrapperStyle: { width: "150px", height: "82px" },
-		logoClassName: "w-20 h-20",
+		logoWrapperStyle: { width: "150px", height: "150px" },
+		logoClassName: "w-full h-full",
 		orgNameClassName: "text-xl px-4 py-2",
 		titleClassName: "text-5xl",
 		subtitleClassName: "text-sm mt-2",
@@ -83,8 +83,8 @@ const DISPLAY_MODE_CONFIG: Record<
 		widthMm: 148,
 		heightMm: 210,
 		headerClassName: "pt-7 pb-10 px-6",
-		logoWrapperStyle: { width: "120px", height: "64px" },
-		logoClassName: "w-12 h-12",
+		logoWrapperStyle: { width: "100px", height: "100px" },
+		logoClassName: "w-full h-full",
 		orgNameClassName: "text-base px-2 py-1",
 		titleClassName: "text-4xl",
 		subtitleClassName: "text-xs mt-1",
@@ -107,8 +107,8 @@ const DISPLAY_MODE_CONFIG: Record<
 		widthMm: 105,
 		heightMm: 148,
 		headerClassName: "pt-5 pb-7 px-4",
-		logoWrapperStyle: { width: "92px", height: "50px" },
-		logoClassName: "w-10 h-10",
+		logoWrapperStyle: { width: "60px", height: "60px" },
+		logoClassName: "w-full h-full",
 		orgNameClassName: "text-sm px-2 py-1",
 		titleClassName: "text-[1.7rem]",
 		subtitleClassName: "text-[9px] mt-1",
@@ -134,6 +134,10 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 	const [mode, setMode] = useState<TDisplayMode>("A5");
 	const displayConfig = DISPLAY_MODE_CONFIG[mode];
 	const primaryGradientStyle = getPrimaryGradientStyle();
+
+	const handlePrint = () => {
+		window.print();
+	};
 
 	const steps = [
 		{
@@ -179,9 +183,9 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 
 						{/* Logo or Org Name */}
 						{org.logoUrl ? (
-							<div className="flex items-center justify-center relative z-10 mb-3 bg-white rounded p-2 shadow-lg" style={displayConfig.logoWrapperStyle}>
+							<div className="flex items-center justify-center relative z-10 mb-3 bg-white rounded-xl p-2 shadow-lg" style={displayConfig.logoWrapperStyle}>
 								<div className={`relative ${displayConfig.logoClassName} rounded-xl overflow-hidden`}>
-									<Image src={org.logoUrl} alt={`Logo ${org.nome}`} fill className="object-contain" sizes={displayConfig.qrSize} />
+									<Image src={org.logoUrl} alt={`Logo ${org.nome}`} fill sizes={displayConfig.qrSize} />
 								</div>
 							</div>
 						) : (
@@ -305,9 +309,9 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 					<div className="flex flex-col gap-0.5">
 						<div className="flex items-center gap-1.5">
 							<SizeIcon className="w-4 h-4" />
-							<p className="text-sm font-semibold text-primary">FORMATO DO DISPLAY</p>
+							<p className="text-sm font-semibold text-foreground">FORMATO DO DISPLAY</p>
 						</div>
-						<p className="text-xs text-primary">Selecione o tamanho que deseja pré-visualizar.</p>
+						<p className="text-xs text-foreground">Selecione o tamanho que deseja pré-visualizar.</p>
 					</div>
 
 					<div className="flex flex-col gap-3">
@@ -332,13 +336,18 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 						})}
 					</div>
 
+					<Button type="button" className="w-full gap-2" onClick={handlePrint}>
+						<Printer className="h-4 w-4" />
+						IMPRIMIR
+					</Button>
+
 					<div className="w-full flex items-center justify-between gap-3 rounded-xl bg-brand text-brand-foreground px-3 py-2">
 						<p className="text-xs font-medium">MODO ATUAL</p>
 						<p className="text-sm font-semibold">{mode}</p>
 					</div>
 				</aside>
 
-				<nav className="fixed bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-card/95 p-2 shadow-xl backdrop-blur lg:hidden print:hidden">
+				<nav className="fixed bottom-4 left-1/2 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-card/95 p-2 shadow-xl backdrop-blur lg:hidden print:hidden">
 					{DISPLAY_MODES.map((displayMode) => {
 						const isActive = displayMode === mode;
 
@@ -354,6 +363,10 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 							</Button>
 						);
 					})}
+					<Button type="button" className="h-11 gap-2 rounded-full px-4 text-sm font-semibold" onClick={handlePrint}>
+						<Printer className="h-4 w-4" />
+						IMPRIMIR
+					</Button>
 				</nav>
 			</div>
 		</div>

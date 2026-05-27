@@ -17,7 +17,7 @@ export default function CampaignsBySegmentation({ startDate, endDate }: Campaign
 
 	return (
 		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-primary/20 flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">DESEMPENHO POR SEGMENTACAO</h1>
 					<Users className="h-4 min-h-4 w-4 min-w-4 text-muted-foreground" />
@@ -29,10 +29,7 @@ export default function CampaignsBySegmentation({ startDate, endDate }: Campaign
 						</div>
 					) : segmentationData && segmentationData.length > 0 ? (
 						segmentationData.map((item, index) => (
-							<div
-								key={item.segmentacao}
-								className={cn("bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs")}
-							>
+							<div key={item.segmentacao} className={cn("bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs")}>
 								<div className="w-full flex items-start justify-between gap-2 flex-wrap">
 									<div className="flex items-center gap-2 flex-wrap">
 										<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -43,21 +40,17 @@ export default function CampaignsBySegmentation({ startDate, endDate }: Campaign
 											<div className="flex items-center gap-2 flex-wrap">
 												<div className="flex items-center gap-1">
 													<Grid3x3 className="w-3 h-3 min-w-3 min-h-3 text-muted-foreground" />
-													<span className="text-[0.65rem] text-muted-foreground">
-														{formatDecimalPlaces(item.campanhasAtivas)} campanhas ativas
-													</span>
+													<span className="text-[0.65rem] text-muted-foreground">{formatDecimalPlaces(item.campanhasAtivas)} campanhas ativas</span>
 												</div>
 												<div className="flex items-center gap-1">
 													<MousePointerClick className="w-3 h-3 min-w-3 min-h-3 text-muted-foreground" />
-													<span className="text-[0.65rem] text-muted-foreground">
-														{formatDecimalPlaces(item.conversoes)} conversoes
-													</span>
+													<span className="text-[0.65rem] text-muted-foreground">{formatDecimalPlaces(item.conversoes)} conversoes</span>
 												</div>
 											</div>
 										</div>
 									</div>
 									<div className="flex items-center gap-3 flex-wrap">
-										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+										<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 											<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
 											<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(item.receita)}</p>
 										</div>

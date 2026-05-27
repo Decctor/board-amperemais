@@ -5,7 +5,7 @@ import { useDismissHint, useHintFeedback } from "@/lib/queries/ai-hints";
 import { cn } from "@/lib/utils";
 import type { TAIHint } from "@/schemas/ai-hints";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, ChevronDown, ChevronUp, Lightbulb, Sparkles, Target, ThumbsDown, ThumbsUp, TrendingDown, TrendingUp, Users, X } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Lightbulb, RefreshCw, Sparkles, Target, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -13,46 +13,15 @@ type AIHintCardProps = {
 	hint: TAIHint;
 	isOpened: boolean;
 	onClick?: () => void;
+	onViewDetails?: (hint: TAIHint) => void;
 };
 
 const HINT_ICONS: Record<string, React.ReactNode> = {
-	"campaign-suggestion": <Target className="w-4 h-4" />,
-	"campaign-optimization": <TrendingUp className="w-4 h-4" />,
-	"rfm-action": <Users className="w-4 h-4" />,
-	"client-reactivation": <Users className="w-4 h-4" />,
-	"sales-trend": <TrendingUp className="w-4 h-4" />,
-	"product-insight": <Lightbulb className="w-4 h-4" />,
-	"seller-performance": <Users className="w-4 h-4" />,
-	general: <Sparkles className="w-4 h-4" />,
+	"campaign-creation-suggestion": <Target className="w-4 h-4" />,
+	"campaign-updates-suggestion": <RefreshCw className="w-4 h-4" />,
 };
 
-const URGENCY_STYLES: Record<string, string> = {
-	critica: "border-l-4 border-l-red-500 bg-red-50/50",
-	alta: "border-l-4 border-l-orange-500 bg-orange-50/50",
-	media: "border-l-4 border-l-yellow-500 bg-yellow-50/50",
-	baixa: "border-l-4 border-l-blue-500 bg-blue-50/50",
-};
-
-const TREND_ICONS: Record<string, React.ReactNode> = {
-	crescimento: <TrendingUp className="w-4 h-4 text-green-500" />,
-	queda: <TrendingDown className="w-4 h-4 text-red-500" />,
-	estavel: <TrendingUp className="w-4 h-4 text-gray-500" />,
-};
-
-function getUrgencyFromHint(hint: TAIHint): string | null {
-	if (hint.conteudo.tipo === "rfm-action") {
-		return hint.conteudo.dados.urgencia;
-	}
-	if (hint.conteudo.tipo === "general") {
-		return hint.conteudo.dados.prioridade;
-	}
-	if (hint.conteudo.tipo === "sales-trend" && hint.conteudo.dados.tendencia === "queda") {
-		return "alta";
-	}
-	return null;
-}
-
-export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
+export function AIHintCard({ hint, isOpened, onClick, onViewDetails }: AIHintCardProps) {
 	const [feedbackGiven, setFeedbackGiven] = useState<"like" | "dislike" | null>(null);
 	const { mutate: dismiss, isPending: isDismissing } = useDismissHint();
 	const { mutate: submitFeedback, isPending: isFeedbackPending } = useHintFeedback();
@@ -69,18 +38,13 @@ export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 	};
 
 	const icon = HINT_ICONS[hint.tipo] || <Sparkles className="w-4 h-4" />;
-	const urgency = getUrgencyFromHint(hint);
-	const urgencyStyle = urgency ? URGENCY_STYLES[urgency] : "";
-
-	const trendIcon = hint.conteudo.tipo === "sales-trend" ? TREND_ICONS[hint.conteudo.dados.tendencia] : null;
 
 	return (
 		<div
 			className={cn(
 				"group flex items-start gap-3 p-3 transition-all duration-300 rounded-xl border border-transparent cursor-pointer",
-				isOpened && "bg-secondary/40 border-border/40",
+				isOpened && "bg-secondary/40 border-border",
 				!isOpened && "opacity-70 hover:opacity-100",
-				urgencyStyle,
 			)}
 			onClick={onClick}
 			onKeyDown={(e) => {
@@ -94,8 +58,13 @@ export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 		>
 			{/* Icon */}
 			<div className="flex-shrink-0">
-				<div className={cn("h-8 w-8 rounded-full flex items-center justify-center", isOpened ? "bg-brand text-brand-foreground" : "bg-secondary text-muted-foreground")}>
-					{trendIcon || icon}
+				<div
+					className={cn(
+						"h-8 w-8 rounded-full flex items-center justify-center",
+						isOpened ? "bg-brand text-brand-foreground" : "bg-secondary text-muted-foreground",
+					)}
+				>
+					{icon}
 				</div>
 			</div>
 
@@ -121,20 +90,36 @@ export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 								<p className="text-xs text-muted-foreground leading-relaxed">{hint.conteudo.descricao}</p>
 
 								{/* Action Button */}
-								{hint.conteudo.acaoSugerida && hint.conteudo.urlAcao && (
-									<Button
-										asChild
-										size="sm"
-										variant="default"
-										className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
-										onClick={(e) => e.stopPropagation()}
-									>
-										<Link href={hint.conteudo.urlAcao} className="flex items-center gap-1.5">
-											{hint.conteudo.acaoSugerida}
-											<ArrowRight className="w-3 h-3" />
-										</Link>
-									</Button>
-								)}
+								{hint.conteudo.acaoSugerida &&
+									(hint.conteudo.urlAcao ? (
+										<Button
+											asChild
+											size="sm"
+											variant="default"
+											className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
+											onClick={(e) => e.stopPropagation()}
+										>
+											<Link href={hint.conteudo.urlAcao} className="flex items-center gap-1.5">
+												{hint.conteudo.acaoSugerida}
+												<ArrowRight className="w-3 h-3" />
+											</Link>
+										</Button>
+									) : onViewDetails ? (
+										<Button
+											size="sm"
+											variant="default"
+											className="h-8 px-4 text-xs font-semibold rounded-full bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-md transition-all"
+											onClick={(e) => {
+												e.stopPropagation();
+												onViewDetails(hint);
+											}}
+										>
+											<span className="flex items-center gap-1.5">
+												{hint.conteudo.acaoSugerida}
+												<ArrowRight className="w-3 h-3" />
+											</span>
+										</Button>
+									) : null)}
 
 								{/* Feedback & Dismiss Row */}
 								<div className="flex items-center justify-between pt-2 border-t border-border/50">
@@ -159,7 +144,13 @@ export function AIHintCard({ hint, isOpened, onClick }: AIHintCardProps) {
 											<ThumbsDown className="w-3.5 h-3.5" />
 										</Button>
 									</div>
-									<Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive" onClick={handleDismiss} disabled={isDismissing}>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+										onClick={handleDismiss}
+										disabled={isDismissing}
+									>
 										<X className="w-3.5 h-3.5 mr-1" />
 										Descartar
 									</Button>

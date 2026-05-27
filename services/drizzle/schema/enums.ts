@@ -45,6 +45,10 @@ export const whatsappTemplateStatusEnum = pgEnum("whatsapp_template_status", [
 ]);
 export const whatsappTemplateQualityEnum = pgEnum("whatsapp_template_quality", ["PENDENTE", "ALTA", "MEDIA", "BAIXA"]);
 
+export const messageTemplateStatusEnum = pgEnum("message_template_status", ["RASCUNHO", "ATIVO", "ARQUIVADO"]);
+
+export const messageTemplateCategoryEnum = pgEnum("message_template_category", ["AUTENTICAÇÃO", "MARKETING", "UTILIDADE"]);
+
 export const cashbackProgramAccumulationTypeEnum = pgEnum("cashback_program_accumulation_type", ["FIXO", "PERCENTUAL"]);
 
 export const cashbackProgramTerminologyEnum = pgEnum("cashback_program_terminology", ["DINHEIRO", "PONTOS"]);
@@ -55,7 +59,13 @@ export const cashbackProgramTransactionTypeEnum = pgEnum("cashback_program_trans
 
 export const cashbackProgramTransactionStatusEnum = pgEnum("cashback_program_transaction_status", ["ATIVO", "CONSUMIDO", "EXPIRADO"]);
 
-export const organizationIntegrationTypeEnum = pgEnum("organization_integration_type", ["ONLINE-SOFTWARE", "CARDAPIO-WEB"]);
+export const organizationIntegrationTypeEnum = pgEnum("organization_integration_type", [
+	"ONLINE-SOFTWARE",
+	"CARDAPIO-WEB",
+	"NUVEM-SHOP",
+	"IFOOD",
+	"BLING",
+]);
 
 export const chatStatusEnum = pgEnum("chat_status", ["ABERTA", "FECHADA"]);
 
@@ -220,6 +230,53 @@ export const paymentMethodEnum = pgEnum("payment_method", [
 	"FIADO_NOTA",
 	"OUTRO",
 ]);
+
+export const fiscalDocumentEnvironmentEnum = pgEnum("fiscal_document_environment", ["HOMOLOGACAO", "PRODUCAO"]);
+
+export const fiscalDocumentLifecycleStatusEnum = pgEnum("fiscal_document_lifecycle_status", [
+	"RASCUNHO",
+	"PRONTO_PARA_ENVIO",
+	"EM_PROCESSAMENTO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"CANCELAMENTO_PENDENTE",
+	"CANCELADO",
+	"ERRO",
+]);
+
+export const fiscalDocumentEventTypeEnum = pgEnum("fiscal_document_event_type", [
+	"CRIADO",
+	"ENVIO_SOLICITADO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"SINCRONIZADO",
+	"CANCELAMENTO_SOLICITADO",
+	"CANCELADO",
+	"ERRO",
+]);
+
+export const fiscalOperationConsumerPresenceEnum = pgEnum("fiscal_operation_consumer_presence", [
+	"NAO_SE_APLICA",
+	"OPERACAO_PRESENCIAL",
+	"INTERNET",
+	"TELEATENDIMENTO",
+	"ENTREGA_DOMICILIO",
+]);
+
+export const fiscalOperationFinalityEnum = pgEnum("fiscal_operation_finality", ["NORMAL", "COMPLEMENTAR", "AJUSTE", "DEVOLUCAO"]);
+
+export const fiscalProductOriginEnum = pgEnum("fiscal_product_origin", [
+	"NACIONAL",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL",
+	"NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+	"NACIONAL_PROCESSOS_BASICOS",
+	"NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+]);
+
+export const fiscalClientTaxIndicatorEnum = pgEnum("fiscal_client_tax_indicator", ["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
 
 export const deliveryModeEnum = pgEnum("delivery_mode", ["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"]);
 

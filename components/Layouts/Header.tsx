@@ -28,27 +28,36 @@ function Header({ session }: HeaderProps) {
 					</Link>
 					<div className="hidden lg:flex items-center gap-2">
 						<Link href="/">
-							<h1 className={cn("text-sm font-bold text-primary px-2 py-1 rounded-lg", pathname === "/" ? "bg-primary text-white" : "text-primary")}>
+							<h1 className={cn("text-sm font-bold text-foreground px-2 py-1 rounded-lg", pathname === "/" ? "bg-primary text-white" : "text-foreground")}>
 								Resultados Comerciais
 							</h1>
 						</Link>
 						<Link href="/analise-rfm">
 							<h1
-								className={cn("text-sm font-bold text-primary px-2 py-1 rounded-lg", pathname === "/analise-rfm" ? "bg-primary text-white" : "text-primary")}
+								className={cn(
+									"text-sm font-bold text-foreground px-2 py-1 rounded-lg",
+									pathname === "/analise-rfm" ? "bg-primary text-white" : "text-foreground",
+								)}
 							>
 								Análise RFM
 							</h1>
 						</Link>
 						<Link href="/time-vendas">
 							<h1
-								className={cn("text-sm font-bold text-primary px-2 py-1 rounded-lg", pathname === "/time-vendas" ? "bg-primary text-white" : "text-primary")}
+								className={cn(
+									"text-sm font-bold text-foreground px-2 py-1 rounded-lg",
+									pathname === "/time-vendas" ? "bg-primary text-white" : "text-foreground",
+								)}
 							>
 								Time de Vendas
 							</h1>
 						</Link>
 						<Link href="/atendimentos">
 							<h1
-								className={cn("text-sm font-bold text-primary px-2 py-1 rounded-lg", pathname === "/atendimentos" ? "bg-primary text-white" : "text-primary")}
+								className={cn(
+									"text-sm font-bold text-foreground px-2 py-1 rounded-lg",
+									pathname === "/atendimentos" ? "bg-primary text-white" : "text-foreground",
+								)}
 							>
 								Atendimentos
 							</h1>
@@ -81,27 +90,36 @@ function Header({ session }: HeaderProps) {
 			</div>
 			<div className="flex lg:hidden items-center justify-center gap-2 flex-wrap">
 				<Link href="/">
-					<h1 className={cn("text-xs font-bold text-primary px-2 py-1 rounded-lg", pathname === "/" ? "bg-primary text-white" : "text-primary")}>
+					<h1 className={cn("text-xs font-bold text-foreground px-2 py-1 rounded-lg", pathname === "/" ? "bg-primary text-white" : "text-foreground")}>
 						Resultados Comerciais
 					</h1>
 				</Link>
 				<Link href="/analise-rfm">
 					<h1
-						className={cn("text-xs font-bold text-primary px-2 py-1 rounded-lg", pathname === "/analise-rfm" ? "bg-primary text-white" : "text-primary")}
+						className={cn(
+							"text-xs font-bold text-foreground px-2 py-1 rounded-lg",
+							pathname === "/analise-rfm" ? "bg-primary text-white" : "text-foreground",
+						)}
 					>
 						Análise RFM
 					</h1>
 				</Link>
 				<Link href="/time-vendas">
 					<h1
-						className={cn("text-xs font-bold text-primary px-2 py-1 rounded-lg", pathname === "/time-vendas" ? "bg-primary text-white" : "text-primary")}
+						className={cn(
+							"text-xs font-bold text-foreground px-2 py-1 rounded-lg",
+							pathname === "/time-vendas" ? "bg-primary text-white" : "text-foreground",
+						)}
 					>
 						Time de Vendas
 					</h1>
 				</Link>
 				<Link href="/atendimentos">
 					<h1
-						className={cn("text-xs font-bold text-primary px-2 py-1 rounded-lg", pathname === "/atendimentos" ? "bg-primary text-white" : "text-primary")}
+						className={cn(
+							"text-xs font-bold text-foreground px-2 py-1 rounded-lg",
+							pathname === "/atendimentos" ? "bg-primary text-white" : "text-foreground",
+						)}
 					>
 						Atendimentos
 					</h1>

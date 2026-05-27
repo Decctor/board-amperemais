@@ -7,7 +7,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { formatToMoney } from "@/lib/formatting";
 import { useSalesGraph } from "@/lib/queries/stats/sales-graph";
-import type { TSalesGraphOutput } from "@/pages/api/stats/sales-graph";
+import type { TSalesGraphOutput } from "@/app/api/stats/sales-graph/route";
 import type { TSaleStatsGeneralQueryParams, TSalesGraphFilters } from "@/schemas/query-params-utils";
 import { BadgeDollarSign, CirclePlus, Download } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
@@ -78,14 +78,14 @@ function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
 					color: chartColors.goal,
 				},
 			}) satisfies ChartConfig,
-		[chartColors]
+		[chartColors],
 	);
 	useEffect(() => {
 		setQueryParams((prev) => ({ ...prev, ...generalQueryParams }));
 	}, [generalQueryParams]);
 	return (
 		<div className="w-full flex flex-col gap-2 py-2">
-			<div className="bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">GRÁFICO DE VENDAS</h1>
 					<div className="flex items-center gap-2">

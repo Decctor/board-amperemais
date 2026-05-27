@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import type { TGetPartnersInput, TGetPartnersOutputDefault } from "@/app/api/partners/route";
 import type { TGetPartnersOverallStatsInput } from "@/app/api/partners/stats/overall/route";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
@@ -6,21 +6,26 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import EditPartner from "@/components/Modals/Partners/EditPartner";
 import NewPartner from "@/components/Modals/Partners/NewPartner";
-import PartnersFilterMenu from "@/components/Partners/PartnersFilterMenu";
 import PartnersGraphs from "@/components/Partners/PartnersGraphs";
 import PartnersRanking from "@/components/Partners/PartnersRanking";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import {
+	formatInteractiveDateRangeSummary,
+	formatInteractiveNumberRangeSummary,
+	formatInteractiveOptionSummary,
+} from "@/lib/interactive-filter-formatting";
 import { usePartners, usePartnersOverallStats } from "@/lib/queries/partners";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -61,7 +66,6 @@ export default function PartnersPage({ user }: PartnersPageProps) {
 
 function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 	const queryClient = useQueryClient();
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
 	const [newPartnerModalIsOpen, setNewPartnerModalIsOpen] = useState<boolean>(false);
 	const [editPartnerModalId, setEditPartnerModalId] = useState<string | null>(null);
 	const {
@@ -100,10 +104,6 @@ function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 					className="grow rounded-xl"
 				/>
 
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
 				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewPartnerModalIsOpen(true)}>
 					<Plus className="w-4 h-4 min-w-4 min-h-4" />
 					NOVO PARCEIRO
@@ -117,7 +117,7 @@ function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 				itemsMatchedText={partnersMatched > 0 ? `${partnersMatched} parceiros encontrados.` : `${partnersMatched} parceiro encontrado.`}
 				itemsShowingText={partnersShowing > 0 ? `Mostrando ${partnersShowing} parceiros.` : `Mostrando ${partnersShowing} parceiro.`}
 			/>
-			<PartnersPageFilterShowcase queryParams={queryParams} updateQueryParams={updateQueryParams} />
+			<PartnersInlineFilters queryParams={queryParams} updateQueryParams={updateQueryParams} />
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess ? (
@@ -130,9 +130,6 @@ function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 				</div>
 			) : null}
 
-			{filterMenuIsOpen ? (
-				<PartnersFilterMenu queryParams={queryParams} updateQueryParams={updateQueryParams} closeMenu={() => setFilterMenuIsOpen(false)} />
-			) : null}
 			{editPartnerModalId ? (
 				<EditPartner
 					partnerId={editPartnerModalId}
@@ -145,6 +142,136 @@ function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 				<NewPartner user={user} closeModal={() => setNewPartnerModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 		</div>
+	);
+}
+
+type PartnersInlineFiltersProps = {
+	queryParams: TGetPartnersInput;
+	updateQueryParams: (params: Partial<TGetPartnersInput>) => void;
+};
+
+function PartnersInlineFilters({ queryParams, updateQueryParams }: PartnersInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const hasSaleNatures = (queryParams.statsSaleNatures ?? []).length > 0;
+	const hasTotal = queryParams.statsTotalMin != null || queryParams.statsTotalMax != null;
+
+	return (
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<BsCalendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>
+						{formatInteractiveDateRangeSummary(queryParams.statsPeriodAfter, queryParams.statsPeriodBefore)}
+					</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateQueryParams({ statsPeriodAfter: null, statsPeriodBefore: null, page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: queryParams.statsPeriodAfter ? new Date(queryParams.statsPeriodAfter) : undefined,
+							to: queryParams.statsPeriodBefore ? new Date(queryParams.statsPeriodBefore) : undefined,
+						}}
+						onChange={(period) => updateQueryParams({ statsPeriodAfter: period.from ?? null, statsPeriodBefore: period.to ?? null, page: 1 })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasSaleNatures ? <PartnersSaleNatureFilter queryParams={queryParams} updateQueryParams={updateQueryParams} options={saleNatureOptions} /> : null}
+			{hasTotal ? <PartnersTotalFilter queryParams={queryParams} updateQueryParams={updateQueryParams} /> : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+								<PartnersSaleNatureContent queryParams={queryParams} updateQueryParams={updateQueryParams} options={saleNatureOptions} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasTotal ? (
+							<InteractiveFilter.AddFilterItem id="total" label="VALOR" icon={<BadgeDollarSign className="h-4 w-4" />}>
+								<PartnersTotalContent queryParams={queryParams} updateQueryParams={updateQueryParams} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
+	);
+}
+
+function PartnersSaleNatureFilter({
+	queryParams,
+	updateQueryParams,
+	options,
+}: PartnersInlineFiltersProps & { options: InteractiveFilterOption<string>[] }) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>NATUREZAS</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, queryParams.statsSaleNatures ?? [])}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateQueryParams({ statsSaleNatures: [], page: 1 })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<PartnersSaleNatureContent queryParams={queryParams} updateQueryParams={updateQueryParams} options={options} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function PartnersSaleNatureContent({
+	queryParams,
+	updateQueryParams,
+	options,
+}: PartnersInlineFiltersProps & { options: InteractiveFilterOption<string>[] }) {
+	return (
+		<InteractiveFilter.MultiContent
+			options={options}
+			value={queryParams.statsSaleNatures ?? []}
+			onChange={(statsSaleNatures) => updateQueryParams({ statsSaleNatures, page: 1 })}
+			onClear={() => updateQueryParams({ statsSaleNatures: [], page: 1 })}
+			clearLabel="TODAS"
+		/>
+	);
+}
+
+function PartnersTotalFilter({ queryParams, updateQueryParams }: PartnersInlineFiltersProps) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<BadgeDollarSign className="h-4 w-4" />
+					<InteractiveFilter.Label>VALOR</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveNumberRangeSummary(queryParams.statsTotalMin, queryParams.statsTotalMax)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateQueryParams({ statsTotalMin: null, statsTotalMax: null, page: 1 })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-0">
+				<PartnersTotalContent queryParams={queryParams} updateQueryParams={updateQueryParams} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function PartnersTotalContent({ queryParams, updateQueryParams }: PartnersInlineFiltersProps) {
+	return (
+		<InteractiveFilter.NumberRangeContent
+			value={{ greaterThan: queryParams.statsTotalMin, lessThan: queryParams.statsTotalMax }}
+			onChange={({ greaterThan, lessThan }) => updateQueryParams({ statsTotalMin: greaterThan, statsTotalMax: lessThan, page: 1 })}
+			onClear={() => updateQueryParams({ statsTotalMin: null, statsTotalMax: null, page: 1 })}
+			minPlaceholder="Valor mínimo"
+			maxPlaceholder="Valor máximo"
+		/>
 	);
 }
 
@@ -274,48 +401,15 @@ function PartnersStatsView() {
 	);
 }
 
-type PartnersPageFilterShowcaseProps = {
-	queryParams: TGetPartnersInput;
-	updateQueryParams: (params: Partial<TGetPartnersInput>) => void;
-};
-
-function PartnersPageFilterShowcase({ queryParams, updateQueryParams }: PartnersPageFilterShowcaseProps) {
-	return (
-		<FiltersShowcase.Root>
-			{queryParams.search && queryParams.search.trim().length > 0 && (
-				<FiltersShowcase.Item label="PESQUISA" value={queryParams.search} onRemove={() => updateQueryParams({ search: "" })} />
-			)}
-			{queryParams.statsPeriodAfter && queryParams.statsPeriodBefore && (
-				<FiltersShowcase.Item
-					label="PERÍODO DAS ESTASTÍCAS"
-					value={`${formatDateAsLocale(queryParams.statsPeriodAfter)} a ${formatDateAsLocale(queryParams.statsPeriodBefore)}`}
-					onRemove={() => updateQueryParams({ statsPeriodAfter: null, statsPeriodBefore: null })}
-				/>
-			)}
-			{queryParams.statsSaleNatures && queryParams.statsSaleNatures.length > 0 && (
-				<FiltersShowcase.Item
-					label="NATUREZAS DAS VENDAS"
-					value={queryParams.statsSaleNatures.join(", ")}
-					onRemove={() => updateQueryParams({ statsSaleNatures: [] })}
-				/>
-			)}
-			{queryParams.statsTotalMin || queryParams.statsTotalMax ? (
-				<FiltersShowcase.Item
-					label="VALOR"
-					value={`${queryParams.statsTotalMin ? `> ${formatToMoney(queryParams.statsTotalMin)}` : ""}${queryParams.statsTotalMin && queryParams.statsTotalMax ? " & " : ""}${queryParams.statsTotalMax ? `< ${formatToMoney(queryParams.statsTotalMax)}` : ""}`}
-					onRemove={() => updateQueryParams({ statsTotalMin: null, statsTotalMax: null })}
-				/>
-			) : null}
-		</FiltersShowcase.Root>
-	);
-}
-
 function PartnersPagePartnerCard({
 	partner,
 	handleEditClick,
-}: { partner: TGetPartnersOutputDefault["partners"][number]; handleEditClick: (id: string) => void }) {
+}: {
+	partner: TGetPartnersOutputDefault["partners"][number];
+	handleEditClick: (id: string) => void;
+}) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between flex-col md:flex-row gap-3">
 				<div className="flex items-center gap-3">
 					<Avatar className="w-6 h-6 min-w-6 min-h-6">
@@ -348,25 +442,25 @@ function PartnersPagePartnerCard({
 							icon={<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />}
 							value={partner.estatisticas.vendasQtdeTotal}
 							tooltipContent="Quantidade total de vendas no período de filtro"
-							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-primary"
+							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-foreground"
 							valueClassName="font-bold"
 						/>
 						<StatBadge
 							icon={<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />}
 							value={formatToMoney(partner.estatisticas.vendasValorTotal)}
 							tooltipContent="Valor total de vendas no período de filtro"
-							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-primary"
+							className="rounded-md px-1.5 py-1.5 font-bold bg-primary/10 text-foreground"
 							valueClassName="font-bold"
 						/>
 					</div>
 				</div>
 			</div>
 			<div className="w-full flex items-center justify-center lg:justify-end gap-2 flex-wrap">
-				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 					<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
 					<p className="text-xs font-medium tracking-tight uppercase">PRIMEIRA VENDA: {formatDateAsLocale(partner.estatisticas.dataPrimeiraVenda)}</p>
 				</div>
-				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+				<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 					<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
 					<p className="text-xs font-medium tracking-tight uppercase">ÚLTIMA VENDA: {formatDateAsLocale(partner.estatisticas.dataUltimaVenda)}</p>
 				</div>

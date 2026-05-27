@@ -80,7 +80,7 @@ type CommunityCourseSectionCardProps = {
 };
 function CommunityCourseSectionCard({ section, handleRemoveClick, handleEditClick }: CommunityCourseSectionCardProps) {
 	return (
-		<div className="w-full flex flex-col gap-1.5 bg-card border-primary/20 rounded-xl border p-1.5 shadow-2xs">
+		<div className="w-full flex flex-col gap-1.5 bg-card border-border rounded-xl border p-1.5 shadow-2xs">
 			<h3 className="text-xs font-bold tracking-tight lg:text-sm">{section.titulo}</h3>
 			<p className="text-xs text-muted-foreground">{section.descricao || "Nenhuma descrição definida..."}</p>
 			<div className="w-full flex items-center justify-end gap-2 flex-wrap">

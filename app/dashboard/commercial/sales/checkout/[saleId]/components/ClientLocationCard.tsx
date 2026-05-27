@@ -32,7 +32,7 @@ export function ClientLocationCard({ location, isSelected, onSelect, onEdit }: C
 			onClick={onSelect}
 			className={cn(
 				"w-full rounded-xl border p-4 text-left transition-colors",
-				isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+				isSelected ? "border-border bg-primary/5" : "border-border hover:border-border",
 			)}
 		>
 			<div className="flex items-start justify-between gap-3">
@@ -40,7 +40,7 @@ export function ClientLocationCard({ location, isSelected, onSelect, onEdit }: C
 					<div
 						className={cn(
 							"mt-1 h-5 w-5 rounded-full border-2 transition-colors",
-							isSelected ? "border-primary bg-primary" : "border-muted-foreground/40 bg-transparent",
+							isSelected ? "border-border bg-primary" : "border-muted-foreground/40 bg-transparent",
 						)}
 					/>
 					<div className="flex flex-col gap-1">

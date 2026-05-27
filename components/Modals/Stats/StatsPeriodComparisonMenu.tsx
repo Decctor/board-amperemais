@@ -31,7 +31,7 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useStatsComparison } from "@/lib/queries/stats/comparison";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TStatsComparisonOutput } from "@/pages/api/stats/comparison";
+import type { TStatsComparisonOutput } from "@/app/api/stats/comparison/route";
 import type { TSale } from "@/schemas/sales";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDownNarrowWide, BadgeDollarSign, Box, ChevronDown, ChevronUp, ShoppingBag, ShoppingCart, UserRound } from "lucide-react";
@@ -196,10 +196,10 @@ function StatsPeriodComparisonMenuData() {
 			{/** GENERAL STATS */}
 			<div className="w-full flex flex-col gap-4">
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-border bg-card p-4 shadow-2xs gap-1">
 						<div className="flex items-center justify-between">
 							<h1 className="text-xs font-medium tracking-tight uppercase">FATURAMENTO BRUTO</h1>
-							<BsFileEarmarkText className="w-4 h-4 text-primary/60" />
+							<BsFileEarmarkText className="w-4 h-4 text-foreground/60" />
 						</div>
 						<div className="flex flex-col gap-2 mt-1">
 							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
@@ -216,10 +216,10 @@ function StatsPeriodComparisonMenuData() {
 							</div>
 						</div>
 					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-border bg-card p-4 shadow-2xs gap-1">
 						<div className="flex items-center justify-between">
 							<h1 className="text-xs font-medium tracking-tight uppercase">FATURAMENTO LÍQUIDO</h1>
-							<BsFileEarmarkText className="w-4 h-4 text-primary/60" />
+							<BsFileEarmarkText className="w-4 h-4 text-foreground/60" />
 						</div>
 						<div className="flex flex-col gap-2 mt-1">
 							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
@@ -238,10 +238,10 @@ function StatsPeriodComparisonMenuData() {
 					</div>
 				</div>
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-border bg-card p-4 shadow-2xs gap-1">
 						<div className="flex items-center justify-between">
 							<h1 className="text-xs font-medium tracking-tight uppercase">Número de Vendas</h1>
-							<VscDiffAdded className="w-4 h-4 text-primary/60" />
+							<VscDiffAdded className="w-4 h-4 text-foreground/60" />
 						</div>
 						<div className="flex flex-col gap-2 mt-1">
 							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
@@ -258,10 +258,10 @@ function StatsPeriodComparisonMenuData() {
 							</div>
 						</div>
 					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-border bg-card p-4 shadow-2xs gap-1">
 						<div className="flex items-center justify-between">
 							<h1 className="text-xs font-medium tracking-tight uppercase">TICKET MÉDIO</h1>
-							<BsTicketPerforated className="w-4 h-4 text-primary/60" />
+							<BsTicketPerforated className="w-4 h-4 text-foreground/60" />
 						</div>
 						<div className="flex flex-col gap-2 mt-1">
 							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
@@ -280,10 +280,10 @@ function StatsPeriodComparisonMenuData() {
 					</div>
 				</div>
 				<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-border bg-card p-4 shadow-2xs gap-1">
 						<div className="flex items-center justify-between">
 							<h1 className="text-xs font-medium tracking-tight uppercase">VALOR DIÁRIO</h1>
-							<BsCart className="w-4 h-4 text-primary/60" />
+							<BsCart className="w-4 h-4 text-foreground/60" />
 						</div>
 						<div className="flex flex-col gap-2 mt-1">
 							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
@@ -300,10 +300,10 @@ function StatsPeriodComparisonMenuData() {
 							</div>
 						</div>
 					</div>
-					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card p-4 shadow-2xs gap-1">
+					<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-border bg-card p-4 shadow-2xs gap-1">
 						<div className="flex items-center justify-between">
 							<h1 className="text-xs font-medium tracking-tight uppercase">MÉDIA DE ITENS POR VENDA</h1>
-							<ShoppingBag className="w-4 h-4 text-primary/60" />
+							<ShoppingBag className="w-4 h-4 text-foreground/60" />
 						</div>
 						<div className="flex flex-col gap-2 mt-1">
 							<div className="w-full flex items-center justify-between gap-2 border-l-4 border-[#15599a] pl-2 py-0.5">
@@ -323,8 +323,8 @@ function StatsPeriodComparisonMenuData() {
 				</div>
 			</div>
 			<div className="w-full flex flex-col lg:flex-row gap-4 items-center">
-				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card shadow-2xs overflow-hidden">
-					<div className="py-2 px-4 flex items-center justify-between w-full border-b border-primary/10">
+				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-border bg-card shadow-2xs overflow-hidden">
+					<div className="py-2 px-4 flex items-center justify-between w-full border-b border-border">
 						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS (1º PERÍODO)</h1>
 						<BsCart className="w-4 h-4" />
 					</div>
@@ -401,8 +401,8 @@ function StatsPeriodComparisonMenuData() {
 						</ChartContainer>
 					</div>
 				</div>
-				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-primary/20 bg-card shadow-2xs overflow-hidden">
-					<div className="py-2 px-4 flex items-center justify-between w-full border-b border-primary/10">
+				<div className="flex w-full lg:w-1/2 flex-col rounded-xl border border-border bg-card shadow-2xs overflow-hidden">
+					<div className="py-2 px-4 flex items-center justify-between w-full border-b border-border">
 						<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">GRÁFICO DE VENDAS (2º PERÍODO)</h1>
 						<BsCart className="w-4 h-4" />
 					</div>
@@ -527,16 +527,16 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 		return (
 			<div
 				key={seller.titulo}
-				className="w-full flex flex-col gap-3 px-4 py-3 border border-primary/20 bg-card shadow-2xs rounded-xl hover:bg-primary/5 transition-colors"
+				className="w-full flex flex-col gap-3 px-4 py-3 border border-border bg-card shadow-2xs rounded-xl hover:bg-primary/5 transition-colors"
 			>
 				{/* Top side - Title and Ranking */}
 				<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
 					<div className="flex items-center gap-2">
-						<div className="rounded-full flex items-center justify-center text-[0.6rem] bg-primary text-primary-foreground font-bold w-6 h-6 min-w-6 min-h-6">
+						<div className="rounded-full flex items-center justify-center text-[0.6rem] bg-primary text-foreground-foreground font-bold w-6 h-6 min-w-6 min-h-6">
 							{index + 1}º
 						</div>
-						<h1 className="hidden lg:block text-sm tracking-tight font-bold text-primary/80">{seller.titulo.toUpperCase()}</h1>
-						<h1 className="block lg:hidden text-xs tracking-tight font-bold text-primary/80">{formatLongString(seller.titulo, 25).toUpperCase()}</h1>
+						<h1 className="hidden lg:block text-sm tracking-tight font-bold text-foreground/80">{seller.titulo.toUpperCase()}</h1>
+						<h1 className="block lg:hidden text-xs tracking-tight font-bold text-foreground/80">{formatLongString(seller.titulo, 25).toUpperCase()}</h1>
 					</div>
 					<div className="flex items-center gap-2">
 						<div
@@ -633,8 +633,8 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 	}
 
 	return (
-		<div className="flex w-full flex-col rounded-xl border border-primary/20 bg-card shadow-2xs overflow-hidden">
-			<div className="py-2 px-4 flex items-center justify-between w-full border-b border-primary/10">
+		<div className="flex w-full flex-col rounded-xl border border-border bg-card shadow-2xs overflow-hidden">
+			<div className="py-2 px-4 flex items-center justify-between w-full border-b border-border">
 				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RESULTADO POR VENDEDORES</h1>
 				<UserRound className="w-4 h-4" />
 			</div>
@@ -642,9 +642,9 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("desc-qtdeVendas")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "desc-qtdeVendas",
-						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "desc-qtdeVendas",
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+						"bg-primary/50  text-foreground-foreground hover:bg-primary/40": sortingMode === "desc-qtdeVendas",
+						"bg-transparent text-foreground hover:bg-primary/20": sortingMode !== "desc-qtdeVendas",
 					})}
 				>
 					<ArrowDownNarrowWide size={12} />
@@ -653,9 +653,9 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("asc-qtdeVendas")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "asc-qtdeVendas",
-						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "asc-qtdeVendas",
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+						"bg-primary/50  text-foreground-foreground hover:bg-primary/40": sortingMode === "asc-qtdeVendas",
+						"bg-transparent text-foreground hover:bg-primary/20": sortingMode !== "asc-qtdeVendas",
 					})}
 				>
 					<ArrowDownNarrowWide size={12} />
@@ -664,9 +664,9 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("desc-totalVendido")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "desc-totalVendido",
-						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "desc-totalVendido",
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+						"bg-primary/50  text-foreground-foreground hover:bg-primary/40": sortingMode === "desc-totalVendido",
+						"bg-transparent text-foreground hover:bg-primary/20": sortingMode !== "desc-totalVendido",
 					})}
 				>
 					<ArrowDownNarrowWide size={12} />
@@ -675,9 +675,9 @@ function ResultsBySeller({ bySellersResult }: ResultsBySellerProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("asc-totalVendido")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "asc-totalVendido",
-						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "asc-totalVendido",
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+						"bg-primary/50  text-foreground-foreground hover:bg-primary/40": sortingMode === "asc-totalVendido",
+						"bg-transparent text-foreground hover:bg-primary/20": sortingMode !== "asc-totalVendido",
 					})}
 				>
 					<ArrowDownNarrowWide size={12} />
@@ -728,15 +728,15 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 		}
 		const { salesHintDirection, salesHintText, totalHintDirection, totalHintText } = getHints(product);
 		return (
-			<div className="w-full flex flex-col gap-3 px-4 py-3 border border-primary/20 bg-card shadow-2xs rounded-xl hover:bg-primary/5 transition-colors">
+			<div className="w-full flex flex-col gap-3 px-4 py-3 border border-border bg-card shadow-2xs rounded-xl hover:bg-primary/5 transition-colors">
 				{/* Top side - Title and Ranking */}
 				<div className="w-full flex items-center justify-between gap-2 flex-col lg:flex-row">
 					<div className="flex items-center gap-2">
-						<div className="rounded-full flex items-center justify-center text-[0.6rem] bg-primary text-primary-foreground font-bold w-6 h-6 min-w-6 min-h-6">
+						<div className="rounded-full flex items-center justify-center text-[0.6rem] bg-primary text-foreground-foreground font-bold w-6 h-6 min-w-6 min-h-6">
 							{index + 1}º
 						</div>
-						<h1 className="hidden lg:block text-sm tracking-tight font-bold text-primary/80">{product.titulo.toUpperCase()}</h1>
-						<h1 className="block lg:hidden text-xs tracking-tight font-bold text-primary/80">{formatLongString(product.titulo, 25).toUpperCase()}</h1>
+						<h1 className="hidden lg:block text-sm tracking-tight font-bold text-foreground/80">{product.titulo.toUpperCase()}</h1>
+						<h1 className="block lg:hidden text-xs tracking-tight font-bold text-foreground/80">{formatLongString(product.titulo, 25).toUpperCase()}</h1>
 					</div>
 					<div className="flex items-center gap-2">
 						<div
@@ -833,8 +833,8 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 	}
 
 	return (
-		<div className="flex w-full flex-col rounded-xl border border-primary/20 bg-card shadow-2xs overflow-hidden">
-			<div className="py-2 px-4 flex items-center justify-between w-full border-b border-primary/10">
+		<div className="flex w-full flex-col rounded-xl border border-border bg-card shadow-2xs overflow-hidden">
+			<div className="py-2 px-4 flex items-center justify-between w-full border-b border-border">
 				<h1 className="text-[0.7rem] font-bold uppercase tracking-tight">RESULTADO POR PRODUTOS</h1>
 				<Box className="w-4 h-4" />
 			</div>
@@ -842,9 +842,9 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("desc-qtdeVendas")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "desc-qtdeVendas",
-						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "desc-qtdeVendas",
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+						"bg-primary/50  text-foreground-foreground hover:bg-primary/40": sortingMode === "desc-qtdeVendas",
+						"bg-transparent text-foreground hover:bg-primary/20": sortingMode !== "desc-qtdeVendas",
 					})}
 				>
 					<ArrowDownNarrowWide size={12} />
@@ -853,9 +853,9 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("asc-qtdeVendas")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "asc-qtdeVendas",
-						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "asc-qtdeVendas",
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+						"bg-primary/50  text-foreground-foreground hover:bg-primary/40": sortingMode === "asc-qtdeVendas",
+						"bg-transparent text-foreground hover:bg-primary/20": sortingMode !== "asc-qtdeVendas",
 					})}
 				>
 					<ArrowDownNarrowWide size={12} />
@@ -864,9 +864,9 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("desc-totalVendido")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "desc-totalVendido",
-						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "desc-totalVendido",
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+						"bg-primary/50  text-foreground-foreground hover:bg-primary/40": sortingMode === "desc-totalVendido",
+						"bg-transparent text-foreground hover:bg-primary/20": sortingMode !== "desc-totalVendido",
 					})}
 				>
 					<ArrowDownNarrowWide size={12} />
@@ -875,9 +875,9 @@ function ResultsByProduct({ byProductsResult }: ResultsByProductProps) {
 				<button
 					type="button"
 					onClick={() => setSortingMode("asc-totalVendido")}
-					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-primary duration-300 ease-in-out", {
-						"bg-primary/50  text-primary-foreground hover:bg-primary/40": sortingMode === "asc-totalVendido",
-						"bg-transparent text-primary hover:bg-primary/20": sortingMode !== "asc-totalVendido",
+					className={cn("flex items-center gap-1 rounded-lg px-2 py-1 text-foreground duration-300 ease-in-out", {
+						"bg-primary/50  text-foreground-foreground hover:bg-primary/40": sortingMode === "asc-totalVendido",
+						"bg-transparent text-foreground hover:bg-primary/20": sortingMode !== "asc-totalVendido",
 					})}
 				>
 					<ArrowDownNarrowWide size={12} />

@@ -12,27 +12,36 @@ type CampaignsExecutionBlockProps = {
 	updateCampaign: TUseCampaignState["updateCampaign"];
 	campaignSegmentations: TUseCampaignState["state"]["segmentations"];
 };
-export default function CampaignsExecutionBlock({ campaign, updateCampaign, campaignSegmentations }: CampaignsExecutionBlockProps) {
+export default function CampaignsExecutionBlock({ campaign, updateCampaign, campaignSegmentations: _campaignSegmentations }: CampaignsExecutionBlockProps) {
 	const isRecorrente = campaign.gatilhoTipo === "RECORRENTE";
+	const isUsoUnico = campaign.gatilhoTipo === "USO-UNICO";
 	const supportsAntes = (TRIGGERS_SUPPORTING_ANTES as readonly string[]).includes(campaign.gatilhoTipo);
 
-	const descriptionText =
+	const intervalDescription =
 		campaign.execucaoAgendadaDirecao === "ANTES"
-			? "Defina em quanto tempo antes do evento a automação será executada."
-			: "Defina em quanto tempo deve ser executada a automação depois do gatilho ser ativado.";
+			? "Informe quanto tempo antes da data do evento (por exemplo, do aniversário ou do dia previsto pelo gatilho) a mensagem deve entrar na fila de envio."
+			: "Informe quanto tempo depois que o sistema identificar o cliente como elegível para este gatilho a mensagem deve entrar na fila de envio.";
 
 	return (
 		<ResponsiveMenuSection title="EXECUÇÃO" icon={<PlayIcon className="h-4 min-h-4 w-4 min-w-4" />}>
-			{!isRecorrente ? (
-				<div className="w-full flex flex-col gap-1">
-					<p className="text-center text-sm tracking-tigh text-muted-foreground">{descriptionText}</p>
-					<div className="w-full flex items-center gap-2 flex-col lg:flex-row">
+			{!isRecorrente && !isUsoUnico ? (
+				<div className="w-full flex flex-col gap-3">
+					<p className="text-center text-sm tracking-tight leading-snug text-muted-foreground">{intervalDescription}</p>
+					<p className="text-center text-xs leading-snug text-muted-foreground">
+						Use a unidade de tempo e o número para montar o intervalo — por exemplo, quantidade{" "}
+						<strong className="font-medium text-foreground">2</strong> com unidade{" "}
+						<strong className="font-medium text-foreground">DIAS</strong>
+						{supportsAntes
+							? " significa dois dias antes ou depois do evento, conforme a opção acima."
+							: " significa dois dias após o gatilho considerar o cliente elegível."}
+					</p>
+					<div className="w-full flex flex-col items-center gap-2 lg:flex-row">
 						{supportsAntes ? (
 							<div className="w-full lg:w-1/3">
 								<SelectInput
-									label="DIREÇÃO"
+									label="ANTES OU DEPOIS DO EVENTO"
 									value={campaign.execucaoAgendadaDirecao}
-									resetOptionLabel="SELECIONE A DIREÇÃO"
+									resetOptionLabel="SELECIONE ANTES OU DEPOIS"
 									options={CampaignExecutionDelayDirectionOptions}
 									handleChange={(value) =>
 										updateCampaign({ execucaoAgendadaDirecao: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaDirecao"] })
@@ -44,7 +53,7 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 						) : null}
 						<div className={supportsAntes ? "w-full lg:w-1/3" : "w-full lg:w-1/2"}>
 							<SelectInput
-								label="MEDIDA"
+								label="UNIDADE DE TEMPO"
 								value={campaign.execucaoAgendadaMedida}
 								resetOptionLabel="SELECIONE A MEDIDA"
 								options={TimeDurationUnitsOptions}
@@ -55,9 +64,9 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 						</div>
 						<div className={supportsAntes ? "w-full lg:w-1/3" : "w-full lg:w-1/2"}>
 							<NumberInput
-								label="VALOR"
+								label="QUANTIDADE (INTERVALO)"
 								value={campaign.execucaoAgendadaValor}
-								placeholder="Preencha aqui o valor do tempo de execução..."
+								placeholder="Ex.: 3 (com DIAS = três dias de intervalo)"
 								handleChange={(value) => updateCampaign({ execucaoAgendadaValor: value })}
 								width="100%"
 							/>
@@ -65,16 +74,21 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 					</div>
 				</div>
 			) : null}
-			<div className="w-full flex flex-col gap-1">
-				<p className="text-center text-sm tracking-tigh text-muted-foreground">
+			<div className="w-full flex flex-col gap-3">
+				<p className="text-center text-sm tracking-tight leading-snug text-muted-foreground">
 					{isRecorrente
-						? "Defina em qual bloco de horário a campanha recorrente será executada."
-						: "Defina em qual bloco de horário deve ser executada a automação."}
+						? "Campanhas recorrentes são processadas em lotes. Escolha a faixa de três horas do dia em que os envios desta campanha podem ser incluídos na fila."
+						: isUsoUnico
+							? "Campanhas de uso único também seguem processamento em lotes. Escolha a faixa de três horas em que o disparo pode entrar na fila."
+							: "Além do intervalo acima, escolha em qual parte do dia (faixas de três horas) os disparos desta automação podem ser processados."}
+				</p>
+				<p className="text-center text-xs leading-snug text-muted-foreground">
+					O horário não é um minuto fixo por cliente: é uma janela de processamento; dentro dela o sistema distribui os envios conforme a fila e os limites da conta.
 				</p>
 				<SelectInput
-					label="BLOCO DE HORÁRIO"
+					label="FAIXA DO DIA (BLOCO DE 3 H)"
 					value={campaign.execucaoAgendadaBloco}
-					resetOptionLabel="SELECIONE O BLOCO DE HORÁRIO"
+					resetOptionLabel="SELECIONE A FAIXA DE HORÁRIO"
 					options={InteractionsCronJobTimeBlocksOptions}
 					handleChange={(value) => updateCampaign({ execucaoAgendadaBloco: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaBloco"] })}
 					onReset={() => updateCampaign({ execucaoAgendadaBloco: "06:00" })}

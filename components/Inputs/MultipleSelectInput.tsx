@@ -50,7 +50,7 @@ function MultipleSelectInput({
 	const selectedOptions = options?.filter((o) => (selected ? selected.includes(o.value) : false));
 	return isDesktop ? (
 		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
-			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 				{label}
 			</Label>
 			<Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -61,7 +61,7 @@ function MultipleSelectInput({
 						variant="outline"
 						aria-haspopup="listbox"
 						aria-expanded={isOpen}
-						className="w-full justify-between truncate border border-primary/20"
+						className="w-full justify-between truncate border border-border"
 					>
 						<SelectedOptions selectedOptions={selectedOptions ?? []} placeholderText={resetOptionLabel} />
 
@@ -85,7 +85,7 @@ function MultipleSelectInput({
 		</div>
 	) : (
 		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
-			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-primary/80", labelClassName)}>
+			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 				{label}
 			</Label>
 			<Drawer open={isOpen} onOpenChange={setIsOpen}>
@@ -96,7 +96,7 @@ function MultipleSelectInput({
 						variant="outline"
 						aria-haspopup="listbox"
 						aria-expanded={isOpen}
-						className="w-full justify-between truncate border border-primary/20"
+						className="w-full justify-between truncate border border-border"
 					>
 						<SelectedOptions selectedOptions={selectedOptions ?? []} placeholderText={resetOptionLabel} />
 						<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />

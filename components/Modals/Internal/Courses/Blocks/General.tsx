@@ -28,7 +28,7 @@ export default function CommunityCourseGeneralBlock({
 				updateImageHolder={updateCommunityCourseThumbnailHolder}
 			/>
 			<div className="flex flex-col gap-2">
-				<span className="text-sm font-medium tracking-tight text-primary/80">STATUS</span>
+				<span className="text-sm font-medium tracking-tight text-foreground/80">STATUS</span>
 				<div className="flex flex-wrap gap-2">
 					{CommunityCourseStatusOptions.map((option) => {
 						const isSelected = communityCourse.status === option.value;

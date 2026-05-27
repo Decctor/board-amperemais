@@ -18,7 +18,7 @@ export default function InviteErrorPage({ searchParams }: InviteErrorPageProps) 
 						<CardDescription>{message}</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<p className="w-full text-center font-medium text-primary/80 text-sm tracking-tight">
+						<p className="w-full text-center font-medium text-foreground/80 text-sm tracking-tight">
 							Se você acredita que isto é um erro, solicite um novo convite ao administrador da organização.
 						</p>
 					</CardContent>

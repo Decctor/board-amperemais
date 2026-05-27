@@ -53,10 +53,10 @@ export function BulkInsertStageRail({
 
 	return (
 		<div className="flex flex-col gap-4 xl:sticky xl:top-4">
-			<Card className="border-primary/15 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm">
+			<Card className="border-border/15 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm">
 				<CardHeader className="pb-3">
 					<CardTitle className="flex items-center gap-2 text-base">
-						<FileSpreadsheet className="h-5 w-5 text-primary" />
+						<FileSpreadsheet className="h-5 w-5 text-foreground" />
 						Fluxo de importação
 					</CardTitle>
 				</CardHeader>
@@ -75,7 +75,7 @@ export function BulkInsertStageRail({
 											isComplete
 												? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
 												: isCurrent
-													? "border-primary/40 bg-primary/10 text-primary"
+													? "border-border bg-primary/10 text-foreground"
 													: "border-border bg-muted text-muted-foreground",
 										].join(" ")}
 									>

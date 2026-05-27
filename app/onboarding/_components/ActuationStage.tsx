@@ -62,7 +62,7 @@ export function ActuationStage({ state, updateOrganization }: ActuationStageProp
 		<div className="w-full flex flex-col gap-6">
 			{/* Base Size - Vertical Radio List Pattern */}
 			<div className="w-full flex flex-col gap-4">
-				<h3 className="text-lg font-medium tracking-tight">Qual o tamanho da sua base de clientes?</h3>
+				<h3 className="text-lg font-medium tracking-tight dark:text-black">Qual o tamanho da sua base de clientes?</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 					{BASE_SIZE_OPTIONS.map((option) => {
 						const isSelected = state.organization.tamanhoBaseClientes === option.value;
@@ -96,7 +96,7 @@ export function ActuationStage({ state, updateOrganization }: ActuationStageProp
 
 			{/* ERPs - Compact Logo Grid */}
 			<div className="w-full flex flex-col gap-4">
-				<h3 className="text-lg font-medium tracking-tight">Quais sistemas (ERPs) vocês utilizam?</h3>
+				<h3 className="text-lg font-medium tracking-tight dark:text-black">Quais sistemas (ERPs) vocês utilizam?</h3>
 				<div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
 					{ERP_OPTIONS.map((option) => {
 						const selected = isSelected("plataformasUtilizadas", option.value);
@@ -127,7 +127,7 @@ export function ActuationStage({ state, updateOrganization }: ActuationStageProp
 
 			{/* Channels - Checkbox List Tiles */}
 			<div className="w-full flex flex-col gap-4">
-				<h3 className="text-lg font-medium tracking-tight">Quais são seus canais de venda?</h3>
+				<h3 className="text-lg font-medium tracking-tight dark:text-black">Quais são seus canais de venda?</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
 					{CHANNEL_OPTIONS.map((option) => {
 						const selected = isSelected("atuacaoCanais", option.value);

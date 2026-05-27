@@ -59,12 +59,12 @@ export default function CampaignsFunnel({ startDate, endDate }: CampaignsFunnelP
 
 	return (
 		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-primary/20 flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">FUNIL DE CONVERSÃO</h1>
 					{funnelData && (
 						<div className="flex items-center gap-1.5 rounded-md px-2 py-1 bg-primary/10">
-							<span className="text-xs font-bold text-primary">{formatDecimalPlaces(funnelData.taxaConversaoGeral)}% taxa geral</span>
+							<span className="text-xs font-bold text-foreground">{formatDecimalPlaces(funnelData.taxaConversaoGeral)}% taxa geral</span>
 						</div>
 					)}
 				</div>

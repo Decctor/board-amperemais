@@ -1,17 +1,19 @@
-import ErrorComponent from "@/components/Layouts/ErrorComponent";
+﻿import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
-import type { TGetSalesInput, TGetSalesOutputByClientId } from "@/pages/api/sales";
+import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import {
+	formatInteractiveDateRangeSummary,
+	formatInteractiveNumberRangeSummary,
+	formatInteractiveOptionSummary,
+} from "@/lib/interactive-filter-formatting";
+import type { TGetSalesInput, TGetSalesOutputByClientId } from "@/app/api/sales/route";
 
-import DateInput from "@/components/Inputs/DateInput";
-import MultipleSelectInput from "@/components/Inputs/MultipleSelectInput";
-import NumberInput from "@/components/Inputs/NumberInput";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
@@ -32,13 +34,10 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 type ClientPurchasesProps = {
 	clientId: string;
 };
 export default function ClientPurchases({ clientId }: ClientPurchasesProps) {
-	const [filtersMenuIsOpen, setFiltersMenuIsOpen] = useState(false);
-
 	const {
 		data: purchasesResult,
 		isLoading: isPurchasesLoading,
@@ -68,14 +67,11 @@ export default function ClientPurchases({ clientId }: ClientPurchasesProps) {
 	const purchasesTotalPages = purchasesResult?.totalPages ?? 0;
 	const purchasesShowing = purchases.length;
 	return (
-		<div className="bg-card border-primary/20 flex h-full w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
+		<div className="bg-card border-border flex h-full w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
 			<div className="flex w-full shrink-0 items-center justify-between gap-2">
 				<h1 className="text-sm font-bold tracking-tight uppercase">Compras do Cliente</h1>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFiltersMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					FILTROS
-				</Button>
 			</div>
+			<ClientPurchasesInlineFilters filters={purchasesParams} updateFilters={updatePurchasesParams} />
 			<div className="shrink-0">
 				<GeneralPaginationComponent
 					activePage={purchasesParams.page}
@@ -92,26 +88,216 @@ export default function ClientPurchases({ clientId }: ClientPurchasesProps) {
 				{isPurchasesSuccess && purchases.length > 0 ? purchases.map((sale) => <SaleCard key={sale.id} sale={sale} />) : null}
 				{isPurchasesSuccess && purchases.length === 0 ? <p className="w-full tracking-tight text-center">Nenhuma compra encontrada.</p> : null}
 			</div>
+		</div>
+	);
+}
 
-			{filtersMenuIsOpen ? (
-				<ClientPurchasesFilterMenu
-					queryParams={purchasesParams}
-					updateQueryParams={updatePurchasesParams}
-					closeMenu={() => setFiltersMenuIsOpen(false)}
+type ClientPurchasesInlineFiltersProps = {
+	filters: TGetSalesInput;
+	updateFilters: (params: Partial<TGetSalesInput>) => void;
+};
+
+function ClientPurchasesInlineFilters({ filters, updateFilters }: ClientPurchasesInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
+	const partnerOptions = (filterOptions?.partners ?? []) as InteractiveFilterOption<string>[];
+	const productGroupOptions = (filterOptions?.productsGroups ?? []) as InteractiveFilterOption<string>[];
+	const hasSaleNatures = (filters.saleNatures ?? []).length > 0;
+	const hasSellers = (filters.sellersIds ?? []).length > 0;
+	const hasPartners = (filters.partnersIds ?? []).length > 0;
+	const hasProductGroups = (filters.productGroups ?? []).length > 0;
+	const hasTotal = filters.totalMin != null || filters.totalMax != null;
+
+	return (
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<Calendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.periodAfter, filters.periodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ periodAfter: null, periodBefore: null, page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.periodAfter ? new Date(filters.periodAfter) : undefined,
+							to: filters.periodBefore ? new Date(filters.periodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ periodAfter: period.from ?? null, periodBefore: period.to ?? null, page: 1 })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasSaleNatures ? (
+				<ClientPurchasesMultiFilter
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={filters.saleNatures ?? []}
+					onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
+					onClear={() => updateFilters({ saleNatures: [], page: 1 })}
 				/>
 			) : null}
+			{hasSellers ? (
+				<ClientPurchasesMultiFilter
+					label="VENDEDORES"
+					options={sellerOptions}
+					value={filters.sellersIds ?? []}
+					onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })}
+					onClear={() => updateFilters({ sellersIds: [], page: 1 })}
+				/>
+			) : null}
+			{hasPartners ? (
+				<ClientPurchasesMultiFilter
+					label="PARCEIROS"
+					options={partnerOptions}
+					value={filters.partnersIds ?? []}
+					onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })}
+					onClear={() => updateFilters({ partnersIds: [], page: 1 })}
+				/>
+			) : null}
+			{hasProductGroups ? (
+				<ClientPurchasesMultiFilter
+					label="GRUPOS"
+					options={productGroupOptions}
+					value={filters.productGroups ?? []}
+					onChange={(productGroups) => updateFilters({ productGroups, page: 1 })}
+					onClear={() => updateFilters({ productGroups: [], page: 1 })}
+				/>
+			) : null}
+			{hasTotal ? <ClientPurchasesTotalFilter filters={filters} updateFilters={updateFilters} /> : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={saleNatureOptions}
+									value={filters.saleNatures ?? []}
+									onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
+									onClear={() => updateFilters({ saleNatures: [], page: 1 })}
+									clearLabel="TODAS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSellers ? (
+							<InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={sellerOptions}
+									value={filters.sellersIds ?? []}
+									onChange={(sellersIds) => updateFilters({ sellersIds, page: 1 })}
+									onClear={() => updateFilters({ sellersIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasPartners ? (
+							<InteractiveFilter.AddFilterItem id="partners" label="PARCEIROS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={partnerOptions}
+									value={filters.partnersIds ?? []}
+									onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })}
+									onClear={() => updateFilters({ partnersIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasProductGroups ? (
+							<InteractiveFilter.AddFilterItem id="groups" label="GRUPOS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={productGroupOptions}
+									value={filters.productGroups ?? []}
+									onChange={(productGroups) => updateFilters({ productGroups, page: 1 })}
+									onClear={() => updateFilters({ productGroups: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasTotal ? (
+							<InteractiveFilter.AddFilterItem id="total" label="VALOR" icon={<BadgeDollarSign className="h-4 w-4" />}>
+								<ClientPurchasesTotalContent filters={filters} updateFilters={updateFilters} />
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
 		</div>
+	);
+}
+
+function ClientPurchasesTotalFilter({ filters, updateFilters }: ClientPurchasesInlineFiltersProps) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<BadgeDollarSign className="h-4 w-4" />
+					<InteractiveFilter.Label>VALOR</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveNumberRangeSummary(filters.totalMin, filters.totalMax)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateFilters({ totalMin: null, totalMax: null, page: 1 })} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-80 p-0">
+				<ClientPurchasesTotalContent filters={filters} updateFilters={updateFilters} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function ClientPurchasesTotalContent({ filters, updateFilters }: ClientPurchasesInlineFiltersProps) {
+	return (
+		<InteractiveFilter.NumberRangeContent
+			value={{ greaterThan: filters.totalMin, lessThan: filters.totalMax }}
+			onChange={({ greaterThan, lessThan }) => updateFilters({ totalMin: greaterThan, totalMax: lessThan, page: 1 })}
+			onClear={() => updateFilters({ totalMin: null, totalMax: null, page: 1 })}
+		/>
+	);
+}
+
+function ClientPurchasesMultiFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel="TODOS" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
 	);
 }
 
 function SaleCard({ sale }: { sale: TGetSalesOutputByClientId["sales"][number] }) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs hover:border-border hover:shadow-sm transition-all cursor-pointer">
 			<div className="flex flex-col md:flex-row justify-between gap-3">
 				{/* Client Info & Sale Basics */}
 				<div className="flex flex-col gap-1.5 grow">
 					<div className="flex items-center gap-2">
-						<CircleUser className="w-4 h-4 text-primary/70" />
+						<CircleUser className="w-4 h-4 text-foreground/70" />
 						<h1 className="text-sm font-bold tracking-tight uppercase">{sale.cliente?.nome ?? "AO CONSUMIDOR"}</h1>
 					</div>
 					<div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -270,7 +456,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutputByClientId["sales"][number] }
 								</HoverCardContent>
 							</HoverCard>
 						) : null}
-						<div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md w-fit">
+						<div className="flex items-center gap-1.5 bg-primary/10 text-foreground px-2.5 py-1 rounded-md w-fit">
 							<BadgeDollarSign className="w-4 h-4" />
 							<span className="font-bold text-sm">{formatToMoney(sale.valorTotal)}</span>
 						</div>
@@ -323,113 +509,5 @@ function SaleCard({ sale }: { sale: TGetSalesOutputByClientId["sales"][number] }
 				</Button>
 			</div>
 		</div>
-	);
-}
-
-type ClientPurchasesFilterMenuProps = {
-	queryParams: TGetSalesInput;
-	updateQueryParams: (params: Partial<TGetSalesInput>) => void;
-	closeMenu: () => void;
-};
-
-export function ClientPurchasesFilterMenu({ queryParams, updateQueryParams, closeMenu }: ClientPurchasesFilterMenuProps) {
-	const [queryParamsHolder, setQueryParamsHolder] = useState<TGetSalesInput>(queryParams);
-	const { data: filterOptions } = useSaleQueryFilterOptions();
-
-	return (
-		<Sheet open onOpenChange={closeMenu}>
-			<SheetContent>
-				<div className="flex h-full w-full flex-col">
-					<SheetHeader>
-						<SheetTitle>FILTRAR COMPRAS DO CLIENTE</SheetTitle>
-						<SheetDescription>Escolha aqui parâmetros para filtrar as compras do cliente.</SheetDescription>
-					</SheetHeader>
-
-					<div className="flex h-full flex-col gap-y-4 overflow-y-auto overscroll-y-auto p-2 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
-						<div className="flex w-full flex-col gap-2">
-							<MultipleSelectInput
-								label="NATUREZAS DE VENDA"
-								selected={queryParamsHolder.saleNatures ?? []}
-								options={filterOptions?.saleNatures || []}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, saleNatures: value as string[] }))}
-								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, saleNatures: [] }))}
-								resetOptionLabel="NENHUMA DEFINIDA"
-								width="100%"
-							/>
-							<MultipleSelectInput
-								label="VENDEDORES"
-								selected={queryParamsHolder.sellersIds ?? []}
-								options={filterOptions?.sellers || []}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: value as string[] }))}
-								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: [] }))}
-								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
-							/>
-							<MultipleSelectInput
-								label="PARCEIROS"
-								selected={queryParamsHolder.partnersIds ?? []}
-								options={filterOptions?.partners || []}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, partnersIds: value as string[] }))}
-								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, partnersIds: [] }))}
-								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
-							/>
-							<MultipleSelectInput
-								label="GRUPOS DE PRODUTOS"
-								selected={queryParamsHolder.productGroups ?? []}
-								options={filterOptions?.productsGroups || []}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, productGroups: value as string[] }))}
-								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, productGroups: [] }))}
-								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
-							/>
-						</div>
-
-						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO POR VALOR TOTAL DA COMPRA</h1>
-							<NumberInput
-								label="VALOR MÍNIMO"
-								value={queryParamsHolder.totalMin ?? undefined}
-								placeholder="R$ 0,00"
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, totalMin: value }))}
-								width="100%"
-							/>
-							<NumberInput
-								label="VALOR MÁXIMO"
-								value={queryParamsHolder.totalMax ?? undefined}
-								placeholder="R$ 0,00"
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, totalMax: value }))}
-								width="100%"
-							/>
-						</div>
-
-						<div className="flex w-full flex-col gap-2">
-							<h1 className="w-full text-xs tracking-tight text-primary">FILTRO POR PERÍODO</h1>
-							<DateInput
-								label="DEPOIS DE"
-								value={formatDateForInputValue(queryParamsHolder.periodAfter)}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, periodAfter: formatDateOnInputChange(value, "date") as Date }))}
-								width="100%"
-							/>
-							<DateInput
-								label="ANTES DE"
-								value={formatDateForInputValue(queryParamsHolder.periodBefore)}
-								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, periodBefore: formatDateOnInputChange(value, "date", "end") as Date }))}
-								width="100%"
-							/>
-						</div>
-					</div>
-
-					<Button
-						onClick={() => {
-							updateQueryParams({ ...queryParamsHolder, page: 1 });
-							closeMenu();
-						}}
-					>
-						FILTRAR
-					</Button>
-				</div>
-			</SheetContent>
-		</Sheet>
 	);
 }

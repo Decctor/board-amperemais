@@ -3,12 +3,14 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
 import { createClient } from "@/lib/mutations/clients";
-import type { TCreateClientInput } from "@/pages/api/clients";
+import type { TCreateClientInput } from "@/app/api/clients/route";
 import { useClientState } from "@/state-hooks/use-client-state";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import ClientGeneralBlock from "./Blocks/General";
 import ClientLocationsBlock from "./Blocks/Locations";
+import ClientProfileBlock from "./Blocks/Profile";
+import ClientSocialsBlock from "./Blocks/Socials";
 
 type NewClientProps = {
 	closeModal: () => void;
@@ -95,6 +97,8 @@ function NewClient({ closeModal, callbacks }: NewClientProps) {
 			drawerVariant="md"
 		>
 			<ClientGeneralBlock client={state.client} updateClient={updateClient} />
+			<ClientSocialsBlock client={state.client} updateClient={updateClient} />
+			<ClientProfileBlock client={state.client} updateClient={updateClient} />
 			<ClientLocationsBlock
 				locations={state.clientLocations}
 				addClientLocation={addClientLocation}

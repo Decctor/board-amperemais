@@ -20,17 +20,21 @@ import type {
 	TShopModeEnum,
 	TShopProductsModeEnum,
 	TTimeDurationUnitsEnum,
+	TWhatsappTemplateStatusEnum,
 } from "@/schemas/enums";
 import type { TInternalLeadOriginEnum, TInternalLeadStatusCRMEnum } from "@/schemas/enums";
+import { TInteractionsStatusEnum } from "@/schemas/interactions";
 import {
 	Archive,
 	ArrowDown,
 	ArrowUp,
+	Ban,
 	Banknote,
 	BookOpen,
 	Check,
 	CheckCheck,
 	ChefHat,
+	CheckCircleIcon,
 	ClipboardIcon,
 	Clock,
 	CreditCard,
@@ -42,6 +46,7 @@ import {
 	MessageSquare,
 	Minus,
 	Package,
+	PauseCircleIcon,
 	Pencil,
 	Percent,
 	Phone,
@@ -54,10 +59,11 @@ import {
 	TrendingUp,
 	Video,
 	Wallet,
+	CircleCheck,
+	ListIcon,
 	X,
 	XCircle,
-	ListIcon,
-	CircleCheck,
+	XCircleIcon,
 } from "lucide-react";
 
 export const InternalActivityTypeOptions: { id: number; label: string; value: TInternalLeadActivityTypeEnum; icon: React.ReactNode }[] = [
@@ -240,19 +246,97 @@ export const CustomersAcquisitionChannels = [
 	{ id: 9, label: "Landing Page", value: "Landing Page" },
 ];
 
-export const CampaignTriggerTypeOptions: { id: number; label: string; value: TCampaignTriggerTypeEnum }[] = [
-	{ id: 1, label: "NOVA COMPRA", value: "NOVA-COMPRA" },
-	{ id: 2, label: "PRIMEIRA COMPRA", value: "PRIMEIRA-COMPRA" },
-	{ id: 3, label: "PERMANÊNCIA NA SEGMENTAÇÃO", value: "PERMANÊNCIA-SEGMENTAÇÃO" },
-	{ id: 4, label: "ENTRADA NA SEGMENTAÇÃO", value: "ENTRADA-SEGMENTAÇÃO" },
-	{ id: 5, label: "CASHBACK ACUMULADO", value: "CASHBACK-ACUMULADO" },
-	{ id: 6, label: "CASHBACK EXPIRANDO", value: "CASHBACK-EXPIRANDO" },
-	{ id: 7, label: "ANIVERSÁRIO DO CLIENTE", value: "ANIVERSARIO_CLIENTE" },
-	{ id: 8, label: "QUANTIDADE TOTAL DE COMPRAS", value: "QUANTIDADE-TOTAL-COMPRAS" },
-	{ id: 9, label: "VALOR TOTAL DE COMPRAS", value: "VALOR-TOTAL-COMPRAS" },
-	{ id: 10, label: "RECORRENTE (AGENDAMENTO)", value: "RECORRENTE" },
-	{ id: 11, label: "PIOR DIA DE VENDAS", value: "PIOR-DIA-VENDAS" },
-	{ id: 12, label: "USO ÚNICO", value: "USO-UNICO" },
+export const CampaignTriggerTypeOptions: {
+	id: number;
+	label: string;
+	value: TCampaignTriggerTypeEnum;
+	icon: React.ReactNode;
+	description: string;
+}[] = [
+	{
+		id: 1,
+		label: "NOVA COMPRA",
+		value: "NOVA-COMPRA",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente realizar uma nova compra.",
+	},
+	{
+		id: 2,
+		label: "PRIMEIRA COMPRA",
+		value: "PRIMEIRA-COMPRA",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente realizar sua primeira compra.",
+	},
+	{
+		id: 3,
+		label: "PERMANÊNCIA NA SEGMENTAÇÃO",
+		value: "PERMANÊNCIA-SEGMENTAÇÃO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente permanecer na segmentação por um determinado tempo.",
+	},
+	{
+		id: 4,
+		label: "ENTRADA NA SEGMENTAÇÃO",
+		value: "ENTRADA-SEGMENTAÇÃO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente entrar na segmentação.",
+	},
+	{
+		id: 5,
+		label: "CASHBACK ACUMULADO",
+		value: "CASHBACK-ACUMULADO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente acumular um determinado valor de cashback.",
+	},
+	{
+		id: 6,
+		label: "CASHBACK EXPIRANDO",
+		value: "CASHBACK-EXPIRANDO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente tiver um cashback expirando.",
+	},
+	{
+		id: 7,
+		label: "ANIVERSÁRIO DO CLIENTE",
+		value: "ANIVERSARIO_CLIENTE",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente fizer aniversário.",
+	},
+	{
+		id: 8,
+		label: "QUANTIDADE TOTAL DE COMPRAS",
+		value: "QUANTIDADE-TOTAL-COMPRAS",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente realizar um determinado número de compras.",
+	},
+	{
+		id: 9,
+		label: "VALOR TOTAL DE COMPRAS",
+		value: "VALOR-TOTAL-COMPRAS",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada quando um cliente realizar um determinado valor de compras.",
+	},
+	{
+		id: 10,
+		label: "RECORRENTE (AGENDAMENTO)",
+		value: "RECORRENTE",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada de acordo com um agendamento recorrente.",
+	},
+	{
+		id: 11,
+		label: "PIOR DIA DE VENDAS",
+		value: "PIOR-DIA-VENDAS",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada com base no pior dia de vendas da semana.",
+	},
+	{
+		id: 12,
+		label: "USO ÚNICO",
+		value: "USO-UNICO",
+		icon: <ShoppingCart className="w-4 h-4" />,
+		description: "A campanha será disparada uma única vez na data selecionada e no bloco de horário configurado.",
+	},
 ];
 
 export const RecurrenceFrequencyOptions: { id: number; label: string; value: TRecurrenceFrequencyEnum }[] = [
@@ -292,6 +376,56 @@ export const InteractionsCronJobTimeBlocksOptions: { id: number; label: string; 
 	{ id: 6, label: "15:00", value: "15:00" },
 	{ id: 7, label: "18:00", value: "18:00" },
 	{ id: 8, label: "21:00", value: "21:00" },
+];
+
+export const InteractionsSentStatusOptions: {
+	id: number;
+	label: string;
+	value: TInteractionsStatusEnum;
+	icon: React.ReactNode;
+	className: string;
+	message: (overwrite?: string) => string;
+}[] = [
+	{
+		id: 1,
+		label: "PENDENTE",
+		value: "PENDENTE",
+		message: (overwrite) => overwrite ?? "Mensagem com envio ainda pendente.",
+		icon: <Clock className="w-4 h-4" />,
+		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-600",
+	},
+	{
+		id: 2,
+		label: "ENVIADO",
+		value: "ENVIADO",
+		message: (overwrite) => overwrite ?? "Mensagem enviada ao cliente.",
+		icon: <Check className="w-4 h-4" />,
+		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-600",
+	},
+	{
+		id: 3,
+		label: "ENTREGUE",
+		value: "ENTREGUE",
+		message: (overwrite) => overwrite ?? "Mensagem entregue ao cliente.",
+		icon: <CheckCheck className="w-4 h-4" />,
+		className: "bg-blue-200 text-blue-600 border border-blue-600 hover:bg-blue-100 hover:text-blue-500 hover:border-blue-600",
+	},
+	{
+		id: 4,
+		label: "LIDO",
+		value: "LIDO",
+		message: (overwrite) => overwrite ?? "Mensagem lida pelo cliente.",
+		icon: <CheckCheck className="w-4 h-4" />,
+		className: "bg-green-200 text-green-600 border border-green-600 hover:bg-green-100 hover:text-green-500 hover:border-green-600",
+	},
+	{
+		id: 5,
+		label: "FALHOU",
+		value: "FALHOU",
+		message: (overwrite) => overwrite ?? "O envio da mensagem falhou.",
+		icon: <X className="w-4 h-4" />,
+		className: "bg-red-200 text-red-600 border border-red-600 hover:bg-red-100 hover:text-red-500 hover:border-red-600",
+	},
 ];
 
 export const CashbackProgramAccumulationTypeOptions: { id: number; label: string; value: TCashbackProgramAccumulationTypeEnum }[] = [
@@ -565,3 +699,54 @@ export const ShopProductsModeOptions: { id: number; label: string; value: TShopP
 	{ id: 2, label: "INCLUIR", value: "INCLUIR", icon: <ListIcon className="w-4 h-4 min-w-4 min-h-4" /> },
 	{ id: 3, label: "EXCLUIR", value: "EXCLUIR", icon: <XCircle className="w-4 h-4 min-w-4 min-h-4" /> },
 ];
+
+export const WhatsappTemplateStatusUIDetailsMap: Record<
+	TWhatsappTemplateStatusEnum,
+	{ id: number; label: string; value: TWhatsappTemplateStatusEnum; icon: React.ReactNode; colors: { text: string; background: string } }
+> = {
+	RASCUNHO: {
+		id: 1,
+		label: "RASCUNHO",
+		value: "RASCUNHO",
+		icon: <FileIcon className="w-4 h-4 text-gray-600" />,
+		colors: { text: "text-gray-600", background: "bg-gray-200" },
+	},
+	PENDENTE: {
+		id: 2,
+		label: "PENDENTE",
+		value: "PENDENTE",
+		icon: <Clock className="w-4 h-4 text-yellow-600" />,
+		colors: { text: "text-yellow-600", background: "bg-yellow-200" },
+	},
+	REJEITADO: {
+		id: 3,
+		label: "REJEITADO",
+		value: "REJEITADO",
+		icon: <XCircleIcon className="w-4 h-4 text-red-600" />,
+		colors: { text: "text-red-600", background: "bg-red-200" },
+	},
+	PAUSADO: {
+		id: 4,
+		label: "PAUSADO",
+		value: "PAUSADO",
+		icon: <PauseCircleIcon className="w-4 h-4 text-orange-600" />,
+		colors: { text: "text-orange-600", background: "bg-orange-200" },
+	},
+	DESABILITADO: {
+		id: 6,
+		label: "DESABILITADO",
+		value: "DESABILITADO",
+		icon: <Ban className="w-4 h-4 text-gray-600" />,
+		colors: { text: "text-gray-600", background: "bg-gray-200" },
+	},
+	APROVADO: {
+		id: 5,
+		label: "APROVADO",
+		value: "APROVADO",
+		icon: <CheckCircleIcon className="w-4 h-4 text-green-600" />,
+		colors: { text: "text-green-600", background: "bg-green-200" },
+	},
+};
+export function getWhatsappTemplateStatusUIDetails(status: TWhatsappTemplateStatusEnum) {
+	return WhatsappTemplateStatusUIDetailsMap[status];
+}

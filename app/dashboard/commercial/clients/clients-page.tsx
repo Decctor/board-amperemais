@@ -1,24 +1,25 @@
-"use client";
+﻿"use client";
 import ClientsGraphs from "@/components/Clients/ClientsGraphs";
 import ClientsRanking from "@/components/Clients/ClientsRanking";
-import ClientsDatabaseFilterMenu from "@/components/Clients/DatabaseFilterMenu";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
-import { FiltersShowcase } from "@/components/ui/filters-showcase";
+import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
 import { useClients, useClientsOverallStats } from "@/lib/queries/clients";
+import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
-import type { TGetClientsInput, TGetClientsOutputDefault } from "@/pages/api/clients";
-import type { TGetClientsOverallStatsInput } from "@/pages/api/clients/stats/overall";
+import type { TGetClientsInput, TGetClientsOutputDefault } from "@/app/api/clients/route";
+import type { TGetClientsOverallStatsInput } from "@/app/api/clients/stats/overall/route";
 import dayjs from "dayjs";
 import {
 	FileSpreadsheet,
@@ -40,7 +41,11 @@ import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 import { BsCalendar } from "react-icons/bs";
-
+import { CustomersAcquisitionChannels } from "@/utils/select-options";
+import { RFMLabels } from "@/utils/rfm";
+import ControlClient from "@/components/Modals/Clients/ControlClient";
+import { Pencil } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 type ClientsPageProps = {
 	user: TAuthUserSession["user"];
 };
@@ -71,9 +76,11 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 }
 
 function ClientsDatabaseView() {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState<boolean>(false);
+	const queryClient = useQueryClient();
+	const [editingClientId, setEditingClientId] = useState<string | null>(null);
 	const {
 		data: clientsResult,
+		queryKey,
 		isSuccess,
 		isLoading,
 		isError,
@@ -90,6 +97,9 @@ function ClientsDatabaseView() {
 	const clientsShowing = clients ? clients.length : 0;
 	const clientsMatched = clientsResult?.clientsMatched || 0;
 	const totalPages = clientsResult?.totalPages;
+
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center gap-2">
@@ -105,10 +115,6 @@ function ClientsDatabaseView() {
 						IMPORTAR CLIENTES
 					</Link>
 				</Button>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setFilterMenuIsOpen(true)}>
-					<ListFilter className="w-4 h-4 min-w-4 min-h-4" />
-					<p className="hidden lg:block">FILTROS</p>
-				</Button>
 			</div>
 			<GeneralPaginationComponent
 				activePage={filters.page}
@@ -118,20 +124,246 @@ function ClientsDatabaseView() {
 				itemsMatchedText={clientsMatched > 0 ? `${clientsMatched} clientes encontrados.` : `${clientsMatched} cliente encontrado.`}
 				itemsShowingText={clientsShowing > 0 ? `Mostrando ${clientsShowing} clientes.` : `Mostrando ${clientsShowing} cliente.`}
 			/>
-			<ClientPageFilterShowcase queryParams={filters} updateQueryParams={updateFilters} />
+			<ClientsInlineFilters filters={filters} updateFilters={updateFilters} />
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && clients ? (
 				clients.length > 0 ? (
-					clients.map((client, index: number) => <ClientPageCard key={client.id} client={client} />)
+					clients.map((client, index: number) => <ClientPageCard key={client.id} client={client} handleEditClick={() => setEditingClientId(client.id)} />)
 				) : (
 					<p className="w-full tracking-tight text-center">Nenhum cliente encontrado.</p>
 				)
 			) : null}
-			{filterMenuIsOpen ? (
-				<ClientsDatabaseFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
+			{editingClientId ? (
+				<ControlClient
+					clientId={editingClientId}
+					closeModal={() => setEditingClientId(null)}
+					callbacks={{
+						onMutate: handleOnMutate,
+						onSettled: handleOnSettled,
+					}}
+				/>
 			) : null}
 		</div>
+	);
+}
+
+type ClientsInlineFiltersProps = {
+	filters: TGetClientsInput;
+	updateFilters: (filters: Partial<TGetClientsInput>) => void;
+};
+
+function ClientsInlineFilters({ filters, updateFilters }: ClientsInlineFiltersProps) {
+	const { data: filterOptions } = useSaleQueryFilterOptions();
+	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const acquisitionChannelOptions = CustomersAcquisitionChannels as InteractiveFilterOption<string>[];
+	const segmentationOptions = RFMLabels.map((item, index) => ({
+		id: index + 1,
+		label: item.text,
+		value: item.text,
+	})) satisfies InteractiveFilterOption<string>[];
+	const orderFieldOptions = [
+		{ id: "nome", label: "NOME", value: "nome" },
+		{ id: "comprasValorTotal", label: "VALOR TOTAL DE COMPRAS", value: "comprasValorTotal" },
+		{ id: "comprasQtdeTotal", label: "QUANTIDADE TOTAL DE COMPRAS", value: "comprasQtdeTotal" },
+		{ id: "primeiraCompraData", label: "PRIMEIRA COMPRA", value: "primeiraCompraData" },
+		{ id: "ultimaCompraData", label: "ÚLTIMA COMPRA", value: "ultimaCompraData" },
+	] satisfies InteractiveFilterOption<NonNullable<TGetClientsInput["orderByField"]>>[];
+	const orderDirectionOptions = [
+		{ id: "asc", label: "CRESCENTE", value: "asc" },
+		{ id: "desc", label: "DECRESCENTE", value: "desc" },
+	] satisfies InteractiveFilterOption<NonNullable<TGetClientsInput["orderByDirection"]>>[];
+	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
+	const hasAcquisitionChannels = (filters.acquisitionChannels ?? []).length > 0;
+	const hasSegmentationTitles = (filters.segmentationTitles ?? []).length > 0;
+	const hasOrderByField = Boolean(filters.orderByField && filters.orderByField !== "nome");
+	const hasOrderByDirection = Boolean(filters.orderByDirection && filters.orderByDirection !== "asc");
+
+	return (
+		<div className="flex w-full flex-wrap items-center gap-2">
+			<InteractiveFilter.Root className="w-fit">
+				<InteractiveFilter.Trigger>
+					<InteractiveFilter.Icon>
+						<BsCalendar className="h-4 w-4" />
+						<InteractiveFilter.Label>PERÍODO</InteractiveFilter.Label>
+					</InteractiveFilter.Icon>
+					<InteractiveFilter.Value>{formatInteractiveDateRangeSummary(filters.statsPeriodAfter, filters.statsPeriodBefore)}</InteractiveFilter.Value>
+					<InteractiveFilter.Clear onClear={() => updateFilters({ statsPeriodAfter: null, statsPeriodBefore: null, page: 1 })} />
+				</InteractiveFilter.Trigger>
+				<InteractiveFilter.Content className="w-auto p-0">
+					<InteractiveFilter.DateRangeContent
+						value={{
+							from: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
+							to: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
+						}}
+						onChange={(period) => updateFilters({ statsPeriodAfter: period.from ?? null, statsPeriodBefore: period.to ?? null, page: 1 })}
+					/>
+				</InteractiveFilter.Content>
+			</InteractiveFilter.Root>
+
+			{hasSaleNatures ? (
+				<ClientsMultiFilter
+					label="NATUREZAS"
+					options={saleNatureOptions}
+					value={filters.statsSaleNatures ?? []}
+					onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
+					onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+				/>
+			) : null}
+			{hasAcquisitionChannels ? (
+				<ClientsMultiFilter
+					label="AQUISIÇÃO"
+					options={acquisitionChannelOptions}
+					value={filters.acquisitionChannels ?? []}
+					onChange={(acquisitionChannels) => updateFilters({ acquisitionChannels, page: 1 })}
+					onClear={() => updateFilters({ acquisitionChannels: [], page: 1 })}
+				/>
+			) : null}
+			{hasSegmentationTitles ? (
+				<ClientsMultiFilter
+					label="SEGMENTAÇÃO"
+					options={segmentationOptions}
+					value={filters.segmentationTitles ?? []}
+					onChange={(segmentationTitles) => updateFilters({ segmentationTitles, page: 1 })}
+					onClear={() => updateFilters({ segmentationTitles: [], page: 1 })}
+				/>
+			) : null}
+			{hasOrderByField ? (
+				<ClientsSingleFilter
+					label="ORDENAR POR"
+					options={orderFieldOptions}
+					value={filters.orderByField ?? "nome"}
+					onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
+				/>
+			) : null}
+			{hasOrderByDirection ? (
+				<ClientsSingleFilter
+					label="DIREÇÃO"
+					options={orderDirectionOptions}
+					value={filters.orderByDirection ?? "asc"}
+					onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+				/>
+			) : null}
+
+			<InteractiveFilter.AddFilterRoot className="w-fit">
+				<InteractiveFilter.AddFilterTrigger>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>ADICIONAR FILTRO</InteractiveFilter.Label>
+				</InteractiveFilter.AddFilterTrigger>
+				<InteractiveFilter.AddFilterContent>
+					<InteractiveFilter.AddFilterSection heading="Filtros">
+						{!hasSaleNatures ? (
+							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={saleNatureOptions}
+									value={filters.statsSaleNatures ?? []}
+									onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
+									onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+									clearLabel="TODAS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasAcquisitionChannels ? (
+							<InteractiveFilter.AddFilterItem id="acquisitionChannels" label="AQUISIÇÃO" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={acquisitionChannelOptions}
+									value={filters.acquisitionChannels ?? []}
+									onChange={(acquisitionChannels) => updateFilters({ acquisitionChannels, page: 1 })}
+									onClear={() => updateFilters({ acquisitionChannels: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSegmentationTitles ? (
+							<InteractiveFilter.AddFilterItem id="segmentation" label="SEGMENTAÇÃO" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={segmentationOptions}
+									value={filters.segmentationTitles ?? []}
+									onChange={(segmentationTitles) => updateFilters({ segmentationTitles, page: 1 })}
+									onClear={() => updateFilters({ segmentationTitles: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasOrderByField ? (
+							<InteractiveFilter.AddFilterItem id="orderByField" label="ORDENAR POR" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={orderFieldOptions}
+									value={filters.orderByField ?? "nome"}
+									onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasOrderByDirection ? (
+							<InteractiveFilter.AddFilterItem id="orderByDirection" label="DIREÇÃO" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SingleContent
+									options={orderDirectionOptions}
+									value={filters.orderByDirection ?? "asc"}
+									onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+					</InteractiveFilter.AddFilterSection>
+				</InteractiveFilter.AddFilterContent>
+			</InteractiveFilter.AddFilterRoot>
+		</div>
+	);
+}
+
+function ClientsSingleFilter<T extends string>({
+	label,
+	options,
+	value,
+	onChange,
+}: {
+	label: string;
+	options: InteractiveFilterOption<T>[];
+	value: T;
+	onChange: (value: T) => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{options.find((option) => option.value === value)?.label ?? "PADRÃO"}</InteractiveFilter.Value>
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.SingleContent options={options} value={value} onChange={onChange} />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
+	);
+}
+
+function ClientsMultiFilter({
+	label,
+	options,
+	value,
+	onChange,
+	onClear,
+}: {
+	label: string;
+	options: InteractiveFilterOption<string>[];
+	value: string[];
+	onChange: (value: string[]) => void;
+	onClear: () => void;
+}) {
+	return (
+		<InteractiveFilter.Root className="w-fit">
+			<InteractiveFilter.Trigger>
+				<InteractiveFilter.Icon>
+					<ListFilter className="h-4 w-4" />
+					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+				</InteractiveFilter.Icon>
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, value)}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={onClear} />
+			</InteractiveFilter.Trigger>
+			<InteractiveFilter.Content className="w-72 p-0">
+				<InteractiveFilter.MultiContent options={options} value={value} onChange={onChange} onClear={onClear} clearLabel="TODOS" />
+			</InteractiveFilter.Content>
+		</InteractiveFilter.Root>
 	);
 }
 
@@ -259,7 +491,7 @@ function ClientsStatsView() {
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromRecurrentClients.percentage || 0)}%</p>
+							<p className="text-xs font-bold text-foreground">{formatDecimalPlaces(clientsOverallStats?.revenueFromRecurrentClients.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -282,7 +514,7 @@ function ClientsStatsView() {
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromNewClients.percentage || 0)}%</p>
+							<p className="text-xs font-bold text-foreground">{formatDecimalPlaces(clientsOverallStats?.revenueFromNewClients.percentage || 0)}%</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -305,7 +537,9 @@ function ClientsStatsView() {
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-xs text-muted-foreground tracking-tight">REPRESENTATIVIDADE:</p>
-							<p className="text-xs font-bold text-primary">{formatDecimalPlaces(clientsOverallStats?.revenueFromNonIdentifiedClients.percentage || 0)}%</p>
+							<p className="text-xs font-bold text-foreground">
+								{formatDecimalPlaces(clientsOverallStats?.revenueFromNonIdentifiedClients.percentage || 0)}%
+							</p>
 						</div>
 					}
 					className="w-full lg:w-1/3"
@@ -335,11 +569,13 @@ function ClientsStatsView() {
 
 type ClientCardProps = {
 	client: TGetClientsOutputDefault["clients"][number];
+	handleEditClick: () => void;
 };
-function ClientPageCard({ client }: ClientCardProps) {
+function ClientPageCard({ client, handleEditClick }: ClientCardProps) {
 	const clientCashbackBalance = client.saldos.length > 0 ? client.saldos[0] : null;
+
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between flex-col md:flex-row gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
@@ -385,89 +621,37 @@ function ClientPageCard({ client }: ClientCardProps) {
 			<div className="w-full flex items-center justify-center lg:justify-between gap-2 flex-wrap">
 				<div className="flex items-center gap-2">
 					{client.estatisticas.primeiraCompraData ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
 							<p className="text-xs font-medium tracking-tight uppercase">PRIMEIRA VENDA: {formatDateAsLocale(client.estatisticas.primeiraCompraData)}</p>
 						</div>
 					) : null}
 					{client.estatisticas.ultimaCompraData ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<BsCalendar className="w-3 min-w-3 h-3 min-h-3" />
 							<p className="text-xs font-medium tracking-tight uppercase">ÚLTIMA VENDA: {formatDateAsLocale(client.estatisticas.ultimaCompraData)}</p>
 						</div>
 					) : null}
 					{client.metadataGrupoProdutoMaisComprado ? (
-						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-primary")}>
+						<div className={cn("flex items-center gap-1.5 text-[0.65rem] font-bold text-foreground")}>
 							<ShoppingCart className="w-3 min-w-3 h-3 min-h-3" />
 							<p className="text-xs font-medium tracking-tight uppercase">PREFERÊNCIA: {client.metadataGrupoProdutoMaisComprado}</p>
 						</div>
 					) : null}
 				</div>
-
-				<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-					<Link href={`/dashboard/commercial/clients/id/${client.id}`}>
-						<Info className="w-3 min-w-3 h-3 min-h-3" />
-						DETALHES
-					</Link>
-				</Button>
+				<div className="flex items-center gap-3">
+					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={handleEditClick}>
+						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
+						EDITAR
+					</Button>
+					<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
+						<Link href={`/dashboard/commercial/clients/id/${client.id}`}>
+							<Info className="w-3 min-w-3 h-3 min-h-3" />
+							DETALHES
+						</Link>
+					</Button>
+				</div>
 			</div>
 		</div>
-	);
-}
-
-type ClientPageFilterShowcaseProps = {
-	queryParams: TGetClientsInput;
-	updateQueryParams: (params: Partial<TGetClientsInput>) => void;
-};
-function ClientPageFilterShowcase({ queryParams, updateQueryParams }: ClientPageFilterShowcaseProps) {
-	const orderingFieldLabelMap: Record<NonNullable<TGetClientsInput["orderByField"]>, string> = {
-		nome: "NOME",
-		comprasValorTotal: "VALOR TOTAL DE COMPRAS",
-		comprasQtdeTotal: "QUANTIDADE TOTAL DE COMPRAS",
-		primeiraCompraData: "PRIMEIRA COMPRA",
-		ultimaCompraData: "ÚLTIMA COMPRA",
-	};
-	const orderingDirectionLabel = queryParams.orderByDirection === "desc" ? "DECRESCENTE" : "CRESCENTE";
-	const orderingFieldLabel = orderingFieldLabelMap[queryParams.orderByField || "nome"];
-
-	return (
-		<FiltersShowcase.Root>
-			{queryParams.search && queryParams.search.trim().length > 0 && (
-				<FiltersShowcase.Item label="PESQUISA" value={queryParams.search} onRemove={() => updateQueryParams({ search: "" })} />
-			)}
-			{queryParams.statsPeriodAfter && queryParams.statsPeriodBefore && (
-				<FiltersShowcase.Item
-					label="PERÍODO DAS ESTASTÍCAS"
-					value={`${formatDateAsLocale(queryParams.statsPeriodAfter)} a ${formatDateAsLocale(queryParams.statsPeriodBefore)}`}
-					onRemove={() => updateQueryParams({ statsPeriodAfter: null, statsPeriodBefore: null })}
-				/>
-			)}
-			{queryParams.statsSaleNatures.length > 0 ? (
-				<FiltersShowcase.Item
-					label="NATUREZAS DAS VENDAS"
-					value={queryParams.statsSaleNatures.map((nature) => nature).join(", ")}
-					onRemove={() => updateQueryParams({ statsSaleNatures: [] })}
-				/>
-			) : null}
-			{queryParams.acquisitionChannels.length > 0 ? (
-				<FiltersShowcase.Item
-					label="CANAIS DE AQUISIÇÃO"
-					value={queryParams.acquisitionChannels.map((channel) => channel).join(", ")}
-					onRemove={() => updateQueryParams({ acquisitionChannels: [] })}
-				/>
-			) : null}
-			{queryParams.segmentationTitles.length > 0 ? (
-				<FiltersShowcase.Item
-					label="TÍTULOS DE SEGMENTAÇÃO"
-					value={queryParams.segmentationTitles.map((title) => title).join(", ")}
-					onRemove={() => updateQueryParams({ segmentationTitles: [] })}
-				/>
-			) : null}
-			<FiltersShowcase.Item
-				label="ORDENAÇÃO"
-				value={`${orderingFieldLabel} (${orderingDirectionLabel})`}
-				onRemove={() => updateQueryParams({ orderByField: "nome", orderByDirection: "asc" })}
-			/>
-		</FiltersShowcase.Root>
 	);
 }

@@ -46,16 +46,12 @@ export const ShopSettingsConfigurationSchema = z
 			modo: "ATIVOS",
 			produtoIds: [],
 		}),
-		produtosEmDestaqueIds: z
-			.array(z.string({ invalid_type_error: "Tipo nao valido para ID do produto em destaque." }))
-			.default([]),
-		blocosComposicao: z
-			.array(ShopCompositionBlockSchema)
-			.default([
-				{ tipo: "EM_DESTAQUE", ativo: true, ordem: 1 },
-				{ tipo: "MAIS_PEDIDOS", ativo: true, ordem: 2 },
-				{ tipo: "GRUPOS_PRODUTOS", ativo: true, ordem: 3 },
-			]),
+		produtosEmDestaqueIds: z.array(z.string({ invalid_type_error: "Tipo nao valido para ID do produto em destaque." })).default([]),
+		blocosComposicao: z.array(ShopCompositionBlockSchema).default([
+			{ tipo: "EM_DESTAQUE", ativo: true, ordem: 1 },
+			{ tipo: "MAIS_PEDIDOS", ativo: true, ordem: 2 },
+			{ tipo: "GRUPOS_PRODUTOS", ativo: true, ordem: 3 },
+		]),
 	})
 	.refine((data) => data.aceitaRetirada || data.aceitaEntrega, {
 		message: "Selecione retirada ou entrega para a loja digital.",

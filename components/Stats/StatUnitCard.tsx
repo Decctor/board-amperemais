@@ -48,7 +48,7 @@ export default function StatUnitCard({
 	const changeAbs = Math.abs(change);
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs", className)}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs", className)}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">{title}</h1>

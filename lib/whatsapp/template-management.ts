@@ -1,5 +1,7 @@
 import type { TWhatsappTemplate, TWhatsappTemplateBodyParameter, TWhatsappTemplateComponents } from "@/schemas/whatsapp-templates";
+import { whatsappTemplatePhones, whatsappTemplates } from "@/services/drizzle/schema";
 import type { db as DbType } from "@/services/drizzle";
+import { and, count, eq, ne } from "drizzle-orm";
 import axios from "axios";
 import createHttpError from "http-errors";
 
@@ -323,9 +325,8 @@ export async function createWhatsappTemplate({
 			message: "Template criado com sucesso no WhatsApp!",
 		};
 	} catch (error) {
-		console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE_ERROR]", error);
 		if (axios.isAxiosError(error)) {
-			console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE_ERROR_RESPONSE]", error.response?.data);
+			console.error("[ERROR] [WHATSAPP_TEMPLATE_CREATE_ERROR_RESPONSE] Axios Error Response", error.response?.data);
 			const errorMessage = getMetaApiErrorMessage(error, "Erro ao criar template no WhatsApp.");
 			throw new createHttpError.BadRequest(errorMessage);
 		}
@@ -488,6 +489,39 @@ export async function getWhatsappTemplateById({
 		}
 		throw new createHttpError.InternalServerError("Oops, algo deu errado ao buscar o template do WhatsApp.");
 	}
+}
+
+type SyncWhatsappTemplatePhoneFromMetaParams = {
+	db: typeof DbType;
+	whatsappToken: string;
+	existingTemplatePhone: {
+		id: string;
+		templateId: string;
+		whatsappTemplateId: string | null;
+		template: { componentes: TWhatsappTemplateComponents };
+	};
+};
+
+/**
+ * Sincroniza um único vínculo (template + telefone) com a Meta pelo ID do message template, sem varrer a lista completa.
+ */
+export async function syncWhatsappTemplatePhoneFromMeta({
+	db,
+	whatsappToken,
+	existingTemplatePhone,
+}: SyncWhatsappTemplatePhoneFromMetaParams): Promise<{ templateName: string }> {
+	if (!existingTemplatePhone.whatsappTemplateId) {
+		throw new createHttpError.BadRequest(
+			"Este vínculo ainda não possui template na Meta. Crie o template no WhatsApp Cloud ou vincule novamente.",
+		);
+	}
+	const { template: rawMetaTemplate } = await getWhatsappTemplateById({
+		whatsappToken,
+		templateId: existingTemplatePhone.whatsappTemplateId,
+	});
+	const metaTemplate = rawMetaTemplate as MetaTemplate;
+	await updateLocalStateFromMetaTemplate({ db, metaTemplate, existingTemplatePhone });
+	return { templateName: metaTemplate.name };
 }
 
 type EditWhatsappTemplateParams = {
@@ -672,6 +706,32 @@ function mergeBodyParametersWithExistingIdentifiers({
 	}));
 }
 
+function mergeSyncedHeaderWithExistingContent({
+	metaHeader,
+	existingHeader,
+}: {
+	metaHeader?: TWhatsappTemplateComponents["cabecalho"];
+	existingHeader?: TWhatsappTemplateComponents["cabecalho"];
+}): TWhatsappTemplateComponents["cabecalho"] {
+	if (!metaHeader) {
+		return metaHeader;
+	}
+
+	if (metaHeader.tipo === "text") {
+		return metaHeader;
+	}
+
+	if (!existingHeader || existingHeader.tipo !== metaHeader.tipo || !existingHeader.conteudo) {
+		return metaHeader;
+	}
+
+	// Keep the local file URL we already control while refreshing Meta's current handle.
+	return {
+		...metaHeader,
+		conteudo: existingHeader.conteudo,
+	};
+}
+
 function mergeSyncedComponentsWithExistingIdentifiers({
 	metaComponents,
 	existingComponents,
@@ -679,12 +739,21 @@ function mergeSyncedComponentsWithExistingIdentifiers({
 	metaComponents: TWhatsappTemplateComponents;
 	existingComponents?: TWhatsappTemplateComponents | null;
 }): TWhatsappTemplateComponents {
+	const mergedHeader = mergeSyncedHeaderWithExistingContent({
+		metaHeader: metaComponents.cabecalho,
+		existingHeader: existingComponents?.cabecalho,
+	});
+
 	if (!existingComponents?.corpo?.parametros?.length || metaComponents.corpo.parametros.length === 0) {
-		return metaComponents;
+		return {
+			...metaComponents,
+			cabecalho: mergedHeader,
+		};
 	}
 
 	return {
 		...metaComponents,
+		cabecalho: mergedHeader,
 		corpo: {
 			...metaComponents.corpo,
 			parametros: mergeBodyParametersWithExistingIdentifiers({
@@ -693,6 +762,50 @@ function mergeSyncedComponentsWithExistingIdentifiers({
 			}),
 		},
 	};
+}
+
+/**
+ * Aplica o estado de um template retornado pela Meta a um registro local já vinculado
+ * (tabela de templates pai + `whatsapp_template_phones`).
+ */
+async function updateLocalStateFromMetaTemplate({
+	db,
+	metaTemplate,
+	existingTemplatePhone,
+}: {
+	db: typeof DbType;
+	metaTemplate: MetaTemplate;
+	existingTemplatePhone: {
+		id: string;
+		templateId: string;
+		template: { componentes: TWhatsappTemplateComponents };
+	};
+}): Promise<void> {
+	const localComponents = convertMetaComponentsToLocal(metaTemplate.components);
+	const localStatus = META_STATUS_MAP[metaTemplate.status] || "PENDENTE";
+	const localCategory = META_CATEGORY_MAP[metaTemplate.category] || "UTILIDADE";
+	const mergedComponents = mergeSyncedComponentsWithExistingIdentifiers({
+		metaComponents: localComponents,
+		existingComponents: existingTemplatePhone.template.componentes,
+	});
+
+	await db
+		.update(whatsappTemplates)
+		.set({
+			nome: metaTemplate.name,
+			categoria: localCategory,
+			componentes: mergedComponents,
+		})
+		.where(eq(whatsappTemplates.id, existingTemplatePhone.templateId));
+
+	await db
+		.update(whatsappTemplatePhones)
+		.set({
+			status: localStatus,
+			qualidade: "PENDENTE",
+			dataAtualizacao: new Date(),
+		})
+		.where(eq(whatsappTemplatePhones.id, existingTemplatePhone.id));
 }
 
 type DeleteWhatsappTemplateParams = {
@@ -704,31 +817,41 @@ type DeleteWhatsappTemplateResponse = {
 	message: string;
 };
 
+type DeleteWhatsappTemplateInMetaParams = {
+	whatsappToken: string;
+	whatsappBusinessAccountId: string;
+	templateName: string;
+};
+
 /**
- * Deletes a template from WhatsApp Business API
+ * Exclui um message template no WhatsApp Business (Graph API) usando credenciais da conexão.
  */
-export async function deleteWhatsappTemplate({ templateName }: DeleteWhatsappTemplateParams): Promise<DeleteWhatsappTemplateResponse> {
+export async function deleteWhatsappTemplateInMeta({
+	whatsappToken,
+	whatsappBusinessAccountId,
+	templateName,
+}: DeleteWhatsappTemplateInMetaParams): Promise<DeleteWhatsappTemplateResponse> {
 	try {
-		if (!WHATSAPP_BUSINESS_ACCOUNT_ID) {
-			throw new createHttpError.InternalServerError("WhatsApp Business Account ID não configurado.");
+		if (!whatsappToken) {
+			throw new createHttpError.InternalServerError("WhatsApp token não configurado.");
 		}
-		if (!WHATSAPP_AUTH_TOKEN) {
-			throw new createHttpError.InternalServerError("WhatsApp auth token não configurado.");
+		if (!whatsappBusinessAccountId) {
+			throw new createHttpError.InternalServerError("WhatsApp Business Account ID não configurado.");
 		}
 
 		console.log("[INFO] [WHATSAPP_TEMPLATE_DELETE] Deleting template:", templateName);
 
 		const response = await axios.delete(
-			`${GRAPH_API_BASE_URL}/${WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates?name=${encodeURIComponent(templateName)}`,
+			`${GRAPH_API_BASE_URL}/${whatsappBusinessAccountId}/message_templates?name=${encodeURIComponent(templateName)}`,
 			{
 				headers: {
-					Authorization: `Bearer ${WHATSAPP_AUTH_TOKEN}`,
+					Authorization: `Bearer ${whatsappToken}`,
 				},
 			},
 		);
 
 		return {
-			success: response.data.success || false,
+			success: response.data?.success === true,
 			message: "Template deletado com sucesso do WhatsApp!",
 		};
 	} catch (error) {
@@ -740,6 +863,23 @@ export async function deleteWhatsappTemplate({ templateName }: DeleteWhatsappTem
 		}
 		throw new createHttpError.InternalServerError("Oops, algo deu errado ao deletar o template do WhatsApp.");
 	}
+}
+
+/**
+ * Deletes a template from WhatsApp Business API (env global — compatibilidade)
+ */
+export async function deleteWhatsappTemplate({ templateName }: DeleteWhatsappTemplateParams): Promise<DeleteWhatsappTemplateResponse> {
+	if (!WHATSAPP_BUSINESS_ACCOUNT_ID) {
+		throw new createHttpError.InternalServerError("WhatsApp Business Account ID não configurado.");
+	}
+	if (!WHATSAPP_AUTH_TOKEN) {
+		throw new createHttpError.InternalServerError("WhatsApp auth token não configurado.");
+	}
+	return deleteWhatsappTemplateInMeta({
+		whatsappToken: WHATSAPP_AUTH_TOKEN,
+		whatsappBusinessAccountId: WHATSAPP_BUSINESS_ACCOUNT_ID,
+		templateName,
+	});
 }
 
 type SyncWhatsappTemplatesParams = {
@@ -795,17 +935,7 @@ export async function syncWhatsappTemplates({
 		// Process each template
 		for (const metaTemplate of templates) {
 			try {
-				// Convert Meta components to local format
-				const localComponents = convertMetaComponentsToLocal(metaTemplate.components);
-
-				// Convert status and category
-				const localStatus = META_STATUS_MAP[metaTemplate.status] || "PENDENTE";
-				const localCategory = META_CATEGORY_MAP[metaTemplate.category] || "UTILIDADE";
-
 				// Check if template exists in database by whatsappTemplateId
-				const { whatsappTemplatePhones, whatsappTemplates } = await import("@/services/drizzle/schema");
-				const { eq, and } = await import("drizzle-orm");
-
 				const existingTemplatePhone = await db.query.whatsappTemplatePhones.findFirst({
 					where: and(eq(whatsappTemplatePhones.whatsappTemplateId, metaTemplate.id), eq(whatsappTemplatePhones.telefoneId, phoneId)),
 					with: {
@@ -816,30 +946,7 @@ export async function syncWhatsappTemplates({
 				if (existingTemplatePhone) {
 					// Update existing template
 					console.log(`[INFO] [WHATSAPP_TEMPLATES_SYNC] Updating template: ${metaTemplate.name}`);
-					const mergedComponents = mergeSyncedComponentsWithExistingIdentifiers({
-						metaComponents: localComponents,
-						existingComponents: existingTemplatePhone.template.componentes,
-					});
-
-					// Update parent template
-					await db
-						.update(whatsappTemplates)
-						.set({
-							nome: metaTemplate.name,
-							categoria: localCategory,
-							componentes: mergedComponents,
-						})
-						.where(eq(whatsappTemplates.id, existingTemplatePhone.templateId));
-
-					// Update phone-specific record
-					await db
-						.update(whatsappTemplatePhones)
-						.set({
-							status: localStatus,
-							qualidade: "PENDENTE", // Meta doesn't provide quality in list endpoint
-							dataAtualizacao: new Date(),
-						})
-						.where(eq(whatsappTemplatePhones.id, existingTemplatePhone.id));
+					await updateLocalStateFromMetaTemplate({ db, metaTemplate, existingTemplatePhone });
 
 					result.updated++;
 					result.details.push({
@@ -847,6 +954,10 @@ export async function syncWhatsappTemplates({
 						action: "updated",
 					});
 				} else {
+					const localComponents = convertMetaComponentsToLocal(metaTemplate.components);
+					const localStatus = META_STATUS_MAP[metaTemplate.status] || "PENDENTE";
+					const localCategory = META_CATEGORY_MAP[metaTemplate.category] || "UTILIDADE";
+
 					// Create new template
 					console.log(`[INFO] [WHATSAPP_TEMPLATES_SYNC] Creating template: ${metaTemplate.name}`);
 

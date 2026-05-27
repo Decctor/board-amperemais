@@ -1,14 +1,12 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
-import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { whatsappTemplateComponentsToMessageContent } from "@/lib/message-templates";
 import { createWhatsappTemplate } from "@/lib/mutations/whatsapp-templates";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import { useWhatsappTemplateState } from "@/state-hooks/use-whatsapp-template-state";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import TemplateBodyEditor from "./Blocks/TemplateBodyEditor";
-import TemplateButtonsConfig from "./Blocks/TemplateButtonsConfig";
-import TemplateFooterConfig from "./Blocks/TemplateFooterConfig";
 import TemplateGeneral from "./Blocks/TemplateGeneral";
 import TemplateHeaderConfig from "./Blocks/TemplateHeaderConfig";
 import TemplatePreview from "./Blocks/TemplatePreview";
@@ -38,9 +36,11 @@ function NewWhatsappTemplate({ organizationId, closeMenu, callbacks, triggerCont
 		},
 		onSuccess: async (data) => {
 			if (callbacks?.onSuccess) callbacks.onSuccess({ templateId: data.data.insertedId });
-			return toast.success(data.message);
+			toast.success(data.message);
+			return closeMenu();
 		},
 		onError: async (error) => {
+			console.log("[HANDLE CREATE WHATSAPP TEMPLATE ERROR]", error);
 			if (callbacks?.onError) callbacks.onError();
 			return toast.error(getErrorMessage(error));
 		},
@@ -70,9 +70,9 @@ function NewWhatsappTemplate({ organizationId, closeMenu, callbacks, triggerCont
 			dialogVariant="xl"
 		>
 			<div className="w-full flex items-start gap-2 flex-col lg:flex-row lg:max-h-full lg:h-full">
-				<div className="w-full lg:w-2/3 flex flex-col gap-3 p-2 rounded-lg border border-primary/30 shadow-sm overflow-y-auto lg:h-full scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
+				<div className="w-full lg:w-2/3 flex flex-col gap-3 p-2 rounded-lg border border-border/30 shadow-sm overflow-y-auto lg:h-full scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 					{/* Basic Information */}
-					<TemplateGeneral template={state.whatsappTemplate} updateTemplate={updateTemplate} whatsappTemplateId={null} />
+					<TemplateGeneral template={state.whatsappTemplate} updateTemplate={updateTemplate} blockNameChange={false} />
 					<TemplateHeaderConfig
 						header={state.whatsappTemplate.componentes.cabecalho ?? null}
 						onHeaderChange={(header) => updateComponents({ cabecalho: header })}
@@ -94,8 +94,8 @@ function NewWhatsappTemplate({ organizationId, closeMenu, callbacks, triggerCont
 						triggerContext={triggerContext}
 					/>
 				</div>
-				<div className="w-full lg:w-1/3 p-2 rounded-lg border border-primary/30 shadow-sm flex flex-col lg:h-full lg:sticky lg:top-0">
-					<TemplatePreview components={state.whatsappTemplate.componentes} />
+				<div className="w-full lg:w-1/3 p-2 rounded-lg border border-border/30 shadow-sm flex flex-col lg:h-full lg:sticky lg:top-0">
+					<TemplatePreview content={whatsappTemplateComponentsToMessageContent(state.whatsappTemplate.componentes)} />
 				</div>
 			</div>
 		</ResponsiveMenu>

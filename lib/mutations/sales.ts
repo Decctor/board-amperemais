@@ -2,7 +2,7 @@ import type {
 	TCreatePointOfInteractionTransactionInput,
 	TCreatePointOfInteractionTransactionOutput,
 } from "@/app/api/point-of-interaction/new-transaction/route";
-import type { TCreateSaleInput, TCreateSaleOutput } from "@/pages/api/sales";
+import type { TCreateSaleInput, TCreateSaleOutput } from "@/app/api/sales/route";
 import type { TBulkCreateSalesInput, TBulkCreateSalesOutput, TBulkSalesMapInput, TBulkSalesMapOutput } from "@/state-hooks/use-bulk-create-sales";
 import axios from "axios";
 

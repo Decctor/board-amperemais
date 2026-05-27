@@ -19,22 +19,20 @@ async function syncWhatsappTemplates({ input, session }: { input: TSyncWhatsappT
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	// Get the organization's WhatsApp connection
-	const orgWhatsappConnection = await db.query.whatsappConnections.findFirst({
+	const orgWhatsappConnections = await db.query.whatsappConnections.findMany({
 		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
 		with: {
 			telefones: true,
 		},
 	});
 
-	if (!orgWhatsappConnection) throw new createHttpError.NotFound("Conexão WhatsApp não encontrada.");
-	if (orgWhatsappConnection.telefones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
+	const allPhones = orgWhatsappConnections.flatMap((connection) => connection.telefones.map((phone) => ({ ...phone, conexao: connection })));
+	if (allPhones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
-	const whatsappToken = orgWhatsappConnection.token;
-	if (!whatsappToken) throw new createHttpError.NotFound("Token WhatsApp não encontrado.");
 	// Determine which phones to sync
-	let phonesToSync = orgWhatsappConnection.telefones;
+	let phonesToSync = allPhones;
 	if (input.telefoneId) {
-		const specificPhone = orgWhatsappConnection.telefones.find((phone) => phone.id === input.telefoneId);
+		const specificPhone = allPhones.find((phone) => phone.id === input.telefoneId);
 		if (!specificPhone) throw new createHttpError.NotFound("Telefone não encontrado.");
 		phonesToSync = [specificPhone];
 	}
@@ -47,6 +45,8 @@ async function syncWhatsappTemplates({ input, session }: { input: TSyncWhatsappT
 	const syncResults = await Promise.all(
 		phonesToSync.map(async (phone) => {
 			try {
+				const whatsappToken = phone.conexao.token;
+				if (!whatsappToken) throw new createHttpError.NotFound("Token WhatsApp não encontrado.");
 				if (!phone.whatsappBusinessAccountId) throw new createHttpError.NotFound("WhatsApp Business Account ID não encontrado.");
 				const result = await syncWhatsappTemplatesHelper({
 					whatsappToken,

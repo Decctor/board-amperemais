@@ -13,9 +13,9 @@ type DeliverySectionProps = {
 
 export default function DeliverySection({ saleState, locationOptions, onOpenNewLocation }: DeliverySectionProps) {
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center gap-1.5">
-				<TruckIcon className="w-4 h-4 text-primary" />
+				<TruckIcon className="w-4 h-4 text-foreground" />
 				<h3 className="font-bold text-xs tracking-wide">ENTREGA</h3>
 			</div>
 			<div className="w-full flex items-center flex-wrap gap-1.5 justify-center">

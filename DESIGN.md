@@ -1,233 +1,344 @@
 ---
 name: RecompraCRM
-description: Plataforma de otimização de vendas e fidelização de clientes para varejo local e WhatsApp.
+description: CRM e automação de retenção para o varejo físico brasileiro — moderno, claro, próximo do lojista
 colors:
+  azul-primario: "#24549c"
+  azul-profundo: "#1a3d7a"
+  ouro-comercial: "#ffb900"
+  ouro-escuro: "#e6a700"
   canvas: "#ffffff"
-  ink: "#171717"
-  ink-on-strong: "#fafafa"
-  surface-quiet: "#f5f5f5"
-  ink-muted: "#737373"
-  line-hair: "#e5e5e5"
-  loyalty-amber: "#ffb900"
-  loyalty-amber-text: "#000000"
-  signal-red: "#ef4444"
-  signal-red-on: "#fafafa"
-  data-blue-deep: "#15599a"
-  data-amber-dark: "#fead61"
-  sidebar-canvas: "#fafafa"
-  sidebar-ink: "#3f3f46"
+  superficie: "#f5f5f5"
+  borda: "#e5e5e5"
+  muted: "#737373"
+  carbono: "#171717"
+  destrutivo: "#ef4444"
+  sucesso: "#16a34a"
+  chart-gold-1: "#f5cf52"
+  chart-gold-2: "#e3b042"
+  chart-gold-3: "#c98a2c"
+  chart-gold-4: "#9a691e"
+  chart-gold-5: "#7a5117"
 typography:
   display:
-    fontFamily: "\"Raleway\", ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.5rem"
+    fontFamily: "Raleway, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "60px"
     fontWeight: 800
-    lineHeight: 1.2
-    letterSpacing: "-0.02em"
-  headline:
-    fontFamily: "\"Raleway\", ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.25rem"
-    fontWeight: 600
-    lineHeight: 1.25
-    letterSpacing: "-0.02em"
-  title:
-    fontFamily: "\"Raleway\", ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1rem"
-    fontWeight: 600
-    lineHeight: 1
+    lineHeight: 1.02
     letterSpacing: "-0.025em"
+  title:
+    fontFamily: "Raleway, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "28px"
+    fontWeight: 800
+    lineHeight: 1.15
+    letterSpacing: "-0.015em"
+  subtitle:
+    fontFamily: "Raleway, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "18px"
+    fontWeight: 500
+    lineHeight: 1.45
+    letterSpacing: "-0.005em"
   body:
-    fontFamily: "\"Raleway\", ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1rem"
+    fontFamily: "Raleway, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "16px"
     fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: "normal"
+    lineHeight: 1.6
   label:
-    fontFamily: "\"Raleway\", ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.75rem"
-    fontWeight: 700
+    fontFamily: "Raleway, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "12px"
+    fontWeight: 800
     lineHeight: 1
-    letterSpacing: "0.02em"
+    letterSpacing: "0.08em"
+    textTransform: "uppercase"
+  micro:
+    fontFamily: "Raleway, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "11px"
+    fontWeight: 600
+    lineHeight: 1.2
 rounded:
-  sm: "calc(0.5rem - 4px)"
-  md: "calc(0.5rem - 2px)"
-  lg: "0.5rem"
-  xl: "0.75rem"
+  sm: "6px"
+  md: "8px"
+  base: "10px"
+  lg: "14px"
+  xl: "18px"
+  2xl: "22px"
+  3xl: "28px"
+  full: "9999px"
 spacing:
-  xs: "0.25rem"
-  sm: "0.5rem"
-  md: "1rem"
-  lg: "1.5rem"
-  xl: "2rem"
-  section-y: "1rem"
-  section-x: "0.75rem"
+  xs: "4px"
+  sm: "8px"
+  md: "16px"
+  lg: "24px"
+  xl: "32px"
+  2xl: "48px"
+  3xl: "64px"
 components:
   button-primary:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.ink-on-strong}"
-    rounded: "{rounded.md}"
-    padding: "8px 16px"
-    height: "36px"
+    backgroundColor: "{colors.azul-primario}"
+    textColor: "#ffffff"
+    rounded: "{rounded.xl}"
+    padding: "0 22px"
+    height: "44px"
+    shadow: "0 6px 14px -4px rgba(36,84,156,0.32), 0 2px 4px rgba(36,84,156,0.18)"
+  button-primary-hover:
+    backgroundColor: "{colors.azul-profundo}"
+    shadow: "0 10px 22px -6px rgba(36,84,156,0.38), 0 3px 6px rgba(36,84,156,0.22)"
+    transform: "translateY(-1px)"
   button-brand:
-    backgroundColor: "{colors.loyalty-amber}"
-    textColor: "{colors.loyalty-amber-text}"
-    rounded: "{rounded.md}"
-    padding: "8px 16px"
-    height: "36px"
-  input-field:
+    backgroundColor: "{colors.ouro-comercial}"
+    textColor: "{colors.carbono}"
+    rounded: "{rounded.xl}"
+    padding: "0 22px"
+    height: "44px"
+    shadow: "0 6px 14px -4px rgba(255,185,0,0.42), 0 2px 4px rgba(0,0,0,0.08)"
+  button-brand-hover:
+    backgroundColor: "{colors.ouro-escuro}"
+    transform: "translateY(-1px)"
+  button-outline:
     backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
+    textColor: "{colors.carbono}"
+    borderColor: "{colors.borda}"
+    rounded: "{rounded.xl}"
+    padding: "0 22px"
+    height: "44px"
+  button-ghost:
+    backgroundColor: "transparent"
+    textColor: "{colors.carbono}"
+    rounded: "{rounded.lg}"
+    padding: "0 16px"
+    height: "40px"
+  badge-default:
+    backgroundColor: "{colors.azul-primario}"
+    textColor: "#ffffff"
+    rounded: "{rounded.full}"
     padding: "4px 12px"
-    height: "36px"
-    width: "100%"
+    fontWeight: 700
+    fontSize: "11px"
+  badge-brand:
+    backgroundColor: "{colors.ouro-comercial}"
+    textColor: "{colors.carbono}"
+    rounded: "{rounded.full}"
+    padding: "4px 12px"
+  badge-soft-blue:
+    backgroundColor: "rgba(36,84,156,0.10)"
+    borderColor: "rgba(36,84,156,0.20)"
+    textColor: "{colors.azul-primario}"
+    rounded: "{rounded.full}"
+    padding: "4px 12px"
+  badge-soft-amber:
+    backgroundColor: "rgba(255,185,0,0.18)"
+    borderColor: "rgba(255,185,0,0.35)"
+    textColor: "{colors.carbono}"
+    rounded: "{rounded.full}"
+    padding: "4px 12px"
+  card:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.carbono}"
+    borderColor: "{colors.borda}"
+    rounded: "{rounded.2xl}"
+    padding: "24px"
+    shadow: "0 1px 2px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.04)"
+  card-elevated:
+    backgroundColor: "{colors.canvas}"
+    rounded: "{rounded.2xl}"
+    padding: "24px"
+    shadow: "0 12px 32px -12px rgba(36,84,156,0.18), 0 4px 8px rgba(0,0,0,0.04)"
+  input-default:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.carbono}"
+    borderColor: "{colors.borda}"
+    rounded: "{rounded.lg}"
+    padding: "0 14px"
+    height: "44px"
+  input-focus:
+    borderColor: "{colors.azul-primario}"
+    shadow: "0 0 0 3px rgba(36,84,156,0.15)"
+  section-wrapper:
+    backgroundColor: "{colors.canvas}"
+    rounded: "{rounded.2xl}"
+    padding: "24px"
 ---
 
 # Design System: RecompraCRM
 
 ## 1. Overview
 
-**Creative North Star: "The Counter-Ready Ledger"**
+**Creative North Star: "Moderno, claro, brasileiro"**
 
-RecompraCRM looks like a tool the shop owner trusts beside the cash drawer: legible numbers first, obvious actions second, warm utility instead of startup gloss. The base is a neutral light shell (soft white canvas, near-black type) so dense commerce data, RFM grids, and WhatsApp campaign stats stay readable for hours. Loyalty and promotional energy concentrate in a single amber (`loyalty-amber`) used for cashback and brand moments rather than painting whole screens. Density follows PRODUCT.md's split between **Estatísticas** (charts, KPIs) and **Banco de Dados** (filters, tables, profiles): sections feel compartmentalized without turning into stacks of indistinguishable cards.
+The system speaks the language of contemporary Brazilian fintech — bold primary color, friendly rounded geometry, confident typography at scale. The audience is the local shop owner: someone running a hardware store, a bakery, a pet shop on the corner. They want software that respects them without being corporate-stuffy or dev-tool-cold.
 
-The system rejects decorative chrome that competes with data. Motion stays at the level of state feedback (hover, focus, dialog open), not theatrical page loads. Dark mode exists as a theme branch in tokens, but day-to-day visual truth in this document matches the default light dashboard used in storefront and back-office contexts.
+Two brand colors carry the system. **Azul Primário** (`#24549c`) is structural: every primary CTA, every active state, every focus ring, every link. **Ouro Comercial** (`#ffb900`) is the loyalty signal: cashback values, retention moments, the second-CTA that says "this is commercially special." The brand is the relationship between these two — never just one.
+
+Restraint is structural — every screen has a job, every element earns its space. But the brand has warmth: generous rounding (10–22px the norm, never under 8px), confident display type (44–72px on landing surfaces), soft modern shadows tinted with the brand blue on raised surfaces. Color is information AND identity.
+
+This system explicitly rejects:
+- The corporate-stuffy SaaS look (Salesforce / Hubspot dense tables, cold grays)
+- Dev-tool minimalism (Linear / Vercel terminal aesthetics — too cold for this audience)
+- The pastel SaaS-template grid (icon cards in 3-column rows, rounded everything-the-same)
+- Glassmorphism, gradient text, side-stripe borders (universal bans)
+- Antique / ledger aesthetics (this brand is friendly fintech, not bookkeeping)
+
+The mood is closer to Nubank / C6 / Mercado Pago than enterprise B2B: a confident Brazilian SaaS speaking directly to the lojista.
 
 **Key Characteristics:**
+- Two committed brand colors used at full strength: blue for structure, amber for loyalty moments
+- Single typeface (Raleway), confident weight contrast (400 → 700 → 800)
+- Generous rounding throughout (10–22px the norm, 28px on hero surfaces, pill-rounded badges)
+- Modern soft elevation: 1px subtle border + small shadow on cards, blue-tinted shadows on hero CTAs
+- Warm gold chart palette derived from the amber brand — distinctive and on-brand for data viz
+- Sentence-case headings; UPPERCASE reserved for labels/eyebrows at 12px
 
-- Raleway-forward typography with bold weight contrast for page titles and semibold for card titles.
-- shadcn-style radii: `0.5rem` base with derived `sm`/`md` steps; cards often step up to `rounded-xl` (12px).
-- Primary UI ink is neutral near-black on white; charts and occasional highlights pull from the five `chart-*` hues in CSS, plus domain-specific blues and ambers in some commerce screens.
-- Navigation is a persistent sidebar (≈16rem, sheet on mobile) with grouped Portuguese labels matching module IA.
+---
 
-## 2. Colors: The Varejo Neutrals + Loyalty Amber
+## 2. Colors: Blue + Amber, Committed
 
-The palette is **Restrained**: tinted neutrals carry almost every surface, with **loyalty-amber** as the deliberate accent for cashback, brand buttons, and reward language.
+Two brand colors carry the identity. Don't try to make this a one-color minimal system or a many-color rainbow.
 
-### Primary
+### Primary brand
+- **Azul Primário** (`#24549c`): The Nubank-of-retail blue. Primary buttons, active navigation, focus rings, link color, headline emphasis. Trust + authority.
+- **Azul Profundo** (`#1a3d7a`): Hover/pressed state for blue. Also for deep-blue section backgrounds when a full-bleed brand surface is needed (testimonials, footers, CTA bands).
 
-- **Near-black UI ink** (`#171717`, HSL `0 0% 9%` as `:root --primary`): Default filled buttons (`variant default`), sidebar primary accents in light theme, scrollbar thumb tints, and body emphasis where `text-primary` is applied on the root layout. Not a marketing hue; it is the workhorse foreground/action color.
-
-### Secondary
-
-- **Quiet loft gray** (`#f5f5f5`, `--secondary` / `--muted`): Secondary buttons, hover surfaces (`accent`), alternating table feel, and muted panel backgrounds. Pairs with the same near-black foreground token family for text on those surfaces.
-
-### Tertiary
-
-- **Data sequence hues** (chart-1…chart-5 in `styles/globals.css`): Reserved for analytics series, funnels, and multi-series charts so each dashboard module stays interpretable without importing new colors per screen.
+### Secondary brand
+- **Ouro Comercial** (`#ffb900`): The signature amber. Cashback values, brand mark moments, secondary CTAs on the landing, the "celebrate" color. Earnable, not decorative.
+- **Ouro Escuro** (`#e6a700`): Hover/pressed state for amber.
 
 ### Neutral
+- **Canvas** (`#ffffff`): Main background and card surface.
+- **Superfície** (`#f5f5f5`): Secondary surface for tab containers, muted backgrounds, hover wash on ghost buttons.
+- **Borda** (`#e5e5e5`): All 1px structural borders and dividers.
+- **Muted** (`#737373`): Supporting text — descriptions, captions, placeholders.
+- **Carbono** (`#171717`): Primary body text on canvas. NOT primary CTAs.
 
-- **Canvas white** (`#ffffff`): Page background (`--background` light).
-- **Card white** (`#ffffff`): Card and popover surfaces in light; separated from page by border and light shadow, not by color jump.
-- **Hairline border** (`#e5e5e5`, `--border` / `--input`): Inputs, cards, dividers.
-- **Muted label ink** (`#737373`, `--muted-foreground`): Helper text, descriptions, placeholder tone.
-- **Sidebar veil** (`#fafafa`, `--sidebar-background`): Rail background; **sidebar ink** (`#3f3f46` approx. from `--sidebar-foreground`) for labels.
+### Semantic
+- **Destrutivo** (`#ef4444`): Delete actions, errors. Never decorative.
+- **Sucesso** (`#16a34a`): Confirmation feedback, "ATIVA" status. Used sparingly.
 
-### Accent & brand
+### Data visualization
+Five warm gold steps. Distinctive — most analytics tools default to cold blue/teal/red. The gold palette extends the brand identity into charts:
+- `chart-gold-1` (`#f5cf52`) light gold — primary series highlight
+- `chart-gold-2` (`#e3b042`) medium gold — secondary series
+- `chart-gold-3` (`#c98a2c`) golden bronze
+- `chart-gold-4` (`#9a691e`) dark bronze
+- `chart-gold-5` (`#7a5117`) deepest bronze
 
-- **Loyalty amber** (`#ffb900`, `--color-brand`): Primary brand cashback CTA (`variant brand`, `ghost-brand`). Text on amber uses **`#000000`** (`--color-brand-foreground`) today; treat as high-contrast shelf label, not body copy color.
-- **Signal red** (`#ef4444` approx., `--destructive`): Irreversible actions, errors, destructive buttons.
+### Named rules
+**The two-brand commitment.** Both blue and amber are brand colors used at full saturation. Never desaturate them to feel "tasteful" — that loses the identity. Use them confidently or not at all.
 
-### Domain accents (local overrides)
+**The 1:3 amber-to-blue ratio.** In any viewport, amber should appear less often than blue. Blue can carry every primary CTA, every active state. Amber is the rarer moment — cashback, the second CTA, the loyalty highlight. Roughly 1 amber for every 3 blue elements keeps the hierarchy clear.
 
-Some commerce views use **deep retail blue** (`#15599a`) in light mode and **warm amber** (`#fead61`) in dark mode for emphasized currency lines on product analytics. These are feature-local; extend the sidecar ramps if they spread.
+**The palette closure rule.** These eleven tokens (plus chart palette) are the complete vocabulary. Introducing a new UI color requires updating DESIGN.md. No ad-hoc `text-green-500` or `bg-purple-100`.
 
-### Named Rules
+---
 
-**The One Accent Rule.** Amber appears where money returned to the customer or brand promise is the story (cashback, rewards, highlighted promo CTAs), not for general navigation or table chrome.
+## 3. Typography: Confident Brazilian Voice
 
-**The No Neon Chroma Rule.** Charts use balanced saturation from the predefined `chart-*` slots; do not introduce neon greens, purple gradients on data backgrounds, or decorative gradients on marketing surfaces that compete with KPI readability.
+**Single font: Raleway** (already loaded; weights 400–800 in use).
 
-## 3. Typography
-
-**Display Font:** Raleway (with `ui-sans-serif`, system-ui fallbacks)  
-**Body Font:** Raleway (same stack)  
-**Label Font:** Raleway (no separate mono stack in the root theme)
-
-**Character:** Humanist-geometric sans with a slightly editorial weight range; friendly enough for WhatsApp-adjacent workflows, still sober enough for financial tables.
+Raleway holds personality across weights and reads beautifully in Portuguese — accents and tildes render cleanly. The system uses weight contrast (400 body → 700 title → 800 display) rather than multiple typefaces.
 
 ### Hierarchy
+- **Display** (extrabold 800, 44–72px, line-height 1.0–1.05, letter-spacing -0.025em): Landing heroes, section heroes. Confident, big. Sentence case.
+- **Title** (extrabold 800, 24–32px, line-height 1.15, letter-spacing -0.015em): Section headings, card titles. Sentence case.
+- **Subtitle** (medium 500, 16–20px, line-height 1.45): Lead paragraphs under heroes; muted-foreground for secondary emphasis.
+- **Body** (regular 400, 15–16px, line-height 1.6): Descriptions, paragraphs. Cap line length 65–75ch.
+- **Label** (bold 800, 12px, line-height 1, letter-spacing 0.08em, UPPERCASE): Eyebrows, badge text, sidebar groups, stat labels. The workhorse of structure.
+- **Micro** (semibold 600, 11px): Timestamps, secondary metadata. Sparing use.
 
-- **Display** (800, `1.5rem` / ~24px, tight tracking): Page titles in commerce surfaces (e.g. bold `text-2xl` / `font-black` patterns for module heroes like "Loja Digital" and monetary summaries in modals).
-- **Headline** (600, `1.25rem`, tight tracking): Step titles in bulk flows ("Importação concluída", mapping review screens).
-- **Title** (600, `1rem`, tight tracking): Card titles (`CardTitle`), compact summaries.
-- **Body** (400, `1rem`, line-height 1.5): Default reading text; keep line length near 65–75ch in prose blocks inside modals or community content.
-- **Label** (700, `0.75rem`, slight tracking, **uppercase**): Section chrome (`SectionWrapper` titles) for module segmentation between KPI blocks and data tables.
+### Named rules
+**Confident scale on brand surfaces.** Landing displays go 56–72px. Dashboard titles go 24–32px. Don't shrink display type to feel professional — the brand projects confidence.
 
-### Named Rules
+**Sentence case for titles, UPPERCASE for labels.** Mixing the two in the same hierarchy level (e.g., shouty all-caps headings) is prohibited. The eyebrow is uppercase; the heading right below it is sentence case.
 
-**The Section Uppercase Rule.** Uppercase is reserved for section headers and compact module labels, not for long sentences or table column titles.
+**Single voice rule.** Don't introduce a second display font. Don't reach for a monospace for "data" tables — Raleway with `tabular-nums` handles tabular figures.
 
-## 4. Elevation
+---
 
-The system is **lightly lifted**: most depth comes from `shadow-sm` / `shadow-xs` on cards and buttons plus hairline borders, not from deep drop shadows. Dialogs and sheets step up to `shadow-lg` for focus separation. Flat regions (plain `bg-background` dashboard canvas) deliberately recede so bordered cards and section wrappers read as tiles.
+## 4. Elevation: Soft Modern, Brand-Tinted
+
+The brand has warmth. Surfaces lift slightly with soft shadows, with a subtle blue tint on hero surfaces.
 
 ### Shadow vocabulary
+- **Hairline** (`0 1px 2px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.04)`): Default for cards and elevated panels. The "barely lifted" rest state.
+- **Card** (`0 4px 12px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)`): Featured cards, primary buttons. Clear lift.
+- **Float** (`0 12px 24px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04)`): Dropdowns, popovers, tooltips.
+- **Hero brand** (`0 16px 40px -12px rgba(36,84,156,0.30), 0 6px 12px rgba(36,84,156,0.16)`): Primary CTAs on landing, hero illustrations. The blue-tinted glow that signals brand-critical.
+- **Hero amber** (`0 16px 40px -12px rgba(255,185,0,0.40), 0 6px 12px rgba(0,0,0,0.08)`): For amber CTAs on landing only. The loyalty glow.
 
-- **Card rest** (`shadow-sm`): Default `Card` and primary buttons inherit a minimal sm shadow in light theme utilities.
-- **Input rest** (`shadow-xs`): Text fields carry a subtle xs shadow for edge definition.
-- **Overlay** (`Dialog` overlay `bg-black/80`): Full-screen dim for modal focus; content panel uses `shadow-lg`.
+### Named rules
+**Tinted shadows on heroes only.** Blue-tinted shadows reserved for the most prominent CTA/surface in a viewport. Using them everywhere flattens the hierarchy.
 
-### Named Rules
+**Flat-by-default for content containers.** Static text containers and content blocks don't get shadows. Elevation signals lift or interactivity, not decoration.
 
-**The Flat Canvas Rule.** The page background stays flat; elevation cues belong to interactive objects (cards, popovers, dialogs), not full-bleed section backgrounds.
+---
 
 ## 5. Components
 
 ### Buttons
+Generous rounding (18px = `rounded-xl`). Confident weight (font-extrabold for primary CTAs; font-bold for outline/ghost).
 
-- **Shape:** `rounded-md` (6px effective from `0.5rem` base minus 2px), height 36px default (`h-9`), compact variants at 32px / 28px.
-- **Primary:** `bg-primary` / `text-primary-foreground`, `shadow-sm`, hover `bg-primary/90`.
-- **Brand:** `bg-brand` / `text-brand-foreground`, same hover opacity pattern for loyalty flows.
-- **Secondary / outline / ghost:** Follow shadcn mappings (`secondary`, `outline` with `border-input`, `ghost` with accent hover).
-- **Semantic:** `success`, `warning`, `destructive`, and `-light` variants use stock Tailwind greens/yellows/destructive tints for inline status actions.
-- **Hover / focus:** Color transitions via `transition-colors`; focus ring `ring-1` / `ring-ring` on focus-visible; disabled: reduced opacity, no pointer.
+- **Primary** (`bg-primary text-primary-foreground` in shadcn, `bg-[#24549c]` raw): Azul fill, white text, 18px rounded, 44px tall (h-11), `Hero brand` shadow on landing CTAs, `Card` shadow on app CTAs. Default action everywhere.
+- **Brand** (`bg-brand text-brand-foreground`): Ouro fill, near-black text. Same geometry. For loyalty-critical CTAs (cashback flows, secondary landing CTA).
+- **Outline**: transparent fill, 1px Borda border, Carbono text. Hover: Superfície wash.
+- **Ghost**: transparent, no border. Hover: Superfície wash. Icon-only toolbar buttons.
+- **Destructive**: Destrutivo fill, white text. Confirmed delete flows only.
 
-### Cards / containers
+Sizes:
+- `lg` (h-12 px-6 text-[15px]) — hero CTAs, primary marketing buttons
+- `default` (h-11 px-5 text-sm) — primary actions, most contexts
+- `sm` (h-9 px-4 text-sm) — table row actions, dense contexts
+- `icon` (h-10 w-10 rounded-lg) — toolbar icon buttons
 
-- **Corner style:** `rounded-xl` (12px) on `Card` and `SectionWrapper`-style panels.
-- **Background:** `bg-card` with `text-card-foreground`.
-- **Border:** `border` with default border token; `SectionWrapper` uses `border-primary/20` for a faint tie-in to primary ink.
-- **Shadow:** `shadow-sm` on cards, `shadow-xs` on inner utilities where applied.
-- **Padding:** Card header/content defaults (`p-6`, content `pt-0`); section wrapper uses tighter `px-3 py-4` for dense dashboard rhythm.
+### Badges / Pills
+Pill-shaped (rounded-full) at small sizes. 11–12px bold, generous horizontal padding (`px-3 py-1`).
+- **Default** — Azul fill, white text. Status emphasis.
+- **Brand** — Ouro fill, near-black text. Loyalty highlights.
+- **Soft blue** — `bg-blue/10 border-blue/20 text-blue` — secondary tag.
+- **Soft amber** — `bg-amber/18 border-amber/35 text-carbono` — featured tag.
+- **Outline** — transparent fill, 1px border, muted text.
 
-### Inputs / fields
+### Cards
+Generous rounding (22px = `rounded-2xl`), 1px subtle border, hairline shadow.
 
-- **Style:** `rounded-md`, `border-input`, transparent background, `text-sm`, placeholder `text-muted-foreground`.
-- **Focus:** `ring-1 ring-ring`, outline hidden on focus-visible.
-- **Disabled:** Reduced opacity, `cursor-not-allowed`.
+```
+rounded-2xl border border-border bg-card shadow-sm p-6
+```
 
-### Navigation (sidebar)
+Don't stack heavy shadows. Don't add gradient backgrounds. Don't put colored accent strips along the top edge. If a card needs to stand out, use `card-elevated` (blue-tinted shadow).
 
-- **Layout:** Fixed rail width `16rem` desktop, `18rem` mobile sheet; icon mode `3rem`.
-- **Typography:** Menu entries use small iconography (`w-4 h-4` lucide) beside Portuguese labels; grouping labels from config (`Geral`, `Comercial`, etc.).
-- **State:** Active/hover states follow sidebar primitives (`sidebar-accent` slots) with rounded items; keyboard shortcut `b` toggles, cookie-backed persistence.
+### Inputs
+- Rounded-lg (14px), 1px Borda border, transparent fill.
+- 44px height (h-11), 16px body type for legibility.
+- Focus: 3px ring at `rgba(36,84,156,0.15)` + border color shift to Azul. Soft, not loud.
+- Error: Destrutivo border, no fill change.
 
-### Dialogs
+### Navigation
+**Landing/marketing**: Fixed top, white-canvas background, 64px tall, soft shadow on scroll. Logo left, anchor links centered, primary CTA right. Mobile: hamburger drawer.
 
-- **Overlay:** Dark translucent scrim, fade animation.
-- **Content:** Centered `max-w-lg` panel, `rounded-lg`, `border`, `p-6`, enter/exit zoom + fade.
+**App sidebar (inset variant)**: Slightly tinted off-white background, 14px body for items, `rounded-lg` on active state with full-row `bg-sidebar-accent` fill. No left-edge stripes.
 
-### Signature pattern: `SectionWrapper`
+### Stats / KPI cells
+A label (12px uppercase, muted) above a confident number (24–48px, font-extrabold, tabular-nums). Optional delta indicator as a pill-rounded badge (`+12%` in soft-success green). No sparklines unless data genuinely warrants. No gradient header strips on the cell.
 
-Dashboard modules wrap KPI clusters: uppercase `text-xs` title row with optional icon and actions, children spaced `gap-3`. This pattern enforces the **Estatísticas / configuration** visual rhythm without blanketing the page in duplicate card grids.
+---
 
 ## 6. Do's and Don'ts
 
-PRODUCT.md does not enumerate visual anti-references; guardrails below align platform tone (serious retail operations, BI clarity, WhatsApp-adjacent workflows) with the implemented token set.
+### Do
+- **Do** use blue as the primary CTA color and amber as the loyalty-moment color. Both at full saturation.
+- **Do** apply generous rounding: `rounded-xl` on buttons, `rounded-2xl` on cards, `rounded-full` on badges.
+- **Do** use confident display type: 56–72px on landing heroes, 24–32px on dashboard sections.
+- **Do** tint shadows with the brand blue on hero CTAs (the brand glow).
+- **Do** keep chart palette in the warm gold range — it's distinctive and extends the brand identity.
+- **Do** use sentence case for titles, UPPERCASE only for labels/eyebrows at 12px.
+- **Do** keep amber rarer than blue in any viewport (roughly 1:3 ratio).
 
-### Do:
-
-- **Do** keep body copy and numeric tables on near-black ink and white/loft-gray surfaces for daylight readability at the counter.
-- **Do** use **loyalty-amber** sparingly for cashback, gift, and brand-forward CTAs so amber stays semantically tied to money returning to the customer.
-- **Do** respect the sidebar + `SectionWrapper` rhythm when adding modules so new screens feel like the same operations suite.
-- **Do** use chart tokens (`chart-1`…`chart-5`) for multi-series visuals before introducing new hex colors.
-- **Do** pair bold weight jumps (800/700 titles vs 400 body) for hierarchy; Raleway carries both without extra families.
-
-### Don't:
-
-- **Don't** cover large dashboard areas in saturated amber or chart colors; elevation and whitespace separate content, not rainbow backgrounds.
-- **Don't** use gradient text, glassmorphism panels, or neon dual-tone skins that read as generic AI-SaaS marketing rather than a working storefront tool.
-- **Don't** apply colored left/right border stripes thicker than 1px as the primary way to mark list rows; use background tint, icons, or typography instead.
-- **Don't** shrink label text below `0.75rem` for critical operational labels (PIN prompts, redemption caps) without testing touch targets on the **Ponto de Interação** tablet flows.
-- **Don't** mute destructive actions visually: keep `destructive` contrast and wording explicit for money movement and campaign sends.
+### Don't
+- **Don't** treat grafite/near-black as the primary brand color. The brand is blue + amber.
+- **Don't** flatten the rounded language: anything under 8px feels rigid and corporate.
+- **Don't** use gradient text (`background-clip: text` with gradients). A solid color at increased weight communicates emphasis without the cliché.
+- **Don't** use glassmorphism (`backdrop-filter: blur`) decoratively.
+- **Don't** apply `border-left` greater than 1px as a colored accent stripe on cards or alerts.
+- **Don't** introduce a second display font. Raleway carries it.
+- **Don't** lean on the SaaS-template hero metric (big number + supporting stats grid + sparkline). It's the cliché.
+- **Don't** stack `shadow-lg` on static content containers. Heavy shadows belong to floating layers.
+- **Don't** use the ledger / ink-on-paper aesthetic — this brand is friendly Brazilian fintech, not antique accounting.
+- **Don't** introduce Tailwind color utilities outside the palette (`text-purple-500`, `bg-emerald-100`). The system is closed.

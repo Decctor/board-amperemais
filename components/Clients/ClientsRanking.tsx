@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useClientsRanking } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
-import type { TGetClientsRankingInput } from "@/pages/api/clients/stats/ranking";
+import type { TGetClientsRankingInput } from "@/app/api/clients/stats/ranking/route";
 import { ArrowDown, ArrowUp, BadgeDollarSign, CirclePlus, Crown, Mail, Minus, Phone } from "lucide-react";
 import { useState } from "react";
 
@@ -28,7 +28,7 @@ export default function ClientsRanking({ periodAfter, periodBefore, comparingPer
 
 	return (
 		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-primary/20 flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE CLIENTES - TOP 10</h1>
 					<div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export default function ClientsRanking({ periodAfter, periodBefore, comparingPer
 							<div
 								key={client.clienteId}
 								className={cn(
-									"bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs",
+									"bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs",
 									client.rank === 1 && "border-yellow-500/50 bg-yellow-500/5",
 									client.rank === 2 && "border-gray-400/50 bg-gray-400/5",
 									client.rank === 3 && "border-orange-600/50 bg-orange-600/5",
@@ -130,34 +130,30 @@ export default function ClientsRanking({ periodAfter, periodBefore, comparingPer
 											</div>
 											<div className="flex items-center gap-1">
 												<Phone className="w-4 h-4 min-w-4 min-h-4" />
-												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-primary/80">{client.telefone}</h1>
+												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{client.telefone}</h1>
 											</div>
 										</div>
 									</div>
 									<div className="flex items-center gap-3">
 										{rankingBy === "purchases-total-value" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(client.totalValue)}</p>
 												</div>
 												{client.totalValueComparison !== null && (
-													<p className="text-[0.60rem] text-muted-foreground">
-														Anterior: {formatToMoney(client.totalValueComparison)}
-													</p>
+													<p className="text-[0.60rem] text-muted-foreground">Anterior: {formatToMoney(client.totalValueComparison)}</p>
 												)}
 											</div>
 										) : null}
 										{rankingBy === "purchases-total-qty" ? (
 											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-primary")}>
+												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
 													<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
 													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(client.totalPurchases)}</p>
 												</div>
 												{client.totalPurchasesComparison !== null && (
-													<p className="text-[0.60rem] text-muted-foreground">
-														Anterior: {formatDecimalPlaces(client.totalPurchasesComparison)}
-													</p>
+													<p className="text-[0.60rem] text-muted-foreground">Anterior: {formatDecimalPlaces(client.totalPurchasesComparison)}</p>
 												)}
 											</div>
 										) : null}

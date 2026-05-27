@@ -24,8 +24,8 @@ export function WhatsAppConnectionTypeSelector({ selectedType, onSelectType, dis
 				{/* Meta Cloud API Card */}
 				<Card
 					className={cn(
-						"cursor-pointer transition-all hover:border-primary/50",
-						selectedType === "META_CLOUD_API" && "border-primary ring-2 ring-primary/20",
+						"cursor-pointer transition-all hover:border-border/50",
+						selectedType === "META_CLOUD_API" && "border-border ring-2 ring-primary/20",
 						disabled && "opacity-50 cursor-not-allowed",
 					)}
 					onClick={() => !disabled && onSelectType("META_CLOUD_API")}
@@ -38,7 +38,7 @@ export function WhatsAppConnectionTypeSelector({ selectedType, onSelectType, dis
 								</div>
 								<CardTitle className="text-base">API Oficial do WhatsApp (CloudAPI)</CardTitle>
 							</div>
-							{selectedType === "META_CLOUD_API" && <CheckCircle2 className="h-5 w-5 text-primary" />}
+							{selectedType === "META_CLOUD_API" && <CheckCircle2 className="h-5 w-5 text-foreground" />}
 						</div>
 						<CardDescription className="text-xs">Conexão oficial via WhatsApp Cloud API</CardDescription>
 					</CardHeader>
@@ -67,8 +67,8 @@ export function WhatsAppConnectionTypeSelector({ selectedType, onSelectType, dis
 				{/* Internal Gateway Card */}
 				<Card
 					className={cn(
-						"cursor-pointer transition-all hover:border-primary/50",
-						selectedType === "INTERNAL_GATEWAY" && "border-primary ring-2 ring-primary/20",
+						"cursor-pointer transition-all hover:border-border/50",
+						selectedType === "INTERNAL_GATEWAY" && "border-border ring-2 ring-primary/20",
 						disabled && "opacity-50 cursor-not-allowed",
 					)}
 					onClick={() => !disabled && onSelectType("INTERNAL_GATEWAY")}
@@ -81,7 +81,7 @@ export function WhatsAppConnectionTypeSelector({ selectedType, onSelectType, dis
 								</div>
 								<CardTitle className="text-base">API Não Oficial do WhatsApp (Baileys)</CardTitle>
 							</div>
-							{selectedType === "INTERNAL_GATEWAY" && <CheckCircle2 className="h-5 w-5 text-primary" />}
+							{selectedType === "INTERNAL_GATEWAY" && <CheckCircle2 className="h-5 w-5 text-foreground" />}
 						</div>
 						<CardDescription className="text-xs">Conexão via QR Code (Baileys)</CardDescription>
 					</CardHeader>

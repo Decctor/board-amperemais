@@ -45,7 +45,7 @@ export const CashbackProgramTransactionTypeEnum = z.enum(["ACÚMULO", "RESGATE",
 export type TCashbackProgramTransactionTypeEnum = z.infer<typeof CashbackProgramTransactionTypeEnum>;
 export const CashbackProgramTransactionStatusEnum = z.enum(["ATIVO", "CONSUMIDO", "EXPIRADO"]);
 export type TCashbackProgramTransactionStatusEnum = z.infer<typeof CashbackProgramTransactionStatusEnum>;
-export const OrganizationIntegrationTypeEnum = z.enum(["ONLINE-SOFTWARE", "CARDAPIO-WEB"]);
+export const OrganizationIntegrationTypeEnum = z.enum(["ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING"]);
 export type TOrganizationIntegrationTypeEnum = z.infer<typeof OrganizationIntegrationTypeEnum>;
 export const ChatStatusEnum = z.enum(["ABERTA", "FECHADA"]);
 export type TChatStatusEnum = z.infer<typeof ChatStatusEnum>;
@@ -226,14 +226,7 @@ export type TPoiTransactionRequestStatusEnum = z.infer<typeof PoiTransactionRequ
 export const PoiTransactionRequestTypeEnum = z.enum(["NOVA_TRANSACAO"]);
 export type TPoiTransactionRequestTypeEnum = z.infer<typeof PoiTransactionRequestTypeEnum>;
 
-export const AccountChartNatureEnum = z.enum([
-	"ATIVO",
-	"PASSIVO",
-	"PATRIMONIO_LIQUIDO",
-	"RECEITA",
-	"CUSTO",
-	"DESPESA",
-]);
+export const AccountChartNatureEnum = z.enum(["ATIVO", "PASSIVO", "PATRIMONIO_LIQUIDO", "RECEITA", "CUSTO", "DESPESA"]);
 export type TAccountChartNatureEnum = z.infer<typeof AccountChartNatureEnum>;
 
 export const ShopModeEnum = z.enum(["CARDAPIO", "CATALOGO"]);

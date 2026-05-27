@@ -1,25 +1,27 @@
-import BentoGrid from "./_components/BentoGrid";
-import CampaignsSection from "./_components/CampaignsSection";
-import FooterV2 from "./_components/Footer";
-import Hero from "./_components/Hero";
+import "./_components/ledger/ledger.css";
 import LandingAnalyticsTracker from "./_components/LandingAnalyticsTracker";
-import NavbarV2 from "./_components/Navbar";
-import POSSection from "./_components/POSSection";
-import Pricing from "./_components/Pricing";
-import SocialProof from "./_components/SocialProof";
+import { LedgerCase } from "./_components/ledger/Case";
+import { LedgerClosingCTA, LedgerFooter } from "./_components/ledger/Footer";
+import { LedgerFeatures } from "./_components/ledger/Features";
+import { LedgerHero } from "./_components/ledger/Hero";
+import { LedgerHowItWorks } from "./_components/ledger/HowItWorks";
+import { LedgerNavbar } from "./_components/ledger/Navbar";
+import { LedgerPricing } from "./_components/ledger/Pricing";
 
 export default function LandingPage() {
 	return (
-		<div className="min-h-screen bg-white">
+		<div className="min-h-screen bg-[#fafaf7] text-[#171717] selection:bg-[#ffb900]/35 selection:text-[#171717]">
 			<LandingAnalyticsTracker />
-			<NavbarV2 />
-			<Hero />
-			{/* <SocialProof /> */}
-			<BentoGrid />
-			<POSSection />
-			<CampaignsSection />
-			<Pricing />
-			<FooterV2 />
+			<LedgerNavbar />
+			<main>
+				<LedgerHero />
+				<LedgerHowItWorks />
+				<LedgerCase />
+				<LedgerFeatures />
+				<LedgerPricing />
+				<LedgerClosingCTA />
+			</main>
+			<LedgerFooter />
 		</div>
 	);
 }

@@ -1,14 +1,13 @@
 "use client";
-import type { TGetCampaignConversionsOutputItems } from "@/app/api/campaigns/conversions/route";
+import type { TGetCampaignStatsOutput } from "@/app/api/campaigns/stats/by-campaign/route";
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import type { TGetConversionQualityOutput } from "@/app/api/campaigns/stats/conversion-quality/route";
-import CampaignInteractionsFilterMenu from "@/components/Campaigns/CampaignInteractionsFilterMenu";
+import { CampaignConversionCard, CONVERSION_TYPE_CONFIG } from "@/components/Campaigns/CampaignConversionCard";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import ClientHoverCard from "@/components/Clients/ClientHoverCard";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import ControlCampaign from "@/components/Modals/Campaigns/ControlCampaign";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
@@ -40,13 +39,13 @@ import {
 	Clock,
 	Diamond,
 	Grid3x3,
-	ListFilter,
 	MessageCircle,
 	MousePointerClick,
 	Pencil,
 	RefreshCw,
 	Rocket,
 	Send,
+	ShieldAlert,
 	ShoppingCart,
 	Ticket,
 	TrendingUp,
@@ -59,6 +58,7 @@ import {
 import Link from "next/link";
 import { memo, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { InteractionsSentStatusOptions } from "@/utils/select-options";
 
 type CampaignResultPageProps = {
 	campaignId: string;
@@ -76,8 +76,8 @@ const TRIGGER_TYPE_LABELS: Record<TCampaignTriggerTypeEnum, string> = {
 	ANIVERSARIO_CLIENTE: "Aniversário do Cliente",
 	"QUANTIDADE-TOTAL-COMPRAS": "Qtd. Total de Compras",
 	"VALOR-TOTAL-COMPRAS": "Valor Total de Compras",
-	RECORRENTE: "Recorrente",
 	"PIOR-DIA-VENDAS": "Pior Dia de Vendas",
+	RECORRENTE: "Recorrente",
 	"USO-UNICO": "Uso Único",
 };
 
@@ -87,20 +87,11 @@ const ATTRIBUTION_MODEL_LABELS: Record<string, string> = {
 	LINEAR: "Linear",
 };
 
-const CONVERSION_TYPE_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
-	AQUISICAO: { label: "Aquisição", bgClass: "bg-green-500", textClass: "text-green-600 dark:text-green-400" },
-	REATIVACAO: { label: "Reativação", bgClass: "bg-blue-500", textClass: "text-blue-600 dark:text-blue-400" },
-	ACELERACAO: { label: "Aceleração", bgClass: "bg-yellow-500", textClass: "text-yellow-600 dark:text-yellow-400" },
-	REGULAR: { label: "Regular", bgClass: "bg-gray-400", textClass: "text-gray-600 dark:text-gray-400" },
-	ATRASADA: { label: "Atrasada", bgClass: "bg-red-500", textClass: "text-red-600 dark:text-red-400" },
-};
-
 const INTERACTION_SENT_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
 	AGENDADA: { label: "Agendada", bgClass: "bg-gray-400", textClass: "text-gray-600 dark:text-gray-400" },
 	EXECUTADA: { label: "Executada", bgClass: "bg-green-500", textClass: "text-green-600 dark:text-green-400" },
 };
-export default function CampaignResultPage({ campaignId, membership, user }: CampaignResultPageProps) {
-	const [editMenuIsOpen, setEditMenuIsOpen] = useState(false);
+export default function CampaignResultPage({ campaignId, membership, user: _user }: CampaignResultPageProps) {
 	const initialStartDate = dayjs().startOf("month").toDate();
 	const initialEndDate = dayjs().endOf("month").toDate();
 
@@ -115,7 +106,7 @@ export default function CampaignResultPage({ campaignId, membership, user }: Cam
 
 	const { data: campaign, isLoading: campaignLoading, isError: campaignError } = useCampaignById({ id: campaignId });
 
-	const { data: performance, isLoading: performanceLoading } = useCampaignStats({
+	const { data: performance } = useCampaignStats({
 		campaignId,
 		startDate: filters.startDate,
 		endDate: filters.endDate,
@@ -215,9 +206,11 @@ export default function CampaignResultPage({ campaignId, membership, user }: Cam
 							}}
 							handleChange={handleDateChange}
 						/>
-						<Button size="sm" className="flex items-center gap-2" onClick={() => setEditMenuIsOpen(true)}>
-							<Pencil className="w-4 h-4 min-w-4 min-h-4" />
-							EDITAR
+						<Button size="sm" className="flex items-center gap-2" asChild>
+							<Link href={`/dashboard/commercial/campaigns/builder?campaignId=${campaignId}`}>
+								<Pencil className="w-4 h-4 min-w-4 min-h-4" />
+								EDITAR
+							</Link>
 						</Button>
 					</div>
 				</div>
@@ -321,6 +314,7 @@ export default function CampaignResultPage({ campaignId, membership, user }: Cam
 			</div>
 
 			{/* Section D — Time-Series Chart */}
+			<WeeklyLimitSection performance={performance} />
 			<div className="w-full h-[480px]">
 				<CampaignsGraphs
 					startDate={filters.startDate}
@@ -358,9 +352,6 @@ export default function CampaignResultPage({ campaignId, membership, user }: Cam
 					<ConversionsSection campaignId={campaignId} startDate={filters.startDate} endDate={filters.endDate} />
 				</div>
 			</div>
-			{editMenuIsOpen ? (
-				<ControlCampaign campaignId={campaignId} organizationId={membership.organizacao.id} closeModal={() => setEditMenuIsOpen(false)} callbacks={{}} />
-			) : null}
 		</div>
 	);
 }
@@ -395,7 +386,7 @@ function CampaignConversionTypeDistributionSection({ distribution }: { distribut
 		(prev, next) => prev.item.tipo === next.item.tipo,
 	);
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">CONVERSÕES POR TIPO</h1>
@@ -415,7 +406,7 @@ function CampaignConversionTypeDistributionSection({ distribution }: { distribut
 
 function CampaignFrequencyImpactSection({ frequency }: { frequency: TGetConversionQualityOutput["data"]["impactoFrequencia"] }) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">IMPACTO NA FREQUÊNCIA</h1>
@@ -436,7 +427,7 @@ function CampaignFrequencyImpactSection({ frequency }: { frequency: TGetConversi
 }
 function CampaignMonetaryImpactSection({ monetary }: { monetary: TGetConversionQualityOutput["data"]["impactoMonetario"] }) {
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">IMPACTO NO TICKET</h1>
@@ -467,6 +458,55 @@ function ImpactRow({ label, value, positive }: { label: string; value: string; p
 			<span className={cn("text-xs font-bold", positive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>{value}</span>
 		</div>
 	);
+}
+
+function WeeklyLimitSection({ performance }: { performance: TGetCampaignStatsOutput["data"] | undefined }) {
+	const weeklyLimit = performance?.limiteSemanal;
+	if (!weeklyLimit) return null;
+
+	return (
+		<div className="w-full flex flex-col gap-3">
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="LIMITE SEMANAL EFETIVO"
+					icon={<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: weeklyLimit.campaignEffectiveWeeklyLimit ?? 0,
+						format: () => formatWeeklyLimitValue(weeklyLimit.campaignEffectiveWeeklyLimit),
+					}}
+				/>
+				<StatUnitCard
+					title="USADO NESTA SEMANA"
+					icon={<Send className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: weeklyLimit.campaignUsedThisWeek,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+				/>
+				<StatUnitCard
+					title="SALDO SEMANAL"
+					icon={<Clock className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: weeklyLimit.campaignRemainingThisWeek ?? 0,
+						format: () => formatWeeklyLimitValue(weeklyLimit.campaignRemainingThisWeek),
+					}}
+				/>
+				<StatUnitCard
+					title="LIMITE SEMANAL DA ORGANIZAÇÃO"
+					icon={<ShieldAlert className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: weeklyLimit.organizationWeeklyLimit ?? 0,
+						format: () => formatWeeklyLimitValue(weeklyLimit.organizationWeeklyLimit),
+					}}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function formatWeeklyLimitValue(value: number | null | undefined) {
+	if (value == null) return "N/A";
+	return formatDecimalPlaces(value);
 }
 
 function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: string; startDate: Date; endDate: Date }) {
@@ -513,7 +553,7 @@ function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: st
 	};
 
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">CONVERSÕES</h1>
@@ -540,7 +580,7 @@ function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: st
 									"flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[0.65rem] font-bold uppercase transition-colors border",
 									selectedTypes.includes(opt.key)
 										? `${opt.bgClass} text-white border-transparent`
-										: "bg-secondary text-primary border-transparent hover:bg-secondary/80",
+										: "bg-secondary text-foreground border-transparent hover:bg-secondary/80",
 								)}
 							>
 								{opt.label}
@@ -562,7 +602,7 @@ function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: st
 					{isSuccess ? (
 						<div className="w-full flex flex-col gap-1.5">
 							{items.length > 0 ? (
-								items.map((conversion) => <ConversionCard key={conversion.id} conversion={conversion} />)
+								items.map((conversion) => <CampaignConversionCard key={conversion.id} conversion={conversion} />)
 							) : (
 								<p className="w-full flex items-center justify-center text-sm text-muted-foreground py-4">Nenhuma conversão encontrada para este período.</p>
 							)}
@@ -574,94 +614,7 @@ function ConversionsSection({ campaignId, startDate, endDate }: { campaignId: st
 	);
 }
 
-function ConversionCard({ conversion }: { conversion: TGetCampaignConversionsOutputItems[number] }) {
-	const config = CONVERSION_TYPE_CONFIG[conversion.tipoConversao ?? ""] ?? {
-		label: conversion.tipoConversao ?? "Desconhecido",
-		bgClass: "bg-gray-400",
-		textClass: "text-gray-600",
-	};
-
-	const tempoHoras = conversion.tempoParaConversaoMinutos ? Math.round((conversion.tempoParaConversaoMinutos / 60) * 10) / 10 : null;
-
-	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs">
-			<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-				<div className="flex items-center gap-3 flex-wrap">
-					<div className="flex items-center gap-1.5 bg-secondary rounded-xl px-3 py-1.5">
-						<UserRound className="w-4 h-4 min-w-4 min-h-4" />
-						<p className="text-[0.65rem] font-medium tracking-tight uppercase">{conversion.cliente?.nome ?? "Cliente não encontrado"}</p>
-					</div>
-					<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-white text-[0.65rem] font-bold uppercase", config.bgClass)}>
-						{config.label}
-					</div>
-				</div>
-				<div className="flex items-center gap-2 text-[0.65rem] font-medium flex-wrap">
-					{conversion.dataConversao && (
-						<div className="flex items-center gap-1 text-muted-foreground">
-							<Calendar className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-							{formatDateAsLocale(conversion.dataConversao)}
-						</div>
-					)}
-					{tempoHoras !== null && (
-						<div className="flex items-center gap-1 text-muted-foreground">
-							<Clock className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-							{tempoHoras} h após envio
-						</div>
-					)}
-				</div>
-			</div>
-			<div className="w-full flex items-center gap-3 flex-wrap">
-				<div className="flex flex-col gap-0.5">
-					<p className="text-[0.6rem] uppercase text-muted-foreground font-medium">Valor da Venda</p>
-					<p className="text-sm font-bold">{formatToMoney(conversion.vendaValor ?? 0)}</p>
-				</div>
-				<div className="w-px h-8 bg-border" />
-				<div className="flex flex-col gap-0.5">
-					<p className="text-[0.6rem] uppercase text-muted-foreground font-medium">Receita Atribuída</p>
-					<p className="text-sm font-bold">{formatToMoney(conversion.atribuicaoReceita ?? 0)}</p>
-				</div>
-				{conversion.deltaMonetarioPercentual !== null && conversion.deltaMonetarioPercentual !== undefined && (
-					<>
-						<div className="w-px h-8 bg-border" />
-						<div className="flex flex-col gap-0.5">
-							<p className="text-[0.6rem] uppercase text-muted-foreground font-medium">Δ Ticket</p>
-							<p
-								className={cn("text-sm font-bold", {
-									"text-green-600 dark:text-green-400": conversion.deltaMonetarioPercentual > 0,
-									"text-red-600 dark:text-red-400": conversion.deltaMonetarioPercentual < 0,
-								})}
-							>
-								{conversion.deltaMonetarioPercentual > 0 ? "+" : ""}
-								{formatDecimalPlaces(conversion.deltaMonetarioPercentual)}%
-							</p>
-						</div>
-					</>
-				)}
-				{conversion.deltaFrequencia !== null && conversion.deltaFrequencia !== undefined && (
-					<>
-						<div className="w-px h-8 bg-border" />
-						<div className="flex flex-col gap-0.5">
-							<p className="text-[0.6rem] uppercase text-muted-foreground font-medium">Δ Ciclo</p>
-							<p
-								className={cn("text-sm font-bold", {
-									"text-green-600 dark:text-green-400": conversion.deltaFrequencia > 0,
-									"text-red-600 dark:text-red-400": conversion.deltaFrequencia < 0,
-								})}
-							>
-								{conversion.deltaFrequencia > 0 ? "+" : ""}
-								{conversion.deltaFrequencia} dias
-							</p>
-						</div>
-					</>
-				)}
-			</div>
-		</div>
-	);
-}
-
 function InteractionsSection({ campaignId }: { campaignId: string }) {
-	const [filterMenuIsOpen, setFilterMenuIsOpen] = useState(false);
-
 	const {
 		data: interactionsResult,
 		isLoading,
@@ -691,7 +644,7 @@ function InteractionsSection({ campaignId }: { campaignId: string }) {
 		bgClass: val.bgClass,
 	}));
 	return (
-		<div className={cn("bg-card border-primary/20 flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
+		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-xs font-medium tracking-tight uppercase">INTERAÇÕES</h1>
@@ -709,21 +662,27 @@ function InteractionsSection({ campaignId }: { campaignId: string }) {
 						className="grow rounded-xl"
 					/>
 					<div className="w-full flex items-center gap-1.5 flex-wrap">
-						{interactionSentStatusOptions.map((opt) => (
-							<button
-								key={opt.key}
-								type="button"
-								onClick={() => updateFilters({ status: [opt.key as "AGENDADA" | "EXECUTADA"], page: 1 })}
-								className={cn(
-									"flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[0.65rem] font-bold uppercase transition-colors border",
-									filters.status.includes(opt.key as "AGENDADA" | "EXECUTADA")
-										? `${opt.bgClass} text-white border-transparent`
-										: "bg-secondary text-primary border-transparent hover:bg-secondary/80",
-								)}
-							>
-								{opt.label}
-							</button>
-						))}
+						{InteractionsSentStatusOptions.map((opt) => {
+							const isSelected = filters.status.includes(opt.value);
+							return (
+								<button
+									key={opt.id}
+									type="button"
+									onClick={() =>
+										updateFilters({
+											status: isSelected ? filters.status.filter((s) => s !== opt.value) : [...filters.status, opt.value],
+											page: 1,
+										})
+									}
+									className={cn(
+										"flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[0.65rem] font-bold uppercase transition-colors border",
+										isSelected && opt.className,
+									)}
+								>
+									{opt.label}
+								</button>
+							);
+						})}
 					</div>
 				</div>
 				<GeneralPaginationComponent
@@ -745,10 +704,6 @@ function InteractionsSection({ campaignId }: { campaignId: string }) {
 						)
 					) : null}
 				</div>
-
-				{filterMenuIsOpen ? (
-					<CampaignInteractionsFilterMenu filters={filters} updateFilters={updateFilters} closeMenu={() => setFilterMenuIsOpen(false)} />
-				) : null}
 			</div>
 		</div>
 	);
@@ -773,7 +728,7 @@ function InteractionLogCard({ interaction }: { interaction: TGetCampaignInteract
 	const executionDateText = interaction.dataExecucao ? formatDateAsLocale(interaction.dataExecucao, true) : "Não executada";
 
 	return (
-		<div className="bg-card border-primary/20 flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="w-full flex flex-col gap-0.5">
 				<div className="w-full flex items-center justify-between gap-2">
 					<div className="flex items-center gap-3 flex-wrap">

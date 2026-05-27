@@ -1,5 +1,5 @@
-import type { TGetSalesInput, TGetSalesOutput } from "@/pages/api/sales";
-import type { TSalesSimplifiedSearchResult } from "@/pages/api/sales/simplified-search";
+import type { TGetSalesInput, TGetSalesOutput } from "@/app/api/sales/route";
+import type { TSalesSimplifiedSearchResult } from "@/app/api/sales/simplified-search/route";
 import type { TSalesSimplifiedSearchQueryParams } from "@/schemas/sales";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -74,7 +74,9 @@ export function useSalesById({ id }: { id: string }) {
 }
 async function fetchSalesSimplifiedSearch(params: TSalesSimplifiedSearchQueryParams) {
 	try {
-		const { data } = await axios.post("/api/sales/simplified-search", params);
+		const searchParams = new URLSearchParams();
+		searchParams.set("payload", JSON.stringify(params));
+		const { data } = await axios.get(`/api/sales/simplified-search?${searchParams.toString()}`);
 
 		return data.data as TSalesSimplifiedSearchResult;
 	} catch (error) {

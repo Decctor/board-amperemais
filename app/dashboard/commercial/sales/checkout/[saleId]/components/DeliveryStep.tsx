@@ -72,11 +72,11 @@ export default function DeliveryStep({ sale, checkoutState }: DeliveryStepProps)
 								variant="outline"
 								className={cn(
 									"h-auto py-6 px-4 flex flex-col items-center gap-3 rounded-xl transition-all",
-									isSelected && "border-primary bg-primary/5 ring-2 ring-primary ring-offset-2",
+									isSelected && "border-border bg-primary/5 ring-2 ring-primary ring-offset-2",
 								)}
 								onClick={() => checkoutState.setEntregaModalidade(mode.value)}
 							>
-								<Icon className={cn("w-8 h-8", isSelected ? "text-primary" : "text-muted-foreground")} />
+								<Icon className={cn("w-8 h-8", isSelected ? "text-foreground" : "text-muted-foreground")} />
 								<div className="text-center">
 									<p className="font-bold">{mode.label}</p>
 									<p className="text-xs text-muted-foreground font-normal">{mode.description}</p>
@@ -88,7 +88,7 @@ export default function DeliveryStep({ sale, checkoutState }: DeliveryStepProps)
 
 				{/* Conditional fields */}
 				{checkoutState.state.entregaModalidade === "ENTREGA" && (
-					<div className="flex flex-col gap-4 p-4 rounded-xl border border-dashed border-primary/30 bg-primary/5">
+					<div className="flex flex-col gap-4 p-4 rounded-xl border border-dashed border-border/30 bg-primary/5">
 						<h3 className="font-bold text-sm uppercase tracking-wide">Endereço de Entrega</h3>
 						{sale.cliente ? (
 							<div className="flex flex-col gap-2">
@@ -125,7 +125,7 @@ export default function DeliveryStep({ sale, checkoutState }: DeliveryStepProps)
 				)}
 
 				{checkoutState.state.entregaModalidade === "COMANDA" && (
-					<div className="flex flex-col gap-4 p-4 rounded-xl border border-dashed border-primary/30 bg-primary/5">
+					<div className="flex flex-col gap-4 p-4 rounded-xl border border-dashed border-border/30 bg-primary/5">
 						<h3 className="font-bold text-sm uppercase tracking-wide">Número da Comanda</h3>
 						<TextInput
 							label="Comanda / Mesa"

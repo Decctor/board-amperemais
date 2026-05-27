@@ -8,7 +8,6 @@ import { DashboardPage } from "./dashboard-page";
 
 export default async function Main() {
 	const authSession = await getCurrentSession();
-	console.log("AUTH SESSION DASHBOARD PAGE", authSession);
 	if (!authSession) redirect("/auth/signin");
 	const membership = authSession.membership;
 	if (!membership) redirect("/onboarding");

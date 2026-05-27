@@ -64,6 +64,55 @@
       "when": 1774947600000,
       "tag": "0008_payment_method_pending_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1775520000000,
+      "tag": "0009_goal_multi_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1775836800000,
+      "tag": "0010_ai_hint_approval_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1776816000000,
+      "tag": "0011_interactions_processing_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777248000000,
+      "tag": "0012_single_use_campaigns",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779210000000,
+      "tag": "0013_ifood_integration_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1779210600000,
+      "tag": "0014_bling_integration_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1779211200000,
+      "tag": "0015_message_templates",
+      "breakpoints": true
     }
   ]
 }

@@ -46,7 +46,7 @@ export default function ReviewStep({ sale, checkoutState }: ReviewStepProps) {
 			{/* Client Info */}
 			<div className="flex flex-col gap-3 p-4 rounded-xl border">
 				<div className="flex items-center gap-2">
-					<User className="w-4 h-4 text-primary" />
+					<User className="w-4 h-4 text-foreground" />
 					<h3 className="font-bold text-sm uppercase tracking-wide">Cliente</h3>
 				</div>
 				{sale.cliente ? (
@@ -79,7 +79,7 @@ export default function ReviewStep({ sale, checkoutState }: ReviewStepProps) {
 			{/* Items */}
 			<div className="flex flex-col gap-3 p-4 rounded-xl border">
 				<div className="flex items-center gap-2">
-					<Package className="w-4 h-4 text-primary" />
+					<Package className="w-4 h-4 text-foreground" />
 					<h3 className="font-bold text-sm uppercase tracking-wide">Itens ({sale.itens.length})</h3>
 				</div>
 
@@ -149,7 +149,7 @@ export default function ReviewStep({ sale, checkoutState }: ReviewStepProps) {
 				<Separator />
 				<div className="flex justify-between">
 					<span className="font-black uppercase tracking-wide">Total</span>
-					<span className="text-2xl font-black text-primary">{formatToMoney(checkoutState.valorFinal)}</span>
+					<span className="text-2xl font-black text-foreground">{formatToMoney(checkoutState.valorFinal)}</span>
 				</div>
 			</div>
 		</div>

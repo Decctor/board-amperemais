@@ -3,6 +3,15 @@ import dayjs from "dayjs";
 import { getAgeFromBirthdayDate } from "./dates";
 import { isValidNumber } from "./validation";
 
+export function formatDurationMs(durationMs: number) {
+	if (durationMs < 1000) return `${durationMs}ms`;
+
+	const seconds = durationMs / 1000;
+	if (seconds < 60) return `${seconds.toFixed(2)}s`;
+
+	return `${(seconds / 60).toFixed(2)}min`;
+}
+
 export function formatDateTime(value: any) {
 	if (!value) return undefined;
 	if (Number.isNaN(new Date(value).getMilliseconds())) return undefined;

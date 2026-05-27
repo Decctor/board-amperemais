@@ -1,9 +1,11 @@
+import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { formatToCEP } from "@/lib/formatting";
 import { getCEPInfo } from "@/lib/utils";
 import type { TUseClientState } from "@/state-hooks/use-client-state";
+import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/states-cities";
 import { MapPin, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -122,17 +124,25 @@ function ClientLocationBlockCard({ location, isPrimary, updateClientLocation, re
 						updateClientLocation({ localizacaoCep: formatToCEP(value) || null });
 					}}
 				/>
-				<TextInput
+				<SelectInput
 					label="ESTADO"
-					placeholder="Digite o estado"
-					value={location.localizacaoEstado ?? ""}
-					handleChange={(value) => updateClientLocation({ localizacaoEstado: value || null })}
+					value={location.localizacaoEstado ?? null}
+					options={BrazilianStatesOptions}
+					handleChange={(value) =>
+						updateClientLocation({ localizacaoEstado: value || null, localizacaoCidade: BrazilianCitiesOptionsFromUF(value)[0].value || null })
+					}
+					onReset={() => updateClientLocation({ localizacaoEstado: null, localizacaoCidade: null })}
+					resetOptionLabel="NÃO DEFINIDO"
+					width="100%"
 				/>
-				<TextInput
+				<SelectInput
 					label="CIDADE"
-					placeholder="Digite a cidade"
-					value={location.localizacaoCidade ?? ""}
+					value={location.localizacaoCidade ?? null}
+					options={BrazilianCitiesOptionsFromUF(location.localizacaoEstado ?? "")}
 					handleChange={(value) => updateClientLocation({ localizacaoCidade: value || null })}
+					onReset={() => updateClientLocation({ localizacaoCidade: null })}
+					resetOptionLabel="NÃO DEFINIDO"
+					width="100%"
 				/>
 				<TextInput
 					label="BAIRRO"
