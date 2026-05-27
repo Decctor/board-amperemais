@@ -138,15 +138,6 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 				if (redemptionValue > maxAllowed) throw new createHttpError.BadRequest("Valor de resgate excede o limite permitido.");
 			}
 
-			const program = await tx.query.cashbackPrograms.findFirst({
-				where: and(eq(cashbackPrograms.organizacaoId, input.organization.id), eq(cashbackPrograms.id, programId)),
-				columns: {
-					ativo: true,
-				},
-			});
-			if (!program) throw new createHttpError.NotFound("Programa de cashback não encontrado.");
-			if (!program.ativo) throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
-
 			const redemptionResult = await applyCashbackRedemptionFIFO({
 				tx,
 				orgId: input.organization.id,

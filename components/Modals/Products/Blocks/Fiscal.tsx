@@ -5,7 +5,7 @@ import {
 	ProductFiscalProfileCard,
 	type ProductFiscalProfileCardProps,
 	type TProductFiscalProfileCardData,
-} from "@/components/Products/Shared/ProductFiscalProfileCard
+} from "@/components/Products/Shared/ProductFiscalProfileCard";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
