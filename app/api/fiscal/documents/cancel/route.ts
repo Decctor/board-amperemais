@@ -38,6 +38,9 @@ async function cancelFiscalDocumentRoute(request: NextRequest) {
 		message: "Cancelamento fiscal solicitado com sucesso.",
 	});
 }
-export type TCancelFiscalDocumentOutput = Awaited<ReturnType<typeof cancelFiscalDocument>>;
+export type TCancelFiscalDocumentOutput = {
+	data: Awaited<ReturnType<typeof cancelFiscalDocument>>;
+	message: string;
+};
 
 export const POST = appApiHandler({ POST: cancelFiscalDocumentRoute });

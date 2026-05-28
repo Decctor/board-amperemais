@@ -104,6 +104,7 @@ export function useOrganizationState() {
 				},
 				resultados: {
 					visualizar: true,
+					visualizarSensiveis: true,
 					criarMetas: true,
 					visualizarMetas: true,
 					editarMetas: true,
@@ -121,6 +122,12 @@ export function useOrganizationState() {
 					iniciar: true,
 					responder: true,
 					finalizar: true,
+				},
+				fiscal: {
+					visualizar: true,
+					configurar: true,
+					emitir: true,
+					cancelar: true,
 				},
 			},
 		},

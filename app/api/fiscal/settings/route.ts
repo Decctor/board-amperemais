@@ -39,7 +39,7 @@ const UpdateFiscalSettingsInputSchema = z.object({
 export type TUpdateFiscalSettingsInput = z.infer<typeof UpdateFiscalSettingsInputSchema>;
 
 async function updateFiscalSettings({ input }: { input: TUpdateFiscalSettingsInput }) {
-	const { session, orgId } = await requireOrgSession();
+	const { orgId } = await requireOrgSession();
 
 	const updated = await updateFiscalSettingsData({
 		organizacaoId: orgId,

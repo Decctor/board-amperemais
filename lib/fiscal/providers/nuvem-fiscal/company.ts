@@ -8,6 +8,7 @@ import type {
 import { createNuvemFiscalClient } from "./client";
 import { formatStringAsOnlyDigits } from "@/lib/formatting";
 import { mapTaxRegistration, nonEmptyString, onlyDigits } from "./mappers/utils";
+import axios from "axios";
 
 function mapOrganizationToNuvemFiscalCompany(organizacao: TFiscalOrganization) {
 	const fiscal = organizacao.fiscalConfiguracao;
@@ -132,14 +133,17 @@ export async function syncNuvemFiscalCompanyCertificate(
 			certificado,
 			password: input.password,
 		});
-		console.log("[DEBUG] [SYNC_NUVEM_FISCAL_COMPANY_CERTIFICATE] Successfully synchronized certificate.", JSON.stringify(data, null, 2));
 		return {
 			cpfCnpj,
 			sincronizado: true,
 			certificado: mapCertificateMetadata(input.storagePath, data),
 		};
 	} catch (error) {
-		console.error("[DEBUG] [SYNC_NUVEM_FISCAL_COMPANY_CERTIFICATE] Error synchronizing certificate.", JSON.stringify(error.response?.data, null, 2));
+		if (axios.isAxiosError(error)) {
+			console.error("[NUVEM_FISCAL] Error synchronizing certificate.", JSON.stringify(error.response?.data, null, 2));
+		} else {
+			console.error("[NUVEM_FISCAL] Error synchronizing certificate.", error);
+		}
 		throw error;
 	}
 }

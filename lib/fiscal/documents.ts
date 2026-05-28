@@ -7,7 +7,7 @@ import { buildFiscalReference } from "./constants";
 import { FiscalReadinessError } from "./errors";
 import { ManualFiscalProvider } from "./providers/manual";
 import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
-import { consumeFiscalSeriesNumber, findActiveFiscalSeries, findDefaultOperationProfileForType, loadFiscalOrganization } from "./settings";
+import { findActiveFiscalSeries, findDefaultOperationProfileForType, loadFiscalOrganization, reserveFiscalSeriesNumber } from "./settings";
 import { downloadStoredFiscalAsset, getFiscalAssetContentType, storeFiscalAsset, type TFiscalAssetType } from "./storage";
 import type {
 	IFiscalProvider,
@@ -311,6 +311,7 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 	try {
 		const context = await buildSaleFiscalContext(input);
 		assertFiscalReadiness(context);
+		const reservedNumber = documento.numero ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
 
 		await patchFiscalDocument(documento.id, {
 			statusInterno: "PRONTO_PARA_ENVIO",
@@ -318,7 +319,7 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 			referencia,
 			provedor: context.organizacao.fiscalProvedor ?? "MANUAL",
 			serie: context.serie.serie,
-			numero: String(context.serie.proximoNumero),
+			numero: String(reservedNumber),
 			snapshotOrigemVenda: JSON.stringify({
 				venda: context.venda,
 				destinatario: context.destinatarioSnapshot,
@@ -354,7 +355,6 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 
 		if (providerDetails.statusInterno === "AUTORIZADO" && updatedDocument) {
 			await persistAuthorizedAssets(updatedDocument, context.organizacao.id);
-			await consumeFiscalSeriesNumber(context.serie.id);
 		}
 
 		const finalDocument = updatedDocument ?? (await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia })) ?? documento;

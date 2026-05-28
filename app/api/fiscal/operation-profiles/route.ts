@@ -2,7 +2,6 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { findFiscalOperationProfileById, listFiscalOperationProfiles, upsertFiscalOperationProfile } from "@/lib/fiscal/settings";
-import { FiscalDocumentTypeEnum, FiscalOperationConsumerPresenceEnum, FiscalOperationFinalityEnum } from "@/schemas/enums";
 import { FiscalOperationProfileSchema } from "@/schemas/fiscal";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";

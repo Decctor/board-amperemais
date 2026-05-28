@@ -20,6 +20,7 @@ import {
 	Hash,
 	KeyRound,
 	MapPin,
+	MoreHorizontal,
 	PencilIcon,
 	Plus,
 	Receipt,
@@ -29,8 +30,15 @@ import {
 	User,
 	Zap,
 } from "lucide-react";
-import { useFiscalDocuments, useFiscalOperationProfiles, useFiscalSeries, useFiscalSettings } from "@/lib/queries/fiscal";
-import { syncFiscalCompany, syncFiscalCompanyCertificate, updateFiscalSettings } from "@/lib/mutations/fiscal";
+import { useFiscalDocumentById, useFiscalDocuments, useFiscalOperationProfiles, useFiscalSeries, useFiscalSettings } from "@/lib/queries/fiscal";
+import {
+	cancelFiscalDocumentMutation,
+	emitFiscalDocumentMutation,
+	syncFiscalCompany,
+	syncFiscalCompanyCertificate,
+	syncFiscalDocumentMutation,
+	updateFiscalSettings,
+} from "@/lib/mutations/fiscal";
 import { TUseInternalFiscalSettingsState, useInternalFiscalSettingsState } from "@/state-hooks/use-internal-fiscal-settings-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -66,10 +74,18 @@ import NewFiscalSeries from "@/components/Modals/FiscalSeries/NewFiscalSeries";
 import ControlFiscalSeries from "@/components/Modals/FiscalSeries/ControlFiscalSeries";
 import { Input } from "@/components/ui/input";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
-import { TGetFiscalDocumentsOutputDefault } from "@/app/api/fiscal/documents/route";
+import { TGetFiscalDocumentsOutputById, TGetFiscalDocumentsOutputDefault } from "@/app/api/fiscal/documents/route";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { uploadFile } from "@/lib/files-storage";
 import NumberInput from "@/components/Inputs/NumberInput";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 type FiscalPageProps = {
 	user: TAuthUserSession["user"];
 	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
@@ -79,7 +95,6 @@ type FiscalPageProps = {
 	userHasFiscalCancelPermission: boolean;
 };
 export default function FiscalPage({
-	user,
 	organization,
 	userHasFiscalViewPermission,
 	userHasFiscalConfigurePermission,
@@ -109,7 +124,10 @@ export default function FiscalPage({
 				</TabsContent>
 				<TabsContent value="documents" className="flex flex-col gap-3">
 					{userHasFiscalViewPermission ? (
-						<FiscalDocumentsView />
+						<FiscalDocumentsView
+							userHasFiscalEmitPermission={userHasFiscalEmitPermission}
+							userHasFiscalCancelPermission={userHasFiscalCancelPermission}
+						/>
 					) : (
 						<UnauthorizedPage message="Oops,  você não possui permissão para visualizar o módulo fiscal." />
 					)}
@@ -131,8 +149,15 @@ export default function FiscalPage({
 	);
 }
 
-function FiscalDocumentsView() {
-	const { data, isLoading, isError, isSuccess, error, queryKey, filters, updateFilters } = useFiscalDocuments();
+function FiscalDocumentsView({
+	userHasFiscalEmitPermission,
+	userHasFiscalCancelPermission,
+}: {
+	userHasFiscalEmitPermission: boolean;
+	userHasFiscalCancelPermission: boolean;
+}) {
+	const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+	const { data, isLoading, isError, isSuccess, error, filters, updateFilters } = useFiscalDocuments();
 
 	const documents = data?.documents ?? [];
 	const documentsMatched = data?.documentsMatched ?? 0;
@@ -162,16 +187,42 @@ function FiscalDocumentsView() {
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && documents ? (
 				documents.length > 0 ? (
-					documents.map((document, index: number) => <FiscalDocumentCard key={document.id} document={document} />)
+					documents.map((document) => (
+						<FiscalDocumentCard
+							key={document.id}
+							document={document}
+							userHasFiscalEmitPermission={userHasFiscalEmitPermission}
+							userHasFiscalCancelPermission={userHasFiscalCancelPermission}
+							openDetails={() => setSelectedDocumentId(document.id)}
+						/>
+					))
 				) : (
 					<p className="w-full tracking-tight text-center">Nenhum documento fiscal encontrado.</p>
 				)
+			) : null}
+			{selectedDocumentId ? (
+				<FiscalDocumentDetailsMenu
+					documentId={selectedDocumentId}
+					closeMenu={() => setSelectedDocumentId(null)}
+					userHasFiscalEmitPermission={userHasFiscalEmitPermission}
+					userHasFiscalCancelPermission={userHasFiscalCancelPermission}
+				/>
 			) : null}
 		</div>
 	);
 }
 
-function FiscalDocumentCard({ document }: { document: TGetFiscalDocumentsOutputDefault["documents"][number] }) {
+function FiscalDocumentCard({
+	document,
+	userHasFiscalEmitPermission,
+	userHasFiscalCancelPermission,
+	openDetails,
+}: {
+	document: TGetFiscalDocumentsOutputDefault["documents"][number];
+	userHasFiscalEmitPermission: boolean;
+	userHasFiscalCancelPermission: boolean;
+	openDetails: () => void;
+}) {
 	const isCancelled = document.status === "CANCELADA" || document.statusInterno === "CANCELADO";
 	const isErrored = document.statusInterno === "ERRO" || document.statusInterno === "REJEITADO";
 	const shortKey = shortenAccessKey(document.chaveAcesso);
@@ -231,6 +282,12 @@ function FiscalDocumentCard({ document }: { document: TGetFiscalDocumentsOutputD
 							tooltipContent="Status interno do ciclo de vida do documento"
 							className={cn(FISCAL_LIFECYCLE_STATUS_STYLES[document.statusInterno])}
 						/>
+						<FiscalDocumentQuickActions
+							document={document}
+							userHasFiscalEmitPermission={userHasFiscalEmitPermission}
+							userHasFiscalCancelPermission={userHasFiscalCancelPermission}
+							openDetails={openDetails}
+						/>
 					</div>
 				</div>
 
@@ -289,6 +346,207 @@ function FiscalDocumentCard({ document }: { document: TGetFiscalDocumentsOutputD
 				) : null}
 			</div>
 		</TooltipProvider>
+	);
+}
+
+type FiscalDocumentForList = TGetFiscalDocumentsOutputDefault["documents"][number] | TGetFiscalDocumentsOutputById["document"];
+
+function FiscalDocumentQuickActions({
+	document,
+	userHasFiscalEmitPermission,
+	userHasFiscalCancelPermission,
+	openDetails,
+}: {
+	document: FiscalDocumentForList;
+	userHasFiscalEmitPermission: boolean;
+	userHasFiscalCancelPermission: boolean;
+	openDetails: () => void;
+}) {
+	const queryClient = useQueryClient();
+	const canSync = userHasFiscalEmitPermission;
+	const canEmitAgain =
+		userHasFiscalEmitPermission &&
+		!!document.vendaId &&
+		document.tipo !== "NFSE" &&
+		document.statusInterno !== "AUTORIZADO" &&
+		document.statusInterno !== "EM_PROCESSAMENTO";
+	const canCancel = userHasFiscalCancelPermission && document.status === "AUTORIZADA" && document.statusInterno === "AUTORIZADO";
+	const hasXml = !!document.xmlStoragePath || document.statusInterno === "AUTORIZADO";
+	const hasPdf = !!document.pdfStoragePath || document.statusInterno === "AUTORIZADO";
+
+	const invalidateFiscalDocuments = async () => {
+		await queryClient.invalidateQueries({ queryKey: ["fiscal-documents"] });
+		await queryClient.invalidateQueries({ queryKey: ["fiscal-document-by-id", document.id] });
+	};
+
+	const { mutate: syncDocument, isPending: isSyncing } = useMutation({
+		mutationKey: ["sync-fiscal-document", document.id],
+		mutationFn: syncFiscalDocumentMutation,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			invalidateFiscalDocuments();
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const { mutate: emitAgain, isPending: isEmitting } = useMutation({
+		mutationKey: ["emit-fiscal-document-again", document.id],
+		mutationFn: emitFiscalDocumentMutation,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			invalidateFiscalDocuments();
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const { mutate: cancelDocument, isPending: isCancelling } = useMutation({
+		mutationKey: ["cancel-fiscal-document", document.id],
+		mutationFn: cancelFiscalDocumentMutation,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			invalidateFiscalDocuments();
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const actionIsPending = isSyncing || isEmitting || isCancelling;
+
+	const openAsset = (asset: "xml" | "pdf") => {
+		window.open(`/api/fiscal/document-assets?documentId=${document.id}&asset=${asset}`, "_blank", "noopener,noreferrer");
+	};
+
+	const handleCancel = () => {
+		const reason = window.prompt("Informe o motivo do cancelamento fiscal.");
+		if (!reason?.trim()) return;
+		cancelDocument({ documentId: document.id, reason: reason.trim() });
+	};
+
+	const handleEmitAgain = () => {
+		if (!document.vendaId) {
+			toast.error("Documento fiscal sem venda vinculada para reemissão.");
+			return;
+		}
+		if (document.tipo === "NFSE") {
+			toast.error("Reemissão de NFS-e ainda não está disponível.");
+			return;
+		}
+		emitAgain({ vendaId: document.vendaId, tipo: document.tipo });
+	};
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button variant="ghost" size="icon" disabled={actionIsPending} className="h-8 w-8 rounded-full">
+					<MoreHorizontal className="h-4 w-4" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-56">
+				<DropdownMenuLabel>Ações rápidas</DropdownMenuLabel>
+				<DropdownMenuItem onClick={openDetails}>
+					<FileText className="h-4 w-4" />
+					Ver detalhes
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem disabled={!canSync || actionIsPending} onClick={() => syncDocument({ documentId: document.id })}>
+					<RefreshCcw className="h-4 w-4" />
+					Sincronizar
+				</DropdownMenuItem>
+				<DropdownMenuItem disabled={!canEmitAgain || actionIsPending} onClick={handleEmitAgain}>
+					<Zap className="h-4 w-4" />
+					Emitir novamente
+				</DropdownMenuItem>
+				<DropdownMenuItem disabled={!canCancel || actionIsPending} onClick={handleCancel} variant="destructive">
+					<CircleX className="h-4 w-4" />
+					Cancelar
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem disabled={!hasXml} onClick={() => openAsset("xml")}>
+					<FileIcon className="h-4 w-4" />
+					Baixar XML
+				</DropdownMenuItem>
+				<DropdownMenuItem disabled={!hasPdf} onClick={() => openAsset("pdf")}>
+					<FileText className="h-4 w-4" />
+					Baixar PDF
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+function FiscalDocumentDetailsMenu({
+	documentId,
+	closeMenu,
+	userHasFiscalEmitPermission,
+	userHasFiscalCancelPermission,
+}: {
+	documentId: string;
+	closeMenu: () => void;
+	userHasFiscalEmitPermission: boolean;
+	userHasFiscalCancelPermission: boolean;
+}) {
+	const { data, isLoading, isError, error } = useFiscalDocumentById(documentId);
+	const document = data?.document;
+	const events = data?.events ?? [];
+
+	return (
+		<ResponsiveMenu
+			menuTitle="DOCUMENTO FISCAL"
+			menuDescription="Revise o histórico do documento e use as ações operacionais quando necessário."
+			menuActionButtonText="FECHAR"
+			menuCancelButtonText="CANCELAR"
+			actionFunction={closeMenu}
+			actionIsLoading={false}
+			stateIsLoading={isLoading}
+			stateError={isError ? getErrorMessage(error) : null}
+			closeMenu={closeMenu}
+			dialogVariant="lg"
+			drawerVariant="lg"
+		>
+			{document ? (
+				<div className="flex w-full flex-col gap-3">
+					<div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-secondary/20 p-3">
+						<div className="flex flex-col gap-1">
+							<h3 className="text-sm font-bold tracking-tight">
+								{document.tipo} {document.numero ? `Nº ${document.numero}` : document.referencia}
+							</h3>
+							<p className="text-xs text-muted-foreground">Status: {FISCAL_LIFECYCLE_STATUS_LABELS[document.statusInterno]}</p>
+						</div>
+						<FiscalDocumentQuickActions
+							document={document}
+							userHasFiscalEmitPermission={userHasFiscalEmitPermission}
+							userHasFiscalCancelPermission={userHasFiscalCancelPermission}
+							openDetails={() => undefined}
+						/>
+					</div>
+					<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+						<div className="rounded-lg border p-3">
+							<p className="text-xs font-semibold text-muted-foreground">CHAVE</p>
+							<p className="break-all text-sm font-medium">{document.chaveAcesso ?? "Não informada"}</p>
+						</div>
+						<div className="rounded-lg border p-3">
+							<p className="text-xs font-semibold text-muted-foreground">PROTOCOLO</p>
+							<p className="text-sm font-medium">{document.protocolo ?? "Não informado"}</p>
+						</div>
+					</div>
+					<div className="flex flex-col gap-2 rounded-lg border p-3">
+						<h3 className="text-sm font-bold tracking-tight">Eventos</h3>
+						{events.length > 0 ? (
+							events.map((event) => (
+								<div key={event.id} className="rounded-md bg-secondary/30 p-2">
+									<div className="flex flex-wrap items-center justify-between gap-2">
+										<p className="text-xs font-bold">{event.tipo}</p>
+										<p className="text-xs text-muted-foreground">{formatDateAsLocale(event.dataInsercao)}</p>
+									</div>
+									{event.descricao ? <p className="mt-1 text-xs text-muted-foreground">{event.descricao}</p> : null}
+								</div>
+							))
+						) : (
+							<p className="text-sm text-muted-foreground">Nenhum evento encontrado.</p>
+						)}
+					</div>
+				</div>
+			) : null}
+		</ResponsiveMenu>
 	);
 }
 

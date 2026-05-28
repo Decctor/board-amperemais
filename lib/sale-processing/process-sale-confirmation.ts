@@ -2,6 +2,7 @@ import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { getErrorMessage } from "@/lib/errors";
 import { emitFiscalDocument } from "@/lib/fiscal/documents";
+import { notifyFiscalEmissionFailure } from "@/lib/fiscal/notifications";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, sales } from "@/services/drizzle/schema";
@@ -237,11 +238,17 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 				error: null,
 			};
 		} catch (error) {
+			const errorMessage = getErrorMessage(error);
 			fiscalResult = {
 				status: "ERRO",
 				documentoId: null,
-				error: getErrorMessage(error),
+				error: errorMessage,
 			};
+			await notifyFiscalEmissionFailure({
+				organization: input.organization,
+				sale,
+				errorMessage,
+			});
 		}
 	}
 

@@ -26,7 +26,6 @@ async function syncFiscalCertificate({ input }: { input: TSyncFiscalCertificateI
 		throw new createHttpError.Forbidden("Acesso restrito aos responsáveis pela organização.");
 	}
 
-	console.log("[DEBUG] [SYNC_FISCAL_CERTIFICATE] Syncing certificate...", JSON.stringify(input, null, 2));
 	const result = await syncFiscalCompanyCertificateSettings({
 		organizacaoId: orgId,
 		storagePath: input.storagePath,

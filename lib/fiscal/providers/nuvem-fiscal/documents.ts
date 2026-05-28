@@ -76,11 +76,9 @@ export async function emitNuvemFiscalDocument(context: TFiscalSaleContext, docum
 	const client = getClient(context.organizacao);
 	const path = documento.tipo === "NFCE" ? "/nfce" : "/nfe";
 	const payload = documento.tipo === "NFCE" ? mapSaleContextToNfcePayload(context, documento) : mapSaleContextToNfePayload(context, documento);
-	console.log("EMITIR DOCUMENTO", JSON.stringify(payload, null, 2));
 	try {
 		const { data } = await client.post<TNuvemFiscalDfeResponse>(path, payload);
 
-		console.log("[NUVEM_FISCAL] Document emitted successfully", JSON.stringify(data, null, 2));
 		return {
 			...mapDfeResponse(data),
 			provedorPayload: payload as Record<string, unknown>,

@@ -16,6 +16,7 @@ export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 	resultados: {
 		escopo: null,
 		visualizar: true,
+		visualizarSensiveis: true,
 		criarMetas: true,
 		visualizarMetas: true,
 		editarMetas: true,
@@ -43,6 +44,12 @@ export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 		criar: true,
 		editar: true,
 		excluir: true,
+	},
+	fiscal: {
+		visualizar: true,
+		configurar: true,
+		emitir: true,
+		cancelar: true,
 	},
 };
 

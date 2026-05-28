@@ -33,6 +33,9 @@ async function syncFiscalDocumentRoute(request: NextRequest) {
 		message: "Documento fiscal sincronizado com sucesso.",
 	});
 }
-export type TSyncFiscalDocumentOutput = Awaited<ReturnType<typeof syncFiscalDocument>>;
+export type TSyncFiscalDocumentOutput = {
+	data: Awaited<ReturnType<typeof syncFiscalDocument>>;
+	message: string;
+};
 
 export const POST = appApiHandler({ POST: syncFiscalDocumentRoute });

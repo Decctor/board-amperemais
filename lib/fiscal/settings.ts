@@ -118,7 +118,6 @@ export async function syncFiscalCompanyCertificate({
 			certificado: {
 				...organization.fiscalConfiguracao.nuvemFiscal.certificado,
 				...result.certificado,
-				password,
 			},
 		},
 	});
@@ -188,6 +187,19 @@ export async function consumeFiscalSeriesNumber(seriesId: string) {
 		.where(eq(fiscalSeries.id, seriesId))
 		.returning();
 	return updated ?? null;
+}
+
+export async function reserveFiscalSeriesNumber(seriesId: string) {
+	const [updated] = await db
+		.update(fiscalSeries)
+		.set({
+			proximoNumero: sql`${fiscalSeries.proximoNumero} + 1`,
+		})
+		.where(eq(fiscalSeries.id, seriesId))
+		.returning({ nextNumber: fiscalSeries.proximoNumero });
+
+	if (!updated?.nextNumber) throw new createHttpError.InternalServerError("Erro ao reservar numero da serie fiscal.");
+	return updated.nextNumber - 1;
 }
 
 export async function listFiscalOperationProfiles(organizacaoId: string) {
