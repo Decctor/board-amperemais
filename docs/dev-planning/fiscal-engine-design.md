@@ -204,11 +204,53 @@ Estender o `readiness` atual: rodar `validateDocument` (NCM ausente, grupo não 
 
 ---
 
-## 7. Fontes de dados e pontos em aberto
+## 7. `vTotTrib` via tabela IBPT (decidido)
 
-- **`vTotTrib` (Lei 12.741 / "valor aproximado dos tributos")**: padrão de mercado é a **tabela IBPT (De Olho no Imposto)** por NCM+UF. Recomendo integrar como fonte do `vTotTrib` — resolve o campo hoje zerado em todas as notas. Decisão: importar tabela vs. serviço.
-- **MVA / ICMS-ST por NCM+UF**: não há fonte trivial. Opções: tabela manual por organização, ou integração paga. **Fase posterior**; até lá, produtos com ST exigem config manual no grupo.
-- **Alíquota interna da UF de destino** (para ST e conferência): tabela estática mantida por nós.
+### 7.0 Verificar antes de construir (build-vs-buy)
+
+A Nuvem Fiscal **pode** calcular o `vTotTrib` por NCM no lado dela (vários providers expõem um flag tipo `calculoAutomaticoIbpt`). **Antes de construir o pipeline abaixo, confirmar na doc/sandbox da Nuvem Fiscal** se existe esse cálculo automático. Se existir, basta habilitar o flag e enviar `vTotTrib` ausente/zero — pula-se a tabela inteira. O desenho a seguir é o caminho caso a Nuvem Fiscal **não** calcule.
+
+### 7.1 Decisão de armazenamento: tabela no Postgres (não JSON empacotado)
+
+Motivo = volume + cadência de atualização. A IBPT é distribuída **por UF** (27 arquivos CSV `;`-delimitados, encoding latin1, ~12–15k NCMs cada → **~350–400k linhas**) e tem **vigência** (atualiza ~a cada 6 meses, fora do ciclo de release).
+
+| Opção | Veredito |
+|---|---|
+| JSON/CSV empacotado no repo | ❌ ~30–60 MB no bundle; atualizar exige redeploy; pesado em memória serverless |
+| Só arquivo na nuvem, parse em runtime | ❌ lento e repetido a cada cold start |
+| **Postgres + import script + cache** | ✅ indexado, consulta barata, atualiza sem deploy |
+
+**Fonte dos arquivos:** os CSVs por UF (ex.: De Olho no Imposto / portais que disponibilizam download) ficam no **Supabase Storage** como proveniência; o **import script** popula a tabela.
+
+### 7.2 Tabela `fiscalIbptRates` (referência global, sem `organizacaoId`)
+
+Dado **compartilhado** entre organizações — não leva tenancy.
+
+- `id`, `ncm` (8 dígitos), `uf`, `exTipi` (nullable)
+- `descricao`
+- `aliquotaNacionalFederal`, `aliquotaImportadosFederal`, `aliquotaEstadual`, `aliquotaMunicipal` (numéricos, %)
+- `versao`, `vigenciaInicio`, `vigenciaFim`, `chave`, `fonte`
+- `dataInsercao`
+- Índice em `(ncm, uf)`; consulta filtra a vigência válida na data de emissão.
+
+### 7.3 Lookup no motor (`lib/fiscal/engine/ibpt.ts`)
+
+```
+vTotTrib(item) = vProd × (federal + estadual + municipal) / 100
+```
+- `federal` = `aliquotaImportadosFederal` se origem for importada (origemMercadoria 1/2/3/8), senão `aliquotaNacionalFederal`.
+- Seleção: linha de `(ncm, uf)` com vigência cobrindo a data de emissão; **fallback por prefixo de NCM** se não houver match exato; se nada → `vTotTrib = 0` + warning na validação (não bloqueia).
+- **Cache em memória** (LRU por instância) para `(ncm, uf, vigência)` quentes.
+- Guardar `chave`/`versao`/`fonte` da IBPT para rastreabilidade (e eventual `infAdProd`/observação, se a UF exigir).
+
+### 7.4 Import script
+
+- Lê o CSV por UF do Supabase Storage (latin1 → utf8), faz **upsert** por `(ncm, uf, versao)`.
+- Disparo manual (admin) ou cron quando sair nova vigência; idempotente.
+
+## 7.5 Demais pontos em aberto
+
+- **MVA / ICMS-ST por NCM+UF**: **configuração manual por grupo tributário** por enquanto (decidido). Sem fonte automática nesta fase; campos `mvaSt`/`aliquotaIcmsSt`/`aliquotaInternaDestino` ficam no grupo/regra e são preenchidos à mão. Integração de tabela ST fica para depois, se houver demanda.
 - **Benefícios fiscais / `cBenef`**: já há `codigoBeneficioFiscal` no perfil; mapear quando houver caso real.
 
 ---
@@ -219,7 +261,7 @@ Estender o `readiness` atual: rodar `validateDocument` (NCM ausente, grupo não 
 |---|---|---|
 | **0 — Modelagem** | `fiscalTaxGroups` + `fiscalTaxGroupRules` + FK no perfil; backfill grupo padrão; CRUD/UI mínima de grupos | — |
 | **1 — Motor SN intra** | `computeItemTaxation` para CSOSN 101/102/400 + PIS/COFINS CST 49; totais; testes unitários por cenário | Fase 0 |
-| **2 — Mappers + validação** | mappers consomem o motor (ICMSSN/PIS/COFINS reais); `validateDocument` pré-envio; `vTotTrib` via IBPT | Fase 1 |
+| **2 — Mappers + validação + IBPT** | mappers consomem o motor (ICMSSN/PIS/COFINS reais); `validateDocument` pré-envio; `vTotTrib` (verificar cálculo automático da Nuvem Fiscal §7.0; senão tabela `fiscalIbptRates` + import script) | Fase 1 |
 | **3 — Interestadual** | CFOP 6.xxx, alíquotas interestaduais, regras por UF/destinatário; (sem DIFAL p/ SN) | Fase 2 |
 | **4 — ST + hardening** | CSOSN 500/ST com MVA; bateria de homologação por UF; catálogo de rejeições acionáveis | Fase 3 |
 
