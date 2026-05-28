@@ -21,7 +21,7 @@ const chipVariants = cva("inline-flex w-fit shrink-0 items-center border border-
 			neutralOnDark: "bg-foreground text-background",
 		},
 		size: {
-			xs: "gap-1 px-2 py-0.5 text-[11px] leading-none",
+			xs: "gap-0.5 px-1.5 py-px text-[10px] leading-none",
 			sm: "gap-1.5 px-2.5 py-0.5 text-xs leading-none",
 			md: "gap-1.5 px-3 py-1.5 text-xs leading-tight",
 		},
@@ -40,6 +40,9 @@ const chipVariants = cva("inline-flex w-fit shrink-0 items-center border border-
 });
 
 export type ChipSize = NonNullable<VariantProps<typeof chipVariants>["size"]>;
+
+/** Icon classes for `Chip` with `size="xs"` — use at callsites or via `renderIcon`. */
+export const CHIP_XS_ICON_CLASS = "w-3 h-3 min-w-3 min-h-3";
 
 type ChipContextValue = {
 	size: ChipSize;

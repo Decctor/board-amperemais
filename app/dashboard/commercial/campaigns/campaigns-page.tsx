@@ -13,7 +13,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
-import { Chip } from "@/components/ui/chip";
+import { CHIP_XS_ICON_CLASS, Chip } from "@/components/ui/chip";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
@@ -57,7 +57,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { cloneElement, isValidElement, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BsCalendarPlus } from "react-icons/bs";
 import CommunicationTemplatesPage from "@/app/dashboard/communication/_components/communication-templates-page";
@@ -591,7 +591,13 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<Chip.Root variant="ghost" size="xs" shape="md" className={cn(sentStatusConfig?.className, "border-none")}>
-										<Chip.Icon>{sentStatusConfig?.icon}</Chip.Icon>
+										<Chip.Icon>
+											{sentStatusConfig?.icon && isValidElement(sentStatusConfig.icon)
+												? cloneElement(sentStatusConfig.icon, {
+														className: cn(CHIP_XS_ICON_CLASS, sentStatusConfig.icon.props.className),
+													})
+												: sentStatusConfig?.icon}
+										</Chip.Icon>
 										<Chip.Label caps weight="bold">
 											{sentStatusConfig?.label}
 										</Chip.Label>

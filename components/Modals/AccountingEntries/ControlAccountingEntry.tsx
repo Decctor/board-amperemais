@@ -111,10 +111,12 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 			lockClose={isPending}
 		>
 			{entryData ? (
-				<div className="flex flex-col gap-2 rounded-md border border-border bg-muted/40 px-3 py-3 text-sm">
-					<div className="flex flex-wrap items-center gap-2">
-						<Info className="h-4 w-4 text-muted-foreground" />
-						<span className="font-medium">Origem do lançamento:</span>
+				<div className="flex flex-col gap-3 rounded-md border border-border bg-muted/40 px-3 py-3 text-sm">
+					<div className="w-full flex  items-center justify-between gap-3">
+						<div className="flex items-center gap-1.5">
+							<Info className="h-4 w-4 text-muted-foreground" />
+							<span className="font-medium">ORIGEM DO LANÇAMENTO:</span>
+						</div>
 						{originTypeConfig ? (
 							<span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold">
 								{originTypeConfig.icon}

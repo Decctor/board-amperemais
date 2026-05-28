@@ -5,7 +5,7 @@ import { useProductsBySearchInfiniteQuery } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
 import type { TGetProductsBySearchOutput } from "@/app/api/products/search/route";
 import { BadgeCheck, Check, ChevronDown, ChevronRight, ChevronsUpDown, Package } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
@@ -27,6 +27,10 @@ type SelectProductWithVariantsProps = {
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
+	contentClassName?: string;
+	popoverContentClassName?: string;
+	drawerContentClassName?: string;
+	commandListClassName?: string;
 	showLabel?: boolean;
 	value: {
 		productId: string;
@@ -36,6 +40,10 @@ type SelectProductWithVariantsProps = {
 	resetOptionLabel: string;
 	handleChange: (value: TSelectProductWithVariantsValue) => void;
 	onReset: () => void;
+	selectedLabel?: string;
+	renderTriggerContent?: (ctx: { selectedLabel: string; isOpen: boolean; value: SelectProductWithVariantsProps["value"] }) => ReactNode;
+	renderProductContent?: (ctx: { product: TProductBySearch; selected: boolean; expanded: boolean; hasVariants: boolean }) => ReactNode;
+	renderVariantContent?: (ctx: { product: TProductBySearch; variant: TProductVariantBySearch; selected: boolean }) => ReactNode;
 };
 
 function SelectProductWithVariants({
@@ -43,12 +51,20 @@ function SelectProductWithVariants({
 	label,
 	labelClassName,
 	holderClassName,
+	contentClassName,
+	popoverContentClassName,
+	drawerContentClassName,
+	commandListClassName,
 	showLabel = true,
 	value,
 	editable = true,
 	resetOptionLabel,
 	handleChange,
 	onReset,
+	selectedLabel: selectedLabelProp,
+	renderTriggerContent,
+	renderProductContent,
+	renderVariantContent,
 }: SelectProductWithVariantsProps) {
 	const { products, productsMatched, hasMorePages, loadMore, isLoading, isFetchingNextPage, isError, error, search, updateSearch } =
 		useProductsBySearchInfiniteQuery();
@@ -56,12 +72,15 @@ function SelectProductWithVariants({
 	const [isOpen, setIsOpen] = useState(false);
 	const [expandedProductIds, setExpandedProductIds] = useState<string[]>([]);
 	const inputIdentifier = label.toLowerCase().replace(" ", "_");
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const dialogContainer = (triggerRef.current?.closest("[data-dialog-container]") as HTMLElement) || null;
 
 	const selectedLabel = useMemo(() => {
+		if (selectedLabelProp) return selectedLabelProp;
 		if (!value?.productId) return resetOptionLabel;
 		if (!value.productVariantId) return products.find((product) => product.id === value.productId)?.descricao ?? resetOptionLabel;
 		return `${products.find((product) => product.id === value.productId)?.descricao ?? resetOptionLabel} - ${products.find((product) => product.id === value.productId)?.variantes?.find((variant) => variant.id === value.productVariantId)?.nome ?? resetOptionLabel}`;
-	}, [resetOptionLabel, value, products]);
+	}, [resetOptionLabel, selectedLabelProp, value, products]);
 
 	function toggleProduct(productId: string) {
 		setExpandedProductIds((prev) => (prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]));
@@ -88,21 +107,26 @@ function SelectProductWithVariants({
 
 	const renderTrigger = () => (
 		<Button
+			ref={triggerRef}
 			type="button"
 			disabled={!editable}
 			variant="outline"
 			aria-expanded={isOpen}
 			className={cn("w-full justify-between truncate border-border", holderClassName)}
 		>
-			<span className="truncate">{selectedLabel}</span>
+			{renderTriggerContent ? (
+				renderTriggerContent({ selectedLabel, isOpen, value })
+			) : (
+				<span className="truncate">{selectedLabel}</span>
+			)}
 			<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 		</Button>
 	);
 
 	const renderContent = () => (
-		<Command shouldFilter={false} className="w-full">
+		<Command shouldFilter={false} className={cn("w-full", contentClassName)}>
 			<CommandInput placeholder="Filtre o produto desejado..." value={search} onValueChange={updateSearch} />
-			<CommandList className="max-h-[430px]">
+			<CommandList className={cn("max-h-[430px]", commandListClassName)}>
 				<CommandGroup>
 					<CommandItem value="reset-selection-option" onSelect={handleReset} className="cursor-pointer">
 						{resetOptionLabel}
@@ -142,14 +166,20 @@ function SelectProductWithVariants({
 													handleProductSelect(product);
 												}}
 											>
-												<Avatar className="h-8 w-8 min-h-8 min-w-8 rounded-md">
-													<AvatarImage src={product.imagemCapaUrl || undefined} alt={product.descricao} />
-													<AvatarFallback className="rounded-md">{formatNameAsInitials(product.descricao)}</AvatarFallback>
-												</Avatar>
-												<div className="min-w-0 flex-1">
-													<p className="truncate text-sm font-medium">{product.descricao}</p>
-													<p className="truncate text-[0.7rem] text-foreground/70">{product.codigo}</p>
-												</div>
+												{renderProductContent ? (
+													renderProductContent({ product, selected: selectedProduct, expanded, hasVariants })
+												) : (
+													<>
+														<Avatar className="h-8 w-8 min-h-8 min-w-8 rounded-md">
+															<AvatarImage src={product.imagemCapaUrl || undefined} alt={product.descricao} />
+															<AvatarFallback className="rounded-md">{formatNameAsInitials(product.descricao)}</AvatarFallback>
+														</Avatar>
+														<div className="min-w-0 flex-1">
+															<p className="truncate text-sm font-medium">{product.descricao}</p>
+															<p className="truncate text-[0.7rem] text-foreground/70">{product.codigo}</p>
+														</div>
+													</>
+												)}
 
 												{hasVariants && (
 													<div className="flex items-center gap-1">
@@ -190,19 +220,25 @@ function SelectProductWithVariants({
 																	className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-accent"
 																	onClick={() => handleVariantSelect(product, variant)}
 																>
-																	<Avatar className="h-7 w-7 min-h-7 min-w-7 rounded-md">
-																		<AvatarImage src={variant.imagemCapaUrl || product.imagemCapaUrl || undefined} alt={variant.nome} />
-																		<AvatarFallback className="rounded-md">
-																			<Package className="h-3 w-3" />
-																		</AvatarFallback>
-																	</Avatar>
-																	<div className="min-w-0 flex-1">
-																		<p className="truncate text-xs font-medium">{variant.nome}</p>
-																		<div className="flex items-center gap-1 text-[0.65rem] text-foreground/70">
-																			{variant.codigo ? <span className="truncate">{variant.codigo}</span> : null}
-																			{variant.precoVenda ? <span>{formatToMoney(variant.precoVenda)}</span> : null}
-																		</div>
-																	</div>
+																	{renderVariantContent ? (
+																		renderVariantContent({ product, variant, selected: selectedVariant })
+																	) : (
+																		<>
+																			<Avatar className="h-7 w-7 min-h-7 min-w-7 rounded-md">
+																				<AvatarImage src={variant.imagemCapaUrl || product.imagemCapaUrl || undefined} alt={variant.nome} />
+																				<AvatarFallback className="rounded-md">
+																					<Package className="h-3 w-3" />
+																				</AvatarFallback>
+																			</Avatar>
+																			<div className="min-w-0 flex-1">
+																				<p className="truncate text-xs font-medium">{variant.nome}</p>
+																				<div className="flex items-center gap-1 text-[0.65rem] text-foreground/70">
+																					{variant.codigo ? <span className="truncate">{variant.codigo}</span> : null}
+																					{variant.precoVenda ? <span>{formatToMoney(variant.precoVenda)}</span> : null}
+																				</div>
+																			</div>
+																		</>
+																	)}
 																	{selectedVariant ? <BadgeCheck className="h-4 w-4 text-foreground" /> : null}
 																</button>
 															);
@@ -239,7 +275,7 @@ function SelectProductWithVariants({
 				)}
 				<Popover open={isOpen} onOpenChange={setIsOpen}>
 					<PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
-					<PopoverContent className="w-[410px] p-0" align="start">
+					<PopoverContent container={dialogContainer} className={cn("w-[410px] p-0", popoverContentClassName)} align="start">
 						{renderContent()}
 					</PopoverContent>
 				</Popover>
@@ -257,7 +293,7 @@ function SelectProductWithVariants({
 			<Drawer open={isOpen} onOpenChange={setIsOpen}>
 				<DrawerTrigger asChild>{renderTrigger()}</DrawerTrigger>
 				<DrawerContent>
-					<div className="mt-4 border-t p-2 pb-8">{renderContent()}</div>
+					<div className={cn("mt-4 border-t p-2 pb-8", drawerContentClassName)}>{renderContent()}</div>
 				</DrawerContent>
 			</Drawer>
 		</div>

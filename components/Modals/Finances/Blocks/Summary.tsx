@@ -2,11 +2,12 @@
 
 import type { TGetFinancialTransactionsOutputById } from "@/app/api/finances/financial-transactions/route";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { CHIP_XS_ICON_CLASS, Chip } from "@/components/ui/chip";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import { FinancialTransactionTypeOptions, SalePaymentMethodsOptions } from "@/utils/select-options";
 import { AlertCircle, CheckCircle2, Clock, Receipt } from "lucide-react";
-import { useMemo } from "react";
+import { cloneElement, isValidElement, useMemo } from "react";
 import DetailField from "./DetailField";
 
 type FinancialTransactionSummaryBlockProps = {
@@ -33,22 +34,32 @@ export default function FinancialTransactionSummaryBlock({ transaction }: Financ
 		<ResponsiveMenuSection title="RESUMO" icon={<Receipt className="h-4 w-4 min-h-4 min-w-4" />}>
 			<div className="border-border bg-muted/30 flex w-full min-w-0 flex-col gap-3 rounded-xl border px-4 py-3">
 				<div className="flex w-full min-w-0 flex-col gap-2">
-					{typeConfig ? (
-						<span className={cn("flex w-fit items-center gap-1.5 rounded-xl px-3 py-1 text-[0.65rem] font-bold", typeConfig.colors.background, typeConfig.colors.text)}>
-							{typeConfig.icon}
-							{typeConfig.label}
-						</span>
-					) : null}
-					<h2 className="text-sm font-extrabold tracking-tight break-words">{transaction.titulo || "Título não definido"}</h2>
-					<p className="text-lg font-extrabold tracking-tight tabular-nums">{formatToMoney(transaction.valor)}</p>
-				</div>
+					<div className="flex items-center gap-1.5">
+						{typeConfig ? (
+							<Chip.Root size="xs" shape="xl" className={cn(typeConfig.colors.background, typeConfig.colors.text)}>
+								<Chip.Icon>
+									{isValidElement(typeConfig.icon)
+										? cloneElement(typeConfig.icon, {
+												className: cn(CHIP_XS_ICON_CLASS, typeConfig.icon.props.className),
+											})
+										: typeConfig.icon}
+								</Chip.Icon>
+								<Chip.Label weight="bold">{typeConfig.label}</Chip.Label>
+							</Chip.Root>
+						) : null}
+						<h2 className="text-sm font-extrabold tracking-tight break-words">{transaction.titulo || "Título não definido"}</h2>
+					</div>
 
-				{statusConfig ? (
-					<span className={cn("flex w-fit items-center gap-1.5 rounded-xl px-3 py-1 text-[0.65rem] font-bold", statusConfig.className)}>
-						{statusConfig.icon}
-						{statusConfig.label}
-					</span>
-				) : null}
+					<div className="w-full flex items-center justify-between gap-3">
+						<p className="text-lg font-extrabold tracking-tight tabular-nums">{formatToMoney(transaction.valor)}</p>
+						{statusConfig ? (
+							<Chip.Root size="sm" shape="xl" className={cn(statusConfig.className)}>
+								<Chip.Icon>{statusConfig.icon}</Chip.Icon>
+								<Chip.Label weight="bold">{statusConfig.label}</Chip.Label>
+							</Chip.Root>
+						) : null}
+					</div>
+				</div>
 			</div>
 
 			<div className="flex w-full min-w-0 flex-col">
