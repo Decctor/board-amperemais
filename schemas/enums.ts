@@ -184,6 +184,15 @@ export const FiscalProductOriginEnum = z.enum([
 export type TFiscalProductOriginEnum = z.infer<typeof FiscalProductOriginEnum>;
 export const FiscalClientTaxIndicatorEnum = z.enum(["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
 export type TFiscalClientTaxIndicatorEnum = z.infer<typeof FiscalClientTaxIndicatorEnum>;
+// CSOSN (Codigo de Situacao da Operacao no Simples Nacional) usado no ICMS de optantes do Simples Nacional.
+export const FiscalIcmsCsosnEnum = z.enum(["101", "102", "103", "201", "202", "203", "300", "400", "500", "900"]);
+export type TFiscalIcmsCsosnEnum = z.infer<typeof FiscalIcmsCsosnEnum>;
+// CST de PIS/COFINS para operacoes de saida (no Simples Nacional normalmente 49 com valor zero).
+export const FiscalPisCofinsCstEnum = z.enum(["01", "02", "03", "04", "05", "06", "07", "08", "09", "49", "99"]);
+export type TFiscalPisCofinsCstEnum = z.infer<typeof FiscalPisCofinsCstEnum>;
+// Escopo de uma regra de excecao do grupo tributario por cenario de UF.
+export const FiscalTaxRuleScopeEnum = z.enum(["INTRAESTADUAL", "INTERESTADUAL"]);
+export type TFiscalTaxRuleScopeEnum = z.infer<typeof FiscalTaxRuleScopeEnum>;
 export const StockMovementTypeEnum = z.enum(["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 export type TStockMovementTypeEnum = z.infer<typeof StockMovementTypeEnum>;
 export const SaleProcessingSourceEnum = z.enum(["EXTERNO", "INTERNO"]);

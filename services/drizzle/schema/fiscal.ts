@@ -1,14 +1,17 @@
 import { relations } from "drizzle-orm";
-import { boolean, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import {
 	fiscalClientTaxIndicatorEnum,
 	fiscalDocumentEnvironmentEnum,
 	fiscalDocumentEventTypeEnum,
 	fiscalDocumentTypeEnum,
+	fiscalIcmsCsosnEnum,
 	fiscalOperationConsumerPresenceEnum,
 	fiscalOperationFinalityEnum,
+	fiscalPisCofinsCstEnum,
 	fiscalProductOriginEnum,
+	fiscalTaxRuleScopeEnum,
 } from "./enums";
 import { fiscalDocuments } from "./financial";
 import { organizations } from "./organizations";
@@ -88,6 +91,80 @@ export const fiscalOperationProfiles = newTable(
 	}),
 );
 
+export const fiscalTaxGroups = newTable(
+	"fiscal_tax_groups",
+	{
+		id: varchar("id", { length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		nome: varchar("nome", { length: 255 }).notNull(),
+		descricao: text("descricao"),
+		// ICMS (Simples Nacional) - defaults intraestaduais
+		csosn: fiscalIcmsCsosnEnum("csosn").notNull().default("102"),
+		aliquotaIcms: doublePrecision("aliquota_icms").notNull().default(0),
+		percentualReducaoBc: doublePrecision("percentual_reducao_bc").notNull().default(0),
+		modalidadeBc: integer("modalidade_bc").notNull().default(3),
+		// Credito de ICMS no Simples Nacional (CSOSN 101/201)
+		percentualCreditoSn: doublePrecision("percentual_credito_sn"),
+		// ICMS-ST (configuracao manual nesta fase)
+		temSubstituicaoTributaria: boolean("tem_substituicao_tributaria").notNull().default(false),
+		mvaSt: doublePrecision("mva_st"),
+		aliquotaIcmsSt: doublePrecision("aliquota_icms_st"),
+		aliquotaInternaDestino: doublePrecision("aliquota_interna_destino"),
+		percentualReducaoBcSt: doublePrecision("percentual_reducao_bc_st"),
+		// PIS / COFINS (no SN normalmente CST 49 com valor zero)
+		cstPis: fiscalPisCofinsCstEnum("cst_pis").notNull().default("49"),
+		aliquotaPis: doublePrecision("aliquota_pis").notNull().default(0),
+		cstCofins: fiscalPisCofinsCstEnum("cst_cofins").notNull().default("49"),
+		aliquotaCofins: doublePrecision("aliquota_cofins").notNull().default(0),
+		ativo: boolean("ativo").notNull().default(true),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		organizacaoIdIdx: index("idx_fiscal_tax_groups_organizacao_id").on(table.organizacaoId),
+		nomeIdx: index("idx_fiscal_tax_groups_nome").on(table.organizacaoId, table.nome),
+	}),
+);
+
+export const fiscalTaxGroupRules = newTable(
+	"fiscal_tax_group_rules",
+	{
+		id: varchar("id", { length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		grupoTributarioId: varchar("grupo_tributario_id", { length: 255 })
+			.references(() => fiscalTaxGroups.id, { onDelete: "cascade" })
+			.notNull(),
+		// Dimensoes do cenario. Colunas anulaveis = "aplica-se a qualquer".
+		escopo: fiscalTaxRuleScopeEnum("escopo").notNull(),
+		ufDestino: varchar("uf_destino", { length: 2 }),
+		indicadorDestinatario: fiscalClientTaxIndicatorEnum("indicador_destinatario"),
+		finalidade: fiscalOperationFinalityEnum("finalidade"),
+		// Overrides (anulaveis = mantem o default do grupo)
+		csosn: fiscalIcmsCsosnEnum("csosn"),
+		cfop: varchar("cfop", { length: 10 }),
+		aliquotaIcms: doublePrecision("aliquota_icms"),
+		percentualReducaoBc: doublePrecision("percentual_reducao_bc"),
+		percentualCreditoSn: doublePrecision("percentual_credito_sn"),
+		temSubstituicaoTributaria: boolean("tem_substituicao_tributaria"),
+		mvaSt: doublePrecision("mva_st"),
+		aliquotaIcmsSt: doublePrecision("aliquota_icms_st"),
+		aliquotaInternaDestino: doublePrecision("aliquota_interna_destino"),
+		percentualReducaoBcSt: doublePrecision("percentual_reducao_bc_st"),
+		ativo: boolean("ativo").notNull().default(true),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		grupoTributarioIdIdx: index("idx_fiscal_tax_group_rules_grupo_tributario_id").on(table.grupoTributarioId),
+		cenarioIdx: index("idx_fiscal_tax_group_rules_cenario").on(table.grupoTributarioId, table.escopo, table.ufDestino),
+	}),
+);
+
 export const productFiscalProfiles = newTable(
 	"product_fiscal_profiles",
 	{
@@ -102,6 +179,7 @@ export const productFiscalProfiles = newTable(
 			.references(() => products.id, { onDelete: "cascade" })
 			.notNull(),
 		produtoVarianteId: varchar("produto_variante_id", { length: 255 }).references(() => productVariants.id, { onDelete: "cascade" }),
+		grupoTributarioId: varchar("grupo_tributario_id", { length: 255 }).references(() => fiscalTaxGroups.id, { onDelete: "set null" }),
 		origemMercadoria: fiscalProductOriginEnum("origem_mercadoria").notNull().default("NACIONAL"),
 		ncm: varchar("ncm", { length: 20 }).notNull(),
 		cest: varchar("cest", { length: 20 }),
@@ -160,6 +238,26 @@ export const productFiscalProfilesRelations = relations(productFiscalProfiles, (
 		fields: [productFiscalProfiles.produtoVarianteId],
 		references: [productVariants.id],
 	}),
+	grupoTributario: one(fiscalTaxGroups, {
+		fields: [productFiscalProfiles.grupoTributarioId],
+		references: [fiscalTaxGroups.id],
+	}),
+}));
+
+export const fiscalTaxGroupsRelations = relations(fiscalTaxGroups, ({ one, many }) => ({
+	organizacao: one(organizations, {
+		fields: [fiscalTaxGroups.organizacaoId],
+		references: [organizations.id],
+	}),
+	regras: many(fiscalTaxGroupRules),
+	perfisProdutos: many(productFiscalProfiles),
+}));
+
+export const fiscalTaxGroupRulesRelations = relations(fiscalTaxGroupRules, ({ one }) => ({
+	grupoTributario: one(fiscalTaxGroups, {
+		fields: [fiscalTaxGroupRules.grupoTributarioId],
+		references: [fiscalTaxGroups.id],
+	}),
 }));
 
 export type TFiscalDocumentEvent = typeof fiscalDocumentEvents.$inferSelect;
@@ -170,3 +268,7 @@ export type TFiscalOperationProfileEntity = typeof fiscalOperationProfiles.$infe
 export type TNewFiscalOperationProfileEntity = typeof fiscalOperationProfiles.$inferInsert;
 export type TProductFiscalProfileEntity = typeof productFiscalProfiles.$inferSelect;
 export type TNewProductFiscalProfileEntity = typeof productFiscalProfiles.$inferInsert;
+export type TFiscalTaxGroupEntity = typeof fiscalTaxGroups.$inferSelect;
+export type TNewFiscalTaxGroupEntity = typeof fiscalTaxGroups.$inferInsert;
+export type TFiscalTaxGroupRuleEntity = typeof fiscalTaxGroupRules.$inferSelect;
+export type TNewFiscalTaxGroupRuleEntity = typeof fiscalTaxGroupRules.$inferInsert;

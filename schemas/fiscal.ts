@@ -6,9 +6,12 @@ import {
 	FiscalDocumentLifecycleStatusEnum,
 	FiscalDocumentStatusEnum,
 	FiscalDocumentTypeEnum,
+	FiscalIcmsCsosnEnum,
 	FiscalOperationConsumerPresenceEnum,
 	FiscalOperationFinalityEnum,
+	FiscalPisCofinsCstEnum,
 	FiscalProductOriginEnum,
+	FiscalTaxRuleScopeEnum,
 } from "./enums";
 
 export const FiscalAddressSchema = z.object({
@@ -196,6 +199,7 @@ export const ProductFiscalProfileSchema = z.object({
 		invalid_type_error: "Tipo não valido para o ID do produto.",
 	}),
 	produtoVarianteId: z.string({ invalid_type_error: "Tipo não valido para o ID da variante do produto." }).optional().nullable(),
+	grupoTributarioId: z.string({ invalid_type_error: "Tipo não valido para o ID do grupo tributario." }).optional().nullable(),
 	origemMercadoria: FiscalProductOriginEnum.default("NACIONAL"),
 	ncm: z.string({
 		required_error: "NCM fiscal não informado.",
@@ -213,6 +217,67 @@ export const ProductFiscalProfileSchema = z.object({
 		.transform((val) => new Date(val)),
 });
 export type TProductFiscalProfile = z.infer<typeof ProductFiscalProfileSchema>;
+
+export const FiscalTaxGroupSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organizacao não informado.",
+		invalid_type_error: "Tipo não valido para o ID da organizacao.",
+	}),
+	nome: z.string({
+		required_error: "Nome do grupo tributario não informado.",
+		invalid_type_error: "Tipo não valido para o nome do grupo tributario.",
+	}),
+	descricao: z.string({ invalid_type_error: "Tipo não valido para a descricao do grupo tributario." }).optional().nullable(),
+	csosn: FiscalIcmsCsosnEnum.default("102"),
+	aliquotaIcms: z.number({ invalid_type_error: "Tipo não valido para a aliquota de ICMS." }).min(0).default(0),
+	percentualReducaoBc: z.number({ invalid_type_error: "Tipo não valido para o percentual de reducao da base de ICMS." }).min(0).default(0),
+	modalidadeBc: z.number({ invalid_type_error: "Tipo não valido para a modalidade de base de ICMS." }).int().min(0).max(3).default(3),
+	percentualCreditoSn: z.number({ invalid_type_error: "Tipo não valido para o percentual de credito do Simples Nacional." }).min(0).optional().nullable(),
+	temSubstituicaoTributaria: z.boolean({ invalid_type_error: "Tipo não valido para a flag de substituicao tributaria." }).default(false),
+	mvaSt: z.number({ invalid_type_error: "Tipo não valido para o MVA da substituicao tributaria." }).min(0).optional().nullable(),
+	aliquotaIcmsSt: z.number({ invalid_type_error: "Tipo não valido para a aliquota de ICMS-ST." }).min(0).optional().nullable(),
+	aliquotaInternaDestino: z.number({ invalid_type_error: "Tipo não valido para a aliquota interna do destino." }).min(0).optional().nullable(),
+	percentualReducaoBcSt: z.number({ invalid_type_error: "Tipo não valido para o percentual de reducao da base de ICMS-ST." }).min(0).optional().nullable(),
+	cstPis: FiscalPisCofinsCstEnum.default("49"),
+	aliquotaPis: z.number({ invalid_type_error: "Tipo não valido para a aliquota de PIS." }).min(0).default(0),
+	cstCofins: FiscalPisCofinsCstEnum.default("49"),
+	aliquotaCofins: z.number({ invalid_type_error: "Tipo não valido para a aliquota de COFINS." }).min(0).default(0),
+	ativo: z.boolean({ invalid_type_error: "Tipo não valido para o status do grupo tributario." }).default(true),
+	dataInsercao: z
+		.string({ invalid_type_error: "Tipo não valido para a data de insercao do grupo tributario." })
+		.datetime({ message: "Tipo não valido para a data de insercao do grupo tributario." })
+		.default(new Date().toISOString())
+		.transform((val) => new Date(val)),
+});
+export type TFiscalTaxGroup = z.infer<typeof FiscalTaxGroupSchema>;
+
+export const FiscalTaxGroupRuleSchema = z.object({
+	grupoTributarioId: z.string({
+		required_error: "ID do grupo tributario não informado.",
+		invalid_type_error: "Tipo não valido para o ID do grupo tributario.",
+	}),
+	escopo: FiscalTaxRuleScopeEnum,
+	ufDestino: z.string({ invalid_type_error: "Tipo não valido para a UF de destino." }).length(2).optional().nullable(),
+	indicadorDestinatario: FiscalClientTaxIndicatorEnum.optional().nullable(),
+	finalidade: FiscalOperationFinalityEnum.optional().nullable(),
+	csosn: FiscalIcmsCsosnEnum.optional().nullable(),
+	cfop: z.string({ invalid_type_error: "Tipo não valido para o CFOP da regra." }).optional().nullable(),
+	aliquotaIcms: z.number({ invalid_type_error: "Tipo não valido para a aliquota de ICMS da regra." }).min(0).optional().nullable(),
+	percentualReducaoBc: z.number({ invalid_type_error: "Tipo não valido para o percentual de reducao da base da regra." }).min(0).optional().nullable(),
+	percentualCreditoSn: z.number({ invalid_type_error: "Tipo não valido para o percentual de credito do SN da regra." }).min(0).optional().nullable(),
+	temSubstituicaoTributaria: z.boolean({ invalid_type_error: "Tipo não valido para a flag de ST da regra." }).optional().nullable(),
+	mvaSt: z.number({ invalid_type_error: "Tipo não valido para o MVA da regra." }).min(0).optional().nullable(),
+	aliquotaIcmsSt: z.number({ invalid_type_error: "Tipo não valido para a aliquota de ICMS-ST da regra." }).min(0).optional().nullable(),
+	aliquotaInternaDestino: z.number({ invalid_type_error: "Tipo não valido para a aliquota interna de destino da regra." }).min(0).optional().nullable(),
+	percentualReducaoBcSt: z.number({ invalid_type_error: "Tipo não valido para o percentual de reducao da base de ST da regra." }).min(0).optional().nullable(),
+	ativo: z.boolean({ invalid_type_error: "Tipo não valido para o status da regra." }).default(true),
+	dataInsercao: z
+		.string({ invalid_type_error: "Tipo não valido para a data de insercao da regra." })
+		.datetime({ message: "Tipo não valido para a data de insercao da regra." })
+		.default(new Date().toISOString())
+		.transform((val) => new Date(val)),
+});
+export type TFiscalTaxGroupRule = z.infer<typeof FiscalTaxGroupRuleSchema>;
 
 export const FiscalDocumentSchema = z.object({
 	organizacaoId: z.string({

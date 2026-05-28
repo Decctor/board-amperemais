@@ -209,6 +209,12 @@ export const fiscalProductOriginEnum = pgEnum("fiscal_product_origin", [
 
 export const fiscalClientTaxIndicatorEnum = pgEnum("fiscal_client_tax_indicator", ["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
 
+export const fiscalIcmsCsosnEnum = pgEnum("fiscal_icms_csosn", ["101", "102", "103", "201", "202", "203", "300", "400", "500", "900"]);
+
+export const fiscalPisCofinsCstEnum = pgEnum("fiscal_pis_cofins_cst", ["01", "02", "03", "04", "05", "06", "07", "08", "09", "49", "99"]);
+
+export const fiscalTaxRuleScopeEnum = pgEnum("fiscal_tax_rule_scope", ["INTRAESTADUAL", "INTERESTADUAL"]);
+
 export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA_AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 
 export const saleProcessingSourceEnum = pgEnum("origem_processamento_venda", ["EXTERNO", "INTERNO"]);
