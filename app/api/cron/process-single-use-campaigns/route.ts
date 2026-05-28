@@ -311,6 +311,7 @@ async function processSingleUseCampaign({
 			enqueuedCount: campaignEnqueuedCount,
 			failedClientIds,
 			errors: enqueueErrors,
+			notes: ["A campanha permaneceu desativada e NÃO foi reativada."],
 		});
 	}
 }

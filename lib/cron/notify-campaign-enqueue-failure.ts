@@ -8,12 +8,13 @@ type CampaignEnqueueFailureReport = {
 	enqueuedCount: number;
 	failedClientIds: string[];
 	errors: string[];
+	notes?: string[];
 };
 
 const FAILED_CLIENT_IDS_SAMPLE_SIZE = 20;
 
-// Best-effort developer alert when a single-use campaign chunk could not be enqueued
-// even after retries. Never throws: a failure to notify must not break cron processing.
+// Best-effort developer alert when a campaign chunk could not be enqueued even after
+// retries. Never throws: a failure to notify must not break cron processing.
 export async function notifyCampaignEnqueueFailure(report: CampaignEnqueueFailureReport) {
 	const recipient = process.env.BUG_REPORT_EMAIL;
 	if (!recipient) {
@@ -26,7 +27,7 @@ export async function notifyCampaignEnqueueFailure(report: CampaignEnqueueFailur
 	const distinctErrors = Array.from(new Set(report.errors));
 
 	const lines = [
-		"Falha ao enfileirar interações de uma campanha de uso único após múltiplas tentativas.",
+		"Falha ao enfileirar interações de uma campanha após múltiplas tentativas.",
 		"",
 		`Organização: ${report.organizationId}`,
 		`Campanha: ${report.campaignTitle} (${report.campaignId})`,
@@ -40,15 +41,14 @@ export async function notifyCampaignEnqueueFailure(report: CampaignEnqueueFailur
 		`Amostra de clientes com falha (${sampleClientIds.length}${remainingClientIds > 0 ? ` de ${report.failedClientIds.length}` : ""}):`,
 		...sampleClientIds.map((clientId) => `  - ${clientId}`),
 		...(remainingClientIds > 0 ? [`  ... e mais ${remainingClientIds}.`] : []),
-		"",
-		"A campanha permaneceu desativada e NÃO foi reativada.",
+		...(report.notes && report.notes.length > 0 ? ["", ...report.notes] : []),
 	];
 
 	try {
 		const { error } = await resend.emails.send({
 			from: "RecompraCRM <noreply@recompracrm.com.br>",
 			to: [recipient],
-			subject: `[ALERTA] Falha ao enfileirar campanha de uso único ${report.campaignId}`,
+			subject: `[ALERTA] Falha ao enfileirar campanha ${report.campaignId}`,
 			text: lines.join("\n"),
 		});
 
