@@ -1,8 +1,8 @@
 # Motor fiscal — design e estruturação
 
 Data: 2026-05-28
-Branch: `claude/fiscal-engine-planning-Hl2EZ`
-Status: **planejamento (não implementar ainda)**
+Branch: `claude/fiscal-engine-Hl2EZ` (implementação, a partir de `fiscal-module`)
+Status: **Fases 0–2 implementadas** (ver §11)
 Contexto base: `docs/FISCAL-ALL-IN-ONE-AUDIT.md` (branch `fiscal-module`)
 
 ## Decisões de escopo (1º ciclo)
@@ -288,3 +288,33 @@ A Fase 1+2 já entrega **NFC-e de balcão e NF-e intraestadual tributariamente c
 | `vTotTrib` zerado fere Lei 12.741 | Integrar IBPT na Fase 2 |
 | Refactor dos mappers sem rede | Testes unitários do motor + snapshot de payload antes/depois |
 | TS global do projeto com erros (ver auditoria) | Motor isolado em `lib/fiscal/engine/` com tipos próprios e testes, reduz dependência do estado global |
+
+---
+
+## 11. Status de implementação
+
+Implementado nesta branch (`claude/fiscal-engine-Hl2EZ`), a partir de `fiscal-module`:
+
+**Fase 0 — Modelagem** ✅
+- Enums `FiscalIcmsCsosnEnum`, `FiscalPisCofinsCstEnum`, `FiscalTaxRuleScopeEnum` (Zod + pgEnum).
+- Tabelas `fiscalTaxGroups` e `fiscalTaxGroupRules`; FK `grupoTributarioId` em `productFiscalProfiles`.
+- Schemas Zod e tipos inferidos.
+
+**Fase 1 — Motor puro** (`lib/fiscal/engine/`) ✅
+- `cfop.ts`, `rules.ts`, `taxation.ts`, `validation.ts`, `data/uf.ts`, `data/aliquotas-interestaduais.ts`.
+- `computeItemTaxation` (ICMS/CSOSN, crédito SN, ST manual, PIS/COFINS) + `computeDocumentTotals`.
+- Validado por smoke test (22 cenários). Todos os imports externos são `import type` → motor sem dependência de runtime.
+
+**Fase 2 — Integração** ✅
+- `lib/fiscal/taxation-context.ts`: `computeSaleTaxation` (fonte única para validação e mappers).
+- Mappers NFC-e/NF-e consomem o motor: bloco `imposto` real (ICMSSN/PIS/COFINS) e `ICMSTot` calculado.
+- `lib/fiscal/documents.ts`: carrega grupos com regras no contexto e roda `assertFiscalTaxationValid` antes do provedor.
+
+### Pendências antes de produção
+
+- **`db:push`**: o schema novo (tabelas + enums + coluna) precisa ser aplicado (`npm run db:push`).
+- **`vTotTrib`**: ainda 0 (seam pronto em `computeItemTaxation`). Verificar §7.0 (cálculo automático da Nuvem Fiscal) antes de construir a tabela IBPT.
+- **UI/CRUD** de grupos tributários e vínculo no perfil do produto (Fase 0 não inclui telas).
+- **Backfill**: criar grupo padrão por organização e vincular perfis existentes.
+- **Validação de campos exatos** do payload ICMSSN/PIS/COFINS contra a sandbox da Nuvem Fiscal (leiaute oficial NF-e 4.00 seguido; confirmar em homologação).
+- **Verificação não pôde rodar `tsc`/lint completos** no ambiente (policy de rede bloqueia `npm ci` por causa do pacote `xlsx` via CDN). Typecheck foi feito de forma dirigida nos arquivos fiscais + smoke test do motor.
