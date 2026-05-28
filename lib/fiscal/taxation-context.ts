@@ -1,0 +1,112 @@
+import type { TFiscalClientTaxIndicatorEnum } from "@/schemas/enums";
+import { aggregateItemErrors, computeDocumentTotals, computeItemTaxation, type TDocumentTaxTotals, type TFiscalTaxGroupWithRules, type TFiscalTaxScenario, type TFiscalValidationError, type TItemTaxResult } from "./engine";
+import type { TFiscalSaleContext } from "./types";
+
+function readDestinatarioUf(context: TFiscalSaleContext): string | null {
+	const snapshot = context.destinatarioSnapshot as { endereco?: { estado?: string | null } } | null;
+	const uf = snapshot?.endereco?.estado;
+	return uf ? String(uf).toUpperCase() : null;
+}
+
+function readDestinatarioIndicador(context: TFiscalSaleContext): TFiscalClientTaxIndicatorEnum {
+	const snapshot = context.destinatarioSnapshot as { indicadorInscricaoEstadual?: TFiscalClientTaxIndicatorEnum | null } | null;
+	return snapshot?.indicadorInscricaoEstadual ?? "NAO_CONTRIBUINTE";
+}
+
+// Monta o cenario fiscal (mesmo para todos os itens do documento) a partir do contexto da venda.
+export function buildSaleScenario(context: TFiscalSaleContext): TFiscalTaxScenario {
+	const fiscalConfig = context.organizacao.fiscalConfiguracao;
+	const ufOrigem = (fiscalConfig?.endereco.uf ?? "").toUpperCase();
+	const ufDestino = readDestinatarioUf(context) ?? ufOrigem;
+	const escopo = ufOrigem && ufDestino && ufOrigem !== ufDestino ? "INTERESTADUAL" : "INTRAESTADUAL";
+
+	return {
+		regimeTributario: fiscalConfig?.regimeTributario ?? 1,
+		ufOrigem,
+		ufDestino,
+		escopo,
+		consumidorFinal: context.operacao.consumidorFinal,
+		finalidade: context.operacao.finalidade,
+		indicadorDestinatario: readDestinatarioIndicador(context),
+	};
+}
+
+// Grupo sintetico usado quando o produto nao tem grupo tributario vinculado.
+// Mantem a emissao renderizavel; a validacao registra o erro bloqueante separadamente.
+function buildFallbackGroup(organizacaoId: string): TFiscalTaxGroupWithRules {
+	return {
+		id: "__fallback__",
+		organizacaoId,
+		nome: "FALLBACK",
+		descricao: null,
+		csosn: "102",
+		aliquotaIcms: 0,
+		percentualReducaoBc: 0,
+		modalidadeBc: 3,
+		percentualCreditoSn: null,
+		temSubstituicaoTributaria: false,
+		mvaSt: null,
+		aliquotaIcmsSt: null,
+		aliquotaInternaDestino: null,
+		percentualReducaoBcSt: null,
+		cstPis: "49",
+		aliquotaPis: 0,
+		cstCofins: "49",
+		aliquotaCofins: 0,
+		ativo: true,
+		dataInsercao: new Date(),
+		regras: [],
+	};
+}
+
+export type TSaleItemTaxation = {
+	item: TFiscalSaleContext["venda"]["itens"][number];
+	result: TItemTaxResult;
+};
+
+export type TSaleTaxation = {
+	scenario: TFiscalTaxScenario;
+	itens: TSaleItemTaxation[];
+	totais: TDocumentTaxTotals;
+	erros: TFiscalValidationError[];
+};
+
+// Calcula a tributacao de toda a venda. Fonte unica usada tanto pela validacao quanto pelos mappers.
+export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation {
+	const scenario = buildSaleScenario(context);
+	const extraErrors: TFiscalValidationError[] = [];
+
+	const itens = context.venda.itens.map((item) => {
+		const perfil = context.perfisProdutos.find((profile) => profile.produtoId === item.produtoId);
+		const grupo = perfil?.grupoTributarioId ? context.gruposTributarios.find((g) => g.id === perfil.grupoTributarioId) : undefined;
+
+		if (!perfil) {
+			extraErrors.push({ codigo: "PERFIL_FISCAL_AUSENTE", severidade: "ERRO", mensagem: "Produto sem perfil fiscal cadastrado.", produtoId: item.produtoId });
+		} else if (!perfil.grupoTributarioId || !grupo) {
+			extraErrors.push({ codigo: "GRUPO_TRIBUTARIO_AUSENTE", severidade: "ERRO", mensagem: "Produto sem grupo tributario vinculado.", produtoId: item.produtoId });
+		}
+
+		const grupoEfetivo = grupo ?? buildFallbackGroup(context.organizacao.id);
+		const result = computeItemTaxation({
+			scenario,
+			group: grupoEfetivo,
+			item: {
+				produtoId: item.produtoId,
+				origemMercadoria: perfil?.origemMercadoria ?? "NACIONAL",
+				cfopBase: perfil?.cfopPadrao ?? context.operacao.cfopPadrao,
+				quantidade: item.quantidade,
+				valorBruto: item.valorVendaTotalBruto,
+				valorDesconto: item.valorTotalDesconto,
+			},
+			// vTotTrib (Lei 12.741) sera resolvido externamente (tabela IBPT / provedor). Pendente de verificacao.
+			vTotTrib: undefined,
+		});
+
+		return { item, result };
+	});
+
+	const totais = computeDocumentTotals(itens.map(({ result, item }) => ({ result, valorBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })));
+	const erros = [...extraErrors, ...aggregateItemErrors(itens.map(({ result }) => result))];
+
+	return { scenario, itens, totais, erros };
+}

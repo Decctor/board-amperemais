@@ -1,5 +1,7 @@
+import { computeSaleTaxation } from "@/lib/fiscal/taxation-context";
 import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
+import { buildItemImposto } from "./imposto";
 import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode, mapTaxRegistration, nonEmptyString, onlyDigits } from "./utils";
 
 function mapDestinatario(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
@@ -16,6 +18,7 @@ function mapDestinatario(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
 
 export function mapSaleContextToNfePayload(context: TFiscalSaleContext, documento: TFiscalDocument) {
 	const fiscalConfig = context.organizacao.fiscalConfiguracao!;
+	const taxation = computeSaleTaxation(context);
 
 	return {
 		ambiente: fiscalConfig.ambiente === "PRODUCAO" ? "producao" : "homologacao",
@@ -61,7 +64,7 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 				CRT: fiscalConfig.regimeTributario,
 			},
 			dest: mapDestinatario(context.destinatarioSnapshot),
-			det: context.venda.itens.map((item, index) => {
+			det: taxation.itens.map(({ item, result }, index) => {
 				const perfil = context.perfisProdutos.find((profile) => profile.produtoId === item.produtoId);
 				return {
 					nItem: index + 1,
@@ -70,7 +73,8 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 						cEAN: "SEM GTIN",
 						xProd: item.metadados && typeof item.metadados === "object" && "descricao" in item.metadados ? item.metadados.descricao : `ITEM ${index + 1}`,
 						NCM: perfil?.ncm ?? "00000000",
-						CFOP: perfil?.cfopPadrao ?? context.operacao.cfopPadrao,
+						CEST: perfil?.cest ?? undefined,
+						CFOP: result.cfop ?? perfil?.cfopPadrao ?? context.operacao.cfopPadrao,
 						uCom: perfil?.unidadeComercial ?? "UN",
 						qCom: item.quantidade,
 						vUnCom: item.valorVendaUnitario,
@@ -82,16 +86,21 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 						vDesc: item.valorTotalDesconto,
 						indTot: 1,
 					},
-					imposto: {
-						vTotTrib: 0,
-					},
+					imposto: buildItemImposto(result),
 				};
 			}),
 			total: {
 				ICMSTot: {
-					vProd: context.venda.itens.reduce((acc, item) => acc + item.valorVendaTotalBruto, 0),
-					vDesc: context.venda.itens.reduce((acc, item) => acc + item.valorTotalDesconto, 0),
+					vBC: taxation.totais.vBC,
+					vICMS: taxation.totais.vICMS,
+					vBCST: taxation.totais.vBCST,
+					vST: taxation.totais.vST,
+					vProd: taxation.totais.vProd,
+					vDesc: taxation.totais.vDesc,
+					vPIS: taxation.totais.vPIS,
+					vCOFINS: taxation.totais.vCOFINS,
 					vNF: context.venda.valorTotal,
+					vTotTrib: taxation.totais.vTotTrib,
 				},
 			},
 			transp: { modFrete: 9 },

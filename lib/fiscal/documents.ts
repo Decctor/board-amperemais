@@ -1,10 +1,12 @@
 import { db } from "@/services/drizzle";
 import { fiscalDocumentEvents, fiscalDocuments } from "@/services/drizzle/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { getErrorMessage } from "../errors";
 import { buildFiscalReference } from "./constants";
+import { formatValidationMessages, hasBlockingErrors, type TFiscalTaxGroupWithRules } from "./engine";
 import { FiscalReadinessError } from "./errors";
+import { computeSaleTaxation } from "./taxation-context";
 import { ManualFiscalProvider } from "./providers/manual";
 import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
 import { findActiveFiscalSeries, findDefaultOperationProfileForType, loadFiscalOrganization, reserveFiscalSeriesNumber } from "./settings";
@@ -207,6 +209,15 @@ async function loadProductFiscalProfilesForSale(venda: TSaleForFiscal) {
 	});
 }
 
+async function loadTaxGroupsForProfiles(perfisProdutos: { grupoTributarioId: string | null }[]): Promise<TFiscalTaxGroupWithRules[]> {
+	const grupoIds = [...new Set(perfisProdutos.map((perfil) => perfil.grupoTributarioId).filter((id): id is string => !!id))];
+	if (grupoIds.length === 0) return [];
+	return db.query.fiscalTaxGroups.findMany({
+		where: (fields) => inArray(fields.id, grupoIds),
+		with: { regras: true },
+	});
+}
+
 function buildDestinatarioSnapshot(venda: TSaleForFiscal | null) {
 	if (!venda?.cliente) return null;
 	const address = venda.entregaLocalizacao ?? venda.cliente;
@@ -264,6 +275,7 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 	if (!serie) throw new createHttpError.BadRequest("Serie fiscal nao configurada.");
 
 	const perfisProdutos = await loadProductFiscalProfilesForSale(venda);
+	const gruposTributarios = await loadTaxGroupsForProfiles(perfisProdutos);
 
 	return {
 		venda,
@@ -271,8 +283,18 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 		serie,
 		operacao,
 		perfisProdutos,
+		gruposTributarios,
 		destinatarioSnapshot: buildDestinatarioSnapshot(venda),
 	};
+}
+
+// Validacao tributaria local (motor fiscal) antes de enviar ao provedor.
+// Bloqueia a emissao quando ha erros impeditivos detectaveis sem custo de rejeicao SEFAZ.
+function assertFiscalTaxationValid(context: TFiscalSaleContext) {
+	const taxation = computeSaleTaxation(context);
+	if (hasBlockingErrors(taxation.erros)) {
+		throw new FiscalReadinessError(`Validacao fiscal falhou: ${formatValidationMessages(taxation.erros).join("; ")}`);
+	}
 }
 
 async function persistAuthorizedAssets(documento: typeof fiscalDocuments.$inferSelect, organizacaoId: string) {
@@ -311,6 +333,7 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 	try {
 		const context = await buildSaleFiscalContext(input);
 		assertFiscalReadiness(context);
+		assertFiscalTaxationValid(context);
 		const reservedNumber = documento.numero ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
 
 		await patchFiscalDocument(documento.id, {

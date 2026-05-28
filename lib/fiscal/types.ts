@@ -14,6 +14,7 @@ import type {
 } from "@/services/drizzle/schema";
 import type { TClientEntity } from "@/services/drizzle/schema/clients";
 import type { TSaleEntity, TSaleItemEntity } from "@/services/drizzle/schema/sales";
+import type { TFiscalTaxGroupWithRules } from "./engine";
 
 export type TSaleForFiscal = TSaleEntity & {
 	itens: TSaleItemEntity[];
@@ -39,6 +40,7 @@ export type TFiscalSaleContext = {
 	serie: TFiscalSeriesEntity;
 	operacao: TFiscalOperationProfileEntity;
 	perfisProdutos: TProductFiscalProfileEntity[];
+	gruposTributarios: TFiscalTaxGroupWithRules[];
 	destinatarioSnapshot: Record<string, unknown> | null;
 };
 
