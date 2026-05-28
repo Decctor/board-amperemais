@@ -209,7 +209,7 @@ export const fiscalProductOriginEnum = pgEnum("fiscal_product_origin", [
 
 export const fiscalClientTaxIndicatorEnum = pgEnum("fiscal_client_tax_indicator", ["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
 
-export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
+export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA_AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 
 export const saleProcessingSourceEnum = pgEnum("origem_processamento_venda", ["EXTERNO", "INTERNO"]);
 

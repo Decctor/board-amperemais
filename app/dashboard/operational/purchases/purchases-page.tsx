@@ -20,6 +20,7 @@ import { formatDateAsLocale, formatNameAsInitials } from "@/lib/formatting";
 import Link from "next/link";
 import { PurchaseStatusOptions } from "@/utils/select-options";
 import { cn } from "@/lib/utils";
+import ControlPurchase from "@/components/Modals/Purchases/ControlPurchase";
 type PurchasesPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -28,6 +29,7 @@ type PurchasesPageProps = {
 export default function PurchasesPage({ user, membership }: PurchasesPageProps) {
 	const queryClient = useQueryClient();
 	const [newPurchaseModalIsOpen, setNewPurchaseModalIsOpen] = useState(false);
+	const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
 	const { data, isLoading, isError, isSuccess, error, queryKey, filters, updateFilters } = usePurchases({ initialFilters: { page: 1, search: "" } });
 	const purchases = data?.purchases ?? [];
 	const purchasesMatched = data?.purchasesMatched ?? 0;
@@ -63,7 +65,9 @@ export default function PurchasesPage({ user, membership }: PurchasesPageProps) 
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && purchases ? (
 				purchases.length > 0 ? (
-					purchases.map((purchase, index: number) => <PurchasePageCard key={purchase.id} purchase={purchase} />)
+					purchases.map((purchase, index: number) => (
+						<PurchasePageCard key={purchase.id} purchase={purchase} handleEditClick={() => setEditingPurchaseId(purchase.id)} />
+					))
 				) : (
 					<Empty>
 						<EmptyHeader>
@@ -86,14 +90,23 @@ export default function PurchasesPage({ user, membership }: PurchasesPageProps) 
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
 			) : null}
+			{editingPurchaseId ? (
+				<ControlPurchase
+					purchaseId={editingPurchaseId}
+					user={user}
+					closeModal={() => setEditingPurchaseId(null)}
+					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+				/>
+			) : null}
 		</div>
 	);
 }
 
 type PurchasePageCardProps = {
 	purchase: TGetPurchasesOutputDefault["purchases"][number];
+	handleEditClick: () => void;
 };
-function PurchasePageCard({ purchase }: PurchasePageCardProps) {
+function PurchasePageCard({ purchase, handleEditClick }: PurchasePageCardProps) {
 	const getPurchaseStatus = useCallback(() => {
 		const status = PurchaseStatusOptions.find((status) => status.value === purchase.status);
 		return status || null;
@@ -136,7 +149,7 @@ function PurchasePageCard({ purchase }: PurchasePageCardProps) {
 						<h2 className="text-[0.65rem] font-medium text-muted-foreground">{purchase.autor?.nome || "N/A"}</h2>
 					</div>
 				</div>
-				<Button variant="ghost" size="xs">
+				<Button variant="ghost" size="xs" onClick={handleEditClick}>
 					<Pencil className="w-4 h-4 min-w-4 min-h-4" />
 					<p>EDITAR</p>
 				</Button>
