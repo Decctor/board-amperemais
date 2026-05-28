@@ -1,0 +1,248 @@
+# Motor fiscal — design e estruturação
+
+Data: 2026-05-28
+Branch: `claude/fiscal-engine-planning-Hl2EZ`
+Status: **planejamento (não implementar ainda)**
+Contexto base: `docs/FISCAL-ALL-IN-ONE-AUDIT.md` (branch `fiscal-module`)
+
+## Decisões de escopo (1º ciclo)
+
+| Dimensão | Decisão | Implicação |
+|---|---|---|
+| Regime tributário | **Simples Nacional primeiro** (CRT 1/4) | Usa **CSOSN**, não CST de ICMS. PIS/COFINS saem com CST 49/valor zero (recolhidos no DAS). |
+| Modelo de regras | **Grupos tributários reutilizáveis + exceções por cenário** (híbrido A+C) | Produto aponta para um grupo; exceções por UF/destinatário ficam em tabela-filha. |
+| Abrangência | **Intraestadual + interestadual** | Exige resolução de CFOP 5.xxx vs 6.xxx, alíquotas interestaduais e tratamento de ST. |
+
+---
+
+## 1. Diagnóstico: o que falta hoje
+
+O módulo atual é uma **camada de integração** com a Nuvem Fiscal, não um **motor de apuração**.
+
+Evidência direta nos mappers (`lib/fiscal/providers/nuvem-fiscal/mappers/nfce.ts` e `nfe.ts`):
+
+```js
+imposto: { vTotTrib: 0 }              // bloco de impostos do item vazio
+total: { ICMSTot: { vICMS: 0, vPIS: 0, vCOFINS: 0, ... } }   // totais zerados
+```
+
+Não há grupo `ICMS`/`ICMSSN`, `PIS` nem `COFINS` por item. O payload é sintaticamente válido, mas **tributariamente vazio** — aceitável como protótipo de integração, rejeitável (ou incorreto) em produção.
+
+Modelos de dados atuais e o que lhes falta:
+
+| Tabela | Tem hoje | Falta para o motor |
+|---|---|---|
+| `productFiscalProfiles` | origem, NCM, CEST, CFOP padrão, unidade, cód. benefício | CST/CSOSN, alíquotas, vínculo a grupo tributário |
+| `fiscalOperationProfiles` | finalidade, presença, CFOP padrão, natureza | (mantém-se como dimensão "operação"; sem tributo) |
+| `OrganizationFiscalConfig` | `regimeTributario` (CRT) | nada consome o CRT para decidir CSOSN vs CST |
+
+**Lacuna central:** não existe a camada que, dado `(regime + operação + UF origem→destino + destinatário + NCM/produto)`, **decide** CSOSN/CST, **calcula** bases e valores de ICMS/PIS/COFINS, **resolve** o CFOP do cenário e **valida** o item antes de enviar ao provider.
+
+---
+
+## 2. Como ERPs maiores modelam (referência)
+
+Bling, Tiny, Omie, TOTVS Protheus e SAP convergem para 3 camadas:
+
+1. **Identidade fiscal do produto** — NCM, CEST, origem, unidade. O que o produto *é*. (Já existe.)
+2. **Grupo/cenário tributário reutilizável** — "como esta classe de produto é tributada". No Protheus é o **TES**; no Bling/Tiny é o "grupo de tributação". Muitos produtos → um grupo.
+3. **Matriz de resolução por operação** — CST/CSOSN, CFOP e alíquota **finais** dependem da combinação `(regime × operação × UF origem→destino × destinatário contribuinte?)`, resolvida **no momento da emissão**.
+
+Anti-padrões a evitar:
+- **Cravar alíquota/CST no produto** (opção B): quebra na 1ª venda interestadual ou mudança de alíquota; obriga reconfigurar milhares de produtos.
+- **Matriz pura por `(regime+UF+NCM)`** (opção C): explode em combinações e ninguém consegue popular.
+
+**Recomendação adotada:** híbrido — **grupos tributários** (base mantível) **+** tabela-filha de **exceções por cenário** só para o que varia por UF/destinatário.
+
+---
+
+## 3. Simplificações por escolher Simples Nacional (importante)
+
+Estas reduzem muito o esforço da Fase 1 — e evitam construir o que o SN não exige:
+
+- **ICMS por CSOSN**, não CST. Casos dominantes no varejo:
+  - `CSOSN 102` — sem permissão de crédito (mais comum no balcão).
+  - `CSOSN 101` — com permissão de crédito de ICMS (informa `pCredSN`/`vCredICMSSN`).
+  - `CSOSN 500` — ICMS já cobrado anteriormente por **substituição tributária**.
+  - `CSOSN 400` — não tributada pelo SN.
+- **PIS/COFINS**: em regra **CST 49** ("outras operações de saída") com **valor zero** na NFC-e/NF-e, pois são recolhidos dentro do DAS. Isso elimina a necessidade de motor de PIS/COFINS na Fase 1.
+- **DIFAL de partilha (EC 87/2015)**: optante do SN **não recolhe** o diferencial em venda a consumidor final não contribuinte de outra UF (ADI 5464 / cláusula 9ª suspensa). Logo, interestadual B2C do SN precisa só de **CFOP 6.xxx + CSOSN corretos** — sem cálculo de DIFAL. **Não construir DIFAL agora.**
+- **ICMS-ST** (`CSOSN 500` / produtos com `CEST`) **continua aplicável** e é a parte pesada: exige MVA por NCM/UF. Tratar como fase posterior com fonte de dados explícita (ver §7).
+
+> Resumo: para a maioria das vendas SN (intra e interestadual B2C sem ST), a Fase 1 entrega nota tributariamente correta com CSOSN 101/102 + PIS/COFINS CST 49 zero. ST e B2B com crédito vêm depois.
+
+---
+
+## 4. Modelo de dados proposto
+
+### 4.1 Novo: `fiscalTaxGroups` (grupos de tributação)
+
+Escopo por organização, nomeado, reutilizável. Carrega os **defaults intraestaduais**.
+
+Campos (nomes Drizzle camelCase / coluna snake_case PT):
+- `organizacaoId`, `nome`, `descricao`, `ativo`, `dataInsercao`
+- ICMS (SN): `csosn` (enum), `aliquotaIcms` (numérico, p/ casos com débito), `percentualReducaoBc`, `modalidadeBc`
+- ST: `temSubstituicaoTributaria` (bool), `mvaSt`, `aliquotaIcmsSt`, `aliquotaInternaDestino` — opcionais, preenchidos na fase ST
+- Crédito SN (CSOSN 101): `percentualCreditoSn`
+- PIS: `cstPis` (default `49`), `aliquotaPis` (default 0)
+- COFINS: `cstCofins` (default `49`), `aliquotaCofins` (default 0)
+- IPI: `cstIpi`, `aliquotaIpi` — opcional, fora do MVP de varejo SN
+
+### 4.2 Novo: `fiscalTaxGroupRules` (exceções por cenário) — filha de `fiscalTaxGroups`
+
+Só existe quando o grupo precisa variar. Resolução por especificidade (regra mais específica vence).
+
+- `grupoTributarioId` (FK cascade)
+- `escopoUf`: enum `INTRAESTADUAL` | `INTERESTADUAL` | UF específica (ex.: `SP`)
+- `indicadorDestinatario`: `CONTRIBUINTE` | `NAO_CONTRIBUINTE` | `QUALQUER`
+- `finalidade`: reaproveita `FiscalOperationFinalityEnum` | `QUALQUER`
+- Overrides: `csosn`, `cfop`, `aliquotaIcms`, `temSubstituicaoTributaria`, `mvaSt`, `aliquotaIcmsSt`...
+- `dataInsercao`
+
+### 4.3 Alteração: `productFiscalProfiles`
+
+- Adicionar `grupoTributarioId` (FK nullable → `fiscalTaxGroups`).
+- Mantém NCM/CEST/origem/unidade (identidade do produto).
+- Migração: criar 1 grupo "padrão" por organização e vincular perfis existentes (backfill).
+
+### 4.4 Sem alteração estrutural
+
+- `fiscalOperationProfiles` permanece como a dimensão "operação" (finalidade, presença, natureza, CFOP padrão intra).
+- `OrganizationFiscalConfig.regimeTributario` passa a ser **lido** pelo motor (hoje é ignorado).
+
+### Diagrama de relações
+
+```
+organization 1───* fiscalTaxGroups 1───* fiscalTaxGroupRules
+                          ▲
+                          │ grupoTributarioId (nullable)
+                          │
+product 1───* productFiscalProfiles
+fiscalOperationProfiles (operação)   ── entram como dimensões na resolução
+```
+
+---
+
+## 5. O motor (`lib/fiscal/engine/`)
+
+Camada **pura** (sem I/O, sem provider), testável isoladamente.
+
+### 5.1 Entrada e saída
+
+```ts
+// resolução por item
+type TResolveItemTaxInput = {
+  regime: number;                 // CRT do emitente
+  operacao: TFiscalOperationProfileEntity;
+  ufOrigem: string;
+  ufDestino: string;
+  destinatario: { contribuinte: TFiscalClientTaxIndicatorEnum; consumidorFinal: boolean };
+  produtoPerfil: TProductFiscalProfileEntity;
+  grupo: TFiscalTaxGroupEntity & { regras: TFiscalTaxGroupRuleEntity[] };
+  item: { quantidade; valorUnitario; valorBruto; valorDesconto };
+};
+
+type TItemTaxResult = {
+  cfop: string;
+  origem: string;
+  icms: { csosn: string; vBC: number; pICMS: number; vICMS: number;
+          st?: { vBCST; pMVAST; pICMSST; vICMSST } | null;
+          credSN?: { pCredSN; vCredICMSSN } | null };
+  pis: { cst: string; vBC: number; pPIS: number; vPIS: number };
+  cofins: { cst: string; vBC: number; pCOFINS: number; vCOFINS: number };
+  vTotTrib: number;               // Lei 12.741 — ver §7 (IBPT)
+  erros: TFiscalValidationError[];
+};
+```
+
+### 5.2 Funções
+
+- `resolveCfop({ operacao, ufOrigem, ufDestino, consumidorFinal })` → 5.xxx vs 6.xxx, deriva sufixo da `cfopPadrao` da operação/produto.
+- `resolveCsosn({ grupo, regras, cenário })` → aplica a regra mais específica.
+- `computeItemTaxation(input): TItemTaxResult` → orquestra ICMS(SN)/PIS/COFINS/ST.
+- `computeDocumentTotals(items): ICMSTot` → soma para o bloco `total`.
+- `aliquotaInterestadual(ufOrigem, ufDestino, origemMercadoria)` → tabela estática (7% / 12% / **4%** para importados).
+- `validateItem(input)` / `validateDocument(...)` → erros estruturados **antes** do provider.
+
+### 5.3 Tabelas estáticas (em `lib/fiscal/engine/data/`)
+
+- `UF_TO_IBGE_CODE` — mover do mapper para cá (hoje duplicado em `nfce.ts`).
+- `aliquotas-interestaduais.ts` — matriz origem→destino.
+- (Fase ST) MVA por NCM/UF — fonte externa, ver §7.
+
+---
+
+## 6. Integração com o que já existe
+
+### 6.1 Mappers
+
+`nfce.ts` / `nfe.ts` deixam de hardcodar `imposto: { vTotTrib: 0 }`. Para cada item chamam o motor e montam o grupo correto:
+
+```ts
+const tax = computeItemTaxation({ ... });
+return {
+  ...prod,
+  imposto: {
+    vTotTrib: tax.vTotTrib,
+    ICMS: { ICMSSN102: { orig, CSOSN: tax.icms.csosn } },   // por CSOSN
+    PIS:    { PISOutr:  { CST: tax.pis.cst, vBC: 0, pPIS: 0, vPIS: 0 } },
+    COFINS: { COFINSOutr:{ CST: tax.cofins.cst, vBC: 0, pCOFINS: 0, vCOFINS: 0 } },
+  },
+};
+// total.ICMSTot ← computeDocumentTotals(items)
+```
+
+O `switch` por CSOSN (101→`ICMSSN101`, 102/103/300/400→`ICMSSN102`, 500→`ICMSSN500`...) fica isolado num helper do mapper.
+
+### 6.2 Validação pré-envio (`lib/fiscal/documents.ts`)
+
+Estender o `readiness` atual: rodar `validateDocument` (NCM ausente, grupo não vinculado, UF destino sem endereço, CSOSN×CFOP incoerentes) e **persistir os erros em `mensagens`** com status interno de bloqueio, **antes** de chamar o provider. Evita rejeição cara da SEFAZ por erro detectável localmente.
+
+### 6.3 Onde o destinatário vem
+
+`indicadorInscricaoEstadual` já existe em `FiscalClientProfileSchema` — passa a ser entrada obrigatória da resolução (define contribuinte vs não, e portanto CFOP/CSOSN do cenário interestadual).
+
+---
+
+## 7. Fontes de dados e pontos em aberto
+
+- **`vTotTrib` (Lei 12.741 / "valor aproximado dos tributos")**: padrão de mercado é a **tabela IBPT (De Olho no Imposto)** por NCM+UF. Recomendo integrar como fonte do `vTotTrib` — resolve o campo hoje zerado em todas as notas. Decisão: importar tabela vs. serviço.
+- **MVA / ICMS-ST por NCM+UF**: não há fonte trivial. Opções: tabela manual por organização, ou integração paga. **Fase posterior**; até lá, produtos com ST exigem config manual no grupo.
+- **Alíquota interna da UF de destino** (para ST e conferência): tabela estática mantida por nós.
+- **Benefícios fiscais / `cBenef`**: já há `codigoBeneficioFiscal` no perfil; mapear quando houver caso real.
+
+---
+
+## 8. Faseamento sugerido
+
+| Fase | Entrega | Depende de |
+|---|---|---|
+| **0 — Modelagem** | `fiscalTaxGroups` + `fiscalTaxGroupRules` + FK no perfil; backfill grupo padrão; CRUD/UI mínima de grupos | — |
+| **1 — Motor SN intra** | `computeItemTaxation` para CSOSN 101/102/400 + PIS/COFINS CST 49; totais; testes unitários por cenário | Fase 0 |
+| **2 — Mappers + validação** | mappers consomem o motor (ICMSSN/PIS/COFINS reais); `validateDocument` pré-envio; `vTotTrib` via IBPT | Fase 1 |
+| **3 — Interestadual** | CFOP 6.xxx, alíquotas interestaduais, regras por UF/destinatário; (sem DIFAL p/ SN) | Fase 2 |
+| **4 — ST + hardening** | CSOSN 500/ST com MVA; bateria de homologação por UF; catálogo de rejeições acionáveis | Fase 3 |
+
+A Fase 1+2 já entrega **NFC-e de balcão e NF-e intraestadual tributariamente corretas** para optante do SN — o maior salto de risco do score 3/10.
+
+---
+
+## 9. Critérios de aceite (Fases 1–2)
+
+- Item com grupo CSOSN 102 gera `ICMSSN102` + `PISOutr`/`COFINSOutr` CST 49 valor zero, e `vTotTrib` preenchido.
+- `total.ICMSTot` bate com a soma dos itens (vProd, vDesc, vNF) — sem zeros indevidos.
+- Documento sem NCM, sem grupo vinculado, ou com CSOSN×CFOP incoerente é **bloqueado localmente** com mensagem acionável, sem ir ao provider.
+- Testes unitários do motor cobrem: intra balcão, intra com crédito (101), interestadual B2C, produto sem perfil (erro).
+- Homologação: emissão autorizada em ambiente de homologação para ≥1 cenário real por tipo de documento.
+
+---
+
+## 10. Riscos e mitigações
+
+| Risco | Mitigação |
+|---|---|
+| Popular grupos é trabalhoso para o lojista | Grupo padrão no onboarding + sugestão de CSOSN por regime; importação por NCM |
+| ST sem fonte de MVA confiável | Adiar para Fase 4; config manual no grupo enquanto isso; deixar claro no produto |
+| `vTotTrib` zerado fere Lei 12.741 | Integrar IBPT na Fase 2 |
+| Refactor dos mappers sem rede | Testes unitários do motor + snapshot de payload antes/depois |
+| TS global do projeto com erros (ver auditoria) | Motor isolado em `lib/fiscal/engine/` com tipos próprios e testes, reduz dependência do estado global |
