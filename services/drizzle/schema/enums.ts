@@ -172,6 +172,7 @@ export const fiscalDocumentLifecycleStatusEnum = pgEnum("fiscal_document_lifecyc
 	"REJEITADO",
 	"CANCELAMENTO_PENDENTE",
 	"CANCELADO",
+	"INUTILIZADO",
 	"ERRO",
 ]);
 
@@ -183,6 +184,8 @@ export const fiscalDocumentEventTypeEnum = pgEnum("fiscal_document_event_type", 
 	"SINCRONIZADO",
 	"CANCELAMENTO_SOLICITADO",
 	"CANCELADO",
+	"CARTA_CORRECAO",
+	"INUTILIZACAO",
 	"ERRO",
 ]);
 

@@ -138,11 +138,41 @@ export type TProviderDocumentDetails = {
 	provedorRetorno?: Record<string, unknown> | null;
 };
 
+export type TFiscalCorrectionInput = {
+	organizationId: string;
+	documentId: string;
+	correcao: string;
+	authorId?: string | null;
+};
+export type TProviderCorrectionResult = {
+	sequenciaEvento: number;
+	protocolo?: string | null;
+	dataEvento?: Date | null;
+	mensagens?: unknown[];
+	provedorRetorno?: Record<string, unknown> | null;
+};
+
+export type TFiscalInutilizationInput = {
+	organizationId: string;
+	documentId: string;
+	justificativa: string;
+	authorId?: string | null;
+};
+export type TProviderInutilizationResult = {
+	status: TFiscalDocumentStatusEnum;
+	protocolo?: string | null;
+	dataEvento?: Date | null;
+	mensagens?: unknown[];
+	provedorRetorno?: Record<string, unknown> | null;
+};
+
 export interface IFiscalProvider {
 	emitirDocumento(context: TFiscalSaleContext, documento: TFiscalDocument): Promise<TProviderDocumentDetails>;
 	consultarDocumento(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
 	sincronizarDocumento(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
 	cancelarDocumento(input: TCancelDocumentInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
+	cartaCorrecaoDocumento(input: TFiscalCorrectionInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderCorrectionResult>;
+	inutilizarNumeracao(input: TFiscalInutilizationInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderInutilizationResult>;
 	baixarXml(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
 	baixarPdf(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
 	sincronizarEmpresa(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult>;

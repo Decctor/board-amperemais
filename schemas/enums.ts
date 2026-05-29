@@ -147,6 +147,7 @@ export const FiscalDocumentLifecycleStatusEnum = z.enum([
 	"REJEITADO",
 	"CANCELAMENTO_PENDENTE",
 	"CANCELADO",
+	"INUTILIZADO",
 	"ERRO",
 ]);
 export type TFiscalDocumentLifecycleStatusEnum = z.infer<typeof FiscalDocumentLifecycleStatusEnum>;
@@ -158,6 +159,8 @@ export const FiscalDocumentEventTypeEnum = z.enum([
 	"SINCRONIZADO",
 	"CANCELAMENTO_SOLICITADO",
 	"CANCELADO",
+	"CARTA_CORRECAO",
+	"INUTILIZACAO",
 	"ERRO",
 ]);
 export type TFiscalDocumentEventTypeEnum = z.infer<typeof FiscalDocumentEventTypeEnum>;

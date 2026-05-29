@@ -1,6 +1,8 @@
 import type { TSyncFiscalCompanyOutput } from "@/app/api/fiscal/company/sync/route";
 import type { TSyncFiscalCertificateInput, TSyncFiscalCertificateOutput } from "@/app/api/fiscal/company/sync-certificate/route";
 import type { TCancelFiscalDocumentInput, TCancelFiscalDocumentOutput } from "@/app/api/fiscal/documents/cancel/route";
+import type { TCorrectFiscalDocumentInput, TCorrectFiscalDocumentOutput } from "@/app/api/fiscal/documents/correction/route";
+import type { TInutilizeFiscalDocumentInput, TInutilizeFiscalDocumentOutput } from "@/app/api/fiscal/documents/inutilize/route";
 import type { TCreateFiscalDocumentOutput, TEmitFiscalDocumentInput } from "@/app/api/fiscal/documents/route";
 import type { TSyncFiscalDocumentInput, TSyncFiscalDocumentOutput } from "@/app/api/fiscal/documents/sync/route";
 import type {
@@ -51,6 +53,16 @@ export async function syncFiscalDocumentMutation(input: TSyncFiscalDocumentInput
 
 export async function cancelFiscalDocumentMutation(input: TCancelFiscalDocumentInput) {
 	const { data } = await axios.post<TCancelFiscalDocumentOutput>("/api/fiscal/documents/cancel", input);
+	return data;
+}
+
+export async function correctFiscalDocumentMutation(input: TCorrectFiscalDocumentInput) {
+	const { data } = await axios.post<TCorrectFiscalDocumentOutput>("/api/fiscal/documents/correction", input);
+	return data;
+}
+
+export async function inutilizeFiscalDocumentMutation(input: TInutilizeFiscalDocumentInput) {
+	const { data } = await axios.post<TInutilizeFiscalDocumentOutput>("/api/fiscal/documents/inutilize", input);
 	return data;
 }
 

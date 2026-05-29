@@ -7,6 +7,8 @@ export class NuvemFiscalProvider implements IFiscalProvider {
 	consultarDocumento = nuvemFiscalDocumentMethods.consultarDocumento;
 	sincronizarDocumento = nuvemFiscalDocumentMethods.sincronizarDocumento;
 	cancelarDocumento = nuvemFiscalDocumentMethods.cancelarDocumento;
+	cartaCorrecaoDocumento = nuvemFiscalDocumentMethods.cartaCorrecaoDocumento;
+	inutilizarNumeracao = nuvemFiscalDocumentMethods.inutilizarNumeracao;
 	baixarXml = nuvemFiscalDocumentMethods.baixarXml;
 	baixarPdf = nuvemFiscalDocumentMethods.baixarPdf;
 	sincronizarEmpresa = syncNuvemFiscalCompany;

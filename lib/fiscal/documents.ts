@@ -15,6 +15,8 @@ import type {
 	IFiscalProvider,
 	TCancelDocumentInput,
 	TEmitirDocumentoInput,
+	TFiscalCorrectionInput,
+	TFiscalInutilizationInput,
 	TProviderDocumentDetails,
 	TSaleForFiscal,
 	TFiscalSaleContext,
@@ -531,6 +533,59 @@ export async function cancelFiscalDocument(input: TCancelDocumentInput) {
 		status: updated?.status ?? providerDetails.status,
 		statusInterno: updated?.statusInterno ?? providerDetails.statusInterno,
 	};
+}
+
+export async function registerFiscalCorrection(input: TFiscalCorrectionInput) {
+	const documento = await getFiscalDocumentById({ documentId: input.documentId, organizationId: input.organizationId });
+	if (!documento) throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
+	if (documento.tipo !== "NFE") throw new createHttpError.BadRequest("Carta de correcao disponivel apenas para NF-e.");
+	if (documento.statusInterno !== "AUTORIZADO") throw new createHttpError.BadRequest("Carta de correcao disponivel apenas para documento autorizado.");
+
+	const organizacao = await loadFiscalOrganization(documento.organizacaoId);
+	if (!organizacao) throw new createHttpError.NotFound("Organizacao do documento fiscal nao encontrada.");
+
+	const provider = resolveFiscalProvider(organizacao.fiscalProvedor);
+	const result = await provider.cartaCorrecaoDocumento(input, documento, organizacao);
+
+	await addFiscalDocumentEvent({
+		documentoFiscalId: documento.id,
+		tipo: "CARTA_CORRECAO",
+		descricao: `Carta de correcao (sequencia ${result.sequenciaEvento}): ${input.correcao}`,
+		payload: result.provedorRetorno,
+		autorId: input.authorId ?? null,
+	});
+
+	return { documentoId: documento.id, sequenciaEvento: result.sequenciaEvento, protocolo: result.protocolo ?? null };
+}
+
+export async function inutilizeFiscalDocument(input: TFiscalInutilizationInput) {
+	const documento = await getFiscalDocumentById({ documentId: input.documentId, organizationId: input.organizationId });
+	if (!documento) throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
+	if (documento.statusInterno === "AUTORIZADO" || documento.status === "AUTORIZADA") {
+		throw new createHttpError.BadRequest("Nao e possivel inutilizar a numeracao de um documento autorizado.");
+	}
+
+	const organizacao = await loadFiscalOrganization(documento.organizacaoId);
+	if (!organizacao) throw new createHttpError.NotFound("Organizacao do documento fiscal nao encontrada.");
+
+	const provider = resolveFiscalProvider(organizacao.fiscalProvedor);
+	const result = await provider.inutilizarNumeracao(input, documento, organizacao);
+
+	await patchFiscalDocument(documento.id, {
+		status: result.status,
+		statusInterno: "INUTILIZADO",
+		proximaTentativaEm: null,
+		bloqueadoEm: null,
+	});
+	await addFiscalDocumentEvent({
+		documentoFiscalId: documento.id,
+		tipo: "INUTILIZACAO",
+		descricao: `Inutilizacao de numeracao: ${input.justificativa}`,
+		payload: result.provedorRetorno,
+		autorId: input.authorId ?? null,
+	});
+
+	return { documentoId: documento.id, status: result.status, protocolo: result.protocolo ?? null };
 }
 
 type GetFiscalDocumentAssetParams = {
