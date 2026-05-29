@@ -46,6 +46,8 @@ export function resolveEffectiveTaxConfig(group: TFiscalTaxGroupWithRules, scena
 		aliquotaIcmsSt: coalesce(rule?.aliquotaIcmsSt, group.aliquotaIcmsSt),
 		aliquotaInternaDestino: coalesce(rule?.aliquotaInternaDestino, group.aliquotaInternaDestino),
 		percentualReducaoBcSt: coalesce(rule?.percentualReducaoBcSt, group.percentualReducaoBcSt),
+		aliquotaFcp: coalesce(rule?.aliquotaFcp, group.aliquotaFcp),
+		aliquotaFcpSt: coalesce(rule?.aliquotaFcpSt, group.aliquotaFcpSt),
 		cstPis: group.cstPis,
 		aliquotaPis: group.aliquotaPis,
 		cstCofins: group.cstCofins,

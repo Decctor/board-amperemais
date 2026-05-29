@@ -28,6 +28,8 @@ export type TEffectiveTaxConfig = {
 	aliquotaIcmsSt: number | null;
 	aliquotaInternaDestino: number | null;
 	percentualReducaoBcSt: number | null;
+	aliquotaFcp: number;
+	aliquotaFcpSt: number;
 	cstPis: TFiscalPisCofinsCstEnum;
 	aliquotaPis: number;
 	cstCofins: TFiscalPisCofinsCstEnum;
@@ -58,6 +60,7 @@ export type TIcmsTaxResult = {
 	vBC: number;
 	pICMS: number;
 	vICMS: number;
+	vFCP: number;
 	pCredSN: number | null;
 	vCredICMSSN: number | null;
 	st: {
@@ -65,6 +68,7 @@ export type TIcmsTaxResult = {
 		pMVAST: number;
 		pICMSST: number;
 		vICMSST: number;
+		vFCPST: number;
 	} | null;
 };
 
@@ -81,8 +85,10 @@ export type TItemTaxResult = {
 export type TDocumentTaxTotals = {
 	vBC: number;
 	vICMS: number;
+	vFCP: number;
 	vBCST: number;
 	vST: number;
+	vFCPST: number;
 	vProd: number;
 	vDesc: number;
 	vPIS: number;

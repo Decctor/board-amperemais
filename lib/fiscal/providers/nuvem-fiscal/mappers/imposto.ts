@@ -4,7 +4,17 @@ import type { TItemTaxResult } from "@/lib/fiscal/engine";
 function buildIcmsNode(icms: TItemTaxResult["icms"]) {
 	const orig = icms.origem;
 	const credito = icms.pCredSN != null && icms.vCredICMSSN != null ? { pCredSN: icms.pCredSN, vCredICMSSN: icms.vCredICMSSN } : {};
-	const stForward = icms.st ? { modBCST: 4, pMVAST: icms.st.pMVAST, vBCST: icms.st.vBCST, pICMSST: icms.st.pICMSST, vICMSST: icms.st.vICMSST } : {};
+	const stForward = icms.st
+		? {
+				modBCST: 4,
+				pMVAST: icms.st.pMVAST,
+				vBCST: icms.st.vBCST,
+				pICMSST: icms.st.pICMSST,
+				vICMSST: icms.st.vICMSST,
+				...(icms.st.vFCPST > 0 ? { vFCPST: icms.st.vFCPST } : {}),
+			}
+		: {};
+	const fcp = icms.vFCP > 0 ? { vFCP: icms.vFCP } : {};
 
 	switch (icms.csosn) {
 		case "101":
@@ -26,6 +36,7 @@ function buildIcmsNode(icms: TItemTaxResult["icms"]) {
 						vBC: icms.vBC,
 						pICMS: icms.pICMS,
 						vICMS: icms.vICMS,
+						...fcp,
 						...stForward,
 						...credito,
 					},

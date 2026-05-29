@@ -137,7 +137,7 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 					variant="ghost"
 					size="fit"
 					className="flex items-center gap-1 px-2 py-1 text-xs"
-					onClick={() => addRegra({ escopo: "INTERESTADUAL", ufDestino: null, indicadorDestinatario: null, finalidade: null, csosn: null, cfop: null, aliquotaIcms: null, percentualReducaoBc: null, percentualCreditoSn: null, temSubstituicaoTributaria: null, mvaSt: null, aliquotaIcmsSt: null, aliquotaInternaDestino: null, percentualReducaoBcSt: null, ativo: true })}
+					onClick={() => addRegra({ escopo: "INTERESTADUAL", ufDestino: null, indicadorDestinatario: null, finalidade: null, csosn: null, cfop: null, aliquotaIcms: null, percentualReducaoBc: null, percentualCreditoSn: null, temSubstituicaoTributaria: null, mvaSt: null, aliquotaIcmsSt: null, aliquotaInternaDestino: null, percentualReducaoBcSt: null, aliquotaFcp: null, aliquotaFcpSt: null, ativo: true })}
 				>
 					<Plus className="h-3.5 w-3.5" />
 					ADICIONAR REGRA

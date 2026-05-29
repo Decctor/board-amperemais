@@ -41,6 +41,8 @@ export function useFiscalTaxGroupState({ initialState }: UseFiscalTaxGroupStateP
 				aliquotaIcmsSt: initialState?.fiscalTaxGroup?.aliquotaIcmsSt ?? null,
 				aliquotaInternaDestino: initialState?.fiscalTaxGroup?.aliquotaInternaDestino ?? null,
 				percentualReducaoBcSt: initialState?.fiscalTaxGroup?.percentualReducaoBcSt ?? null,
+				aliquotaFcp: initialState?.fiscalTaxGroup?.aliquotaFcp ?? 0,
+				aliquotaFcpSt: initialState?.fiscalTaxGroup?.aliquotaFcpSt ?? 0,
 				cstPis: initialState?.fiscalTaxGroup?.cstPis ?? "49",
 				aliquotaPis: initialState?.fiscalTaxGroup?.aliquotaPis ?? 0,
 				cstCofins: initialState?.fiscalTaxGroup?.cstCofins ?? "49",

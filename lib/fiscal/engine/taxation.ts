@@ -34,12 +34,14 @@ function computeIcms({
 	let vBC = 0;
 	let pICMS = 0;
 	let vICMS = 0;
+	let vFCP = 0;
 
 	const aplicaDebitoIcms = config.aliquotaIcms > 0;
 	if (aplicaDebitoIcms) {
 		vBC = round2(baseLiquida * (1 - config.percentualReducaoBc / 100));
 		pICMS = config.aliquotaIcms;
 		vICMS = round2((vBC * pICMS) / 100);
+		if (config.aliquotaFcp > 0) vFCP = round2((vBC * config.aliquotaFcp) / 100);
 	}
 
 	let pCredSN: number | null = null;
@@ -77,7 +79,8 @@ function computeIcms({
 			const vBCST = round2(baseLiquida * (1 + config.mvaSt / 100) * (1 - reducaoSt / 100));
 			const pICMSST = config.aliquotaIcmsSt ?? config.aliquotaInternaDestino;
 			const vICMSST = round2(Math.max((vBCST * pICMSST) / 100 - vICMS, 0));
-			st = { vBCST, pMVAST: config.mvaSt, pICMSST, vICMSST };
+			const vFCPST = config.aliquotaFcpSt > 0 ? round2((vBCST * config.aliquotaFcpSt) / 100) : 0;
+			st = { vBCST, pMVAST: config.mvaSt, pICMSST, vICMSST, vFCPST };
 		} else {
 			erros.push({
 				codigo: "ST_CONFIG_INCOMPLETA",
@@ -94,6 +97,7 @@ function computeIcms({
 		vBC,
 		pICMS,
 		vICMS,
+		vFCP,
 		pCredSN,
 		vCredICMSSN,
 		st,
@@ -140,8 +144,10 @@ export function computeDocumentTotals(items: { result: TItemTaxResult; valorBrut
 	const totals: TDocumentTaxTotals = {
 		vBC: 0,
 		vICMS: 0,
+		vFCP: 0,
 		vBCST: 0,
 		vST: 0,
+		vFCPST: 0,
 		vProd: 0,
 		vDesc: 0,
 		vPIS: 0,
@@ -153,8 +159,10 @@ export function computeDocumentTotals(items: { result: TItemTaxResult; valorBrut
 	for (const { result, valorBruto, valorDesconto } of items) {
 		totals.vBC += result.icms.vBC;
 		totals.vICMS += result.icms.vICMS;
+		totals.vFCP += result.icms.vFCP;
 		totals.vBCST += result.icms.st?.vBCST ?? 0;
 		totals.vST += result.icms.st?.vICMSST ?? 0;
+		totals.vFCPST += result.icms.st?.vFCPST ?? 0;
 		totals.vProd += valorBruto;
 		totals.vDesc += valorDesconto;
 		totals.vPIS += result.pis.vPIS;
@@ -164,8 +172,10 @@ export function computeDocumentTotals(items: { result: TItemTaxResult; valorBrut
 
 	totals.vBC = round2(totals.vBC);
 	totals.vICMS = round2(totals.vICMS);
+	totals.vFCP = round2(totals.vFCP);
 	totals.vBCST = round2(totals.vBCST);
 	totals.vST = round2(totals.vST);
+	totals.vFCPST = round2(totals.vFCPST);
 	totals.vProd = round2(totals.vProd);
 	totals.vDesc = round2(totals.vDesc);
 	totals.vPIS = round2(totals.vPIS);

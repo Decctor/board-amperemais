@@ -116,6 +116,9 @@ export const fiscalTaxGroups = newTable(
 		aliquotaIcmsSt: doublePrecision("aliquota_icms_st"),
 		aliquotaInternaDestino: doublePrecision("aliquota_interna_destino"),
 		percentualReducaoBcSt: doublePrecision("percentual_reducao_bc_st"),
+		// FCP (Fundo de Combate a Pobreza)
+		aliquotaFcp: doublePrecision("aliquota_fcp").notNull().default(0),
+		aliquotaFcpSt: doublePrecision("aliquota_fcp_st").notNull().default(0),
 		// PIS / COFINS (no SN normalmente CST 49 com valor zero)
 		cstPis: fiscalPisCofinsCstEnum("cst_pis").notNull().default("49"),
 		aliquotaPis: doublePrecision("aliquota_pis").notNull().default(0),
@@ -159,6 +162,8 @@ export const fiscalTaxGroupRules = newTable(
 		aliquotaIcmsSt: doublePrecision("aliquota_icms_st"),
 		aliquotaInternaDestino: doublePrecision("aliquota_interna_destino"),
 		percentualReducaoBcSt: doublePrecision("percentual_reducao_bc_st"),
+		aliquotaFcp: doublePrecision("aliquota_fcp"),
+		aliquotaFcpSt: doublePrecision("aliquota_fcp_st"),
 		ativo: boolean("ativo").notNull().default(true),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},

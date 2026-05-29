@@ -42,6 +42,8 @@ export default function ControlFiscalTaxGroup({ taxGroupId, closeModal, callback
 				aliquotaIcmsSt: taxGroup.aliquotaIcmsSt,
 				aliquotaInternaDestino: taxGroup.aliquotaInternaDestino,
 				percentualReducaoBcSt: taxGroup.percentualReducaoBcSt,
+				aliquotaFcp: taxGroup.aliquotaFcp,
+				aliquotaFcpSt: taxGroup.aliquotaFcpSt,
 				cstPis: taxGroup.cstPis,
 				aliquotaPis: taxGroup.aliquotaPis,
 				cstCofins: taxGroup.cstCofins,
@@ -64,6 +66,8 @@ export default function ControlFiscalTaxGroup({ taxGroupId, closeModal, callback
 				aliquotaIcmsSt: regra.aliquotaIcmsSt,
 				aliquotaInternaDestino: regra.aliquotaInternaDestino,
 				percentualReducaoBcSt: regra.percentualReducaoBcSt,
+				aliquotaFcp: regra.aliquotaFcp,
+				aliquotaFcpSt: regra.aliquotaFcpSt,
 				ativo: regra.ativo,
 			})),
 		});

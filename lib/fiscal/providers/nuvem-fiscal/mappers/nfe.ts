@@ -93,8 +93,10 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 				ICMSTot: {
 					vBC: taxation.totais.vBC,
 					vICMS: taxation.totais.vICMS,
+					vFCP: taxation.totais.vFCP,
 					vBCST: taxation.totais.vBCST,
 					vST: taxation.totais.vST,
+					vFCPST: taxation.totais.vFCPST,
 					vProd: taxation.totais.vProd,
 					vDesc: taxation.totais.vDesc,
 					vPIS: taxation.totais.vPIS,

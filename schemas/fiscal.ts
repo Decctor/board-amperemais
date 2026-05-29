@@ -238,6 +238,8 @@ export const FiscalTaxGroupSchema = z.object({
 	aliquotaIcmsSt: z.number({ invalid_type_error: "Tipo não valido para a aliquota de ICMS-ST." }).min(0).optional().nullable(),
 	aliquotaInternaDestino: z.number({ invalid_type_error: "Tipo não valido para a aliquota interna do destino." }).min(0).optional().nullable(),
 	percentualReducaoBcSt: z.number({ invalid_type_error: "Tipo não valido para o percentual de reducao da base de ICMS-ST." }).min(0).optional().nullable(),
+	aliquotaFcp: z.number({ invalid_type_error: "Tipo não valido para a aliquota de FCP." }).min(0).default(0),
+	aliquotaFcpSt: z.number({ invalid_type_error: "Tipo não valido para a aliquota de FCP-ST." }).min(0).default(0),
 	cstPis: FiscalPisCofinsCstEnum.default("49"),
 	aliquotaPis: z.number({ invalid_type_error: "Tipo não valido para a aliquota de PIS." }).min(0).default(0),
 	cstCofins: FiscalPisCofinsCstEnum.default("49"),
@@ -274,6 +276,8 @@ export const FiscalTaxGroupRuleSchema = z.object({
 	aliquotaIcmsSt: z.number({ invalid_type_error: "Tipo não valido para a aliquota de ICMS-ST da regra." }).min(0).optional().nullable(),
 	aliquotaInternaDestino: z.number({ invalid_type_error: "Tipo não valido para a aliquota interna de destino da regra." }).min(0).optional().nullable(),
 	percentualReducaoBcSt: z.number({ invalid_type_error: "Tipo não valido para o percentual de reducao da base de ST da regra." }).min(0).optional().nullable(),
+	aliquotaFcp: z.number({ invalid_type_error: "Tipo não valido para a aliquota de FCP da regra." }).min(0).optional().nullable(),
+	aliquotaFcpSt: z.number({ invalid_type_error: "Tipo não valido para a aliquota de FCP-ST da regra." }).min(0).optional().nullable(),
 	ativo: z.boolean({ invalid_type_error: "Tipo não valido para o status da regra." }).default(true),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não valido para a data de insercao da regra." })

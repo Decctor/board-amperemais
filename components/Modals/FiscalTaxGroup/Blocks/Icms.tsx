@@ -68,6 +68,14 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 				/>
 			) : null}
 
+			<NumberInput
+				label="ALÍQUOTA DE FCP (%)"
+				value={fiscalTaxGroup.aliquotaFcp}
+				placeholder="Ex.: 0 — Fundo de Combate à Pobreza"
+				handleChange={(value) => updateFiscalTaxGroup({ aliquotaFcp: value })}
+				width="100%"
+			/>
+
 			<div className="w-full flex items-center justify-center mt-1">
 				<CheckboxInput
 					checked={fiscalTaxGroup.temSubstituicaoTributaria}
@@ -121,6 +129,13 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 							/>
 						</div>
 					</div>
+					<NumberInput
+						label="ALÍQUOTA DE FCP-ST (%)"
+						value={fiscalTaxGroup.aliquotaFcpSt}
+						placeholder="Ex.: 0 — FCP retido por ST"
+						handleChange={(value) => updateFiscalTaxGroup({ aliquotaFcpSt: value })}
+						width="100%"
+					/>
 				</div>
 			) : null}
 		</ResponsiveMenuSection>

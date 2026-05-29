@@ -49,6 +49,8 @@ function buildFallbackGroup(organizacaoId: string): TFiscalTaxGroupWithRules {
 		aliquotaIcmsSt: null,
 		aliquotaInternaDestino: null,
 		percentualReducaoBcSt: null,
+		aliquotaFcp: 0,
+		aliquotaFcpSt: 0,
 		cstPis: "49",
 		aliquotaPis: 0,
 		cstCofins: "49",
