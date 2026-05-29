@@ -352,3 +352,13 @@ Decisões: fila = **outbox (fiscalDocuments) + Vercel Cron**; token = **remover 
 - Detalhe de rejeição (código + causa/ação do catálogo) e ações operacionais.
 
 Schema novo (etapas 2–4) aplicado num único `db:push` ao final.
+
+### Status P0–P1 (implementado)
+
+- **Etapa 1** ✅ token por organização exigido; fallback global removido; baseURL por ambiente.
+- **Etapa 2** ✅ `fiscalIbptRates` + `engine/ibpt.ts` + `import:ibpt`; vTotTrib preenchido por NCM+UF.
+- **Etapa 3** ✅ outbox (`proximaTentativaEm`/`bloqueadoEm`) + `lib/fiscal/worker.ts` + cron `/api/cron/fiscal-queue` (2min); venda enfileira via `enqueueFiscalDocument`.
+- **Etapa 4** ✅ `lib/fiscal/rejections.ts` (catálogo constante) + captura de `cStat` → `codigoRejeicao`.
+- **Etapa 5** ✅ filtro por status + detalhe acionável de rejeição na aba Documentos.
+
+Pendências de ativação: `npm run db:push` (colunas/tabela novas), `npm run import:ibpt ./ibpt-data`, definir `CRON_SECRET`, e backfill de grupo padrão. Confirmar campos do payload e comportamento do vTotTrib em sandbox.
