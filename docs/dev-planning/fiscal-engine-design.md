@@ -318,3 +318,37 @@ Implementado nesta branch (`claude/fiscal-engine-Hl2EZ`), a partir de `fiscal-mo
 - **Backfill**: criar grupo padrão por organização e vincular perfis existentes.
 - **Validação de campos exatos** do payload ICMSSN/PIS/COFINS contra a sandbox da Nuvem Fiscal (leiaute oficial NF-e 4.00 seguido; confirmar em homologação).
 - **Verificação não pôde rodar `tsc`/lint completos** no ambiente (policy de rede bloqueia `npm ci` por causa do pacote `xlsx` via CDN). Typecheck foi feito de forma dirigida nos arquivos fiscais + smoke test do motor.
+
+---
+
+## 12. Roadmap P0–P1 (em execução)
+
+Decisões: fila = **outbox (fiscalDocuments) + Vercel Cron**; token = **remover 100% o fallback**; catálogo de rejeições = **constante na codebase** (sem tabela/CRUD).
+
+### Etapa 1 — Remover fallback de token
+- `providers/nuvem-fiscal/client.ts`: exigir `apiToken` da organização; remover `process.env.NUVEM_FISCAL_API_TOKEN`. `baseURL` dirigido pelo `ambiente` da org.
+- `assertFiscalReadiness`: validar token por org antes de emitir/sincronizar empresa.
+
+### Etapa 2 — vTotTrib via IBPT (compliance Lei 12.741)
+- Tabela global `fiscalIbptRates (ncm, uf, aliqNacionalFederal, aliqImportadosFederal, aliqEstadual, aliqMunicipal, versao, vigenciaInicio/Fim, chave)`.
+- `scripts/import-ibpt.ts`: importa do JSON por UF de github.com/nfe/ibpt; upsert por `(ncm, uf, versao)`.
+- `lib/fiscal/engine/ibpt.ts`: lookup puro (`fed+est+mun`, nacional vs importado por origem).
+- `buildSaleFiscalContext` carrega as taxas dos NCMs+UF e anexa ao contexto; `taxation-context` preenche o seam `vTotTrib`. Motor segue puro.
+- vTotTrib é opcional no XSD (não bloqueia autorização) mas exigido pela Lei 12.741 p/ B2C. Confirmar comportamento da Nuvem Fiscal em sandbox.
+
+### Etapa 3 — Outbox + Vercel Cron
+- `fiscalDocuments`: + `proximaTentativaEm`, `bloqueadoEm` (claim). `tentativasEnvio` já existe.
+- `process-sale-confirmation`: emissão síncrona → enqueue (cria doc `PRONTO_PARA_ENVIO` + número reservado, retorna na hora).
+- `lib/fiscal/worker.ts`: claim transacional → emite → aplica retorno; falha transitória agenda backoff exponencial; esgota tentativas → `ERRO`.
+- Rota `/api/fiscal/worker` protegida + cron em `vercel.json` (1–2 min).
+
+### Etapa 4 — Catálogo de rejeições (constante na codebase)
+- `lib/fiscal/rejections.ts`: mapa `cStat -> { descricao, causaProvavel, acaoSugerida, categoria, reenviavel }`. Sem tabela.
+- Parsing do `cStat`/motivo em `applyProviderDocumentDetails`; gravar `codigoRejeicao` no documento.
+- Lookup resolvido em runtime para exibição.
+
+### Etapa 5 — Painel na fiscal-page
+- Cards de resumo por status + filtro de problemáticos na aba Documentos.
+- Detalhe de rejeição (código + causa/ação do catálogo) e ações operacionais.
+
+Schema novo (etapas 2–4) aplicado num único `db:push` ao final.
