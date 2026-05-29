@@ -132,6 +132,7 @@ export type TProviderDocumentDetails = {
 	dataEmissao?: Date | null;
 	dataAutorizacao?: Date | null;
 	dataCancelamento?: Date | null;
+	codigoStatus?: string | null;
 	mensagens?: unknown[];
 	provedorPayload?: Record<string, unknown> | null;
 	provedorRetorno?: Record<string, unknown> | null;

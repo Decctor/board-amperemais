@@ -141,6 +141,7 @@ async function applyProviderDocumentDetails(documentoId: string, details: TProvi
 		numero: details.numero ?? null,
 		serie: details.serie ?? null,
 		protocolo: details.protocolo ?? null,
+		codigoRejeicao: details.statusInterno === "AUTORIZADO" ? null : (details.codigoStatus ?? null),
 		mensagens: (details.mensagens as string[] | undefined) ?? [],
 		provedorPayload: serializeJson(details.provedorPayload),
 		provedorRetorno: serializeJson(details.provedorRetorno),

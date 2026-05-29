@@ -6,9 +6,13 @@ export type TNuvemFiscalDfeResponse = {
 	numero?: number;
 	serie?: number;
 	data_emissao?: string;
+	codigo_status?: number;
+	motivo_status?: string;
 	autorizacao?: {
 		protocolo?: string;
 		data_recebimento?: string;
+		codigo_status?: number;
+		motivo_status?: string;
 	};
 	mensagens?: unknown[];
 };

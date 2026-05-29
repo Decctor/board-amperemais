@@ -67,6 +67,7 @@ function mapDfeResponse(response: TNuvemFiscalDfeResponse): TProviderDocumentDet
 		protocolo: response.autorizacao?.protocolo ?? null,
 		dataEmissao: response.data_emissao ? new Date(response.data_emissao) : null,
 		dataAutorizacao: response.autorizacao?.data_recebimento ? new Date(response.autorizacao.data_recebimento) : null,
+		codigoStatus: (response.autorizacao?.codigo_status ?? response.codigo_status)?.toString() ?? null,
 		mensagens: response.mensagens ?? [],
 		provedorRetorno: response as unknown as Record<string, unknown>,
 	};
