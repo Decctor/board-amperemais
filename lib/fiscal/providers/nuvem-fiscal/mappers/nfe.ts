@@ -1,24 +1,40 @@
 import { computeSaleTaxation } from "@/lib/fiscal/taxation-context";
 import type { TFiscalSaleContext } from "@/lib/fiscal/types";
+import { UF_TO_IBGE_CODE } from "@/lib/fiscal/engine";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
 import { buildItemImposto } from "./imposto";
 import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode, mapTaxRegistration, nonEmptyString, onlyDigits } from "./utils";
 
+function mapDestinatarioIndicator(snapshot: TFiscalSaleContext["destinatarioSnapshot"]): 1 | 2 | 9 {
+	if (snapshot?.indicadorInscricaoEstadual === "CONTRIBUINTE_ICMS") return 1;
+	if (snapshot?.indicadorInscricaoEstadual === "CONTRIBUINTE_ISENTO") return 2;
+	return 9;
+}
+
 function mapDestinatario(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
 	if (!snapshot) return undefined;
 	const cpfCnpj = onlyDigits(String(snapshot.cpfCnpj ?? ""));
+	const inscricaoEstadual = mapTaxRegistration(typeof snapshot.inscricaoEstadual === "string" ? snapshot.inscricaoEstadual : null);
 	return {
 		CPF: cpfCnpj && cpfCnpj.length <= 11 ? cpfCnpj : undefined,
 		CNPJ: cpfCnpj && cpfCnpj.length > 11 ? cpfCnpj : undefined,
-		xNome: snapshot.nome,
-		email: snapshot.email,
-		indIEDest: 9,
+		xNome: typeof snapshot.nome === "string" ? snapshot.nome : undefined,
+		email: typeof snapshot.email === "string" ? snapshot.email : undefined,
+		indIEDest: mapDestinatarioIndicator(snapshot),
+		...(inscricaoEstadual ? { IE: inscricaoEstadual } : {}),
 	};
+}
+
+function mapIdDest(escopo: string): 1 | 2 | 3 {
+	if (escopo === "INTERESTADUAL") return 2;
+	if (escopo === "EXTERIOR") return 3;
+	return 1;
 }
 
 export function mapSaleContextToNfePayload(context: TFiscalSaleContext, documento: TFiscalDocument) {
 	const fiscalConfig = context.organizacao.fiscalConfiguracao!;
 	const taxation = computeSaleTaxation(context);
+	const ufOrigem = fiscalConfig.endereco.uf.toUpperCase();
 
 	return {
 		ambiente: fiscalConfig.ambiente === "PRODUCAO" ? "producao" : "homologacao",
@@ -26,6 +42,7 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 		infNFe: {
 			versao: "4.00",
 			ide: {
+				cUF: UF_TO_IBGE_CODE[ufOrigem],
 				mod: 55,
 				natOp: context.operacao.naturezaOperacao,
 				serie: Number(context.serie.serie),
@@ -33,7 +50,8 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 				dhEmi: new Date().toISOString(),
 				// Devolucao e operacao de entrada (tpNF = 0); demais saidas tpNF = 1.
 				tpNF: context.operacao.finalidade === "DEVOLUCAO" ? 0 : 1,
-				idDest: 1,
+				idDest: mapIdDest(taxation.scenario.escopo),
+				cMunFG: Number(fiscalConfig.endereco.codigoMunicipio),
 				tpImp: 1,
 				tpEmis: 1,
 				tpAmb: fiscalConfig.ambiente === "PRODUCAO" ? 1 : 2,
@@ -55,7 +73,7 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 					xBairro: fiscalConfig.endereco.bairro,
 					cMun: fiscalConfig.endereco.codigoMunicipio,
 					xMun: fiscalConfig.endereco.cidade,
-					UF: fiscalConfig.endereco.uf,
+					UF: ufOrigem,
 					CEP: onlyDigits(fiscalConfig.endereco.cep),
 					cPais: fiscalConfig.endereco.codigoPais,
 					xPais: fiscalConfig.endereco.pais,

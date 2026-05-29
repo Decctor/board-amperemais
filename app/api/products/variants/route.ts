@@ -11,7 +11,6 @@ import {
 	productAddOnOptions,
 	productAddOnReferences,
 	productAddOns,
-	productFiscalProfiles,
 	productStockTransactions,
 	productVariants,
 	products,
@@ -183,8 +182,6 @@ export type TUpdateProductVariantInput = z.infer<typeof UpdateProductVariantInpu
 
 type TUpdateProductVariantAddOnInput = TUpdateProductVariantInput["addOns"][number];
 type TUpdateProductVariantAddOnOptionInput = TUpdateProductVariantAddOnInput["opcoes"][number];
-type TUpdateProductVariantFiscalProfileInput = TUpdateProductVariantInput["perfisFiscais"][number];
-
 function normalizeAddOnOptionLink<
 	T extends {
 		produtoConsumo?: string | null;
@@ -428,77 +425,11 @@ async function upsertScopedProductAddOn({
 	return createdAddOn.id;
 }
 
-async function upsertScopedProductFiscalProfiles({
-	tx,
-	userOrgId,
-	userHasFiscalConfigurePermission,
-	productId,
-	variantId,
-	profiles,
-}: {
-	tx: DBTransaction;
-	userOrgId: string;
-	userHasFiscalConfigurePermission: boolean;
-	productId: string;
-	variantId: string;
-	profiles: TUpdateProductVariantFiscalProfileInput[];
-}) {
-	for (const profile of profiles) {
-		const scopedWhereClause = and(
-			eq(productFiscalProfiles.organizacaoId, userOrgId),
-			eq(productFiscalProfiles.produtoId, productId),
-			eq(productFiscalProfiles.produtoVarianteId, variantId),
-			profile.id ? eq(productFiscalProfiles.id, profile.id) : undefined,
-		);
-
-		if (profile.id && profile.deletar) {
-			if (!userHasFiscalConfigurePermission) {
-				console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
-				continue;
-			}
-			await tx.update(productFiscalProfiles).set({ ativo: false }).where(scopedWhereClause);
-			continue;
-		}
-
-		const profileValues = {
-			origemMercadoria: profile.origemMercadoria,
-			ncm: profile.ncm,
-			cest: profile.cest,
-			cfopPadrao: profile.cfopPadrao,
-			unidadeComercial: profile.unidadeComercial,
-			codigoBeneficioFiscal: profile.codigoBeneficioFiscal,
-			ativo: profile.ativo,
-		};
-
-		if (profile.id) {
-			if (!userHasFiscalConfigurePermission) {
-				console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
-				continue;
-			}
-			await tx.update(productFiscalProfiles).set(profileValues).where(scopedWhereClause);
-			continue;
-		}
-
-		if (!userHasFiscalConfigurePermission) {
-			console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
-			continue;
-		}
-
-		await tx.insert(productFiscalProfiles).values({
-			organizacaoId: userOrgId,
-			produtoId: productId,
-			produtoVarianteId: variantId,
-			...profileValues,
-		});
-	}
-}
-
 async function createProductVariant({ input, session }: { input: TCreateProductVariantInput; session: TAuthUserSession }) {
 	const userMembership = session.membership;
 	if (!userMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const userOrgId = userMembership.organizacao.id;
-	const userHasFiscalConfigurePermission = userMembership.permissoes.fiscal.configurar;
 	const productId = input.productVariant.produtoId;
 
 	const product = await db.query.products.findFirst({
@@ -506,11 +437,6 @@ async function createProductVariant({ input, session }: { input: TCreateProductV
 		columns: { id: true },
 	});
 	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
-
-	const willCreateAnyFiscalProfiles = input.perfisFiscais.length > 0;
-	if (willCreateAnyFiscalProfiles && !userHasFiscalConfigurePermission) {
-		throw new createHttpError.Forbidden("Você não possui permissão para configurar perfis fiscais.");
-	}
 
 	const transactionReturn = await db.transaction(async (tx) => {
 		const [createdVariant] = await tx
@@ -599,15 +525,6 @@ async function createProductVariant({ input, session }: { input: TCreateProductV
 			});
 		}
 
-		for (const profile of input.perfisFiscais) {
-			await tx.insert(productFiscalProfiles).values({
-				organizacaoId: userOrgId,
-				produtoId: productId,
-				produtoVarianteId: variantId,
-				...profile,
-			});
-		}
-
 		return {
 			productId,
 			productVariantId: variantId,
@@ -639,7 +556,6 @@ async function updateProductVariant({ input, session }: { input: TUpdateProductV
 	if (!userMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const userOrgId = userMembership.organizacao.id;
-	const userHasFiscalConfigurePermission = userMembership.permissoes.fiscal.configurar;
 	const productId = input.productVariant.produtoId;
 	const productVariantId = input.productVariantId;
 
@@ -685,15 +601,6 @@ async function updateProductVariant({ input, session }: { input: TUpdateProductV
 				addOn,
 			});
 		}
-
-		await upsertScopedProductFiscalProfiles({
-			tx,
-			userOrgId,
-			userHasFiscalConfigurePermission,
-			productId,
-			variantId: productVariantId,
-			profiles: input.perfisFiscais,
-		});
 
 		return updatedVariant.id;
 	});

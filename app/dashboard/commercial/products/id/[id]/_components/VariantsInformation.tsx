@@ -47,10 +47,7 @@ export default function ProductVariantsInformation({ product, sectionWrapperClas
 				produtoId: product.id,
 				imagemCapaUrl: coverImageUrl,
 			},
-			perfisFiscais: state.perfisFiscais.map((profile) => ({
-				...profile,
-				deletar: false,
-			})),
+			perfisFiscais: [],
 			addOns: state.addOns.map((addOn) => ({
 				...addOn,
 				deletar: false,
@@ -75,10 +72,7 @@ export default function ProductVariantsInformation({ product, sectionWrapperClas
 				produtoId: product.id,
 				imagemCapaUrl: coverImageUrl,
 			},
-			perfisFiscais: state.perfisFiscais.map((profile) => ({
-				...profile,
-				deletar: false,
-			})),
+			perfisFiscais: [],
 			addOns: state.addOns.map((addOn) => ({
 				...addOn,
 				deletar: false,

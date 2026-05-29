@@ -18,14 +18,12 @@ function computeContribuicao(cst: TFiscalPisCofinsCstEnum, aliquota: number, bas
 
 function computeIcms({
 	config,
-	scenario,
 	baseLiquida,
 	origemCodigo,
 	produtoId,
 	erros,
 }: {
 	config: TEffectiveTaxConfig;
-	scenario: TFiscalTaxScenario;
 	baseLiquida: number;
 	origemCodigo: string;
 	produtoId: string;
@@ -125,7 +123,7 @@ export function computeItemTaxation({ scenario, item, group, vTotTrib }: TComput
 		erros.push({ codigo: "CFOP_AUSENTE", severidade: "ERRO", mensagem: "CFOP nao pode ser resolvido para o item (sem CFOP no produto, regra ou operacao).", produtoId: item.produtoId });
 	}
 
-	const icms = computeIcms({ config, scenario, baseLiquida, origemCodigo, produtoId: item.produtoId, erros });
+	const icms = computeIcms({ config, baseLiquida, origemCodigo, produtoId: item.produtoId, erros });
 	const pis = computeContribuicao(config.cstPis, config.aliquotaPis, baseLiquida);
 	const cofins = computeContribuicao(config.cstCofins, config.aliquotaCofins, baseLiquida);
 

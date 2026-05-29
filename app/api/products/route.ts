@@ -1,5 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
+import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
@@ -132,49 +132,6 @@ type GetProductsParams = {
 	input: TGetProductsInput;
 	session: TAuthUserSession;
 };
-
-function mapOptionToState(
-	option: typeof productAddOnOptions.$inferSelect & {
-		produto: typeof products.$inferSelect | null;
-		produtoVariante: typeof productVariants.$inferSelect | null;
-	},
-) {
-	return {
-		id: option.id,
-		nome: option.nome,
-		codigo: option.codigo ?? "",
-		produtoId: option.produtoId ?? null,
-		produtoVarianteId: option.produtoVarianteId ?? null,
-		quantidadeConsumo: option.quantidadeConsumo,
-		precoDelta: option.precoDelta,
-		maxQtdePorItem: option.maxQtdePorItem ?? 1,
-		ativo: option.ativo ?? true,
-		produtoConsumo: option.produtoVariante?.nome ?? option.produto?.descricao ?? null,
-	};
-}
-
-function mapAddOnReferenceToState(
-	reference: typeof productAddOnReferences.$inferSelect & {
-		grupo: typeof productAddOns.$inferSelect & {
-			opcoes: Array<
-				typeof productAddOnOptions.$inferSelect & {
-					produto: typeof products.$inferSelect | null;
-					produtoVariante: typeof productVariants.$inferSelect | null;
-				}
-			>;
-		};
-	},
-) {
-	return {
-		id: reference.grupo.id,
-		nome: reference.grupo.nome,
-		internoNome: reference.grupo.internoNome ?? "",
-		minOpcoes: reference.grupo.minOpcoes,
-		maxOpcoes: reference.grupo.maxOpcoes,
-		ativo: reference.grupo.ativo ?? true,
-		opcoes: reference.grupo.opcoes.map(mapOptionToState),
-	};
-}
 
 function normalizeAddOnOptionLink<
 	T extends {
@@ -969,14 +926,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 				});
 			}
 
-			await upsertScopedProductFiscalProfiles({
-				tx,
-				userOrgId,
-				userHasFiscalConfigurePermission,
-				productId: input.productId,
-				variantId,
-				profiles: variant.perfisFiscais,
-			});
+			// Variants inherit the product-level fiscal profile.
 		}
 
 		for (const [addOnIndex, addOn] of input.productAddOns.entries()) {
@@ -1186,19 +1136,7 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 				});
 			}
 
-			const willCreateAnyFiscalProfiles = variant.perfisFiscais.length > 0;
-			if (willCreateAnyFiscalProfiles && !userHasFiscalConfigurePermission) {
-				console.warn("[WARN] [CREATE PRODUCT] User does not have permission to configure fiscal profiles.");
-				throw new createHttpError.Forbidden("Você não possui permissão para configurar perfis fiscais.");
-			}
-			for (const profile of variant.perfisFiscais) {
-				await tx.insert(productFiscalProfiles).values({
-					organizacaoId: userOrgId,
-					produtoId: productId,
-					produtoVarianteId: createdVariant.id,
-					...profile,
-				});
-			}
+			// Variants inherit the product-level fiscal profile.
 		}
 
 		// 3. Create product add-ons (at product level) and link them

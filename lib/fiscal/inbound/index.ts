@@ -1,7 +1,7 @@
 import type { TFiscalInboundManifestEventEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { fiscalInboundCursors, fiscalInboundDocuments, suppliers } from "@/services/drizzle/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { loadFiscalOrganization } from "../settings";
 import { downloadStoredFiscalAsset, getFiscalAssetContentType, storeFiscalAsset } from "../storage";

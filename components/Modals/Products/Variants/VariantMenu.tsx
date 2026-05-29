@@ -1,4 +1,4 @@
-import { TProductVariantState, TUseProductVariantState, useProductVariantState } from "@/state-hooks/use-product-state";
+import { TUseProductVariantState, useProductVariantState } from "@/state-hooks/use-product-state";
 import { useProductVariantById } from "@/lib/queries/products";
 import Image from "next/image";
 import { ImageIcon } from "lucide-react";
@@ -6,8 +6,6 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import TextInput from "@/components/Inputs/TextInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import { useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateProductVariant as updateProductVariantMutation } from "@/lib/mutations/products";
 type VariantMenuProps = {
 	variantId?: string;
 	closeMenu: () => void;
@@ -31,10 +29,9 @@ type VariantMenuPersistedProps = {
 	submitVariantIsLoading: boolean;
 };
 function VariantMenuPersisted({ variantId, closeMenu, submitVariant, submitVariantIsLoading }: VariantMenuPersistedProps) {
-	const queryClient = useQueryClient();
-	const { data: variant, queryKey, isLoading, isError, error } = useProductVariantById({ productVariantId: variantId });
+	const { data: variant, isLoading, error } = useProductVariantById({ productVariantId: variantId });
 
-	const { state, updateVariant, updateVariantImageHolder, resetState, redefineState } = useProductVariantState({});
+	const { state, updateVariant, updateVariantImageHolder, redefineState } = useProductVariantState({});
 
 	useEffect(() => {
 		if (variant) {
@@ -50,7 +47,7 @@ function VariantMenuPersisted({ variantId, closeMenu, submitVariant, submitVaria
 					file: null,
 					previewUrl: variant.imagemCapaUrl,
 				},
-				perfisFiscais: variant.perfisFiscais,
+				perfisFiscais: [],
 				addOns: variant.addOnsReferencias.map((addOn) => ({
 					nome: addOn.grupo.nome,
 					ativo: addOn.grupo.ativo ?? true,

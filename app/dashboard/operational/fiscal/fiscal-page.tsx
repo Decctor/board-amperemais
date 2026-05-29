@@ -1166,6 +1166,7 @@ const FISCAL_DOCUMENT_STATUS_FILTERS: { label: string; statuses: TFiscalDocument
 	{ label: "PENDENTES", statuses: ["RASCUNHO", "PRONTO_PARA_ENVIO", "EM_PROCESSAMENTO"] },
 	{ label: "ERROS E REJEIÇÕES", statuses: ["ERRO", "REJEITADO"] },
 	{ label: "AUTORIZADOS", statuses: ["AUTORIZADO"] },
+	{ label: "INUTILIZADOS", statuses: ["INUTILIZADO"] },
 ];
 const FISCAL_LIFECYCLE_STATUS_LABELS: Record<TFiscalDocumentLifecycleStatusEnum, string> = {
 	RASCUNHO: "RASCUNHO",
@@ -1175,6 +1176,7 @@ const FISCAL_LIFECYCLE_STATUS_LABELS: Record<TFiscalDocumentLifecycleStatusEnum,
 	REJEITADO: "REJEITADO",
 	CANCELAMENTO_PENDENTE: "CANCELAMENTO PENDENTE",
 	CANCELADO: "CANCELADO",
+	INUTILIZADO: "INUTILIZADO",
 	ERRO: "ERRO",
 };
 const FISCAL_LIFECYCLE_STATUS_STYLES: Record<TFiscalDocumentLifecycleStatusEnum, string> = {
@@ -1185,6 +1187,7 @@ const FISCAL_LIFECYCLE_STATUS_STYLES: Record<TFiscalDocumentLifecycleStatusEnum,
 	REJEITADO: "bg-rose-500 dark:bg-rose-600 text-white",
 	CANCELAMENTO_PENDENTE: "bg-orange-500 dark:bg-orange-600 text-white",
 	CANCELADO: "bg-red-600 dark:bg-red-700 text-white",
+	INUTILIZADO: "bg-zinc-500 dark:bg-zinc-600 text-white",
 	ERRO: "bg-red-500 dark:bg-red-600 text-white",
 };
 
