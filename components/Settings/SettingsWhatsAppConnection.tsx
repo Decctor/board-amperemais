@@ -46,7 +46,7 @@ export default function SettingsWhatsAppConnection({ user }: SettingsWhatsAppCon
 				<ErrorComponent msg="Não foi possível carregar suas conexões do WhatsApp." />
 			) : (
 				<div className="flex w-full flex-col gap-3">
-					{/* <IntegrationWithInternalGateway connections={whatsappConnections || []} /> */}
+					<IntegrationWithInternalGateway connections={whatsappConnections || []} />
 					<IntegrationWithMetaCloud connections={whatsappConnections || []} />
 				</div>
 			)}
