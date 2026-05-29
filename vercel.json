@@ -5,6 +5,10 @@
 			"schedule": "*/2 * * * *"
 		},
 		{
+			"path": "/api/cron/fiscal-inbound",
+			"schedule": "0 */2 * * *"
+		},
+		{
 			"path": "/api/cron/data-collecting",
 			"schedule": "*/5 * * * *"
 		},

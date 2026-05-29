@@ -3,6 +3,7 @@ import type { TSyncFiscalCertificateInput, TSyncFiscalCertificateOutput } from "
 import type { TCancelFiscalDocumentInput, TCancelFiscalDocumentOutput } from "@/app/api/fiscal/documents/cancel/route";
 import type { TCorrectFiscalDocumentInput, TCorrectFiscalDocumentOutput } from "@/app/api/fiscal/documents/correction/route";
 import type { TInutilizeFiscalDocumentInput, TInutilizeFiscalDocumentOutput } from "@/app/api/fiscal/documents/inutilize/route";
+import type { TManifestInboundInput, TManifestInboundOutput } from "@/app/api/fiscal/inbound/manifest/route";
 import type { TReturnFiscalDocumentInput, TReturnFiscalDocumentOutput } from "@/app/api/fiscal/documents/return/route";
 import type { TCreateFiscalDocumentOutput, TEmitFiscalDocumentInput } from "@/app/api/fiscal/documents/route";
 import type { TSyncFiscalDocumentInput, TSyncFiscalDocumentOutput } from "@/app/api/fiscal/documents/sync/route";
@@ -69,6 +70,11 @@ export async function inutilizeFiscalDocumentMutation(input: TInutilizeFiscalDoc
 
 export async function returnFiscalDocumentMutation(input: TReturnFiscalDocumentInput) {
 	const { data } = await axios.post<TReturnFiscalDocumentOutput>("/api/fiscal/documents/return", input);
+	return data;
+}
+
+export async function manifestInboundDocumentMutation(input: TManifestInboundInput) {
+	const { data } = await axios.post<TManifestInboundOutput>("/api/fiscal/inbound/manifest", input);
 	return data;
 }
 

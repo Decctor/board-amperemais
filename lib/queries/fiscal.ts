@@ -2,6 +2,7 @@ import type { TGetFiscalDocumentsInput, TGetFiscalDocumentsOutput } from "@/app/
 import type { TGetFiscalOperationProfilesOutput } from "@/app/api/fiscal/operation-profiles/route";
 import type { TGetFiscalSeriesOutput } from "@/app/api/fiscal/series/route";
 import type { TGetFiscalSettingsOutput } from "@/app/api/fiscal/settings/route";
+import type { TGetInboundDocumentsOutput } from "@/app/api/fiscal/inbound/route";
 import type { TGetFiscalTaxGroupsOutput } from "@/app/api/fiscal/tax-groups/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -177,5 +178,24 @@ export function useFiscalTaxGroupById({ id }: { id: string }) {
 			queryFn: () => fetchFiscalTaxGroupById({ id }),
 		}),
 		queryKey,
+	};
+}
+
+async function fetchFiscalInboundDocuments({ page }: { page: number }) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("page", page.toString());
+	const { data } = await axios.get<TGetInboundDocumentsOutput>(`/api/fiscal/inbound?${searchParams.toString()}`);
+	const result = data.data.default;
+	if (!result) throw new Error("Oops, houve um erro ao buscar as notas recebidas.");
+	return result;
+}
+export function useFiscalInboundDocuments() {
+	const [page, setPage] = useState(1);
+	const queryKey = ["fiscal-inbound-documents", page];
+	return {
+		...useQuery({ queryKey, queryFn: () => fetchFiscalInboundDocuments({ page }) }),
+		queryKey,
+		page,
+		setPage,
 	};
 }
