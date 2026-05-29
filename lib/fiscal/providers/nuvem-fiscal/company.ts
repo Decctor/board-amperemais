@@ -63,7 +63,7 @@ function mapOrganizationNfeConfig(organizacao: TFiscalOrganization) {
 
 export async function syncNuvemFiscalCompany(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult> {
 	const client = createNuvemFiscalClient({
-		baseUrl: organizacao.fiscalConfiguracao?.nuvemFiscal.api.baseUrl,
+		ambiente: organizacao.fiscalConfiguracao?.ambiente,
 		apiToken: organizacao.fiscalConfiguracao?.nuvemFiscal.api.apiToken,
 	});
 	const companyPayload = mapOrganizationToNuvemFiscalCompany(organizacao);
@@ -121,7 +121,7 @@ export async function syncNuvemFiscalCompanyCertificate(
 	input: TProviderCompanyCertificateSyncInput,
 ): Promise<TProviderCompanyCertificateSyncResult> {
 	const client = createNuvemFiscalClient({
-		baseUrl: organizacao.fiscalConfiguracao?.nuvemFiscal.api.baseUrl,
+		ambiente: organizacao.fiscalConfiguracao?.ambiente,
 		apiToken: organizacao.fiscalConfiguracao?.nuvemFiscal.api.apiToken,
 	});
 	const { cpfCnpj, cpfCnpjAsNumber } = getNuvemFiscalCompanyIdentifier(organizacao);

@@ -1,19 +1,27 @@
+import type { TFiscalDocumentEnvironmentEnum } from "@/schemas/enums";
 import axios, { type AxiosInstance } from "axios";
 import createHttpError from "http-errors";
 
-function getToken(inputToken?: string | null) {
-	return inputToken ?? process.env.NUVEM_FISCAL_API_TOKEN ?? null;
-}
+const PRODUCTION_BASE_URL = "https://api.nuvemfiscal.com.br";
+const SANDBOX_BASE_URL = "https://api.sandbox.nuvemfiscal.com.br";
 
-export function createNuvemFiscalClient({ baseUrl, apiToken }: { baseUrl?: string | null; apiToken?: string | null }): AxiosInstance {
-	const token = getToken(apiToken);
-	if (!token) throw new createHttpError.InternalServerError("Token da Nuvem Fiscal nao configurado.");
+// A baseURL e dirigida pelo ambiente fiscal da organizacao. O token e obrigatorio por
+// organizacao — nao ha mais fallback para token global de ambiente (risco multi-tenant).
+export function createNuvemFiscalClient({
+	apiToken,
+	ambiente,
+}: {
+	apiToken?: string | null;
+	ambiente?: TFiscalDocumentEnvironmentEnum | null;
+}): AxiosInstance {
+	if (!apiToken) {
+		throw new createHttpError.BadRequest("Token da Nuvem Fiscal nao configurado para esta organizacao. Configure o token nas configuracoes fiscais.");
+	}
 
 	return axios.create({
-		// baseURL: baseUrl ?? process.env.NUVEM_FISCAL_BASE_URL ?? "https://api.nuvemfiscal.com.br",
-		baseURL: baseUrl ?? process.env.NUVEM_FISCAL_BASE_URL ?? "https://api.sandbox.nuvemfiscal.com.br",
+		baseURL: ambiente === "PRODUCAO" ? PRODUCTION_BASE_URL : SANDBOX_BASE_URL,
 		headers: {
-			Authorization: `Bearer ${token}`,
+			Authorization: `Bearer ${apiToken}`,
 			"Content-Type": "application/json",
 		},
 	});

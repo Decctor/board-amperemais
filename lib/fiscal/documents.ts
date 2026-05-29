@@ -252,6 +252,10 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
 		if (!fiscalConfig.nuvemFiscal?.nfce?.idCsc) throw new FiscalReadinessError("ID CSC da NFC-e nao configurado.");
 	}
 
+	if (context.organizacao.fiscalProvedor === "NUVEM_FISCAL" && !fiscalConfig.nuvemFiscal?.api?.apiToken) {
+		throw new FiscalReadinessError("Token da Nuvem Fiscal nao configurado para esta organizacao.");
+	}
+
 	if (context.perfisProdutos.length === 0) throw new FiscalReadinessError("Nenhum perfil fiscal de produto encontrado para a venda.");
 }
 

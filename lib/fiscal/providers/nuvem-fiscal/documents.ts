@@ -9,7 +9,7 @@ import type { TNuvemFiscalCancelResponse, TNuvemFiscalDfeResponse } from "./type
 
 function getClient(organizacao: TFiscalOrganization) {
 	return createNuvemFiscalClient({
-		baseUrl: organizacao.fiscalConfiguracao?.nuvemFiscal.api.baseUrl,
+		ambiente: organizacao.fiscalConfiguracao?.ambiente,
 		apiToken: organizacao.fiscalConfiguracao?.nuvemFiscal.api.apiToken,
 	});
 }
