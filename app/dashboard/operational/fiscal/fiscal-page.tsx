@@ -40,6 +40,7 @@ import {
 	syncFiscalDocumentMutation,
 	updateFiscalSettings,
 } from "@/lib/mutations/fiscal";
+import { getFiscalRejectionInfo } from "@/lib/fiscal/rejections";
 import { TUseInternalFiscalSettingsState, useInternalFiscalSettingsState } from "@/state-hooks/use-internal-fiscal-settings-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -176,6 +177,22 @@ function FiscalDocumentsView({
 					onChange={(e) => updateFilters({ search: e.target.value })}
 					className="grow rounded-xl"
 				/>
+			</div>
+			<div className="w-full flex items-center gap-1.5 flex-wrap">
+				{FISCAL_DOCUMENT_STATUS_FILTERS.map((filter) => {
+					const isActive = JSON.stringify(filters.statusInterno ?? []) === JSON.stringify(filter.statuses);
+					return (
+						<Button
+							key={filter.label}
+							variant={isActive ? "default" : "ghost"}
+							size="fit"
+							className="px-2 py-1 text-xs rounded-lg"
+							onClick={() => updateFilters({ statusInterno: filter.statuses, page: 1 })}
+						>
+							{filter.label}
+						</Button>
+					);
+				})}
 			</div>
 			<GeneralPaginationComponent
 				activePage={filters.page}
@@ -522,6 +539,31 @@ function FiscalDocumentDetailsMenu({
 							openDetails={() => undefined}
 						/>
 					</div>
+					{document.codigoRejeicao
+						? (() => {
+								const info = getFiscalRejectionInfo(document.codigoRejeicao);
+								return (
+									<div className="flex flex-col gap-1.5 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900/40 dark:bg-red-950/30">
+										<div className="flex items-center gap-2">
+											<span className="text-xs font-bold uppercase tracking-tight text-red-700 dark:text-red-400">Rejeição {document.codigoRejeicao}</span>
+											{info ? <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700 dark:bg-red-900/40 dark:text-red-300">{info.categoria}</span> : null}
+											{info?.reenviavel ? <span className="text-[10px] font-medium uppercase text-red-600/80">Reenviável após correção</span> : null}
+										</div>
+										{info ? (
+											<>
+												<p className="text-sm font-semibold text-red-800 dark:text-red-300">{info.descricao}</p>
+												<p className="text-xs text-red-700 dark:text-red-300/90">
+													<span className="font-semibold">Causa provável:</span> {info.causaProvavel}
+												</p>
+												<p className="text-xs text-red-700 dark:text-red-300/90">
+													<span className="font-semibold">Ação sugerida:</span> {info.acaoSugerida}
+												</p>
+											</>
+										) : null}
+									</div>
+								);
+							})()
+						: null}
 					<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
 						<div className="rounded-lg border p-3">
 							<p className="text-xs font-semibold text-muted-foreground">CHAVE</p>
@@ -1046,6 +1088,12 @@ const FISCAL_DOCUMENT_STATUS_STYLES: Record<TFiscalDocumentStatusEnum, string> =
 	INUTILIZADA: "bg-zinc-500 dark:bg-zinc-600 text-white",
 };
 
+const FISCAL_DOCUMENT_STATUS_FILTERS: { label: string; statuses: TFiscalDocumentLifecycleStatusEnum[] }[] = [
+	{ label: "TODOS", statuses: [] },
+	{ label: "PENDENTES", statuses: ["RASCUNHO", "PRONTO_PARA_ENVIO", "EM_PROCESSAMENTO"] },
+	{ label: "ERROS E REJEIÇÕES", statuses: ["ERRO", "REJEITADO"] },
+	{ label: "AUTORIZADOS", statuses: ["AUTORIZADO"] },
+];
 const FISCAL_LIFECYCLE_STATUS_LABELS: Record<TFiscalDocumentLifecycleStatusEnum, string> = {
 	RASCUNHO: "RASCUNHO",
 	PRONTO_PARA_ENVIO: "PRONTO PARA ENVIO",

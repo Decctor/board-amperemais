@@ -44,16 +44,27 @@ export async function getFiscalDocumentById({ documentId, organizationId }: GetF
 		where: (fields, operators) => operators.and(operators.eq(fields.id, documentId), operators.eq(fields.organizacaoId, organizationId)),
 	});
 }
-export async function listFiscalDocuments({ organizacaoId, page = 1, search }: { organizacaoId: string; page?: number; search?: string | null }) {
+export async function listFiscalDocuments({
+	organizacaoId,
+	page = 1,
+	search,
+	statusInterno,
+}: {
+	organizacaoId: string;
+	page?: number;
+	search?: string | null;
+	statusInterno?: string[] | null;
+}) {
 	const PAGE_SIZE = 25;
 	const offset = (page - 1) * PAGE_SIZE;
 	const searchLike = search?.trim() ? `%${search.trim()}%` : null;
-	const whereClause = searchLike
-		? and(
-				eq(fiscalDocuments.organizacaoId, organizacaoId),
-				sql`(${fiscalDocuments.referencia} ilike ${searchLike} or ${fiscalDocuments.chaveAcesso} ilike ${searchLike})`,
-			)
-		: eq(fiscalDocuments.organizacaoId, organizacaoId);
+
+	const conditions = [eq(fiscalDocuments.organizacaoId, organizacaoId)];
+	if (searchLike) conditions.push(sql`(${fiscalDocuments.referencia} ilike ${searchLike} or ${fiscalDocuments.chaveAcesso} ilike ${searchLike})`);
+	if (statusInterno && statusInterno.length > 0) {
+		conditions.push(inArray(fiscalDocuments.statusInterno, statusInterno as (typeof fiscalDocuments.statusInterno.enumValues)[number][]));
+	}
+	const whereClause = and(...conditions);
 
 	const [documents, [{ count }]] = await Promise.all([
 		db.query.fiscalDocuments.findMany({

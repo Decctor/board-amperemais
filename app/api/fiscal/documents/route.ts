@@ -19,6 +19,11 @@ const GetFiscalDocumentsInputSchema = z.object({
 	documentId: z.string().optional().nullable(),
 	page: z.coerce.number().min(1).default(1),
 	search: z.string().optional().nullable(),
+	statusInterno: z
+		.string()
+		.optional()
+		.nullable()
+		.transform((value) => (value ? value.split(",").filter(Boolean) : [])),
 });
 export type TGetFiscalDocumentsInput = z.infer<typeof GetFiscalDocumentsInputSchema>;
 
@@ -44,7 +49,7 @@ async function getFiscalDocuments({ input }: { input: TGetFiscalDocumentsInput }
 		};
 	}
 
-	const result = await listFiscalDocuments({ organizacaoId: orgId, page: input.page, search: input.search });
+	const result = await listFiscalDocuments({ organizacaoId: orgId, page: input.page, search: input.search, statusInterno: input.statusInterno });
 	return {
 		data: {
 			byId: null,
@@ -62,6 +67,7 @@ async function getFiscalDocumentsRoute(request: NextRequest) {
 		documentId: searchParams.get("documentId") ?? undefined,
 		page: searchParams.get("page") ?? 1,
 		search: searchParams.get("search") ?? undefined,
+		statusInterno: searchParams.get("statusInterno") ?? undefined,
 	});
 	const result = await getFiscalDocuments({ input });
 	return NextResponse.json(result);

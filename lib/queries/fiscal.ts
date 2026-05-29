@@ -24,10 +24,13 @@ export function useFiscalSettings() {
 	};
 }
 
-async function fetchFiscalDocuments({ page, search }: Omit<TGetFiscalDocumentsInput, "documentId">) {
+type FiscalDocumentsFilters = { page: number; search: string; statusInterno: string[] };
+
+async function fetchFiscalDocuments({ page, search, statusInterno }: FiscalDocumentsFilters) {
 	const searchParams = new URLSearchParams();
 	if (page) searchParams.set("page", page.toString());
 	if (search) searchParams.set("search", search);
+	if (statusInterno && statusInterno.length > 0) searchParams.set("statusInterno", statusInterno.join(","));
 	const { data } = await axios.get<TGetFiscalDocumentsOutput>(`/api/fiscal/documents?${searchParams.toString()}`);
 	const result = data.data.default;
 	if (!result) throw new Error("Oops, houve um erro ao buscar os documentos fiscais.");
@@ -43,8 +46,8 @@ async function fetchFiscalDocumentById({ documentId }: { documentId: string }) {
 }
 
 export function useFiscalDocuments() {
-	const [filters, setFilters] = useState<Exclude<TGetFiscalDocumentsInput, "documentId">>({ page: 1, search: "" });
-	function updateFilters(next: Partial<Exclude<TGetFiscalDocumentsInput, "documentId">>) {
+	const [filters, setFilters] = useState<FiscalDocumentsFilters>({ page: 1, search: "", statusInterno: [] });
+	function updateFilters(next: Partial<FiscalDocumentsFilters>) {
 		setFilters((prev) => ({ ...prev, ...next }));
 	}
 
