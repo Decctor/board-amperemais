@@ -330,6 +330,65 @@ async function persistAuthorizedAssets(documento: typeof fiscalDocuments.$inferS
 	});
 }
 
+// Parte "preparar": cria/atualiza o rascunho, valida prontidao e tributacao, reserva numeracao
+// e marca PRONTO_PARA_ENVIO. NAO chama o provedor. Compartilhada pela emissao sincrona e pela fila.
+async function prepareFiscalDocumentForSend({
+	input,
+	documento,
+	referencia,
+}: {
+	input: TEmitirDocumentoInput;
+	documento: typeof fiscalDocuments.$inferSelect;
+	referencia: string;
+}): Promise<TFiscalSaleContext> {
+	const context = await buildSaleFiscalContext(input);
+	assertFiscalReadiness(context);
+	assertFiscalTaxationValid(context);
+	const reservedNumber = documento.numero ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
+
+	await patchFiscalDocument(documento.id, {
+		statusInterno: "PRONTO_PARA_ENVIO",
+		ambiente: context.organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO",
+		referencia,
+		provedor: context.organizacao.fiscalProvedor ?? "MANUAL",
+		serie: context.serie.serie,
+		numero: String(reservedNumber),
+		snapshotOrigemVenda: JSON.stringify({ venda: context.venda, destinatario: context.destinatarioSnapshot }),
+		tentativasEnvio: (documento.tentativasEnvio ?? 0) + 1,
+	});
+
+	await addFiscalDocumentEvent({
+		documentoFiscalId: documento.id,
+		tipo: "CRIADO",
+		descricao: `Documento fiscal preparado para emissao ${input.origem.toLowerCase()}.`,
+		autorId: input.autorId ?? null,
+	});
+
+	return context;
+}
+
+// Enfileira a emissao (preparar + agendar) sem chamar o provedor. Usada pelo fluxo de venda
+// para nao acoplar a confirmacao a latencia/disponibilidade da SEFAZ. O worker faz o envio.
+export async function enqueueFiscalDocument(input: TEmitirDocumentoInput) {
+	const referencia = buildFiscalReference(input);
+	const existing = await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia });
+	if (existing && ["AUTORIZADO", "EM_PROCESSAMENTO", "PRONTO_PARA_ENVIO"].includes(existing.statusInterno)) {
+		return { documentoId: existing.id, status: existing.status, statusInterno: existing.statusInterno };
+	}
+
+	const documento = await createOrUpdateDraftDocument({ input, referencia, statusInterno: "RASCUNHO" });
+	try {
+		await prepareFiscalDocumentForSend({ input, documento, referencia });
+		await patchFiscalDocument(documento.id, { proximaTentativaEm: new Date(), bloqueadoEm: null });
+		return { documentoId: documento.id, status: "PENDENTE" as const, statusInterno: "PRONTO_PARA_ENVIO" as const };
+	} catch (error) {
+		const message = getErrorMessage(error);
+		await patchFiscalDocument(documento.id, { statusInterno: "ERRO", mensagens: [message], proximaTentativaEm: null });
+		await addFiscalDocumentEvent({ documentoFiscalId: documento.id, tipo: "ERRO", descricao: message, autorId: input.autorId ?? null });
+		throw error;
+	}
+}
+
 export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 	const referencia = buildFiscalReference(input);
 	const existing = await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia });
@@ -347,31 +406,8 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 
 	const documento = await createOrUpdateDraftDocument({ input, referencia, statusInterno: "RASCUNHO" });
 	try {
-		const context = await buildSaleFiscalContext(input);
-		assertFiscalReadiness(context);
-		assertFiscalTaxationValid(context);
-		const reservedNumber = documento.numero ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
+		const context = await prepareFiscalDocumentForSend({ input, documento, referencia });
 
-		await patchFiscalDocument(documento.id, {
-			statusInterno: "PRONTO_PARA_ENVIO",
-			ambiente: context.organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO",
-			referencia,
-			provedor: context.organizacao.fiscalProvedor ?? "MANUAL",
-			serie: context.serie.serie,
-			numero: String(reservedNumber),
-			snapshotOrigemVenda: JSON.stringify({
-				venda: context.venda,
-				destinatario: context.destinatarioSnapshot,
-			}),
-			tentativasEnvio: (documento.tentativasEnvio ?? 0) + 1,
-		});
-
-		await addFiscalDocumentEvent({
-			documentoFiscalId: documento.id,
-			tipo: "CRIADO",
-			descricao: `Documento fiscal preparado para emissao ${input.origem.toLowerCase()}.`,
-			autorId: input.autorId ?? null,
-		});
 		await addFiscalDocumentEvent({
 			documentoFiscalId: documento.id,
 			tipo: "ENVIO_SOLICITADO",

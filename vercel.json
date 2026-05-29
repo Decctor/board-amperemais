@@ -1,6 +1,10 @@
 {
 	"crons": [
 		{
+			"path": "/api/cron/fiscal-queue",
+			"schedule": "*/2 * * * *"
+		},
+		{
 			"path": "/api/cron/data-collecting",
 			"schedule": "*/5 * * * *"
 		},

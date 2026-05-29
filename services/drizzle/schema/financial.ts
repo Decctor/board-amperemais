@@ -289,6 +289,10 @@ export const fiscalDocuments = newTable(
 		provedorPayload: text("provedor_payload"),
 		provedorRetorno: text("provedor_retorno"),
 		tentativasEnvio: integer("tentativas_envio").notNull().default(0),
+		// Fila/worker (outbox): proxima tentativa de envio (backoff) e lock de processamento (claim).
+		proximaTentativaEm: timestamp("proxima_tentativa_em"),
+		bloqueadoEm: timestamp("bloqueado_em"),
+		codigoRejeicao: varchar("codigo_rejeicao", { length: 10 }),
 		dataUltimaSincronizacao: timestamp("data_ultima_sincronizacao"),
 		dataAutorizacao: timestamp("data_autorizacao"),
 		dataCancelamento: timestamp("data_cancelamento"),

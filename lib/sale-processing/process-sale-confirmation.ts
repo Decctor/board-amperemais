@@ -1,7 +1,7 @@
 import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { getErrorMessage } from "@/lib/errors";
-import { emitFiscalDocument } from "@/lib/fiscal/documents";
+import { enqueueFiscalDocument } from "@/lib/fiscal/documents";
 import { notifyFiscalEmissionFailure } from "@/lib/fiscal/notifications";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db } from "@/services/drizzle";
@@ -223,7 +223,9 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 
 	if (input.organization.fiscalEmissaoAutomatica) {
 		try {
-			const emitted = await emitFiscalDocument({
+			// Enfileira a emissao (sem chamar o provedor): a confirmacao da venda nao espera a SEFAZ.
+			// O worker (cron /api/cron/fiscal-queue) faz o envio com retry/backoff.
+			const enqueued = await enqueueFiscalDocument({
 				vendaId: input.saleId,
 				tipo: "NFCE",
 				organizacaoId: input.organization.id,
@@ -233,8 +235,8 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 			});
 			fiscalResult = {
 				status: "SOLICITADO",
-				documentoId: emitted.documentoId,
-				statusInterno: emitted.statusInterno,
+				documentoId: enqueued.documentoId,
+				statusInterno: enqueued.statusInterno,
 				error: null,
 			};
 		} catch (error) {
