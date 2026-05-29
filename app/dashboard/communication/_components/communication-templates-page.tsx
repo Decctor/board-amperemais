@@ -207,11 +207,11 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 						<HoverCard>
 							<HoverCardTrigger asChild>
 								<div className="flex items-center gap-2">
-									{byPhone.length > 0 ? (
+									{whatsappConnectionPhones.length > 0 ? (
 										<div className="flex items-center gap-1 text-xs text-muted-foreground">
 											<Phone className="w-3 h-3" />
 											<span>
-												{byPhoneApprovedCount}/{byPhone.length}
+												{byPhoneApprovedCount}/{whatsappConnectionPhones.length}
 											</span>
 										</div>
 									) : null}
