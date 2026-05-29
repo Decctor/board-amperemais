@@ -11,6 +11,7 @@ import { MessageTemplateHeaderEditor, MessageTemplateHeaderTypeSelect } from "./
 import { MessageTemplateBodyEditor } from "./MessageTemplateBodyEditor";
 import { MessageTemplateButtonsEditor } from "./MessageTemplateButtonsEditor";
 import { MessageTemplateVariablesEditor } from "./MessageTemplateVariablesEditor";
+import { formatAsSlug } from "@/lib/formatting";
 
 const categoryOptions: TTemplateCategory[] = ["MARKETING", "UTILIDADE", "AUTENTICAÇÃO"];
 const statusOptions: TTemplateStatus[] = ["RASCUNHO", "ATIVO", "ARQUIVADO"];
@@ -29,7 +30,11 @@ export function MessageTemplateConfigurationSection({
 	return (
 		<div className="flex flex-col gap-4">
 			<MessageTemplateField label="Nome interno">
-				<Input value={state.messageTemplate.nome} onChange={(event) => updateTemplate({ nome: event.target.value })} placeholder="cashback_expirando_7_dias" />
+				<Input
+					value={state.messageTemplate.nome}
+					onChange={(event) => updateTemplate({ nome: formatAsSlug(event.target.value) })}
+					placeholder="cashback_expirando_7_dias"
+				/>
 			</MessageTemplateField>
 			<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
 				<MessageTemplateField label="Status">
@@ -116,7 +121,11 @@ export function MessageTemplateContentSection({
 	return (
 		<div className="flex flex-col gap-4">
 			<MessageTemplateHeaderTypeSelect header={state.messageTemplate.conteudo.cabecalho} updateTemplateContentHeader={updateTemplateContentHeader} />
-			<MessageTemplateHeaderEditor organizationId={organizationId} header={state.messageTemplate.conteudo.cabecalho} updateTemplateContentHeader={updateTemplateContentHeader} />
+			<MessageTemplateHeaderEditor
+				organizationId={organizationId}
+				header={state.messageTemplate.conteudo.cabecalho}
+				updateTemplateContentHeader={updateTemplateContentHeader}
+			/>
 
 			<MessageTemplateField label="Corpo da mensagem">
 				<MessageTemplateBodyEditor
@@ -128,7 +137,11 @@ export function MessageTemplateContentSection({
 			</MessageTemplateField>
 
 			<MessageTemplateField label="Rodapé">
-				<Input value={state.messageTemplate.conteudo.rodape || ""} onChange={(event) => updateTemplateContent({ rodape: event.target.value })} placeholder="Mensagem automática da sua loja." />
+				<Input
+					value={state.messageTemplate.conteudo.rodape || ""}
+					onChange={(event) => updateTemplateContent({ rodape: event.target.value })}
+					placeholder="Mensagem automática da sua loja."
+				/>
 			</MessageTemplateField>
 
 			<MessageTemplateButtonsEditor
