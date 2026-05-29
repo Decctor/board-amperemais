@@ -1,5 +1,7 @@
 "use client";
 import NewPurchase from "@/components/Modals/Purchases/NewPurchase";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import InboundDocumentsTab from "./components/InboundDocumentsTab";
 import { Button } from "@/components/ui/button";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { usePurchases } from "@/lib/queries/purchases";
@@ -39,7 +41,12 @@ export default function PurchasesPage({ user, membership }: PurchasesPageProps) 
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
-		<div className="w-full flex flex-col gap-3">
+		<Tabs defaultValue="compras" className="w-full flex flex-col gap-3">
+			<TabsList>
+				<TabsTrigger value="compras">COMPRAS</TabsTrigger>
+				<TabsTrigger value="notas-recebidas">NOTAS RECEBIDAS</TabsTrigger>
+			</TabsList>
+			<TabsContent value="compras" className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
 				<Input
 					value={filters.search ?? ""}
@@ -98,7 +105,11 @@ export default function PurchasesPage({ user, membership }: PurchasesPageProps) 
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
 			) : null}
-		</div>
+			</TabsContent>
+			<TabsContent value="notas-recebidas" className="w-full">
+				<InboundDocumentsTab />
+			</TabsContent>
+		</Tabs>
 	);
 }
 
