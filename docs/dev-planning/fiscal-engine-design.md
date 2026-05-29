@@ -431,3 +431,10 @@ Inbound (notas recebidas), separado do motor de saída. Pareia com o módulo de 
 - **Manifestação:** serviço + rota + provider; opcional auto-ciência (destrava XML completo).
 - **UI:** aba "Notas recebidas" com ações de manifestar.
 - **Fase 2:** transformar NF-e recebida em compra (estoque/custo/financeiro) — payoff de ERP.
+
+### Status P3-saída (implementado)
+
+- **CC-e** ✅ provider + serviço + rota + ação (NF-e autorizada).
+- **Inutilização** ✅ provider + serviço + rota + ação (docs em ERRO); status INUTILIZADA/INUTILIZADO.
+- **NF-e de devolução** ✅ CFOP de entrada no motor, encadeamento, tpNF=0/refNFe no mapper, serviço/rota/UI. Exige perfil de operação de devolução (NF-e, finalidade DEVOLUCAO) configurado.
+- Endpoints CC-e/inutilização e o payload de devolução (tpNF/refNFe) precisam de confirmação em sandbox (mesmo caveat do vTotTrib). Schema novo (lifecycle INUTILIZADO, eventos) no mesmo db:push.
