@@ -473,3 +473,11 @@ Schema novo (tabelas inbound + de-para + enums + flag) em `db:push`. Endpoints d
 - **Rename `fiscalDocuments` → `fiscalOutboundDocuments`** (semântica correta; sem dados, migração indolor). Passo 0 da Fase 1 — rename mecânico amplo (schema/relations/documents.ts/worker.ts/mappers/rotas/queries/fiscal-page).
 - **Entidade `suppliers`** (dedup por CNPJ, contato/prazos): âncora do de-para e elo inbound↔compra↔financeiro. `purchases` ganha `fornecedorId` (mantendo snapshot denormalizado); inbound faz resolve-or-create por CNPJ.
 - De-para renomeado para **`supplierProductMappings`** (genérico, sem prefixo fiscal), keyed por `fornecedorId` + código/EAN do fornecedor → `produtoId`/`produtoVarianteId`.
+
+### Status P3-Entrada Fase 1 (implementado)
+
+- **Rename** fiscalDocuments → fiscalOutboundDocuments ✅
+- **Schema** suppliers + supplierProductMappings + fiscalInboundDocuments + fiscalInboundCursors + enum manifestação + flag dfeAutoCiencia ✅
+- **Backend** provider DF-e (Nuvem Fiscal + manual), polling por NSU, resolve-or-create fornecedor, dedupe, auto-ciência, manifestação (4 eventos), XML; cron /api/cron/fiscal-inbound (2h) ✅
+- **UI** aba "Notas recebidas" em Compras (lista + manifestar + baixar XML) ✅
+- Pendente: endpoints de Distribuição/manifestação a confirmar em sandbox; Fase 2 (de-para + virar compra) não iniciada. Schema novo no db:push.
