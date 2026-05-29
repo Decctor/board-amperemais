@@ -34,7 +34,9 @@ import {
 import { useFiscalDocumentById, useFiscalDocuments, useFiscalOperationProfiles, useFiscalSeries, useFiscalSettings, useFiscalTaxGroups } from "@/lib/queries/fiscal";
 import {
 	cancelFiscalDocumentMutation,
+	correctFiscalDocumentMutation,
 	emitFiscalDocumentMutation,
+	inutilizeFiscalDocumentMutation,
 	syncFiscalCompany,
 	syncFiscalCompanyCertificate,
 	syncFiscalDocumentMutation,
@@ -392,6 +394,8 @@ function FiscalDocumentQuickActions({
 		document.statusInterno !== "AUTORIZADO" &&
 		document.statusInterno !== "EM_PROCESSAMENTO";
 	const canCancel = userHasFiscalCancelPermission && document.status === "AUTORIZADA" && document.statusInterno === "AUTORIZADO";
+	const canCorrect = userHasFiscalEmitPermission && document.tipo === "NFE" && document.statusInterno === "AUTORIZADO";
+	const canInutilize = userHasFiscalCancelPermission && document.statusInterno === "ERRO" && !!document.numero;
 	const hasXml = !!document.xmlStoragePath || document.statusInterno === "AUTORIZADO";
 	const hasPdf = !!document.pdfStoragePath || document.statusInterno === "AUTORIZADO";
 
@@ -430,7 +434,27 @@ function FiscalDocumentQuickActions({
 		onError: (error) => toast.error(getErrorMessage(error)),
 	});
 
-	const actionIsPending = isSyncing || isEmitting || isCancelling;
+	const { mutate: correctDocument, isPending: isCorrecting } = useMutation({
+		mutationKey: ["correct-fiscal-document", document.id],
+		mutationFn: correctFiscalDocumentMutation,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			invalidateFiscalDocuments();
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const { mutate: inutilizeDocument, isPending: isInutilizing } = useMutation({
+		mutationKey: ["inutilize-fiscal-document", document.id],
+		mutationFn: inutilizeFiscalDocumentMutation,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			invalidateFiscalDocuments();
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const actionIsPending = isSyncing || isEmitting || isCancelling || isCorrecting || isInutilizing;
 
 	const openAsset = (asset: "xml" | "pdf") => {
 		window.open(`/api/fiscal/document-assets?documentId=${document.id}&asset=${asset}`, "_blank", "noopener,noreferrer");
@@ -440,6 +464,26 @@ function FiscalDocumentQuickActions({
 		const reason = window.prompt("Informe o motivo do cancelamento fiscal.");
 		if (!reason?.trim()) return;
 		cancelDocument({ documentId: document.id, reason: reason.trim() });
+	};
+
+	const handleCorrect = () => {
+		const correcao = window.prompt("Informe o texto da correção (mínimo 15 caracteres).");
+		if (!correcao?.trim()) return;
+		if (correcao.trim().length < 15) {
+			toast.error("A correção deve ter ao menos 15 caracteres.");
+			return;
+		}
+		correctDocument({ documentId: document.id, correcao: correcao.trim() });
+	};
+
+	const handleInutilize = () => {
+		const justificativa = window.prompt("Informe a justificativa da inutilização (mínimo 15 caracteres).");
+		if (!justificativa?.trim()) return;
+		if (justificativa.trim().length < 15) {
+			toast.error("A justificativa deve ter ao menos 15 caracteres.");
+			return;
+		}
+		inutilizeDocument({ documentId: document.id, justificativa: justificativa.trim() });
 	};
 
 	const handleEmitAgain = () => {
@@ -475,6 +519,14 @@ function FiscalDocumentQuickActions({
 				<DropdownMenuItem disabled={!canEmitAgain || actionIsPending} onClick={handleEmitAgain}>
 					<Zap className="h-4 w-4" />
 					Emitir novamente
+				</DropdownMenuItem>
+				<DropdownMenuItem disabled={!canCorrect || actionIsPending} onClick={handleCorrect}>
+					<PencilIcon className="h-4 w-4" />
+					Carta de correção
+				</DropdownMenuItem>
+				<DropdownMenuItem disabled={!canInutilize || actionIsPending} onClick={handleInutilize} variant="destructive">
+					<CircleX className="h-4 w-4" />
+					Inutilizar numeração
 				</DropdownMenuItem>
 				<DropdownMenuItem disabled={!canCancel || actionIsPending} onClick={handleCancel} variant="destructive">
 					<CircleX className="h-4 w-4" />
