@@ -1,5 +1,5 @@
 import { db } from "@/services/drizzle";
-import { fiscalDocuments } from "@/services/drizzle/schema";
+import { fiscalOutboundDocuments } from "@/services/drizzle/schema";
 import { and, eq, isNull, lte, or } from "drizzle-orm";
 import { getErrorMessage } from "../errors";
 import { emitFiscalDocument, syncFiscalDocument } from "./documents";
@@ -19,15 +19,15 @@ function nextAttemptDate(attempts: number): Date {
 async function claimDocument(documentId: string): Promise<boolean> {
 	const staleThreshold = new Date(Date.now() - STALE_LOCK_MINUTES * 60_000);
 	const claimed = await db
-		.update(fiscalDocuments)
+		.update(fiscalOutboundDocuments)
 		.set({ bloqueadoEm: new Date() })
-		.where(and(eq(fiscalDocuments.id, documentId), or(isNull(fiscalDocuments.bloqueadoEm), lte(fiscalDocuments.bloqueadoEm, staleThreshold))))
-		.returning({ id: fiscalDocuments.id });
+		.where(and(eq(fiscalOutboundDocuments.id, documentId), or(isNull(fiscalOutboundDocuments.bloqueadoEm), lte(fiscalOutboundDocuments.bloqueadoEm, staleThreshold))))
+		.returning({ id: fiscalOutboundDocuments.id });
 	return claimed.length > 0;
 }
 
 async function releaseDocument(documentId: string, proximaTentativaEm: Date | null) {
-	await db.update(fiscalDocuments).set({ bloqueadoEm: null, proximaTentativaEm }).where(eq(fiscalDocuments.id, documentId));
+	await db.update(fiscalOutboundDocuments).set({ bloqueadoEm: null, proximaTentativaEm }).where(eq(fiscalOutboundDocuments.id, documentId));
 }
 
 // Processa a fila de emissao fiscal (outbox). Executado por cron.
@@ -37,7 +37,7 @@ export async function processFiscalQueue({ limit = 25 }: { limit?: number } = {}
 	const now = new Date();
 	const results = { enviados: 0, falhas: 0, sincronizados: 0 };
 
-	const toSend = await db.query.fiscalDocuments.findMany({
+	const toSend = await db.query.fiscalOutboundDocuments.findMany({
 		where: (fields, operators) =>
 			operators.and(
 				operators.inArray(fields.statusInterno, ["PRONTO_PARA_ENVIO", "ERRO"]),
@@ -78,7 +78,7 @@ export async function processFiscalQueue({ limit = 25 }: { limit?: number } = {}
 		}
 	}
 
-	const toSync = await db.query.fiscalDocuments.findMany({
+	const toSync = await db.query.fiscalOutboundDocuments.findMany({
 		where: (fields, operators) => operators.inArray(fields.statusInterno, ["EM_PROCESSAMENTO", "CANCELAMENTO_PENDENTE"]),
 		orderBy: (fields, operators) => operators.asc(fields.dataUltimaSincronizacao),
 		limit,

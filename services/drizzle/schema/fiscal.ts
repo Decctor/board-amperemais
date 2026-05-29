@@ -13,7 +13,7 @@ import {
 	fiscalProductOriginEnum,
 	fiscalTaxRuleScopeEnum,
 } from "./enums";
-import { fiscalDocuments } from "./financial";
+import { fiscalOutboundDocuments } from "./financial";
 import { organizations } from "./organizations";
 import { products, productVariants } from "./products";
 import { users } from "./users";
@@ -26,7 +26,7 @@ export const fiscalDocumentEvents = newTable(
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
 		documentoFiscalId: varchar("documento_fiscal_id", { length: 255 })
-			.references(() => fiscalDocuments.id, { onDelete: "cascade" })
+			.references(() => fiscalOutboundDocuments.id, { onDelete: "cascade" })
 			.notNull(),
 		tipo: fiscalDocumentEventTypeEnum("tipo").notNull(),
 		descricao: text("descricao"),
@@ -233,9 +233,9 @@ export const fiscalIbptRates = newTable(
 );
 
 export const fiscalDocumentEventsRelations = relations(fiscalDocumentEvents, ({ one }) => ({
-	documentoFiscal: one(fiscalDocuments, {
+	documentoFiscal: one(fiscalOutboundDocuments, {
 		fields: [fiscalDocumentEvents.documentoFiscalId],
-		references: [fiscalDocuments.id],
+		references: [fiscalOutboundDocuments.id],
 	}),
 	autor: one(users, {
 		fields: [fiscalDocumentEvents.autorId],

@@ -1,5 +1,5 @@
 import { db } from "@/services/drizzle";
-import { fiscalDocumentEvents, fiscalDocuments } from "@/services/drizzle/schema";
+import { fiscalDocumentEvents, fiscalOutboundDocuments } from "@/services/drizzle/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { getErrorMessage } from "../errors";
@@ -32,7 +32,7 @@ function serializeJson(value: unknown) {
 }
 
 export async function findFiscalDocumentByReference({ organizacaoId, referencia }: { organizacaoId: string; referencia: string }) {
-	return db.query.fiscalDocuments.findFirst({
+	return db.query.fiscalOutboundDocuments.findFirst({
 		where: (fields, operators) => operators.and(operators.eq(fields.organizacaoId, organizacaoId), operators.eq(fields.referencia, referencia)),
 	});
 }
@@ -42,7 +42,7 @@ type GetFiscalDocumentByIdParams = {
 	organizationId: string;
 };
 export async function getFiscalDocumentById({ documentId, organizationId }: GetFiscalDocumentByIdParams) {
-	return db.query.fiscalDocuments.findFirst({
+	return db.query.fiscalOutboundDocuments.findFirst({
 		where: (fields, operators) => operators.and(operators.eq(fields.id, documentId), operators.eq(fields.organizacaoId, organizationId)),
 	});
 }
@@ -61,15 +61,15 @@ export async function listFiscalDocuments({
 	const offset = (page - 1) * PAGE_SIZE;
 	const searchLike = search?.trim() ? `%${search.trim()}%` : null;
 
-	const conditions = [eq(fiscalDocuments.organizacaoId, organizacaoId)];
-	if (searchLike) conditions.push(sql`(${fiscalDocuments.referencia} ilike ${searchLike} or ${fiscalDocuments.chaveAcesso} ilike ${searchLike})`);
+	const conditions = [eq(fiscalOutboundDocuments.organizacaoId, organizacaoId)];
+	if (searchLike) conditions.push(sql`(${fiscalOutboundDocuments.referencia} ilike ${searchLike} or ${fiscalOutboundDocuments.chaveAcesso} ilike ${searchLike})`);
 	if (statusInterno && statusInterno.length > 0) {
-		conditions.push(inArray(fiscalDocuments.statusInterno, statusInterno as (typeof fiscalDocuments.statusInterno.enumValues)[number][]));
+		conditions.push(inArray(fiscalOutboundDocuments.statusInterno, statusInterno as (typeof fiscalOutboundDocuments.statusInterno.enumValues)[number][]));
 	}
 	const whereClause = and(...conditions);
 
 	const [documents, [{ count }]] = await Promise.all([
-		db.query.fiscalDocuments.findMany({
+		db.query.fiscalOutboundDocuments.findMany({
 			where: whereClause,
 			with: {
 				venda: { columns: { id: true, valorTotal: true, dataVenda: true, status: true } },
@@ -80,7 +80,7 @@ export async function listFiscalDocuments({
 		}),
 		db
 			.select({ count: sql<number>`count(*)::int` })
-			.from(fiscalDocuments)
+			.from(fiscalOutboundDocuments)
 			.where(whereClause),
 	]);
 
@@ -96,7 +96,7 @@ type ListFiscalDocumentEventsParams = {
 	organizationId: string;
 };
 export async function listFiscalDocumentEvents({ documentId, organizationId }: ListFiscalDocumentEventsParams) {
-	const documentBelongsToOrganization = await db.query.fiscalDocuments.findFirst({
+	const documentBelongsToOrganization = await db.query.fiscalOutboundDocuments.findFirst({
 		where: (fields, operators) => operators.and(operators.eq(fields.id, documentId), operators.eq(fields.organizacaoId, organizationId)),
 		columns: { id: true },
 	});
@@ -112,8 +112,8 @@ export async function listFiscalDocumentEvents({ documentId, organizationId }: L
 	});
 }
 
-async function patchFiscalDocument(documentoId: string, patch: Partial<typeof fiscalDocuments.$inferInsert>) {
-	const [updated] = await db.update(fiscalDocuments).set(patch).where(eq(fiscalDocuments.id, documentoId)).returning();
+async function patchFiscalDocument(documentoId: string, patch: Partial<typeof fiscalOutboundDocuments.$inferInsert>) {
+	const [updated] = await db.update(fiscalOutboundDocuments).set(patch).where(eq(fiscalOutboundDocuments.id, documentoId)).returning();
 	return updated;
 }
 
@@ -178,7 +178,7 @@ async function createOrUpdateDraftDocument({
 	if (existing) return existing;
 
 	const [inserted] = await db
-		.insert(fiscalDocuments)
+		.insert(fiscalOutboundDocuments)
 		.values({
 			organizacaoId: input.organizacaoId,
 			vendaId: input.vendaId,
@@ -329,7 +329,7 @@ function assertFiscalTaxationValid(context: TFiscalSaleContext) {
 	}
 }
 
-async function persistAuthorizedAssets(documento: typeof fiscalDocuments.$inferSelect, organizacaoId: string) {
+async function persistAuthorizedAssets(documento: typeof fiscalOutboundDocuments.$inferSelect, organizacaoId: string) {
 	const organizacao = await loadFiscalOrganization(organizacaoId);
 	if (!organizacao) return null;
 	const provider = resolveFiscalProvider(organizacao.fiscalProvedor);
@@ -354,7 +354,7 @@ async function prepareFiscalDocumentForSend({
 	referencia,
 }: {
 	input: TEmitirDocumentoInput;
-	documento: typeof fiscalDocuments.$inferSelect;
+	documento: typeof fiscalOutboundDocuments.$inferSelect;
 	referencia: string;
 }): Promise<TFiscalSaleContext> {
 	const context = await buildSaleFiscalContext(input);
@@ -669,7 +669,7 @@ type SyncPendingFiscalDocumentsParams = {
 	limit?: number;
 };
 export async function syncPendingFiscalDocuments({ organizationId, limit = 20 }: SyncPendingFiscalDocumentsParams) {
-	const pendingDocuments = await db.query.fiscalDocuments.findMany({
+	const pendingDocuments = await db.query.fiscalOutboundDocuments.findMany({
 		where: (fields, operators) =>
 			operators.and(
 				operators.eq(fields.organizacaoId, organizationId),
