@@ -1,6 +1,7 @@
+import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { OrganizationFiscalConfigSchema, type TOrganizationFiscalConfig } from "@/schemas/fiscal";
 import { db } from "@/services/drizzle";
-import { fiscalOperationProfiles, fiscalSeries, organizations } from "@/services/drizzle/schema";
+import { fiscalOperationProfiles, fiscalSeries, fiscalTaxGroupRules, fiscalTaxGroups, organizations } from "@/services/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { ManualFiscalProvider } from "./providers/manual";
@@ -262,4 +263,51 @@ export async function upsertFiscalOperationProfile(input: typeof fiscalOperation
 	}
 	const [created] = await db.insert(fiscalOperationProfiles).values(input).returning();
 	return created;
+}
+
+export async function listFiscalTaxGroups(organizacaoId: string) {
+	return db.query.fiscalTaxGroups.findMany({
+		where: (fields, operators) => operators.eq(fields.organizacaoId, organizacaoId),
+		with: { regras: true },
+		orderBy: (fields, operators) => operators.asc(fields.nome),
+	});
+}
+
+type FindFiscalTaxGroupByIdParams = { fiscalTaxGroupId: string; organizationId: string };
+export async function findFiscalTaxGroupById({ fiscalTaxGroupId, organizationId }: FindFiscalTaxGroupByIdParams) {
+	return db.query.fiscalTaxGroups.findFirst({
+		where: (fields, operators) => operators.and(operators.eq(fields.id, fiscalTaxGroupId), operators.eq(fields.organizacaoId, organizationId)),
+		with: { regras: true },
+	});
+}
+
+type TFiscalTaxGroupRuleChild = Partial<typeof fiscalTaxGroupRules.$inferInsert> & { id?: string | null; deletar?: boolean | null };
+type UpsertFiscalTaxGroupParams = {
+	group: typeof fiscalTaxGroups.$inferInsert;
+	regras: TFiscalTaxGroupRuleChild[];
+};
+export async function upsertFiscalTaxGroup({ group, regras }: UpsertFiscalTaxGroupParams) {
+	return db.transaction(async (tx) => {
+		let saved: typeof fiscalTaxGroups.$inferSelect;
+		if (group.id) {
+			[saved] = await tx
+				.update(fiscalTaxGroups)
+				.set(group)
+				.where(and(eq(fiscalTaxGroups.id, group.id), eq(fiscalTaxGroups.organizacaoId, group.organizacaoId)))
+				.returning();
+		} else {
+			[saved] = await tx.insert(fiscalTaxGroups).values(group).returning();
+		}
+
+		await handleSimpleChildRowsProcessing({
+			trx: tx,
+			table: fiscalTaxGroupRules,
+			entities: regras,
+			fatherEntityKey: "grupoTributarioId",
+			fatherEntityId: saved.id,
+			organizacaoId: group.organizacaoId,
+		});
+
+		return saved;
+	});
 }

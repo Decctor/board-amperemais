@@ -256,6 +256,10 @@ export const FiscalTaxGroupRuleSchema = z.object({
 		required_error: "ID do grupo tributario não informado.",
 		invalid_type_error: "Tipo não valido para o ID do grupo tributario.",
 	}),
+	organizacaoId: z.string({
+		required_error: "ID da organizacao não informado.",
+		invalid_type_error: "Tipo não valido para o ID da organizacao.",
+	}),
 	escopo: FiscalTaxRuleScopeEnum,
 	ufDestino: z.string({ invalid_type_error: "Tipo não valido para a UF de destino." }).length(2).optional().nullable(),
 	indicadorDestinatario: FiscalClientTaxIndicatorEnum.optional().nullable(),

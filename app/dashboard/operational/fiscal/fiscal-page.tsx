@@ -22,6 +22,7 @@ import {
 	MapPin,
 	MoreHorizontal,
 	PencilIcon,
+	Percent,
 	Plus,
 	Receipt,
 	RefreshCcw,
@@ -30,7 +31,7 @@ import {
 	User,
 	Zap,
 } from "lucide-react";
-import { useFiscalDocumentById, useFiscalDocuments, useFiscalOperationProfiles, useFiscalSeries, useFiscalSettings } from "@/lib/queries/fiscal";
+import { useFiscalDocumentById, useFiscalDocuments, useFiscalOperationProfiles, useFiscalSeries, useFiscalSettings, useFiscalTaxGroups } from "@/lib/queries/fiscal";
 import {
 	cancelFiscalDocumentMutation,
 	emitFiscalDocumentMutation,
@@ -72,6 +73,9 @@ import NewFiscalOperationProfile from "@/components/Modals/FiscalOperationProfil
 import ControlFiscalOperationProfile from "@/components/Modals/FiscalOperationProfile/ControlFiscalOperationProfile";
 import NewFiscalSeries from "@/components/Modals/FiscalSeries/NewFiscalSeries";
 import ControlFiscalSeries from "@/components/Modals/FiscalSeries/ControlFiscalSeries";
+import NewFiscalTaxGroup from "@/components/Modals/FiscalTaxGroup/NewFiscalTaxGroup";
+import ControlFiscalTaxGroup from "@/components/Modals/FiscalTaxGroup/ControlFiscalTaxGroup";
+import { TGetFiscalTaxGroupsOutputDefault } from "@/app/api/fiscal/tax-groups/route";
 import { Input } from "@/components/ui/input";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { TGetFiscalDocumentsOutputById, TGetFiscalDocumentsOutputDefault } from "@/app/api/fiscal/documents/route";
@@ -643,6 +647,7 @@ function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermis
 			/>
 			<CompanyFiscalSeries />
 			<CompanyFiscalOperationProfiles />
+			<CompanyFiscalTaxGroups />
 		</div>
 	);
 }
@@ -1119,6 +1124,77 @@ function CompanyFiscalOperationProfiles() {
 				/>
 			) : null}
 		</SectionWrapper>
+	);
+}
+
+function CompanyFiscalTaxGroups() {
+	const queryClient = useQueryClient();
+	const [newTaxGroupMenuIsOpen, setNewTaxGroupMenuIsOpen] = useState(false);
+	const [editingTaxGroupId, setEditingTaxGroupId] = useState<string | null>(null);
+	const { data, queryKey, isLoading, isError, isSuccess, error } = useFiscalTaxGroups();
+
+	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
+	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
+	return (
+		<SectionWrapper title="GRUPOS TRIBUTÁRIOS" icon={<Percent className="h-4 w-4" />}>
+			{isLoading ? <LoadingComponent /> : null}
+			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+			{isSuccess ? (
+				data.length > 0 ? (
+					<div className="flex flex-col gap-2 w-full">
+						{data.map((taxGroup) => (
+							<CompanyFiscalTaxGroup key={taxGroup.id} taxGroup={taxGroup} handleEditClick={() => setEditingTaxGroupId(taxGroup.id)} />
+						))}
+					</div>
+				) : (
+					<div className="flex items-center justify-center py-6">
+						<p className="text-sm text-muted-foreground">Nenhum grupo tributário encontrado.</p>
+					</div>
+				)
+			) : null}
+			<div className="w-full flex items-center justify-center">
+				<Button variant={"ghost"} size={"fit"} className="flex items-center gap-1 px-2 py-1 text-xs" onClick={() => setNewTaxGroupMenuIsOpen(true)}>
+					<Plus className="w-4 h-4 min-w-4 min-h-4" />
+					ADICIONAR
+				</Button>
+			</div>
+			{newTaxGroupMenuIsOpen ? (
+				<NewFiscalTaxGroup closeModal={() => setNewTaxGroupMenuIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
+			) : null}
+			{editingTaxGroupId ? (
+				<ControlFiscalTaxGroup
+					taxGroupId={editingTaxGroupId}
+					closeModal={() => setEditingTaxGroupId(null)}
+					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+				/>
+			) : null}
+		</SectionWrapper>
+	);
+}
+
+type CompanyFiscalTaxGroupProps = {
+	taxGroup: TGetFiscalTaxGroupsOutputDefault[number];
+	handleEditClick: () => void;
+};
+function CompanyFiscalTaxGroup({ taxGroup, handleEditClick }: CompanyFiscalTaxGroupProps) {
+	const regrasAtivas = taxGroup.regras?.length ?? 0;
+	return (
+		<button type="button" onClick={handleEditClick} className="w-full flex flex-col gap-1 rounded-lg border p-3 text-left transition hover:border-primary/40">
+			<div className="w-full flex items-center justify-between gap-2">
+				<h3 className="text-sm font-bold tracking-tight uppercase">{taxGroup.nome}</h3>
+				<span className={`text-[10px] font-bold uppercase tracking-tight ${taxGroup.ativo ? "text-green-600" : "text-muted-foreground"}`}>
+					{taxGroup.ativo ? "ATIVO" : "INATIVO"}
+				</span>
+			</div>
+			<div className="w-full flex items-center gap-2 flex-wrap">
+				<span className="text-xs font-medium tracking-tight text-primary/70">CSOSN {taxGroup.csosn}</span>
+				<span className="text-xs font-medium tracking-tight text-primary/70">PIS {taxGroup.cstPis}</span>
+				<span className="text-xs font-medium tracking-tight text-primary/70">COFINS {taxGroup.cstCofins}</span>
+				{taxGroup.temSubstituicaoTributaria ? <span className="text-xs font-medium tracking-tight text-amber-600">ICMS-ST</span> : null}
+				{regrasAtivas > 0 ? <span className="text-xs font-medium tracking-tight text-primary/70">{regrasAtivas} regra(s)</span> : null}
+			</div>
+			{taxGroup.descricao ? <p className="text-xs text-muted-foreground">{taxGroup.descricao}</p> : null}
+		</button>
 	);
 }
 

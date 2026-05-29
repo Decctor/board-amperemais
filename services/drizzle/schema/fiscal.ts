@@ -140,6 +140,9 @@ export const fiscalTaxGroupRules = newTable(
 		grupoTributarioId: varchar("grupo_tributario_id", { length: 255 })
 			.references(() => fiscalTaxGroups.id, { onDelete: "cascade" })
 			.notNull(),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
 		// Dimensoes do cenario. Colunas anulaveis = "aplica-se a qualquer".
 		escopo: fiscalTaxRuleScopeEnum("escopo").notNull(),
 		ufDestino: varchar("uf_destino", { length: 2 }),
@@ -257,6 +260,10 @@ export const fiscalTaxGroupRulesRelations = relations(fiscalTaxGroupRules, ({ on
 	grupoTributario: one(fiscalTaxGroups, {
 		fields: [fiscalTaxGroupRules.grupoTributarioId],
 		references: [fiscalTaxGroups.id],
+	}),
+	organizacao: one(organizations, {
+		fields: [fiscalTaxGroupRules.organizacaoId],
+		references: [organizations.id],
 	}),
 }));
 

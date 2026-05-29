@@ -189,6 +189,7 @@ async function createProductFiscalProfile({ input, session }: { input: TCreatePr
 			organizacaoId: userOrgId,
 			produtoId: input.productId,
 			produtoVarianteId: null,
+			grupoTributarioId: input.fiscalProfile.grupoTributarioId ?? null,
 			origemMercadoria: input.fiscalProfile.origemMercadoria,
 			ncm: input.fiscalProfile.ncm,
 			cest: input.fiscalProfile.cest,
@@ -235,6 +236,7 @@ async function updateProductFiscalProfile({ input, session }: { input: TUpdatePr
 	const [updatedProfile] = await db
 		.update(productFiscalProfiles)
 		.set({
+			grupoTributarioId: input.fiscalProfile.grupoTributarioId ?? null,
 			origemMercadoria: input.fiscalProfile.origemMercadoria,
 			ncm: input.fiscalProfile.ncm,
 			cest: input.fiscalProfile.cest,

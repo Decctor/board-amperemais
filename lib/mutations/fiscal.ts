@@ -16,6 +16,12 @@ import type {
 	TUpdateFiscalSeriesOutput,
 } from "@/app/api/fiscal/series/route";
 import type { TUpdateFiscalSettingsInput, TUpdateFiscalSettingsOutput } from "@/app/api/fiscal/settings/route";
+import type {
+	TCreateFiscalTaxGroupInput,
+	TCreateFiscalTaxGroupOutput,
+	TUpdateFiscalTaxGroupInput,
+	TUpdateFiscalTaxGroupOutput,
+} from "@/app/api/fiscal/tax-groups/route";
 import axios from "axios";
 
 export async function updateFiscalSettings(input: TUpdateFiscalSettingsInput) {
@@ -64,5 +70,14 @@ export async function createFiscalOperationProfileMutation(input: TCreateFiscalO
 }
 export async function updateFiscalOperationProfileMutation(input: TUpdateFiscalOperationProfileInput) {
 	const { data } = await axios.put<TUpdateFiscalOperationProfileOutput>("/api/fiscal/operation-profiles", input);
+	return data;
+}
+
+export async function createFiscalTaxGroupMutation(input: TCreateFiscalTaxGroupInput) {
+	const { data } = await axios.post<TCreateFiscalTaxGroupOutput>("/api/fiscal/tax-groups", input);
+	return data;
+}
+export async function updateFiscalTaxGroupMutation(input: TUpdateFiscalTaxGroupInput) {
+	const { data } = await axios.put<TUpdateFiscalTaxGroupOutput>("/api/fiscal/tax-groups", input);
 	return data;
 }

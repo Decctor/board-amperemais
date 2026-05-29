@@ -2,6 +2,7 @@ import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
+import { useFiscalTaxGroups } from "@/lib/queries/fiscal";
 import { useProductFiscalProfileById } from "@/lib/queries/products";
 import type { TFiscalProductOriginEnum } from "@/schemas/enums";
 import { TUseProductFiscalProfileState, useProductFiscalProfileState } from "@/state-hooks/use-product-state";
@@ -57,6 +58,7 @@ function FiscalProfileMenuPersisted({
 		if (fiscalProfile) {
 			redefineState({
 				id: fiscalProfile.id,
+				grupoTributarioId: fiscalProfile.grupoTributarioId ?? null,
 				origemMercadoria: fiscalProfile.origemMercadoria,
 				ncm: fiscalProfile.ncm,
 				cest: fiscalProfile.cest ?? null,
@@ -139,6 +141,9 @@ function FiscalProfileMenuContent({
 	menuActionButtonText,
 	menuCancelButtonText,
 }: FiscalProfileMenuContentProps) {
+	const { data: taxGroups } = useFiscalTaxGroups();
+	const taxGroupOptions = taxGroups?.map((group) => ({ id: group.id, value: group.id, label: group.nome })) ?? null;
+
 	function validateAndSubmit() {
 		if (!state.ncm?.trim()) return toast.error("NCM não informado.");
 		submitFiscalProfile(state);
@@ -172,6 +177,15 @@ function FiscalProfileMenuContent({
 				resetOptionLabel="SELECIONE A ORIGEM"
 				handleChange={(value) => updateFiscalProfile({ origemMercadoria: value as TFiscalProductOriginEnum })}
 				onReset={() => updateFiscalProfile({ origemMercadoria: "NACIONAL" })}
+				width="100%"
+			/>
+			<SelectInput
+				label="GRUPO TRIBUTÁRIO"
+				value={state.grupoTributarioId ?? null}
+				options={taxGroupOptions}
+				resetOptionLabel="SEM GRUPO TRIBUTÁRIO"
+				handleChange={(value) => updateFiscalProfile({ grupoTributarioId: value })}
+				onReset={() => updateFiscalProfile({ grupoTributarioId: null })}
 				width="100%"
 			/>
 			<TextInput label="NCM" placeholder="Ex.: 12345678" value={state.ncm} handleChange={(value) => updateFiscalProfile({ ncm: value })} />

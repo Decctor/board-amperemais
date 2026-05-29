@@ -888,6 +888,7 @@ export function useProductFiscalProfileState({ initialState }: UseProductFiscalP
 	const initialStateComplete = useMemo<TSingleProductFiscalProfileState>(
 		() => ({
 			id: initialState?.id,
+			grupoTributarioId: initialState?.grupoTributarioId ?? null,
 			origemMercadoria: initialState?.origemMercadoria ?? "NACIONAL",
 			ncm: initialState?.ncm ?? "",
 			cest: initialState?.cest ?? null,

@@ -2,6 +2,7 @@ import type { TGetFiscalDocumentsInput, TGetFiscalDocumentsOutput } from "@/app/
 import type { TGetFiscalOperationProfilesOutput } from "@/app/api/fiscal/operation-profiles/route";
 import type { TGetFiscalSeriesOutput } from "@/app/api/fiscal/series/route";
 import type { TGetFiscalSettingsOutput } from "@/app/api/fiscal/settings/route";
+import type { TGetFiscalTaxGroupsOutput } from "@/app/api/fiscal/tax-groups/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
@@ -135,6 +136,42 @@ export function useFiscalOperationProfiles() {
 		...useQuery({
 			queryKey,
 			queryFn: fetchFiscalOperationProfiles,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchFiscalTaxGroups() {
+	const { data } = await axios.get<TGetFiscalTaxGroupsOutput>("/api/fiscal/tax-groups");
+	const defaultData = data.data.default;
+	if (!defaultData) throw new Error("Oops, houve um erro ao buscar os grupos tributarios.");
+	return defaultData;
+}
+export function useFiscalTaxGroups() {
+	const queryKey = ["fiscal-tax-groups"];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: fetchFiscalTaxGroups,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchFiscalTaxGroupById({ id }: { id: string }) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("id", id);
+	const { data } = await axios.get<TGetFiscalTaxGroupsOutput>(`/api/fiscal/tax-groups?${searchParams.toString()}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("Oops, houve um erro ao buscar o grupo tributario.");
+	return result;
+}
+export function useFiscalTaxGroupById({ id }: { id: string }) {
+	const queryKey = ["fiscal-tax-group-by-id", id];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchFiscalTaxGroupById({ id }),
 		}),
 		queryKey,
 	};
