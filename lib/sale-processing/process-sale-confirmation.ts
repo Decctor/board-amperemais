@@ -2,6 +2,7 @@ import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { getErrorMessage } from "@/lib/errors";
 import { enqueueFiscalDocument } from "@/lib/fiscal/documents";
+import { resolveEmissionDocumentType } from "@/lib/fiscal/document-type";
 import { notifyFiscalEmissionFailure } from "@/lib/fiscal/notifications";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db } from "@/services/drizzle";
@@ -223,11 +224,21 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 
 	if (input.organization.fiscalEmissaoAutomatica) {
 		try {
+			// Decide NFC-e vs NF-e por canal/entrega/destinatario (com fallback p/ NFC-e se NF-e nao configurada).
+			const destinatario = clientId
+				? await db.query.clients.findFirst({ where: (fields, operators) => operators.eq(fields.id, clientId), columns: { cpfCnpj: true } })
+				: null;
+			const tipoDocumento = await resolveEmissionDocumentType({
+				organizacaoId: input.organization.id,
+				operacaoPadraoNfeId: input.organization.fiscalConfiguracao?.operacaoPadraoPorTipo?.NFE ?? null,
+				signals: { canal: sale.canal, entregaModalidade: sale.entregaModalidade, destinatarioCpfCnpj: destinatario?.cpfCnpj },
+			});
+
 			// Enfileira a emissao (sem chamar o provedor): a confirmacao da venda nao espera a SEFAZ.
 			// O worker (cron /api/cron/fiscal-queue) faz o envio com retry/backoff.
 			const enqueued = await enqueueFiscalDocument({
 				vendaId: input.saleId,
-				tipo: "NFCE",
+				tipo: tipoDocumento,
 				organizacaoId: input.organization.id,
 				lancamentoContabilId: transactionResult.entry.id,
 				autorId: input.saleAuthorId,
