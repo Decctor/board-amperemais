@@ -438,3 +438,31 @@ Inbound (notas recebidas), separado do motor de saída. Pareia com o módulo de 
 - **Inutilização** ✅ provider + serviço + rota + ação (docs em ERRO); status INUTILIZADA/INUTILIZADO.
 - **NF-e de devolução** ✅ CFOP de entrada no motor, encadeamento, tpNF=0/refNFe no mapper, serviço/rota/UI. Exige perfil de operação de devolução (NF-e, finalidade DEVOLUCAO) configurado.
 - Endpoints CC-e/inutilização e o payload de devolução (tpNF/refNFe) precisam de confirmação em sandbox (mesmo caveat do vTotTrib). Schema novo (lifecycle INUTILIZADO, eventos) no mesmo db:push.
+
+---
+
+## 16. P3-Entrada detalhado — DF-e / manifestação (planejado)
+
+Decisões: UI no **módulo de Compras**; **auto-ciência** configurável (default on); **Fase 1 → Fase 2**.
+Princípio: o DF-e **descobre e manifesta**; **Compras** faz estoque/financeiro (não duplicar). Inbound gera uma `purchase` e o fluxo de compras existente cuida do resto.
+
+### Módulo `lib/fiscal/inbound/` (isolado do motor de saída)
+- **Provider inbound** separado (Distribuição DF-e), não polui o `IFiscalProvider` de emissão: `consultarDistribuicao({ ultNSU }, org)` + `manifestarDocumento(evento, chave, org)`.
+
+### Dados
+- `fiscalInboundDocuments`: `organizacaoId`, `chaveAcesso` (única/org), `nsu`, `completo` (bool resumo/XML), `emitenteCnpj`, `emitenteNome`, `valorTotal`, `dataEmissao`, `situacao` (origem: autorizada/cancelada), `manifestacaoAtual` (enum), `xmlStoragePath`, `compraId` (FK nullable → `purchases`), `dataInsercao`.
+- `fiscalInboundCursors`: `organizacaoId`, `ultNSU`, `maxNSU`.
+- `fiscalSupplierProductMap` (Fase 2): `organizacaoId`, `fornecedorCnpj`, `codigoFornecedor`/`ean`, `produtoId`/`produtoVarianteId` — de-para reutilizável.
+- Enums: `FiscalInboundManifestEventEnum = [CIENCIA, CONFIRMACAO, DESCONHECIMENTO, NAO_REALIZADA]` (Zod + pgEnum). Config: flag `dfeAutoCiencia` em `OrganizationFiscalConfig`.
+
+### Fase 1 — Distribuição + manifestação + lista (descoberta/compliance)
+- Worker cron `/api/cron/fiscal-inbound`: por org, varre `ultNSU → maxNSU`, grava resumos/XMLs, avança cursor. Auto-ciência opcional ao chegar nota.
+- Serviços/rotas de manifestação (4 eventos) + download de XML; armazenamento no Supabase Storage.
+- UI: aba "Notas recebidas" no módulo de Compras (lista: fornecedor, valor, data, situação, manifestação; ações: manifestar, baixar XML).
+
+### Fase 2 — Virar compra (payoff ERP)
+- `createPurchaseFromInboundDocument(inboundId)`: emitente → fornecedor; itens da NF-e → `purchaseItems` (custo dos valores da nota); cria `purchase`; seta `inbound.compraId`.
+- **De-para de produtos** (`fiscalSupplierProductMap`): match por GTIN/EAN → NCM+descrição → confirmação manual; reutilizado nas próximas entradas.
+- A partir da compra criada, o fluxo existente faz estoque (`process-purchase-item-stock`) e financeiro (lançamento + `financialTransactions` SAIDA = contas a pagar).
+
+Schema novo (tabelas inbound + de-para + enums + flag) em `db:push`. Endpoints de distribuição/manifestação a confirmar na sandbox.
