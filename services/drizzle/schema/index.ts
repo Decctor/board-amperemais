@@ -27,6 +27,7 @@ export * from "./internal-lead-activities";
 export * from "./internal-lead-notes";
 export * from "./internal-lead-stage-history";
 export * from "./internal-leads";
+export * from "./suppliers";
 export * from "./purchases";
 export * from "./poi-transaction-requests";
 export * from "./shop";

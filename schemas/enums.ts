@@ -196,6 +196,9 @@ export type TFiscalPisCofinsCstEnum = z.infer<typeof FiscalPisCofinsCstEnum>;
 // Escopo de uma regra de excecao do grupo tributario por cenario de UF.
 export const FiscalTaxRuleScopeEnum = z.enum(["INTRAESTADUAL", "INTERESTADUAL"]);
 export type TFiscalTaxRuleScopeEnum = z.infer<typeof FiscalTaxRuleScopeEnum>;
+// Eventos de manifestacao do destinatario (DF-e / notas recebidas).
+export const FiscalInboundManifestEventEnum = z.enum(["CIENCIA", "CONFIRMACAO", "DESCONHECIMENTO", "NAO_REALIZADA"]);
+export type TFiscalInboundManifestEventEnum = z.infer<typeof FiscalInboundManifestEventEnum>;
 export const StockMovementTypeEnum = z.enum(["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 export type TStockMovementTypeEnum = z.infer<typeof StockMovementTypeEnum>;
 export const SaleProcessingSourceEnum = z.enum(["EXTERNO", "INTERNO"]);

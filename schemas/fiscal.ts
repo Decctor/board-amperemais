@@ -130,6 +130,8 @@ export const OrganizationFiscalConfigSchema = z.object({
 			NFE: z.string({ invalid_type_error: "Tipo não valido para a operacao padrao da NF-e." }).optional().nullable(),
 		})
 		.default({ NFCE: null, NFE: null }),
+	// DF-e (notas recebidas): registrar ciencia automaticamente ao receber novas notas (destrava XML completo).
+	dfeAutoCiencia: z.boolean({ invalid_type_error: "Tipo não valido para a flag de auto-ciencia DF-e." }).default(true),
 });
 export type TOrganizationFiscalConfig = z.infer<typeof OrganizationFiscalConfigSchema>;
 

@@ -7,6 +7,7 @@ import {
 	fiscalDocumentEventTypeEnum,
 	fiscalDocumentTypeEnum,
 	fiscalIcmsCsosnEnum,
+	fiscalInboundManifestEventEnum,
 	fiscalOperationConsumerPresenceEnum,
 	fiscalOperationFinalityEnum,
 	fiscalPisCofinsCstEnum,
@@ -16,6 +17,8 @@ import {
 import { fiscalOutboundDocuments } from "./financial";
 import { organizations } from "./organizations";
 import { products, productVariants } from "./products";
+import { purchases } from "./purchases";
+import { suppliers } from "./suppliers";
 import { users } from "./users";
 
 export const fiscalDocumentEvents = newTable(
@@ -315,3 +318,85 @@ export type TFiscalTaxGroupRuleEntity = typeof fiscalTaxGroupRules.$inferSelect;
 export type TNewFiscalTaxGroupRuleEntity = typeof fiscalTaxGroupRules.$inferInsert;
 export type TFiscalIbptRateEntity = typeof fiscalIbptRates.$inferSelect;
 export type TNewFiscalIbptRateEntity = typeof fiscalIbptRates.$inferInsert;
+
+// ============================================================================
+// DF-e (notas recebidas / inbound) — distribuicao e manifestacao do destinatario
+// ============================================================================
+
+export const fiscalInboundDocuments = newTable(
+	"fiscal_inbound_documents",
+	{
+		id: varchar("id", { length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		fornecedorId: varchar("fornecedor_id", { length: 255 }).references(() => suppliers.id, { onDelete: "set null" }),
+		chaveAcesso: varchar("chave_acesso", { length: 44 }).notNull(),
+		nsu: varchar("nsu", { length: 30 }).notNull(),
+		completo: boolean("completo").notNull().default(false),
+		emitenteCnpj: varchar("emitente_cnpj", { length: 20 }),
+		emitenteNome: varchar("emitente_nome", { length: 255 }),
+		valorTotal: doublePrecision("valor_total"),
+		dataEmissao: timestamp("data_emissao"),
+		situacao: varchar("situacao", { length: 30 }),
+		manifestacaoAtual: fiscalInboundManifestEventEnum("manifestacao_atual"),
+		xmlStoragePath: varchar("xml_storage_path", { length: 500 }),
+		resumoPayload: text("resumo_payload"),
+		compraId: varchar("compra_id", { length: 255 }).references(() => purchases.id, { onDelete: "set null" }),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		organizacaoIdIdx: index("idx_fiscal_inbound_documents_organizacao_id").on(table.organizacaoId),
+		chaveAcessoIdx: index("idx_fiscal_inbound_documents_chave").on(table.organizacaoId, table.chaveAcesso),
+		nsuIdx: index("idx_fiscal_inbound_documents_nsu").on(table.organizacaoId, table.nsu),
+	}),
+);
+
+export const fiscalInboundCursors = newTable(
+	"fiscal_inbound_cursors",
+	{
+		id: varchar("id", { length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		ultNSU: varchar("ult_nsu", { length: 30 }).notNull().default("0"),
+		maxNSU: varchar("max_nsu", { length: 30 }).notNull().default("0"),
+		dataAtualizacao: timestamp("data_atualizacao").defaultNow().notNull(),
+	},
+	(table) => ({
+		organizacaoIdIdx: index("idx_fiscal_inbound_cursors_organizacao_id").on(table.organizacaoId),
+	}),
+);
+
+export const fiscalInboundDocumentsRelations = relations(fiscalInboundDocuments, ({ one }) => ({
+	organizacao: one(organizations, {
+		fields: [fiscalInboundDocuments.organizacaoId],
+		references: [organizations.id],
+	}),
+	fornecedor: one(suppliers, {
+		fields: [fiscalInboundDocuments.fornecedorId],
+		references: [suppliers.id],
+	}),
+	compra: one(purchases, {
+		fields: [fiscalInboundDocuments.compraId],
+		references: [purchases.id],
+	}),
+}));
+
+export const fiscalInboundCursorsRelations = relations(fiscalInboundCursors, ({ one }) => ({
+	organizacao: one(organizations, {
+		fields: [fiscalInboundCursors.organizacaoId],
+		references: [organizations.id],
+	}),
+}));
+
+export type TFiscalInboundDocumentEntity = typeof fiscalInboundDocuments.$inferSelect;
+export type TNewFiscalInboundDocumentEntity = typeof fiscalInboundDocuments.$inferInsert;
+export type TFiscalInboundCursorEntity = typeof fiscalInboundCursors.$inferSelect;
+export type TNewFiscalInboundCursorEntity = typeof fiscalInboundCursors.$inferInsert;

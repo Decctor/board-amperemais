@@ -263,3 +263,5 @@ export const shopProductsModeEnum = pgEnum("shop_products_mode", ["ATIVOS", "INC
 export const shopHeaderCoverTypeEnum = pgEnum("shop_header_cover_type", ["IMAGEM", "VIDEO"]);
 
 export const shopCompositionBlockTypeEnum = pgEnum("shop_composition_block_type", ["GRUPOS_PRODUTOS", "EM_DESTAQUE", "MAIS_PEDIDOS"]);
+
+export const fiscalInboundManifestEventEnum = pgEnum("fiscal_inbound_manifest_event", ["CIENCIA", "CONFIRMACAO", "DESCONHECIMENTO", "NAO_REALIZADA"]);
