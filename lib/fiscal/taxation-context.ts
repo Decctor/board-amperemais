@@ -1,5 +1,5 @@
 import type { TFiscalClientTaxIndicatorEnum } from "@/schemas/enums";
-import { aggregateItemErrors, computeDocumentTotals, computeItemTaxation, type TDocumentTaxTotals, type TFiscalTaxGroupWithRules, type TFiscalTaxScenario, type TFiscalValidationError, type TItemTaxResult } from "./engine";
+import { aggregateItemErrors, computeDocumentTotals, computeItemTaxation, computeVTotTrib, selectIbptRate, type TDocumentTaxTotals, type TFiscalTaxGroupWithRules, type TFiscalTaxScenario, type TFiscalValidationError, type TItemTaxResult } from "./engine";
 import type { TFiscalSaleContext } from "./types";
 
 function readDestinatarioUf(context: TFiscalSaleContext): string | null {
@@ -87,19 +87,24 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 		}
 
 		const grupoEfetivo = grupo ?? buildFallbackGroup(context.organizacao.id);
+		const origemMercadoria = perfil?.origemMercadoria ?? "NACIONAL";
+
+		// vTotTrib (Lei 12.741) a partir da tabela IBPT carregada no contexto (por NCM + UF de origem).
+		const ibptRate = selectIbptRate(context.ibptRates, { ncm: perfil?.ncm ?? "", uf: scenario.ufOrigem });
+		const vTotTrib = computeVTotTrib({ rate: ibptRate, origem: origemMercadoria, baseValue: item.valorVendaTotalBruto - item.valorTotalDesconto });
+
 		const result = computeItemTaxation({
 			scenario,
 			group: grupoEfetivo,
 			item: {
 				produtoId: item.produtoId,
-				origemMercadoria: perfil?.origemMercadoria ?? "NACIONAL",
+				origemMercadoria,
 				cfopBase: perfil?.cfopPadrao ?? context.operacao.cfopPadrao,
 				quantidade: item.quantidade,
 				valorBruto: item.valorVendaTotalBruto,
 				valorDesconto: item.valorTotalDesconto,
 			},
-			// vTotTrib (Lei 12.741) sera resolvido externamente (tabela IBPT / provedor). Pendente de verificacao.
-			vTotTrib: undefined,
+			vTotTrib,
 		});
 
 		return { item, result };

@@ -218,6 +218,16 @@ async function loadTaxGroupsForProfiles(perfisProdutos: { grupoTributarioId: str
 	});
 }
 
+async function loadIbptRatesForSale({ perfisProdutos, uf }: { perfisProdutos: { ncm: string }[]; uf: string | null | undefined }) {
+	if (!uf) return [];
+	const ncms = [...new Set(perfisProdutos.map((perfil) => perfil.ncm).filter((ncm): ncm is string => !!ncm))];
+	if (ncms.length === 0) return [];
+	return db.query.fiscalIbptRates.findMany({
+		where: (fields, operators) => operators.and(operators.eq(fields.uf, uf.toUpperCase()), operators.inArray(fields.ncm, ncms)),
+		orderBy: (fields, operators) => operators.desc(fields.vigenciaInicio),
+	});
+}
+
 function buildDestinatarioSnapshot(venda: TSaleForFiscal | null) {
 	if (!venda?.cliente) return null;
 	const address = venda.entregaLocalizacao ?? venda.cliente;
@@ -280,6 +290,7 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 
 	const perfisProdutos = await loadProductFiscalProfilesForSale(venda);
 	const gruposTributarios = await loadTaxGroupsForProfiles(perfisProdutos);
+	const ibptRates = await loadIbptRatesForSale({ perfisProdutos, uf: organizacao.fiscalConfiguracao?.endereco.uf });
 
 	return {
 		venda,
@@ -288,6 +299,7 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 		operacao,
 		perfisProdutos,
 		gruposTributarios,
+		ibptRates,
 		destinatarioSnapshot: buildDestinatarioSnapshot(venda),
 	};
 }

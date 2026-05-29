@@ -198,6 +198,35 @@ export const productFiscalProfiles = newTable(
 	}),
 );
 
+// Tabela IBPT (Lei 12.741) — dado de referencia GLOBAL (sem organizacaoId), por NCM e UF.
+// Usada para preencher o vTotTrib (valor aproximado dos tributos) dos itens.
+export const fiscalIbptRates = newTable(
+	"fiscal_ibpt_rates",
+	{
+		id: varchar("id", { length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		ncm: varchar("ncm", { length: 20 }).notNull(),
+		uf: varchar("uf", { length: 2 }).notNull(),
+		exTipi: varchar("ex_tipi", { length: 10 }),
+		descricao: text("descricao"),
+		aliqNacionalFederal: doublePrecision("aliq_nacional_federal").notNull().default(0),
+		aliqImportadosFederal: doublePrecision("aliq_importados_federal").notNull().default(0),
+		aliqEstadual: doublePrecision("aliq_estadual").notNull().default(0),
+		aliqMunicipal: doublePrecision("aliq_municipal").notNull().default(0),
+		versao: varchar("versao", { length: 20 }),
+		vigenciaInicio: timestamp("vigencia_inicio"),
+		vigenciaFim: timestamp("vigencia_fim"),
+		chave: varchar("chave", { length: 20 }),
+		fonte: varchar("fonte", { length: 50 }),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		ncmUfIdx: index("idx_fiscal_ibpt_rates_ncm_uf").on(table.ncm, table.uf),
+	}),
+);
+
 export const fiscalDocumentEventsRelations = relations(fiscalDocumentEvents, ({ one }) => ({
 	documentoFiscal: one(fiscalDocuments, {
 		fields: [fiscalDocumentEvents.documentoFiscalId],
@@ -279,3 +308,5 @@ export type TFiscalTaxGroupEntity = typeof fiscalTaxGroups.$inferSelect;
 export type TNewFiscalTaxGroupEntity = typeof fiscalTaxGroups.$inferInsert;
 export type TFiscalTaxGroupRuleEntity = typeof fiscalTaxGroupRules.$inferSelect;
 export type TNewFiscalTaxGroupRuleEntity = typeof fiscalTaxGroupRules.$inferInsert;
+export type TFiscalIbptRateEntity = typeof fiscalIbptRates.$inferSelect;
+export type TNewFiscalIbptRateEntity = typeof fiscalIbptRates.$inferInsert;

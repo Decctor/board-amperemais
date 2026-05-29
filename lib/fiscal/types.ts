@@ -8,6 +8,7 @@ import type { TOrganizationFiscalConfig } from "@/schemas/organizations";
 import type {
 	TOrganizationEntity,
 	TFiscalDocument,
+	TFiscalIbptRateEntity,
 	TFiscalOperationProfileEntity,
 	TFiscalSeriesEntity,
 	TProductFiscalProfileEntity,
@@ -41,6 +42,7 @@ export type TFiscalSaleContext = {
 	operacao: TFiscalOperationProfileEntity;
 	perfisProdutos: TProductFiscalProfileEntity[];
 	gruposTributarios: TFiscalTaxGroupWithRules[];
+	ibptRates: TFiscalIbptRateEntity[];
 	destinatarioSnapshot: Record<string, unknown> | null;
 };
 
