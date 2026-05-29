@@ -466,3 +466,10 @@ Princípio: o DF-e **descobre e manifesta**; **Compras** faz estoque/financeiro 
 - A partir da compra criada, o fluxo existente faz estoque (`process-purchase-item-stock`) e financeiro (lançamento + `financialTransactions` SAIDA = contas a pagar).
 
 Schema novo (tabelas inbound + de-para + enums + flag) em `db:push`. Endpoints de distribuição/manifestação a confirmar na sandbox.
+
+### Refinamentos decididos (§16)
+
+- **Tabelas separadas** para inbound (agregados disjuntos: emite vs recebe).
+- **Rename `fiscalDocuments` → `fiscalOutboundDocuments`** (semântica correta; sem dados, migração indolor). Passo 0 da Fase 1 — rename mecânico amplo (schema/relations/documents.ts/worker.ts/mappers/rotas/queries/fiscal-page).
+- **Entidade `suppliers`** (dedup por CNPJ, contato/prazos): âncora do de-para e elo inbound↔compra↔financeiro. `purchases` ganha `fornecedorId` (mantendo snapshot denormalizado); inbound faz resolve-or-create por CNPJ.
+- De-para renomeado para **`supplierProductMappings`** (genérico, sem prefixo fiscal), keyed por `fornecedorId` + código/EAN do fornecedor → `produtoId`/`produtoVarianteId`.
