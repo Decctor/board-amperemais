@@ -387,3 +387,11 @@ Hoje a auto-emissão é cravada em `NFCE` (`process-sale-confirmation`). Sinais 
 - FCP no SN aparece sobretudo no caminho de ST (CSOSN 201/202/203/500/900); acoplado ao que já existe.
 
 Schema novo (FCP) entra no mesmo `db:push` pendente.
+
+### Status P2 (implementado)
+
+- **Item A** ✅ `lib/fiscal/document-type.ts` (regra CNPJ/SHOP/entrega → NF-e, fallback NFC-e); `process-sale-confirmation` decide o tipo antes de enfileirar.
+- **Item B** ✅ FCP: `aliquotaFcp`/`aliquotaFcpSt` no grupo e regras; motor calcula `vFCP`/`vFCPST` e soma nos totais; mappers e UI atualizados. Validado por smoke (9 cenários).
+- Variantes: mantida herança do produto base (sem trabalho). IPI: adiado.
+
+Schema novo (FCP) entra no mesmo `db:push` pendente.
