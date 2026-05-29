@@ -17,10 +17,12 @@ export function resolveCfop({
 	const isInterestadual = ufOrigem.toUpperCase() !== ufDestino.toUpperCase();
 	const primeiroDigito = digits[0];
 
-	// Apenas operacoes de saida internas (5) e interestaduais (6) sao ajustadas geograficamente.
+	// Saida: 5 (intra) / 6 (inter). Entrada (ex.: devolucao de venda): 1 (intra) / 2 (inter).
 	if (primeiroDigito === "5" || primeiroDigito === "6") {
-		const desejado = isInterestadual ? "6" : "5";
-		return `${desejado}${digits.slice(1, 4)}`;
+		return `${isInterestadual ? "6" : "5"}${digits.slice(1, 4)}`;
+	}
+	if (primeiroDigito === "1" || primeiroDigito === "2") {
+		return `${isInterestadual ? "2" : "1"}${digits.slice(1, 4)}`;
 	}
 
 	return digits.slice(0, 4);

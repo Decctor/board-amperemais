@@ -37,6 +37,7 @@ import {
 	correctFiscalDocumentMutation,
 	emitFiscalDocumentMutation,
 	inutilizeFiscalDocumentMutation,
+	returnFiscalDocumentMutation,
 	syncFiscalCompany,
 	syncFiscalCompanyCertificate,
 	syncFiscalDocumentMutation,
@@ -396,6 +397,7 @@ function FiscalDocumentQuickActions({
 	const canCancel = userHasFiscalCancelPermission && document.status === "AUTORIZADA" && document.statusInterno === "AUTORIZADO";
 	const canCorrect = userHasFiscalEmitPermission && document.tipo === "NFE" && document.statusInterno === "AUTORIZADO";
 	const canInutilize = userHasFiscalCancelPermission && document.statusInterno === "ERRO" && !!document.numero;
+	const canReturn = userHasFiscalEmitPermission && document.statusInterno === "AUTORIZADO" && !!document.vendaId;
 	const hasXml = !!document.xmlStoragePath || document.statusInterno === "AUTORIZADO";
 	const hasPdf = !!document.pdfStoragePath || document.statusInterno === "AUTORIZADO";
 
@@ -454,7 +456,17 @@ function FiscalDocumentQuickActions({
 		onError: (error) => toast.error(getErrorMessage(error)),
 	});
 
-	const actionIsPending = isSyncing || isEmitting || isCancelling || isCorrecting || isInutilizing;
+	const { mutate: returnDocument, isPending: isReturning } = useMutation({
+		mutationKey: ["return-fiscal-document", document.id],
+		mutationFn: returnFiscalDocumentMutation,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			invalidateFiscalDocuments();
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const actionIsPending = isSyncing || isEmitting || isCancelling || isCorrecting || isInutilizing || isReturning;
 
 	const openAsset = (asset: "xml" | "pdf") => {
 		window.open(`/api/fiscal/document-assets?documentId=${document.id}&asset=${asset}`, "_blank", "noopener,noreferrer");
@@ -484,6 +496,11 @@ function FiscalDocumentQuickActions({
 			return;
 		}
 		inutilizeDocument({ documentId: document.id, justificativa: justificativa.trim() });
+	};
+
+	const handleReturn = () => {
+		if (!window.confirm("Gerar NF-e de devolução referenciando este documento? Requer um perfil de operação de devolução configurado.")) return;
+		returnDocument({ documentId: document.id });
 	};
 
 	const handleEmitAgain = () => {
@@ -523,6 +540,10 @@ function FiscalDocumentQuickActions({
 				<DropdownMenuItem disabled={!canCorrect || actionIsPending} onClick={handleCorrect}>
 					<PencilIcon className="h-4 w-4" />
 					Carta de correção
+				</DropdownMenuItem>
+				<DropdownMenuItem disabled={!canReturn || actionIsPending} onClick={handleReturn}>
+					<RefreshCcw className="h-4 w-4" />
+					Gerar devolução
 				</DropdownMenuItem>
 				<DropdownMenuItem disabled={!canInutilize || actionIsPending} onClick={handleInutilize} variant="destructive">
 					<CircleX className="h-4 w-4" />

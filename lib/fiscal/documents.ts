@@ -187,6 +187,8 @@ async function createOrUpdateDraftDocument({
 			status: "PENDENTE",
 			statusInterno,
 			referencia,
+			documentoOrigemId: input.documentoOrigemId ?? null,
+			chaveAcessoReferencia: input.chaveAcessoReferencia ?? null,
 		})
 		.returning();
 
@@ -291,7 +293,7 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 	if (!organizacao) throw new createHttpError.NotFound("Organizacao nao encontrada para emissao fiscal.");
 
 	const ambiente = organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO";
-	const operacaoDefaultId = organizacao.fiscalConfiguracao?.operacaoPadraoPorTipo?.[input.tipo] ?? null;
+	const operacaoDefaultId = input.operationProfileId ?? organizacao.fiscalConfiguracao?.operacaoPadraoPorTipo?.[input.tipo] ?? null;
 	const operacao = await findDefaultOperationProfileForType({
 		organizacaoId: input.organizacaoId,
 		tipoDocumento: input.tipo,
@@ -586,6 +588,47 @@ export async function inutilizeFiscalDocument(input: TFiscalInutilizationInput) 
 	});
 
 	return { documentoId: documento.id, status: result.status, protocolo: result.protocolo ?? null };
+}
+
+type CreateReturnFiscalDocumentParams = {
+	organizationId: string;
+	originalDocumentId: string;
+	operationProfileId?: string | null;
+	authorId?: string | null;
+};
+// Gera uma NF-e de devolucao referenciando um documento autorizado (mesma venda, finalidade DEVOLUCAO).
+export async function createReturnFiscalDocument({ organizationId, originalDocumentId, operationProfileId, authorId }: CreateReturnFiscalDocumentParams) {
+	const original = await getFiscalDocumentById({ documentId: originalDocumentId, organizationId });
+	if (!original) throw new createHttpError.NotFound("Documento fiscal original nao encontrado.");
+	if (original.statusInterno !== "AUTORIZADO") throw new createHttpError.BadRequest("A devolucao so pode ser gerada a partir de um documento autorizado.");
+	if (!original.vendaId) throw new createHttpError.BadRequest("Documento original sem venda vinculada.");
+	if (!original.chaveAcesso) throw new createHttpError.BadRequest("Documento original sem chave de acesso.");
+
+	let profileId = operationProfileId ?? null;
+	if (!profileId) {
+		const devProfile = await db.query.fiscalOperationProfiles.findFirst({
+			where: (fields, operators) =>
+				operators.and(
+					operators.eq(fields.organizacaoId, organizationId),
+					operators.eq(fields.tipoDocumento, "NFE"),
+					operators.eq(fields.finalidade, "DEVOLUCAO"),
+					operators.eq(fields.ativo, true),
+				),
+		});
+		if (!devProfile) throw new createHttpError.BadRequest("Configure um perfil de operacao fiscal de devolucao (NF-e com finalidade DEVOLUCAO).");
+		profileId = devProfile.id;
+	}
+
+	return enqueueFiscalDocument({
+		vendaId: original.vendaId,
+		tipo: "NFE",
+		organizacaoId: organizationId,
+		autorId: authorId ?? null,
+		origem: "MANUAL",
+		operationProfileId: profileId,
+		documentoOrigemId: original.id,
+		chaveAcessoReferencia: original.chaveAcesso,
+	});
 }
 
 type GetFiscalDocumentAssetParams = {

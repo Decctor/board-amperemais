@@ -31,6 +31,8 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 				serie: Number(context.serie.serie),
 				nNF: documento.numero ? Number(documento.numero) : context.serie.proximoNumero,
 				dhEmi: new Date().toISOString(),
+				// Devolucao e operacao de entrada (tpNF = 0); demais saidas tpNF = 1.
+				tpNF: context.operacao.finalidade === "DEVOLUCAO" ? 0 : 1,
 				idDest: 1,
 				tpImp: 1,
 				tpEmis: 1,
@@ -38,6 +40,7 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 				finNFe: mapFiscalFinalityToNfeCode(context.operacao.finalidade),
 				indFinal: context.operacao.consumidorFinal ? 1 : 0,
 				indPres: mapConsumerPresenceToNfeCode(context.operacao.presencaConsumidor),
+				...(documento.chaveAcessoReferencia ? { NFref: [{ refNFe: documento.chaveAcessoReferencia }] } : {}),
 				procEmi: 0,
 				verProc: "recompra-crm",
 			},

@@ -53,6 +53,10 @@ export type TEmitirDocumentoInput = {
 	lancamentoContabilId?: string | null;
 	autorId?: string | null;
 	origem: "AUTOMATICA" | "MANUAL";
+	// Devolucao: perfil de operacao especifico e encadeamento ao documento original.
+	operationProfileId?: string | null;
+	documentoOrigemId?: string | null;
+	chaveAcessoReferencia?: string | null;
 };
 
 export type TEmitirDocumentoResult = {
