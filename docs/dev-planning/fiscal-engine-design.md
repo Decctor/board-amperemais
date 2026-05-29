@@ -362,3 +362,28 @@ Schema novo (etapas 2–4) aplicado num único `db:push` ao final.
 - **Etapa 5** ✅ filtro por status + detalhe acionável de rejeição na aba Documentos.
 
 Pendências de ativação: `npm run db:push` (colunas/tabela novas), `npm run import:ibpt ./ibpt-data`, definir `CRON_SECRET`, e backfill de grupo padrão. Confirmar campos do payload e comportamento do vTotTrib em sandbox.
+
+---
+
+## 13. Roadmap P2 — completude do motor (planejado)
+
+Escopo decidido: **NFC-e vs NF-e automático** + **FCP**. Variantes: mantida a herança do produto base (sem CRUD por variante). IPI: adiado (varejo SN não é contribuinte). ST: já manual.
+
+### Item A — Seleção automática NFC-e vs NF-e
+Hoje a auto-emissão é cravada em `NFCE` (`process-sale-confirmation`). Sinais já existentes na venda: `canal`, `entregaModalidade`, `entregaLocalizacaoId`, CPF/CNPJ do destinatário.
+
+- `lib/fiscal/document-type.ts`: `resolveAutoDocumentType({ venda, cliente })` →
+  - destinatário com CNPJ (B2B) → **NFE**
+  - canal `SHOP`, ou com entrega/`entregaLocalizacaoId` → **NFE**
+  - caso contrário (balcão/presencial) → **NFCE**
+- Fallback: se o tipo resolvido não tiver operação/série configurada, cai para NFCE (default varejo); readiness surfa erro claro se nada configurado.
+- `process-sale-confirmation` passa o `tipo` resolvido para `enqueueFiscalDocument`. Fila/worker já são agnósticos ao tipo.
+
+### Item B — FCP (Fundo de Combate à Pobreza)
+- Schema: `fiscalTaxGroups` + `fiscalTaxGroupRules` ganham `aliquotaFcp` e `aliquotaFcpSt` (Zod + pgEnum n/a; doublePrecision).
+- Engine: `computeIcms` calcula `vFCP` (sobre BC de ICMS quando há débito) e `vFCPST` (sobre BC de ST). `TIcmsTaxResult`/`TEffectiveTaxConfig`/`TDocumentTaxTotals` ganham os campos; totais somam.
+- Mappers: preenchem `vFCP` no grupo ICMS aplicável e `vFCPST` no grupo ST; `ICMSTot.vFCP`/`vFCPST` deixam de ser 0.
+- UI: campos de FCP no bloco ICMS/ST do modal de grupo tributário.
+- FCP no SN aparece sobretudo no caminho de ST (CSOSN 201/202/203/500/900); acoplado ao que já existe.
+
+Schema novo (FCP) entra no mesmo `db:push` pendente.
