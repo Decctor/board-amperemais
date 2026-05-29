@@ -395,3 +395,39 @@ Schema novo (FCP) entra no mesmo `db:push` pendente.
 - Variantes: mantida herança do produto base (sem trabalho). IPI: adiado.
 
 Schema novo (FCP) entra no mesmo `db:push` pendente.
+
+---
+
+## 14. Roadmap P3 — ciclo de vida fiscal (planejado)
+
+Escopo de SAÍDA decidido: **CC-e + Inutilização + NF-e de devolução**. Contingência/NFS-e adiados. Manifestação do destinatário tratada à parte como **módulo de entrada (P3-Entrada / DF-e)**, por ser arquitetura inbound separada (ver §15).
+
+Comum a todos: novos event types (Zod + pgEnum), métodos no `IFiscalProvider` (impl Nuvem Fiscal + stub manual), confirmação de endpoints/campos na sandbox.
+
+### Item A — CC-e (Carta de Correção)
+- `IFiscalProvider.cartaCorrecaoDocumento`; impl Nuvem Fiscal (~`POST /nfe/{id}/carta-correcao`, `correcao` + `sequencia_evento`).
+- Guard: só `NFE` autorizada (NFC-e não aceita CC-e). Não muda status; gera evento + XML de evento.
+- Event type `CARTA_CORRECAO`; serviço `registerFiscalCorrection`; rota `POST /api/fiscal/documents/correction`; ação no menu do documento.
+
+### Item B — Inutilização de numeração
+- `IFiscalProvider.inutilizarNumeracao` (~`POST /nfe|nfce/inutilizacoes`: cnpj/ano/modelo/série/faixa/justificativa).
+- Trigger: documento em `ERRO` com `numero` reservado → inutiliza; status → `INUTILIZADA` (enum já existe). Opcional: faixa manual por série.
+- Event type `INUTILIZACAO`; serviço + rota + ação na tela (docs com erro).
+
+### Item C — NF-e de devolução
+- Emissão com `finalidade=DEVOLUCAO`, `refNFe` da original, vínculo via `documentoOrigemId`/`chaveAcessoReferencia` (colunas já existem).
+- Motor: caminho de **CFOP de entrada** (1.202/2.202) — `resolveCfop` hoje só alterna 5/6 (saída); adicionar resolução de devolução.
+- Fluxo de UI: gerar devolução a partir de venda/documento autorizado.
+
+---
+
+## 15. P3-Entrada — Distribuição DF-e e manifestação do destinatário (planejado, módulo à parte)
+
+Inbound (notas recebidas), separado do motor de saída. Pareia com o módulo de Compras.
+
+- **Provider:** Distribuição DF-e — consultar por cursor `NSU` (incremental) + registrar eventos de manifestação (ciência 210210, confirmação 210200, desconhecimento 210220, não realizada 210240).
+- **Dados:** `fiscalInboundDocuments` (chave, fornecedor, valor, dataEmissão, `nsu`, situação resumo/completo, evento atual, `xmlStoragePath`, vínculo à compra) + cursor `ultNSU` por organização.
+- **Worker:** cron de polling incremental por organização.
+- **Manifestação:** serviço + rota + provider; opcional auto-ciência (destrava XML completo).
+- **UI:** aba "Notas recebidas" com ações de manifestar.
+- **Fase 2:** transformar NF-e recebida em compra (estoque/custo/financeiro) — payoff de ERP.
