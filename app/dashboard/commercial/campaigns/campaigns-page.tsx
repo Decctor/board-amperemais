@@ -590,7 +590,7 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<Chip.Root variant="ghost" size="xs" shape="md" className={cn(sentStatusConfig?.className, "border-none")}>
+									<Chip.Root variant="ghost" size="md" shape="pill" className={cn(sentStatusConfig?.className, "border-none")}>
 										<Chip.Icon>{sentStatusConfig?.icon}</Chip.Icon>
 										<Chip.Label caps weight="bold">
 											{sentStatusConfig?.label}
@@ -598,7 +598,7 @@ function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaign
 									</Chip.Root>
 								</TooltipTrigger>
 								<TooltipContent>
-									<p className="text-xs font-medium tracking-tight text-red-500">{sentStatusConfig?.message(interaction.erroEnvio || undefined)}</p>
+									<p className="text-xs font-medium tracking-tight">{sentStatusConfig?.message(interaction.erroEnvio || undefined)}</p>
 								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
