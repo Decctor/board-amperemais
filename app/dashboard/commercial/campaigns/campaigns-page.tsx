@@ -14,7 +14,7 @@ import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
-import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
+import { InteractiveFilter, type InteractiveFilterOption, type InteractiveFilterSortValue } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,7 +66,7 @@ import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import TestCampaign from "@/components/Modals/Campaigns/TestCampaign";
 import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
-import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
+import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary, formatInteractiveSortFieldSummary, isInteractiveSortActive } from "@/lib/interactive-filter-formatting";
 type CampaignsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
@@ -436,12 +436,15 @@ function CampaignInteractionsInlineFilters({
 		{ id: "dataExecucao", label: "DATA DE EXECUÇÃO", value: "dataExecucao" },
 		{ id: "dataEnvio", label: "DATA DE ENVIO", value: "dataEnvio" },
 	] as const satisfies InteractiveFilterOption<NonNullable<typeof filters.orderByField>>[];
-	const orderDirectionOptions = [
-		{ id: "asc", label: "ORDEM CRESCENTE", value: "asc" },
-		{ id: "desc", label: "ORDEM DECRESCENTE", value: "desc" },
-	] as const satisfies InteractiveFilterOption<NonNullable<typeof filters.orderByDirection>>[];
-	const hasOrderByField = Boolean(filters.orderByField && filters.orderByField !== "agendamentoData");
-	const hasOrderByDirection = Boolean(filters.orderByDirection && filters.orderByDirection !== "desc");
+	const defaultSort = {
+		field: "agendamentoData",
+		direction: "desc",
+	} satisfies InteractiveFilterSortValue<NonNullable<typeof filters.orderByField>>;
+	const sortValue = {
+		field: filters.orderByField ?? defaultSort.field,
+		direction: filters.orderByDirection ?? defaultSort.direction,
+	} satisfies InteractiveFilterSortValue<NonNullable<typeof filters.orderByField>>;
+	const hasActiveSort = isInteractiveSortActive(sortValue, defaultSort);
 
 	return (
 		<div className="flex w-full flex-wrap items-center gap-2">
@@ -465,20 +468,12 @@ function CampaignInteractionsInlineFilters({
 				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasOrderByField ? (
-				<CampaignInteractionSingleFilter
-					label="ORDENAR POR"
-					options={[...orderFieldOptions]}
-					value={filters.orderByField!}
-					onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
-				/>
-			) : null}
-			{hasOrderByDirection ? (
-				<CampaignInteractionSingleFilter
-					label="DIREÇÃO"
-					options={[...orderDirectionOptions]}
-					value={filters.orderByDirection!}
-					onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+			{hasActiveSort ? (
+				<CampaignInteractionSortFilter
+					fieldOptions={[...orderFieldOptions]}
+					value={sortValue}
+					onChange={({ field, direction }) => updateFilters({ orderByField: field, orderByDirection: direction, page: 1 })}
+					onClear={() => updateFilters({ orderByField: defaultSort.field, orderByDirection: defaultSort.direction, page: 1 })}
 				/>
 			) : null}
 
@@ -489,21 +484,12 @@ function CampaignInteractionsInlineFilters({
 				</InteractiveFilter.AddFilterTrigger>
 				<InteractiveFilter.AddFilterContent>
 					<InteractiveFilter.AddFilterSection heading="Filtros">
-						{!hasOrderByField ? (
-							<InteractiveFilter.AddFilterItem id="orderByField" label="ORDENAR POR" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.SingleContent
-									options={[...orderFieldOptions]}
-									value={filters.orderByField}
-									onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
-								/>
-							</InteractiveFilter.AddFilterItem>
-						) : null}
-						{!hasOrderByDirection ? (
-							<InteractiveFilter.AddFilterItem id="orderByDirection" label="DIREÇÃO" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.SingleContent
-									options={[...orderDirectionOptions]}
-									value={filters.orderByDirection}
-									onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+						{!hasActiveSort ? (
+							<InteractiveFilter.AddFilterItem id="sort" label="ORDENAR POR" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SortContent
+									fieldOptions={[...orderFieldOptions]}
+									value={sortValue}
+									onChange={({ field, direction }) => updateFilters({ orderByField: field, orderByDirection: direction, page: 1 })}
 								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
@@ -514,28 +500,30 @@ function CampaignInteractionsInlineFilters({
 	);
 }
 
-function CampaignInteractionSingleFilter<T extends string>({
-	label,
-	options,
+function CampaignInteractionSortFilter<TField extends string>({
+	fieldOptions,
 	value,
 	onChange,
+	onClear,
 }: {
-	label: string;
-	options: InteractiveFilterOption<T>[];
-	value: T;
-	onChange: (value: T) => void;
+	fieldOptions: InteractiveFilterOption<TField>[];
+	value: InteractiveFilterSortValue<TField>;
+	onChange: (nextValue: InteractiveFilterSortValue<TField>) => void;
+	onClear: () => void;
 }) {
 	return (
 		<InteractiveFilter.Root className="w-fit">
 			<InteractiveFilter.Trigger>
 				<InteractiveFilter.Icon>
 					<ListFilter className="h-4 w-4" />
-					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+					<InteractiveFilter.Label>ORDENAR POR</InteractiveFilter.Label>
 				</InteractiveFilter.Icon>
-				<InteractiveFilter.Value>{options.find((option) => option.value === value)?.label ?? "PADRÃO"}</InteractiveFilter.Value>
+				<InteractiveFilter.Value>{formatInteractiveSortFieldSummary(fieldOptions, value.field)}</InteractiveFilter.Value>
+				<InteractiveFilter.SortDirectionToggle direction={value.direction} onDirectionChange={(direction) => onChange({ ...value, direction })} />
+				<InteractiveFilter.Clear onClear={onClear} label="Limpar ordenação" />
 			</InteractiveFilter.Trigger>
 			<InteractiveFilter.Content className="w-72 p-0">
-				<InteractiveFilter.SingleContent options={options} value={value} onChange={onChange} />
+				<InteractiveFilter.SortContent fieldOptions={fieldOptions} value={value} onChange={onChange} />
 			</InteractiveFilter.Content>
 		</InteractiveFilter.Root>
 	);
