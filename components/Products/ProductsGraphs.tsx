@@ -83,8 +83,8 @@ export default function ProductsGraphs({ periodAfter, periodBefore }: ProductsGr
 	};
 
 	return (
-		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="flex h-full min-h-0 w-full flex-col py-2">
+			<div className="bg-card border-border flex h-full min-h-0 w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">GRÁFICO DE PRODUTOS</h1>
 					<div className="flex items-center gap-2">
@@ -147,40 +147,38 @@ export default function ProductsGraphs({ periodAfter, periodBefore }: ProductsGr
 						</TooltipProvider>
 					</div>
 				</div>
-				<div className="flex w-full flex-1 items-center gap-4 overflow-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 min-h-0">
-					{graphLoading ? (
-						<div className="flex w-full h-full items-center justify-center">
+				<div className="relative flex w-full min-h-0 flex-1 overflow-hidden">
+					{graphLoading && !graphData ? (
+						<div className="flex h-full w-full items-center justify-center">
 							<p className="text-sm text-muted-foreground">Carregando gráfico...</p>
 						</div>
 					) : graphData && graphData.length > 0 ? (
-						<div className="flex w-full h-full items-center justify-center min-h-[350px]">
-							<ChartContainer className="aspect-auto h-full w-full min-h-[350px]" config={chartConfig}>
-								<AreaChart
-									accessibilityLayer
-									data={graphData}
-									margin={{
-										top: 15,
-										right: 15,
-										left: 15,
-										bottom: 15,
-									}}
-								>
-									<CartesianGrid vertical={false} />
-									<XAxis dataKey="label" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(value) => value.slice(0, 12)} />
-									<YAxis tickFormatter={valueFormatter} />
-									<ChartTooltip cursor={false} content={<CustomProductsTooltip valueFormatter={valueFormatter} metricLabel={metricLabels[graphType]} />} />
-									<defs>
-										<linearGradient id="fillProductsValue" x1="0" y1="0" x2="0" y2="1">
-											<stop offset="5%" stopColor={chartConfig.value.color} stopOpacity={0.8} />
-											<stop offset="95%" stopColor={chartConfig.value.color} stopOpacity={0.1} />
-										</linearGradient>
-									</defs>
-									<Area dataKey="value" type="monotone" fill="url(#fillProductsValue)" fillOpacity={0.4} stroke={chartConfig.value.color} strokeWidth={2} />
-								</AreaChart>
-							</ChartContainer>
-						</div>
+						<ChartContainer className="aspect-auto h-full w-full min-h-0" config={chartConfig}>
+							<AreaChart
+								accessibilityLayer
+								data={graphData}
+								margin={{
+									top: 15,
+									right: 15,
+									left: 15,
+									bottom: 15,
+								}}
+							>
+								<CartesianGrid vertical={false} />
+								<XAxis dataKey="label" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(value) => value.slice(0, 12)} />
+								<YAxis tickFormatter={valueFormatter} width={80} />
+								<ChartTooltip cursor={false} content={<CustomProductsTooltip valueFormatter={valueFormatter} metricLabel={metricLabels[graphType]} />} />
+								<defs>
+									<linearGradient id="fillProductsValue" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="5%" stopColor={chartConfig.value.color} stopOpacity={0.8} />
+										<stop offset="95%" stopColor={chartConfig.value.color} stopOpacity={0.1} />
+									</linearGradient>
+								</defs>
+								<Area dataKey="value" type="monotone" fill="url(#fillProductsValue)" fillOpacity={0.4} stroke={chartConfig.value.color} strokeWidth={2} />
+							</AreaChart>
+						</ChartContainer>
 					) : (
-						<div className="flex w-full h-full items-center justify-center">
+						<div className="flex h-full w-full items-center justify-center">
 							<p className="text-sm text-muted-foreground">Nenhum dado disponível para o período selecionado.</p>
 						</div>
 					)}

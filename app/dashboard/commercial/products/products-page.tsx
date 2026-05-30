@@ -7,10 +7,11 @@ import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionCompon
 import NewProduct from "@/components/Modals/Products/NewProduct";
 import ProductsGraphs from "@/components/Products/ProductsGraphs";
 import ProductsRanking from "@/components/Products/ProductsRanking";
+import ProductsPortfolioHealthSection from "@/app/dashboard/commercial/products/portfolio-health-section";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
-import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
+import { InteractiveFilter, type InteractiveFilterOption, type InteractiveFilterSortValue } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +24,8 @@ import {
 	formatInteractiveDateRangeSummary,
 	formatInteractiveNumberRangeSummary,
 	formatInteractiveOptionSummary,
+	formatInteractiveSortFieldSummary,
+	isInteractiveSortActive,
 } from "@/lib/interactive-filter-formatting";
 import { useProducts, useProductsOverallStats } from "@/lib/queries/products";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
@@ -214,10 +217,14 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 		{ id: "vendasQtdeTotal", label: "QUANTIDADE TOTAL DE VENDAS", value: "vendasQtdeTotal" },
 		{ id: "quantidade", label: "QUANTIDADE EM ESTOQUE", value: "quantidade" },
 	] satisfies InteractiveFilterOption<NonNullable<TGetProductsDefaultInput["orderByField"]>>[];
-	const orderDirectionOptions = [
-		{ id: "asc", label: "CRESCENTE", value: "asc" },
-		{ id: "desc", label: "DECRESCENTE", value: "desc" },
-	] satisfies InteractiveFilterOption<NonNullable<TGetProductsDefaultInput["orderByDirection"]>>[];
+	const defaultSort = {
+		field: "descricao",
+		direction: "asc",
+	} satisfies InteractiveFilterSortValue<NonNullable<TGetProductsDefaultInput["orderByField"]>>;
+	const sortValue = {
+		field: filters.orderByField ?? defaultSort.field,
+		direction: filters.orderByDirection ?? defaultSort.direction,
+	} satisfies InteractiveFilterSortValue<NonNullable<TGetProductsDefaultInput["orderByField"]>>;
 	const hasGroups = (filters.groups ?? []).length > 0;
 	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
 	const hasSellers = (filters.statsSellerIds ?? []).length > 0;
@@ -225,8 +232,7 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 	const hasPrice = filters.priceMin != null || filters.priceMax != null;
 	const hasStatsTotal = filters.statsTotalMin != null || filters.statsTotalMax != null;
 	const hasExcludedSales = (filters.statsExcludedSalesIds ?? []).length > 0;
-	const hasOrderByField = Boolean(filters.orderByField && filters.orderByField !== "descricao");
-	const hasOrderByDirection = Boolean(filters.orderByDirection && filters.orderByDirection !== "asc");
+	const hasActiveSort = isInteractiveSortActive(sortValue, defaultSort);
 
 	return (
 		<div className="flex w-full flex-wrap items-center gap-2">
@@ -305,20 +311,12 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 				/>
 			) : null}
 			{hasExcludedSales ? <ProductsExcludedSalesFilter filters={filters} updateFilters={updateFilters} /> : null}
-			{hasOrderByField ? (
-				<ProductsSingleFilter
-					label="ORDENAR POR"
-					options={orderFieldOptions}
-					value={filters.orderByField ?? "descricao"}
-					onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
-				/>
-			) : null}
-			{hasOrderByDirection ? (
-				<ProductsSingleFilter
-					label="DIREÇÃO"
-					options={orderDirectionOptions}
-					value={filters.orderByDirection ?? "asc"}
-					onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+			{hasActiveSort ? (
+				<ProductsSortFilter
+					fieldOptions={orderFieldOptions}
+					value={sortValue}
+					onChange={({ field, direction }) => updateFilters({ orderByField: field, orderByDirection: direction, page: 1 })}
+					onClear={() => updateFilters({ orderByField: defaultSort.field, orderByDirection: defaultSort.direction, page: 1 })}
 				/>
 			) : null}
 
@@ -396,21 +394,12 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 								<ProductsExcludedSalesFilterContent filters={filters} updateFilters={updateFilters} />
 							</InteractiveFilter.AddFilterItem>
 						) : null}
-						{!hasOrderByField ? (
-							<InteractiveFilter.AddFilterItem id="orderByField" label="ORDENAR POR" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.SingleContent
-									options={orderFieldOptions}
-									value={filters.orderByField ?? "descricao"}
-									onChange={(orderByField) => updateFilters({ orderByField, page: 1 })}
-								/>
-							</InteractiveFilter.AddFilterItem>
-						) : null}
-						{!hasOrderByDirection ? (
-							<InteractiveFilter.AddFilterItem id="orderByDirection" label="DIREÇÃO" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.SingleContent
-									options={orderDirectionOptions}
-									value={filters.orderByDirection ?? "asc"}
-									onChange={(orderByDirection) => updateFilters({ orderByDirection, page: 1 })}
+						{!hasActiveSort ? (
+							<InteractiveFilter.AddFilterItem id="sort" label="ORDENAR POR" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.SortContent
+									fieldOptions={orderFieldOptions}
+									value={sortValue}
+									onChange={({ field, direction }) => updateFilters({ orderByField: field, orderByDirection: direction, page: 1 })}
 								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
@@ -421,28 +410,30 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 	);
 }
 
-function ProductsSingleFilter<T extends string>({
-	label,
-	options,
+function ProductsSortFilter<TField extends string>({
+	fieldOptions,
 	value,
 	onChange,
+	onClear,
 }: {
-	label: string;
-	options: InteractiveFilterOption<T>[];
-	value: T;
-	onChange: (value: T) => void;
+	fieldOptions: InteractiveFilterOption<TField>[];
+	value: InteractiveFilterSortValue<TField>;
+	onChange: (nextValue: InteractiveFilterSortValue<TField>) => void;
+	onClear: () => void;
 }) {
 	return (
 		<InteractiveFilter.Root className="w-fit">
 			<InteractiveFilter.Trigger>
 				<InteractiveFilter.Icon>
 					<ListFilter className="h-4 w-4" />
-					<InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+					<InteractiveFilter.Label>ORDENAR POR</InteractiveFilter.Label>
 				</InteractiveFilter.Icon>
-				<InteractiveFilter.Value>{options.find((option) => option.value === value)?.label ?? "PADRÃO"}</InteractiveFilter.Value>
+				<InteractiveFilter.Value>{formatInteractiveSortFieldSummary(fieldOptions, value.field)}</InteractiveFilter.Value>
+				<InteractiveFilter.SortDirectionToggle direction={value.direction} onDirectionChange={(direction) => onChange({ ...value, direction })} />
+				<InteractiveFilter.Clear onClear={onClear} label="Limpar ordenação" />
 			</InteractiveFilter.Trigger>
 			<InteractiveFilter.Content className="w-72 p-0">
-				<InteractiveFilter.SingleContent options={options} value={value} onChange={onChange} />
+				<InteractiveFilter.SortContent fieldOptions={fieldOptions} value={value} onChange={onChange} />
 			</InteractiveFilter.Content>
 		</InteractiveFilter.Root>
 	);
@@ -723,6 +714,7 @@ function ProductsStatsView() {
 					/>
 				</div>
 			</div>
+			<ProductsPortfolioHealthSection periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 		</div>
 	);
 }

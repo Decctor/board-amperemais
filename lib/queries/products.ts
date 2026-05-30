@@ -5,6 +5,7 @@ import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/ap
 import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/app/api/products/stats/route";
 import type { TGetProductsGraphInput, TGetProductsGraphOutput } from "@/app/api/products/stats/graph/route";
 import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } from "@/app/api/products/stats/overall/route";
+import type { TGetProductsPortfolioHealthInput, TGetProductsPortfolioHealthOutput } from "@/app/api/products/stats/portfolio-health/route";
 import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/app/api/products/stats/ranking/route";
 import type { TProductStatsQueryParams } from "@/schemas/products";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -317,8 +318,9 @@ async function fetchProductsGraph(input: TGetProductsGraphInput) {
 
 export function useProductsGraph(input: TGetProductsGraphInput) {
 	return useQuery({
-		queryKey: ["products-graph", input],
+		queryKey: ["products-graph", input.graphType, input.periodAfter?.toISOString() ?? null, input.periodBefore?.toISOString() ?? null],
 		queryFn: () => fetchProductsGraph(input),
+		placeholderData: (previousData) => previousData,
 	});
 }
 
@@ -344,4 +346,28 @@ export function useProductsRanking(input: TGetProductsRankingInput) {
 		queryKey: ["products-ranking", input],
 		queryFn: () => fetchProductsRanking(input),
 	});
+}
+
+async function fetchProductsPortfolioHealth(input: TGetProductsPortfolioHealthInput) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+		const { data } = await axios.get<TGetProductsPortfolioHealthOutput>(`/api/products/stats/portfolio-health?${searchParams.toString()}`);
+		return data.data;
+	} catch (error) {
+		console.log("Error running fetchProductsPortfolioHealth", error);
+		throw error;
+	}
+}
+
+export function useProductsPortfolioHealth(input: TGetProductsPortfolioHealthInput) {
+	const queryKey = ["products-portfolio-health", input.periodAfter?.toISOString() ?? null, input.periodBefore?.toISOString() ?? null] as const;
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchProductsPortfolioHealth(input),
+		}),
+		queryKey,
+	};
 }

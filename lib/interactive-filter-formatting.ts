@@ -1,4 +1,4 @@
-import type { InteractiveFilterOption } from "@/components/ui/interactive-filter";
+import type { InteractiveFilterOption, InteractiveFilterSortValue } from "@/components/ui/interactive-filter";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 
 export function formatInteractiveOptionSummary<T extends string | number>(options: InteractiveFilterOption<T>[], values: T[]) {
@@ -26,4 +26,38 @@ export function formatInteractiveNumberRangeSummary(min?: number | null, max?: n
 export function formatInteractiveCountSummary(values: unknown[] | null | undefined, emptyLabel = "TODOS") {
 	if (!values || values.length === 0) return emptyLabel;
 	return `${values.length} selecionado(s)`;
+}
+
+export function formatInteractiveSortFieldSummary<T extends string>(
+	fieldOptions: InteractiveFilterOption<T>[],
+	field: T,
+	fallbackLabel = "PADRÃO",
+) {
+	return fieldOptions.find((option) => option.value === field)?.label ?? fallbackLabel;
+}
+
+export function formatInteractiveSortSummary<T extends string>({
+	fieldOptions,
+	value,
+	includeDirection = false,
+	ascLabel = "CRESCENTE",
+	descLabel = "DECRESCENTE",
+}: {
+	fieldOptions: InteractiveFilterOption<T>[];
+	value: InteractiveFilterSortValue<T>;
+	includeDirection?: boolean;
+	ascLabel?: string;
+	descLabel?: string;
+}) {
+	const fieldLabel = formatInteractiveSortFieldSummary(fieldOptions, value.field);
+	if (!includeDirection) return fieldLabel;
+	const directionLabel = value.direction === "asc" ? ascLabel : descLabel;
+	return `${fieldLabel} · ${directionLabel}`;
+}
+
+export function isInteractiveSortActive<T extends string>(
+	value: InteractiveFilterSortValue<T>,
+	defaults: InteractiveFilterSortValue<T>,
+) {
+	return value.field !== defaults.field || value.direction !== defaults.direction;
 }

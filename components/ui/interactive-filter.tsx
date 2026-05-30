@@ -2,7 +2,7 @@
 
 import type { Locale } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, ChevronLeft, X } from "lucide-react";
+import { ArrowDownNarrowWide, ArrowUpNarrowWide, Check, ChevronLeft, X } from "lucide-react";
 import * as React from "react";
 
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -715,6 +715,13 @@ export type InteractiveFilterNumberRange = {
 	lessThan?: number | null;
 };
 
+export type InteractiveFilterSortDirection = "asc" | "desc";
+
+export type InteractiveFilterSortValue<TField extends string = string> = {
+	field: TField;
+	direction: InteractiveFilterSortDirection;
+};
+
 type InteractiveFilterNumberRangeContentProps = {
 	value: InteractiveFilterNumberRange;
 	onChange: (nextValue: InteractiveFilterNumberRange) => void;
@@ -785,6 +792,147 @@ function InteractiveFilterNumberRangeContent({
 	);
 }
 
+type InteractiveFilterSortDirectionToggleProps = {
+	direction: InteractiveFilterSortDirection;
+	onDirectionChange: (nextDirection: InteractiveFilterSortDirection) => void;
+	className?: string;
+	ascLabel?: string;
+	descLabel?: string;
+};
+
+function InteractiveFilterSortDirectionToggle({
+	direction,
+	onDirectionChange,
+	className,
+	ascLabel = "Ordem crescente",
+	descLabel = "Ordem decrescente",
+}: InteractiveFilterSortDirectionToggleProps) {
+	const { disabled } = useInteractiveFilterContext();
+	const isAscending = direction === "asc";
+	const ariaLabel = isAscending ? ascLabel : descLabel;
+
+	function handleToggle(event: React.MouseEvent<HTMLButtonElement>) {
+		event.preventDefault();
+		event.stopPropagation();
+		if (disabled) return;
+		onDirectionChange(isAscending ? "desc" : "asc");
+	}
+
+	return (
+		<button
+			type="button"
+			disabled={disabled}
+			aria-label={ariaLabel}
+			title={ariaLabel}
+			className={cn(
+				"inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary",
+				disabled && "pointer-events-none opacity-40",
+				className,
+			)}
+			onClick={handleToggle}
+		>
+			{isAscending ? <ArrowUpNarrowWide className="h-3.5 w-3.5" /> : <ArrowDownNarrowWide className="h-3.5 w-3.5" />}
+		</button>
+	);
+}
+
+type InteractiveFilterSortContentProps<TField extends string = string> = {
+	fieldOptions: InteractiveFilterOption<TField>[];
+	value: InteractiveFilterSortValue<TField>;
+	onChange: (nextValue: InteractiveFilterSortValue<TField>) => void;
+	searchPlaceholder?: string;
+	emptyLabel?: string;
+	showDirectionControls?: boolean;
+	ascLabel?: string;
+	descLabel?: string;
+	closeOnFieldSelect?: boolean;
+};
+
+function InteractiveFilterSortContent<TField extends string = string>({
+	fieldOptions,
+	value,
+	onChange,
+	searchPlaceholder = "Buscar campo...",
+	emptyLabel = "Nenhum campo encontrado.",
+	showDirectionControls = true,
+	ascLabel = "CRESCENTE",
+	descLabel = "DECRESCENTE",
+	closeOnFieldSelect = false,
+}: InteractiveFilterSortContentProps<TField>) {
+	const { setOpen } = useInteractiveFilterContext();
+	const normalizedField = String(value.field);
+
+	function handleDirectionChange(nextDirection: InteractiveFilterSortDirection) {
+		onChange({ ...value, direction: nextDirection });
+	}
+
+	function handleFieldSelect(currentValue: string) {
+		const selectedOption = fieldOptions.find((option) => String(option.value) === currentValue);
+		if (!selectedOption) return;
+		onChange({ ...value, field: selectedOption.value });
+		if (closeOnFieldSelect) setOpen(false);
+	}
+
+	return (
+		<div className="flex w-full flex-col">
+			{showDirectionControls ? (
+				<div className="flex flex-wrap items-center justify-center gap-2 border-b p-3">
+					<button
+						type="button"
+						className={cn(
+							"flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium tracking-tight transition-colors",
+							value.direction === "asc"
+								? "bg-primary/50 text-foreground hover:bg-primary/40"
+								: "bg-transparent text-foreground hover:bg-primary/20",
+						)}
+						onClick={() => handleDirectionChange("asc")}
+					>
+						<ArrowUpNarrowWide className="h-3 w-3" />
+						{ascLabel}
+					</button>
+					<button
+						type="button"
+						className={cn(
+							"flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium tracking-tight transition-colors",
+							value.direction === "desc"
+								? "bg-primary/50 text-foreground hover:bg-primary/40"
+								: "bg-transparent text-foreground hover:bg-primary/20",
+						)}
+						onClick={() => handleDirectionChange("desc")}
+					>
+						<ArrowDownNarrowWide className="h-3 w-3" />
+						{descLabel}
+					</button>
+				</div>
+			) : null}
+			<Command className="w-full" loop>
+				<CommandInput placeholder={searchPlaceholder} className="h-9 w-full" />
+				<CommandList className="w-full">
+					<CommandEmpty className="w-full p-3">{emptyLabel}</CommandEmpty>
+					<CommandGroup className="w-full">
+						{fieldOptions.map((option) => {
+							const optionValue = String(option.value);
+							const isSelected = normalizedField === optionValue;
+							return (
+								<CommandItem
+									key={option.id}
+									value={optionValue}
+									keywords={option.keywords ?? [option.label, optionValue]}
+									onSelect={handleFieldSelect}
+								>
+									{option.startContent}
+									<span className="truncate">{option.label}</span>
+									<Check className={cn("ml-auto", isSelected ? "opacity-100" : "opacity-0")} />
+								</CommandItem>
+							);
+						})}
+					</CommandGroup>
+				</CommandList>
+			</Command>
+		</div>
+	);
+}
+
 export const InteractiveFilter = {
 	Root: InteractiveFilterRoot,
 	Trigger: InteractiveFilterTrigger,
@@ -799,6 +947,8 @@ export const InteractiveFilter = {
 	TextContent: InteractiveFilterTextContent,
 	BooleanContent: InteractiveFilterBooleanContent,
 	NumberRangeContent: InteractiveFilterNumberRangeContent,
+	SortContent: InteractiveFilterSortContent,
+	SortDirectionToggle: InteractiveFilterSortDirectionToggle,
 	AddFilterRoot: InteractiveFilterAddFilterRoot,
 	AddFilterTrigger: InteractiveFilterAddFilterTrigger,
 	AddFilterContent: InteractiveFilterAddFilterContent,
