@@ -387,7 +387,9 @@ export function parseTemplateStatusUpdate(webhookPayload: unknown): ParsedTempla
 			return null;
 		}
 
-		const messageTemplateId = value?.message_template_id as string | undefined;
+		// A Meta envia message_template_id como número no webhook, mas o idExterno é salvo como string na criação.
+		// Normalizamos para string para que o matching com o idExterno salvo funcione.
+		const messageTemplateId = value?.message_template_id != null ? String(value.message_template_id) : undefined;
 		const messageTemplateName = value?.message_template_name as string | undefined;
 		const messageTemplateLanguage = value?.message_template_language as string | undefined;
 		const event = value?.event as string | undefined;
@@ -440,7 +442,9 @@ export function parseTemplateQualityUpdate(webhookPayload: unknown): ParsedTempl
 			return null;
 		}
 
-		const messageTemplateId = value?.message_template_id as string | undefined;
+		// A Meta envia message_template_id como número no webhook, mas o idExterno é salvo como string na criação.
+		// Normalizamos para string para que o matching com o idExterno salvo funcione.
+		const messageTemplateId = value?.message_template_id != null ? String(value.message_template_id) : undefined;
 		const messageTemplateName = value?.message_template_name as string | undefined;
 		const messageTemplateLanguage = value?.message_template_language as string | undefined;
 		const event = value?.event as string | undefined;
@@ -485,7 +489,9 @@ export function parseTemplateCategoryUpdate(webhookPayload: unknown): ParsedTemp
 			return null;
 		}
 
-		const messageTemplateId = value?.message_template_id as string | undefined;
+		// A Meta envia message_template_id como número no webhook, mas o idExterno é salvo como string na criação.
+		// Normalizamos para string para que o matching com o idExterno salvo funcione.
+		const messageTemplateId = value?.message_template_id != null ? String(value.message_template_id) : undefined;
 		const messageTemplateName = value?.message_template_name as string | undefined;
 		const messageTemplateLanguage = value?.message_template_language as string | undefined;
 		const event = value?.event as string | undefined;
