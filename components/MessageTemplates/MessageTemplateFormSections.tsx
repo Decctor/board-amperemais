@@ -11,7 +11,7 @@ import { MessageTemplateHeaderEditor, MessageTemplateHeaderTypeSelect } from "./
 import { MessageTemplateBodyEditor } from "./MessageTemplateBodyEditor";
 import { MessageTemplateButtonsEditor } from "./MessageTemplateButtonsEditor";
 import { MessageTemplateVariablesEditor } from "./MessageTemplateVariablesEditor";
-import { formatAsSlug } from "@/lib/formatting";
+import { formatMessageTemplateName } from "@/lib/formatting";
 
 const categoryOptions: TTemplateCategory[] = ["MARKETING", "UTILIDADE", "AUTENTICAÇÃO"];
 const statusOptions: TTemplateStatus[] = ["RASCUNHO", "ATIVO", "ARQUIVADO"];
@@ -32,7 +32,7 @@ export function MessageTemplateConfigurationSection({
 			<MessageTemplateField label="Nome interno">
 				<Input
 					value={state.messageTemplate.nome}
-					onChange={(event) => updateTemplate({ nome: formatAsSlug(event.target.value) })}
+					onChange={(event) => updateTemplate({ nome: formatMessageTemplateName(event.target.value) })}
 					placeholder="cashback_expirando_7_dias"
 				/>
 			</MessageTemplateField>

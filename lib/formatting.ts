@@ -37,6 +37,23 @@ export function formatAsSlug(string: string) {
 		.replace(/[^\w-]+/g, "");
 }
 
+/** Nomes de template WhatsApp/Meta: apenas letras minúsculas, números e underscores. */
+export function formatMessageTemplateName(value: string, options?: { trimEdges?: boolean }) {
+	let result = value
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.replace(/\s+/g, "_")
+		.replace(/[^a-z0-9_]+/g, "_")
+		.replace(/_+/g, "_");
+
+	if (options?.trimEdges) {
+		result = result.replace(/^_+|_+$/g, "");
+	}
+
+	return result;
+}
+
 export function formatDateForInputValue(value: Date | string | null | undefined, type: "default" | "datetime" = "default"): string | undefined {
 	if (value === "" || value === undefined || value === null) return undefined;
 	const date = dayjs(value);

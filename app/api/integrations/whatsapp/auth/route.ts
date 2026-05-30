@@ -6,8 +6,19 @@ import { NextRequest, NextResponse } from "next/server";
 async function getArcticWhatsappRoute(_req: NextRequest) {
 	const state = arctic.generateState();
 	const scopes = ["whatsapp_business_management", "whatsapp_business_messaging"];
-	const url = FacebookOAuth.createAuthorizationURL(state, scopes);
+	let url = FacebookOAuth.createAuthorizationURL(state, scopes);
 
+	url.searchParams.set("config_id", process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID as string);
+	url.searchParams.set("response_type", "code");
+	url.searchParams.set("override_default_response_type", "true");
+	url.searchParams.set(
+		"extras",
+		JSON.stringify({
+			setup: {},
+			featureType: "whatsapp_business_app_onboarding",
+			sessionInfoVersion: "3",
+		}),
+	);
 	// OAuth puro — sem config_id, sem extras do Embedded Signup
 	const finalUrl = url.toString().replace("v16.0", "v25.0");
 	console.log("[INFO] [ARCTIC_WHATSAPP] Redirecting to:", finalUrl);

@@ -3,6 +3,7 @@ import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { TemplateCategoryOptions, TemplateLanguageOptions, TemplateParameterFormatOptions } from "@/lib/whatsapp/templates";
 import type { TUseWhatsappTemplateState } from "@/state-hooks/use-whatsapp-template-state";
+import { formatMessageTemplateName } from "@/lib/formatting";
 import { LayoutGrid } from "lucide-react";
 
 type TemplateGeneralProps = {
@@ -23,7 +24,7 @@ export default function TemplateGeneral({ template, updateTemplate, blockNameCha
 					label="NOME DO TEMPLATE"
 					value={template.nome}
 					placeholder="nome_do_template"
-					handleChange={(value) => updateTemplate({ nome: value.toLowerCase().replace(/[^a-z0-9_]/g, "_") })}
+					handleChange={(value) => updateTemplate({ nome: formatMessageTemplateName(value) })}
 					width="100%"
 					editable={!blockNameChange}
 				/>

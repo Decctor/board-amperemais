@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
@@ -7,7 +7,7 @@ import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionCompon
 import NewProduct from "@/components/Modals/Products/NewProduct";
 import ProductsGraphs from "@/components/Products/ProductsGraphs";
 import ProductsRanking from "@/components/Products/ProductsRanking";
-import ProductsPortfolioHealthSection from "@/app/dashboard/commercial/products/portfolio-health-section";
+import ProductsPortfolioAnalysisSection from "@/app/dashboard/commercial/products/portfolio-analysis-section";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import {
 	formatInteractiveCountSummary,
 	formatInteractiveDateRangeSummary,
@@ -51,7 +51,6 @@ import {
 	PencilIcon,
 	Plus,
 	RefreshCw,
-	ShoppingBag,
 	ShoppingCart,
 	Star,
 	TrendingUp,
@@ -131,6 +130,7 @@ function ProductsDatabaseView({ user, organization }: ProductsDatabaseViewProps)
 			statsTotalMin: null,
 			statsTotalMax: null,
 			stockStatus: [],
+			abcClasses: [],
 			priceMin: null,
 			priceMax: null,
 			orderByField: "descricao",
@@ -173,7 +173,7 @@ function ProductsDatabaseView({ user, organization }: ProductsDatabaseViewProps)
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && products ? (
 				products.length > 0 ? (
-					products.map((product, index: number) => (
+					products.map((product) => (
 						<ProductCard
 							key={product.id}
 							product={product}
@@ -209,6 +209,11 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 		{ id: "healthy", label: "ESTOQUE SAUDÁVEL", value: "healthy" },
 		{ id: "overstocked", label: "EXCESSO DE ESTOQUE", value: "overstocked" },
 	] satisfies InteractiveFilterOption<string>[];
+	const abcClassOptions = [
+		{ id: "A", label: "A", value: "A" },
+		{ id: "B", label: "B", value: "B" },
+		{ id: "C", label: "C", value: "C" },
+	] satisfies InteractiveFilterOption<string>[];
 	const orderFieldOptions = [
 		{ id: "descricao", label: "DESCRIÇÃO", value: "descricao" },
 		{ id: "codigo", label: "CÓDIGO", value: "codigo" },
@@ -229,6 +234,7 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
 	const hasSellers = (filters.statsSellerIds ?? []).length > 0;
 	const hasStock = (filters.stockStatus ?? []).length > 0;
+	const hasABCClasses = (filters.abcClasses ?? []).length > 0;
 	const hasPrice = filters.priceMin != null || filters.priceMax != null;
 	const hasStatsTotal = filters.statsTotalMin != null || filters.statsTotalMax != null;
 	const hasExcludedSales = (filters.statsExcludedSalesIds ?? []).length > 0;
@@ -290,6 +296,15 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 					value={filters.stockStatus ?? []}
 					onChange={(stockStatus) => updateFilters({ stockStatus, page: 1 })}
 					onClear={() => updateFilters({ stockStatus: [], page: 1 })}
+				/>
+			) : null}
+			{hasABCClasses ? (
+				<ProductsMultiFilter
+					label="CURVA ABC"
+					options={abcClassOptions}
+					value={filters.abcClasses ?? []}
+					onChange={(abcClasses) => updateFilters({ abcClasses, page: 1 })}
+					onClear={() => updateFilters({ abcClasses: [], page: 1 })}
 				/>
 			) : null}
 			{hasPrice ? (
@@ -368,6 +383,17 @@ function ProductsInlineFilters({ filters, updateFilters }: ProductsInlineFilters
 									onChange={(stockStatus) => updateFilters({ stockStatus, page: 1 })}
 									onClear={() => updateFilters({ stockStatus: [], page: 1 })}
 									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasABCClasses ? (
+							<InteractiveFilter.AddFilterItem id="abcClasses" label="CURVA ABC" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={abcClassOptions}
+									value={filters.abcClasses ?? []}
+									onChange={(abcClasses) => updateFilters({ abcClasses, page: 1 })}
+									onClear={() => updateFilters({ abcClasses: [], page: 1 })}
+									clearLabel="TODAS"
 								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
@@ -540,7 +566,7 @@ function ProductsStatsView() {
 		comparingPeriodBefore: initialEndDate.subtract(1, "month").toDate(),
 	});
 
-	const { data: productsOverallStats, isLoading: productsOverallStatsLoading } = useProductsOverallStats({
+	const { data: productsOverallStats } = useProductsOverallStats({
 		periodAfter: filters.periodAfter,
 		periodBefore: filters.periodBefore,
 		comparingPeriodAfter: filters.comparingPeriodAfter,
@@ -714,7 +740,7 @@ function ProductsStatsView() {
 					/>
 				</div>
 			</div>
-			<ProductsPortfolioHealthSection periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
+			<ProductsPortfolioAnalysisSection periodAfter={filters.periodAfter} periodBefore={filters.periodBefore} />
 		</div>
 	);
 }

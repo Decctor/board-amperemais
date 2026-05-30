@@ -1,11 +1,9 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { TGetClientsRankingInput } from "@/app/api/clients/stats/ranking/route";
+import { Ranking } from "@/components/ui/ranking";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useClientsRanking } from "@/lib/queries/clients";
-import { cn } from "@/lib/utils";
-import type { TGetClientsRankingInput } from "@/app/api/clients/stats/ranking/route";
-import { ArrowDown, ArrowUp, BadgeDollarSign, CirclePlus, Crown, Mail, Minus, Phone } from "lucide-react";
+import { BadgeDollarSign, CirclePlus, Phone } from "lucide-react";
 import { useState } from "react";
 
 type ClientsRankingProps = {
@@ -27,147 +25,67 @@ export default function ClientsRanking({ periodAfter, periodBefore, comparingPer
 	});
 
 	return (
-		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
-				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
-					<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE CLIENTES - TOP 10</h1>
-					<div className="flex items-center gap-2">
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={rankingBy === "purchases-total-value" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setRankingBy("purchases-total-value")}
-									>
-										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Ordenar por Valor Total</p>
-								</TooltipContent>
-							</Tooltip>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={rankingBy === "purchases-total-qty" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setRankingBy("purchases-total-qty")}
-									>
-										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Ordenar por Quantidade de Compras</p>
-								</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					</div>
-				</div>
-				<div className="flex w-full flex-1 flex-col gap-2 overflow-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 min-h-0">
-					{rankingLoading ? (
-						<div className="flex w-full items-center justify-center py-8">
-							<p className="text-sm text-muted-foreground">Carregando ranking...</p>
-						</div>
-					) : rankingData && rankingData.length > 0 ? (
-						rankingData.map((client) => (
-							<div
-								key={client.clienteId}
-								className={cn(
-									"bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs",
-									client.rank === 1 && "border-yellow-500/50 bg-yellow-500/5",
-									client.rank === 2 && "border-gray-400/50 bg-gray-400/5",
-									client.rank === 3 && "border-orange-600/50 bg-orange-600/5",
-								)}
+		<Ranking.Root>
+			<Ranking.Panel>
+				<Ranking.Provider>
+					<Ranking.Header>
+						<Ranking.Title>RANKING DE CLIENTES - TOP 10</Ranking.Title>
+						<Ranking.Actions>
+							<Ranking.SortButton
+								active={rankingBy === "purchases-total-value"}
+								onClick={() => setRankingBy("purchases-total-value")}
+								tooltip="Ordenar por Valor Total"
 							>
-								<div className="w-full flex items-start justify-between gap-2 flex-wrap">
-									<div className="flex items-center gap-2 flex-wrap">
-										{client.rank <= 3 ? (
-											<Crown
-												className={cn(
-													"w-5 h-5 min-w-5 min-h-5",
-													client.rank === 1 && "text-yellow-500",
-													client.rank === 2 && "text-gray-400",
-													client.rank === 3 && "text-orange-600",
-												)}
-											/>
-										) : (
-											<div className="w-6 h-6 min-w-6 min-h-6 rounded-full bg-primary/10 flex items-center justify-center">
-												<span className="text-xs font-bold">{client.rank}</span>
-											</div>
-										)}
-										<div className="flex items-start flex-col gap-1">
-											<div className="flex items-center gap-2">
-												<h1 className="text-xs font-bold tracking-tight lg:text-sm">{client.nome}</h1>
-												{client.rankDelta !== null && client.rankDelta !== 0 && (
-													<div
-														className={cn(
-															"flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold",
-															client.rankDelta > 0 && "bg-green-500/10 text-green-600 dark:text-green-400",
-															client.rankDelta < 0 && "bg-red-500/10 text-red-600 dark:text-red-400",
-														)}
-													>
-														{client.rankDelta > 0 ? (
-															<>
-																<ArrowUp className="w-3 h-3 min-w-3 min-h-3" />
-																<span>+{client.rankDelta}</span>
-															</>
-														) : (
-															<>
-																<ArrowDown className="w-3 h-3 min-w-3 min-h-3" />
-																<span>{client.rankDelta}</span>
-															</>
-														)}
-													</div>
-												)}
-												{client.rankDelta === 0 && (
-													<div className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold bg-gray-500/10 text-gray-600 dark:text-gray-400">
-														<Minus className="w-3 h-3 min-w-3 min-h-3" />
-													</div>
-												)}
-											</div>
-											<div className="flex items-center gap-1">
-												<Phone className="w-4 h-4 min-w-4 min-h-4" />
-												<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{client.telefone}</h1>
-											</div>
-										</div>
-									</div>
-									<div className="flex items-center gap-3">
-										{rankingBy === "purchases-total-value" ? (
-											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
-													<BadgeDollarSign className="w-3 min-w-3 h-3 min-h-3" />
-													<p className="text-xs font-bold tracking-tight uppercase">{formatToMoney(client.totalValue)}</p>
-												</div>
-												{client.totalValueComparison !== null && (
-													<p className="text-[0.60rem] text-muted-foreground">Anterior: {formatToMoney(client.totalValueComparison)}</p>
-												)}
-											</div>
-										) : null}
-										{rankingBy === "purchases-total-qty" ? (
-											<div className="flex flex-col items-end gap-1">
-												<div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[0.65rem] font-bold bg-primary/10 text-foreground")}>
-													<CirclePlus className="w-3 min-w-3 h-3 min-h-3" />
-													<p className="text-xs font-bold tracking-tight uppercase">{formatDecimalPlaces(client.totalPurchases)}</p>
-												</div>
-												{client.totalPurchasesComparison !== null && (
-													<p className="text-[0.60rem] text-muted-foreground">Anterior: {formatDecimalPlaces(client.totalPurchasesComparison)}</p>
-												)}
-											</div>
-										) : null}
-									</div>
-								</div>
-							</div>
-						))
+								<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+							</Ranking.SortButton>
+							<Ranking.SortButton
+								active={rankingBy === "purchases-total-qty"}
+								onClick={() => setRankingBy("purchases-total-qty")}
+								tooltip="Ordenar por Quantidade de Compras"
+							>
+								<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+							</Ranking.SortButton>
+						</Ranking.Actions>
+					</Ranking.Header>
+					<Ranking.List>
+					{rankingLoading ? (
+						<Ranking.Loading />
+					) : rankingData && rankingData.length > 0 ? (
+						rankingData.map((client) => {
+							const metricConfig =
+								rankingBy === "purchases-total-value"
+									? {
+											icon: BadgeDollarSign,
+											value: formatToMoney(client.totalValue),
+											comparison: client.totalValueComparison !== null ? formatToMoney(client.totalValueComparison) : null,
+										}
+									: {
+											icon: CirclePlus,
+											value: formatDecimalPlaces(client.totalPurchases),
+											comparison:
+												client.totalPurchasesComparison !== null
+													? formatDecimalPlaces(client.totalPurchasesComparison)
+													: null,
+										};
+
+							return (
+								<Ranking.Item key={client.clienteId} rank={client.rank}>
+									<Ranking.ItemTitleRow>
+										<Ranking.ItemTitle>{client.nome}</Ranking.ItemTitle>
+										<Ranking.ItemDelta rankDelta={client.rankDelta} />
+									</Ranking.ItemTitleRow>
+									<Ranking.ItemMeta icon={Phone}>{client.telefone}</Ranking.ItemMeta>
+									<Ranking.ItemMetric icon={metricConfig.icon} value={metricConfig.value} />
+									<Ranking.ItemComparison value={metricConfig.comparison} />
+								</Ranking.Item>
+							);
+						})
 					) : (
-						<div className="flex w-full items-center justify-center py-8">
-							<p className="text-sm text-muted-foreground">Nenhum cliente encontrado para o período selecionado.</p>
-						</div>
+						<Ranking.Empty>Nenhum cliente encontrado para o período selecionado.</Ranking.Empty>
 					)}
-				</div>
-			</div>
-		</div>
+					</Ranking.List>
+				</Ranking.Provider>
+			</Ranking.Panel>
+		</Ranking.Root>
 	);
 }

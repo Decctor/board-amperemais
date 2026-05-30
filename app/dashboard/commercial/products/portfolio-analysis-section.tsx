@@ -1,21 +1,23 @@
 "use client";
 
-import type { TGetProductsPortfolioHealthOutput } from "@/app/api/products/stats/portfolio-health/route";
+import type { TGetProductsPortfolioAnalysisOutput } from "@/app/api/products/stats/portfolio-analysis/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
+import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { useProductsPortfolioHealth } from "@/lib/queries/products";
+import { useProductsPortfolioAnalysis } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, CheckCircle2, Info, Package, ShieldAlert } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardList, Info, Package, ShieldAlert, Trophy } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-type TPortfolioHealthData = TGetProductsPortfolioHealthOutput["data"];
-type THealthAlert = TPortfolioHealthData["alerts"][number];
-type TAbcDistributionItem = TPortfolioHealthData["abcDistribution"][number];
-type THistogramBin = TPortfolioHealthData["histograms"]["revenue"]["bins"][number];
-type TSaleFrequencyBin = TPortfolioHealthData["histograms"]["saleFrequency"][number];
+type TPortfolioAnalysisData = TGetProductsPortfolioAnalysisOutput["data"];
+type TAnalysisFinding = TPortfolioAnalysisData["findings"][number];
+type TAbcDistributionItem = TPortfolioAnalysisData["abcDistribution"][number];
+type THistogramBin = TPortfolioAnalysisData["histograms"]["revenue"]["bins"][number];
+type TSaleFrequencyBin = TPortfolioAnalysisData["histograms"]["saleFrequency"][number];
 
 const HISTOGRAM_BAR_COLOR = "#e3b042";
 const CHART_FOREGROUND = "var(--foreground)";
@@ -29,30 +31,34 @@ const ABC_COLORS: Record<TAbcDistributionItem["label"], string> = {
 	C: "#ef4444",
 };
 
-const CLASSIFICATION_STYLES: Record<TPortfolioHealthData["healthScore"]["classification"], { container: string; icon: string; label: string }> = {
-	SAUDAVEL: {
-		container: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/30",
-		icon: "text-emerald-500 bg-emerald-500/15",
-		label: "text-emerald-600 dark:text-emerald-400",
-	},
-	ATENCAO: {
-		container: "from-amber-500/15 to-amber-500/5 border-amber-500/30",
-		icon: "text-amber-600 bg-amber-500/15",
-		label: "text-amber-700 dark:text-amber-300",
-	},
-	DESALINHADA: {
-		container: "from-rose-500/15 to-rose-500/5 border-rose-500/30",
-		icon: "text-rose-600 bg-rose-500/15",
-		label: "text-rose-700 dark:text-rose-300",
-	},
-	INSUFICIENTE: {
-		container: "from-slate-500/15 to-slate-500/5 border-slate-500/30",
-		icon: "text-slate-600 bg-slate-500/15",
-		label: "text-slate-700 dark:text-slate-300",
-	},
-};
+const CLASSIFICATION_STYLES: Record<TPortfolioAnalysisData["analysisSummary"]["classification"], { container: string; icon: string; label: string }> =
+	{
+		EQUILIBRADO: {
+			container: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/30",
+			icon: "text-emerald-500 bg-emerald-500/15",
+			label: "text-emerald-600 dark:text-emerald-400",
+		},
+		ATENCAO: {
+			container: "from-amber-500/15 to-amber-500/5 border-amber-500/30",
+			icon: "text-amber-600 bg-amber-500/15",
+			label: "text-amber-700 dark:text-amber-300",
+		},
+		CONCENTRADO: {
+			container: "from-rose-500/15 to-rose-500/5 border-rose-500/30",
+			icon: "text-rose-600 bg-rose-500/15",
+			label: "text-rose-700 dark:text-rose-300",
+		},
+		INSUFICIENTE: {
+			container: "from-slate-500/15 to-slate-500/5 border-slate-500/30",
+			icon: "text-slate-600 bg-slate-500/15",
+			label: "text-slate-700 dark:text-slate-300",
+		},
+	};
 
-const ALERT_STYLES: Record<THealthAlert["severity"], { container: string; icon: string; iconComponent: React.ComponentType<{ className?: string }> }> = {
+const FINDING_STYLES: Record<
+	TAnalysisFinding["severity"],
+	{ container: string; icon: string; iconComponent: React.ComponentType<{ className?: string }> }
+> = {
 	critical: {
 		container: "border-rose-500/40 bg-rose-500/10",
 		icon: "text-rose-600 dark:text-rose-400",
@@ -70,7 +76,7 @@ const ALERT_STYLES: Record<THealthAlert["severity"], { container: string; icon: 
 	},
 };
 
-type ProductsPortfolioHealthSectionProps = {
+type ProductsPortfolioAnalysisSectionProps = {
 	periodAfter: Date | null;
 	periodBefore: Date | null;
 };
@@ -79,26 +85,26 @@ function chartAxisTick(fontSize: number) {
 	return { fontSize, fill: CHART_FOREGROUND };
 }
 
-export default function ProductsPortfolioHealthSection({ periodAfter, periodBefore }: ProductsPortfolioHealthSectionProps) {
-	const { data, isLoading, isError, error } = useProductsPortfolioHealth({ periodAfter, periodBefore });
+export default function ProductsPortfolioAnalysisSection({ periodAfter, periodBefore }: ProductsPortfolioAnalysisSectionProps) {
+	const { data, isLoading, isError, error } = useProductsPortfolioAnalysis({ periodAfter, periodBefore });
 
 	return (
 		<div className={cn("bg-card border-border flex w-full flex-col gap-5 rounded-xl border px-4 py-5 shadow-2xs")}>
 			<div className="flex flex-col gap-1">
 				<div className="flex items-center gap-2">
 					<Package className="w-4 h-4 min-w-4 min-h-4" />
-					<h1 className="text-xs font-medium tracking-tight uppercase">SAÚDE DO PORTFÓLIO</h1>
+					<h1 className="text-xs font-medium tracking-tight uppercase">ANÁLISE DO PORTFÓLIO</h1>
 				</div>
-				<p className="text-[0.7rem] text-muted-foreground">Diagnóstico estatístico de concentração, vitalidade e margem do catálogo no período.</p>
+				<p className="text-[0.7rem] text-muted-foreground">Distribuição, concentração, margem e atividade dos produtos no período.</p>
 			</div>
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{data ? <PortfolioHealthContent data={data} /> : null}
+			{data ? <PortfolioAnalysisContent data={data} /> : null}
 		</div>
 	);
 }
 
-function PortfolioHealthContent({ data }: { data: TPortfolioHealthData }) {
+function PortfolioAnalysisContent({ data }: { data: TPortfolioAnalysisData }) {
 	if (data.totalProducts === 0) {
 		return (
 			<div className="w-full py-12 flex flex-col items-center justify-center gap-2 text-center">
@@ -111,12 +117,10 @@ function PortfolioHealthContent({ data }: { data: TPortfolioHealthData }) {
 
 	return (
 		<div className="w-full flex flex-col gap-6">
-			<HealthScoreCard data={data} />
-			<div className="grid w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-x-8 gap-y-6">
-				<AlertsBlock alerts={data.alerts} />
-				<AbcDistributionBlock distribution={data.abcDistribution} activeProducts={data.activeProducts} />
-			</div>
+			<AnalysisSummaryCard data={data} />
+			<AbcDistributionBlock distribution={data.abcDistribution} activeProducts={data.activeProducts} />
 			<VitalityBlock vitality={data.vitality} concentration={data.concentration} />
+			<TopRevenueConcentrationBlock items={data.topRevenueConcentration} />
 			<HistogramsBlock data={data} />
 		</div>
 	);
@@ -134,36 +138,60 @@ function SectionHeader({ title, description, meta }: { title: string; descriptio
 	);
 }
 
-function HealthScoreCard({ data }: { data: TPortfolioHealthData }) {
-	const style = CLASSIFICATION_STYLES[data.healthScore.classification];
-	const criticalCount = data.alerts.filter((alert) => alert.severity === "critical").length;
-	const warningCount = data.alerts.filter((alert) => alert.severity === "warning").length;
-	const infoCount = data.alerts.filter((alert) => alert.severity === "info").length;
+function AnalysisSummaryCard({ data }: { data: TPortfolioAnalysisData }) {
+	const style = CLASSIFICATION_STYLES[data.analysisSummary.classification];
+	const criticalCount = data.findings.filter((finding) => finding.severity === "critical").length;
+	const warningCount = data.findings.filter((finding) => finding.severity === "warning").length;
+	const infoCount = data.findings.filter((finding) => finding.severity === "info").length;
+	const [findingsMenuIsOpen, setFindingsMenuIsOpen] = useState(false);
 
 	return (
-		<div className={cn("relative w-full rounded-xl border bg-gradient-to-br p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between", style.container)}>
-			<div className="flex items-start gap-3 min-w-0">
-				<div className={cn("rounded-lg p-2 shrink-0", style.icon)}>
-					<Package className="w-5 h-5" />
+		<>
+			<div
+				className={cn(
+					"relative w-full rounded-xl border bg-gradient-to-br p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between",
+					style.container,
+				)}
+			>
+				<div className="flex items-start gap-3 min-w-0">
+					<div className={cn("rounded-lg p-2 shrink-0", style.icon)}>
+						<Package className="w-5 h-5" />
+					</div>
+					<div className="flex flex-col gap-1 min-w-0">
+						<span className={cn("text-[0.65rem] font-bold tracking-widest uppercase", style.label)}>RESUMO ESTATÍSTICO</span>
+						<h2 className={cn("text-base font-semibold tracking-tight uppercase", style.label)}>{data.analysisSummary.label}</h2>
+						<p className="text-xs text-foreground/80 max-w-xl">{data.analysisSummary.summary}</p>
+					</div>
 				</div>
-				<div className="flex flex-col gap-1 min-w-0">
-					<span className={cn("text-[0.65rem] font-bold tracking-widest uppercase", style.label)}>STATUS DO PORTFÓLIO</span>
-					<h2 className={cn("text-base font-semibold tracking-tight uppercase", style.label)}>{data.healthScore.label}</h2>
-					<p className="text-xs text-foreground/80 max-w-xl">{data.healthScore.summary}</p>
+				<div className="flex flex-wrap items-stretch gap-2">
+					<AnalysisSummaryChip label="Produtos no catálogo" value={formatDecimalPlaces(data.totalProducts, 0)} />
+					<AnalysisSummaryChip label="Ativos no período" value={formatDecimalPlaces(data.activeProducts, 0)} />
+					<FindingsSummaryButton
+						criticalCount={criticalCount}
+						warningCount={warningCount}
+						infoCount={infoCount}
+						onClick={() => setFindingsMenuIsOpen(true)}
+					/>
 				</div>
 			</div>
-			<div className="flex flex-wrap items-stretch gap-2">
-				<HealthScoreChip label="Produtos no catálogo" value={formatDecimalPlaces(data.totalProducts, 0)} />
-				<HealthScoreChip label="Ativos no período" value={formatDecimalPlaces(data.activeProducts, 0)} />
-				<HealthScoreChip label="Alertas críticos" value={String(criticalCount)} tone={criticalCount > 0 ? "critical" : "neutral"} />
-				<HealthScoreChip label="Atenção" value={String(warningCount)} tone={warningCount > 0 ? "warning" : "neutral"} />
-				<HealthScoreChip label="Observações" value={String(infoCount)} tone="neutral" />
-			</div>
-		</div>
+			{findingsMenuIsOpen ? (
+				<ResponsiveMenuViewOnly
+					menuTitle="PONTOS DE LEITURA"
+					menuDescription="Concentração, atividade e margem que merecem leitura antes de decisões sobre o mix."
+					menuCancelButtonText="FECHAR"
+					closeMenu={() => setFindingsMenuIsOpen(false)}
+					stateIsLoading={false}
+					dialogVariant="sm"
+					drawerVariant="md"
+				>
+					<FindingsContent findings={data.findings} />
+				</ResponsiveMenuViewOnly>
+			) : null}
+		</>
 	);
 }
 
-function HealthScoreChip({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "critical" | "warning" }) {
+function AnalysisSummaryChip({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "critical" | "warning" }) {
 	const toneClasses =
 		tone === "critical"
 			? "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300"
@@ -178,39 +206,75 @@ function HealthScoreChip({ label, value, tone = "neutral" }: { label: string; va
 	);
 }
 
-function AlertsBlock({ alerts }: { alerts: THealthAlert[] }) {
+function FindingsSummaryButton({
+	criticalCount,
+	warningCount,
+	infoCount,
+	onClick,
+}: {
+	criticalCount: number;
+	warningCount: number;
+	infoCount: number;
+	onClick: () => void;
+}) {
+	const totalCount = criticalCount + warningCount + infoCount;
+	const hasCritical = criticalCount > 0;
+	const hasWarning = warningCount > 0;
+	const toneClasses = hasCritical
+		? "border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/15 dark:text-rose-300"
+		: hasWarning
+			? "border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-300"
+			: "border-border bg-background/60 text-foreground hover:bg-background";
+	const summary = totalCount > 0 ? `${criticalCount} críticos · ${warningCount} atenção · ${infoCount} obs.` : "Nada fora do padrão";
+
 	return (
-		<section className="flex w-full flex-col gap-3">
-			<SectionHeader
-				title="Alertas"
-				description={alerts.length > 0 ? `${alerts.length} ${alerts.length === 1 ? "ponto" : "pontos"} para revisar` : "Nada a sinalizar"}
-			/>
-			{alerts.length === 0 ? (
+		<Button
+			type="button"
+			variant="ghost"
+			onClick={onClick}
+			className={cn("h-auto min-w-[178px] justify-between rounded-lg border px-2.5 py-1.5 text-left transition-colors", toneClasses)}
+		>
+			<span className="flex min-w-0 items-start gap-2">
+				<ClipboardList className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+				<span className="flex min-w-0 flex-col items-start">
+					<span className="text-[0.6rem] font-bold uppercase tracking-wide opacity-80">Pontos de leitura</span>
+					<span className="text-sm font-semibold tabular-nums">{formatDecimalPlaces(totalCount, 0)}</span>
+				</span>
+			</span>
+			<ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+		</Button>
+	);
+}
+
+function FindingsContent({ findings }: { findings: TAnalysisFinding[] }) {
+	return (
+		<div className="flex w-full flex-col gap-3">
+			{findings.length === 0 ? (
 				<div className="flex items-start gap-2 text-foreground/80">
 					<CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
 					<div className="flex flex-col gap-0.5">
-						<p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Nenhum alerta no momento.</p>
-						<p className="text-[0.7rem] text-foreground/70">O portfólio parece coerente com o comportamento de vendas no período.</p>
+						<p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Nenhum ponto fora do padrão.</p>
+						<p className="text-[0.7rem] text-foreground/70">A distribuição dos produtos está coerente com o comportamento de vendas no período.</p>
 					</div>
 				</div>
 			) : (
 				<ul className="flex flex-col gap-2">
-					{alerts.map((alert) => {
-						const style = ALERT_STYLES[alert.severity];
+					{findings.map((finding) => {
+						const style = FINDING_STYLES[finding.severity];
 						const Icon = style.iconComponent;
 						return (
-							<li key={alert.id} className={cn("flex items-start gap-2 rounded-lg border p-3", style.container)}>
+							<li key={finding.id} className={cn("flex items-start gap-2 rounded-lg border p-3", style.container)}>
 								<Icon className={cn("w-4 h-4 mt-0.5 shrink-0", style.icon)} />
 								<div className="flex flex-col gap-0.5">
-									<p className="text-xs font-semibold">{alert.title}</p>
-									<p className="text-[0.7rem] text-foreground/80">{alert.description}</p>
+									<p className="text-xs font-semibold">{finding.title}</p>
+									<p className="text-[0.7rem] text-foreground/80">{finding.description}</p>
 								</div>
 							</li>
 						);
 					})}
 				</ul>
 			)}
-		</section>
+		</div>
 	);
 }
 
@@ -254,7 +318,7 @@ function AbcDistributionBlock({ distribution, activeProducts }: { distribution: 
 									<div className="rounded-lg border border-border bg-background p-2 shadow-lg flex flex-col gap-0.5">
 										<p className="text-xs font-semibold">{entry.label}</p>
 										<p className="text-[0.7rem] text-muted-foreground">
-											{formatDecimalPlaces(entry.count, 0)} produtos · {formatDecimalPlaces(entry.percentage, 1)}% dos ativos
+											{formatDecimalPlaces(entry.count, 0)} produtos Â· {formatDecimalPlaces(entry.percentage, 1)}% dos ativos
 										</p>
 										<p className="text-[0.7rem] text-muted-foreground">{formatDecimalPlaces(entry.revenueShare, 1)}% do faturamento</p>
 									</div>
@@ -277,17 +341,25 @@ function VitalityBlock({
 	vitality,
 	concentration,
 }: {
-	vitality: TPortfolioHealthData["vitality"];
-	concentration: TPortfolioHealthData["concentration"];
+	vitality: TPortfolioAnalysisData["vitality"];
+	concentration: TPortfolioAnalysisData["concentration"];
 }) {
 	return (
 		<section className="flex w-full flex-col gap-3 border-t border-border pt-5">
 			<SectionHeader title="Vitalidade e concentração" description="Movimento do catálogo e dependência de poucos SKUs" />
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-				<VitalityChip label="Ativos" value={`${formatDecimalPlaces(vitality.active.percentage, 1)}%`} sub={`${formatDecimalPlaces(vitality.active.count, 0)} produtos`} />
-				<VitalityChip label="Dormantes" value={`${formatDecimalPlaces(vitality.dormant.percentage, 1)}%`} sub={`${formatDecimalPlaces(vitality.dormant.count, 0)} produtos`} />
+				<VitalityChip
+					label="Ativos"
+					value={`${formatDecimalPlaces(vitality.active.percentage, 1)}%`}
+					sub={`${formatDecimalPlaces(vitality.active.count, 0)} produtos`}
+				/>
+				<VitalityChip
+					label="Dormantes"
+					value={`${formatDecimalPlaces(vitality.dormant.percentage, 1)}%`}
+					sub={`${formatDecimalPlaces(vitality.dormant.count, 0)} produtos`}
+				/>
 				<VitalityChip label="SKUs p/ 80% receita" value={formatDecimalPlaces(concentration.productsFor80PctRevenue, 0)} sub="produtos ativos" />
-				<VitalityChip label="Gini (receita)" value={formatDecimalPlaces(concentration.gini, 2)} sub="0 = uniforme · 1 = concentrado" />
+				<VitalityChip label="Gini (receita)" value={formatDecimalPlaces(concentration.gini, 2)} sub="0 = uniforme Â· 1 = concentrado" />
 			</div>
 		</section>
 	);
@@ -303,7 +375,40 @@ function VitalityChip({ label, value, sub }: { label: string; value: string; sub
 	);
 }
 
-function HistogramsBlock({ data }: { data: TPortfolioHealthData }) {
+function TopRevenueConcentrationBlock({ items }: { items: TPortfolioAnalysisData["topRevenueConcentration"] }) {
+	return (
+		<section className="flex w-full flex-col gap-3 border-t border-border pt-5">
+			<SectionHeader title="Concentração por ranking" description="Quanto do faturamento vem dos produtos com maior receita no período" />
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+				{items.map((item) => (
+					<div key={item.limit} className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-background/60 p-3">
+						<div className="flex items-center justify-between gap-2">
+							<div className="flex items-center gap-2 min-w-0">
+								<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300">
+									<Trophy className="h-3.5 w-3.5" />
+								</span>
+								<div className="flex min-w-0 flex-col">
+									<span className="text-[0.6rem] font-bold uppercase tracking-wide text-muted-foreground">Top {item.limit}</span>
+									<span className="text-xs font-semibold tabular-nums">{formatDecimalPlaces(item.productsCount, 0)} produtos</span>
+								</div>
+							</div>
+							<span className="text-lg font-semibold tabular-nums">{formatDecimalPlaces(item.revenueShare, 1)}%</span>
+						</div>
+						<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+							<div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.min(100, Math.max(0, item.revenueShare))}%` }} />
+						</div>
+						<div className="flex items-baseline justify-between gap-2 text-[0.68rem]">
+							<span className="font-bold uppercase tracking-wide text-muted-foreground">Faturamento</span>
+							<span className="font-semibold tabular-nums text-foreground">{formatToMoney(item.revenue)}</span>
+						</div>
+					</div>
+				))}
+			</div>
+		</section>
+	);
+}
+
+function HistogramsBlock({ data }: { data: TPortfolioAnalysisData }) {
 	return (
 		<section className="flex w-full flex-col gap-3 border-t border-border pt-5">
 			<SectionHeader title="Distribuição estatística" description="Faturamento, margem e frequência de venda entre produtos ativos" />
@@ -324,7 +429,7 @@ function HistogramFrame({
 }: {
 	title: string;
 	subtitle: string;
-	metric: TPortfolioHealthData["metrics"]["revenue"];
+	metric: TPortfolioAnalysisData["metrics"]["revenue"];
 	children: React.ReactNode;
 }) {
 	return (
@@ -352,7 +457,13 @@ function MetricStat({ label, value }: { label: string; value: string }) {
 	);
 }
 
-function RevenueHistogram({ histogram, metric }: { histogram: TPortfolioHealthData["histograms"]["revenue"]; metric: TPortfolioHealthData["metrics"]["revenue"] }) {
+function RevenueHistogram({
+	histogram,
+	metric,
+}: {
+	histogram: TPortfolioAnalysisData["histograms"]["revenue"];
+	metric: TPortfolioAnalysisData["metrics"]["revenue"];
+}) {
 	const chartData = useMemo(() => buildContinuousChartData(histogram.bins, formatToMoney), [histogram.bins]);
 
 	return (
@@ -370,7 +481,13 @@ function RevenueHistogram({ histogram, metric }: { histogram: TPortfolioHealthDa
 	);
 }
 
-function MarginHistogram({ histogram, metric }: { histogram: TPortfolioHealthData["histograms"]["margin"]; metric: TPortfolioHealthData["metrics"]["margin"] }) {
+function MarginHistogram({
+	histogram,
+	metric,
+}: {
+	histogram: TPortfolioAnalysisData["histograms"]["margin"];
+	metric: TPortfolioAnalysisData["metrics"]["margin"];
+}) {
 	const chartData = useMemo(() => buildContinuousChartData(histogram.bins, (value) => `${formatDecimalPlaces(value, 0)}%`), [histogram.bins]);
 
 	return (
@@ -392,8 +509,8 @@ function SaleFrequencyHistogram({
 	histogram,
 	metric,
 }: {
-	histogram: TPortfolioHealthData["histograms"]["saleFrequency"];
-	metric: TPortfolioHealthData["metrics"]["saleFrequency"];
+	histogram: TPortfolioAnalysisData["histograms"]["saleFrequency"];
+	metric: TPortfolioAnalysisData["metrics"]["saleFrequency"];
 }) {
 	const chartData = useMemo(() => histogram.map((bin) => ({ ...bin, label: bin.label })), [histogram]);
 

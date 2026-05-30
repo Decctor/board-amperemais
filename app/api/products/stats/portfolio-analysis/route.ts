@@ -1,11 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { getPortfolioHealth, type TGetPortfolioHealthResult } from "@/lib/products/health";
+import { getPortfolioAnalysis, type TGetPortfolioAnalysisResult } from "@/lib/products/portfolio-analysis";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-const GetProductsPortfolioHealthInputSchema = z.object({
+const GetProductsPortfolioAnalysisInputSchema = z.object({
 	periodAfter: z
 		.string({
 			required_error: "Período não informado.",
@@ -26,31 +26,31 @@ const GetProductsPortfolioHealthInputSchema = z.object({
 		.transform((val) => (val ? new Date(val) : null)),
 });
 
-export type TGetProductsPortfolioHealthInput = z.infer<typeof GetProductsPortfolioHealthInputSchema>;
+export type TGetProductsPortfolioAnalysisInput = z.infer<typeof GetProductsPortfolioAnalysisInputSchema>;
 
-async function getProductsPortfolioHealthRoute(request: NextRequest) {
+async function getProductsPortfolioAnalysisRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const input = GetProductsPortfolioHealthInputSchema.parse({
+	const input = GetProductsPortfolioAnalysisInputSchema.parse({
 		periodAfter: request.nextUrl.searchParams.get("periodAfter"),
 		periodBefore: request.nextUrl.searchParams.get("periodBefore"),
 	});
 
-	const data = await getPortfolioHealth({ input, organizationId: userOrgId });
+	const data = await getPortfolioAnalysis({ input, organizationId: userOrgId });
 
 	return NextResponse.json({
 		data,
-		message: "Saúde do portfólio calculada com sucesso.",
+		message: "Análise do portfólio calculada com sucesso.",
 	});
 }
 
-export type TGetProductsPortfolioHealthOutput = {
-	data: TGetPortfolioHealthResult;
+export type TGetProductsPortfolioAnalysisOutput = {
+	data: TGetPortfolioAnalysisResult;
 	message: string;
 };
 
-export const GET = appApiHandler({ GET: getProductsPortfolioHealthRoute });
+export const GET = appApiHandler({ GET: getProductsPortfolioAnalysisRoute });

@@ -18,6 +18,7 @@ import {
 	validateRecurrentCampaign,
 	validateSingleUseCampaign,
 } from "@/lib/campaigns/validation";
+import { formatMessageTemplateName } from "@/lib/formatting";
 import { extractUnknownMessageTemplateVariables, normalizeMessageTemplateContentParameters } from "@/lib/message-templates";
 import { AIHintSchema, ApproveHintOutputSchema, type TAIHint, type TApproveHintInput, type TApproveHintOutput } from "@/schemas/ai-hints";
 import { CampaignSchema } from "@/schemas/campaigns";
@@ -35,13 +36,7 @@ type TMessageTemplatePayload = {
 };
 
 function sanitizeTemplateNamePart(value: string) {
-	return value
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "_")
-		.replace(/^_+|_+$/g, "")
-		.slice(0, 80);
+	return formatMessageTemplateName(value, { trimEdges: true }).slice(0, 80);
 }
 
 function buildUniqueTemplateName(base: string) {

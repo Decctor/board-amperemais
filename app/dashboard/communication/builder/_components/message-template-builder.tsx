@@ -25,7 +25,7 @@ import { useMutation } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/errors";
 import { submitMessageTemplate } from "@/lib/mutations/message-templates";
 import { LoadingButton } from "@/components/loading-button";
-import { formatAsSlug } from "@/lib/formatting";
+import { formatMessageTemplateName } from "@/lib/formatting";
 type MessageTemplateBuilderProps = {
 	template: TGetBuilderMessageTemplateById;
 	organizationId: string;
@@ -165,7 +165,7 @@ export default function MessageTemplateBuilder({
 						<Field label="Nome do Template">
 							<Input
 								value={state.messageTemplate.nome}
-								onChange={(event) => updateTemplate({ nome: formatAsSlug(event.target.value) })}
+								onChange={(event) => updateTemplate({ nome: formatMessageTemplateName(event.target.value) })}
 								placeholder="cashback_expirando_7_dias"
 							/>
 						</Field>

@@ -1,18 +1,25 @@
 export type TProductAbcClass = "A" | "B" | "C";
 
-export type TProductPortfolioHealthAlert = {
+export type TProductPortfolioAnalysisFinding = {
 	id: string;
 	severity: "info" | "warning" | "critical";
 	title: string;
 	description: string;
 };
 
-export type TProductPortfolioHealthClassification = "SAUDAVEL" | "ATENCAO" | "DESALINHADA" | "INSUFICIENTE";
+export type TProductPortfolioAnalysisClassification = "EQUILIBRADO" | "ATENCAO" | "CONCENTRADO" | "INSUFICIENTE";
 
 export type TAbcDistributionItem = {
 	label: TProductAbcClass;
 	count: number;
 	percentage: number;
+	revenueShare: number;
+};
+
+export type TTopRevenueConcentrationItem = {
+	limit: 10 | 50 | 100;
+	productsCount: number;
+	revenue: number;
 	revenueShare: number;
 };
 
@@ -26,7 +33,7 @@ export type TProductWithPeriodMetrics = {
 	abcClass: TProductAbcClass;
 };
 
-export type TGetPortfolioHealthResult = {
+export type TGetPortfolioAnalysisResult = {
 	period: {
 		start: Date | null;
 		end: Date | null;
@@ -34,12 +41,12 @@ export type TGetPortfolioHealthResult = {
 	totalProducts: number;
 	activeProducts: number;
 	dormantProducts: number;
-	healthScore: {
-		classification: TProductPortfolioHealthClassification;
+	analysisSummary: {
+		classification: TProductPortfolioAnalysisClassification;
 		label: string;
 		summary: string;
 	};
-	alerts: TProductPortfolioHealthAlert[];
+	findings: TProductPortfolioAnalysisFinding[];
 	abcDistribution: TAbcDistributionItem[];
 	vitality: {
 		active: { count: number; percentage: number };
@@ -49,6 +56,7 @@ export type TGetPortfolioHealthResult = {
 		productsFor80PctRevenue: number;
 		gini: number;
 	};
+	topRevenueConcentration: TTopRevenueConcentrationItem[];
 	metrics: {
 		revenue: import("@/utils/analytics").TMetricSummary;
 		margin: import("@/utils/analytics").TMetricSummary;

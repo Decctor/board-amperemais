@@ -10,22 +10,40 @@ import {
 } from "@/utils/analytics";
 import { and, count, eq, gte, lte, sql } from "drizzle-orm";
 import { assignAbcClasses, buildAbcDistribution } from "./build-abc-distribution";
-import { buildPortfolioHealthAlerts } from "./build-alerts";
-import { buildPortfolioHealthScore } from "./build-health-score";
-import type { TGetPortfolioHealthResult } from "./types";
+import { buildPortfolioAnalysisFindings } from "./build-findings";
+import { buildPortfolioAnalysisSummary } from "./build-analysis-summary";
+import type { TGetPortfolioAnalysisResult, TProductWithPeriodMetrics, TTopRevenueConcentrationItem } from "./types";
 
-export type TGetPortfolioHealthInput = {
+export type TGetPortfolioAnalysisInput = {
 	periodAfter: Date | null;
 	periodBefore: Date | null;
 };
 
-export async function getPortfolioHealth({
+const TOP_REVENUE_LIMITS = [10, 50, 100] as const;
+
+function buildTopRevenueConcentration(activeProducts: TProductWithPeriodMetrics[]): TTopRevenueConcentrationItem[] {
+	const totalRevenue = activeProducts.reduce((acc, product) => acc + product.revenue, 0);
+
+	return TOP_REVENUE_LIMITS.map((limit) => {
+		const topProducts = activeProducts.slice(0, limit);
+		const revenue = topProducts.reduce((acc, product) => acc + product.revenue, 0);
+
+		return {
+			limit,
+			productsCount: topProducts.length,
+			revenue,
+			revenueShare: totalRevenue > 0 ? (revenue / totalRevenue) * 100 : 0,
+		};
+	});
+}
+
+export async function getPortfolioAnalysis({
 	input,
 	organizationId,
 }: {
-	input: TGetPortfolioHealthInput;
+	input: TGetPortfolioAnalysisInput;
 	organizationId: string;
-}): Promise<TGetPortfolioHealthResult> {
+}): Promise<TGetPortfolioAnalysisResult> {
 	const { periodAfter, periodBefore } = input;
 
 	const saleConditions = [eq(sales.organizacaoId, organizationId), eq(sales.natureza, "SN01")];
@@ -70,7 +88,7 @@ export async function getPortfolioHealth({
 	const marginMetrics = summarizeMetric(marginValues);
 	const saleFrequencyMetrics = summarizeMetric(saleFrequencyValues);
 
-	const alerts = buildPortfolioHealthAlerts({
+	const findings = buildPortfolioAnalysisFindings({
 		totalProducts,
 		activeProducts,
 		abcDistribution,
@@ -78,7 +96,7 @@ export async function getPortfolioHealth({
 		marginMetrics,
 	});
 
-	const healthScore = buildPortfolioHealthScore(alerts, totalProducts, activeCount);
+	const analysisSummary = buildPortfolioAnalysisSummary(findings, totalProducts, activeCount);
 
 	return {
 		period: {
@@ -88,8 +106,8 @@ export async function getPortfolioHealth({
 		totalProducts,
 		activeProducts: activeCount,
 		dormantProducts,
-		healthScore,
-		alerts,
+		analysisSummary,
+		findings,
 		abcDistribution,
 		vitality: {
 			active: {
@@ -105,6 +123,7 @@ export async function getPortfolioHealth({
 			productsFor80PctRevenue: countProductsForRevenueShare(revenueValues, 0.8),
 			gini: giniCoefficient(revenueValues),
 		},
+		topRevenueConcentration: buildTopRevenueConcentration(activeProducts),
 		metrics: {
 			revenue: revenueMetrics,
 			margin: marginMetrics,

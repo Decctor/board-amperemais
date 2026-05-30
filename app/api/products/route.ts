@@ -94,6 +94,13 @@ const GetProductsDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? val.split(",") : [])),
+	abcClasses: z
+		.string({
+			invalid_type_error: "Tipo nao valido para curva ABC.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",").filter((abcClass) => ["A", "B", "C"].includes(abcClass)) : [])),
 	priceMin: z
 		.string({
 			invalid_type_error: "Tipo não válido para preço mínimo.",
@@ -417,32 +424,6 @@ async function getProducts({ input, session }: GetProductsParams) {
 		havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
 	}
 
-	let orderByClause = asc(products.descricao);
-	const direction = input.orderByDirection === "desc" ? desc : asc;
-	switch (input.orderByField) {
-		case "descricao":
-			orderByClause = direction(products.descricao);
-			break;
-		case "codigo":
-			orderByClause = direction(products.codigo);
-			break;
-		case "grupo":
-			orderByClause = direction(products.grupo);
-			break;
-		case "vendasValorTotal":
-			orderByClause = direction(sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`);
-			break;
-		case "vendasQtdeTotal":
-			orderByClause = direction(sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END), 0)`);
-			break;
-		case "quantidade":
-			orderByClause = direction(sql`COALESCE(${products.quantidade}, 0)`);
-			break;
-		default:
-			orderByClause = asc(products.descricao);
-			break;
-	}
-
 	const PAGE_SIZE = 25;
 	const skip = PAGE_SIZE * (input.page - 1);
 
@@ -468,13 +449,15 @@ async function getProducts({ input, session }: GetProductsParams) {
 			organizacaoId: products.organizacaoId,
 			dataUltimaSincronizacao: products.dataUltimaSincronizacao,
 			// Campos de stats - só considera valores quando a venda passa nos filtros
-			totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`,
-			totalSalesQty: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END)`,
-			firstSaleDate: min(sales.dataVenda),
-			lastSaleDate: max(sales.dataVenda),
+			totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`.as(
+				"total_sales_value",
+			),
+			totalSalesQty: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END)`.as("total_sales_qty"),
+			firstSaleDate: min(sales.dataVenda).as("first_sale_date"),
+			lastSaleDate: max(sales.dataVenda).as("last_sale_date"),
 			// Curva ABC - calculamos via window functions
-			accumulatedSales: sql<number>`sum(${totalSalesSql}) OVER (ORDER BY ${totalSalesSql} DESC)`,
-			totalSalesGlobal: sql<number>`sum(${totalSalesSql}) OVER ()`,
+			accumulatedSales: sql<number>`sum(${totalSalesSql}) OVER (ORDER BY ${totalSalesSql} DESC, ${products.id} ASC)`.as("accumulated_sales"),
+			totalSalesGlobal: sql<number>`sum(${totalSalesSql}) OVER ()`.as("total_sales_global"),
 		})
 		.from(products)
 		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
@@ -487,27 +470,79 @@ async function getProducts({ input, session }: GetProductsParams) {
 	}
 
 	// Conta total de produtos que correspondem aos filtros
-	const matchedCountResult = await db.select({ count: count() }).from(baseQuery.as("sq"));
-	const statsByProductMatchedCount = matchedCountResult[0]?.count ?? 0;
+	const productStatsSubquery = baseQuery.as("product_stats");
+	const curvaABCSql = sql<string>`
+		CASE
+			WHEN COALESCE(${productStatsSubquery.totalSalesGlobal}, 0) <= 0 THEN 'C'
+			WHEN ((COALESCE(${productStatsSubquery.accumulatedSales}, 0) - COALESCE(${productStatsSubquery.totalSalesValue}, 0)) / NULLIF(${productStatsSubquery.totalSalesGlobal}, 0)) < 0.8 THEN 'A'
+			WHEN ((COALESCE(${productStatsSubquery.accumulatedSales}, 0) - COALESCE(${productStatsSubquery.totalSalesValue}, 0)) / NULLIF(${productStatsSubquery.totalSalesGlobal}, 0)) < 0.95 THEN 'B'
+			ELSE 'C'
+		END
+	`;
 
 	// Aplica ordenação e paginação
-	const productsWithStatsResult = await baseQuery.orderBy(orderByClause).offset(skip).limit(PAGE_SIZE);
+	const productsWithABCQuery = db
+		.select({
+			productId: productStatsSubquery.productId,
+			codigo: productStatsSubquery.codigo,
+			descricao: productStatsSubquery.descricao,
+			unidade: productStatsSubquery.unidade,
+			ncm: productStatsSubquery.ncm,
+			tipo: productStatsSubquery.tipo,
+			grupo: productStatsSubquery.grupo,
+			imagemCapaUrl: productStatsSubquery.imagemCapaUrl,
+			precoVenda: productStatsSubquery.precoVenda,
+			precoCusto: productStatsSubquery.precoCusto,
+			quantidade: productStatsSubquery.quantidade,
+			organizacaoId: productStatsSubquery.organizacaoId,
+			dataUltimaSincronizacao: productStatsSubquery.dataUltimaSincronizacao,
+			totalSalesValue: productStatsSubquery.totalSalesValue,
+			totalSalesQty: productStatsSubquery.totalSalesQty,
+			firstSaleDate: productStatsSubquery.firstSaleDate,
+			lastSaleDate: productStatsSubquery.lastSaleDate,
+			curvaABC: curvaABCSql.as("curva_abc"),
+		})
+		.from(productStatsSubquery);
+
+	if (input.abcClasses && input.abcClasses.length > 0) {
+		productsWithABCQuery.where(sql`${curvaABCSql} IN (${sql.join(input.abcClasses.map((abcClass) => sql`${abcClass}`), sql`, `)})`);
+	}
+
+	const productsWithABCSubquery = productsWithABCQuery.as("products_with_abc");
+	const direction = input.orderByDirection === "desc" ? desc : asc;
+	let orderByClause = asc(productsWithABCSubquery.descricao);
+	switch (input.orderByField) {
+		case "descricao":
+			orderByClause = direction(productsWithABCSubquery.descricao);
+			break;
+		case "codigo":
+			orderByClause = direction(productsWithABCSubquery.codigo);
+			break;
+		case "grupo":
+			orderByClause = direction(productsWithABCSubquery.grupo);
+			break;
+		case "vendasValorTotal":
+			orderByClause = direction(sql`COALESCE(${productsWithABCSubquery.totalSalesValue}, 0)`);
+			break;
+		case "vendasQtdeTotal":
+			orderByClause = direction(sql`COALESCE(${productsWithABCSubquery.totalSalesQty}, 0)`);
+			break;
+		case "quantidade":
+			orderByClause = direction(sql`COALESCE(${productsWithABCSubquery.quantidade}, 0)`);
+			break;
+		default:
+			orderByClause = asc(productsWithABCSubquery.descricao);
+			break;
+	}
+
+	const matchedCountResult = await db.select({ count: count() }).from(productsWithABCSubquery);
+	const statsByProductMatchedCount = matchedCountResult[0]?.count ?? 0;
+
+	const productsWithStatsResult = await db.select().from(productsWithABCSubquery).orderBy(orderByClause).offset(skip).limit(PAGE_SIZE);
 
 	// Mapeia os resultados para o formato final
 	const productsWithStats = productsWithStatsResult.map((row) => {
 		const totalSales = row.totalSalesValue ? Number(row.totalSalesValue) : 0;
-		const accumulated = row.accumulatedSales ? Number(row.accumulatedSales) : 0;
-		const globalTotal = row.totalSalesGlobal ? Number(row.totalSalesGlobal) : 0;
-
-		// Lógica da Curva ABC
-		let curvaABC = "C";
-		if (globalTotal > 0) {
-			const prevAccumulated = accumulated - totalSales;
-			const prevPercentage = prevAccumulated / globalTotal;
-
-			if (prevPercentage < 0.8) curvaABC = "A";
-			else if (prevPercentage < 0.95) curvaABC = "B";
-		}
 
 		return {
 			id: row.productId,
@@ -528,7 +563,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 				vendasQtdeTotal: row.totalSalesQty ? Number(row.totalSalesQty) : 0,
 				dataPrimeiraVenda: row.firstSaleDate ?? null,
 				dataUltimaVenda: row.lastSaleDate ?? null,
-				curvaABC: curvaABC,
+				curvaABC: row.curvaABC,
 			},
 		};
 	});
@@ -560,11 +595,13 @@ const getProductsHandler: PagesRouteHandler<TGetProductsOutput> = async (req, re
 		groups: req.query.groups as string | undefined,
 		statsPeriodAfter: req.query.statsPeriodAfter as string | undefined,
 		statsPeriodBefore: req.query.statsPeriodBefore as string | undefined,
+		statsSellerIds: req.query.statsSellerIds as string | undefined,
 		statsSaleNatures: req.query.statsSaleNatures as string | undefined,
 		statsExcludedSalesIds: req.query.statsExcludedSalesIds as string | undefined,
 		statsTotalMin: req.query.statsTotalMin as string | undefined,
 		statsTotalMax: req.query.statsTotalMax as string | undefined,
 		stockStatus: req.query.stockStatus as string | undefined,
+		abcClasses: req.query.abcClasses as string | undefined,
 		priceMin: req.query.priceMin as string | undefined,
 		priceMax: req.query.priceMax as string | undefined,
 		orderByField: req.query.orderByField as string | undefined,

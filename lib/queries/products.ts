@@ -1,13 +1,12 @@
-import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsInput, TGetProductsOutput } from "@/app/api/products/route";
+import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsOutput } from "@/app/api/products/route";
 import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/app/api/products/by-codes/route";
 import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/app/api/products/graph/route";
 import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/app/api/products/search/route";
 import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/app/api/products/stats/route";
 import type { TGetProductsGraphInput, TGetProductsGraphOutput } from "@/app/api/products/stats/graph/route";
 import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } from "@/app/api/products/stats/overall/route";
-import type { TGetProductsPortfolioHealthInput, TGetProductsPortfolioHealthOutput } from "@/app/api/products/stats/portfolio-health/route";
+import type { TGetProductsPortfolioAnalysisInput, TGetProductsPortfolioAnalysisOutput } from "@/app/api/products/stats/portfolio-analysis/route";
 import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/app/api/products/stats/ranking/route";
-import type { TProductStatsQueryParams } from "@/schemas/products";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useMemo, useState } from "react";
@@ -26,6 +25,7 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
 		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
 		if (input.stockStatus && input.stockStatus.length > 0) searchParams.set("stockStatus", input.stockStatus.join(","));
+		if (input.abcClasses && input.abcClasses.length > 0) searchParams.set("abcClasses", input.abcClasses.join(","));
 		if (input.priceMin) searchParams.set("priceMin", input.priceMin.toString());
 		if (input.priceMax) searchParams.set("priceMax", input.priceMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
@@ -79,6 +79,7 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		statsTotalMin: initialFilters?.statsTotalMin || null,
 		statsTotalMax: initialFilters?.statsTotalMax || null,
 		stockStatus: initialFilters?.stockStatus || [],
+		abcClasses: initialFilters?.abcClasses || [],
 		priceMin: initialFilters?.priceMin || null,
 		priceMax: initialFilters?.priceMax || null,
 		orderByField: initialFilters?.orderByField || "descricao",
@@ -348,25 +349,25 @@ export function useProductsRanking(input: TGetProductsRankingInput) {
 	});
 }
 
-async function fetchProductsPortfolioHealth(input: TGetProductsPortfolioHealthInput) {
+async function fetchProductsPortfolioAnalysis(input: TGetProductsPortfolioAnalysisInput) {
 	try {
 		const searchParams = new URLSearchParams();
 		if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
 		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
-		const { data } = await axios.get<TGetProductsPortfolioHealthOutput>(`/api/products/stats/portfolio-health?${searchParams.toString()}`);
+		const { data } = await axios.get<TGetProductsPortfolioAnalysisOutput>(`/api/products/stats/portfolio-analysis?${searchParams.toString()}`);
 		return data.data;
 	} catch (error) {
-		console.log("Error running fetchProductsPortfolioHealth", error);
+		console.log("Error running fetchProductsPortfolioAnalysis", error);
 		throw error;
 	}
 }
 
-export function useProductsPortfolioHealth(input: TGetProductsPortfolioHealthInput) {
-	const queryKey = ["products-portfolio-health", input.periodAfter?.toISOString() ?? null, input.periodBefore?.toISOString() ?? null] as const;
+export function useProductsPortfolioAnalysis(input: TGetProductsPortfolioAnalysisInput) {
+	const queryKey = ["products-portfolio-analysis", input.periodAfter?.toISOString() ?? null, input.periodBefore?.toISOString() ?? null] as const;
 	return {
 		...useQuery({
 			queryKey,
-			queryFn: () => fetchProductsPortfolioHealth(input),
+			queryFn: () => fetchProductsPortfolioAnalysis(input),
 		}),
 		queryKey,
 	};
