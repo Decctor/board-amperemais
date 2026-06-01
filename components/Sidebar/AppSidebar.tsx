@@ -141,7 +141,7 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				url: "/dashboard/commercial/shop",
 				icon: <Store className="w-4 h-4" />,
 				items: null,
-				checkAccess: () => true,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
 			},
 		],
 	},
