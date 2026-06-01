@@ -23,6 +23,7 @@ const STEP_TITLES: Record<string, string> = {
 export default function CheckoutSheet() {
 	const { orgId, catalog, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
 	const { checkoutStep } = orderState.state;
+	const isOpen = catalog.disponibilidade.status === "ABERTA";
 
 	const { mutate: submitOrder, isPending } = useMutation({
 		mutationKey: ["create-shop-order", orgId],
@@ -68,7 +69,7 @@ export default function CheckoutSheet() {
 	};
 
 	return (
-		<Drawer open={isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
+		<Drawer open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
 			<DrawerContent className="flex flex-col h-fit max-h-[90vh]">
 				<DrawerHeader className="text-left flex items-center gap-3">
 					<Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={handleBack}>

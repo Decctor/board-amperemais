@@ -33,7 +33,7 @@ export default function ShopPage({ orgId }: ShopPageProps) {
 					</div>
 					<h1 className="text-xl font-bold">Loja indisponível</h1>
 					<p className="text-sm text-muted-foreground">
-						{error?.message || "Esta loja digital nao esta disponivel no momento. Tente novamente mais tarde."}
+						{error?.message || "Esta loja digital não está disponível no momento. Tente novamente mais tarde."}
 					</p>
 				</div>
 			</div>

@@ -9,6 +9,7 @@ import CheckoutSheet from "./CheckoutSheet";
 import ProductBuilderSheet from "./ProductBuilderSheet";
 import OrderSuccessView from "./OrderSuccessView";
 import CartFloatingButton from "./CartFloatingButton";
+import ShopAvailabilityNotice from "./ShopAvailabilityNotice";
 
 export default function ShopShell() {
 	const { catalog, orderState, builderProduct, setBuilderProduct } = useShop();
@@ -30,10 +31,9 @@ export default function ShopShell() {
 			}
 		>
 			<ShopHeader />
+			<ShopAvailabilityNotice />
 
-			<main className="pb-24">
-				{catalog.shopSettings.modo === "CARDAPIO" ? <MenuModeView /> : <CatalogModeView />}
-			</main>
+			<main className="pb-24">{catalog.shopSettings.modo === "CARDAPIO" ? <MenuModeView /> : <CatalogModeView />}</main>
 
 			<CartFloatingButton />
 			<CartSheet />

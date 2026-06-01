@@ -255,3 +255,6 @@ export type TShopHeaderCoverTypeEnum = z.infer<typeof ShopHeaderCoverTypeEnum>;
 
 export const ShopCompositionBlockTypeEnum = z.enum(["GRUPOS_PRODUTOS", "EM_DESTAQUE", "MAIS_PEDIDOS"]);
 export type TShopCompositionBlockTypeEnum = z.infer<typeof ShopCompositionBlockTypeEnum>;
+
+export const ShopWeekdayEnum = z.enum(["DOMINGO", "SEGUNDA", "TERCA", "QUARTA", "QUINTA", "SEXTA", "SABADO"]);
+export type TShopWeekdayEnum = z.infer<typeof ShopWeekdayEnum>;

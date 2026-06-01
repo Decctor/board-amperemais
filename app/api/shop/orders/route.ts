@@ -7,20 +7,28 @@ import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
+function getShopDraftCreatedAt(metadata: unknown) {
+	if (!metadata || typeof metadata !== "object") return null;
+	const shop = (metadata as Record<string, unknown>).shop;
+	if (!shop || typeof shop !== "object") return null;
+	const createdAt = (shop as Record<string, unknown>).criadoEm;
+	return typeof createdAt === "string" ? createdAt : null;
+}
+
 const GetShopOrdersInputSchema = z.object({
 	page: z
-		.string({ invalid_type_error: "Tipo nao valido para pagina." })
+		.string({ invalid_type_error: "Tipo não válido para página." })
 		.optional()
 		.default("1")
 		.transform((value) => Number(value)),
 	status: z.enum(["ORCAMENTO", "CONDICIONAL", "CONFIRMADA", "FATURADA", "CANCELADA"]).optional().nullable(),
-	search: z.string({ invalid_type_error: "Tipo nao valido para busca." }).optional().nullable(),
+	search: z.string({ invalid_type_error: "Tipo não válido para busca." }).optional().nullable(),
 });
 export type TGetShopOrdersInput = z.infer<typeof GetShopOrdersInputSchema>;
 
 function getSessionWithOrg(session: Awaited<ReturnType<typeof getCurrentSessionUncached>>) {
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
 	return session;
 }
 
@@ -69,6 +77,7 @@ async function getShopOrdersRoute(request: NextRequest) {
 		data: {
 			orders: orders.map((order) => ({
 				...order,
+				criadoEm: getShopDraftCreatedAt(order.rascunhoMetadados),
 				itemCount: order.itens.length,
 				totalItemsQuantity: order.itens.reduce((sum, item) => sum + item.quantidade, 0),
 			})),

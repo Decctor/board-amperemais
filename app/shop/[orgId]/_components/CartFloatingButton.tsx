@@ -54,7 +54,7 @@ export default function CartFloatingButton() {
 						{itemCount > 99 ? "99+" : itemCount}
 					</span>
 				</div>
-				<span className="flex-1 text-left">VER CARRINHO</span>
+				<span className="flex-1 text-left">{catalog.disponibilidade.status === "ABERTA" ? "VER CARRINHO" : "CONSULTAR CARRINHO"}</span>
 				<span className="font-black">{formatToMoney(subtotal)}</span>
 			</Button>
 		</div>

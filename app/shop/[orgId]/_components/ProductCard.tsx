@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { formatToMoney } from "@/lib/formatting";
 import type { TShopCatalogProduct } from "@/lib/shop/catalog";
 import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import Image from "next/image";
-import { toast } from "sonner";
 import { useShop } from "./ShopProvider";
 
 type ProductCardProps = {
@@ -15,7 +14,8 @@ type ProductCardProps = {
 };
 
 export default function ProductCard({ product, variant = "compact" }: ProductCardProps) {
-	const { setBuilderProduct, orderState } = useShop();
+	const { catalog, setBuilderProduct, orderState } = useShop();
+	const isOpen = catalog.disponibilidade.status === "ABERTA";
 
 	const hasVariants = product.variantes.length > 0;
 	const hasAddOns = product.addOnsReferencias.length > 0;
@@ -24,6 +24,11 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 	const lowestPrice = hasVariants ? Math.min(...product.variantes.map((v) => v.precoVenda ?? 0)) : (product.precoVenda ?? 0);
 
 	const handleClick = () => {
+		if (!isOpen) {
+			if (isComplex) setBuilderProduct(product);
+			return;
+		}
+
 		if (isComplex) {
 			setBuilderProduct(product);
 			return;
@@ -71,7 +76,7 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 								handleClick();
 							}}
 						>
-							<Plus className="w-4 h-4" />
+							{isOpen ? <Plus className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
 						</Button>
 					</div>
 				</div>

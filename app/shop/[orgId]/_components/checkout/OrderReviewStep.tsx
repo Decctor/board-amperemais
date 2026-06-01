@@ -2,8 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatCashbackValue, formatToMoney, formatToPhone, getCashbackUnitLabel } from "@/lib/formatting";
-import { CreditCard, MapPin, Package, Send, Truck, User } from "lucide-react";
+import { formatCashbackValue, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { Clock3, CreditCard, Info, Package, Send, Truck, User } from "lucide-react";
 import { useMemo } from "react";
 import { useShop } from "../ShopProvider";
 
@@ -15,6 +15,7 @@ type OrderReviewStepProps = {
 export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewStepProps) {
 	const { catalog, orderState } = useShop();
 	const { customer, delivery, cashback, cart } = orderState.state;
+	const config = catalog.shopSettings.configuracoes;
 
 	const cartItemsWithDetails = useMemo(() => {
 		return cart.items
@@ -81,6 +82,25 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 					<p className="text-sm text-muted-foreground">{formatToPhone(customer.telefone)}</p>
 				</div>
 			</div>
+
+			<div className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border">
+				<Clock3 className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+				<div className="flex-1 min-w-0">
+					<p className="font-semibold text-sm">PREVISÃO</p>
+					<p className="text-sm text-muted-foreground">
+						{delivery.modalidade === "ENTREGA"
+							? `Preparo em até ${config.operacao.preparoMinutos} min. Entrega em até ${config.atendimento.entrega.prazoMinutos} min.`
+							: `Preparo em até ${config.operacao.preparoMinutos} min.`}
+					</p>
+				</div>
+			</div>
+
+			{config.operacao.mensagemCheckout ? (
+				<div className="flex items-start gap-3 rounded-xl border border-brand-secondary/30 bg-brand-secondary/10 p-3">
+					<Info className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
+					<p className="text-sm font-medium leading-relaxed">{config.operacao.mensagemCheckout}</p>
+				</div>
+			) : null}
 
 			<div className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border">
 				{delivery.modalidade === "RETIRADA" ? (

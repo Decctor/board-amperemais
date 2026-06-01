@@ -90,7 +90,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 						<BadgePercent className="w-8 h-8 text-muted-foreground" />
 					</div>
 					<div>
-						<p className="font-semibold">SEM CASHBACK DISPONIVEL</p>
+						<p className="font-semibold">SEM CASHBACK DISPONÍVEL</p>
 						<p className="text-sm text-muted-foreground mt-1">Você ainda não possui saldo de cashback para utilizar.</p>
 					</div>
 				</div>
@@ -108,7 +108,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 			<div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
 				<BadgePercent className="w-6 h-6 text-primary flex-shrink-0" />
 				<div className="flex-1">
-					<p className="text-sm text-muted-foreground">Saldo disponivel</p>
+					<p className="text-sm text-muted-foreground">Saldo disponível</p>
 					<p className="font-black text-lg text-primary">{formatToMoney(balance)}</p>
 				</div>
 			</div>
@@ -145,7 +145,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 			<div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
 				<Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
 				<p className="text-xs text-blue-800 dark:text-blue-200">
-					A loja confirmara o desconto ao aceitar o pedido. O saldo sera descontado somente apos a confirmacao.
+					A loja confirmará o desconto ao aceitar o pedido. O saldo será descontado somente após a confirmação.
 				</p>
 			</div>
 

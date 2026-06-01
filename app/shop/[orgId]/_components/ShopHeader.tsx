@@ -2,22 +2,20 @@
 
 import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { formatLocation, formatToPhone } from "@/lib/formatting";
-import { ArrowLeft, ChevronRight, Heart, MapPin, Package, Phone, Search, Truck } from "lucide-react";
+import { formatLocation, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { Clock3, MapPin, Package, Truck } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useShop } from "./ShopProvider";
 import { FaWhatsapp } from "react-icons/fa";
+import { useShop } from "./ShopProvider";
+
 export default function ShopHeader() {
 	const { catalog } = useShop();
 	const { organization, shopSettings } = catalog;
 	const config = shopSettings.configuracoes;
+	const appearance = config.aparencia;
+	const service = config.atendimento;
 	const { colors, getPrimaryGradientStyle } = useOrgColors();
-	const primaryGradientStyle = getPrimaryGradientStyle();
-
-	const showCoverImage = Boolean(config.headerCoverUrl && config.headerCoverTipo === "IMAGEM");
+	const showCoverImage = Boolean(appearance.headerCoverUrl && appearance.headerCoverTipo === "IMAGEM");
 
 	const formattedLocation = formatLocation({
 		location: {
@@ -33,47 +31,18 @@ export default function ShopHeader() {
 		includeUf: true,
 		includeCEP: true,
 	});
-
 	const phoneDisplay = organization.telefone ? formatToPhone(organization.telefone) : null;
 
-	const modalityParts: string[] = [];
-	if (config.aceitaRetirada) modalityParts.push("Retirada");
-	if (config.aceitaEntrega) modalityParts.push("Entrega");
-	const modalityLine = modalityParts.join(" • ");
-
-	const shopModeLabel = shopSettings.modo === "CARDAPIO" ? "Cardápio" : "Catálogo";
-
-	async function handleShareStore() {
-		const url = typeof window !== "undefined" ? window.location.href : "";
-		try {
-			if (navigator.share) {
-				try {
-					await navigator.share({ title: organization.nome, url });
-				} catch (e) {
-					if ((e as DOMException)?.name === "AbortError") return;
-					await navigator.clipboard.writeText(url);
-					toast.success("Link da loja copiado.");
-				}
-				return;
-			}
-			await navigator.clipboard.writeText(url);
-			toast.success("Link da loja copiado.");
-		} catch {
-			toast.error("Não foi possível copiar o link.");
-		}
-	}
-
 	return (
-		<header className="w-full flex flex-col bg-background relative pb-2">
-			{/* Hero: cover image or brand gradient (same height; video uses gradient) */}
-			<div className={"relative w-full h-[11.5rem] sm:h-56 overflow-hidden"}>
-				{showCoverImage && config.headerCoverUrl ? (
+		<header className="relative flex w-full flex-col bg-background pb-2">
+			<div className="relative h-[11.5rem] w-full overflow-hidden sm:h-56">
+				{showCoverImage && appearance.headerCoverUrl ? (
 					<>
-						<Image src={config.headerCoverUrl} alt={organization.nome} fill className="object-cover" priority sizes="100vw" />
+						<Image src={appearance.headerCoverUrl} alt={organization.nome} fill className="object-cover" priority sizes="100vw" />
 						<div className="absolute inset-0 bg-linear-to-b from-black/25 via-transparent to-black/50" />
 					</>
 				) : (
-					<div className="absolute inset-0" style={primaryGradientStyle}>
+					<div className="absolute inset-0" style={getPrimaryGradientStyle()}>
 						<div
 							className="absolute inset-0 opacity-[0.12]"
 							style={{
@@ -86,90 +55,91 @@ export default function ShopHeader() {
 				)}
 			</div>
 
-			{/* Overlapping card */}
-			<div className="relative z-10 -mt-12 sm:-mt-14 px-3 sm:px-4">
-				<div className="relative rounded-t-[1.75rem] rounded-b-2xl bg-card text-card-foreground shadow-lg border border-border/60 pt-12 sm:pt-14 pb-4 px-4">
-					{/* Logo: half on hero, half on card */}
-					<div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+			<div className="relative z-10 -mt-12 px-3 sm:-mt-14 sm:px-4">
+				<div className="relative rounded-t-[1.75rem] rounded-b-2xl border border-border/60 bg-card px-4 pt-12 pb-4 text-card-foreground shadow-lg sm:pt-14">
+					<div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
 						{organization.logoUrl ? (
-							<div className="relative size-18 sm:size-20 rounded-full overflow-hidden border-[3px] border-background bg-background shadow-lg ring-1 ring-black/5">
+							<div className="relative size-18 overflow-hidden rounded-full border-[3px] border-background bg-background shadow-lg ring-1 ring-black/5 sm:size-20">
 								<Image src={organization.logoUrl} alt={organization.nome} fill className="object-cover" sizes="80px" />
 							</div>
 						) : (
-							<div className="size-18 sm:size-20 rounded-full border-[3px] border-background bg-brand text-brand-foreground shadow-lg flex items-center justify-center ring-1 ring-black/5">
+							<div className="flex size-18 items-center justify-center rounded-full border-[3px] border-background bg-brand text-brand-foreground shadow-lg ring-1 ring-black/5 sm:size-20">
 								<span className="text-2xl font-black">{organization.nome.charAt(0).toUpperCase()}</span>
 							</div>
 						)}
 					</div>
 
-					<div className="flex items-start justify-center gap-2 pt-1">
-						<div className="flex-1 min-w-0 text-center">
-							<div className="inline-flex items-center justify-center gap-1 max-w-full">
-								<h1 className="text-lg sm:text-xl font-black text-foreground leading-tight truncate">{organization.nome}</h1>
-							</div>
-						</div>
-					</div>
-
+					<h1 className="truncate pt-1 text-center text-lg leading-tight font-black text-foreground sm:text-xl">{organization.nome}</h1>
 					<div className="my-4 h-px bg-border" />
 
-					<ShopHeaderLocationPhoneInformations formattedPhone={phoneDisplay} formattedLocation={formattedLocation} />
-					<ShopHeaderModalityInformations acceptsDelivery={config.aceitaEntrega} acceptsPickup={config.aceitaRetirada} />
+					<div className="mb-3 flex justify-center">
+						<Badge
+							variant={null}
+							className={
+								catalog.disponibilidade.status === "ABERTA"
+									? "gap-1.5 rounded-full bg-green-100 px-3 py-1 font-semibold text-green-800"
+									: "gap-1.5 rounded-full bg-muted px-3 py-1 font-semibold text-muted-foreground"
+							}
+						>
+							<Clock3 className="size-3.5" />
+							{catalog.disponibilidade.status === "ABERTA" ? "ABERTA AGORA" : "FECHADA AGORA"}
+						</Badge>
+					</div>
 
-					<p className="mt-3 text-xs text-muted-foreground text-center leading-relaxed px-1">Valores e formas de pagamento ao finalizar no carrinho.</p>
+					<ShopHeaderLocationPhoneInformations formattedPhone={phoneDisplay} formattedLocation={formattedLocation} />
+					<div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+						{service.retirada.ativo ? (
+							<Badge variant={null} className="gap-1 rounded-full bg-brand-secondary px-3 py-1 font-semibold text-brand-secondary-foreground">
+								<Package className="size-3.5" />
+								RETIRADA DISPONÍVEL
+							</Badge>
+						) : null}
+						{service.entrega.ativo ? (
+							<Badge variant={null} className="gap-1 rounded-full bg-brand-secondary px-3 py-1 font-semibold text-brand-secondary-foreground">
+								<Truck className="size-3.5" />
+								ENTREGA EM ATÉ {service.entrega.prazoMinutos} MIN
+							</Badge>
+						) : null}
+						{service.entrega.ativo && service.entrega.pedidoMinimo > 0 ? (
+							<p className="w-full text-center text-xs font-medium text-muted-foreground">
+								Pedido mínimo para entrega: {formatToMoney(service.entrega.pedidoMinimo)}
+							</p>
+						) : null}
+					</div>
+
+					<p className="mt-3 px-1 text-center text-xs leading-relaxed text-muted-foreground">Valores e formas de pagamento ao finalizar no carrinho.</p>
 				</div>
 			</div>
 		</header>
 	);
 }
 
-type ShopHeaderLocationPhoneInformationsProps = {
+function ShopHeaderLocationPhoneInformations({
+	formattedPhone,
+	formattedLocation,
+}: {
 	formattedPhone: string | null;
 	formattedLocation: string | null;
-};
-function ShopHeaderLocationPhoneInformations({ formattedPhone, formattedLocation }: ShopHeaderLocationPhoneInformationsProps) {
+}) {
 	if (!formattedPhone && !formattedLocation) return null;
 	return (
 		<div className="flex flex-col gap-2.5">
 			{formattedPhone ? (
-				<a href={`https://wa.me/${formattedPhone?.replace(/\D/g, "")}`} className="flex items-center gap-3 text-sm">
-					<div className="flex w-9 h-9 min-w-9 min-h-9 items-center justify-center rounded-full bg-brand text-brand-foreground">
+				<a href={`https://wa.me/${formattedPhone.replace(/\D/g, "")}`} className="flex items-center gap-3 text-sm">
+					<div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground">
 						<FaWhatsapp className="size-4" />
 					</div>
-					<span className="tracking-tight text-xs sm:text-sm font-medium">{formattedPhone}</span>
+					<span className="text-xs font-medium tracking-tight sm:text-sm">{formattedPhone}</span>
 				</a>
 			) : null}
 			{formattedLocation ? (
 				<div className="flex items-center gap-3 text-sm">
-					<div className="flex w-9 h-9 min-w-9 min-h-9 items-center justify-center rounded-full bg-brand text-brand-foreground">
+					<div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground">
 						<MapPin className="size-4" />
 					</div>
-					<p className="tracking-tight text-xs sm:text-sm font-medium">{formattedLocation}</p>
+					<p className="text-xs font-medium tracking-tight sm:text-sm">{formattedLocation}</p>
 				</div>
 			) : null}
-		</div>
-	);
-}
-
-type ShopHeaderModalityInformationsProps = {
-	acceptsDelivery: boolean;
-	acceptsPickup: boolean;
-};
-function ShopHeaderModalityInformations({ acceptsDelivery, acceptsPickup }: ShopHeaderModalityInformationsProps) {
-	if (!acceptsDelivery && !acceptsPickup) return null;
-	return (
-		<div className="mt-4 flex flex-wrap items-center gap-2">
-			{acceptsPickup && (
-				<Badge variant={null} className="gap-1 rounded-full bg-brand-secondary px-3 py-1 font-semibold text-brand-secondary-foreground">
-					<Package className="w-3.5 h-3.5" />
-					ACEITA RETIRADA
-				</Badge>
-			)}
-			{acceptsDelivery && (
-				<Badge variant={null} className="gap-1 rounded-full bg-brand-secondary px-3 py-1 font-semibold text-brand-secondary-foreground">
-					<Truck className="w-3.5 h-3.5" />
-					ACEITA ENTREGA
-				</Badge>
-			)}
 		</div>
 	);
 }

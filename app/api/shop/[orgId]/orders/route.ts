@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { getShopCatalogProducts, type TShopCatalogProduct } from "@/lib/shop/catalog";
+import { getShopAvailability } from "@/lib/shop/availability";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
 import { CreateShopOrderInputSchema, type TShopDraftMetadata } from "@/schemas/shop";
 import { db } from "@/services/drizzle";
@@ -56,7 +57,7 @@ function calculateShopItem({
 	modifiers: Array<{ opcaoId: string; quantidade: number }>;
 }): CalculatedItem {
 	const variant = variantId ? product.variantes.find((item) => item.id === variantId) : null;
-	if (variantId && !variant) throw new createHttpError.BadRequest("Variante nao disponivel para este produto.");
+	if (variantId && !variant) throw new createHttpError.BadRequest("Variante não disponível para este produto.");
 	if (product.variantes.length > 0 && !variant) throw new createHttpError.BadRequest("Selecione uma variante para este produto.");
 
 	const availableReferences = getAvailableReferences(product, variantId);
@@ -76,14 +77,18 @@ function calculateShopItem({
 		const selectedQuantity = selectedOptions.reduce((sum, item) => sum + item.quantity, 0);
 
 		if (selectedQuantity < group.minOpcoes) {
-			throw new createHttpError.BadRequest(`Selecione pelo menos ${group.minOpcoes} opcao(oes) em ${group.nome}.`);
+			throw new createHttpError.BadRequest(`Selecione pelo menos ${group.minOpcoes} opção(ões) em ${group.nome}.`);
 		}
 		if (selectedQuantity > group.maxOpcoes) {
-			throw new createHttpError.BadRequest(`Selecione no maximo ${group.maxOpcoes} opcao(oes) em ${group.nome}.`);
+			throw new createHttpError.BadRequest(`Selecione no máximo ${group.maxOpcoes} opção(ões) em ${group.nome}.`);
 		}
 		for (const selected of selectedOptions) {
-			if (selected.option.maxQtdePorItem !== null && selected.option.maxQtdePorItem !== undefined && selected.quantity > selected.option.maxQtdePorItem) {
-				throw new createHttpError.BadRequest(`Quantidade maxima excedida para ${selected.option.nome}.`);
+			if (
+				selected.option.maxQtdePorItem !== null &&
+				selected.option.maxQtdePorItem !== undefined &&
+				selected.quantity > selected.option.maxQtdePorItem
+			) {
+				throw new createHttpError.BadRequest(`Quantidade máxima excedida para ${selected.option.nome}.`);
 			}
 		}
 	}
@@ -92,7 +97,7 @@ function calculateShopItem({
 	const calculatedModifiers: CalculatedModifier[] = [];
 	for (const [optionId, modifierQuantity] of aggregatedModifiers.entries()) {
 		const option = optionMap.get(optionId);
-		if (!option) throw new createHttpError.BadRequest("Opcao de adicional nao disponivel para este produto.");
+		if (!option) throw new createHttpError.BadRequest("Opção de adicional não disponível para este produto.");
 		calculatedModifiers.push({
 			opcaoId: option.id,
 			nome: option.nome,
@@ -139,14 +144,14 @@ async function getOrCreateShopClient({
 	telefone: string;
 }) {
 	const telefoneBase = formatPhoneAsBase(telefone);
-	if (!telefoneBase) throw new createHttpError.BadRequest("Telefone invalido.");
+	if (!telefoneBase) throw new createHttpError.BadRequest("Telefone inválido.");
 
 	const existingClient = await db.query.clients.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.telefoneBase, telefoneBase)),
 	});
 	if (existingClient) return existingClient;
 
-	if (!nome?.trim()) throw new createHttpError.BadRequest("Nome do cliente nao informado.");
+	if (!nome?.trim()) throw new createHttpError.BadRequest("Nome do cliente não informado.");
 
 	const [inserted] = await db
 		.insert(clients)
@@ -200,7 +205,7 @@ async function createDeliveryLocation({
 			localizacaoComplemento: address.localizacaoComplemento ?? null,
 		})
 		.returning();
-	if (!inserted) throw new createHttpError.InternalServerError("Erro ao criar localizacao de entrega.");
+	if (!inserted) throw new createHttpError.InternalServerError("Erro ao criar localização de entrega.");
 	return inserted;
 }
 
@@ -220,11 +225,15 @@ async function validateCashbackRequest({
 	const program = await db.query.cashbackPrograms.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
 	});
-	if (!program) throw new createHttpError.BadRequest("Programa de cashback nao encontrado.");
-	if (!program.modalidadeDescontosPermitida) throw new createHttpError.BadRequest("Resgate de cashback nao permitido para esta loja.");
+	if (!program) throw new createHttpError.BadRequest("Programa de cashback não encontrado.");
+	if (!program.modalidadeDescontosPermitida) throw new createHttpError.BadRequest("Resgate de cashback não permitido para esta loja.");
 
 	const balance = await db.query.cashbackProgramBalances.findFirst({
-		where: and(eq(cashbackProgramBalances.organizacaoId, orgId), eq(cashbackProgramBalances.clienteId, clientId), eq(cashbackProgramBalances.programaId, program.id)),
+		where: and(
+			eq(cashbackProgramBalances.organizacaoId, orgId),
+			eq(cashbackProgramBalances.clienteId, clientId),
+			eq(cashbackProgramBalances.programaId, program.id),
+		),
 	});
 	const available = balance?.saldoValorDisponivel ?? 0;
 	if (available < requestedValue) throw new createHttpError.BadRequest("Saldo insuficiente.");
@@ -246,18 +255,22 @@ async function createShopOrder(request: NextRequest) {
 		db.query.organizations.findFirst({ where: (fields, { eq }) => eq(fields.id, orgId) }),
 		db.query.shopSettings.findFirst({ where: (fields, { eq }) => eq(fields.organizacaoId, orgId) }),
 	]);
-	if (!organization) throw new createHttpError.NotFound("Organizacao nao encontrada.");
-	if (!settings || !settings.ativo) throw new createHttpError.NotFound("Loja digital indisponivel.");
+	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
+	if (!settings || !settings.ativo) throw new createHttpError.NotFound("Loja digital indisponível.");
 
 	const configuracoes = normalizeShopSettingsConfiguration(settings.configuracoes);
-	if (input.entrega.modalidade === "RETIRADA" && !configuracoes.aceitaRetirada) throw new createHttpError.BadRequest("Retirada nao disponivel.");
-	if (input.entrega.modalidade === "ENTREGA" && !configuracoes.aceitaEntrega) throw new createHttpError.BadRequest("Entrega nao disponivel.");
+	const availability = getShopAvailability({ ativo: settings.ativo, configuracoes });
+	if (availability.status !== "ABERTA") throw new createHttpError.BadRequest("Não estamos recebendo pedidos no momento.");
+	if (input.entrega.modalidade === "RETIRADA" && !configuracoes.atendimento.retirada.ativo)
+		throw new createHttpError.BadRequest("Retirada não disponível.");
+	if (input.entrega.modalidade === "ENTREGA" && !configuracoes.atendimento.entrega.ativo)
+		throw new createHttpError.BadRequest("Entrega não disponível.");
 
 	const catalogProducts = await getShopCatalogProducts({ orgId, configuracoes });
 	const catalogProductMap = new Map(catalogProducts.map((product) => [product.id, product]));
 	const calculatedItems = input.itens.map((item) => {
 		const product = catalogProductMap.get(item.produtoId);
-		if (!product) throw new createHttpError.BadRequest("Produto nao disponivel na loja digital.");
+		if (!product) throw new createHttpError.BadRequest("Produto não disponível na loja digital.");
 		return calculateShopItem({
 			product,
 			variantId: item.produtoVarianteId ?? null,
@@ -265,6 +278,10 @@ async function createShopOrder(request: NextRequest) {
 			modifiers: item.modificadores,
 		});
 	});
+	const subtotal = calculatedItems.reduce((sum, item) => sum + item.valorTotalLiquido, 0);
+	if (input.entrega.modalidade === "ENTREGA" && subtotal < configuracoes.atendimento.entrega.pedidoMinimo) {
+		throw new createHttpError.BadRequest("Pedido mínimo para entrega não atingido.");
+	}
 
 	const client = await getOrCreateShopClient({
 		orgId,
@@ -278,7 +295,6 @@ async function createShopOrder(request: NextRequest) {
 			? await createDeliveryLocation({ orgId, clientId: client.id, address: input.entrega.endereco })
 			: null;
 
-	const subtotal = calculatedItems.reduce((sum, item) => sum + item.valorTotalLiquido, 0);
 	const requestedCashback = Math.min(input.cashbackResgateSolicitado, subtotal);
 	const { programId } = await validateCashbackRequest({
 		orgId,

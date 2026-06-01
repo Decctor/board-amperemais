@@ -13,8 +13,8 @@ import z from "zod";
 
 const UpdateShopSettingsInputSchema = z.object({
 	ativo: z.boolean({
-		required_error: "Status da loja digital nao informado.",
-		invalid_type_error: "Tipo nao valido para status da loja digital.",
+		required_error: "Status da loja digital não informado.",
+		invalid_type_error: "Tipo não válido para status da loja digital.",
 	}),
 	modo: ShopModeEnum,
 	configuracoes: ShopSettingsConfigurationSchema,
@@ -22,8 +22,8 @@ const UpdateShopSettingsInputSchema = z.object({
 export type TUpdateShopSettingsInput = z.infer<typeof UpdateShopSettingsInputSchema>;
 
 function getSessionWithOrg(session: Awaited<ReturnType<typeof getCurrentSessionUncached>>) {
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
 	return session;
 }
 
@@ -38,7 +38,7 @@ async function validateShopProductIds({ orgId, productIds }: { orgId: string; pr
 	const matchedIds = new Set(matched.map((item) => item.id));
 	const invalidIds = uniqueIds.filter((id) => !matchedIds.has(id));
 	if (invalidIds.length > 0) {
-		throw new createHttpError.BadRequest("Um ou mais produtos selecionados nao pertencem a organizacao.");
+		throw new createHttpError.BadRequest("Um ou mais produtos selecionados não pertencem à organização.");
 	}
 }
 
@@ -56,7 +56,8 @@ async function getShopSettingsService({ session }: { session: TAuthUserSession }
 		};
 	}
 
-	const productIds = settings.configuracoes.produtos.produtoIds;
+	const configuracoes = normalizeShopSettingsConfiguration(settings.configuracoes);
+	const productIds = configuracoes.produtos.produtoIds;
 
 	const settingSelectedProducts =
 		productIds.length > 0
@@ -73,7 +74,7 @@ async function getShopSettingsService({ session }: { session: TAuthUserSession }
 		data: {
 			...settings,
 			produtos: settingSelectedProducts,
-			configuracoes: normalizeShopSettingsConfiguration(settings.configuracoes),
+			configuracoes,
 		},
 		message: "Configurações da loja digital carregadas com sucesso.",
 	};
@@ -103,7 +104,7 @@ async function updateShopSettingsRoute(request: NextRequest) {
 
 	await validateShopProductIds({
 		orgId,
-		productIds: [...configuracoes.produtos.produtoIds, ...configuracoes.produtosEmDestaqueIds],
+		productIds: [...configuracoes.produtos.produtoIds, ...configuracoes.produtos.destaqueIds],
 	});
 
 	const [settings] = await db
@@ -130,7 +131,7 @@ async function updateShopSettingsRoute(request: NextRequest) {
 		data: {
 			settings,
 		},
-		message: "Configuracoes da loja digital atualizadas com sucesso.",
+		message: "Configurações da loja digital atualizadas com sucesso.",
 	});
 }
 export type TUpdateShopSettingsOutput = Awaited<ReturnType<typeof updateShopSettingsRoute>> extends NextResponse<infer T> ? T : never;

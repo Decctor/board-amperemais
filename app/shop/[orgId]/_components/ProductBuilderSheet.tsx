@@ -25,7 +25,8 @@ type SelectedModifier = {
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 export default function ProductBuilderSheet({ product, onClose }: ProductBuilderSheetProps) {
-	const { orderState } = useShop();
+	const { catalog, orderState } = useShop();
+	const isOpen = catalog.disponibilidade.status === "ABERTA";
 
 	const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 	const [selectedModifiers, setSelectedModifiers] = useState<SelectedModifier[]>([]);
@@ -121,7 +122,7 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 		);
 	};
 
-	const isAddable = canAddToCart();
+	const isAddable = isOpen && canAddToCart();
 
 	const handleAddToCart = () => {
 		if (!isAddable) return;
@@ -140,7 +141,11 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 	};
 
 	const headerImage = selectedVariant?.imagemCapaUrl ?? product.imagemCapaUrl;
-	const blockedHint = hasVariants && !selectedVariantId ? "Escolha uma variante para continuar" : "Complete as seleções obrigatórias para continuar";
+	const blockedHint = !isOpen
+		? "A loja está fechada. Consulte as opções e volte durante o horário de atendimento."
+		: hasVariants && !selectedVariantId
+			? "Escolha uma variante para continuar"
+			: "Complete as seleções obrigatórias para continuar";
 
 	return (
 		<Drawer open onOpenChange={(open) => !open && onClose()}>

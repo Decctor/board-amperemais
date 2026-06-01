@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatToMoney } from "@/lib/formatting";
 import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
@@ -12,6 +11,7 @@ import { useShop } from "./ShopProvider";
 export default function CartSheet() {
 	const { catalog, orderState, isCartOpen, setIsCartOpen, setIsCheckoutOpen } = useShop();
 	const { items } = orderState.state.cart;
+	const isOpen = catalog.disponibilidade.status === "ABERTA";
 
 	const cartItemsWithDetails = useMemo(() => {
 		return items
@@ -76,7 +76,7 @@ export default function CartSheet() {
 						<ShoppingCart className="w-5 h-5" />
 						CARRINHO
 					</DrawerTitle>
-					<DrawerDescription>{itemCount === 0 ? "Seu carrinho esta vazio" : `${itemCount} ${itemCount === 1 ? "item" : "itens"}`}</DrawerDescription>
+					<DrawerDescription>{itemCount === 0 ? "Seu carrinho está vazio" : `${itemCount} ${itemCount === 1 ? "item" : "itens"}`}</DrawerDescription>
 				</DrawerHeader>
 
 				{itemCount === 0 ? (
@@ -129,6 +129,7 @@ export default function CartSheet() {
 																	orderState.updateItemQuantity(item.tempId!, item.quantidade - 1);
 																}
 															}}
+															disabled={!isOpen}
 														>
 															{item.quantidade <= 1 ? <Trash2 className="w-3.5 h-3.5 text-red-500" /> : <Minus className="w-3.5 h-3.5" />}
 														</Button>
@@ -138,6 +139,7 @@ export default function CartSheet() {
 															variant="ghost"
 															className="h-7 w-7 rounded-lg"
 															onClick={() => orderState.updateItemQuantity(item.tempId!, item.quantidade + 1)}
+															disabled={!isOpen}
 														>
 															<Plus className="w-3.5 h-3.5" />
 														</Button>
@@ -153,12 +155,15 @@ export default function CartSheet() {
 						</div>
 
 						<div className="p-4 border-t flex flex-col gap-3">
+							{!isOpen ? (
+								<p className="text-sm text-muted-foreground">Seu carrinho está salvo. Volte durante o horário de atendimento para finalizar o pedido.</p>
+							) : null}
 							<div className="flex items-center justify-between">
 								<span className="font-semibold">SUBTOTAL</span>
 								<span className="text-xl font-black text-primary">{formatToMoney(subtotal)}</span>
 							</div>
 
-							<Button variant="brand" className="flex items-center gap-1.5 w-full h-12 rounded-xl font-bold" onClick={handleCheckout}>
+							<Button variant="brand" className="flex items-center gap-1.5 w-full h-12 rounded-xl font-bold" onClick={handleCheckout} disabled={!isOpen}>
 								<ShoppingCart className="h-4 w-4" />
 								FINALIZAR PEDIDO
 							</Button>

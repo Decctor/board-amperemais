@@ -19,6 +19,7 @@ export function useShopCatalog({ orgId }: { orgId: string }) {
 			queryKey,
 			queryFn: () => fetchShopCatalog(orgId),
 			enabled: !!orgId,
+			refetchInterval: 60_000,
 		}),
 		queryKey,
 	};

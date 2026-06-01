@@ -61,7 +61,7 @@ export default function ShopShareCard({ organizationId, shopQrCode, isActive }: 
 			</div>
 
 			{!isActive && (
-				<p className="text-xs text-amber-600 dark:text-amber-400 text-center">Sua loja esta inativa. Ative para que os clientes possam acessar.</p>
+				<p className="text-xs text-amber-600 dark:text-amber-400 text-center">Sua loja está inativa. Ative para que os clientes possam acessar.</p>
 			)}
 		</SectionWrapper>
 	);

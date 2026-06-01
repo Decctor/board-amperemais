@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getMostOrderedShopProductIds, getShopCatalogProducts, orderProductsByIds } from "@/lib/shop/catalog";
+import { getShopAvailability } from "@/lib/shop/availability";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
@@ -32,14 +33,15 @@ async function getShopCatalog(request: NextRequest) {
 			corSecundariaForeground: true,
 		},
 	});
-	if (!organization) throw new createHttpError.NotFound("Organizacao nao encontrada.");
+	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
 
 	const settings = await db.query.shopSettings.findFirst({
 		where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
 	});
-	if (!settings || !settings.ativo) throw new createHttpError.NotFound("Loja digital indisponivel.");
+	if (!settings || !settings.ativo) throw new createHttpError.NotFound("Loja digital indisponível.");
 
 	const configuracoes = normalizeShopSettingsConfiguration(settings.configuracoes);
+	const availability = getShopAvailability({ ativo: settings.ativo, configuracoes });
 	const [cashbackProgram, catalogProducts, mostOrderedIds] = await Promise.all([
 		db.query.cashbackPrograms.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
@@ -59,16 +61,15 @@ async function getShopCatalog(request: NextRequest) {
 		a.localeCompare(b, "pt-BR"),
 	);
 
-	const featuredProducts = orderProductsByIds(catalogProducts, configuracoes.produtosEmDestaqueIds);
+	const featuredProducts = orderProductsByIds(catalogProducts, configuracoes.produtos.destaqueIds);
 	const mostOrderedProducts = orderProductsByIds(catalogProducts, mostOrderedIds);
 
-	const blocks = configuracoes.blocosComposicao
+	const blocks = configuracoes.aparencia.blocos
 		.filter((block) => block.ativo)
 		.toSorted((a, b) => a.ordem - b.ordem)
 		.map((block) => ({
 			...block,
-			produtos:
-				block.tipo === "EM_DESTAQUE" ? featuredProducts : block.tipo === "MAIS_PEDIDOS" ? mostOrderedProducts : [],
+			produtos: block.tipo === "EM_DESTAQUE" ? featuredProducts : block.tipo === "MAIS_PEDIDOS" ? mostOrderedProducts : [],
 			grupos: block.tipo === "GRUPOS_PRODUTOS" ? groups : [],
 		}));
 
@@ -83,11 +84,15 @@ async function getShopCatalog(request: NextRequest) {
 				configuracoes,
 			},
 			cashbackProgram,
+			disponibilidade: {
+				...availability,
+				proximaAbertura: availability.proximaAbertura?.toISOString() ?? null,
+			},
 			groups,
 			products: catalogProducts,
 			blocks,
 		},
-		message: "Catalogo carregado com sucesso.",
+		message: "Catálogo carregado com sucesso.",
 	});
 }
 export type TGetShopCatalogOutput = Awaited<ReturnType<typeof getShopCatalog>> extends NextResponse<infer T> ? T : never;

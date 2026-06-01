@@ -22,7 +22,7 @@ export default function ShopOrdersQueue() {
 						<ShoppingBag className="w-4 h-4" />
 						Pedidos pendentes
 					</CardTitle>
-					<CardDescription>Pedidos aguardando confirmacao</CardDescription>
+					<CardDescription>Pedidos aguardando confirmação</CardDescription>
 				</div>
 				<Button variant="ghost" size="icon" onClick={() => refetch()} disabled={isRefetching}>
 					<RefreshCw className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
@@ -43,10 +43,7 @@ export default function ShopOrdersQueue() {
 					<ScrollArea className="h-[300px]">
 						<div className="flex flex-col gap-3 pr-4">
 							{data.orders.map((order) => (
-								<div
-									key={order.id}
-									className="flex flex-col gap-2 p-3 rounded-xl border bg-card hover:bg-accent/50 transition-colors"
-								>
+								<div key={order.id} className="flex flex-col gap-2 p-3 rounded-xl border bg-card hover:bg-accent/50 transition-colors">
 									<div className="flex items-center justify-between">
 										<span className="font-bold text-sm">{order.idExterno}</span>
 										<Badge variant="outline" className="text-xs gap-1">
@@ -67,19 +64,19 @@ export default function ShopOrdersQueue() {
 									<div className="flex items-center justify-between text-sm">
 										<div className="flex flex-col">
 											<span className="font-medium">{order.cliente?.nome || "Cliente"}</span>
-											<span className="text-xs text-muted-foreground">
-												{order.cliente?.telefone ? formatToPhone(order.cliente.telefone) : "-"}
-											</span>
+											<span className="text-xs text-muted-foreground">{order.cliente?.telefone ? formatToPhone(order.cliente.telefone) : "-"}</span>
 										</div>
 										<span className="font-bold text-primary">{formatToMoney(order.valorTotal)}</span>
 									</div>
 
 									<div className="flex items-center justify-between">
 										<span className="text-xs text-muted-foreground">
-											{formatDistanceToNow(new Date(order.dataInsercao), {
-												addSuffix: true,
-												locale: ptBR,
-											})}
+											{order.criadoEm
+												? formatDistanceToNow(new Date(order.criadoEm), {
+														addSuffix: true,
+														locale: ptBR,
+													})
+												: "Pedido recente"}
 										</span>
 										<Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" asChild>
 											<Link href={`/dashboard/commercial/sales/checkout/${order.id}`}>

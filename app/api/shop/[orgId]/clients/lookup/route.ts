@@ -7,8 +7,8 @@ import z from "zod";
 
 const ShopClientLookupInputSchema = z.object({
 	telefone: z.string({
-		required_error: "Telefone nao informado.",
-		invalid_type_error: "Tipo nao valido para telefone.",
+		required_error: "Telefone não informado.",
+		invalid_type_error: "Tipo não válido para telefone.",
 	}),
 });
 export type TShopClientLookupInput = z.infer<typeof ShopClientLookupInputSchema>;
@@ -22,7 +22,7 @@ async function lookupShopClient(request: NextRequest) {
 	const body = await request.json();
 	const input = ShopClientLookupInputSchema.parse(body);
 	const telefoneBase = formatPhoneAsBase(input.telefone);
-	if (!telefoneBase) throw new createHttpError.BadRequest("Telefone invalido.");
+	if (!telefoneBase) throw new createHttpError.BadRequest("Telefone inválido.");
 
 	const client = await db.query.clients.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.telefoneBase, telefoneBase)),
@@ -60,7 +60,7 @@ async function lookupShopClient(request: NextRequest) {
 		data: {
 			client: client ?? null,
 		},
-		message: client ? "Cliente encontrado com sucesso." : "Cliente nao encontrado.",
+		message: client ? "Cliente encontrado com sucesso." : "Cliente não encontrado.",
 	});
 }
 export type TShopClientLookupOutput = Awaited<ReturnType<typeof lookupShopClient>> extends NextResponse<infer T> ? T : never;

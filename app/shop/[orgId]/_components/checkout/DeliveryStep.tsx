@@ -1,19 +1,18 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ArrowRight, MapPin, Package, Truck } from "lucide-react";
 import { useEffect } from "react";
 import { useShop } from "../ShopProvider";
 import { TUseShopOrderState } from "@/state-hooks/use-shop-order-state";
 import TextInput from "@/components/Inputs/TextInput";
-import { formatToCEP } from "@/lib/formatting";
+import { formatToCEP, formatToMoney } from "@/lib/formatting";
 import SelectInput from "@/components/Inputs/SelectInput";
 import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/states-cities";
 import { toast } from "sonner";
 import { getCEPInfo } from "@/lib/utils";
+import { getShopCartSubtotal } from "@/lib/shop/cart";
 
 type DeliveryStepProps = {
 	onNext: () => void;
@@ -23,9 +22,11 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 	const { catalog, orderState } = useShop();
 	const { delivery } = orderState.state;
 	const config = catalog.shopSettings.configuracoes;
+	const service = config.atendimento;
+	const subtotal = getShopCartSubtotal(orderState.state.cart.items, catalog.products);
 
-	const onlyPickup = config.aceitaRetirada && !config.aceitaEntrega;
-	const onlyDelivery = !config.aceitaRetirada && config.aceitaEntrega;
+	const onlyPickup = service.retirada.ativo && !service.entrega.ativo;
+	const onlyDelivery = !service.retirada.ativo && service.entrega.ativo;
 
 	useEffect(() => {
 		if (onlyPickup) {
@@ -56,13 +57,15 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 	};
 
 	const isDelivery = delivery.modalidade === "ENTREGA";
+	const deliveryMinimumReached = !isDelivery || subtotal >= service.entrega.pedidoMinimo;
 
 	const canProceed =
 		delivery.modalidade === "RETIRADA" ||
 		(delivery.modalidade === "ENTREGA" &&
 			delivery.endereco?.localizacaoLogradouro &&
 			delivery.endereco?.localizacaoNumero &&
-			delivery.endereco?.localizacaoCidade);
+			delivery.endereco?.localizacaoCidade &&
+			deliveryMinimumReached);
 
 	const orgLocation = [
 		catalog.organization.localizacaoLogradouro,
@@ -76,7 +79,7 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 
 	return (
 		<div className="flex flex-col gap-6">
-			{config.aceitaRetirada && config.aceitaEntrega && (
+			{service.retirada.ativo && service.entrega.ativo && (
 				<div className="grid grid-cols-2 gap-3">
 					<button
 						type="button"
@@ -100,6 +103,7 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 					>
 						<Truck className={cn("w-6 h-6", delivery.modalidade === "ENTREGA" ? "text-primary" : "text-muted-foreground")} />
 						<span className={cn("font-semibold", delivery.modalidade === "ENTREGA" && "text-primary")}>ENTREGA</span>
+						<span className="text-xs text-muted-foreground">Até {service.entrega.prazoMinutos} min</span>
 					</button>
 				</div>
 			)}
@@ -108,13 +112,16 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 				<div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50 border">
 					<MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
 					<div>
-						<p className="font-semibold text-sm">ENDERECO PARA RETIRADA</p>
+						<p className="font-semibold text-sm">ENDEREÇO PARA RETIRADA</p>
 						<p className="text-sm text-muted-foreground mt-1">{orgLocation}</p>
 					</div>
 				</div>
 			)}
 
 			{isDelivery && <DeliveryAddressForm deliveryAddress={delivery.endereco} updateDelivery={orderState.updateDelivery} />}
+			{isDelivery && !deliveryMinimumReached ? (
+				<p className="text-sm font-medium text-destructive">O pedido mínimo para entrega é {formatToMoney(service.entrega.pedidoMinimo)}.</p>
+			) : null}
 
 			<Button
 				variant="brand"
@@ -161,7 +168,7 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 
 	return (
 		<div className="flex flex-col gap-4 p-4 rounded-xl bg-muted/50 border">
-			<p className="text-sm font-semibold">ENDERECO DE ENTREGA</p>
+			<p className="text-sm font-semibold">ENDEREÇO DE ENTREGA</p>
 			<div className="w-full flex flex-col gap-3">
 				<div className="w-full flex items-center flex-col lg:flex-row gap-3">
 					<div className="w-full lg:w-1/3">
@@ -207,7 +214,7 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 							label="Bairro"
 							placeholder="Preencha aqui o bairro do endereço de entrega..."
 							value={deliveryAddress?.localizacaoBairro || ""}
-							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoLogradouro: value } })}
+							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoBairro: value } })}
 							width="100%"
 						/>
 					</div>
@@ -216,7 +223,7 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 							label="Logradouro"
 							placeholder="Preencha aqui o logradouro do endereço de entrega..."
 							value={deliveryAddress?.localizacaoLogradouro || ""}
-							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoBairro: value } })}
+							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoLogradouro: value } })}
 							width="100%"
 						/>
 					</div>

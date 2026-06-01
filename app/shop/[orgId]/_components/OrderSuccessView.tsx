@@ -48,12 +48,12 @@ export default function OrderSuccessView() {
 
 					<h1 className="text-2xl font-black mb-2">Pedido enviado!</h1>
 					<p className="text-muted-foreground mb-6">
-						Seu pedido foi recebido e esta aguardando confirmacao da loja.
+						Seu pedido foi recebido e está aguardando confirmação da loja.
 					</p>
 
 					{lastOrder && (
 						<div className="w-full p-4 rounded-xl bg-primary/5 border border-primary/20 mb-6">
-							<p className="text-sm text-muted-foreground">Numero do pedido</p>
+							<p className="text-sm text-muted-foreground">Número do pedido</p>
 							<p className="text-xl font-black text-primary">{lastOrder.orderNumber}</p>
 						</div>
 					)}
@@ -71,8 +71,8 @@ export default function OrderSuccessView() {
 								</p>
 								<p className="text-xs text-muted-foreground">
 									{delivery.modalidade === "RETIRADA"
-										? "Aguarde a confirmacao para retirar seu pedido."
-										: "Seu pedido sera entregue no endereco informado."}
+										? "Aguarde a confirmação para retirar seu pedido."
+										: "Seu pedido será entregue no endereço informado."}
 								</p>
 							</div>
 						</div>
@@ -98,7 +98,7 @@ export default function OrderSuccessView() {
 							className="w-full h-12 rounded-xl font-bold"
 							onClick={handleBackToCatalog}
 						>
-							Voltar ao {shopSettings.modo === "CARDAPIO" ? "cardapio" : "catalogo"}
+							Voltar ao {shopSettings.modo === "CARDAPIO" ? "cardápio" : "catálogo"}
 						</Button>
 					</div>
 				</div>
