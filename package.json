@@ -20,6 +20,7 @@
 		"test:weekly-quota-recurrent": "tsx ./utils/scripts/test-recurrent-campaign-weekly-quota.ts",
 		"test:nuvemshop-fetch": "tsx ./utils/scripts/test-nuvemshop-fetch.ts",
 		"sync:nuvemshop-manual": "tsx ./utils/scripts/sync-nuvemshop-manual-collecting.ts",
+		"sync:organization-manual": "tsx ./utils/scripts/sync-organization-manual-collecting.ts",
 		"marketing-agent:run": "tsx ./scripts/run-marketing-agent.ts",
 		"marketing-agent:test": "tsx ./scripts/test-marketing-agent.ts"
 	},

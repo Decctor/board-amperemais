@@ -10,12 +10,24 @@ import { resolveCampaignAudiences } from "./campaign-audiences";
 import { processDataCollectingV2Effects } from "./effects";
 import { syncAuxiliaryEntities } from "./sync-auxiliary-entities";
 import { syncSales } from "./sync-sales";
-import type { TCampaignWithAudienceRelations, TDataCollectingV2RunError, TDataCollectingV2RunSummary } from "./types";
+import type {
+	TCampaignWithAudienceRelations,
+	TDataCollectingV2EffectsOptions,
+	TDataCollectingV2RunError,
+	TDataCollectingV2RunSummary,
+} from "./types";
 
 export type TRunDataCollectingV2Params = {
 	organizationIds?: string[];
 	window?: TCanonicalImportWindow;
 	processImmediateInteractions?: boolean;
+	effects?: Partial<TDataCollectingV2EffectsOptions>;
+};
+
+const DEFAULT_EFFECTS_OPTIONS: TDataCollectingV2EffectsOptions = {
+	processCashback: true,
+	processCampaigns: true,
+	processConversionAttribution: true,
 };
 
 function getDefaultImportWindow(): TCanonicalImportWindow {
@@ -117,13 +129,15 @@ async function processOrganization({
 	organizationId,
 	config,
 	window,
+	effects,
 }: {
 	organizationId: string;
 	config: NonNullable<Awaited<ReturnType<typeof loadOrganizations>>[number]["integracaoConfiguracao"]>;
 	window: TCanonicalImportWindow;
+	effects: TDataCollectingV2EffectsOptions;
 }) {
 	const batch = await fetchConnectorImportBatch({ organizationId, config, window });
-	const campaignsForOrganization = await loadCampaigns(organizationId);
+	const campaignsForOrganization = effects.processCampaigns ? await loadCampaigns(organizationId) : [];
 	let immediateProcessingDataList: ImmediateProcessingData[] = [];
 
 	const summary = await db.transaction(async (tx): Promise<TDataCollectingV2RunSummary> => {
@@ -131,17 +145,20 @@ async function processOrganization({
 		const persistedSales = await syncSales({ tx, batch, context: auxiliaryContext });
 		// Audiences are resolved once from the post-sync state. Keep audience filters independent
 		// from client metrics mutated by this batch; per-sale trigger counters live in persistedSales.
-		const audiencesByCampaignId = await resolveCampaignAudiences({
-			tx,
-			organizationId,
-			campaigns: campaignsForOrganization,
-		});
+		const audiencesByCampaignId = effects.processCampaigns
+			? await resolveCampaignAudiences({
+					tx,
+					organizationId,
+					campaigns: campaignsForOrganization,
+				})
+			: new Map<string, Set<string>>();
 		const effectsResult = await processDataCollectingV2Effects({
 			tx,
 			organizationId,
 			campaigns: campaignsForOrganization,
 			audiencesByCampaignId,
 			persistedSales,
+			options: effects,
 		});
 
 		immediateProcessingDataList = effectsResult.immediateProcessingDataList;
@@ -175,7 +192,9 @@ export async function runDataCollectingV2({
 	organizationIds,
 	window = getDefaultImportWindow(),
 	processImmediateInteractions = true,
+	effects: effectsOverrides,
 }: TRunDataCollectingV2Params = {}) {
+	const effects = { ...DEFAULT_EFFECTS_OPTIONS, ...effectsOverrides };
 	const organizationsForImport = await loadOrganizations(organizationIds);
 	const organizationsById = new Map(organizationsForImport.map((organization) => [organization.id, organization]));
 	const summaries: TDataCollectingV2RunSummary[] = [];
@@ -191,13 +210,17 @@ export async function runDataCollectingV2({
 				organizationId: organization.id,
 				config: organization.integracaoConfiguracao,
 				window,
+				effects,
 			});
 			console.log(`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Summary`, summary);
 			summaries.push(summary);
 			allImmediateProcessingData.push(...immediateProcessingDataList);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Erro desconhecido ao processar organização.";
-			console.error(`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Integration ${organization.integracaoTipo} failed`, serializeDataCollectingError(error));
+			console.error(
+				`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Integration ${organization.integracaoTipo} failed`,
+				serializeDataCollectingError(error),
+			);
 			errors.push({
 				organizationId: organization.id,
 				integrationType: organization.integracaoTipo,

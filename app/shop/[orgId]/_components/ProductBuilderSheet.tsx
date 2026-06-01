@@ -1,14 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatToMoney } from "@/lib/formatting";
 import type { TShopCatalogProduct } from "@/lib/shop/catalog";
 import { cn } from "@/lib/utils";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Check, Minus, Plus } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -24,6 +21,8 @@ type SelectedModifier = {
 	opcaoId: string;
 	quantidade: number;
 };
+
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 export default function ProductBuilderSheet({ product, onClose }: ProductBuilderSheetProps) {
 	const { orderState } = useShop();
@@ -76,12 +75,13 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 
 		for (const reference of availableReferences) {
 			const grupo = reference.grupo;
-			if (grupo.minOpcoes > 0) {
-				const selectedFromGroup = selectedModifiers.filter((sm) => grupo.opcoes.some((o) => o.id === sm.opcaoId));
-				const totalQuantity = selectedFromGroup.reduce((sum, sm) => sum + sm.quantidade, 0);
-				if (totalQuantity < grupo.minOpcoes) {
-					return false;
-				}
+			const selectedFromGroup = selectedModifiers.filter((sm) => grupo.opcoes.some((o) => o.id === sm.opcaoId));
+			const totalQuantity = selectedFromGroup.reduce((sum, sm) => sum + sm.quantidade, 0);
+			if (grupo.minOpcoes > 0 && totalQuantity < grupo.minOpcoes) {
+				return false;
+			}
+			if (grupo.maxOpcoes >= 1 && totalQuantity > grupo.maxOpcoes) {
+				return false;
 			}
 		}
 
@@ -117,12 +117,14 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 					}
 					return m;
 				})
-				.filter((m) => m.quantidade > 0)
+				.filter((m) => m.quantidade > 0),
 		);
 	};
 
+	const isAddable = canAddToCart();
+
 	const handleAddToCart = () => {
-		if (!canAddToCart()) return;
+		if (!isAddable) return;
 
 		orderState.addItem({
 			tempId: crypto.randomUUID(),
@@ -137,231 +139,320 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 		onClose();
 	};
 
+	const headerImage = selectedVariant?.imagemCapaUrl ?? product.imagemCapaUrl;
+	const blockedHint = hasVariants && !selectedVariantId ? "Escolha uma variante para continuar" : "Complete as seleções obrigatórias para continuar";
+
 	return (
 		<Drawer open onOpenChange={(open) => !open && onClose()}>
-			<DrawerContent className="max-h-[90vh]">
-				<DrawerHeader className="text-left">
-					<DrawerTitle className="text-lg font-black">{product.descricao}</DrawerTitle>
-					<DrawerDescription>Configure as opcoes do produto</DrawerDescription>
-				</DrawerHeader>
+			<DrawerContent className="max-h-[92vh]">
+				<MotionConfig reducedMotion="user">
+					<DrawerHeader className="text-left">
+						<DrawerTitle className="text-lg font-black tracking-tight">{product.descricao}</DrawerTitle>
+						<DrawerDescription>Monte do seu jeito</DrawerDescription>
+					</DrawerHeader>
 
-				<ScrollArea className="flex-1 overflow-auto px-4">
-					<div className="flex flex-col gap-6 pb-4">
-						{product.imagemCapaUrl && (
-							<div className="relative w-full h-48 rounded-xl overflow-hidden bg-muted">
-								<Image
-									src={
-										selectedVariantId
-											? (product.variantes.find((v) => v.id === selectedVariantId)?.imagemCapaUrl ?? product.imagemCapaUrl)
-											: product.imagemCapaUrl
-									}
-									alt={product.descricao}
-									fill
-									className="object-cover"
-								/>
+					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-7 overflow-auto px-1 pb-2">
+						{headerImage && (
+							<div className="relative h-44 w-full overflow-hidden rounded-2xl bg-muted shadow-sm">
+								<Image src={headerImage} alt={product.descricao} fill className="object-cover" />
 							</div>
 						)}
 
 						{hasVariants && (
-							<div className="flex flex-col gap-3">
-								<h3 className="font-black text-sm uppercase tracking-wide">Escolha a variante</h3>
-								<div className="flex flex-wrap gap-2">
+							<section className="flex flex-col gap-3">
+								<GroupHeading
+									title="Escolha a variante"
+									hint="Escolha 1"
+									required={!selectedVariantId}
+									satisfied={!!selectedVariantId}
+									count={selectedVariantId ? 1 : 0}
+									total={1}
+								/>
+								<div className="flex flex-col gap-2">
 									{product.variantes.map((variant) => (
-										<Button
+										<OptionTile
 											key={variant.id}
-											variant={selectedVariantId === variant.id ? "default" : "outline"}
-											onClick={() => setSelectedVariantId(variant.id)}
-											className={cn(
-												"h-auto py-3 px-4 rounded-xl flex flex-col items-center gap-1",
-												selectedVariantId === variant.id && "ring-2 ring-primary"
-											)}
-										>
-											<span className="font-bold text-sm">{variant.nome}</span>
-											<span className="text-xs font-black">{formatToMoney(variant.precoVenda)}</span>
-											{selectedVariantId === variant.id && <Check className="w-4 h-4" />}
-										</Button>
+											image={variant.imagemCapaUrl}
+											name={variant.nome}
+											price={variant.precoVenda}
+											priceMode="absolute"
+											selected={selectedVariantId === variant.id}
+											control="radio"
+											onToggle={() => setSelectedVariantId(variant.id)}
+										/>
 									))}
 								</div>
-							</div>
+							</section>
 						)}
 
-						{hasAddOns && (
-							<div className="flex flex-col gap-4">
-								{availableReferences.map((reference) => {
-									const grupo = reference.grupo;
-									const isRequired = grupo.minOpcoes > 0;
-									const isRadioStyle = grupo.maxOpcoes === 1;
+						{hasAddOns &&
+							availableReferences.map((reference) => {
+								const grupo = reference.grupo;
+								const isRequired = grupo.minOpcoes > 0;
+								const isSingle = grupo.maxOpcoes === 1;
 
-									const selectedFromGroup = selectedModifiers.filter((sm) =>
-										grupo.opcoes.some((o) => o.id === sm.opcaoId)
-									);
-									const isSatisfied =
-										selectedFromGroup.reduce((sum, sm) => sum + sm.quantidade, 0) >= grupo.minOpcoes;
+								const selectedFromGroup = selectedModifiers.filter((sm) => grupo.opcoes.some((o) => o.id === sm.opcaoId));
+								const selectedCount = selectedFromGroup.reduce((sum, sm) => sum + sm.quantidade, 0);
+								const isSatisfied = selectedCount >= grupo.minOpcoes;
+								const groupFull = grupo.maxOpcoes >= 1 && selectedCount >= grupo.maxOpcoes;
 
-									return (
-										<div
-											key={reference.produtoAddOnId}
-											className={cn(
-												"border rounded-xl p-4 transition-colors",
-												isRequired && !isSatisfied
-													? "border-red-300 bg-red-50/50 dark:bg-red-950/20"
-													: "border-border"
-											)}
-										>
-											<div className="flex items-center justify-between mb-3">
-												<h4 className="font-bold text-sm">
-													{grupo.nome}
-													{isRequired && <span className="text-red-500 ml-1">*</span>}
-												</h4>
-												<span className="text-xs text-muted-foreground">
-													{isRadioStyle
-														? "Escolha 1"
-														: grupo.maxOpcoes > 1
-															? `Ate ${grupo.maxOpcoes}`
-															: "Multipla escolha"}
-												</span>
-											</div>
+								const hint = isSingle ? "Escolha 1" : grupo.maxOpcoes > 1 ? `Escolha até ${grupo.maxOpcoes}` : "Quantas quiser";
 
-											<div className="flex flex-col gap-2">
-												{isRadioStyle ? (
-													<RadioGroup value={selectedFromGroup[0]?.opcaoId ?? ""}>
-														{grupo.opcoes.map((option) => {
-															const isSelected = selectedModifiers.some((m) => m.opcaoId === option.id);
-															return (
-																<div key={option.id} className="flex items-center space-x-2">
-																	<RadioGroupItem
-																		value={option.id}
-																		id={option.id}
-																		onClick={() => toggleModifier(option.id, grupo.maxOpcoes)}
-																		checked={isSelected}
-																	/>
-																	<Label
-																		htmlFor={option.id}
-																		className="flex-1 flex justify-between cursor-pointer py-2"
-																	>
-																		<span className="font-medium">{option.nome}</span>
-																		{option.precoDelta !== 0 && (
-																			<span className="text-sm font-bold text-primary">
-																				+{formatToMoney(option.precoDelta)}
-																			</span>
-																		)}
-																	</Label>
-																</div>
-															);
-														})}
-													</RadioGroup>
-												) : (
-													<div className="flex flex-col gap-2">
-														{grupo.opcoes.map((option) => {
-															const selected = selectedModifiers.find((m) => m.opcaoId === option.id);
-															const isSelected = !!selected;
-															const maxQty = option.maxQtdePorItem ?? 1;
+								return (
+									<section key={reference.produtoAddOnId} className="flex flex-col gap-3">
+										<GroupHeading title={grupo.nome} hint={hint} required={isRequired} satisfied={isSatisfied} count={selectedCount} total={grupo.maxOpcoes} />
+										<div className="flex flex-col gap-2">
+											{grupo.opcoes.map((option) => {
+												const selected = selectedModifiers.find((m) => m.opcaoId === option.id);
+												const maxQty = option.maxQtdePorItem ?? 1;
+												const optionImage = option.produto?.imagemCapaUrl ?? option.produtoVariante?.imagemCapaUrl ?? null;
+												const control = isSingle ? "radio" : maxQty > 1 ? "quantity" : "checkbox";
 
-															return (
-																<div key={option.id} className="flex items-center justify-between py-2">
-																	<div className="flex items-center gap-2 flex-1">
-																		<Checkbox
-																			id={option.id}
-																			checked={isSelected}
-																			onCheckedChange={() => toggleModifier(option.id, grupo.maxOpcoes)}
-																		/>
-																		<Label htmlFor={option.id} className="cursor-pointer font-medium">
-																			{option.nome}
-																		</Label>
-																		{option.precoDelta !== 0 && (
-																			<span className="text-sm font-bold text-primary">
-																				+{formatToMoney(option.precoDelta)}
-																			</span>
-																		)}
-																	</div>
-
-																	{isSelected && maxQty > 1 && (
-																		<div className="flex items-center gap-2">
-																			<Button
-																				size="icon"
-																				variant="outline"
-																				className="h-7 w-7 rounded-lg"
-																				onClick={() => updateModifierQuantity(option.id, -1)}
-																				disabled={!selected || selected.quantidade <= 1}
-																			>
-																				<Minus className="w-3 h-3" />
-																			</Button>
-																			<span className="w-6 text-center font-bold text-sm">
-																				{selected?.quantidade ?? 1}
-																			</span>
-																			<Button
-																				size="icon"
-																				variant="outline"
-																				className="h-7 w-7 rounded-lg"
-																				onClick={() => updateModifierQuantity(option.id, 1)}
-																				disabled={!selected || selected.quantidade >= maxQty}
-																			>
-																				<Plus className="w-3 h-3" />
-																			</Button>
-																		</div>
-																	)}
-																</div>
-															);
-														})}
-													</div>
-												)}
-											</div>
+												return (
+													<OptionTile
+														key={option.id}
+														image={optionImage}
+														name={option.nome}
+														price={option.precoDelta}
+														priceMode="delta"
+														selected={!!selected}
+														control={control}
+														groupFull={groupFull}
+														onToggle={() => toggleModifier(option.id, grupo.maxOpcoes)}
+														quantity={selected?.quantidade ?? 1}
+														maxQty={maxQty}
+														onIncrement={() => (selected ? updateModifierQuantity(option.id, 1) : toggleModifier(option.id, grupo.maxOpcoes))}
+														onDecrement={() => updateModifierQuantity(option.id, -1)}
+													/>
+												);
+											})}
 										</div>
-									);
-								})}
-							</div>
-						)}
-
-						<div className="flex flex-col gap-4 border-t pt-4">
-							<div className="flex items-center justify-between">
-								<span className="font-bold text-sm">Quantidade</span>
-								<div className="flex items-center gap-3">
-									<Button
-										size="icon"
-										variant="outline"
-										className="h-9 w-9 rounded-lg"
-										onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-									>
-										<Minus className="w-4 h-4" />
-									</Button>
-									<span className="w-10 text-center font-black text-lg">{quantity}</span>
-									<Button
-										size="icon"
-										variant="outline"
-										className="h-9 w-9 rounded-lg"
-										onClick={() => setQuantity((q) => q + 1)}
-									>
-										<Plus className="w-4 h-4" />
-									</Button>
-								</div>
-							</div>
-
-							<div className="bg-primary/10 rounded-xl p-4 flex items-center justify-between">
-								<span className="font-bold text-sm uppercase tracking-wide">Total</span>
-								<span className="text-xl font-black text-primary">{formatToMoney(getFinalPrice())}</span>
-							</div>
-
-							{!canAddToCart() && (
-								<p className="text-xs text-red-500 font-medium text-center">
-									{!selectedVariantId && hasVariants
-										? "Selecione uma variante"
-										: "Complete as selecoes obrigatorias (*) para continuar"}
-								</p>
-							)}
-						</div>
+									</section>
+								);
+							})}
 					</div>
-				</ScrollArea>
 
-				<div className="p-4 border-t">
-					<Button
-						className="w-full h-12 rounded-xl font-bold"
-						onClick={handleAddToCart}
-						disabled={!canAddToCart()}
-					>
-						Adicionar ao carrinho
-					</Button>
-				</div>
+					<div className="mt-2 flex shrink-0 flex-col gap-3 border-t pt-4">
+						<div className="flex items-center justify-between">
+							<span className="text-sm font-bold">Quantidade</span>
+							<Stepper
+								value={quantity}
+								onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
+								onIncrement={() => setQuantity((q) => q + 1)}
+								decrementDisabled={quantity <= 1}
+							/>
+						</div>
+
+						{!isAddable && <p className="text-center text-xs font-medium text-muted-foreground">{blockedHint}</p>}
+
+						<Button
+							className="h-14 w-full rounded-xl text-base font-bold transition-transform active:scale-[0.99]"
+							onClick={handleAddToCart}
+							disabled={!isAddable}
+						>
+							<span>ADICIONAR AO CARRINHO</span>
+							<span className="ml-auto overflow-hidden">
+								<motion.span
+									key={getFinalPrice()}
+									initial={{ opacity: 0, y: 8 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.25, ease: EASE_OUT }}
+									className="inline-block font-black"
+								>
+									{formatToMoney(getFinalPrice())}
+								</motion.span>
+							</span>
+						</Button>
+					</div>
+				</MotionConfig>
 			</DrawerContent>
 		</Drawer>
+	);
+}
+
+type GroupHeadingProps = {
+	title: string;
+	hint: string;
+	required: boolean;
+	satisfied: boolean;
+	count: number;
+	total: number;
+};
+
+function GroupHeading({ title, hint, required, satisfied, count, total }: GroupHeadingProps) {
+	const atMax = count >= total;
+	const counterClass = atMax ? "bg-primary text-primary-foreground" : count > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground";
+
+	return (
+		<div className="flex items-center justify-between gap-3">
+			<div className="flex flex-col gap-0.5">
+				<h3 className="text-sm font-black tracking-tight">{title}</h3>
+				<span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{hint}</span>
+			</div>
+			<div className="flex shrink-0 items-center gap-2">
+				{total >= 1 && (
+					<span
+						className={cn("rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums transition-colors", counterClass)}
+					>{`${count} / ${total}`}</span>
+				)}
+				{required && !satisfied && <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground">Obrigatório</span>}
+			</div>
+		</div>
+	);
+}
+
+type OptionControl = "radio" | "checkbox" | "quantity";
+
+type OptionTileProps = {
+	image: string | null;
+	name: string;
+	price: number;
+	priceMode: "absolute" | "delta";
+	selected: boolean;
+	control: OptionControl;
+	groupFull?: boolean;
+	onToggle: () => void;
+	quantity?: number;
+	maxQty?: number;
+	onIncrement?: () => void;
+	onDecrement?: () => void;
+};
+
+function OptionTile({
+	image,
+	name,
+	price,
+	priceMode,
+	selected,
+	control,
+	groupFull = false,
+	onToggle,
+	quantity = 1,
+	maxQty = 1,
+	onIncrement,
+	onDecrement,
+}: OptionTileProps) {
+	const quantityActive = control === "quantity" && selected;
+	const showPrice = priceMode === "absolute" || price !== 0;
+	const priceLabel = priceMode === "absolute" ? formatToMoney(price) : `+ ${formatToMoney(price)}`;
+	const addDisabled = control !== "radio" && groupFull && !selected;
+
+	const media = image ? (
+		<div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+			<Image src={image} alt={name} fill className="object-cover" />
+		</div>
+	) : (
+		<div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted">
+			<span className="text-lg font-black text-muted-foreground/40">{name.charAt(0).toUpperCase()}</span>
+		</div>
+	);
+
+	const text = (
+		<div className="flex min-w-0 flex-1 flex-col">
+			<span className="truncate text-sm font-semibold">{name}</span>
+			{showPrice && <span className="text-xs font-bold text-primary">{priceLabel}</span>}
+		</div>
+	);
+
+	const indicator =
+		control === "quantity" ? (
+			<span className="flex size-7 shrink-0 items-center justify-center rounded-lg border-2 border-muted-foreground/30 text-muted-foreground">
+				<Plus className="size-4" />
+			</span>
+		) : (
+			<SelectionIndicator selected={selected} shape={control === "radio" ? "circle" : "square"} />
+		);
+
+	return (
+		<div
+			className={cn(
+				"flex items-center gap-3 rounded-xl border p-2.5 transition-all duration-200",
+				selected ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/30" : "border-border",
+				addDisabled && "opacity-50",
+			)}
+		>
+			{quantityActive ? (
+				<div className="flex min-w-0 flex-1 items-center gap-3">
+					{media}
+					{text}
+				</div>
+			) : (
+				<button
+					type="button"
+					onClick={control === "quantity" ? onIncrement : onToggle}
+					aria-pressed={selected}
+					disabled={addDisabled}
+					className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-not-allowed"
+				>
+					{media}
+					{text}
+					{indicator}
+				</button>
+			)}
+
+			{quantityActive && (
+				<Stepper
+					value={quantity}
+					onDecrement={onDecrement}
+					onIncrement={onIncrement}
+					decrementDisabled={false}
+					incrementDisabled={quantity >= maxQty || groupFull}
+					size="sm"
+				/>
+			)}
+		</div>
+	);
+}
+
+function SelectionIndicator({ selected, shape }: { selected: boolean; shape: "circle" | "square" }) {
+	return (
+		<span
+			className={cn(
+				"flex size-6 shrink-0 items-center justify-center border-2 transition-colors",
+				shape === "circle" ? "rounded-full" : "rounded-md",
+				selected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30",
+			)}
+		>
+			<AnimatePresence>
+				{selected && (
+					<motion.span
+						initial={{ scale: 0 }}
+						animate={{ scale: 1 }}
+						exit={{ scale: 0 }}
+						transition={{ type: "spring", stiffness: 500, damping: 28 }}
+						className="flex"
+					>
+						<Check className="size-3.5" strokeWidth={3} />
+					</motion.span>
+				)}
+			</AnimatePresence>
+		</span>
+	);
+}
+
+type StepperProps = {
+	value: number;
+	onIncrement?: () => void;
+	onDecrement?: () => void;
+	incrementDisabled?: boolean;
+	decrementDisabled?: boolean;
+	size?: "sm" | "default";
+};
+
+function Stepper({ value, onIncrement, onDecrement, incrementDisabled, decrementDisabled, size = "default" }: StepperProps) {
+	const btn = size === "sm" ? "size-7 rounded-lg" : "size-9 rounded-lg";
+	const icon = size === "sm" ? "size-3" : "size-4";
+	const valueWidth = size === "sm" ? "w-6 text-sm" : "w-10 text-lg";
+
+	return (
+		<div className="flex items-center gap-2">
+			<Button size="icon" variant="outline" className={btn} onClick={onDecrement} disabled={decrementDisabled}>
+				<Minus className={icon} />
+			</Button>
+			<span className={cn("text-center font-black tabular-nums", valueWidth)}>{value}</span>
+			<Button size="icon" variant="outline" className={btn} onClick={onIncrement} disabled={incrementDisabled}>
+				<Plus className={icon} />
+			</Button>
+		</div>
 	);
 }

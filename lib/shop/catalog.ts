@@ -57,6 +57,10 @@ export async function getShopCatalogProducts({
 									opcoes: {
 										where: (fields, { eq }) => eq(fields.ativo, true),
 										orderBy: (fields, { asc }) => asc(fields.nome),
+										with: {
+											produto: { columns: { imagemCapaUrl: true } },
+											produtoVariante: { columns: { imagemCapaUrl: true } },
+										},
 									},
 								},
 							},
@@ -73,6 +77,10 @@ export async function getShopCatalogProducts({
 							opcoes: {
 								where: (fields, { eq }) => eq(fields.ativo, true),
 								orderBy: (fields, { asc }) => asc(fields.nome),
+								with: {
+									produto: { columns: { imagemCapaUrl: true } },
+									produtoVariante: { columns: { imagemCapaUrl: true } },
+								},
 							},
 						},
 					},

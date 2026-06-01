@@ -9,7 +9,7 @@ import { cashbackProgramBalances, cashbackPrograms, clients, interactions } from
 import dayjs from "dayjs";
 import { and, eq, gt } from "drizzle-orm";
 import { campaignAudienceHasClient } from "./campaign-audiences";
-import type { TCampaignWithAudienceRelations, TDataCollectingV2Executor, TPersistedSaleForEffects } from "./types";
+import type { TCampaignWithAudienceRelations, TDataCollectingV2EffectsOptions, TDataCollectingV2Executor, TPersistedSaleForEffects } from "./types";
 
 type TProcessEffectsResult = {
 	createdInteractionsCount: number;
@@ -132,10 +132,7 @@ async function pushImmediateProcessingDataIfNeeded({
 	metadata: Record<string, unknown>;
 	immediateProcessingDataList: ImmediateProcessingData[];
 }) {
-	if (
-		campaign.execucaoAgendadaValor !== 0 ||
-		!campaign.whatsappTemplate
-	) {
+	if (campaign.execucaoAgendadaValor !== 0 || !campaign.whatsappTemplate) {
 		return false;
 	}
 
@@ -227,12 +224,14 @@ export async function processDataCollectingV2Effects({
 	campaigns,
 	audiencesByCampaignId,
 	persistedSales,
+	options,
 }: {
 	tx: TDataCollectingV2Executor;
 	organizationId: string;
 	campaigns: TCampaignWithAudienceRelations[];
 	audiencesByCampaignId: Map<string, Set<string>>;
 	persistedSales: TPersistedSaleForEffects[];
+	options: TDataCollectingV2EffectsOptions;
 }): Promise<TProcessEffectsResult> {
 	const immediateProcessingDataList: ImmediateProcessingData[] = [];
 	let createdInteractionsCount = 0;
@@ -242,19 +241,21 @@ export async function processDataCollectingV2Effects({
 	let firstPurchaseInteractionsCount = 0;
 	let cashbackAccumulationInteractionsCount = 0;
 
-	const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
-		where: eq(cashbackPrograms.organizacaoId, organizationId),
-		columns: {
-			id: true,
-			ativo: true,
-			acumuloTipo: true,
-			acumuloValor: true,
-			acumuloValorParceiro: true,
-			acumuloRegraValorMinimo: true,
-			expiracaoRegraValidadeValor: true,
-			acumuloPermitirViaIntegracao: true,
-		},
-	});
+	const cashbackProgram = options.processCashback
+		? await tx.query.cashbackPrograms.findFirst({
+				where: eq(cashbackPrograms.organizacaoId, organizationId),
+				columns: {
+					id: true,
+					ativo: true,
+					acumuloTipo: true,
+					acumuloValor: true,
+					acumuloValorParceiro: true,
+					acumuloRegraValorMinimo: true,
+					expiracaoRegraValidadeValor: true,
+					acumuloPermitirViaIntegracao: true,
+				},
+			})
+		: undefined;
 	const existingBalances = cashbackProgram
 		? await tx.query.cashbackProgramBalances.findMany({
 				where: and(eq(cashbackProgramBalances.organizacaoId, organizationId), eq(cashbackProgramBalances.programaId, cashbackProgram.id)),
@@ -271,7 +272,7 @@ export async function processDataCollectingV2Effects({
 	for (const persistedSale of persistedSales) {
 		let saleCashbackAccumulation: TSaleCashbackAccumulation | null = null;
 
-		if (persistedSale.isNewSale && persistedSale.sale.isValidSale && persistedSale.clientId) {
+		if (options.processConversionAttribution && persistedSale.isNewSale && persistedSale.sale.isValidSale && persistedSale.clientId) {
 			await processConversionAttribution(tx, {
 				vendaId: persistedSale.id,
 				clienteId: persistedSale.clientId,
@@ -281,7 +282,7 @@ export async function processDataCollectingV2Effects({
 			});
 		}
 
-		if (persistedSale.previouslyValid && persistedSale.nowCanceled && persistedSale.clientId) {
+		if (options.processCashback && persistedSale.previouslyValid && persistedSale.nowCanceled && persistedSale.clientId) {
 			await reverseSaleCashback({
 				tx,
 				saleId: persistedSale.id,
