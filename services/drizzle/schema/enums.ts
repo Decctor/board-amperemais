@@ -156,7 +156,7 @@ export const bankAccountTypeEnum = pgEnum("bank_account_type", ["CORRENTE", "POU
 
 export const financialTransactionTypeEnum = pgEnum("financial_transaction_type", ["ENTRADA", "SAIDA"]);
 
-export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_type", ["VENDA", "MANUAL", "ESTORNO"]);
+export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_type", ["VENDA", "MANUAL", "ESTORNO", "TRANSFERENCIA"]);
 
 export const fiscalDocumentTypeEnum = pgEnum("fiscal_document_type", ["NFCE", "NFE", "NFSE"]);
 

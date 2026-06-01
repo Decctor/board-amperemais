@@ -64,6 +64,7 @@ import {
 	X,
 	XCircle,
 	XCircleIcon,
+	ArrowRight,
 } from "lucide-react";
 
 export const InternalActivityTypeOptions: { id: number; label: string; value: TInternalLeadActivityTypeEnum; icon: React.ReactNode }[] = [
@@ -663,6 +664,16 @@ export const AccountingEntryOriginTypeOptions: {
 		colors: {
 			text: "text-red-600",
 			background: "bg-red-200",
+		},
+	},
+	{
+		id: 4,
+		label: "TRANSFERÊNCIA",
+		value: "TRANSFERENCIA",
+		icon: <ArrowRight className="w-4 h-4" />,
+		colors: {
+			text: "text-blue-600",
+			background: "bg-blue-200",
 		},
 	},
 ];

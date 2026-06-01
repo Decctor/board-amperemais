@@ -196,6 +196,12 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS: TOrganizationDefaults 
 				creditoContaId: null,
 				creditoContaKey: null,
 			},
+			transferencias: {
+				debitoContaId: null,
+				debitoContaKey: null,
+				creditoContaId: null,
+				creditoContaKey: null,
+			},
 		},
 	},
 	pagamentos: {

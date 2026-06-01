@@ -1,5 +1,4 @@
 import type { TAttributionModelEnum } from "@/schemas/enums";
-import type { TCampaignFilters } from "@/schemas/campaigns";
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { messageTemplates, newTable, users, whatsappConnectionPhones } from ".";
@@ -44,9 +43,6 @@ export const campaigns = newTable("campaigns", {
 
 	// specific for "VALOR-TOTAL-COMPRAS"
 	gatilhoValorTotalCompras: doublePrecision("gatilho_valor_total_compras"), // defines the minimum required all-time total purchase value for trigger to fire
-	// specific for "USO-UNICO"
-	gatilhoUsoUnicoDataReferencia: text("gatilho_uso_unico_data_referencia"), // YYYY-MM-DD in the interactions cron timezone
-
 	// specific for "USO-UNICO"
 	gatilhoUsoUnicoDataReferencia: text("gatilho_uso_unico_data_referencia"), // YYYY-MM-DD in the interactions cron timezone
 

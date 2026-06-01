@@ -6,6 +6,10 @@ import type {
 	TUpdateAccountingEntryOutput,
 } from "@/app/api/finances/accounting-entries/route";
 import type { TUpdateFinancialTransactionInput, TUpdateFinancialTransactionOutput } from "@/app/api/finances/financial-transactions/route";
+import type {
+	TCreateFinancialTransferInput,
+	TCreateFinancialTransferOutput,
+} from "@/app/api/finances/financial-transactions/transfer/route";
 import axios from "axios";
 
 export async function effectFinancialTransaction(input: TEffectFinancialTransactionInput) {
@@ -15,6 +19,11 @@ export async function effectFinancialTransaction(input: TEffectFinancialTransact
 
 export async function updateFinancialTransaction(input: TUpdateFinancialTransactionInput) {
 	const { data } = await axios.put<TUpdateFinancialTransactionOutput>(`/api/finances/financial-transactions`, input);
+	return data;
+}
+
+export async function createFinancialTransfer(input: TCreateFinancialTransferInput) {
+	const { data } = await axios.post<TCreateFinancialTransferOutput>(`/api/finances/financial-transactions/transfer`, input);
 	return data;
 }
 

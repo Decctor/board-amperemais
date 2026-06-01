@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Clock, DollarSign, ListFilter, Pencil, Wallet } from "lucide-react";
+import { AlertCircle, ArrowRight, ArrowRightLeft, CalendarDays, CheckCircle2, Clock, DollarSign, ListFilter, Pencil, Wallet } from "lucide-react";
 import type { TGetFinancialTransactionsOutputDefault } from "@/app/api/finances/financial-transactions/route";
 import FinancialTransactionMenu from "@/components/Modals/Finances/FinancialTransactionMenu";
+import NewFinancialTransfer from "@/components/Modals/Finances/NewFinancialTransfer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -27,6 +28,7 @@ const TRANSACTION_STATUS_OPTIONS = [
 
 export default function FinancesTransactionsView() {
 	const [viewingTransactionId, setViewingTransactionId] = useState<string | null>(null);
+	const [isCreatingTransfer, setIsCreatingTransfer] = useState(false);
 	const { data, isLoading, isError, isSuccess, error, filters, updateFilters } = useFinancesTransactions({
 		initialFilters: { page: 1, search: "" },
 	});
@@ -54,12 +56,18 @@ export default function FinancesTransactionsView() {
 
 	return (
 		<div className="flex w-full flex-col gap-3">
-			<Input
-				value={filters.search}
-				placeholder="Pesquisar movimentação..."
-				onChange={(e) => updateFilters({ search: e.target.value, page: 1 })}
-				className="grow rounded-xl"
-			/>
+			<div className="flex flex-col gap-2 sm:flex-row">
+				<Input
+					value={filters.search}
+					placeholder="Pesquisar movimentação..."
+					onChange={(e) => updateFilters({ search: e.target.value, page: 1 })}
+					className="grow rounded-xl"
+				/>
+				<Button type="button" onClick={() => setIsCreatingTransfer(true)} className="flex shrink-0 items-center gap-1.5">
+					<ArrowRightLeft className="h-4 w-4" />
+					NOVA TRANSFERÊNCIA
+				</Button>
+			</div>
 			<div className="flex flex-col gap-3 justify-end lg:flex-row lg:items-end">
 				<InteractiveFilter.Root className="w-fit">
 					<InteractiveFilter.Trigger>
@@ -196,6 +204,7 @@ export default function FinancesTransactionsView() {
 			) : null}
 
 			{viewingTransactionId ? <FinancialTransactionMenu transactionId={viewingTransactionId} closeMenu={() => setViewingTransactionId(null)} /> : null}
+			{isCreatingTransfer ? <NewFinancialTransfer closeMenu={() => setIsCreatingTransfer(false)} /> : null}
 		</div>
 	);
 }
