@@ -14,6 +14,7 @@ export function useOrganizationMembershipInvitationState() {
 				},
 				resultados: {
 					visualizar: true,
+					visualizarSensiveis: true,
 					criarMetas: true,
 					visualizarMetas: true,
 					editarMetas: true,
@@ -43,6 +44,12 @@ export function useOrganizationMembershipInvitationState() {
 					iniciar: true,
 					responder: true,
 					finalizar: true,
+				},
+				fiscal: {
+					visualizar: false,
+					configurar: false,
+					emitir: false,
+					cancelar: false,
 				},
 			},
 		},

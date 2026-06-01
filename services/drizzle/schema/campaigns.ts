@@ -43,7 +43,6 @@ export const campaigns = newTable("campaigns", {
 
 	// specific for "VALOR-TOTAL-COMPRAS"
 	gatilhoValorTotalCompras: doublePrecision("gatilho_valor_total_compras"), // defines the minimum required all-time total purchase value for trigger to fire
-
 	// specific for "USO-UNICO"
 	gatilhoUsoUnicoDataReferencia: text("gatilho_uso_unico_data_referencia"), // YYYY-MM-DD in the interactions cron timezone
 
@@ -70,7 +69,6 @@ export const campaigns = newTable("campaigns", {
 	autorId: varchar("autor_id", { length: 255 })
 		.references(() => users.id)
 		.notNull(),
-
 	filtros: jsonb("filtros").$type<TCampaignFilters>(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 

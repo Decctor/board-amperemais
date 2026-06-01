@@ -1,13 +1,15 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
+import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
 import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
 import { db, type DBTransaction } from "@/services/drizzle";
 import {
 	productAddOnOptions,
 	productAddOnReferences,
 	productAddOns,
+	productFiscalProfiles,
 	productStockTransactions,
 	productVariants,
 	products,
@@ -145,49 +147,6 @@ type GetProductsParams = {
 	session: TAuthUserSession;
 };
 
-function mapOptionToState(
-	option: typeof productAddOnOptions.$inferSelect & {
-		produto: typeof products.$inferSelect | null;
-		produtoVariante: typeof productVariants.$inferSelect | null;
-	},
-) {
-	return {
-		id: option.id,
-		nome: option.nome,
-		codigo: option.codigo ?? "",
-		produtoId: option.produtoId ?? null,
-		produtoVarianteId: option.produtoVarianteId ?? null,
-		quantidadeConsumo: option.quantidadeConsumo,
-		precoDelta: option.precoDelta,
-		maxQtdePorItem: option.maxQtdePorItem ?? 1,
-		ativo: option.ativo ?? true,
-		produtoConsumo: option.produtoVariante?.nome ?? option.produto?.descricao ?? null,
-	};
-}
-
-function mapAddOnReferenceToState(
-	reference: typeof productAddOnReferences.$inferSelect & {
-		grupo: typeof productAddOns.$inferSelect & {
-			opcoes: Array<
-				typeof productAddOnOptions.$inferSelect & {
-					produto: typeof products.$inferSelect | null;
-					produtoVariante: typeof productVariants.$inferSelect | null;
-				}
-			>;
-		};
-	},
-) {
-	return {
-		id: reference.grupo.id,
-		nome: reference.grupo.nome,
-		internoNome: reference.grupo.internoNome ?? "",
-		minOpcoes: reference.grupo.minOpcoes,
-		maxOpcoes: reference.grupo.maxOpcoes,
-		ativo: reference.grupo.ativo ?? true,
-		opcoes: reference.grupo.opcoes.map(mapOptionToState),
-	};
-}
-
 function normalizeAddOnOptionLink<
 	T extends {
 		produtoConsumo?: string | null;
@@ -239,10 +198,7 @@ async function validateAndResolveAddOnOptionLink({
 
 	if (normalizedOption.produtoVarianteId) {
 		const variant = await tx.query.productVariants.findFirst({
-			where: and(
-				eq(productVariants.id, normalizedOption.produtoVarianteId),
-				eq(productVariants.organizacaoId, userOrgId),
-			),
+			where: and(eq(productVariants.id, normalizedOption.produtoVarianteId), eq(productVariants.organizacaoId, userOrgId)),
 			columns: {
 				id: true,
 				produtoId: true,
@@ -312,6 +268,9 @@ async function getProducts({ input, session }: GetProductsParams) {
 							},
 							orderBy: (fields, { asc }) => asc(fields.ordem),
 						},
+						perfisFiscais: {
+							where: (fields, { eq }) => eq(fields.ativo, true),
+						},
 					},
 				},
 				addOnsReferencias: {
@@ -332,48 +291,16 @@ async function getProducts({ input, session }: GetProductsParams) {
 					},
 					orderBy: (fields, { asc }) => asc(fields.ordem),
 				},
+				perfisFiscais: {
+					where: (fields, { eq }) => eq(fields.ativo, true),
+				},
 			},
 		});
 		if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
 
 		return {
 			data: {
-				byId: {
-					product: {
-						descricao: product.descricao,
-						imagemCapaUrl: product.imagemCapaUrl,
-						codigo: product.codigo,
-						unidade: product.unidade,
-						ncm: product.ncm,
-						tipo: product.tipo,
-						grupo: product.grupo,
-						rastreamentoEstoqueAtivo: product.rastreamentoEstoqueAtivo ?? false,
-						quantidade: product.quantidade,
-						precoVenda: product.precoVenda,
-						precoCusto: product.precoCusto,
-						imagemCapaHolder: {
-							file: null,
-							previewUrl: product.imagemCapaUrl,
-						},
-					},
-					productVariants: product.variantes.map((variant) => ({
-						id: variant.id,
-						nome: variant.nome,
-						codigo: variant.codigo ?? "",
-						imagemCapaUrl: variant.imagemCapaUrl,
-						precoVenda: variant.precoVenda,
-						precoCusto: variant.precoCusto ?? 0,
-						quantidade: variant.quantidade ?? 0,
-						ativo: variant.ativo ?? true,
-						rastreamentoEstoqueAtivo: variant.rastreamentoEstoqueAtivo ?? false,
-						imagemCapaHolder: {
-							file: null,
-							previewUrl: variant.imagemCapaUrl,
-						},
-						addOns: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo).map(mapAddOnReferenceToState),
-					})),
-					productAddOns: product.addOnsReferencias.filter((reference) => reference.grupo.ativo).map(mapAddOnReferenceToState),
-				},
+				byId: product,
 				default: undefined,
 			},
 		};
@@ -668,12 +595,32 @@ const UpdateProductAddOnInputSchema = ProductAddOnSchema.omit({ organizacaoId: t
 			.nullable(),
 	});
 
+const UpdateProductFiscalProfileInputSchema = ProductFiscalProfileSchema.omit({
+	organizacaoId: true,
+	produtoId: true,
+	produtoVarianteId: true,
+}).extend({
+	id: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID do perfil fiscal.",
+		})
+		.optional()
+		.nullable(),
+	deletar: z
+		.boolean({
+			invalid_type_error: "Tipo não válido para deletar perfil fiscal.",
+		})
+		.optional()
+		.nullable(),
+});
+
 const UpdateProductVariantInputSchema = ProductVariantSchema.omit({
 	organizacaoId: true,
 	produtoId: true,
 }).extend({
 	imagemCapaUrl: z.string().optional().nullable(),
 	addOns: z.array(UpdateProductAddOnInputSchema),
+	perfisFiscais: z.array(UpdateProductFiscalProfileInputSchema),
 	id: z
 		.string({
 			invalid_type_error: "Tipo não válido para ID da variante.",
@@ -696,11 +643,13 @@ const UpdateProductInputSchema = z.object({
 	product: ProductSchema.omit({ organizacaoId: true }),
 	productVariants: z.array(UpdateProductVariantInputSchema),
 	productAddOns: z.array(UpdateProductAddOnInputSchema),
+	productFiscalProfiles: z.array(UpdateProductFiscalProfileInputSchema),
 });
 export type TUpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
 
 type TUpdateProductAddOnInput = z.infer<typeof UpdateProductAddOnInputSchema>;
 type TUpdateProductAddOnOptionInput = z.infer<typeof UpdateProductAddOnOptionInputSchema>;
+type TUpdateProductFiscalProfileInput = z.infer<typeof UpdateProductFiscalProfileInputSchema>;
 
 async function upsertProductAddOnOptions({
 	tx,
@@ -719,11 +668,7 @@ async function upsertProductAddOnOptions({
 				.update(productAddOnOptions)
 				.set({ ativo: false })
 				.where(
-					and(
-						eq(productAddOnOptions.id, option.id),
-						eq(productAddOnOptions.produtoAddOnId, addOnId),
-						eq(productAddOnOptions.organizacaoId, userOrgId),
-					),
+					and(eq(productAddOnOptions.id, option.id), eq(productAddOnOptions.produtoAddOnId, addOnId), eq(productAddOnOptions.organizacaoId, userOrgId)),
 				);
 			continue;
 		}
@@ -860,9 +805,75 @@ async function upsertScopedProductAddOn({
 	return createdAddOn.id;
 }
 
+async function upsertScopedProductFiscalProfiles({
+	tx,
+	userOrgId,
+	userHasFiscalConfigurePermission,
+	productId,
+	variantId,
+	profiles,
+}: {
+	tx: DBTransaction;
+	userOrgId: string;
+	userHasFiscalConfigurePermission: boolean;
+	productId: string;
+	variantId?: string | null;
+	profiles: TUpdateProductFiscalProfileInput[];
+}) {
+	for (const profile of profiles) {
+		const scopedWhereClause = and(
+			eq(productFiscalProfiles.organizacaoId, userOrgId),
+			eq(productFiscalProfiles.produtoId, productId),
+			variantId ? eq(productFiscalProfiles.produtoVarianteId, variantId) : isNull(productFiscalProfiles.produtoVarianteId),
+			profile.id ? eq(productFiscalProfiles.id, profile.id) : undefined,
+		);
+
+		if (profile.id && profile.deletar) {
+			if (!userHasFiscalConfigurePermission) {
+				console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
+				continue;
+			}
+			await tx.update(productFiscalProfiles).set({ ativo: false }).where(scopedWhereClause);
+			continue;
+		}
+
+		const profileValues = {
+			origemMercadoria: profile.origemMercadoria,
+			ncm: profile.ncm,
+			cest: profile.cest,
+			cfopPadrao: profile.cfopPadrao,
+			unidadeComercial: profile.unidadeComercial,
+			codigoBeneficioFiscal: profile.codigoBeneficioFiscal,
+			ativo: profile.ativo,
+		};
+
+		if (profile.id) {
+			if (!userHasFiscalConfigurePermission) {
+				console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
+				continue;
+			}
+			await tx.update(productFiscalProfiles).set(profileValues).where(scopedWhereClause);
+			continue;
+		}
+
+		if (!userHasFiscalConfigurePermission) {
+			console.warn("[WARN] [UPSERT SCOPED PRODUCT FISCAL PROFILES] User does not have permission to configure fiscal profiles.");
+			continue;
+		}
+		await tx.insert(productFiscalProfiles).values({
+			organizacaoId: userOrgId,
+			produtoId: productId,
+			produtoVarianteId: variantId ?? null,
+			...profileValues,
+		});
+	}
+}
+
 async function updateProduct({ session, input }: { session: TAuthUserSession; input: TUpdateProductInput }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const userMembership = session.membership;
+	if (!userMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const userOrgId = userMembership.organizacao.id;
+	const userHasFiscalConfigurePermission = userMembership.permissoes.fiscal.configurar;
 
 	const product = await db.query.products.findFirst({
 		where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
@@ -892,16 +903,29 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 			throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar produto.");
 		}
 
+		await upsertScopedProductFiscalProfiles({
+			tx,
+			userOrgId,
+			userHasFiscalConfigurePermission,
+			productId: input.productId,
+			variantId: null,
+			profiles: input.productFiscalProfiles,
+		});
+
 		for (const variant of input.productVariants) {
 			if (variant.id && variant.deletar) {
 				await tx
 					.update(productVariants)
 					.set({ ativo: false })
+					.where(and(eq(productVariants.id, variant.id), eq(productVariants.produtoId, input.productId), eq(productVariants.organizacaoId, userOrgId)));
+				await tx
+					.update(productFiscalProfiles)
+					.set({ ativo: false })
 					.where(
 						and(
-							eq(productVariants.id, variant.id),
-							eq(productVariants.produtoId, input.productId),
-							eq(productVariants.organizacaoId, userOrgId),
+							eq(productFiscalProfiles.organizacaoId, userOrgId),
+							eq(productFiscalProfiles.produtoId, input.productId),
+							eq(productFiscalProfiles.produtoVarianteId, variant.id),
 						),
 					);
 				continue;
@@ -922,13 +946,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 						rastreamentoEstoqueAtivo: variant.rastreamentoEstoqueAtivo,
 						ativo: variant.ativo,
 					})
-					.where(
-						and(
-							eq(productVariants.id, variantId),
-							eq(productVariants.produtoId, input.productId),
-							eq(productVariants.organizacaoId, userOrgId),
-						),
-					);
+					.where(and(eq(productVariants.id, variantId), eq(productVariants.produtoId, input.productId), eq(productVariants.organizacaoId, userOrgId)));
 			} else {
 				const [createdVariant] = await tx
 					.insert(productVariants)
@@ -963,6 +981,8 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 					addOn,
 				});
 			}
+
+			// Variants inherit the product-level fiscal profile.
 		}
 
 		for (const [addOnIndex, addOn] of input.productAddOns.entries()) {
@@ -1016,19 +1036,23 @@ const CreateProductVariantInputSchema = ProductVariantSchema.omit({
 }).extend({
 	imagemCapaUrl: z.string().optional().nullable(),
 	addOns: z.array(CreateProductAddOnInputSchema),
+	perfisFiscais: z.array(ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true })),
 });
 
 const CreateProductInputSchema = z.object({
 	product: ProductSchema.omit({ organizacaoId: true }),
 	productVariants: z.array(CreateProductVariantInputSchema),
 	productAddOns: z.array(CreateProductAddOnInputSchema),
+	productFiscalProfiles: z.array(ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true })),
 });
 
 export type TCreateProductInput = z.infer<typeof CreateProductInputSchema>;
 
 async function createProduct({ session, input }: { session: TAuthUserSession; input: TCreateProductInput }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const userMembership = session.membership;
+	if (!userMembership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const userOrgId = userMembership.organizacao.id;
+	const userHasFiscalConfigurePermission = userMembership.permissoes.fiscal.configurar;
 
 	console.log("[INFO] [CREATE PRODUCT] Input:", JSON.stringify(input, null, 2));
 
@@ -1069,6 +1093,20 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 				motivo: "Inicialização do estoque",
 				tipo: "AJUSTE",
 				operadorId: session.user.id,
+			});
+		}
+
+		const willCreateAnyFiscalProfiles = input.productFiscalProfiles.length > 0;
+		if (willCreateAnyFiscalProfiles && !userHasFiscalConfigurePermission) {
+			console.warn("[WARN] [CREATE PRODUCT] User does not have permission to configure fiscal profiles.");
+			throw new createHttpError.Forbidden("Você não possui permissão para configurar perfis fiscais.");
+		}
+		for (const profile of input.productFiscalProfiles) {
+			await tx.insert(productFiscalProfiles).values({
+				organizacaoId: userOrgId,
+				produtoId: productId,
+				produtoVarianteId: null,
+				...profile,
 			});
 		}
 
@@ -1153,6 +1191,8 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 					produtoVarianteId: createdVariant.id,
 				});
 			}
+
+			// Variants inherit the product-level fiscal profile.
 		}
 
 		// 3. Create product add-ons (at product level) and link them

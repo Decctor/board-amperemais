@@ -1,5 +1,6 @@
 import z from "zod";
 import { DefaultDataSourceEnum, OrganizationIntegrationTypeEnum } from "./enums";
+import { OrganizationFiscalConfigSchema } from "./fiscal";
 import { PaymentEffectivenessTypeEnum } from "@/lib/payments/schemas";
 
 export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", [
@@ -86,6 +87,19 @@ export const OrganizationDefaultsSchema = z.object({
 				creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de compras." }).nullable(),
 				creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de compras." }).nullable(),
 			}),
+			transferencias: z
+				.object({
+					debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de transferências." }).nullable(),
+					debitoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito padrão de transferências." }).nullable(),
+					creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de transferências." }).nullable(),
+					creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de transferências." }).nullable(),
+				})
+				.default({
+					debitoContaId: null,
+					debitoContaKey: null,
+					creditoContaId: null,
+					creditoContaKey: null,
+				}),
 		}),
 	}),
 	pagamentos: z.object({
@@ -260,6 +274,13 @@ export const OrganizationSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	fiscalProvedor: z.enum(["MANUAL", "NUVEM_FISCAL"]).optional().nullable(),
+	fiscalEmissaoAutomatica: z
+		.boolean({
+			invalid_type_error: "Tipo nao valido para a emissao automatica fiscal.",
+		})
+		.default(false),
+	fiscalConfiguracao: OrganizationFiscalConfigSchema.optional().nullable(),
 
 	// Others
 	periodoTesteInicio: z
@@ -315,6 +336,7 @@ export const OrganizationSchema = z.object({
 		.default(new Date().toISOString())
 		.transform((val) => new Date(val)),
 });
+export type TOrganizationFiscalConfig = z.infer<typeof OrganizationFiscalConfigSchema>;
 
 export const OrganizationMemberPermissionsSchema = z.object({
 	empresa: z.object({
@@ -415,6 +437,24 @@ export const OrganizationMemberPermissionsSchema = z.object({
 		excluir: z.boolean({
 			required_error: "Permissão de exclusão de compras não informada.",
 			invalid_type_error: "Tipo não válido para a permissão de exclusão de compras.",
+		}),
+	}),
+	fiscal: z.object({
+		visualizar: z.boolean({
+			required_error: "Permissão de visualização de documentos fiscais não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de visualização de documentos fiscais.",
+		}),
+		configurar: z.boolean({
+			required_error: "Permissão de configuração de documentos fiscais não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de configuração de documentos fiscais.",
+		}),
+		emitir: z.boolean({
+			required_error: "Permissão de emissão de documentos fiscais não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de emissão de documentos fiscais.",
+		}),
+		cancelar: z.boolean({
+			required_error: "Permissão de cancelamento de documentos fiscais não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de cancelamento de documentos fiscais.",
 		}),
 	}),
 	atendimentos: z.object({

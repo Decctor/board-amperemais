@@ -3,6 +3,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import type { TUserSession } from "@/schemas/users";
 import {
 	BadgePercent,
+	BookText,
 	CirclePlay,
 	Goal,
 	Grid3X3,
@@ -12,6 +13,7 @@ import {
 	MessageCircle,
 	Package,
 	ShoppingCart,
+	Store,
 	Tag,
 	UserRound,
 	Users,
@@ -134,6 +136,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				items: null,
 				checkAccess: () => true,
 			},
+			{
+				title: "Loja Digital",
+				url: "/dashboard/commercial/shop",
+				icon: <Store className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+			},
 		],
 	},
 
@@ -163,6 +172,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				title: "Financeiro",
 				url: "/dashboard/operational/finances",
 				icon: <Wallet className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+			},
+			{
+				title: "Fiscal",
+				url: "/dashboard/operational/fiscal",
+				icon: <BookText className="w-4 h-4" />,
 				items: null,
 				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
 			},

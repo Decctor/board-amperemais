@@ -6,7 +6,7 @@ import { cashbackProgramTransactions } from "./cashback-programs";
 import { clientLocations, clients } from "./clients";
 import { newTable } from "./common";
 import { deliveryModeEnum, saleProcessingSourceEnum, saleStatusEnum } from "./enums";
-import { accountingEntries, fiscalDocuments } from "./financial";
+import { accountingEntries, fiscalOutboundDocuments } from "./financial";
 import { interactions } from "./interactions";
 import { organizations } from "./organizations";
 import { partners } from "./partners";
@@ -113,7 +113,7 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 	}),
 	// ERP back-relations
 	lancamentosContabeis: many(accountingEntries),
-	documentosFiscais: many(fiscalDocuments),
+	documentosFiscais: many(fiscalOutboundDocuments),
 	movimentacoesEstoque: many(productStockTransactions),
 }));
 

@@ -66,6 +66,28 @@ export const PurchaseSchema = z.object({
 });
 export type TPurchase = z.infer<typeof PurchaseSchema>;
 
+export function refinePurchaseStatusAndDeliveryDate(
+	data: { status?: unknown; entregaDataRecebimentoEfetivacao?: unknown },
+	ctx: z.RefinementCtx,
+) {
+	const isReceived = data.status === "RECEBIDA";
+	const hasReceiptDate = !!data.entregaDataRecebimentoEfetivacao;
+	if (isReceived && !hasReceiptDate) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Compras com status RECEBIDA precisam ter a data de recebimento informada.",
+			path: ["entregaDataRecebimentoEfetivacao"],
+		});
+	}
+	if (!isReceived && hasReceiptDate) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Data de recebimento só pode ser preenchida quando o status for RECEBIDA.",
+			path: ["entregaDataRecebimentoEfetivacao"],
+		});
+	}
+}
+
 export const PurchaseItemSchema = z.object({
 	organizacaoId: z.string({
 		required_error: "ID da organização não informado.",

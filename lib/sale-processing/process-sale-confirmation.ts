@@ -1,5 +1,9 @@
+import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
-import { getFiscalProvider } from "@/lib/fiscal";
+import { getErrorMessage } from "@/lib/errors";
+import { enqueueFiscalDocument } from "@/lib/fiscal/documents";
+import { resolveEmissionDocumentType } from "@/lib/fiscal/document-type";
+import { notifyFiscalEmissionFailure } from "@/lib/fiscal/notifications";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, sales } from "@/services/drizzle/schema";
@@ -20,45 +24,49 @@ type ProcessSaleConfirmationInput = {
 	saleCashbackProgramId?: string | null;
 	saleCashbackRedemptionValue?: number;
 
-	// Accounting entry target accounts (must be configured per organization)
 	accountingEntryDebitAccountId: string;
 	accountingEntryCreditAccountId: string;
 };
 
-/**
- * Orchestrator for confirming a sale (ORCAMENTO → CONFIRMADA).
- *
- * Steps (transactional):
- * 1. Update sale status to CONFIRMADA
- * 2. Create accounting entry
- * 3. Deduct stock
- *
- * Steps (post-transaction):
- * 4. Process payments via provider → creates financial transactions
- * 5. Apply cashback redemption (when requested)
- * 6. Fiscal emission if org has automatic emission enabled
- */
+type FiscalEmissionResult =
+	| {
+			status: "NAO_SOLICITADO";
+			documentoId: null;
+			error: null;
+	  }
+	| {
+			status: "SOLICITADO";
+			documentoId: string;
+			statusInterno: string;
+			error: null;
+	  }
+	| {
+			status: "ERRO";
+			documentoId: null;
+			error: string;
+	  };
+
 export async function processSaleConfirmation(input: ProcessSaleConfirmationInput) {
-	// Load the sale with its items
 	const sale = await db.query.sales.findFirst({
 		where: (fields, { eq }) => eq(fields.id, input.saleId),
 		with: {
-			itens: true,
+			itens: {
+				with: {
+					adicionais: true,
+				},
+			},
 		},
 	});
 
 	if (!sale) {
-		throw new createHttpError.NotFound("Venda não encontrada.");
+		throw new createHttpError.NotFound("Venda nao encontrada.");
 	}
 
 	if (sale.status !== "ORCAMENTO") {
-		throw new createHttpError.BadRequest(`Venda não pode ser confirmada no status atual: ${sale.status}`);
+		throw new createHttpError.BadRequest(`Venda nao pode ser confirmada no status atual: ${sale.status}`);
 	}
 
-	// Transactional processing
 	const transactionResult = await db.transaction(async (tx) => {
-		console.log("[PROCESS-SALE-CONFIRMATION] Updating sale status to CONFIRMADA");
-		// 1. Update sale status: ORCAMENTO → CONFIRMADA
 		await tx
 			.update(sales)
 			.set({
@@ -68,7 +76,6 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 			})
 			.where(eq(sales.id, input.saleId));
 
-		// 2. Create accounting entry
 		const entry = await createAccountingEntry(tx, {
 			organizacaoId: input.organization.id,
 			vendaId: input.saleId,
@@ -79,7 +86,6 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 			autorId: input.saleAuthorId,
 		});
 
-		// 3. Process stock deduction if organization has stock tracking enabled
 		if (input.organization.configuracao.preferencias.rastreamentoEstoque) {
 			await processStockDeduction(tx, {
 				organizationId: input.organization.id,
@@ -92,7 +98,6 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 		return { entry };
 	});
 
-	// 4. Process payments via provider (outside tx because providers may make external calls)
 	const paymentProvider = getPaymentProvider(input.organization);
 	const paymentResults = await paymentProvider.processPayments({
 		vendaId: input.saleId,
@@ -107,10 +112,11 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 		newBalance: number;
 	} | null = null;
 
-	if ((input.saleCashbackRedemptionValue ?? 0) > 0) {
-		const redemptionValue = input.saleCashbackRedemptionValue ?? 0;
-		const clientId = input.saleClientId ?? sale.clienteId;
-		if (!clientId) throw new createHttpError.BadRequest("Cliente não informado para resgate de cashback.");
+	const clientId = input.saleClientId ?? sale.clienteId;
+	const redemptionValue = input.saleCashbackRedemptionValue ?? 0;
+
+	if (redemptionValue > 0) {
+		if (!clientId) throw new createHttpError.BadRequest("Cliente nao informado para resgate de cashback.");
 
 		cashbackRedemptionResult = await db.transaction(async (tx) => {
 			const balance = await tx.query.cashbackProgramBalances.findFirst({
@@ -119,19 +125,20 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 					programaId: true,
 				},
 			});
-			if (!balance) throw new createHttpError.NotFound("Saldo de cashback não encontrado para este cliente.");
+			if (!balance) throw new createHttpError.NotFound("Saldo de cashback nao encontrado para este cliente.");
 
 			const programId = input.saleCashbackProgramId ?? balance.programaId;
-			if (!programId) throw new createHttpError.BadRequest("Programa de cashback não informado.");
+			if (!programId) throw new createHttpError.BadRequest("Programa de cashback nao informado.");
 
 			const program = await tx.query.cashbackPrograms.findFirst({
-				where: and(eq(cashbackPrograms.organizacaoId, input.organization.id), eq(cashbackPrograms.id, programId)),
-				columns: {
-					ativo: true,
-				},
+				where: and(eq(cashbackPrograms.id, programId), eq(cashbackPrograms.organizacaoId, input.organization.id), eq(cashbackPrograms.ativo, true)),
 			});
-			if (!program) throw new createHttpError.NotFound("Programa de cashback não encontrado.");
-			if (!program.ativo) throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
+			if (!program) throw new createHttpError.NotFound("Programa de cashback nao encontrado.");
+			if (!program.modalidadeDescontosPermitida) throw new createHttpError.BadRequest("Resgate de cashback nao permitido para esta venda.");
+			if (program.resgateLimiteTipo && program.resgateLimiteValor !== null && program.resgateLimiteValor !== undefined) {
+				const maxAllowed = program.resgateLimiteTipo === "FIXO" ? program.resgateLimiteValor : (sale.valorTotal * program.resgateLimiteValor) / 100;
+				if (redemptionValue > maxAllowed) throw new createHttpError.BadRequest("Valor de resgate excede o limite permitido.");
+			}
 
 			const redemptionResult = await applyCashbackRedemptionFIFO({
 				tx,
@@ -165,7 +172,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 				.returning({ id: cashbackProgramTransactions.id });
 
 			const transactionId = insertedTransaction[0]?.id;
-			if (!transactionId) throw new createHttpError.InternalServerError("Erro ao registrar transação de resgate de cashback.");
+			if (!transactionId) throw new createHttpError.InternalServerError("Erro ao registrar transacao de resgate de cashback.");
 
 			return {
 				transactionId,
@@ -174,19 +181,87 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 		});
 	}
 
-	// 5. Fiscal emission (async, non-blocking)
+	let cashbackAccumulationResult: Awaited<ReturnType<typeof accumulateCashbackForClient>> | null = null;
+
+	if (clientId) {
+		cashbackAccumulationResult = await db.transaction(async (tx) => {
+			const program = input.saleCashbackProgramId
+				? await tx.query.cashbackPrograms.findFirst({
+						where: and(
+							eq(cashbackPrograms.id, input.saleCashbackProgramId),
+							eq(cashbackPrograms.organizacaoId, input.organization.id),
+							eq(cashbackPrograms.ativo, true),
+						),
+					})
+				: await tx.query.cashbackPrograms.findFirst({
+						where: and(eq(cashbackPrograms.organizacaoId, input.organization.id), eq(cashbackPrograms.ativo, true)),
+					});
+
+			if (!program) return null;
+
+			return accumulateCashbackForClient({
+				tx,
+				orgId: input.organization.id,
+				clientId,
+				saleId: input.saleId,
+				saleValue: sale.valorTotal,
+				operatorId: input.saleAuthorId,
+				operatorSellerId: sale.vendedorId,
+				program,
+				metadata: {
+					origem: "POS",
+					processamentoOrigem: sale.processamentoOrigem,
+				},
+			});
+		});
+	}
+
+	let fiscalResult: FiscalEmissionResult = {
+		status: "NAO_SOLICITADO",
+		documentoId: null,
+		error: null,
+	};
+
 	if (input.organization.fiscalEmissaoAutomatica) {
 		try {
-			const fiscalProvider = getFiscalProvider(input.organization);
-			await fiscalProvider.emitirDocumento({
-				venda: sale,
-				tipo: "NFCE",
-				organizacao: input.organization,
-				lancamentoContabilId: transactionResult.entry.id,
+			// Decide NFC-e vs NF-e por canal/entrega/destinatario (com fallback p/ NFC-e se NF-e nao configurada).
+			const destinatario = clientId
+				? await db.query.clients.findFirst({ where: (fields, operators) => operators.eq(fields.id, clientId), columns: { cpfCnpj: true } })
+				: null;
+			const tipoDocumento = await resolveEmissionDocumentType({
+				organizacaoId: input.organization.id,
+				operacaoPadraoNfeId: input.organization.fiscalConfiguracao?.operacaoPadraoPorTipo?.NFE ?? null,
+				signals: { canal: sale.canal, entregaModalidade: sale.entregaModalidade, destinatarioCpfCnpj: destinatario?.cpfCnpj },
 			});
+
+			// Enfileira a emissao (sem chamar o provedor): a confirmacao da venda nao espera a SEFAZ.
+			// O worker (cron /api/cron/fiscal-queue) faz o envio com retry/backoff.
+			const enqueued = await enqueueFiscalDocument({
+				vendaId: input.saleId,
+				tipo: tipoDocumento,
+				organizacaoId: input.organization.id,
+				lancamentoContabilId: transactionResult.entry.id,
+				autorId: input.saleAuthorId,
+				origem: "AUTOMATICA",
+			});
+			fiscalResult = {
+				status: "SOLICITADO",
+				documentoId: enqueued.documentoId,
+				statusInterno: enqueued.statusInterno,
+				error: null,
+			};
 		} catch (error) {
-			// Fiscal emission failure should not block sale confirmation
-			console.error("[FISCAL] Erro na emissão automática:", error);
+			const errorMessage = getErrorMessage(error);
+			fiscalResult = {
+				status: "ERRO",
+				documentoId: null,
+				error: errorMessage,
+			};
+			await notifyFiscalEmissionFailure({
+				organization: input.organization,
+				sale,
+				errorMessage,
+			});
 		}
 	}
 
@@ -195,5 +270,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 		lancamentoContabilId: transactionResult.entry.id,
 		pagamentos: paymentResults,
 		cashbackResgate: cashbackRedemptionResult,
+		cashbackAcumulo: cashbackAccumulationResult,
+		fiscal: fiscalResult,
 	};
 }

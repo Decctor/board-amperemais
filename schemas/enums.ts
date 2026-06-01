@@ -131,12 +131,74 @@ export const BankAccountTypeEnum = z.enum(["CORRENTE", "POUPANCA"]);
 export type TBankAccountTypeEnum = z.infer<typeof BankAccountTypeEnum>;
 export const FinancialTransactionTypeEnum = z.enum(["ENTRADA", "SAIDA"]);
 export type TFinancialTransactionTypeEnum = z.infer<typeof FinancialTransactionTypeEnum>;
-export const AccountingEntryOriginTypeEnum = z.enum(["VENDA", "MANUAL", "ESTORNO"]);
+export const AccountingEntryOriginTypeEnum = z.enum(["VENDA", "MANUAL", "ESTORNO", "TRANSFERENCIA"]);
 export type TAccountingEntryOriginTypeEnum = z.infer<typeof AccountingEntryOriginTypeEnum>;
 export const FiscalDocumentTypeEnum = z.enum(["NFCE", "NFE", "NFSE"]);
 export type TFiscalDocumentTypeEnum = z.infer<typeof FiscalDocumentTypeEnum>;
 export const FiscalDocumentStatusEnum = z.enum(["PENDENTE", "AUTORIZADA", "CANCELADA", "INUTILIZADA"]);
 export type TFiscalDocumentStatusEnum = z.infer<typeof FiscalDocumentStatusEnum>;
+export const FiscalDocumentEnvironmentEnum = z.enum(["HOMOLOGACAO", "PRODUCAO"]);
+export type TFiscalDocumentEnvironmentEnum = z.infer<typeof FiscalDocumentEnvironmentEnum>;
+export const FiscalDocumentLifecycleStatusEnum = z.enum([
+	"RASCUNHO",
+	"PRONTO_PARA_ENVIO",
+	"EM_PROCESSAMENTO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"CANCELAMENTO_PENDENTE",
+	"CANCELADO",
+	"INUTILIZADO",
+	"ERRO",
+]);
+export type TFiscalDocumentLifecycleStatusEnum = z.infer<typeof FiscalDocumentLifecycleStatusEnum>;
+export const FiscalDocumentEventTypeEnum = z.enum([
+	"CRIADO",
+	"ENVIO_SOLICITADO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"SINCRONIZADO",
+	"CANCELAMENTO_SOLICITADO",
+	"CANCELADO",
+	"CARTA_CORRECAO",
+	"INUTILIZACAO",
+	"ERRO",
+]);
+export type TFiscalDocumentEventTypeEnum = z.infer<typeof FiscalDocumentEventTypeEnum>;
+export const FiscalOperationConsumerPresenceEnum = z.enum([
+	"NAO_SE_APLICA",
+	"OPERACAO_PRESENCIAL",
+	"INTERNET",
+	"TELEATENDIMENTO",
+	"ENTREGA_DOMICILIO",
+]);
+export type TFiscalOperationConsumerPresenceEnum = z.infer<typeof FiscalOperationConsumerPresenceEnum>;
+export const FiscalOperationFinalityEnum = z.enum(["NORMAL", "COMPLEMENTAR", "AJUSTE", "DEVOLUCAO"]);
+export type TFiscalOperationFinalityEnum = z.infer<typeof FiscalOperationFinalityEnum>;
+export const FiscalProductOriginEnum = z.enum([
+	"NACIONAL",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL",
+	"NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+	"NACIONAL_PROCESSOS_BASICOS",
+	"NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+	"ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+	"ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+]);
+export type TFiscalProductOriginEnum = z.infer<typeof FiscalProductOriginEnum>;
+export const FiscalClientTaxIndicatorEnum = z.enum(["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
+export type TFiscalClientTaxIndicatorEnum = z.infer<typeof FiscalClientTaxIndicatorEnum>;
+// CSOSN (Codigo de Situacao da Operacao no Simples Nacional) usado no ICMS de optantes do Simples Nacional.
+export const FiscalIcmsCsosnEnum = z.enum(["101", "102", "103", "201", "202", "203", "300", "400", "500", "900"]);
+export type TFiscalIcmsCsosnEnum = z.infer<typeof FiscalIcmsCsosnEnum>;
+// CST de PIS/COFINS para operacoes de saida (no Simples Nacional normalmente 49 com valor zero).
+export const FiscalPisCofinsCstEnum = z.enum(["01", "02", "03", "04", "05", "06", "07", "08", "09", "49", "99"]);
+export type TFiscalPisCofinsCstEnum = z.infer<typeof FiscalPisCofinsCstEnum>;
+// Escopo de uma regra de excecao do grupo tributario por cenario de UF.
+export const FiscalTaxRuleScopeEnum = z.enum(["INTRAESTADUAL", "INTERESTADUAL"]);
+export type TFiscalTaxRuleScopeEnum = z.infer<typeof FiscalTaxRuleScopeEnum>;
+// Eventos de manifestacao do destinatario (DF-e / notas recebidas).
+export const FiscalInboundManifestEventEnum = z.enum(["CIENCIA", "CONFIRMACAO", "DESCONHECIMENTO", "NAO_REALIZADA"]);
+export type TFiscalInboundManifestEventEnum = z.infer<typeof FiscalInboundManifestEventEnum>;
 export const StockMovementTypeEnum = z.enum(["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 export type TStockMovementTypeEnum = z.infer<typeof StockMovementTypeEnum>;
 export const SaleProcessingSourceEnum = z.enum(["EXTERNO", "INTERNO"]);

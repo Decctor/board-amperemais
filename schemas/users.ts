@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OrganizationMemberPermissionsSchema } from "./organizations";
 
 export const UserSchema = z.object({
 	admin: z.boolean({ required_error: "Admin do usuário não informado.", invalid_type_error: "Tipo não válido para o admin do usuário." }),
@@ -71,124 +72,7 @@ export const NewUserSchema = z.object({
 	// Auth related
 	usuario: z.string({ required_error: "Usuário do usuário não informado.", invalid_type_error: "Tipo não válido para o usuário do usuário." }),
 	senha: z.string({ required_error: "Senha do usuário não informada.", invalid_type_error: "Tipo não válido para a senha do usuário." }),
-	permissoes: z.object({
-		empresa: z.object({
-			visualizar: z.boolean({
-				required_error: "Permissão de visualização das configurações da empresa não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de visualização das configurações da empresa.",
-			}),
-			editar: z.boolean({
-				required_error: "Permissão de edição das configurações da empresa não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de edição das configurações da empresa.",
-			}),
-		}),
-		resultados: z.object({
-			escopo: z
-				.array(z.string({ required_error: "Escopo de resultados não informado.", invalid_type_error: "Tipo não válido para o escopo de resultados." }))
-				.optional()
-				.nullable(),
-			visualizar: z.boolean({
-				required_error: "Permissão de visualização de resultados não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de visualização de resultados.",
-			}),
-			// Goals
-			criarMetas: z.boolean({
-				required_error: "Permissão de criação de metas não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de criação de metas.",
-			}),
-			visualizarMetas: z.boolean({
-				required_error: "Permissão de visualização de metas não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de visualização de metas.",
-			}),
-			editarMetas: z.boolean({
-				required_error: "Permissão de edição de metas não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de edição de metas.",
-			}),
-			excluirMetas: z.boolean({
-				required_error: "Permissão de exclusão de metas não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de exclusão de metas.",
-			}),
-		}),
-		usuarios: z.object({
-			visualizar: z.boolean({
-				required_error: "Permissão de visualização de usuários não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de visualização de usuários.",
-			}),
-			criar: z.boolean({
-				required_error: "Permissão de criação de usuários não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de criação de usuários.",
-			}),
-			editar: z.boolean({
-				required_error: "Permissão de edição de usuários não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de edição de usuários.",
-			}),
-			excluir: z.boolean({
-				required_error: "Permissão de exclusão de usuários não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de exclusão de usuários.",
-			}),
-		}),
-		vendas: z.object({
-			visualizar: z.boolean({
-				required_error: "Permissão de visualização de vendas não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de visualização de vendas.",
-			}),
-			criar: z.boolean({
-				required_error: "Permissão de criação de vendas não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de criação de vendas.",
-			}),
-			editar: z.boolean({
-				required_error: "Permissão de edição de vendas não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de edição de vendas.",
-			}),
-			excluir: z.boolean({
-				required_error: "Permissão de exclusão de vendas não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de exclusão de vendas.",
-			}),
-		}),
-		compras: z.object({
-			visualizar: z.boolean({
-				required_error: "Permissão de visualização de compras não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de visualização de compras.",
-			}),
-			criar: z.boolean({
-				required_error: "Permissão de criação de compras não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de criação de compras.",
-			}),
-			editar: z.boolean({
-				required_error: "Permissão de edição de compras não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de edição de compras.",
-			}),
-			excluir: z.boolean({
-				required_error: "Permissão de exclusão de compras não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de exclusão de compras.",
-			}),
-		}),
-		atendimentos: z.object({
-			visualizar: z.boolean({
-				required_error: "Permissão de visualização de atendimentos não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de visualização de atendimentos.",
-			}),
-			iniciar: z.boolean({
-				required_error: "Permissão de início de atendimentos não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de início de atendimentos.",
-			}),
-			responder: z.boolean({
-				required_error: "Permissão de resposta de atendimentos não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de resposta de atendimentos.",
-			}),
-			finalizar: z.boolean({
-				required_error: "Permissão de finalização de atendimentos não informada.",
-				invalid_type_error: "Tipo não válido para a permissão de finalização de atendimentos.",
-			}),
-			receberTransferencias: z
-				.boolean({
-					required_error: "Permissão de recebimento de transferências de atendimentos não informada.",
-					invalid_type_error: "Tipo não válido para a permissão de recebimento de transferências de atendimentos.",
-				})
-				.optional()
-				.nullable(),
-		}),
-	}),
+	permissoes: OrganizationMemberPermissionsSchema,
 	googleId: z.string({ invalid_type_error: "Tipo não válido para o ID do Google do usuário." }).optional().nullable(),
 	googleRefreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de refresh do Google do usuário." }).optional().nullable(),
 	googleAccessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do Google do usuário." }).optional().nullable(),

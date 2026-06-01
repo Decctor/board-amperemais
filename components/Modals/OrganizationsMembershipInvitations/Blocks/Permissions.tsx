@@ -8,10 +8,12 @@ import PermissionsScope from "../../Users/Blocks/Utils/PermissionsScope";
 type OrganizationsMembershipInvitationsPermissionsBlockProps = {
 	permissions: TUseOrganizationMembershipInvitationState["state"]["invitation"]["permissoes"];
 	updateInvitationPermissions: TUseOrganizationMembershipInvitationState["updateInvitationPermissions"];
+	organizationHasERPAccess: boolean;
 };
 export default function OrganizationsMembershipInvitationsPermissionsBlock({
 	permissions,
 	updateInvitationPermissions,
+	organizationHasERPAccess,
 }: OrganizationsMembershipInvitationsPermissionsBlockProps) {
 	return (
 		<ResponsiveMenuSection title="PERMISSÕES" icon={<Shield className="h-4 min-h-4 w-4 min-w-4" />}>
@@ -20,6 +22,13 @@ export default function OrganizationsMembershipInvitationsPermissionsBlock({
 			<GoalsPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 			<UsersPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 			<ChatServicesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
+			{organizationHasERPAccess ? (
+				<>
+					<SalesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
+					<PurchasesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
+					<FiscalPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
+				</>
+			) : null}
 		</ResponsiveMenuSection>
 	);
 }
@@ -199,6 +208,120 @@ function ChatServicesPermissions({ permissions, updateInvitationPermissions }: C
 					labelFalse="APTO A RECEBER TRANSFERÊNCIAS DE ATENDIMENTOS"
 					checked={!!permissions.atendimentos.receberTransferencias}
 					handleChange={(value) => updateInvitationPermissions({ atendimentos: { ...permissions.atendimentos, receberTransferencias: value } })}
+				/>
+			</div>
+		</div>
+	);
+}
+
+type SalesPermissionsProps = {
+	permissions: TUseOrganizationMembershipInvitationState["state"]["invitation"]["permissoes"];
+	updateInvitationPermissions: TUseOrganizationMembershipInvitationState["updateInvitationPermissions"];
+};
+function SalesPermissions({ permissions, updateInvitationPermissions }: SalesPermissionsProps) {
+	return (
+		<div className="w-full flex flex-col gap-2">
+			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE VENDAS</h2>
+			<div className="w-full flex flex-col gap-2">
+				<CheckboxInput
+					labelTrue="APTO A VISUALIZAR VENDAS"
+					labelFalse="APTO A VISUALIZAR VENDAS"
+					checked={permissions.vendas.visualizar}
+					handleChange={(value) => updateInvitationPermissions({ vendas: { ...permissions.vendas, visualizar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A CRIAR VENDAS"
+					labelFalse="APTO A CRIAR VENDAS"
+					checked={permissions.vendas.criar}
+					handleChange={(value) => updateInvitationPermissions({ vendas: { ...permissions.vendas, criar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A EDITAR VENDAS"
+					labelFalse="APTO A EDITAR VENDAS"
+					checked={permissions.vendas.editar}
+					handleChange={(value) => updateInvitationPermissions({ vendas: { ...permissions.vendas, editar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A EXCLUIR VENDAS"
+					labelFalse="APTO A EXCLUIR VENDAS"
+					checked={permissions.vendas.excluir}
+					handleChange={(value) => updateInvitationPermissions({ vendas: { ...permissions.vendas, excluir: value } })}
+				/>
+			</div>
+		</div>
+	);
+}
+
+type PurchasesPermissionsProps = {
+	permissions: TUseOrganizationMembershipInvitationState["state"]["invitation"]["permissoes"];
+	updateInvitationPermissions: TUseOrganizationMembershipInvitationState["updateInvitationPermissions"];
+};
+function PurchasesPermissions({ permissions, updateInvitationPermissions }: PurchasesPermissionsProps) {
+	return (
+		<div className="w-full flex flex-col gap-2">
+			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE COMPRAS</h2>
+			<div className="w-full flex flex-col gap-2">
+				<CheckboxInput
+					labelTrue="APTO A VISUALIZAR COMPRAS"
+					labelFalse="APTO A VISUALIZAR COMPRAS"
+					checked={permissions.compras.visualizar}
+					handleChange={(value) => updateInvitationPermissions({ compras: { ...permissions.compras, visualizar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A CRIAR COMPRAS"
+					labelFalse="APTO A CRIAR COMPRAS"
+					checked={permissions.compras.criar}
+					handleChange={(value) => updateInvitationPermissions({ compras: { ...permissions.compras, criar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A EDITAR COMPRAS"
+					labelFalse="APTO A EDITAR COMPRAS"
+					checked={permissions.compras.editar}
+					handleChange={(value) => updateInvitationPermissions({ compras: { ...permissions.compras, editar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A EXCLUIR COMPRAS"
+					labelFalse="APTO A EXCLUIR COMPRAS"
+					checked={permissions.compras.excluir}
+					handleChange={(value) => updateInvitationPermissions({ compras: { ...permissions.compras, excluir: value } })}
+				/>
+			</div>
+		</div>
+	);
+}
+
+type FiscalPermissionsProps = {
+	permissions: TUseOrganizationMembershipInvitationState["state"]["invitation"]["permissoes"];
+	updateInvitationPermissions: TUseOrganizationMembershipInvitationState["updateInvitationPermissions"];
+};
+function FiscalPermissions({ permissions, updateInvitationPermissions }: FiscalPermissionsProps) {
+	return (
+		<div className="w-full flex flex-col gap-2">
+			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DO MÓDULO FISCAL</h2>
+			<div className="w-full flex flex-col gap-2">
+				<CheckboxInput
+					labelTrue="APTO A VISUALIZAR RECURSOS"
+					labelFalse="APTO A VISUALIZAR RECURSOS"
+					checked={permissions.fiscal.visualizar}
+					handleChange={(value) => updateInvitationPermissions({ fiscal: { ...permissions.fiscal, visualizar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A CONFIGURAR RECURSOS"
+					labelFalse="APTO A CONFIGURAR RECURSOS"
+					checked={permissions.fiscal.configurar}
+					handleChange={(value) => updateInvitationPermissions({ fiscal: { ...permissions.fiscal, configurar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A EMISSÃO DE DOCUMENTOS FISCAIS"
+					labelFalse="APTO A EMISSÃO DE DOCUMENTOS FISCAIS"
+					checked={permissions.fiscal.emitir}
+					handleChange={(value) => updateInvitationPermissions({ fiscal: { ...permissions.fiscal, emitir: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A CANCELAR DOCUMENTOS FISCAIS"
+					labelFalse="APTO A CANCELAR DOCUMENTOS FISCAIS"
+					checked={permissions.fiscal.cancelar}
+					handleChange={(value) => updateInvitationPermissions({ fiscal: { ...permissions.fiscal, cancelar: value } })}
 				/>
 			</div>
 		</div>

@@ -96,6 +96,26 @@ async function fetchAccountingEntries(filters: TGetAccountingEntriesInput) {
 	return result;
 }
 
+async function fetchAccountingEntryById(entryId: string) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("id", entryId);
+	const { data } = await axios.get<TGetAccountingEntriesOutput>(`/api/finances/accounting-entries?${searchParams.toString()}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("Oops, houve um erro ao buscar o lançamento.");
+	return result;
+}
+
+export function useAccountingEntryById(entryId: string) {
+	return {
+		...useQuery({
+			queryKey: ["finances-accounting-entry-by-id", entryId],
+			queryFn: () => fetchAccountingEntryById(entryId),
+			enabled: !!entryId,
+		}),
+		queryKey: ["finances-accounting-entry-by-id", entryId],
+	};
+}
+
 type UseFinancesAccountingEntriesParams = {
 	initialFilters?: Partial<TGetAccountingEntriesInput>;
 };
@@ -126,6 +146,23 @@ export function useFinancesAccountingEntries({ initialFilters }: UseFinancesAcco
 // ============================================================================
 // FINANCIAL TRANSACTIONS
 // ============================================================================
+
+async function fetchFinancialTransactionById(id: string) {
+	const { data } = await axios.get<TGetFinancialTransactionsOutput>(`/api/finances/financial-transactions?id=${id}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("Oops, houve um erro ao buscar a transação financeira.");
+	return result;
+}
+
+export function useFinancialTransactionById(id: string) {
+	return {
+		...useQuery({
+			queryKey: ["finances-financial-transaction-by-id", id],
+			queryFn: () => fetchFinancialTransactionById(id),
+		}),
+		queryKey: ["finances-financial-transaction-by-id", id],
+	};
+}
 
 type FinancialTransactionsFilters = {
 	page: number;

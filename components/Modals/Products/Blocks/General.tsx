@@ -2,30 +2,30 @@ import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import type { TUseProductState } from "@/state-hooks/use-product-state";
+import type { TProductCoreState, TUseProductCoreState } from "@/state-hooks/use-product-state";
 import { UnitsOfMeasurementOptions } from "@/utils/select-options";
 import { ImageIcon, LayoutGrid } from "lucide-react";
 import Image from "next/image";
 import { useId } from "react";
 
-type ProductGeneralBlockProps = {
-	product: TUseProductState["state"]["product"];
-	updateProduct: TUseProductState["updateProduct"];
-	updateProductImageHolder: TUseProductState["updateProductImageHolder"];
+type ProductStateGeneralBlockProps = {
+	product: TProductCoreState;
+	updateProduct: TUseProductCoreState["updateProduct"];
+	updateProductImageHolder: TUseProductCoreState["updateProductImageHolder"];
 	showPricing?: boolean;
 	embedded?: boolean;
 };
 
-export default function ProductGeneralBlock({
+export default function ProductStateGeneralBlock({
 	product,
 	updateProduct,
 	updateProductImageHolder,
 	showPricing = true,
 	embedded = false,
-}: ProductGeneralBlockProps) {
+}: ProductStateGeneralBlockProps) {
 	const imageInputId = useId();
 	const formContent = (
-		<div className="w-full flex items-center lg:items-start flex-col lg:flex-row gap-2">
+		<div className="w-full flex items-center flex-col  gap-2">
 			<ProductGeneralBlockImage
 				imageUrl={product.imagemCapaUrl}
 				imageHolder={product.imagemCapaHolder}
@@ -62,26 +62,14 @@ export default function ProductGeneralBlock({
 						/>
 					</div>
 				</div>
-				<div className="w-full flex items-center gap-2 lg:flex-row">
-					<div className="w-full lg:w-1/2">
-						<TextInput
-							label="GRUPO"
-							value={product.grupo}
-							placeholder="Preencha aqui o grupo do produto."
-							handleChange={(value) => updateProduct({ grupo: value })}
-							width="100%"
-						/>
-					</div>
-					<div className="w-full lg:w-1/2">
-						<TextInput
-							label="NCM"
-							value={product.ncm}
-							placeholder="Preencha aqui o NCM do produto."
-							handleChange={(value) => updateProduct({ ncm: value })}
-							width="100%"
-						/>
-					</div>
-				</div>
+				<TextInput
+					label="GRUPO"
+					value={product.grupo}
+					placeholder="Preencha aqui o grupo do produto."
+					handleChange={(value) => updateProduct({ grupo: value })}
+					width="100%"
+				/>
+
 				{showPricing ? (
 					<div className="w-full flex items-center gap-2 lg:flex-row">
 						<div className="w-full lg:w-1/2">
@@ -123,9 +111,9 @@ function ProductGeneralBlockImage({
 	updateImageHolder,
 	inputId,
 }: {
-	imageUrl: TUseProductState["state"]["product"]["imagemCapaUrl"];
-	imageHolder: TUseProductState["state"]["product"]["imagemCapaHolder"];
-	updateImageHolder: TUseProductState["updateProductImageHolder"];
+	imageUrl: TProductCoreState["imagemCapaUrl"];
+	imageHolder: TProductCoreState["imagemCapaHolder"];
+	updateImageHolder: TUseProductCoreState["updateProductImageHolder"];
 	inputId: string;
 }) {
 	return (
@@ -156,8 +144,8 @@ function UsersGeneralBlockAvatarPreview({
 	imageUrl,
 	imageHolder,
 }: {
-	imageUrl: TUseProductState["state"]["product"]["imagemCapaUrl"];
-	imageHolder: TUseProductState["state"]["product"]["imagemCapaHolder"];
+	imageUrl: TProductCoreState["imagemCapaUrl"];
+	imageHolder: TProductCoreState["imagemCapaHolder"];
 }) {
 	if (imageHolder.previewUrl) {
 		return <Image alt="Capa do produto." fill={true} objectFit="cover" src={imageHolder.previewUrl} />;

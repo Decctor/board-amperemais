@@ -1,7 +1,7 @@
 import { doublePrecision, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
-import { accountingEntries, fiscalDocuments } from "./financial";
+import { accountingEntries, fiscalOutboundDocuments } from "./financial";
 import { users } from "./users";
 import { relations } from "drizzle-orm";
 import { products, productStockTransactions, productVariants } from "./products";
@@ -52,7 +52,7 @@ export const purchaseRelations = relations(purchases, ({ one, many }) => ({
 		references: [accountingEntries.id],
 	}),
 	itens: many(purchaseItems),
-	documentosFiscais: many(fiscalDocuments),
+	documentosFiscais: many(fiscalOutboundDocuments),
 	autor: one(users, {
 		fields: [purchases.autorId],
 		references: [users.id],

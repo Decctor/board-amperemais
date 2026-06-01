@@ -88,6 +88,7 @@ export default function SettingsUsers({ user, membership }: SettingsUsersProps) 
 			{newUserModalIsOpen ? (
 				<NewOrganizationMembershipInvitation
 					sessionUserId={user.id}
+					sessionUserMembership={membership}
 					closeModal={() => setNewUserModalIsOpen(false)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
@@ -95,6 +96,7 @@ export default function SettingsUsers({ user, membership }: SettingsUsersProps) 
 			{editUserModalId ? (
 				<EditUser
 					session={user}
+					sessionUserMembership={membership}
 					closeModal={() => setEditUserModalId(null)}
 					userId={editUserModalId}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}

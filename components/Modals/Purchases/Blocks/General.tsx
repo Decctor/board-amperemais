@@ -2,6 +2,7 @@ import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { cn } from "@/lib/utils";
+import { TPurchaseStatusEnum } from "@/schemas/enums";
 import { TUsePurchaseState } from "@/state-hooks/use-purchase-state";
 import { PurchaseStatusOptions } from "@/utils/select-options";
 import { LayoutGrid } from "lucide-react";
@@ -11,6 +12,18 @@ type PurchaseGeneralBlockProps = {
 	updatePurchase: TUsePurchaseState["updatePurchase"];
 };
 export default function PurchaseGeneralBlock({ purchase, updatePurchase }: PurchaseGeneralBlockProps) {
+	function handleStatusChange(nextStatus: TPurchaseStatusEnum) {
+		const updates: Partial<TUsePurchaseState["state"]["purchase"]> = { status: nextStatus };
+		const willBeReceived = nextStatus === "RECEBIDA";
+		const isCurrentlyReceived = purchase.status === "RECEBIDA";
+		if (willBeReceived && !purchase.entregaDataRecebimentoEfetivacao) {
+			updates.entregaDataRecebimentoEfetivacao = new Date();
+		}
+		if (!willBeReceived && isCurrentlyReceived) {
+			updates.entregaDataRecebimentoEfetivacao = null;
+		}
+		updatePurchase(updates);
+	}
 	return (
 		<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex items-center gap-1.5 flex-wrap">
@@ -23,7 +36,7 @@ export default function PurchaseGeneralBlock({ purchase, updatePurchase }: Purch
 							"opacity-100": purchase.status === option.value,
 							"opacity-50 border-transparent": purchase.status !== option.value,
 						})}
-						onClick={() => updatePurchase({ status: option.value })}
+						onClick={() => handleStatusChange(option.value)}
 					>
 						{option.icon}
 						<span className="text-xs font-medium">{option.label}</span>

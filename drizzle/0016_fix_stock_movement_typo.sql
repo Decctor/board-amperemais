@@ -1,0 +1,1 @@
+ALTER TYPE "public"."stock_movement_type" RENAME VALUE 'ENTRADA _AQUISICAO' TO 'ENTRADA_AQUISICAO';

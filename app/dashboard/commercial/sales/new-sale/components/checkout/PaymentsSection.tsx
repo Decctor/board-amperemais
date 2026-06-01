@@ -15,6 +15,7 @@ import { getTodayDateInputValue } from "@/lib/payments/schemas";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { SalePaymentMethodsOptions } from "@/utils/select-options";
 import { CalendarClock, Check, CheckCheck, Clock, Plus, Wallet, X } from "lucide-react";
+import { useMemo } from "react";
 
 type PaymentsSectionProps = {
 	saleState: TUseSaleState;
@@ -158,6 +159,7 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 }
 
 export default function PaymentsSection({ saleState }: PaymentsSectionProps) {
+	const missingTotal = useMemo(() => saleState.valorFinal - saleState.totalPagamentos, [saleState.valorFinal, saleState.totalPagamentos]);
 	const supportedMethodOptions = SalePaymentMethodsOptions.filter((method) => saleState.organizationPaymentMethodsConfig[method.value]?.suportado);
 
 	return (
@@ -172,7 +174,7 @@ export default function PaymentsSection({ saleState }: PaymentsSectionProps) {
 					size="fit"
 					className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
 					variant="ghost-brand"
-					onClick={() => saleState.addPagamento({ metodo: supportedMethodOptions[0]?.value ?? "DINHEIRO" })}
+					onClick={() => saleState.addPagamento({ metodo: supportedMethodOptions[0]?.value ?? "DINHEIRO", valor: missingTotal })}
 				>
 					<Plus className="w-4 h-4" /> ADICIONAR
 				</Button>

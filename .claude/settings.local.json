@@ -14,7 +14,8 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:www.postman.com)",
       "Bash(node:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(find \"D:/PROJETOS/syncroniza-control/src/server/api/utils\" -type f 2>/dev/null | head -20)"
     ]
   }
 }

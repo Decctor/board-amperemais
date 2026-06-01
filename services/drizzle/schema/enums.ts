@@ -156,33 +156,11 @@ export const bankAccountTypeEnum = pgEnum("bank_account_type", ["CORRENTE", "POU
 
 export const financialTransactionTypeEnum = pgEnum("financial_transaction_type", ["ENTRADA", "SAIDA"]);
 
-export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_type", ["VENDA", "MANUAL", "ESTORNO"]);
+export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_type", ["VENDA", "MANUAL", "ESTORNO", "TRANSFERENCIA"]);
 
 export const fiscalDocumentTypeEnum = pgEnum("fiscal_document_type", ["NFCE", "NFE", "NFSE"]);
 
 export const fiscalDocumentStatusEnum = pgEnum("fiscal_document_status", ["PENDENTE", "AUTORIZADA", "CANCELADA", "INUTILIZADA"]);
-
-export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
-
-export const saleProcessingSourceEnum = pgEnum("origem_processamento_venda", ["EXTERNO", "INTERNO"]);
-
-export const saleStatusEnum = pgEnum("sale_status", ["ORCAMENTO", "CONDICIONAL", "CONFIRMADA", "FATURADA", "CANCELADA"]);
-
-export const defaultDataSourceEnum = pgEnum("origem_dados_padrao", ["RECEPTOR", "ERP"]);
-
-export const paymentMethodEnum = pgEnum("payment_method", [
-	"DINHEIRO",
-	"PIX",
-	"CARTAO_CREDITO",
-	"CARTAO_DEBITO",
-	"BOLETO",
-	"TRANSFERENCIA",
-	"CASHBACK",
-	"VALE",
-	"A_DEFINIR",
-	"FIADO_NOTA",
-	"OUTRO",
-]);
 
 export const fiscalDocumentEnvironmentEnum = pgEnum("fiscal_document_environment", ["HOMOLOGACAO", "PRODUCAO"]);
 
@@ -194,6 +172,7 @@ export const fiscalDocumentLifecycleStatusEnum = pgEnum("fiscal_document_lifecyc
 	"REJEITADO",
 	"CANCELAMENTO_PENDENTE",
 	"CANCELADO",
+	"INUTILIZADO",
 	"ERRO",
 ]);
 
@@ -205,6 +184,8 @@ export const fiscalDocumentEventTypeEnum = pgEnum("fiscal_document_event_type", 
 	"SINCRONIZADO",
 	"CANCELAMENTO_SOLICITADO",
 	"CANCELADO",
+	"CARTA_CORRECAO",
+	"INUTILIZACAO",
 	"ERRO",
 ]);
 
@@ -231,6 +212,34 @@ export const fiscalProductOriginEnum = pgEnum("fiscal_product_origin", [
 
 export const fiscalClientTaxIndicatorEnum = pgEnum("fiscal_client_tax_indicator", ["CONTRIBUINTE_ICMS", "CONTRIBUINTE_ISENTO", "NAO_CONTRIBUINTE"]);
 
+export const fiscalIcmsCsosnEnum = pgEnum("fiscal_icms_csosn", ["101", "102", "103", "201", "202", "203", "300", "400", "500", "900"]);
+
+export const fiscalPisCofinsCstEnum = pgEnum("fiscal_pis_cofins_cst", ["01", "02", "03", "04", "05", "06", "07", "08", "09", "49", "99"]);
+
+export const fiscalTaxRuleScopeEnum = pgEnum("fiscal_tax_rule_scope", ["INTRAESTADUAL", "INTERESTADUAL"]);
+
+export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA_AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
+
+export const saleProcessingSourceEnum = pgEnum("origem_processamento_venda", ["EXTERNO", "INTERNO"]);
+
+export const saleStatusEnum = pgEnum("sale_status", ["ORCAMENTO", "CONDICIONAL", "CONFIRMADA", "FATURADA", "CANCELADA"]);
+
+export const defaultDataSourceEnum = pgEnum("origem_dados_padrao", ["RECEPTOR", "ERP"]);
+
+export const paymentMethodEnum = pgEnum("payment_method", [
+	"DINHEIRO",
+	"PIX",
+	"CARTAO_CREDITO",
+	"CARTAO_DEBITO",
+	"BOLETO",
+	"TRANSFERENCIA",
+	"CASHBACK",
+	"VALE",
+	"A_DEFINIR",
+	"FIADO_NOTA",
+	"OUTRO",
+]);
+
 export const deliveryModeEnum = pgEnum("delivery_mode", ["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"]);
 
 export const purchaseStatusEnum = pgEnum("purchase_status", ["RASCUNHO", "CONFIRMADA", "RECEBIMENTO_PARCIAL", "RECEBIDA", "CANCELADA"]);
@@ -254,3 +263,5 @@ export const shopProductsModeEnum = pgEnum("shop_products_mode", ["ATIVOS", "INC
 export const shopHeaderCoverTypeEnum = pgEnum("shop_header_cover_type", ["IMAGEM", "VIDEO"]);
 
 export const shopCompositionBlockTypeEnum = pgEnum("shop_composition_block_type", ["GRUPOS_PRODUTOS", "EM_DESTAQUE", "MAIS_PEDIDOS"]);
+
+export const fiscalInboundManifestEventEnum = pgEnum("fiscal_inbound_manifest_event", ["CIENCIA", "CONFIRMACAO", "DESCONHECIMENTO", "NAO_REALIZADA"]);

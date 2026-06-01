@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SaleNatureEnum } from "./enums";
+import { FiscalClientTaxIndicatorEnum, SaleNatureEnum } from "./enums";
 import type { TSale } from "./sales";
 
 export const ClientSchema = z.object({
@@ -11,6 +11,9 @@ export const ClientSchema = z.object({
 	}),
 	cpfCnpj: z.string({ invalid_type_error: "Tipo não válido para CPF/CNPJ." }).optional().nullable(),
 	anotacoes: z.string({ invalid_type_error: "Tipo nao valido para anotacoes." }).optional().nullable(),
+	inscricaoEstadual: z.string({ invalid_type_error: "Tipo nao valido para inscricao estadual." }).optional().nullable(),
+	indicadorInscricaoEstadual: FiscalClientTaxIndicatorEnum.default("NAO_CONTRIBUINTE"),
+	suframa: z.string({ invalid_type_error: "Tipo nao valido para SUFRAMA." }).optional().nullable(),
 	// Communication
 	telefone: z.string({ invalid_type_error: "Tipo não válido para telefone." }).optional().nullable(),
 	telefoneBase: z.string({ invalid_type_error: "Tipo não válido para telefone base." }),

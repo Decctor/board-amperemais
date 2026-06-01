@@ -1,11 +1,13 @@
 import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsOutput } from "@/app/api/products/route";
+import type { TGetProductVariantsOutput } from "@/app/api/products/variants/route";
+import type { TGetProductAddOnsOutput } from "@/app/api/products/add-ons/route";
+import type { TGetProductFiscalProfilesOutput } from "@/app/api/products/fiscal-profiles/route";
 import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/app/api/products/by-codes/route";
 import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/app/api/products/graph/route";
 import type { TGetProductsBySearchInput, TGetProductsBySearchOutput } from "@/app/api/products/search/route";
 import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/app/api/products/stats/route";
 import type { TGetProductsGraphInput, TGetProductsGraphOutput } from "@/app/api/products/stats/graph/route";
 import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } from "@/app/api/products/stats/overall/route";
-import type { TGetProductsPortfolioAnalysisInput, TGetProductsPortfolioAnalysisOutput } from "@/app/api/products/stats/portfolio-analysis/route";
 import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/app/api/products/stats/ranking/route";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -25,12 +27,10 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
 		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
 		if (input.stockStatus && input.stockStatus.length > 0) searchParams.set("stockStatus", input.stockStatus.join(","));
-		if (input.abcClasses && input.abcClasses.length > 0) searchParams.set("abcClasses", input.abcClasses.join(","));
 		if (input.priceMin) searchParams.set("priceMin", input.priceMin.toString());
 		if (input.priceMax) searchParams.set("priceMax", input.priceMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
-		if (input.resultLimit) searchParams.set("resultLimit", input.resultLimit.toString());
 		if (input.statsSellerIds) searchParams.set("statsSellerIds", input.statsSellerIds.join(","));
 		const { data } = await axios.get<TGetProductsOutput>(`/api/products?${searchParams.toString()}`);
 		const result = data.data.default;
@@ -80,12 +80,10 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		statsTotalMin: initialFilters?.statsTotalMin || null,
 		statsTotalMax: initialFilters?.statsTotalMax || null,
 		stockStatus: initialFilters?.stockStatus || [],
-		abcClasses: initialFilters?.abcClasses || [],
 		priceMin: initialFilters?.priceMin || null,
 		priceMax: initialFilters?.priceMax || null,
 		orderByField: initialFilters?.orderByField || "descricao",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
-		resultLimit: initialFilters?.resultLimit || null,
 	});
 	function updateFilters(newParams: Partial<TGetProductsDefaultInput>) {
 		setFilters((prevFilters) => ({ ...prevFilters, ...newParams }));
@@ -321,9 +319,8 @@ async function fetchProductsGraph(input: TGetProductsGraphInput) {
 
 export function useProductsGraph(input: TGetProductsGraphInput) {
 	return useQuery({
-		queryKey: ["products-graph", input.graphType, input.periodAfter?.toISOString() ?? null, input.periodBefore?.toISOString() ?? null],
+		queryKey: ["products-graph", input],
 		queryFn: () => fetchProductsGraph(input),
-		placeholderData: (previousData) => previousData,
 	});
 }
 
@@ -372,5 +369,145 @@ export function useProductsPortfolioAnalysis(input: TGetProductsPortfolioAnalysi
 			queryFn: () => fetchProductsPortfolioAnalysis(input),
 		}),
 		queryKey,
+	};
+}
+
+async function fetchProductVariantsByProductId(productId: string) {
+	try {
+		const { data } = await axios.get<TGetProductVariantsOutput>(`/api/products/variants?productId=${productId}`);
+		const result = data.data.byProductId;
+		if (!result) throw new Error("Variantes do produto não encontradas.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductVariantsByProductId", error);
+		throw error;
+	}
+}
+
+async function fetchProductVariantById(productVariantId: string) {
+	try {
+		const { data } = await axios.get<TGetProductVariantsOutput>(`/api/products/variants?productVariantId=${productVariantId}`);
+		const result = data.data.byId;
+		if (!result) throw new Error("Variante não encontrada.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductVariantById", error);
+		throw error;
+	}
+}
+
+export function useProductVariantsByProductId({ productId }: { productId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-variants-by-product-id", productId],
+			queryFn: () => fetchProductVariantsByProductId(productId),
+		}),
+		queryKey: ["product-variants-by-product-id", productId],
+	};
+}
+
+export function useProductVariantById({ productVariantId }: { productVariantId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-variant-by-id", productVariantId],
+			queryFn: () => fetchProductVariantById(productVariantId),
+		}),
+		queryKey: ["product-variant-by-id", productVariantId],
+	};
+}
+
+async function fetchProductAddOnsByProductId(productId: string) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productId", productId);
+		const { data } = await axios.get<TGetProductAddOnsOutput>(`/api/products/add-ons?${searchParams.toString()}`);
+		const result = data.data.byProductId;
+		if (!result) throw new Error("Adicionais do produto não encontrados.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductAddOnsByProductId", error);
+		throw error;
+	}
+}
+
+async function fetchProductAddOnById(productAddOnId: string) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productAddOnId", productAddOnId);
+		const { data } = await axios.get<TGetProductAddOnsOutput>(`/api/products/add-ons?${searchParams.toString()}`);
+		const result = data.data.byId;
+		if (!result) throw new Error("Adicional não encontrado.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductAddOnById", error);
+		throw error;
+	}
+}
+
+export function useProductAddOnsByProductId({ productId }: { productId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-add-ons-by-product-id", productId],
+			queryFn: () => fetchProductAddOnsByProductId(productId),
+		}),
+		queryKey: ["product-add-ons-by-product-id", productId],
+	};
+}
+
+export function useProductAddOnById({ productAddOnId }: { productAddOnId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-add-on-by-id", productAddOnId],
+			queryFn: () => fetchProductAddOnById(productAddOnId),
+		}),
+		queryKey: ["product-add-on-by-id", productAddOnId],
+	};
+}
+
+async function fetchProductFiscalProfilesByProductId(productId: string) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productId", productId);
+		const { data } = await axios.get<TGetProductFiscalProfilesOutput>(`/api/products/fiscal-profiles?${searchParams.toString()}`);
+		const result = data.data.byProductId;
+		if (!result) throw new Error("Perfis fiscais do produto não encontrados.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductFiscalProfilesByProductId", error);
+		throw error;
+	}
+}
+
+async function fetchProductFiscalProfileById(productFiscalProfileId: string) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("productFiscalProfileId", productFiscalProfileId);
+		const { data } = await axios.get<TGetProductFiscalProfilesOutput>(`/api/products/fiscal-profiles?${searchParams.toString()}`);
+		const result = data.data.byId;
+		if (!result) throw new Error("Perfil fiscal não encontrado.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductFiscalProfileById", error);
+		throw error;
+	}
+}
+
+export function useProductFiscalProfilesByProductId({ productId }: { productId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-fiscal-profiles-by-product-id", productId],
+			queryFn: () => fetchProductFiscalProfilesByProductId(productId),
+		}),
+		queryKey: ["product-fiscal-profiles-by-product-id", productId],
+	};
+}
+
+export function useProductFiscalProfileById({ productFiscalProfileId }: { productFiscalProfileId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["product-fiscal-profile-by-id", productFiscalProfileId],
+			queryFn: () => fetchProductFiscalProfileById(productFiscalProfileId),
+		}),
+		queryKey: ["product-fiscal-profile-by-id", productFiscalProfileId],
 	};
 }

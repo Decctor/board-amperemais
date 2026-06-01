@@ -129,7 +129,7 @@ export const accountingEntriesRelations = relations(accountingEntries, ({ one, m
 		references: [users.id],
 	}),
 	transacoesFinanceiras: many(financialTransactions),
-	documentosFiscais: many(fiscalDocuments),
+	documentosFiscais: many(fiscalOutboundDocuments),
 }));
 
 export type TAccountingEntry = typeof accountingEntries.$inferSelect;
@@ -255,8 +255,8 @@ export type TNewFinancialTransaction = typeof financialTransactions.$inferInsert
 // FISCAL DOCUMENTS (Documentos Fiscais — referências de NFCe/NFe/NFSe)
 // ============================================================================
 
-export const fiscalDocuments = newTable(
-	"fiscal_documents",
+export const fiscalOutboundDocuments = newTable(
+	"fiscal_outbound_documents",
 	{
 		id: varchar("id", { length: 255 })
 			.notNull()
@@ -289,53 +289,57 @@ export const fiscalDocuments = newTable(
 		provedorPayload: text("provedor_payload"),
 		provedorRetorno: text("provedor_retorno"),
 		tentativasEnvio: integer("tentativas_envio").notNull().default(0),
+		// Fila/worker (outbox): proxima tentativa de envio (backoff) e lock de processamento (claim).
+		proximaTentativaEm: timestamp("proxima_tentativa_em"),
+		bloqueadoEm: timestamp("bloqueado_em"),
+		codigoRejeicao: varchar("codigo_rejeicao", { length: 10 }),
 		dataUltimaSincronizacao: timestamp("data_ultima_sincronizacao"),
 		dataAutorizacao: timestamp("data_autorizacao"),
 		dataCancelamento: timestamp("data_cancelamento"),
 		// Document chaining (cancellation/return references)
-		documentoOrigemId: varchar("documento_origem_id", { length: 255 }).references((): AnyPgColumn => fiscalDocuments.id, { onDelete: "set null" }),
+		documentoOrigemId: varchar("documento_origem_id", { length: 255 }).references((): AnyPgColumn => fiscalOutboundDocuments.id, { onDelete: "set null" }),
 		chaveAcessoReferencia: varchar("chave_acesso_referencia", { length: 44 }),
 		dataEmissao: timestamp("data_emissao"),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},
 	(table) => ({
-		organizacaoIdIdx: index("idx_fiscal_documents_organizacao_id").on(table.organizacaoId),
-		vendaIdIdx: index("idx_fiscal_documents_venda_id").on(table.vendaId),
-		chaveAcessoIdx: index("idx_fiscal_documents_chave_acesso").on(table.chaveAcesso),
-		statusIdx: index("idx_fiscal_documents_status").on(table.status),
-		statusInternoIdx: index("idx_fiscal_documents_status_interno").on(table.statusInterno),
-		referenciaIdx: index("idx_fiscal_documents_referencia").on(table.referencia),
-		provedorDocumentoIdIdx: index("idx_fiscal_documents_provedor_documento_id").on(table.provedorDocumentoId),
-		documentoOrigemIdIdx: index("idx_fiscal_documents_documento_origem_id").on(table.documentoOrigemId),
+		organizacaoIdIdx: index("idx_fiscal_outbound_documents_organizacao_id").on(table.organizacaoId),
+		vendaIdIdx: index("idx_fiscal_outbound_documents_venda_id").on(table.vendaId),
+		chaveAcessoIdx: index("idx_fiscal_outbound_documents_chave_acesso").on(table.chaveAcesso),
+		statusIdx: index("idx_fiscal_outbound_documents_status").on(table.status),
+		statusInternoIdx: index("idx_fiscal_outbound_documents_status_interno").on(table.statusInterno),
+		referenciaIdx: index("idx_fiscal_outbound_documents_referencia").on(table.referencia),
+		provedorDocumentoIdIdx: index("idx_fiscal_outbound_documents_provedor_documento_id").on(table.provedorDocumentoId),
+		documentoOrigemIdIdx: index("idx_fiscal_outbound_documents_documento_origem_id").on(table.documentoOrigemId),
 	}),
 );
 
-export const fiscalDocumentsRelations = relations(fiscalDocuments, ({ one, many }) => ({
+export const fiscalOutboundDocumentsRelations = relations(fiscalOutboundDocuments, ({ one, many }) => ({
 	organizacao: one(organizations, {
-		fields: [fiscalDocuments.organizacaoId],
+		fields: [fiscalOutboundDocuments.organizacaoId],
 		references: [organizations.id],
 	}),
 	venda: one(sales, {
-		fields: [fiscalDocuments.vendaId],
+		fields: [fiscalOutboundDocuments.vendaId],
 		references: [sales.id],
 	}),
 	compra: one(purchases, {
-		fields: [fiscalDocuments.compraId],
+		fields: [fiscalOutboundDocuments.compraId],
 		references: [purchases.id],
 	}),
 	lancamentoContabil: one(accountingEntries, {
-		fields: [fiscalDocuments.lancamentoContabilId],
+		fields: [fiscalOutboundDocuments.lancamentoContabilId],
 		references: [accountingEntries.id],
 	}),
-	documentoOrigem: one(fiscalDocuments, {
-		fields: [fiscalDocuments.documentoOrigemId],
-		references: [fiscalDocuments.id],
+	documentoOrigem: one(fiscalOutboundDocuments, {
+		fields: [fiscalOutboundDocuments.documentoOrigemId],
+		references: [fiscalOutboundDocuments.id],
 		relationName: "documento-origem",
 	}),
-	documentosDerivados: many(fiscalDocuments, {
+	documentosDerivados: many(fiscalOutboundDocuments, {
 		relationName: "documento-origem",
 	}),
 }));
 
-export type TFiscalDocument = typeof fiscalDocuments.$inferSelect;
-export type TNewFiscalDocument = typeof fiscalDocuments.$inferInsert;
+export type TFiscalDocument = typeof fiscalOutboundDocuments.$inferSelect;
+export type TNewFiscalDocument = typeof fiscalOutboundDocuments.$inferInsert;

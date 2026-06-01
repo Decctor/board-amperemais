@@ -6,7 +6,9 @@ export default async function Products() {
 	const sessionUser = await getCurrentSession();
 	if (!sessionUser) redirect("/auth/signin");
 
-	const userOrg = sessionUser.membership?.organizacao;
-	if (!userOrg) redirect("/auth/signin");
-	return <ProductsPage user={sessionUser.user} userOrg={userOrg} />;
+	const userMembership = sessionUser.membership;
+	if (!userMembership) redirect("/onboarding");
+	const userOrg = userMembership.organizacao;
+
+	return <ProductsPage user={sessionUser.user} userOrg={userOrg} userMembership={userMembership} />;
 }

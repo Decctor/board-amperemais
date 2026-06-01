@@ -160,11 +160,16 @@ export const RecompraCRMDefaultAccountingDefaults: {
 	lancamentosPadrao: {
 		vendas: { debitoKey: string; creditoKey: string };
 		compras: { debitoKey: string; creditoKey: string };
+		transferencias: { debitoKey: string; creditoKey: string };
 	};
 } = {
 	lancamentosPadrao: {
 		vendas: { debitoKey: "contas_receber", creditoKey: "receitas_operacionais" },
 		compras: { debitoKey: "estoques", creditoKey: "fornecedores" },
+		transferencias: {
+			debitoKey: "caixa_bancos",
+			creditoKey: "caixa_bancos",
+		},
 	},
 };
 
@@ -284,9 +289,7 @@ export const RecompraCRMDefaultPaymentMethodDefaults: Record<TPaymentMethodEnum,
 	},
 };
 
-export function buildOrganizationAccountingDefaults(
-	accountIdsByKey: Map<string, string>,
-): TOrganizationDefaults["contabilidade"] {
+export function buildOrganizationAccountingDefaults(accountIdsByKey: Map<string, string>): TOrganizationDefaults["contabilidade"] {
 	return {
 		lancamentosPadrao: {
 			vendas: {
@@ -301,13 +304,17 @@ export function buildOrganizationAccountingDefaults(
 				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey) ?? null,
 				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey,
 			},
+			transferencias: {
+				debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.debitoKey) ?? null,
+				debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.debitoKey,
+				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.creditoKey) ?? null,
+				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.creditoKey,
+			},
 		},
 	};
 }
 
-export function buildOrganizationPaymentMethodDefaults(
-	financialAccountIdsByKey: Map<string, string>,
-): TOrganizationDefaults["pagamentos"] {
+export function buildOrganizationPaymentMethodDefaults(financialAccountIdsByKey: Map<string, string>): TOrganizationDefaults["pagamentos"] {
 	return {
 		metodos: Object.fromEntries(
 			Object.entries(RecompraCRMDefaultPaymentMethodDefaults).map(([metodo, config]) => [

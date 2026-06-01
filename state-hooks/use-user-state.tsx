@@ -1,5 +1,5 @@
-import { OrganizationMemberPermissionsSchema, OrganizationMemberSchema } from "@/schemas/organizations";
-import { NewUserSchema, UserSchema } from "@/schemas/users";
+import { OrganizationMemberSchema } from "@/schemas/organizations";
+import { UserSchema } from "@/schemas/users";
 import { useCallback, useState } from "react";
 import z from "zod";
 
@@ -42,6 +42,7 @@ export function useUserState() {
 				},
 				resultados: {
 					visualizar: false,
+					visualizarSensiveis: false,
 					criarMetas: false,
 					visualizarMetas: false,
 					editarMetas: false,
@@ -54,11 +55,29 @@ export function useUserState() {
 					editar: false,
 					excluir: false,
 				},
+				vendas: {
+					visualizar: false,
+					criar: false,
+					editar: false,
+					excluir: false,
+				},
+				compras: {
+					visualizar: false,
+					criar: false,
+					editar: false,
+					excluir: false,
+				},
 				atendimentos: {
 					visualizar: false,
 					iniciar: false,
 					responder: false,
 					finalizar: false,
+				},
+				fiscal: {
+					visualizar: false,
+					configurar: false,
+					emitir: false,
+					cancelar: false,
 				},
 			},
 		},

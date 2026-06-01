@@ -12,7 +12,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type ProductVariantsBlockProps = {
+type ProductStateVariantsBlockProps = {
 	variants: TUseProductState["state"]["productVariants"];
 	addVariant: TUseProductState["addProductVariant"];
 	updateVariant: TUseProductState["updateProductVariant"];
@@ -20,14 +20,14 @@ type ProductVariantsBlockProps = {
 	removeVariant: TUseProductState["removeProductVariant"];
 	embedded?: boolean;
 };
-export default function ProductVariantsBlock({
+export default function ProductStateVariantsBlock({
 	variants,
 	addVariant,
 	updateVariant,
 	updateVariantImageHolder: _updateVariantImageHolder,
 	removeVariant,
 	embedded = false,
-}: ProductVariantsBlockProps) {
+}: ProductStateVariantsBlockProps) {
 	const [newVariantMenuIsOpen, setNewVariantMenuIsOpen] = useState(false);
 	const [editVariantIndex, setEditVariantIndex] = useState<number | null>(null);
 	const validVariants = variants.map((variant, index) => ({ ...variant, originalIndex: index })).filter((variant) => !variant.deletar);
@@ -101,6 +101,7 @@ function NewProductVariantMenu({ closeMenu, addVariant }: NewProductVariantMenuP
 			previewUrl: null,
 		},
 		addOns: [],
+		perfisFiscais: [],
 	});
 
 	function updateVariantHolder(updates: Partial<TUseProductState["state"]["productVariants"][number]>) {

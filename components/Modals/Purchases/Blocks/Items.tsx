@@ -1,14 +1,14 @@
+import SelectProductWithVariants, { type TSelectProductWithVariantsValue } from "@/components/Inputs/SelectProductWithVariants";
 import { Button } from "@/components/ui/button";
-import { Table, TableCaption, TableCell, TableRow, TableHead, TableHeader, TableBody, TableFooter } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import { formatToMoney } from "@/lib/formatting";
+import { formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { cn } from "@/lib/utils";
 import { TUsePurchaseState } from "@/state-hooks/use-purchase-state";
-import { BoxIcon, Plus, ShoppingCart } from "lucide-react";
-import { useState } from "react";
-import NewPurchaseItem from "./Utils/NewPurchaseItem";
-import { Separator } from "@/components/ui/separator";
+import { BadgeDollarSign, BoxIcon, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
+import type React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type PurchaseItemsBlockProps = {
 	purchaseItems: TUsePurchaseState["state"]["purchaseItems"];
@@ -16,126 +16,531 @@ type PurchaseItemsBlockProps = {
 	updatePurchaseItem: TUsePurchaseState["updatePurchaseItem"];
 	removePurchaseItem: TUsePurchaseState["removePurchaseItem"];
 };
+
+type TPurchaseItemState = TUsePurchaseState["state"]["purchaseItems"][number];
+
 export default function PurchaseItemsBlock({ purchaseItems, addPurchaseItem, updatePurchaseItem, removePurchaseItem }: PurchaseItemsBlockProps) {
-	const [newUpdateMenuIsOpen, setNewUpdateMenuIsOpen] = useState(false);
+	const visibleItems = useMemo(
+		() =>
+			purchaseItems
+				.map((item, index) => ({ item, index }))
+				.filter(({ item }) => !item.deletar),
+		[purchaseItems],
+	);
+	const purchaseTotal = visibleItems.reduce((acc, { item }) => acc + getItemTotal(item), 0);
+
 	return (
 		<ResponsiveMenuSection title="ITENS" icon={<ShoppingCart className="h-4 min-h-4 w-4 min-w-4" />}>
-			<Table className="w-full table-fixed overflow-hidden rounded-lg border">
-				<colgroup>
-					<col style={{ width: "40%" }} />
-					<col style={{ width: "20%" }} />
-					<col style={{ width: "20%" }} />
-					<col style={{ width: "20%" }} />
-				</colgroup>
-				<TableCaption>A lista de produtos que compõe essa compra.</TableCaption>
-				<TableHeader className="bg-accent/60">
-					<TableRow className="hover:bg-accent/60">
-						<TableHead className="w-[40%] font-semibold text-accent-foreground text-center align-middle">PRODUTO</TableHead>
-						<TableHead className="w-[20%] font-semibold text-accent-foreground text-center align-middle">QUANTIDADE</TableHead>
-						<TableHead className="w-[20%] font-semibold text-accent-foreground text-center align-middle">CUSTO UNITÁRIO</TableHead>
-						<TableHead className="w-[20%] font-semibold text-accent-foreground text-center align-middle">VALOR TOTAL</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{purchaseItems.map((item, index) => (
-						<PurchaseItemRow
-							key={index}
+			<div className="flex w-full flex-col overflow-hidden rounded-md border border-border bg-background">
+				<div className="hidden min-h-9 w-full items-center border-b border-border bg-muted/60 px-2 py-1.5 text-[0.68rem] font-medium uppercase text-muted-foreground lg:flex">
+					<p className="w-[30%] px-2 text-start">Produto</p>
+					<p className="w-[9%] px-2 text-center">Un.</p>
+					<p className="w-[9%] px-2 text-center">Qtde</p>
+					<p className="w-[13%] px-2 text-center">Valor unit.</p>
+					<p className="w-[11%] px-2 text-center">Desc.</p>
+					<p className="w-[11%] px-2 text-center">Acrésc.</p>
+					<p className="w-[12%] px-2 text-center">Total</p>
+					<p className="w-[5%] px-2 text-center">Ações</p>
+				</div>
+
+				<div className="flex w-full flex-col bg-background">
+					{visibleItems.map(({ item, index }) => (
+						<PurchaseCompositionTableItem
+							key={item.id ?? `${item.produtoId}-${item.produtoVarianteId ?? "produto"}-${index}`}
 							item={item}
-							updatePurchaseItem={(changes) => updatePurchaseItem({ index, item: changes })}
-							removePurchase={() => removePurchaseItem({ index })}
+							handleUpdate={(updatedItem) => updatePurchaseItem({ index, item: normalizeItemValues({ ...item, ...updatedItem }) })}
+							handleRemove={() => removePurchaseItem({ index })}
 						/>
 					))}
-				</TableBody>
-				<TableFooter>
-					<TableRow className="hover:bg-transparent">
-						<TableCell colSpan={4} className="p-1.5">
-							<div className="flex w-full items-center justify-center">
-								<Button
-									onClick={() => setNewUpdateMenuIsOpen((prev) => !prev)}
-									size="fit"
-									variant="ghost"
-									className="flex items-center gap-1 px-2 py-1 text-xs"
-								>
-									<Plus className="w-4 h-4 min-w-4 min-h-4" />
-									ADICIONAR ITEM
-								</Button>
+					<DraftPurchaseCompositionItem addPurchaseItem={addPurchaseItem} />
+					{visibleItems.length > 0 ? (
+						<div className="flex w-full items-center justify-center border-t border-border px-2 py-2">
+							<div className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground/80 tabular-nums">
+								<BadgeDollarSign size={15} />
+								<p>Total da compra: {formatToMoney(purchaseTotal)}</p>
 							</div>
-						</TableCell>
-					</TableRow>
-				</TableFooter>
-			</Table>
-			{newUpdateMenuIsOpen ? <NewPurchaseItem addPurchaseItem={addPurchaseItem} closeMenu={() => setNewUpdateMenuIsOpen(false)} /> : null}
+						</div>
+					) : (
+						<div className="flex w-full items-center justify-center border-t border-border px-3 py-3">
+							<p className="text-center text-xs font-medium tracking-tight text-muted-foreground">
+								Selecione um produto na linha em branco para começar a compra.
+							</p>
+						</div>
+					)}
+				</div>
+			</div>
 		</ResponsiveMenuSection>
 	);
 }
 
-type PurchaseItemRowProps = {
-	item: TUsePurchaseState["state"]["purchaseItems"][number];
-	updatePurchaseItem: (info: Parameters<TUsePurchaseState["updatePurchaseItem"]>[0]["item"]) => void;
-	removePurchase: () => void;
+type PurchaseCompositionTableItemProps = {
+	item: TPurchaseItemState;
+	handleUpdate: (item: Partial<TPurchaseItemState>) => void;
+	handleRemove: () => void;
 };
-function PurchaseItemRow({ item, updatePurchaseItem: _updatePurchaseItem, removePurchase: _removePurchase }: PurchaseItemRowProps) {
-	const descontosTotal = Number(item.descontosTotal) || 0;
-	const acrescimosTotal = Number(item.acrescimosTotal) || 0;
-	const valorTotalBruto = Number(item.valorTotalBruto) || 0;
-	const valorTotalLiquido = Number(item.valorTotalLiquido) || valorTotalBruto - descontosTotal + acrescimosTotal;
+
+function PurchaseCompositionTableItem({ item, handleUpdate, handleRemove }: PurchaseCompositionTableItemProps) {
+	const rowTotal = getItemTotal(item);
 
 	return (
-		<TableRow>
-			<TableCell className="w-[40%]">
-				<div className="flex min-w-0 items-center gap-1.5">
-					{item.produto.imagemCapaUrl ? (
-						<div className="relative aspect-square w-6 h-6 max-w-6 max-h-6 min-w-6 min-h-6 rounded-lg overflow-hidden">
-							<Image src={item.produto.imagemCapaUrl} alt={item.produto.descricao} fill={true} objectFit="cover" />
-						</div>
-					) : (
-						<div className="relative aspect-square w-6 h-6 max-w-6 max-h-6 min-w-6 min-h-6 rounded-lg overflow-hidden">
-							<BoxIcon className="w-4 h-4" />
-						</div>
-					)}
-
-					<p className="grow truncate text-sm font-medium">{item.produto.descricao}</p>
+		<div className="border-t border-border first:border-t-0">
+			<div className="hidden min-h-11 w-full items-center px-2 py-1 text-xs transition-colors hover:bg-muted/40 lg:flex">
+				<div className="w-[30%] px-1">
+					<ProductCell item={item} onChange={handleUpdate} />
 				</div>
-			</TableCell>
-			<TableCell className="w-[20%] text-center">{item.quantidade}</TableCell>
-			<TableCell className="w-[20%] text-center">{formatToMoney(item.valorUnitarioBruto)}</TableCell>
-			<TooltipProvider>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<TableCell className="w-[20%] text-center">{formatToMoney(valorTotalLiquido)}</TableCell>
-					</TooltipTrigger>
-					<TooltipContent side="top" align="end" className="w-64 rounded-lg border p-3">
-						<div className="flex flex-col gap-2 text-xs">
-							<div className="flex flex-col">
-								<p className="font-semibold">DETALHAMENTO DO ITEM</p>
-								<p className="text-xs">{item.produto.descricao}</p>
-							</div>
-							<Separator />
-							<div className="flex items-center justify-between">
-								<span>TOTAL BRUTO</span>
-								<span className="font-semibold px-1.5 py-0.5">{formatToMoney(valorTotalBruto)}</span>
-							</div>
-							<div className="flex items-center justify-between">
-								<span>DESCONTOS</span>
-								<span className="inline-flex items-center rounded-full border border-green-600 bg-green-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-green-700">
-									-{formatToMoney(descontosTotal, "")}
-								</span>
-							</div>
-							<div className="flex items-center justify-between">
-								<span>ACRÉSCIMOS</span>
-								<span className="inline-flex items-center rounded-full border border-red-600 bg-red-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-red-700">
-									+{formatToMoney(acrescimosTotal, "")}
-								</span>
-							</div>
-							<Separator />
-							<div className="flex items-center justify-between">
-								<span className="font-medium">TOTAL LÍQUIDO</span>
-								<span className="font-semibold">{formatToMoney(valorTotalLiquido)}</span>
-							</div>
-						</div>
-					</TooltipContent>
-				</Tooltip>
-			</TooltipProvider>
-		</TableRow>
+				<p className="w-[9%] truncate px-2 text-center text-muted-foreground">{item.produto.unidade || "UN"}</p>
+				<div className="w-[9%] px-1">
+					<EditableNumberCell value={item.quantidade} ariaLabel="Editar quantidade" min={0.000001} onCommit={(quantidade) => handleUpdate({ quantidade })} />
+				</div>
+				<div className="w-[13%] px-1">
+					<EditableNumberCell
+						value={item.valorUnitarioBruto}
+						ariaLabel="Editar valor unitário"
+						min={0}
+						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+						onCommit={(valorUnitarioBruto) => handleUpdate({ valorUnitarioBruto })}
+					/>
+				</div>
+				<div className="w-[11%] px-1">
+					<EditableNumberCell
+						value={item.descontosTotal ?? 0}
+						ariaLabel="Editar descontos"
+						min={0}
+						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+						onCommit={(descontosTotal) => handleUpdate({ descontosTotal })}
+					/>
+				</div>
+				<div className="w-[11%] px-1">
+					<EditableNumberCell
+						value={item.acrescimosTotal ?? 0}
+						ariaLabel="Editar acréscimos"
+						min={0}
+						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+						onCommit={(acrescimosTotal) => handleUpdate({ acrescimosTotal })}
+					/>
+				</div>
+				<p className="w-[12%] px-2 text-center font-mono text-xs tabular-nums text-foreground/80">{rowTotal > 0 ? formatToMoney(rowTotal) : "-"}</p>
+				<div className="flex w-[5%] justify-center px-1">
+					<DeleteRowButton onRemove={handleRemove} />
+				</div>
+			</div>
+
+			<div className="flex w-full flex-col gap-2 p-2 lg:hidden">
+				<div className="flex w-full items-start justify-between gap-2">
+					<div className="min-w-0 flex-1">
+						<ProductCell item={item} onChange={handleUpdate} />
+					</div>
+					<DeleteRowButton onRemove={handleRemove} />
+				</div>
+				<div className="grid w-full grid-cols-2 gap-2">
+					<MobileEditableField label="Qtde">
+						<EditableNumberCell value={item.quantidade} ariaLabel="Editar quantidade" min={0.000001} onCommit={(quantidade) => handleUpdate({ quantidade })} />
+					</MobileEditableField>
+					<MobileEditableField label="Valor unit.">
+						<EditableNumberCell
+							value={item.valorUnitarioBruto}
+							ariaLabel="Editar valor unitário"
+							min={0}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(valorUnitarioBruto) => handleUpdate({ valorUnitarioBruto })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Desc.">
+						<EditableNumberCell
+							value={item.descontosTotal ?? 0}
+							ariaLabel="Editar descontos"
+							min={0}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(descontosTotal) => handleUpdate({ descontosTotal })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Acrésc.">
+						<EditableNumberCell
+							value={item.acrescimosTotal ?? 0}
+							ariaLabel="Editar acréscimos"
+							min={0}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(acrescimosTotal) => handleUpdate({ acrescimosTotal })}
+						/>
+					</MobileEditableField>
+				</div>
+				<div className="flex w-full items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5">
+					<span className="text-[0.65rem] font-medium uppercase text-muted-foreground">Total</span>
+					<span className="font-mono text-xs font-medium tabular-nums">{rowTotal > 0 ? formatToMoney(rowTotal) : "-"}</span>
+				</div>
+			</div>
+		</div>
 	);
+}
+
+function DraftPurchaseCompositionItem({ addPurchaseItem }: { addPurchaseItem: (item: TPurchaseItemState) => void }) {
+	const [draftItem, setDraftItem] = useState<TPurchaseItemState>(() => createEmptyPurchaseItem());
+
+	function updateDraftItem(item: Partial<TPurchaseItemState>) {
+		const nextDraftItem = normalizeItemValues({ ...draftItem, ...item });
+
+		if (nextDraftItem.produtoId && nextDraftItem.quantidade > 0) {
+			addPurchaseItem(nextDraftItem);
+			setDraftItem(createEmptyPurchaseItem());
+			return;
+		}
+
+		setDraftItem(nextDraftItem);
+	}
+
+	return (
+		<div className="border-t border-dashed border-border bg-muted/20">
+			<div className="hidden min-h-11 w-full items-center px-2 py-1 text-xs transition-colors hover:bg-muted/40 lg:flex">
+				<div className="flex w-[30%] items-center gap-1 px-1">
+					<Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+					<div className="min-w-0 flex-1">
+						<ProductCell item={draftItem} onChange={updateDraftItem} placeholder="NOVO PRODUTO" />
+					</div>
+				</div>
+				<p className="w-[9%] truncate px-2 text-center text-muted-foreground">{draftItem.produto.unidade || "UN"}</p>
+				<div className="w-[9%] px-1">
+					<EditableNumberCell
+						value={draftItem.quantidade}
+						ariaLabel="Editar quantidade do novo item"
+						min={0.000001}
+						onCommit={(quantidade) => updateDraftItem({ quantidade })}
+					/>
+				</div>
+				<div className="w-[13%] px-1">
+					<EditableNumberCell
+						value={draftItem.valorUnitarioBruto}
+						ariaLabel="Editar valor unitário do novo item"
+						min={0}
+						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+						onCommit={(valorUnitarioBruto) => updateDraftItem({ valorUnitarioBruto })}
+					/>
+				</div>
+				<div className="w-[11%] px-1">
+					<EditableNumberCell
+						value={draftItem.descontosTotal ?? 0}
+						ariaLabel="Editar descontos do novo item"
+						min={0}
+						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+						onCommit={(descontosTotal) => updateDraftItem({ descontosTotal })}
+					/>
+				</div>
+				<div className="w-[11%] px-1">
+					<EditableNumberCell
+						value={draftItem.acrescimosTotal ?? 0}
+						ariaLabel="Editar acréscimos do novo item"
+						min={0}
+						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+						onCommit={(acrescimosTotal) => updateDraftItem({ acrescimosTotal })}
+					/>
+				</div>
+				<p className="w-[12%] px-2 text-center font-mono text-xs tabular-nums text-muted-foreground">-</p>
+				<div className="w-[5%]" />
+			</div>
+
+			<div className="flex w-full flex-col gap-2 p-2 lg:hidden">
+				<div className="flex w-full items-start gap-2">
+					<Plus className="mt-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+					<div className="min-w-0 flex-1">
+						<ProductCell item={draftItem} onChange={updateDraftItem} placeholder="Novo produto" />
+					</div>
+				</div>
+				<div className="grid w-full grid-cols-2 gap-2">
+					<MobileEditableField label="Qtde">
+						<EditableNumberCell
+							value={draftItem.quantidade}
+							ariaLabel="Editar quantidade do novo item"
+							min={0.000001}
+							onCommit={(quantidade) => updateDraftItem({ quantidade })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Valor unit.">
+						<EditableNumberCell
+							value={draftItem.valorUnitarioBruto}
+							ariaLabel="Editar valor unitário do novo item"
+							min={0}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(valorUnitarioBruto) => updateDraftItem({ valorUnitarioBruto })}
+						/>
+					</MobileEditableField>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function ProductCell({
+	item,
+	onChange,
+	placeholder = "Selecionar produto",
+}: {
+	item: TPurchaseItemState;
+	onChange: (item: Partial<TPurchaseItemState>) => void;
+	placeholder?: string;
+}) {
+	const selectedName = getItemDisplayName(item);
+	const selectedCode = item.snapshotProdutoCodigo || item.produto.codigo;
+	const imageUrl = item.produtoVariante?.imagemCapaUrl || item.produto.imagemCapaUrl;
+
+	function handleChange(value: TSelectProductWithVariantsValue) {
+		if (!value?.product) {
+			onChange(createEmptyPurchaseItem());
+			return;
+		}
+
+		const unitCost = value.productVariant?.precoCusto ?? value.product.precoCusto ?? 0;
+		onChange({
+			produtoId: value.product.id,
+			produtoVarianteId: value.productVariant?.id ?? null,
+			snapshotProdutoDescricao: value.productVariant?.nome ?? value.product.descricao,
+			snapshotProdutoCodigo: value.productVariant?.codigo ?? value.product.codigo,
+			produto: {
+				descricao: value.product.descricao,
+				codigo: value.product.codigo,
+				unidade: value.product.unidade,
+				imagemCapaUrl: value.product.imagemCapaUrl ?? null,
+			},
+			produtoVariante: value.productVariant
+				? {
+						nome: value.productVariant.nome,
+						codigo: value.productVariant.codigo ?? "",
+						imagemCapaUrl: value.productVariant.imagemCapaUrl ?? null,
+					}
+				: undefined,
+			valorUnitarioBruto: unitCost,
+		});
+	}
+
+	return (
+		<SelectProductWithVariants
+			label="PRODUTO"
+			showLabel={false}
+			value={item.produtoId ? { productId: item.produtoId, productVariantId: item.produtoVarianteId } : null}
+			selectedLabel={item.produtoId ? selectedName : placeholder}
+			resetOptionLabel="SELECIONE UM PRODUTO"
+			holderClassName="h-auto min-h-8 rounded-md border-transparent bg-transparent px-2 py-1 text-left shadow-none hover:border-border hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
+			popoverContentClassName="w-[var(--radix-popover-trigger-width)] min-w-[410px] max-w-[520px]"
+			commandListClassName="max-h-[360px]"
+			handleChange={handleChange}
+			onReset={() => onChange(createEmptyPurchaseItem())}
+			renderTriggerContent={() => (
+				<span className="flex min-w-0 flex-1 items-center gap-2">
+					<ProductThumb imageUrl={imageUrl} label={selectedName} />
+					<span className="flex min-w-0 flex-1 flex-col">
+						<span className={cn("truncate text-xs font-medium", !item.produtoId && "text-muted-foreground")}>{item.produtoId ? selectedName : placeholder}</span>
+						{selectedCode ? <span className="truncate text-[0.65rem] text-muted-foreground">{selectedCode}</span> : null}
+					</span>
+				</span>
+			)}
+		/>
+	);
+}
+
+function ProductThumb({ imageUrl, label }: { imageUrl?: string | null; label: string }) {
+	if (imageUrl) {
+		return (
+			<span className="relative block h-6 w-6 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+				<Image src={imageUrl} alt={label} fill className="object-cover" />
+			</span>
+		);
+	}
+
+	if (label) {
+		return (
+			<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-[0.62rem] font-semibold text-muted-foreground">
+				{formatNameAsInitials(label)}
+			</span>
+		);
+	}
+
+	return (
+		<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/50 text-muted-foreground">
+			<BoxIcon className="h-3.5 w-3.5" />
+		</span>
+	);
+}
+
+const NUMERIC_PATTERN = /[^0-9,.-]/g;
+
+function EditableNumberCell({
+	value,
+	ariaLabel,
+	format,
+	min,
+	onCommit,
+}: {
+	value: number | null | undefined;
+	ariaLabel: string;
+	format?: (value: number) => string;
+	min: number;
+	onCommit: (value: number) => void;
+}) {
+	const inputRef = useRef<HTMLInputElement>(null);
+	const normalizedValue = Number(value) || 0;
+	const [isEditing, setIsEditing] = useState(false);
+	const [inputValue, setInputValue] = useState(formatInputValue(normalizedValue));
+	const [isInvalid, setIsInvalid] = useState(false);
+
+	useEffect(() => {
+		if (!isEditing) setInputValue(formatInputValue(normalizedValue));
+	}, [isEditing, normalizedValue]);
+
+	useEffect(() => {
+		if (isEditing) inputRef.current?.select();
+	}, [isEditing]);
+
+	const displayValue = useMemo(() => (format ? format(normalizedValue) : formatInputValue(normalizedValue)), [format, normalizedValue]);
+
+	function parseValue(rawValue: string) {
+		const normalizedRawValue = rawValue.replace(",", ".");
+		const numericValue = Number.parseFloat(normalizedRawValue);
+		if (Number.isNaN(numericValue)) return null;
+		return numericValue;
+	}
+
+	function commitValue() {
+		const numericValue = parseValue(inputValue);
+		if (numericValue === null || numericValue < min) {
+			setIsInvalid(true);
+			inputRef.current?.focus();
+			return;
+		}
+
+		setIsInvalid(false);
+		onCommit(numericValue);
+		setIsEditing(false);
+	}
+
+	if (isEditing) {
+		return (
+			<Input
+				ref={inputRef}
+				value={inputValue}
+				aria-label={ariaLabel}
+				type="text"
+				inputMode="decimal"
+				pattern="[0-9]*[,.]?[0-9]*"
+				onChange={(event) => {
+					setInputValue(event.target.value.replace(NUMERIC_PATTERN, ""));
+					setIsInvalid(false);
+				}}
+				onBlur={commitValue}
+				onKeyDown={(event) => {
+					if (event.key === "Enter") commitValue();
+					if (event.key === "Escape") {
+						setIsInvalid(false);
+						setInputValue(formatInputValue(normalizedValue));
+						setIsEditing(false);
+					}
+				}}
+				className={cn(
+					"h-8 rounded-md border-border px-2 text-center text-xs shadow-none focus-visible:ring-2 focus-visible:ring-ring/40",
+					isInvalid && "border-destructive focus-visible:ring-destructive/30",
+				)}
+			/>
+		);
+	}
+
+	return (
+		<button
+			type="button"
+			aria-label={ariaLabel}
+			onClick={() => setIsEditing(true)}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					setIsEditing(true);
+				}
+			}}
+			className="h-8 w-full rounded-md px-2 text-center font-mono text-xs tabular-nums text-foreground/80 transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+		>
+			{displayValue}
+		</button>
+	);
+}
+
+function DeleteRowButton({ onRemove }: { onRemove: () => void }) {
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			size="icon"
+			onClick={onRemove}
+			aria-label="Remover item da compra"
+			className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/30"
+		>
+			<Trash2 className="h-4 w-4" />
+		</Button>
+	);
+}
+
+function MobileEditableField({ label, children }: { label: string; children: React.ReactNode }) {
+	return (
+		<div className="flex min-w-0 flex-col gap-1">
+			<span className="text-[0.65rem] font-medium uppercase text-muted-foreground">{label}</span>
+			{children}
+		</div>
+	);
+}
+
+function roundTo2(value: number) {
+	return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeItemValues(item: TPurchaseItemState): TPurchaseItemState {
+	const quantidade = Number(item.quantidade) || 0;
+	const valorUnitarioBruto = Number(item.valorUnitarioBruto) || 0;
+	const descontosTotal = Number(item.descontosTotal) || 0;
+	const acrescimosTotal = Number(item.acrescimosTotal) || 0;
+	const valorTotalBruto = roundTo2(quantidade * valorUnitarioBruto);
+	const valorTotalLiquido = roundTo2(valorTotalBruto - descontosTotal + acrescimosTotal);
+	const valorUnitarioLiquido = quantidade > 0 ? roundTo2(valorTotalLiquido / quantidade) : 0;
+
+	return {
+		...item,
+		quantidade,
+		valorUnitarioBruto,
+		descontosTotal,
+		acrescimosTotal,
+		valorTotalBruto,
+		valorTotalLiquido,
+		valorUnitarioLiquido,
+	};
+}
+
+function getItemTotal(item: TPurchaseItemState) {
+	const valorTotalBruto = Number(item.valorTotalBruto) || (Number(item.quantidade) || 0) * (Number(item.valorUnitarioBruto) || 0);
+	return Number(item.valorTotalLiquido) || valorTotalBruto - (Number(item.descontosTotal) || 0) + (Number(item.acrescimosTotal) || 0);
+}
+
+function getItemDisplayName(item: TPurchaseItemState) {
+	if (item.produtoVariante?.nome) return `${item.produto.descricao} - ${item.produtoVariante.nome}`;
+	return item.produto.descricao || item.snapshotProdutoDescricao;
+}
+
+function formatInputValue(value: number) {
+	if (value === null || value === undefined) return "";
+	return value.toString().replace(".", ",");
+}
+
+function createEmptyPurchaseItem(): TPurchaseItemState {
+	return {
+		produtoId: "",
+		produtoVarianteId: null,
+		snapshotProdutoDescricao: "",
+		snapshotProdutoCodigo: "",
+		produto: {
+			descricao: "",
+			codigo: "",
+			unidade: "UN",
+			imagemCapaUrl: null,
+		},
+		produtoVariante: undefined,
+		quantidade: 1,
+		valorUnitarioBruto: 0,
+		valorTotalBruto: 0,
+		valorUnitarioLiquido: 0,
+		valorTotalLiquido: 0,
+		descontosTotal: 0,
+		acrescimosTotal: 0,
+	};
 }

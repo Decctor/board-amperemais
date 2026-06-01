@@ -9,6 +9,7 @@ type PurchaseDeliveryBlockProps = {
 	updatePurchase: TUsePurchaseState["updatePurchase"];
 };
 export default function PurchaseDeliveryBlock({ purchase, updatePurchase }: PurchaseDeliveryBlockProps) {
+	const isReceived = purchase.status === "RECEBIDA";
 	return (
 		<ResponsiveMenuSection title="ENTREGA" icon={<Truck className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex flex-col lg:flex-row gap-1.5">
@@ -34,7 +35,11 @@ export default function PurchaseDeliveryBlock({ purchase, updatePurchase }: Purc
 						value={formatDateForInputValue(purchase.entregaDataRecebimentoEfetivacao)}
 						handleChange={(value) => updatePurchase({ entregaDataRecebimentoEfetivacao: formatDateOnInputChange(value, "date") })}
 						width="100%"
+						editable={isReceived}
 					/>
+					{!isReceived ? (
+						<p className="text-[0.65rem] text-muted-foreground mt-1">Disponível apenas quando o status da compra for RECEBIDA.</p>
+					) : null}
 				</div>
 			</div>
 		</ResponsiveMenuSection>

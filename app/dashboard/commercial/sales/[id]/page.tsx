@@ -10,5 +10,22 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
 	if (!sessionUser) redirect("/auth/signin");
 	if (!sessionUser.membership?.organizacao) redirect("/onboarding");
 
-	return <SaleByIdPage user={sessionUser.user} saleId={id} />;
+	const orgHasERPAccess = sessionUser.membership.organizacao.configuracao.recursos.erp.acesso;
+	const userHasFiscalViewPermission = sessionUser.membership.permissoes.fiscal.visualizar;
+	const userHasFiscalConfigurePermission = sessionUser.membership.permissoes.fiscal.configurar;
+	const userHasFiscalEmitPermission = sessionUser.membership.permissoes.fiscal.emitir;
+	const userHasFiscalCancelPermission = sessionUser.membership.permissoes.fiscal.cancelar;
+	return (
+		<SaleByIdPage
+			user={sessionUser.user}
+			saleId={id}
+			orgHasERPAccess={orgHasERPAccess}
+			userFiscalPermissions={{
+				view: userHasFiscalViewPermission,
+				configure: userHasFiscalConfigurePermission,
+				emit: userHasFiscalEmitPermission,
+				cancel: userHasFiscalCancelPermission,
+			}}
+		/>
+	);
 }

@@ -177,8 +177,21 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	const PAGE_SIZE = 25;
 	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const { id, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures, clientId, productGroups, productIds, totalMin, totalMax } =
-		input;
+	const {
+		id,
+		page,
+		search,
+		periodAfter,
+		periodBefore,
+		sellersIds,
+		partnersIds,
+		saleNatures,
+		clientId,
+		productGroups,
+		productIds,
+		totalMin,
+		totalMax,
+	} = input;
 
 	if (id) {
 		const sale = await db.query.sales.findFirst({
@@ -218,6 +231,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 						avatarUrl: true,
 					},
 				},
+				documentosFiscais: true,
 				itens: {
 					columns: {
 						id: true,
@@ -788,19 +802,19 @@ const createSaleRoute: PagesRouteHandler<TCreateSaleOutput> = async (req, res) =
 					});
 
 					const interactionContextMetadados = {
-							cashbackAcumuladoValor: accumulatedBalance,
-							whatsappMensagemId: null,
-							whatsappTemplateId: null,
-							compraValor: input.saleValue,
-							compraCashbackAcumulado: accumulatedBalance,
-							compraCashbackNovoSaldo: newOverallAvailableBalance,
-							compraVendedorNome: "PONTO DE INTERAÇÃO",
-							cashbackSaldoDisponivel: newOverallAvailableBalance,
-							cashbackTotalAcumuladoVida: newOverallAccumulatedBalance,
-							cashbackTotalResgatadoVida: balance.saldoValorResgatadoTotal,
-						};
+						cashbackAcumuladoValor: accumulatedBalance,
+						whatsappMensagemId: null,
+						whatsappTemplateId: null,
+						compraValor: input.saleValue,
+						compraCashbackAcumulado: accumulatedBalance,
+						compraCashbackNovoSaldo: newOverallAvailableBalance,
+						compraVendedorNome: "PONTO DE INTERAÇÃO",
+						cashbackSaldoDisponivel: newOverallAvailableBalance,
+						cashbackTotalAcumuladoVida: newOverallAccumulatedBalance,
+						cashbackTotalResgatadoVida: balance.saldoValorResgatadoTotal,
+					};
 
-						const [insertedInteraction] = await tx
+					const [insertedInteraction] = await tx
 						.insert(interactions)
 						.values({
 							clienteId: input.clientId,

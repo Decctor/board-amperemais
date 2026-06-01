@@ -16,6 +16,7 @@ export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 	resultados: {
 		escopo: null,
 		visualizar: true,
+		visualizarSensiveis: true,
 		criarMetas: true,
 		visualizarMetas: true,
 		editarMetas: true,
@@ -43,6 +44,12 @@ export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 		criar: true,
 		editar: true,
 		excluir: true,
+	},
+	fiscal: {
+		visualizar: true,
+		configurar: true,
+		emitir: true,
+		cancelar: true,
 	},
 };
 
@@ -184,6 +191,12 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS: TOrganizationDefaults 
 				creditoContaKey: null,
 			},
 			compras: {
+				debitoContaId: null,
+				debitoContaKey: null,
+				creditoContaId: null,
+				creditoContaKey: null,
+			},
+			transferencias: {
 				debitoContaId: null,
 				debitoContaKey: null,
 				creditoContaId: null,
@@ -703,6 +716,11 @@ export const AppRoutes = [
 		description: "Painel de acompanhamento e gestão do seu programa de cashback.",
 	},
 	{
+		path: "/dashboard/commercial/shop",
+		title: "Loja Digital",
+		description: "Painel de acompanhamento e gestão da sua loja digital.",
+	},
+	{
 		path: "/dashboard/team/sellers",
 		title: "Vendedores",
 		description: "Painel detalhadado dos seus vendedores.",
@@ -721,6 +739,11 @@ export const AppRoutes = [
 		path: "/dashboard/operational/finances",
 		title: "Finanças",
 		description: "Painel de acompanhamento e gestão das finanças do seu negócio.",
+	},
+	{
+		path: "/dashboard/operational/fiscal",
+		title: "Fiscal",
+		description: "Painel de acompanhamento e gestão do seu recursos fiscais.",
 	},
 	{
 		path: "/dashboard/operational/purchases",

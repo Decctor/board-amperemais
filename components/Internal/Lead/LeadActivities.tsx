@@ -3,7 +3,7 @@ import InternalActivityCard from "@/components/CRM/ActivityCard";
 import NewActivity from "@/components/Modals/Internal/Activities/NewActivity";
 import { Button } from "@/components/ui/button";
 
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { useInternalLeadActivities } from "@/lib/queries/crm";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, Plus } from "lucide-react";

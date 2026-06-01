@@ -11,7 +11,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import NewActivity from "@/components/Modals/Internal/Activities/NewActivity";
 import NewNote from "@/components/Modals/Internal/Notes/NewNote";
 import { Button } from "@/components/ui/button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";

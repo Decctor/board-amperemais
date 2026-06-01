@@ -11,11 +11,14 @@ import type {
 	TDeliveryModeEnum,
 	TFinancialAccountTypeEnum,
 	TFinancialTransactionTypeEnum,
+	TFiscalProductOriginEnum,
 	TInteractionsCronJobTimeBlocksEnum,
 	TInternalLeadActivityTypeEnum,
 	TPaymentMethodEnum,
 	TPurchaseStatusEnum,
 	TRecurrenceFrequencyEnum,
+	TShopModeEnum,
+	TShopProductsModeEnum,
 	TTimeDurationUnitsEnum,
 	TWhatsappTemplateStatusEnum,
 } from "@/schemas/enums";
@@ -30,6 +33,7 @@ import {
 	BookOpen,
 	Check,
 	CheckCheck,
+	ChefHat,
 	CheckCircleIcon,
 	ClipboardIcon,
 	Clock,
@@ -55,8 +59,12 @@ import {
 	TrendingUp,
 	Video,
 	Wallet,
+	CircleCheck,
+	ListIcon,
 	X,
+	XCircle,
 	XCircleIcon,
+	ArrowRight,
 } from "lucide-react";
 
 export const InternalActivityTypeOptions: { id: number; label: string; value: TInternalLeadActivityTypeEnum; icon: React.ReactNode }[] = [
@@ -190,6 +198,32 @@ export const InternalLeadStatusCRMOptions: { id: number; label: string; value: T
 	{ id: 6, label: "GANHO", value: "GANHO" },
 ];
 
+export const ProductFiscalProfileOriginOptions: { id: TFiscalProductOriginEnum; value: TFiscalProductOriginEnum; label: string }[] = [
+	{ id: "NACIONAL", value: "NACIONAL", label: "NACIONAL" },
+	{ id: "ESTRANGEIRA_IMPORTACAO_DIRETA", value: "ESTRANGEIRA_IMPORTACAO_DIRETA", label: "ESTRANGEIRA — IMPORTAÇÃO DIRETA" },
+	{ id: "ESTRANGEIRA_ADQUIRIDA_BRASIL", value: "ESTRANGEIRA_ADQUIRIDA_BRASIL", label: "ESTRANGEIRA — ADQUIRIDA NO BRASIL" },
+	{
+		id: "NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+		value: "NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40",
+		label: "NACIONAL — CONTEÚDO IMPORT. > 40%",
+	},
+	{ id: "NACIONAL_PROCESSOS_BASICOS", value: "NACIONAL_PROCESSOS_BASICOS", label: "NACIONAL — PROCESSOS BÁSICOS" },
+	{
+		id: "NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+		value: "NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40",
+		label: "NACIONAL — CONTEÚDO IMPORT. ≤ 40%",
+	},
+	{
+		id: "ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+		value: "ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR",
+		label: "ESTRANGEIRA — IMPORT. DIRETA SEM SIMILAR",
+	},
+	{
+		id: "ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+		value: "ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR",
+		label: "ESTRANGEIRA — ADQUIRIDA BRASIL SEM SIMILAR",
+	},
+];
 export const InternalLeadOriginOptions: { id: string; label: string; value: TInternalLeadOriginEnum }[] = [
 	{ id: "INDICACAO", value: "INDICACAO", label: "Indicação" },
 	{ id: "SITE", value: "SITE", label: "Site" },
@@ -632,6 +666,16 @@ export const AccountingEntryOriginTypeOptions: {
 			background: "bg-red-200",
 		},
 	},
+	{
+		id: 4,
+		label: "TRANSFERÊNCIA",
+		value: "TRANSFERENCIA",
+		icon: <ArrowRight className="w-4 h-4" />,
+		colors: {
+			text: "text-blue-600",
+			background: "bg-blue-200",
+		},
+	},
 ];
 
 export const FinancialTransactionTypeOptions: {
@@ -655,6 +699,16 @@ export const FinancialTransactionTypeOptions: {
 		icon: <ArrowDown className="w-4 h-4 text-red-600" />,
 		colors: { text: "text-red-600", background: "bg-red-200" },
 	},
+];
+
+export const ShopModeOptions: { id: number; label: string; value: TShopModeEnum; icon: React.ReactNode }[] = [
+	{ id: 1, label: "CARDÁPIO", value: "CARDAPIO", icon: <ChefHat className="w-4 h-4 min-w-4 min-h-4" /> },
+	{ id: 2, label: "CATÁLOGO", value: "CATALOGO", icon: <BookOpen className="w-4 h-4 min-w-4 min-h-4" /> },
+];
+export const ShopProductsModeOptions: { id: number; label: string; value: TShopProductsModeEnum; icon: React.ReactNode }[] = [
+	{ id: 1, label: "ATIVOS", value: "ATIVOS", icon: <CircleCheck className="w-4 h-4 min-w-4 min-h-4" /> },
+	{ id: 2, label: "INCLUIR", value: "INCLUIR", icon: <ListIcon className="w-4 h-4 min-w-4 min-h-4" /> },
+	{ id: 3, label: "EXCLUIR", value: "EXCLUIR", icon: <XCircle className="w-4 h-4 min-w-4 min-h-4" /> },
 ];
 
 export const WhatsappTemplateStatusUIDetailsMap: Record<

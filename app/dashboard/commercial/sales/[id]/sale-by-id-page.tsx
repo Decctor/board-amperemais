@@ -5,7 +5,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import SectionWrapper from "@/components/ui/section-wrapper";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getAgeFromBirthdayDate } from "@/lib/dates";
@@ -43,6 +43,13 @@ import Link from "next/link";
 type SaleByIdPageProps = {
 	user: TAuthUserSession["user"];
 	saleId: string;
+	orgHasERPAccess: boolean;
+	userFiscalPermissions: {
+		view: boolean;
+		configure: boolean;
+		emit: boolean;
+		cancel: boolean;
+	};
 };
 
 // Helper function to format time to conversion
@@ -67,7 +74,7 @@ const SITUACAO_COLORS: Record<string, string> = {
 	"05": "bg-gray-500/10 text-gray-600 dark:text-gray-400",
 };
 
-export default function SaleByIdPage({ user, saleId }: SaleByIdPageProps) {
+export default function SaleByIdPage({ user, saleId, orgHasERPAccess, userFiscalPermissions }: SaleByIdPageProps) {
 	const { data: sale, isLoading, isError, error, isSuccess } = useSalesById({ id: saleId });
 
 	if (isLoading) return <LoadingComponent />;
