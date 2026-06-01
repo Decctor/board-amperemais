@@ -1,6 +1,7 @@
 import { formatPhoneAsBase, formatToCEP, formatToPhone } from "@/lib/formatting";
 import type { TGetCardapioWebOrderDetailsOutput } from "./types";
 import { TClientEntity } from "@/services/drizzle/schema";
+import { getCardapioWebAddOnOptionExternalId } from "./external-ids";
 
 // -----------------------------------------------------------------------------
 // TYPE DEFINITIONS FOR MAPPED ENTITIES
@@ -238,7 +239,10 @@ export function mapCardapioWebProductAddOnOption(
 	option: TGetCardapioWebOrderDetailsOutput["items"][number]["options"][number],
 ): MappedCardapioWebProductAddOnOption {
 	return {
-		idExterno: option.option_id?.toString() ?? "",
+		idExterno:
+			option.option_group_id && option.option_id
+				? getCardapioWebAddOnOptionExternalId(option.option_group_id.toString(), option.option_id.toString())
+				: "",
 		addOnIdExterno: option.option_group_id?.toString() ?? "",
 		nome: option.name,
 		codigo: option.external_code,
@@ -271,7 +275,7 @@ export function extractUniqueProductAddOns(orders: TGetCardapioWebOrderDetailsOu
 
 /**
  * Extracts unique product add-on options from a list of order details.
- * Deduplicates by option_id.
+ * Deduplicates by option_group_id and option_id.
  */
 export function extractUniqueProductAddOnOptions(orders: TGetCardapioWebOrderDetailsOutput[]): MappedCardapioWebProductAddOnOption[] {
 	const optionsMap = new Map<string, MappedCardapioWebProductAddOnOption>();
@@ -279,7 +283,10 @@ export function extractUniqueProductAddOnOptions(orders: TGetCardapioWebOrderDet
 	for (const order of orders) {
 		for (const item of order.items) {
 			for (const option of item.options) {
-				const key = option.option_id?.toString() ?? "";
+				const key =
+					option.option_group_id && option.option_id
+						? getCardapioWebAddOnOptionExternalId(option.option_group_id.toString(), option.option_id.toString())
+						: "";
 				if (!key) continue;
 				if (!optionsMap.has(key)) {
 					optionsMap.set(key, mapCardapioWebProductAddOnOption(option));
@@ -312,7 +319,10 @@ export function mapCardapioWebSaleItem(item: TGetCardapioWebOrderDetailsOutput["
 			.filter((opt) => opt.option_group_id && opt.option_id)
 			.map((opt) => ({
 				addOnIdExterno: (opt.option_group_id as number).toString(),
-				optionIdExterno: (opt.option_id as number).toString(),
+				optionIdExterno: getCardapioWebAddOnOptionExternalId(
+					(opt.option_group_id as number).toString(),
+					(opt.option_id as number).toString(),
+				),
 				quantidade: opt.quantity,
 				valorUnitario: opt.unit_price,
 			})),

@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { appApiHandler } from "@/lib/app-api";
 import { createCardapioWebClient, getCardapioWebCatalog } from "@/lib/data-connectors/cardapio-web";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
@@ -16,7 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Currently supports: CARDAPIO-WEB
  *
  * Runs once daily to:
- * - Upsert products (by codigo)
+ * - Upsert products (by external identity with legacy codigo fallback)
  * - Upsert addOns (by idExterno)
  * - Upsert addOnOptions (by idExterno)
  * - Recreate product-addOn references
@@ -33,14 +32,11 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 
 	// Extract all mapped data
 	const {
-		rawCatalog,
 		products: mappedProducts,
 		addOns: mappedAddOns,
 		addOnOptions: mappedAddOnOptions,
 		productAddOnReferences: mappedReferences,
 	} = extractAllCatalogData(catalog);
-
-	await fs.writeFileSync("mappedProducts.json", JSON.stringify(mappedProducts, null, 2));
 
 	console.log(
 		`[ORG: ${organizationId}] [CATALOG-SYNC] Extracted ${mappedProducts.length} products, ${mappedAddOns.length} addOns, ${mappedAddOnOptions.length} options, ${mappedReferences.length} references`,
@@ -48,20 +44,21 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 
 	await db.transaction(async (tx) => {
 		// ---------------------------------------------------------------------
-		// PRODUCTS: Upsert by codigo
+		// PRODUCTS: Upsert by external identity with legacy codigo fallback
 		// ---------------------------------------------------------------------
-		const productCodes = mappedProducts.map((p) => p.codigo);
+		const productCodes = [...new Set(mappedProducts.flatMap((product) => [product.codigo, product.idExterno]))];
 		const existingProducts = await tx.query.products.findMany({
 			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, organizationId), inArray(fields.codigo, productCodes)),
 			columns: { id: true, codigo: true },
 		});
-		const existingProductsMap = new Map(existingProducts.map((p) => [p.codigo, p.id]));
+		const existingProductsByCode = new Map(existingProducts.map((product) => [product.codigo, product.id]));
+		const existingProductsMap = new Map<string, string>();
 
 		let productsCreated = 0;
 		let productsUpdated = 0;
 
 		for (const product of mappedProducts) {
-			const existingId = existingProductsMap.get(product.codigo);
+			const existingId = existingProductsByCode.get(product.codigo) ?? existingProductsByCode.get(product.idExterno);
 
 			if (existingId) {
 				// Update existing product
@@ -69,9 +66,11 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 					.update(products)
 					.set({
 						ativo: product.ativo,
+						codigo: product.codigo,
 						descricao: product.descricao,
 						imagemCapaUrl: product.imagemCapaUrl,
 						precoVenda: product.precoVenda,
+						precoCusto: product.precoCusto,
 						unidade: product.unidade,
 						grupo: product.grupo,
 						tipo: product.tipo,
@@ -79,6 +78,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						dataUltimaSincronizacao: new Date(),
 					})
 					.where(eq(products.id, existingId));
+				existingProductsMap.set(product.idExterno, existingId);
 				productsUpdated++;
 			} else {
 				// Insert new product
@@ -91,6 +91,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						descricao: product.descricao,
 						imagemCapaUrl: product.imagemCapaUrl,
 						precoVenda: product.precoVenda,
+						precoCusto: product.precoCusto,
 						unidade: product.unidade,
 						grupo: product.grupo,
 						ncm: product.ncm,
@@ -99,7 +100,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						dataUltimaSincronizacao: new Date(),
 					})
 					.returning({ id: products.id });
-				existingProductsMap.set(product.codigo, inserted.id);
+				existingProductsMap.set(product.idExterno, inserted.id);
 				productsCreated++;
 			}
 		}
@@ -130,6 +131,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						nome: addOn.nome,
 						minOpcoes: addOn.minOpcoes,
 						maxOpcoes: addOn.maxOpcoes ?? 1,
+						ativo: addOn.ativo,
 					})
 					.where(eq(productAddOns.id, existingId));
 				addOnsUpdated++;
@@ -143,6 +145,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						nome: addOn.nome,
 						minOpcoes: addOn.minOpcoes,
 						maxOpcoes: addOn.maxOpcoes ?? 1,
+						ativo: addOn.ativo,
 					})
 					.returning({ id: productAddOns.id });
 				existingAddOnsMap.set(addOn.idExterno, inserted.id);
@@ -155,12 +158,21 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 		// ---------------------------------------------------------------------
 		// ADDON OPTIONS: Upsert by idExterno
 		// ---------------------------------------------------------------------
-		const optionExternalIds = mappedAddOnOptions.map((o) => o.idExterno);
+		const optionExternalIds = mappedAddOnOptions.flatMap((option) => [option.idExterno, option.idExterno.split(":").at(-1) as string]);
 		const existingOptions = await tx.query.productAddOnOptions.findMany({
 			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, organizationId), inArray(fields.idExterno, optionExternalIds)),
-			columns: { id: true, idExterno: true },
+			columns: { id: true, idExterno: true, produtoAddOnId: true },
 		});
-		const existingOptionsMap = new Map(existingOptions.map((o) => [o.idExterno, o.id]));
+		const addOnExternalIdsById = new Map(Array.from(existingAddOnsMap.entries()).map(([externalId, id]) => [id, externalId]));
+		const existingOptionsMap = new Map<string, string>();
+		for (const option of existingOptions) {
+			if (option.idExterno) existingOptionsMap.set(option.idExterno, option.id);
+		}
+		const existingLegacyOptionsMap = new Map(
+			existingOptions
+				.filter((option) => option.idExterno && !option.idExterno.includes(":"))
+				.map((option) => [`${addOnExternalIdsById.get(option.produtoAddOnId)}:${option.idExterno}`, option.id]),
+		);
 
 		let optionsCreated = 0;
 		let optionsUpdated = 0;
@@ -172,7 +184,8 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 				continue;
 			}
 
-			const existingId = existingOptionsMap.get(option.idExterno);
+			const existingId = existingOptionsMap.get(option.idExterno) ?? existingLegacyOptionsMap.get(option.idExterno);
+			const productId = option.produtoIdExterno ? existingProductsMap.get(option.produtoIdExterno) : null;
 
 			if (existingId) {
 				// Update existing option
@@ -180,10 +193,13 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 					.update(productAddOnOptions)
 					.set({
 						produtoAddOnId: addOnId,
+						idExterno: option.idExterno,
 						nome: option.nome,
 						codigo: option.codigo,
 						precoDelta: option.precoDelta,
 						maxQtdePorItem: option.maxQtdePorItem ?? 1,
+						produtoId: productId ?? null,
+						ativo: option.ativo,
 					})
 					.where(eq(productAddOnOptions.id, existingId));
 				optionsUpdated++;
@@ -199,6 +215,8 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						codigo: option.codigo,
 						precoDelta: option.precoDelta,
 						maxQtdePorItem: option.maxQtdePorItem ?? 1,
+						produtoId: productId ?? null,
+						ativo: option.ativo,
 					})
 					.returning({ id: productAddOnOptions.id });
 				existingOptionsMap.set(option.idExterno, inserted.id);

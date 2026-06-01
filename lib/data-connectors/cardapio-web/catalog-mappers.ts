@@ -1,4 +1,5 @@
 import type { TGetCardapioWebCatalogOutput } from "./types";
+import { getCardapioWebAddOnOptionExternalId } from "./external-ids";
 
 // -----------------------------------------------------------------------------
 // TYPE DEFINITIONS FOR MAPPED CATALOG ENTITIES
@@ -11,6 +12,7 @@ export interface MappedCatalogProduct {
 	descricao: string;
 	imagemCapaUrl: string | null;
 	precoVenda: number;
+	precoCusto: number | null;
 	unidade: string;
 	grupo: string; // Category name
 	ncm: string;
@@ -22,6 +24,7 @@ export interface MappedCatalogProduct {
 
 export interface MappedCatalogAddOn {
 	idExterno: string;
+	ativo: boolean;
 	nome: string;
 	minOpcoes: number;
 	maxOpcoes: number | null;
@@ -32,12 +35,14 @@ export interface MappedCatalogAddOn {
 export interface MappedCatalogAddOnOption {
 	idExterno: string;
 	addOnIdExterno: string;
+	ativo: boolean;
 	nome: string;
 	codigo: string | null;
 	precoDelta: number;
 	maxQtdePorItem: number | null;
 	imagemCapaUrl: string | null;
 	status: string;
+	produtoIdExterno: string | null;
 }
 
 export interface MappedCatalogProductAddOnReference {
@@ -59,14 +64,17 @@ type CatalogOption = CatalogOptionGroup["options"][number];
  * Maps a catalog item to our internal product format.
  * Skips combo items - only regular items are synced.
  */
-function mapCatalogProduct(item: CatalogItem, categoryName: string): MappedCatalogProduct {
+function mapCatalogProduct(item: CatalogItem, categoryName: string, uniqueProductExternalCodes: Set<string>): MappedCatalogProduct {
+	const externalCode = item.external_code?.trim();
+
 	return {
 		idExterno: item.id.toString(),
 		ativo: item.status === "ACTIVE",
-		codigo: item.id.toString(),
+		codigo: externalCode && uniqueProductExternalCodes.has(externalCode) ? externalCode : item.id.toString(),
 		descricao: item.name,
 		imagemCapaUrl: item.image?.image_url ?? null,
 		precoVenda: item.price,
+		precoCusto: item.cost_price ?? null,
 		unidade: item.unit_type ?? "UN",
 		grupo: categoryName,
 		ncm: "", // Not provided by CardapioWeb
@@ -83,6 +91,22 @@ function mapCatalogProduct(item: CatalogItem, categoryName: string): MappedCatal
  */
 export function extractCatalogProducts(catalog: TGetCardapioWebCatalogOutput): MappedCatalogProduct[] {
 	const productsMap = new Map<string, MappedCatalogProduct>();
+	const productExternalCodeCount = new Map<string, number>();
+
+	for (const category of catalog.categories) {
+		for (const item of category.items) {
+			const externalCode = item.external_code?.trim();
+			if (!externalCode || item.kind === "combo") continue;
+
+			productExternalCodeCount.set(externalCode, (productExternalCodeCount.get(externalCode) ?? 0) + 1);
+		}
+	}
+
+	const uniqueProductExternalCodes = new Set(
+		Array.from(productExternalCodeCount.entries())
+			.filter(([, count]) => count === 1)
+			.map(([externalCode]) => externalCode),
+	);
 
 	for (const category of catalog.categories) {
 		for (const item of category.items) {
@@ -91,7 +115,7 @@ export function extractCatalogProducts(catalog: TGetCardapioWebCatalogOutput): M
 
 			const key = item.id.toString();
 			if (!productsMap.has(key)) {
-				productsMap.set(key, mapCatalogProduct(item, category.name));
+				productsMap.set(key, mapCatalogProduct(item, category.name, uniqueProductExternalCodes));
 			}
 		}
 	}
@@ -105,6 +129,7 @@ export function extractCatalogProducts(catalog: TGetCardapioWebCatalogOutput): M
 function mapCatalogAddOn(optionGroup: CatalogOptionGroup): MappedCatalogAddOn {
 	return {
 		idExterno: optionGroup.id.toString(),
+		ativo: optionGroup.status === "ACTIVE",
 		nome: optionGroup.name,
 		minOpcoes: optionGroup.minimum_quantity,
 		maxOpcoes: optionGroup.maximum_quantity,
@@ -140,25 +165,45 @@ export function extractCatalogAddOns(catalog: TGetCardapioWebCatalogOutput): Map
 /**
  * Maps a catalog option to our internal addOn option format.
  */
-function mapCatalogAddOnOption(option: CatalogOption, optionGroupId: number): MappedCatalogAddOnOption {
+function mapCatalogAddOnOption(
+	option: CatalogOption,
+	optionGroupId: number,
+	productExternalIdByCode: Map<string, string | null>,
+): MappedCatalogAddOnOption {
+	const addOnExternalId = optionGroupId.toString();
+	const optionExternalId = option.id.toString();
+	const externalCode = option.external_code?.trim() || null;
+
 	return {
-		idExterno: option.id.toString(),
-		addOnIdExterno: optionGroupId.toString(),
+		idExterno: getCardapioWebAddOnOptionExternalId(addOnExternalId, optionExternalId),
+		addOnIdExterno: addOnExternalId,
+		ativo: option.status === "ACTIVE",
 		nome: option.name,
-		codigo: option.id.toString(),
+		codigo: externalCode ?? optionExternalId,
 		precoDelta: option.price,
-		maxQtdePorItem: null,
+		maxQtdePorItem: option.max_quantity ?? null,
 		imagemCapaUrl: option.image?.image_url ?? null,
 		status: option.status,
+		produtoIdExterno: externalCode ? (productExternalIdByCode.get(externalCode) ?? null) : null,
 	};
 }
 
 /**
  * Extracts unique addOn options from the catalog.
- * Scans all items' option_groups' options and deduplicates by id.
+ * Scans all items' option_groups' options and deduplicates by group and option id.
  */
 export function extractCatalogAddOnOptions(catalog: TGetCardapioWebCatalogOutput): MappedCatalogAddOnOption[] {
 	const optionsMap = new Map<string, MappedCatalogAddOnOption>();
+	const productExternalIdByCode = new Map<string, string | null>();
+
+	for (const category of catalog.categories) {
+		for (const item of category.items) {
+			const externalCode = item.external_code?.trim();
+			if (!externalCode || item.kind === "combo") continue;
+
+			productExternalIdByCode.set(externalCode, productExternalIdByCode.has(externalCode) ? null : item.id.toString());
+		}
+	}
 
 	for (const category of catalog.categories) {
 		for (const item of category.items) {
@@ -167,9 +212,9 @@ export function extractCatalogAddOnOptions(catalog: TGetCardapioWebCatalogOutput
 
 			for (const optionGroup of item.option_groups) {
 				for (const option of optionGroup.options) {
-					const key = option.id.toString();
+					const key = getCardapioWebAddOnOptionExternalId(optionGroup.id.toString(), option.id.toString());
 					if (!optionsMap.has(key)) {
-						optionsMap.set(key, mapCatalogAddOnOption(option, optionGroup.id));
+						optionsMap.set(key, mapCatalogAddOnOption(option, optionGroup.id, productExternalIdByCode));
 					}
 				}
 			}

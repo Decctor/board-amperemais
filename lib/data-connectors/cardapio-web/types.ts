@@ -620,6 +620,32 @@ const CardapioWebCatalogWeekdaySchema = z.enum(["sunday", "monday", "tuesday", "
 	invalid_type_error: "Tipo inválido para dia da semana.",
 });
 
+function parseCardapioWebSerializedArray(value: unknown) {
+	if (typeof value !== "string") return value;
+
+	const trimmedValue = value.trim();
+	if (!trimmedValue) return [];
+
+	try {
+		const parsedValue: unknown = JSON.parse(trimmedValue);
+		if (Array.isArray(parsedValue)) return parsedValue;
+		if (parsedValue === null) return null;
+	} catch {
+		// Some stores return arrays as comma-separated strings instead of JSON.
+	}
+
+	const unwrappedValue =
+		(trimmedValue.startsWith("[") && trimmedValue.endsWith("]")) ||
+		(trimmedValue.startsWith("{") && trimmedValue.endsWith("}"))
+			? trimmedValue.slice(1, -1)
+			: trimmedValue;
+
+	return unwrappedValue
+		.split(",")
+		.map((item) => item.trim().replace(/^["']|["']$/g, ""))
+		.filter(Boolean);
+}
+
 const CardapioWebCatalogAllowedTimesSchema = z.object({
 	weekday: CardapioWebCatalogWeekdaySchema,
 	start_at: z.string({
@@ -632,7 +658,7 @@ const CardapioWebCatalogAllowedTimesSchema = z.object({
 	}),
 });
 
-const CardapioWebCatalogCategoryStatusSchema = z.enum(["ACTIVE", "INACTIVE"], {
+const CardapioWebCatalogCategoryStatusSchema = z.enum(["ACTIVE", "INACTIVE", "MISSING"], {
 	required_error: "Status da categoria não informado.",
 	invalid_type_error: "Tipo inválido para status da categoria.",
 });
@@ -657,6 +683,11 @@ const CardapioWebCatalogAvailableForSchema = z.enum(["delivery", "table", "servi
 	invalid_type_error: "Tipo inválido para local de disponibilidade.",
 });
 
+const CardapioWebCatalogAvailableForListSchema = z.preprocess(
+	parseCardapioWebSerializedArray,
+	z.array(CardapioWebCatalogAvailableForSchema),
+);
+
 const CardapioWebCatalogChoiceTypeSchema = z.enum(["SINGLE", "MULTIPLE", "SUMMABLE"], {
 	required_error: "Tipo de escolha não informado.",
 	invalid_type_error: "Tipo inválido para tipo de escolha.",
@@ -667,9 +698,30 @@ const CardapioWebCatalogPriceCalculationTypeSchema = z.enum(["SUM", "MEAN", "MAX
 	invalid_type_error: "Tipo inválido para tipo de cálculo de preço.",
 });
 
-const CardapioWebCatalogOptionGroupStatusSchema = z.enum(["ACTIVE", "INACTIVE"], {
+const CardapioWebCatalogOptionGroupStatusSchema = z.enum(["ACTIVE", "INACTIVE", "MISSING"], {
 	required_error: "Status do grupo de complementos não informado.",
 	invalid_type_error: "Tipo inválido para status do grupo de complementos.",
+});
+
+const CardapioWebCatalogOptionStatusSchema = z.enum(["ACTIVE", "INACTIVE", "MISSING"], {
+	required_error: "Status da opção não informado.",
+	invalid_type_error: "Tipo inválido para status da opção.",
+});
+
+const CardapioWebCatalogPromotionalPriceScheduleSchema = z.object({
+	day: CardapioWebCatalogWeekdaySchema,
+	start: z
+		.string({
+			invalid_type_error: "Tipo inválido para horário inicial da promoção.",
+		})
+		.nullable()
+		.optional(),
+	end: z
+		.string({
+			invalid_type_error: "Tipo inválido para horário final da promoção.",
+		})
+		.nullable()
+		.optional(),
 });
 
 const CardapioWebCatalogOptionSchema = z.object({
@@ -699,7 +751,11 @@ const CardapioWebCatalogOptionSchema = z.object({
 			invalid_type_error: "Tipo inválido para preço da opção.",
 		})
 		.min(0),
-	status: CardapioWebCatalogOptionGroupStatusSchema,
+	cost_price: z.number({ invalid_type_error: "Tipo inválido para preço de custo da opção." }).min(0).nullable().optional(),
+	active_stock_control: z.boolean({ invalid_type_error: "Tipo inválido para indicador de controle de estoque da opção." }).optional(),
+	stock: z.number({ invalid_type_error: "Tipo inválido para estoque da opção." }).min(0).nullable().optional(),
+	max_quantity: z.number({ invalid_type_error: "Tipo inválido para quantidade máxima da opção." }).int().nullable().optional(),
+	status: CardapioWebCatalogOptionStatusSchema,
 	index: z
 		.number({
 			invalid_type_error: "Tipo inválido para índice da opção.",
@@ -742,7 +798,6 @@ const CardapioWebCatalogOptionGroupSchema = z.object({
 		})
 		.int()
 		.nullable(),
-	available_for: z.array(CardapioWebCatalogAvailableForSchema),
 	options: z.array(CardapioWebCatalogOptionSchema),
 });
 
@@ -829,6 +884,7 @@ const CardapioWebCatalogItemSchema = z.object({
 			invalid_type_error: "Tipo inválido para preço do item.",
 		})
 		.min(0),
+	cost_price: z.number({ invalid_type_error: "Tipo inválido para preço de custo do item." }).min(0).nullable().optional(),
 	stock: z
 		.number({
 			invalid_type_error: "Tipo inválido para estoque.",
@@ -845,7 +901,7 @@ const CardapioWebCatalogItemSchema = z.object({
 		})
 		.int()
 		.nullable(),
-	available_for: z.array(CardapioWebCatalogAvailableForSchema),
+	available_for: CardapioWebCatalogAvailableForListSchema,
 	hide_observation_field: z.boolean({
 		required_error: "Indicador de campo de observações não informado.",
 		invalid_type_error: "Tipo inválido para indicador de campo de observações.",
@@ -864,7 +920,10 @@ const CardapioWebCatalogItemSchema = z.object({
 		})
 		.min(0)
 		.nullable(),
-	promotional_price_availability: z.array(CardapioWebCatalogWeekdaySchema),
+	promotional_price_schedules: z
+		.preprocess(parseCardapioWebSerializedArray, z.array(CardapioWebCatalogPromotionalPriceScheduleSchema).nullable())
+		.optional()
+		.default(null),
 	status: CardapioWebCatalogItemStatusSchema,
 	unit_type: CardapioWebCatalogUnitTypeSchema,
 	kind: CardapioWebCatalogItemKindSchema,
