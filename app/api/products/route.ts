@@ -117,6 +117,13 @@ const GetProductsDefaultInputSchema = z.object({
 		.transform((val) => (val ? Number(val) : null)),
 	orderByField: z.enum(["descricao", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal", "quantidade"]).optional().nullable(),
 	orderByDirection: z.enum(["asc", "desc"]).optional().nullable(),
+	resultLimit: z
+		.string({
+			invalid_type_error: "Tipo não válido para limite de resultados.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? Number(val) : null)),
 });
 export type TGetProductsDefaultInput = z.infer<typeof GetProductsDefaultInputSchema>;
 
@@ -510,35 +517,46 @@ async function getProducts({ input, session }: GetProductsParams) {
 
 	const productsWithABCSubquery = productsWithABCQuery.as("products_with_abc");
 	const direction = input.orderByDirection === "desc" ? desc : asc;
-	let orderByClause = asc(productsWithABCSubquery.descricao);
-	switch (input.orderByField) {
-		case "descricao":
-			orderByClause = direction(productsWithABCSubquery.descricao);
-			break;
-		case "codigo":
-			orderByClause = direction(productsWithABCSubquery.codigo);
-			break;
-		case "grupo":
-			orderByClause = direction(productsWithABCSubquery.grupo);
-			break;
-		case "vendasValorTotal":
-			orderByClause = direction(sql`COALESCE(${productsWithABCSubquery.totalSalesValue}, 0)`);
-			break;
-		case "vendasQtdeTotal":
-			orderByClause = direction(sql`COALESCE(${productsWithABCSubquery.totalSalesQty}, 0)`);
-			break;
-		case "quantidade":
-			orderByClause = direction(sql`COALESCE(${productsWithABCSubquery.quantidade}, 0)`);
-			break;
-		default:
-			orderByClause = asc(productsWithABCSubquery.descricao);
-			break;
+	const orderByField = input.orderByField;
+
+	function buildOrderByClause<T extends Record<string, any>>(source: T) {
+		switch (orderByField) {
+			case "descricao":
+				return direction(source.descricao);
+			case "codigo":
+				return direction(source.codigo);
+			case "grupo":
+				return direction(source.grupo);
+			case "vendasValorTotal":
+				return direction(sql`COALESCE(${source.totalSalesValue}, 0)`);
+			case "vendasQtdeTotal":
+				return direction(sql`COALESCE(${source.totalSalesQty}, 0)`);
+			case "quantidade":
+				return direction(sql`COALESCE(${source.quantidade}, 0)`);
+			default:
+				return asc(source.descricao);
+		}
 	}
 
-	const matchedCountResult = await db.select({ count: count() }).from(productsWithABCSubquery);
+	// resultLimit: corta os top N após ordenação e filtro de curva ABC, antes da paginação
+	const paginationSource = input.resultLimit
+		? db
+				.select()
+				.from(productsWithABCSubquery)
+				.orderBy(buildOrderByClause(productsWithABCSubquery))
+				.limit(input.resultLimit)
+				.as("products_capped")
+		: productsWithABCSubquery;
+
+	const matchedCountResult = await db.select({ count: count() }).from(paginationSource);
 	const statsByProductMatchedCount = matchedCountResult[0]?.count ?? 0;
 
-	const productsWithStatsResult = await db.select().from(productsWithABCSubquery).orderBy(orderByClause).offset(skip).limit(PAGE_SIZE);
+	const productsWithStatsResult = await db
+		.select()
+		.from(paginationSource)
+		.orderBy(buildOrderByClause(paginationSource))
+		.offset(skip)
+		.limit(PAGE_SIZE);
 
 	// Mapeia os resultados para o formato final
 	const productsWithStats = productsWithStatsResult.map((row) => {
@@ -606,6 +624,7 @@ const getProductsHandler: PagesRouteHandler<TGetProductsOutput> = async (req, re
 		priceMax: req.query.priceMax as string | undefined,
 		orderByField: req.query.orderByField as string | undefined,
 		orderByDirection: req.query.orderByDirection as string | undefined,
+		resultLimit: req.query.resultLimit as string | undefined,
 	});
 	const data = await getProducts({ input, session: sessionUser });
 	return res.status(200).json(data);

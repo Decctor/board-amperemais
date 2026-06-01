@@ -30,6 +30,7 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		if (input.priceMax) searchParams.set("priceMax", input.priceMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
+		if (input.resultLimit) searchParams.set("resultLimit", input.resultLimit.toString());
 		if (input.statsSellerIds) searchParams.set("statsSellerIds", input.statsSellerIds.join(","));
 		const { data } = await axios.get<TGetProductsOutput>(`/api/products?${searchParams.toString()}`);
 		const result = data.data.default;
@@ -84,6 +85,7 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		priceMax: initialFilters?.priceMax || null,
 		orderByField: initialFilters?.orderByField || "descricao",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
+		resultLimit: initialFilters?.resultLimit || null,
 	});
 	function updateFilters(newParams: Partial<TGetProductsDefaultInput>) {
 		setFilters((prevFilters) => ({ ...prevFilters, ...newParams }));
