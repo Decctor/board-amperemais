@@ -127,6 +127,13 @@
       "when": 1780315200000,
       "tag": "0017_accounting_entry_transfer_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780401600000,
+      "tag": "0018_sales_status_and_fulfillment",
+      "breakpoints": true
     }
   ]
 }

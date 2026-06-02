@@ -10,6 +10,7 @@ import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms,
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
+import { resolveInitialAttendanceStatus } from "./attendance";
 import { createAccountingEntry } from "./create-accounting-entry";
 import { processStockDeduction } from "./process-stock-deduction";
 
@@ -62,15 +63,19 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 		throw new createHttpError.NotFound("Venda nao encontrada.");
 	}
 
-	if (sale.status !== "ORCAMENTO") {
-		throw new createHttpError.BadRequest(`Venda nao pode ser confirmada no status atual: ${sale.status}`);
+	if (sale.statusVenda !== "ORCAMENTO") {
+		throw new createHttpError.BadRequest(`Venda nao pode ser confirmada no status atual: ${sale.statusVenda}`);
 	}
+
+	// Status operacional inicial conforme a modalidade de entrega.
+	const initialAttendanceStatus = resolveInitialAttendanceStatus(sale.entregaModalidade);
 
 	const transactionResult = await db.transaction(async (tx) => {
 		await tx
 			.update(sales)
 			.set({
-				status: "CONFIRMADA",
+				statusVenda: "CONFIRMADA",
+				statusAtendimento: initialAttendanceStatus,
 				natureza: "SN01",
 				dataVenda: new Date(),
 			})
@@ -86,7 +91,9 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 			autorId: input.saleAuthorId,
 		});
 
-		if (input.organization.configuracao.preferencias.rastreamentoEstoque) {
+		// A confirmacao NAO baixa estoque obrigatoriamente. A baixa fisica acontece na entrega.
+		// Quando a venda ja nasce ENTREGUE (ex.: balcao/PRESENCIAL), a entrega e imediata: baixa aqui.
+		if (initialAttendanceStatus === "ENTREGUE" && input.organization.configuracao.preferencias.rastreamentoEstoque) {
 			await processStockDeduction(tx, {
 				organizationId: input.organization.id,
 				saleId: input.saleId,

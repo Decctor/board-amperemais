@@ -118,7 +118,7 @@ export async function getMostOrderedShopProductIds({ orgId, limit = 12 }: { orgI
 		})
 		.from(saleItems)
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
-		.where(and(eq(sales.organizacaoId, orgId), eq(sales.status, "CONFIRMADA"), gt(sales.dataVenda, cutoff)))
+		.where(and(eq(sales.organizacaoId, orgId), eq(sales.statusVenda, "CONFIRMADA"), gt(sales.dataVenda, cutoff)))
 		.groupBy(saleItems.produtoId)
 		.orderBy(desc(sql`sum(${saleItems.quantidade})`))
 		.limit(limit);

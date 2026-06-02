@@ -5,7 +5,7 @@ import { campaigns } from "./campaigns";
 import { cashbackProgramTransactions } from "./cashback-programs";
 import { clientLocations, clients } from "./clients";
 import { newTable } from "./common";
-import { deliveryModeEnum, saleProcessingSourceEnum, saleStatusEnum } from "./enums";
+import { deliveryModeEnum, saleAttendanceStatusEnum, saleProcessingSourceEnum, saleStatusEnum } from "./enums";
 import { accountingEntries, fiscalOutboundDocuments } from "./financial";
 import { interactions } from "./interactions";
 import { organizations } from "./organizations";
@@ -65,8 +65,10 @@ export const sales = newTable(
 
 		// ERP: origem do processamento da venda
 		processamentoOrigem: saleProcessingSourceEnum("processamento_origem").default("EXTERNO"),
-		// ERP: status do ciclo de vida da venda
-		status: saleStatusEnum("status"),
+		// ERP: status comercial da venda (apenas se a venda existe comercialmente e pode gerar efeitos de ERP)
+		statusVenda: saleStatusEnum("status_venda"),
+		// ERP: status operacional de atendimento/fulfillment da venda
+		statusAtendimento: saleAttendanceStatusEnum("status_atendimento").notNull().default("NAO_INICIADO"),
 	},
 	(table) => ({
 		clientIdIdx: index("idx_sales_client_id").on(table.clienteId),
@@ -140,6 +142,11 @@ export const saleItems = newTable(
 		valorTotalDesconto: doublePrecision("valor_total_desconto").notNull(), // valor total em desconto
 		valorVendaTotalLiquido: doublePrecision("valor_venda_total_liquido").notNull(), // valor total do produto na venda (com desconto) (quantidade * valorUnitario - valorTotalDesconto)
 		valorCustoTotal: doublePrecision("valor_custo_total").notNull(), // valor total de custos,
+		// Rastreabilidade operacional minima por item (fulfillment)
+		quantidadeReservada: doublePrecision("quantidade_reservada").notNull().default(0), // quantidade reservada (sem baixa fisica)
+		quantidadeSeparada: doublePrecision("quantidade_separada").notNull().default(0), // quantidade separada para entrega/retirada
+		quantidadeEntregue: doublePrecision("quantidade_entregue").notNull().default(0), // quantidade efetivamente entregue (baixa fisica)
+		quantidadeCancelada: doublePrecision("quantidade_cancelada").notNull().default(0), // quantidade cancelada do item
 		metadados: jsonb("metadados"), // metadados do produto (JSONB)
 	},
 	(table) => ({

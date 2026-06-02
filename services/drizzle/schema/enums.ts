@@ -222,7 +222,19 @@ export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA_AQU
 
 export const saleProcessingSourceEnum = pgEnum("origem_processamento_venda", ["EXTERNO", "INTERNO"]);
 
-export const saleStatusEnum = pgEnum("sale_status", ["ORCAMENTO", "CONDICIONAL", "CONFIRMADA", "FATURADA", "CANCELADA"]);
+// Status comercial da venda. FATURADA foi removido: o faturamento e inferido dos documentos fiscais (fiscalOutboundDocuments).
+export const saleStatusEnum = pgEnum("sale_status", ["ORCAMENTO", "CONDICIONAL", "CONFIRMADA", "CANCELADA"]);
+
+// Status operacional de atendimento/fulfillment da venda, independente do status comercial.
+export const saleAttendanceStatusEnum = pgEnum("sale_attendance_status", [
+	"NAO_INICIADO",
+	"EM_PREPARO",
+	"PRONTO",
+	"EM_ENTREGA",
+	"ENTREGUE",
+	"PARCIALMENTE_ENTREGUE",
+	"CANCELADO",
+]);
 
 export const defaultDataSourceEnum = pgEnum("origem_dados_padrao", ["RECEPTOR", "ERP"]);
 

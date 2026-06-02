@@ -151,7 +151,7 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 				tipo: "Venda de produtos",
 				canal: "POS",
 				processamentoOrigem: "INTERNO",
-				status: "ORCAMENTO",
+				statusVenda: "ORCAMENTO",
 			})
 			.returning({ id: sales.id });
 
@@ -268,11 +268,11 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 	// Verify the sale exists and belongs to the org
 	const existing = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, orgId)),
-		columns: { id: true, status: true },
+		columns: { id: true, statusVenda: true },
 	});
 
 	if (!existing) throw new createHttpError.NotFound("Venda não encontrada.");
-	if (existing.status !== "ORCAMENTO") {
+	if (existing.statusVenda !== "ORCAMENTO") {
 		throw new createHttpError.BadRequest("Somente rascunhos (orçamentos) podem ser editados.");
 	}
 

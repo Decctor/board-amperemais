@@ -347,7 +347,7 @@ async function createShopOrder(request: NextRequest) {
 				tipo: "Venda de produtos",
 				canal: "SHOP",
 				processamentoOrigem: "INTERNO",
-				status: "ORCAMENTO",
+				statusVenda: "ORCAMENTO",
 			})
 			.returning({ id: sales.id, idExterno: sales.idExterno });
 

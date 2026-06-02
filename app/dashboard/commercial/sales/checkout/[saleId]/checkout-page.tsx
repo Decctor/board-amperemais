@@ -141,8 +141,8 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
 	if (!sale) return <ErrorComponent msg="Venda não encontrada." />;
 
-	if (sale.status !== "ORCAMENTO") {
-		return <ErrorComponent msg={`Esta venda não está em modo rascunho (status: ${sale.status}).`} />;
+	if (sale.statusVenda !== "ORCAMENTO") {
+		return <ErrorComponent msg={`Esta venda não está em modo rascunho (status: ${sale.statusVenda}).`} />;
 	}
 
 	const STEP_LABELS = ["Revisão", "Entrega", "Pagamento", "Confirmação"];

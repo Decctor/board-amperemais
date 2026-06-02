@@ -2,9 +2,15 @@ import type {
 	TCreatePointOfInteractionTransactionInput,
 	TCreatePointOfInteractionTransactionOutput,
 } from "@/app/api/point-of-interaction/new-transaction/route";
+import type { TUpdateSaleAttendanceStatusInput, TUpdateSaleAttendanceStatusOutput } from "@/app/api/pos/sales/attendance-status/route";
 import type { TCreateSaleInput, TCreateSaleOutput } from "@/app/api/sales/route";
 import type { TBulkCreateSalesInput, TBulkCreateSalesOutput, TBulkSalesMapInput, TBulkSalesMapOutput } from "@/state-hooks/use-bulk-create-sales";
 import axios from "axios";
+
+export async function updateSaleAttendanceStatus(input: TUpdateSaleAttendanceStatusInput) {
+	const { data } = await axios.post<TUpdateSaleAttendanceStatusOutput>("/api/pos/sales/attendance-status", input);
+	return data;
+}
 
 export async function createSale(input: TCreateSaleInput) {
 	try {

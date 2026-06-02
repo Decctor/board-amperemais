@@ -131,7 +131,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				tipo: "Venda de produtos",
 				canal: "POS",
 				processamentoOrigem: "INTERNO",
-				status: "ORCAMENTO",
+				statusVenda: "ORCAMENTO",
 			})
 			.returning({ id: sales.id });
 

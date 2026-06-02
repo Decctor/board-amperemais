@@ -32,15 +32,15 @@ async function cancelSale(request: NextRequest) {
 	// Verify the sale exists, belongs to the org, and is in ORCAMENTO status
 	const existing = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, orgId)),
-		columns: { id: true, status: true },
+		columns: { id: true, statusVenda: true },
 	});
 
 	if (!existing) throw new createHttpError.NotFound("Venda não encontrada.");
-	if (existing.status !== "ORCAMENTO") {
+	if (existing.statusVenda !== "ORCAMENTO") {
 		throw new createHttpError.BadRequest("Somente rascunhos (orçamentos) podem ser cancelados por esta rota.");
 	}
 
-	await db.update(sales).set({ status: "CANCELADA" }).where(eq(sales.id, input.id));
+	await db.update(sales).set({ statusVenda: "CANCELADA", statusAtendimento: "CANCELADO" }).where(eq(sales.id, input.id));
 
 	return NextResponse.json({
 		data: { saleId: input.id },

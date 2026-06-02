@@ -6,6 +6,7 @@ import { fetchOnlineSoftwareImportBatch } from "./online-software";
 import type { TCanonicalImportBatch, TDataConnectorFetchInput, TDataConnectorKind } from "./types";
 
 export * from "./types";
+export * from "./status-mappers";
 
 export async function fetchConnectorImportBatch(input: TDataConnectorFetchInput): Promise<TCanonicalImportBatch> {
 	if (input.config.tipo === "CARDAPIO-WEB") {

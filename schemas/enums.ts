@@ -203,8 +203,35 @@ export const StockMovementTypeEnum = z.enum(["ENTRADA _AQUISICAO", "SAIDA", "AJU
 export type TStockMovementTypeEnum = z.infer<typeof StockMovementTypeEnum>;
 export const SaleProcessingSourceEnum = z.enum(["EXTERNO", "INTERNO"]);
 export type TSaleProcessingSourceEnum = z.infer<typeof SaleProcessingSourceEnum>;
-export const SaleStatusEnum = z.enum(["ORCAMENTO", "CONDICIONAL", "CONFIRMADA", "FATURADA", "CANCELADA"]);
+// Status comercial da venda. FATURADA foi removido: o faturamento e derivado dos documentos fiscais relacionados.
+export const SaleStatusEnum = z.enum(["ORCAMENTO", "CONDICIONAL", "CONFIRMADA", "CANCELADA"]);
 export type TSaleStatusEnum = z.infer<typeof SaleStatusEnum>;
+// Status operacional de atendimento/fulfillment da venda.
+export const SaleAttendanceStatusEnum = z.enum([
+	"NAO_INICIADO",
+	"EM_PREPARO",
+	"PRONTO",
+	"EM_ENTREGA",
+	"ENTREGUE",
+	"PARCIALMENTE_ENTREGUE",
+	"CANCELADO",
+]);
+export type TSaleAttendanceStatusEnum = z.infer<typeof SaleAttendanceStatusEnum>;
+// Status financeiro DERIVADO das transacoes financeiras da venda (nao persistido em sales).
+export const SaleFinancialDerivedStatusEnum = z.enum(["NAO_GERADO", "PENDENTE", "PARCIALMENTE_RECEBIDA", "RECEBIDA", "EM_ATRASO"]);
+export type TSaleFinancialDerivedStatusEnum = z.infer<typeof SaleFinancialDerivedStatusEnum>;
+// Status fiscal DERIVADO dos documentos fiscais da venda (nao persistido em sales). Apenas apresentacional.
+export const SaleFiscalDerivedStatusEnum = z.enum([
+	"NAO_EMITIDO",
+	"PENDENTE",
+	"EM_PROCESSAMENTO",
+	"AUTORIZADO",
+	"REJEITADO",
+	"CANCELADO",
+	"INUTILIZADO",
+	"ERRO",
+]);
+export type TSaleFiscalDerivedStatusEnum = z.infer<typeof SaleFiscalDerivedStatusEnum>;
 export const DefaultDataSourceEnum = z.enum(["RECEPTOR", "ERP"]);
 export type TDefaultDataSourceEnum = z.infer<typeof DefaultDataSourceEnum>;
 
