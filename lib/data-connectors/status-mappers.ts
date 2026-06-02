@@ -1,63 +1,44 @@
 import type { TSaleAttendanceStatusEnum, TSaleStatusEnum } from "@/schemas/enums";
 
 /**
- * Mappers explicitos de status de integracoes externas para os eixos da plataforma.
+ * Mapper explicito e centralizado de vendas de integracoes para os eixos de status da plataforma.
  *
- * Principio: "dumb receiver, smart creator". Vendas externas sao recebidas com o minimo de
- * interpretacao possivel. Cada conector deve traduzir seus status atraves destes mappers
- * explicitos, em vez de espalhar regras de traducao dentro de APIs ou componentes.
+ * Principio: "dumb receiver, smart creator". A traducao do status especifico de cada integracao
+ * (ex.: ifood "CONFIRMED/CANCELLED", cardapio-web "closed/canceled", online-software natureza
+ * "SN01") ja acontece em cada conector, que normaliza tudo para os sinais canonicos
+ * `isValidSale` e `isCanceled`. Aqui apenas mapeamos esses sinais canonicos para o status
+ * comercial e operacional da venda, em um unico lugar — sem espalhar regras de traducao dentro
+ * de APIs, componentes ou na rotina de sincronizacao.
  *
- * O fallback deve ser conservador: e melhor mostrar menos pipeline do que inventar uma etapa
- * operacional que a integracao nao garantiu.
+ * Observacao: o canonical ainda nao carrega granularidade de fulfillment (preparo/entrega) das
+ * integracoes. Quando carregar (ex.: estados intermediarios do ifood), este mapper deve passar
+ * a consumir esse campo para `statusAtendimento`.
  */
 
+type CanonicalSaleStatusSignals = {
+	isValidSale: boolean;
+	isCanceled: boolean;
+};
+
 /**
- * Traduz o status comercial de uma integracao generica para o status comercial da venda.
- * O fallback assume CONFIRMADA (vendas externas geralmente chegam ja concluidas).
+ * Status comercial derivado dos sinais canonicos da integracao.
+ * - cancelada: CANCELADA;
+ * - venda valida/concluida: CONFIRMADA;
+ * - caso contrario (pendente/indefinida): null (neutro, "dumb receiver").
  */
-export function mapExternalCommercialStatus(status: string | null | undefined): TSaleStatusEnum {
-	switch ((status ?? "").toLowerCase()) {
-		case "draft":
-		case "pending":
-		case "open":
-			return "ORCAMENTO";
-		case "confirmed":
-		case "paid":
-		case "completed":
-		case "closed":
-			return "CONFIRMADA";
-		case "cancelled":
-		case "canceled":
-		case "refunded":
-			return "CANCELADA";
-		default:
-			return "CONFIRMADA";
-	}
+export function mapCanonicalSaleCommercialStatus({ isValidSale, isCanceled }: CanonicalSaleStatusSignals): TSaleStatusEnum | null {
+	if (isCanceled) return "CANCELADA";
+	if (isValidSale) return "CONFIRMADA";
+	return null;
 }
 
 /**
- * Traduz o status operacional de uma integracao generica para o status de atendimento da venda.
- * Retorna null quando a integracao nao fornece granularidade operacional confiavel; nesse caso
- * o chamador deve usar um valor neutro (ex.: "NAO_INICIADO").
+ * Status operacional derivado dos sinais canonicos da integracao.
+ * Vendas externas chegam como historico concluido (ENTREGUE) ou canceladas (CANCELADO).
+ * Sem sinal confiavel, mantem o valor neutro NAO_INICIADO.
  */
-export function mapExternalAttendanceStatus(status: string | null | undefined): TSaleAttendanceStatusEnum | null {
-	switch ((status ?? "").toLowerCase()) {
-		case "preparing":
-		case "in_preparation":
-			return "EM_PREPARO";
-		case "ready":
-			return "PRONTO";
-		case "out_for_delivery":
-		case "dispatched":
-			return "EM_ENTREGA";
-		case "delivered":
-		case "completed":
-		case "concluded":
-			return "ENTREGUE";
-		case "cancelled":
-		case "canceled":
-			return "CANCELADO";
-		default:
-			return null;
-	}
+export function mapCanonicalSaleAttendanceStatus({ isValidSale, isCanceled }: CanonicalSaleStatusSignals): TSaleAttendanceStatusEnum {
+	if (isCanceled) return "CANCELADO";
+	if (isValidSale) return "ENTREGUE";
+	return "NAO_INICIADO";
 }

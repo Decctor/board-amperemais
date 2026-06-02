@@ -1,4 +1,5 @@
 import type { TCanonicalImportBatch, TCanonicalSale, TCanonicalSaleItem } from "@/lib/data-connectors";
+import { mapCanonicalSaleAttendanceStatus, mapCanonicalSaleCommercialStatus } from "@/lib/data-connectors";
 import { clients, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { getCanonicalClientResolutionKey, resolveClientForCanonicalSale } from "./sync-auxiliary-entities";
@@ -29,8 +30,6 @@ function buildSaleValues({
 	sellerId: string | null;
 	partnerId: string | null;
 }) {
-	// Sinal conservador de cancelamento vindo da integracao (mappers usam natureza "CANCELADO").
-	const isCanceledExternalSale = (sale.nature ?? "").toUpperCase() === "CANCELADO" || sale.totalValue <= 0;
 	return {
 		organizacaoId: batch.organizationId,
 		idExterno: sale.sourceSaleId,
@@ -56,11 +55,10 @@ function buildSaleValues({
 		observacoes: sale.notes,
 		dataVenda: sale.occurredAt,
 		processamentoOrigem: "EXTERNO" as const,
-		// Vendas externas: mapeamento conservador. Vendas canceladas ficam CANCELADA/CANCELADO;
-		// as demais sao tratadas como ja concluidas (historico), logo CONFIRMADA/ENTREGUE.
-		// Vendas externas NAO geram efeitos de ERP (estoque/financeiro/fiscal) na plataforma.
-		statusVenda: isCanceledExternalSale ? ("CANCELADA" as const) : ("CONFIRMADA" as const),
-		statusAtendimento: isCanceledExternalSale ? ("CANCELADO" as const) : ("ENTREGUE" as const),
+		// Mapeamento conservador a partir dos sinais canonicos ja calculados por cada conector
+		// (isValidSale/isCanceled). Vendas externas NAO geram efeitos de ERP na plataforma.
+		statusVenda: mapCanonicalSaleCommercialStatus(sale),
+		statusAtendimento: mapCanonicalSaleAttendanceStatus(sale),
 	};
 }
 
