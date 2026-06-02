@@ -22,6 +22,7 @@ function computeIcms({
 	baseLiquida,
 	origemCodigo,
 	produtoId,
+	cest,
 	erros,
 }: {
 	config: TEffectiveTaxConfig;
@@ -29,6 +30,7 @@ function computeIcms({
 	baseLiquida: number;
 	origemCodigo: string;
 	produtoId: string;
+	cest: string | null;
 	erros: TFiscalValidationError[];
 }): TIcmsTaxResult {
 	let vBC = 0;
@@ -72,8 +74,23 @@ function computeIcms({
 		});
 	}
 
+	// CEST presente (indicativo de ST) mas CSOSN nao e de ST: provavel enquadramento errado.
+	// Ex.: sorvetes (CEST 23.xxx) revendidos no varejo costumam sair com CSOSN 500, nao 102.
+	if (cest && cest.replace(/\D/g, "").length > 0 && !csosnIndicaSt) {
+		erros.push({
+			codigo: "CEST_SEM_CSOSN_ST",
+			severidade: "AVISO",
+			mensagem: `Produto possui CEST (${cest}), indicativo de substituicao tributaria, mas o CSOSN ${config.csosn} nao e de ST. Confirme o enquadramento com o contador (no varejo de revenda costuma-se usar CSOSN 500).`,
+			produtoId,
+		});
+	}
+
+	// CSOSN 500 = ICMS ja cobrado anteriormente por ST (revenda). Nao se recalcula o ST para frente;
+	// emite-se sem ICMS proprio. O calculo de ST adiante (MVA) e exclusivo do substituto (201/202/203).
+	const csosnIcmsJaRetido = config.csosn === "500";
+
 	let st: TIcmsTaxResult["st"] = null;
-	if (config.temSubstituicaoTributaria) {
+	if (config.temSubstituicaoTributaria && !csosnIcmsJaRetido) {
 		if (config.mvaSt != null && config.aliquotaInternaDestino != null) {
 			const reducaoSt = config.percentualReducaoBcSt ?? 0;
 			const vBCST = round2(baseLiquida * (1 + config.mvaSt / 100) * (1 - reducaoSt / 100));
@@ -125,7 +142,7 @@ export function computeItemTaxation({ scenario, item, group, vTotTrib }: TComput
 		erros.push({ codigo: "CFOP_AUSENTE", severidade: "ERRO", mensagem: "CFOP nao pode ser resolvido para o item (sem CFOP no produto, regra ou operacao).", produtoId: item.produtoId });
 	}
 
-	const icms = computeIcms({ config, scenario, baseLiquida, origemCodigo, produtoId: item.produtoId, erros });
+	const icms = computeIcms({ config, scenario, baseLiquida, origemCodigo, produtoId: item.produtoId, cest: item.cest ?? null, erros });
 	const pis = computeContribuicao(config.cstPis, config.aliquotaPis, baseLiquida);
 	const cofins = computeContribuicao(config.cstCofins, config.aliquotaCofins, baseLiquida);
 
