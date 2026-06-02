@@ -40,6 +40,7 @@ export type TFiscalItemInput = {
 	produtoId: string;
 	origemMercadoria: TFiscalProductOriginEnum;
 	cfopBase: string | null; // CFOP do perfil do produto ou da operacao
+	cest?: string | null; // CEST do produto (indicativo de substituicao tributaria)
 	quantidade: number;
 	valorBruto: number; // valor total bruto do item (sem desconto)
 	valorDesconto: number;

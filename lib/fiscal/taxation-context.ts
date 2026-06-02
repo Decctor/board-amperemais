@@ -102,6 +102,7 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 				produtoId: item.produtoId,
 				origemMercadoria,
 				cfopBase: perfil?.cfopPadrao ?? context.operacao.cfopPadrao,
+				cest: perfil?.cest ?? null,
 				quantidade: item.quantidade,
 				valorBruto: item.valorVendaTotalBruto,
 				valorDesconto: item.valorTotalDesconto,

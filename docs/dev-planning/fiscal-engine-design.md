@@ -481,3 +481,16 @@ Schema novo (tabelas inbound + de-para + enums + flag) em `db:push`. Endpoints d
 - **Backend** provider DF-e (Nuvem Fiscal + manual), polling por NSU, resolve-or-create fornecedor, dedupe, auto-ciência, manifestação (4 eventos), XML; cron /api/cron/fiscal-inbound (2h) ✅
 - **UI** aba "Notas recebidas" em Compras (lista + manifestar + baixar XML) ✅
 - Pendente: endpoints de Distribuição/manifestação a confirmar em sandbox; Fase 2 (de-para + virar compra) não iniciada. Schema novo no db:push.
+
+---
+
+## 17. Ajustes de ST no varejo (gelateria — implementado)
+
+Caso real: sorvete (NCM 2105 + CEST 23.001.00), Simples Nacional.
+
+- **Aviso CEST↔CSOSN** ✅ — item com CEST mas CSOSN não-ST gera `CEST_SEM_CSOSN_ST` (AVISO, não bloqueia): pega o erro comum de revender sorvete com CSOSN 102 quando o correto costuma ser 500.
+- **CSOSN 500 "já retido"** ✅ — o motor não recalcula ST para frente quando CSOSN=500 (ICMS já cobrado por ST na revenda); o cálculo de ST via MVA fica restrito ao **substituto** (201/202/203). `cest` passou a fluir do perfil do produto → item → motor.
+
+### Lacuna conhecida (não implementada)
+- **Reforma Tributária (IBS/CBS / cClassTrib)**: sem modelagem no schema/motor. Para Simples Nacional em 2026 é transitório (≈zero), mas é iniciativa estrutural separada para médio prazo.
+- **vICMSSTRet/vBCSTRet** (valores retidos anteriormente) no CSOSN 500: hoje emite sem informar o retido; depende de capturar o ST retido na entrada (Fase 2 do módulo de compras). Enhancement futuro.
