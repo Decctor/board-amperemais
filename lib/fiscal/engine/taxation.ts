@@ -27,6 +27,7 @@ function computeContribuicao(cst: TFiscalPisCofinsCstEnum, aliquota: number, bas
 
 function computeIcms({
 	config,
+	scenario,
 	baseLiquida,
 	origemCodigo,
 	produtoId,
@@ -34,6 +35,7 @@ function computeIcms({
 	erros,
 }: {
 	config: TEffectiveTaxConfig;
+	scenario: TFiscalTaxScenario;
 	baseLiquida: number;
 	origemCodigo: string;
 	produtoId: string;
