@@ -111,6 +111,7 @@ async function generateCheckoutRoute(request: NextRequest) {
       },
     ],
     mode: "subscription",
+    allow_promotion_codes: true,
     success_url: `${baseUrl}/dashboard?checkout=success`,
     cancel_url: `${baseUrl}/dashboard?checkout=cancelled`,
     subscription_data: {

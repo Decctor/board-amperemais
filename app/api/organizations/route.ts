@@ -448,6 +448,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 			},
 		],
 		mode: "subscription",
+		allow_promotion_codes: true,
 		success_url: `${baseUrl}/onboarding/success?session_id={CHECKOUT_SESSION_ID}`,
 		cancel_url: `${baseUrl}/onboarding`,
 		subscription_data: {
