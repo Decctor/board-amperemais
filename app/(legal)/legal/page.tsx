@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import React from "react";
-
+import Image from "next/image";
+import RecompraCRMLogo from "@/utils/images/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.png";
 export default function LegalPage() {
 	const lastUpdateDate = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 
@@ -42,7 +43,7 @@ export default function LegalPage() {
 	return (
 		<div className="min-h-screen bg-gray-50/50 flex flex-col font-sans">
 			{/* Header */}
-			<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+			<header className="sticky top-0 z-50 w-full border-b bg-[#24549c] backdrop-blur supports-[backdrop-filter]:bg-[#24549c] text-white">
 				<div className="container px-4 h-16 flex items-center justify-between mx-auto max-w-7xl">
 					<div className="flex items-center gap-4">
 						<Link href="/auth/signin">
@@ -51,11 +52,10 @@ export default function LegalPage() {
 							</Button>
 						</Link>
 						<div className="flex items-center gap-2">
-							<Scale className="h-5 w-5 text-foreground" />
-							<span className="font-bold text-lg tracking-tight">RecompraCRM Legal</span>
+							<Image src={RecompraCRMLogo} alt="RecompraCRM" width={200} height={200} />
 						</div>
 					</div>
-					<Badge variant="outline" className="text-xs font-normal hidden sm:inline-flex">
+					<Badge variant="outline" className="text-xs font-normal hidden sm:inline-flex text-white">
 						Última atualização: {lastUpdateDate}
 					</Badge>
 				</div>
