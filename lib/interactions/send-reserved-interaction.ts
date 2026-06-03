@@ -264,9 +264,9 @@ export async function sendReservedInteraction(
 			? ((
 					await db.query.products.findFirst({
 						where: (fields, { eq }) => eq(fields.id, client.metadataProdutoMaisCompradoId as string),
-						columns: { descricao: true },
+						columns: { nome: true },
 					})
-				)?.descricao ?? "")
+				)?.nome ?? "")
 			: "";
 
 		const contextVars = buildContextVariablesMap(contextMetadados);
@@ -341,7 +341,7 @@ export async function sendReservedInteraction(
 							organizacaoId: organizationId,
 							chatId,
 							whatsappTemplateId: campaign.whatsappTemplate.id,
-                            autorTipo: "USUÁRIO",
+							autorTipo: "USUÁRIO",
 							autorUsuarioId: campaign.autorId,
 							conteudoTexto: renderedWhatsappContent,
 							conteudoMidiaTipo: "TEXTO",
