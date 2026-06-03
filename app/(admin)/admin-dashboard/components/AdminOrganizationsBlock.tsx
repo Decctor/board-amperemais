@@ -21,9 +21,9 @@ export default function AdminOrganizationsBlock({ user }: TAdminOrganizationsBlo
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<h2 className="text-lg font-semibold tracking-tight uppercase">Organizações Cadastradas</h2>
-			{data?.data && data.data.length > 0 ? (
+			{data?.organizations && data.organizations.length > 0 ? (
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-					{data.data.map((org) => (
+					{data.organizations.map((org) => (
 						<AdminOrganizationCard
 							key={org.id}
 							sessionUser={user}

@@ -269,11 +269,13 @@ export const OrganizationSchema = z.object({
 	integracaoTipo: OrganizationIntegrationTypeEnum.optional().nullable(),
 	integracaoConfiguracao: OrganizationIntegrationConfigSchema.optional().nullable(),
 	integracaoDataUltimaSincronizacao: z
-		.date({
+		.string({
 			invalid_type_error: "Tipo não válido para a data da última sincronização da integração.",
 		})
+		.datetime({ message: "Tipo não válido para a data da última sincronização da integração." })
 		.optional()
-		.nullable(),
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 	fiscalProvedor: z.enum(["MANUAL", "NUVEM_FISCAL"]).optional().nullable(),
 	fiscalEmissaoAutomatica: z
 		.boolean({

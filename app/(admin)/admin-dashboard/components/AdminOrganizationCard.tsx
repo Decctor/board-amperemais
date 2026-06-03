@@ -1,19 +1,21 @@
 "use client";
-import { formatDateAsLocale } from "@/lib/formatting";
-import { Building2, Calendar, Users } from "lucide-react";
-import Image from "next/image";
-import type { TAuthUserSession } from "@/lib/authentication/types";
-import { TGetOrganizationsAdminOutput } from "@/app/api/admin/organizations/route";
-import { Plus } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
-import { joinAsMember } from "@/lib/mutations/admin";
-import { toast } from "sonner";
+import { AdminControlOrganization } from "@/components/Modals/Organizations/AdminControlOrganization";
 import { LoadingButton } from "@/components/loading-button";
+import { Button } from "@/components/ui/button";
+import type { TGetOrganizationsAdminOutputDefault } from "@/app/api/admin/organizations/route";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { formatDateAsLocale } from "@/lib/formatting";
+import { joinAsMember } from "@/lib/mutations/admin";
+import { useMutation } from "@tanstack/react-query";
+import { Building2, Calendar, Settings2, Users } from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
+import { toast } from "sonner";
 
 type AdminOrganizationCardProps = {
 	sessionUser: TAuthUserSession["user"];
-	organization: TGetOrganizationsAdminOutput["data"][number];
+	organization: TGetOrganizationsAdminOutputDefault["organizations"][number];
 	callbacks?: {
 		onMutate?: () => void;
 		onSettled?: () => void;
@@ -24,6 +26,7 @@ type AdminOrganizationCardProps = {
 
 export default function AdminOrganizationCard({ sessionUser, organization, callbacks }: AdminOrganizationCardProps) {
 	const { id, nome, cnpj, logoUrl, dataInsercao } = organization;
+	const [controlModalOpen, setControlModalOpen] = useState(false);
 
 	const adminUserIsMember = organization.membros.some((member) => member.usuarioId === sessionUser.id);
 	const { mutate: joinAsMemberMutation, isPending } = useMutation({
@@ -68,19 +71,27 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 					<span className="text-xs font-semibold text-foreground">{organization.membros.length}</span>
 				</div>
 			</div>
-			{!adminUserIsMember ? (
-				<LoadingButton
-					loading={isPending}
-					variant="ghost-brand"
-					size="sm"
-					className="w-full"
-					onClick={() => joinAsMemberMutation({ organizationId: id })}
-				>
-					ENTRAR
-				</LoadingButton>
-			) : (
-				<div className="w-full flex items-center justify-center h-8 rounded-md px-3 text-xs">VOCÊ É MEMBRO</div>
-			)}
+			<div className="flex w-full flex-col gap-2">
+				<Button variant="outline" size="sm" className="w-full" onClick={() => setControlModalOpen(true)}>
+					<Settings2 className="h-3.5 w-3.5" />
+					GERENCIAR
+				</Button>
+				{!adminUserIsMember ? (
+					<LoadingButton
+						loading={isPending}
+						variant="ghost-brand"
+						size="sm"
+						className="w-full"
+						onClick={() => joinAsMemberMutation({ organizationId: id })}
+					>
+						ENTRAR
+					</LoadingButton>
+				) : (
+					<div className="flex h-8 w-full items-center justify-center rounded-md px-3 text-xs">VOCÊ É MEMBRO</div>
+				)}
+			</div>
+
+			{controlModalOpen ? <AdminControlOrganization organizationId={id} closeModal={() => setControlModalOpen(false)} callbacks={callbacks} /> : null}
 		</div>
 	);
 }

@@ -219,3 +219,123 @@ export function useOrganizationState() {
 }
 
 export type TUseOrganizationState = ReturnType<typeof useOrganizationState>;
+
+const OrganizationBaseStateSchema = z.object({
+	organization: OrganizationSchema.omit({ dataInsercao: true }),
+});
+export type TOrganizationBaseState = z.infer<typeof OrganizationBaseStateSchema>;
+
+export function useOrganizationBaseState() {
+	const initialState: TOrganizationBaseState = {
+		organization: {
+			nome: "",
+			cnpj: "",
+			logoUrl: null,
+			telefone: null,
+			email: null,
+			localizacaoCep: null,
+			localizacaoEstado: null,
+			localizacaoCidade: null,
+			localizacaoBairro: null,
+			localizacaoLogradouro: null,
+			localizacaoNumero: null,
+			localizacaoComplemento: null,
+			configuracao: {
+				recursos: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
+				preferencias: DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
+				defaults: DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS,
+			},
+			origemDadosPadrao: "RECEPTOR",
+			autorId: "",
+			integracaoTipo: null,
+			integracaoConfiguracao: null,
+			dadosViaERP: false,
+			dadosViaPDI: true,
+			dadosViaIntegracoes: false,
+			periodoTesteInicio: null,
+			periodoTesteFim: null,
+			fiscalProvedor: null,
+			fiscalEmissaoAutomatica: false,
+			fiscalConfiguracao: null,
+			corPrimaria: null,
+			corPrimariaForeground: null,
+			corSecundaria: null,
+			corSecundariaForeground: null,
+			integracaoDataUltimaSincronizacao: null,
+		},
+	};
+	const [state, setState] = useState<TOrganizationBaseState>(initialState);
+
+	const updateOrganization = useCallback((organization: Partial<TOrganizationBaseState["organization"]>) => {
+		setState((prev) => ({
+			...prev,
+			organization: {
+				...prev.organization,
+				...organization,
+			},
+		}));
+	}, []);
+
+	const updateConfigurationResources = useCallback(
+		<K extends keyof TOrganizationBaseState["organization"]["configuracao"]["recursos"]>(
+			resourceKey: K,
+			resource: Partial<TOrganizationBaseState["organization"]["configuracao"]["recursos"][K]>,
+		) => {
+			setState((prev) => ({
+				...prev,
+				organization: {
+					...prev.organization,
+					configuracao: {
+						...prev.organization.configuracao,
+						recursos: {
+							...prev.organization.configuracao.recursos,
+							[resourceKey]: {
+								...prev.organization.configuracao.recursos[resourceKey],
+								...resource,
+							},
+						},
+					},
+				},
+			}));
+		},
+		[],
+	);
+
+	const updateConfigurationPreferencias = useCallback(
+		(preferencias: Partial<TOrganizationBaseState["organization"]["configuracao"]["preferencias"]>) => {
+			setState((prev) => ({
+				...prev,
+				organization: {
+					...prev.organization,
+					configuracao: {
+						...prev.organization.configuracao,
+						preferencias: {
+							...prev.organization.configuracao.preferencias,
+							...preferencias,
+						},
+					},
+				},
+			}));
+		},
+		[],
+	);
+
+	const resetState = useCallback(() => {
+		setState(initialState);
+	}, []);
+
+	const redefineState = useCallback((state: TOrganizationBaseState) => {
+		setState(state);
+	}, []);
+
+	return {
+		state,
+		updateOrganization,
+		updateConfigurationResources,
+		updateConfigurationPreferencias,
+		resetState,
+		redefineState,
+	};
+}
+
+export type TUseOrganizationBaseState = ReturnType<typeof useOrganizationBaseState>;
