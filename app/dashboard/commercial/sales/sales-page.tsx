@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FulfillmentBoard from "./_components/fulfillment/fulfillment-board";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
@@ -24,10 +26,12 @@ import {
 	Clock,
 	FileSpreadsheet,
 	Info,
+	LayoutGrid,
 	ListFilter,
 	Megaphone,
 	Package,
 	Plus,
+	ReceiptText,
 	Tag,
 	TrendingDown,
 	TrendingUp,
@@ -41,6 +45,36 @@ type SalesPageProps = {
 };
 
 export default function SalesPage({ user: _user, organization }: SalesPageProps) {
+	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
+
+	// Organizações sem o módulo de ERP não veem a interface de abas: só o histórico.
+	if (!orgHasERPAccess) return <SalesHistoryView organization={organization} />;
+
+	return (
+		<div className="w-full h-full flex flex-col gap-3">
+			<Tabs defaultValue="historico" className="w-full h-full flex flex-col">
+				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
+					<TabsTrigger value="historico" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<ReceiptText className="w-4 h-4 min-w-4 min-h-4" />
+						Histórico
+					</TabsTrigger>
+					<TabsTrigger value="atendimento" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<LayoutGrid className="w-4 h-4 min-w-4 min-h-4" />
+						Atendimento
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="historico" className="flex flex-col gap-3 mt-3">
+					<SalesHistoryView organization={organization} />
+				</TabsContent>
+				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col">
+					<FulfillmentBoard />
+				</TabsContent>
+			</Tabs>
+		</div>
+	);
+}
+
+function SalesHistoryView({ organization }: { organization: SalesPageProps["organization"] }) {
 	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
 	const {
 		data: salesResult,
