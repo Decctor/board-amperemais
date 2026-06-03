@@ -380,7 +380,7 @@ async function getSalesGroupedStats({ filters, organizacaoId }: GetSalesParams) 
 	const resultsByItem = await db
 		.select({
 			id: products.id,
-			titulo: products.descricao,
+			titulo: products.nome,
 			qtde: count(saleItems.id),
 			total: sum(saleItems.valorVendaTotalLiquido),
 		})
@@ -397,7 +397,7 @@ async function getSalesGroupedStats({ filters, organizacaoId }: GetSalesParams) 
 			),
 		)
 		.innerJoin(products, eq(saleItems.produtoId, products.id))
-		.groupBy(products.id, products.descricao);
+		.groupBy(products.id, products.nome);
 
 	const resultsByItemGroup = await db
 		.select({

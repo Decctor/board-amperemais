@@ -136,7 +136,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 			tempId: crypto.randomUUID(),
 			produtoId: product.id,
 			produtoVarianteId: null,
-			nome: product.descricao,
+			nome: product.nome,
 			codigo: product.codigo,
 			imagemUrl: product.imagemCapaUrl,
 			quantidade: 1,
@@ -148,7 +148,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 			valorTotalLiquido: product.precoVenda ?? 0,
 			modificadores: [],
 		});
-		toast.success(`${product.descricao} adicionado ao carrinho.`);
+		toast.success(`${product.nome} adicionado ao carrinho.`);
 	};
 
 	const handleCreateDraft = () => {

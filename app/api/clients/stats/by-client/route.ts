@@ -123,7 +123,7 @@ async function getClientStats({ session, input }: GetClientStatsParams) {
 	const byProductTop10Raw = await db
 		.select({
 			produtoId: saleItems.produtoId,
-			produtoDescricao: products.descricao,
+			produtoNome: products.nome,
 			produtoGrupo: products.grupo,
 			qtde: sum(saleItems.quantidade),
 			total: sum(saleItems.valorVendaTotalLiquido),
@@ -132,7 +132,7 @@ async function getClientStats({ session, input }: GetClientStatsParams) {
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.leftJoin(products, eq(saleItems.produtoId, products.id))
 		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), saleWhere))
-		.groupBy(saleItems.produtoId, products.descricao, products.grupo)
+		.groupBy(saleItems.produtoId, products.nome, products.grupo)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(10);
 
@@ -200,7 +200,7 @@ async function getClientStats({ session, input }: GetClientStatsParams) {
 				})),
 				produto: byProductTop10Raw.map((row) => ({
 					produtoId: row.produtoId,
-					produtoDescricao: row.produtoDescricao ?? "",
+					produtoNome: row.produtoNome ?? "",
 					produtoGrupo: row.produtoGrupo ?? null,
 					quantidade: row.qtde ? Number(row.qtde) : 0,
 					total: row.total ? Number(row.total) : 0,

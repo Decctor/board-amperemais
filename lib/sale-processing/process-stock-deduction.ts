@@ -68,7 +68,7 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 						and(inArray(fields.id, productIds), eq(fields.organizacaoId, params.organizationId), eq(fields.ativo, true)),
 					columns: {
 						id: true,
-						descricao: true,
+						nome: true,
 						quantidade: true,
 						precoCusto: true,
 						rastreamentoEstoqueAtivo: true,
@@ -112,7 +112,7 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 		const currentQuantity = product.quantidade ?? 0;
 		if (currentQuantity <= 0) throw new createHttpError.BadRequest("Produto nao possui estoque.");
 		if (currentQuantity - quantity < 0) {
-			throw new createHttpError.BadRequest(`Quantidade de estoque insuficiente para o produto ${product.descricao}.`);
+			throw new createHttpError.BadRequest(`Quantidade de estoque insuficiente para o produto ${product.nome}.`);
 		}
 
 		const nextQuantity = currentQuantity - quantity;

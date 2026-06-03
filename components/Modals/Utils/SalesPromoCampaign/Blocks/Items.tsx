@@ -123,13 +123,13 @@ export default function SalesPromoCampaignItemsBlock({
 						{
 							id: product?.id,
 							codigo: product?.codigo,
-							nome: product?.descricao,
+							nome: product?.nome,
 						},
 					],
 					valorBase: item["VALOR BASE"],
 					valorPromocional: item["VALOR PROMOCIONAL"],
 					etiqueta: item.ETIQUETA,
-					titulo: product?.descricao,
+					titulo: product?.nome,
 					...(item["CONDIÇÃO ESPECIAL - DATA"] && { anuncioData: item["CONDIÇÃO ESPECIAL - DATA"] }),
 					...(item["CONDIÇÃO ESPECIAL - VALOR"] && { anuncioValorPromocional: item["CONDIÇÃO ESPECIAL - VALOR"] }),
 				};
@@ -381,7 +381,7 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 						validateAndAddProduct({
 							id: product.id,
 							codigo: product.codigo,
-							nome: product.descricao,
+							nome: product.nome,
 						});
 					}}
 					closeModal={() => setNewProductMenuIsOpen(false)}
@@ -526,7 +526,7 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 						validateAndAddProduct({
 							id: product.id,
 							codigo: product.codigo,
-							nome: product.descricao,
+							nome: product.nome,
 						});
 						setNewProductMenuIsOpen(false);
 					}}

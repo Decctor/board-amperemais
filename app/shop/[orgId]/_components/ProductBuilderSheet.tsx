@@ -135,7 +135,7 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 			modificadores: selectedModifiers,
 		});
 
-		const itemName = selectedVariant ? `${product.descricao} - ${selectedVariant.nome}` : product.descricao;
+		const itemName = selectedVariant ? `${product.nome} - ${selectedVariant.nome}` : product.nome;
 		toast.success(`${itemName} adicionado ao carrinho.`, {
 			dismissible: true,
 			position: "top-center",
@@ -155,14 +155,14 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 			<DrawerContent className="max-h-[92vh]">
 				<MotionConfig reducedMotion="user">
 					<DrawerHeader className="text-left">
-						<DrawerTitle className="text-lg font-black tracking-tight">{product.descricao}</DrawerTitle>
+						<DrawerTitle className="text-lg font-black tracking-tight">{product.nome}</DrawerTitle>
 						<DrawerDescription>Monte do seu jeito</DrawerDescription>
 					</DrawerHeader>
 
 					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-7 overflow-auto px-1 pb-2">
 						{headerImage && (
 							<div className="relative h-44 w-full overflow-hidden rounded-2xl bg-muted shadow-sm">
-								<Image src={headerImage} alt={product.descricao} fill className="object-cover" />
+								<Image src={headerImage} alt={product.nome} fill className="object-cover" />
 							</div>
 						)}
 

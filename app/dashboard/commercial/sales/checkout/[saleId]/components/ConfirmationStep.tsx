@@ -12,7 +12,7 @@ type ConfirmationStepProps = {
 			id: string;
 			quantidade: number;
 			valorVendaTotalLiquido: number;
-			produto: { descricao: string } | null;
+			produto: { nome: string } | null;
 			produtoVariante: { nome: string } | null;
 		}>;
 	};
@@ -63,7 +63,7 @@ export default function ConfirmationStep({ sale, checkoutState }: ConfirmationSt
 					{sale.itens.map((item) => (
 						<div key={item.id} className="flex justify-between text-sm py-1">
 							<span>
-								{item.quantidade}x {item.produtoVariante ? `${item.produto?.descricao} - ${item.produtoVariante.nome}` : item.produto?.descricao}
+								{item.quantidade}x {item.produtoVariante ? `${item.produto?.nome} - ${item.produtoVariante.nome}` : item.produto?.nome}
 							</span>
 							<span className="font-bold">{formatToMoney(item.valorVendaTotalLiquido)}</span>
 						</div>

@@ -929,7 +929,7 @@ function GroupedByRelatedProducts({ data }: { data: TGetProductStatsOutput["data
 				<div className="flex items-center gap-1 flex-1 min-w-0">
 					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-border text-xs">{index + 1}Âº</div>
 					<div className="flex flex-col flex-1 min-w-0">
-						<h1 className="text-xs font-medium tracking-tight truncate">{product.produtoDescricao}</h1>
+						<h1 className="text-xs font-medium tracking-tight truncate">{product.produtoNome}</h1>
 						<p className="text-[10px] text-foreground/60 truncate">{product.produtoCodigo}</p>
 					</div>
 				</div>

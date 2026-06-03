@@ -36,7 +36,7 @@ export default function ProductsInlineFilters({ filters, updateFilters }: Produc
 		{ id: "C", label: "C", value: "C" },
 	] satisfies InteractiveFilterOption<string>[];
 	const orderFieldOptions = [
-		{ id: "descricao", label: "DESCRIÇÃO", value: "descricao" },
+		{ id: "nome", label: "DESCRIÇÃO", value: "nome" },
 		{ id: "codigo", label: "CÓDIGO", value: "codigo" },
 		{ id: "grupo", label: "GRUPO", value: "grupo" },
 		{ id: "vendasValorTotal", label: "VALOR TOTAL DE VENDAS", value: "vendasValorTotal" },
@@ -44,7 +44,7 @@ export default function ProductsInlineFilters({ filters, updateFilters }: Produc
 		{ id: "quantidade", label: "QUANTIDADE EM ESTOQUE", value: "quantidade" },
 	] satisfies InteractiveFilterOption<NonNullable<TGetProductsDefaultInput["orderByField"]>>[];
 	const defaultSort = {
-		field: "descricao",
+		field: "nome",
 		direction: "asc",
 	} satisfies InteractiveFilterSortValue<NonNullable<TGetProductsDefaultInput["orderByField"]>>;
 	const sortValue = {

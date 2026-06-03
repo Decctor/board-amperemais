@@ -80,8 +80,8 @@ function SelectProductWithVariants({
 	const selectedLabel = useMemo(() => {
 		if (selectedLabelProp) return selectedLabelProp;
 		if (!value?.productId) return resetOptionLabel;
-		if (!value.productVariantId) return products.find((product) => product.id === value.productId)?.descricao ?? resetOptionLabel;
-		return `${products.find((product) => product.id === value.productId)?.descricao ?? resetOptionLabel} - ${products.find((product) => product.id === value.productId)?.variantes?.find((variant) => variant.id === value.productVariantId)?.nome ?? resetOptionLabel}`;
+		if (!value.productVariantId) return products.find((product) => product.id === value.productId)?.nome ?? resetOptionLabel;
+		return `${products.find((product) => product.id === value.productId)?.nome ?? resetOptionLabel} - ${products.find((product) => product.id === value.productId)?.variantes?.find((variant) => variant.id === value.productVariantId)?.nome ?? resetOptionLabel}`;
 	}, [resetOptionLabel, selectedLabelProp, value, products]);
 
 	function toggleProduct(productId: string) {
@@ -176,11 +176,11 @@ function SelectProductWithVariants({
 													) : (
 														<>
 															<Avatar className="h-8 w-8 min-h-8 min-w-8 rounded-md">
-																<AvatarImage src={product.imagemCapaUrl || undefined} alt={product.descricao} />
-																<AvatarFallback className="rounded-md">{formatNameAsInitials(product.descricao)}</AvatarFallback>
+																<AvatarImage src={product.imagemCapaUrl || undefined} alt={product.nome} />
+																<AvatarFallback className="rounded-md">{formatNameAsInitials(product.nome)}</AvatarFallback>
 															</Avatar>
 															<div className="min-w-0 flex-1">
-																<p className="truncate text-sm font-medium">{product.descricao}</p>
+																<p className="truncate text-sm font-medium">{product.nome}</p>
 																<p className="truncate text-[0.7rem] text-foreground/70">{product.codigo}</p>
 															</div>
 														</>

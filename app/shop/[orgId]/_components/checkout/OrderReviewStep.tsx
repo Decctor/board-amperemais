@@ -49,7 +49,7 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 
 				return {
 					...item,
-					title: variant ? `${product.descricao} - ${variant.nome}` : product.descricao,
+					title: variant ? `${product.nome} - ${variant.nome}` : product.nome,
 					imagemUrl: variant?.imagemCapaUrl ?? product.imagemCapaUrl,
 					modificadores: modifiersDetails,
 					valorTotal: lineTotal,

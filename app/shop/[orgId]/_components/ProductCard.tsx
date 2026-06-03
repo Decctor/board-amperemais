@@ -48,17 +48,17 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 			<div className="group flex gap-3 p-3 rounded-xl border bg-card hover:bg-accent/50 transition-colors cursor-pointer" onClick={handleClick}>
 				{product.imagemCapaUrl ? (
 					<div className="relative w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-						<Image src={product.imagemCapaUrl} alt={product.descricao} fill className="object-cover" />
+						<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover" />
 					</div>
 				) : (
 					<div className="w-24 h-24 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-						<span className="text-2xl font-black text-muted-foreground/50">{product.descricao.charAt(0).toUpperCase()}</span>
+						<span className="text-2xl font-black text-muted-foreground/50">{product.nome.charAt(0).toUpperCase()}</span>
 					</div>
 				)}
 
 				<div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
 					<div>
-						<h3 className="font-semibold text-sm line-clamp-2">{product.descricao}</h3>
+						<h3 className="font-semibold text-sm line-clamp-2">{product.nome}</h3>
 						{product.grupo && <p className="text-xs text-muted-foreground mt-0.5">{product.grupo}</p>}
 					</div>
 
@@ -94,16 +94,16 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 		>
 			{product.imagemCapaUrl ? (
 				<div className="relative w-full aspect-square bg-muted">
-					<Image src={product.imagemCapaUrl} alt={product.descricao} fill className="object-cover" />
+					<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover" />
 				</div>
 			) : (
 				<div className="w-full aspect-square bg-muted flex items-center justify-center">
-					<span className="text-3xl font-black text-muted-foreground/50">{product.descricao.charAt(0).toUpperCase()}</span>
+					<span className="text-3xl font-black text-muted-foreground/50">{product.nome.charAt(0).toUpperCase()}</span>
 				</div>
 			)}
 
 			<div className="p-2.5 flex flex-col gap-1">
-				<h3 className="font-semibold text-xs line-clamp-2 leading-tight">{product.descricao}</h3>
+				<h3 className="font-semibold text-xs line-clamp-2 leading-tight">{product.nome}</h3>
 				<span className="font-black text-sm text-primary">
 					{hasVariants && "a partir de "}
 					{formatToMoney(lowestPrice)}

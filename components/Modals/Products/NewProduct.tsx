@@ -56,7 +56,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 		if (state.product.imagemCapaHolder.file) {
 			const { url } = await uploadFile({
 				file: state.product.imagemCapaHolder.file,
-				fileName: state.product.descricao || "produto",
+				fileName: state.product.nome || "produto",
 				prefix: "syncrono",
 			});
 			productImageUrl = url;
@@ -111,7 +111,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 		// 4. Build the input for the API
 		const input: TCreateProductInput = {
 			product: {
-				descricao: state.product.descricao,
+				nome: state.product.nome,
 				codigo: state.product.codigo,
 				unidade: state.product.unidade,
 				ncm: state.product.ncm,
@@ -141,7 +141,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 			resetState({
 				product: {
 					codigo: "",
-					descricao: "",
+					nome: "",
 					unidade: "",
 					ncm: "",
 					tipo: "",

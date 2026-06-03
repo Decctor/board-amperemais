@@ -55,7 +55,7 @@ export async function getCustomerPurchaseHistory(clientId: string, options: GetC
 					valorUnitario: item.valorVendaUnitario,
 					valorTotal: item.valorVendaTotalLiquido,
 					produto: {
-						descricao: item.produto.descricao,
+						nome: item.produto.nome,
 						codigo: item.produto.codigo,
 						grupo: item.produto.grupo,
 						tipo: item.produto.tipo,
@@ -114,7 +114,7 @@ export async function getCustomerPurchaseInsights(clientId: string) {
 		// Get top purchased products
 		const topProducts = await db
 			.select({
-				descricao: products.descricao,
+				nome: products.nome,
 				codigo: products.codigo,
 				grupo: products.grupo,
 				quantidadeCompras: sql<number>`SUM(${saleItems.quantidade})`,
@@ -123,7 +123,7 @@ export async function getCustomerPurchaseInsights(clientId: string) {
 			.from(saleItems)
 			.innerJoin(products, eq(saleItems.produtoId, products.id))
 			.where(eq(saleItems.clienteId, clientId))
-			.groupBy(products.id, products.descricao, products.codigo, products.grupo)
+			.groupBy(products.id, products.nome, products.codigo, products.grupo)
 			.orderBy(desc(sql`SUM(${saleItems.valorVendaTotalLiquido})`))
 			.limit(10);
 
@@ -158,7 +158,7 @@ export async function getCustomerPurchaseInsights(clientId: string) {
 					valorTotal: Number(g.valorTotal),
 				})),
 				produtosMaisComprados: topProducts.map((p) => ({
-					descricao: p.descricao,
+					nome: p.nome,
 					codigo: p.codigo,
 					grupo: p.grupo,
 					quantidadeCompras: Number(p.quantidadeCompras),
@@ -199,7 +199,7 @@ export async function getCustomerRecentPurchases(clientId: string, limit = 5) {
 				vendedorNome: sale.vendedorNome,
 				quantidadeItens: sale.itens.length,
 				principaisItens: sale.itens.slice(0, 5).map((item) => ({
-					produto: item.produto.descricao,
+					produto: item.produto.nome,
 					quantidade: item.quantidade,
 					valorTotal: item.valorVendaTotalLiquido,
 				})),
@@ -228,14 +228,14 @@ export async function searchProducts(query: string, limit = 10) {
 		}
 
 		const searchResults = await db.query.products.findMany({
-			where: ilike(products.descricao, `%${query}%`),
+			where: ilike(products.nome, `%${query}%`),
 			limit,
 		});
 
 		return {
 			success: true,
 			data: searchResults.map((product) => ({
-				descricao: product.descricao,
+				nome: product.nome,
 				codigo: product.codigo,
 				grupo: product.grupo,
 				tipo: product.tipo,
@@ -263,7 +263,7 @@ export async function getProductsByGroup(group: string, limit = 15) {
 		return {
 			success: true,
 			data: productsByGroup.map((product) => ({
-				descricao: product.descricao,
+				nome: product.nome,
 				codigo: product.codigo,
 				grupo: product.grupo,
 				tipo: product.tipo,
@@ -296,7 +296,7 @@ export async function getProductByCode(code: string) {
 		return {
 			success: true,
 			data: {
-				descricao: product.descricao,
+				nome: product.nome,
 				codigo: product.codigo,
 				grupo: product.grupo,
 				tipo: product.tipo,

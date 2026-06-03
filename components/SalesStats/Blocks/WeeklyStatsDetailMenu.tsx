@@ -191,7 +191,7 @@ export default function WeeklyStatsDetailMenu({ params, closeMenu }: WeeklyStats
 	const topProductRows: RankedRow[] = data
 		? data.topProducts.map((p) => ({
 				id: p.productId,
-				name: p.productDescription,
+				name: p.productName,
 				subtitle: p.productGroup,
 				quantity: p.quantity,
 				total: p.total,

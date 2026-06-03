@@ -247,7 +247,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 						produto: {
 							columns: {
 								id: true,
-								descricao: true,
+								nome: true,
 								codigo: true,
 								imagemCapaUrl: true,
 								grupo: true,
@@ -414,7 +414,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 					produto: {
 						columns: {
 							id: true,
-							descricao: true,
+							nome: true,
 						},
 					},
 				},

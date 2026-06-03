@@ -242,7 +242,7 @@ async function getSaleDraft({ input, session }: { input: { id: string }; session
 				with: {
 					adicionais: true,
 					produto: {
-						columns: { id: true, descricao: true, codigo: true, imagemCapaUrl: true },
+						columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true },
 					},
 					produtoVariante: {
 						columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true },

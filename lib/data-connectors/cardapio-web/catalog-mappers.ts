@@ -9,7 +9,7 @@ export interface MappedCatalogProduct {
 	idExterno: string;
 	ativo: boolean;
 	codigo: string;
-	descricao: string;
+	nome: string;
 	imagemCapaUrl: string | null;
 	precoVenda: number;
 	precoCusto: number | null;
@@ -71,7 +71,7 @@ function mapCatalogProduct(item: CatalogItem, categoryName: string, uniqueProduc
 		idExterno: item.id.toString(),
 		ativo: item.status === "ACTIVE",
 		codigo: externalCode && uniqueProductExternalCodes.has(externalCode) ? externalCode : item.id.toString(),
-		descricao: item.name,
+		nome: item.name,
 		imagemCapaUrl: item.image?.image_url ?? null,
 		precoVenda: item.price,
 		precoCusto: item.cost_price ?? null,

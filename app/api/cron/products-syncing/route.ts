@@ -67,7 +67,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 					.set({
 						ativo: product.ativo,
 						codigo: product.codigo,
-						descricao: product.descricao,
+						nome: product.nome,
 						imagemCapaUrl: product.imagemCapaUrl,
 						precoVenda: product.precoVenda,
 						precoCusto: product.precoCusto,
@@ -88,7 +88,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						organizacaoId: organizationId,
 						ativo: product.ativo,
 						codigo: product.codigo,
-						descricao: product.descricao,
+						nome: product.nome,
 						imagemCapaUrl: product.imagemCapaUrl,
 						precoVenda: product.precoVenda,
 						precoCusto: product.precoCusto,

@@ -181,7 +181,7 @@ function NewPrizeMenu({ terminology, closeMenu, addCashbackProgramPrize }: NewPr
 						...prev,
 						produtoId: value?.product?.id ?? null,
 						produtoVarianteId: value?.productVariant?.id ?? null,
-						titulo: value?.productVariant?.nome ?? value?.product?.descricao ?? prev.titulo,
+						titulo: value?.productVariant?.nome ?? value?.product?.nome ?? prev.titulo,
 						imagemCapaUrl: value?.productVariant?.imagemCapaUrl ?? value?.product?.imagemCapaUrl ?? null,
 					}));
 				}}
@@ -248,7 +248,7 @@ function EditPrizeMenu({ initialPrize, terminology, closeMenu, updateCashbackPro
 						...prev,
 						produtoId: value?.product?.id ?? null,
 						produtoVarianteId: value?.productVariant?.id ?? null,
-						titulo: value?.productVariant?.nome ?? value?.product?.descricao ?? prev.titulo,
+						titulo: value?.productVariant?.nome ?? value?.product?.nome ?? prev.titulo,
 						imagemCapaUrl: value?.productVariant?.imagemCapaUrl ?? value?.product?.imagemCapaUrl ?? null,
 					}));
 				}}

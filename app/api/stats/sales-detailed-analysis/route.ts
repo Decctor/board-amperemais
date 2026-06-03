@@ -105,7 +105,7 @@ type TSalesDetailedAnalysisOutputData = {
 	}[];
 	topProducts: {
 		productId: string;
-		productDescription: string;
+		productName: string;
 		productGroup: string | null;
 		quantity: number;
 		total: number;
@@ -171,7 +171,7 @@ async function getSalesDetailedAnalysis({
 		db
 			.select({
 				productId: products.id,
-				productDescription: products.descricao,
+				productName: products.nome,
 				productGroup: products.grupo,
 				quantity: sum(saleItems.quantidade),
 				total: sum(saleItems.valorVendaTotalLiquido),
@@ -180,7 +180,7 @@ async function getSalesDetailedAnalysis({
 			.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 			.innerJoin(products, eq(saleItems.produtoId, products.id))
 			.where(and(eq(saleItems.organizacaoId, organizacaoId), eq(products.organizacaoId, organizacaoId), salesWhere))
-			.groupBy(products.id, products.descricao, products.grupo)
+			.groupBy(products.id, products.nome, products.grupo)
 			.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 			.limit(25),
 	]);
@@ -205,7 +205,7 @@ async function getSalesDetailedAnalysis({
 			})),
 			topProducts: topProductsRaw.map((row) => ({
 				productId: row.productId,
-				productDescription: row.productDescription,
+				productName: row.productName,
 				productGroup: row.productGroup ?? null,
 				quantity: row.quantity ? Number(row.quantity) : 0,
 				total: row.total ? Number(row.total) : 0,

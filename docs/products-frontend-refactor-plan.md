@@ -37,7 +37,7 @@ Precisamos de um nome claro para o fluxo que edita **somente a linha da tabela `
 
 Campos espelhados de `ProductSchema` (sem `organizacaoId`), mais `imagemCapaHolder`:
 
-- `descricao`, `codigo`, `unidade`, `grupo`, `ncm`
+- `nome`, `codigo`, `unidade`, `grupo`, `ncm`
 - `precoCusto`, `precoVenda`
 - `rastreamentoEstoqueAtivo`, `quantidade`
 - `imagemCapaUrl` + `imagemCapaHolder`
@@ -216,7 +216,7 @@ Substitui `ControlPartialProduct` em `GeneralInformation`.
 ```ts
 function mapProductToCoreState(product: TGetProductsOutputById): Partial<TProductCoreState> {
 	return {
-		descricao: product.descricao,
+		nome: product.nome,
 		codigo: product.codigo,
 		unidade: product.unidade,
 		grupo: product.grupo,

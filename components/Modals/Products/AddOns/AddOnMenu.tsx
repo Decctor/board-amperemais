@@ -53,7 +53,7 @@ function AddOnMenuPersisted({ addOnId, closeMenu, submitAddOn, submitAddOnIsLoad
 					ativo: opcao.ativo ?? true,
 					produtoId: opcao.produtoId ?? null,
 					produtoVarianteId: opcao.produtoVarianteId ?? null,
-					produtoConsumo: opcao.produtoVariante?.nome ?? opcao.produto?.descricao ?? null,
+					produtoConsumo: opcao.produtoVariante?.nome ?? opcao.produto?.nome ?? null,
 					quantidadeConsumo: opcao.quantidadeConsumo ?? 1,
 					precoDelta: opcao.precoDelta ?? 0,
 					maxQtdePorItem: opcao.maxQtdePorItem ?? 1,
@@ -334,7 +334,7 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 						updateOption(
 							variant
 								? { produtoConsumo: variant.nome, produtoId: null, produtoVarianteId: variant.id }
-								: { produtoConsumo: product.descricao, produtoId: product.id, produtoVarianteId: null },
+								: { produtoConsumo: product.nome, produtoId: product.id, produtoVarianteId: null },
 						);
 						setVinculationModalIsOpen(false);
 					}}

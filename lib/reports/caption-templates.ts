@@ -40,7 +40,7 @@ function getHighlight(payload: TSalesReportPayload) {
 
 	const bestProduct = payload.topProducts[0];
 	if (bestProduct) {
-		return `🏆 *Destaque:* ${bestProduct.produtoDescricao} gerou *${formatCurrency(bestProduct.faturamento)}*`;
+		return `🏆 *Destaque:* ${bestProduct.produtoNome} gerou *${formatCurrency(bestProduct.faturamento)}*`;
 	}
 
 	return "🏆 *Destaque:* Sem item líder no período";

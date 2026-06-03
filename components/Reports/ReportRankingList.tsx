@@ -20,7 +20,7 @@ function isPartner(item: SellerRankingItem | PartnerRankingItem | ProductRanking
 function getItemTitle(item: SellerRankingItem | PartnerRankingItem | ProductRankingItem) {
 	if (isSeller(item)) return item.vendedorNome;
 	if (isPartner(item)) return item.parceiroNome;
-	return item.produtoDescricao;
+	return item.produtoNome;
 }
 
 function getItemMetric(item: SellerRankingItem | PartnerRankingItem | ProductRankingItem) {

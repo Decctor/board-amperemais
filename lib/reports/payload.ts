@@ -102,7 +102,7 @@ export function getReportHighlight({
 	if (bestProduct) {
 		return {
 			label: "Top produto",
-			value: bestProduct.produtoDescricao,
+			value: bestProduct.produtoNome,
 			subtitle: `${bestProduct.quantidade} un. · ${bestProduct.faturamento.toLocaleString("pt-BR", {
 				style: "currency",
 				currency: "BRL",

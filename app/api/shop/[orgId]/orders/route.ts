@@ -128,7 +128,7 @@ function calculateShopItem({
 	const modifiersPrice = calculatedModifiers.reduce((sum, modifier) => sum + modifier.valorTotal, 0);
 	const unitFinal = basePrice + modifiersPrice;
 	const cost = variant?.precoCusto ?? product.precoCusto ?? 0;
-	const itemName = variant ? `${product.descricao} - ${variant.nome}` : product.descricao;
+	const itemName = variant ? `${product.nome} - ${variant.nome}` : product.nome;
 
 	return {
 		produtoId: product.id,

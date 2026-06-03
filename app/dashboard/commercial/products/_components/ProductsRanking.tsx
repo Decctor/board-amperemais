@@ -98,7 +98,7 @@ export default function ProductsRanking({ periodAfter, periodBefore, comparingPe
 										)}
 									</Ranking.ItemMedia>
 									<Ranking.ItemTitleRow>
-										<Ranking.ItemTitle tooltip={product.descricao}>{product.descricao}</Ranking.ItemTitle>
+										<Ranking.ItemTitle tooltip={product.nome}>{product.nome}</Ranking.ItemTitle>
 										<Ranking.ItemDelta rankDelta={product.rankDelta} />
 									</Ranking.ItemTitleRow>
 									<Ranking.ItemMeta icon={Code}>{product.codigo}</Ranking.ItemMeta>

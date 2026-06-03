@@ -34,10 +34,10 @@ export default function ProductStateGeneralBlock({
 			/>
 			<div className="h-full w-full lg:grow flex flex-col items-center gap-2">
 				<TextInput
-					label="DESCRIÇÃO"
-					value={product.descricao}
-					placeholder="Preencha aqui a descrição do produto."
-					handleChange={(value) => updateProduct({ descricao: value })}
+					label="NOME"
+					value={product.nome}
+					placeholder="Preencha aqui o nome do produto."
+					handleChange={(value) => updateProduct({ nome: value })}
 					width="100%"
 				/>
 				<div className="w-full flex items-center gap-2 lg:flex-row">

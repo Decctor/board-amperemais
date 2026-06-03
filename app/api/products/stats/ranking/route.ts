@@ -87,7 +87,7 @@ async function fetchRankingForPeriod({
 		where: and(eq(products.organizacaoId, userOrgId), inArray(products.id, productIds)),
 		columns: {
 			id: true,
-			descricao: true,
+			nome: true,
 			codigo: true,
 			grupo: true,
 			imagemCapaUrl: true,
@@ -108,7 +108,7 @@ async function fetchRankingForPeriod({
 
 		return {
 			produtoId: productId,
-			descricao: productInfo?.descricao || "N/A",
+			nome: productInfo?.nome || "N/A",
 			codigo: productInfo?.codigo || null,
 			grupo: productInfo?.grupo || null,
 			imagemCapaUrl: productInfo?.imagemCapaUrl || null,

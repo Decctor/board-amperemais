@@ -513,7 +513,7 @@ function TopBuyersDetails({ condicao }: { condicao: Extract<TCampaignFilterCondi
 	const janelaLabel = janela === "GERAL" ? "geral" : janela === "30_DIAS" ? "últimos 30 dias" : "últimos 90 dias";
 	return (
 		<span className="truncate text-sm">
-			Top {top} compradores de <strong>{isLoading ? "carregando..." : (product?.product.descricao ?? "produto não encontrado")}</strong>{" "}
+			Top {top} compradores de <strong>{isLoading ? "carregando..." : (product?.product.nome ?? "produto não encontrado")}</strong>{" "}
 			<span className="text-muted-foreground">({janelaLabel})</span>
 		</span>
 	);

@@ -161,7 +161,7 @@ function ViewSellerResultsQualitative({ qualitative }: { qualitative: TGetSeller
 						<tbody>
 							{qualitative.byProductTop10.map((row) => (
 								<tr key={row.productId} className="border-t">
-									<td className="px-3 py-2">{row.productDescription}</td>
+									<td className="px-3 py-2">{row.produtoNome}</td>
 									<td className="px-3 py-2">{row.productGroup || "-"}</td>
 									<td className="px-3 py-2 text-right">{formatDecimalPlaces(row.quantity)}</td>
 									<td className="px-3 py-2 text-right">{formatToMoney(row.total)}</td>

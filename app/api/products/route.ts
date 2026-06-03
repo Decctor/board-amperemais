@@ -117,7 +117,7 @@ const GetProductsDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? Number(val) : null)),
-	orderByField: z.enum(["descricao", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal", "quantidade"]).optional().nullable(),
+	orderByField: z.enum(["nome", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal", "quantidade"]).optional().nullable(),
 	orderByDirection: z.enum(["asc", "desc"]).optional().nullable(),
 	resultLimit: z
 		.string({
@@ -310,7 +310,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 
 	if (input.search) {
 		productQueryConditions.push(
-			sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`,
+			sql`(${products.nome} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`,
 		);
 	}
 	if (input.groups.length > 0) {
@@ -371,7 +371,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			// Campos do produto
 			productId: products.id,
 			codigo: products.codigo,
-			descricao: products.descricao,
+			nome: products.nome,
 			unidade: products.unidade,
 			ncm: products.ncm,
 			tipo: products.tipo,
@@ -419,7 +419,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 		.select({
 			productId: productStatsSubquery.productId,
 			codigo: productStatsSubquery.codigo,
-			descricao: productStatsSubquery.descricao,
+			nome: productStatsSubquery.nome,
 			unidade: productStatsSubquery.unidade,
 			ncm: productStatsSubquery.ncm,
 			tipo: productStatsSubquery.tipo,
@@ -448,8 +448,8 @@ async function getProducts({ input, session }: GetProductsParams) {
 
 	function buildOrderByClause<T extends Record<string, any>>(source: T) {
 		switch (orderByField) {
-			case "descricao":
-				return direction(source.descricao);
+			case "nome":
+				return direction(source.nome);
 			case "codigo":
 				return direction(source.codigo);
 			case "grupo":
@@ -461,7 +461,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			case "quantidade":
 				return direction(sql`COALESCE(${source.quantidade}, 0)`);
 			default:
-				return asc(source.descricao);
+				return asc(source.nome);
 		}
 	}
 
@@ -492,7 +492,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 		return {
 			id: row.productId,
 			codigo: row.codigo,
-			descricao: row.descricao,
+			nome: row.nome,
 			unidade: row.unidade,
 			ncm: row.ncm,
 			tipo: row.tipo,
@@ -884,7 +884,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 		const [updatedProduct] = await tx
 			.update(products)
 			.set({
-				descricao: input.product.descricao,
+				nome: input.product.nome,
 				codigo: input.product.codigo,
 				unidade: input.product.unidade,
 				ncm: input.product.ncm,
@@ -1062,7 +1062,7 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 			.insert(products)
 			.values({
 				organizacaoId: userOrgId,
-				descricao: input.product.descricao,
+				nome: input.product.nome,
 				codigo: input.product.codigo,
 				unidade: input.product.unidade,
 				ncm: input.product.ncm,

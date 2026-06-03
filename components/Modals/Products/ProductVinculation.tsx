@@ -86,7 +86,7 @@ function ProductVinculationProductCard({
 		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2 flex-wrap">
-					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.descricao}</h1>
+					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.nome}</h1>
 					<div className="flex items-center gap-1">
 						<Code className="w-4 h-4 min-w-4 min-h-4" />
 						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.codigo}</h1>

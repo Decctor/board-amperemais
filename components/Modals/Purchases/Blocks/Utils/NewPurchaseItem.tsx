@@ -41,7 +41,7 @@ export default function NewPurchaseItem({ addPurchaseItem, closeMenu }: NewPurch
 		snapshotProdutoDescricao: "",
 		snapshotProdutoCodigo: "",
 		produto: {
-			descricao: "",
+			nome: "",
 			codigo: "",
 			unidade: "",
 			imagemCapaUrl: null,
@@ -98,11 +98,11 @@ export default function NewPurchaseItem({ addPurchaseItem, closeMenu }: NewPurch
 					updateInfoHolder({
 						produtoId: value?.product?.id ?? "",
 						produtoVarianteId: value?.productVariant?.id ?? null,
-						snapshotProdutoDescricao: value?.productVariant?.nome ?? value?.product?.descricao ?? "",
+						snapshotProdutoDescricao: value?.productVariant?.nome ?? value?.product?.nome ?? "",
 						snapshotProdutoCodigo: value?.productVariant?.codigo ?? value?.product?.codigo ?? "",
 						produto: value?.product
 							? {
-									descricao: value?.product?.descricao ?? "",
+									nome: value?.product?.nome ?? "",
 									codigo: value?.product?.codigo ?? "",
 									unidade: value?.product?.unidade ?? "",
 									imagemCapaUrl: value?.product?.imagemCapaUrl ?? null,

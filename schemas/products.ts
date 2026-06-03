@@ -6,7 +6,7 @@ export const ProductSchema = z.object({
 		required_error: "ID da organização não informado.",
 		invalid_type_error: "Tipo não válido para ID da organização.",
 	}),
-	descricao: z.string({
+	nome: z.string({
 		required_error: "Nome do produto não informado.",
 		invalid_type_error: "Tipo não válido para nome do produto.",
 	}),

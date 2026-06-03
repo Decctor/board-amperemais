@@ -45,7 +45,7 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 
 	// Search filter
 	if (input.search && input.search.length > 0) {
-		conditions.push(sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
+		conditions.push(sql`(${products.nome} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
 	}
 
 	// Group filter
@@ -102,7 +102,7 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 		},
 		offset: skip,
 		limit: limit,
-		orderBy: (fields, { asc }) => asc(fields.descricao),
+		orderBy: (fields, { asc }) => asc(fields.nome),
 	});
 
 	const normalizedProducts = productsResult.map((product) => ({

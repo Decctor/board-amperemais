@@ -53,7 +53,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 			{/* Product Image */}
 			<div className="relative w-full aspect-square rounded-xl overflow-hidden bg-secondary/50 flex items-center justify-center">
 				{product.imagemCapaUrl ? (
-					<Image src={product.imagemCapaUrl} alt={product.descricao} fill className="object-cover" />
+					<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover" />
 				) : (
 					<Package className="w-12 h-12 text-muted-foreground" />
 				)}
@@ -61,7 +61,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 			<div className="w-full flex flex-col gap-3 p-2">
 				{/* Product Info */}
 				<div className="flex-1 flex flex-col gap-1">
-					<h3 className="font-bold text-sm leading-tight line-clamp-2 group-hover:text-foreground transition-colors">{product.descricao}</h3>
+					<h3 className="font-bold text-sm leading-tight line-clamp-2 group-hover:text-foreground transition-colors">{product.nome}</h3>
 					<p className="text-[0.65rem] text-muted-foreground font-medium">{product.codigo}</p>
 				</div>
 

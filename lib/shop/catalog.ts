@@ -88,7 +88,7 @@ export async function getShopCatalogProducts({
 				orderBy: (fields, { asc }) => asc(fields.ordem),
 			},
 		},
-		orderBy: (fields, { asc }) => asc(fields.descricao),
+		orderBy: (fields, { asc }) => asc(fields.nome),
 	});
 
 	return productsResult

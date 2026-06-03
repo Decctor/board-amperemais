@@ -124,7 +124,7 @@ function ProductPicker({ value, onChange }: ProductPickerProps) {
 		? isLoadingSelected
 			? "Carregando produto..."
 			: selectedProduct
-				? `${selectedProduct.product.descricao}${selectedProduct.product.codigo ? ` (${selectedProduct.product.codigo})` : ""}`
+				? `${selectedProduct.product.nome}${selectedProduct.product.codigo ? ` (${selectedProduct.product.codigo})` : ""}`
 				: "Produto não encontrado"
 		: "Selecione um produto";
 
@@ -161,14 +161,14 @@ function ProductPicker({ value, onChange }: ProductPickerProps) {
 									<CommandItem
 										key={product.id}
 										value={product.id}
-										keywords={[product.descricao, product.codigo ?? ""]}
+										keywords={[product.nome, product.codigo ?? ""]}
 										onSelect={() => {
 											onChange(product.id);
 											setOpen(false);
 										}}
 									>
 										<div className="flex min-w-0 flex-col">
-											<span className="truncate text-sm">{product.descricao}</span>
+											<span className="truncate text-sm">{product.nome}</span>
 											{product.codigo ? <span className="truncate text-xs text-muted-foreground">Código: {product.codigo}</span> : null}
 										</div>
 										<Check className={cn("ml-auto", product.id === value ? "opacity-100" : "opacity-0")} />

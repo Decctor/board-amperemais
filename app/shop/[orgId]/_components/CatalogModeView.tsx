@@ -24,7 +24,7 @@ export default function CatalogModeView() {
 		if (searchValue.trim()) {
 			const search = searchValue.toLowerCase().trim();
 			filtered = filtered.filter(
-				(p) => p.descricao.toLowerCase().includes(search) || p.codigo?.toLowerCase().includes(search) || p.grupo?.toLowerCase().includes(search),
+				(p) => p.nome.toLowerCase().includes(search) || p.codigo?.toLowerCase().includes(search) || p.grupo?.toLowerCase().includes(search),
 			);
 		}
 

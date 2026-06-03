@@ -52,7 +52,7 @@ export default function CartSheet() {
 					modifiersPrice,
 					modifiersDetails,
 					lineTotal,
-					displayName: variant ? `${product.descricao} - ${variant.nome}` : product.descricao,
+					displayName: variant ? `${product.nome} - ${variant.nome}` : product.nome,
 					imageUrl: variant?.imagemCapaUrl ?? product.imagemCapaUrl,
 				};
 			})

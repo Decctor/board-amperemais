@@ -155,7 +155,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 		}
 
 		// Get variant name if selected
-		const itemName = selectedVariant ? `${product.descricao} - ${selectedVariant.nome}` : product.descricao;
+		const itemName = selectedVariant ? `${product.nome} - ${selectedVariant.nome}` : product.nome;
 
 		const cartItem: TCartItem = {
 			tempId: crypto.randomUUID(),
@@ -180,7 +180,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 
 	return (
 		<ResponsiveMenu
-			menuTitle={product.descricao}
+			menuTitle={product.nome}
 			menuDescription="Configure os detalhes do produto para adicionar ao carrinho..."
 			menuActionButtonText="ADICIONAR AO CARRINHO"
 			menuCancelButtonText="CANCELAR"
@@ -202,7 +202,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 										? (product.variantes.find((v) => v.id === selectedVariantId)?.imagemCapaUrl ?? product.imagemCapaUrl)
 										: product.imagemCapaUrl
 								}
-								alt={product.descricao}
+								alt={product.nome}
 								fill
 								className="object-cover"
 							/>

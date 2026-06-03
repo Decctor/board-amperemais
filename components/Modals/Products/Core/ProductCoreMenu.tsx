@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 export function mapProductToCoreState(product: TGetProductsOutputById): TProductCoreState {
 	return {
-		descricao: product.descricao,
+		nome: product.nome,
 		codigo: product.codigo,
 		unidade: product.unidade,
 		ncm: product.ncm,
@@ -59,7 +59,7 @@ export default function ProductCoreMenu({ product, closeMenu, callbacks }: Produ
 			if (state.imagemCapaHolder.file) {
 				const { url } = await uploadFile({
 					file: state.imagemCapaHolder.file,
-					fileName: state.descricao || "produto",
+					fileName: state.nome || "produto",
 					prefix: "syncrono",
 				});
 				productImageUrl = url;
@@ -68,7 +68,7 @@ export default function ProductCoreMenu({ product, closeMenu, callbacks }: Produ
 			return updateProduct({
 				productId: product.id,
 				product: {
-					descricao: state.descricao,
+					nome: state.nome,
 					codigo: state.codigo,
 					unidade: state.unidade,
 					ncm: state.ncm,

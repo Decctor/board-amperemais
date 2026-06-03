@@ -192,7 +192,7 @@ async function createOrganization({ input }: { input: TCreateOrganizationInput }
 		const productsToInsert = input.productsData.map((product) => ({
 			organizacaoId: organizationId,
 			codigo: product.CÓDIGO,
-			descricao: product.DESCRIÇÃO,
+			nome: product.DESCRIÇÃO,
 			unidade: product.UNIDADE,
 			ncm: product.NCM,
 			tipo: product.TIPO,

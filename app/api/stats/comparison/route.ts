@@ -216,7 +216,7 @@ async function fetchStatsComparison(filters: TStatsComparisonInput, organizacaoI
 				with: {
 					produto: {
 						columns: {
-							descricao: true,
+							nome: true,
 						},
 					},
 				},
@@ -241,7 +241,7 @@ async function fetchStatsComparison(filters: TStatsComparisonInput, organizacaoI
 				with: {
 					produto: {
 						columns: {
-							descricao: true,
+							nome: true,
 						},
 					},
 				},
@@ -273,8 +273,8 @@ async function fetchStatsComparison(filters: TStatsComparisonInput, organizacaoI
 
 			// updating per product statistics
 			for (const product of sale.itens) {
-				if (!acc.porItem[product.produto.descricao]) {
-					acc.porItem[product.produto.descricao] = {
+				if (!acc.porItem[product.produto.nome]) {
+					acc.porItem[product.produto.nome] = {
 						primeiroPeriodo: {
 							qtdeVendas: 0,
 							totalVendido: 0,
@@ -285,8 +285,8 @@ async function fetchStatsComparison(filters: TStatsComparisonInput, organizacaoI
 						},
 					};
 				}
-				acc.porItem[product.produto.descricao].primeiroPeriodo.qtdeVendas += product.quantidade;
-				acc.porItem[product.produto.descricao].primeiroPeriodo.totalVendido += product.valorVendaTotalLiquido || 0;
+				acc.porItem[product.produto.nome].primeiroPeriodo.qtdeVendas += product.quantidade;
+				acc.porItem[product.produto.nome].primeiroPeriodo.totalVendido += product.valorVendaTotalLiquido || 0;
 			}
 			// updating per seller statistics
 			if (!acc.porVendedor[sale.vendedorNome]) {
@@ -369,8 +369,8 @@ async function fetchStatsComparison(filters: TStatsComparisonInput, organizacaoI
 		}
 		// updating per product statistics
 		for (const product of sale.itens) {
-			if (!acc.porItem[product.produto.descricao]) {
-				acc.porItem[product.produto.descricao] = {
+			if (!acc.porItem[product.produto.nome]) {
+				acc.porItem[product.produto.nome] = {
 					primeiroPeriodo: {
 						qtdeVendas: 0,
 						totalVendido: 0,
@@ -381,8 +381,8 @@ async function fetchStatsComparison(filters: TStatsComparisonInput, organizacaoI
 					},
 				};
 			}
-			acc.porItem[product.produto.descricao].segundoPeriodo.qtdeVendas += product.quantidade;
-			acc.porItem[product.produto.descricao].segundoPeriodo.totalVendido += product.valorVendaTotalLiquido || 0;
+			acc.porItem[product.produto.nome].segundoPeriodo.qtdeVendas += product.quantidade;
+			acc.porItem[product.produto.nome].segundoPeriodo.totalVendido += product.valorVendaTotalLiquido || 0;
 		}
 		if (!acc.porVendedor[sale.vendedorNome]) {
 			// updating per seller statistics

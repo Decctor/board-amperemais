@@ -25,7 +25,7 @@ export interface MappedCardapioWebClient {
 export interface MappedCardapioWebProduct {
 	idExterno: string;
 	codigo: string;
-	descricao: string;
+	nome: string;
 	unidade: string;
 	grupo: string;
 	ncm: string;
@@ -145,7 +145,7 @@ export function mapCardapioWebProduct(item: TGetCardapioWebOrderDetailsOutput["i
 	return {
 		idExterno: item.item_id?.toString() ?? "N/A",
 		codigo: (item.external_code || item.item_id?.toString()) ?? "N/A",
-		descricao: item.name,
+		nome: item.name,
 		unidade: "UN", // CardapioWeb doesn't provide unit info
 		grupo: item.kind === "combo" ? "COMBOS" : "PRODUTOS",
 		ncm: "", // Not provided by CardapioWeb

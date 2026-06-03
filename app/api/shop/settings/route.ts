@@ -65,7 +65,7 @@ async function getShopSettingsService({ session }: { session: TAuthUserSession }
 					where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, orgId), inArray(fields.id, productIds)),
 					columns: {
 						id: true,
-						descricao: true,
+						nome: true,
 						imagemCapaUrl: true,
 					},
 				})

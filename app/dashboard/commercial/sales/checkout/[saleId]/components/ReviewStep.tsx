@@ -18,7 +18,7 @@ type ReviewStepProps = {
 			valorVendaUnitario: number;
 			valorVendaTotalLiquido: number;
 			valorTotalDesconto: number;
-			produto: { id: string; descricao: string; codigo: string; imagemCapaUrl: string | null } | null;
+			produto: { id: string; nome: string; codigo: string; imagemCapaUrl: string | null } | null;
 			produtoVariante: { id: string; nome: string; codigo: string | null; imagemCapaUrl: string | null } | null;
 			adicionais: Array<{ id: string; nome: string; quantidade: number; valorTotal: number }>;
 		}>;
@@ -88,7 +88,7 @@ export default function ReviewStep({ sale, checkoutState }: ReviewStepProps) {
 						<div key={item.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
 							<div className="flex-1">
 								<p className="font-medium text-sm">
-									{item.produtoVariante ? `${item.produto?.descricao} - ${item.produtoVariante.nome}` : item.produto?.descricao}
+									{item.produtoVariante ? `${item.produto?.nome} - ${item.produtoVariante.nome}` : item.produto?.nome}
 								</p>
 								{item.adicionais.length > 0 && <p className="text-xs text-muted-foreground">+ {item.adicionais.map((a) => a.nome).join(", ")}</p>}
 								<p className="text-xs text-muted-foreground">

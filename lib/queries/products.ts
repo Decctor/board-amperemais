@@ -82,7 +82,7 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		stockStatus: initialFilters?.stockStatus || [],
 		priceMin: initialFilters?.priceMin || null,
 		priceMax: initialFilters?.priceMax || null,
-		orderByField: initialFilters?.orderByField || "descricao",
+		orderByField: initialFilters?.orderByField || "nome",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
 	});
 	function updateFilters(newParams: Partial<TGetProductsDefaultInput>) {

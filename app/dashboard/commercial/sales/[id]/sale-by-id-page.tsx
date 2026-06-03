@@ -510,7 +510,7 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 			{/* Image */}
 			<div className="w-full h-32 bg-secondary/50 flex items-center justify-center">
 				{imageUrl ? (
-					<img src={imageUrl} alt={item.produto?.descricao || "Produto"} className="w-full h-full object-cover" />
+					<img src={imageUrl} alt={item.produto?.nome || "Produto"} className="w-full h-full object-cover" />
 				) : (
 					<Package className="w-12 h-12 text-muted-foreground/50" />
 				)}
@@ -520,7 +520,7 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 			<div className="p-3 flex flex-col gap-2">
 				{/* Product Info */}
 				<div className="flex flex-col gap-0.5">
-					<h3 className="text-sm font-bold tracking-tight line-clamp-2">{item.produto?.descricao || "Produto"}</h3>
+					<h3 className="text-sm font-bold tracking-tight line-clamp-2">{item.produto?.nome || "Produto"}</h3>
 					<div className="flex items-center flex-wrap gap-1.5">
 						{item.produto.unidade ? (
 							<TooltipProvider>

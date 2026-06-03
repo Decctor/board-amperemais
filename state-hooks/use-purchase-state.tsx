@@ -18,7 +18,7 @@ export const PurchaseStateSchema = z.object({
 			dataInsercao: true,
 		}).extend({
 			produto: ProductSchema.pick({
-				descricao: true,
+				nome: true,
 				imagemCapaUrl: true,
 				codigo: true,
 				unidade: true,

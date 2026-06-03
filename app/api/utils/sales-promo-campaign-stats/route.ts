@@ -224,7 +224,7 @@ async function getCampaignStats({
 	const productRankingResult = await db
 		.select({
 			produtoId: saleItems.produtoId,
-			produtoNome: products.descricao,
+			produtoNome: products.nome,
 			quantidadeVendida: sql<number>`COALESCE(SUM(${saleItems.quantidade}), 0)`,
 			valorVendido: sql<number>`COALESCE(SUM(${saleItems.valorVendaTotalLiquido}), 0)`,
 		})
@@ -240,7 +240,7 @@ async function getCampaignStats({
 				lte(sales.dataVenda, periodEnd),
 			),
 		)
-		.groupBy(saleItems.produtoId, products.descricao)
+		.groupBy(saleItems.produtoId, products.nome)
 		.orderBy(desc(sql`COALESCE(SUM(${saleItems.valorVendaTotalLiquido}), 0)`))
 		.limit(5);
 

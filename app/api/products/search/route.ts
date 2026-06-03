@@ -31,7 +31,7 @@ async function getProductsBySearch({ input, userOrgId }: { input: TGetProductsBy
 	const conditions = [eq(products.organizacaoId, userOrgId)];
 
 	if (input.search.length > 0) {
-		conditions.push(sql`(${products.descricao} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
+		conditions.push(sql`(${products.nome} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
 	}
 	const productsMatched = await db
 		.select({ count: count(products.id) })
@@ -50,7 +50,7 @@ async function getProductsBySearch({ input, userOrgId }: { input: TGetProductsBy
 		},
 		offset: skip,
 		limit: limit,
-		orderBy: (fields, { desc }) => desc(fields.descricao),
+		orderBy: (fields, { desc }) => desc(fields.nome),
 	});
 
 	return {

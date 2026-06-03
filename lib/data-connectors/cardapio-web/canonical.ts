@@ -127,7 +127,7 @@ export function toCanonicalCardapioWebImportBatch({
 		products: extracted.products.map<TCanonicalProduct>((product) => ({
 			externalId: product.idExterno,
 			code: product.codigo,
-			description: product.descricao,
+			description: product.nome,
 			unit: product.unidade,
 			group: product.grupo,
 			ncm: product.ncm,

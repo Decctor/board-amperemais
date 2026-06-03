@@ -20,7 +20,7 @@ export default function ProductDetailHeader({ product }: ProductDetailHeaderProp
 			<div className="flex w-full flex-col items-center gap-3 lg:flex-row lg:items-start">
 				{product.imagemCapaUrl ? (
 					<div className="relative h-20 w-20 min-h-20 min-w-20 overflow-hidden rounded-2xl border border-border">
-						<Image src={product.imagemCapaUrl} alt={product.descricao} fill className="object-cover" />
+						<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover" />
 					</div>
 				) : null}
 				<div className="flex flex-col items-center gap-2 lg:items-start">
@@ -29,7 +29,7 @@ export default function ProductDetailHeader({ product }: ProductDetailHeaderProp
 							<Code className="h-4 min-h-4 w-4 min-w-4" />
 							<p>{product.codigo}</p>
 						</div>
-						<h1 className="text-xl font-extrabold leading-none tracking-tight md:text-2xl">{product.descricao}</h1>
+						<h1 className="text-xl font-extrabold leading-none tracking-tight md:text-2xl">{product.nome}</h1>
 					</div>
 					{product.grupo ? (
 						<p className="text-sm text-muted-foreground">

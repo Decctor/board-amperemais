@@ -430,7 +430,7 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 						updateOption(
 							variant
 								? { produtoConsumo: variant.nome, produtoId: null, produtoVarianteId: variant.id }
-								: { produtoConsumo: product.descricao, produtoId: product.id, produtoVarianteId: null },
+								: { produtoConsumo: product.nome, produtoId: product.id, produtoVarianteId: null },
 						);
 						setVinculationModalIsOpen(false);
 					}}

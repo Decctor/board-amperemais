@@ -560,7 +560,7 @@ function GroupedByProduct({ data }: { data: TGetClientStatsOutput["data"]["resul
 			<div className="w-full flex items-center justify-between gap-2">
 				<div className="flex items-center gap-1 flex-1 min-w-0">
 					<div className="w-6 h-6 min-w-6 min-h-6 rounded-full flex items-center justify-center border border-border text-xs">{index + 1}º</div>
-					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{product.produtoDescricao}</h1>
+					<h1 className="text-xs font-medium tracking-tight uppercase truncate">{product.produtoNome}</h1>
 				</div>
 				<div className="flex items-center gap-2">
 					<span className="text-xs font-bold tracking-tight">

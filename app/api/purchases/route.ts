@@ -77,7 +77,7 @@ async function getPurchases({ input, session }: { input: TGetPurchasesInput; ses
 						produto: {
 							columns: {
 								id: true,
-								descricao: true,
+								nome: true,
 								codigo: true,
 								imagemCapaUrl: true,
 								unidade: true,

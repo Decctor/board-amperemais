@@ -194,7 +194,7 @@ function ProductAddOnOptionCard({ option }: ProductAddOnOptionCardProps) {
 						<LinkIcon className="w-3.5 h-3.5 text-foreground" />
 						<div className="flex flex-col">
 							<span className="text-[0.65rem] font-bold text-foreground/80 uppercase tracking-tight">CONSUMO DE ESTOQUE VINCULADO A:</span>
-							<p className="text-xs font-medium text-foreground line-clamp-1">{option.produto.descricao}</p>
+							<p className="text-xs font-medium text-foreground line-clamp-1">{option.produto.nome}</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-1.5">

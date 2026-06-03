@@ -416,7 +416,7 @@ export async function getPartnerRankings({ after, before, organizacaoId }: Perio
 
 export type ProductRankingItem = {
 	produtoId: string;
-	produtoDescricao: string;
+	produtoNome: string;
 	produtoGrupo: string | null;
 	quantidade: number;
 	faturamento: number;
@@ -434,7 +434,7 @@ export async function getProductRankings({ after, before, organizacaoId }: Perio
 	const resultsByProduct = await db
 		.select({
 			produtoId: products.id,
-			produtoDescricao: products.descricao,
+			produtoNome: products.nome,
 			produtoGrupo: products.grupo,
 			quantidade: sum(saleItems.quantidade),
 			total: sum(saleItems.valorVendaTotalLiquido),
@@ -443,13 +443,13 @@ export async function getProductRankings({ after, before, organizacaoId }: Perio
 		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
 		.innerJoin(products, eq(saleItems.produtoId, products.id))
 		.where(and(saleWhere, eq(products.organizacaoId, organizacaoId)))
-		.groupBy(products.id, products.descricao, products.grupo)
+		.groupBy(products.id, products.nome, products.grupo)
 		.orderBy(desc(sql`sum(${saleItems.valorVendaTotalLiquido})`))
 		.limit(limit);
 
 	return resultsByProduct.map((product) => ({
 		produtoId: product.produtoId,
-		produtoDescricao: product.produtoDescricao || "N/A",
+		produtoNome: product.produtoNome || "N/A",
 		produtoGrupo: product.produtoGrupo,
 		quantidade: product.quantidade ? Number(product.quantidade) : 0,
 		faturamento: product.total ? Number(product.total) : 0,

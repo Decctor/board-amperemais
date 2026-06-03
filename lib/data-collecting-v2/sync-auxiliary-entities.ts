@@ -208,7 +208,7 @@ export async function syncAuxiliaryEntities({
 			.values({
 				organizacaoId: batch.organizationId,
 				codigo: product.code,
-				descricao: product.description,
+				nome: product.description,
 				unidade: product.unit,
 				grupo: product.group,
 				ncm: product.ncm,

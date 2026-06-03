@@ -251,7 +251,7 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 	const relatedProductsRaw = await db
 		.select({
 			produtoId: saleItems.produtoId,
-			produtoDescricao: products.descricao,
+			produtoNome: products.nome,
 			produtoCodigo: products.codigo,
 			produtoGrupo: products.grupo,
 			frequencia: count(saleItems.id),
@@ -270,7 +270,7 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 		)
 		.leftJoin(products, eq(saleItems.produtoId, products.id))
 		.where(and(eq(saleItems.organizacaoId, userOrgId), eq(products.organizacaoId, userOrgId), ne(saleItems.produtoId, input.productId)))
-		.groupBy(saleItems.produtoId, products.descricao, products.codigo, products.grupo)
+		.groupBy(saleItems.produtoId, products.nome, products.codigo, products.grupo)
 		.orderBy(desc(sql`count(${saleItems.id})`))
 		.limit(10);
 
@@ -339,7 +339,7 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 		data: {
 			produto: {
 				id: product.id,
-				descricao: product.descricao,
+				nome: product.nome,
 				codigo: product.codigo,
 				unidade: product.unidade,
 				ncm: product.ncm,
@@ -405,7 +405,7 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 				})),
 				produtosRelacionados: relatedProductsRaw.map((row) => ({
 					produtoId: row.produtoId,
-					produtoDescricao: row.produtoDescricao ?? "",
+					produtoNome: row.produtoNome ?? "",
 					produtoCodigo: row.produtoCodigo ?? "",
 					produtoGrupo: row.produtoGrupo ?? null,
 					frequencia: Number(row.frequencia ?? 0),

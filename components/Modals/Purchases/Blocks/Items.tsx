@@ -395,10 +395,10 @@ function ProductCell({
 		onChange({
 			produtoId: value.product.id,
 			produtoVarianteId: value.productVariant?.id ?? null,
-			snapshotProdutoDescricao: value.productVariant?.nome ?? value.product.descricao,
+			snapshotProdutoDescricao: value.productVariant?.nome ?? value.product.nome,
 			snapshotProdutoCodigo: value.productVariant?.codigo ?? value.product.codigo,
 			produto: {
-				descricao: value.product.descricao,
+				nome: value.product.nome,
 				codigo: value.product.codigo,
 				unidade: value.product.unidade,
 				imagemCapaUrl: value.product.imagemCapaUrl ?? null,
@@ -708,8 +708,8 @@ function getItemTotal(item: TPurchaseItemState) {
 }
 
 function getItemDisplayName(item: TPurchaseItemState) {
-	if (item.produtoVariante?.nome) return `${item.produto.descricao} - ${item.produtoVariante.nome}`;
-	return item.produto.descricao || item.snapshotProdutoDescricao;
+	if (item.produtoVariante?.nome) return `${item.produto.nome} - ${item.produtoVariante.nome}`;
+	return item.produto.nome || item.snapshotProdutoDescricao;
 }
 
 function formatInputValue(value: number) {
@@ -724,7 +724,7 @@ function createEmptyPurchaseItem(): TPurchaseItemState {
 		snapshotProdutoDescricao: "",
 		snapshotProdutoCodigo: "",
 		produto: {
-			descricao: "",
+			nome: "",
 			codigo: "",
 			unidade: "UN",
 			imagemCapaUrl: null,

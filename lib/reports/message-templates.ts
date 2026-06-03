@@ -51,7 +51,7 @@ function formatProductLines(products: ProductRankingItem[], showQty = false): st
 	return products
 		.map((p, i) => {
 			const qtyInfo = showQty ? ` (${formatNumber(p.quantidade)} un.)` : "";
-			return `   ${i + 1}. ${truncateText(p.produtoDescricao, 25)} — ${formatCurrency(p.faturamento)}${qtyInfo}`;
+			return `   ${i + 1}. ${truncateText(p.produtoNome, 25)} — ${formatCurrency(p.faturamento)}${qtyInfo}`;
 		})
 		.join("\n");
 }

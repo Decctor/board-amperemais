@@ -442,7 +442,7 @@ async function handleCardapioWebImportation({
 						.values({
 							organizacaoId: organizationId,
 							codigo: product.codigo,
-							descricao: product.descricao,
+							nome: product.nome,
 							unidade: product.unidade,
 							grupo: product.grupo,
 							ncm: product.ncm,
@@ -1145,13 +1145,13 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 						}
 					}
 
-					const missingProductsMap = new Map<string, { codigo: string; descricao: string; unidade: string; grupo: string; ncm: string; tipo: string }>();
+					const missingProductsMap = new Map<string, { codigo: string; nome: string; unidade: string; grupo: string; ncm: string; tipo: string }>();
 					for (const onlineSale of salesBatch) {
 						for (const item of onlineSale.itens) {
 							if (!batchProductsMap.has(item.codigo) && !missingProductsMap.has(item.codigo)) {
 								missingProductsMap.set(item.codigo, {
 									codigo: item.codigo,
-									descricao: item.descricao,
+									nome: item.descricao,
 									unidade: item.unidade,
 									grupo: item.grupo,
 									ncm: item.ncm,
@@ -1167,7 +1167,7 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 								Array.from(missingProductsMap.values()).map((product) => ({
 									organizacaoId: organizationId,
 									codigo: product.codigo,
-									descricao: product.descricao,
+									nome: product.nome,
 									unidade: product.unidade,
 									grupo: product.grupo,
 									ncm: product.ncm,
