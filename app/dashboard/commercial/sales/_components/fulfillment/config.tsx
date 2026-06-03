@@ -1,16 +1,6 @@
 import type { TSaleAttendanceStatusEnum, TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
 import { isValidAttendanceTransition } from "@/lib/sale-processing/attendance";
-import {
-	CircleCheck,
-	ClipboardList,
-	type LucideIcon,
-	Inbox,
-	Package,
-	PackageCheck,
-	PackageOpen,
-	Store,
-	Truck,
-} from "lucide-react";
+import { CircleCheck, ClipboardList, type LucideIcon, Inbox, Clock, Package, PackageCheck, PackageOpen, Store, Truck, File } from "lucide-react";
 
 // Colunas do quadro de atendimento, na ordem do fluxo operacional.
 // CANCELADO e acao (nao coluna); PARCIALMENTE_ENTREGUE e sub-estado exibido dentro de ENTREGUE.
@@ -47,24 +37,30 @@ export function getValidBoardTargets(from: TSaleAttendanceStatusEnum): TBoardSta
 }
 
 // Badge financeiro derivado. Apenas o estado problematico (atraso) usa enfase destrutiva.
-export const FINANCIAL_BADGE_META: Record<TSaleFinancialDerivedStatusEnum, { label: string; tone: "muted" | "neutral" | "danger" }> = {
-	NAO_GERADO: { label: "Sem financeiro", tone: "muted" },
-	PENDENTE: { label: "A receber", tone: "neutral" },
-	PARCIALMENTE_RECEBIDA: { label: "Parcial", tone: "neutral" },
-	RECEBIDA: { label: "Recebida", tone: "neutral" },
-	EM_ATRASO: { label: "Em atraso", tone: "danger" },
+export const FINANCIAL_BADGE_META: Record<
+	TSaleFinancialDerivedStatusEnum,
+	{ label: string; tone: "success" | "muted" | "neutral" | "danger"; icon?: React.ReactNode }
+> = {
+	NAO_GERADO: { label: "Sem financeiro", tone: "muted", icon: <Package className="w-3 h-3" /> },
+	PENDENTE: { label: "A receber", tone: "neutral", icon: <Package className="w-3 h-3" /> },
+	PARCIALMENTE_RECEBIDA: { label: "Parcial", tone: "neutral", icon: <PackageCheck className="w-3 h-3" /> },
+	RECEBIDA: { label: "Recebida", tone: "success", icon: <CircleCheck className="w-3 h-3" /> },
+	EM_ATRASO: { label: "Em atraso", tone: "danger", icon: <Clock className="w-3 h-3" /> },
 };
 
 // Badge fiscal derivado. Rejeicao/erro usam enfase destrutiva.
-export const FISCAL_BADGE_META: Record<TSaleFiscalDerivedStatusEnum, { label: string; tone: "muted" | "neutral" | "danger" }> = {
-	NAO_EMITIDO: { label: "Sem nota", tone: "muted" },
-	PENDENTE: { label: "Nota pendente", tone: "neutral" },
-	EM_PROCESSAMENTO: { label: "Processando", tone: "neutral" },
-	AUTORIZADO: { label: "Autorizada", tone: "neutral" },
-	REJEITADO: { label: "Rejeitada", tone: "danger" },
-	CANCELADO: { label: "Cancelada", tone: "muted" },
-	INUTILIZADO: { label: "Inutilizada", tone: "muted" },
-	ERRO: { label: "Erro fiscal", tone: "danger" },
+export const FISCAL_BADGE_META: Record<
+	TSaleFiscalDerivedStatusEnum,
+	{ label: string; tone: "muted" | "neutral" | "danger"; icon?: React.ReactNode }
+> = {
+	NAO_EMITIDO: { label: "Sem nota", tone: "muted", icon: <File className="w-3 h-3" /> },
+	PENDENTE: { label: "Nota pendente", tone: "neutral", icon: <File className="w-3 h-3" /> },
+	EM_PROCESSAMENTO: { label: "Processando", tone: "neutral", icon: <File className="w-3 h-3" /> },
+	AUTORIZADO: { label: "Autorizada", tone: "neutral", icon: <File className="w-3 h-3" /> },
+	REJEITADO: { label: "Rejeitada", tone: "danger", icon: <File className="w-3 h-3" /> },
+	CANCELADO: { label: "Cancelada", tone: "muted", icon: <File className="w-3 h-3" /> },
+	INUTILIZADO: { label: "Inutilizada", tone: "muted", icon: <File className="w-3 h-3" /> },
+	ERRO: { label: "Erro fiscal", tone: "danger", icon: <File className="w-3 h-3" /> },
 };
 
 export const DELIVERY_MODE_META: Record<string, { label: string; icon: LucideIcon }> = {

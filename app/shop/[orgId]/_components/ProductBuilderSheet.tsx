@@ -136,7 +136,10 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 		});
 
 		const itemName = selectedVariant ? `${product.descricao} - ${selectedVariant.nome}` : product.descricao;
-		toast.success(`${itemName} adicionado ao carrinho.`);
+		toast.success(`${itemName} adicionado ao carrinho.`, {
+			dismissible: true,
+			position: "top-center",
+		});
 		onClose();
 	};
 

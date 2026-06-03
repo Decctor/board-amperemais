@@ -63,6 +63,7 @@ async function fetchShopOrders(input: TGetShopOrdersInput) {
 	const searchParams = new URLSearchParams();
 	searchParams.set("page", input.page.toString());
 	if (input.status) searchParams.set("status", input.status);
+	if (input.statusAtendimento) searchParams.set("statusAtendimento", input.statusAtendimento);
 	if (input.search) searchParams.set("search", input.search);
 	const { data } = await axios.get<TGetShopOrdersOutput>(`/api/shop/orders?${searchParams.toString()}`);
 	return data.data;
@@ -72,6 +73,7 @@ export function useShopOrders(initialParams?: Partial<TGetShopOrdersInput>) {
 	const [params, setParams] = useState<TGetShopOrdersInput>({
 		page: initialParams?.page ?? 1,
 		status: initialParams?.status ?? "ORCAMENTO",
+		statusAtendimento: initialParams?.statusAtendimento ?? null,
 		search: initialParams?.search ?? null,
 	});
 	const debouncedParams = useDebounceMemo(params, 400);

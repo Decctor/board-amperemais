@@ -13,6 +13,7 @@ type FinancialTransactionLike = {
 	tipo?: "ENTRADA" | "SAIDA" | string | null;
 	dataEfetivacao: Date | string | null;
 	dataPrevisao: Date | string | null;
+	provedorStatus?: string | null;
 };
 
 /**
@@ -34,8 +35,10 @@ export function computeSaleFinancialStatus({
 	saleTotal: number;
 	now?: Date;
 }): TSaleFinancialDerivedStatusEnum {
+	if (saleTotal <= 0) return "RECEBIDA";
+
 	// Considera apenas entradas (recebimentos) quando o tipo estiver disponivel.
-	const relevant = transactions.filter((t) => (t.tipo ? t.tipo === "ENTRADA" : true));
+	const relevant = transactions.filter((t) => (t.tipo ? t.tipo === "ENTRADA" : true) && !["CANCELADO", "ESTORNADO"].includes(t.provedorStatus ?? ""));
 	if (relevant.length === 0) return "NAO_GERADO";
 
 	const settledTotal = relevant.filter((t) => t.dataEfetivacao != null).reduce((acc, t) => acc + (t.valor ?? 0), 0);

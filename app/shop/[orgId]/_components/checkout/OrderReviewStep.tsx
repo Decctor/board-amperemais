@@ -14,7 +14,7 @@ type OrderReviewStepProps = {
 
 export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewStepProps) {
 	const { catalog, orderState } = useShop();
-	const { customer, delivery, cashback, cart } = orderState.state;
+	const { customer, delivery, cashback, cart, payment } = orderState.state;
 	const config = catalog.shopSettings.configuracoes;
 
 	const cartItemsWithDetails = useMemo(() => {
@@ -117,8 +117,19 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 			<div className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border">
 				<CreditCard className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
 				<div className="flex-1 min-w-0">
-					<p className="font-semibold text-sm">PAGAMENTO NO LOCAL</p>
-					<p className="text-sm text-muted-foreground">O pagamento será feito na {delivery.modalidade === "RETIRADA" ? "retirada" : "entrega"}.</p>
+					<p className="font-semibold text-sm">
+						{payment.metodo === "DINHEIRO"
+							? "DINHEIRO"
+							: payment.metodo === "PIX"
+								? "PIX"
+								: payment.metodo === "CARTAO_DEBITO"
+									? "CARTÃO DE DÉBITO"
+									: "CARTÃO DE CRÉDITO"}
+					</p>
+					<p className="text-sm text-muted-foreground">
+						Pagamento na {delivery.modalidade === "RETIRADA" ? "retirada" : "entrega"}
+						{payment.precisaTroco && payment.trocoPara ? `, com troco para ${formatToMoney(payment.trocoPara)}` : ""}.
+					</p>
 				</div>
 			</div>
 

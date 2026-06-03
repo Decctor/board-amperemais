@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { ShopCompositionBlockTypeEnum, ShopHeaderCoverTypeEnum, ShopModeEnum, ShopProductsModeEnum, ShopWeekdayEnum } from "./enums";
+import {
+	PaymentMethodEnum,
+	ShopCompositionBlockTypeEnum,
+	ShopHeaderCoverTypeEnum,
+	ShopModeEnum,
+	ShopProductsModeEnum,
+	ShopWeekdayEnum,
+} from "./enums";
 
 const SHOP_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const SHOP_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -113,6 +120,14 @@ export const ShopServiceConfigurationSchema = z
 	});
 export type TShopServiceConfiguration = z.infer<typeof ShopServiceConfigurationSchema>;
 
+export const ShopPaymentMethodEnum = PaymentMethodEnum.extract(["DINHEIRO", "PIX", "CARTAO_DEBITO", "CARTAO_CREDITO"]);
+export type TShopPaymentMethod = z.infer<typeof ShopPaymentMethodEnum>;
+
+export const ShopPaymentConfigurationSchema = z.object({
+	metodosAceitos: z.array(ShopPaymentMethodEnum).min(1, { message: "Selecione pelo menos um método de pagamento." }).default(["DINHEIRO", "PIX"]),
+});
+export type TShopPaymentConfiguration = z.infer<typeof ShopPaymentConfigurationSchema>;
+
 export const ShopOperationConfigurationSchema = z
 	.object({
 		preparoMinutos: z
@@ -164,6 +179,9 @@ export const ShopSettingsConfigurationSchema = z
 			retirada: { ativo: true },
 			entrega: { ativo: false, pedidoMinimo: 0, prazoMinutos: 60 },
 		}),
+		pagamento: ShopPaymentConfigurationSchema.default({
+			metodosAceitos: ["DINHEIRO", "PIX"],
+		}),
 		operacao: ShopOperationConfigurationSchema.default({
 			preparoMinutos: 30,
 			mensagemCheckout: null,
@@ -204,6 +222,9 @@ export const DEFAULT_SHOP_SETTINGS_CONFIGURATION: TShopSettingsConfiguration = {
 	atendimento: {
 		retirada: { ativo: true },
 		entrega: { ativo: false, pedidoMinimo: 0, prazoMinutos: 60 },
+	},
+	pagamento: {
+		metodosAceitos: ["DINHEIRO", "PIX"],
 	},
 	operacao: {
 		preparoMinutos: 30,
@@ -336,8 +357,15 @@ export const ShopDeliverySchema = z
 export type TShopDelivery = z.infer<typeof ShopDeliverySchema>;
 
 export const CreateShopOrderInputSchema = z.object({
+	idempotencyKey: z
+		.string({ required_error: "Chave de idempotência não informada.", invalid_type_error: "Tipo não válido para chave de idempotência." })
+		.uuid(),
 	cliente: ShopCustomerSchema,
 	entrega: ShopDeliverySchema,
+	pagamento: z.object({
+		metodo: ShopPaymentMethodEnum,
+		observacoes: z.string({ invalid_type_error: "Tipo não válido para observações do pagamento." }).optional().nullable(),
+	}),
 	itens: z.array(ShopCartItemSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
 	cashbackResgateSolicitado: z
 		.number({ invalid_type_error: "Tipo não válido para resgate de cashback." })
@@ -355,7 +383,9 @@ export type TShopDraftMetadata = {
 	cashbackProgramaId: string | null;
 	pagamento: {
 		tipo: "NO_LOCAL";
+		metodo: TShopPaymentMethod;
 		descricao: string;
+		observacoes: string | null;
 	};
 	entrega: {
 		modalidade: "RETIRADA" | "ENTREGA";

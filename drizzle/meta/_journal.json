@@ -134,6 +134,13 @@
       "when": 1780401600000,
       "tag": "0018_sales_status_and_fulfillment",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780491600000,
+      "tag": "0019_shop_order_idempotency",
+      "breakpoints": true
     }
   ]
 }

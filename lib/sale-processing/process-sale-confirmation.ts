@@ -1,9 +1,5 @@
 import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
-import { getErrorMessage } from "@/lib/errors";
-import { enqueueFiscalDocument } from "@/lib/fiscal/documents";
-import { resolveEmissionDocumentType } from "@/lib/fiscal/document-type";
-import { notifyFiscalEmissionFailure } from "@/lib/fiscal/notifications";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, sales } from "@/services/drizzle/schema";
@@ -12,6 +8,7 @@ import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { resolveInitialAttendanceStatus } from "./attendance";
 import { createAccountingEntry } from "./create-accounting-entry";
+import { processSaleAutomaticFiscalEmissionIfEligible } from "./process-sale-automatic-fiscal-emission";
 import { processStockDeduction } from "./process-stock-deduction";
 
 type ProcessSaleConfirmationInput = {
@@ -19,7 +16,7 @@ type ProcessSaleConfirmationInput = {
 
 	saleId: string;
 	salePayments: TPaymentSplit[];
-	saleAuthorId: string;
+	saleAuthorId: string | null;
 	saleClientId?: string | null;
 
 	saleCashbackProgramId?: string | null;
@@ -27,25 +24,10 @@ type ProcessSaleConfirmationInput = {
 
 	accountingEntryDebitAccountId: string;
 	accountingEntryCreditAccountId: string;
+	initialAttendanceStatus?: ReturnType<typeof resolveInitialAttendanceStatus>;
+	accumulateCashback?: boolean;
+	emitFiscal?: boolean;
 };
-
-type FiscalEmissionResult =
-	| {
-			status: "NAO_SOLICITADO";
-			documentoId: null;
-			error: null;
-	  }
-	| {
-			status: "SOLICITADO";
-			documentoId: string;
-			statusInterno: string;
-			error: null;
-	  }
-	| {
-			status: "ERRO";
-			documentoId: null;
-			error: string;
-	  };
 
 export async function processSaleConfirmation(input: ProcessSaleConfirmationInput) {
 	const sale = await db.query.sales.findFirst({
@@ -68,7 +50,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 	}
 
 	// Status operacional inicial conforme a modalidade de entrega.
-	const initialAttendanceStatus = resolveInitialAttendanceStatus(sale.entregaModalidade);
+	const initialAttendanceStatus = input.initialAttendanceStatus ?? resolveInitialAttendanceStatus(sale.entregaModalidade);
 
 	const transactionResult = await db.transaction(async (tx) => {
 		await tx
@@ -126,6 +108,21 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 		if (!clientId) throw new createHttpError.BadRequest("Cliente nao informado para resgate de cashback.");
 
 		cashbackRedemptionResult = await db.transaction(async (tx) => {
+			const existingRedemption = await tx.query.cashbackProgramTransactions.findFirst({
+				where: and(
+					eq(cashbackProgramTransactions.organizacaoId, input.organization.id),
+					eq(cashbackProgramTransactions.vendaId, input.saleId),
+					eq(cashbackProgramTransactions.tipo, "RESGATE"),
+				),
+				columns: { id: true, saldoValorPosterior: true },
+			});
+			if (existingRedemption) {
+				return {
+					transactionId: existingRedemption.id,
+					newBalance: existingRedemption.saldoValorPosterior,
+				};
+			}
+
 			const balance = await tx.query.cashbackProgramBalances.findFirst({
 				where: and(eq(cashbackProgramBalances.organizacaoId, input.organization.id), eq(cashbackProgramBalances.clienteId, clientId)),
 				columns: {
@@ -190,7 +187,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 
 	let cashbackAccumulationResult: Awaited<ReturnType<typeof accumulateCashbackForClient>> | null = null;
 
-	if (clientId) {
+	if (clientId && input.accumulateCashback !== false) {
 		cashbackAccumulationResult = await db.transaction(async (tx) => {
 			const program = input.saleCashbackProgramId
 				? await tx.query.cashbackPrograms.findFirst({
@@ -223,54 +220,14 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 		});
 	}
 
-	let fiscalResult: FiscalEmissionResult = {
-		status: "NAO_SOLICITADO",
-		documentoId: null,
-		error: null,
-	};
-
-	if (input.organization.fiscalEmissaoAutomatica) {
-		try {
-			// Decide NFC-e vs NF-e por canal/entrega/destinatario (com fallback p/ NFC-e se NF-e nao configurada).
-			const destinatario = clientId
-				? await db.query.clients.findFirst({ where: (fields, operators) => operators.eq(fields.id, clientId), columns: { cpfCnpj: true } })
-				: null;
-			const tipoDocumento = await resolveEmissionDocumentType({
-				organizacaoId: input.organization.id,
-				operacaoPadraoNfeId: input.organization.fiscalConfiguracao?.operacaoPadraoPorTipo?.NFE ?? null,
-				signals: { canal: sale.canal, entregaModalidade: sale.entregaModalidade, destinatarioCpfCnpj: destinatario?.cpfCnpj },
-			});
-
-			// Enfileira a emissao (sem chamar o provedor): a confirmacao da venda nao espera a SEFAZ.
-			// O worker (cron /api/cron/fiscal-queue) faz o envio com retry/backoff.
-			const enqueued = await enqueueFiscalDocument({
-				vendaId: input.saleId,
-				tipo: tipoDocumento,
-				organizacaoId: input.organization.id,
-				lancamentoContabilId: transactionResult.entry.id,
-				autorId: input.saleAuthorId,
-				origem: "AUTOMATICA",
-			});
-			fiscalResult = {
-				status: "SOLICITADO",
-				documentoId: enqueued.documentoId,
-				statusInterno: enqueued.statusInterno,
-				error: null,
-			};
-		} catch (error) {
-			const errorMessage = getErrorMessage(error);
-			fiscalResult = {
-				status: "ERRO",
-				documentoId: null,
-				error: errorMessage,
-			};
-			await notifyFiscalEmissionFailure({
-				organization: input.organization,
-				sale,
-				errorMessage,
-			});
-		}
-	}
+	const fiscalResult =
+		input.emitFiscal === false
+			? { status: "NAO_SOLICITADO" as const, reason: "DESATIVADO_PELO_FLUXO" as const }
+			: await processSaleAutomaticFiscalEmissionIfEligible({
+					organization: input.organization,
+					saleId: input.saleId,
+					authorId: input.saleAuthorId,
+				});
 
 	return {
 		vendaId: input.saleId,

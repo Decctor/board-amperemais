@@ -80,7 +80,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 		orderState.updateCashback({ resgateSolicitado: Math.min(Math.max(0, numValue), maxRedemption) });
 	};
 
-	const terminology = program?.terminologia || "DINHEIRO";
+	// const terminology = program?.terminologia || "DINHEIRO";
 
 	if (!program || balance <= 0) {
 		return (
@@ -106,7 +106,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 	return (
 		<div className="flex flex-col gap-6">
 			<div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
-				<BadgePercent className="w-6 h-6 text-primary flex-shrink-0" />
+				<BadgePercent className="w-6 h-6 text-primary shrink-0" />
 				<div className="flex-1">
 					<p className="text-sm text-muted-foreground">Saldo disponível</p>
 					<p className="font-black text-lg text-primary">{formatToMoney(balance)}</p>
@@ -114,7 +114,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 			</div>
 
 			<div className="flex flex-col gap-4">
-				<Label className="font-semibold">Quanto deseja usar?</Label>
+				<Label className="font-semibold">QUANTO DESEJA USAR?</Label>
 
 				<div className="flex flex-col gap-4 p-4 rounded-xl bg-muted/50 border">
 					<Slider value={[cashback.resgateSolicitado]} min={0} max={maxRedemption} step={0.01} onValueChange={handleSliderChange} className="w-full" />
@@ -143,10 +143,8 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 			</div>
 
 			<div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-				<Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-				<p className="text-xs text-blue-800 dark:text-blue-200">
-					A loja confirmará o desconto ao aceitar o pedido. O saldo será descontado somente após a confirmação.
-				</p>
+				<Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+				<p className="text-xs text-blue-800 dark:text-blue-200">O saldo será descontado quando o pedido for enviado e confirmado automaticamente.</p>
 			</div>
 
 			<Button variant="brand" className="flex items-center gap-1.5 w-full h-12 rounded-xl font-bold mt-auto" onClick={onNext}>

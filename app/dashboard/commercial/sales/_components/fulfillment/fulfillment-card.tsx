@@ -9,6 +9,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
@@ -19,15 +20,22 @@ import { CircleUser, Clock, GripVertical, Loader2, MoveRight, StickyNote } from 
 import { forwardRef, type CSSProperties } from "react";
 import { ATTENDANCE_STATUS_LABEL, DELIVERY_MODE_META, FINANCIAL_BADGE_META, FISCAL_BADGE_META, getValidBoardTargets } from "./config";
 
-const TONE_CLASSES: Record<"muted" | "neutral" | "danger", string> = {
+const TONE_CLASSES: Record<"success" | "muted" | "neutral" | "danger", string> = {
+	success: "border-green-200 bg-green-100 text-green-600",
 	muted: "border-border text-muted-foreground",
 	neutral: "border-border bg-secondary text-secondary-foreground",
 	danger: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
-function StatusPill({ label, tone }: { label: string; tone: "muted" | "neutral" | "danger" }) {
+function StatusPill({ label, tone, icon }: { label: string; tone: "success" | "muted" | "neutral" | "danger"; icon?: React.ReactNode }) {
 	return (
-		<span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-tight uppercase", TONE_CLASSES[tone])}>
+		<span
+			className={cn(
+				"inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-tight uppercase gap-1.5",
+				TONE_CLASSES[tone],
+			)}
+		>
+			{icon ? icon : null}
 			{label}
 		</span>
 	);
@@ -41,6 +49,7 @@ type FulfillmentCardProps = {
 	awaitingConfirm?: boolean;
 	onMove?: (target: TSaleAttendanceStatusEnum) => void;
 	onConfirmDelivery?: () => void;
+	onDeliverWithoutPayment?: () => void;
 	onCancelConfirm?: () => void;
 	dragAttributes?: DraggableAttributes;
 	dragListeners?: DraggableSyntheticListeners;
@@ -49,7 +58,21 @@ type FulfillmentCardProps = {
 };
 
 export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(function FulfillmentCard(
-	{ card, isPending, isDragging, isOverlay, awaitingConfirm, onMove, onConfirmDelivery, onCancelConfirm, dragAttributes, dragListeners, style, className },
+	{
+		card,
+		isPending,
+		isDragging,
+		isOverlay,
+		awaitingConfirm,
+		onMove,
+		onConfirmDelivery,
+		onDeliverWithoutPayment,
+		onCancelConfirm,
+		dragAttributes,
+		dragListeners,
+		style,
+		className,
+	},
 	ref,
 ) {
 	const modalidade = card.entregaModalidade ? DELIVERY_MODE_META[card.entregaModalidade] : null;
@@ -57,6 +80,20 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 	const financeiro = FINANCIAL_BADGE_META[card.financeiro];
 	const fiscal = FISCAL_BADGE_META[card.fiscal];
 	const moveTargets = onMove ? getValidBoardTargets(card.statusAtendimento) : [];
+	const pendingPayment = card.pagamentos.find(
+		(payment) => !payment.dataEfetivacao && !["CANCELADO", "ESTORNADO"].includes(payment.provedorStatus ?? ""),
+	);
+	const paymentLabel = pendingPayment
+		? pendingPayment.metodo === "DINHEIRO"
+			? "Dinheiro"
+			: pendingPayment.metodo === "PIX"
+				? "PIX"
+				: pendingPayment.metodo === "CARTAO_DEBITO"
+					? "Débito"
+					: pendingPayment.metodo === "CARTAO_CREDITO"
+						? "Crédito"
+						: "A definir"
+		: null;
 
 	return (
 		<div
@@ -135,15 +172,21 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 			</div>
 
 			<div className="flex flex-wrap items-center gap-1.5">
-				<StatusPill label={financeiro.label} tone={financeiro.tone} />
-				<StatusPill label={fiscal.label} tone={fiscal.tone} />
+				{paymentLabel ? <StatusPill label={paymentLabel} tone="muted" /> : null}
+				<StatusPill label={financeiro.label} tone={financeiro.tone} icon={financeiro.icon} />
+				<StatusPill label={fiscal.label} tone={fiscal.tone} icon={fiscal.icon} />
 			</div>
 
-			{card.observacoes ? (
-				<div className="flex items-start gap-1 text-[11px] text-muted-foreground">
-					<StickyNote className="mt-0.5 h-3 w-3 shrink-0" />
-					<span className="line-clamp-2 break-words">{card.observacoes}</span>
-				</div>
+			{card.observacoes || card.pagamentoObservacoes ? (
+				<Tooltip>
+					<TooltipTrigger className="inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+						<StickyNote className="h-3 w-3" />
+						Observações
+					</TooltipTrigger>
+					<TooltipContent className="max-w-72 whitespace-normal">
+						{[card.observacoes, card.pagamentoObservacoes].filter(Boolean).join("\n")}
+					</TooltipContent>
+				</Tooltip>
 			) : null}
 
 			{card.dataVenda ? (
@@ -155,23 +198,36 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 
 			{awaitingConfirm ? (
 				<div className="mt-1 flex flex-col gap-2 border-t border-border pt-2">
-					<p className="text-[11px] leading-snug text-muted-foreground">Confirmar entrega? Isso registra a baixa física de estoque do pedido.</p>
+					<p className="text-[11px] leading-snug text-muted-foreground">
+						{card.financeiro === "RECEBIDA"
+							? "Confirmar entrega? Isso registra a baixa física de estoque do pedido."
+							: `Pagamento pendente${paymentLabel ? ` via ${paymentLabel}` : ""}. Confirme o recebimento antes de entregar.`}
+					</p>
 					<div className="flex items-center gap-1.5">
 						<button
 							type="button"
 							onClick={onConfirmDelivery}
-							className="inline-flex h-7 grow items-center justify-center rounded-lg bg-primary px-2 text-[11px] font-bold text-primary-foreground hover:bg-primary/90"
+							className="inline-flex h-7 grow items-center justify-center rounded-lg bg-primary px-2 text-[0.55rem] font-bold text-primary-foreground hover:bg-primary/90"
 						>
-							Confirmar entrega
+							{card.financeiro === "RECEBIDA" ? "CONFIRMAR ENTREGA" : "RECEBER E ENTREGAR"}
 						</button>
-						<button
-							type="button"
-							onClick={onCancelConfirm}
-							className="inline-flex h-7 items-center justify-center rounded-lg border border-border px-2 text-[11px] font-bold hover:bg-accent"
-						>
-							Cancelar
-						</button>
+						{card.financeiro !== "RECEBIDA" && onDeliverWithoutPayment ? (
+							<button
+								type="button"
+								onClick={onDeliverWithoutPayment}
+								className="inline-flex h-7 items-center justify-center rounded-lg border border-border px-2 text-[0.55rem] font-bold text-muted-foreground hover:bg-accent hover:text-foreground"
+							>
+								ENTREGAR SEM RECEBER
+							</button>
+						) : null}
 					</div>
+					<button
+						type="button"
+						onClick={onCancelConfirm}
+						className="inline-flex h-7 items-center justify-center rounded-lg border border-border px-2 text-[0.55rem] font-bold hover:bg-accent"
+					>
+						CANCELAR
+					</button>
 				</div>
 			) : null}
 		</div>

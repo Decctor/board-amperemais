@@ -73,7 +73,7 @@ export default function FulfillmentBoard() {
 		return map;
 	}, [cards]);
 
-	const activeCard = activeId ? cards.find((card) => card.id === activeId) ?? null : null;
+	const activeCard = activeId ? (cards.find((card) => card.id === activeId) ?? null) : null;
 
 	function setCardStatus(cardId: string, target: TSaleAttendanceStatusEnum) {
 		queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
@@ -84,10 +84,20 @@ export default function FulfillmentBoard() {
 	// Optimistic controller: the card is already in the target column (moved in `initiateMove`).
 	// We fire the request and, on failure, roll back ONLY this card to its previous status, so a
 	// failure on one move never clobbers other cards moved concurrently.
-	async function commitMove(card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum, previousStatus: TSaleAttendanceStatusEnum) {
+	async function commitMove(
+		card: TSalesFulfillmentCard,
+		target: TSaleAttendanceStatusEnum,
+		previousStatus: TSaleAttendanceStatusEnum,
+		options?: { settlePendingPayment?: boolean; allowUnpaidDelivery?: boolean },
+	) {
 		setPendingCardIds((prev) => new Set(prev).add(card.id));
 		try {
-			await updateSaleAttendanceStatus({ id: card.id, statusAtendimento: target });
+			await updateSaleAttendanceStatus({
+				id: card.id,
+				attendanceStatus: target,
+				settlePendingPayment: options?.settlePendingPayment ?? false,
+				allowUnpaidDelivery: options?.allowUnpaidDelivery ?? false,
+			});
 			toast.success(`Pedido movido para ${ATTENDANCE_STATUS_LABEL[target]}.`);
 		} catch (err) {
 			setCardStatus(card.id, previousStatus);
@@ -151,7 +161,13 @@ export default function FulfillmentBoard() {
 	function handleConfirmDelivery(card: TSalesFulfillmentCard) {
 		const previousStatus = confirm?.previousStatus ?? "PRONTO";
 		setConfirm(null);
-		void commitMove(card, "ENTREGUE", previousStatus);
+		void commitMove(card, "ENTREGUE", previousStatus, { settlePendingPayment: card.financeiro !== "RECEBIDA" });
+	}
+
+	function handleDeliverWithoutPayment(card: TSalesFulfillmentCard) {
+		const previousStatus = confirm?.previousStatus ?? "PRONTO";
+		setConfirm(null);
+		void commitMove(card, "ENTREGUE", previousStatus, { allowUnpaidDelivery: true });
 	}
 
 	function handleCancelConfirm() {
@@ -163,12 +179,7 @@ export default function FulfillmentBoard() {
 		return (
 			<div className={cn("flex min-h-0 flex-1 flex-col gap-3", BOARD_DESKTOP_MAX_HEIGHT)}>
 				<Skeleton className="h-9 w-full max-w-md shrink-0" />
-				<div
-					className={cn(
-						KANBAN_SCROLL_CLASS,
-						"flex min-h-[50vh] flex-1 gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden",
-					)}
-				>
+				<div className={cn(KANBAN_SCROLL_CLASS, "flex min-h-[50vh] flex-1 gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden")}>
 					{BOARD_STATUSES.map((status) => (
 						<div key={status} className="flex h-full w-[280px] min-w-[280px] flex-col gap-2">
 							<Skeleton className="h-5 w-32 shrink-0" />
@@ -209,12 +220,7 @@ export default function FulfillmentBoard() {
 					onDragEnd={handleDragEnd}
 					onDragCancel={() => setActiveId(null)}
 				>
-					<div
-						className={cn(
-							KANBAN_SCROLL_CLASS,
-							"flex min-h-[50vh] flex-1 snap-x gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden",
-						)}
-					>
+					<div className={cn(KANBAN_SCROLL_CLASS, "flex min-h-[50vh] flex-1 snap-x gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden")}>
 						{BOARD_STATUSES.map((status) => (
 							<FulfillmentColumn
 								key={status}
@@ -224,6 +230,7 @@ export default function FulfillmentBoard() {
 								confirmCardId={confirm?.cardId ?? null}
 								onMove={initiateMove}
 								onConfirmDelivery={handleConfirmDelivery}
+								onDeliverWithoutPayment={handleDeliverWithoutPayment}
 								onCancelConfirm={handleCancelConfirm}
 							/>
 						))}

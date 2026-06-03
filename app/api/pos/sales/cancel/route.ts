@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { processConfirmedSaleCancellation } from "@/lib/sale-processing";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -13,6 +14,12 @@ import z from "zod";
 
 const CancelSaleInputSchema = z.object({
 	id: z.string({ required_error: "ID da venda não informado." }),
+	reason: z
+		.string({ invalid_type_error: "Tipo não válido para motivo do cancelamento." })
+		.trim()
+		.min(3)
+		.optional()
+		.default("Cancelamento solicitado pelo usuário."),
 });
 
 // ============================================================================
@@ -25,7 +32,7 @@ async function cancelSale(request: NextRequest) {
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
 
 	const { searchParams } = new URL(request.url);
-	const input = CancelSaleInputSchema.parse({ id: searchParams.get("id") });
+	const input = CancelSaleInputSchema.parse({ id: searchParams.get("id"), reason: searchParams.get("reason") ?? undefined });
 
 	const orgId = session.membership.organizacao.id;
 
@@ -36,8 +43,19 @@ async function cancelSale(request: NextRequest) {
 	});
 
 	if (!existing) throw new createHttpError.NotFound("Venda não encontrada.");
+	if (existing.statusVenda === "CONFIRMADA") {
+		if (!session.membership.permissoes.vendas.excluir)
+			throw new createHttpError.Forbidden("Você não possui permissão para cancelar vendas confirmadas.");
+		const result = await processConfirmedSaleCancellation({
+			organizationId: orgId,
+			saleId: input.id,
+			authorId: session.user.id,
+			reason: input.reason,
+		});
+		return NextResponse.json({ data: result, message: "Venda cancelada com sucesso." });
+	}
 	if (existing.statusVenda !== "ORCAMENTO") {
-		throw new createHttpError.BadRequest("Somente rascunhos (orçamentos) podem ser cancelados por esta rota.");
+		throw new createHttpError.BadRequest("A venda não pode ser cancelada no status atual.");
 	}
 
 	await db.update(sales).set({ statusVenda: "CANCELADA", statusAtendimento: "CANCELADO" }).where(eq(sales.id, input.id));

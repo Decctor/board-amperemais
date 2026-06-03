@@ -38,7 +38,6 @@ async function getSalesFulfillment({ orgId }: { orgId: string }) {
 			entregaModalidade: true,
 			observacoes: true,
 			dataVenda: true,
-			dataInsercao: true,
 		},
 		with: {
 			cliente: { columns: { id: true, nome: true, telefone: true } },
@@ -46,7 +45,19 @@ async function getSalesFulfillment({ orgId }: { orgId: string }) {
 			lancamentosContabeis: {
 				columns: { id: true },
 				with: {
-					transacoesFinanceiras: { columns: { valor: true, tipo: true, dataEfetivacao: true, dataPrevisao: true } },
+					transacoesFinanceiras: {
+						columns: {
+							id: true,
+							titulo: true,
+							valor: true,
+							tipo: true,
+							metodo: true,
+							contaFinanceiraId: true,
+							dataEfetivacao: true,
+							dataPrevisao: true,
+							provedorStatus: true,
+						},
+					},
 				},
 			},
 		},
@@ -56,6 +67,12 @@ async function getSalesFulfillment({ orgId }: { orgId: string }) {
 	const now = new Date();
 	const cards = result.map((sale) => {
 		const transactions = sale.lancamentosContabeis.flatMap((entry) => entry.transacoesFinanceiras);
+		const paymentNotes =
+			transactions
+				.find((transaction) => transaction.titulo.includes(" - "))
+				?.titulo.split(" - ")
+				.slice(1)
+				.join(" - ") || null;
 		return {
 			id: sale.id,
 			idExterno: sale.idExterno,
@@ -67,6 +84,8 @@ async function getSalesFulfillment({ orgId }: { orgId: string }) {
 			dataVenda: sale.dataVenda,
 			cliente: sale.cliente,
 			financeiro: computeSaleFinancialStatus({ transactions, saleTotal: sale.valorTotal, now }),
+			pagamentos: transactions,
+			pagamentoObservacoes: paymentNotes === "Venda" || paymentNotes === sale.observacoes ? null : paymentNotes,
 			fiscal: computeSaleFiscalStatus({ documents: sale.documentosFiscais }),
 		};
 	});

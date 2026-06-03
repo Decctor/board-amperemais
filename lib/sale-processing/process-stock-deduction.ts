@@ -16,7 +16,7 @@ type ProcessStockDeductionParams = {
 	organizationId: string;
 	saleId: string;
 	saleItems: SaleItemForStock[];
-	saleAuthorId: string;
+	saleAuthorId: string | null;
 };
 
 export async function processStockDeduction(tx: DBTransaction, params: ProcessStockDeductionParams) {

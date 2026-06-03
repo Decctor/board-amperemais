@@ -15,7 +15,7 @@ export type TProcessPaymentsInput = {
 	lancamentoContabilId: string;
 	organizacaoId: string;
 	pagamentos: TPaymentSplit[];
-	autorId: string;
+	autorId: string | null;
 };
 
 export type TPaymentIntentResult = {

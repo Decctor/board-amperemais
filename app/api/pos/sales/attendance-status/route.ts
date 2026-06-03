@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { processSaleAttendanceStatusChange } from "@/lib/sale-processing";
-import { SaleAttendanceStatusEnum } from "@/schemas/enums";
+import { PaymentMethodEnum, SaleAttendanceStatusEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -14,7 +14,11 @@ import z from "zod";
 
 const UpdateSaleAttendanceStatusInputSchema = z.object({
 	id: z.string({ required_error: "ID da venda não informado." }),
-	statusAtendimento: SaleAttendanceStatusEnum,
+	attendanceStatus: SaleAttendanceStatusEnum,
+	settlePendingPayment: z.boolean({ invalid_type_error: "Tipo não válido para confirmação de pagamento." }).optional().default(false),
+	allowUnpaidDelivery: z.boolean({ invalid_type_error: "Tipo não válido para entrega sem recebimento." }).optional().default(false),
+	paymentMethod: PaymentMethodEnum.optional().nullable(),
+	financialAccountId: z.string({ invalid_type_error: "Tipo não válido para conta financeira." }).optional().nullable(),
 });
 export type TUpdateSaleAttendanceStatusInput = z.infer<typeof UpdateSaleAttendanceStatusInputSchema>;
 
@@ -24,6 +28,9 @@ export type TUpdateSaleAttendanceStatusInput = z.infer<typeof UpdateSaleAttendan
 
 async function updateSaleAttendanceStatus({ input, session }: { input: TUpdateSaleAttendanceStatusInput; session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
+	if (input.allowUnpaidDelivery && !session.membership!.permissoes.vendas.editar) {
+		throw new createHttpError.Forbidden("Você não possui permissão para entregar pedidos sem recebimento.");
+	}
 
 	const organization = await db.query.organizations.findFirst({
 		where: (fields, { eq }) => eq(fields.id, orgId),
@@ -33,8 +40,12 @@ async function updateSaleAttendanceStatus({ input, session }: { input: TUpdateSa
 	const result = await processSaleAttendanceStatusChange({
 		organization,
 		saleId: input.id,
-		targetStatus: input.statusAtendimento,
+		targetStatus: input.attendanceStatus,
 		authorId: session.user.id,
+		settlePendingPayment: input.settlePendingPayment,
+		allowUnpaidDelivery: input.allowUnpaidDelivery,
+		paymentMethod: input.paymentMethod,
+		financialAccountId: input.financialAccountId,
 	});
 
 	return {

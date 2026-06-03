@@ -1,17 +1,34 @@
 import { appApiHandler } from "@/lib/app-api";
 import { formatPhoneAsBase } from "@/lib/formatting";
+import { getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import { processSaleConfirmation } from "@/lib/sale-processing";
 import { getShopCatalogProducts, type TShopCatalogProduct } from "@/lib/shop/catalog";
 import { getShopAvailability } from "@/lib/shop/availability";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
 import { CreateShopOrderInputSchema, type TShopDraftMetadata } from "@/schemas/shop";
 import { db } from "@/services/drizzle";
-import { cashbackProgramBalances, clientLocations, clients, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, clientLocations, clients, saleItemModifiers, saleItems, sales, shopOrderRequests } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 
 function extractOrgId(pathname: string) {
 	return pathname.split("/")[3];
+}
+
+function hashShopOrderPayload(input: ReturnType<typeof CreateShopOrderInputSchema.parse>) {
+	return createHash("sha256").update(JSON.stringify(input)).digest("hex");
+}
+
+function getShopPaymentDescription(method: ReturnType<typeof CreateShopOrderInputSchema.parse>["pagamento"]["metodo"]) {
+	const labels = {
+		DINHEIRO: "Dinheiro",
+		PIX: "PIX",
+		CARTAO_DEBITO: "Cartão de débito",
+		CARTAO_CREDITO: "Cartão de crédito",
+	} as const;
+	return labels[method];
 }
 
 type CalculatedModifier = {
@@ -266,6 +283,29 @@ async function createShopOrder(request: NextRequest) {
 	if (input.entrega.modalidade === "ENTREGA" && !configuracoes.atendimento.entrega.ativo)
 		throw new createHttpError.BadRequest("Entrega não disponível.");
 
+	if (!configuracoes.pagamento.metodosAceitos.includes(input.pagamento.metodo)) {
+		throw new createHttpError.BadRequest("Método de pagamento não disponível para esta loja.");
+	}
+
+	const payloadHash = hashShopOrderPayload(input);
+	const existingRequest = await db.query.shopOrderRequests.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.idempotencyKey, input.idempotencyKey)),
+	});
+	if (existingRequest) {
+		if (existingRequest.payloadHash !== payloadHash) throw new createHttpError.Conflict("A chave de idempotência já foi usada com outro pedido.");
+		if (existingRequest.status === "CONCLUIDO" && existingRequest.vendaId) {
+			return NextResponse.json({
+				data: { saleId: existingRequest.vendaId, orderNumber: existingRequest.vendaId },
+				message: "Pedido enviado com sucesso.",
+			});
+		}
+		if (existingRequest.status === "ERRO" && !existingRequest.vendaId) {
+			await db.delete(shopOrderRequests).where(eq(shopOrderRequests.id, existingRequest.id));
+		} else {
+			throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
+		}
+	}
+
 	const catalogProducts = await getShopCatalogProducts({ orgId, configuracoes });
 	const catalogProductMap = new Map(catalogProducts.map((product) => [product.id, product]));
 	const calculatedItems = input.itens.map((item) => {
@@ -303,6 +343,13 @@ async function createShopOrder(request: NextRequest) {
 		requestedValue: requestedCashback,
 	});
 
+	const [requestRecord] = await db
+		.insert(shopOrderRequests)
+		.values({ organizacaoId: orgId, idempotencyKey: input.idempotencyKey, payloadHash, status: "PROCESSANDO" })
+		.onConflictDoNothing()
+		.returning({ id: shopOrderRequests.id });
+	if (!requestRecord) throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
+
 	const metadata: TShopDraftMetadata = {
 		origem: "SHOP",
 		modo: settings.modo,
@@ -311,99 +358,145 @@ async function createShopOrder(request: NextRequest) {
 		cashbackProgramaId: programId,
 		pagamento: {
 			tipo: "NO_LOCAL",
-			descricao: input.entrega.modalidade === "ENTREGA" ? "Pagamento na entrega" : "Pagamento na retirada",
+			metodo: input.pagamento.metodo,
+			descricao: `${getShopPaymentDescription(input.pagamento.metodo)} na ${input.entrega.modalidade === "ENTREGA" ? "entrega" : "retirada"}`,
+			observacoes: input.pagamento.observacoes ?? null,
 		},
 		entrega: {
 			modalidade: input.entrega.modalidade,
 		},
 		criadoEm: new Date().toISOString(),
 	};
+	const saleObservations = [input.observacoes?.trim() || null, input.pagamento.observacoes?.trim() || null].filter(Boolean).join("\n") || null;
 
-	const saleId = await db.transaction(async (tx) => {
-		const [insertedSale] = await tx
-			.insert(sales)
-			.values({
-				organizacaoId: orgId,
-				clienteId: client.id,
-				idExterno: `SHOP-${Date.now()}`,
-				valorTotal: Math.max(0, subtotal - requestedCashback),
-				descontosTotal: requestedCashback > 0 ? requestedCashback : null,
-				acrescimosTotal: null,
-				custoTotal: calculatedItems.reduce((sum, item) => sum + item.valorCustoTotal, 0),
-				vendedorNome: "Loja Digital",
-				vendedorId: null,
-				entregaModalidade: input.entrega.modalidade,
-				entregaLocalizacaoId: deliveryLocation?.id ?? null,
-				observacoes: input.observacoes ?? null,
-				rascunhoMetadados: { shop: metadata },
-				parceiro: "",
-				chave: "",
-				documento: "",
-				modelo: "",
-				movimento: "RECEITAS",
-				natureza: "",
-				serie: "",
-				situacao: "",
-				tipo: "Venda de produtos",
-				canal: "SHOP",
-				processamentoOrigem: "INTERNO",
-				statusVenda: "ORCAMENTO",
-			})
-			.returning({ id: sales.id, idExterno: sales.idExterno });
-
-		if (!insertedSale) throw new createHttpError.InternalServerError("Erro ao criar pedido.");
-
-		for (const item of calculatedItems) {
-			const [insertedItem] = await tx
-				.insert(saleItems)
+	let saleId: string | null = null;
+	try {
+		saleId = await db.transaction(async (tx) => {
+			const [insertedSale] = await tx
+				.insert(sales)
 				.values({
 					organizacaoId: orgId,
-					vendaId: insertedSale.id,
 					clienteId: client.id,
-					produtoId: item.produtoId,
-					produtoVarianteId: item.produtoVarianteId,
-					quantidade: item.quantidade,
-					valorVendaUnitario: item.valorUnitarioFinal,
-					valorCustoUnitario: item.valorCustoUnitario,
-					valorVendaTotalBruto: item.valorTotalBruto,
-					valorTotalDesconto: item.valorDesconto,
-					valorVendaTotalLiquido: item.valorTotalLiquido,
-					valorCustoTotal: item.valorCustoTotal,
-					metadados: {
-						nome: item.nome,
-						codigo: item.codigo,
-						imagemUrl: item.imagemUrl,
+					idExterno: `SHOP-${input.idempotencyKey}`,
+					valorTotal: Math.max(0, subtotal - requestedCashback),
+					descontosTotal: requestedCashback > 0 ? requestedCashback : null,
+					acrescimosTotal: null,
+					custoTotal: calculatedItems.reduce((sum, item) => sum + item.valorCustoTotal, 0),
+					vendedorNome: "",
+					vendedorId: null,
+					entregaModalidade: input.entrega.modalidade,
+					entregaLocalizacaoId: deliveryLocation?.id ?? null,
+					observacoes: saleObservations,
+					rascunhoMetadados: { shop: metadata },
+					parceiro: "",
+					chave: "",
+					documento: "",
+					modelo: "",
+					movimento: "RECEITAS",
+					natureza: "SN01",
+					serie: "",
+					situacao: "",
+					tipo: "Venda de produtos",
+					canal: "SHOP",
+					processamentoOrigem: "INTERNO",
+					statusVenda: "ORCAMENTO",
+				})
+				.returning({ id: sales.id, idExterno: sales.idExterno });
+
+			if (!insertedSale) throw new createHttpError.InternalServerError("Erro ao criar pedido.");
+
+			for (const item of calculatedItems) {
+				const [insertedItem] = await tx
+					.insert(saleItems)
+					.values({
+						organizacaoId: orgId,
+						vendaId: insertedSale.id,
+						clienteId: client.id,
 						produtoId: item.produtoId,
 						produtoVarianteId: item.produtoVarianteId,
-						valorUnitarioBase: item.valorUnitarioBase,
-						valorModificadores: item.valorModificadores,
-						modificadores: item.modificadores,
-					},
-				})
-				.returning({ id: saleItems.id });
-			if (!insertedItem) throw new createHttpError.InternalServerError("Erro ao criar item do pedido.");
+						quantidade: item.quantidade,
+						valorVendaUnitario: item.valorUnitarioFinal,
+						valorCustoUnitario: item.valorCustoUnitario,
+						valorVendaTotalBruto: item.valorTotalBruto,
+						valorTotalDesconto: item.valorDesconto,
+						valorVendaTotalLiquido: item.valorTotalLiquido,
+						valorCustoTotal: item.valorCustoTotal,
+						metadados: {
+							nome: item.nome,
+							codigo: item.codigo,
+							imagemUrl: item.imagemUrl,
+							produtoId: item.produtoId,
+							produtoVarianteId: item.produtoVarianteId,
+							valorUnitarioBase: item.valorUnitarioBase,
+							valorModificadores: item.valorModificadores,
+							modificadores: item.modificadores,
+						},
+					})
+					.returning({ id: saleItems.id });
+				if (!insertedItem) throw new createHttpError.InternalServerError("Erro ao criar item do pedido.");
 
-			if (item.modificadores.length > 0) {
-				await tx.insert(saleItemModifiers).values(
-					item.modificadores.map((modifier) => ({
-						itemVendaId: insertedItem.id,
-						opcaoId: modifier.opcaoId,
-						nome: modifier.nome,
-						quantidade: modifier.quantidade,
-						valorUnitario: modifier.valorUnitario,
-						valorTotal: modifier.valorTotal,
-					})),
-				);
+				if (item.modificadores.length > 0) {
+					await tx.insert(saleItemModifiers).values(
+						item.modificadores.map((modifier) => ({
+							itemVendaId: insertedItem.id,
+							opcaoId: modifier.opcaoId,
+							nome: modifier.nome,
+							quantidade: modifier.quantidade,
+							valorUnitario: modifier.valorUnitario,
+							valorTotal: modifier.valorTotal,
+						})),
+					);
+				}
 			}
-		}
 
-		return insertedSale.id;
-	});
+			await tx.update(shopOrderRequests).set({ vendaId: insertedSale.id }).where(eq(shopOrderRequests.id, requestRecord.id));
+			return insertedSale.id;
+		});
+
+		const organizationSaleDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.vendas;
+		if (!organizationSaleDefaults.debitoContaId || !organizationSaleDefaults.creditoContaId) {
+			throw new createHttpError.InternalServerError("A organização não possui contas padrão de vendas configuradas.");
+		}
+		const paymentDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao)[input.pagamento.metodo];
+		if (!paymentDefaults?.suportado) throw new createHttpError.BadRequest("Método de pagamento não habilitado para esta organização.");
+
+		await processSaleConfirmation({
+			organization,
+			saleId,
+			salePayments: [
+				{
+					metodo: input.pagamento.metodo,
+					valor: Math.max(0, subtotal - requestedCashback),
+					efetivacaoTipo: "PENDENTE",
+					dataPrevisao: new Date(),
+					observacoes: input.pagamento.observacoes ?? metadata.pagamento.descricao,
+					contaFinanceiraPadraoId: paymentDefaults.contaFinanceiraPadraoId ?? null,
+				},
+			],
+			saleAuthorId: null,
+			saleClientId: client.id,
+			saleCashbackProgramId: programId,
+			saleCashbackRedemptionValue: requestedCashback,
+			accountingEntryDebitAccountId: organizationSaleDefaults.debitoContaId,
+			accountingEntryCreditAccountId: organizationSaleDefaults.creditoContaId,
+			initialAttendanceStatus: "NAO_INICIADO",
+			accumulateCashback: false,
+			emitFiscal: false,
+		});
+
+		await db.update(shopOrderRequests).set({ status: "CONCLUIDO", erro: null }).where(eq(shopOrderRequests.id, requestRecord.id));
+	} catch (error) {
+		await db
+			.update(shopOrderRequests)
+			.set({ status: "ERRO", vendaId: saleId, erro: error instanceof Error ? error.message : "Erro desconhecido." })
+			.where(eq(shopOrderRequests.id, requestRecord.id));
+		throw error;
+	}
 
 	return NextResponse.json({
 		data: {
-			saleId,
-			orderNumber: saleId,
+			saleId: saleId!,
+			orderNumber: saleId!,
 		},
 		message: "Pedido enviado com sucesso.",
 	});

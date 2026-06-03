@@ -1,9 +1,9 @@
 "use client";
 
-import type { TCreateShopOrderInput, TShopCartItem, TShopCustomer, TShopDelivery } from "@/schemas/shop";
+import type { TCreateShopOrderInput, TShopCartItem, TShopCustomer, TShopDelivery, TShopPaymentMethod } from "@/schemas/shop";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const SHOP_CART_STORAGE_VERSION = 1;
+const SHOP_CART_STORAGE_VERSION = 2;
 
 type TShopOrderState = {
 	orgId: string;
@@ -16,14 +16,21 @@ type TShopOrderState = {
 	cashback: {
 		resgateSolicitado: number;
 	};
-	checkoutStep: "CARRINHO" | "CLIENTE" | "ENTREGA" | "CASHBACK" | "REVISAO" | "SUCESSO";
+	payment: {
+		metodo: TShopPaymentMethod;
+		observacoes: string;
+		precisaTroco: boolean;
+		trocoPara: number | null;
+	};
+	idempotencyKey: string;
+	checkoutStep: "CARRINHO" | "CLIENTE" | "ENTREGA" | "CASHBACK" | "PAGAMENTO" | "REVISAO" | "SUCESSO";
 	lastOrder: {
 		saleId: string;
 		orderNumber: string;
 	} | null;
 };
 
-const CHECKOUT_STEPS: TShopOrderState["checkoutStep"][] = ["CARRINHO", "CLIENTE", "ENTREGA", "CASHBACK", "REVISAO", "SUCESSO"];
+const CHECKOUT_STEPS: TShopOrderState["checkoutStep"][] = ["CARRINHO", "CLIENTE", "ENTREGA", "CASHBACK", "PAGAMENTO", "REVISAO", "SUCESSO"];
 
 type TStoredShopOrderState = {
 	version: number;
@@ -31,6 +38,8 @@ type TStoredShopOrderState = {
 	customer: Partial<TShopCustomer>;
 	delivery: Partial<TShopDelivery>;
 	cashback: TShopOrderState["cashback"];
+	payment: TShopOrderState["payment"];
+	idempotencyKey: string;
 };
 
 function getStorageKey(orgId: string) {
@@ -45,6 +54,8 @@ function getDefaultState(orgId: string, mode: "CARDAPIO" | "CATALOGO"): TShopOrd
 		customer: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 		delivery: { modalidade: "RETIRADA", endereco: null },
 		cashback: { resgateSolicitado: 0 },
+		payment: { metodo: "DINHEIRO", observacoes: "", precisaTroco: false, trocoPara: null },
+		idempotencyKey: crypto.randomUUID(),
 		checkoutStep: "CARRINHO",
 		lastOrder: null,
 	};
@@ -66,6 +77,8 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 				customer: { ...prev.customer, ...parsed.customer },
 				delivery: { ...prev.delivery, ...parsed.delivery },
 				cashback: parsed.cashback ?? prev.cashback,
+				payment: parsed.payment ?? prev.payment,
+				idempotencyKey: parsed.idempotencyKey ?? prev.idempotencyKey,
 			}));
 		} catch {
 			window.localStorage.removeItem(getStorageKey(orgId));
@@ -88,14 +101,17 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			customer: state.customer,
 			delivery: state.delivery,
 			cashback: state.cashback,
+			payment: state.payment,
+			idempotencyKey: state.idempotencyKey,
 		};
 		window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(payload));
-	}, [orgId, state.cart, state.customer, state.delivery, state.cashback]);
+	}, [orgId, state.cart, state.customer, state.delivery, state.cashback, state.payment, state.idempotencyKey]);
 
 	const addItem = useCallback((item: TShopCartItem) => {
 		setState((prev) => ({
 			...prev,
 			cart: { items: [...prev.cart.items, { ...item, tempId: item.tempId ?? crypto.randomUUID() }] },
+			idempotencyKey: crypto.randomUUID(),
 		}));
 	}, []);
 
@@ -105,6 +121,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			cart: {
 				items: prev.cart.items.map((item) => (item.tempId === tempId ? { ...item, quantidade: Math.max(1, quantidade) } : item)),
 			},
+			idempotencyKey: crypto.randomUUID(),
 		}));
 	}, []);
 
@@ -112,24 +129,29 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 		setState((prev) => ({
 			...prev,
 			cart: { items: prev.cart.items.filter((item) => item.tempId !== tempId) },
+			idempotencyKey: crypto.randomUUID(),
 		}));
 	}, []);
 
 	const clearCart = useCallback(() => {
-		setState((prev) => ({ ...prev, cart: { items: [] }, cashback: { resgateSolicitado: 0 } }));
+		setState((prev) => ({ ...prev, cart: { items: [] }, cashback: { resgateSolicitado: 0 }, idempotencyKey: crypto.randomUUID() }));
 		if (typeof window !== "undefined") window.localStorage.removeItem(getStorageKey(orgId));
 	}, [orgId]);
 
 	const updateCustomer = useCallback((customer: Partial<TShopCustomer>) => {
-		setState((prev) => ({ ...prev, customer: { ...prev.customer, ...customer } }));
+		setState((prev) => ({ ...prev, customer: { ...prev.customer, ...customer }, idempotencyKey: crypto.randomUUID() }));
 	}, []);
 
 	const updateDelivery = useCallback((delivery: Partial<TShopDelivery>) => {
-		setState((prev) => ({ ...prev, delivery: { ...prev.delivery, ...delivery } }));
+		setState((prev) => ({ ...prev, delivery: { ...prev.delivery, ...delivery }, idempotencyKey: crypto.randomUUID() }));
 	}, []);
 
 	const updateCashback = useCallback((cashback: Partial<TShopOrderState["cashback"]>) => {
-		setState((prev) => ({ ...prev, cashback: { ...prev.cashback, ...cashback } }));
+		setState((prev) => ({ ...prev, cashback: { ...prev.cashback, ...cashback }, idempotencyKey: crypto.randomUUID() }));
+	}, []);
+
+	const updatePayment = useCallback((payment: Partial<TShopOrderState["payment"]>) => {
+		setState((prev) => ({ ...prev, payment: { ...prev.payment, ...payment }, idempotencyKey: crypto.randomUUID() }));
 	}, []);
 
 	const setCheckoutStep = useCallback((checkoutStep: TShopOrderState["checkoutStep"]) => {
@@ -165,13 +187,24 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 
 	const orderInput = useMemo<TCreateShopOrderInput>(
 		() => ({
+			idempotencyKey: state.idempotencyKey,
 			cliente: state.customer,
 			entrega: state.delivery,
 			itens: state.cart.items,
+			pagamento: {
+				metodo: state.payment.metodo,
+				observacoes:
+					[
+						state.payment.precisaTroco && state.payment.trocoPara ? `Troco para R$ ${state.payment.trocoPara.toFixed(2).replace(".", ",")}.` : null,
+						state.payment.observacoes.trim() || null,
+					]
+						.filter(Boolean)
+						.join(" ") || null,
+			},
 			cashbackResgateSolicitado: state.cashback.resgateSolicitado,
 			observacoes: null,
 		}),
-		[state.customer, state.delivery, state.cart.items, state.cashback.resgateSolicitado],
+		[state.idempotencyKey, state.customer, state.delivery, state.cart.items, state.payment, state.cashback.resgateSolicitado],
 	);
 
 	return {
@@ -184,6 +217,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 		updateCustomer,
 		updateDelivery,
 		updateCashback,
+		updatePayment,
 		setCheckoutStep,
 		nextStep,
 		previousStep,

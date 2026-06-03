@@ -13,6 +13,7 @@ function DraggableCard({
 	awaitingConfirm,
 	onMove,
 	onConfirmDelivery,
+	onDeliverWithoutPayment,
 	onCancelConfirm,
 }: {
 	card: TSalesFulfillmentCard;
@@ -20,6 +21,7 @@ function DraggableCard({
 	awaitingConfirm: boolean;
 	onMove: (card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum) => void;
 	onConfirmDelivery: (card: TSalesFulfillmentCard) => void;
+	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
 	onCancelConfirm: () => void;
 }) {
 	const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
@@ -37,6 +39,7 @@ function DraggableCard({
 			awaitingConfirm={awaitingConfirm}
 			onMove={(target) => onMove(card, target)}
 			onConfirmDelivery={() => onConfirmDelivery(card)}
+			onDeliverWithoutPayment={() => onDeliverWithoutPayment(card)}
 			onCancelConfirm={onCancelConfirm}
 			dragAttributes={attributes}
 			dragListeners={listeners}
@@ -52,6 +55,7 @@ export function FulfillmentColumn({
 	confirmCardId,
 	onMove,
 	onConfirmDelivery,
+	onDeliverWithoutPayment,
 	onCancelConfirm,
 }: {
 	status: TBoardStatus;
@@ -60,6 +64,7 @@ export function FulfillmentColumn({
 	confirmCardId: string | null;
 	onMove: (card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum) => void;
 	onConfirmDelivery: (card: TSalesFulfillmentCard) => void;
+	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
 	onCancelConfirm: () => void;
 }) {
 	const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -67,7 +72,7 @@ export function FulfillmentColumn({
 	const Icon = meta.icon;
 
 	return (
-		<div className="flex h-full min-h-0 w-[280px] min-w-[280px] snap-start flex-col gap-2">
+		<div className="flex h-full min-h-0 w-[300px] min-w-[300px] snap-start flex-col gap-2">
 			<div className="flex shrink-0 items-center justify-between px-1.5">
 				<div className="flex items-center gap-1.5">
 					<Icon className="h-4 w-4 text-muted-foreground" />
@@ -96,6 +101,7 @@ export function FulfillmentColumn({
 							awaitingConfirm={confirmCardId === card.id}
 							onMove={onMove}
 							onConfirmDelivery={onConfirmDelivery}
+							onDeliverWithoutPayment={onDeliverWithoutPayment}
 							onCancelConfirm={onCancelConfirm}
 						/>
 					))

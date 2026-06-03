@@ -8,11 +8,10 @@ import { formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useShopOrders } from "@/lib/queries/shop";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ExternalLink, Loader2, Package, RefreshCw, ShoppingBag, Truck } from "lucide-react";
-import Link from "next/link";
+import { Loader2, Package, RefreshCw, ShoppingBag, Truck } from "lucide-react";
 
 export default function ShopOrdersQueue() {
-	const { data, isLoading, isRefetching, refetch } = useShopOrders({ status: "ORCAMENTO" });
+	const { data, isLoading, isRefetching, refetch } = useShopOrders({ status: "CONFIRMADA", statusAtendimento: "NAO_INICIADO" });
 
 	return (
 		<Card>
@@ -20,9 +19,9 @@ export default function ShopOrdersQueue() {
 				<div>
 					<CardTitle className="text-base flex items-center gap-2">
 						<ShoppingBag className="w-4 h-4" />
-						Pedidos pendentes
+						Pedidos recebidos
 					</CardTitle>
-					<CardDescription>Pedidos aguardando confirmação</CardDescription>
+					<CardDescription>Pedidos confirmados aguardando início</CardDescription>
 				</div>
 				<Button variant="ghost" size="icon" onClick={() => refetch()} disabled={isRefetching}>
 					<RefreshCw className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
@@ -78,12 +77,9 @@ export default function ShopOrdersQueue() {
 													})
 												: "Pedido recente"}
 										</span>
-										<Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" asChild>
-											<Link href={`/dashboard/commercial/sales/checkout/${order.id}`}>
-												<ExternalLink className="w-3 h-3" />
-												Confirmar
-											</Link>
-										</Button>
+										<Badge variant="secondary" className="text-xs">
+											Não iniciado
+										</Badge>
 									</div>
 								</div>
 							))}

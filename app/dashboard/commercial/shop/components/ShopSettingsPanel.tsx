@@ -10,15 +10,18 @@ import { getErrorMessage } from "@/lib/errors";
 import { updateShopSettings } from "@/lib/mutations/shop";
 import { getShopAvailability } from "@/lib/shop/availability";
 import type { TGetShopSettingsOutput } from "@/app/api/shop/settings/route";
-import type { TShopScheduleException, TShopSettingsConfiguration, TShopTimeRange } from "@/schemas/shop";
+import type { TShopPaymentMethod, TShopScheduleException, TShopSettingsConfiguration, TShopTimeRange } from "@/schemas/shop";
 import type { TShopWeekdayEnum } from "@/schemas/enums";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	AlertCircle,
+	Banknote,
 	CalendarDays,
+	CreditCard,
 	Image as ImageIcon,
 	Package,
 	Plus,
+	QrCode,
 	RotateCcw,
 	Save,
 	Settings2,
@@ -31,7 +34,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 type TSettings = NonNullable<TGetShopSettingsOutput["data"]>;
-type TSection = "visao-geral" | "atendimento" | "horarios" | "operacao" | "aparencia" | "produtos";
+type TSection = "visao-geral" | "atendimento" | "pagamento" | "horarios" | "operacao" | "aparencia" | "produtos";
 
 const WEEKDAYS: Array<{ value: TShopWeekdayEnum; label: string }> = [
 	{ value: "SEGUNDA", label: "Segunda-feira" },
@@ -46,6 +49,7 @@ const WEEKDAYS: Array<{ value: TShopWeekdayEnum; label: string }> = [
 const SECTIONS: Array<{ value: TSection; label: string; icon: typeof Store }> = [
 	{ value: "visao-geral", label: "Visão geral", icon: Store },
 	{ value: "atendimento", label: "Atendimento", icon: Truck },
+	{ value: "pagamento", label: "Pagamento", icon: CreditCard },
 	{ value: "horarios", label: "Horários", icon: CalendarDays },
 	{ value: "operacao", label: "Operação", icon: Settings2 },
 	{ value: "aparencia", label: "Aparência", icon: ImageIcon },
@@ -114,6 +118,7 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 						<Overview settings={draft} hasSchedule={hasSchedule} onNavigate={setSection} setAtivo={(ativo) => setDraft((prev) => ({ ...prev, ativo }))} />
 					) : null}
 					{section === "atendimento" ? <ServiceSection config={draft.configuracoes} updateService={updateService} /> : null}
+					{section === "pagamento" ? <PaymentSection config={draft.configuracoes} updateConfig={updateConfig} /> : null}
 					{section === "horarios" ? <SchedulesSection config={draft.configuracoes} updateOperation={updateOperation} /> : null}
 					{section === "operacao" ? <OperationSection config={draft.configuracoes} updateOperation={updateOperation} /> : null}
 					{section === "aparencia" ? <AppearanceSection config={draft.configuracoes} updateConfig={updateConfig} /> : null}
@@ -249,6 +254,59 @@ function ServiceSection({
 					<p className="text-sm text-muted-foreground">Ative para configurar pedido mínimo e prazo estimado.</p>
 				)}
 			</SettingBlock>
+		</SectionIntro>
+	);
+}
+
+const SHOP_PAYMENT_METHOD_OPTIONS: Array<{ value: TShopPaymentMethod; label: string; description: string; icon: typeof Banknote }> = [
+	{ value: "DINHEIRO", label: "Dinheiro", description: "Permite solicitar troco no checkout.", icon: Banknote },
+	{ value: "PIX", label: "PIX", description: "O pagamento é confirmado no atendimento.", icon: QrCode },
+	{ value: "CARTAO_DEBITO", label: "Cartão de débito", description: "Pagamento na maquininha.", icon: CreditCard },
+	{ value: "CARTAO_CREDITO", label: "Cartão de crédito", description: "Pagamento na maquininha.", icon: CreditCard },
+];
+
+function PaymentSection({
+	config,
+	updateConfig,
+}: {
+	config: TShopSettingsConfiguration;
+	updateConfig: (config: TShopSettingsConfiguration) => void;
+}) {
+	const selected = config.pagamento.metodosAceitos;
+
+	const toggleMethod = (method: TShopPaymentMethod, enabled: boolean) => {
+		const metodosAceitos = enabled ? [...new Set([...selected, method])] : selected.filter((item) => item !== method);
+		if (metodosAceitos.length === 0) {
+			toast.error("Selecione pelo menos um método de pagamento.");
+			return;
+		}
+		updateConfig({ ...config, pagamento: { ...config.pagamento, metodosAceitos } });
+	};
+
+	return (
+		<SectionIntro title="Pagamento" description="Escolha as formas de pagamento que o cliente pode selecionar no checkout da loja digital.">
+			<div className="divide-y rounded-2xl border">
+				{SHOP_PAYMENT_METHOD_OPTIONS.map((method) => {
+					const Icon = method.icon;
+					return (
+						<div key={method.value} className="flex items-center justify-between gap-4 p-4">
+							<div className="flex items-center gap-3">
+								<span className="flex size-9 items-center justify-center rounded-xl bg-muted">
+									<Icon className="size-4" />
+								</span>
+								<div>
+									<p className="text-sm font-bold">{method.label}</p>
+									<p className="text-xs text-muted-foreground">{method.description}</p>
+								</div>
+							</div>
+							<Switch checked={selected.includes(method.value)} onCheckedChange={(enabled) => toggleMethod(method.value, enabled)} />
+						</div>
+					);
+				})}
+			</div>
+			<p className="text-sm text-muted-foreground">
+				As opções representam a intenção do cliente. O recebimento continua pendente até a entrega ou retirada.
+			</p>
 		</SectionIntro>
 	);
 }

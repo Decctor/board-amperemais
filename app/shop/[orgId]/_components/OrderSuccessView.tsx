@@ -36,20 +36,13 @@ export default function OrderSuccessView() {
 						</div>
 						{organization.logoUrl && (
 							<div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-full overflow-hidden border-4 border-background bg-background">
-								<Image
-									src={organization.logoUrl}
-									alt={organization.nome}
-									fill
-									className="object-cover"
-								/>
+								<Image src={organization.logoUrl} alt={organization.nome} fill className="object-cover" />
 							</div>
 						)}
 					</div>
 
 					<h1 className="text-2xl font-black mb-2">Pedido enviado!</h1>
-					<p className="text-muted-foreground mb-6">
-						Seu pedido foi recebido e está aguardando confirmação da loja.
-					</p>
+					<p className="text-muted-foreground mb-6">Seu pedido foi confirmado e já entrou na fila de atendimento.</p>
 
 					{lastOrder && (
 						<div className="w-full p-4 rounded-xl bg-primary/5 border border-primary/20 mb-6">
@@ -66,12 +59,10 @@ export default function OrderSuccessView() {
 								<Truck className="w-5 h-5 text-muted-foreground" />
 							)}
 							<div className="flex-1 text-left">
-								<p className="font-semibold text-sm">
-									{delivery.modalidade === "RETIRADA" ? "Retirada no local" : "Entrega"}
-								</p>
+								<p className="font-semibold text-sm">{delivery.modalidade === "RETIRADA" ? "Retirada no local" : "Entrega"}</p>
 								<p className="text-xs text-muted-foreground">
 									{delivery.modalidade === "RETIRADA"
-										? "Aguarde a confirmação para retirar seu pedido."
+										? "Aguarde o pedido ficar pronto para realizar a retirada."
 										: "Seu pedido será entregue no endereço informado."}
 								</p>
 							</div>
@@ -82,8 +73,7 @@ export default function OrderSuccessView() {
 							<div className="flex-1 text-left">
 								<p className="font-semibold text-sm">Pagamento no local</p>
 								<p className="text-xs text-muted-foreground">
-									Realize o pagamento no momento da{" "}
-									{delivery.modalidade === "RETIRADA" ? "retirada" : "entrega"}.
+									Realize o pagamento no momento da {delivery.modalidade === "RETIRADA" ? "retirada" : "entrega"}.
 								</p>
 							</div>
 						</div>
@@ -91,14 +81,10 @@ export default function OrderSuccessView() {
 
 					<div className="w-full flex flex-col gap-3">
 						<Button className="w-full h-12 rounded-xl font-bold" onClick={handleNewOrder}>
-							Fazer novo pedido
+							FAZER NOVO PEDIDO
 						</Button>
-						<Button
-							variant="outline"
-							className="w-full h-12 rounded-xl font-bold"
-							onClick={handleBackToCatalog}
-						>
-							Voltar ao {shopSettings.modo === "CARDAPIO" ? "cardápio" : "catálogo"}
+						<Button variant="outline" className="w-full h-12 rounded-xl font-bold" onClick={handleBackToCatalog}>
+							VOLTAR AO {shopSettings.modo === "CARDAPIO" ? "CARDÁPIO" : "CATÁLOGO"}
 						</Button>
 					</div>
 				</div>

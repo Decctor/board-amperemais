@@ -11,12 +11,14 @@ import CashbackStep from "./checkout/CashbackStep";
 import CustomerIdentityStep from "./checkout/CustomerIdentityStep";
 import DeliveryStep from "./checkout/DeliveryStep";
 import OrderReviewStep from "./checkout/OrderReviewStep";
+import PaymentStep from "./checkout/PaymentStep";
 import { useShop } from "./ShopProvider";
 
 const STEP_TITLES: Record<string, string> = {
 	CLIENTE: "SEUS DADOS",
 	ENTREGA: "FORMA DE ENTREGA",
 	CASHBACK: "USAR CASHBACK",
+	PAGAMENTO: "FORMA DE PAGAMENTO",
 	REVISAO: "REVISAR PEDIDO",
 };
 
@@ -41,7 +43,7 @@ export default function CheckoutSheet() {
 		},
 	});
 
-	const isInCheckout = ["CLIENTE", "ENTREGA", "CASHBACK", "REVISAO"].includes(checkoutStep);
+	const isInCheckout = ["CLIENTE", "ENTREGA", "CASHBACK", "PAGAMENTO", "REVISAO"].includes(checkoutStep);
 
 	const handleBack = () => {
 		if (checkoutStep === "CLIENTE") {
@@ -62,7 +64,7 @@ export default function CheckoutSheet() {
 
 	const handleNextFromDelivery = () => {
 		if (canSkipCashback) {
-			orderState.setCheckoutStep("REVISAO");
+			orderState.setCheckoutStep("PAGAMENTO");
 		} else {
 			orderState.nextStep();
 		}
@@ -87,6 +89,8 @@ export default function CheckoutSheet() {
 					{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}
 
 					{checkoutStep === "CASHBACK" && <CashbackStep onNext={() => orderState.nextStep()} />}
+
+					{checkoutStep === "PAGAMENTO" && <PaymentStep onNext={() => orderState.nextStep()} />}
 
 					{checkoutStep === "REVISAO" && <OrderReviewStep onSubmit={() => submitOrder()} isSubmitting={isPending} />}
 				</div>
