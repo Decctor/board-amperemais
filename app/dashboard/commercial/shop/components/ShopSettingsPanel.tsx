@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
+import { uploadFile } from "@/lib/files-storage";
 import { updateShopSettings } from "@/lib/mutations/shop";
 import { getShopAvailability } from "@/lib/shop/availability";
 import type { TGetShopSettingsOutput } from "@/app/api/shop/settings/route";
@@ -29,12 +30,25 @@ import {
 	Store,
 	Trash2,
 	Truck,
+	UploadCloud,
+	X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
+import z from "zod";
 
 type TSettings = NonNullable<TGetShopSettingsOutput["data"]>;
 type TSection = "visao-geral" | "atendimento" | "pagamento" | "horarios" | "operacao" | "aparencia" | "produtos";
+
+const ShopHeaderCoverFileSchema = z.object({
+	file: z.instanceof(File).optional(),
+	previewUrl: z.string().optional(),
+});
+type TShopHeaderCoverFile = z.infer<typeof ShopHeaderCoverFileSchema>;
+
+function isBlobUrl(url: string | undefined): url is string {
+	return Boolean(url?.startsWith("blob:"));
+}
 
 const WEEKDAYS: Array<{ value: TShopWeekdayEnum; label: string }> = [
 	{ value: "SEGUNDA", label: "Segunda-feira" },
@@ -60,17 +74,55 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 	const queryClient = useQueryClient();
 	const [section, setSection] = useState<TSection>("visao-geral");
 	const [draft, setDraft] = useState(settings);
+	const [headerCoverFile, setHeaderCoverFile] = useState<TShopHeaderCoverFile>({
+		previewUrl: settings.configuracoes.aparencia.headerCoverUrl ?? undefined,
+	});
 
-	useEffect(() => setDraft(settings), [settings]);
+	useEffect(() => {
+		setDraft(settings);
+		setHeaderCoverFile({ previewUrl: settings.configuracoes.aparencia.headerCoverUrl ?? undefined });
+	}, [settings]);
 
-	const isDirty = JSON.stringify(draft) !== JSON.stringify(settings);
+	useEffect(() => {
+		return () => {
+			if (isBlobUrl(headerCoverFile.previewUrl)) URL.revokeObjectURL(headerCoverFile.previewUrl);
+		};
+	}, [headerCoverFile.previewUrl]);
+
+	const isDirty = Boolean(headerCoverFile.file) || JSON.stringify(draft) !== JSON.stringify(settings);
 	const hasSchedule = draft.configuracoes.operacao.horarios.some((item) => item.periodos.length > 0);
 
 	const { mutate: save, isPending } = useMutation({
 		mutationKey: ["update-shop-settings"],
-		mutationFn: updateShopSettings,
-		onSuccess: (data) => {
-			toast.success(data.message);
+		mutationFn: async () => {
+			let configuracoes = draft.configuracoes;
+			let uploadedHeaderCoverUrl: string | undefined;
+
+			if (headerCoverFile.file) {
+				const { url } = await uploadFile({
+					file: headerCoverFile.file,
+					fileName: `capa-loja-${headerCoverFile.file.name}`,
+					vinculationId: draft.organizacaoId,
+					prefix: "organizations",
+				});
+				uploadedHeaderCoverUrl = url;
+				configuracoes = {
+					...configuracoes,
+					aparencia: {
+						...configuracoes.aparencia,
+						headerCoverUrl: url,
+						headerCoverTipo: headerCoverFile.file.type.startsWith("video/") ? "VIDEO" : "IMAGEM",
+					},
+				};
+			}
+
+			const response = await updateShopSettings({ ativo: draft.ativo, modo: draft.modo, configuracoes });
+			return { response, configuracoes, uploadedHeaderCoverUrl };
+		},
+		onSuccess: ({ response, configuracoes, uploadedHeaderCoverUrl }) => {
+			toast.success(response.message);
+			setDraft((prev) => ({ ...prev, configuracoes }));
+			if (uploadedHeaderCoverUrl) setHeaderCoverFile({ previewUrl: uploadedHeaderCoverUrl });
 			queryClient.invalidateQueries({ queryKey: ["shop-settings"] });
 		},
 		onError: (error) => toast.error(getErrorMessage(error)),
@@ -86,7 +138,13 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 			setSection("horarios");
 			return;
 		}
-		save({ ativo: draft.ativo, modo: draft.modo, configuracoes: draft.configuracoes });
+		save();
+	};
+
+	const discardChanges = () => {
+		if (isBlobUrl(headerCoverFile.previewUrl)) URL.revokeObjectURL(headerCoverFile.previewUrl);
+		setDraft(settings);
+		setHeaderCoverFile({ previewUrl: settings.configuracoes.aparencia.headerCoverUrl ?? undefined });
 	};
 
 	return (
@@ -121,7 +179,14 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 					{section === "pagamento" ? <PaymentSection config={draft.configuracoes} updateConfig={updateConfig} /> : null}
 					{section === "horarios" ? <SchedulesSection config={draft.configuracoes} updateOperation={updateOperation} /> : null}
 					{section === "operacao" ? <OperationSection config={draft.configuracoes} updateOperation={updateOperation} /> : null}
-					{section === "aparencia" ? <AppearanceSection config={draft.configuracoes} updateConfig={updateConfig} /> : null}
+					{section === "aparencia" ? (
+						<AppearanceSection
+							config={draft.configuracoes}
+							updateConfig={updateConfig}
+							headerCoverFile={headerCoverFile}
+							updateHeaderCoverFile={setHeaderCoverFile}
+						/>
+					) : null}
 					{section === "produtos" ? (
 						<ProductsSection
 							config={draft.configuracoes}
@@ -137,7 +202,7 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 				<div className="absolute right-3 bottom-3 left-3 flex flex-col gap-3 rounded-2xl border bg-background/95 p-3 shadow-lg sm:flex-row sm:items-center sm:justify-between">
 					<p className="text-sm font-semibold">Você tem alterações não salvas.</p>
 					<div className="flex gap-2">
-						<Button variant="outline" className="gap-2" onClick={() => setDraft(settings)} disabled={isPending}>
+						<Button variant="outline" className="gap-2" onClick={discardChanges} disabled={isPending}>
 							<RotateCcw className="size-4" />
 							Descartar
 						</Button>
@@ -477,32 +542,101 @@ function OperationSection({
 function AppearanceSection({
 	config,
 	updateConfig,
+	headerCoverFile,
+	updateHeaderCoverFile,
 }: {
 	config: TShopSettingsConfiguration;
 	updateConfig: (config: TShopSettingsConfiguration) => void;
+	headerCoverFile: TShopHeaderCoverFile;
+	updateHeaderCoverFile: (file: TShopHeaderCoverFile) => void;
 }) {
 	const appearance = config.aparencia;
+	const inputId = useId();
+	const inputRef = useRef<HTMLInputElement | null>(null);
+	const previewUrl = headerCoverFile.previewUrl ?? appearance.headerCoverUrl ?? undefined;
+
+	const selectFile = (file: File) => {
+		const headerCoverTipo = file.type.startsWith("image/") ? "IMAGEM" : file.type.startsWith("video/") ? "VIDEO" : null;
+		if (!headerCoverTipo) {
+			toast.error("Selecione um arquivo de imagem ou vídeo válido.");
+			return;
+		}
+
+		if (isBlobUrl(headerCoverFile.previewUrl)) URL.revokeObjectURL(headerCoverFile.previewUrl);
+		updateHeaderCoverFile({ file, previewUrl: URL.createObjectURL(file) });
+		updateConfig({ ...config, aparencia: { ...appearance, headerCoverTipo } });
+	};
+
+	const removeFile = () => {
+		if (isBlobUrl(headerCoverFile.previewUrl)) URL.revokeObjectURL(headerCoverFile.previewUrl);
+		updateHeaderCoverFile({});
+		updateConfig({ ...config, aparencia: { ...appearance, headerCoverUrl: null, headerCoverTipo: null } });
+		if (inputRef.current) inputRef.current.value = "";
+	};
+
 	return (
 		<SectionIntro title="APARÊNCIA" description="Personalize a capa e escolha os blocos exibidos no início da loja.">
-			<div className="space-y-2">
-				<Label>URL da capa</Label>
-				<Input
-					value={appearance.headerCoverUrl ?? ""}
-					onChange={(event) => updateConfig({ ...config, aparencia: { ...appearance, headerCoverUrl: event.target.value || null } })}
-					placeholder="https://..."
+			<div className="space-y-3">
+				<div>
+					<Label htmlFor={inputId}>Capa do cabeçalho</Label>
+					<p className="mt-1 text-xs text-muted-foreground">Envie uma imagem ou vídeo. O arquivo será enviado ao clicar em salvar alterações.</p>
+				</div>
+				<input
+					ref={inputRef}
+					id={inputId}
+					type="file"
+					accept="image/*,video/*"
+					className="hidden"
+					onChange={(event) => {
+						const file = event.target.files?.[0];
+						if (file) selectFile(file);
+						event.target.value = "";
+					}}
 				/>
-			</div>
-			<div className="flex gap-2">
-				{(["IMAGEM", "VIDEO"] as const).map((type) => (
-					<Button
-						key={type}
+				{previewUrl ? (
+					<div className="overflow-hidden rounded-2xl border bg-muted/20">
+						<div className="relative aspect-[16/6] min-h-44 overflow-hidden bg-muted">
+							{appearance.headerCoverTipo === "VIDEO" ? (
+								<video src={previewUrl} className="size-full object-cover" controls>
+									<track kind="captions" srcLang="pt-BR" label="Sem legendas disponíveis" />
+								</video>
+							) : (
+								<img src={previewUrl} alt="Pré-visualização da capa da loja" className="size-full object-cover" />
+							)}
+							<div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-transparent" />
+							<span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[0.65rem] font-black tracking-wider text-white uppercase">
+								{appearance.headerCoverTipo === "VIDEO" ? "Vídeo" : "Imagem"}
+							</span>
+						</div>
+						<div className="flex flex-wrap items-center justify-between gap-2 p-3">
+							<p className="min-w-0 truncate text-xs text-muted-foreground">{headerCoverFile.file?.name ?? "Capa atual da loja"}</p>
+							<div className="flex gap-2">
+								<Button type="button" size="sm" variant="outline" className="gap-2" onClick={() => inputRef.current?.click()}>
+									<UploadCloud className="size-4" />
+									Alterar
+								</Button>
+								<Button type="button" size="sm" variant="ghost" className="gap-2 text-destructive hover:text-destructive" onClick={removeFile}>
+									<X className="size-4" />
+									Remover
+								</Button>
+							</div>
+						</div>
+					</div>
+				) : (
+					<button
 						type="button"
-						variant={appearance.headerCoverTipo === type ? "default" : "outline"}
-						onClick={() => updateConfig({ ...config, aparencia: { ...appearance, headerCoverTipo: type } })}
+						onClick={() => inputRef.current?.click()}
+						className="flex min-h-48 w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-muted/20 px-6 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
 					>
-						{type === "IMAGEM" ? "Imagem" : "Vídeo"}
-					</Button>
-				))}
+						<span className="flex size-11 items-center justify-center rounded-full bg-background shadow-sm">
+							<UploadCloud className="size-5 text-muted-foreground" />
+						</span>
+						<span>
+							<span className="block text-sm font-bold">Selecionar imagem ou vídeo</span>
+							<span className="mt-1 block text-xs text-muted-foreground">A capa será exibida no topo da loja digital.</span>
+						</span>
+					</button>
+				)}
 			</div>
 			<div className="divide-y rounded-2xl border">
 				{appearance.blocos.map((block, index) => (

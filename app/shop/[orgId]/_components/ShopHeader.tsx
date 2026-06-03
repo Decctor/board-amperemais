@@ -16,6 +16,7 @@ export default function ShopHeader() {
 	const service = config.atendimento;
 	const { colors, getPrimaryGradientStyle } = useOrgColors();
 	const showCoverImage = Boolean(appearance.headerCoverUrl && appearance.headerCoverTipo === "IMAGEM");
+	const showCoverVideo = Boolean(appearance.headerCoverUrl && appearance.headerCoverTipo === "VIDEO");
 
 	const formattedLocation = formatLocation({
 		location: {
@@ -36,9 +37,15 @@ export default function ShopHeader() {
 	return (
 		<header className="relative flex w-full flex-col bg-background pb-2">
 			<div className="relative h-[11.5rem] w-full overflow-hidden sm:h-56">
-				{showCoverImage && appearance.headerCoverUrl ? (
+				{(showCoverImage || showCoverVideo) && appearance.headerCoverUrl ? (
 					<>
-						<Image src={appearance.headerCoverUrl} alt={organization.nome} fill className="object-cover" priority sizes="100vw" />
+						{showCoverVideo ? (
+							<video src={appearance.headerCoverUrl} className="size-full object-cover" autoPlay muted loop playsInline>
+								<track kind="captions" srcLang="pt-BR" label="Sem legendas disponíveis" />
+							</video>
+						) : (
+							<Image src={appearance.headerCoverUrl} alt={organization.nome} fill className="object-cover" priority sizes="100vw" />
+						)}
 						<div className="absolute inset-0 bg-linear-to-b from-black/25 via-transparent to-black/50" />
 					</>
 				) : (
