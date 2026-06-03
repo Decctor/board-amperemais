@@ -57,7 +57,8 @@ export type TFiscalValidationError = {
 
 export type TIcmsTaxResult = {
 	csosn: TFiscalIcmsCsosnEnum;
-	origem: string;
+	/** Codigo 0-8 do campo orig (inteiro na API Nuvem Fiscal). */
+	origem: number;
 	vBC: number;
 	pICMS: number;
 	vICMS: number;

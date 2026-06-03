@@ -21,7 +21,12 @@ async function claimDocument(documentId: string): Promise<boolean> {
 	const claimed = await db
 		.update(fiscalOutboundDocuments)
 		.set({ bloqueadoEm: new Date() })
-		.where(and(eq(fiscalOutboundDocuments.id, documentId), or(isNull(fiscalOutboundDocuments.bloqueadoEm), lte(fiscalOutboundDocuments.bloqueadoEm, staleThreshold))))
+		.where(
+			and(
+				eq(fiscalOutboundDocuments.id, documentId),
+				or(isNull(fiscalOutboundDocuments.bloqueadoEm), lte(fiscalOutboundDocuments.bloqueadoEm, staleThreshold)),
+			),
+		)
 		.returning({ id: fiscalOutboundDocuments.id });
 	return claimed.length > 0;
 }
@@ -70,6 +75,7 @@ export async function processFiscalQueue({ limit = 25 }: { limit?: number } = {}
 			await releaseDocument(doc.id, null);
 			results.enviados++;
 		} catch (error) {
+			console.log("[FISCAL_WORKER] Error emitting fiscal document", error);
 			const attempts = (doc.tentativasEnvio ?? 0) + 1;
 			const proxima = attempts < MAX_ATTEMPTS ? nextAttemptDate(attempts) : null;
 			await releaseDocument(doc.id, proxima);

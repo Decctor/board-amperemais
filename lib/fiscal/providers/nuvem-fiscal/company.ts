@@ -5,7 +5,7 @@ import type {
 	TProviderCompanyCertificateSyncResult,
 	TProviderCompanySyncResult,
 } from "@/lib/fiscal/types";
-import { createNuvemFiscalClient } from "./client";
+import { getNuvemFiscalAuthenticatedClient } from "./authenticated-client";
 import { formatStringAsOnlyDigits } from "@/lib/formatting";
 import { mapTaxRegistration, nonEmptyString, onlyDigits } from "./mappers/utils";
 import axios from "axios";
@@ -62,10 +62,7 @@ function mapOrganizationNfeConfig(organizacao: TFiscalOrganization) {
 }
 
 export async function syncNuvemFiscalCompany(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult> {
-	const client = createNuvemFiscalClient({
-		ambiente: organizacao.fiscalConfiguracao?.ambiente,
-		apiToken: organizacao.fiscalConfiguracao?.nuvemFiscal.api.apiToken,
-	});
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const companyPayload = mapOrganizationToNuvemFiscalCompany(organizacao);
 	const cpfCnpj = organizacao.fiscalConfiguracao?.cpfCnpj;
 	if (!cpfCnpj) throw new Error("CPF/CNPJ fiscal nao configurado.");
@@ -120,10 +117,7 @@ export async function syncNuvemFiscalCompanyCertificate(
 	organizacao: TFiscalOrganization,
 	input: TProviderCompanyCertificateSyncInput,
 ): Promise<TProviderCompanyCertificateSyncResult> {
-	const client = createNuvemFiscalClient({
-		ambiente: organizacao.fiscalConfiguracao?.ambiente,
-		apiToken: organizacao.fiscalConfiguracao?.nuvemFiscal.api.apiToken,
-	});
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const { cpfCnpj, cpfCnpjAsNumber } = getNuvemFiscalCompanyIdentifier(organizacao);
 	const certificateBuffer = await downloadStoredFiscalAsset(input.storagePath);
 	const certificado = Buffer.from(certificateBuffer).toString("base64");

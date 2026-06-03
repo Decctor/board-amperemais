@@ -62,9 +62,12 @@ export async function listFiscalDocuments({
 	const searchLike = search?.trim() ? `%${search.trim()}%` : null;
 
 	const conditions = [eq(fiscalOutboundDocuments.organizacaoId, organizacaoId)];
-	if (searchLike) conditions.push(sql`(${fiscalOutboundDocuments.referencia} ilike ${searchLike} or ${fiscalOutboundDocuments.chaveAcesso} ilike ${searchLike})`);
+	if (searchLike)
+		conditions.push(sql`(${fiscalOutboundDocuments.referencia} ilike ${searchLike} or ${fiscalOutboundDocuments.chaveAcesso} ilike ${searchLike})`);
 	if (statusInterno && statusInterno.length > 0) {
-		conditions.push(inArray(fiscalOutboundDocuments.statusInterno, statusInterno as (typeof fiscalOutboundDocuments.statusInterno.enumValues)[number][]));
+		conditions.push(
+			inArray(fiscalOutboundDocuments.statusInterno, statusInterno as (typeof fiscalOutboundDocuments.statusInterno.enumValues)[number][]),
+		);
 	}
 	const whereClause = and(...conditions);
 
@@ -72,7 +75,7 @@ export async function listFiscalDocuments({
 		db.query.fiscalOutboundDocuments.findMany({
 			where: whereClause,
 			with: {
-				venda: { columns: { id: true, valorTotal: true, dataVenda: true, status: true } },
+				venda: { columns: { id: true, valorTotal: true, dataVenda: true, statusVenda: true } },
 			},
 			orderBy: (fields, operators) => operators.desc(fields.dataInsercao),
 			offset,
@@ -278,9 +281,6 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
 		if (!fiscalConfig.nuvemFiscal?.nfce?.idCsc) throw new FiscalReadinessError("ID CSC da NFC-e nao configurado.");
 	}
 
-	if (context.organizacao.fiscalProvedor === "NUVEM_FISCAL" && !fiscalConfig.nuvemFiscal?.api?.apiToken) {
-		throw new FiscalReadinessError("Token da Nuvem Fiscal nao configurado para esta organizacao.");
-	}
 
 	if (context.perfisProdutos.length === 0) throw new FiscalReadinessError("Nenhum perfil fiscal de produto encontrado para a venda.");
 }
@@ -436,13 +436,33 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 		const providerDetails = await provider.emitirDocumento(context, latestDocument);
 		const updatedDocument = await applyProviderDocumentDetails(documento.id, providerDetails);
 
+		const providerMessages = (providerDetails.mensagens ?? []).map((message) => (typeof message === "string" ? message : JSON.stringify(message)));
+		const rejectionDetail =
+			providerDetails.statusInterno === "REJEITADO" || providerDetails.statusInterno === "ERRO"
+				? providerMessages.join("; ") || "sem motivo informado pelo provedor"
+				: null;
+
 		await addFiscalDocumentEvent({
 			documentoFiscalId: documento.id,
 			tipo: providerDetails.statusInterno === "AUTORIZADO" ? "AUTORIZADO" : providerDetails.statusInterno === "REJEITADO" ? "REJEITADO" : "ERRO",
-			descricao: `Documento retornou do provedor com status ${providerDetails.statusInterno}.`,
+			descricao: rejectionDetail
+				? `Documento ${providerDetails.statusInterno.toLowerCase()}: ${rejectionDetail}`
+				: `Documento retornou do provedor com status ${providerDetails.statusInterno}.`,
 			payload: providerDetails.provedorRetorno,
 			autorId: input.autorId ?? null,
 		});
+
+		if (providerDetails.statusInterno === "REJEITADO" || providerDetails.statusInterno === "ERRO") {
+			console.warn("[FISCAL] Emissao fiscal finalizada sem autorizacao", {
+				documentoFiscalId: documento.id,
+				vendaId: input.vendaId,
+				tipo: input.tipo,
+				statusInterno: providerDetails.statusInterno,
+				codigoRejeicao: providerDetails.codigoStatus,
+				mensagens: providerMessages,
+				provedorDocumentoId: providerDetails.id,
+			});
+		}
 
 		if (providerDetails.statusInterno === "AUTORIZADO" && updatedDocument) {
 			await persistAuthorizedAssets(updatedDocument, context.organizacao.id);
@@ -485,13 +505,31 @@ export async function syncFiscalDocument(input: TSyncDocumentInput) {
 	const providerDetails = await provider.sincronizarDocumento(documento, organizacao);
 	const updated = await applyProviderDocumentDetails(documento.id, providerDetails);
 
+	const syncMessages = (providerDetails.mensagens ?? []).map((message) => (typeof message === "string" ? message : JSON.stringify(message)));
+	const syncRejectionDetail =
+		providerDetails.statusInterno === "REJEITADO" || providerDetails.statusInterno === "ERRO"
+			? syncMessages.join("; ") || "sem motivo informado pelo provedor"
+			: null;
+
 	await addFiscalDocumentEvent({
 		documentoFiscalId: documento.id,
 		tipo: "SINCRONIZADO",
-		descricao: "Documento fiscal sincronizado manualmente.",
+		descricao: syncRejectionDetail
+			? `Sincronizacao: documento ${providerDetails.statusInterno.toLowerCase()} — ${syncRejectionDetail}`
+			: "Documento fiscal sincronizado manualmente.",
 		payload: providerDetails.provedorRetorno,
 		autorId: input.authorId ?? null,
 	});
+
+	if (providerDetails.statusInterno === "REJEITADO" || providerDetails.statusInterno === "ERRO") {
+		console.warn("[FISCAL] Sincronizacao fiscal sem autorizacao", {
+			documentoFiscalId: documento.id,
+			statusInterno: providerDetails.statusInterno,
+			codigoRejeicao: providerDetails.codigoStatus,
+			mensagens: syncMessages,
+			provedorDocumentoId: providerDetails.id,
+		});
+	}
 
 	if (providerDetails.statusInterno === "AUTORIZADO" && updated) {
 		await persistAuthorizedAssets(updated, organizacao.id);
@@ -597,10 +635,16 @@ type CreateReturnFiscalDocumentParams = {
 	authorId?: string | null;
 };
 // Gera uma NF-e de devolucao referenciando um documento autorizado (mesma venda, finalidade DEVOLUCAO).
-export async function createReturnFiscalDocument({ organizationId, originalDocumentId, operationProfileId, authorId }: CreateReturnFiscalDocumentParams) {
+export async function createReturnFiscalDocument({
+	organizationId,
+	originalDocumentId,
+	operationProfileId,
+	authorId,
+}: CreateReturnFiscalDocumentParams) {
 	const original = await getFiscalDocumentById({ documentId: originalDocumentId, organizationId });
 	if (!original) throw new createHttpError.NotFound("Documento fiscal original nao encontrado.");
-	if (original.statusInterno !== "AUTORIZADO") throw new createHttpError.BadRequest("A devolucao so pode ser gerada a partir de um documento autorizado.");
+	if (original.statusInterno !== "AUTORIZADO")
+		throw new createHttpError.BadRequest("A devolucao so pode ser gerada a partir de um documento autorizado.");
 	if (!original.vendaId) throw new createHttpError.BadRequest("Documento original sem venda vinculada.");
 	if (!original.chaveAcesso) throw new createHttpError.BadRequest("Documento original sem chave de acesso.");
 

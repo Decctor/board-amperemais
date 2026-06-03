@@ -61,8 +61,9 @@ export async function processSaleAutomaticFiscalEmissionIfEligible({
 		});
 		return { status: "SOLICITADO" as const, documentoId: enqueued.documentoId, statusInterno: enqueued.statusInterno };
 	} catch (error) {
+		console.log("[PROCESS_SALE_AUTOMATIC_FISCAL_EMISSION] Error emitting fiscal document", error);
 		const errorMessage = getErrorMessage(error);
-		await notifyFiscalEmissionFailure({ organization, sale, errorMessage });
+		// await notifyFiscalEmissionFailure({ organization, sale, errorMessage });
 		return { status: "ERRO" as const, error: errorMessage };
 	}
 }

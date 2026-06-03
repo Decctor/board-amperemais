@@ -191,13 +191,46 @@ const UtilsSalesPromoCampaignSchema = z.object({
 	}),
 });
 
+export const UtilsNuvemFiscalApiTokenValorSchema = z.object({
+	identificador: z.enum(["NUVEM_FISCAL_API_TOKEN"]),
+	accessToken: z.string({
+		required_error: "Token de acesso da Nuvem Fiscal nao informado.",
+		invalid_type_error: "Tipo nao valido para o token de acesso da Nuvem Fiscal.",
+	}),
+	dataExpiracao: z
+		.string({
+			required_error: "Data de expiracao do token da Nuvem Fiscal nao informada.",
+			invalid_type_error: "Tipo nao valido para a data de expiracao do token da Nuvem Fiscal.",
+		})
+		.datetime({ message: "Tipo nao valido para a data de expiracao do token da Nuvem Fiscal." }),
+});
+export type TUtilsNuvemFiscalApiTokenValor = z.infer<typeof UtilsNuvemFiscalApiTokenValorSchema>;
+
+const UtilsNuvemFiscalApiTokenSchema = z.object({
+	identificador: z.enum(["NUVEM_FISCAL_API_TOKEN"]),
+	organizacaoId: z
+		.string({
+			invalid_type_error: "Tipo nao valido para a organizacao ID do token da Nuvem Fiscal.",
+		})
+		.optional()
+		.nullable(),
+	valor: UtilsNuvemFiscalApiTokenValorSchema,
+});
+
 export const UtilsSchema = z.discriminatedUnion("identificador", [
 	UtilsRFMSchema,
 	UtilsOnlineImportationSchema,
 	UtilsCardapioWebImportationSchema,
 	UtilsSalesPromoCampaignSchema,
+	UtilsNuvemFiscalApiTokenSchema,
 ]);
-export const UtilsIdentifierSchema = z.enum(["CONFIG_RFM", "ONLINE_IMPORTATION", "CARDAPIO_WEB_IMPORTATION", "SALES_PROMO_CAMPAIGN"]);
+export const UtilsIdentifierSchema = z.enum([
+	"CONFIG_RFM",
+	"ONLINE_IMPORTATION",
+	"CARDAPIO_WEB_IMPORTATION",
+	"SALES_PROMO_CAMPAIGN",
+	"NUVEM_FISCAL_API_TOKEN",
+]);
 export type TUtilsIdentifier = z.infer<typeof UtilsIdentifierSchema>;
 export type TUtilsRFMConfig = z.infer<typeof UtilsRFMSchema>;
 export type TUtilsValue = z.infer<typeof UtilsSchema>["valor"];

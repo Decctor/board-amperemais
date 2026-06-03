@@ -3,7 +3,15 @@ import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import { UF_TO_IBGE_CODE } from "@/lib/fiscal/engine";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
 import { buildItemImposto } from "./imposto";
-import { mapConsumerPresenceToNfeCode, mapFiscalFinalityToNfeCode, mapTaxRegistration, nonEmptyString, onlyDigits } from "./utils";
+import {
+	formatCestForNuvemFiscal,
+	formatNcmForNuvemFiscal,
+	mapConsumerPresenceToNfeCode,
+	mapFiscalFinalityToNfeCode,
+	mapTaxRegistration,
+	nonEmptyString,
+	onlyDigits,
+} from "./utils";
 
 function mapDestinatarioIndicator(snapshot: TFiscalSaleContext["destinatarioSnapshot"]): 1 | 2 | 9 {
 	if (snapshot?.indicadorInscricaoEstadual === "CONTRIBUINTE_ICMS") return 1;
@@ -93,8 +101,8 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 						cProd: item.produtoId,
 						cEAN: "SEM GTIN",
 						xProd: item.metadados && typeof item.metadados === "object" && "descricao" in item.metadados ? item.metadados.descricao : `ITEM ${index + 1}`,
-						NCM: perfil?.ncm ?? "00000000",
-						CEST: perfil?.cest ?? undefined,
+						NCM: formatNcmForNuvemFiscal(perfil?.ncm),
+						CEST: formatCestForNuvemFiscal(perfil?.cest),
 						CFOP: result.cfop ?? perfil?.cfopPadrao ?? context.operacao.cfopPadrao,
 						uCom: perfil?.unidadeComercial ?? "UN",
 						qCom: item.quantidade,

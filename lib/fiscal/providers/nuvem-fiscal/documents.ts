@@ -12,18 +12,17 @@ import type {
 import createHttpError from "http-errors";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
 import axios from "axios";
-import { inspect } from "node:util";
-import { createNuvemFiscalClient } from "./client";
+import {
+	extractNuvemFiscalDfeMessages,
+	formatNuvemFiscalPayloadForLog,
+	logNuvemFiscalDfeOutcome,
+	logNuvemFiscalEmissionRequest,
+} from "./dfe-messages";
+import { getNuvemFiscalAuthenticatedClient } from "./authenticated-client";
 import { mapSaleContextToNfcePayload } from "./mappers/nfce";
 import { mapSaleContextToNfePayload } from "./mappers/nfe";
 import type { TNuvemFiscalCancelResponse, TNuvemFiscalDfeResponse } from "./types";
 
-function getClient(organizacao: TFiscalOrganization) {
-	return createNuvemFiscalClient({
-		ambiente: organizacao.fiscalConfiguracao?.ambiente,
-		apiToken: organizacao.fiscalConfiguracao?.nuvemFiscal.api.apiToken,
-	});
-}
 
 function mapDfeStatus(status: TNuvemFiscalDfeResponse["status"]): TProviderDocumentDetails["status"] {
 	switch (status) {
@@ -56,17 +55,14 @@ function toEnvironment(value: "homologacao" | "producao") {
 	return value === "producao" ? "PRODUCAO" : "HOMOLOGACAO";
 }
 
-function formatNuvemFiscalErrorPayload(data: unknown): string {
-	if (data === undefined) return "undefined";
-	if (typeof data === "string") return data;
-	try {
-		return JSON.stringify(data, null, 2);
-	} catch {
-		return inspect(data, { depth: null, maxArrayLength: null, maxStringLength: null });
+function mapDfeResponse(
+	response: TNuvemFiscalDfeResponse,
+	context?: { documentoFiscalId?: string; tipo?: string; action?: "emitir" | "consultar" | "sincronizar" },
+): TProviderDocumentDetails {
+	if (context?.action) {
+		logNuvemFiscalDfeOutcome(context.action, response, context);
 	}
-}
 
-function mapDfeResponse(response: TNuvemFiscalDfeResponse): TProviderDocumentDetails {
 	return {
 		id: response.id,
 		status: mapDfeStatus(response.status),
@@ -79,25 +75,35 @@ function mapDfeResponse(response: TNuvemFiscalDfeResponse): TProviderDocumentDet
 		dataEmissao: response.data_emissao ? new Date(response.data_emissao) : null,
 		dataAutorizacao: response.autorizacao?.data_recebimento ? new Date(response.autorizacao.data_recebimento) : null,
 		codigoStatus: (response.autorizacao?.codigo_status ?? response.codigo_status)?.toString() ?? null,
-		mensagens: response.mensagens ?? [],
+		mensagens: extractNuvemFiscalDfeMessages(response),
 		provedorRetorno: response as unknown as Record<string, unknown>,
 	};
 }
 
 export async function emitNuvemFiscalDocument(context: TFiscalSaleContext, documento: TFiscalDocument): Promise<TProviderDocumentDetails> {
-	const client = getClient(context.organizacao);
+	const client = await getNuvemFiscalAuthenticatedClient(context.organizacao);
 	const path = documento.tipo === "NFCE" ? "/nfce" : "/nfe";
 	const payload = documento.tipo === "NFCE" ? mapSaleContextToNfcePayload(context, documento) : mapSaleContextToNfePayload(context, documento);
+
+	logNuvemFiscalEmissionRequest({
+		path,
+		documentoFiscalId: documento.id,
+		tipo: documento.tipo,
+		vendaId: documento.vendaId,
+		payload,
+		fiscalConfigIe: context.organizacao.fiscalConfiguracao?.inscricaoEstadual ?? null,
+	});
+
 	try {
 		const { data } = await client.post<TNuvemFiscalDfeResponse>(path, payload);
 
 		return {
-			...mapDfeResponse(data),
+			...mapDfeResponse(data, { documentoFiscalId: documento.id, tipo: documento.tipo, action: "emitir" }),
 			provedorPayload: payload as Record<string, unknown>,
 		};
 	} catch (error) {
 		if (axios.isAxiosError(error) && error.response?.data !== undefined) {
-			console.error(`[NUVEM_FISCAL] Error emitting document\n${formatNuvemFiscalErrorPayload(error.response.data)}`);
+			console.error(`[NUVEM_FISCAL] Error emitting document\n${formatNuvemFiscalPayloadForLog(error.response.data)}`);
 		} else {
 			console.error("[NUVEM_FISCAL] Error emitting document", error);
 		}
@@ -105,18 +111,22 @@ export async function emitNuvemFiscalDocument(context: TFiscalSaleContext, docum
 	}
 }
 
-export async function consultNuvemFiscalDocument(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails> {
-	const client = getClient(organizacao);
+export async function consultNuvemFiscalDocument(
+	documento: TFiscalDocument,
+	organizacao: TFiscalOrganization,
+	action: "consultar" | "sincronizar" = "consultar",
+): Promise<TProviderDocumentDetails> {
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const path = documento.tipo === "NFCE" ? `/nfce/${documento.provedorDocumentoId}` : `/nfe/${documento.provedorDocumentoId}`;
 	const { data } = await client.get<TNuvemFiscalDfeResponse>(path);
-	return mapDfeResponse(data);
+	return mapDfeResponse(data, { documentoFiscalId: documento.id, tipo: documento.tipo, action });
 }
 
 export async function syncNuvemFiscalDocument(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails> {
-	const client = getClient(organizacao);
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const path = documento.tipo === "NFCE" ? `/nfce/${documento.provedorDocumentoId}/sincronizar` : `/nfe/${documento.provedorDocumentoId}/sincronizar`;
 	await client.post(path);
-	return consultNuvemFiscalDocument(documento, organizacao);
+	return consultNuvemFiscalDocument(documento, organizacao, "sincronizar");
 }
 
 export async function cancelNuvemFiscalDocument(
@@ -124,7 +134,7 @@ export async function cancelNuvemFiscalDocument(
 	documento: TFiscalDocument,
 	organizacao: TFiscalOrganization,
 ): Promise<TProviderDocumentDetails> {
-	const client = getClient(organizacao);
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const path =
 		documento.tipo === "NFCE" ? `/nfce/${documento.provedorDocumentoId}/cancelamento` : `/nfe/${documento.provedorDocumentoId}/cancelamento`;
 	const { data } = await client.post<TNuvemFiscalCancelResponse>(path, { justificativa: input.reason });
@@ -145,7 +155,7 @@ export async function cancelNuvemFiscalDocument(
 
 export async function downloadNuvemFiscalXml(documento: TFiscalDocument, organizacao: TFiscalOrganization) {
 	if (!documento.provedorDocumentoId) return null;
-	const client = getClient(organizacao);
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const path = documento.tipo === "NFCE" ? `/nfce/${documento.provedorDocumentoId}/xml` : `/nfe/${documento.provedorDocumentoId}/xml`;
 	const { data } = await client.get<ArrayBuffer>(path, { responseType: "arraybuffer" });
 	return data;
@@ -153,7 +163,7 @@ export async function downloadNuvemFiscalXml(documento: TFiscalDocument, organiz
 
 export async function downloadNuvemFiscalPdf(documento: TFiscalDocument, organizacao: TFiscalOrganization) {
 	if (!documento.provedorDocumentoId) return null;
-	const client = getClient(organizacao);
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const path = documento.tipo === "NFCE" ? `/nfce/${documento.provedorDocumentoId}/pdf` : `/nfe/${documento.provedorDocumentoId}/pdf`;
 	const { data } = await client.get<ArrayBuffer>(path, { responseType: "arraybuffer" });
 	return data;
@@ -166,7 +176,7 @@ export async function cartaCorrecaoNuvemFiscalDocument(
 	organizacao: TFiscalOrganization,
 ): Promise<TProviderCorrectionResult> {
 	if (documento.tipo !== "NFE") throw new createHttpError.BadRequest("Carta de correcao disponivel apenas para NF-e.");
-	const client = getClient(organizacao);
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const { data } = await client.post<{ sequencia_evento?: number; numero_protocolo?: string; data_evento?: string; motivo_status?: string }>(
 		`/nfe/${documento.provedorDocumentoId}/carta-correcao`,
 		{ correcao: input.correcao },
@@ -188,9 +198,10 @@ export async function inutilizeNuvemFiscalNumber(
 ): Promise<TProviderInutilizationResult> {
 	const fiscalConfig = organizacao.fiscalConfiguracao;
 	const numero = documento.numero ? Number(documento.numero) : null;
-	if (!fiscalConfig?.cpfCnpj || !documento.serie || !numero) throw new createHttpError.BadRequest("Dados insuficientes para inutilizacao (CNPJ, serie ou numero).");
+	if (!fiscalConfig?.cpfCnpj || !documento.serie || !numero)
+		throw new createHttpError.BadRequest("Dados insuficientes para inutilizacao (CNPJ, serie ou numero).");
 
-	const client = getClient(organizacao);
+	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const path = documento.tipo === "NFCE" ? "/nfce/inutilizacoes" : "/nfe/inutilizacoes";
 	const { data } = await client.post<{ numero_protocolo?: string; data_recebimento?: string; motivo_status?: string }>(path, {
 		ambiente: documento.ambiente === "PRODUCAO" ? "producao" : "homologacao",
@@ -212,7 +223,14 @@ export async function inutilizeNuvemFiscalNumber(
 
 export const nuvemFiscalDocumentMethods: Pick<
 	IFiscalProvider,
-	"emitirDocumento" | "consultarDocumento" | "sincronizarDocumento" | "cancelarDocumento" | "cartaCorrecaoDocumento" | "inutilizarNumeracao" | "baixarXml" | "baixarPdf"
+	| "emitirDocumento"
+	| "consultarDocumento"
+	| "sincronizarDocumento"
+	| "cancelarDocumento"
+	| "cartaCorrecaoDocumento"
+	| "inutilizarNumeracao"
+	| "baixarXml"
+	| "baixarPdf"
 > = {
 	emitirDocumento: emitNuvemFiscalDocument,
 	consultarDocumento: consultNuvemFiscalDocument,

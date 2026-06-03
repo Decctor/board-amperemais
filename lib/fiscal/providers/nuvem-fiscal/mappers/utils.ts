@@ -4,6 +4,25 @@ export function onlyDigits(value: string | null | undefined) {
 	return value?.replace(/\D/g, "") || undefined;
 }
 
+/** Formato da API Nuvem Fiscal: ^([0-9]{2}|[0-9]{8})$ */
+export function formatNcmForNuvemFiscal(value: string | null | undefined) {
+	const digits = onlyDigits(value) ?? "";
+	if (digits.length === 2) return digits;
+	if (digits.length === 8) return digits;
+	if (digits.length > 2 && digits.length < 8) return digits.padStart(8, "0");
+	if (digits.length > 8) return digits.slice(0, 8);
+	return "00000000";
+}
+
+/** Formato da API Nuvem Fiscal: ^([0-9]{7})$ ; omitido quando vazio ou invalido. */
+export function formatCestForNuvemFiscal(value: string | null | undefined) {
+	const digits = onlyDigits(value);
+	if (!digits) return undefined;
+	if (digits.length === 7) return digits;
+	if (digits.length < 7) return digits.padStart(7, "0");
+	return undefined;
+}
+
 export function nonEmptyString(value: string | null | undefined) {
 	const trimmed = value?.trim();
 	return trimmed || undefined;

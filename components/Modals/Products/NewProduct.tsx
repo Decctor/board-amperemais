@@ -96,6 +96,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 				rastreamentoEstoqueAtivo: variant.rastreamentoEstoqueAtivo,
 				ativo: variant.ativo,
 				addOns: processedVariantAddOns,
+				perfisFiscais: [],
 			});
 		}
 
@@ -123,6 +124,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 			},
 			productVariants: processedVariants,
 			productAddOns: processedAddOns,
+			productFiscalProfiles: [],
 		};
 
 		return await createProduct(input);

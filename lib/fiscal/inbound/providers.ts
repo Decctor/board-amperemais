@@ -1,6 +1,12 @@
-import { createNuvemFiscalClient } from "../providers/nuvem-fiscal/client";
+import { getNuvemFiscalAuthenticatedClient } from "../providers/nuvem-fiscal/authenticated-client";
 import type { TFiscalOrganization } from "../types";
-import { MANIFEST_EVENT_CODES, type IFiscalInboundProvider, type TInboundDistribuicaoResult, type TInboundManifestInput, type TInboundManifestResult } from "./types";
+import {
+	MANIFEST_EVENT_CODES,
+	type IFiscalInboundProvider,
+	type TInboundDistribuicaoResult,
+	type TInboundManifestInput,
+	type TInboundManifestResult,
+} from "./types";
 
 // Provider manual / fallback: nao consulta distribuicao.
 class ManualInboundProvider implements IFiscalInboundProvider {
@@ -38,7 +44,7 @@ class NuvemFiscalInboundProvider implements IFiscalInboundProvider {
 	async consultarDistribuicao(input: { ultNSU: string }, organizacao: TFiscalOrganization): Promise<TInboundDistribuicaoResult> {
 		const fiscalConfig = organizacao.fiscalConfiguracao;
 		const cnpj = (fiscalConfig?.cpfCnpj ?? "").replace(/\D/g, "");
-		const client = createNuvemFiscalClient({ apiToken: fiscalConfig?.nuvemFiscal.api.apiToken, ambiente: fiscalConfig?.ambiente });
+		const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 		const { data } = await client.get<TNuvemDistribuicaoResponse>(`/distribuicao/nfe?cpf_cnpj=${cnpj}&ult_nsu=${input.ultNSU}`);
 
 		const documentos = (data.documentos ?? []).map((doc) => {
@@ -63,7 +69,7 @@ class NuvemFiscalInboundProvider implements IFiscalInboundProvider {
 	async manifestarDocumento(input: TInboundManifestInput, organizacao: TFiscalOrganization): Promise<TInboundManifestResult> {
 		const fiscalConfig = organizacao.fiscalConfiguracao;
 		const cnpj = (fiscalConfig?.cpfCnpj ?? "").replace(/\D/g, "");
-		const client = createNuvemFiscalClient({ apiToken: fiscalConfig?.nuvemFiscal.api.apiToken, ambiente: fiscalConfig?.ambiente });
+		const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 		const { data } = await client.post<{ numero_protocolo?: string; motivo_status?: string }>("/distribuicao/nfe/manifestacoes", {
 			cpf_cnpj: cnpj,
 			chave: input.chaveAcesso,

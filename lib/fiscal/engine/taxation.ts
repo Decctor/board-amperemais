@@ -37,7 +37,7 @@ function computeIcms({
 	config: TEffectiveTaxConfig;
 	scenario: TFiscalTaxScenario;
 	baseLiquida: number;
-	origemCodigo: string;
+	origemCodigo: number;
 	produtoId: string;
 	cest: string | null;
 	erros: TFiscalValidationError[];

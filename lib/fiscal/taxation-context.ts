@@ -1,5 +1,16 @@
 import type { TFiscalClientTaxIndicatorEnum } from "@/schemas/enums";
-import { aggregateItemErrors, computeDocumentTotals, computeItemTaxation, computeVTotTrib, selectIbptRate, type TDocumentTaxTotals, type TFiscalTaxGroupWithRules, type TFiscalTaxScenario, type TFiscalValidationError, type TItemTaxResult } from "./engine";
+import {
+	aggregateItemErrors,
+	computeDocumentTotals,
+	computeItemTaxation,
+	computeVTotTrib,
+	selectIbptRate,
+	type TDocumentTaxTotals,
+	type TFiscalTaxGroupWithRules,
+	type TFiscalTaxScenario,
+	type TFiscalValidationError,
+	type TItemTaxResult,
+} from "./engine";
 import type { TFiscalSaleContext } from "./types";
 
 function readDestinatarioUf(context: TFiscalSaleContext): string | null {
@@ -79,13 +90,24 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 	const extraErrors: TFiscalValidationError[] = [];
 
 	const itens = context.venda.itens.map((item) => {
+		console.log("[COMPUTE SALE TAXATION] Item", item);
 		const perfil = context.perfisProdutos.find((profile) => profile.produtoId === item.produtoId);
 		const grupo = perfil?.grupoTributarioId ? context.gruposTributarios.find((g) => g.id === perfil.grupoTributarioId) : undefined;
 
 		if (!perfil) {
-			extraErrors.push({ codigo: "PERFIL_FISCAL_AUSENTE", severidade: "ERRO", mensagem: "Produto sem perfil fiscal cadastrado.", produtoId: item.produtoId });
+			extraErrors.push({
+				codigo: "PERFIL_FISCAL_AUSENTE",
+				severidade: "ERRO",
+				mensagem: "Produto sem perfil fiscal cadastrado.",
+				produtoId: item.produtoId,
+			});
 		} else if (!perfil.grupoTributarioId || !grupo) {
-			extraErrors.push({ codigo: "GRUPO_TRIBUTARIO_AUSENTE", severidade: "ERRO", mensagem: "Produto sem grupo tributario vinculado.", produtoId: item.produtoId });
+			extraErrors.push({
+				codigo: "GRUPO_TRIBUTARIO_AUSENTE",
+				severidade: "ERRO",
+				mensagem: "Produto sem grupo tributario vinculado.",
+				produtoId: item.produtoId,
+			});
 		}
 
 		const grupoEfetivo = grupo ?? buildFallbackGroup(context.organizacao.id);
@@ -113,7 +135,9 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 		return { item, result };
 	});
 
-	const totais = computeDocumentTotals(itens.map(({ result, item }) => ({ result, valorBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })));
+	const totais = computeDocumentTotals(
+		itens.map(({ result, item }) => ({ result, valorBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })),
+	);
 	const erros = [...extraErrors, ...aggregateItemErrors(itens.map(({ result }) => result))];
 
 	return { scenario, itens, totais, erros };

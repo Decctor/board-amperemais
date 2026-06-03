@@ -78,7 +78,6 @@ export type TFiscalCertificateMetadata = z.infer<typeof FiscalCertificateMetadat
 
 export const NuvemFiscalApiConfigSchema = z.object({
 	baseUrl: z.string({ invalid_type_error: "Tipo não valido para a URL base da Nuvem Fiscal." }).default("https://api.nuvemfiscal.com.br"),
-	apiToken: z.string({ invalid_type_error: "Tipo não valido para o token da Nuvem Fiscal." }).optional().nullable(),
 });
 export type TNuvemFiscalApiConfig = z.infer<typeof NuvemFiscalApiConfigSchema>;
 

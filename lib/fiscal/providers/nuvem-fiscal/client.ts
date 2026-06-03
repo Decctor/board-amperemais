@@ -5,8 +5,8 @@ import createHttpError from "http-errors";
 const PRODUCTION_BASE_URL = "https://api.nuvemfiscal.com.br";
 const SANDBOX_BASE_URL = "https://api.sandbox.nuvemfiscal.com.br";
 
-// A baseURL e dirigida pelo ambiente fiscal da organizacao. O token e obrigatorio por
-// organizacao — nao ha mais fallback para token global de ambiente (risco multi-tenant).
+// A baseURL e dirigida pelo ambiente fiscal da organizacao. O access token OAuth e global
+// da aplicacao (util NUVEM_FISCAL_API_TOKEN) — ver getNuvemFiscalAccessToken().
 export function createNuvemFiscalClient({
 	apiToken,
 	ambiente,

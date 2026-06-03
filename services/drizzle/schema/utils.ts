@@ -1,8 +1,17 @@
-import type { TUtilsValue } from "@/schemas/utils";
+import type { TUtilsNuvemFiscalApiTokenValor, TUtilsValue } from "@/schemas/utils";
 import { jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { relations } from "drizzle-orm";
+
+/** Util global (organizacaoId null) com access token OAuth da integracao Nuvem Fiscal. */
+export const NUVEM_FISCAL_API_TOKEN_UTIL_IDENTIFICADOR = "NUVEM_FISCAL_API_TOKEN" as const;
+
+export type TNuvemFiscalApiTokenUtilRecord = {
+	identificador: typeof NUVEM_FISCAL_API_TOKEN_UTIL_IDENTIFICADOR;
+	valor: TUtilsNuvemFiscalApiTokenValor;
+	organizacaoId: null;
+};
 
 export const utils = newTable("utils", {
 	id: varchar("id", { length: 255 })

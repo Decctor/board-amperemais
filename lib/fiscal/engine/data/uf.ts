@@ -34,20 +34,20 @@ export const UF_TO_IBGE_CODE: Record<string, number> = {
 // Regioes usadas para a regra de aliquota interestadual.
 export const REGIAO_NORTE_NORDESTE_CENTRO_OESTE_ES = new Set(["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MS", "MT", "PA", "PB", "PE", "PI", "RN", "RO", "RR", "SE", "TO"]);
 
-// Mapeia o enum de origem da mercadoria para o codigo numerico (orig) usado no XML.
-const ORIGEM_TO_CODIGO: Record<TFiscalProductOriginEnum, string> = {
-	NACIONAL: "0",
-	ESTRANGEIRA_IMPORTACAO_DIRETA: "1",
-	ESTRANGEIRA_ADQUIRIDA_BRASIL: "2",
-	NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40: "3",
-	NACIONAL_PROCESSOS_BASICOS: "4",
-	NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40: "5",
-	ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR: "6",
-	ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR: "7",
+// Mapeia o enum de origem da mercadoria para o codigo numerico (orig) usado no XML / JSON da Nuvem Fiscal.
+const ORIGEM_TO_CODIGO: Record<TFiscalProductOriginEnum, number> = {
+	NACIONAL: 0,
+	ESTRANGEIRA_IMPORTACAO_DIRETA: 1,
+	ESTRANGEIRA_ADQUIRIDA_BRASIL: 2,
+	NACIONAL_CONTEUDO_IMPORTACAO_SUPERIOR_40: 3,
+	NACIONAL_PROCESSOS_BASICOS: 4,
+	NACIONAL_CONTEUDO_IMPORTACAO_INFERIOR_IGUAL_40: 5,
+	ESTRANGEIRA_IMPORTACAO_DIRETA_SEM_SIMILAR: 6,
+	ESTRANGEIRA_ADQUIRIDA_BRASIL_SEM_SIMILAR: 7,
 };
 
-export function mapOrigemToCodigo(origem: TFiscalProductOriginEnum): string {
-	return ORIGEM_TO_CODIGO[origem] ?? "0";
+export function mapOrigemToCodigo(origem: TFiscalProductOriginEnum): number {
+	return ORIGEM_TO_CODIGO[origem] ?? 0;
 }
 
 // Origens consideradas importadas para fins de aliquota interestadual de 4% (Resolucao SF 13/2012)
