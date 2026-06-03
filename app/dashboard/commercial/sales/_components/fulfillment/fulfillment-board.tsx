@@ -25,9 +25,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { ATTENDANCE_COLUMN_META, ATTENDANCE_STATUS_LABEL, BOARD_STATUSES, type TBoardStatus, transitionNeedsConfirmation } from "./config";
 import { FulfillmentCard } from "./fulfillment-card";
 import { FulfillmentColumn } from "./fulfillment-column";
+
+const KANBAN_SCROLL_CLASS = "scrollbar-subtle";
+
+/**
+ * Altura máxima do board em desktop: desconta só o chrome *acima* dele
+ * (padding do layout, AppHeader, abas). A barra "X pedidos" fica dentro e
+ * o kanban usa flex-1 — evita somar ~100dvh de kanban + header da página.
+ */
+const BOARD_DESKTOP_MAX_HEIGHT = "md:max-h-[calc(100dvh-10.5rem)] md:overflow-hidden";
 
 type FulfillmentData = TGetSalesFulfillmentOutput["data"];
 
@@ -151,14 +161,21 @@ export default function FulfillmentBoard() {
 
 	if (isLoading) {
 		return (
-			<div className="flex gap-3 overflow-hidden">
-				{BOARD_STATUSES.map((status) => (
-					<div key={status} className="flex w-[280px] min-w-[280px] flex-col gap-2">
-						<Skeleton className="h-5 w-32" />
-						<Skeleton className="h-24 w-full rounded-xl" />
-						<Skeleton className="h-24 w-full rounded-xl" />
-					</div>
-				))}
+			<div className={cn("flex min-h-0 flex-1 flex-col gap-3", BOARD_DESKTOP_MAX_HEIGHT)}>
+				<Skeleton className="h-9 w-full max-w-md shrink-0" />
+				<div
+					className={cn(
+						KANBAN_SCROLL_CLASS,
+						"flex min-h-[50vh] flex-1 gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden",
+					)}
+				>
+					{BOARD_STATUSES.map((status) => (
+						<div key={status} className="flex h-full w-[280px] min-w-[280px] flex-col gap-2">
+							<Skeleton className="h-5 w-32 shrink-0" />
+							<Skeleton className="h-full min-h-24 w-full rounded-xl" />
+						</div>
+					))}
+				</div>
 			</div>
 		);
 	}
@@ -166,8 +183,8 @@ export default function FulfillmentBoard() {
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
 
 	return (
-		<div className="flex h-full min-h-[60vh] flex-col gap-3">
-			<div className="flex items-center justify-between">
+		<div className={cn("flex min-h-0 flex-1 flex-col gap-3", BOARD_DESKTOP_MAX_HEIGHT)}>
+			<div className="flex shrink-0 items-center justify-between">
 				<p className="text-xs text-muted-foreground">
 					{cards.length > 0 ? `${cards.length} pedido(s) em atendimento` : "Nenhum pedido em atendimento no momento"}
 				</p>
@@ -177,7 +194,7 @@ export default function FulfillmentBoard() {
 			</div>
 
 			{cards.length === 0 ? (
-				<div className="flex grow flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border py-16 text-center">
+				<div className="flex min-h-[40vh] flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border py-16 text-center md:min-h-0">
 					<p className="text-sm font-bold tracking-tight">Nenhum pedido em atendimento</p>
 					<p className="max-w-md text-xs text-muted-foreground">
 						Pedidos confirmados aparecem aqui para você acompanhar o preparo e a entrega. Arraste um card para mover entre as etapas.
@@ -192,7 +209,12 @@ export default function FulfillmentBoard() {
 					onDragEnd={handleDragEnd}
 					onDragCancel={() => setActiveId(null)}
 				>
-					<div className="flex min-h-0 grow snap-x gap-3 overflow-x-auto pb-2">
+					<div
+						className={cn(
+							KANBAN_SCROLL_CLASS,
+							"flex min-h-[50vh] flex-1 snap-x gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden",
+						)}
+					>
 						{BOARD_STATUSES.map((status) => (
 							<FulfillmentColumn
 								key={status}

@@ -66,7 +66,7 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 				<TabsContent value="historico" className="flex flex-col gap-3 mt-3">
 					<SalesHistoryView organization={organization} />
 				</TabsContent>
-				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col">
+				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
 					<FulfillmentBoard />
 				</TabsContent>
 			</Tabs>

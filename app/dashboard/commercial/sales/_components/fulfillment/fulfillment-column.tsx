@@ -67,8 +67,8 @@ export function FulfillmentColumn({
 	const Icon = meta.icon;
 
 	return (
-		<div className="flex h-full w-[280px] min-w-[280px] snap-start flex-col gap-2">
-			<div className="flex items-center justify-between px-1.5">
+		<div className="flex h-full min-h-0 w-[280px] min-w-[280px] snap-start flex-col gap-2">
+			<div className="flex shrink-0 items-center justify-between px-1.5">
 				<div className="flex items-center gap-1.5">
 					<Icon className="h-4 w-4 text-muted-foreground" />
 					<span className="text-xs font-extrabold uppercase tracking-wide">{meta.label}</span>
@@ -81,7 +81,7 @@ export function FulfillmentColumn({
 			<div
 				ref={setNodeRef}
 				className={cn(
-					"flex grow flex-col gap-2 overflow-y-auto rounded-xl border border-dashed p-1.5 transition-colors",
+					"scrollbar-subtle flex min-h-0 grow flex-col gap-2 overflow-y-auto rounded-xl border border-dashed p-1.5 transition-colors",
 					isOver ? "border-foreground/30 bg-accent/50" : "border-border/60",
 				)}
 			>
