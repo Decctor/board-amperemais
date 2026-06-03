@@ -4,7 +4,7 @@
 
 A coluna `descricao` em `ampmais_products` sempre funcionou como **nome/título** do produto (listagens, PDV, loja, snapshots de compra, integrações). Esta migração renomeia para `nome`, alinhando variantes (`product_variants.nome`), adicionais e o modelo mental do domínio.
 
-**Fase 2 (futura):** adicionar coluna `descricao` (texto longo, copy de cardápio/e-commerce), mapeando `description` do CardapioWeb.
+**Fase 2 (concluída):** coluna `descricao` opcional (`drizzle/0021_products_add_descricao.sql`), populada pelo sync CardapioWeb (`item.description`).
 
 **Fora de escopo nesta PR:** renomear `snapshot_produto_descricao` em `purchase_items` (continua guardando o nome histórico).
 
@@ -153,4 +153,4 @@ Labels UI: **DESCRIÇÃO → NOME** onde o campo é o título do produto.
 
 1. Rodar migration `0020_products_descricao_to_nome.sql` no ambiente.
 2. Deploy app com código atualizado (sem compatibilidade com `descricao` no contrato de produtos).
-3. Fase 2: migration `descricao` nullable + sync CardapioWeb `item.description`.
+3. Rodar migration `0021_products_add_descricao.sql` e re-sincronizar catálogo CardapioWeb para preencher descrições.

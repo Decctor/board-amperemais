@@ -20,6 +20,7 @@ export const products = newTable(
 		}),
 		ativo: boolean("ativo").default(true),
 		nome: text("nome").notNull(),
+		descricao: text("descricao"),
 		imagemCapaUrl: text("imagem_capa_url"),
 		codigo: text("codigo").notNull(),
 		unidade: text("unidade").notNull(),

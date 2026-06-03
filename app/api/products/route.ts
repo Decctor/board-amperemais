@@ -372,6 +372,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			productId: products.id,
 			codigo: products.codigo,
 			nome: products.nome,
+			descricao: products.descricao,
 			unidade: products.unidade,
 			ncm: products.ncm,
 			tipo: products.tipo,
@@ -420,6 +421,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			productId: productStatsSubquery.productId,
 			codigo: productStatsSubquery.codigo,
 			nome: productStatsSubquery.nome,
+			descricao: productStatsSubquery.descricao,
 			unidade: productStatsSubquery.unidade,
 			ncm: productStatsSubquery.ncm,
 			tipo: productStatsSubquery.tipo,
@@ -493,6 +495,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			id: row.productId,
 			codigo: row.codigo,
 			nome: row.nome,
+			descricao: row.descricao,
 			unidade: row.unidade,
 			ncm: row.ncm,
 			tipo: row.tipo,
@@ -885,6 +888,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 			.update(products)
 			.set({
 				nome: input.product.nome,
+				descricao: input.product.descricao,
 				codigo: input.product.codigo,
 				unidade: input.product.unidade,
 				ncm: input.product.ncm,
@@ -1063,6 +1067,7 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 			.values({
 				organizacaoId: userOrgId,
 				nome: input.product.nome,
+				descricao: input.product.descricao,
 				codigo: input.product.codigo,
 				unidade: input.product.unidade,
 				ncm: input.product.ncm,

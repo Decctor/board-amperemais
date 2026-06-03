@@ -393,6 +393,7 @@ export async function getCardapioWebCatalog(client: AxiosInstance): Promise<TGet
 	return executeWithRateLimitAndRetry(
 		async () => {
 			const { data } = await client.get<TGetCardapioWebCatalogOutput>("/api/partner/v1/catalog");
+			console.log(`[CARDAPIO-WEB] Catalog fetched successfully`, data);
 			return GetCardapioWebCatalogOutputSchema.parse(data);
 		},
 		getCardapioWebCatalogRateLimiter(), // Rate limiter específico para catalog
@@ -503,8 +504,7 @@ export async function fetchOrderDetailsInBatches(
 			const elapsed = Math.round((Date.now() - startTime) / 1000);
 			const rate = completed / (elapsed || 1);
 			const remaining = Math.round((orderIds.length - i - 1) / rate);
-			const falhasPedidos =
-				failed > 0 ? ` | ids com falha até agora: ${failures.map((f) => f.orderId).join(", ")}` : "";
+			const falhasPedidos = failed > 0 ? ` | ids com falha até agora: ${failures.map((f) => f.orderId).join(", ")}` : "";
 
 			console.log(
 				`[CARDAPIO-WEB] Detalhes: ${completed}/${orderIds.length} ` +
@@ -515,10 +515,7 @@ export async function fetchOrderDetailsInBatches(
 	}
 
 	if (failures.length > 0) {
-		console.error(
-			`[CARDAPIO-WEB] Resumo final: ${failures.length} falha(s) no endpoint DETAILS.\n` +
-				JSON.stringify(failures, null, 2),
-		);
+		console.error(`[CARDAPIO-WEB] Resumo final: ${failures.length} falha(s) no endpoint DETAILS.\n` + JSON.stringify(failures, null, 2));
 	}
 
 	return results;

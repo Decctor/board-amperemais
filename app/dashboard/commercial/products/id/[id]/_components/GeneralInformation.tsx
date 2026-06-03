@@ -34,6 +34,11 @@ export default function ProductGeneralInformation({ product, callbacks }: Produc
 				<h2 className="text-xs leading-none tracking-tight">DADOS DO PRODUTO</h2>
 				<div className="w-full flex flex-col gap-1.5">
 					<SectionWrapperDataRow icon={<Tag className="w-4 h-4" />} label="NOME" value={product.nome || "NÃO INFORMADO"} />
+					<SectionWrapperDataRow
+						icon={<Tag className="w-4 h-4" />}
+						label="DESCRIÇÃO"
+						value={product.descricao || "NÃO INFORMADO"}
+					/>
 					<SectionWrapperDataRow icon={<Code className="w-4 h-4" />} label="CÓDIGO" value={product.codigo || "NÃO INFORMADO"} />
 					<SectionWrapperDataRow icon={<Tag className="w-4 h-4" />} label="UNIDADE" value={product.unidade || "NÃO INFORMADO"} />
 					<SectionWrapperDataRow icon={<Tag className="w-4 h-4" />} label="GRUPO" value={product.grupo || "NÃO INFORMADO"} />

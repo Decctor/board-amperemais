@@ -14,7 +14,7 @@ type TextareaInputProps = {
 };
 function TextareaInput({ label, labelClassName, holderClassName, value, placeholder, editable = true, handleChange }: TextareaInputProps) {
 	return (
-		<div className="flex w/full flex-col gap-1">
+		<div className="flex w-full flex-col gap-1">
 			<Label className={cn("text-foreground/80 text-start text-sm font-medium tracking-tight", labelClassName)}>{label}</Label>
 			<Textarea
 				disabled={!editable}

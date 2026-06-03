@@ -340,6 +340,7 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 			produto: {
 				id: product.id,
 				nome: product.nome,
+				descricao: product.descricao,
 				codigo: product.codigo,
 				unidade: product.unidade,
 				ncm: product.ncm,

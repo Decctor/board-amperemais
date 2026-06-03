@@ -10,6 +10,7 @@ export interface MappedCatalogProduct {
 	ativo: boolean;
 	codigo: string;
 	nome: string;
+	descricao: string | null;
 	imagemCapaUrl: string | null;
 	precoVenda: number;
 	precoCusto: number | null;
@@ -60,6 +61,11 @@ type CatalogItem = CatalogCategory["items"][number];
 type CatalogOptionGroup = CatalogItem["option_groups"][number];
 type CatalogOption = CatalogOptionGroup["options"][number];
 
+function normalizeCatalogProductDescription(description: string): string | null {
+	const trimmed = description.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
 /**
  * Maps a catalog item to our internal product format.
  * Skips combo items - only regular items are synced.
@@ -72,6 +78,7 @@ function mapCatalogProduct(item: CatalogItem, categoryName: string, uniqueProduc
 		ativo: item.status === "ACTIVE",
 		codigo: externalCode && uniqueProductExternalCodes.has(externalCode) ? externalCode : item.id.toString(),
 		nome: item.name,
+		descricao: normalizeCatalogProductDescription(item.description),
 		imagemCapaUrl: item.image?.image_url ?? null,
 		precoVenda: item.price,
 		precoCusto: item.cost_price ?? null,

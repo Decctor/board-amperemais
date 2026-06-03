@@ -286,6 +286,7 @@ export async function handleCardapioWebImportation(
 					organizacaoId: organizationId,
 					codigo: product.codigo,
 					nome: product.nome,
+					descricao: product.descricao,
 					unidade: product.unidade,
 					grupo: product.grupo,
 					ncm: product.ncm,

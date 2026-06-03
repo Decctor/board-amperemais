@@ -14,6 +14,7 @@ import { toast } from "sonner";
 export function mapProductToCoreState(product: TGetProductsOutputById): TProductCoreState {
 	return {
 		nome: product.nome,
+		descricao: product.descricao,
 		codigo: product.codigo,
 		unidade: product.unidade,
 		ncm: product.ncm,
@@ -69,6 +70,7 @@ export default function ProductCoreMenu({ product, closeMenu, callbacks }: Produ
 				productId: product.id,
 				product: {
 					nome: state.nome,
+					descricao: state.descricao,
 					codigo: state.codigo,
 					unidade: state.unidade,
 					ncm: state.ncm,

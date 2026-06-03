@@ -29,7 +29,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 
 	console.log(`[ORG: ${organizationId}] [CATALOG-SYNC] Fetching catalog from CardapioWeb...`);
 	const catalog = await getCardapioWebCatalog(client);
-
+	console.log(`[ORG: ${organizationId}] [CATALOG-SYNC] Catalog fetched successfully`);
 	// Extract all mapped data
 	const {
 		products: mappedProducts,
@@ -68,6 +68,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						ativo: product.ativo,
 						codigo: product.codigo,
 						nome: product.nome,
+						descricao: product.descricao,
 						imagemCapaUrl: product.imagemCapaUrl,
 						precoVenda: product.precoVenda,
 						precoCusto: product.precoCusto,
@@ -89,6 +90,7 @@ async function handleCardapioWebCatalogSync(organizationId: string, config: TCar
 						ativo: product.ativo,
 						codigo: product.codigo,
 						nome: product.nome,
+						descricao: product.descricao,
 						imagemCapaUrl: product.imagemCapaUrl,
 						precoVenda: product.precoVenda,
 						precoCusto: product.precoCusto,
@@ -266,6 +268,7 @@ async function getProductsSyncingRoute(_req: NextRequest) {
 	console.log(`[PRODUCTS-SYNCING] Starting products sync at ${dayjs().format("YYYY-MM-DD HH:mm:ss")}`);
 
 	const organizations = await db.query.organizations.findMany({
+		where: (fields, { inArray }) => inArray(fields.id, ["27817d9a-cb04-4704-a1f4-15b81a3610d3"]),
 		columns: {
 			id: true,
 			integracaoTipo: true,

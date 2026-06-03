@@ -1,6 +1,7 @@
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
+import TextareaInput from "@/components/Inputs/TextareaInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import type { TProductCoreState, TUseProductCoreState } from "@/state-hooks/use-product-state";
 import { UnitsOfMeasurementOptions } from "@/utils/select-options";
@@ -39,6 +40,12 @@ export default function ProductStateGeneralBlock({
 					placeholder="Preencha aqui o nome do produto."
 					handleChange={(value) => updateProduct({ nome: value })}
 					width="100%"
+				/>
+				<TextareaInput
+					label="DESCRIÇÃO"
+					value={product.descricao ?? ""}
+					placeholder="Texto exibido no cardápio ou na loja (opcional)."
+					handleChange={(value) => updateProduct({ descricao: value.trim() ? value : null })}
 				/>
 				<div className="w-full flex items-center gap-2 lg:flex-row">
 					<div className="w-full lg:w-1/2">

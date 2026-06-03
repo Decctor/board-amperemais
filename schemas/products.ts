@@ -10,6 +10,16 @@ export const ProductSchema = z.object({
 		required_error: "Nome do produto não informado.",
 		invalid_type_error: "Tipo não válido para nome do produto.",
 	}),
+	descricao: z
+		.string({
+			invalid_type_error: "Tipo não válido para descrição do produto.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => {
+			const trimmed = value?.trim();
+			return trimmed ? trimmed : null;
+		}),
 	imagemCapaUrl: z
 		.string({
 			required_error: "URL da imagem capa do produto não informada.",

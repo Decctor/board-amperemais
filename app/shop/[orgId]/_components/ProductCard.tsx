@@ -59,7 +59,7 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 				<div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
 					<div>
 						<h3 className="font-semibold text-sm line-clamp-2">{product.nome}</h3>
-						{product.grupo && <p className="text-xs text-muted-foreground mt-0.5">{product.grupo}</p>}
+						{product.descricao && <p className="text-xs text-muted-foreground mt-0.5">{product.descricao}</p>}
 					</div>
 
 					<div className="flex items-center justify-between gap-2 mt-2">
@@ -88,7 +88,7 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 		<div
 			className={cn(
 				"group flex flex-col rounded-xl border bg-card overflow-hidden cursor-pointer hover:shadow-md transition-shadow",
-				"w-[140px] sm:w-[160px] flex-shrink-0",
+				"w-[180] sm:w-[240px] flex-shrink-0",
 			)}
 			onClick={handleClick}
 		>

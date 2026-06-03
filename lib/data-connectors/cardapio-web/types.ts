@@ -635,8 +635,7 @@ function parseCardapioWebSerializedArray(value: unknown) {
 	}
 
 	const unwrappedValue =
-		(trimmedValue.startsWith("[") && trimmedValue.endsWith("]")) ||
-		(trimmedValue.startsWith("{") && trimmedValue.endsWith("}"))
+		(trimmedValue.startsWith("[") && trimmedValue.endsWith("]")) || (trimmedValue.startsWith("{") && trimmedValue.endsWith("}"))
 			? trimmedValue.slice(1, -1)
 			: trimmedValue;
 
@@ -683,10 +682,7 @@ const CardapioWebCatalogAvailableForSchema = z.enum(["delivery", "table", "servi
 	invalid_type_error: "Tipo inválido para local de disponibilidade.",
 });
 
-const CardapioWebCatalogAvailableForListSchema = z.preprocess(
-	parseCardapioWebSerializedArray,
-	z.array(CardapioWebCatalogAvailableForSchema),
-);
+const CardapioWebCatalogAvailableForListSchema = z.preprocess(parseCardapioWebSerializedArray, z.array(CardapioWebCatalogAvailableForSchema));
 
 const CardapioWebCatalogChoiceTypeSchema = z.enum(["SINGLE", "MULTIPLE", "SUMMABLE"], {
 	required_error: "Tipo de escolha não informado.",
@@ -753,7 +749,14 @@ const CardapioWebCatalogOptionSchema = z.object({
 		.min(0),
 	cost_price: z.number({ invalid_type_error: "Tipo inválido para preço de custo da opção." }).min(0).nullable().optional(),
 	active_stock_control: z.boolean({ invalid_type_error: "Tipo inválido para indicador de controle de estoque da opção." }).optional(),
-	stock: z.number({ invalid_type_error: "Tipo inválido para estoque da opção." }).min(0).nullable().optional(),
+	stock: z.union([
+		z.number({ invalid_type_error: "Tipo inválido para estoque da opção." }).min(0).nullable().optional(),
+		z
+			.string({ invalid_type_error: "Tipo inválido para estoque da opção." })
+			.transform((val) => Number(val))
+			.nullable()
+			.optional(),
+	]),
 	max_quantity: z.number({ invalid_type_error: "Tipo inválido para quantidade máxima da opção." }).int().nullable().optional(),
 	status: CardapioWebCatalogOptionStatusSchema,
 	index: z

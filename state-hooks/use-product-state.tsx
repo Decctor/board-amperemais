@@ -168,6 +168,7 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 		product: {
 			codigo: initialState?.product?.codigo ?? "",
 			nome: initialState?.product?.nome ?? "",
+			descricao: initialState?.product?.descricao ?? null,
 			unidade: initialState?.product?.unidade ?? "",
 			ncm: initialState?.product?.ncm ?? "",
 			tipo: initialState?.product?.tipo ?? "",
@@ -947,6 +948,7 @@ export function useProductCoreState({ initialState }: UseProductCoreStateProps =
 	const initialStateComplete = useMemo<TProductCoreState>(
 		() => ({
 			nome: initialState?.nome ?? "",
+			descricao: initialState?.descricao ?? null,
 			codigo: initialState?.codigo ?? "",
 			unidade: initialState?.unidade ?? "UN",
 			ncm: initialState?.ncm ?? "",

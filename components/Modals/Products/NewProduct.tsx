@@ -112,6 +112,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 		const input: TCreateProductInput = {
 			product: {
 				nome: state.product.nome,
+				descricao: state.product.descricao,
 				codigo: state.product.codigo,
 				unidade: state.product.unidade,
 				ncm: state.product.ncm,
@@ -142,6 +143,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 				product: {
 					codigo: "",
 					nome: "",
+					descricao: null,
 					unidade: "",
 					ncm: "",
 					tipo: "",
