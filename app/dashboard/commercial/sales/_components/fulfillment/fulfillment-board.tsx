@@ -16,26 +16,36 @@ import {
 	closestCorners,
 	useSensor,
 	useSensors,
+	type Announcements,
 	type DragEndEvent,
 	type DragStartEvent,
+	type ScreenReaderInstructions,
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ATTENDANCE_STATUS_LABEL, BOARD_STATUSES, type TBoardStatus, transitionNeedsConfirmation } from "./config";
+import { ATTENDANCE_COLUMN_META, ATTENDANCE_STATUS_LABEL, BOARD_STATUSES, type TBoardStatus, transitionNeedsConfirmation } from "./config";
 import { FulfillmentCard } from "./fulfillment-card";
 import { FulfillmentColumn } from "./fulfillment-column";
 
 type FulfillmentData = TGetSalesFulfillmentOutput["data"];
 
-export default function FulfillmentBoard() {
-	const { data, isLoading, isError, error, refetch, isRefetching } = useSalesFulfillment();
-	const queryClient = useQueryClient();
+const screenReaderInstructions: ScreenReaderInstructions = {
+	// O arrastar e por ponteiro/toque. Para teclado e leitores de tela, cada card tem um botao
+	// "Mover pedido" com as etapas validas, que e o caminho acessivel completo.
+	draggable: "Para mover um pedido pelo teclado, use o botão 'Mover pedido' em cada card e escolha a etapa de destino.",
+};
 
+export default function FulfillmentBoard() {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [pendingCardIds, setPendingCardIds] = useState<Set<string>>(new Set());
-	const [confirm, setConfirm] = useState<{ cardId: string; snapshot: FulfillmentData | undefined } | null>(null);
+	const [confirm, setConfirm] = useState<{ cardId: string; previousStatus: TSaleAttendanceStatusEnum } | null>(null);
+
+	// Pausa o auto-refresh enquanto ha movimento otimista em voo ou confirmacao aberta.
+	const paused = pendingCardIds.size > 0 || confirm !== null;
+	const { data, isLoading, isError, error, refetch, isRefetching } = useSalesFulfillment({ paused });
+	const queryClient = useQueryClient();
 
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -62,15 +72,15 @@ export default function FulfillmentBoard() {
 	}
 
 	// Optimistic controller: the card is already in the target column (moved in `initiateMove`).
-	// We fire the request and, on failure, roll back to the snapshot taken before the move.
-	async function commitMove(card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum, snapshot: FulfillmentData | undefined) {
+	// We fire the request and, on failure, roll back ONLY this card to its previous status, so a
+	// failure on one move never clobbers other cards moved concurrently.
+	async function commitMove(card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum, previousStatus: TSaleAttendanceStatusEnum) {
 		setPendingCardIds((prev) => new Set(prev).add(card.id));
 		try {
 			await updateSaleAttendanceStatus({ id: card.id, statusAtendimento: target });
 			toast.success(`Pedido movido para ${ATTENDANCE_STATUS_LABEL[target]}.`);
-			queryClient.invalidateQueries({ queryKey: SALES_FULFILLMENT_QUERY_KEY });
 		} catch (err) {
-			if (snapshot) queryClient.setQueryData(SALES_FULFILLMENT_QUERY_KEY, snapshot);
+			setCardStatus(card.id, previousStatus);
 			toast.error(getErrorMessage(err));
 		} finally {
 			setPendingCardIds((prev) => {
@@ -82,19 +92,38 @@ export default function FulfillmentBoard() {
 	}
 
 	function initiateMove(card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum) {
+		if (pendingCardIds.has(card.id) || confirm?.cardId === card.id) return;
 		if (target === card.statusAtendimento) return;
 		if (!isValidAttendanceTransition(card.statusAtendimento, target)) {
 			toast.info(`Não é possível mover de ${ATTENDANCE_STATUS_LABEL[card.statusAtendimento]} para ${ATTENDANCE_STATUS_LABEL[target]}.`);
 			return;
 		}
-		const snapshot = queryClient.getQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY);
+		const previousStatus = card.statusAtendimento;
 		setCardStatus(card.id, target);
 		if (transitionNeedsConfirmation(target)) {
-			setConfirm({ cardId: card.id, snapshot });
+			setConfirm({ cardId: card.id, previousStatus });
 		} else {
-			void commitMove(card, target, snapshot);
+			void commitMove(card, target, previousStatus);
 		}
 	}
+
+	const announcements: Announcements = {
+		onDragStart: ({ active }) => {
+			const card = cards.find((item) => item.id === String(active.id));
+			return `Pegou o pedido de ${card?.cliente?.nome ?? card?.idExterno ?? "cliente"}.`;
+		},
+		onDragOver: ({ over }) => {
+			if (!over) return undefined;
+			const label = ATTENDANCE_COLUMN_META[String(over.id) as TBoardStatus]?.label ?? String(over.id);
+			return `Sobre a etapa ${label}.`;
+		},
+		onDragEnd: ({ over }) => {
+			if (!over) return "Movimento cancelado.";
+			const label = ATTENDANCE_COLUMN_META[String(over.id) as TBoardStatus]?.label ?? String(over.id);
+			return `Pedido solto na etapa ${label}.`;
+		},
+		onDragCancel: () => "Movimento cancelado.",
+	};
 
 	function handleDragStart(event: DragStartEvent) {
 		setActiveId(String(event.active.id));
@@ -110,13 +139,13 @@ export default function FulfillmentBoard() {
 	}
 
 	function handleConfirmDelivery(card: TSalesFulfillmentCard) {
-		const snapshot = confirm?.snapshot;
+		const previousStatus = confirm?.previousStatus ?? "PRONTO";
 		setConfirm(null);
-		void commitMove(card, "ENTREGUE", snapshot);
+		void commitMove(card, "ENTREGUE", previousStatus);
 	}
 
 	function handleCancelConfirm() {
-		if (confirm?.snapshot) queryClient.setQueryData(SALES_FULFILLMENT_QUERY_KEY, confirm.snapshot);
+		if (confirm) setCardStatus(confirm.cardId, confirm.previousStatus);
 		setConfirm(null);
 	}
 
@@ -155,8 +184,15 @@ export default function FulfillmentBoard() {
 					</p>
 				</div>
 			) : (
-				<DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-					<div className="flex min-h-0 grow gap-3 overflow-x-auto pb-2">
+				<DndContext
+					sensors={sensors}
+					collisionDetection={closestCorners}
+					accessibility={{ announcements, screenReaderInstructions }}
+					onDragStart={handleDragStart}
+					onDragEnd={handleDragEnd}
+					onDragCancel={() => setActiveId(null)}
+				>
+					<div className="flex min-h-0 grow snap-x gap-3 overflow-x-auto pb-2">
 						{BOARD_STATUSES.map((status) => (
 							<FulfillmentColumn
 								key={status}
@@ -171,7 +207,7 @@ export default function FulfillmentBoard() {
 						))}
 					</div>
 
-					<DragOverlay>{activeCard ? <FulfillmentCard card={activeCard} isOverlay /> : null}</DragOverlay>
+					<DragOverlay dropAnimation={null}>{activeCard ? <FulfillmentCard card={activeCard} isOverlay /> : null}</DragOverlay>
 				</DndContext>
 			)}
 		</div>

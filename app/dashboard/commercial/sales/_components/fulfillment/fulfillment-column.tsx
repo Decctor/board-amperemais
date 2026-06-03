@@ -40,7 +40,7 @@ function DraggableCard({
 			onCancelConfirm={onCancelConfirm}
 			dragAttributes={attributes}
 			dragListeners={listeners}
-			className="animate-in fade-in-0 slide-in-from-top-1 duration-200"
+			className="animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none"
 		/>
 	);
 }
@@ -67,7 +67,7 @@ export function FulfillmentColumn({
 	const Icon = meta.icon;
 
 	return (
-		<div className="flex h-full w-[280px] min-w-[280px] flex-col gap-2">
+		<div className="flex h-full w-[280px] min-w-[280px] snap-start flex-col gap-2">
 			<div className="flex items-center justify-between px-1.5">
 				<div className="flex items-center gap-1.5">
 					<Icon className="h-4 w-4 text-muted-foreground" />

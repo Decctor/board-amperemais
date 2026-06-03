@@ -15,7 +15,7 @@ import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CircleUser, Clock, GripVertical, Loader2, MoveRight } from "lucide-react";
+import { CircleUser, Clock, GripVertical, Loader2, MoveRight, StickyNote } from "lucide-react";
 import { forwardRef, type CSSProperties } from "react";
 import { ATTENDANCE_STATUS_LABEL, DELIVERY_MODE_META, FINANCIAL_BADGE_META, FISCAL_BADGE_META, getValidBoardTargets } from "./config";
 
@@ -64,7 +64,7 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 			style={style}
 			className={cn(
 				"group/card relative flex flex-col gap-2 rounded-xl border border-border bg-card px-3 py-2.5 shadow-2xs",
-				"transition-shadow hover:shadow-sm",
+				"transition-shadow hover:shadow-sm motion-reduce:transition-none",
 				isOverlay && "rotate-2 cursor-grabbing shadow-md",
 				isDragging && "opacity-40",
 				isPending && "pointer-events-none opacity-60",
@@ -94,12 +94,12 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 					</button>
 				)}
 
-				<div className="flex grow flex-col gap-0.5">
-					<div className="flex items-center gap-1.5">
+				<div className="flex min-w-0 grow flex-col gap-0.5">
+					<div className="flex min-w-0 items-center gap-1.5">
 						<CircleUser className="h-3.5 w-3.5 shrink-0 text-foreground/60" />
 						<span className="truncate text-sm font-bold tracking-tight">{card.cliente?.nome ?? "Ao consumidor"}</span>
 					</div>
-					<span className="text-[11px] text-muted-foreground">#{card.idExterno}</span>
+					<span className="truncate text-[11px] text-muted-foreground">#{card.idExterno}</span>
 				</div>
 
 				{onMove && moveTargets.length > 0 ? (
@@ -138,6 +138,13 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 				<StatusPill label={financeiro.label} tone={financeiro.tone} />
 				<StatusPill label={fiscal.label} tone={fiscal.tone} />
 			</div>
+
+			{card.observacoes ? (
+				<div className="flex items-start gap-1 text-[11px] text-muted-foreground">
+					<StickyNote className="mt-0.5 h-3 w-3 shrink-0" />
+					<span className="line-clamp-2 break-words">{card.observacoes}</span>
+				</div>
+			) : null}
 
 			{card.dataVenda ? (
 				<div className="flex items-center gap-1 text-[10px] text-muted-foreground/80">

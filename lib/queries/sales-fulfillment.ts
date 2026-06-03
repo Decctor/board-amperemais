@@ -9,15 +9,21 @@ async function fetchSalesFulfillment() {
 	return data.data;
 }
 
-export function useSalesFulfillment() {
+const AUTO_REFRESH_INTERVAL_MS = 30_000;
+
+/**
+ * Auto-refresh inteligente: o intervalo e o refetch no foco sao PAUSADOS quando ha um movimento
+ * otimista em andamento ou a confirmacao de entrega esta aberta (`paused`), para nao sobrescrever
+ * o estado local do quadro. Quando ocioso, reconcilia sozinho a cada 30s e ao focar a aba.
+ */
+export function useSalesFulfillment({ paused = false }: { paused?: boolean } = {}) {
 	return {
-		// Sem refetch automatico: evita sobrescrever um movimento otimista enquanto a confirmacao
-		// de entrega esta aberta. A reconciliacao acontece via invalidacao apos cada movimento e
-		// pelo botao de atualizar. (Evolucao futura: refetch que pausa durante mutacoes pendentes.)
 		...useQuery({
 			queryKey: SALES_FULFILLMENT_QUERY_KEY,
 			queryFn: fetchSalesFulfillment,
-			refetchOnWindowFocus: false,
+			refetchInterval: paused ? false : AUTO_REFRESH_INTERVAL_MS,
+			refetchIntervalInBackground: false,
+			refetchOnWindowFocus: paused ? false : true,
 		}),
 		queryKey: SALES_FULFILLMENT_QUERY_KEY,
 	};
