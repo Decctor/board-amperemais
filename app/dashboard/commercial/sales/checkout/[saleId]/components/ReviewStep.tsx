@@ -107,7 +107,7 @@ export default function ReviewStep({ sale, checkoutState }: ReviewStepProps) {
 
 				<div className="grid grid-cols-2 gap-4">
 					<TextInput
-						label="Desconto Geral (R$)"
+						label="Outros descontos (R$)"
 						placeholder="0,00"
 						value={checkoutState.state.descontoGeral.toString()}
 						handleChange={(value) => checkoutState.setDescontoGeral(Number(value) || 0)}
@@ -136,7 +136,7 @@ export default function ReviewStep({ sale, checkoutState }: ReviewStepProps) {
 				</div>
 				{checkoutState.state.descontoGeral > 0 && (
 					<div className="flex justify-between text-sm">
-						<span className="text-muted-foreground">Desconto</span>
+						<span className="text-muted-foreground">Outros descontos</span>
 						<span className="font-bold text-green-600">-{formatToMoney(checkoutState.state.descontoGeral)}</span>
 					</div>
 				)}

@@ -30,10 +30,14 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 
 	// Load draft sale from DB
 	const { data: sale, isLoading, isError, error } = useSaleDraft({ saleId });
+	const saleItemsTotal = sale?.itens.reduce((sum, item) => sum + item.valorVendaTotalLiquido, 0) ?? 0;
+	const draftMetadata = sale?.rascunhoMetadados as { descontoGeral?: number; cashbackResgate?: number } | null | undefined;
+	const initialCashbackResgate = draftMetadata?.cashbackResgate ?? 0;
+	const initialDescontoGeral = draftMetadata?.descontoGeral ?? Math.max(0, (sale?.descontosTotal ?? 0) - initialCashbackResgate);
 
 	// Checkout state
 	const checkoutState = useCheckoutState({
-		valorTotal: sale?.valorTotal ?? 0,
+		valorTotal: saleItemsTotal,
 		clienteId: sale?.clienteId ?? null,
 		initialState: {
 			vendedorId: sale?.vendedorId,
@@ -48,14 +52,14 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 				step: 1,
 				vendedorId: sale.vendedorId ?? null,
 				vendedorNome: sale.vendedorNome ?? null,
-				descontoGeral: sale.descontosTotal ?? 0,
+				descontoGeral: initialDescontoGeral,
 				acrescimoGeral: sale.acrescimosTotal ?? 0,
 				observacoes: sale.observacoes ?? "",
 				entregaModalidade: sale.entregaModalidade ?? "PRESENCIAL",
 				entregaLocalizacaoId: sale.entregaLocalizacaoId ?? null,
 				comandaNumero: sale.comandaNumero ?? null,
 				pagamentos: [],
-				cashbackResgate: 0,
+				cashbackResgate: initialCashbackResgate,
 				cashbackProgramaId: null,
 			});
 		}
@@ -104,6 +108,12 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 				observacoes: checkoutState.state.observacoes,
 				descontosTotal: checkoutState.state.descontoGeral > 0 ? checkoutState.state.descontoGeral : null,
 				acrescimosTotal: checkoutState.state.acrescimoGeral > 0 ? checkoutState.state.acrescimoGeral : null,
+				cashbackResgate: checkoutState.state.cashbackResgate,
+				rascunhoMetadados: {
+					...(sale?.rascunhoMetadados && typeof sale.rascunhoMetadados === "object" ? sale.rascunhoMetadados : {}),
+					descontoGeral: checkoutState.state.descontoGeral,
+					cashbackResgate: checkoutState.state.cashbackResgate,
+				},
 			});
 		} catch {
 			// Silent - draft update failure shouldn't block navigation
@@ -172,15 +182,13 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 
 			{/* Step Content */}
 			<div className="flex-1 max-w-4xl mx-auto w-full">
-				{checkoutState.state.step === 1 && <ReviewStep sale={sale} checkoutState={checkoutState} />}
+				{checkoutState.state.step === 1 && <ReviewStep sale={{ ...sale, valorTotal: saleItemsTotal }} checkoutState={checkoutState} />}
 
 				{checkoutState.state.step === 2 && <DeliveryStep sale={sale} checkoutState={checkoutState} />}
 
-				{checkoutState.state.step === 3 && (
-					<PaymentStep sale={{ valorTotal: sale.valorTotal, clienteId: sale.clienteId }} checkoutState={checkoutState} />
-				)}
+				{checkoutState.state.step === 3 && <PaymentStep sale={{ valorTotal: saleItemsTotal, clienteId: sale.clienteId }} checkoutState={checkoutState} />}
 
-				{checkoutState.state.step === 4 && <ConfirmationStep sale={sale} checkoutState={checkoutState} />}
+				{checkoutState.state.step === 4 && <ConfirmationStep sale={{ ...sale, valorTotal: saleItemsTotal }} checkoutState={checkoutState} />}
 			</div>
 
 			{/* Navigation Footer */}

@@ -69,6 +69,7 @@ export default function CheckoutSheet() {
 			orderState.nextStep();
 		}
 	};
+	console.log("[DEBUG] order state", orderState.state);
 
 	return (
 		<Drawer open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>

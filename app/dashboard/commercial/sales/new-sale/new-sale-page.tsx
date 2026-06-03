@@ -66,6 +66,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 					observacoes: saleState.state.observacoes || null,
 					descontosTotal: saleState.state.descontoGeral,
 					acrescimosTotal: saleState.state.acrescimoGeral,
+					cashbackResgate: saleState.state.cashbackResgate,
 					rascunhoMetadados: saleState.getDraftMetadata(),
 				});
 				saleState.setSuccess({
@@ -166,6 +167,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 			observacoes: saleState.state.observacoes || null,
 			descontosTotal: saleState.state.descontoGeral,
 			acrescimosTotal: saleState.state.acrescimoGeral,
+			cashbackResgate: saleState.state.cashbackResgate,
 			rascunhoMetadados: saleState.getDraftMetadata(),
 			itens: mapItemsToApi(saleState),
 		});

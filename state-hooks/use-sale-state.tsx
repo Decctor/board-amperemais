@@ -60,6 +60,7 @@ export const CartItemSchema = z.object({
 
 export const SaleDraftMetadataSchema = z.object({
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
+	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
 	valorFinal: z.number({ invalid_type_error: "Tipo não válido para valor final." }),
@@ -95,9 +96,11 @@ export const SaleStateSchema = z.object({
 	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }).default(0),
 	acrescimoGeral: z.number({ invalid_type_error: "Tipo não válido para acréscimo geral." }).default(0),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).default(""),
-	entregaModalidade: z.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], {
-		invalid_type_error: "Tipo não válido para modalidade de entrega.",
-	}).default("PRESENCIAL"),
+	entregaModalidade: z
+		.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], {
+			invalid_type_error: "Tipo não válido para modalidade de entrega.",
+		})
+		.default("PRESENCIAL"),
 	entregaLocalizacaoId: z.string({ invalid_type_error: "Tipo não válido para ID da localização." }).optional().nullable(),
 	comandaNumero: z.string({ invalid_type_error: "Tipo não válido para número da comanda." }).optional().nullable(),
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
@@ -219,60 +222,66 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		setState((prev) => ({ ...prev, comandaNumero }));
 	}, []);
 
-	const addPagamento = useCallback((pagamento?: Partial<Omit<TCheckoutPaymentSplit, "id">>) => {
-		const metodo = pagamento?.metodo ?? "DINHEIRO";
-		const paymentDefaults = getOrganizationPaymentMethodDefault({
-			organizationConfig,
-			metodo,
-		});
-		setState((prev) => ({
-			...prev,
-			pagamentos: [
-				...prev.pagamentos,
-				getDefaultCheckoutPaymentSplit({
-					metodo: paymentDefaults.metodo,
-					efetivacaoTipo: paymentDefaults.efetivacaoTipo,
-					dataPrevisao: paymentDefaults.dataPrevisao,
-					totalParcelas: paymentDefaults.totalParcelas,
-					...pagamento,
-				}),
-			],
-		}));
-	}, [organizationConfig]);
+	const addPagamento = useCallback(
+		(pagamento?: Partial<Omit<TCheckoutPaymentSplit, "id">>) => {
+			const metodo = pagamento?.metodo ?? "DINHEIRO";
+			const paymentDefaults = getOrganizationPaymentMethodDefault({
+				organizationConfig,
+				metodo,
+			});
+			setState((prev) => ({
+				...prev,
+				pagamentos: [
+					...prev.pagamentos,
+					getDefaultCheckoutPaymentSplit({
+						metodo: paymentDefaults.metodo,
+						efetivacaoTipo: paymentDefaults.efetivacaoTipo,
+						dataPrevisao: paymentDefaults.dataPrevisao,
+						totalParcelas: paymentDefaults.totalParcelas,
+						...pagamento,
+					}),
+				],
+			}));
+		},
+		[organizationConfig],
+	);
 
 	const removePagamento = useCallback((id: string) => {
 		setState((prev) => ({ ...prev, pagamentos: prev.pagamentos.filter((payment) => payment.id !== id) }));
 	}, []);
 
-	const updatePagamento = useCallback((id: string, updates: Partial<Omit<TCheckoutPaymentSplit, "id">>) => {
-		setState((prev) => ({
-			...prev,
-			pagamentos: prev.pagamentos.map((payment) => {
-				if (payment.id !== id) return payment;
-				const metodoAtualizado = updates.metodo ?? payment.metodo;
-				const nextPaymentDefaults =
-					updates.metodo && updates.metodo !== payment.metodo
-						? getOrganizationPaymentMethodDefault({
-								organizationConfig,
-								metodo: updates.metodo,
-							})
-						: null;
-				return {
-					...payment,
-					...(nextPaymentDefaults
-						? {
-								metodo: metodoAtualizado,
-								efetivacaoTipo: nextPaymentDefaults.efetivacaoTipo,
-								dataPrevisao: nextPaymentDefaults.dataPrevisao,
-								totalParcelas: nextPaymentDefaults.totalParcelas,
-							}
-						: {}),
-					...updates,
-					valor: typeof updates.valor === "number" ? Math.max(0, updates.valor) : payment.valor,
-				};
-			}),
-		}));
-	}, [organizationConfig]);
+	const updatePagamento = useCallback(
+		(id: string, updates: Partial<Omit<TCheckoutPaymentSplit, "id">>) => {
+			setState((prev) => ({
+				...prev,
+				pagamentos: prev.pagamentos.map((payment) => {
+					if (payment.id !== id) return payment;
+					const metodoAtualizado = updates.metodo ?? payment.metodo;
+					const nextPaymentDefaults =
+						updates.metodo && updates.metodo !== payment.metodo
+							? getOrganizationPaymentMethodDefault({
+									organizationConfig,
+									metodo: updates.metodo,
+								})
+							: null;
+					return {
+						...payment,
+						...(nextPaymentDefaults
+							? {
+									metodo: metodoAtualizado,
+									efetivacaoTipo: nextPaymentDefaults.efetivacaoTipo,
+									dataPrevisao: nextPaymentDefaults.dataPrevisao,
+									totalParcelas: nextPaymentDefaults.totalParcelas,
+								}
+							: {}),
+						...updates,
+						valor: typeof updates.valor === "number" ? Math.max(0, updates.valor) : payment.valor,
+					};
+				}),
+			}));
+		},
+		[organizationConfig],
+	);
 
 	const setCashbackResgate = useCallback((cashbackResgate: number) => {
 		setState((prev) => {
@@ -306,8 +315,12 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	const totalDescontoItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorDesconto, 0), [state.itens]);
 	const totalItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0), [state.itens]);
 	const itemCount = useMemo(() => state.itens.reduce((sum, item) => sum + item.quantidade, 0), [state.itens]);
-	const valorFinal = useMemo(() => Math.max(0, totalItens - state.descontoGeral + state.acrescimoGeral), [totalItens, state.descontoGeral, state.acrescimoGeral]);
-	const totalPagamentos = useMemo(() => state.pagamentos.reduce((sum, p) => sum + p.valor, 0) + state.cashbackResgate, [state.pagamentos, state.cashbackResgate]);
+	const valorAntesCashback = useMemo(
+		() => Math.max(0, totalItens - state.descontoGeral + state.acrescimoGeral),
+		[totalItens, state.descontoGeral, state.acrescimoGeral],
+	);
+	const valorFinal = useMemo(() => Math.max(0, valorAntesCashback - state.cashbackResgate), [valorAntesCashback, state.cashbackResgate]);
+	const totalPagamentos = useMemo(() => state.pagamentos.reduce((sum, p) => sum + p.valor, 0), [state.pagamentos]);
 	const valorRestante = useMemo(() => Math.max(0, valorFinal - totalPagamentos), [valorFinal, totalPagamentos]);
 	const troco = useMemo(() => (totalPagamentos > valorFinal ? totalPagamentos - valorFinal : 0), [totalPagamentos, valorFinal]);
 	const pagamentoCompleto = useMemo(() => valorRestante <= 0.01, [valorRestante]);
@@ -323,29 +336,40 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		if (state.entregaModalidade === "ENTREGA" && !state.entregaLocalizacaoId) return false;
 		if (state.entregaModalidade === "COMANDA" && !state.comandaNumero?.trim()) return false;
 		if (!pagamentoCompleto) return false;
-		if (state.pagamentos.length === 0 && state.cashbackResgate <= 0) return false;
+		if (valorFinal > 0.01 && state.pagamentos.length === 0) return false;
 		if (
-			state.pagamentos.some((payment) =>
-				!isCheckoutPaymentSplitValid(payment, {
-					hasLinkedClient: !!state.cliente,
-					entregaModalidade: state.entregaModalidade,
-				}),
+			state.pagamentos.some(
+				(payment) =>
+					!isCheckoutPaymentSplitValid(payment, {
+						hasLinkedClient: !!state.cliente,
+						entregaModalidade: state.entregaModalidade,
+					}),
 			)
 		) {
 			return false;
 		}
 		return true;
-	}, [isReadyForDraft, state.entregaModalidade, state.entregaLocalizacaoId, state.comandaNumero, state.pagamentos, state.cashbackResgate, state.cliente, pagamentoCompleto]);
+	}, [
+		isReadyForDraft,
+		state.entregaModalidade,
+		state.entregaLocalizacaoId,
+		state.comandaNumero,
+		state.pagamentos,
+		state.cliente,
+		pagamentoCompleto,
+		valorFinal,
+	]);
 
 	const getDraftMetadata = useCallback((): TSaleDraftMetadata => {
 		return {
 			pagamentos: state.pagamentos,
+			descontoGeral: state.descontoGeral,
 			cashbackResgate: state.cashbackResgate,
 			valorFinal,
 			valorRestante,
 			troco,
 		};
-	}, [state.pagamentos, state.cashbackResgate, valorFinal, valorRestante, troco]);
+	}, [state.pagamentos, state.descontoGeral, state.cashbackResgate, valorFinal, valorRestante, troco]);
 
 	const resetState = useCallback((newState?: Partial<TSaleState>) => {
 		setState(getDefaultSaleState(newState));
@@ -378,6 +402,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		totalDescontoItens,
 		totalItens,
 		itemCount,
+		valorAntesCashback,
 		valorFinal,
 		totalPagamentos,
 		valorRestante,

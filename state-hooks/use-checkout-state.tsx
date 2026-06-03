@@ -15,9 +15,11 @@ export const CheckoutStateSchema = z.object({
 	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }).default(0),
 	acrescimoGeral: z.number({ invalid_type_error: "Tipo não válido para acréscimo geral." }).default(0),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).default(""),
-	entregaModalidade: z.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], {
-		invalid_type_error: "Tipo não válido para modalidade de entrega.",
-	}).default("PRESENCIAL"),
+	entregaModalidade: z
+		.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], {
+			invalid_type_error: "Tipo não válido para modalidade de entrega.",
+		})
+		.default("PRESENCIAL"),
 	entregaLocalizacaoId: z.string({ invalid_type_error: "Tipo não válido para ID da localização." }).optional().nullable(),
 	comandaNumero: z.string({ invalid_type_error: "Tipo não válido para número da comanda." }).optional().nullable(),
 	pagamentos: z.array(CheckoutPaymentSplitSchema).default([]),
@@ -124,13 +126,15 @@ export const useCheckoutState = ({ initialState, valorTotal, clienteId }: UseChe
 	}, []);
 
 	const computedValues = useMemo(() => {
-		const totalPagamentos = state.pagamentos.reduce((sum, p) => sum + p.valor, 0) + state.cashbackResgate;
-		const valorFinal = valorTotal - state.descontoGeral + state.acrescimoGeral;
+		const totalPagamentos = state.pagamentos.reduce((sum, p) => sum + p.valor, 0);
+		const valorAntesCashback = valorTotal - state.descontoGeral + state.acrescimoGeral;
+		const valorFinal = Math.max(0, valorAntesCashback - state.cashbackResgate);
 		const valorRestante = valorFinal - totalPagamentos;
 		const troco = totalPagamentos > valorFinal ? totalPagamentos - valorFinal : 0;
 		const pagamentoCompleto = valorRestante <= 0.01;
 
 		return {
+			valorAntesCashback,
 			valorFinal,
 			totalPagamentos,
 			valorRestante,
@@ -150,7 +154,7 @@ export const useCheckoutState = ({ initialState, valorTotal, clienteId }: UseChe
 					return true;
 				case 3:
 					if (!computedValues.pagamentoCompleto) return false;
-					if (state.pagamentos.length === 0 && state.cashbackResgate <= 0) return false;
+					if (computedValues.valorFinal > 0.01 && state.pagamentos.length === 0) return false;
 					return state.pagamentos.every((payment) =>
 						isCheckoutPaymentSplitValid(payment, {
 							hasLinkedClient: !!clienteId,
@@ -161,7 +165,15 @@ export const useCheckoutState = ({ initialState, valorTotal, clienteId }: UseChe
 					return true;
 			}
 		},
-		[clienteId, computedValues.pagamentoCompleto, state.entregaModalidade, state.entregaLocalizacaoId, state.comandaNumero, state.pagamentos, state.cashbackResgate],
+		[
+			clienteId,
+			computedValues.pagamentoCompleto,
+			state.entregaModalidade,
+			state.entregaLocalizacaoId,
+			state.comandaNumero,
+			state.pagamentos,
+			state.cashbackResgate,
+		],
 	);
 
 	const resetState = useCallback((newState: TCheckoutState) => {

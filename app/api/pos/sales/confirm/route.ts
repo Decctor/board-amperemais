@@ -13,7 +13,7 @@ import z from "zod";
 const ConfirmSaleInputSchema = z.object({
 	id: z.string({ required_error: "ID da venda nao informado." }),
 	clienteId: z.string({ invalid_type_error: "Tipo nao valido para ID do cliente." }).optional().nullable(),
-	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })).min(1, { message: "Pelo menos um pagamento e obrigatorio." }),
+	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo nao valido para resgate de cashback." }).default(0),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo nao valido para ID do programa de cashback." }).optional().nullable(),
 	contaDebitoId: z.string({ invalid_type_error: "Tipo nao valido para conta de debito." }).optional().nullable(),

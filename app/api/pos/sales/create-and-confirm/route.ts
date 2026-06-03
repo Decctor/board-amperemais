@@ -44,7 +44,7 @@ const CreateAndConfirmSaleInputSchema = z.object({
 	descontosTotal: z.number({ invalid_type_error: "Tipo não válido para desconto." }).optional().nullable(),
 	acrescimosTotal: z.number({ invalid_type_error: "Tipo não válido para acréscimo." }).optional().nullable(),
 	rascunhoMetadados: z.unknown().optional().nullable(),
-	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })).min(1, { message: "Pelo menos um pagamento é obrigatório." }),
+	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
 	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
@@ -92,8 +92,14 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 
 	const valorBaseItens = input.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0);
 	const descontosGerais = input.descontosTotal ?? 0;
+	const cashbackResgate = input.cashbackResgate ?? 0;
 	const acrescimosGerais = input.acrescimosTotal ?? 0;
-	const valorTotal = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	const descontosVenda = descontosGerais + cashbackResgate;
+	const valorAntesCashback = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	if (cashbackResgate > valorAntesCashback) {
+		throw new createHttpError.BadRequest("O resgate de cashback não pode superar o valor da venda.");
+	}
+	const valorTotal = Math.max(0, valorBaseItens - descontosVenda + acrescimosGerais);
 	const descontosTotalItens = input.itens.reduce((sum, item) => sum + item.valorDesconto, 0);
 	const custoTotal = input.itens.reduce((sum, item) => {
 		const custo = item.produtoVarianteId ? (variantCostMap.get(item.produtoVarianteId) ?? 0) : (productCostMap.get(item.produtoId) ?? 0);
@@ -110,7 +116,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				clienteId: input.clienteId ?? null,
 				idExterno,
 				valorTotal,
-				descontosTotal: (input.descontosTotal ?? descontosTotalItens) > 0 ? (input.descontosTotal ?? descontosTotalItens) : null,
+				descontosTotal: descontosVenda > 0 ? descontosVenda : descontosTotalItens > 0 ? descontosTotalItens : null,
 				acrescimosTotal: input.acrescimosTotal ?? null,
 				custoTotal,
 				vendedorNome: input.vendedorNome ?? session.user.nome,

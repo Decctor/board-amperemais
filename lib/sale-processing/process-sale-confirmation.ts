@@ -140,7 +140,9 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 			if (!program) throw new createHttpError.NotFound("Programa de cashback nao encontrado.");
 			if (!program.modalidadeDescontosPermitida) throw new createHttpError.BadRequest("Resgate de cashback nao permitido para esta venda.");
 			if (program.resgateLimiteTipo && program.resgateLimiteValor !== null && program.resgateLimiteValor !== undefined) {
-				const maxAllowed = program.resgateLimiteTipo === "FIXO" ? program.resgateLimiteValor : (sale.valorTotal * program.resgateLimiteValor) / 100;
+				const saleValueBeforeCashback = sale.valorTotal + redemptionValue;
+				const maxAllowed =
+					program.resgateLimiteTipo === "FIXO" ? program.resgateLimiteValor : (saleValueBeforeCashback * program.resgateLimiteValor) / 100;
 				if (redemptionValue > maxAllowed) throw new createHttpError.BadRequest("Valor de resgate excede o limite permitido.");
 			}
 

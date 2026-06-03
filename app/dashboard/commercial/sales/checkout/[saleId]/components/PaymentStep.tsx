@@ -28,8 +28,7 @@ export default function PaymentStep({ sale, checkoutState }: PaymentStepProps) {
 	});
 
 	const availableCashback = cashbackBalance?.saldoValorDisponivel ?? 0;
-	const valorRestanteSemCashback = checkoutState.valorRestante + checkoutState.state.cashbackResgate;
-	const maxCashbackResgate = Math.max(0, Math.min(availableCashback, valorRestanteSemCashback));
+	const maxCashbackResgate = Math.max(0, Math.min(availableCashback, checkoutState.valorAntesCashback));
 
 	const addPayment = (preset: "IMEDIATO" | "ENTREGA" | "PARCELADO" | "FIADO") => {
 		const valor = Number(paymentAmount) || checkoutState.valorRestante;
@@ -93,7 +92,7 @@ export default function PaymentStep({ sale, checkoutState }: PaymentStepProps) {
 
 			{sale.clienteId ? (
 				<div className="flex flex-col gap-3 rounded-xl border p-4">
-					<h3 className="font-bold text-sm uppercase tracking-wide text-muted-foreground">Resgate de Cashback</h3>
+					<h3 className="font-bold text-sm uppercase tracking-wide text-muted-foreground">Desconto em Cashback</h3>
 					{isCashbackLoading ? <p className="text-sm text-muted-foreground">Carregando saldo de cashback...</p> : null}
 					{!isCashbackLoading ? (
 						<>
@@ -103,13 +102,13 @@ export default function PaymentStep({ sale, checkoutState }: PaymentStepProps) {
 									<TextInput label="Valor do Resgate" placeholder="0,00" value={cashbackInput} handleChange={setCashbackInput} />
 								</div>
 								<Button type="button" onClick={handleApplyCashback} disabled={!cashbackInput || Number(cashbackInput) <= 0 || maxCashbackResgate <= 0}>
-									Usar Cashback
+									Aplicar desconto
 								</Button>
 							</div>
 							<p className="text-xs text-muted-foreground">Máximo aplicável agora: {formatToMoney(maxCashbackResgate)}</p>
 							{checkoutState.state.cashbackResgate > 0 ? (
 								<div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2">
-									<p className="text-sm font-medium">Cashback aplicado: {formatToMoney(checkoutState.state.cashbackResgate)}</p>
+									<p className="text-sm font-medium">Desconto em cashback: {formatToMoney(checkoutState.state.cashbackResgate)}</p>
 									<Button type="button" variant="ghost" size="sm" onClick={handleRemoveCashback}>
 										Remover
 									</Button>
@@ -258,15 +257,19 @@ export default function PaymentStep({ sale, checkoutState }: PaymentStepProps) {
 
 			<div className="flex flex-col gap-2 p-4 rounded-xl bg-secondary/50 border">
 				<div className="flex justify-between text-sm">
-					<span className="text-muted-foreground">Valor da Venda</span>
-					<span className="font-bold">{formatToMoney(checkoutState.valorFinal)}</span>
+					<span className="text-muted-foreground">Subtotal após outros ajustes</span>
+					<span className="font-bold">{formatToMoney(checkoutState.valorAntesCashback)}</span>
 				</div>
 				{checkoutState.state.cashbackResgate > 0 ? (
 					<div className="flex justify-between text-sm">
-						<span className="text-muted-foreground">Cashback</span>
+						<span className="text-muted-foreground">Desconto em cashback</span>
 						<span className="font-bold text-green-600">-{formatToMoney(checkoutState.state.cashbackResgate)}</span>
 					</div>
 				) : null}
+				<div className="flex justify-between text-sm">
+					<span className="text-muted-foreground">Total da venda</span>
+					<span className="font-bold">{formatToMoney(checkoutState.valorFinal)}</span>
+				</div>
 				<div className="flex justify-between text-sm">
 					<span className="text-muted-foreground">Total Pago / Previsto</span>
 					<span className="font-bold">{formatToMoney(checkoutState.totalPagamentos)}</span>

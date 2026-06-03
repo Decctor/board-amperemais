@@ -106,8 +106,14 @@ export default function ConfirmationStep({ sale, checkoutState }: ConfirmationSt
 				</div>
 				{checkoutState.state.descontoGeral > 0 && (
 					<div className="flex justify-between text-sm">
-						<span className="text-muted-foreground">Desconto</span>
+						<span className="text-muted-foreground">Outros descontos</span>
 						<span className="text-green-600">-{formatToMoney(checkoutState.state.descontoGeral)}</span>
+					</div>
+				)}
+				{checkoutState.state.cashbackResgate > 0 && (
+					<div className="flex justify-between text-sm">
+						<span className="text-muted-foreground">Desconto em cashback</span>
+						<span className="text-green-600">-{formatToMoney(checkoutState.state.cashbackResgate)}</span>
 					</div>
 				)}
 				{checkoutState.state.acrescimoGeral > 0 && (

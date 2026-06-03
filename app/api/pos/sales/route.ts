@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -46,6 +46,7 @@ const CreateSaleDraftInputSchema = z.object({
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).optional().nullable(),
 	descontosTotal: z.number({ invalid_type_error: "Tipo não válido para desconto." }).optional().nullable(),
 	acrescimosTotal: z.number({ invalid_type_error: "Tipo não válido para acréscimo." }).optional().nullable(),
+	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	rascunhoMetadados: z.unknown().optional().nullable(),
 	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
 });
@@ -65,6 +66,7 @@ const UpdateSaleDraftInputSchema = z.object({
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).optional().nullable(),
 	descontosTotal: z.number({ invalid_type_error: "Tipo não válido para desconto." }).optional().nullable(),
 	acrescimosTotal: z.number({ invalid_type_error: "Tipo não válido para acréscimo." }).optional().nullable(),
+	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	rascunhoMetadados: z.unknown().optional().nullable(),
 });
 export type TUpdateSaleDraftInput = z.infer<typeof UpdateSaleDraftInputSchema>;
@@ -112,8 +114,13 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 	const valorBaseItens = input.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0);
 	const descontosTotalItens = input.itens.reduce((sum, item) => sum + item.valorDesconto, 0);
 	const descontosGerais = input.descontosTotal ?? 0;
+	const descontosVenda = descontosGerais + input.cashbackResgate;
 	const acrescimosGerais = input.acrescimosTotal ?? 0;
-	const valorTotal = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	const valorAntesCashback = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	if (input.cashbackResgate > valorAntesCashback) {
+		throw new createHttpError.BadRequest("O resgate de cashback não pode superar o valor da venda.");
+	}
+	const valorTotal = Math.max(0, valorBaseItens - descontosVenda + acrescimosGerais);
 	const custoTotal = input.itens.reduce((sum, item) => {
 		const custo = item.produtoVarianteId ? (variantCostMap.get(item.produtoVarianteId) ?? 0) : (productCostMap.get(item.produtoId) ?? 0);
 		return sum + custo * item.quantidade;
@@ -130,7 +137,7 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 				clienteId: input.clienteId ?? null,
 				idExterno,
 				valorTotal,
-				descontosTotal: input.descontosTotal ?? (descontosTotalItens > 0 ? descontosTotalItens : null),
+				descontosTotal: descontosVenda > 0 ? descontosVenda : descontosTotalItens > 0 ? descontosTotalItens : null,
 				acrescimosTotal: input.acrescimosTotal ?? null,
 				custoTotal,
 				vendedorNome: input.vendedorNome ?? session.user.nome,
@@ -269,11 +276,25 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 	const existing = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, orgId)),
 		columns: { id: true, statusVenda: true },
+		with: {
+			itens: {
+				columns: { valorVendaTotalLiquido: true },
+			},
+		},
 	});
 
 	if (!existing) throw new createHttpError.NotFound("Venda não encontrada.");
 	if (existing.statusVenda !== "ORCAMENTO") {
 		throw new createHttpError.BadRequest("Somente rascunhos (orçamentos) podem ser editados.");
+	}
+
+	const valorBaseItens = existing.itens.reduce((sum, item) => sum + item.valorVendaTotalLiquido, 0);
+	const descontosGerais = input.descontosTotal ?? 0;
+	const descontosVenda = descontosGerais + input.cashbackResgate;
+	const acrescimosVenda = input.acrescimosTotal ?? 0;
+	const valorAntesCashback = Math.max(0, valorBaseItens - descontosGerais + acrescimosVenda);
+	if (input.cashbackResgate > valorAntesCashback) {
+		throw new createHttpError.BadRequest("O resgate de cashback não pode superar o valor da venda.");
 	}
 
 	await db
@@ -285,7 +306,8 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 			entregaLocalizacaoId: input.entregaLocalizacaoId,
 			comandaNumero: input.comandaNumero,
 			observacoes: input.observacoes,
-			descontosTotal: input.descontosTotal,
+			valorTotal: Math.max(0, valorBaseItens - descontosVenda + acrescimosVenda),
+			descontosTotal: descontosVenda > 0 ? descontosVenda : null,
 			acrescimosTotal: input.acrescimosTotal,
 			rascunhoMetadados: input.rascunhoMetadados,
 		})
