@@ -8,10 +8,11 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { joinAsMember } from "@/lib/mutations/admin";
 import { useMutation } from "@tanstack/react-query";
-import { Building2, Calendar, Settings2, Users } from "lucide-react";
+import { BrainCircuit, Building2, Calendar, Settings2, Users } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
+import AdminMarketingContextExportMenu from "./AdminMarketingContextExportMenu";
 
 type AdminOrganizationCardProps = {
 	sessionUser: TAuthUserSession["user"];
@@ -27,6 +28,7 @@ type AdminOrganizationCardProps = {
 export default function AdminOrganizationCard({ sessionUser, organization, callbacks }: AdminOrganizationCardProps) {
 	const { id, nome, cnpj, logoUrl, dataInsercao } = organization;
 	const [controlModalOpen, setControlModalOpen] = useState(false);
+	const [marketingContextModalOpen, setMarketingContextModalOpen] = useState(false);
 
 	const adminUserIsMember = organization.membros.some((member) => member.usuarioId === sessionUser.id);
 	const { mutate: joinAsMemberMutation, isPending } = useMutation({
@@ -72,6 +74,10 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 				</div>
 			</div>
 			<div className="flex w-full flex-col gap-2">
+				<Button variant="secondary" size="sm" className="w-full" onClick={() => setMarketingContextModalOpen(true)}>
+					<BrainCircuit className="h-3.5 w-3.5" />
+					CONTEXTO IA
+				</Button>
 				<Button variant="outline" size="sm" className="w-full" onClick={() => setControlModalOpen(true)}>
 					<Settings2 className="h-3.5 w-3.5" />
 					GERENCIAR
@@ -92,6 +98,9 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 			</div>
 
 			{controlModalOpen ? <AdminControlOrganization organizationId={id} closeModal={() => setControlModalOpen(false)} callbacks={callbacks} /> : null}
+			{marketingContextModalOpen ? (
+				<AdminMarketingContextExportMenu organizationId={id} organizationName={nome} closeModal={() => setMarketingContextModalOpen(false)} />
+			) : null}
 		</div>
 	);
 }

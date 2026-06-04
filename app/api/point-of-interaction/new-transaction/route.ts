@@ -3,6 +3,7 @@ import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureC
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
+import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
@@ -296,7 +297,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					cpfCnpj: input.client.cpfCnpj ?? null,
 					telefone: input.client.telefone,
 					telefoneBase: clientPhoneAsBase,
-                    canalAquisicao: "PONTO DE INTERAÇÃO",
+					canalAquisicao: "PONTO DE INTERAÇÃO",
 				})
 				.returning({ id: clients.id });
 
@@ -584,6 +585,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 
 		// FIFTH STEP: Processing sale processing (if applicable)
 		if (transactionRequiresSaleProcessing) {
+			const saleDate = new Date();
 			const insertedSaleResponse = await tx
 				.insert(sales)
 				.values({
@@ -605,12 +607,23 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					serie: "0",
 					situacao: "00",
 					tipo: "Venda de produtos",
-					dataVenda: new Date(),
+					dataVenda: saleDate,
 				})
 				.returning({ id: sales.id });
 			const insertedSaleId = insertedSaleResponse[0]?.id;
-			if (!insertedSaleResponse) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar venda.");
+			if (!insertedSaleId) throw new createHttpError.InternalServerError("Oops, um erro ocorreu ao criar venda.");
 			transactionSaleId = insertedSaleId;
+
+			if (transactionSaleId && effectiveSaleFinalValue > 0) {
+				await processConversionAttribution(tx, {
+					vendaId: transactionSaleId,
+					clienteId: clientId,
+					organizacaoId: input.orgId,
+					valorVenda: effectiveSaleFinalValue,
+					dataVenda: saleDate,
+				});
+			}
+
 			// Updating clients metadata
 			const isClientsFirstPurchase = !clientFirstSaleId && !clientFirstSaleDate;
 			if (isClientsFirstPurchase) {
@@ -1014,11 +1027,7 @@ async function handleCampaignProcessingForNewPurchase({
 				HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 				HAS_CLIENT_DATA: !!clientData,
 			});
-			if (
-				shouldProcessImmediately &&
-				campaign.whatsappTemplate &&
-				clientData
-			) {
+			if (shouldProcessImmediately && campaign.whatsappTemplate && clientData) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,
 					organizationId: orgId,
@@ -1331,11 +1340,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 			HAS_WHATSAPP_CONNECTION: !!campaign.whatsappConexaoTelefone?.conexao,
 			HAS_CLIENT_DATA: !!clientData,
 		});
-		if (
-			shouldProcessImmediately &&
-			campaign.whatsappTemplate &&
-			clientData
-		) {
+		if (shouldProcessImmediately && campaign.whatsappTemplate && clientData) {
 			console.log(`[POI] [ORG: ${orgId}] [CASHBACK-ACUMULADO] Adding to immediate processing list`);
 			addToImmediateProcessingDataList({
 				interactionId: insertedInteraction.id,
@@ -1465,11 +1470,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 			const shouldProcessImmediately =
 				campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
 
-			if (
-				shouldProcessImmediately &&
-				campaign.whatsappTemplate &&
-				clientData
-			) {
+			if (shouldProcessImmediately && campaign.whatsappTemplate && clientData) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,
 					organizationId: orgId,
@@ -1617,11 +1618,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 			const shouldProcessImmediately =
 				campaign.execucaoAgendadaValor === 0 || campaign.execucaoAgendadaValor === null || campaign.execucaoAgendadaValor === undefined;
 
-			if (
-				shouldProcessImmediately &&
-				campaign.whatsappTemplate &&
-				clientData
-			) {
+			if (shouldProcessImmediately && campaign.whatsappTemplate && clientData) {
 				addToImmediateProcessingDataList({
 					interactionId: insertedInteraction.id,
 					organizationId: orgId,

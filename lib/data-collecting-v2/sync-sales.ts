@@ -206,13 +206,14 @@ export async function syncSales({
 
 		if (!existingSale) {
 			isNewSale = true;
+			console.log(`[SYNC_SALES] Creating new sale of ${sale.sourceSaleId} (${sale.occurredAt.toISOString()})...`);
 			const inserted = await tx.insert(sales).values(saleValues).returning({ id: sales.id });
 			saleId = inserted[0].id;
 			await insertSaleItems({ tx, batch, context, saleId, clientId, items: sale.items });
 		} else {
 			saleId = existingSale.id;
+			console.log(`[SYNC_SALES] Updating existing sale of ${sale.sourceSaleId} (${sale.occurredAt.toISOString()})...`);
 			await tx.update(sales).set(saleValues).where(eq(sales.id, existingSale.id));
-
 			if (batch.policies.saleItemRewritePolicy === "REPLACE_ON_EVERY_SYNC") {
 				await tx.delete(saleItems).where(and(eq(saleItems.vendaId, existingSale.id), eq(saleItems.organizacaoId, batch.organizationId)));
 				await insertSaleItems({ tx, batch, context, saleId, clientId, items: sale.items });
@@ -220,8 +221,16 @@ export async function syncSales({
 		}
 
 		const isFirstPurchase =
-			!!client && client.isNew && sale.isValidSale && isNewSale && !!clientKey && firstValidSaleByClientKey.get(clientKey)?.sourceSaleId === sale.sourceSaleId;
-		const totals = client && isNewSale ? await updateClientMetrics({ tx, client, sale, saleId, isFirstPurchase }) : { totalPurchaseCount: null, totalPurchaseValue: null };
+			!!client &&
+			client.isNew &&
+			sale.isValidSale &&
+			isNewSale &&
+			!!clientKey &&
+			firstValidSaleByClientKey.get(clientKey)?.sourceSaleId === sale.sourceSaleId;
+		const totals =
+			client && isNewSale
+				? await updateClientMetrics({ tx, client, sale, saleId, isFirstPurchase })
+				: { totalPurchaseCount: null, totalPurchaseValue: null };
 
 		persistedSales.push({
 			id: saleId,

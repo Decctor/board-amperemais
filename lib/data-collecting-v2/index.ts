@@ -4,6 +4,8 @@ import { db } from "@/services/drizzle";
 import { campaigns, organizations } from "@/services/drizzle/schema";
 import { isAxiosError } from "axios";
 import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import { resolveCampaignAudiences } from "./campaign-audiences";
@@ -16,6 +18,9 @@ import type {
 	TDataCollectingV2RunError,
 	TDataCollectingV2RunSummary,
 } from "./types";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export type TRunDataCollectingV2Params = {
 	organizationIds?: string[];
@@ -30,8 +35,10 @@ const DEFAULT_EFFECTS_OPTIONS: TDataCollectingV2EffectsOptions = {
 	processConversionAttribution: true,
 };
 
+const DATA_COLLECTING_TIMEZONE = process.env.DATA_COLLECTING_TIMEZONE ?? "America/Sao_Paulo";
+
 function getDefaultImportWindow(): TCanonicalImportWindow {
-	const referenceDate = dayjs();
+	const referenceDate = dayjs().tz(DATA_COLLECTING_TIMEZONE);
 	return {
 		startDate: referenceDate.startOf("day").toDate(),
 		endDate: referenceDate.endOf("day").toDate(),

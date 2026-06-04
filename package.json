@@ -17,6 +17,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
 		"backfill:shop-settings": "tsx ./scripts/backfill-shop-settings-configuration.ts",
+		"backfill:poi-conversion-attribution": "tsx ./scripts/backfill-poi-conversion-attribution.ts",
 		"knip": "knip",
 		"test:weekly-quota-recurrent": "tsx ./utils/scripts/test-recurrent-campaign-weekly-quota.ts",
 		"test:nuvemshop-fetch": "tsx ./utils/scripts/test-nuvemshop-fetch.ts",
