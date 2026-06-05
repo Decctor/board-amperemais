@@ -93,6 +93,7 @@ async function syncMessageTemplatePhone({ input, session }: { input: TSyncMessag
 			linguagem: patch.linguagem,
 			conteudo: patch.conteudo,
 			metadados: patch.metadados,
+			alerta: patch.alerta,
 			dataAtualizacao: new Date(),
 		})
 		.where(eq(messageTemplates.id, template.id));

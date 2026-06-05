@@ -1,5 +1,5 @@
 import type { TMessageTemplateEntityLike, TMessageTemplatePhoneMetadata } from "../../types";
-import { buildWhatsappMetadataPatchFromMeta, extractWhatsappCategoryFromMeta, extractWhatsappContentFromMeta } from "./meta-status";
+import { buildWhatsappMetadataPatchFromMeta, extractWhatsappCategoryFromMeta, extractWhatsappContentFromMetaWithLocalContext } from "./meta-status";
 import type { TMetaTemplate } from "./types";
 
 export type TRemoteTemplateIndexes = {
@@ -37,28 +37,33 @@ export type TWhatsappTemplateSyncPatch = {
 	linguagem: string;
 	conteudo: TMessageTemplateEntityLike["conteudo"];
 	metadados: TMessageTemplateEntityLike["metadados"];
+	alerta: string | null;
 };
 
 export function buildWhatsappTemplateSyncPatch({
 	template,
 	connectionId,
 	metaTemplate,
-	preserveLocalContent = true,
 }: {
 	template: TMessageTemplateEntityLike;
 	connectionId: string;
 	metaTemplate: TMetaTemplate;
-	preserveLocalContent?: boolean;
 }): TWhatsappTemplateSyncPatch {
+	const contentResult = extractWhatsappContentFromMetaWithLocalContext({
+		metaTemplate,
+		currentContent: template.conteudo,
+	});
+
 	return {
 		nome: metaTemplate.name,
 		categoria: extractWhatsappCategoryFromMeta(metaTemplate),
 		linguagem: metaTemplate.language || template.linguagem,
-		conteudo: preserveLocalContent ? template.conteudo : extractWhatsappContentFromMeta(metaTemplate),
+		conteudo: contentResult.content,
 		metadados: buildWhatsappMetadataPatchFromMeta({
 			currentMetadata: template.metadados,
 			connectionId,
 			metaTemplate,
 		}),
+		alerta: contentResult.alerts.length > 0 ? contentResult.alerts.join("\n") : null,
 	};
 }

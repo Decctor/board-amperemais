@@ -127,6 +127,17 @@ export const FREE_TRIAL_DURATION_DAYS = 15;
 
 export type TAppSubscriptionPlanKey = "ESSENCIAL" | "CRESCIMENTO" | "ESCALA";
 
+// Consultoria (add-on FDE): produto Stripe separado, adicionado como 2ª line-item no
+// checkout. NÃO altera as capabilities do plano — apenas marca consultoriaAtiva +
+// baselineInicio na organização. Disponível apenas no ciclo mensal.
+export const CONSULTORIA_ADDON = {
+	name: "Gestor de Crescimento",
+	description: "A gente opera a plataforma por você: dados, campanhas e relatório de resultado.",
+	monthlyPrice: 500,
+	currency: "BRL",
+	stripePriceId: process.env.NEXT_PUBLIC_STRIPE_CONSULTORIA_MONTHLY_PRICE_ID as string,
+};
+
 export const DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES: TOrganizationConfiguration["recursos"] = {
 	analytics: {
 		acesso: true,

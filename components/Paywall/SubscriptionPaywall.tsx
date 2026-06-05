@@ -10,7 +10,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AppSubscriptionPlans, type TAppSubscriptionPlanKey } from "@/config";
+import { AppSubscriptionPlans, CONSULTORIA_ADDON } from "@/config";
 import { formatToMoney } from "@/lib/formatting";
 import { switchOrganization } from "@/lib/mutations/organizations";
 import { useOrganizationSubscriptionStatus, useUserMemberships } from "@/lib/queries/organizations";
@@ -18,7 +18,7 @@ import { useUserSession } from "@/lib/queries/session";
 import { cn } from "@/lib/utils";
 import LogoIcon from "@/utils/images/logo-icon.png";
 import { useMutation } from "@tanstack/react-query";
-import { Check, CheckCircle2, ChevronsUpDown, Loader2, Plus, Shield, ShieldAlert } from "lucide-react";
+import { Check, ChevronsUpDown, LayoutGrid, Loader2, Plus, Rocket, Shield, ShieldAlert } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -165,15 +165,15 @@ function PaywallOrgSwitcher({ disabled }: { disabled?: boolean }) {
 }
 
 function PaywallContent({ mensagem, status }: { mensagem: string; status: string }) {
-	const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
-	const [selectedPlan, setSelectedPlan] = useState<TAppSubscriptionPlanKey | null>(null);
+	const [platformSelected, setPlatformSelected] = useState(false);
+	const [consultoriaSelected, setConsultoriaSelected] = useState(false);
 
 	const checkoutMutation = useMutation({
-		mutationFn: async (subscription: string) => {
+		mutationFn: async (vars: { subscription: string; consultoria?: boolean }) => {
 			const response = await fetch("/api/integrations/stripe/generate-checkout", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ subscription }),
+				body: JSON.stringify(vars),
 			});
 			if (!response.ok) {
 				const error = await response.json();
@@ -186,10 +186,20 @@ function PaywallContent({ mensagem, status }: { mensagem: string; status: string
 		},
 	});
 
-	const handlePlanSelect = (planKey: TAppSubscriptionPlanKey) => {
-		setSelectedPlan(planKey);
-		const subscriptionKey = `${planKey}-${billingInterval.toUpperCase()}`;
-		checkoutMutation.mutate(subscriptionKey);
+	// Plataforma (self-serve) — mensal. Internamente é o plano CRESCIMENTO.
+	const platformPrice = AppSubscriptionPlans.CRESCIMENTO.pricing.monthly.price;
+	const handlePlatformSelect = () => {
+		setConsultoriaSelected(false);
+		setPlatformSelected(true);
+		checkoutMutation.mutate({ subscription: "CRESCIMENTO-MONTHLY" });
+	};
+
+	// Bundle: plataforma + consultoria (Gestor de Crescimento), num clique.
+	const consultoriaBundlePrice = platformPrice + CONSULTORIA_ADDON.monthlyPrice;
+	const handleConsultoriaSelect = () => {
+		setPlatformSelected(false);
+		setConsultoriaSelected(true);
+		checkoutMutation.mutate({ subscription: "CRESCIMENTO-MONTHLY", consultoria: true });
 	};
 
 	return (
@@ -243,6 +253,37 @@ function PaywallContent({ mensagem, status }: { mensagem: string; status: string
 						/>
 					</div>
 				</div>
+
+				{/* Bundle de consultoria (destaque do pitch) — plataforma + gestor dedicado */}
+				<button
+					type="button"
+					disabled={checkoutMutation.isPending}
+					onClick={handleConsultoriaSelect}
+					className={cn(
+						"group relative flex items-center gap-4 rounded-xl p-4 text-left transition-all duration-300 border-2 cursor-pointer focus:outline-none focus:ring-4 focus:ring-[#24549C]/25",
+						"bg-linear-to-br from-[#24549C] to-[#1a3d7a] border-transparent text-white hover:shadow-lg hover:scale-[1.005]",
+						checkoutMutation.isPending && "opacity-50 cursor-not-allowed hover:scale-100",
+					)}
+				>
+					<div className="absolute -top-2 left-4 bg-[#FFD600] text-gray-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">RECOMENDADO</div>
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15">
+						<Rocket className="h-5 w-5 text-[#FFD600]" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<h3 className="font-bold text-sm">Plataforma + Gestor de Crescimento</h3>
+						<p className="text-white/70 text-[11px] leading-snug">A gente opera por você: dados, campanhas e relatório de resultado.</p>
+					</div>
+					<div className="flex shrink-0 flex-col items-end gap-1">
+						<div className="flex items-baseline gap-0.5">
+							<span className="font-bold text-lg tracking-tight text-[#FFD600]">{formatToMoney(consultoriaBundlePrice).split(",")[0]}</span>
+							<span className="text-xs font-bold text-[#FFD600]">,{formatToMoney(consultoriaBundlePrice).split(",")[1]}</span>
+							<span className="text-white/60 font-medium text-[10px] ml-0.5">/mês</span>
+						</div>
+						<div className="flex h-7 items-center justify-center rounded-4xl bg-[#FFD600] px-3 text-[11px] font-bold text-gray-900">
+							{checkoutMutation.isPending && consultoriaSelected ? <Loader2 className="h-3 w-3 animate-spin" /> : "CONTRATAR"}
+						</div>
+					</div>
+				</button>
 
 				{/* Plans grid */}
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-3">

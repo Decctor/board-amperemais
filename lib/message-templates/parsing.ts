@@ -1,14 +1,11 @@
 import type { TMessageTemplateContent, TMessageTemplateMetadata } from "@/schemas/message-templates";
 import type { TMessageTemplateParameter, TMessageTemplateRuntimeValues } from "./types";
-import {
-	getDefaultMessageTemplateVariableExample,
-	isAllowedMessageTemplateVariable,
-	MessageTemplateNativeVariables,
-} from "./variables";
+import { getDefaultMessageTemplateVariableExample, isAllowedMessageTemplateVariable, MessageTemplateNativeVariables } from "./variables";
 
 const TEMPLATE_VARIABLE_REGEX = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 const TEMPLATE_VARIABLE_TOKEN_REGEX = /\{\{\s*([^}]+?)\s*\}\}/g;
 const MENTION_SPAN_REGEX = /<span[^>]*data-type=["']mention["'][^>]*>[\s\S]*?<\/span>/gi;
+const POSITIONAL_VARIABLE_REGEX = /\{\{\s*(\d+)\s*\}\}/g;
 
 export function replaceMessageTemplateMentionSpansWithVariables(text: string) {
 	return text.replace(MENTION_SPAN_REGEX, (match) => {
@@ -19,6 +16,33 @@ export function replaceMessageTemplateMentionSpansWithVariables(text: string) {
 		if (dataLabelMatch?.[1] && isAllowedMessageTemplateVariable(dataLabelMatch[1])) return `{{${dataLabelMatch[1]}}}`;
 
 		return match;
+	});
+}
+
+export function buildMessageTemplateMentionSpan(identificadorInterno: string) {
+	const variable = MessageTemplateNativeVariables.find((item) => item.identificador === identificadorInterno);
+	const label = variable?.label.toUpperCase() ?? identificadorInterno;
+	return `<span data-type="mention" class="mention" data-id="${identificadorInterno}" data-label="${identificadorInterno}" data-mention-suggestion-char="{">{{${label}}}</span>`;
+}
+
+export function extractOrderedMessageTemplatePositions(text: string) {
+	const positions: number[] = [];
+	const seen = new Set<number>();
+
+	for (const match of text.matchAll(POSITIONAL_VARIABLE_REGEX)) {
+		const position = Number(match[1]);
+		if (seen.has(position)) continue;
+		seen.add(position);
+		positions.push(position);
+	}
+
+	return positions.sort((left, right) => left - right);
+}
+
+export function replaceMessageTemplatePositionsWithMentions(text: string, identifiersByExternalId: Map<string, string>) {
+	return text.replace(POSITIONAL_VARIABLE_REGEX, (match, positionValue) => {
+		const identificadorInterno = identifiersByExternalId.get(positionValue.trim());
+		return identificadorInterno ? buildMessageTemplateMentionSpan(identificadorInterno) : match;
 	});
 }
 
@@ -154,7 +178,9 @@ export function replaceMessageTemplateVariables(text: string, values: TMessageTe
 
 export function convertInternalVariablesToPositional(text: string, parameters: TMessageTemplateParameter[]) {
 	const normalizedText = normalizeMessageTemplateVariableTokensInText(text);
-	const positionByInternalId = new Map(parameters.map((parameter, index) => [parameter.identificadorInterno, parameter.identificadorExterno || String(index + 1)]));
+	const positionByInternalId = new Map(
+		parameters.map((parameter, index) => [parameter.identificadorInterno, parameter.identificadorExterno || String(index + 1)]),
+	);
 
 	return normalizedText.replace(TEMPLATE_VARIABLE_REGEX, (match, identifier) => {
 		const position = positionByInternalId.get(identifier);

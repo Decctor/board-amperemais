@@ -1,4 +1,4 @@
-import { AppSubscriptionPlans, type TAppSubscriptionPlanKey } from "@/config";
+import { AppSubscriptionPlans, CONSULTORIA_ADDON, type TAppSubscriptionPlanKey } from "@/config";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { db } from "@/services/drizzle";
@@ -18,6 +18,9 @@ const GenerateCheckoutInputSchema = z.object({
     "ESCALA-MONTHLY",
     "ESCALA-YEARLY",
   ]),
+  // Quando true, adiciona a consultoria (Gestor de Crescimento) como 2ª line-item
+  // e marca a organização como gerida por nós. Disponível só no ciclo mensal.
+  consultoria: z.boolean().optional().default(false),
 });
 
 export type TGenerateCheckoutInput = z.infer<typeof GenerateCheckoutInputSchema>;
@@ -57,6 +60,19 @@ async function generateCheckoutRoute(request: NextRequest) {
       "Price ID do Stripe não configurado para este plano.",
     );
 
+  // Consultoria (add-on) só existe no ciclo mensal — Stripe não permite misturar
+  // intervalos (mensal + anual) numa mesma assinatura.
+  if (input.consultoria && modality !== "monthly")
+    throw new createHttpError.BadRequest("A consultoria está disponível apenas no plano mensal.");
+
+  const lineItems: { price: string; quantity: number }[] = [{ price: stripePriceId, quantity: 1 }];
+
+  if (input.consultoria) {
+    if (!CONSULTORIA_ADDON.stripePriceId)
+      throw new createHttpError.InternalServerError("Price ID da consultoria não configurado.");
+    lineItems.push({ price: CONSULTORIA_ADDON.stripePriceId, quantity: 1 });
+  }
+
   // Check if org already has a Stripe customer or create one
   let stripeCustomerId = organization.stripeCustomerId;
 
@@ -89,6 +105,9 @@ async function generateCheckoutRoute(request: NextRequest) {
     .update(organizations)
     .set({
       assinaturaPlano: planName,
+      consultoriaAtiva: input.consultoria,
+      // Fotografa o marco do baseline ao ativar a consultoria; preserva se já existir.
+      baselineInicio: input.consultoria ? (organization.baselineInicio ?? new Date()) : organization.baselineInicio,
       configuracao: {
         recursos: plan.capabilities,
         preferencias: {
@@ -104,12 +123,7 @@ async function generateCheckoutRoute(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const checkoutSession = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
-    line_items: [
-      {
-        price: stripePriceId,
-        quantity: 1,
-      },
-    ],
+    line_items: lineItems,
     mode: "subscription",
     allow_promotion_codes: true,
     success_url: `${baseUrl}/dashboard?checkout=success`,

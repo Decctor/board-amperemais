@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { CircleGauge, Diamond, Eye, Pencil, Phone, Plus, RefreshCw, Send } from "lucide-react";
+import { AlertTriangle, CircleGauge, Diamond, Eye, Pencil, Phone, Plus, RefreshCw, Send } from "lucide-react";
 import { useMessageTemplates } from "@/lib/queries/message-templates";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
@@ -204,6 +204,25 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 								<TemplatePreview content={template.conteudo} />
 							</HoverCardContent>
 						</HoverCard>
+						{template.alerta ? (
+							<HoverCard>
+								<HoverCardTrigger asChild>
+									<button
+										type="button"
+										className="flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-950"
+									>
+										<AlertTriangle className="h-3 w-3" />
+										<span>ALERTA</span>
+									</button>
+								</HoverCardTrigger>
+								<HoverCardContent className="w-80 p-3" side="bottom" align="end">
+									<div className="flex flex-col gap-1.5">
+										<p className="text-xs font-bold tracking-tight">Atenção na sincronização</p>
+										<p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{template.alerta}</p>
+									</div>
+								</HoverCardContent>
+							</HoverCard>
+						) : null}
 						<HoverCard>
 							<HoverCardTrigger asChild>
 								<div className="flex items-center gap-2">

@@ -46,6 +46,12 @@ export const organizations = newTable("organizations", {
 	integracaoDataUltimaSincronizacao: timestamp("integracao_data_ultima_sincronizacao"),
 	periodoTesteInicio: timestamp("periodo_teste_inicio"),
 	periodoTesteFim: timestamp("periodo_teste_fim"),
+	// Consultoria / FDE (add-on à plataforma — não altera capabilities do plano).
+	// consultoriaAtiva: a conta é operada por nós (gestor de crescimento dedicado).
+	consultoriaAtiva: boolean("consultoria_ativa").notNull().default(false),
+	// baselineInicio: marco a partir do qual passamos a operar a conta.
+	// Dados anteriores a esta data = baseline; posteriores = resultado da nossa gestão.
+	baselineInicio: timestamp("baseline_inicio"),
 	// Custom Colors
 	corPrimaria: text("cor_primaria"), // Primary/brand color (hex format, e.g., #FFB900)
 	corPrimariaForeground: text("cor_primaria_foreground"), // Foreground for primary color (hex, e.g., #000000)

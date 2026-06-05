@@ -59,7 +59,6 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 					template,
 					connectionId: phone.id,
 					metaTemplate: remote,
-					preserveLocalContent: true,
 				});
 
 				await db
@@ -70,6 +69,7 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 						linguagem: patch.linguagem,
 						conteudo: patch.conteudo,
 						metadados: patch.metadados,
+						alerta: patch.alerta,
 						dataAtualizacao: new Date(),
 					})
 					.where(eq(messageTemplates.id, template.id));
@@ -77,7 +77,12 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 				details.push({ telefoneId: phone.id, templateName: template.nome, action: "updated" });
 			} catch (error) {
 				errors += 1;
-				details.push({ telefoneId: phone.id, templateName: template.nome, action: "error", error: error instanceof Error ? error.message : "Erro desconhecido" });
+				details.push({
+					telefoneId: phone.id,
+					templateName: template.nome,
+					action: "error",
+					error: error instanceof Error ? error.message : "Erro desconhecido",
+				});
 			}
 		}
 	}

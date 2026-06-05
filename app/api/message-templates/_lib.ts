@@ -222,7 +222,6 @@ export async function syncMessageTemplateFromMetaForPhone({
 		template,
 		connectionId: phone.id,
 		metaTemplate,
-		preserveLocalContent: true,
 	});
 }
 
@@ -241,7 +240,12 @@ export function normalizeContentForStorage(content: TMessageTemplateContent) {
 export function assertWhatsappValidation(content: TMessageTemplateContent) {
 	const validation = validateMessageTemplateForWhatsapp(content);
 	if (!validation.valid) {
-		throw new createHttpError.BadRequest(validation.issues.filter((issue) => issue.severity === "error").map((issue) => issue.message).join(", "));
+		throw new createHttpError.BadRequest(
+			validation.issues
+				.filter((issue) => issue.severity === "error")
+				.map((issue) => issue.message)
+				.join(", "),
+		);
 	}
 }
 

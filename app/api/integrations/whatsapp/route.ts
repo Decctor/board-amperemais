@@ -257,7 +257,6 @@ async function syncUniversalTemplateComponentsFromMeta(messageTemplateId: string
 					template,
 					connectionId: phoneId,
 					metaTemplate,
-					preserveLocalContent: false,
 				});
 
 				await db
@@ -268,6 +267,7 @@ async function syncUniversalTemplateComponentsFromMeta(messageTemplateId: string
 						linguagem: patch.linguagem,
 						conteudo: patch.conteudo,
 						metadados: patch.metadados,
+						alerta: patch.alerta,
 						dataAtualizacao: new Date(),
 					})
 					.where(eq(messageTemplates.id, template.id));
