@@ -218,42 +218,6 @@ function PaywallContent({ mensagem, status }: { mensagem: string; status: string
 
 			{/* Plan selection */}
 			<div className="p-6 flex flex-col gap-4">
-				{/* Billing toggle */}
-				<div className="flex justify-center">
-					<div className="relative flex items-center bg-gray-200/50 dark:bg-gray-800/50 p-1.5 rounded-full">
-						<button
-							type="button"
-							onClick={() => setBillingInterval("monthly")}
-							disabled={checkoutMutation.isPending}
-							className={cn(
-								"relative z-10 box-border w-28 rounded-full py-2 text-center text-sm font-bold transition-colors duration-300",
-								billingInterval === "monthly" ? "text-gray-900 dark:text-white" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300",
-								checkoutMutation.isPending && "opacity-50 cursor-not-allowed",
-							)}
-						>
-							MENSAL
-						</button>
-						<button
-							type="button"
-							onClick={() => setBillingInterval("yearly")}
-							disabled={checkoutMutation.isPending}
-							className={cn(
-								"relative z-10 box-border w-28 rounded-full py-2 text-center text-sm font-bold transition-colors duration-300",
-								billingInterval === "yearly" ? "text-gray-900 dark:text-white" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300",
-								checkoutMutation.isPending && "opacity-50 cursor-not-allowed",
-							)}
-						>
-							ANUAL
-						</button>
-						<div
-							className={cn(
-								"absolute top-1.5 bottom-1.5 w-28 rounded-full bg-[#FFD600] shadow-sm transition-all duration-300 ease-in-out",
-								billingInterval === "monthly" ? "left-1.5" : "left-[calc(100%-7.35rem)]",
-							)}
-						/>
-					</div>
-				</div>
-
 				{/* Bundle de consultoria (destaque do pitch) — plataforma + gestor dedicado */}
 				<button
 					type="button"
@@ -285,83 +249,35 @@ function PaywallContent({ mensagem, status }: { mensagem: string; status: string
 					</div>
 				</button>
 
-				{/* Plans grid */}
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-					{(["ESSENCIAL", "CRESCIMENTO", "ESCALA"] as const).map((planKey) => {
-						const plan = AppSubscriptionPlans[planKey];
-						const pricing = plan.pricing[billingInterval];
-						const isSelected = selectedPlan === planKey;
-
-						const monthlyEquivalent = plan.pricing.monthly.price * 12;
-						const yearlyPrice = plan.pricing.yearly.price;
-						const discountPercentage = Math.round(((monthlyEquivalent - yearlyPrice) / monthlyEquivalent) * 100);
-
-						return (
-							<button
-								key={planKey}
-								type="button"
-								disabled={checkoutMutation.isPending}
-								className={cn(
-									"group relative flex flex-col rounded-xl p-4 transition-all duration-300 border-2 cursor-pointer text-left focus:outline-none focus:ring-4 focus:ring-yellow-400/30",
-									"bg-transparent border-gray-200 dark:border-gray-700 hover:bg-muted/50 hover:shadow-lg hover:scale-[1.01]",
-									isSelected ? "bg-muted/50 shadow-lg scale-[1.01] ring-2 ring-[#FFD600] ring-offset-2 border-transparent" : "",
-									checkoutMutation.isPending && "opacity-50 cursor-not-allowed hover:scale-100",
-								)}
-								onClick={() => handlePlanSelect(planKey)}
-							>
-								{billingInterval === "yearly" && (
-									<div className="absolute -top-2 -right-2 bg-linear-to-r from-emerald-500 to-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">
-										-{discountPercentage}%
-									</div>
-								)}
-
-								<div className="mb-2">
-									<h3 className="font-bold text-base mb-0.5">{plan.name}</h3>
-									<p className="text-muted-foreground text-[10px] leading-relaxed line-clamp-2">{plan.description}</p>
-								</div>
-
-								<ul className="mb-3 space-y-1 flex-1">
-									{plan.pricingTableFeatures.slice(0, 3).map((feature, idx) => (
-										<li key={idx.toString()} className="flex items-start gap-1.5">
-											<div className="mt-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-0.5">
-												<CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
-											</div>
-											<span className="text-[10px] font-medium leading-tight line-clamp-1">{feature.label}</span>
-										</li>
-									))}
-									{plan.pricingTableFeatures.length > 3 && (
-										<li className="text-[10px] text-muted-foreground ml-4">+{plan.pricingTableFeatures.length - 3} mais...</li>
-									)}
-								</ul>
-
-								<div className="space-y-2 pt-3 border-t border-border mt-auto">
-									<div className="flex items-baseline gap-1">
-										<span className="font-bold text-xl tracking-tight">{formatToMoney(pricing.price).split(",")[0]}</span>
-										<span className="text-sm font-bold">,{formatToMoney(pricing.price).split(",")[1]}</span>
-										<span className="text-muted-foreground font-medium text-[10px] ml-1">{billingInterval === "monthly" ? "/mês" : "/ano"}</span>
-									</div>
-
-									<div
-										className={cn(
-											"w-full h-8 rounded-4xl text-xs font-bold transition-all duration-300 flex items-center justify-center",
-											"bg-[#FFD600] text-gray-900",
-											isSelected && "ring-2 ring-gray-900 ring-offset-1",
-										)}
-									>
-										{checkoutMutation.isPending && isSelected ? (
-											<>
-												<Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-												PROCESSANDO...
-											</>
-										) : (
-											"ESCOLHER"
-										)}
-									</div>
-								</div>
-							</button>
-						);
-					})}
-				</div>
+				{/* Plataforma (self-serve) — você opera */}
+				<button
+					type="button"
+					disabled={checkoutMutation.isPending}
+					onClick={handlePlatformSelect}
+					className={cn(
+						"group relative flex items-center gap-4 rounded-xl p-4 text-left transition-all duration-300 border-2 cursor-pointer focus:outline-none focus:ring-4 focus:ring-yellow-400/30",
+						"bg-transparent border-gray-200 dark:border-gray-700 hover:bg-muted/50 hover:shadow-lg hover:scale-[1.005]",
+						checkoutMutation.isPending && "opacity-50 cursor-not-allowed hover:scale-100",
+					)}
+				>
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+						<LayoutGrid className="h-5 w-5 text-[#24549C]" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<h3 className="font-bold text-sm">Plataforma</h3>
+						<p className="text-muted-foreground text-[11px] leading-snug">Plataforma completa — você opera as campanhas.</p>
+					</div>
+					<div className="flex shrink-0 flex-col items-end gap-1">
+						<div className="flex items-baseline gap-0.5">
+							<span className="font-bold text-lg tracking-tight">{formatToMoney(platformPrice).split(",")[0]}</span>
+							<span className="text-xs font-bold">,{formatToMoney(platformPrice).split(",")[1]}</span>
+							<span className="text-muted-foreground font-medium text-[10px] ml-0.5">/mês</span>
+						</div>
+						<div className="flex h-7 items-center justify-center rounded-4xl bg-[#FFD600] px-3 text-[11px] font-bold text-gray-900">
+							{checkoutMutation.isPending && platformSelected ? <Loader2 className="h-3 w-3 animate-spin" /> : "ESCOLHER"}
+						</div>
+					</div>
+				</button>
 
 				{checkoutMutation.isError && (
 					<p className="text-red-500 text-sm text-center">{checkoutMutation.error?.message || "Erro ao processar. Tente novamente."}</p>
