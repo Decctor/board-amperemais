@@ -73,7 +73,7 @@ export default function CheckoutSheet() {
 
 	return (
 		<Drawer open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
-			<DrawerContent className="flex flex-col h-fit max-h-[90vh]">
+			<DrawerContent className="flex flex-col h-fit min-h-[50dvh] max-h-[90dvh]">
 				<DrawerHeader className="text-left flex items-center gap-3">
 					<Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={handleBack}>
 						<ArrowLeft className="w-4 h-4" />
