@@ -9,7 +9,13 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import z from "zod";
 import { buildRemoteTemplateIndexes, buildWhatsappTemplateSyncPatch, resolveRemoteTemplate } from "@/lib/message-templates";
-import { getOrganizationWhatsappPhones, listMetaTemplatesForPhone } from "../_lib";
+import { getOrganizationWhatsappPhones, listMetaTemplatesForPhone, type TMessageTemplateWhatsappPhone } from "../_lib";
+
+const SYNC_LOG_PREFIX = "[MESSAGE_TEMPLATES_SYNC]";
+
+function formatPhoneForLog(phone: TMessageTemplateWhatsappPhone) {
+	return `${phone.nome} (${phone.numero}) [id=${phone.id}, waba=${phone.whatsappBusinessAccountId ?? "n/a"}]`;
+}
 
 const SyncMessageTemplatesInputSchema = z.object({
 	telefoneId: z.string({ invalid_type_error: "Tipo inválido para ID do telefone." }).optional().nullable(),
@@ -35,14 +41,60 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 
 	if (input.messageTemplateId && templates.length === 0) throw new createHttpError.NotFound("Template não encontrado.");
 
-	const details: Array<{ telefoneId: string; templateName: string; action: "updated" | "skipped" | "error"; error?: string }> = [];
+	const details: Array<{
+		telefoneId: string;
+		telefoneNumero: string;
+		templateName: string;
+		action: "updated" | "skipped" | "error";
+		error?: string;
+	}> = [];
+	const phoneErrors: Array<{
+		telefoneId: string;
+		telefoneNumero: string;
+		telefoneNome: string;
+		whatsappBusinessAccountId: string | null;
+		error: string;
+	}> = [];
 	let updated = 0;
 	let skipped = 0;
 	let errors = 0;
+	let phonesFailed = 0;
+
+	console.log(
+		`${SYNC_LOG_PREFIX} Iniciando sync para ${phonesToSync.length} telefone(s) e ${templates.length} template(s): ${phonesToSync.map((phone) => formatPhoneForLog(phone)).join("; ")}`,
+	);
 
 	for (const phone of phonesToSync) {
-		const remoteTemplates = await listMetaTemplatesForPhone(phone);
-		const remoteIndexes = buildRemoteTemplateIndexes(remoteTemplates);
+		let remoteIndexes: ReturnType<typeof buildRemoteTemplateIndexes>;
+
+		try {
+			const remoteTemplates = await listMetaTemplatesForPhone(phone);
+			remoteIndexes = buildRemoteTemplateIndexes(remoteTemplates);
+			console.log(`${SYNC_LOG_PREFIX} Templates listados com sucesso para ${formatPhoneForLog(phone)}: ${remoteTemplates.length} encontrado(s).`);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+			phonesFailed += 1;
+			phoneErrors.push({
+				telefoneId: phone.id,
+				telefoneNumero: phone.numero,
+				telefoneNome: phone.nome,
+				whatsappBusinessAccountId: phone.whatsappBusinessAccountId,
+				error: errorMessage,
+			});
+			console.error(`${SYNC_LOG_PREFIX} Falha ao listar templates na Meta para ${formatPhoneForLog(phone)}:`, error);
+
+			for (const template of templates) {
+				errors += 1;
+				details.push({
+					telefoneId: phone.id,
+					telefoneNumero: phone.numero,
+					templateName: template.nome,
+					action: "error",
+					error: errorMessage,
+				});
+			}
+			continue;
+		}
 
 		for (const template of templates) {
 			const metadataForPhone = template.metadados.porNumeroTelefone[phone.id];
@@ -50,7 +102,7 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 
 			if (!remote) {
 				skipped += 1;
-				details.push({ telefoneId: phone.id, templateName: template.nome, action: "skipped" });
+				details.push({ telefoneId: phone.id, telefoneNumero: phone.numero, templateName: template.nome, action: "skipped" });
 				continue;
 			}
 
@@ -74,25 +126,51 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 					})
 					.where(eq(messageTemplates.id, template.id));
 				updated += 1;
-				details.push({ telefoneId: phone.id, templateName: template.nome, action: "updated" });
+				details.push({ telefoneId: phone.id, telefoneNumero: phone.numero, templateName: template.nome, action: "updated" });
 			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
 				errors += 1;
+				console.error(
+					`${SYNC_LOG_PREFIX} Falha ao sincronizar template "${template.nome}" para ${formatPhoneForLog(phone)}:`,
+					error,
+				);
 				details.push({
 					telefoneId: phone.id,
+					telefoneNumero: phone.numero,
 					templateName: template.nome,
 					action: "error",
-					error: error instanceof Error ? error.message : "Erro desconhecido",
+					error: errorMessage,
 				});
 			}
 		}
 	}
 
+	const phonesSucceeded = phonesToSync.length - phonesFailed;
+	console.log(
+		`${SYNC_LOG_PREFIX} Sync finalizado: ${phonesSucceeded}/${phonesToSync.length} telefone(s) ok, ${updated} atualizado(s), ${skipped} ignorado(s), ${errors} erro(s).`,
+	);
+	if (phoneErrors.length > 0) {
+		console.error(
+			`${SYNC_LOG_PREFIX} Telefones com falha:`,
+			phoneErrors.map((phoneError) => ({
+				telefoneId: phoneError.telefoneId,
+				telefoneNumero: phoneError.telefoneNumero,
+				telefoneNome: phoneError.telefoneNome,
+				whatsappBusinessAccountId: phoneError.whatsappBusinessAccountId,
+				error: phoneError.error,
+			})),
+		);
+	}
+
+	const phoneFailureSuffix = phonesFailed > 0 ? ` ${phonesFailed} telefone(s) com falha.` : "";
+
 	return {
 		data: {
-			summary: { phonesProcessed: phonesToSync.length, updated, skipped, errors },
+			summary: { phonesProcessed: phonesToSync.length, phonesFailed, updated, skipped, errors },
+			phoneErrors,
 			details,
 		},
-		message: `Sincronização concluída. ${updated} atualizado(s), ${skipped} ignorado(s), ${errors} erro(s).`,
+		message: `Sincronização concluída. ${updated} atualizado(s), ${skipped} ignorado(s), ${errors} erro(s).${phoneFailureSuffix}`,
 	};
 }
 export type TSyncMessageTemplatesOutput = Awaited<ReturnType<typeof syncMessageTemplates>>;

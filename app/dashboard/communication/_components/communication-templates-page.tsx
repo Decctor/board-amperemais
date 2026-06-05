@@ -68,7 +68,17 @@ export default function CommunicationTemplatesPage({ organizationName: _organiza
 		mutationKey: ["sync-message-templates"],
 		mutationFn: syncMessageTemplates,
 		onMutate: handleOnMutate,
-		onSuccess: (response) => toast.success(response.message),
+		onSuccess: (response) => {
+			const failedPhones = response.data.phoneErrors;
+			if (failedPhones.length > 0) {
+				const failureSummary = failedPhones
+					.map((phone) => `${phone.telefoneNome} (${phone.telefoneNumero})`)
+					.join(", ");
+				toast.warning(`${response.message} Telefones com falha: ${failureSummary}.`);
+				return;
+			}
+			toast.success(response.message);
+		},
 		onError: (error) => toast.error(getErrorMessage(error)),
 		onSettled: handleOnSettled,
 	});
