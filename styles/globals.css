@@ -9,6 +9,24 @@
 @custom-variant short (@media (max-height: 700px));
 @custom-variant shorter (@media (max-height: 600px));
 
+@keyframes shop-marquee-left {
+	from {
+		transform: translate3d(0, 0, 0);
+	}
+	to {
+		transform: translate3d(var(--marquee-distance, 0px), 0, 0);
+	}
+}
+
+@keyframes shop-marquee-right {
+	from {
+		transform: translate3d(var(--marquee-distance, 0px), 0, 0);
+	}
+	to {
+		transform: translate3d(0, 0, 0);
+	}
+}
+
 @theme {
 	/* Define a animação vinculando ao nome dos keyframes */
 	--animate-pulse-slow: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -192,6 +210,37 @@
 	}
 	.scrollbar-thin.scrollbar-thumb-primary\/30.scrollbar-track-transparent {
 		scrollbar-color: hsl(var(--primary) / 0.3) transparent;
+	}
+
+	/* Shop marquee */
+	.marquee-scroller {
+		width: max-content;
+		animation-duration: var(--marquee-duration, 20s);
+		animation-timing-function: linear;
+		animation-iteration-count: infinite;
+		animation-direction: alternate;
+		will-change: transform;
+	}
+
+	.marquee-scroller[data-direction="left"] {
+		animation-name: shop-marquee-left;
+	}
+
+	.marquee-scroller[data-direction="right"] {
+		animation-name: shop-marquee-right;
+	}
+
+	.marquee-root:focus-within .marquee-scroller,
+	.marquee-scroller.is-paused {
+		animation-play-state: paused;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.marquee-scroller {
+			animation: none !important;
+			transform: none !important;
+			will-change: auto;
+		}
 	}
 
 	/* Trilha transparente, polegar fino em tom neutro — ideal para kanban e painéis densos */

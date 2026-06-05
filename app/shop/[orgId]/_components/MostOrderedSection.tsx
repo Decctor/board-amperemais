@@ -1,9 +1,8 @@
 "use client";
 
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { TShopCatalogProduct } from "@/lib/shop/catalog";
 import { TrendingUp } from "lucide-react";
-import ProductCard from "./ProductCard";
+import ProductMarqueeRow from "./ProductMarqueeRow";
 
 type MostOrderedSectionProps = {
 	products: TShopCatalogProduct[];
@@ -21,14 +20,7 @@ export default function MostOrderedSection({ products }: MostOrderedSectionProps
 				</h2>
 			</div>
 
-			<ScrollArea className="w-full">
-				<div className="flex gap-3 px-4 pb-2">
-					{products.map((product) => (
-						<ProductCard key={product.id} product={product} />
-					))}
-				</div>
-				<ScrollBar orientation="horizontal" className="invisible" />
-			</ScrollArea>
+			<ProductMarqueeRow products={products} />
 		</section>
 	);
 }

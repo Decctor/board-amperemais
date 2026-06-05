@@ -36,7 +36,7 @@ export default function ShopHeader() {
 
 	return (
 		<header className="relative flex w-full flex-col bg-background pb-2">
-			<div className="relative h-[11.5rem] w-full overflow-hidden sm:h-56">
+			<div className="relative h-[14rem] w-full overflow-hidden sm:h-64">
 				{(showCoverImage || showCoverVideo) && appearance.headerCoverUrl ? (
 					<>
 						{showCoverVideo ? (
