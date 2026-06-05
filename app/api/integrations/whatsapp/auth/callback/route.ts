@@ -155,18 +155,24 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 				const phoneNumbersUrl = `https://graph.facebook.com/v21.0/${whatsappBusinessAccountId}/phone_numbers?access_token=${accessToken}`;
 				const phoneNumbersResponse = await fetch(phoneNumbersUrl);
 				const phoneNumbersDataResult = await phoneNumbersResponse.json();
-				const phoneNumbersData = phoneNumbersDataResult.data[0];
-				console.log(`[INFO] [WHATSAPP_CONNECT] Phone Numbers Data for ${whatsappBusinessAccountId}:`, phoneNumbersData);
-				if (phoneNumbersData.platform_type !== "CLOUD_API") return null;
-				return {
-					nome: phoneNumbersData.verified_name as string,
-					whatsappBusinessAccountId: whatsappBusinessAccountId,
-					whatsappTelefoneId: phoneNumbersData.id,
-					numero: phoneNumbersData.display_phone_number,
-				};
+				const phoneNumbersList = (phoneNumbersDataResult.data ?? []) as Array<{
+					id: string;
+					verified_name: string;
+					display_phone_number: string;
+					platform_type: string;
+				}>;
+				console.log(`[INFO] [WHATSAPP_CONNECT] Phone Numbers Data for ${whatsappBusinessAccountId}:`, phoneNumbersList);
+				return phoneNumbersList
+					.filter((phoneNumbersData) => phoneNumbersData.platform_type === "CLOUD_API")
+					.map((phoneNumbersData) => ({
+						nome: phoneNumbersData.verified_name,
+						whatsappBusinessAccountId,
+						whatsappTelefoneId: phoneNumbersData.id,
+						numero: phoneNumbersData.display_phone_number,
+					}));
 			}),
 		)
-	).filter((p) => !!p);
+	).flat();
 
 	const insertedPhones = await db.transaction(async (tx) => {
 		const whatsappConnection: TNewWhatsappConnection = {

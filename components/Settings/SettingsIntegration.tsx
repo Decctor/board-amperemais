@@ -8,10 +8,11 @@ import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
 import { useOrganizationState } from "@/state-hooks/use-organization-state";
 import { useMutation } from "@tanstack/react-query";
 import { Calendar, CheckCircle2, LinkIcon, Pencil, Settings2, Unlink } from "lucide-react";
-import Image from "next/image";
+import Image, { type StaticImageData } from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import type { TOrganizationIntegrationTypeEnum } from "@/schemas/enums";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
@@ -23,7 +24,18 @@ import { Chip } from "../ui/chip";
 import ViewIntegration from "../Modals/Integrations/ViewIntegration";
 import ConfigureIntegration from "../Modals/Integrations/ConfigureIntegration";
 
-const INTEGRATIONS = [
+type TIntegrationDefinition = {
+	id: TOrganizationIntegrationTypeEnum;
+	name: string;
+	logo?: StaticImageData;
+	description: string;
+	buttonText: string;
+	brandColor: string;
+	brandClassName: string;
+	authUrl?: string;
+};
+
+const INTEGRATIONS: TIntegrationDefinition[] = [
 	{
 		id: "ONLINE-SOFTWARE",
 		name: "Online Software",
@@ -75,7 +87,7 @@ const INTEGRATIONS = [
 		brandClassName: "bg-[#34AD61] text-white hover:bg-[#34AD61]/80",
 		authUrl: "/api/integrations/bling/auth",
 	},
-] as const;
+];
 
 type SettingsIntegrationProps = {
 	user: TAuthUserSession["user"];
@@ -137,10 +149,10 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 		}
 	};
 
-	const handleIntegrationSelect = (integrationId: (typeof INTEGRATIONS)[number]["id"]) => {
+	const handleIntegrationSelect = (integrationId: TOrganizationIntegrationTypeEnum) => {
 		if (!canEdit) return;
 		const integration = INTEGRATIONS.find((item) => item.id === integrationId);
-		if (integration && "authUrl" in integration) {
+		if (integration?.authUrl) {
 			window.location.href = integration.authUrl;
 			return;
 		}
@@ -183,15 +195,22 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 						const brandColor = integration.brandColor;
 
 						return (
-							<button
-								type="button"
+							<div
 								key={integration.id}
-								className="w-[450px] bg-card border border-border flex flex-col gap-3 px-3 py-4 rounded-xl shadow-2xs"
+								role="button"
+								tabIndex={0}
+								className="w-[450px] cursor-pointer bg-card border border-border flex flex-col gap-3 px-3 py-4 rounded-xl shadow-2xs"
 								onClick={() => handleIntegrationSelect(integration.id)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										handleIntegrationSelect(integration.id);
+									}
+								}}
 							>
 								<div className="mb-6 flex items-start justify-between">
 									<div className="relative h-12 w-32">
-										{"logo" in integration ? (
+										{integration.logo ? (
 											<Image src={integration.logo} alt={integration.name} fill className="object-contain object-left" />
 										) : (
 											<div
@@ -219,7 +238,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 										{integration.buttonText}
 									</Button>
 								</div>
-							</button>
+							</div>
 						);
 					})}
 				</div>
@@ -241,7 +260,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 
 type ActiveIntegrationCardProps = {
 	integration: TOrganizationIntegrationConfig;
-	integrationDetails: (typeof INTEGRATIONS)[number];
+	integrationDetails: TIntegrationDefinition;
 	integrationLastSyncDate: Date | null;
 	handleDisconnect: () => void;
 	handleEdit: () => void;
@@ -259,7 +278,7 @@ function ActiveIntegrationCard({
 		<div className="bg-card border-border flex w-full flex-col sm:flex-row gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
 			<div className="flex items-center justify-center">
 				<div className="relative w-20 h-20 lg:h-20 lg:w-20 lg:min-h-20 lg:min-w-20 overflow-hidden rounded-lg">
-					{"logo" in integrationDetails && integrationDetails.logo ? (
+					{integrationDetails.logo ? (
 						<Image src={integrationDetails.logo} alt={integrationDetails.name} fill={true} objectFit="contain" />
 					) : (
 						<div className="bg-primary/50 text-foreground-foreground flex h-full w-full items-center justify-center">
@@ -279,7 +298,7 @@ function ActiveIntegrationCard({
 							<Chip.Label>CONECTADO</Chip.Label>
 						</Chip.Root>
 
-						{"authUrl" in integrationDetails || integration.tipo === "IFOOD" ? null : (
+						{integrationDetails.authUrl || integration.tipo === "IFOOD" ? null : (
 							<Button variant="ghost" size="sm" onClick={handleEdit}>
 								<Pencil className="w-4 h-4 min-w-4 min-h-4" />
 							</Button>

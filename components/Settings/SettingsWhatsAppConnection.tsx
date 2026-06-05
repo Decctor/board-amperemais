@@ -1,6 +1,7 @@
 "use client";
 
 import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
+import ViewConnectionPhone, { type TViewConnectionPhoneContext } from "@/components/Modals/WhatsappConnections/ViewConnectionPhone";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToPhone } from "@/lib/formatting";
@@ -9,7 +10,7 @@ import { deleteWhatsappConnection } from "@/lib/mutations/whatsapp-connections";
 import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Calendar, Cloud, Key, Loader2, Phone, QrCode, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Calendar, Cloud, Loader2, PlusIcon, QrCode, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ import { Button } from "../ui/button";
 import { InternalGatewayQRConnect } from "./InternalGatewayQRConnect";
 
 type TWhatsappConnection = TGetWhatsappConnectionsOutput["data"][number];
+type TWhatsappConnectionPhone = TWhatsappConnection["telefones"][number];
 
 type SettingsWhatsAppConnectionProps = {
 	user: TAuthUserSession["user"];
@@ -28,6 +30,7 @@ type SettingsWhatsAppConnectionProps = {
 
 export default function SettingsWhatsAppConnection({ user }: SettingsWhatsAppConnectionProps) {
 	const { data: whatsappConnections, isPending, isError } = useWhatsappConnections();
+	const [selectedPhoneContext, setSelectedPhoneContext] = useState<TViewConnectionPhoneContext | null>(null);
 
 	return (
 		<div className="flex h-full grow flex-col gap-3">
@@ -46,10 +49,11 @@ export default function SettingsWhatsAppConnection({ user }: SettingsWhatsAppCon
 				<ErrorComponent msg="Não foi possível carregar suas conexões do WhatsApp." />
 			) : (
 				<div className="flex w-full flex-col gap-3">
-					<IntegrationWithInternalGateway connections={whatsappConnections || []} />
-					<IntegrationWithMetaCloud connections={whatsappConnections || []} />
+					<IntegrationWithInternalGateway connections={whatsappConnections || []} onPhoneClick={setSelectedPhoneContext} />
+					<IntegrationWithMetaCloud connections={whatsappConnections || []} onPhoneClick={setSelectedPhoneContext} />
 				</div>
 			)}
+			{selectedPhoneContext ? <ViewConnectionPhone context={selectedPhoneContext} closeMenu={() => setSelectedPhoneContext(null)} /> : null}
 		</div>
 	);
 }
@@ -121,18 +125,36 @@ function ConnectionDetailRow({ icon, label, children }: ConnectionDetailRowProps
 	);
 }
 
-type ConnectionPhonesListProps = {
-	telefones: TWhatsappConnection["telefones"];
+type ConnectionPhonePillsProps = {
+	phones: Array<{ phone: TWhatsappConnectionPhone; connection: TWhatsappConnection }>;
+	onPhoneClick: (context: TViewConnectionPhoneContext) => void;
+	tone?: "meta" | "gateway";
 };
-function ConnectionPhonesList({ telefones }: ConnectionPhonesListProps) {
-	if (!telefones.length) return <span className="text-foreground/50 text-xs italic">Nenhum telefone vinculado</span>;
+function ConnectionPhonePills({ phones, onPhoneClick, tone = "meta" }: ConnectionPhonePillsProps) {
+	if (!phones.length) return <span className="text-foreground/50 text-xs italic">Nenhum telefone vinculado</span>;
+
 	return (
 		<>
-			{telefones.map((telefone) => (
-				<div key={telefone.numero} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10">
-					<span className="text-foreground/80 text-xs">{telefone.nome}:</span>
-					<span className="text-foreground/80 text-xs font-bold">{formatToPhone(telefone.numero)}</span>
-				</div>
+			{phones.map(({ phone, connection }) => (
+				<button
+					key={phone.id}
+					type="button"
+					onClick={() =>
+						onPhoneClick({
+							phone,
+							connection,
+							totalPhonesInConnection: connection.telefones.length,
+						})
+					}
+					className={cn(
+						"flex items-center gap-1.5 rounded-lg px-2 py-1 transition-transform hover:scale-[1.01] active:scale-[0.96]",
+						tone === "meta" && "bg-[#25D366]/15 text-[#1a9e4a] hover:bg-[#25D366]/20",
+						tone === "gateway" && "bg-[#24549C]/10 text-[#24549C] hover:bg-[#24549C]/15",
+					)}
+				>
+					<span className="max-w-32 truncate text-xs font-bold tracking-tight">{phone.nome}</span>
+					<span className="text-xs font-medium tracking-tight opacity-80">{formatToPhone(phone.numero)}</span>
+				</button>
 			))}
 		</>
 	);
@@ -140,21 +162,22 @@ function ConnectionPhonesList({ telefones }: ConnectionPhonesListProps) {
 
 type IntegrationWithMetaCloudProps = {
 	connections: TGetWhatsappConnectionsOutput["data"];
+	onPhoneClick: (context: TViewConnectionPhoneContext) => void;
 };
-function IntegrationWithMetaCloud({ connections }: IntegrationWithMetaCloudProps) {
-	const PERMISSION_LABELS_MAP: Record<string, string> = {
-		email: "Email",
-		public_profile: "Perfil Público",
-		whatsapp_business_management: "Gerenciamento de WhatsApp Business",
-		whatsapp_business_messaging: "Mensagens de WhatsApp Business",
-	};
-
-	const connection = connections.find((c) => c.tipoConexao === "META_CLOUD_API") || null;
-	const isConnected = !!connection;
+function IntegrationWithMetaCloud({ connections, onPhoneClick }: IntegrationWithMetaCloudProps) {
+	const metaConnections = connections.filter((c) => c.tipoConexao === "META_CLOUD_API");
+	const primaryConnection = metaConnections[0] ?? null;
+	const isConnected = metaConnections.length > 0;
+	const connectionPhones = metaConnections.flatMap((connection) =>
+		connection.telefones.map((phone) => ({
+			phone,
+			connection,
+		})),
+	);
 
 	const queryClient = useQueryClient();
 	const { mutate: handleDisconnect, isPending: isDisconnecting } = useMutation({
-		mutationKey: ["delete-whatsapp-connection", connection?.id],
+		mutationKey: ["delete-whatsapp-connection", primaryConnection?.id],
 		mutationFn: deleteWhatsappConnection,
 		onMutate: () => queryClient.cancelQueries({ queryKey: ["whatsapp-connection"] }),
 		onSuccess: (data) => toast.success(data.message),
@@ -179,70 +202,73 @@ function IntegrationWithMetaCloud({ connections }: IntegrationWithMetaCloudProps
 							<h1 className="text-xs font-bold tracking-tight lg:text-sm">WhatsApp Cloud API</h1>
 							<ConnectionStatusBadge isActive={isConnected} />
 						</div>
-						{isConnected ? (
+						{isConnected && metaConnections.length === 1 && primaryConnection ? (
 							<LoadingButton
 								variant="ghost"
 								size="xs"
 								className="hover:bg-destructive/10 hover:text-destructive w-fit"
 								loading={isDisconnecting}
-								onClick={() => handleDisconnect(connection.id)}
+								onClick={() => handleDisconnect(primaryConnection.id)}
 							>
 								DESCONECTAR
 							</LoadingButton>
-						) : (
+						) : !isConnected ? (
 							<Link href="/api/integrations/whatsapp/auth">
 								<Button size="xs" className="flex items-center gap-1">
 									<Cloud className="h-4 w-4" />
 									CONECTAR COM META
 								</Button>
 							</Link>
-						)}
+						) : null}
 					</div>
 					<p className="text-foreground/70 text-xs font-medium tracking-tight">Conecte seu WhatsApp Cloud API para enviar e receber mensagens.</p>
+					<div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5">
+						{isConnected ? (
+							<>
+								<ConnectionPhonePills phones={connectionPhones} onPhoneClick={onPhoneClick} tone="meta" />
+								<Button variant="ghost" size="xs" className="flex items-center gap-1" asChild>
+									<Link href="/api/integrations/whatsapp/auth">
+										<PlusIcon className="h-4 w-4" />
+										ADICIONAR NOVO
+									</Link>
+								</Button>
+							</>
+						) : null}
+					</div>
 				</div>
 			</div>
 
-			{isConnected && (
-				<div className="w-full flex flex-col gap-3">
-					<div className="flex w-full flex-col gap-2">
-						{connection.dataExpiracao && (
-							<ConnectionDetailRow icon={<Calendar className="h-4 w-4" />} label="EXPIRAÇÃO DO TOKEN:">
-								<p className="text-xs font-bold">{formatDateAsLocale(new Date(connection.dataExpiracao), true) || "N/A"}</p>
-							</ConnectionDetailRow>
-						)}
-						{/* {connection.metaEscopo && (
-							<ConnectionDetailRow icon={<Key className="h-4 w-4" />} label="Permissões concedidas:">
-								{connection.metaEscopo.split(",").map((scope) => (
-									<Badge key={scope} className="bg-primary/10 text-foreground/80 rounded-md px-2 py-1 text-xs">
-										{PERMISSION_LABELS_MAP[scope] ?? scope}
-									</Badge>
-								))}
-							</ConnectionDetailRow>
-						)} */}
-						<ConnectionDetailRow icon={<Phone className="h-4 w-4" />} label="TELEFONES CONECTADOS:">
-							<ConnectionPhonesList telefones={connection.telefones} />
-						</ConnectionDetailRow>
-					</div>
-				</div>
-			)}
+			{isConnected && metaConnections.length === 1 && primaryConnection?.dataExpiracao ? (
+				<ConnectionDetailRow icon={<Calendar className="h-4 w-4" />} label="EXPIRAÇÃO DO TOKEN:">
+					<p className="text-xs font-bold">{formatDateAsLocale(new Date(primaryConnection.dataExpiracao), true) || "N/A"}</p>
+				</ConnectionDetailRow>
+			) : null}
 		</div>
 	);
 }
 
 type IntegrationWithInternalGatewayProps = {
 	connections: TGetWhatsappConnectionsOutput["data"];
+	onPhoneClick: (context: TViewConnectionPhoneContext) => void;
 };
-function IntegrationWithInternalGateway({ connections }: IntegrationWithInternalGatewayProps) {
+function IntegrationWithInternalGateway({ connections, onPhoneClick }: IntegrationWithInternalGatewayProps) {
 	const queryClient = useQueryClient();
 	const [showQRConnect, setShowQRConnect] = useState(false);
 
-	const connection = connections.find((c) => c.tipoConexao === "INTERNAL_GATEWAY") || null;
-	const gatewayStatus = (connection?.gatewayStatus as GatewayStatus | null) ?? "disconnected";
-	const isConnected = !!connection;
-	const isActive = isConnected && gatewayStatus === "connected";
+	const internalGatewayConnections = connections.filter((c) => c.tipoConexao === "INTERNAL_GATEWAY");
+	const connectionPhones = internalGatewayConnections.flatMap((connection) =>
+		connection.telefones.map((phone) => ({
+			phone,
+			connection,
+		})),
+	);
+	const primaryConnection = internalGatewayConnections[0] ?? null;
+	const gatewayStatus = (primaryConnection?.gatewayStatus as GatewayStatus | null) ?? "disconnected";
+	const isConnected = internalGatewayConnections.length > 0;
+	const isActive = internalGatewayConnections.some((connection) => connection.gatewayStatus === "connected");
 
 	const { mutate: handleDisconnect, isPending: isDisconnecting } = useMutation({
-		mutationKey: ["disconnect-internal-gateway", connection?.id],
+		mutationKey: ["disconnect-internal-gateway", primaryConnection?.id],
 		mutationFn: (id: string) => disconnectInternalGateway(id),
 		onMutate: () => queryClient.cancelQueries({ queryKey: ["whatsapp-connection"] }),
 		onSuccess: (data) => toast.success(data.message),
@@ -252,7 +278,7 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 
 	return (
 		<>
-			{showQRConnect && !isConnected && (
+			{showQRConnect ? (
 				<InternalGatewayQRConnect
 					onBack={() => setShowQRConnect(false)}
 					onSuccess={() => {
@@ -260,7 +286,7 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 						queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] });
 					}}
 				/>
-			)}
+			) : null}
 			<div className="border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 				<div className="flex w-full items-start gap-3">
 					<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
@@ -280,7 +306,7 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 							</div>
 							{isConnected ? (
 								<>
-									{gatewayStatus !== "connected" && (
+									{gatewayStatus !== "connected" ? (
 										<Button
 											variant="outline"
 											size="xs"
@@ -290,16 +316,18 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 											<RefreshCw className="h-4 w-4" />
 											ATUALIZAR STATUS
 										</Button>
-									)}
-									<LoadingButton
-										variant="ghost"
-										size="xs"
-										className="hover:bg-destructive/10 hover:text-destructive w-fit"
-										loading={isDisconnecting}
-										onClick={() => handleDisconnect(connection.id)}
-									>
-										DESCONECTAR
-									</LoadingButton>
+									) : null}
+									{internalGatewayConnections.length === 1 && primaryConnection ? (
+										<LoadingButton
+											variant="ghost"
+											size="xs"
+											className="hover:bg-destructive/10 hover:text-destructive w-fit"
+											loading={isDisconnecting}
+											onClick={() => handleDisconnect(primaryConnection.id)}
+										>
+											DESCONECTAR
+										</LoadingButton>
+									) : null}
 								</>
 							) : (
 								<Button size="xs" className="flex items-center gap-1" onClick={() => setShowQRConnect(true)}>
@@ -311,32 +339,28 @@ function IntegrationWithInternalGateway({ connections }: IntegrationWithInternal
 						<p className="text-foreground/70 text-xs font-medium tracking-tight">
 							Conecte seu WhatsApp para uso não-oficial através do gateway do Recompra CRM para enviar e receber mensagens.
 						</p>
+						<div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5">
+							{isConnected ? (
+								<>
+									<ConnectionPhonePills phones={connectionPhones} onPhoneClick={onPhoneClick} tone="gateway" />
+									<Button variant="ghost" size="xs" className="flex items-center gap-1" onClick={() => setShowQRConnect(true)}>
+										<PlusIcon className="h-4 w-4" />
+										ADICIONAR NOVO
+									</Button>
+								</>
+							) : null}
+						</div>
 					</div>
 				</div>
 
-				{isConnected && (
-					<div className="w-full flex flex-col gap-3">
-						<div className="flex w-full flex-col gap-2">
-							{connection.gatewayUltimaConexao && (
-								<ConnectionDetailRow icon={<Calendar className="h-4 w-4" />} label="ÚLTIMA CONEXÃO:">
-									<p className="text-xs font-bold">{formatDateAsLocale(new Date(connection.gatewayUltimaConexao), true) || "N/A"}</p>
-								</ConnectionDetailRow>
-							)}
-							<ConnectionDetailRow icon={<Phone className="h-4 w-4" />} label="TELEFONES CONECTADOS:">
-								<ConnectionPhonesList telefones={connection.telefones} />
-							</ConnectionDetailRow>
-						</div>
-
-						{gatewayStatus !== "connected" && (
-							<div className="mt-1 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-								<p className="text-xs text-yellow-800">
-									<strong>Atenção:</strong> Sua conexão com o WhatsApp está inativa. Para continuar enviando e recebendo mensagens, reconecte escaneando um
-									novo QR Code.
-								</p>
-							</div>
-						)}
+				{isConnected && !isActive ? (
+					<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+						<p className="text-xs text-yellow-800">
+							<strong>Atenção:</strong> Sua conexão com o WhatsApp está inativa. Para continuar enviando e recebendo mensagens, reconecte escaneando um novo QR
+							Code.
+						</p>
 					</div>
-				)}
+				) : null}
 			</div>
 		</>
 	);

@@ -1,9 +1,11 @@
-import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
-import { AnimatedSpinner, MetaIcon, RecompraCRMIconColorful, WhatsappIcon } from "../icons";
-import { PlusIcon, XIcon } from "lucide-react";
 import { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
-import { Button } from "../ui/button";
+import { formatToPhone } from "@/lib/formatting";
+import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
+import { PlusIcon, XIcon } from "lucide-react";
 import Link from "next/link";
+import { AnimatedSpinner, MetaIcon, RecompraCRMIconColorful, WhatsappIcon } from "../icons";
+import { Button } from "../ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 function getConnectionPhones(connections: TGetWhatsappConnectionsOutput["data"]) {
 	return (
@@ -11,6 +13,7 @@ function getConnectionPhones(connections: TGetWhatsappConnectionsOutput["data"])
 			.map((c) =>
 				c.telefones.map((t) => ({
 					phoneId: t.id,
+					phoneName: t.nome,
 					phoneNumber: t.numero,
 					connectionType: c.tipoConexao,
 				})),
@@ -66,24 +69,34 @@ type ConnectionPillProps = {
 	connection: TConnectionPhone;
 };
 function ConnectionPill({ connection }: ConnectionPillProps) {
-	return (
-		<div className="flex items-center gap-1.5 bg-secondary px-2 py-1 rounded-lg">
-			<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
-				{connection.connectionType === "META_CLOUD_API" ? (
-					<div className="ring-background flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full bg-[#0869E1] text-white ring-2">
-						<MetaIcon className="h-4 w-4" />
-					</div>
-				) : (
-					<div className="ring-background z-10 flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full bg-[#24549C] ring-2">
-						<RecompraCRMIconColorful className="h-4 w-4" />
-					</div>
-				)}
-				<div className="ring-background flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full bg-[#25D366] text-white ring-2">
-					<WhatsappIcon className="h-4 w-4 text-white" />
-				</div>
-			</div>
+	const formattedPhone = formatToPhone(connection.phoneNumber);
 
-			<span className="text-xs font-medium">{connection.phoneNumber}</span>
-		</div>
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div className="flex cursor-default items-center gap-1.5 rounded-lg bg-secondary px-2 py-1">
+					<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
+						{connection.connectionType === "META_CLOUD_API" ? (
+							<div className="ring-background flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full bg-[#0869E1] text-white ring-2">
+								<MetaIcon className="h-4 w-4" />
+							</div>
+						) : (
+							<div className="ring-background z-10 flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full bg-[#24549C] ring-2">
+								<RecompraCRMIconColorful className="h-4 w-4" />
+							</div>
+						)}
+						<div className="ring-background flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full bg-[#25D366] text-white ring-2">
+							<WhatsappIcon className="h-4 w-4 text-white" />
+						</div>
+					</div>
+
+					<span className="max-w-32 truncate text-xs font-medium">{connection.phoneName}</span>
+				</div>
+			</TooltipTrigger>
+			<TooltipContent side="bottom" className="flex flex-col gap-0.5 px-3 py-2">
+				<span className="font-semibold">{connection.phoneName}</span>
+				<span>{formattedPhone}</span>
+			</TooltipContent>
+		</Tooltip>
 	);
 }
