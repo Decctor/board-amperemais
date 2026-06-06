@@ -1,184 +1,160 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Cake, Filter, MessageCircle, PlugZap, Repeat, ShoppingBag, Sparkles, TrendingUp, UserCheck, Users, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, Cake, ChevronDown, LogIn, MessageCircle, PlugZap, Repeat, Settings2, ShoppingBag, Sparkles, TrendingUp, UserCheck, Users, Zap } from "lucide-react";
 import type { ElementType } from "react";
-import { useEffect, useState } from "react";
 
-type FlowScenario = {
+export type FlowRegion = "entradas" | "motor" | "resultados";
+
+type FlowNode = {
 	id: string;
-	event: string;
-	eventDetail: string;
 	icon: ElementType;
-	campaign: {
-		label: string;
-		title: string;
-		trigger: string;
-		audience: string;
-		message: string;
-	};
-	result: string;
-	resultDetail: string;
-	resultIcon: ElementType;
-	accent: "blue" | "amber" | "green";
+	label: string;
 };
 
-const FLOW_SCENARIOS: FlowScenario[] = [
-	{
-		id: "primeira-compra",
-		event: "Primeira compra",
-		eventDetail: "cliente identificado no PDI, QR Code ou integração",
-		icon: ShoppingBag,
-		campaign: {
-			label: "Boas-vindas automática",
-			title: "Transformar primeira compra em segunda visita",
-			trigger: "Gatilho: primeira compra registrada",
-			audience: "Filtros: loja, ticket mínimo e categoria comprada",
-			message: "Oi, {{nome}}! Sua primeira compra já gerou um benefício para voltar.",
-		},
-		result: "Cliente fidelizado",
-		resultDetail: "sai da compra com motivo claro para retornar",
-		resultIcon: UserCheck,
-		accent: "amber",
-	},
-	{
-		id: "inatividade",
-		event: "30 dias sem comprar",
-		eventDetail: "recência caiu e o risco apareceu antes da perda",
-		icon: Users,
-		campaign: {
-			label: "Recuperação RFM",
-			title: "Trazer de volta quem está escapando",
-			trigger: "Gatilho: entrada no segmento em risco",
-			audience: "Filtros: top compradores, bairro e saldo disponível",
-			message: "Sentimos sua falta, {{nome}}. Tem uma condição esperando por você hoje.",
-		},
-		result: "Cliente recuperado",
-		resultDetail: "reativado antes de virar uma perda invisível",
-		resultIcon: Repeat,
-		accent: "blue",
-	},
-	{
-		id: "aniversario",
-		event: "Aniversário do cliente",
-		eventDetail: "data especial vira contato comercial com contexto",
-		icon: Cake,
-		campaign: {
-			label: "Relacionamento com marca",
-			title: "Criar uma ação pessoal, no momento certo",
-			trigger: "Gatilho: aniversário do cliente",
-			audience: "Filtros: clientes ativos e preferência de produto",
-			message: "{{nome}}, hoje é seu dia. A loja preparou um presente para você.",
-		},
-		result: "Cliente acelerado",
-		resultDetail: "volta por vínculo, não por disparo genérico",
-		resultIcon: TrendingUp,
-		accent: "green",
-	},
-	{
-		id: "campanha",
-		event: "Lançamento de campanha",
-		eventDetail: "produto, coleção, combo ou ação sazonal",
-		icon: PlugZap,
-		campaign: {
-			label: "Campanha segmentada",
-			title: "Falar com quem tem mais chance de comprar",
-			trigger: "Gatilho: disparo único ou recorrente",
-			audience: "Filtros: produto X, cidade, LTV e frequência",
-			message: "{{nome}}, chegou uma novidade que combina com suas últimas compras.",
-		},
-		result: "Aumento de vendas",
-		resultDetail: "mais receita com audiência precisa e atribuição",
-		resultIcon: Zap,
-		accent: "amber",
-	},
+const ENTRADAS: FlowNode[] = [
+	{ id: "primeira-compra", icon: ShoppingBag, label: "Primeira compra" },
+	{ id: "inatividade", icon: Users, label: "30 dias sem comprar" },
+	{ id: "aniversario", icon: Cake, label: "Aniversário do cliente" },
+	{ id: "campanha", icon: PlugZap, label: "Lançamento de campanha" },
 ];
 
-const accentClasses: Record<FlowScenario["accent"], { chip: string; halo: string; line: string; text: string; surface: string }> = {
-	amber: {
-		chip: "bg-[#ffb900] text-[#171717]",
-		halo: "shadow-[0_18px_42px_-16px_rgba(255,185,0,0.75)]",
-		line: "stroke-[#ffb900]",
-		text: "text-[#171717]",
-		surface: "bg-[#ffb900]/16 border-[#ffb900]/35",
-	},
-	blue: {
-		chip: "bg-[#24549c] text-white",
-		halo: "shadow-[0_18px_42px_-16px_rgba(36,84,156,0.65)]",
-		line: "stroke-[#24549c]",
-		text: "text-[#24549c]",
-		surface: "bg-[#24549c]/10 border-[#24549c]/20",
-	},
-	green: {
-		chip: "bg-[#16a34a] text-white",
-		halo: "shadow-[0_18px_42px_-16px_rgba(22,163,74,0.55)]",
-		line: "stroke-[#16a34a]",
-		text: "text-[#16a34a]",
-		surface: "bg-[#16a34a]/10 border-[#16a34a]/20",
-	},
+const RESULTADOS: FlowNode[] = [
+	{ id: "fidelizado", icon: UserCheck, label: "Cliente fidelizado" },
+	{ id: "recuperado", icon: Repeat, label: "Cliente recuperado" },
+	{ id: "acelerado", icon: TrendingUp, label: "Cliente acelerado" },
+	{ id: "vendas", icon: Zap, label: "Aumento de vendas" },
+];
+
+const CAMPAIGN = {
+	label: "Boas-vindas automática",
+	title: "Transformar primeira compra em segunda visita",
+	trigger: "Primeira compra",
+	message: "Oi, {{nome}}! Sua primeira compra já gerou um benefício para voltar.",
 };
 
 type CampaignFlowProps = {
+	activeRegion: FlowRegion;
+	/** When false (e.g. reduced motion), every region stays at full emphasis. */
+	dimmed?: boolean;
 	className?: string;
 };
 
-export function CampaignFlow({ className }: CampaignFlowProps) {
-	const [activeIndex, setActiveIndex] = useState(0);
-	const active = FLOW_SCENARIOS[activeIndex];
+export function CampaignFlow({ activeRegion, dimmed = true, className }: CampaignFlowProps) {
+	const isActive = (region: FlowRegion) => !dimmed || activeRegion === region;
+	const recede = (region: FlowRegion) => (isActive(region) ? "opacity-100" : "opacity-45 saturate-[0.6]");
 
-	useEffect(() => {
-		const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-		if (reduceMotion) return;
-
-		const interval = window.setInterval(() => {
-			setActiveIndex((current) => (current + 1) % FLOW_SCENARIOS.length);
-		}, 6500);
-
-		return () => window.clearInterval(interval);
-	}, []);
-
-	const lineClass = accentClasses[active.accent].line;
-	const dotClass = active.accent === "amber" ? "fill-[#ffb900]" : active.accent === "green" ? "fill-[#16a34a]" : "fill-[#24549c]";
+	// Primary node = the canonical scenario's entry / outcome.
+	const primaryEntry = ENTRADAS[0].id;
+	const primaryResult = RESULTADOS[0].id;
 
 	return (
-		<div className={cn("relative", className)}>
-			<div className="relative mx-auto w-full max-w-[540px] overflow-hidden rounded-[28px] border border-[#e5e5e5] bg-white p-4 shadow-[0_28px_70px_-26px_rgba(36,84,156,0.36),0_8px_16px_rgba(0,0,0,0.05)] sm:p-5">
-				<div
-					className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(36,84,156,0.08),transparent_42%),radial-gradient(circle_at_86%_12%,rgba(255,185,0,0.16),transparent_26%)]"
-					aria-hidden
-				/>
-				<div className="relative">
-					<div className="mb-4 flex items-center justify-between gap-4">
-						<div>
-							<p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#24549c]">Motor de campanhas</p>
-							<p className="mt-1 text-[12px] font-semibold leading-snug text-[#171717]/60">Eventos e integrações entram, o CRM decide o próximo contato.</p>
+		<div
+			className={cn(
+				"relative overflow-hidden rounded-[28px] border border-[#e5e5e5] bg-white p-5 sm:p-7 lg:p-8 shadow-[0_28px_70px_-26px_rgba(36,84,156,0.36),0_8px_16px_rgba(0,0,0,0.05)]",
+				className,
+			)}
+		>
+			<div
+				className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(36,84,156,0.06),transparent_46%),radial-gradient(circle_at_88%_8%,rgba(255,185,0,0.12),transparent_28%)]"
+				aria-hidden
+			/>
+
+			{/* Top badge */}
+			<div className="relative flex justify-center">
+				<span className="inline-flex items-center gap-2 rounded-full bg-[#ffb900] px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#171717] shadow-[0_8px_20px_-8px_rgba(255,185,0,0.7)]">
+					<span className="ledger-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-[#171717]" />
+					Campanha em ação
+				</span>
+			</div>
+
+			<div className="relative mt-6 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,0.92fr)_52px_minmax(0,1.7fr)_52px_minmax(0,0.92fr)] lg:items-stretch lg:gap-2">
+				{/* ENTRADAS */}
+				<div className={cn("flex min-w-0 flex-col transition-all duration-700 ease-out", recede("entradas"))}>
+					<ColumnHeader icon={LogIn} label="Entradas" />
+					<div className="grid grid-cols-2 gap-2 lg:flex lg:flex-1 lg:flex-col lg:justify-between lg:gap-3">
+						{ENTRADAS.map((node) => (
+							<FlowCard key={node.id} node={node} highlighted={isActive("entradas") && node.id === primaryEntry} accent="amber" />
+						))}
+					</div>
+					<MobileConnector accent="amber" />
+				</div>
+
+				{/* Connector: entradas -> motor */}
+				<DesktopConnector variant="converge" active={isActive("entradas") || isActive("motor")} accent="amber" />
+
+				{/* MOTOR */}
+				<div className={cn("min-w-0 transition-all duration-700 ease-out", recede("motor"))}>
+					<div
+						className={cn(
+							"relative h-full rounded-[24px] border bg-white p-5 transition-all duration-700 ease-out sm:p-6",
+							isActive("motor")
+								? "border-[#ffb900]/45 shadow-[0_22px_56px_-22px_rgba(255,185,0,0.5),0_4px_10px_rgba(0,0,0,0.04)]"
+								: "border-[#e5e5e5] shadow-[0_1px_2px_rgba(0,0,0,0.03)]",
+						)}
+					>
+						<div className="flex items-center justify-center gap-2 text-[#24549c]">
+							<Settings2 className="h-4 w-4" />
+							<p className="text-[13px] font-extrabold uppercase tracking-[0.12em] sm:text-[15px]">Motor de campanhas</p>
+						</div>
+						<p className="mt-1.5 text-center text-[12px] font-semibold leading-snug text-[#171717]/55">
+							Eventos e integrações entram, o CRM decide o próximo contato.
+						</p>
+
+						<div className="mt-5 flex justify-center">
+							<span className="inline-flex items-center gap-2 rounded-full bg-[#ffb900] px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#171717]">
+								<Sparkles className="h-3.5 w-3.5" />
+								{CAMPAIGN.label}
+							</span>
+						</div>
+
+						<p className="mt-4 text-center text-[19px] font-extrabold leading-tight tracking-[-0.015em] text-[#171717] sm:text-[22px]">
+							{CAMPAIGN.title}
+						</p>
+
+						<div className="mt-4 flex justify-center">
+							<span className="inline-flex items-center gap-2 rounded-2xl border border-[#ffb900]/35 bg-[#ffb900]/12 px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#171717]">
+								<Zap className="h-3.5 w-3.5 text-[#e6a700]" />
+								{CAMPAIGN.trigger}
+							</span>
+						</div>
+
+						{/* WhatsApp bubble */}
+						<div
+							className={cn(
+								"mt-5 rounded-2xl border p-4 transition-all duration-700 ease-out",
+								isActive("resultados")
+									? "border-[#16a34a]/40 bg-[#16a34a]/[0.06] shadow-[0_14px_34px_-18px_rgba(22,163,74,0.5)]"
+									: "border-[#e5e5e5] bg-[#f7f9fc]",
+							)}
+						>
+							<div className="mb-2.5 flex items-center gap-2">
+								<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#25d366]/12 text-[#1faa52]">
+									<MessageCircle className="h-3.5 w-3.5" />
+								</span>
+								<p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#1faa52]">WhatsApp da loja</p>
+							</div>
+							<div className="relative ml-1 max-w-[88%] rounded-2xl rounded-tl-sm bg-[#dcf8c6] px-3.5 py-2.5">
+								<p className="text-[13px] font-medium leading-snug text-[#143d1f]">{CAMPAIGN.message}</p>
+								<p className="mt-1 text-right text-[10px] font-semibold text-[#143d1f]/45">10:30 ✓✓</p>
+							</div>
 						</div>
 					</div>
+				</div>
 
-					<div className="relative grid min-h-[700px] grid-rows-[188px_1fr_170px] gap-3 sm:min-h-[470px] sm:grid-rows-[88px_1fr_78px]">
-						<GraphLines activeIndex={activeIndex} lineClass={lineClass} dotClass={dotClass} />
+				{/* Connector: motor -> resultados */}
+				<DesktopConnector variant="fan" active={isActive("motor") || isActive("resultados")} accent="blue" />
+				<div className="lg:hidden">
+					<MobileConnector accent="blue" />
+				</div>
 
-						<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-							{FLOW_SCENARIOS.map((scenario, index) => (
-								<GraphNode
-									key={scenario.id}
-									isActive={index === activeIndex}
-									icon={scenario.icon}
-									title={scenario.event}
-									detail={scenario.eventDetail}
-									accent={scenario.accent}
-									onClick={() => setActiveIndex(index)}
-								/>
-							))}
-						</div>
-
-						<CampaignCard key={active.id} scenario={active} />
-
-						<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-							{FLOW_SCENARIOS.map((scenario, index) => (
-								<ResultNode key={scenario.id} scenario={scenario} isActive={index === activeIndex} onClick={() => setActiveIndex(index)} />
-							))}
-						</div>
+				{/* RESULTADOS */}
+				<div className={cn("flex min-w-0 flex-col transition-all duration-700 ease-out", recede("resultados"))}>
+					<ColumnHeader icon={BarChart3} label="Resultados" />
+					<div className="grid grid-cols-2 gap-2 lg:flex lg:flex-1 lg:flex-col lg:justify-between lg:gap-3">
+						{RESULTADOS.map((node) => (
+							<FlowCard key={node.id} node={node} highlighted={isActive("resultados") && node.id === primaryResult} accent="blue" />
+						))}
 					</div>
 				</div>
 			</div>
@@ -186,133 +162,101 @@ export function CampaignFlow({ className }: CampaignFlowProps) {
 	);
 }
 
-function GraphLines({ activeIndex, lineClass, dotClass }: { activeIndex: number; lineClass: string; dotClass: string }) {
-	const topXs = [15, 38, 62, 85];
-	const bottomXs = [16, 39, 62, 85];
-	const activeTopX = topXs[activeIndex];
-	const activeBottomX = bottomXs[activeIndex];
-
+function ColumnHeader({ icon: Icon, label }: { icon: ElementType; label: string }) {
 	return (
-		<svg
-			className="pointer-events-none absolute inset-x-3 top-[170px] z-0 h-[390px] sm:inset-x-5 sm:top-[74px] sm:h-[320px]"
-			viewBox="0 0 100 350"
-			preserveAspectRatio="none"
-			aria-hidden
-		>
-			{topXs.map((x, index) => (
-				<path
-					key={`top-${x}`}
-					d={`M ${x} 8 C ${x} 58, 50 66, 50 118`}
-					className={cn(index === activeIndex ? lineClass : "stroke-[#24549c]/14")}
-					fill="none"
-					strokeWidth={index === activeIndex ? 0.9 : 0.45}
-					strokeLinecap="round"
-				/>
-			))}
-			{bottomXs.map((x, index) => (
-				<path
-					key={`bottom-${x}`}
-					d={`M 50 204 C 50 256, ${x} 274, ${x} 320`}
-					className={cn(index === activeIndex ? lineClass : "stroke-[#24549c]/14")}
-					fill="none"
-					strokeWidth={index === activeIndex ? 0.9 : 0.45}
-					strokeLinecap="round"
-				/>
-			))}
-			<circle className={cn("ledger-flow-pulse", dotClass)} cx={activeTopX} cy="8" r="1.2" />
-			<circle className={cn("ledger-flow-pulse ledger-flow-pulse-delayed", dotClass)} cx={activeBottomX} cy="320" r="1.2" />
-		</svg>
+		<div className="mb-3 flex items-center gap-2 text-[#24549c]">
+			<Icon className="h-4 w-4" />
+			<p className="text-[12px] font-extrabold uppercase tracking-[0.14em]">{label}</p>
+		</div>
 	);
 }
 
-type NodeProps = {
-	isActive: boolean;
-	icon: ElementType;
-	title: string;
-	detail: string;
-	accent: FlowScenario["accent"];
-	onClick: () => void;
-};
-
-function GraphNode({ isActive, icon: Icon, title, detail, accent, onClick }: NodeProps) {
-	const styles = accentClasses[accent];
+function FlowCard({ node, highlighted, accent }: { node: FlowNode; highlighted: boolean; accent: "amber" | "blue" }) {
+	const Icon = node.icon;
+	const chip = highlighted
+		? accent === "amber"
+			? "bg-[#ffb900] text-[#171717]"
+			: "bg-[#24549c] text-white"
+		: "bg-[#24549c]/8 text-[#24549c]";
 
 	return (
-		<button
-			type="button"
-			onClick={onClick}
-			aria-label={`${title}: ${detail}`}
+		<div
 			className={cn(
-				"relative z-10 flex min-h-[88px] flex-col items-start rounded-2xl border p-2.5 text-left transition-all duration-500 ease-out",
-				isActive ? cn("border-transparent bg-white", styles.halo, "scale-[1.02]") : "border-[#e5e5e5] bg-white/82 hover:border-[#24549c]/25",
+				"flex items-center gap-2.5 rounded-2xl border bg-white px-3 py-2.5 transition-all duration-500 ease-out",
+				highlighted
+					? accent === "amber"
+						? "border-[#ffb900]/45 shadow-[0_14px_32px_-16px_rgba(255,185,0,0.6)]"
+						: "border-[#24549c]/30 shadow-[0_14px_32px_-16px_rgba(36,84,156,0.5)]"
+					: "border-[#e5e5e5] shadow-[0_1px_2px_rgba(0,0,0,0.03)]",
 			)}
 		>
+			<span className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors", chip)}>
+				<Icon className="h-4 w-4" />
+			</span>
+			<span className="min-w-0 text-[12px] font-extrabold leading-[1.12] text-[#171717]">{node.label}</span>
+		</div>
+	);
+}
+
+function MobileConnector({ accent }: { accent: "amber" | "blue" }) {
+	return (
+		<div className="flex justify-center py-2 lg:hidden" aria-hidden>
 			<span
 				className={cn(
-					"mb-2 inline-flex h-7 w-7 items-center justify-center rounded-xl transition-colors",
-					isActive ? styles.chip : "bg-[#24549c]/8 text-[#24549c]",
+					"inline-flex h-7 w-7 items-center justify-center rounded-full",
+					accent === "amber" ? "bg-[#ffb900]/15 text-[#e6a700]" : "bg-[#24549c]/10 text-[#24549c]",
 				)}
 			>
-				<Icon className="h-3.5 w-3.5" />
+				<ChevronDown className="h-4 w-4" />
 			</span>
-			<span className="text-[11px] font-extrabold leading-[1.08] text-[#171717]">{title}</span>
-		</button>
-	);
-}
-
-function CampaignCard({ scenario }: { scenario: FlowScenario }) {
-	const styles = accentClasses[scenario.accent];
-
-	return (
-		<div className="relative z-10 self-center rounded-[24px] border border-[#e5e5e5] bg-white p-4 shadow-[0_18px_50px_-24px_rgba(36,84,156,0.38),0_4px_8px_rgba(0,0,0,0.04)] ledger-flow-card">
-			<div className="mb-3 flex flex-wrap items-center gap-2">
-				<span
-					className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em]", styles.chip)}
-				>
-					<Sparkles className="h-3 w-3" />
-					{scenario.campaign.label}
-				</span>
-				<span className="inline-flex items-center gap-1.5 rounded-full border border-[#24549c]/15 bg-[#24549c]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#24549c]">
-					<Filter className="h-3 w-3" />
-					Gatilhos + filtros
-				</span>
-			</div>
-			<p className="text-[18px] font-extrabold leading-tight tracking-[-0.015em] text-[#171717] sm:text-[20px]">{scenario.campaign.title}</p>
-			<div className="mt-3 grid gap-2">
-				<p className={cn("rounded-2xl border px-3 py-2 text-[11px] font-bold leading-snug", styles.surface, styles.text)}>{scenario.campaign.trigger}</p>
-				<p className="rounded-2xl border border-[#e5e5e5] bg-[#f7f9fc] px-3 py-2 text-[11px] font-semibold leading-snug text-[#171717]/70">
-					{scenario.campaign.audience}
-				</p>
-			</div>
-			<div className="mt-3 rounded-2xl border border-[#e5e5e5] bg-[#f7f9fc] p-3">
-				<div className="mb-2 flex items-center gap-2 text-[#24549c]">
-					<MessageCircle className="h-3.5 w-3.5" />
-					<p className="text-[10px] font-extrabold uppercase tracking-[0.12em]">WhatsApp da loja</p>
-				</div>
-				<p className="text-[12px] font-semibold leading-snug text-[#171717]/78">{scenario.campaign.message}</p>
-			</div>
 		</div>
 	);
 }
 
-function ResultNode({ scenario, isActive, onClick }: { scenario: FlowScenario; isActive: boolean; onClick: () => void }) {
-	const styles = accentClasses[scenario.accent];
-	const Icon = scenario.resultIcon;
+function DesktopConnector({ variant, active, accent }: { variant: "converge" | "fan"; active: boolean; accent: "amber" | "blue" }) {
+	const stroke = active ? (accent === "amber" ? "stroke-[#ffb900]" : "stroke-[#24549c]") : "stroke-[#24549c]/14";
+	const dotFill = accent === "amber" ? "fill-[#ffb900]" : "fill-[#24549c]";
+	const nodeYs = [22, 41, 60, 79];
+	const dashed = variant === "fan";
 
 	return (
-		<button
-			type="button"
-			onClick={onClick}
-			aria-label={`${scenario.result}: ${scenario.resultDetail}`}
-			className={cn(
-				"relative z-10 flex min-h-[78px] flex-col items-start rounded-2xl border p-2.5 text-left transition-all duration-500 ease-out",
-				isActive ? cn(styles.surface, styles.halo, "scale-[1.02]") : "border-[#e5e5e5] bg-white/82 hover:border-[#24549c]/25",
-			)}
-		>
-			<span className={cn("mb-2 inline-flex h-7 w-7 items-center justify-center rounded-xl", isActive ? styles.chip : "bg-[#24549c]/8 text-[#24549c]")}>
-				<Icon className="h-3.5 w-3.5" />
+		<div className="relative hidden lg:flex lg:items-stretch" aria-hidden>
+			<svg className="h-full w-full" viewBox="0 0 52 100" preserveAspectRatio="none" fill="none">
+				{nodeYs.map((y) =>
+					variant === "converge" ? (
+						<path
+							key={y}
+							d={`M 2 ${y} C 26 ${y}, 26 50, 50 50`}
+							className={cn(stroke, "transition-[stroke] duration-500")}
+							strokeWidth={active ? 1.1 : 0.7}
+							strokeDasharray={dashed ? "3 3" : undefined}
+							strokeLinecap="round"
+							vectorEffect="non-scaling-stroke"
+						/>
+					) : (
+						<path
+							key={y}
+							d={`M 2 50 C 26 50, 26 ${y}, 50 ${y}`}
+							className={cn(stroke, "transition-[stroke] duration-500")}
+							strokeWidth={active ? 1.1 : 0.7}
+							strokeDasharray="3 3"
+							strokeLinecap="round"
+							vectorEffect="non-scaling-stroke"
+						/>
+					),
+				)}
+				{active ? (
+					<circle className={cn(dotFill, variant === "converge" ? "ledger-flow-pulse-x" : "ledger-flow-pulse-x ledger-flow-pulse-x-delayed")} cx="26" cy="50" r="2.2" />
+				) : null}
+			</svg>
+			<span
+				className={cn(
+					"absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-colors duration-500",
+					active ? (accent === "amber" ? "text-[#e6a700]" : "text-[#24549c]") : "text-[#24549c]/30",
+				)}
+			>
+				<ArrowRight className="h-3.5 w-3.5" />
 			</span>
-			<span className="text-[11px] font-extrabold leading-[1.08] text-[#171717]">{scenario.result}</span>
-		</button>
+		</div>
 	);
 }

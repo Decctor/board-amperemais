@@ -105,6 +105,23 @@
 	}
 }
 
+@keyframes ledger-flow-pulse-x {
+	0% {
+		opacity: 0;
+		transform: translateX(-9px) scale(0.78);
+	}
+	18% {
+		opacity: 1;
+	}
+	82% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translateX(9px) scale(1.12);
+	}
+}
+
 /* ===== Stamp / Selo ===== */
 
 .ledger-stamp {
@@ -165,6 +182,15 @@
 	background: linear-gradient(180deg, #f5f8fd 0%, #ffffff 100%);
 }
 
+/* ===== Hero dot grid ===== */
+
+.ledger-dot-grid {
+	background-image: radial-gradient(circle at center, rgba(36, 84, 156, 0.16) 1px, transparent 1.5px);
+	background-size: 24px 24px;
+	-webkit-mask-image: radial-gradient(ellipse 78% 68% at 50% 36%, #000 0%, rgba(0, 0, 0, 0.55) 52%, transparent 80%);
+	mask-image: radial-gradient(ellipse 78% 68% at 50% 36%, #000 0%, rgba(0, 0, 0, 0.55) 52%, transparent 80%);
+}
+
 /* ===== Marquee ===== */
 
 .ledger-marquee-track {
@@ -206,6 +232,32 @@
 	animation-delay: 1.05s;
 }
 
+.ledger-flow-pulse-x {
+	animation: ledger-flow-pulse-x 2.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+	transform-box: fill-box;
+	transform-origin: center;
+}
+
+.ledger-flow-pulse-x-delayed {
+	animation-delay: 1.1s;
+}
+
+/* ===== Stepper auto-advance progress ===== */
+
+@keyframes ledger-step-progress {
+	from {
+		transform: scaleX(0);
+	}
+	to {
+		transform: scaleX(1);
+	}
+}
+
+.ledger-step-progress {
+	transform-origin: left center;
+	animation: ledger-step-progress var(--dur, 5500ms) linear both;
+}
+
 /* ===== Tabular figures ===== */
 
 .ledger-tabular {
@@ -224,7 +276,9 @@
 	.ledger-cursor,
 	.ledger-glow,
 	.ledger-flow-card,
-	.ledger-flow-pulse {
+	.ledger-flow-pulse,
+	.ledger-flow-pulse-x,
+	.ledger-step-progress {
 		animation: none !important;
 	}
 	.ledger-reveal .ledger-write {

@@ -2,13 +2,12 @@
 
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { cn } from "@/lib/utils";
-import LogoHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg";
+import LogoHorizontalTextBlack from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL TEXT-BLACK.svg";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { LiveClock } from "./_primitives/LiveClock";
 
 const ANCHOR_LINKS = [
 	{ label: "Como funciona", href: "#como-funciona" },
@@ -24,7 +23,7 @@ export function LedgerNavbar() {
 	const isHomePage = pathname === "/";
 
 	useEffect(() => {
-		const handleScroll = () => setScrolled(window.scrollY > 8);
+		const handleScroll = () => setScrolled(window.scrollY > 24);
 		handleScroll();
 		window.addEventListener("scroll", handleScroll, { passive: true });
 		return () => window.removeEventListener("scroll", handleScroll);
@@ -52,17 +51,22 @@ export function LedgerNavbar() {
 	return (
 		<header
 			className={cn(
-				"fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-				scrolled ? "bg-white/95 backdrop-blur-md shadow-[0_1px_0_rgba(36,84,156,0.08)]" : "bg-white/85 backdrop-blur-md",
+				"fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
+				scrolled ? "pt-3 px-3 lg:px-4" : "pt-0 px-0",
 			)}
 		>
-			{/* Main navbar */}
-			<div className="mx-auto max-w-7xl px-5 lg:px-8 h-16 flex items-center justify-between">
-				<div className="flex items-center gap-2 px-4 py-0.5 rounded-xl bg-[#24549c]">
-					<Link href="/" className="relative w-36 h-10 shrink-0">
-						<Image src={LogoHorizontalColorful} alt="RecompraCRM" fill className="object-contain object-left" priority />
-					</Link>
-				</div>
+			{/* Main navbar — morphs into a floating pill on scroll */}
+			<div
+				className={cn(
+					"mx-auto flex items-center justify-between transition-all duration-300 ease-out",
+					scrolled
+						? "h-14 max-w-5xl rounded-full border border-[#e5e5e5] bg-white/80 px-3 shadow-[0_12px_30px_-12px_rgba(36,84,156,0.28),0_2px_8px_rgba(0,0,0,0.05)] backdrop-blur-md lg:px-5"
+						: "h-16 max-w-7xl rounded-full border border-transparent bg-transparent px-5 lg:px-8",
+				)}
+			>
+				<Link href="/" className={cn("relative shrink-0 transition-all duration-300 ease-out", scrolled ? "h-7 w-[185px]" : "h-8 w-[214px]")}>
+					<Image src={LogoHorizontalTextBlack} alt="RecompraCRM" fill className="object-contain object-left" priority />
+				</Link>
 				<nav className="hidden md:flex items-center gap-7">
 					{ANCHOR_LINKS.map((link) => (
 						<a
@@ -105,8 +109,8 @@ export function LedgerNavbar() {
 			</div>
 
 			{mobileOpen && (
-				<div className="md:hidden border-t border-[#e5e5e5] bg-white">
-					<div className="mx-auto max-w-7xl px-5 py-4 flex flex-col gap-1">
+				<div className="md:hidden mx-3 mt-2 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_16px_40px_-16px_rgba(36,84,156,0.28),0_4px_10px_rgba(0,0,0,0.06)]">
+					<div className="flex flex-col gap-1 px-4 py-4">
 						{ANCHOR_LINKS.map((link) => (
 							<a
 								key={link.href}
