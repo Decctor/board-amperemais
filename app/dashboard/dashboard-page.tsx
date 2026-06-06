@@ -14,7 +14,7 @@ type DashboardPageProps = {
 export function DashboardPage({ user, userOrg, membership }: DashboardPageProps) {
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end">
+			<div className="flex w-full min-w-0 items-center justify-end">
 				<WhatsappConnectionsPills />
 			</div>
 			<Tabs defaultValue="campanhas">

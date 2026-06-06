@@ -315,7 +315,7 @@ export default function CampaignResultPage({ campaignId, membership, user: _user
 
 			{/* Section D — Time-Series Chart */}
 			<WeeklyLimitSection performance={performance} />
-			<div className="w-full h-[480px]">
+			<div className="w-full lg:h-[480px]">
 				<CampaignsGraphs
 					startDate={filters.startDate}
 					endDate={filters.endDate}

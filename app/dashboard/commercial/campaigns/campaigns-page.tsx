@@ -791,8 +791,8 @@ function CampaignsStatsView() {
 				/>
 			</div>
 			<CampaignStatsConversionsBlock startDate={filters.startDate} endDate={filters.endDate} />
-			<div className="w-full flex items-start flex-col lg:flex-row gap-3 h-[550px]">
-				<div className="w-full lg:w-1/2 h-full min-h-0">
+			<div className="flex w-full flex-col items-start gap-3 lg:h-[550px] lg:flex-row">
+				<div className="w-full min-h-0 min-w-0 lg:h-full lg:w-1/2">
 					<CampaignsGraphs
 						startDate={filters.startDate ?? null}
 						endDate={filters.endDate ?? null}
@@ -800,7 +800,7 @@ function CampaignsStatsView() {
 						comparingEndDate={comparingFilters.endDate}
 					/>
 				</div>
-				<div className="w-full lg:w-1/2 h-full min-h-0">
+				<div className="w-full min-h-0 min-w-0 lg:h-full lg:w-1/2">
 					<CampaignsRanking
 						startDate={filters.startDate ?? null}
 						endDate={filters.endDate ?? null}

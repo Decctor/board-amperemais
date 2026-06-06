@@ -103,8 +103,8 @@ export default function CampaignsGraphs({ startDate, endDate, comparingStartDate
 	};
 
 	return (
-		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="flex w-full flex-col gap-2 py-2 lg:h-full">
+			<div className="bg-card border-border flex w-full flex-col gap-3 overflow-hidden rounded-xl border px-3 py-4 shadow-2xs lg:h-full lg:min-h-0">
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">GRÁFICO DE CAMPANHAS</h1>
 					<div className="flex items-center gap-2">
@@ -157,27 +157,41 @@ export default function CampaignsGraphs({ startDate, endDate, comparingStartDate
 						</TooltipProvider>
 					</div>
 				</div>
-				<div className="flex w-full flex-1 gap-4 min-h-0">
+				<div className="flex w-full min-h-0 min-w-0 flex-1">
 					{graphLoading ? (
-						<div className="flex w-full h-full items-center justify-center">
+						<div className="flex h-[240px] w-full items-center justify-center sm:h-[280px] lg:h-full">
 							<p className="text-sm text-muted-foreground">Carregando gráfico...</p>
 						</div>
 					) : graphData && graphData.length > 0 ? (
-						<div className="flex w-full h-full items-center justify-center min-h-[350px]">
-							<ChartContainer className="aspect-auto h-full w-full min-h-[350px]" config={chartConfig}>
+						<div className="flex h-[240px] w-full min-w-0 items-center justify-center sm:h-[280px] lg:h-full lg:min-h-[280px]">
+							<ChartContainer className="aspect-auto h-full w-full min-h-0 min-w-0" config={chartConfig}>
 								<AreaChart
 									accessibilityLayer
 									data={graphData}
 									margin={{
-										top: 15,
-										right: 15,
-										left: 15,
-										bottom: 15,
+										top: 12,
+										right: 8,
+										left: 0,
+										bottom: 0,
 									}}
 								>
 									<CartesianGrid vertical={false} />
-									<XAxis dataKey="label" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(value) => value.slice(0, 12)} />
-									<YAxis tickFormatter={(value) => (graphType === "revenue" ? formatToMoney(value) : formatDecimalPlaces(value))} />
+									<XAxis
+										dataKey="label"
+										tickLine={false}
+										tickMargin={8}
+										axisLine={false}
+										minTickGap={24}
+										tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+										tickFormatter={(value) => value.slice(0, 10)}
+									/>
+									<YAxis
+										width={graphType === "revenue" ? 52 : 36}
+										tickLine={false}
+										axisLine={false}
+										tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+										tickFormatter={(value) => (graphType === "revenue" ? formatToMoney(value) : formatDecimalPlaces(value))}
+									/>
 									<ChartTooltip cursor={false} content={<CustomCampaignTooltip valueFormatter={valueFormatter} metricLabel={metricLabels[graphType]} />} />
 									<defs>
 										<linearGradient id="fillCampaignValue" x1="0" y1="0" x2="0" y2="1">
@@ -207,7 +221,7 @@ export default function CampaignsGraphs({ startDate, endDate, comparingStartDate
 							</ChartContainer>
 						</div>
 					) : (
-						<div className="flex w-full h-full items-center justify-center">
+						<div className="flex h-[240px] w-full items-center justify-center sm:h-[280px] lg:h-full">
 							<p className="text-sm text-muted-foreground">Nenhum dado disponível para o período selecionado.</p>
 						</div>
 					)}

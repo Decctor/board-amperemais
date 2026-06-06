@@ -61,7 +61,7 @@ export function CampaignGraphBlock({ interactionsData, conversionsData, isLoadin
 	}, [interactionsData, conversionsData]);
 
 	return (
-		<div className="bg-card border-border flex w-full flex-col gap-4 rounded-xl border px-4 py-4 shadow-2xs">
+		<div className="bg-card border-border flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl border px-4 py-4 shadow-2xs">
 			<div className="flex items-center justify-between flex-wrap gap-2 shrink-0">
 				<h2 className="text-xs font-bold uppercase tracking-wide text-foreground">Interações e conversões por dia</h2>
 				<div className="flex items-center gap-4">
@@ -77,13 +77,13 @@ export function CampaignGraphBlock({ interactionsData, conversionsData, isLoadin
 			</div>
 
 			{isLoading ? (
-				<div className="h-[260px] rounded-xl bg-muted/30 animate-pulse" />
+				<div className="h-[220px] animate-pulse rounded-xl bg-muted/30 sm:h-[260px]" />
 			) : merged.length > 0 ? (
-				<ChartContainer className="aspect-auto h-[260px] w-full" config={chartConfig}>
+				<ChartContainer className="aspect-auto h-[220px] w-full min-w-0 sm:h-[260px]" config={chartConfig}>
 					<AreaChart
 						accessibilityLayer
 						data={merged}
-						margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
+						margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
 					>
 						<defs>
 							<linearGradient id="fillInteractions" x1="0" y1="0" x2="0" y2="1">
@@ -100,8 +100,9 @@ export function CampaignGraphBlock({ interactionsData, conversionsData, isLoadin
 							dataKey="label"
 							tickLine={false}
 							axisLine={false}
-							tickMargin={10}
-							tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+							tickMargin={8}
+							minTickGap={24}
+							tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
 							tickFormatter={(v) => v.slice(0, 10)}
 						/>
 						<YAxis

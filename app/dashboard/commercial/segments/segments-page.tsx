@@ -13,6 +13,7 @@ import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import type { TAuthUserSession } from "@/lib/authentication/types";
@@ -28,8 +29,10 @@ import { syncSegmentations } from "@/lib/mutations/segmentations";
 import { useClients, useClientsBySearch } from "@/lib/queries/clients";
 import { fetchClientExportation } from "@/lib/queries/exportations";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useRFMLabelledStats } from "@/lib/queries/stats/rfm-labelled";
 import { cn } from "@/lib/utils";
+import type { TRFMLabelledStats } from "@/app/api/stats/sales-rfm-labelled/route";
 import type { TGetClientsInput, TGetClientsOutputDefault } from "@/app/api/clients/route";
 import { RFMLabels, type TRFMConfig, getRFMConfigByLabel } from "@/utils/rfm";
 import { AspectRatio } from "@radix-ui/react-aspect-ratio";
@@ -66,11 +69,11 @@ export default function SegmentsPage({ user, orgRFMConfig }: SegmentsPageProps) 
 	const [configMenuIsOpen, setConfigMenuIsOpen] = useState(false);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex items-stretch gap-3 flex-col md:flex-row">
-				<div className="w-full md:w-1/2">
+			<div className="flex w-full flex-col items-stretch gap-3 lg:flex-row">
+				<div className="w-full lg:w-1/2">
 					<SegmentsPageMatrixRFM onOpenConfig={() => setConfigMenuIsOpen(true)} />
 				</div>
-				<div className="w-full md:w-1/2">
+				<div className="w-full lg:w-1/2">
 					<SegmentsPageClients />
 				</div>
 			</div>
@@ -637,16 +640,194 @@ function getSegmentLayout(label: string): SegmentLayout {
 			// L-shape: full left column + bottom-right quadrant. Cuts top-right.
 			clipPath: "polygon(0 0, 50% 0, 50% 50%, 100% 50%, 100% 100%, 0 100%)",
 			// Place content in the bottom-left quadrant of the 2×2 block
-			contentWrapper: "absolute bottom-0 left-0 w-1/2 h-1/2",
+			contentWrapper: "absolute bottom-0 left-0 h-1/2 w-1/2",
 		};
 	}
 	return {};
+}
+
+/** Single-cell segments that need badge-only treatment on very narrow screens. */
+const RFM_COMPACT_SEGMENTS = new Set(["CAMPEÕES", "PRECISAM DE ATENÇÃO", "HIBERNANDO", "PROMISSORES", "CLIENTES RECENTES"]);
+
+/** Paint order for overlapping grid areas (treemap-style matrix). */
+const RFM_SEGMENT_Z_INDEX: Record<string, number> = {
+	CAMPEÕES: 30,
+	HIBERNANDO: 30,
+	"PRECISAM DE ATENÇÃO": 25,
+	PROMISSORES: 25,
+	"CLIENTES RECENTES": 25,
+	"PRESTES A DORMIR": 15,
+	"NÃO PODE PERDÊ-LOS": 12,
+	"EM RISCO": 12,
+	"POTENCIAIS CLIENTES LEAIS": 12,
+	"CLIENTES LEAIS": 8,
+	PERDIDOS: 5,
+};
+
+const RFM_SEGMENT_DETAIL_PANEL_CLASS = "w-[min(280px,calc(100vw-2rem))] p-4";
+
+type RFMSegmentDetailContentProps = {
+	item: TRFMLabelledStats[number];
+	style: ReturnType<typeof getSegmentStyle>;
+	formatDecimal: (value: number, fractionDigits?: number) => string;
+};
+
+function RFMSegmentDetailContent({ item, style, formatDecimal }: RFMSegmentDetailContentProps) {
+	return (
+		<div className="flex w-full flex-col gap-2">
+			<div className="flex items-center gap-2">
+				<div className={cn("h-2.5 w-2.5 shrink-0 rounded-full", style.gradient)} />
+				<h3 className="text-sm font-bold tracking-tight">{item.rfmLabel}</h3>
+			</div>
+			<p className="-mt-1 text-[0.7rem] text-muted-foreground">
+				Últimos 12 meses · {item.clientsQty} {item.clientsQty === 1 ? "cliente" : "clientes"}
+			</p>
+			<div className="h-px w-full bg-border" />
+			<div className="flex flex-col gap-1.5">
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Receita total</p>
+					<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.totalRevenue)}</p>
+				</div>
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Total de compras</p>
+					<p className="font-semibold">{item.segmentPeriodStats.totalPurchasesQty}</p>
+				</div>
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Ticket médio</p>
+					<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.avgTicket)}</p>
+				</div>
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Ciclo médio de compra</p>
+					<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgPurchaseCycleDays)} dias</p>
+				</div>
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Basket médio</p>
+					<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgBasketSize, 2)} itens</p>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+type RFMSegmentCellProps = {
+	item: TRFMLabelledStats[number];
+	index: number;
+	formatDecimal: (value: number, fractionDigits?: number) => string;
+	prefersHoverInteraction: boolean;
+	openSegmentKey: string | null;
+	onOpenSegmentKeyChange: (key: string | null) => void;
+};
+
+function RFMSegmentCell({ item, index, formatDecimal, prefersHoverInteraction, openSegmentKey, onOpenSegmentKeyChange }: RFMSegmentCellProps) {
+	const style = getSegmentStyle(item.rfmLabel);
+	const layout = getSegmentLayout(item.rfmLabel);
+	const hasClipPath = !!layout.clipPath;
+	const isCompactSegment = RFM_COMPACT_SEGMENTS.has(item.rfmLabel);
+	const segmentKey = `${item.rfmLabel}-${index}`;
+	const detailContent = <RFMSegmentDetailContent item={item} style={style} formatDecimal={formatDecimal} />;
+	const detailPanelProps = {
+		align: "center" as const,
+		sideOffset: 8,
+		collisionPadding: 16,
+		className: RFM_SEGMENT_DETAIL_PANEL_CLASS,
+	};
+
+	const content = (
+		<>
+			<h2
+				className={cn(
+					"relative z-10 px-0.5 text-center font-semibold uppercase leading-none tracking-wide",
+					isCompactSegment || hasClipPath
+						? "hidden text-[0.4rem] sm:block sm:text-[0.5rem] md:text-[0.55rem] lg:text-[0.45rem] xl:text-[0.6rem]"
+						: "line-clamp-2 text-[0.38rem] sm:text-[0.5rem] md:text-[0.6rem] lg:text-[0.45rem] xl:text-[0.65rem]",
+					style.text,
+				)}
+			>
+				{item.rfmLabel}
+			</h2>
+			<div
+				className={cn(
+					"relative z-10 flex shrink-0 items-center justify-center rounded-full",
+					style.badge,
+					isCompactSegment || hasClipPath
+						? "h-5 w-5 min-h-5 min-w-5 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 md:h-8 md:w-8 md:min-h-8 md:min-w-8 lg:h-7 lg:w-7 lg:min-h-7 lg:min-w-7 xl:h-10 xl:w-10 xl:min-h-10 xl:min-w-10"
+						: "h-6 w-6 min-h-6 min-w-6 sm:h-8 sm:w-8 sm:min-h-8 sm:min-w-8 md:h-10 md:w-10 md:min-h-10 md:min-w-10 lg:h-8 lg:w-8 lg:min-h-8 lg:min-w-8 xl:h-12 xl:w-12 xl:min-h-12 xl:min-w-12",
+				)}
+			>
+				<span
+					className={cn(
+						"font-bold tabular-nums",
+						isCompactSegment || hasClipPath
+							? "text-[0.45rem] sm:text-[0.6rem] lg:text-[0.5rem] xl:text-xs"
+							: "text-[0.5rem] sm:text-xs lg:text-[0.5rem] xl:text-sm",
+						style.badgeText,
+					)}
+				>
+					{item.clientsQty}
+				</span>
+			</div>
+			<p
+				className={cn(
+					"relative z-10 hidden text-[0.6rem] font-medium tracking-tight opacity-85 md:block lg:hidden xl:block xl:text-[0.65rem]",
+					style.text,
+				)}
+			>
+				{formatToMoney(item.segmentPeriodStats.totalRevenue)}
+			</p>
+		</>
+	);
+
+	const block = (
+		<div
+			className={cn(
+				style.gradient,
+				"relative min-h-0 min-w-0 cursor-pointer overflow-hidden rounded-lg shadow-sm",
+				"transition-[box-shadow,filter] duration-200 lg:hover:scale-[1.02] lg:hover:shadow-md lg:hover:brightness-105",
+				!hasClipPath && "flex flex-col items-center justify-center gap-0.5 p-0.5 sm:gap-1 sm:p-1 md:p-1.5 lg:gap-2 lg:p-3",
+				!prefersHoverInteraction && openSegmentKey === segmentKey && "ring-2 ring-inset ring-primary/70",
+			)}
+			style={{
+				gridArea: item.gridArea,
+				zIndex: RFM_SEGMENT_Z_INDEX[item.rfmLabel] ?? 10,
+				...(layout.clipPath ? { clipPath: layout.clipPath } : {}),
+			}}
+		>
+			<div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/10 to-transparent" />
+			{hasClipPath && layout.contentWrapper ? (
+				<div className={cn(layout.contentWrapper, "flex flex-col items-center justify-center gap-0.5 p-0.5 sm:gap-1 sm:p-1 md:p-1.5 lg:gap-2 lg:p-3")}>
+					{content}
+				</div>
+			) : (
+				content
+			)}
+		</div>
+	);
+
+	if (prefersHoverInteraction) {
+		return (
+			<HoverCard openDelay={150}>
+				<HoverCardTrigger asChild>{block}</HoverCardTrigger>
+				<HoverCardContent {...detailPanelProps}>{detailContent}</HoverCardContent>
+			</HoverCard>
+		);
+	}
+
+	return (
+		<Popover open={openSegmentKey === segmentKey} onOpenChange={(open) => onOpenSegmentKeyChange(open ? segmentKey : null)}>
+			<PopoverTrigger asChild>{block}</PopoverTrigger>
+			<PopoverContent side="bottom" {...detailPanelProps}>
+				{detailContent}
+			</PopoverContent>
+		</Popover>
+	);
 }
 
 function SegmentsPageMatrixRFM({ onOpenConfig }: { onOpenConfig: () => void }) {
 	const queryClient = useQueryClient();
 
 	const [syncMenuIsOpen, setSyncMenuIsOpen] = useState(false);
+	const [openSegmentKey, setOpenSegmentKey] = useState<string | null>(null);
+	const prefersHoverInteraction = useMediaQuery("(hover: hover) and (pointer: fine)");
 	const { data: rfmStats, queryKey } = useRFMLabelledStats();
 
 	function formatDecimal(value: number, fractionDigits = 1) {
@@ -668,125 +849,36 @@ function SegmentsPageMatrixRFM({ onOpenConfig }: { onOpenConfig: () => void }) {
 					<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
 					<h1 className="text-xs font-medium tracking-tight uppercase">MATRIZ RFM</h1>
 				</div>
-				<div className="flex items-center gap-2">
-					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={onOpenConfig}>
-						<Settings2 className="w-4 h-4 min-w-4 min-h-4" />
+				<div className="flex items-center gap-2 flex-wrap justify-center lg:justify-end">
+					<Button variant="ghost" size="sm" className="flex items-center gap-2 text-[0.6rem] lg:text-sm" onClick={onOpenConfig}>
+						<Settings2 className="w-3 h-3 min-w-3 min-h-3 lg:w-4 lg:h-4 lg:min-w-4 lg:min-h-4" />
 						CONFIGURAR
 					</Button>
-					<Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setSyncMenuIsOpen(true)}>
-						<RefreshCcw className="w-4 h-4 min-w-4 min-h-4" />
+					<Button variant="ghost" size="sm" className="flex items-center gap-2 text-[0.6rem] lg:text-sm" onClick={() => setSyncMenuIsOpen(true)}>
+						<RefreshCcw className="w-3 h-3 min-w-3 min-h-3 lg:w-4 lg:h-4 lg:min-w-4 lg:min-h-4" />
 						SINCRONIZAR
 					</Button>
 				</div>
 			</div>
-			<div className="w-fit self-center px-2 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-foreground/80 text-[0.65rem] font-medium tracking-tight text-center">
-				<Info className="w-3 h-3 min-w-3 min-h-3 shrink-0" />
-				<span>Análise RFM dos últimos 12 meses. Passe o mouse no bloco para detalhes.</span>
+			<div className="flex w-full max-w-full items-center justify-center gap-1 self-center rounded-lg bg-primary/10 px-2 py-1 text-center text-[0.65rem] font-medium tracking-tight text-foreground/80">
+				<Info className="h-3 w-3 min-h-3 min-w-3 shrink-0" />
+				<span>
+					Análise RFM dos últimos 12 meses. {prefersHoverInteraction ? "Passe o mouse no bloco para detalhes." : "Toque no bloco para ver detalhes."}
+				</span>
 			</div>
 			<AspectRatio ratio={1}>
-				<div className="grid grid-cols-5 grid-rows-5 w-full h-full gap-0.5">
-					{rfmStats?.map((item, index) => {
-						const style = getSegmentStyle(item.rfmLabel);
-						const layout = getSegmentLayout(item.rfmLabel);
-						const hasClipPath = !!layout.clipPath;
-
-						const content = (
-							<>
-								{/* Segment label */}
-								<h2
-									className={cn(
-										"relative z-10 text-[0.35rem] leading-tight lg:text-[0.7rem] xl:text-[0.7rem] font-semibold tracking-wide uppercase text-center",
-										style.text,
-									)}
-								>
-									{item.rfmLabel}
-								</h2>
-
-								{/* Client count badge */}
-								<div
-									className={cn(
-										"relative z-10 flex items-center justify-center rounded-full",
-										style.badge,
-										"h-6 w-6 min-h-6 min-w-6 lg:h-12 lg:w-12 lg:min-h-12 lg:min-w-12",
-									)}
-								>
-									<span className={cn("text-[0.5rem] lg:text-sm font-bold tabular-nums", style.badgeText)}>{item.clientsQty}</span>
-								</div>
-
-								{/* Revenue */}
-								<p className={cn("relative z-10 hidden lg:block text-[0.6rem] xl:text-[0.65rem] font-medium tracking-tight opacity-85", style.text)}>
-									{formatToMoney(item.segmentPeriodStats.totalRevenue)}
-								</p>
-							</>
-						);
-
-						const block = (
-							<div
-								className={cn(
-									style.gradient,
-									"relative rounded-lg shadow-sm cursor-pointer",
-									"transition-all duration-200 hover:shadow-md hover:brightness-105 hover:scale-[1.02]",
-									"overflow-hidden",
-									// When there's no clip-path, center content directly
-									!hasClipPath && "flex flex-col items-center justify-center gap-1 lg:gap-2 p-1.5 lg:p-3",
-								)}
-								style={{
-									gridArea: item.gridArea,
-									...(layout.clipPath ? { clipPath: layout.clipPath } : {}),
-								}}
-							>
-								{/* Subtle inner highlight */}
-								<div className="absolute inset-0 rounded-lg bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-
-								{hasClipPath && layout.contentWrapper ? (
-									// Content positioned in a specific quadrant (e.g. bottom-left for L-shaped PERDIDOS)
-									<div className={cn(layout.contentWrapper, "flex flex-col items-center justify-center gap-1 lg:gap-2 p-1.5 lg:p-3")}>{content}</div>
-								) : (
-									content
-								)}
-							</div>
-						);
-
-						return (
-							<HoverCard key={`${item.rfmLabel}-${index}`} openDelay={150}>
-								<HoverCardTrigger asChild>{block}</HoverCardTrigger>
-								<HoverCardContent className="w-[280px] p-4" side="right" sideOffset={8}>
-									<div className="w-full flex flex-col gap-2">
-										<div className="flex items-center gap-2">
-											<div className={cn("w-2.5 h-2.5 rounded-full shrink-0", style.gradient)} />
-											<h3 className="text-sm font-bold tracking-tight">{item.rfmLabel}</h3>
-										</div>
-										<p className="text-[0.7rem] text-muted-foreground -mt-1">
-											Últimos 12 meses · {item.clientsQty} {item.clientsQty === 1 ? "cliente" : "clientes"}
-										</p>
-										<div className="w-full h-px bg-border" />
-										<div className="flex flex-col gap-1.5">
-											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-												<p className="text-muted-foreground">Receita total</p>
-												<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.totalRevenue)}</p>
-											</div>
-											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-												<p className="text-muted-foreground">Total de compras</p>
-												<p className="font-semibold">{item.segmentPeriodStats.totalPurchasesQty}</p>
-											</div>
-											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-												<p className="text-muted-foreground">Ticket médio</p>
-												<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.avgTicket)}</p>
-											</div>
-											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-												<p className="text-muted-foreground">Ciclo médio de compra</p>
-												<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgPurchaseCycleDays)} dias</p>
-											</div>
-											<div className="w-full flex items-center justify-between gap-3 text-[0.75rem]">
-												<p className="text-muted-foreground">Basket médio</p>
-												<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgBasketSize, 2)} itens</p>
-											</div>
-										</div>
-									</div>
-								</HoverCardContent>
-							</HoverCard>
-						);
-					})}
+				<div className="isolate grid h-full w-full grid-cols-5 grid-rows-5 gap-px sm:gap-0.5">
+					{rfmStats?.map((item, index) => (
+						<RFMSegmentCell
+							key={`${item.rfmLabel}-${index}`}
+							item={item}
+							index={index}
+							formatDecimal={formatDecimal}
+							prefersHoverInteraction={prefersHoverInteraction}
+							openSegmentKey={openSegmentKey}
+							onOpenSegmentKeyChange={setOpenSegmentKey}
+						/>
+					))}
 				</div>
 			</AspectRatio>
 			{syncMenuIsOpen ? (

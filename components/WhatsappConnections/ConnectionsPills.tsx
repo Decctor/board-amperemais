@@ -28,7 +28,7 @@ export default function WhatsappConnectionsPills() {
 
 	const connectionPhones = getConnectionPhones(whatsappConnections || []);
 	return (
-		<div className="flex items-center gap-3">
+		<div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2">
 			{isPending ? (
 				<span className="flex items-center gap-1.5 text-sm text-muted-foreground">
 					<AnimatedSpinner className="w-4 h-4 min-w-4 min-h-4" />
@@ -49,14 +49,12 @@ export default function WhatsappConnectionsPills() {
 					<Button
 						variant={connectionPhones.length > 0 ? "secondary" : "default"}
 						size="sm"
-						className="gap-0 px-2 transition-all duration-500 ease-out hover:gap-1.5 hover:px-3"
+						className="shrink-0 gap-1.5 px-2.5 sm:px-3"
 						asChild
 					>
 						<Link href="/api/integrations/whatsapp/auth" prefetch={false} aria-label="Adicionar número">
 							<PlusIcon className="h-4 w-4 shrink-0" />
-							<span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 ease-out group-hover/button:max-w-36 group-hover/button:opacity-100 group-focus-visible/button:max-w-36 group-focus-visible/button:opacity-100">
-								ADICIONAR NÚMERO
-							</span>
+							<span className="hidden text-xs font-bold sm:inline">ADICIONAR NÚMERO</span>
 						</Link>
 					</Button>
 				</>
@@ -74,7 +72,7 @@ function ConnectionPill({ connection }: ConnectionPillProps) {
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<div className="flex cursor-default items-center gap-1.5 rounded-lg bg-secondary px-2 py-1">
+				<div className="flex max-w-full shrink-0 cursor-default items-center gap-1.5 rounded-lg bg-secondary px-2 py-1.5 sm:max-w-none">
 					<div className="flex shrink-0 items-center -space-x-3 overflow-visible">
 						{connection.connectionType === "META_CLOUD_API" ? (
 							<div className="ring-background flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full bg-[#0869E1] text-white ring-2">
@@ -90,7 +88,7 @@ function ConnectionPill({ connection }: ConnectionPillProps) {
 						</div>
 					</div>
 
-					<span className="max-w-32 truncate text-xs font-medium">{connection.phoneName}</span>
+					<span className="hidden min-w-0 max-w-32 truncate text-xs font-medium sm:inline">{connection.phoneName}</span>
 				</div>
 			</TooltipTrigger>
 			<TooltipContent side="bottom" className="flex flex-col gap-0.5 px-3 py-2">
