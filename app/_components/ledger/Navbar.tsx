@@ -14,6 +14,7 @@ const ANCHOR_LINKS = [
 	{ label: "Resultado", href: "#movimento" },
 	{ label: "Funcionalidades", href: "#inventario" },
 	{ label: "Planos", href: "#saldo" },
+	{ label: "Parcerias", href: "#parcerias" },
 ];
 
 export function LedgerNavbar() {
@@ -49,12 +50,7 @@ export function LedgerNavbar() {
 	);
 
 	return (
-		<header
-			className={cn(
-				"fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
-				scrolled ? "pt-3 px-3 lg:px-4" : "pt-0 px-0",
-			)}
-		>
+		<header className={cn("fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out", scrolled ? "pt-3 px-3 lg:px-4" : "pt-0 px-0")}>
 			{/* Main navbar — morphs into a floating pill on scroll */}
 			<div
 				className={cn(

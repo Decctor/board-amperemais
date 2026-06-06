@@ -1,4 +1,10 @@
-import { GOOGLE_OAUTH_STATE_COOKIE_NAME, GOOGLE_OAUTH_VERIFIER_COOKIE_NAME, google } from "@/lib/authentication/oauth-providers";
+import {
+	GOOGLE_OAUTH_REDIRECT_COOKIE_NAME,
+	GOOGLE_OAUTH_STATE_COOKIE_NAME,
+	GOOGLE_OAUTH_VERIFIER_COOKIE_NAME,
+	google,
+} from "@/lib/authentication/oauth-providers";
+import { sanitizeAuthRedirectTo } from "@/lib/authentication/redirect";
 import { geolocation } from "@vercel/functions";
 import { generateCodeVerifier, generateState } from "arctic";
 import { cookies } from "next/headers";
@@ -10,6 +16,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 	const cookieStore = await cookies();
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
+	const redirectTo = sanitizeAuthRedirectTo(request.nextUrl.searchParams.get("redirectTo"));
 
 	const url = await google.createAuthorizationURL(state, codeVerifier, [
 		"openid",
@@ -29,6 +36,13 @@ export async function GET(request: NextRequest): Promise<Response> {
 	});
 
 	cookieStore.set(GOOGLE_OAUTH_VERIFIER_COOKIE_NAME, codeVerifier, {
+		secure: true,
+		path: "/",
+		httpOnly: true,
+		maxAge: 60 * 10,
+	});
+
+	cookieStore.set(GOOGLE_OAUTH_REDIRECT_COOKIE_NAME, redirectTo, {
 		secure: true,
 		path: "/",
 		httpOnly: true,

@@ -1,4 +1,5 @@
 import { createSession, generateSessionToken, setSetSessionCookie } from "@/lib/authentication/session";
+import { sanitizeAuthRedirectTo } from "@/lib/authentication/redirect";
 import { db } from "@/services/drizzle";
 import { authMagicLinks } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -83,5 +84,5 @@ export async function GET(request: NextRequest) {
 	}
 
 	console.log("SESSION SET");
-	return redirect("/dashboard");
+	return redirect(sanitizeAuthRedirectTo(authVerificationToken.redirectTo));
 }

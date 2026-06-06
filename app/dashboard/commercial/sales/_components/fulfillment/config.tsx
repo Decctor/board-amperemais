@@ -1,5 +1,5 @@
 import type { TSaleAttendanceStatusEnum, TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
-import { isValidAttendanceTransition } from "@/lib/sale-processing/attendance";
+import { isValidAttendanceTransition } from "@/lib/sales/sale-processing/attendance";
 import { CircleCheck, ClipboardList, type LucideIcon, Inbox, Clock, Package, PackageCheck, PackageOpen, Store, Truck, File } from "lucide-react";
 
 // Colunas do quadro de atendimento, na ordem do fluxo operacional.

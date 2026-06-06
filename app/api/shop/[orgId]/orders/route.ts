@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { getOrganizationPaymentMethodsConfig } from "@/lib/payments";
-import { processSaleConfirmation } from "@/lib/sale-processing";
+import { processSaleConfirmation } from "@/lib/sales/sale-processing";
 import { getShopCatalogProducts, type TShopCatalogProduct } from "@/lib/shop/catalog";
 import { getShopAvailability } from "@/lib/shop/availability";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";

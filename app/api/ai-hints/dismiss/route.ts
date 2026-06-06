@@ -1,6 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { dismissHint as dismissHintService } from "@/lib/ai-hints/service";
+import { dismissHint as dismissHintService } from "@/lib/ai/ai-hints/service";
 import { DismissHintInputSchema } from "@/schemas/ai-hints";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";

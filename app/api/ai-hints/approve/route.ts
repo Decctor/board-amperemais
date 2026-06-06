@@ -1,4 +1,4 @@
-import { approveHint } from "@/lib/ai-hints/approval";
+import { approveHint } from "@/lib/ai/ai-hints/approval";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { ApproveHintInputSchema } from "@/schemas/ai-hints";

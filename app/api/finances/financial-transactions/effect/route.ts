@@ -1,6 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { processSaleAutomaticFiscalEmissionIfEligible, processSaleCashbackAccumulationIfEligible } from "@/lib/sale-processing";
+import { processSaleAutomaticFiscalEmissionIfEligible, processSaleCashbackAccumulationIfEligible } from "@/lib/sales/sale-processing";
 import { FinancialTransactionSchema } from "@/schemas/financial";
 import { db } from "@/services/drizzle";
 import { financialTransactions } from "@/services/drizzle/schema";

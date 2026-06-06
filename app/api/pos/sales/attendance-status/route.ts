@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { processSaleAttendanceStatusChange } from "@/lib/sale-processing";
+import { processSaleAttendanceStatusChange } from "@/lib/sales/sale-processing";
 import { PaymentMethodEnum, SaleAttendanceStatusEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";

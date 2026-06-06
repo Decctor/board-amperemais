@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
-import { processSaleConfirmation } from "@/lib/sale-processing";
+import { processSaleConfirmation } from "@/lib/sales/sale-processing";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";

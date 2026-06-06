@@ -1,4 +1,4 @@
-import { CampaignCreationSuggestionSchema, CampaignUpdateSuggestionSchema } from "@/lib/ai-agent/marketing/schemas";
+import { CampaignCreationSuggestionSchema, CampaignUpdateSuggestionSchema } from "@/lib/ai/ai-agent/marketing/schemas";
 import { z } from "zod";
 
 export const AIHintSubjectSchema = z.enum(["campaigns"]);

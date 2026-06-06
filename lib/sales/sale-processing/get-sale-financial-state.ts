@@ -1,4 +1,4 @@
-import { computeSaleFinancialStatus } from "@/lib/sales/derived-status";
+import { computeSaleFinancialStatus } from "@/lib/sales/utils";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
 

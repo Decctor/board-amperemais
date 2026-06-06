@@ -31,3 +31,4 @@ export * from "./suppliers";
 export * from "./purchases";
 export * from "./poi-transaction-requests";
 export * from "./shop";
+export * from "./platform-partnerships";

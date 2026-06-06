@@ -13,6 +13,7 @@ const OrganizationOnboardingStateSchema = z.object({
 		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL"])
 		.optional()
 		.nullable(),
+	indicadorCodigo: z.string({ invalid_type_error: "Tipo nÃ£o vÃ¡lido para o cÃ³digo de indicaÃ§Ã£o." }).optional().nullable(),
 	termsAccepted: z.boolean(),
 });
 export type TOrganizationOnboardingState = z.infer<typeof OrganizationOnboardingStateSchema>;
@@ -67,6 +68,7 @@ export function useOrganizationOnboardingState({ initialState }: TUseOrganizatio
 				previewUrl: initialState?.organizationLogoHolder?.previewUrl ?? null,
 			},
 			subscription: initialState?.subscription ?? null,
+			indicadorCodigo: initialState?.indicadorCodigo ?? null,
 			termsAccepted: initialState?.termsAccepted ?? false,
 		}),
 		[initialState],

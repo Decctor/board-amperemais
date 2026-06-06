@@ -1,6 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { processConfirmedSaleCancellation } from "@/lib/sale-processing";
+import { processConfirmedSaleCancellation } from "@/lib/sales/sale-processing";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";

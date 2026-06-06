@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/lib/errors";
 import { updateSaleAttendanceStatus } from "@/lib/mutations/sales";
 import { SALES_FULFILLMENT_QUERY_KEY, useSalesFulfillment } from "@/lib/queries/sales-fulfillment";
-import { isValidAttendanceTransition } from "@/lib/sale-processing/attendance";
+import { isValidAttendanceTransition } from "@/lib/sales/sale-processing/attendance";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import {
 	DndContext,

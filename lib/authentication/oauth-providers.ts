@@ -10,6 +10,7 @@ export const google = new Google(
 
 export const GOOGLE_OAUTH_STATE_COOKIE_NAME = "google_oauth_state";
 export const GOOGLE_OAUTH_VERIFIER_COOKIE_NAME = "google_code_verifier";
+export const GOOGLE_OAUTH_REDIRECT_COOKIE_NAME = "google_oauth_redirect_to";
 
 export interface GoogleUserOpenIDConnect {
 	sub: string;

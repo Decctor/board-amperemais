@@ -1,4 +1,4 @@
-import { createCampaignSuggestionHint, createCampaignUpdateSuggestionHint } from "@/lib/ai-hints/service";
+import { createCampaignSuggestionHint, createCampaignUpdateSuggestionHint } from "@/lib/ai/ai-hints/service";
 import { AIHintSchema, type TAIHint } from "@/schemas/ai-hints";
 import { createMarketingAnalystAgent, createMarketingExecutorAgent } from "./agent";
 import { getCampaignsPerformanceContext } from "./context";
@@ -50,11 +50,7 @@ function shouldRunExecutor({
 	analystOutput: TMarketingAnalystOutput;
 	requireActionableSuggestion: boolean;
 }) {
-	return (
-		requireActionableSuggestion ||
-		isActionableSuggestionStatus(analystOutput.status) ||
-		analystOutput.recommendedAction.suggestionType !== null
-	);
+	return requireActionableSuggestion || isActionableSuggestionStatus(analystOutput.status) || analystOutput.recommendedAction.suggestionType !== null;
 }
 
 function getElapsedMs(startedAt: number) {

@@ -1,5 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai-agent";
+import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai-agent";
 import { db } from "@/services/drizzle";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -43,11 +43,14 @@ async function generateAIResponseRoute(req: NextRequest) {
 
 		const validationResult = GenerateAIResponseInputSchema.safeParse(payload);
 		if (!validationResult.success) {
-			return NextResponse.json({
-				success: false,
-				error: "Dados inválidos",
-				details: validationResult.error.errors.map((e) => e.message),
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: "Dados inválidos",
+					details: validationResult.error.errors.map((e) => e.message),
+				},
+				{ status: 400 },
+			);
 		}
 
 		const { chatId } = validationResult.data;
@@ -61,11 +64,14 @@ async function generateAIResponseRoute(req: NextRequest) {
 		});
 
 		if (!chat) {
-			return NextResponse.json({
-				success: false,
-				error: "Chat não encontrado",
-				details: ["O chat especificado não existe"],
-			}, { status: 404 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: "Chat não encontrado",
+					details: ["O chat especificado não existe"],
+				},
+				{ status: 404 },
+			);
 		}
 
 		// Get last 100 messages

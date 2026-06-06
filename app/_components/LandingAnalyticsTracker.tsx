@@ -1,6 +1,8 @@
 "use client";
 
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
+import { trackPlatformPartner } from "@/lib/mutations/platform-partnerships";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
 const LANDING_SCROLL_DEPTH_MILESTONES = [25, 50, 75, 90] as const;
@@ -9,12 +11,34 @@ const LANDING_SECTION_IDS = ["funcionalidades", "plataforma", "campanhas", "plan
 export default function LandingAnalyticsTracker() {
 	const trackedDepthMilestones = useRef<Set<number>>(new Set());
 	const trackedSections = useRef<Set<string>>(new Set());
+	const { mutate: trackPartnerReferral } = useMutation({
+		mutationKey: ["track-platform-partner-referral"],
+		mutationFn: trackPlatformPartner,
+		onError: (error) => {
+			console.error("[WARN] [PARTNER_ATTRIBUTION] Failed to track partner referral:", error);
+		},
+	});
 
 	useEffect(() => {
 		captureClientEvent({
 			event: "landing_page_viewed",
 		});
 	}, []);
+
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+		const ref = params.get("ref");
+		if (!ref) return;
+
+		window.localStorage.setItem("recompra_partner_indicator", ref.trim().toUpperCase());
+		trackPartnerReferral({
+			codigo: ref,
+			origemUrl: window.location.href,
+			utmSource: params.get("utm_source"),
+			utmMedium: params.get("utm_medium"),
+			utmCampaign: params.get("utm_campaign"),
+		});
+	}, [trackPartnerReferral]);
 
 	useEffect(() => {
 		const handleScroll = () => {

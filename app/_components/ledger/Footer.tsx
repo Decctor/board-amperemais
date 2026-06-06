@@ -4,7 +4,6 @@ import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { ArrowRight, Lock, MessageCircle, Shield } from "lucide-react";
 import Link from "next/link";
 import { Reveal } from "./_primitives/Reveal";
-import { Stamp } from "./_primitives/Stamp";
 
 const FOOTER_GROUPS = [
 	{
@@ -14,6 +13,7 @@ const FOOTER_GROUPS = [
 			{ label: "Como funciona", href: "#como-funciona" },
 			{ label: "Resultado real", href: "#movimento" },
 			{ label: "Planos", href: "#saldo" },
+			{ label: "Parcerias", href: "#parcerias" },
 		],
 	},
 	{

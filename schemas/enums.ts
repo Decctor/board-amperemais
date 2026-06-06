@@ -285,3 +285,15 @@ export type TShopCompositionBlockTypeEnum = z.infer<typeof ShopCompositionBlockT
 
 export const ShopWeekdayEnum = z.enum(["DOMINGO", "SEGUNDA", "TERCA", "QUARTA", "QUINTA", "SEXTA", "SABADO"]);
 export type TShopWeekdayEnum = z.infer<typeof ShopWeekdayEnum>;
+
+export const PlatformPartnerStatusEnum = z.enum(["PENDENTE_APROVACAO", "ATIVO", "SUSPENSO", "REJEITADO"]);
+export type TPlatformPartnerStatusEnum = z.infer<typeof PlatformPartnerStatusEnum>;
+
+export const PlatformPartnerReferralStatusEnum = z.enum(["CAPTURADO", "ORGANIZACAO_CRIADA", "PAGAMENTO_CONFIRMADO", "CANCELADO"]);
+export type TPlatformPartnerReferralStatusEnum = z.infer<typeof PlatformPartnerReferralStatusEnum>;
+
+export const PlatformPartnerCommissionStatusEnum = z.enum(["PENDENTE", "APROVADA", "CANCELADA", "PAGA"]);
+export type TPlatformPartnerCommissionStatusEnum = z.infer<typeof PlatformPartnerCommissionStatusEnum>;
+
+export const PlatformPartnerPayoutStatusEnum = z.enum(["RASCUNHO", "APROVADO", "PAGO", "CANCELADO"]);
+export type TPlatformPartnerPayoutStatusEnum = z.infer<typeof PlatformPartnerPayoutStatusEnum>;

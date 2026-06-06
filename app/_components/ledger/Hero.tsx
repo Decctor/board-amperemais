@@ -1,19 +1,14 @@
 import Link from "next/link";
 import Image, { type StaticImageData } from "next/image";
-import { ArrowRight, Repeat, Zap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Reveal } from "./_primitives/Reveal";
-import { WhatsappIcon } from "@/components/icons";
 import BlingLogo from "@/utils/images/integrations/bling-logo.png";
 import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
 import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
 import NuvemshopLogo from "@/utils/images/integrations/nuvemshop-logo.png";
 import OnlineSoftwareLogo from "@/utils/images/integrations/online-software-logo.png";
 
-const HERO_PROOF = [
-	{ icon: Zap, label: "Configure uma vez e pronto" },
-	{ icon: WhatsappIcon, label: "WhatsApp com a cara da loja" },
-	{ icon: Repeat, label: "Gatilhos de venda e retenção" },
-];
+const HERO_TRUST = ["Sem cartão de crédito", "Configuração simples", "Suporte humano"];
 
 const INTEGRATIONS: { name: string; logo: StaticImageData }[] = [
 	{ name: "Online Software", logo: OnlineSoftwareLogo },
@@ -25,100 +20,108 @@ const INTEGRATIONS: { name: string; logo: StaticImageData }[] = [
 
 export function LedgerHero() {
 	return (
-		<section className="ledger-canvas-tinted relative pt-28 pb-20 lg:pt-36 lg:pb-28 overflow-hidden">
+		<section className="ledger-canvas-tinted relative flex min-h-[calc(100dvh-4rem)] flex-col overflow-hidden pt-24 pb-10 sm:min-h-0 sm:pt-28 sm:pb-14 lg:pt-32 lg:pb-16">
 			{/* dot grid pattern */}
 			<div className="ledger-dot-grid absolute inset-0 pointer-events-none" aria-hidden />
 
 			{/* soft brand glow blobs */}
-			<div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full bg-[#24549c]/8 blur-[130px] pointer-events-none" aria-hidden />
+			<div
+				className="absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full bg-[#24549c]/8 blur-[130px] pointer-events-none"
+				aria-hidden
+			/>
 			<div className="absolute top-10 -right-32 w-[460px] h-[460px] rounded-full bg-[#ffb900]/10 blur-[110px] pointer-events-none" aria-hidden />
 
-			<Reveal className="relative mx-auto max-w-3xl px-5 lg:px-8 flex flex-col items-center text-center">
-				{/* Eyebrow */}
-				<div className="ledger-fade flex items-center gap-2.5 mb-7" style={{ "--i": 0 } as React.CSSProperties} data-stagger>
-					<span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">
-						01
-					</span>
-					<span className="text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#24549c]">CRM de recorrência</span>
-				</div>
-
-				<h1 className="font-extrabold text-[#171717] tracking-[-0.025em] leading-[1.0] text-[44px] sm:text-[60px] lg:text-[76px]">
-					<span className="block ledger-write" style={{ "--i": 1 } as React.CSSProperties} data-stagger>
-						Cada venda vira
-					</span>
-					<span className="block ledger-fade text-[#24549c] mt-2 lg:mt-3" style={{ "--i": 3 } as React.CSSProperties} data-stagger>
-						a próxima compra.
-					</span>
-				</h1>
-
-				<p
-					className="ledger-fade mt-7 lg:mt-8 text-[17px] lg:text-[19px] leading-[1.55] text-[#171717]/70 max-w-[60ch]"
-					style={{ "--i": 6 } as React.CSSProperties}
-					data-stagger
-				>
-					O RecompraCRM transforma dados de compra em campanhas automáticas de venda, retenção e reativação. Funciona com ponto de interação, QR Code e
-					integrações como iFood, Nuvem Shop e outras que conectam o varejo ao relacionamento certo.
-				</p>
-
-				{/* CTAs */}
-				<div className="ledger-fade mt-9 lg:mt-10 flex flex-wrap items-center justify-center gap-4" style={{ "--i": 8 } as React.CSSProperties} data-stagger>
-					<Link
-						href="/auth/signup"
-						className="group inline-flex items-center gap-2 bg-[#24549c] hover:bg-[#1a3d7a] text-white px-7 py-4 rounded-2xl text-[14px] font-extrabold tracking-[0.04em] uppercase shadow-[0_16px_40px_-12px_rgba(36,84,156,0.45),0_6px_12px_rgba(36,84,156,0.22)] hover:shadow-[0_22px_48px_-10px_rgba(36,84,156,0.55),0_8px_16px_rgba(36,84,156,0.28)] hover:-translate-y-0.5 transition-all duration-200"
-					>
-						Testar 15 dias grátis
-						<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-					</Link>
-					<a
-						href="#como-funciona"
-						className="inline-flex items-center gap-2 bg-white hover:bg-[#f5f8fd] border border-[#e5e5e5] hover:border-[#24549c]/30 text-[#171717] px-6 py-4 rounded-2xl text-[14px] font-bold tracking-[0.02em] transition-all duration-200"
-					>
-						Ver como funciona
-					</a>
-				</div>
-
-				{/* Proof row */}
-				<div
-					className="ledger-fade mt-12 lg:mt-14 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl"
-					style={{ "--i": 10 } as React.CSSProperties}
-					data-stagger
-				>
-					{HERO_PROOF.map((p) => (
-						<div
-							key={p.label}
-							className="flex items-start gap-3 rounded-2xl bg-white/85 backdrop-blur-sm border border-[#e5e5e5] px-4 py-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+			<div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 lg:px-8">
+				<Reveal className="flex flex-col items-center text-center">
+					<h1 className="max-w-[18ch] font-extrabold text-[#171717] tracking-[-0.025em] leading-[1.05] text-[30px] sm:max-w-none sm:text-[44px] lg:text-[64px]">
+						<span className="block ledger-write" style={{ "--i": 1 } as React.CSSProperties} data-stagger>
+							Cada cliente novo custa caro.
+						</span>
+						<span className="block ledger-fade mt-1 sm:mt-1.5" style={{ "--i": 2 } as React.CSSProperties} data-stagger>
+							Perdê-lo depois da 1ª compra custa mais.
+						</span>
+						<span className="block ledger-fade mt-1 sm:mt-1.5" style={{ "--i": 3 } as React.CSSProperties} data-stagger>
+							Faça sua base comprar de novo.
+						</span>
+						<span
+							className="block ledger-fade mt-1 sm:mt-1.5 text-[#24549c] underline decoration-[#24549c] decoration-2 underline-offset-[5px]"
+							style={{ "--i": 4 } as React.CSSProperties}
+							data-stagger
 						>
-							<span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-[#24549c]/8 text-[#24549c] shrink-0">
-								<p.icon className="w-4 h-4" />
-							</span>
-							<p className="text-[12px] leading-snug font-semibold text-[#171717]/85">{p.label}</p>
-						</div>
-					))}
-				</div>
+							No automático.
+						</span>
+					</h1>
 
-				{/* Funciona com — integrações */}
-				<div className="ledger-fade mt-12 lg:mt-14 flex flex-col items-center gap-5" style={{ "--i": 12 } as React.CSSProperties} data-stagger>
-					<div className="flex items-center gap-3">
-						<span className="h-px w-8 bg-[#171717]/15" aria-hidden />
-						<span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#171717]/40">Funciona com</span>
-						<span className="h-px w-8 bg-[#171717]/15" aria-hidden />
+					<p
+						className="ledger-fade mt-4 max-w-[52ch] text-[15px] leading-[1.5] text-[#171717]/70 sm:mt-5 sm:text-[16px] lg:mt-6 lg:text-[17px] lg:leading-[1.55]"
+						style={{ "--i": 6 } as React.CSSProperties}
+						data-stagger
+					>
+						O RecompraCRM transforma dados em receita recorrente.
+					</p>
+
+					{/* CTAs + trust */}
+					<div className="ledger-fade mt-5 w-full sm:mt-6 lg:mt-7" style={{ "--i": 8 } as React.CSSProperties} data-stagger>
+						<div className="flex flex-wrap items-center justify-center gap-3">
+							<Link
+								href="/auth/signup"
+								className="group inline-flex items-center gap-2 bg-[#24549c] hover:bg-[#1a3d7a] text-white px-6 py-3 rounded-2xl text-[13px] font-extrabold tracking-[0.04em] uppercase shadow-[0_16px_40px_-12px_rgba(36,84,156,0.45),0_6px_12px_rgba(36,84,156,0.22)] hover:shadow-[0_22px_48px_-10px_rgba(36,84,156,0.55),0_8px_16px_rgba(36,84,156,0.28)] hover:-translate-y-0.5 transition-all duration-200 sm:px-7 sm:py-3.5 sm:text-[14px]"
+							>
+								Testar 15 dias grátis
+								<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+							</Link>
+							<a
+								href="#como-funciona"
+								className="inline-flex items-center gap-2 bg-white hover:bg-[#f5f8fd] border border-[#e5e5e5] hover:border-[#24549c]/30 text-[#171717] px-5 py-3 rounded-2xl text-[13px] font-bold tracking-[0.02em] transition-all duration-200 sm:px-6 sm:py-3.5 sm:text-[14px]"
+							>
+								Ver como funciona
+							</a>
+						</div>
+
+						<ul className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[12px] font-semibold text-[#171717]/50 sm:gap-x-5 sm:text-[13px]">
+							{HERO_TRUST.map((item) => (
+								<li key={item} className="flex items-center gap-1">
+									<span className="text-[#24549c]" aria-hidden>
+										•
+									</span>
+									{item}
+								</li>
+							))}
+						</ul>
 					</div>
-					<ul className="flex flex-wrap items-center justify-center gap-x-7 gap-y-4 sm:gap-x-9">
-						{INTEGRATIONS.map((integration) => (
-							<li key={integration.name}>
-								<Image
-									src={integration.logo}
-									alt={integration.name}
-									className="h-7 w-auto max-w-[104px] object-contain opacity-50 transition-opacity duration-200 hover:opacity-80 sm:h-8 sm:max-w-[120px]"
-								/>
-							</li>
-						))}
-					</ul>
-				</div>
-			</Reveal>
+				</Reveal>
+
+				{/* Integrações — faixa horizontal compacta */}
+				<Reveal className="mt-8 border-t border-[#171717]/8 pt-6 sm:mt-10 lg:mt-12">
+					<div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:gap-6">
+						<p
+							className="ledger-fade max-w-[28ch] text-center text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#171717]/40 sm:max-w-[22ch] sm:text-left sm:text-[11px] sm:tracking-[0.16em]"
+							style={{ "--i": 0 } as React.CSSProperties}
+							data-stagger
+						>
+							Integra com as plataformas que sua operação já usa
+						</p>
+						<ul
+							className="ledger-fade flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:justify-end sm:gap-x-6"
+							style={{ "--i": 1 } as React.CSSProperties}
+							data-stagger
+						>
+							{INTEGRATIONS.map((integration) => (
+								<li key={integration.name}>
+									<Image
+										src={integration.logo}
+										alt={integration.name}
+										className="h-6 w-auto max-w-[88px] object-contain opacity-45 transition-opacity duration-200 hover:opacity-75 sm:h-7 sm:max-w-[100px]"
+									/>
+								</li>
+							))}
+						</ul>
+					</div>
+				</Reveal>
+			</div>
 
 			{/* Bottom hairline */}
-			<div className="relative mx-auto max-w-7xl px-5 lg:px-8 mt-20 lg:mt-28">
+			<div className="relative mx-auto mt-8 w-full max-w-7xl px-5 sm:mt-10 lg:mt-12 lg:px-8">
 				<div className="h-px bg-gradient-to-r from-transparent via-[#24549c]/15 to-transparent" />
 			</div>
 		</section>

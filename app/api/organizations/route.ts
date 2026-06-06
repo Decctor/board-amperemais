@@ -34,6 +34,7 @@ import {
 	financialAccounts,
 	organizationMembers,
 	organizations,
+	platformPartnerReferrals,
 	sellers,
 	utils,
 } from "@/services/drizzle/schema";
@@ -43,6 +44,8 @@ import createHttpError from "http-errors";
 import { generateOrganizationPoiQrCodes, getAppBaseUrl } from "@/lib/organizations/poi-qr-codes";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
+import { getActivePlatformPartnerByCode, normalizeIndicadorCodigo } from "@/lib/platform-partnerships/attribution";
+import { PLATFORM_PARTNER_COOKIE_NAME } from "@/lib/platform-partnerships/constants";
 
 export const CreateOrganizationInputSchema = z.object({
 	organization: OrganizationSchema.omit({
@@ -56,6 +59,7 @@ export const CreateOrganizationInputSchema = z.object({
 		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL"])
 		.optional()
 		.nullable(),
+	indicadorCodigo: z.string({ invalid_type_error: "Tipo invalido para o codigo de indicacao." }).optional().nullable(),
 });
 
 export type TCreateOrganizationInputSchema = z.infer<typeof CreateOrganizationInputSchema>;
@@ -185,9 +189,20 @@ export const GET = appApiHandler({
 	GET: getOrganizationRoute,
 });
 // This route must be called at the end of the onboarding process
-async function createOrganization({ input, session }: { input: TCreateOrganizationInputSchema; session: TAuthUserSession }) {
+async function createOrganization({
+	input,
+	session,
+	indicadorOrigem,
+}: {
+	input: TCreateOrganizationInputSchema;
+	session: TAuthUserSession;
+	indicadorOrigem?: "MANUAL" | "BACKEND_COOKIE";
+}) {
 	const { organization, subscription } = input;
 	const sessionUser = session.user;
+	const indicadorCodigo = input.indicadorCodigo ? normalizeIndicadorCodigo(input.indicadorCodigo) : null;
+	const indicadorPartner = indicadorCodigo ? await getActivePlatformPartnerByCode(indicadorCodigo) : null;
+	if (indicadorCodigo && !indicadorPartner) throw new createHttpError.BadRequest("Codigo de indicacao invalido.");
 
 	console.log("[INFO] [CREATE_ORGANIZATION] Starting the organization onboarding conclusion process:", JSON.stringify(input, null, 2));
 
@@ -258,6 +273,21 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 			organizacaoId: createdOrgId,
 			permissoes: DEFAULT_ORGANIZATION_OWNER_PERMISSIONS,
 		});
+
+		if (indicadorPartner && indicadorCodigo) {
+			await tx.insert(platformPartnerReferrals).values({
+				partnerId: indicadorPartner.id,
+				organizacaoId: createdOrgId,
+				usuarioId: sessionUser.id,
+				codigoUsado: indicadorCodigo,
+				origem: indicadorOrigem ?? "MANUAL",
+				status: "ORGANIZACAO_CRIADA",
+				dataCaptura: null,
+				metadata: {
+					source: "ORGANIZATION_ONBOARDING",
+				},
+			});
+		}
 
 		// 3. Inserting org default seller
 		await tx.insert(sellers).values({
@@ -433,6 +463,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 		name: organization.nome,
 		metadata: {
 			organizationId: insertedOrgId,
+			indicadorCodigo: indicadorCodigo ?? "",
 		},
 	});
 	console.log("[INFO] [CREATE_ORGANIZATION] Stripe customer created successfully with ID:", stripeCustomer.id);
@@ -454,6 +485,7 @@ async function createOrganization({ input, session }: { input: TCreateOrganizati
 		subscription_data: {
 			metadata: {
 				organizationId: insertedOrgId,
+				indicadorCodigo: indicadorCodigo ?? "",
 			},
 		},
 	});
@@ -527,9 +559,16 @@ async function createOrganizationRoute(request: NextRequest) {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
 	const payload = await request.json();
-	const input = CreateOrganizationInputSchema.parse(payload);
+	const rawIndicadorCodigo = typeof payload?.indicadorCodigo === "string" && payload.indicadorCodigo.trim() ? payload.indicadorCodigo : null;
+	const cookieIndicadorCodigo = request.cookies.get(PLATFORM_PARTNER_COOKIE_NAME)?.value ?? null;
+	const indicadorCodigo = rawIndicadorCodigo ?? cookieIndicadorCodigo;
+	const indicadorOrigem = rawIndicadorCodigo ? "MANUAL" : cookieIndicadorCodigo ? "BACKEND_COOKIE" : undefined;
+	const input = CreateOrganizationInputSchema.parse({
+		...payload,
+		indicadorCodigo,
+	});
 
-	const result = await createOrganization({ input, session: session });
+	const result = await createOrganization({ input, session: session, indicadorOrigem });
 
 	return NextResponse.json(result);
 }

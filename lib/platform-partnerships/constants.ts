@@ -1,0 +1,26 @@
+export const PLATFORM_PARTNER_COOKIE_NAME = "recompra_partner_indicator";
+export const PLATFORM_PARTNER_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+
+export const PLATFORM_PARTNER_COMMISSION_RULE_VERSION = "2026-06-default";
+export const PLATFORM_PARTNER_MONTHLY_FIRST_INVOICE_BPS = 10000;
+export const PLATFORM_PARTNER_MONTHLY_SUBSEQUENT_INVOICE_BPS = 2000;
+export const PLATFORM_PARTNER_YEARLY_INVOICE_BPS = 2700;
+
+export const PLATFORM_PARTNER_RULE_SNAPSHOT = {
+	version: PLATFORM_PARTNER_COMMISSION_RULE_VERSION,
+	attribution: {
+		cookieDays: 30,
+		clickModel: "LAST_CLICK",
+		manualCodePriority: true,
+	},
+	commission: {
+		monthly: {
+			firstInvoiceBps: PLATFORM_PARTNER_MONTHLY_FIRST_INVOICE_BPS,
+			subsequentInvoiceBps: PLATFORM_PARTNER_MONTHLY_SUBSEQUENT_INVOICE_BPS,
+		},
+		yearly: {
+			invoiceBps: PLATFORM_PARTNER_YEARLY_INVOICE_BPS,
+		},
+		base: "GROSS_SAAS_PLAN_EXCLUDING_CONSULTORIA",
+	},
+} as const;

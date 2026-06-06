@@ -3,10 +3,12 @@ import { cn } from "@/lib/utils";
 import type { TUseOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { Check, HelpCircle } from "lucide-react";
 import { FaGoogle, FaInstagram, FaLinkedin, FaUserGroup, FaYoutube } from "react-icons/fa6";
+import TextInput from "@/components/Inputs/TextInput";
 
 type NicheOriginStageProps = {
 	state: TUseOrganizationOnboardingState["state"];
 	updateOrganization: TUseOrganizationOnboardingState["updateOrganization"];
+	updateOrganizationOnboarding: TUseOrganizationOnboardingState["updateOrganizationOnboarding"];
 };
 
 const ORIGIN_OPTIONS = [
@@ -18,7 +20,9 @@ const ORIGIN_OPTIONS = [
 	{ id: "outro", label: "Outro", icon: <HelpCircle /> },
 ];
 
-export function NicheOriginStage({ state, updateOrganization }: NicheOriginStageProps) {
+export function NicheOriginStage({ state, updateOrganization, updateOrganizationOnboarding }: NicheOriginStageProps) {
+	const indicationSelected = state.organization.origemLead?.toUpperCase().startsWith("INDICA");
+
 	return (
 		<div className="w-full flex flex-col gap-6">
 			<div className="w-full flex flex-col gap-4">
@@ -84,6 +88,20 @@ export function NicheOriginStage({ state, updateOrganization }: NicheOriginStage
 						);
 					})}
 				</div>
+				{indicationSelected ? (
+					<div className="max-w-md">
+						<TextInput
+							value={state.indicadorCodigo ?? ""}
+							label="CÃ“DIGO DE INDICAÃ‡ÃƒO"
+							labelClassName="text-black"
+							holderClassName="dark:border-black/20 text-black uppercase"
+							placeholder="Digite o cÃ³digo do parceiro..."
+							handleChange={(value) => updateOrganizationOnboarding({ indicadorCodigo: value.toUpperCase() })}
+							width="100%"
+							required
+						/>
+					</div>
+				) : null}
 			</div>
 		</div>
 	);

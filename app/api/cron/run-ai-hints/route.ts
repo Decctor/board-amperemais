@@ -1,5 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runMarketingAgent } from "@/lib/ai-agent/marketing";
+import { runMarketingAgent } from "@/lib/ai/ai-agent/marketing";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { db } from "@/services/drizzle";
 import { aiHints, organizations } from "@/services/drizzle/schema";

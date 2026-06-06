@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
+import { uploadFile } from "@/lib/files-storage";
 import { createOrganization } from "@/lib/mutations/organizations";
+import { PLATFORM_PARTNER_COOKIE_NAME } from "@/lib/platform-partnerships/constants";
 import { isValidCNPJ } from "@/lib/validation";
 import { TOrganizationOnboardingState, useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { useMutation } from "@tanstack/react-query";
@@ -17,7 +19,6 @@ import { GeneralInfoStage } from "./_components/GeneralInfoStage";
 import { NicheOriginStage } from "./_components/NicheOriginStage";
 import { OnboardingLayout } from "./_components/OnboardingLayout";
 import { SubscriptionPlansStage } from "./_components/SubscriptionPlansStage";
-import { uploadFile } from "@/lib/files-storage";
 
 type OnboardingPageProps = {
 	user: unknown; // We might need this later, keeping prop signature
@@ -58,6 +59,19 @@ export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 		});
 	}, [state.stage]);
 
+	useEffect(() => {
+		const storedCode = window.localStorage.getItem(PLATFORM_PARTNER_COOKIE_NAME);
+		const cookieCode = document.cookie
+			.split("; ")
+			.find((row) => row.startsWith(`${PLATFORM_PARTNER_COOKIE_NAME}=`))
+			?.split("=")[1];
+		const indicadorCodigo = storedCode || (cookieCode ? decodeURIComponent(cookieCode) : null);
+		if (!indicadorCodigo) return;
+
+		updateOrganizationOnboarding({ indicadorCodigo: indicadorCodigo.trim().toUpperCase() });
+		updateOrganization({ origemLead: "INDICAÃ‡ÃƒO" });
+	}, [updateOrganization, updateOrganizationOnboarding]);
+
 	async function handleCreateOrganization(state: TOrganizationOnboardingState) {
 		let logoUrl: string | null = null;
 		if (state.organizationLogoHolder.file) {
@@ -74,6 +88,7 @@ export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 				logoUrl: logoUrl,
 			},
 			subscription: state.subscription,
+			indicadorCodigo: state.indicadorCodigo,
 		});
 	}
 	const mutation = useMutation({
@@ -87,7 +102,27 @@ export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 		},
 	});
 
-	const handleNext = () => {
+	const validateIndicadorCodigo = async () => {
+		const indicadorCodigo = state.indicadorCodigo?.trim();
+		const indicationSelected = state.organization.origemLead?.toUpperCase().startsWith("INDICA");
+		if (!indicationSelected && !indicadorCodigo) return true;
+		if (!indicadorCodigo) {
+			toast.error("Informe o codigo de indicacao para continuar.");
+			return false;
+		}
+
+		const response = await fetch(`/api/platform-partners/validate-code?codigo=${encodeURIComponent(indicadorCodigo)}`);
+		const result = (await response.json()) as { data?: { valid?: boolean; codigo?: string | null }; message?: string };
+		if (!response.ok || !result.data?.valid) {
+			toast.error(result.message ?? "Codigo de indicacao invalido.");
+			return false;
+		}
+
+		updateOrganizationOnboarding({ indicadorCodigo: result.data.codigo ?? indicadorCodigo.toUpperCase() });
+		return true;
+	};
+
+	const handleNext = async () => {
 		if (state.stage === "organization-general-info") {
 			if (!state.termsAccepted) {
 				return toast.error("Por favor, aceite os Termos de Uso e Política de Privacidade para continuar.");
@@ -101,6 +136,10 @@ export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 				const firstIssue = firstStageValidation.error.issues?.[0];
 				return toast.error(firstIssue?.message ?? "Ocorreu um erro de validação.");
 			}
+		}
+		if (state.stage === "organization-niche-origin") {
+			const codeIsValid = await validateIndicadorCodigo();
+			if (!codeIsValid) return;
 		}
 		if (state.stage === "subscription-plans-section") {
 			console.log("Onboarding Complete:", state);
@@ -126,7 +165,7 @@ export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 					/>
 				);
 			case "organization-niche-origin":
-				return <NicheOriginStage state={state} updateOrganization={updateOrganization} />;
+				return <NicheOriginStage state={state} updateOrganization={updateOrganization} updateOrganizationOnboarding={updateOrganizationOnboarding} />;
 			case "organization-actuation":
 				return <ActuationStage state={state} updateOrganization={updateOrganization} />;
 			case "subscription-plans-section":
@@ -135,7 +174,7 @@ export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 						state={state}
 						handleSelectPlan={(info) => {
 							updateOrganizationOnboarding({ subscription: info });
-							mutation.mutate(state);
+							mutation.mutate({ ...state, subscription: info });
 						}}
 						isMutationPending={mutation.isPending}
 						goToPreviousStage={handleBack}

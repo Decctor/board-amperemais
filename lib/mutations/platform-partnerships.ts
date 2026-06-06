@@ -1,0 +1,54 @@
+import type {
+	TUpdateAdminPlatformPartnerCommissionInput,
+	TUpdateAdminPlatformPartnerCommissionOutput,
+} from "@/app/api/admin/platform-partners/commissions/route";
+import type {
+	TCreateAdminPlatformPartnerPayoutInput,
+	TCreateAdminPlatformPartnerPayoutOutput,
+	TUpdateAdminPlatformPartnerPayoutInput,
+	TUpdateAdminPlatformPartnerPayoutOutput,
+} from "@/app/api/admin/platform-partners/payouts/route";
+import type {
+	TCreateAdminPlatformPartnerInput,
+	TCreateAdminPlatformPartnerOutput,
+	TUpdateAdminPlatformPartnerInput,
+	TUpdateAdminPlatformPartnerOutput,
+} from "@/app/api/admin/platform-partners/route";
+import type { TCreatePlatformPartnerOnboardingInput, TCreatePlatformPartnerOnboardingOutput } from "@/app/api/platform-partner/onboarding/route";
+import type { TTrackPlatformPartnerInput, TTrackPlatformPartnerOutput } from "@/app/api/platform-partners/track/route";
+import axios from "axios";
+
+export async function trackPlatformPartner(input: TTrackPlatformPartnerInput) {
+	const { data } = await axios.post<TTrackPlatformPartnerOutput>("/api/platform-partners/track", input);
+	return data;
+}
+
+export async function createPlatformPartnerOnboarding(input: TCreatePlatformPartnerOnboardingInput) {
+	const { data } = await axios.post<TCreatePlatformPartnerOnboardingOutput>("/api/platform-partner/onboarding", input);
+	return data;
+}
+
+export async function createAdminPlatformPartner(input: TCreateAdminPlatformPartnerInput) {
+	const { data } = await axios.post<TCreateAdminPlatformPartnerOutput>("/api/admin/platform-partners", input);
+	return data;
+}
+
+export async function updateAdminPlatformPartner(input: TUpdateAdminPlatformPartnerInput) {
+	const { data } = await axios.put<TUpdateAdminPlatformPartnerOutput>("/api/admin/platform-partners", input);
+	return data;
+}
+
+export async function updateAdminPlatformPartnerCommission(input: TUpdateAdminPlatformPartnerCommissionInput) {
+	const { data } = await axios.put<TUpdateAdminPlatformPartnerCommissionOutput>("/api/admin/platform-partners/commissions", input);
+	return data;
+}
+
+export async function createAdminPlatformPartnerPayout(input: TCreateAdminPlatformPartnerPayoutInput) {
+	const { data } = await axios.post<TCreateAdminPlatformPartnerPayoutOutput>("/api/admin/platform-partners/payouts", input);
+	return data;
+}
+
+export async function updateAdminPlatformPartnerPayout(input: TUpdateAdminPlatformPartnerPayoutInput) {
+	const { data } = await axios.put<TUpdateAdminPlatformPartnerPayoutOutput>("/api/admin/platform-partners/payouts", input);
+	return data;
+}

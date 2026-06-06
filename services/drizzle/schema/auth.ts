@@ -34,6 +34,7 @@ export const authMagicLinks = newTable("auth_magic_links", {
 		.notNull(),
 	token: text("token").notNull(),
 	codigo: text("codigo").notNull(),
+	redirectTo: text("redirect_to"),
 	dataExpiracao: timestamp("data_expiracao").notNull(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });

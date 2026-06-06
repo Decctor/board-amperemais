@@ -1,6 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
-import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai-agent";
-import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai-media-processing";
+import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai-agent";
+import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import {

@@ -1,5 +1,11 @@
-import type { TCampaignCreationSuggestion, TCampaignUpdateSuggestion } from "@/lib/ai-agent/marketing/schemas";
-import { AIHintCampaignCreationSuggestionSchema, AIHintCampaignUpdatesSuggestionSchema, AIHintSchema, type TAIHint, type TAIHintStatus } from "@/schemas/ai-hints";
+import type { TCampaignCreationSuggestion, TCampaignUpdateSuggestion } from "@/lib/ai/ai-agent/marketing/schemas";
+import {
+	AIHintCampaignCreationSuggestionSchema,
+	AIHintCampaignUpdatesSuggestionSchema,
+	AIHintSchema,
+	type TAIHint,
+	type TAIHintStatus,
+} from "@/schemas/ai-hints";
 import { db } from "@/services/drizzle";
 import { aiHints } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -117,13 +123,7 @@ export async function listCampaignSuggestionHints({
 	return hints.map((hint) => AIHintSchema.parse(hint));
 }
 
-export async function getHintById({
-	organizacaoId,
-	hintId,
-}: {
-	organizacaoId: string;
-	hintId: string;
-}) {
+export async function getHintById({ organizacaoId, hintId }: { organizacaoId: string; hintId: string }) {
 	const hint = await db.query.aiHints.findFirst({
 		where: and(eq(aiHints.id, hintId), eq(aiHints.organizacaoId, organizacaoId)),
 	});
@@ -131,15 +131,7 @@ export async function getHintById({
 	return hint ? AIHintSchema.parse(hint) : null;
 }
 
-export async function dismissHint({
-	organizacaoId,
-	hintId,
-	userId,
-}: {
-	organizacaoId: string;
-	hintId: string;
-	userId: string;
-}) {
+export async function dismissHint({ organizacaoId, hintId, userId }: { organizacaoId: string; hintId: string; userId: string }) {
 	const [dismissedHint] = await db
 		.update(aiHints)
 		.set({

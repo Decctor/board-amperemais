@@ -1,11 +1,9 @@
 "use client";
 
-import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { login } from "@/lib/authentication/actions";
 import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg";
@@ -13,7 +11,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useActionState } from "react";
 import { FaGoogle } from "react-icons/fa6";
-function SignInPage() {
+function SignInPage({ redirectTo }: { redirectTo?: string }) {
 	const [actionResult, actionMethod] = useActionState(login, {});
 
 	return (
@@ -24,6 +22,7 @@ function SignInPage() {
 						<CardContent className="grid p-0 md:grid-cols-2">
 							<form
 								action={async (formData) => {
+									if (redirectTo) formData.set("redirectTo", redirectTo);
 									captureClientEvent({
 										event: "signin_started",
 										properties: {
@@ -57,7 +56,7 @@ function SignInPage() {
 									<FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">Ou continue com</FieldSeparator>
 									<Field className="w-full">
 										<Button variant="outline" type="button" className="w-full flex items-center gap-3" asChild>
-											<Link href="/auth/google" prefetch={false}>
+											<Link href={`/auth/google${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ""}`} prefetch={false}>
 												<FaGoogle className="w-4 h-4" />
 
 												<span>Acessar com Google</span>

@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { EmailTemplate, sendEmailWithResend } from "../email";
 import { formatAsSlug } from "../formatting";
+import { sanitizeAuthRedirectTo } from "./redirect";
 import { createSession, generateSessionToken, setSetSessionCookie } from "./session";
 import {
 	LoginSchema,
@@ -27,6 +28,7 @@ export async function login(_: TLoginResult, input: FormData): Promise<TLoginRes
 	const data = {
 		email: input.get("email") as string,
 	};
+	const redirectTo = sanitizeAuthRedirectTo(input.get("redirectTo"));
 	console.log("[INFO] [LOGIN] Input data received", data);
 	const validationParsed = LoginSchema.safeParse(data);
 	if (!validationParsed.success) {
@@ -69,7 +71,7 @@ export async function login(_: TLoginResult, input: FormData): Promise<TLoginRes
 				formError: errorMsg,
 			};
 		}
-		return redirect("/dashboard");
+		return redirect(redirectTo);
 	}
 
 	// Creating magic link to send to the user
@@ -81,6 +83,7 @@ export async function login(_: TLoginResult, input: FormData): Promise<TLoginRes
 			usuarioId: user.id,
 			token: verificationToken,
 			codigo: verificationCode,
+			redirectTo,
 			dataInsercao: dayjs().toDate(),
 			dataExpiracao: dayjs().add(30, "minutes").toDate(),
 		})
@@ -117,6 +120,7 @@ export async function signUpWithEmail(_: TSignUpWithEmailResult, input: FormData
 		nome: input.get("nome") as string,
 		email: input.get("email") as string,
 	};
+	const redirectTo = sanitizeAuthRedirectTo(input.get("redirectTo"));
 
 	console.log("[INFO] [SIGN UP WITH EMAIL] Input data received", data);
 	const validationParsed = SignUpWithEmailSchema.safeParse(data);
@@ -179,6 +183,7 @@ export async function signUpWithEmail(_: TSignUpWithEmailResult, input: FormData
 			usuarioId: insertedUserId,
 			token: verificationToken,
 			codigo: verificationCode,
+			redirectTo,
 			dataInsercao: dayjs().toDate(),
 			dataExpiracao: dayjs().add(30, "minutes").toDate(),
 		})
@@ -268,7 +273,7 @@ export async function verifyMagicLinkCode(_: TVerifyMagicLinkCodeResult, input: 
 			formError: errorMsg,
 		};
 	}
-	redirect("/dashboard");
+	redirect(sanitizeAuthRedirectTo(magicLink.redirectTo));
 }
 
 export async function getMagicLinkById(id: string) {

@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { createCampaignSuggestionHint, createCampaignUpdateSuggestionHint } from "@/lib/ai-hints/service";
-import { runMarketingAgent } from "@/lib/ai-agent/marketing";
+import { createCampaignSuggestionHint, createCampaignUpdateSuggestionHint } from "@/lib/ai/ai-hints/service";
+import { runMarketingAgent } from "@/lib/ai/ai-agent/marketing";
 
 const ORGANIZATION_ID: string = "27817d9a-cb04-4704-a1f4-15b81a3610d3";
 

@@ -6,6 +6,7 @@ import { LedgerFeatures } from "./_components/ledger/Features";
 import { LedgerHero } from "./_components/ledger/Hero";
 import { LedgerHowItWorks } from "./_components/ledger/HowItWorks";
 import { LedgerNavbar } from "./_components/ledger/Navbar";
+import { LedgerPartnershipProgram } from "./_components/ledger/PartnershipProgram";
 import { LedgerPricing } from "./_components/ledger/Pricing";
 
 export default function LandingPage() {
@@ -19,6 +20,7 @@ export default function LandingPage() {
 				<LedgerCase />
 				<LedgerFeatures />
 				<LedgerPricing />
+				{/* <LedgerPartnershipProgram /> */}
 				<LedgerClosingCTA />
 			</main>
 			<LedgerFooter />

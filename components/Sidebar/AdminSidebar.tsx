@@ -5,7 +5,7 @@ import AppSidebarHeader from "@/components/Sidebar/AppSidebarHeader";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckboxIcon } from "@radix-ui/react-icons";
-import { ChartBarIcon, Shield, SquareKanban, VideoIcon } from "lucide-react";
+import { Handshake, Shield, SquareKanban, VideoIcon } from "lucide-react";
 import AdminSidebarFooter from "./AdminSidebarFooter";
 import type { TSidebarConfigItem } from "./AppSidebar";
 
@@ -17,6 +17,12 @@ const adminSidebarConfig: TSidebarConfigItem[] = [
 				title: "Painel Admin",
 				url: "/admin-dashboard",
 				icon: <Shield className="w-4 h-4" />,
+				items: null,
+			},
+			{
+				title: "Parcerias",
+				url: "/admin-dashboard/partnerships",
+				icon: <Handshake className="w-4 h-4" />,
 				items: null,
 			},
 		],

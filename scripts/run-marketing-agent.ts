@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { runMarketingAgent } from "@/lib/ai-agent/marketing";
+import { runMarketingAgent } from "@/lib/ai/ai-agent/marketing";
 
 type TParsedArgs = {
 	organizacaoId: string;
@@ -27,7 +27,7 @@ function parseArgs(argv: string[]): TParsedArgs {
 	const organizacaoId = args.get("orgId");
 	const brief = args.get("brief");
 	if (!organizacaoId || !brief) {
-		throw new Error("Uso: npx tsx scripts/run-marketing-agent.ts --orgId <id> --brief \"texto\" [--campaignId <id>] [--persistSuggestion] [--debug]");
+		throw new Error('Uso: npx tsx scripts/run-marketing-agent.ts --orgId <id> --brief "texto" [--campaignId <id>] [--persistSuggestion] [--debug]');
 	}
 
 	return {

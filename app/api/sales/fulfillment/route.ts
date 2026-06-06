@@ -1,6 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/derived-status";
+import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 import { and, eq, gte, inArray, or } from "drizzle-orm";

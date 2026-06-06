@@ -277,3 +277,16 @@ export const shopHeaderCoverTypeEnum = pgEnum("shop_header_cover_type", ["IMAGEM
 export const shopCompositionBlockTypeEnum = pgEnum("shop_composition_block_type", ["GRUPOS_PRODUTOS", "EM_DESTAQUE", "MAIS_PEDIDOS"]);
 
 export const fiscalInboundManifestEventEnum = pgEnum("fiscal_inbound_manifest_event", ["CIENCIA", "CONFIRMACAO", "DESCONHECIMENTO", "NAO_REALIZADA"]);
+
+export const platformPartnerStatusEnum = pgEnum("platform_partner_status", ["PENDENTE_APROVACAO", "ATIVO", "SUSPENSO", "REJEITADO"]);
+
+export const platformPartnerReferralStatusEnum = pgEnum("platform_partner_referral_status", [
+	"CAPTURADO",
+	"ORGANIZACAO_CRIADA",
+	"PAGAMENTO_CONFIRMADO",
+	"CANCELADO",
+]);
+
+export const platformPartnerCommissionStatusEnum = pgEnum("platform_partner_commission_status", ["PENDENTE", "APROVADA", "CANCELADA", "PAGA"]);
+
+export const platformPartnerPayoutStatusEnum = pgEnum("platform_partner_payout_status", ["RASCUNHO", "APROVADO", "PAGO", "CANCELADO"]);

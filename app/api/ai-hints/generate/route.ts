@@ -12,7 +12,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { aiHints } from "@/services/drizzle/schema";
 import { and, eq, gte, lt, count } from "drizzle-orm";
 import { HINTS_AMMOUNT_VALIDATION_THRESHOLD } from "@/config";
-import { runMarketingAgent } from "@/lib/ai-agent/marketing";
+import { runMarketingAgent } from "@/lib/ai/ai-agent/marketing";
 import type { TAIHint } from "@/schemas/ai-hints";
 
 const INTERNAL_SESSION_ID = process.env.INTERNAL_WHATSAPP_GATEWAY_SESSION_COMS as string;
@@ -75,15 +75,7 @@ Abra uma das opções abaixo para aprovar ou descartar a dica. Você precisa est
 	};
 }
 
-async function notifyOrganizationOwnerAboutHint({
-	traceId,
-	organizacaoId,
-	hint,
-}: {
-	traceId: string;
-	organizacaoId: string;
-	hint: TAIHint;
-}) {
+async function notifyOrganizationOwnerAboutHint({ traceId, organizacaoId, hint }: { traceId: string; organizacaoId: string; hint: TAIHint }) {
 	if (!INTERNAL_SESSION_ID) {
 		logGenerateHints("WHATSAPP_NOTIFICATION_SKIPPED", {
 			traceId,

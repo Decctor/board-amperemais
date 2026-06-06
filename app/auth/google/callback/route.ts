@@ -1,9 +1,11 @@
 import {
 	GOOGLE_OAUTH_STATE_COOKIE_NAME,
 	GOOGLE_OAUTH_VERIFIER_COOKIE_NAME,
+	GOOGLE_OAUTH_REDIRECT_COOKIE_NAME,
 	type GoogleUserOpenIDConnect,
 	google,
 } from "@/lib/authentication/oauth-providers";
+import { sanitizeAuthRedirectTo } from "@/lib/authentication/redirect";
 import { createSession, generateSessionToken, setSetSessionCookie } from "@/lib/authentication/session";
 import { formatAsSlug } from "@/lib/formatting";
 import { db } from "@/services/drizzle";
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 
 	const storedState = cookieStore.get(GOOGLE_OAUTH_STATE_COOKIE_NAME)?.value ?? null;
 	const codeVerifier = cookieStore.get(GOOGLE_OAUTH_VERIFIER_COOKIE_NAME)?.value ?? null;
+	const redirectTo = sanitizeAuthRedirectTo(cookieStore.get(GOOGLE_OAUTH_REDIRECT_COOKIE_NAME)?.value ?? null);
 
 	console.log("[INFO] [GOOGLE_CALLBACK] Code/state validation:", { code, state, storedState, codeVerifier });
 	if (!code || !state || !storedState || state !== storedState || !codeVerifier) {
@@ -133,14 +136,14 @@ export async function GET(request: NextRequest): Promise<Response> {
 			token: sessionToken,
 			userId: clientId,
 		});
-		setSetSessionCookie({
+		await setSetSessionCookie({
 			token: sessionToken,
 			expiresAt: session.dataExpiracao,
 		});
 
 		return new Response(null, {
 			status: 302,
-			headers: { Location: "/dashboard" },
+			headers: { Location: redirectTo },
 		});
 	} catch (error) {
 		console.error("[ERROR] [GOOGLE_CALLBACK] Unidentified error:", error);
