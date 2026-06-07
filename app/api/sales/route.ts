@@ -802,6 +802,7 @@ const createSaleRoute: PagesRouteHandler<TCreateSaleOutput> = async (req, res) =
 					});
 
 					const interactionContextMetadados = {
+						terminologia: program.terminologia,
 						cashbackAcumuladoValor: accumulatedBalance,
 						whatsappMensagemId: null,
 						whatsappTemplateId: null,

@@ -1,5 +1,5 @@
 import z from "zod";
-import { InteractionTypeEnum, InteractionsCronJobTimeBlocksEnum } from "./enums";
+import { CashbackProgramTerminologyEnum, InteractionTypeEnum, InteractionsCronJobTimeBlocksEnum } from "./enums";
 
 export const InteractionsStatusEnum = z.enum(["PENDENTE", "ENVIADO", "ENTREGUE", "LIDO", "FALHOU", "BLOQUEADA"]);
 export type TInteractionsStatusEnum = z.infer<typeof InteractionsStatusEnum>;
@@ -7,6 +7,7 @@ export const InteractionDeliveryChannelEnum = z.enum(["WHATSAPP", "EMAIL"]);
 export type TInteractionDeliveryChannelEnum = z.infer<typeof InteractionDeliveryChannelEnum>;
 
 export const InteractionMetadataSchema = z.object({
+	terminologia: CashbackProgramTerminologyEnum.optional(),
 	cashbackAcumuladoValor: z.number().optional().nullable(),
 	compraValor: z.number().optional(),
 	compraCashbackAcumulado: z.number().optional(),

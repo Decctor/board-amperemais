@@ -1,5 +1,5 @@
 import { EmailTemplate, sendEmailWithResend } from "@/lib/email";
-import { formatToMoney } from "@/lib/formatting";
+import { formatCashbackValue, formatToMoney } from "@/lib/formatting";
 import {
 	buildWhatsappTemplateSendPayload,
 	convertHtmlToWhatsappText,
@@ -10,6 +10,7 @@ import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "@/lib/whatsapp/internal-gateway";
 import type { TInteractionContextMetadados, TMessageTemplateVariables } from "@/lib/message-templates";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
+import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats, interactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -19,6 +20,7 @@ export type TChatPromiseCache = Map<string, Promise<string | null>>;
 
 export function buildContextVariablesMap(
 	ctx?: TInteractionContextMetadados,
+	terminology: TCashbackProgramTerminologyEnum = "DINHEIRO",
 ): Omit<
 	Record<keyof TMessageTemplateVariables, string>,
 	| "clientName"
@@ -31,13 +33,13 @@ export function buildContextVariablesMap(
 > {
 	return {
 		purchaseValue: formatToMoney(ctx?.compraValor ?? 0),
-		purchaseCashbackAccumulated: formatToMoney(ctx?.compraCashbackAcumulado ?? 0),
-		purchaseCashbackNewBalance: formatToMoney(ctx?.compraCashbackNovoSaldo ?? 0),
+		purchaseCashbackAccumulated: formatCashbackValue(ctx?.compraCashbackAcumulado ?? 0, terminology),
+		purchaseCashbackNewBalance: formatCashbackValue(ctx?.compraCashbackNovoSaldo ?? 0, terminology),
 		purchaseSellerName: ctx?.compraVendedorNome ?? "",
-		cashbackAvailableBalance: formatToMoney(ctx?.cashbackSaldoDisponivel ?? 0),
-		cashbackLifetimeAccumulated: formatToMoney(ctx?.cashbackTotalAcumuladoVida ?? 0),
-		cashbackLifetimeRedeemed: formatToMoney(ctx?.cashbackTotalResgatadoVida ?? 0),
-		cashbackExpiringAmount: formatToMoney(ctx?.cashbackExpirandoValor ?? 0),
+		cashbackAvailableBalance: formatCashbackValue(ctx?.cashbackSaldoDisponivel ?? 0, terminology),
+		cashbackLifetimeAccumulated: formatCashbackValue(ctx?.cashbackTotalAcumuladoVida ?? 0, terminology),
+		cashbackLifetimeRedeemed: formatCashbackValue(ctx?.cashbackTotalResgatadoVida ?? 0, terminology),
+		cashbackExpiringAmount: formatCashbackValue(ctx?.cashbackExpirandoValor ?? 0, terminology),
 		cashbackExpiringDate: ctx?.cashbackExpirandoData ?? "",
 	};
 }
@@ -85,21 +87,28 @@ async function blockInteractionSend({
 }
 
 async function resolveOrganizationMessagingContext(organizationId: string) {
-	const organization = await db.query.organizations.findFirst({
-		where: (fields, { eq }) => eq(fields.id, organizationId),
-		columns: {
-			id: true,
-			nome: true,
-			logoUrl: true,
-			corPrimaria: true,
-			corPrimariaForeground: true,
-			configuracao: true,
-		},
-	});
+	const [organization, cashbackProgram] = await Promise.all([
+		db.query.organizations.findFirst({
+			where: (fields, { eq }) => eq(fields.id, organizationId),
+			columns: {
+				id: true,
+				nome: true,
+				logoUrl: true,
+				corPrimaria: true,
+				corPrimariaForeground: true,
+				configuracao: true,
+			},
+		}),
+		db.query.cashbackPrograms.findFirst({
+			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+			columns: { terminologia: true },
+		}),
+	]);
 
 	return {
 		organization,
 		hasHubAccess: organization?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false,
+		organizationCashbackTerminology: cashbackProgram?.terminologia ?? "DINHEIRO",
 	};
 }
 
@@ -269,7 +278,8 @@ export async function sendReservedInteraction(
 				)?.nome ?? "")
 			: "";
 
-		const contextVars = buildContextVariablesMap(contextMetadados);
+		const cashbackTerminology = contextMetadados?.terminologia ?? organizationContext.organizationCashbackTerminology;
+		const contextVars = buildContextVariablesMap(contextMetadados, cashbackTerminology);
 		const messageTemplateVariablesValuesMap: Record<keyof TMessageTemplateVariables, string> = {
 			clientEmail: client.email ?? "",
 			clientName: client.nome,

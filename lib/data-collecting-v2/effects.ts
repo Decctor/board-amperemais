@@ -247,6 +247,7 @@ export async function processDataCollectingV2Effects({
 				columns: {
 					id: true,
 					ativo: true,
+					terminologia: true,
 					acumuloTipo: true,
 					acumuloValor: true,
 					acumuloValorParceiro: true,
@@ -376,6 +377,7 @@ export async function processDataCollectingV2Effects({
 				value: campaign.execucaoAgendadaValor,
 			});
 			const metadata = {
+				terminologia: cashbackProgram?.terminologia ?? "DINHEIRO",
 				compraValor: persistedSale.sale.totalValue,
 				compraVendedorNome: persistedSale.sale.sellerName,
 				compraQuantidadeTotal: persistedSale.newTotalPurchaseCount,
@@ -466,6 +468,7 @@ export async function processDataCollectingV2Effects({
 					value: campaign.execucaoAgendadaValor,
 				});
 				const metadata = {
+					terminologia: cashbackProgram?.terminologia ?? "DINHEIRO",
 					cashbackAcumuladoValor: saleCashbackAccumulation.buyerAccumulatedValue,
 					compraValor: persistedSale.sale.totalValue,
 					compraCashbackAcumulado: saleCashbackAccumulation.buyerAccumulatedValue,

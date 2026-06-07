@@ -1,4 +1,4 @@
-import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
+import type { TCampaignTriggerTypeEnum, TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 
 export type TMessageTemplateVariableContextGroup = "CLIENTE" | "COMPRA" | "CASHBACK" | "CASHBACK_EXPIRANDO";
 
@@ -160,6 +160,7 @@ export const MessageTemplateVariables: TMessageTemplateVariable[] = [
 ];
 
 export type TInteractionContextMetadados = {
+	terminologia?: TCashbackProgramTerminologyEnum;
 	compraValor?: number;
 	compraCashbackAcumulado?: number;
 	compraCashbackNovoSaldo?: number;

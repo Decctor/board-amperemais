@@ -73,6 +73,12 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 			const immediateProcessingDataList: ImmediateProcessingData[] = [];
 
 			await db.transaction(async (tx) => {
+				const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
+					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
+					columns: { terminologia: true },
+				});
+				const cashbackTerminology = cashbackProgram?.terminologia ?? "DINHEIRO";
+
 				// Get active campaigns for expiring cashback notifications
 				const campaignsForExpiration = await tx.query.campaigns.findMany({
 					where: (fields, { and, eq }) =>
@@ -199,6 +205,7 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 
 						const clientBalance = clientBalanceMap.get(clienteId);
 						const interactionContextMetadados = {
+							terminologia: cashbackTerminology,
 							cashbackExpirandoValor: cashbackInfo.totalExpiring,
 							cashbackExpirandoData: cashbackInfo.relevantExpirationDate
 								? (formatDateAsLocale(cashbackInfo.relevantExpirationDate) ?? undefined)

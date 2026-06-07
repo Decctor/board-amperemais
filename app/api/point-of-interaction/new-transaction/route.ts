@@ -10,7 +10,7 @@ import { type ImmediateProcessingData, processOrganizationInteractionsBatch, pro
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import type { TInteractionContextMetadados } from "@/lib/message-templates";
-import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
+import type { TCashbackProgramTerminologyEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { cashbackProgramTransactions, cashbackPrograms, clients, interactions, partners, saleItems, sales } from "@/services/drizzle/schema";
 import { waitUntil } from "@vercel/functions";
@@ -580,6 +580,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				sellerName: operator.nome,
 				clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
 				clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
+				organizationCashbackTerminology: program.terminologia,
 			});
 		}
 
@@ -705,6 +706,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
 					clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
 					clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
+					organizationCashbackTerminology: program.terminologia,
 				});
 			const wouldCauseDoubleInteraction = clientIsNew && campaignsForFirstPurchase.length > 0 && campaignsForNewPurchase.length > 0;
 			// Processing NOVA-COMPRA campaign for existing clients or new clients (if no double interaction would occur)
@@ -724,6 +726,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
 					clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
 					clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
+					terminologia: program.terminologia,
 				});
 			// Processing QUANTIDADE-TOTAL-COMPRAS campaigns
 			await handleCampaignProcessingForTotalPurchaseCount({
@@ -741,6 +744,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
 				clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
 				clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
+				organizationCashbackTerminology: program.terminologia,
 			});
 			// Processing VALOR-TOTAL-COMPRAS campaigns
 			await handleCampaignProcessingForTotalPurchaseValue({
@@ -758,6 +762,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
 				clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
 				clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
+				organizationCashbackTerminology: program.terminologia,
 			});
 		}
 
@@ -906,6 +911,7 @@ type THandleCampaignProcessingForNewPurchaseParams = {
 	clientCashbackAvailableBalance: number;
 	clientCashbackAccumulatedBalance: number;
 	clientCashbackRedeemedBalanceTotal: number;
+	terminologia: TCashbackProgramTerminologyEnum;
 };
 
 async function handleCampaignProcessingForNewPurchase({
@@ -923,6 +929,7 @@ async function handleCampaignProcessingForNewPurchase({
 	clientCashbackAvailableBalance,
 	clientCashbackAccumulatedBalance,
 	clientCashbackRedeemedBalanceTotal,
+	terminologia,
 }: THandleCampaignProcessingForNewPurchaseParams) {
 	if (campaignsForNewPurchase.length === 0) return;
 	const applicableCampaigns = campaignsForNewPurchase.filter((campaign) => {
@@ -965,6 +972,7 @@ async function handleCampaignProcessingForNewPurchase({
 		);
 
 		const interactionContextMetadados: TInteractionContextMetadados = {
+			terminologia,
 			compraValor: saleValue,
 			compraCashbackAcumulado: transactionAccumulatedCashback,
 			compraCashbackNovoSaldo: clientCashbackAvailableBalance,
@@ -1081,6 +1089,7 @@ type THandleCampaignProcessingForFirstPurchaseParams = {
 	clientCashbackAvailableBalance: number;
 	clientCashbackAccumulatedBalance: number;
 	clientCashbackRedeemedBalanceTotal: number;
+	organizationCashbackTerminology: TCashbackProgramTerminologyEnum;
 };
 async function handleCampaignProcessingForFirstPurchase({
 	tx,
@@ -1096,6 +1105,7 @@ async function handleCampaignProcessingForFirstPurchase({
 	clientCashbackAvailableBalance,
 	clientCashbackAccumulatedBalance,
 	clientCashbackRedeemedBalanceTotal,
+	organizationCashbackTerminology,
 }: THandleCampaignProcessingForFirstPurchaseParams) {
 	if (campaignsForFirstPurchase.length === 0) return;
 	const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) => campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId));
@@ -1106,6 +1116,7 @@ async function handleCampaignProcessingForFirstPurchase({
 		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de primeira compra aplicáveis encontradas para o cliente ${clientId}.`);
 
 		const interactionContextMetadados: TInteractionContextMetadados = {
+			terminologia: organizationCashbackTerminology,
 			compraValor: saleValue,
 			compraCashbackAcumulado: transactionAccumulatedCashback,
 			compraCashbackNovoSaldo: clientCashbackAvailableBalance,
@@ -1232,6 +1243,7 @@ type THandleCampaignProcessingForCashbackAccumulationParams = {
 	sellerName: string;
 	clientCashbackAccumulatedBalance: number;
 	clientCashbackRedeemedBalanceTotal: number;
+	organizationCashbackTerminology: TCashbackProgramTerminologyEnum;
 };
 async function handleCampaignProcessingForCashbackAccumulation({
 	tx,
@@ -1246,6 +1258,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 	sellerName,
 	clientCashbackAccumulatedBalance,
 	clientCashbackRedeemedBalanceTotal,
+	organizationCashbackTerminology,
 }: THandleCampaignProcessingForCashbackAccumulationParams) {
 	if (cashbackAccumulationCampaigns.length === 0) return;
 	if (clientCashbackToAccumulate <= 0) return;
@@ -1271,6 +1284,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 	}
 
 	const interactionContextMetadados: TInteractionContextMetadados = {
+		terminologia: organizationCashbackTerminology,
 		compraValor: saleValue,
 		compraCashbackAcumulado: clientCashbackToAccumulate,
 		compraCashbackNovoSaldo: clientCashbackAvailableBalance,
@@ -1374,6 +1388,7 @@ type THandleCampaignProcessingForTotalPurchaseCountParams = {
 	clientCashbackAvailableBalance: number;
 	clientCashbackAccumulatedBalance: number;
 	clientCashbackRedeemedBalanceTotal: number;
+	organizationCashbackTerminology: TCashbackProgramTerminologyEnum;
 };
 async function handleCampaignProcessingForTotalPurchaseCount({
 	tx,
@@ -1390,6 +1405,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 	clientCashbackAvailableBalance,
 	clientCashbackAccumulatedBalance,
 	clientCashbackRedeemedBalanceTotal,
+	organizationCashbackTerminology,
 }: THandleCampaignProcessingForTotalPurchaseCountParams) {
 	if (campaignsForTotalPurchaseCount.length === 0) return;
 	const applicableCampaigns = campaignsForTotalPurchaseCount.filter((campaign) => {
@@ -1422,6 +1438,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 		});
 
 		const interactionContextMetadados: TInteractionContextMetadados = {
+			terminologia: organizationCashbackTerminology,
 			compraValor: saleValue,
 			compraCashbackAcumulado: transactionAccumulatedCashback,
 			compraCashbackNovoSaldo: clientCashbackAvailableBalance,
@@ -1520,6 +1537,7 @@ type THandleCampaignProcessingForTotalPurchaseValueParams = {
 	clientCashbackAvailableBalance: number;
 	clientCashbackAccumulatedBalance: number;
 	clientCashbackRedeemedBalanceTotal: number;
+	organizationCashbackTerminology: TCashbackProgramTerminologyEnum;
 };
 
 async function handleCampaignProcessingForTotalPurchaseValue({
@@ -1537,6 +1555,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 	clientCashbackAvailableBalance,
 	clientCashbackAccumulatedBalance,
 	clientCashbackRedeemedBalanceTotal,
+	organizationCashbackTerminology,
 }: THandleCampaignProcessingForTotalPurchaseValueParams) {
 	if (campaignsForTotalPurchaseValue.length === 0) return;
 
@@ -1570,6 +1589,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 		});
 
 		const interactionContextMetadados: TInteractionContextMetadados = {
+			terminologia: organizationCashbackTerminology,
 			compraValor: saleValue,
 			compraCashbackAcumulado: transactionAccumulatedCashback,
 			compraCashbackNovoSaldo: clientCashbackAvailableBalance,
