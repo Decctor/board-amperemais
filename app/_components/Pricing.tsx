@@ -214,6 +214,7 @@ function PlanCard({
 					onClick={() =>
 						captureClientEvent({
 							event: "landing_cta_clicked",
+							controlEvent: "lead",
 							properties: {
 								cta_id: "pricing_testar_15_dias",
 								location: "pricing",
@@ -322,6 +323,7 @@ export default function Pricing() {
 							onClick={() =>
 								captureClientEvent({
 									event: "landing_cta_clicked",
+									controlEvent: "contact",
 									properties: {
 										cta_id: "pricing_fale_com_especialistas",
 										location: "pricing",

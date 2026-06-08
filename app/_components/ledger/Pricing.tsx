@@ -1,8 +1,8 @@
 import { ArrowRight, CheckCircle2, MessageCircle } from "lucide-react";
-import Link from "next/link";
 import { Reveal } from "./_primitives/Reveal";
 import { Stamp } from "./_primitives/Stamp";
 import { TickerNumber } from "./_primitives/TickerNumber";
+import { TrackedAnchor, TrackedLink } from "./TrackedLink";
 
 // Tudo que já vem na plataforma (ambos os caminhos incluem isto).
 const PLATFORM_INCLUDED = [
@@ -102,13 +102,16 @@ export function LedgerPricing() {
 								))}
 							</ul>
 
-							<Link
+							<TrackedLink
 								href="/auth/signup"
+								event="landing_cta_clicked"
+								controlEvent="lead"
+								properties={{ cta_id: "pricing_comecar_agora", location: "pricing" }}
 								className="group mt-auto flex items-center justify-center gap-2 bg-white hover:bg-[#fafaf7] text-[#171717] text-center px-6 py-4 rounded-2xl border border-[#171717]/15 hover:border-[#171717]/30 transition-all duration-200"
 							>
 								<span className="text-[15px] font-extrabold tracking-[0.04em] uppercase">Começar agora</span>
 								<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-							</Link>
+							</TrackedLink>
 						</div>
 
 						{/* Caminho 2 — Plataforma + Gestor de Crescimento (hero, recomendado) */}
@@ -152,15 +155,18 @@ export function LedgerPricing() {
 									))}
 								</ul>
 
-								<a
+								<TrackedAnchor
 									href={CONSULTORIA_WHATSAPP}
 									target="_blank"
 									rel="noopener noreferrer"
+									event="landing_cta_clicked"
+									controlEvent="contact"
+									properties={{ cta_id: "pricing_agendar_diagnostico", location: "pricing" }}
 									className="relative group mt-auto flex items-center justify-center gap-2 bg-[#ffb900] hover:bg-[#e6a700] text-[#171717] text-center px-6 py-4 rounded-2xl transition-all duration-200 shadow-[0_8px_18px_-4px_rgba(0,0,0,0.20)] hover:-translate-y-0.5"
 								>
 									<MessageCircle className="w-4 h-4" strokeWidth={2.5} />
 									<span className="text-[15px] font-extrabold tracking-[0.04em] uppercase">Agendar diagnóstico</span>
-								</a>
+								</TrackedAnchor>
 								<p className="relative mt-3 text-center text-[11px] text-white/55">Começa com uma conversa. Vagas limitadas.</p>
 							</div>
 						</div>
@@ -179,12 +185,15 @@ export function LedgerPricing() {
 					</div>
 					<p className="mt-6 text-center text-[12px] text-[#737373]">
 						Atende redes ou precisa de integração com ERP?{" "}
-						<a
+						<TrackedAnchor
 							href="https://wa.me/553499480791"
+							event="landing_cta_clicked"
+							controlEvent="contact"
+							properties={{ cta_id: "pricing_falar_com_a_gente", location: "pricing" }}
 							className="font-extrabold tracking-[0.04em] uppercase text-[#24549c] hover:text-[#1a3d7a] underline decoration-[#ffb900] decoration-2 underline-offset-4"
 						>
 							Falar com a gente
-						</a>
+						</TrackedAnchor>
 					</p>
 				</Reveal>
 			</div>

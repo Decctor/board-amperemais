@@ -20,15 +20,6 @@ import type React from "react";
 import { use, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-declare global {
-	interface Window {
-		ctrl?: {
-			track?: (event: string, properties?: Record<string, unknown>) => void;
-			identify?: (userId: string, traits?: Record<string, unknown>) => void;
-		};
-	}
-}
-
 type MaterialPageProps = {
 	params: Promise<{ slug: string }>;
 };

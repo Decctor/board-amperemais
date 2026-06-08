@@ -88,6 +88,7 @@ export function LedgerClosingCTA() {
 							onClick={() =>
 								captureClientEvent({
 									event: "landing_cta_clicked",
+									controlEvent: "contact",
 									properties: { cta_id: "footer_falar_com_especialista", location: "footer" },
 								})
 							}
@@ -101,6 +102,7 @@ export function LedgerClosingCTA() {
 							onClick={() =>
 								captureClientEvent({
 									event: "landing_cta_clicked",
+									controlEvent: "lead",
 									properties: { cta_id: "footer_ver_planos", location: "footer" },
 								})
 							}
