@@ -3,6 +3,7 @@ import axios from "axios";
 import type { TGetPublicCommunityCoursesOutput } from "@/app/api/community/courses/public/route";
 import type { TGetPublicCommunityLessonsOutput } from "@/app/api/community/lessons/public/route";
 import type { TGetPublicCommunityMaterialsOutput } from "@/app/api/community/materials/public/route";
+import type { TCommunityLessonProgressEntity } from "@/services/drizzle/schema";
 
 export function useCourses() {
 	return useQuery({
@@ -73,13 +74,15 @@ export function usePublicCommunityMaterialBySlug(slug: string) {
 	});
 }
 
-export function useUserProgress(cursoId?: string) {
-	return useQuery({
+export function useUserProgress(cursoId?: string, options?: { enabled?: boolean }) {
+	return useQuery<TCommunityLessonProgressEntity[]>({
 		queryKey: ["community-progress", cursoId],
 		queryFn: async () => {
 			const url = cursoId ? `/api/community/progress?cursoId=${cursoId}` : "/api/community/progress";
-			const { data } = await axios.get(url);
+			const { data } = await axios.get<{ data: TCommunityLessonProgressEntity[] }>(url);
 			return data.data;
 		},
+		enabled: options?.enabled ?? true,
+		retry: false,
 	});
 }

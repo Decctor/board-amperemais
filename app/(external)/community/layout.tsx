@@ -28,7 +28,7 @@ export default async function CommunityLayout({ children }: { children: React.Re
 		: null;
 
 	return (
-		<div className="font-raleway min-h-svh">
+		<div className="font-raleway min-h-svh bg-background text-foreground">
 			{controlSdkUrl && controlWriteKey ? (
 				<Script
 					src={controlSdkUrl}
@@ -37,7 +37,7 @@ export default async function CommunityLayout({ children }: { children: React.Re
 					strategy="afterInteractive"
 				/>
 			) : null}
-			<main className="min-h-svh overflow-y-auto pb-24">{children}</main>
+			<main className="min-h-svh overflow-y-auto pb-28">{children}</main>
 			<CommunityDock user={user} />
 		</div>
 	);

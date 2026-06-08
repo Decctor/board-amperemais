@@ -1,5 +1,6 @@
 "use client";
 
+import { CommunityThemeToggle } from "@/components/Community/CommunityThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -40,7 +41,7 @@ type CommunityDockProps = {
 };
 
 function DockDivider() {
-	return <div className="mx-1 h-6 w-px shrink-0 bg-white/15" aria-hidden="true" />;
+	return <div className="mx-1 h-6 w-px shrink-0 bg-white/12" aria-hidden="true" />;
 }
 
 function isNavActive(pathname: string, item: TCommunityDockNavItem) {
@@ -54,18 +55,17 @@ export function CommunityDock({ user }: CommunityDockProps) {
 	return (
 		<TooltipProvider delayDuration={200}>
 			<nav aria-label="Navegação da comunidade" className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-4 sm:pb-6">
-				<div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-[#171512] px-2 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md">
-					{/* Usuário / Signup */}
+				<div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/8 bg-[#171512] px-2 py-2 shadow-[0_8px_28px_rgba(0,0,0,0.32)]">
 					<div className="flex items-center pl-1">
 						{user ? (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<button
 										type="button"
-										className="flex size-7 md:size-9 items-center justify-center rounded-full outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30"
+										className="flex size-7 items-center justify-center rounded-full outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30 md:size-9"
 										aria-label="Menu da conta"
 									>
-										<Avatar className="size-8 ring-2 ring-white/20">
+										<Avatar className="size-8 ring-2 ring-white/15">
 											<AvatarImage src={user.avatarUrl ?? undefined} alt={user.nome} />
 											<AvatarFallback className="bg-white/10 text-xs text-white">{formatNameAsInitials(user.nome)}</AvatarFallback>
 										</Avatar>
@@ -74,7 +74,7 @@ export function CommunityDock({ user }: CommunityDockProps) {
 								<DropdownMenuContent side="top" align="start" sideOffset={12} className="min-w-52 rounded-xl">
 									<DropdownMenuLabel className="p-0 font-normal">
 										<div className="flex items-center gap-2 px-2 py-2">
-											<Avatar className="size-7 md:size-8">
+											<Avatar className="size-8">
 												<AvatarImage src={user.avatarUrl ?? undefined} alt={user.nome} />
 												<AvatarFallback>{formatNameAsInitials(user.nome)}</AvatarFallback>
 											</Avatar>
@@ -102,7 +102,7 @@ export function CommunityDock({ user }: CommunityDockProps) {
 								<TooltipTrigger asChild>
 									<Link
 										href="/auth/signup"
-										className="flex size-7 md:size-9 items-center justify-center rounded-full text-white/70 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30"
+										className="flex size-7 items-center justify-center rounded-full text-white/70 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 md:size-9"
 										aria-label="Criar conta"
 									>
 										<UserPlus className="size-[18px]" strokeWidth={1.75} />
@@ -117,7 +117,6 @@ export function CommunityDock({ user }: CommunityDockProps) {
 
 					<DockDivider />
 
-					{/* Navegação central */}
 					<div className="flex items-center gap-0.5 px-1">
 						{DOCK_NAV.map((item) => {
 							const active = isNavActive(pathname, item);
@@ -127,7 +126,7 @@ export function CommunityDock({ user }: CommunityDockProps) {
 										<Link
 											href={item.url}
 											className={cn(
-												"flex size-7 md:size-9 items-center justify-center rounded-full text-white/60 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30",
+												"flex size-7 items-center justify-center rounded-full text-white/60 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 md:size-9",
 												active && "bg-white/12 text-white",
 											)}
 											aria-label={item.title}
@@ -146,8 +145,8 @@ export function CommunityDock({ user }: CommunityDockProps) {
 
 					<DockDivider />
 
-					{/* Logo Recompra */}
-					<div className="flex items-center pr-1">
+					<div className="flex items-center gap-0.5 pr-1">
+						<CommunityThemeToggle variant="dock" />
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Link

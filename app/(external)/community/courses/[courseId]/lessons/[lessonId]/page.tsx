@@ -3,12 +3,14 @@
 import { CommunityHeader } from "@/components/Community/CommunityHeader";
 import { LessonSidebarOutline } from "@/components/Community/LessonSidebarOutline";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TCourseSection } from "@/lib/community-helpers";
 import { updateProgress } from "@/lib/mutations/community";
-import { useCourseDetail, useLesson } from "@/lib/queries/community";
+import { useCourseDetail, useLesson, useUserProgress } from "@/lib/queries/community";
+import { useUserSession } from "@/lib/queries/session";
 import MuxPlayer from "@mux/mux-player-react";
-import { BookOpen, ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, PlayCircle } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, List, PanelRightClose, PanelRightOpen, PlayCircle } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -17,6 +19,8 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 	const { courseId, lessonId } = use(params);
 	const { data: lesson, isLoading: lessonLoading } = useLesson(lessonId);
 	const { data: course } = useCourseDetail(courseId);
+	const { data: session } = useUserSession();
+	const { data: progress = [] } = useUserProgress(courseId, { enabled: !!session });
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [activeTab, setActiveTab] = useQueryState("tab", parseAsStringEnum(["overview", "content"]));
 	const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -40,6 +44,11 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 	const currentIndex = flatLessons.findIndex((l: any) => l.id === lessonId);
 	const prevLesson = currentIndex > 0 ? flatLessons[currentIndex - 1] : null;
 	const nextLesson = currentIndex < flatLessons.length - 1 ? flatLessons[currentIndex + 1] : null;
+
+	const completedLessonIds = useMemo(
+		() => new Set(progress.filter((entry) => entry.concluido).map((entry) => entry.aulaId)),
+		[progress],
+	);
 
 	// Save progress periodically
 	const saveProgress = useCallback(
@@ -78,12 +87,12 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 
 	if (lessonLoading) {
 		return (
-			<div className="flex flex-col lg:flex-row h-[calc(100dvh-3.5rem)]">
-				<div className="flex-1 animate-pulse">
-					<div className="aspect-video bg-muted" />
-					<div className="p-6 space-y-3">
-						<div className="h-6 bg-muted rounded w-2/3" />
-						<div className="h-4 bg-muted rounded w-full" />
+			<div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+				<div className="animate-pulse space-y-4 rounded-2xl border border-border bg-card p-4">
+					<div className="aspect-video rounded-xl bg-muted" />
+					<div className="space-y-3">
+						<div className="h-6 w-2/3 rounded bg-muted" />
+						<div className="h-4 w-full rounded bg-muted" />
 					</div>
 				</div>
 			</div>
@@ -92,7 +101,7 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 
 	if (!lesson) {
 		return (
-			<div className="flex items-center justify-center h-[calc(100dvh-3.5rem)]">
+			<div className="flex min-h-[50vh] items-center justify-center px-4">
 				<div className="text-center">
 					<div className="rounded-full bg-primary/10 p-5 w-fit mx-auto mb-4">
 						<BookOpen className="w-10 h-10 text-foreground/50" />
@@ -120,18 +129,15 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 		: [{ label: "Início", href: "/community" }, { label: "Cursos", href: "/community/courses" }, { label: lesson.titulo }];
 
 	return (
-		<div className="flex flex-col h-[calc(100dvh-3.5rem)]">
-			{/* Header with breadcrumb */}
-			<div className="px-4 py-2 border-b border-border shrink-0">
+		<div className="mx-auto flex h-[calc(100dvh-7rem)] max-w-6xl flex-col px-4 pb-4 sm:px-6">
+			<div className="shrink-0 py-3">
 				<CommunityHeader breadcrumbs={breadcrumbs} />
 			</div>
 
-			<div className="flex flex-col lg:flex-row flex-1 min-h-0">
-				{/* Main content area */}
-				<div className="flex-1 flex flex-col overflow-y-auto min-w-0">
-					{/* Video player */}
-					{hasVideo && lesson.muxPlaybackId && (
-						<div className="w-full bg-black shrink-0">
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card lg:flex-row">
+				<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+					{hasVideo && lesson.muxPlaybackId ? (
+						<div className="w-full shrink-0 bg-black lg:rounded-tl-2xl">
 							<MuxPlayer
 								streamType="on-demand"
 								playbackId={lesson.muxPlaybackId}
@@ -142,11 +148,10 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 								onEnded={handleVideoEnded}
 							/>
 						</div>
-					)}
+					) : null}
 
-					{/* Video not ready */}
-					{hasVideo && !lesson.muxPlaybackId && (
-						<div className="w-full aspect-video bg-muted flex items-center justify-center shrink-0">
+					{hasVideo && !lesson.muxPlaybackId ? (
+						<div className="flex aspect-video w-full shrink-0 items-center justify-center bg-muted lg:rounded-tl-2xl">
 							<div className="text-center">
 								<PlayCircle className="w-12 h-12 text-muted-foreground/50 mx-auto mb-2" />
 								<p className="text-sm text-muted-foreground">
@@ -158,19 +163,50 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 								</p>
 							</div>
 						</div>
-					)}
+					) : null}
 
-					{/* Lesson info below video */}
-					<div className="p-4 sm:p-6 flex flex-col gap-4 flex-1">
-						{/* Header with sidebar toggle */}
+					<div className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
 						<div className="flex items-start justify-between gap-3">
-							<div className="flex flex-col gap-1 min-w-0">
-								<h1 className="text-lg sm:text-xl font-bold tracking-tight">{lesson.titulo}</h1>
-								{lesson.descricao && <p className="text-sm text-muted-foreground">{lesson.descricao}</p>}
+							<div className="flex min-w-0 flex-col gap-1">
+								<p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{course?.titulo}</p>
+								<h1 className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">{lesson.titulo}</h1>
+								{lesson.descricao ? <p className="mt-2 text-sm text-muted-foreground">{lesson.descricao}</p> : null}
 							</div>
-							<Button variant="ghost" size="icon" className="hidden lg:flex shrink-0" onClick={() => setSidebarOpen(!sidebarOpen)}>
-								{sidebarOpen ? <PanelRightClose className="w-4 h-4 min-w-4 min-h-4" /> : <PanelRightOpen className="w-4 h-4 min-w-4 min-h-4" />}
-							</Button>
+							<div className="flex shrink-0 items-center gap-2">
+								{course ? (
+									<Sheet>
+										<SheetTrigger asChild>
+											<Button variant="outline" size="sm" className="rounded-full lg:hidden">
+												<List className="mr-1.5 size-4" />
+												Sumário
+											</Button>
+										</SheetTrigger>
+										<SheetContent side="bottom" className="h-[72vh] rounded-t-2xl px-0">
+											<SheetHeader className="px-4 pb-2 text-left">
+												<SheetTitle className="text-base font-extrabold">Conteúdo do curso</SheetTitle>
+											</SheetHeader>
+											<div className="overflow-y-auto px-2 pb-6">
+												<LessonSidebarOutline
+													courseId={courseId}
+													courseTitle={course.titulo}
+													sections={sections}
+													activeLessonId={lessonId}
+													completedLessonIds={completedLessonIds}
+												/>
+											</div>
+										</SheetContent>
+									</Sheet>
+								) : null}
+								<Button
+									variant="ghost"
+									size="icon"
+									className="hidden lg:flex"
+									onClick={() => setSidebarOpen(!sidebarOpen)}
+									aria-label="Alternar sumário"
+								>
+									{sidebarOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+								</Button>
+							</div>
 						</div>
 
 						{/* Tabs: Overview / Content */}
@@ -195,8 +231,7 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 							</Tabs>
 						) : null}
 
-						{/* Navigation */}
-						<div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
+						<div className="mt-auto flex items-center justify-between border-t border-border pt-4">
 							{prevLesson ? (
 								<Link
 									href={`/community/courses/${courseId}/lessons/${prevLesson.id}`}
@@ -231,11 +266,18 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 					</div>
 				</div>
 
-				{/* Sidebar - Course outline */}
 				<aside
-					className={`${sidebarOpen ? "w-80" : "w-0 overflow-hidden"} hidden lg:block border-l border-border bg-card transition-all duration-200 shrink-0`}
+					className={`${sidebarOpen ? "w-80" : "w-0 overflow-hidden"} hidden shrink-0 border-l border-border bg-card/50 transition-all duration-200 ease-[cubic-bezier(0.25,1,0.5,1)] lg:block lg:rounded-tr-2xl lg:rounded-br-2xl`}
 				>
-					{course && <LessonSidebarOutline courseId={courseId} courseTitle={course.titulo} sections={sections} activeLessonId={lessonId} />}
+					{course ? (
+						<LessonSidebarOutline
+							courseId={courseId}
+							courseTitle={course.titulo}
+							sections={sections}
+							activeLessonId={lessonId}
+							completedLessonIds={completedLessonIds}
+						/>
+					) : null}
 				</aside>
 			</div>
 		</div>
