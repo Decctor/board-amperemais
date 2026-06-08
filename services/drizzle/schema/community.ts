@@ -4,6 +4,8 @@ import type {
 	TAssetDerivationOperation,
 	TAssetExtractedMetadata,
 	TChannelRecommendation,
+	TCommunityMaterialClaimMetadata,
+	TCommunityMaterialPublicMetadata,
 	TMaterialSpecificMetadata,
 	TPreviousReviewContext,
 	TReviewProblem,
@@ -268,6 +270,7 @@ export const communityMaterials = newTable(
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
 		titulo: text("titulo").notNull(),
+		slug: varchar("slug", { length: 255 }).notNull(),
 		descricao: text("descricao"),
 		tipo: communityMaterialTypeEnum("tipo").notNull(),
 		status: communityContentStatusEnum("status").notNull().default("RASCUNHO"),
@@ -275,6 +278,7 @@ export const communityMaterials = newTable(
 		resumo: text("resumo"),
 		tags: jsonb("tags").$type<string[]>().default([]),
 		metadadosEspecificos: jsonb("metadados_especificos").$type<TMaterialSpecificMetadata>(),
+		publicMetadata: jsonb("public_metadata").$type<TCommunityMaterialPublicMetadata>().default({}),
 		assetId: varchar("asset_id", { length: 255 }).references(() => communityAssets.id, { onDelete: "set null" }),
 		ordem: integer("ordem").notNull().default(0),
 		categoriaId: varchar("categoria_id", { length: 255 }),
@@ -289,6 +293,7 @@ export const communityMaterials = newTable(
 		tipoIdx: index("idx_community_materials_tipo").on(table.tipo),
 		statusIdx: index("idx_community_materials_status").on(table.status),
 		assetIdx: index("idx_community_materials_asset").on(table.assetId),
+		slugIdx: uniqueIndex("idx_community_materials_slug").on(table.slug),
 	}),
 );
 
@@ -305,6 +310,40 @@ export const communityMaterialsRelations = relations(communityMaterials, ({ one 
 
 export type TCommunityMaterialEntity = typeof communityMaterials.$inferSelect;
 export type TNewCommunityMaterialEntity = typeof communityMaterials.$inferInsert;
+
+// ---- MATERIAL CLAIMS ----
+
+export const communityMaterialClaims = newTable(
+	"community_material_claims",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		materialId: varchar("material_id", { length: 255 })
+			.references(() => communityMaterials.id, { onDelete: "cascade" })
+			.notNull(),
+		claimKey: varchar("claim_key", { length: 255 }).notNull(),
+		claimKeyType: varchar("claim_key_type", { length: 40 }).notNull().default("EMAIL"),
+		metadata: jsonb("metadata").$type<TCommunityMaterialClaimMetadata>().default({}),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao").defaultNow().notNull(),
+	},
+	(table) => ({
+		materialIdx: index("idx_community_material_claims_material").on(table.materialId),
+		claimKeyIdx: index("idx_community_material_claims_key").on(table.claimKey),
+		materialClaimKeyIdx: uniqueIndex("idx_community_material_claims_material_key").on(table.materialId, table.claimKeyType, table.claimKey),
+	}),
+);
+
+export const communityMaterialClaimsRelations = relations(communityMaterialClaims, ({ one }) => ({
+	material: one(communityMaterials, {
+		fields: [communityMaterialClaims.materialId],
+		references: [communityMaterials.id],
+	}),
+}));
+
+export type TCommunityMaterialClaimEntity = typeof communityMaterialClaims.$inferSelect;
+export type TNewCommunityMaterialClaimEntity = typeof communityMaterialClaims.$inferInsert;
 
 // ---- TUTORIALS ----
 

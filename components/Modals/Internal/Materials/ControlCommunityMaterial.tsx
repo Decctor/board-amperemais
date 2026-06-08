@@ -54,6 +54,7 @@ export function ControlCommunityMaterial({ materialId, closeModal, callbacks }: 
 		redefineState({
 			communityMaterial: {
 				titulo: material.titulo,
+				slug: material.slug,
 				descricao: material.descricao ?? "",
 				tipo: material.tipo,
 				status: material.status,
@@ -61,6 +62,7 @@ export function ControlCommunityMaterial({ materialId, closeModal, callbacks }: 
 				resumo: material.resumo ?? "",
 				tags: material.tags ?? [],
 				metadadosEspecificos: material.metadadosEspecificos ?? null,
+				publicMetadata: material.publicMetadata ?? {},
 				ordem: material.ordem,
 				categoriaId: material.categoriaId ?? null,
 				dataPublicacao: material.dataPublicacao ?? undefined,

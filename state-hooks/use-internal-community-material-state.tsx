@@ -37,6 +37,7 @@ export function useInternalCommunityMaterialState({ initialState }: TUseInternal
 		() => ({
 			communityMaterial: {
 				titulo: initialState?.communityMaterial?.titulo ?? "",
+				slug: initialState?.communityMaterial?.slug ?? "",
 				descricao: initialState?.communityMaterial?.descricao ?? "",
 				tipo: initialState?.communityMaterial?.tipo ?? "EBOOK",
 				status: initialState?.communityMaterial?.status ?? "RASCUNHO",
@@ -44,6 +45,7 @@ export function useInternalCommunityMaterialState({ initialState }: TUseInternal
 				resumo: initialState?.communityMaterial?.resumo ?? "",
 				tags: initialState?.communityMaterial?.tags ?? [],
 				metadadosEspecificos: initialState?.communityMaterial?.metadadosEspecificos ?? null,
+				publicMetadata: initialState?.communityMaterial?.publicMetadata ?? {},
 				ordem: initialState?.communityMaterial?.ordem ?? 0,
 				categoriaId: initialState?.communityMaterial?.categoriaId ?? null,
 				dataPublicacao: initialState?.communityMaterial?.dataPublicacao ?? undefined,

@@ -14,9 +14,9 @@ import { StatBadge } from "@/components/ui/stat-badge";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { useAdminCommunityCourses, useAdminCommunityMaterials } from "@/lib/queries/community-admin";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Diamond, Eye, FileText, Pencil, Plus, VideoIcon } from "lucide-react";
+import { Copy, Diamond, Eye, FileText, Pencil, Plus, VideoIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -245,12 +245,14 @@ function CommunityMaterialCard({ communityMaterial, handleEditClick }: Community
 						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
 						EDITAR
 					</Button>
-					{/* <Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
-						<Link href={`/admin-dashboard/community?materialId=${communityMaterial.id}`}>
-							<Eye className="w-3 min-w-3 h-3 min-h-3" />
-							VER
-						</Link>
-					</Button> */}
+					<Button
+						variant="ghost"
+						className="flex items-center gap-1.5"
+						size="sm"
+						onClick={() => copyToClipboard(`${window.location.origin}/community/materials/${communityMaterial.slug}`)}
+					>
+						<Copy className="w-3 min-w-3 h-3 min-h-3" />
+					</Button>
 				</div>
 			</div>
 		</div>

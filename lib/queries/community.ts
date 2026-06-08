@@ -62,6 +62,17 @@ export function usePublicCommunityMaterialById(materialId: string) {
 	});
 }
 
+export function usePublicCommunityMaterialBySlug(slug: string) {
+	return useQuery({
+		queryKey: ["community-material-by-slug", slug],
+		queryFn: async () => {
+			const { data } = await axios.get<TGetPublicCommunityMaterialsOutput>(`/api/community/materials/public?slug=${encodeURIComponent(slug)}`);
+			return data.data.byId;
+		},
+		enabled: !!slug,
+	});
+}
+
 export function useUserProgress(cursoId?: string) {
 	return useQuery({
 		queryKey: ["community-progress", cursoId],

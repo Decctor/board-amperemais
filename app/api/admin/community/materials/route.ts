@@ -4,7 +4,7 @@ import { createSimplifiedSearchCondition } from "@/lib/search";
 import { CommunityAssetSchema, CommunityMaterialSchema } from "@/schemas/community-pipeline";
 import { db } from "@/services/drizzle";
 import { communityAssets, communityMaterials } from "@/services/drizzle/schema";
-import { and, asc, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -59,6 +59,32 @@ const GetCommunityMaterialsInputSchema = z.object({
 		.transform((v) => (v ? new Date(v) : null)),
 });
 export type TGetCommunityMaterialsInput = z.infer<typeof GetCommunityMaterialsInputSchema>;
+
+function slugify(value: string) {
+	return value
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+}
+
+async function getUniqueCommunityMaterialSlug({ slug, titulo, ignoreId }: { slug?: string | null; titulo: string; ignoreId?: string }) {
+	const baseSlug = slugify(slug?.trim() || titulo || "material") || "material";
+	let candidate = baseSlug;
+	let suffix = 1;
+
+	while (true) {
+		const existing = await db.query.communityMaterials.findFirst({
+			where: ignoreId ? and(eq(communityMaterials.slug, candidate), ne(communityMaterials.id, ignoreId)) : eq(communityMaterials.slug, candidate),
+			columns: { id: true },
+		});
+		if (!existing) return candidate;
+		suffix += 1;
+		candidate = `${baseSlug}-${suffix}`;
+	}
+}
 
 async function getCommunityMaterials({ input }: { input: TGetCommunityMaterialsInput }) {
 	if (input.id) {
@@ -165,6 +191,8 @@ const CreateCommunityMaterialInputSchema = z.object({
 export type TCreateCommunityMaterialInput = z.infer<typeof CreateCommunityMaterialInputSchema>;
 
 async function createCommunityMaterial({ input, autorId }: { input: TCreateCommunityMaterialInput; autorId: string }) {
+	const slug = await getUniqueCommunityMaterialSlug({ slug: input.communityMaterial.slug, titulo: input.communityMaterial.titulo });
+
 	return await db.transaction(async (tx) => {
 		let communityAssetId: string | null = null;
 
@@ -190,6 +218,7 @@ async function createCommunityMaterial({ input, autorId }: { input: TCreateCommu
 			.insert(communityMaterials)
 			.values({
 				...input.communityMaterial,
+				slug,
 				assetId: communityAssetId,
 				ordem: input.communityMaterial.ordem || (maxOrdem[0]?.max ?? -1) + 1,
 				autorId,
@@ -226,6 +255,15 @@ const UpdateCommunityMaterialInputSchema = z.object({
 export type TUpdateCommunityMaterialInput = z.infer<typeof UpdateCommunityMaterialInputSchema>;
 
 async function updateCommunityMaterial({ input, autorId }: { input: TUpdateCommunityMaterialInput; autorId: string }) {
+	const slug =
+		input.communityMaterial.slug || input.communityMaterial.titulo
+			? await getUniqueCommunityMaterialSlug({
+					slug: input.communityMaterial.slug,
+					titulo: input.communityMaterial.titulo ?? "",
+					ignoreId: input.communityMaterialId,
+				})
+			: undefined;
+
 	return await db.transaction(async (tx) => {
 		const existingMaterial = await tx.query.communityMaterials.findFirst({
 			where: eq(communityMaterials.id, input.communityMaterialId),
@@ -267,6 +305,7 @@ async function updateCommunityMaterial({ input, autorId }: { input: TUpdateCommu
 			.update(communityMaterials)
 			.set({
 				...input.communityMaterial,
+				...(slug ? { slug } : {}),
 				assetId: communityAssetId,
 				dataAtualizacao: new Date(),
 			})

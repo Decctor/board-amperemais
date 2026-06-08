@@ -10,29 +10,40 @@ import z from "zod";
 const GetPublicCommunityMaterialsInputSchema = z.object({
 	id: z
 		.string({
-			required_error: "ID do material não informado.",
-			invalid_type_error: "Tipo não válido para o ID do material.",
+			required_error: "ID do material nao informado.",
+			invalid_type_error: "Tipo nao valido para o ID do material.",
+		})
+		.optional(),
+	slug: z
+		.string({
+			invalid_type_error: "Tipo nao valido para o slug do material.",
 		})
 		.optional(),
 	search: z
 		.string({
-			required_error: "Busca não informada.",
-			invalid_type_error: "Tipo não válido para busca.",
+			required_error: "Busca nao informada.",
+			invalid_type_error: "Tipo nao valido para busca.",
 		})
 		.optional(),
 	tipo: z
 		.string({
-			invalid_type_error: "Tipo não válido para tipo de material.",
+			invalid_type_error: "Tipo nao valido para tipo de material.",
 		})
 		.optional()
 		.transform((v) => (v ? v.split(",") : [])),
 });
 export type TGetPublicCommunityMaterialsInput = z.infer<typeof GetPublicCommunityMaterialsInputSchema>;
 
+function removeProtectedAssetFields<TMaterial extends { asset?: Record<string, unknown> | null }>(material: TMaterial) {
+	if (!material.asset) return material;
+	const { storageUrl: _storageUrl, ...asset } = material.asset;
+	return { ...material, asset };
+}
+
 async function getPublicCommunityMaterials({ input }: { input: TGetPublicCommunityMaterialsInput }) {
-	if (input.id) {
+	if (input.id || input.slug) {
 		const communityMaterial = await db.query.communityMaterials.findFirst({
-			where: and(eq(communityMaterials.id, input.id), eq(communityMaterials.status, "PUBLICADO")),
+			where: and(input.slug ? eq(communityMaterials.slug, input.slug) : eq(communityMaterials.id, input.id ?? ""), eq(communityMaterials.status, "PUBLICADO")),
 			with: {
 				asset: true,
 				autor: {
@@ -41,8 +52,8 @@ async function getPublicCommunityMaterials({ input }: { input: TGetPublicCommuni
 			},
 		});
 
-		if (!communityMaterial) throw new createHttpError.NotFound("Material não encontrado.");
-		return { data: { byId: communityMaterial, default: null }, message: "Material obtido com sucesso." };
+		if (!communityMaterial) throw new createHttpError.NotFound("Material nao encontrado.");
+		return { data: { byId: removeProtectedAssetFields(communityMaterial), default: null }, message: "Material obtido com sucesso." };
 	}
 
 	const conditions = [eq(communityMaterials.status, "PUBLICADO")];
@@ -69,7 +80,7 @@ async function getPublicCommunityMaterials({ input }: { input: TGetPublicCommuni
 	return {
 		data: {
 			byId: null,
-			default: communityMaterialsList,
+			default: communityMaterialsList.map(removeProtectedAssetFields),
 		},
 		message: "Materiais obtidos com sucesso.",
 	};
@@ -81,6 +92,7 @@ export type TGetPublicCommunityMaterialsOutputDefault = NonNullable<TGetPublicCo
 async function getPublicCommunityMaterialsRoute(request: NextRequest) {
 	const input = GetPublicCommunityMaterialsInputSchema.parse({
 		id: request.nextUrl.searchParams.get("id") ?? undefined,
+		slug: request.nextUrl.searchParams.get("slug") ?? undefined,
 		search: request.nextUrl.searchParams.get("search") ?? undefined,
 		tipo: request.nextUrl.searchParams.get("tipo") ?? undefined,
 	});

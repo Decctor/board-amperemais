@@ -140,6 +140,97 @@ export const MaterialSpecificMetadataSchema = z
 	.catchall(z.unknown());
 export type TMaterialSpecificMetadata = z.infer<typeof MaterialSpecificMetadataSchema>;
 
+export const CommunityMaterialPublicMetadataSchema = z
+	.object({
+		emailWall: z
+			.object({
+				ativo: z.boolean().default(false),
+				claimButtonText: z.string().optional(),
+				unlockedButtonText: z.string().optional(),
+				successMessage: z.string().optional(),
+				requiredFields: z.array(z.enum(["email", "nome", "telefone", "empresa", "cargo"])).optional(),
+			})
+			.default({ ativo: false }),
+		landing: z
+			.object({
+				headline: z.string().optional(),
+				subheadline: z.string().optional(),
+				descricaoLonga: z.string().optional(),
+				beneficios: z.array(z.string()).optional(),
+				paraQuem: z.array(z.string()).optional(),
+				oQueVoceRecebe: z.array(z.string()).optional(),
+				capaAlt: z.string().optional(),
+			})
+			.default({}),
+		seo: z
+			.object({
+				title: z.string().optional(),
+				description: z.string().optional(),
+				ogImageUrl: z.string().optional(),
+			})
+			.default({}),
+		tracking: z
+			.object({
+				campaignName: z.string().optional(),
+				contentCategory: z.string().optional(),
+				tags: z.array(z.string()).optional(),
+			})
+			.default({}),
+	})
+	.partial()
+	.catchall(z.unknown())
+	.default({});
+export type TCommunityMaterialPublicMetadata = z.infer<typeof CommunityMaterialPublicMetadataSchema>;
+
+export const CommunityMaterialClaimMetadataSchema = z
+	.object({
+		form: z
+			.object({
+				email: z.string().optional(),
+				nome: z.string().optional(),
+				telefone: z.string().optional(),
+				empresa: z.string().optional(),
+				cargo: z.string().optional(),
+			})
+			.optional(),
+		tracking: z
+			.object({
+				anonymousId: z.string().optional(),
+				pageUrl: z.string().optional(),
+				referrer: z.string().optional(),
+				utmSource: z.string().optional(),
+				utmMedium: z.string().optional(),
+				utmCampaign: z.string().optional(),
+				utmContent: z.string().optional(),
+				utmTerm: z.string().optional(),
+				fbclid: z.string().optional(),
+				gclid: z.string().optional(),
+			})
+			.optional(),
+		control: z
+			.object({
+				identifyDispatchedAt: z.string().optional(),
+				claimEventDispatchedAt: z.string().optional(),
+				clienteId: z.string().optional(),
+			})
+			.optional(),
+		request: z
+			.object({
+				userAgent: z.string().optional(),
+				ipHash: z.string().optional(),
+			})
+			.optional(),
+		access: z
+			.object({
+				claimCount: z.number().int().optional(),
+				lastDownloadedAt: z.string().optional(),
+			})
+			.optional(),
+	})
+	.catchall(z.unknown())
+	.default({});
+export type TCommunityMaterialClaimMetadata = z.infer<typeof CommunityMaterialClaimMetadataSchema>;
+
 export const AssetDerivationOperationSchema = z.object({
 	tool: z
 		.string({
@@ -547,6 +638,12 @@ export const CommunityMaterialSchema = z.object({
 			invalid_type_error: "Tipo não válido para o título do material.",
 		})
 		.min(1, "Titulo do material nao informado."),
+	slug: z
+		.string({
+			invalid_type_error: "Tipo não válido para o slug do material.",
+		})
+		.optional()
+		.default(""),
 	descricao: z
 		.string({
 			invalid_type_error: "Tipo não válido para a descrição do material.",
@@ -569,6 +666,7 @@ export const CommunityMaterialSchema = z.object({
 		.nullable(),
 	tags: z.array(z.string()).default([]),
 	metadadosEspecificos: MaterialSpecificMetadataSchema.optional().nullable(),
+	publicMetadata: CommunityMaterialPublicMetadataSchema,
 	assetId: z
 		.string({
 			invalid_type_error: "Tipo não válido para o ID do asset do material.",
