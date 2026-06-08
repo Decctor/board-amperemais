@@ -11,29 +11,27 @@ import { BookText, Calendar, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-export default function EbooksPage() {
+export default function MaterialsPage() {
 	const [search, setSearch] = useState("");
-	const { data: materials = [], isLoading } = usePublicCommunityMaterials({ tipo: ["EBOOK"], search });
+	const { data: materials = [], isLoading } = usePublicCommunityMaterials({ tipo: [], search });
 
 	return (
 		<div className="w-full h-full flex flex-col gap-6 p-6">
 			<CommunityHeader breadcrumbs={[{ label: "Início", href: "/community" }, { label: "eBooks" }]} />
 			<div className="flex flex-col gap-1">
-				<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">eBooks</h1>
-				<p className="text-sm text-muted-foreground">Materiais de leitura exclusivos para aprofundar seu conhecimento.</p>
+				<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">Materiais</h1>
+				<p className="text-sm text-muted-foreground">Materiais de todos os tipos para aprofundar seu conhecimento.</p>
 			</div>
 
-			<div className="w-full max-w-md relative">
-				<div className="flex items-center bg-background rounded-xl border border-border shadow-2xs">
-					<Search className="ml-3 h-4 w-4 min-w-4 min-h-4 text-muted-foreground" />
-					<Input
-						type="text"
-						placeholder="Buscar eBooks..."
-						className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-					/>
-				</div>
+			<div className="flex items-center bg-background rounded-xl border border-border shadow-2xs w-full">
+				<Search className="ml-3 h-4 w-4 min-w-4 min-h-4 text-muted-foreground" />
+				<Input
+					type="text"
+					placeholder="Buscar eBooks..."
+					className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+					value={search}
+					onChange={(e) => setSearch(e.target.value)}
+				/>
 			</div>
 
 			{isLoading ? (

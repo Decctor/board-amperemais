@@ -38,17 +38,15 @@ export default function CoursesListingPage() {
 			</div>
 
 			{/* Search */}
-			<div className="w-full max-w-md relative">
-				<div className="flex items-center bg-background rounded-xl border border-border shadow-2xs">
-					<Search className="ml-3 h-4 w-4 min-w-4 min-h-4 text-muted-foreground" />
-					<Input
-						type="text"
-						placeholder="Buscar cursos..."
-						className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-					/>
-				</div>
+			<div className="flex items-center bg-background rounded-xl border border-border shadow-2xs w-full">
+				<Search className="ml-3 h-4 w-4 min-w-4 min-h-4 text-muted-foreground" />
+				<Input
+					type="text"
+					placeholder="Buscar cursos..."
+					className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+					value={searchQuery}
+					onChange={(e) => setSearchQuery(e.target.value)}
+				/>
 			</div>
 
 			{/* Loading */}

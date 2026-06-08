@@ -66,9 +66,9 @@ export default function CommunityHubPage() {
 				)}
 			</section>
 
-			{/* Documents Section */}
+			{/* Materials Section */}
 			<section className="flex flex-col gap-4">
-				<ContentSectionHeader title="Documentos em Destaque" href="/community/documents" />
+				<ContentSectionHeader title="Materiais em Destaque" href="/community/materials" />
 				{isMaterialsLoading ? (
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 						{Array.from({ length: 3 }).map((_, i) => (
@@ -92,40 +92,6 @@ export default function CommunityHubPage() {
 								<h3 className="text-sm font-bold tracking-tight line-clamp-2">{material.titulo}</h3>
 								<p className="mt-1 text-xs text-muted-foreground line-clamp-3">{material.descricao}</p>
 								<a href={`/community/documents/${material.id}`} className="mt-3 inline-flex text-xs font-medium text-foreground hover:text-foreground/80">
-									Ver detalhes
-								</a>
-							</div>
-						))}
-					</div>
-				) : null}
-			</section>
-
-			{/* Ebooks Section */}
-			<section className="flex flex-col gap-4">
-				<ContentSectionHeader title="eBooks em Destaque" href="/community/ebooks" />
-				{isMaterialsLoading ? (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{Array.from({ length: 3 }).map((_, i) => (
-							<div key={`ebook-skeleton-${i.toString()}`} className="space-y-3">
-								<div className="aspect-video w-full rounded-xl bg-muted animate-pulse" />
-								<div className="space-y-2">
-									<div className="h-5 w-3/4 bg-muted rounded animate-pulse" />
-									<div className="h-4 w-full bg-muted rounded animate-pulse" />
-								</div>
-							</div>
-						))}
-					</div>
-				) : null}
-				{!isMaterialsLoading && featuredEbooks.length === 0 ? (
-					<EmptyContentPlaceholder icon={BookText} title="Nada por aqui por enquanto :(" description="Em breve teremos eBooks disponíveis." />
-				) : null}
-				{!isMaterialsLoading && featuredEbooks.length > 0 ? (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{featuredEbooks.map((material) => (
-							<div key={material.id} className="rounded-xl border border-border/15 bg-card p-4 shadow-2xs">
-								<h3 className="text-sm font-bold tracking-tight line-clamp-2">{material.titulo}</h3>
-								<p className="mt-1 text-xs text-muted-foreground line-clamp-3">{material.descricao}</p>
-								<a href={`/community/ebooks/${material.id}`} className="mt-3 inline-flex text-xs font-medium text-foreground hover:text-foreground/80">
 									Ver detalhes
 								</a>
 							</div>

@@ -1,7 +1,7 @@
 "use client";
 
-import type { TCreateCommunityCourseInput, TGetCommunityCoursesOutputDefault } from "@/app/api/admin/community/courses/route";
-import type { TCreateCommunityMaterialInput, TGetCommunityMaterialsOutputDefault } from "@/app/api/admin/community/materials/route";
+import type { TGetCommunityCoursesOutputDefault } from "@/app/api/admin/community/courses/route";
+import type { TGetCommunityMaterialsOutputDefault } from "@/app/api/admin/community/materials/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { ControlCommunityCourse } from "@/components/Modals/Internal/Courses/ControlCommunityCourse";
@@ -10,13 +10,14 @@ import { ControlCommunityMaterial } from "@/components/Modals/Internal/Materials
 import { NewCommunityMaterial } from "@/components/Modals/Internal/Materials/NewCommunityMaterial";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { useAdminCommunityCourses, useAdminCommunityMaterials } from "@/lib/queries/community-admin";
 import { cn, copyToClipboard } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, Diamond, Eye, FileText, Pencil, Plus, VideoIcon } from "lucide-react";
+import { Copy, Diamond, Eye, FileText, MoreHorizontal, Pencil, Plus, VideoIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -245,14 +246,23 @@ function CommunityMaterialCard({ communityMaterial, handleEditClick }: Community
 						<Pencil className="w-3 min-w-3 h-3 min-h-3" />
 						EDITAR
 					</Button>
-					<Button
-						variant="ghost"
-						className="flex items-center gap-1.5"
-						size="sm"
-						onClick={() => copyToClipboard(`${window.location.origin}/community/materials/${communityMaterial.slug}`)}
-					>
-						<Copy className="w-3 min-w-3 h-3 min-h-3" />
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" className="flex items-center gap-1.5" size="sm" aria-label="Abrir ações do material">
+								<MoreHorizontal className="w-4 min-w-4 h-4 min-h-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-52">
+							<DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/community/materials/${communityMaterial.slug}`)}>
+								<Copy className="w-3 min-w-3 h-3 min-h-3" />
+								LINK DA COMUNIDADE
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/community/materials/${communityMaterial.slug}/download`)}>
+								<Copy className="w-3 min-w-3 h-3 min-h-3" />
+								LINK DE DOWNLOAD
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</div>
 		</div>

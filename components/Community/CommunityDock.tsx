@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatNameAsInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
-import { BookOpen, BookText, FileText, GraduationCap, Home, LogOut, UserPlus } from "lucide-react";
+import { BookOpen, BookText, Home, LogOut, UserPlus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,9 +28,7 @@ type TCommunityDockNavItem = {
 const DOCK_NAV: TCommunityDockNavItem[] = [
 	{ title: "Início", url: "/community", icon: <Home className="size-[18px]" strokeWidth={1.75} />, exact: true },
 	{ title: "Cursos", url: "/community/courses", icon: <BookOpen className="size-[18px]" strokeWidth={1.75} /> },
-	{ title: "eBooks", url: "/community/ebooks", icon: <BookText className="size-[18px]" strokeWidth={1.75} /> },
-	{ title: "Documentos", url: "/community/documents", icon: <FileText className="size-[18px]" strokeWidth={1.75} /> },
-	{ title: "Tutoriais", url: "/community/tutorials", icon: <GraduationCap className="size-[18px]" strokeWidth={1.75} /> },
+	{ title: "Materiais", url: "/community/materials", icon: <BookText className="size-[18px]" strokeWidth={1.75} /> },
 ];
 
 type CommunityDockProps = {
@@ -155,7 +153,7 @@ export function CommunityDock({ user }: CommunityDockProps) {
 								<Link
 									href="/community"
 									className="flex size-9 items-center justify-center rounded-full outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30"
-									aria-label="RecompraFLIX"
+									aria-label="RecompraCRM"
 								>
 									<div className="relative flex size-7 items-center justify-center overflow-hidden rounded-lg bg-[#24549C]">
 										<Image src={RecompraCRMLogo} alt="" fill className="object-cover" aria-hidden />
@@ -163,7 +161,7 @@ export function CommunityDock({ user }: CommunityDockProps) {
 								</Link>
 							</TooltipTrigger>
 							<TooltipContent side="top" className="text-xs">
-								RecompraFLIX
+								RecompraCRM
 							</TooltipContent>
 						</Tooltip>
 					</div>
