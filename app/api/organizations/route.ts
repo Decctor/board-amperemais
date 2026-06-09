@@ -7,17 +7,13 @@ import {
 	DEFAULT_ORGANIZATION_RFM_CONFIG,
 	FREE_TRIAL_DURATION_DAYS,
 } from "@/config";
-import { notifyInternalsOnNewOrganization } from "@/config/internal-coms";
 import {
 	buildOrganizationAccountingDefaults,
 	buildOrganizationPaymentMethodDefaults,
 	RecompraCRMDefaultAccountCharts,
 	RecompraCRMDefaultFinancialAccounts,
-	RecompraCRMDefaultCampaigns,
 	type TOnboardingAccountChartNode,
 	type TOnboardingFinancialAccountNode,
-	getOrganizationNicheByValue,
-	welcomeOrganizationOwnerOnOnboarding,
 } from "@/config/onboarding";
 import { captureServerEvent } from "@/lib/analytics/posthog-server";
 import { appApiHandler } from "@/lib/app-api";
@@ -28,9 +24,6 @@ import { db } from "@/services/drizzle";
 import {
 	authSessions,
 	accountsCharts,
-	campaignSegmentations,
-	campaigns,
-	cashbackPrograms,
 	financialAccounts,
 	organizationMembers,
 	organizations,
@@ -54,6 +47,7 @@ export const CreateOrganizationInputSchema = z.object({
 		configuracao: true,
 		poiQrCodeKioskDataUrl: true,
 		poiQrCodeMobileDataUrl: true,
+		dataOnboardingConclusao: true,
 	}),
 	subscription: z
 		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL"])
@@ -307,42 +301,9 @@ async function createOrganization({
 			valor: DEFAULT_ORGANIZATION_RFM_CONFIG,
 		});
 
-		// 5. Inserting org default cashback program
-		const orgNiche = organization.atuacaoNicho;
-		const orgNicheData = orgNiche ? getOrganizationNicheByValue(orgNiche) : null;
-		if (orgNicheData) {
-			await tx.insert(cashbackPrograms).values({
-				organizacaoId: createdOrgId,
-				ativo: false, // initialize as false to avoid "auto-generating cashback" unintentionally
-				titulo: `Programa de Cashback ${organization.nome}`,
-				descricao: "Nosso programa de fidelidade.",
-				...orgNicheData.cashbackProgramDefault,
-			});
-			console.log("[INFO] [CREATE_ORGANIZATION] Default cashback program created successfully.");
-		}
-
-		// 6. Inserting org default campaigns
-		for (const campaign of RecompraCRMDefaultCampaigns) {
-			const insertedCampaignResponse = await tx
-				.insert(campaigns)
-				.values({
-					organizacaoId: createdOrgId,
-					autorId: sessionUser.id,
-					ativo: true,
-					...campaign.campaign,
-				})
-				.returning({ id: campaigns.id });
-			const insertedCampaignId = insertedCampaignResponse[0]?.id;
-			if (!insertedCampaignId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar campanha.");
-			await tx.insert(campaignSegmentations).values(
-				campaign.campaignSegmentations.map((s) => ({
-					campanhaId: insertedCampaignId,
-					organizacaoId: createdOrgId,
-					segmentacao: s.segmentacao,
-				})),
-			);
-			console.log("[INFO] [CREATE_ORGANIZATION] Default campaigns created successfully.");
-		}
+		// The default cashback program and campaigns are no longer seeded here — they are
+		// configured explicitly by the dedicated onboarding stages (cashback-config and
+		// campaigns-config), which also seed the per-org message templates the campaigns reference.
 
 		// Define organização ativa logo após criação local para evitar sessão órfã em falhas externas.
 		await tx
@@ -362,14 +323,14 @@ async function createOrganization({
 	try {
 		await captureServerEvent({
 			distinctId: sessionUser.id,
-			event: "onboarding_completed",
+			event: "onboarding_organization_created",
 			properties: {
 				organization_id: insertedOrgId,
 				subscription: subscription ?? "FREE-TRIAL",
 			},
 		});
 	} catch (error) {
-		console.error("[WARN] [CREATE_ORGANIZATION] Falha ao capturar evento onboarding_completed:", error);
+		console.error("[WARN] [CREATE_ORGANIZATION] Falha ao capturar evento onboarding_organization_created:", error);
 	}
 
 	if (!subscription || subscription === "FREE-TRIAL") {
@@ -400,35 +361,9 @@ async function createOrganization({
 
 		console.log("[INFO] [CREATE_ORGANIZATION] Free trial period defined successfully.");
 
-		void notifyInternalsOnNewOrganization({
-			organization: {
-				nome: organization.nome,
-				cnpj: organization.cnpj,
-				email: organization.email ?? "NÃO INFORMADO",
-				telefone: organization.telefone ?? "NÃO INFORMADO",
-				atuacaoNicho: organization.atuacaoNicho ?? "NÃO INFORMADO",
-				tamanhoBaseClientes: organization.tamanhoBaseClientes ?? null,
-				plataformasUtilizadas: organization.plataformasUtilizadas ?? "NÃO INFORMADO",
-			},
-			subscription: "FREE-TRIAL",
-		}).catch((err) => console.error("[WARN] [CREATE_ORGANIZATION] Falha ao notificar fundadores:", err));
-
-		void welcomeOrganizationOwnerOnOnboarding({ orgOwner: sessionUser }).catch((err) =>
-			console.error("[WARN] [CREATE_ORGANIZATION] Falha ao enviar boas-vindas ao dono da organização:", err),
-		);
-
-		try {
-			await captureServerEvent({
-				distinctId: sessionUser.id,
-				event: "onboarding_completed_with_trial",
-				properties: {
-					organization_id: insertedOrgId,
-					subscription: "FREE-TRIAL",
-				},
-			});
-		} catch (error) {
-			console.error("[WARN] [CREATE_ORGANIZATION] Falha ao capturar evento onboarding_completed_with_trial:", error);
-		}
+		// Founder notification, owner welcome message and the `onboarding_completed` event are
+		// fired by the onboarding completion endpoint (POST /api/organizations/onboarding), not here —
+		// the org is created at stage 1 but the onboarding is only "done" once the user concludes it.
 
 		return {
 			data: {
@@ -511,37 +446,8 @@ async function createOrganization({
 			.where(eq(organizations.id, insertedOrgId));
 	});
 
-	void notifyInternalsOnNewOrganization({
-		organization: {
-			nome: organization.nome,
-			cnpj: organization.cnpj,
-			email: organization.email || sessionUser.email,
-			telefone: organization.telefone ?? "NÃO INFORMADO",
-			atuacaoNicho: organization.atuacaoNicho ?? "NÃO INFORMADO",
-			tamanhoBaseClientes: organization.tamanhoBaseClientes ?? null,
-			plataformasUtilizadas: organization.plataformasUtilizadas ?? "NÃO INFORMADO",
-		},
-		subscription: `${planName}-${modalityName}`,
-	}).catch((err) => console.error("[WARN] [CREATE_ORGANIZATION] Falha ao notificar fundadores:", err));
-
-	void welcomeOrganizationOwnerOnOnboarding({ orgOwner: sessionUser }).catch((err) =>
-		console.error("[WARN] [CREATE_ORGANIZATION] Falha ao enviar boas-vindas ao dono da organização:", err),
-	);
-
-	try {
-		await captureServerEvent({
-			distinctId: sessionUser.id,
-			event: "onboarding_completed_with_plan",
-			properties: {
-				organization_id: insertedOrgId,
-				subscription: `${planName}-${modalityName}`,
-				plan_name: planName,
-				billing_modality: modalityName,
-			},
-		});
-	} catch (error) {
-		console.error("[WARN] [CREATE_ORGANIZATION] Falha ao capturar evento onboarding_completed_with_plan:", error);
-	}
+	// Founder notification, owner welcome message and the onboarding completion event are fired by
+	// POST /api/organizations/onboarding once the user concludes the flow, not at org creation.
 
 	return {
 		data: {
@@ -590,6 +496,7 @@ const UpdateOrganizationInputSchema = z.object({
 		autorId: true,
 		poiQrCodeKioskDataUrl: true,
 		poiQrCodeMobileDataUrl: true,
+		dataOnboardingConclusao: true,
 	}).partial(),
 	configuracao: UpdateOrganizationConfigSchema,
 });

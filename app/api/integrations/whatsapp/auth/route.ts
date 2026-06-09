@@ -1,9 +1,16 @@
 import { appApiHandler } from "@/lib/app-api";
 import { FacebookOAuth } from "@/lib/authentication/oauth";
+import { persistOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import * as arctic from "arctic";
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-async function getArcticWhatsappRoute(_req: NextRequest) {
+export const WHATSAPP_OAUTH_REDIRECT_COOKIE_NAME = "whatsapp_oauth_redirect";
+
+async function getArcticWhatsappRoute(req: NextRequest) {
+	const cookieStore = await cookies();
+	persistOAuthRedirect(cookieStore, WHATSAPP_OAUTH_REDIRECT_COOKIE_NAME, req.nextUrl.searchParams.get("redirectTo"));
+
 	const state = arctic.generateState();
 	const scopes = ["whatsapp_business_management", "whatsapp_business_messaging"];
 	let url = FacebookOAuth.createAuthorizationURL(state, scopes);

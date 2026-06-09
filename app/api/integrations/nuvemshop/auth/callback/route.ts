@@ -1,9 +1,12 @@
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
+
+import { NUVEMSHOP_OAUTH_REDIRECT_COOKIE_NAME } from "../route";
 
 const NUVEMSHOP_OAUTH_STATE_COOKIE_NAME = "nuvemshop_oauth_state";
 
@@ -30,6 +33,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	const storedState = cookieStore.get(NUVEMSHOP_OAUTH_STATE_COOKIE_NAME)?.value ?? null;
 
 	cookieStore.delete(NUVEMSHOP_OAUTH_STATE_COOKIE_NAME);
+	const redirectPath = consumeOAuthRedirect(cookieStore, NUVEMSHOP_OAUTH_REDIRECT_COOKIE_NAME, "/dashboard/settings?view=integration");
 
 	if (!code || !state || !storedState || state !== storedState) {
 		return NextResponse.json({ error: "Código ou state inválido para conexão com a Nuvem Shop." }, { status: 400 });
@@ -87,7 +91,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		})
 		.where(eq(organizations.id, userOrgId));
 
-	return NextResponse.redirect(new URL(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?view=integration`));
+	return NextResponse.redirect(new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL));
 }
 
 export const runtime = "nodejs";

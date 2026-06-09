@@ -1,9 +1,11 @@
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { persistOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { generateState } from "arctic";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
 const NUVEMSHOP_OAUTH_STATE_COOKIE_NAME = "nuvemshop_oauth_state";
+export const NUVEMSHOP_OAUTH_REDIRECT_COOKIE_NAME = "nuvemshop_oauth_redirect";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
 	const session = await getCurrentSessionUncached();
@@ -14,6 +16,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	if (!clientId) return NextResponse.json({ error: "NUVEMSHOP_CLIENT_ID não configurado." }, { status: 500 });
 
 	const cookieStore = await cookies();
+	persistOAuthRedirect(cookieStore, NUVEMSHOP_OAUTH_REDIRECT_COOKIE_NAME, request.nextUrl.searchParams.get("redirectTo"));
+
 	const state = generateState();
 	const url = new URL(`https://www.nuvemshop.com.br/apps/${clientId}/authorize`);
 	url.searchParams.set("state", state);

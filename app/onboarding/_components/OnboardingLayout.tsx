@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { OnboardingSidebar, type OnboardingStage } from "./OnboardingSidebar";
+import type { TOnboardingStage } from "@/app/onboarding/_lib/stages";
+import { OnboardingSidebar } from "./OnboardingSidebar";
 
 type OnboardingLayoutProps = {
 	children: ReactNode;
-	currentStage: OnboardingStage;
+	currentStage: TOnboardingStage;
 };
 
 export function OnboardingLayout({ children, currentStage }: OnboardingLayoutProps) {

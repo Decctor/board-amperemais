@@ -1,12 +1,15 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { exchangeBlingAuthorizationCode } from "@/lib/data-connectors/bling/client";
+import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import z from "zod";
+
+import { BLING_OAUTH_REDIRECT_COOKIE_NAME } from "../route";
 
 const BLING_OAUTH_STATE_COOKIE_NAME = "bling_oauth_state";
 
@@ -60,6 +63,7 @@ async function completeBlingAuthorizationRoute(request: NextRequest) {
 	const cookieStore = await cookies();
 	const storedState = cookieStore.get(BLING_OAUTH_STATE_COOKIE_NAME)?.value ?? null;
 	cookieStore.delete(BLING_OAUTH_STATE_COOKIE_NAME);
+	const redirectPath = consumeOAuthRedirect(cookieStore, BLING_OAUTH_REDIRECT_COOKIE_NAME, "/dashboard/settings?view=integration");
 
 	const input = CompleteBlingAuthorizationInputSchema.parse({
 		code: request.nextUrl.searchParams.get("code"),
@@ -72,7 +76,7 @@ async function completeBlingAuthorizationRoute(request: NextRequest) {
 
 	try {
 		await completeBlingAuthorization({ input, organizationId });
-		return NextResponse.redirect(new URL(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?view=integration`));
+		return NextResponse.redirect(new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL));
 	} catch (error) {
 		console.error("[BLING_CALLBACK] Não foi possível conectar ao Bling.", error);
 		return NextResponse.json({ error: "Não foi possível conectar ao Bling." }, { status: 400 });

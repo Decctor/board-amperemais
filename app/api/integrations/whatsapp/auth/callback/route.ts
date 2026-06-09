@@ -5,13 +5,17 @@ import {
 	getOrganizationWhatsappPhones,
 	submitMessageTemplateToWhatsappPhone,
 } from "@/app/api/message-templates/_lib";
+import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { db } from "@/services/drizzle";
 import { messageTemplates, type TNewWhatsappConnection, whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema";
 import { campaigns } from "@/services/drizzle/schema/campaigns";
 import { and, eq, isNull } from "drizzle-orm";
 
 import dayjs from "dayjs";
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+
+import { WHATSAPP_OAUTH_REDIRECT_COOKIE_NAME } from "../route";
 
 type TWhatsappIntegrationData = {
 	tipo: "WHATSAPP";
@@ -258,7 +262,9 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 		}
 	}
 
-	return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?view=meta-oauth`);
+	const cookieStore = await cookies();
+	const redirectPath = consumeOAuthRedirect(cookieStore, WHATSAPP_OAUTH_REDIRECT_COOKIE_NAME, "/dashboard/settings?view=meta-oauth");
+	return NextResponse.redirect(new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL));
 }
 
 export const runtime = "nodejs";
