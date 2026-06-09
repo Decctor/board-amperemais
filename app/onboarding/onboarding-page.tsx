@@ -173,6 +173,13 @@ export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 					<SubscriptionPlansStage
 						state={state}
 						handleSelectPlan={(info) => {
+							captureClientEvent({
+								event: "onboarding_plan_selected",
+								controlEvent: "initiate_checkout",
+								properties: {
+									subscription: info,
+								},
+							});
 							updateOrganizationOnboarding({ subscription: info });
 							mutation.mutate({ ...state, subscription: info });
 						}}

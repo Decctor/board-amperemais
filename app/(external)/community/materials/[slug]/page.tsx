@@ -1,29 +1,24 @@
 "use client";
 
+import { CommunityHeader } from "@/components/Community/CommunityHeader";
+import { CommunityPageShell } from "@/components/Community/CommunityPageShell";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getErrorMessage } from "@/lib/errors";
 import { handleDownload } from "@/lib/files-storage";
+import { MATERIAL_TYPE_LABELS } from "@/lib/community-hub";
 import { claimCommunityMaterial } from "@/lib/mutations/community";
 import { usePublicCommunityMaterialBySlug } from "@/lib/queries/community";
 import { useUserSession } from "@/lib/queries/session";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Check, Download, FileSpreadsheet, FileText, Loader2, LockKeyhole, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Check, Download, FileSpreadsheet, FileText, Loader2, Mail, ShieldCheck, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type React from "react";
 import { use, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-
-declare global {
-	interface Window {
-		ctrl?: {
-			track?: (event: string, properties?: Record<string, unknown>) => void;
-			identify?: (userId: string, traits?: Record<string, unknown>) => void;
-		};
-	}
-}
 
 type MaterialPageProps = {
 	params: Promise<{ slug: string }>;
@@ -35,17 +30,6 @@ type FormState = {
 	telefone: string;
 	empresa: string;
 	cargo: string;
-};
-
-const MATERIAL_TYPE_LABELS: Record<string, string> = {
-	EBOOK: "eBook",
-	PLAYBOOK: "Playbook",
-	PLANILHA: "Planilha",
-	TEMPLATE: "Template",
-	GUIA: "Guia",
-	CHECKLIST: "Checklist",
-	INFOGRAFICO: "Infográfico",
-	DOCUMENTO: "Documento",
 };
 
 function trackControl(event: string, properties?: Record<string, unknown>) {
@@ -107,8 +91,8 @@ function getDefaultBenefits(tipo: string) {
 }
 
 function getMaterialIcon(tipo: string) {
-	if (tipo === "PLANILHA") return <FileSpreadsheet className="h-14 w-14 text-[#24549c]" strokeWidth={1.5} />;
-	return <FileText className="h-14 w-14 text-[#24549c]" strokeWidth={1.5} />;
+	if (tipo === "PLANILHA") return <FileSpreadsheet className="size-12 text-primary" strokeWidth={1.5} />;
+	return <FileText className="size-12 text-primary" strokeWidth={1.5} />;
 }
 
 export default function CommunityMaterialPage({ params }: MaterialPageProps) {
@@ -122,7 +106,7 @@ export default function CommunityMaterialPage({ params }: MaterialPageProps) {
 	const metadata = material?.publicMetadata ?? {};
 	const emailWall = metadata.emailWall ?? { ativo: true };
 	const landing = metadata.landing ?? {};
-	const materialLabel = material ? (MATERIAL_TYPE_LABELS[material.tipo] ?? material.tipo) : "Material";
+	const materialLabel = material ? (MATERIAL_TYPE_LABELS[material.tipo as keyof typeof MATERIAL_TYPE_LABELS] ?? material.tipo) : "Material";
 	const benefits = landing.beneficios?.length ? landing.beneficios : material ? getDefaultBenefits(material.tipo) : [];
 	const paraQuem = landing.paraQuem ?? [];
 	const oQueVoceRecebe = landing.oQueVoceRecebe ?? [];
@@ -213,157 +197,150 @@ export default function CommunityMaterialPage({ params }: MaterialPageProps) {
 
 	if (isLoading) {
 		return (
-			<div className="mx-auto w-full max-w-6xl px-5 py-10">
-				<div className="mb-8 space-y-4">
-					<div className="h-6 w-32 animate-pulse rounded-full bg-[#24549c]/10" />
-					<div className="h-12 w-full max-w-2xl animate-pulse rounded-xl bg-muted" />
-					<div className="h-5 w-full max-w-xl animate-pulse rounded-lg bg-muted" />
+			<CommunityPageShell wide className="animate-pulse space-y-6">
+				<div className="h-4 w-48 rounded bg-muted" />
+				<div className="rounded-2xl border border-border bg-card p-6">
+					<div className="grid gap-6 lg:grid-cols-[200px_1fr]">
+						<div className="aspect-[4/5] rounded-xl bg-muted" />
+						<div className="space-y-4">
+							<div className="h-8 w-2/3 rounded bg-muted" />
+							<div className="h-4 w-full rounded bg-muted" />
+							<div className="h-32 rounded-xl bg-muted" />
+						</div>
+					</div>
 				</div>
-				<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
-					<div className="h-[480px] animate-pulse rounded-2xl bg-muted" />
-					<div className="h-[420px] animate-pulse rounded-2xl bg-muted" />
-				</div>
-			</div>
+			</CommunityPageShell>
 		);
 	}
 
 	if (error || !material) {
 		return (
-			<div className="flex min-h-[60vh] items-center justify-center px-5 py-16">
+			<CommunityPageShell wide className="flex min-h-[50vh] items-center justify-center">
 				<div className="flex max-w-md flex-col items-center gap-5 text-center">
 					<div className="flex size-16 items-center justify-center rounded-2xl border border-border bg-card shadow-sm">
 						<FileText className="size-8 text-muted-foreground" strokeWidth={1.5} />
 					</div>
 					<div className="space-y-2">
-						<h1 className="text-2xl font-extrabold tracking-tight text-[#171717]">Material não encontrado</h1>
+						<h1 className="text-2xl font-extrabold tracking-tight">Material não encontrado</h1>
 						<p className="text-sm leading-6 text-muted-foreground">Este material não está disponível ou ainda não foi publicado.</p>
 					</div>
-					<Button asChild variant="outline" className="h-11 rounded-xl px-6">
+					<Button asChild variant="outline" className="rounded-full px-6">
 						<Link href="/community">Voltar para a comunidade</Link>
 					</Button>
 				</div>
-			</div>
+			</CommunityPageShell>
 		);
 	}
 
 	return (
-		<div className="relative overflow-hidden">
-			<div
-				className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(36,84,156,0.14),transparent)]"
-				aria-hidden
+		<CommunityPageShell wide className="flex flex-col gap-8">
+			<CommunityHeader
+				breadcrumbs={[
+					{ label: "Início", href: "/community" },
+					{ label: "Materiais", href: "/community/materials" },
+					{ label: material.titulo },
+				]}
 			/>
 
-			<div className="relative mx-auto w-full max-w-6xl px-5 pb-10 pt-8 md:pt-12">
-				<header className="mb-8 max-w-3xl space-y-4 md:mb-10">
-					<div className="inline-flex items-center gap-2 rounded-full border border-[#24549c]/20 bg-[#24549c]/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#24549c]">
-						{hasEmailWall ? <LockKeyhole className="size-3.5" /> : <Download className="size-3.5" />}
-						{materialLabel} gratuito
+			<article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+				<div className="flex flex-col lg:grid lg:grid-cols-[minmax(180px,220px)_minmax(0,1fr)]">
+					<div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-muted sm:aspect-[4/5] lg:aspect-auto lg:min-h-full">
+						{material.capaUrl ? (
+							<Image src={material.capaUrl} alt={landing.capaAlt || material.titulo} fill sizes="(max-width: 1024px) 220px, 220px" className="object-cover" priority />
+						) : (
+							<div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center">
+								{getMaterialIcon(material.tipo)}
+								<p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{materialLabel}</p>
+							</div>
+						)}
 					</div>
-					<h1 className="text-[2rem] font-extrabold leading-[1.05] tracking-[-0.025em] text-[#171717] md:text-5xl lg:text-[3.25rem]">{headline}</h1>
-					<p className="max-w-2xl text-base leading-relaxed text-[#737373] md:text-lg">{subheadline}</p>
-					{hasEmailWall ? (
-						<ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium text-[#737373]">
-							{["Gratuito", "Para lojistas", "Download imediato"].map((item) => (
-								<li key={item} className="flex items-center gap-1.5">
-									<span className="size-1.5 shrink-0 rounded-full bg-[#ffb900]" aria-hidden />
-									{item}
-								</li>
-							))}
-						</ul>
-					) : null}
-				</header>
 
-				<div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10">
-					<div className="order-2 flex flex-col gap-10 lg:order-1">
-						<div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:items-start">
-							<div className="relative mx-auto aspect-[4/5] w-full max-w-[220px] overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] md:mx-0">
-								{material.capaUrl ? (
-									<Image src={material.capaUrl} alt={landing.capaAlt || material.titulo} fill sizes="220px" className="object-cover" priority />
-								) : (
-									<div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#f5f5f5] p-6 text-center">
-										{getMaterialIcon(material.tipo)}
-										<p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#737373]">{materialLabel}</p>
-									</div>
-								)}
+					<div className="flex flex-col gap-6 border-t border-border p-5 sm:p-6 lg:border-t-0 lg:border-l">
+						<div className="space-y-3">
+							<div className="flex flex-wrap items-center gap-2">
+								<Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-[0.06em]">
+									{materialLabel}
+								</Badge>
+								<span className="text-[11px] font-medium text-muted-foreground">Gratuito</span>
 							</div>
-
-							<div className="space-y-5">
-								<div>
-									<p className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#737373]">O que você recebe</p>
-									<ul className="space-y-3">
-										{benefits.map((benefit) => (
-											<li key={benefit} className="flex gap-3 text-sm leading-6 text-[#171717]/80">
-												<span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#24549c]/10 text-[#24549c]">
-													<Check className="size-3" strokeWidth={2.5} />
-												</span>
-												<span>{benefit}</span>
-											</li>
-										))}
-									</ul>
-								</div>
-								{material.resumo ? <p className="border-t border-[#e5e5e5] pt-5 text-sm leading-6 text-[#737373]">{material.resumo}</p> : null}
-							</div>
+							<h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{headline}</h1>
+							<p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">{subheadline}</p>
 						</div>
 
-						{paraQuem.length > 0 ? (
-							<section className="space-y-3">
-								<h2 className="text-lg font-extrabold tracking-tight text-[#171717]">Para quem é</h2>
-								<ul className="space-y-2">
-									{paraQuem.map((item) => (
-										<li key={item} className="flex gap-3 text-sm leading-6 text-[#171717]/80">
-											<span className="mt-2 size-1.5 shrink-0 rounded-full bg-[#ffb900]" aria-hidden />
-											{item}
-										</li>
-									))}
-								</ul>
-							</section>
-						) : null}
+						<div>
+							<p className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">O que você recebe</p>
+							<ul className="space-y-2.5">
+								{benefits.map((benefit) => (
+									<li key={benefit} className="flex gap-3 text-sm leading-6 text-foreground/85">
+										<span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+											<Check className="size-3" strokeWidth={2.5} />
+										</span>
+										<span>{benefit}</span>
+									</li>
+								))}
+							</ul>
+							{material.resumo ? <p className="mt-4 text-sm leading-6 text-muted-foreground">{material.resumo}</p> : null}
+						</div>
 
-						{oQueVoceRecebe.length > 0 ? (
-							<section className="space-y-3">
-								<h2 className="text-lg font-extrabold tracking-tight text-[#171717]">O que está incluso</h2>
-								<ul className="space-y-2">
-									{oQueVoceRecebe.map((item) => (
-										<li key={item} className="flex gap-3 text-sm leading-6 text-[#171717]/80">
-											<span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#24549c]/10 text-[#24549c]">
-												<Check className="size-3" strokeWidth={2.5} />
-											</span>
-											{item}
-										</li>
-									))}
-								</ul>
-							</section>
-						) : null}
-
-						{landing.descricaoLonga ? (
-							<section className="space-y-3">
-								<h2 className="text-lg font-extrabold tracking-tight text-[#171717]">Sobre este material</h2>
-								<p className="max-w-prose text-sm leading-7 text-[#737373] md:text-base">{landing.descricaoLonga}</p>
-							</section>
-						) : null}
+						<div className="border-t border-border pt-6">
+							<MaterialAccessForm
+								hasEmailWall={hasEmailWall}
+								downloadUrl={downloadUrl}
+								hasDownloaded={hasDownloaded}
+								emailWall={emailWall}
+								form={form}
+								setForm={setForm}
+								visibleFields={visibleFields}
+								isPending={claimMutation.isPending}
+								onSubmit={() => claimMutation.mutate()}
+								onDownload={handleDownloadClick}
+							/>
+						</div>
 					</div>
-
-					<aside className="order-1 lg:order-2 lg:sticky lg:top-8">
-						<ConversionPanel
-							hasEmailWall={hasEmailWall}
-							downloadUrl={downloadUrl}
-							hasDownloaded={hasDownloaded}
-							emailWall={emailWall}
-							form={form}
-							setForm={setForm}
-							visibleFields={visibleFields}
-							isPending={claimMutation.isPending}
-							onSubmit={() => claimMutation.mutate()}
-							onDownload={handleDownloadClick}
-						/>
-					</aside>
 				</div>
-			</div>
-		</div>
+			</article>
+
+			{paraQuem.length > 0 ? (
+				<section className="space-y-3">
+					<h2 className="text-base font-extrabold tracking-tight">Para quem é</h2>
+					<ul className="space-y-2 rounded-xl border border-border bg-card p-5">
+						{paraQuem.map((item) => (
+							<li key={item} className="flex gap-3 text-sm leading-6 text-foreground/85">
+								<span className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
+								{item}
+							</li>
+						))}
+					</ul>
+				</section>
+			) : null}
+
+			{oQueVoceRecebe.length > 0 ? (
+				<section className="space-y-3">
+					<h2 className="text-base font-extrabold tracking-tight">O que está incluso</h2>
+					<ul className="space-y-2 rounded-xl border border-border bg-card p-5">
+						{oQueVoceRecebe.map((item) => (
+							<li key={item} className="flex gap-3 text-sm leading-6 text-foreground/85">
+								<span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+									<Check className="size-3" strokeWidth={2.5} />
+								</span>
+								{item}
+							</li>
+						))}
+					</ul>
+				</section>
+			) : null}
+
+			{landing.descricaoLonga ? (
+				<section className="space-y-3">
+					<h2 className="text-base font-extrabold tracking-tight">Sobre este material</h2>
+					<p className="rounded-xl border border-border bg-card p-5 text-sm leading-7 text-muted-foreground">{landing.descricaoLonga}</p>
+				</section>
+			) : null}
+		</CommunityPageShell>
 	);
 }
 
-type ConversionPanelProps = {
+type MaterialAccessFormProps = {
 	hasEmailWall: boolean;
 	downloadUrl: string | null;
 	hasDownloaded: boolean;
@@ -380,7 +357,7 @@ type ConversionPanelProps = {
 	onDownload: () => void;
 };
 
-function ConversionPanel({
+function MaterialAccessForm({
 	hasEmailWall,
 	downloadUrl,
 	hasDownloaded,
@@ -391,116 +368,103 @@ function ConversionPanel({
 	isPending,
 	onSubmit,
 	onDownload,
-}: ConversionPanelProps) {
-	const panelTitle = downloadUrl ? "MATERIAL LIBERADO" : hasEmailWall ? "PREENCHA OS DADOS PARA LIBERAR O DOWNLOAD" : "BAIXAR MATERIAL";
-
-	const panelDescription = downloadUrl
+}: MaterialAccessFormProps) {
+	const accessLabel = downloadUrl ? "Material liberado" : hasEmailWall ? "Liberar acesso" : "Download";
+	const accessDescription = downloadUrl
 		? emailWall.successMessage || "Seu arquivo está pronto. Baixe agora e salve para consultar quando quiser."
 		: hasEmailWall
 			? "Informe seus dados para liberar o arquivo na hora."
 			: "Clique abaixo para liberar o download.";
 
 	return (
-		<div className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_12px_32px_-12px_rgba(36,84,156,0.18),0_4px_8px_rgba(0,0,0,0.04)]">
-			<div className="border-b border-[#e5e5e5] bg-[#24549c] px-5 py-4">
-				<p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-white/60">{hasEmailWall ? "Acesso exclusivo" : "Download direto"}</p>
-				<h2 className="mt-1 text-xl font-extrabold tracking-tight text-white">{panelTitle}</h2>
+		<div className="space-y-4">
+			<div>
+				<p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{accessLabel}</p>
+				<p className="mt-1 text-sm leading-6 text-muted-foreground">{accessDescription}</p>
 			</div>
 
-			<div className="space-y-4 p-5">
-				<p className="text-sm leading-6 text-[#737373]">{panelDescription}</p>
-
-				{downloadUrl ? (
-					<div className="space-y-3">
-						<Button
-							type="button"
-							className="h-12 w-full rounded-xl bg-[#ffb900] text-[15px] font-extrabold text-[#171717] shadow-[0_6px_14px_-4px_rgba(255,185,0,0.42),0_2px_4px_rgba(0,0,0,0.08)] hover:bg-[#e6a700]"
-							onClick={onDownload}
-						>
-							<Download className="mr-2 size-4" />
-							{hasDownloaded ? "Baixar novamente" : emailWall.unlockedButtonText || "Baixar material"}
-						</Button>
-						<p className="flex items-center justify-center gap-1.5 text-center text-xs text-[#737373]">
-							<ShieldCheck className="size-3.5 text-[#16a34a]" />
-							Link liberado para este acesso
-						</p>
-					</div>
-				) : (
-					<form
-						className="space-y-3"
-						onSubmit={(event) => {
-							event.preventDefault();
-							onSubmit();
-						}}
-					>
+			{downloadUrl ? (
+				<div className="space-y-3">
+					<Button type="button" className="h-11 w-full rounded-full sm:w-auto sm:px-8" onClick={onDownload}>
+						<Download className="mr-2 size-4" />
+						{hasDownloaded ? "Baixar novamente" : emailWall.unlockedButtonText || "Baixar material"}
+					</Button>
+					<p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+						<ShieldCheck className="size-3.5 text-primary" />
+						Link liberado para este acesso
+					</p>
+				</div>
+			) : (
+				<form
+					className="space-y-3"
+					onSubmit={(event) => {
+						event.preventDefault();
+						onSubmit();
+					}}
+				>
+					<ClaimField
+						icon={<Mail className="size-4" />}
+						type="email"
+						label="Email"
+						placeholder="seu@email.com"
+						value={form.email}
+						onChange={(email) => setForm((prev) => ({ ...prev, email }))}
+						required
+						autoComplete="email"
+					/>
+					{visibleFields.includes("nome") ? (
 						<ClaimField
-							icon={<Mail className="size-4" />}
-							type="email"
-							label="Email"
-							placeholder="seu@email.com"
-							value={form.email}
-							onChange={(email) => setForm((prev) => ({ ...prev, email }))}
-							required
-							autoComplete="email"
+							icon={<UserRound className="size-4" />}
+							label="Nome"
+							placeholder="Seu nome"
+							value={form.nome}
+							onChange={(nome) => setForm((prev) => ({ ...prev, nome }))}
+							autoComplete="name"
 						/>
-						{visibleFields.includes("nome") ? (
-							<ClaimField
-								icon={<UserRound className="size-4" />}
-								label="Nome"
-								placeholder="Seu nome"
-								value={form.nome}
-								onChange={(nome) => setForm((prev) => ({ ...prev, nome }))}
-								autoComplete="name"
-							/>
-						) : null}
-						{visibleFields.includes("telefone") ? (
-							<ClaimField
-								label="Telefone"
-								placeholder="Seu telefone"
-								value={form.telefone}
-								onChange={(telefone) => setForm((prev) => ({ ...prev, telefone }))}
-								autoComplete="tel"
-							/>
-						) : null}
-						{visibleFields.includes("empresa") ? (
-							<ClaimField
-								label="Empresa"
-								placeholder="Nome da loja ou empresa"
-								value={form.empresa}
-								onChange={(empresa) => setForm((prev) => ({ ...prev, empresa }))}
-								autoComplete="organization"
-							/>
-						) : null}
-						{visibleFields.includes("cargo") ? (
-							<ClaimField label="Cargo" placeholder="Seu cargo" value={form.cargo} onChange={(cargo) => setForm((prev) => ({ ...prev, cargo }))} />
-						) : null}
+					) : null}
+					{visibleFields.includes("telefone") ? (
+						<ClaimField
+							label="Telefone"
+							placeholder="Seu telefone"
+							value={form.telefone}
+							onChange={(telefone) => setForm((prev) => ({ ...prev, telefone }))}
+							autoComplete="tel"
+						/>
+					) : null}
+					{visibleFields.includes("empresa") ? (
+						<ClaimField
+							label="Empresa"
+							placeholder="Nome da loja ou empresa"
+							value={form.empresa}
+							onChange={(empresa) => setForm((prev) => ({ ...prev, empresa }))}
+							autoComplete="organization"
+						/>
+					) : null}
+					{visibleFields.includes("cargo") ? (
+						<ClaimField label="Cargo" placeholder="Seu cargo" value={form.cargo} onChange={(cargo) => setForm((prev) => ({ ...prev, cargo }))} />
+					) : null}
 
-						<Button
-							type="submit"
-							disabled={isPending}
-							className="h-12 w-full rounded-xl bg-[#ffb900] text-[15px] font-extrabold text-[#171717] shadow-[0_6px_14px_-4px_rgba(255,185,0,0.42),0_2px_4px_rgba(0,0,0,0.08)] hover:bg-[#e6a700] disabled:opacity-70"
-						>
-							{isPending ? (
-								<>
-									<Loader2 className="mr-2 size-4 animate-spin" />
-									Liberando...
-								</>
-							) : (
-								<>
-									{emailWall.claimButtonText || (hasEmailWall ? "LIBERAR DOWNLOAD" : "BAIXAR AGORA")}
-									<ArrowRight className="ml-2 size-4" />
-								</>
-							)}
-						</Button>
+					<Button type="submit" disabled={isPending} className="h-11 w-full rounded-full sm:w-auto sm:px-8">
+						{isPending ? (
+							<>
+								<Loader2 className="mr-2 size-4 animate-spin" />
+								Liberando...
+							</>
+						) : (
+							<>
+								{emailWall.claimButtonText || (hasEmailWall ? "Liberar download" : "Baixar agora")}
+								<ArrowRight className="ml-2 size-4" />
+							</>
+						)}
+					</Button>
 
-						{hasEmailWall ? (
-							<p className="text-xs leading-5 text-[#737373]">
-								Usaremos seu email para enviar conteúdos sobre varejo, CRM e recompra. Você pode cancelar quando quiser.
-							</p>
-						) : null}
-					</form>
-				)}
-			</div>
+					{hasEmailWall ? (
+						<p className="text-xs leading-5 text-muted-foreground">
+							Usaremos seu email para enviar conteúdos sobre varejo, CRM e recompra. Você pode cancelar quando quiser.
+						</p>
+					) : null}
+				</form>
+			)}
 		</div>
 	);
 }
@@ -528,12 +492,12 @@ function ClaimField({
 
 	return (
 		<div className="space-y-1.5">
-			<label htmlFor={fieldId} className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#737373]">
+			<label htmlFor={fieldId} className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
 				{label}
 			</label>
 			<div className="relative">
 				{icon ? (
-					<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#737373]" aria-hidden>
+					<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden>
 						{icon}
 					</span>
 				) : null}
@@ -545,10 +509,7 @@ function ClaimField({
 					autoComplete={autoComplete}
 					onChange={(event) => onChange(event.target.value)}
 					placeholder={placeholder}
-					className={cn(
-						"h-11 rounded-lg border-[#e5e5e5] bg-white text-sm text-[#171717] placeholder:text-[#737373]/70 focus-visible:border-[#24549c] focus-visible:ring-[3px] focus-visible:ring-[#24549c]/15",
-						icon ? "pl-10" : "",
-					)}
+					className={cn("h-11 rounded-xl bg-background", icon ? "pl-10" : "")}
 				/>
 			</div>
 		</div>

@@ -45,7 +45,7 @@ export function CourseContentOutline({ courseId, sections, activeLessonId, compl
 							</div>
 						</CollapsibleTrigger>
 						<CollapsibleContent>
-							<div className="flex flex-col gap-0.5 pl-2 ml-3 border-l border-border">
+							<div className="ml-2 flex flex-col gap-0.5 pl-3">
 								{section.aulas?.map((lesson) => {
 									const isActive = lesson.id === activeLessonId;
 									const isCompleted = completedLessonIds?.has(lesson.id) ?? false;
@@ -62,7 +62,7 @@ export function CourseContentOutline({ courseId, sections, activeLessonId, compl
 											)}
 										>
 											{isCompleted ? (
-												<CheckCircle className="w-3.5 h-3.5 min-w-3.5 min-h-3.5 text-emerald-500" />
+												<CheckCircle className="w-3.5 h-3.5 min-w-3.5 min-h-3.5 text-primary" />
 											) : (
 												<LessonIcon className="w-3.5 h-3.5 min-w-3.5 min-h-3.5 shrink-0" />
 											)}

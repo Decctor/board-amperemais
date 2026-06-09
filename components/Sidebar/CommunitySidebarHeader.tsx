@@ -13,7 +13,7 @@ export default function CommunitySidebarHeader() {
 						<Image src={RecompraCRMLogo} alt="RecompraCRM Logo" fill className="object-cover" />
 					</div>
 					<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-						<span className="truncate font-bold">RecompraFLIX</span>
+						<span className="truncate font-bold">RecompraCRM</span>
 					</div>
 				</Link>
 			</SidebarMenuItem>

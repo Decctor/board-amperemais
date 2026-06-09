@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import { MarketingTrackingScript } from "@/components/Marketing/MarketingTrackingScript";
 import ProvidersWrapper from "@/components/Providers/Wrapper";
 import { cn } from "@/lib/utils";
 import { GoogleTagManager } from "@next/third-parties/google";
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 					{children}
 					<Toaster />
 				</ProvidersWrapper>
+				<MarketingTrackingScript />
 				<Analytics />
 				<GoogleTagManager gtmId="GTM-KHTDGQL4" />
 			</body>

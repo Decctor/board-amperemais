@@ -28,6 +28,7 @@ function SignUpPage() {
 								action={async (formData) => {
 									captureClientEvent({
 										event: "signup_started",
+										controlEvent: "lead",
 										properties: {
 											auth_method: "email",
 										},

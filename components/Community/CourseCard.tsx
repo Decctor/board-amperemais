@@ -18,8 +18,8 @@ export function CourseCard({ course }: CourseCardProps) {
 	const AccessIcon = accessConfig.icon;
 
 	return (
-		<Link href={`/community/courses/${course.id}`} className="block group h-full">
-			<Card className="h-full overflow-hidden border-border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-border">
+		<Link href={`/community/courses/${course.id}`} className="group block h-full">
+			<Card className="h-full overflow-hidden border-border shadow-sm transition-all duration-300 hover:-translate-y-px hover:border-border hover:shadow-md">
 				<div className="relative aspect-video overflow-hidden bg-muted">
 					{course.thumbnailUrl ? (
 						<Image src={course.thumbnailUrl} alt={course.titulo} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />

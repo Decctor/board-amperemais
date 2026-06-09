@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image, { type StaticImageData } from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Reveal } from "./_primitives/Reveal";
@@ -7,6 +6,7 @@ import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
 import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
 import NuvemshopLogo from "@/utils/images/integrations/nuvemshop-logo.png";
 import OnlineSoftwareLogo from "@/utils/images/integrations/online-software-logo.png";
+import { TrackedAnchor, TrackedLink } from "./TrackedLink";
 
 const HERO_TRUST = ["Sem cartão de crédito", "Configuração simples", "Suporte humano"];
 
@@ -63,19 +63,24 @@ export function LedgerHero() {
 					{/* CTAs + trust */}
 					<div className="ledger-fade mt-5 w-full sm:mt-6 lg:mt-7" style={{ "--i": 8 } as React.CSSProperties} data-stagger>
 						<div className="flex flex-wrap items-center justify-center gap-3">
-							<Link
+							<TrackedLink
 								href="/auth/signup"
+								event="landing_cta_clicked"
+								controlEvent="lead"
+								properties={{ cta_id: "hero_testar_15_dias", location: "hero" }}
 								className="group inline-flex items-center gap-2 bg-[#24549c] hover:bg-[#1a3d7a] text-white px-6 py-3 rounded-2xl text-[13px] font-extrabold tracking-[0.04em] uppercase shadow-[0_16px_40px_-12px_rgba(36,84,156,0.45),0_6px_12px_rgba(36,84,156,0.22)] hover:shadow-[0_22px_48px_-10px_rgba(36,84,156,0.55),0_8px_16px_rgba(36,84,156,0.28)] hover:-translate-y-0.5 transition-all duration-200 sm:px-7 sm:py-3.5 sm:text-[14px]"
 							>
 								Testar 15 dias grátis
 								<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-							</Link>
-							<a
+							</TrackedLink>
+							<TrackedAnchor
 								href="#como-funciona"
+								event="landing_cta_clicked"
+								properties={{ cta_id: "hero_ver_como_funciona", location: "hero" }}
 								className="inline-flex items-center gap-2 bg-white hover:bg-[#f5f8fd] border border-[#e5e5e5] hover:border-[#24549c]/30 text-[#171717] px-5 py-3 rounded-2xl text-[13px] font-bold tracking-[0.02em] transition-all duration-200 sm:px-6 sm:py-3.5 sm:text-[14px]"
 							>
 								Ver como funciona
-							</a>
+							</TrackedAnchor>
 						</div>
 
 						<ul className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[12px] font-semibold text-[#171717]/50 sm:gap-x-5 sm:text-[13px]">

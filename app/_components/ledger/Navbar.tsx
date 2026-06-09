@@ -90,6 +90,7 @@ export function LedgerNavbar() {
 						onClick={() =>
 							captureClientEvent({
 								event: "landing_cta_clicked",
+								controlEvent: "contact",
 								properties: { cta_id: "navbar_agendar_demo", location: "navbar" },
 							})
 						}

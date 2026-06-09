@@ -6,20 +6,20 @@ export const ACCESS_CONFIG = {
 	PUBLICO: {
 		icon: Globe,
 		label: "Público",
-		badgeClassName: "bg-emerald-500 hover:bg-emerald-600 border-transparent text-white",
-		textClassName: "text-emerald-600",
+		badgeClassName: "border border-primary/20 bg-primary/10 text-primary",
+		textClassName: "text-primary",
 	},
 	AUTENTICADO: {
 		icon: Lock,
 		label: "Login necessário",
-		badgeClassName: "bg-blue-500 hover:bg-blue-600 border-transparent text-white",
-		textClassName: "text-blue-600",
+		badgeClassName: "border-0 bg-primary text-primary-foreground",
+		textClassName: "text-primary",
 	},
 	ASSINATURA: {
 		icon: Sparkles,
 		label: "Assinatura",
-		badgeClassName: "bg-purple-500 hover:bg-purple-600 border-transparent text-white",
-		textClassName: "text-purple-600",
+		badgeClassName: "border-0 bg-brand text-brand-foreground",
+		textClassName: "text-foreground",
 	},
 } as const;
 
