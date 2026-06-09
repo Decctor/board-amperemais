@@ -3,6 +3,7 @@
 import AdminOrganizationPreferencesBlock from "@/components/Modals/Organizations/Blocks/Preferences";
 import AdminOrganizationResourcesBlock from "@/components/Modals/Organizations/Blocks/Resources";
 import AdminOrganizationSummaryBlock from "@/components/Modals/Organizations/Blocks/Summary";
+import AdminOrganizationTrialPeriodBlock from "@/components/Modals/Organizations/Blocks/TrialPeriod";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
 import { updateOrganization as updateOrganizationMutation } from "@/lib/mutations/admin";
@@ -27,7 +28,7 @@ export function AdminControlOrganization({ organizationId, closeModal, callbacks
 	const queryClient = useQueryClient();
 	const { data: organization, isLoading, isError, error } = useOrganizationById({ id: organizationId });
 
-	const { state, updateConfigurationResources, updateConfigurationPreferencias, redefineState } = useOrganizationBaseState();
+	const { state, updateOrganization, updateConfigurationResources, updateConfigurationPreferencias, redefineState } = useOrganizationBaseState();
 
 	const { mutate: handleUpdateOrganizationMutation, isPending } = useMutation({
 		mutationKey: ["update-organization", organizationId],
@@ -73,6 +74,7 @@ export function AdminControlOrganization({ organizationId, closeModal, callbacks
 			{organization && !isLoading && !stateError ? (
 				<>
 					<AdminOrganizationSummaryBlock organization={state.organization} />
+					<AdminOrganizationTrialPeriodBlock organization={state.organization} updateOrganization={updateOrganization} />
 					<AdminOrganizationResourcesBlock recursos={state.organization.configuracao.recursos} updateResource={updateConfigurationResources} />
 					<AdminOrganizationPreferencesBlock
 						preferencias={state.organization.configuracao.preferencias}

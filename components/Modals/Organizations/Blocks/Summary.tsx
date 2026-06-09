@@ -3,10 +3,10 @@
 import DetailField from "@/components/Modals/Finances/Blocks/DetailField";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { CHIP_XS_ICON_CLASS, Chip } from "@/components/ui/chip";
-import { formatDateAsLocale, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import { formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { TOrganizationBaseState } from "@/state-hooks/use-organization-state";
-import { Building2, Calendar, Mail, MapPin, Phone, Receipt } from "lucide-react";
+import { Building2, Mail, MapPin, Phone, Receipt } from "lucide-react";
 
 type AdminOrganizationSummaryBlockProps = {
 	organization: TOrganizationBaseState["organization"];
@@ -29,14 +29,6 @@ function formatLocation(organization: TOrganizationBaseState["organization"]) {
 
 export default function AdminOrganizationSummaryBlock({ organization }: AdminOrganizationSummaryBlockProps) {
 	const location = formatLocation(organization);
-	const trialLabel =
-		organization.periodoTesteInicio && organization.periodoTesteFim
-			? `${formatDateAsLocale(organization.periodoTesteInicio)} — ${formatDateAsLocale(organization.periodoTesteFim)}`
-			: organization.periodoTesteInicio
-				? `Início em ${formatDateAsLocale(organization.periodoTesteInicio)}`
-				: organization.periodoTesteFim
-					? `Fim em ${formatDateAsLocale(organization.periodoTesteFim)}`
-					: null;
 
 	return (
 		<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<Building2 className="h-4 w-4 min-h-4 min-w-4" />}>
@@ -77,14 +69,6 @@ export default function AdminOrganizationSummaryBlock({ organization }: AdminOrg
 						<span className="flex items-start gap-1.5 text-sm font-medium break-words">
 							<MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 							{location}
-						</span>
-					</DetailField>
-				) : null}
-				{trialLabel ? (
-					<DetailField label="Período de teste">
-						<span className="flex items-center gap-1.5 text-sm font-medium">
-							<Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-							{trialLabel}
 						</span>
 					</DetailField>
 				) : null}
