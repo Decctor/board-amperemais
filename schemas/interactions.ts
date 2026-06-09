@@ -18,6 +18,7 @@ export const InteractionMetadataSchema = z.object({
 	cashbackTotalResgatadoVida: z.number().optional(),
 	cashbackExpirandoValor: z.number().optional(),
 	cashbackExpirandoData: z.string().optional(),
+	cashbackExpirandoJanela: z.string().optional(),
 	whatsappMensagemId: z.string().optional().nullable(),
 	whatsappMessageId: z.string().optional().nullable(),
 	whatsappTemplateId: z.string().optional().nullable(),

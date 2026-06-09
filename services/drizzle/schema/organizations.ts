@@ -1,4 +1,9 @@
-import type { TOrganizationConfiguration, TOrganizationIntegrationConfig, TOrganizationMemberPermissions, TOrganizationFiscalConfig } from "@/schemas/organizations";
+import type {
+	TOrganizationConfiguration,
+	TOrganizationIntegrationConfig,
+	TOrganizationMemberPermissions,
+	TOrganizationFiscalConfig,
+} from "@/schemas/organizations";
 import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
@@ -28,7 +33,7 @@ export const organizations = newTable("organizations", {
 	tamanhoBaseClientes: integer("tamanho_base_clientes"),
 	plataformasUtilizadas: text("plataformas_utilizadas"), // Shopify, WooCommerce, Magento, etc (separated by comma)
 	origemLead: text("origem_lead"), // How did you hear about us? (Instagram, Google, Linkedin, etc)
-
+	dataOnboardingConclusao: timestamp("data_onboarding_conclusao"),
 	// Stripe
 	stripeCustomerId: text("stripe_customer_id"),
 	stripeSubscriptionId: text("stripe_subscription_id"),

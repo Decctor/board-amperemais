@@ -28,6 +28,7 @@ export function getTriggerDefaultsPatch(value: TCampaignTriggerTypeEnum, current
 			gatilhoTotalCashbackAcumuladoValorMinimo: null,
 			gatilhoCashbackExpirandoAntecedenciaValor: null,
 			gatilhoCashbackExpirandoAntecedenciaMedida: null,
+			gatilhoCashbackExpirandoValorMinimo: null,
 			gatilhoQuantidadeTotalCompras: null,
 			gatilhoValorTotalCompras: null,
 			recorrenciaTipo: null,
@@ -53,6 +54,7 @@ export function getTriggerDefaultsPatch(value: TCampaignTriggerTypeEnum, current
 			gatilhoTempoPermanenciaValor: null,
 			gatilhoNovoCashbackAcumuladoValorMinimo: null,
 			gatilhoTotalCashbackAcumuladoValorMinimo: null,
+			gatilhoCashbackExpirandoValorMinimo: current.gatilhoCashbackExpirandoValorMinimo || 10,
 			gatilhoQuantidadeTotalCompras: null,
 			gatilhoValorTotalCompras: null,
 			recorrenciaTipo: null,
@@ -77,6 +79,7 @@ export function getTriggerDefaultsPatch(value: TCampaignTriggerTypeEnum, current
 			gatilhoTotalCashbackAcumuladoValorMinimo: null,
 			gatilhoCashbackExpirandoAntecedenciaValor: null,
 			gatilhoCashbackExpirandoAntecedenciaMedida: null,
+			gatilhoCashbackExpirandoValorMinimo: null,
 			gatilhoQuantidadeTotalCompras: null,
 			gatilhoValorTotalCompras: null,
 		};
@@ -92,14 +95,11 @@ export function getTriggerDefaultsPatch(value: TCampaignTriggerTypeEnum, current
 		recorrenciaDiasMes: null,
 		// clear specific fields tied to other triggers; keep ones that match.
 		...(value !== "NOVA-COMPRA" && value !== "PRIMEIRA-COMPRA" ? { gatilhoNovaCompraValorMinimo: null } : {}),
-		...(value !== "PERMANÊNCIA-SEGMENTAÇÃO"
-			? { gatilhoTempoPermanenciaMedida: null, gatilhoTempoPermanenciaValor: null }
-			: {}),
-		...(value !== "CASHBACK-ACUMULADO"
-			? { gatilhoNovoCashbackAcumuladoValorMinimo: null, gatilhoTotalCashbackAcumuladoValorMinimo: null }
-			: {}),
+		...(value !== "PERMANÊNCIA-SEGMENTAÇÃO" ? { gatilhoTempoPermanenciaMedida: null, gatilhoTempoPermanenciaValor: null } : {}),
+		...(value !== "CASHBACK-ACUMULADO" ? { gatilhoNovoCashbackAcumuladoValorMinimo: null, gatilhoTotalCashbackAcumuladoValorMinimo: null } : {}),
 		gatilhoCashbackExpirandoAntecedenciaValor: null,
 		gatilhoCashbackExpirandoAntecedenciaMedida: null,
+		gatilhoCashbackExpirandoValorMinimo: null,
 		...(value !== "QUANTIDADE-TOTAL-COMPRAS" ? { gatilhoQuantidadeTotalCompras: null } : {}),
 		...(value !== "VALOR-TOTAL-COMPRAS" ? { gatilhoValorTotalCompras: null } : {}),
 	};

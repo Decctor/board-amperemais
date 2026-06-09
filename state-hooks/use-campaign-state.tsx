@@ -69,6 +69,7 @@ export function useCampaignState() {
 			gatilhoTipo: "NOVA-COMPRA",
 			gatilhoCashbackExpirandoAntecedenciaValor: null,
 			gatilhoCashbackExpirandoAntecedenciaMedida: null,
+			gatilhoCashbackExpirandoValorMinimo: null,
 			recorrenciaTipo: null,
 			recorrenciaIntervalo: 1,
 			recorrenciaDiasSemana: null,

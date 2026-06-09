@@ -89,6 +89,7 @@ export const MessageTemplateVariableExampleValues: Record<string, string> = {
 	cashbackLifetimeRedeemed: "R$ 138,00",
 	cashbackExpiringAmount: "R$ 10,00",
 	cashbackExpiringDate: "27/05/2026",
+	cashbackExpiringWindow: "nos próximos 7 dias",
 };
 
 export function getDefaultMessageTemplateVariableExample(identifier: string) {

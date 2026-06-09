@@ -15,6 +15,17 @@ import { NextRequest, NextResponse } from "next/server";
 const DEFAULT_CASHBACK_EXPIRING_ANTECEDENCIA_VALOR = 3;
 const DEFAULT_CASHBACK_EXPIRING_ANTECEDENCIA_MEDIDA: TTimeDurationUnitsEnum = "DIAS";
 
+function formatCashbackExpiringWindow(value: number, measure: TTimeDurationUnitsEnum) {
+	const labels: Record<TTimeDurationUnitsEnum, { singular: string; plural: string }> = {
+		DIAS: { singular: "dia", plural: "dias" },
+		SEMANAS: { singular: "semana", plural: "semanas" },
+		MESES: { singular: "mês", plural: "meses" },
+		ANOS: { singular: "ano", plural: "anos" },
+	};
+	const label = value === 1 ? labels[measure].singular : labels[measure].plural;
+	return `nos próximos ${value} ${label}`;
+}
+
 /**
  * Helper function to check if a campaign can be scheduled for a client based on frequency rules
  */
@@ -64,7 +75,7 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 			columns: { id: true },
 		});
 
-		const today = dayjs().toDate();
+		const today = dayjs().startOf("day").toDate();
 
 		for (const organization of organizationsList) {
 			console.log(`[ORG: ${organization.id}] Processing organization...`);
@@ -116,7 +127,8 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 					}
 
 					const dayjsUnit = DASTJS_TIME_DURATION_UNITS_MAP[effectiveAntecedenciaMedida] || "day";
-					const soonDate = dayjs().add(effectiveAntecedenciaValor, dayjsUnit).toDate();
+					const windowEndDate = dayjs().add(effectiveAntecedenciaValor, dayjsUnit).endOf("day").toDate();
+					const cashbackExpiringWindow = formatCashbackExpiringWindow(effectiveAntecedenciaValor, effectiveAntecedenciaMedida);
 
 					const expiringSoonTransactions = await tx.query.cashbackProgramTransactions.findMany({
 						where: (fields, { and, eq, gt, lte }) =>
@@ -126,7 +138,7 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 								eq(fields.status, "ATIVO"),
 								gt(fields.valorRestante, 0),
 								gt(fields.expiracaoData, today),
-								lte(fields.expiracaoData, soonDate),
+								lte(fields.expiracaoData, windowEndDate),
 							),
 					});
 
@@ -134,31 +146,22 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 						`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${expiringSoonTransactions.length} transactions expiring within ${effectiveAntecedenciaValor} ${effectiveAntecedenciaMedida}.`,
 					);
 
-					const cashbackByClient = new Map<string, { totalExpiring: number; relevantExpirationDate: Date | null; highestExpiringValue: number }>();
+					const cashbackByClient = new Map<string, { totalExpiring: number; windowEndDate: Date }>();
 
 					for (const transaction of expiringSoonTransactions) {
 						const current = cashbackByClient.get(transaction.clienteId);
-						const relevantExpirationDate = transaction.expiracaoData ? new Date(transaction.expiracaoData) : null;
 
 						if (!current) {
 							cashbackByClient.set(transaction.clienteId, {
 								totalExpiring: transaction.valorRestante,
-								relevantExpirationDate,
-								highestExpiringValue: transaction.valorRestante,
+								windowEndDate,
 							});
 							continue;
 						}
 
-						const shouldUpdateRelevantDate =
-							transaction.valorRestante > current.highestExpiringValue ||
-							(transaction.valorRestante === current.highestExpiringValue &&
-								relevantExpirationDate &&
-								(!current.relevantExpirationDate || relevantExpirationDate < current.relevantExpirationDate));
-
 						cashbackByClient.set(transaction.clienteId, {
 							totalExpiring: current.totalExpiring + transaction.valorRestante,
-							relevantExpirationDate: shouldUpdateRelevantDate ? relevantExpirationDate : current.relevantExpirationDate,
-							highestExpiringValue: shouldUpdateRelevantDate ? transaction.valorRestante : current.highestExpiringValue,
+							windowEndDate,
 						});
 					}
 
@@ -186,6 +189,9 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 					const clientBalanceMap = new Map(clientBalances.map((b) => [b.clienteId, b]));
 
 					for (const [clienteId, cashbackInfo] of cashbackByClient.entries()) {
+						const minimumExpiringValue = campaign.gatilhoCashbackExpirandoValorMinimo ?? 0;
+						if (minimumExpiringValue > 0 && cashbackInfo.totalExpiring < minimumExpiringValue) continue;
+
 						const canSchedule = await canScheduleCampaignForClient(
 							tx,
 							clienteId,
@@ -207,9 +213,8 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 						const interactionContextMetadados = {
 							terminologia: cashbackTerminology,
 							cashbackExpirandoValor: cashbackInfo.totalExpiring,
-							cashbackExpirandoData: cashbackInfo.relevantExpirationDate
-								? (formatDateAsLocale(cashbackInfo.relevantExpirationDate) ?? undefined)
-								: undefined,
+							cashbackExpirandoData: formatDateAsLocale(cashbackInfo.windowEndDate) ?? undefined,
+							cashbackExpirandoJanela: cashbackExpiringWindow,
 							cashbackSaldoDisponivel: clientBalance?.saldoValorDisponivel ?? 0,
 							cashbackTotalAcumuladoVida: clientBalance?.saldoValorAcumuladoTotal ?? 0,
 							cashbackTotalResgatadoVida: clientBalance?.saldoValorResgatadoTotal ?? 0,

@@ -291,29 +291,41 @@ const getClientsRoute = async (req: NextRequest) => {
 	return NextResponse.json(result);
 };
 
-const CreateClientEntityInputSchema = ClientSchema.omit({
-	organizacaoId: true,
-	dataInsercao: true,
-}).extend({
-	dataNascimento: z.coerce
-		.date({
+const ClientNonEditableFieldsOmit = {
+	primeiraCompraData: true,
+	primeiraCompraId: true,
+	ultimaCompraData: true,
+	ultimaCompraId: true,
+	analiseRFMTitulo: true,
+	analiseRFMNotasRecencia: true,
+	analiseRFMNotasFrequencia: true,
+	analiseRFMNotasMonetario: true,
+	analiseRFMUltimaAtualizacao: true,
+	dataSincronizacaoExterna: true,
+} as const;
+
+const ClientEditableDateInputSchema = {
+	dataNascimento: z
+		.string({
 			invalid_type_error: "Tipo não válido para data de nascimento.",
 		})
 		.optional()
-		.nullable(),
-	dataFundacao: z.coerce
-		.date({
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+	dataFundacao: z
+		.string({
 			invalid_type_error: "Tipo nao valido para data de fundacao.",
 		})
 		.optional()
-		.nullable(),
-	dataSincronizacaoExterna: z.coerce
-		.date({
-			invalid_type_error: "Tipo nao valido para data de sincronizacao externa.",
-		})
-		.optional()
-		.nullable(),
-});
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+};
+
+const CreateClientEntityInputSchema = ClientSchema.omit({
+	organizacaoId: true,
+	dataInsercao: true,
+	...ClientNonEditableFieldsOmit,
+}).extend(ClientEditableDateInputSchema);
 
 const CreateClientInputSchema = z.object({
 	client: CreateClientEntityInputSchema,
@@ -404,26 +416,8 @@ const createClientRoute = async (req: NextRequest) => {
 const UpdateClientEntityInputSchema = ClientSchema.omit({
 	organizacaoId: true,
 	dataInsercao: true,
-}).extend({
-	dataNascimento: z.coerce
-		.date({
-			invalid_type_error: "Tipo não válido para data de nascimento.",
-		})
-		.optional()
-		.nullable(),
-	dataFundacao: z.coerce
-		.date({
-			invalid_type_error: "Tipo nao valido para data de fundacao.",
-		})
-		.optional()
-		.nullable(),
-	dataSincronizacaoExterna: z.coerce
-		.date({
-			invalid_type_error: "Tipo nao valido para data de sincronizacao externa.",
-		})
-		.optional()
-		.nullable(),
-});
+	...ClientNonEditableFieldsOmit,
+}).extend(ClientEditableDateInputSchema);
 const UpdateClientInputSchema = z.object({
 	clientId: z.string({
 		required_error: "ID do cliente não informado.",

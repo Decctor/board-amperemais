@@ -348,6 +348,7 @@ type TRecompraCRMDefaultCampaign = {
 		gatilhoTotalCashbackAcumuladoValorMinimo: TNewCampaignEntity["gatilhoTotalCashbackAcumuladoValorMinimo"];
 		gatilhoCashbackExpirandoAntecedenciaValor: TNewCampaignEntity["gatilhoCashbackExpirandoAntecedenciaValor"];
 		gatilhoCashbackExpirandoAntecedenciaMedida: TNewCampaignEntity["gatilhoCashbackExpirandoAntecedenciaMedida"];
+		gatilhoCashbackExpirandoValorMinimo: TNewCampaignEntity["gatilhoCashbackExpirandoValorMinimo"];
 		gatilhoQuantidadeTotalCompras: TNewCampaignEntity["gatilhoQuantidadeTotalCompras"];
 		gatilhoValorTotalCompras: TNewCampaignEntity["gatilhoValorTotalCompras"];
 		execucaoAgendadaMedida: TNewCampaignEntity["execucaoAgendadaMedida"];
@@ -384,6 +385,7 @@ export const RecompraCRMDefaultCampaigns: TRecompraCRMDefaultCampaign[] = [
 			gatilhoTotalCashbackAcumuladoValorMinimo: null,
 			gatilhoCashbackExpirandoAntecedenciaValor: null,
 			gatilhoCashbackExpirandoAntecedenciaMedida: null,
+			gatilhoCashbackExpirandoValorMinimo: null,
 			gatilhoTempoPermanenciaMedida: null,
 			gatilhoTempoPermanenciaValor: null,
 			recorrenciaTipo: null,
@@ -453,6 +455,7 @@ export const RecompraCRMDefaultCampaigns: TRecompraCRMDefaultCampaign[] = [
 			gatilhoTotalCashbackAcumuladoValorMinimo: null,
 			gatilhoCashbackExpirandoAntecedenciaValor: null,
 			gatilhoCashbackExpirandoAntecedenciaMedida: null,
+			gatilhoCashbackExpirandoValorMinimo: null,
 			gatilhoTempoPermanenciaMedida: null,
 			gatilhoTempoPermanenciaValor: null,
 			recorrenciaTipo: null,
@@ -522,6 +525,7 @@ export const RecompraCRMDefaultCampaigns: TRecompraCRMDefaultCampaign[] = [
 			gatilhoTotalCashbackAcumuladoValorMinimo: null,
 			gatilhoCashbackExpirandoAntecedenciaValor: null,
 			gatilhoCashbackExpirandoAntecedenciaMedida: null,
+			gatilhoCashbackExpirandoValorMinimo: null,
 			gatilhoTempoPermanenciaMedida: null,
 			gatilhoTempoPermanenciaValor: null,
 			recorrenciaTipo: null,
@@ -591,6 +595,7 @@ export const RecompraCRMDefaultCampaigns: TRecompraCRMDefaultCampaign[] = [
 			gatilhoTotalCashbackAcumuladoValorMinimo: null,
 			gatilhoCashbackExpirandoAntecedenciaValor: null,
 			gatilhoCashbackExpirandoAntecedenciaMedida: null,
+			gatilhoCashbackExpirandoValorMinimo: null,
 			gatilhoTempoPermanenciaMedida: null,
 			gatilhoTempoPermanenciaValor: null,
 			recorrenciaTipo: null,
