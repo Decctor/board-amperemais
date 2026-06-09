@@ -79,7 +79,7 @@ export function useCampaignState() {
 			execucaoAgendadaDirecao: "DEPOIS",
 			execucaoAgendadaBloco: "06:00",
 			whatsappTemplateId: "",
-			whatsappConexaoTelefoneId: "",
+			whatsappConexaoTelefoneId: null,
 			permitirRecorrencia: true,
 			frequenciaIntervaloValor: 0,
 			frequenciaIntervaloMedida: "DIAS",
