@@ -1,6 +1,5 @@
 "use client";
 
-import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { getErrorMessage } from "@/lib/errors";
@@ -16,10 +15,11 @@ import { Check, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import CheckoutPanel from "./components/CheckoutPanel";
-import CompositionPanel from "./components/CompositionPanel";
 import ProductBuilderModal from "./components/ProductBuilderModal";
+import CategoriesBar from "./components/composition/CategoriesBar";
 import PaginationBlock from "./components/composition/PaginationBlock";
 import ProductsGridBlock from "./components/composition/ProductsGridBlock";
+import SearchBlock from "./components/composition/SearchBlock";
 
 function mapItemsToApi(saleState: TUseSaleState) {
 	return saleState.state.itens.map((item) => ({
@@ -227,50 +227,33 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 
 	return (
 		<div className="w-full h-[calc(100vh-8rem)] flex gap-4 p-4">
-			<div className="hidden lg:block w-64 shrink-0">
-				{groupsLoading ? (
-					<LoadingComponent />
-				) : (
-					<CompositionPanel
-						groups={groupsData?.groups ?? []}
-						selectedGroup={selectedGroup}
-						onGroupSelect={handleGroupSelect}
-						searchValue={searchValue}
-						onSearchChange={handleSearchChange}
-						isLoading={productsLoading}
-					/>
-				)}
-			</div>
-
-			<div className="flex-1 min-w-0 flex flex-col gap-4 overflow-y-auto pr-1 pb-20 lg:pb-0">
-				<div className="lg:hidden shrink-0">
-					<CompositionPanel
-						groups={groupsData?.groups ?? []}
-						selectedGroup={selectedGroup}
-						onGroupSelect={handleGroupSelect}
-						searchValue={searchValue}
-						onSearchChange={handleSearchChange}
-						isLoading={productsLoading}
-					/>
+			<div className="flex-1 min-w-0 flex flex-col gap-4">
+				<div className="shrink-0 flex flex-col gap-3">
+					<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
+					{groupsLoading ? null : (
+						<CategoriesBar groups={groupsData?.groups ?? []} selectedGroup={selectedGroup} onGroupSelect={handleGroupSelect} isLoading={productsLoading} />
+					)}
 				</div>
 
-				<ProductsGridBlock
-					productsData={productsData}
-					isLoading={productsLoading}
-					isError={productsError}
-					error={productsErrorData}
-					onProductClick={handleProductClick}
-				/>
-
-				{productsData ? (
-					<PaginationBlock
-						currentPage={productsData.currentPage}
-						totalPages={productsData.totalPages}
+				<div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto pr-1 pb-20 lg:pb-0">
+					<ProductsGridBlock
+						productsData={productsData}
 						isLoading={productsLoading}
-						onPrevious={() => updateFilters({ page: Math.max(1, filters.page - 1) })}
-						onNext={() => updateFilters({ page: Math.min(productsData.totalPages, filters.page + 1) })}
+						isError={productsError}
+						error={productsErrorData}
+						onProductClick={handleProductClick}
 					/>
-				) : null}
+
+					{productsData ? (
+						<PaginationBlock
+							currentPage={productsData.currentPage}
+							totalPages={productsData.totalPages}
+							isLoading={productsLoading}
+							onPrevious={() => updateFilters({ page: Math.max(1, filters.page - 1) })}
+							onNext={() => updateFilters({ page: Math.min(productsData.totalPages, filters.page + 1) })}
+						/>
+					) : null}
+				</div>
 			</div>
 
 			<div className="hidden lg:block w-[420px] shrink-0 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">

@@ -150,6 +150,7 @@ async function getCampaignInteractions({ input, session }: { input: TGetCampaign
 			dataEnvio: true,
 			statusEnvio: true,
 			erroEnvio: true,
+			metadados: true,
 		},
 		with: {
 			campanha: {

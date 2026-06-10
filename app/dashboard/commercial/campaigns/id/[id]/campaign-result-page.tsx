@@ -5,6 +5,7 @@ import type { TGetConversionQualityOutput } from "@/app/api/campaigns/stats/conv
 import { CampaignConversionCard, CONVERSION_TYPE_CONFIG } from "@/components/Campaigns/CampaignConversionCard";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import ClientHoverCard from "@/components/Clients/ClientHoverCard";
+import { InteractionCard } from "@/components/Interactions/InteractionCard";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
@@ -31,7 +32,6 @@ import dayjs from "dayjs";
 import {
 	ArrowLeft,
 	BadgeDollarSign,
-	Calendar,
 	CalendarCheck,
 	CalendarClock,
 	CircleCheck,
@@ -87,11 +87,7 @@ const ATTRIBUTION_MODEL_LABELS: Record<string, string> = {
 	LINEAR: "Linear",
 };
 
-const INTERACTION_SENT_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
-	AGENDADA: { label: "Agendada", bgClass: "bg-gray-400", textClass: "text-gray-600 dark:text-gray-400" },
-	EXECUTADA: { label: "Executada", bgClass: "bg-green-500", textClass: "text-green-600 dark:text-green-400" },
-};
-export default function CampaignResultPage({ campaignId, membership, user: _user }: CampaignResultPageProps) {
+export default function CampaignResultPage({ campaignId, membership: _membership, user: _user }: CampaignResultPageProps) {
 	const initialStartDate = dayjs().startOf("month").toDate();
 	const initialEndDate = dayjs().endOf("month").toDate();
 
@@ -638,11 +634,6 @@ function InteractionsSection({ campaignId }: { campaignId: string }) {
 	const interactionsMatched = interactionsResult?.interactionsMatched ?? 0;
 	const totalPages = interactionsResult?.totalPages ?? 0;
 
-	const interactionSentStatusOptions = Object.entries(INTERACTION_SENT_STATUS_CONFIG).map(([key, val]) => ({
-		key,
-		label: val.label,
-		bgClass: val.bgClass,
-	}));
 	return (
 		<div className={cn("bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs")}>
 			<div className="flex items-center justify-between">
@@ -728,78 +719,81 @@ function InteractionLogCard({ interaction }: { interaction: TGetCampaignInteract
 	const executionDateText = interaction.dataExecucao ? formatDateAsLocale(interaction.dataExecucao, true) : "Não executada";
 
 	return (
-		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs">
-			<div className="w-full flex flex-col gap-0.5">
-				<div className="w-full flex items-center justify-between gap-2">
-					<div className="flex items-center gap-3 flex-wrap">
-						<ClientHoverCard clientId={interaction.cliente.id}>
-							<div className="flex items-center gap-1.5 bg-secondary rounded-xl px-3 py-1.5 cursor-pointer">
-								<UserRound className="w-4 h-4 min-w-4 min-h-4" />
-								<p className="text-[0.65rem] font-medium tracking-tight uppercase">{interaction.cliente.nome ?? "NÃO INFORMADO"}</p>
-							</div>
-						</ClientHoverCard>
-					</div>
-					<div className="flex items-center gap-3">
-						{interaction.erroEnvio ? (
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-red-500 text-white">
-											<CircleX className="w-4 min-w-4 h-4 min-h-4" />
-											<p className="text-[0.65rem] font-medium tracking-tight">FALHOU</p>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent>
-										<p className="text-xs font-medium tracking-tight text-red-500">{interaction.erroEnvio}</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						) : null}
-						<div
-							className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", {
-								"bg-blue-500 text-white": executionStatus === "AGENDADA",
-								"bg-green-500 text-white": executionStatus === "EXECUTADA",
-							})}
-						>
-							<CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
-							<p className="text-xs font-bold tracking-tight uppercase">{executionStatus}</p>
+		<InteractionCard.Provider interaction={interaction}>
+			<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs">
+				<div className="w-full flex flex-col gap-0.5">
+					<div className="w-full flex items-center justify-between gap-2">
+						<div className="flex items-center gap-3 flex-wrap">
+							<ClientHoverCard clientId={interaction.cliente.id}>
+								<div className="flex items-center gap-1.5 bg-secondary rounded-xl px-3 py-1.5 cursor-pointer">
+									<UserRound className="w-4 h-4 min-w-4 min-h-4" />
+									<p className="text-[0.65rem] font-medium tracking-tight uppercase">{interaction.cliente.nome ?? "NÃO INFORMADO"}</p>
+								</div>
+							</ClientHoverCard>
 						</div>
-						{interaction.erroEnvio && !interaction.dataExecucao ? (
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={() => handleRetryInteraction()}
-								disabled={retryIsPending}
-								className="h-7 text-[0.65rem] font-semibold"
+						<div className="flex items-center gap-3">
+							<InteractionCard.DataForNerds />
+							{interaction.erroEnvio ? (
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div className="flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-red-500 text-white">
+												<CircleX className="w-4 min-w-4 h-4 min-h-4" />
+												<p className="text-[0.65rem] font-medium tracking-tight">FALHOU</p>
+											</div>
+										</TooltipTrigger>
+										<TooltipContent>
+											<p className="text-xs font-medium tracking-tight text-red-500">{interaction.erroEnvio}</p>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+							) : null}
+							<div
+								className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold", {
+									"bg-blue-500 text-white": executionStatus === "AGENDADA",
+									"bg-green-500 text-white": executionStatus === "EXECUTADA",
+								})}
 							>
-								<RefreshCw className={cn("w-3.5 h-3.5 min-w-3.5 min-h-3.5", { "animate-spin": retryIsPending })} />
-								{retryIsPending ? "REENVIANDO..." : "TENTAR NOVAMENTE"}
-							</Button>
+								<CircleCheck className="w-4 min-w-4 h-4 min-h-4" />
+								<p className="text-xs font-bold tracking-tight uppercase">{executionStatus}</p>
+							</div>
+							{interaction.erroEnvio && !interaction.dataExecucao ? (
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() => handleRetryInteraction()}
+									disabled={retryIsPending}
+									className="h-7 text-[0.65rem] font-semibold"
+								>
+									<RefreshCw className={cn("w-3.5 h-3.5 min-w-3.5 min-h-3.5", { "animate-spin": retryIsPending })} />
+									{retryIsPending ? "REENVIANDO..." : "TENTAR NOVAMENTE"}
+								</Button>
+							) : null}
+						</div>
+					</div>
+					{interaction.descricao && <p className="text-xs font-medium tracking-tight text-muted-foreground">{interaction.descricao}</p>}
+				</div>
+				<div className="w-full flex items-center justify-end gap-2 flex-wrap">
+					<div className="flex items-center gap-2">
+						<div className="flex items-center gap-1">
+							<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />
+							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
+								AGENDADO PARA: {scheduleDateText} ({scheduleBlockText})
+							</h1>
+						</div>
+						{interaction.dataExecucao ? (
+							<div
+								className={cn("flex items-center gap-1", {
+									"text-green-500 dark:text-green-400": !!interaction.dataExecucao,
+								})}
+							>
+								<CalendarCheck className="w-4 h-4 min-w-4 min-h-4" />
+								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">{executionDateText}</h1>
+							</div>
 						) : null}
 					</div>
 				</div>
-				{interaction.descricao && <p className="text-xs font-medium tracking-tight text-muted-foreground">{interaction.descricao}</p>}
 			</div>
-			<div className="w-full flex items-center justify-end gap-2 flex-wrap">
-				<div className="flex items-center gap-2">
-					<div className="flex items-center gap-1">
-						<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">
-							AGENDADO PARA: {scheduleDateText} ({scheduleBlockText})
-						</h1>
-					</div>
-					{interaction.dataExecucao ? (
-						<div
-							className={cn("flex items-center gap-1", {
-								"text-green-500 dark:text-green-400": !!interaction.dataExecucao,
-							})}
-						>
-							<CalendarCheck className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">{executionDateText}</h1>
-						</div>
-					) : null}
-				</div>
-			</div>
-		</div>
+		</InteractionCard.Provider>
 	);
 }

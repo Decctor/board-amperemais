@@ -1,19 +1,18 @@
 "use client";
-import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import type { TGetCampaignsInput, TGetCampaignsOutputDefault } from "@/app/api/campaigns/route";
 import CampaignsBySegmentation from "@/components/Campaigns/CampaignsBySegmentation";
 import CampaignsFunnel from "@/components/Campaigns/CampaignsFunnel";
 import CampaignsGraphs from "@/components/Campaigns/CampaignsGraphs";
 import CampaignsRanking from "@/components/Campaigns/CampaignsRanking";
 import { CampaignStatsConversionsBlock } from "@/components/Campaigns/CampaignStatsConversionsBlock";
-import ClientHoverCard from "@/components/Clients/ClientHoverCard";
+import { InteractionCard } from "@/components/Interactions/InteractionCard";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
-import { CHIP_XS_ICON_CLASS, Chip } from "@/components/ui/chip";
+import { Chip } from "@/components/ui/chip";
 import { InteractiveFilter, type InteractiveFilterOption, type InteractiveFilterSortValue } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { StatBadge } from "@/components/ui/stat-badge";
@@ -21,11 +20,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { retryCampaignInteraction } from "@/lib/mutations/campaigns";
+import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useCampaignInteractionsLogs, useCampaignStatsOverall, useCampaigns, useConversionQuality } from "@/lib/queries/campaigns";
 import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
 	AlertTriangle,
@@ -33,8 +30,6 @@ import {
 	BadgeDollarSign,
 	Calendar,
 	CircleCheck,
-	CircleX,
-	Clock,
 	Coins,
 	Database,
 	Grid3x3,
@@ -48,30 +43,30 @@ import {
 	SparklesIcon,
 	TrendingUp,
 	UserPlus,
-	UserRound,
-	UserRoundCheck,
 	Zap,
 	Eye,
-	CalendarCheck,
 	MessageCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { cloneElement, isValidElement, useMemo, useState } from "react";
-import { toast } from "sonner";
-import { BsCalendarPlus } from "react-icons/bs";
+import { useMemo, useState } from "react";
 import CommunicationTemplatesPage from "@/app/dashboard/communication/_components/communication-templates-page";
 import { CampaignTriggerTypeOptions, InteractionsSentStatusOptions } from "@/utils/select-options";
 import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import TestCampaign from "@/components/Modals/Campaigns/TestCampaign";
 import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
-import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary, formatInteractiveSortFieldSummary, isInteractiveSortActive } from "@/lib/interactive-filter-formatting";
+import {
+	formatInteractiveDateRangeSummary,
+	formatInteractiveOptionSummary,
+	formatInteractiveSortFieldSummary,
+	isInteractiveSortActive,
+} from "@/lib/interactive-filter-formatting";
 type CampaignsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
 };
-export default function CampaignsPage({ user, membership }: CampaignsPageProps) {
+export default function CampaignsPage({ membership }: CampaignsPageProps) {
 	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "database", "interactions", "templates"]));
 
 	return (
@@ -413,7 +408,30 @@ function CampaignsInteractionsView() {
 			{isSuccess ? (
 				<div className="w-full flex flex-col gap-1.5">
 					{interactionsItems.length > 0 ? (
-						interactionsItems.map((interaction) => <CampaignInteractionLogCard key={interaction.id} interaction={interaction} />)
+						interactionsItems.map((interaction) => (
+							<InteractionCard.Provider key={interaction.id} interaction={interaction}>
+								<InteractionCard.Frame>
+									<InteractionCard.Body>
+										<InteractionCard.Header>
+											<InteractionCard.Leading>
+												<InteractionCard.CampaignTitle />
+												<InteractionCard.ClientChip />
+											</InteractionCard.Leading>
+											<InteractionCard.Actions>
+												<InteractionCard.DataForNerds />
+												<InteractionCard.RetryButton />
+												<InteractionCard.SentStatus />
+											</InteractionCard.Actions>
+										</InteractionCard.Header>
+										<InteractionCard.Description />
+									</InteractionCard.Body>
+									<InteractionCard.Footer>
+										<InteractionCard.CreatedAt />
+										<InteractionCard.ScheduleStatus />
+									</InteractionCard.Footer>
+								</InteractionCard.Frame>
+							</InteractionCard.Provider>
+						))
 					) : (
 						<p className="w-full flex items-center justify-center">Nenhuma interação encontrada</p>
 					)}
@@ -529,108 +547,6 @@ function CampaignInteractionSortFilter<TField extends string>({
 	);
 }
 
-function CampaignInteractionLogCard({ interaction }: { interaction: TGetCampaignInteractionsOutputItems[number] }) {
-	const queryClient = useQueryClient();
-	const { mutate: handleRetryInteraction, isPending: retryIsPending } = useMutation({
-		mutationKey: ["retry-campaign-interaction", interaction.id],
-		mutationFn: async () => await retryCampaignInteraction({ interactionId: interaction.id }),
-		onSuccess: async (response) => {
-			toast.success(response.message);
-			await queryClient.invalidateQueries({ queryKey: ["campaign-interactions-logs"] });
-		},
-		onError: (error) => {
-			toast.error(getErrorMessage(error));
-		},
-	});
-	const scheduleDateText = interaction.agendamentoDataReferencia ? dayjs(interaction.agendamentoDataReferencia).format("DD/MM/YYYY") : "Não definido";
-	const scheduleBlockText = interaction.agendamentoBlocoReferencia ?? "--:--";
-	const executionDateText = interaction.dataExecucao ? formatDateAsLocale(interaction.dataExecucao, true) : "Não executada";
-	const sentStatusConfig = useMemo(() => {
-		return InteractionsSentStatusOptions.find((status) => status.value === interaction.statusEnvio);
-	}, [interaction.statusEnvio]);
-
-	return (
-		<div className={cn("bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
-			<div className="w-full flex flex-col gap-0.5">
-				<div className="w-full flex items-center justify-between gap-2">
-					<div className="flex items-center gap-3">
-						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{interaction.campanha?.titulo ?? "CAMPANHA NÃO ENCONTRADA"}</h1>
-						<ClientHoverCard clientId={interaction.cliente.id}>
-							<Chip.Root variant="secondary" size="md" shape="xl" className="cursor-pointer">
-								<Chip.Icon>
-									<UserRound className="w-4 h-4 min-w-4 min-h-4" />
-								</Chip.Icon>
-								<Chip.Label caps>{interaction.cliente.nome ?? "NÃO INFORMADO"}</Chip.Label>
-							</Chip.Root>
-						</ClientHoverCard>
-					</div>
-					<div className="flex items-center gap-3">
-						{interaction.erroEnvio && !interaction.dataExecucao ? (
-							<Button size="sm" variant="ghost" onClick={() => handleRetryInteraction()} disabled={retryIsPending} className="flex items-center gap-1.5">
-								<RefreshCw
-									className={cn("w-4 h-4 min-w-4 min-h-4", {
-										"animate-spin": retryIsPending,
-									})}
-								/>
-								{retryIsPending ? "REENVIANDO..." : "TENTAR NOVAMENTE"}
-							</Button>
-						) : null}
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Chip.Root variant="ghost" size="xs" shape="md" className={cn(sentStatusConfig?.className, "border-none")}>
-										<Chip.Icon>
-											{sentStatusConfig?.icon && isValidElement(sentStatusConfig.icon)
-												? cloneElement(sentStatusConfig.icon, {
-														className: cn(CHIP_XS_ICON_CLASS, sentStatusConfig.icon.props.className),
-													})
-												: sentStatusConfig?.icon}
-										</Chip.Icon>
-										<Chip.Label caps weight="bold">
-											{sentStatusConfig?.label}
-										</Chip.Label>
-									</Chip.Root>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p className="text-xs font-medium tracking-tight">{sentStatusConfig?.message(interaction.erroEnvio || undefined)}</p>
-								</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					</div>
-				</div>
-				<p className="text-xs font-medium tracking-tight text-muted-foreground">{interaction.descricao}</p>
-			</div>
-			<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-				<div className="flex items-center gap-2">
-					<div className="flex items-center gap-1.5">
-						<BsCalendarPlus className="w-4 h-4 min-w-4 min-h-4" />
-						<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic">DATA DE CRIAÇÃO: {formatDateAsLocale(interaction.dataInsercao, true)}</h1>
-					</div>
-				</div>
-				<div className="flex items-center gap-2">
-					{interaction.dataExecucao ? (
-						<Chip.Root variant="success" size="md" shape="pill">
-							<Chip.Icon>
-								<CalendarCheck className="w-4 h-4 min-w-4 min-h-4" />
-							</Chip.Icon>
-							<Chip.Label className="block py-0.5 text-center italic font-medium leading-tight">{executionDateText}</Chip.Label>
-						</Chip.Root>
-					) : (
-						<Chip.Root variant="secondary" size="md" shape="pill" className="px-2 py-1 sm:px-3 sm:py-1.5">
-							<Chip.Icon>
-								<Calendar className="w-4 h-4 min-w-4 min-h-4" />
-							</Chip.Icon>
-							<Chip.Label className="block py-0.5 text-center italic font-medium leading-tight">
-								AGENDADO PARA: {scheduleDateText} ({scheduleBlockText})
-							</Chip.Label>
-						</Chip.Root>
-					)}
-				</div>
-			</div>
-		</div>
-	);
-}
-
 function CampaignsStatsView() {
 	const initialStartDate = dayjs().startOf("month");
 	const initialEndDate = dayjs().endOf("month");
@@ -648,7 +564,7 @@ function CampaignsStatsView() {
 		startDate: initialStartDate.subtract(1, "month").toDate(),
 		endDate: initialEndDate.subtract(1, "month").toDate(),
 	});
-	const { data: analytics, isLoading } = useCampaignStatsOverall({
+	const { data: analytics } = useCampaignStatsOverall({
 		startDate: filters.startDate ?? undefined,
 		endDate: filters.endDate ?? undefined,
 	});

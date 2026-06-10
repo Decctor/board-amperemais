@@ -697,6 +697,11 @@ export const AppRoutes = [
 		description: "Listagem das vendas realizadas",
 	},
 	{
+		path: "/dashboard/commercial/sales/new-sale",
+		title: "Nova Venda",
+		description: "Cadastro de nova venda.",
+	},
+	{
 		path: "/dashboard/commercial/segments",
 		title: "Segmentações",
 		description: "Visualização da matriz RFM de clientes.",
