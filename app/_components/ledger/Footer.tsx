@@ -13,7 +13,7 @@ const FOOTER_GROUPS = [
 			{ label: "Como funciona", href: "#como-funciona" },
 			{ label: "Resultado real", href: "#movimento" },
 			{ label: "Planos", href: "#saldo" },
-			{ label: "Parcerias", href: "#parcerias" },
+			{ label: "Parcerias", href: "/programa-de-parceiros" },
 		],
 	},
 	{

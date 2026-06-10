@@ -20,7 +20,7 @@ export default function LandingPage() {
 				<LedgerCase />
 				<LedgerFeatures />
 				<LedgerPricing />
-				{/* <LedgerPartnershipProgram /> */}
+				<LedgerPartnershipProgram />
 				<LedgerClosingCTA />
 			</main>
 			<LedgerFooter />
