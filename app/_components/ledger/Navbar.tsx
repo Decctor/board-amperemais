@@ -9,12 +9,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-const ANCHOR_LINKS = [
+const ANCHOR_LINKS: { label: string; href: string; isRoute?: boolean }[] = [
 	{ label: "Como funciona", href: "#como-funciona" },
 	{ label: "Resultado", href: "#movimento" },
 	{ label: "Funcionalidades", href: "#inventario" },
 	{ label: "Planos", href: "#saldo" },
-	{ label: "Parcerias", href: "#parcerias" },
+	{ label: "Parcerias", href: "/programa-de-parceiros", isRoute: true },
 ];
 
 export function LedgerNavbar() {
@@ -64,16 +64,22 @@ export function LedgerNavbar() {
 					<Image src={LogoHorizontalTextBlack} alt="RecompraCRM" fill className="object-contain object-left" priority />
 				</Link>
 				<nav className="hidden md:flex items-center gap-7">
-					{ANCHOR_LINKS.map((link) => (
-						<a
-							key={link.href}
-							href={isHomePage ? link.href : `/${link.href}`}
-							onClick={(e) => handleAnchorClick(e, link.href, false)}
-							className="text-[13px] font-bold text-[#171717]/75 hover:text-[#24549c] transition-colors"
-						>
-							{link.label}
-						</a>
-					))}
+					{ANCHOR_LINKS.map((link) =>
+						link.isRoute ? (
+							<Link key={link.href} href={link.href} className="text-[13px] font-bold text-[#171717]/75 hover:text-[#24549c] transition-colors">
+								{link.label}
+							</Link>
+						) : (
+							<a
+								key={link.href}
+								href={isHomePage ? link.href : `/${link.href}`}
+								onClick={(e) => handleAnchorClick(e, link.href, false)}
+								className="text-[13px] font-bold text-[#171717]/75 hover:text-[#24549c] transition-colors"
+							>
+								{link.label}
+							</a>
+						),
+					)}
 					<Link href="/blog" className="text-[13px] font-bold text-[#171717]/75 hover:text-[#24549c] transition-colors">
 						Blog
 					</Link>
@@ -108,16 +114,27 @@ export function LedgerNavbar() {
 			{mobileOpen && (
 				<div className="md:hidden mx-3 mt-2 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_16px_40px_-16px_rgba(36,84,156,0.28),0_4px_10px_rgba(0,0,0,0.06)]">
 					<div className="flex flex-col gap-1 px-4 py-4">
-						{ANCHOR_LINKS.map((link) => (
-							<a
-								key={link.href}
-								href={isHomePage ? link.href : `/${link.href}`}
-								onClick={(e) => handleAnchorClick(e, link.href, true)}
-								className="text-[14px] font-bold text-[#171717] py-2.5 rounded-lg hover:bg-[#f7f9fc] px-3"
-							>
-								{link.label}
-							</a>
-						))}
+						{ANCHOR_LINKS.map((link) =>
+							link.isRoute ? (
+								<Link
+									key={link.href}
+									href={link.href}
+									onClick={() => setMobileOpen(false)}
+									className="text-[14px] font-bold text-[#171717] py-2.5 rounded-lg hover:bg-[#f7f9fc] px-3"
+								>
+									{link.label}
+								</Link>
+							) : (
+								<a
+									key={link.href}
+									href={isHomePage ? link.href : `/${link.href}`}
+									onClick={(e) => handleAnchorClick(e, link.href, true)}
+									className="text-[14px] font-bold text-[#171717] py-2.5 rounded-lg hover:bg-[#f7f9fc] px-3"
+								>
+									{link.label}
+								</a>
+							),
+						)}
 						<Link
 							href="/blog"
 							onClick={() => setMobileOpen(false)}

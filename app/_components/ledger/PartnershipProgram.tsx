@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Reveal } from "./_primitives/Reveal";
 
 const PARTNER_LOGIN_HREF = "/auth/signin?redirectTo=%2Fpartner-dashboard";
+const PARTNER_PROGRAM_HREF = "/programa-de-parceiros";
 
 const COMMISSION_ROWS = [
 	{
@@ -79,10 +80,10 @@ export function LedgerPartnershipProgram() {
 
 							<div className="ledger-fade mt-8 flex flex-col gap-3 sm:flex-row" style={{ "--i": 9 } as React.CSSProperties} data-stagger>
 								<Link
-									href={PARTNER_LOGIN_HREF}
+									href={PARTNER_PROGRAM_HREF}
 									className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-[#24549c] px-6 py-4 text-[14px] font-extrabold uppercase tracking-[0.04em] text-white shadow-[0_16px_40px_-12px_rgba(36,84,156,0.38),0_6px_12px_rgba(36,84,156,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1a3d7a]"
 								>
-									Entrar no programa
+									Conhecer o programa
 									<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
 								</Link>
 								<Link
