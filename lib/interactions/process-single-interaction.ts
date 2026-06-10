@@ -58,7 +58,11 @@ export async function processSingleInteractionImmediately(params: TProcessSingle
 				return { success: false, error: reservationResult.message ?? "Interacao bloqueada por limite semanal." };
 			}
 		}
-
+		console.log("[IMMEDIATE_PROCESS] Sending reserved interaction:", {
+			interactionId,
+			organizationId,
+			campaignId: interaction.campanhaId,
+		});
 		const sendResult = await sendReservedInteraction({
 			...params,
 		});

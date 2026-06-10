@@ -372,6 +372,7 @@ export async function sendReservedInteraction(
 							templatePayload: payload,
 							whatsappToken,
 						});
+						console.log("[SEND_RESERVED_INTERACTION] WhatsApp template sent successfully:", sentWhatsappTemplateResponse);
 						whatsappMessageId = sentWhatsappTemplateResponse.whatsappMessageId;
 					}
 				} else if (whatsappSessionId) {
@@ -451,6 +452,7 @@ export async function sendReservedInteraction(
 						},
 					},
 				);
+				console.log("[SEND_RESERVED_INTERACTION] Email sent successfully:", emailResult);
 				emailMessageId = (emailResult.data as { id?: string } | null | undefined)?.id;
 			} catch (error) {
 				channelErrors.EMAIL = error instanceof Error ? error.message : "Falha desconhecida no e-mail.";
