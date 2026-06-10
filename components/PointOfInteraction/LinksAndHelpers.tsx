@@ -1,5 +1,5 @@
 import { TAuthUserSession } from "@/lib/authentication/types";
-import { Copy, ExternalLink, QrCode } from "lucide-react";
+import { BookOpen, Copy, ExternalLink, QrCode } from "lucide-react";
 import { Button } from "../ui/button";
 import { copyToClipboard } from "@/lib/utils";
 import Link from "next/link";
@@ -105,6 +105,21 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 						<Link href={`/point-of-interaction-display/${organization.id}`} target="_blank">
 							<ExternalLink className="w-4 h-4" />
 							ABRIR DISPLAY
+						</Link>
+					</Button>
+				</div>
+			</div>
+
+			<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-border">
+				<h1 className="text-xs font-medium tracking-tight uppercase">PLAYBOOK DE USO</h1>
+				<p className="text-[0.65rem] text-muted-foreground mb-2">
+					Guia passo a passo (A4, imprimível em PDF) dos fluxos kiosk e mobile para treinar a equipe.
+				</p>
+				<div className="w-full flex items-center justify-center">
+					<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
+						<Link href={`/point-of-interaction-playbook/${organization.id}`} target="_blank">
+							<BookOpen className="w-4 h-4" />
+							ABRIR PLAYBOOK
 						</Link>
 					</Button>
 				</div>
