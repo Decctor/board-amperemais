@@ -33,6 +33,7 @@ export const organizations = newTable("organizations", {
 	tamanhoBaseClientes: integer("tamanho_base_clientes"),
 	plataformasUtilizadas: text("plataformas_utilizadas"), // Shopify, WooCommerce, Magento, etc (separated by comma)
 	origemLead: text("origem_lead"), // How did you hear about us? (Instagram, Google, Linkedin, etc)
+	// Marks the moment the deep onboarding flow was concluded. Null = onboarding in progress (dashboard is gated, user is bounced back).
 	dataOnboardingConclusao: timestamp("data_onboarding_conclusao"),
 	// Stripe
 	stripeCustomerId: text("stripe_customer_id"),

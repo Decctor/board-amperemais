@@ -23,6 +23,8 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 	const user = await getCurrentSession();
 	if (!user) redirect("/auth/signin");
 	if (!user.membership) redirect("/onboarding");
+	// Org exists but the deep onboarding flow was not concluded yet — bounce the user back to finish it.
+	if (!user.membership.organizacao.dataOnboardingConclusao) redirect("/onboarding");
 	return (
 		<SidebarProvider className="font-raleway">
 			<AppSidebar user={user.user} organization={user.membership.organizacao} />

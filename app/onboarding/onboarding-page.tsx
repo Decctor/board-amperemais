@@ -3,231 +3,275 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
-import { createOrganization } from "@/lib/mutations/organizations";
+import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
+import {
+	completeOnboarding,
+	createOrganization,
+	seedOnboardingCampaigns,
+	updateOrganization,
+	upsertOnboardingCashback,
+} from "@/lib/mutations/organizations";
 import { PLATFORM_PARTNER_COOKIE_NAME } from "@/lib/platform-partnerships/constants";
 import { isValidCNPJ } from "@/lib/validation";
-import { TOrganizationOnboardingState, useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useEffect, useRef } from "react";
+import type { TOrganizationEntity } from "@/services/drizzle/schema";
+import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import z from "zod";
-import { ActuationStage } from "./_components/ActuationStage";
+
+import { CampaignsConfigStage } from "./_components/CampaignsConfigStage";
+import { CashbackConfigStage } from "./_components/CashbackConfigStage";
+import { ConclusionStage } from "./_components/ConclusionStage";
+import { DataSourceStage } from "./_components/DataSourceStage";
 import { GeneralInfoStage } from "./_components/GeneralInfoStage";
-import { NicheOriginStage } from "./_components/NicheOriginStage";
 import { OnboardingLayout } from "./_components/OnboardingLayout";
-import { SubscriptionPlansStage } from "./_components/SubscriptionPlansStage";
+import { WhatsappConnectionStage } from "./_components/WhatsappConnectionStage";
+import { ONBOARDING_STAGE_COOKIE, ONBOARDING_STAGES, type TOnboardingStage } from "./_lib/stages";
+
+type ExistingOrganization = Pick<
+	TOrganizationEntity,
+	| "id"
+	| "nome"
+	| "cnpj"
+	| "email"
+	| "telefone"
+	| "logoUrl"
+	| "atuacaoNicho"
+	| "atuacaoCanais"
+	| "tamanhoBaseClientes"
+	| "plataformasUtilizadas"
+	| "origemLead"
+	| "dadosViaPDI"
+	| "integracaoTipo"
+> | null;
 
 type OnboardingPageProps = {
-	user: unknown; // We might need this later, keeping prop signature
-};
-const OnboardingFirstStageValidationSchema = z.object({
-	nome: z.string({ invalid_type_error: "Tipo não válido para o nome da empresa." }).min(1, "Por favor, preencha o nome da empresa."),
-	cnpj: z
-		.string({ invalid_type_error: "Tipo não válido para o CNPJ da empresa." })
-		.min(1, "Por favor, preencha o CNPJ da empresa.")
-		.refine(isValidCNPJ, "Por favor, preencha um CNPJ válido."),
-	email: z.string({ invalid_type_error: "Tipo não válido para o email da empresa." }).email("Por favor, preencha um email válido."),
-	telefone: z.string({ invalid_type_error: "Tipo não válido para o telefone/whatsapp." }).min(1, "Por favor, preencha o telefone/whatsapp."),
-	termsAccepted: z.boolean({ message: "Por favor, aceite os Termos de Uso e Política de Privacidade para continuar." }),
-});
-
-const ONBOARDING_STAGE_EVENTS: Record<string, string> = {
-	"organization-general-info": "onboarding_view_organization_general_info",
-	"organization-niche-origin": "onboarding_view_organization_niche_origin",
-	"organization-actuation": "onboarding_view_organization_actuation",
-	"subscription-plans-section": "onboarding_view_subscription_plans_section",
+	user: TAuthUserSession["user"];
+	initialStage: TOnboardingStage;
+	existingOrganization: ExistingOrganization;
 };
 
-export function OnboardingPage({ user: _user }: OnboardingPageProps) {
-	const { state, updateOrganization, updateOrganizationLogoHolder, updateOrganizationOnboarding, goToNextStage, goToPreviousStage } =
-		useOrganizationOnboardingState({});
-	const trackedStagesRef = useRef<Set<string>>(new Set());
+const STAGE_EVENTS: Record<TOnboardingStage, string> = {
+	"organization-general-info": "onboarding_view_general_info",
+	"cashback-config": "onboarding_view_cashback",
+	"whatsapp-connection": "onboarding_view_whatsapp",
+	"campaigns-config": "onboarding_view_campaigns",
+	"data-source": "onboarding_view_data_source",
+	conclusion: "onboarding_view_conclusion",
+};
 
+function persistStageCookie(stage: TOnboardingStage) {
+	document.cookie = `${ONBOARDING_STAGE_COOKIE}=${stage}; path=/; max-age=${60 * 60 * 24}; samesite=lax`;
+}
+
+export function OnboardingPage({ user, initialStage, existingOrganization }: OnboardingPageProps) {
+	const {
+		state,
+		updateOrganization: updateOrganizationState,
+		updateOrganizationLogoHolder,
+		updateOnboarding,
+		updateCashback,
+		applyCashbackPresetFromNiche,
+		toggleCampaign,
+		updateDataSource,
+		goToNextStage,
+		goToPreviousStage,
+	} = useOrganizationOnboardingState({ initialStage, existingOrganization });
+
+	const [isAdvancing, setIsAdvancing] = useState(false);
+	const [orgCreatedThisSession, setOrgCreatedThisSession] = useState(false);
+	const hasOrganization = !!existingOrganization || orgCreatedThisSession;
+	const { data: whatsappConnections } = useWhatsappConnections();
+	const hasWhatsappConnection = (whatsappConnections ?? []).some((connection) => connection.telefones.length > 0);
+
+	// Persist the current stage so OAuth round-trips resume here.
 	useEffect(() => {
-		const stage = state.stage;
-		if (trackedStagesRef.current.has(stage)) return;
-
-		trackedStagesRef.current.add(stage);
-		captureClientEvent({
-			event: ONBOARDING_STAGE_EVENTS[stage] ?? "onboarding_view_unknown_stage",
-			properties: {
-				stage,
-			},
-		});
+		persistStageCookie(state.stage);
+		captureClientEvent({ event: STAGE_EVENTS[state.stage], properties: { stage: state.stage } });
 	}, [state.stage]);
 
+	// Pre-fill referral code from the platform partner cookie (preserves prior behavior).
 	useEffect(() => {
-		const storedCode = window.localStorage.getItem(PLATFORM_PARTNER_COOKIE_NAME);
 		const cookieCode = document.cookie
 			.split("; ")
 			.find((row) => row.startsWith(`${PLATFORM_PARTNER_COOKIE_NAME}=`))
 			?.split("=")[1];
-		const indicadorCodigo = storedCode || (cookieCode ? decodeURIComponent(cookieCode) : null);
-		if (!indicadorCodigo) return;
+		if (!cookieCode) return;
+		updateOnboarding({ indicadorCodigo: decodeURIComponent(cookieCode).trim().toUpperCase() });
+		updateOrganizationState({ origemLead: "INDICAÇÃO" });
+	}, [updateOnboarding, updateOrganizationState]);
 
-		updateOrganizationOnboarding({ indicadorCodigo: indicadorCodigo.trim().toUpperCase() });
-		updateOrganization({ origemLead: "INDICAÃ‡ÃƒO" });
-	}, [updateOrganization, updateOrganizationOnboarding]);
+	async function handleCreateOrganizationStep() {
+		if (!state.termsAccepted) {
+			toast.error("Aceite os Termos de Uso e Política de Privacidade para continuar.");
+			return false;
+		}
+		if (!state.organization.nome.trim()) {
+			toast.error("Preencha o nome da empresa.");
+			return false;
+		}
+		if (!isValidCNPJ(state.organization.cnpj)) {
+			toast.error("Preencha um CNPJ válido.");
+			return false;
+		}
+		if (!state.organization.atuacaoNicho) {
+			toast.error("Escolha o segmento de atuação da sua empresa.");
+			return false;
+		}
 
-	async function handleCreateOrganization(state: TOrganizationOnboardingState) {
-		let logoUrl: string | null = null;
+		let logoUrl: string | null = state.organization.logoUrl ?? null;
 		if (state.organizationLogoHolder.file) {
-			const { url } = await uploadFile({
-				file: state.organizationLogoHolder.file,
-				fileName: state.organization.nome,
-				prefix: "organizations",
-			});
+			const { url } = await uploadFile({ file: state.organizationLogoHolder.file, fileName: state.organization.nome, prefix: "organizations" });
 			logoUrl = url;
 		}
-		return await createOrganization({
-			organization: {
-				...state.organization,
-				logoUrl: logoUrl,
-			},
-			subscription: state.subscription,
+
+		await createOrganization({
+			organization: { ...state.organization, logoUrl },
+			subscription: "FREE-TRIAL",
 			indicadorCodigo: state.indicadorCodigo,
 		});
-	}
-	const mutation = useMutation({
-		mutationFn: handleCreateOrganization,
-		onSuccess: (data) => {
-			// Redirect to the provided URL (either dashboard or Stripe checkout)
-			window.location.href = data.data.redirectTo;
-		},
-		onError: (error) => {
-			toast.error(getErrorMessage(error));
-		},
-	});
-
-	const validateIndicadorCodigo = async () => {
-		const indicadorCodigo = state.indicadorCodigo?.trim();
-		const indicationSelected = state.organization.origemLead?.toUpperCase().startsWith("INDICA");
-		if (!indicationSelected && !indicadorCodigo) return true;
-		if (!indicadorCodigo) {
-			toast.error("Informe o codigo de indicacao para continuar.");
-			return false;
-		}
-
-		const response = await fetch(`/api/platform-partners/validate-code?codigo=${encodeURIComponent(indicadorCodigo)}`);
-		const result = (await response.json()) as { data?: { valid?: boolean; codigo?: string | null }; message?: string };
-		if (!response.ok || !result.data?.valid) {
-			toast.error(result.message ?? "Codigo de indicacao invalido.");
-			return false;
-		}
-
-		updateOrganizationOnboarding({ indicadorCodigo: result.data.codigo ?? indicadorCodigo.toUpperCase() });
+		setOrgCreatedThisSession(true);
+		captureClientEvent({ event: "onboarding_organization_created", properties: { niche: state.organization.atuacaoNicho } });
+		// Seed cashback config from the chosen niche before entering the cashback stage.
+		applyCashbackPresetFromNiche();
 		return true;
-	};
+	}
 
-	const handleNext = async () => {
-		if (state.stage === "organization-general-info") {
-			if (!state.termsAccepted) {
-				return toast.error("Por favor, aceite os Termos de Uso e Política de Privacidade para continuar.");
+	async function handleCashbackStep() {
+		await upsertOnboardingCashback({
+			cashbackProgram: {
+				ativo: state.cashback.ativo,
+				titulo: state.cashback.titulo || `Programa de Cashback ${state.organization.nome}`,
+				descricao: "Nosso programa de fidelidade.",
+				terminologia: state.cashback.terminologia,
+				modalidadeDescontosPermitida: state.cashback.modalidadeDescontosPermitida,
+				modalidadeRecompensasPermitida: state.cashback.modalidadeRecompensasPermitida,
+				acumuloTipo: state.cashback.acumuloTipo,
+				acumuloValor: state.cashback.acumuloValor,
+				acumuloValorParceiro: state.cashback.acumuloValorParceiro,
+				acumuloRegraValorMinimo: state.cashback.acumuloRegraValorMinimo,
+				acumuloPermitirViaIntegracao: state.cashback.acumuloPermitirViaIntegracao,
+				acumuloPermitirViaPontoIntegracao: state.cashback.acumuloPermitirViaPontoIntegracao,
+				expiracaoRegraValidadeValor: state.cashback.expiracaoRegraValidadeValor,
+				resgateLimiteTipo: state.cashback.resgateLimiteTipo,
+				resgateLimiteValor: state.cashback.resgateLimiteValor,
+			},
+		});
+		return true;
+	}
+
+	function handleWhatsappStep() {
+		if (!hasWhatsappConnection) {
+			toast.error("Conecte um número de WhatsApp para continuar.");
+			return false;
+		}
+		return true;
+	}
+
+	async function handleCampaignsStep() {
+		if (state.selectedCampaignKeys.length === 0) {
+			toast.error("Selecione ao menos uma campanha para continuar.");
+			return false;
+		}
+		await seedOnboardingCampaigns({ cashbackAtivo: state.cashback.ativo, selectedKeys: state.selectedCampaignKeys });
+		return true;
+	}
+
+	async function handleDataSourceStep() {
+		if (!state.dataSource.mode) {
+			toast.error("Escolha como os dados de vendas vão entrar no sistema.");
+			return false;
+		}
+		if (state.dataSource.mode === "POI") {
+			await updateOrganization({ organization: { dadosViaPDI: true, origemDadosPadrao: "RECEPTOR" } });
+		}
+		return true;
+	}
+
+	async function handleNext() {
+		if (isAdvancing) return;
+		setIsAdvancing(true);
+		try {
+			let ok = true;
+			switch (state.stage) {
+				case "organization-general-info":
+					ok = await handleCreateOrganizationStep();
+					break;
+				case "cashback-config":
+					ok = await handleCashbackStep();
+					break;
+				case "whatsapp-connection":
+					ok = handleWhatsappStep();
+					break;
+				case "campaigns-config":
+					ok = await handleCampaignsStep();
+					break;
+				case "data-source":
+					ok = await handleDataSourceStep();
+					break;
+				default:
+					ok = true;
 			}
-			const firstStageValidation = OnboardingFirstStageValidationSchema.safeParse({
-				...state.organization,
-				termsAccepted: state.termsAccepted,
-			});
-			console.log(firstStageValidation);
-			if (!firstStageValidation.success) {
-				const firstIssue = firstStageValidation.error.issues?.[0];
-				return toast.error(firstIssue?.message ?? "Ocorreu um erro de validação.");
-			}
+			if (ok) goToNextStage();
+		} catch (error) {
+			toast.error(getErrorMessage(error));
+		} finally {
+			setIsAdvancing(false);
 		}
-		if (state.stage === "organization-niche-origin") {
-			const codeIsValid = await validateIndicadorCodigo();
-			if (!codeIsValid) return;
-		}
-		if (state.stage === "subscription-plans-section") {
-			console.log("Onboarding Complete:", state);
-			// Submit logic would go here
-			return;
-		}
-		goToNextStage();
-	};
+	}
 
-	const handleBack = () => {
-		goToPreviousStage();
-	};
+	async function handleComplete() {
+		if (isAdvancing) return;
+		setIsAdvancing(true);
+		try {
+			const result = await completeOnboarding();
+			window.location.href = result.data.redirectTo;
+		} catch (error) {
+			toast.error(getErrorMessage(error));
+			setIsAdvancing(false);
+		}
+	}
 
-	const renderStageContent = () => {
+	// Resume should not let the user step back before the org-creation stage once the org exists.
+	const minStageIndex = hasOrganization ? ONBOARDING_STAGES.indexOf("cashback-config") : 0;
+	const canGoBack = ONBOARDING_STAGES.indexOf(state.stage) > minStageIndex;
+
+	const stageInfo = getStageInfo(state.stage);
+
+	function renderStage() {
 		switch (state.stage) {
 			case "organization-general-info":
 				return (
 					<GeneralInfoStage
 						state={state}
-						updateOrganization={updateOrganization}
+						updateOrganization={updateOrganizationState}
 						updateOrganizationLogoHolder={updateOrganizationLogoHolder}
-						updateOrganizationOnboarding={updateOrganizationOnboarding}
+						updateOnboarding={updateOnboarding}
 					/>
 				);
-			case "organization-niche-origin":
-				return <NicheOriginStage state={state} updateOrganization={updateOrganization} updateOrganizationOnboarding={updateOrganizationOnboarding} />;
-			case "organization-actuation":
-				return <ActuationStage state={state} updateOrganization={updateOrganization} />;
-			case "subscription-plans-section":
-				return (
-					<SubscriptionPlansStage
-						state={state}
-						handleSelectPlan={(info) => {
-							captureClientEvent({
-								event: "onboarding_plan_selected",
-								controlEvent: "initiate_checkout",
-								properties: {
-									subscription: info,
-								},
-							});
-							updateOrganizationOnboarding({ subscription: info });
-							mutation.mutate({ ...state, subscription: info });
-						}}
-						isMutationPending={mutation.isPending}
-						goToPreviousStage={handleBack}
-					/>
-				);
+			case "cashback-config":
+				return <CashbackConfigStage state={state} updateCashback={updateCashback} />;
+			case "whatsapp-connection":
+				return <WhatsappConnectionStage />;
+			case "campaigns-config":
+				return <CampaignsConfigStage state={state} toggleCampaign={toggleCampaign} />;
+			case "data-source":
+				return <DataSourceStage state={state} updateDataSource={updateDataSource} />;
+			case "conclusion":
+				return <ConclusionStage state={state} onComplete={handleComplete} isCompleting={isAdvancing} />;
 			default:
 				return null;
 		}
-	};
-
-	const getStageInfo = () => {
-		switch (state.stage) {
-			case "organization-general-info":
-				return {
-					step: 1,
-					title: "SOBRE A EMPRESA",
-					description: "Preencha aqui as informações básicas da sua empresa para começarmos.",
-				};
-			case "organization-niche-origin":
-				return {
-					step: 2,
-					title: "NICHO E ORIGEM",
-					description: "Conte-nos um pouco mais sobre o seu mercado e como nos conheceu.",
-				};
-			case "organization-actuation":
-				return {
-					step: 3,
-					title: "ATUAÇÃO",
-					description: "Entenda melhor o perfil e escala da sua operação.",
-				};
-			case "subscription-plans-section":
-				return {
-					step: 4,
-					title: "PLANOS",
-					description: "Escolha o plano ideal para o seu negócio.",
-				};
-		}
-	};
-
-	const stageInfo = getStageInfo();
+	}
 
 	return (
 		<OnboardingLayout currentStage={state.stage}>
 			<div className="h-full flex w-full flex-col gap-6 min-h-0">
 				<div className="flex flex-col gap-0.5">
-					<h3 className="text-xs text-gray-500 tracking-tight">ETAPA {stageInfo.step}</h3>
+					<h3 className="text-xs text-gray-500 tracking-tight">ETAPA {stageInfo.step} DE 6</h3>
 					<h1 className="font-bold text-xl md:text-2xl text-gray-900 tracking-tight">{stageInfo.title}</h1>
 					<p className="text-sm text-gray-500 tracking-tight">{stageInfo.description}</p>
 				</div>
@@ -235,29 +279,53 @@ export function OnboardingPage({ user: _user }: OnboardingPageProps) {
 					key={state.stage}
 					className="min-h-0 grow w-full flex flex-col gap-6 overflow-visible px-1 md:overflow-y-auto md:overscroll-y-contain scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
 				>
-					{renderStageContent()}
+					{renderStage()}
 				</div>
-				{state.stage !== "subscription-plans-section" ? (
+				{state.stage !== "conclusion" && (
 					<>
 						<Separator />
 						<div className="w-full flex items-center justify-between">
-							<Button variant="ghost" size="lg" onClick={handleBack} className="flex items-center gap-1.5 rounded-xl py-3">
+							<Button
+								variant="ghost"
+								size="lg"
+								onClick={goToPreviousStage}
+								disabled={!canGoBack || isAdvancing}
+								className="flex items-center gap-1.5 rounded-xl py-3 disabled:opacity-40"
+							>
 								<ArrowLeft className="h-4 w-4" />
 								VOLTAR
 							</Button>
-
 							<Button
 								onClick={handleNext}
-								size={"lg"}
-								className="flex items-center gap-1.5 bg-[#24549C] text-white hover:bg-[#1e4682] transition-all rounded-xl py-3"
+								disabled={isAdvancing}
+								size="lg"
+								className="flex items-center gap-1.5 bg-[#24549C] text-white hover:bg-[#1a3d7a] transition-all rounded-xl py-3"
 							>
+								{isAdvancing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
 								CONTINUAR
-								<ArrowRight className="h-4 w-4" />
+								{!isAdvancing && <ArrowRight className="h-4 w-4" />}
 							</Button>
 						</div>
 					</>
-				) : null}
+				)}
 			</div>
 		</OnboardingLayout>
 	);
+}
+
+function getStageInfo(stage: TOnboardingStage): { step: number; title: string; description: string } {
+	switch (stage) {
+		case "organization-general-info":
+			return { step: 1, title: "SOBRE A EMPRESA", description: "Dados básicos e o segmento de atuação do seu negócio." };
+		case "cashback-config":
+			return { step: 2, title: "CASHBACK", description: "Configure o programa de fidelidade do jeito que faz sentido para você." };
+		case "whatsapp-connection":
+			return { step: 3, title: "WHATSAPP", description: "Conecte o número que vai enviar suas campanhas." };
+		case "campaigns-config":
+			return { step: 4, title: "CAMPANHAS", description: "Escolha as automações de venda que vão rodar sozinhas." };
+		case "data-source":
+			return { step: 5, title: "FONTE DE DADOS", description: "Defina de onde virão os dados de vendas." };
+		case "conclusion":
+			return { step: 6, title: "TUDO PRONTO", description: "Revise e comece a usar o RecompraCRM." };
+	}
 }

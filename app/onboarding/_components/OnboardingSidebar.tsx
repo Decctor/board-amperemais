@@ -1,45 +1,58 @@
 import { cn } from "@/lib/utils";
+import type { TOnboardingStage } from "@/app/onboarding/_lib/stages";
 import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg";
-import { AreaChartIcon, BuildingIcon, Check, CreditCardIcon, TargetIcon } from "lucide-react";
+import { BadgePercent, BuildingIcon, Check, Database, Megaphone, MessageCircle, PartyPopper } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export type OnboardingStage = "organization-general-info" | "organization-niche-origin" | "organization-actuation" | "subscription-plans-section";
-
-const STAGES: { id: OnboardingStage; label: string; shortLabel: string; description: string; icon: ReactNode }[] = [
+const STAGES: { id: TOnboardingStage; label: string; shortLabel: string; description: string; icon: ReactNode }[] = [
 	{
 		id: "organization-general-info",
-		label: "Sobre a organização",
+		label: "Sobre a empresa",
 		shortLabel: "Empresa",
-		description: "Dados básicos da empresa",
+		description: "Dados básicos e segmento",
 		icon: <BuildingIcon className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
 	},
 	{
-		id: "organization-niche-origin",
-		label: "Nicho e Origem",
-		shortLabel: "Nicho",
-		description: "Segmento de atuação",
-		icon: <TargetIcon className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
+		id: "cashback-config",
+		label: "Cashback",
+		shortLabel: "Cashback",
+		description: "Programa de fidelidade",
+		icon: <BadgePercent className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
 	},
 	{
-		id: "organization-actuation",
-		label: "Atuação",
-		shortLabel: "Atuação",
-		description: "Escala e operações",
-		icon: <AreaChartIcon className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
+		id: "whatsapp-connection",
+		label: "WhatsApp",
+		shortLabel: "WhatsApp",
+		description: "Conecte seu número",
+		icon: <MessageCircle className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
 	},
 	{
-		id: "subscription-plans-section",
-		label: "Planos",
-		shortLabel: "Planos",
-		description: "Escolha seu plano",
-		icon: <CreditCardIcon className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
+		id: "campaigns-config",
+		label: "Campanhas",
+		shortLabel: "Campanhas",
+		description: "Automações de venda",
+		icon: <Megaphone className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
+	},
+	{
+		id: "data-source",
+		label: "Fonte de dados",
+		shortLabel: "Dados",
+		description: "Integração ou ponto de interação",
+		icon: <Database className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
+	},
+	{
+		id: "conclusion",
+		label: "Tudo pronto",
+		shortLabel: "Pronto",
+		description: "Conclua e comece a usar",
+		icon: <PartyPopper className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />,
 	},
 ];
 
 type OnboardingSidebarProps = {
-	currentStage: OnboardingStage;
+	currentStage: TOnboardingStage;
 };
 
 export function OnboardingSidebar({ currentStage }: OnboardingSidebarProps) {

@@ -156,7 +156,7 @@ export default function AppSidebarHeader({ sessionUserOrg, user, mode = "app" }:
 						})}
 						<DropdownMenuSeparator />
 						<DropdownMenuItem asChild className="cursor-pointer">
-							<Link href="/onboarding">
+							<Link href="/onboarding?new=true">
 								<div className="flex items-center justify-center gap-2 w-full">
 									<Plus className="w-4 h-4 min-w-4 min-h-4" />
 									<span className="flex-1 truncate">NOVA ORGANIZAÇÃO</span>

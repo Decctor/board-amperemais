@@ -103,6 +103,7 @@ export async function validateSession(token: string) {
 					integracaoTipo: membership.organizacao.integracaoTipo,
 					integracaoConfiguracao: membership.organizacao.integracaoConfiguracao,
 					integracaoDataUltimaSincronizacao: membership.organizacao.integracaoDataUltimaSincronizacao,
+					dataOnboardingConclusao: membership.organizacao.dataOnboardingConclusao,
 				},
 				permissoes: membership.permissoes,
 			};
@@ -143,6 +144,7 @@ export async function validateSession(token: string) {
 					integracaoTipo: mostRecentMembership.organizacao.integracaoTipo,
 					integracaoConfiguracao: mostRecentMembership.organizacao.integracaoConfiguracao,
 					integracaoDataUltimaSincronizacao: mostRecentMembership.organizacao.integracaoDataUltimaSincronizacao,
+					dataOnboardingConclusao: mostRecentMembership.organizacao.dataOnboardingConclusao,
 				},
 				permissoes: mostRecentMembership.permissoes,
 			};

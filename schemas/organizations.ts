@@ -330,6 +330,14 @@ export const OrganizationSchema = z.object({
 	poiQrCodeKioskDataUrl: z.string({ invalid_type_error: "Tipo não válido para o QR Code kiosk da organização." }).optional().nullable(),
 	poiQrCodeMobileDataUrl: z.string({ invalid_type_error: "Tipo não válido para o QR Code mobile da organização." }).optional().nullable(),
 
+	// Onboarding conclusion marker. Null = onboarding still in progress.
+	dataOnboardingConclusao: z
+		.string({ invalid_type_error: "Tipo não válido para a data de conclusão do onboarding." })
+		.datetime({ message: "Tipo não válido para a data de conclusão do onboarding." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+
 	configuracao: OrganizationConfigurationSchema,
 	autorId: z.string({ invalid_type_error: "Tipo não válido para o ID do autor da organização." }),
 	dataInsercao: z

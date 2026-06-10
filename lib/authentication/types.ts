@@ -39,6 +39,7 @@ export type TAuthUserSession = {
 			integracaoTipo: TOrganizationEntity["integracaoTipo"];
 			integracaoConfiguracao: TOrganizationEntity["integracaoConfiguracao"];
 			integracaoDataUltimaSincronizacao: TOrganizationEntity["integracaoDataUltimaSincronizacao"];
+			dataOnboardingConclusao: TOrganizationEntity["dataOnboardingConclusao"];
 		};
 		permissoes: TOrganizationMemberEntity["permissoes"];
 	} | null;
