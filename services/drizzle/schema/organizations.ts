@@ -1,4 +1,9 @@
-import type { TOrganizationConfiguration, TOrganizationIntegrationConfig, TOrganizationMemberPermissions, TOrganizationFiscalConfig } from "@/schemas/organizations";
+import type {
+	TOrganizationConfiguration,
+	TOrganizationIntegrationConfig,
+	TOrganizationMemberPermissions,
+	TOrganizationFiscalConfig,
+} from "@/schemas/organizations";
 import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
@@ -30,7 +35,6 @@ export const organizations = newTable("organizations", {
 	origemLead: text("origem_lead"), // How did you hear about us? (Instagram, Google, Linkedin, etc)
 	// Marks the moment the deep onboarding flow was concluded. Null = onboarding in progress (dashboard is gated, user is bounced back).
 	dataOnboardingConclusao: timestamp("data_onboarding_conclusao"),
-
 	// Stripe
 	stripeCustomerId: text("stripe_customer_id"),
 	stripeSubscriptionId: text("stripe_subscription_id"),

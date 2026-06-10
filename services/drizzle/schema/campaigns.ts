@@ -37,6 +37,7 @@ export const campaigns = newTable("campaigns", {
 	// specific for "CASHBACK-EXPIRANDO"
 	gatilhoCashbackExpirandoAntecedenciaValor: integer("gatilho_cashback_expirando_antecedencia_valor"),
 	gatilhoCashbackExpirandoAntecedenciaMedida: timeDurationUnitsEnum("gatilho_cashback_expirando_antecedencia_medida"),
+	gatilhoCashbackExpirandoValorMinimo: doublePrecision("gatilho_cashback_expirando_valor_minimo"),
 
 	// specific for "QUANTIDADE-TOTAL-COMPRAS"
 	gatilhoQuantidadeTotalCompras: integer("gatilho_quantidade_total_compras"), // defines the minimum required all-time purchase count for trigger to fire

@@ -2,7 +2,7 @@
 
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { cn } from "@/lib/utils";
-import LogoHorizontalTextBlack from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL TEXT-BLACK.svg";
+import LogoHorizontalTextBlack from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL ICON-BADGE TEXT-BLACK.svg";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";

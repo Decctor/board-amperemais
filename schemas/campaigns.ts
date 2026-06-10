@@ -279,6 +279,14 @@ export const CampaignSchema = z.object({
 		.optional()
 		.nullable(),
 	gatilhoCashbackExpirandoAntecedenciaMedida: TimeDurationUnitsEnum.optional().nullable(),
+	gatilhoCashbackExpirandoValorMinimo: z
+		.number({
+			required_error: "Valor mínimo de cashback expirando não informado.",
+			invalid_type_error: "Tipo não válido para o valor mínimo de cashback expirando.",
+		})
+		.min(0, "Valor mínimo de cashback expirando não pode ser negativo.")
+		.optional()
+		.nullable(),
 	// Specific for "QUANTIDADE-TOTAL-COMPRAS"
 	gatilhoQuantidadeTotalCompras: z
 		.number({

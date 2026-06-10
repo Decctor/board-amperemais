@@ -33,22 +33,26 @@ export function LedgerHero() {
 
 			<div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 lg:px-8">
 				<Reveal className="flex flex-col items-center text-center">
-					<h1 className="max-w-[18ch] font-extrabold text-[#171717] tracking-[-0.025em] leading-[1.05] text-[30px] sm:max-w-none sm:text-[44px] lg:text-[64px]">
+					<h1 className="max-w-[18ch] font-black uppercase text-[#171717] tracking-[-0.01em] leading-[1.08] text-[30px] sm:max-w-none sm:text-[44px] lg:text-[60px]">
 						<span className="block ledger-write" style={{ "--i": 1 } as React.CSSProperties} data-stagger>
-							Cada cliente novo custa caro.
+							Atrair clientes é caro.
 						</span>
 						<span className="block ledger-fade mt-1 sm:mt-1.5" style={{ "--i": 2 } as React.CSSProperties} data-stagger>
-							Perdê-lo depois da 1ª compra custa mais.
-						</span>
-						<span className="block ledger-fade mt-1 sm:mt-1.5" style={{ "--i": 3 } as React.CSSProperties} data-stagger>
-							Faça sua base comprar de novo.
+							Não fazê-los voltar é prejuízo.
 						</span>
 						<span
-							className="block ledger-fade mt-1 sm:mt-1.5 text-[#24549c] underline decoration-[#24549c] decoration-2 underline-offset-[5px]"
+							className="block ledger-fade mt-1 sm:mt-1.5 bg-[#24549c] text-white px-2 py-1 rounded-lg w-fit mx-auto"
+							style={{ "--i": 3 } as React.CSSProperties}
+							data-stagger
+						>
+							Gere recompras
+						</span>
+						<span
+							className="block ledger-fade mt-1 sm:mt-1.5 bg-[#ffb900] text-[#171717] px-2 py-1 rounded-lg w-fit mx-auto"
 							style={{ "--i": 4 } as React.CSSProperties}
 							data-stagger
 						>
-							No automático.
+							no automático.
 						</span>
 					</h1>
 
@@ -79,7 +83,7 @@ export function LedgerHero() {
 								properties={{ cta_id: "hero_ver_como_funciona", location: "hero" }}
 								className="inline-flex items-center gap-2 bg-white hover:bg-[#f5f8fd] border border-[#e5e5e5] hover:border-[#24549c]/30 text-[#171717] px-5 py-3 rounded-2xl text-[13px] font-bold tracking-[0.02em] transition-all duration-200 sm:px-6 sm:py-3.5 sm:text-[14px]"
 							>
-								Ver como funciona
+								VER COMO FUNCIONA
 							</TrackedAnchor>
 						</div>
 
@@ -116,6 +120,7 @@ export function LedgerHero() {
 									<Image
 										src={integration.logo}
 										alt={integration.name}
+										sizes="100px"
 										className="h-6 w-auto max-w-[88px] object-contain opacity-45 transition-opacity duration-200 hover:opacity-75 sm:h-7 sm:max-w-[100px]"
 									/>
 								</li>

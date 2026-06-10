@@ -76,6 +76,7 @@ const SHARED_NULL_TRIGGERS = {
 	gatilhoTotalCashbackAcumuladoValorMinimo: null,
 	gatilhoCashbackExpirandoAntecedenciaValor: null,
 	gatilhoCashbackExpirandoAntecedenciaMedida: null,
+	gatilhoCashbackExpirandoValorMinimo: null,
 	gatilhoQuantidadeTotalCompras: null,
 	gatilhoValorTotalCompras: null,
 	gatilhoUsoUnicoDataReferencia: null,

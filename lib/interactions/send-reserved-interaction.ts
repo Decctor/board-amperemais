@@ -41,6 +41,7 @@ export function buildContextVariablesMap(
 		cashbackLifetimeRedeemed: formatCashbackValue(ctx?.cashbackTotalResgatadoVida ?? 0, terminology),
 		cashbackExpiringAmount: formatCashbackValue(ctx?.cashbackExpirandoValor ?? 0, terminology),
 		cashbackExpiringDate: ctx?.cashbackExpirandoData ?? "",
+		cashbackExpiringWindow: ctx?.cashbackExpirandoJanela ?? "",
 	};
 }
 

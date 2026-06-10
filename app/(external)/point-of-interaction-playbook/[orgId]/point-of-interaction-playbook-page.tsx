@@ -90,20 +90,20 @@ function SectionTitle({ icon: Icon, eyebrow, title }: { icon: typeof Gift; eyebr
 	);
 }
 
-function FlowStep({ n, title, children, mockup }: { n: number; title: string; children: ReactNode; mockup: ReactNode }) {
+function FlowStep({ n, title, children, mockup, last = false }: { n: number; title: string; children: ReactNode; mockup: ReactNode; last?: boolean }) {
 	const { colors } = useOrgColors();
 	return (
 		<div className="flex items-start gap-4 break-inside-avoid">
-			<div className="flex flex-col items-center">
+			<div className="flex flex-col items-center self-stretch">
 				<div
 					className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-black text-white"
 					style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}
 				>
 					{n}
 				</div>
-				<div className="mt-1 w-px flex-1 bg-neutral-200" />
+				{!last ? <div className="mt-1 w-px flex-1 bg-neutral-200" /> : null}
 			</div>
-			<div className="flex flex-1 flex-col gap-2 pb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+			<div className={cn("flex flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6", last ? "pb-0" : "pb-6")}>
 				<div className="flex-1">
 					<h3 className="text-sm font-black uppercase tracking-tight text-neutral-900">{title}</h3>
 					<p className="mt-1 text-xs leading-relaxed text-neutral-600">{children}</p>
@@ -121,7 +121,7 @@ function FlowStep({ n, title, children, mockup }: { n: number; title: string; ch
 export default function PointOfInteractionPlaybookPage({ org }: PointOfInteractionPlaybookPageProps) {
 	const { colors, getPrimaryGradientStyle } = useOrgColors();
 	const gradient = getPrimaryGradientStyle();
-	const totalPages = 5;
+	const totalPages = 8;
 
 	function handlePrint() {
 		window.print();
@@ -129,17 +129,30 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 
 	return (
 		<div
-			className="min-h-screen bg-neutral-100 p-4 pb-24 print:bg-white print:p-0 print:pb-0"
+			className="playbook-root min-h-screen bg-neutral-100 p-4 pb-24 print:bg-white print:p-0 print:pb-0"
 			style={{ backgroundColor: hexToRgba(colors.primary, 0.06) }}
 		>
-			{/* Inline print styles: A4 portrait, one sheet per page */}
+			{/*
+				Print model: one sheet = exactly one A4 page. Each sheet declares
+				`break-before: page` (never `break-after`, which previously forced an empty
+				trailing page) and a fixed `height: 297mm` so the footer — pushed down by the
+				flex-1 content — lands at the bottom of the physical page even when the content
+				is short. `overflow: hidden` guards against sub-millimetre rounding spilling
+				onto a blank page; content is split across sheets so nothing is actually clipped.
+				On screen we use `min-height: 297mm` so each sheet still previews as a full page.
+			*/}
 			<style>{`
 				@page { size: A4 portrait; margin: 0; }
-				.playbook-sheet { width: 210mm; min-height: 297mm; }
-				@media screen { .playbook-stack { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; } }
+				.playbook-sheet { width: 210mm; }
+				@media screen {
+					.playbook-stack { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
+					.playbook-sheet { min-height: 297mm; }
+				}
 				@media print {
-					.playbook-sheet { break-after: page; box-shadow: none !important; }
-					.playbook-sheet:last-child { break-after: auto; }
+					.playbook-root { background: #fff !important; }
+					.playbook-stack { display: block; }
+					.playbook-sheet { height: 297mm; overflow: hidden; break-before: page; box-shadow: none !important; }
+					.playbook-sheet:first-child { break-before: avoid; }
 					html, body { background: #fff !important; }
 				}
 			`}</style>
@@ -241,26 +254,69 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 							<ScriptLine text="“Faço seu cadastro rapidinho? Aí você recebe nossas promoções antes de todo mundo.”" colors={colors} />
 						</div>
 					</div>
+				</Sheet>
 
-					<div className="mt-6 rounded-xl bg-neutral-50 p-4">
-						<p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Onde os dados são coletados</p>
-						<p className="mt-1 text-xs leading-relaxed text-neutral-600">
-							Logo na entrada do fluxo, ao digitar o telefone. Se o cliente ainda não existe, aparece o cadastro rápido (nome obrigatório; CPF/CNPJ e data de
-							nascimento opcionais). É aqui que sua base cresce — em <strong>todo</strong> atendimento.
-						</p>
-						<div className="mt-3 flex justify-center">
+				{/* ============================ PAGE 3 — DATA COLLECTION ============================ */}
+				<Sheet pageNumber={3} totalPages={totalPages}>
+					<SectionTitle icon={Users} eyebrow="O ativo mais importante" title="Onde os dados são coletados" />
+
+					<p className="text-sm leading-relaxed text-neutral-700">
+						A captura acontece logo na <strong>entrada do fluxo</strong>, ao digitar o telefone — vale para o kiosk e para o mobile. Se o cliente ainda não
+						existe, aparece o cadastro rápido. É assim que sua base cresce em <strong>todo</strong> atendimento, sem fricção.
+					</p>
+
+					{/* New client capture */}
+					<div className="mt-6 grid grid-cols-2 items-center gap-6 rounded-2xl border border-neutral-200 bg-white p-5">
+						<div>
+							<h3 className="text-sm font-black uppercase tracking-tight text-neutral-900">Cliente novo → cadastro</h3>
+							<p className="mt-1 text-xs leading-relaxed text-neutral-600">O que é capturado a cada novo cliente:</p>
+							<div className="mt-3 flex flex-col gap-1.5">
+								<DataPoint label="Telefone" detail="chave de identificação — obrigatório" required colors={colors} />
+								<DataPoint label="Nome completo" detail="para personalizar o atendimento" required colors={colors} />
+								<DataPoint label="CPF / CNPJ" detail="opcional, para integrações fiscais" colors={colors} />
+								<DataPoint label="Data de nascimento" detail="opcional, para campanhas de aniversário" colors={colors} />
+							</div>
+						</div>
+						<div className="flex justify-center">
 							<TabletFrame label="Cadastro de novo cliente">
 								<NewClientMockup />
 							</TabletFrame>
 						</div>
 					</div>
+
+					{/* Returning client recognition */}
+					<div className="mt-6 grid grid-cols-2 items-center gap-6 rounded-2xl border border-neutral-200 bg-white p-5">
+						<div className="flex justify-center">
+							<TabletFrame label="Cliente reconhecido">
+								<FoundClientMockup />
+							</TabletFrame>
+						</div>
+						<div>
+							<h3 className="text-sm font-black uppercase tracking-tight text-neutral-900">Cliente recorrente → reconhecido</h3>
+							<p className="mt-1 text-xs leading-relaxed text-neutral-600">
+								Quem já está na base é identificado na hora: nome, telefone e <strong>saldo acumulado</strong> aparecem na tela. Use o nome no atendimento e
+								mostre o saldo — é o que reforça o hábito de voltar e pontuar de novo.
+							</p>
+						</div>
+					</div>
+
+					<div
+						className="mt-6 flex items-start gap-2 rounded-xl px-4 py-3 text-xs leading-relaxed"
+						style={{ backgroundColor: hexToRgba(colors.primary, 0.06), color: "#404040" }}
+					>
+						<Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: colors.primary }} />
+						<span>
+							Cada cadastro vira um contato no seu CRM, pronto para receber <strong>campanhas, promoções e reativações</strong> — sem depender de listas
+							compradas ou achismos.
+						</span>
+					</div>
 				</Sheet>
 
-				{/* ============================ PAGE 3 — KIOSK FLOW ============================ */}
-				<Sheet pageNumber={3} totalPages={totalPages}>
+				{/* ============================ PAGE 4 — KIOSK FLOW (1/2) ============================ */}
+				<Sheet pageNumber={4} totalPages={totalPages}>
 					<SectionTitle icon={Tablet} eyebrow="Modalidade 1" title="Fluxo Kiosk (tablet no balcão)" />
 					<div
-						className="mb-5 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold"
+						className="mb-6 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold"
 						style={{ backgroundColor: hexToRgba(colors.primary, 0.1), color: colors.primary }}
 					>
 						<ShieldCheck className="h-4 w-4" />
@@ -295,6 +351,7 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 
 						<FlowStep
 							n={3}
+							last
 							title="Escolha do modo"
 							mockup={
 								<TabletFrame label="Desconto ou recompensa">
@@ -305,7 +362,16 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 							<strong>Pontuar e obter descontos</strong> (usar saldo na compra) ou <strong>pontuar e resgatar recompensa</strong> (trocar saldo por um
 							prêmio).
 						</FlowStep>
+					</div>
 
+					<p className="mt-6 text-right text-[0.65rem] font-medium uppercase tracking-widest text-neutral-400">continua na próxima página →</p>
+				</Sheet>
+
+				{/* ============================ PAGE 5 — KIOSK FLOW (2/2) ============================ */}
+				<Sheet pageNumber={5} totalPages={totalPages}>
+					<SectionTitle icon={Tablet} eyebrow="Modalidade 1 · continuação" title="Fluxo Kiosk — confirmação" />
+
+					<div className="flex flex-col">
 						<FlowStep
 							n={4}
 							title="Venda e cashback"
@@ -349,10 +415,10 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 					</div>
 				</Sheet>
 
-				{/* ============================ PAGE 4 — MOBILE FLOW ============================ */}
-				<Sheet pageNumber={4} totalPages={totalPages}>
+				{/* ============================ PAGE 6 — MOBILE FLOW (1/2) ============================ */}
+				<Sheet pageNumber={6} totalPages={totalPages}>
 					<SectionTitle icon={Smartphone} eyebrow="Modalidade 2" title="Fluxo Mobile (QR no celular do cliente)" />
-					<div className="mb-5 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+					<div className="mb-6 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
 						<ScanLine className="h-4 w-4" />
 						Aprovação pelo painel: a solicitação aparece em tempo real e o operador aprova com a senha do vendedor.
 					</div>
@@ -373,6 +439,7 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 
 						<FlowStep
 							n={2}
+							last
 							title="Escolhe o modo e os valores"
 							mockup={
 								<PhoneFrame label="Seleção no celular">
@@ -382,7 +449,16 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 						>
 							Mesma lógica do kiosk (desconto ou recompensa), mas <strong>sem o passo de confirmação</strong> — o celular não tem a senha do vendedor.
 						</FlowStep>
+					</div>
 
+					<p className="mt-6 text-right text-[0.65rem] font-medium uppercase tracking-widest text-neutral-400">continua na próxima página →</p>
+				</Sheet>
+
+				{/* ============================ PAGE 7 — MOBILE FLOW (2/2) ============================ */}
+				<Sheet pageNumber={7} totalPages={totalPages}>
+					<SectionTitle icon={Smartphone} eyebrow="Modalidade 2 · continuação" title="Fluxo Mobile — solicitação e aprovação" />
+
+					<div className="mb-6 flex flex-col">
 						<FlowStep
 							n={3}
 							title="Envia a solicitação e aguarda"
@@ -394,60 +470,60 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 						>
 							O cliente envia a solicitação e vê a tela <strong>"Aguardando aprovação"</strong>, que acompanha o status em tempo real até a loja responder.
 						</FlowStep>
+					</div>
 
-						{/* Approval on the panel — highlighted */}
-						<div
-							className="mt-2 rounded-2xl border-2 p-5 break-inside-avoid"
-							style={{ borderColor: hexToRgba(colors.primary, 0.3), backgroundColor: hexToRgba(colors.primary, 0.04) }}
-						>
-							<h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
-								<span
-									className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-black"
-									style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}
-								>
-									4
-								</span>
-								Aprovação no painel da loja
-							</h3>
-							<p className="mt-2 text-xs leading-relaxed text-neutral-600">
-								No painel do Ponto de Interação, a solicitação aparece <strong>automaticamente</strong> (consulta em tempo real). O operador confere os
-								valores e clica em <strong>Aprovar</strong>.
-							</p>
-							<div className="mt-4 grid grid-cols-2 items-start gap-4">
-								<PanelFrame label="Fila de solicitações (tempo real)">
-									<DashboardQueueMockup />
-								</PanelFrame>
-								<div className="flex flex-col items-center gap-2">
-									<ApproveModalMockup />
-									<p className="px-2 text-center text-[0.6rem] text-neutral-500">
-										Ao aprovar, informa-se a <strong>senha de 5 dígitos do vendedor</strong> que receberá a venda.
-									</p>
-								</div>
+					{/* Approval on the panel — highlighted */}
+					<div
+						className="rounded-2xl border-2 p-5 break-inside-avoid"
+						style={{ borderColor: hexToRgba(colors.primary, 0.3), backgroundColor: hexToRgba(colors.primary, 0.04) }}
+					>
+						<h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
+							<span
+								className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-black"
+								style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}
+							>
+								4
+							</span>
+							Aprovação no painel da loja
+						</h3>
+						<p className="mt-2 text-xs leading-relaxed text-neutral-600">
+							No painel do Ponto de Interação, a solicitação aparece <strong>automaticamente</strong> (consulta em tempo real). O operador confere os valores
+							e clica em <strong>Aprovar</strong>.
+						</p>
+						<div className="mt-4 grid grid-cols-2 items-start gap-4">
+							<PanelFrame label="Fila de solicitações (tempo real)">
+								<DashboardQueueMockup />
+							</PanelFrame>
+							<div className="flex flex-col items-center gap-2">
+								<ApproveModalMockup />
+								<p className="px-2 text-center text-[0.6rem] text-neutral-500">
+									Ao aprovar, informa-se a <strong>senha de 5 dígitos do vendedor</strong> que receberá a venda.
+								</p>
 							</div>
 						</div>
+					</div>
 
-						<div className="mt-4 flex items-center gap-4 break-inside-avoid">
-							<div className="flex flex-1 items-center justify-between gap-4">
-								<div className="flex-1">
-									<h3 className="flex items-center gap-1.5 text-sm font-black uppercase tracking-tight text-green-700">
-										<ArrowRight className="h-4 w-4" /> Confirmação automática
-									</h3>
-									<p className="mt-1 text-xs leading-relaxed text-neutral-600">
-										Assim que a loja aprova, a tela do cliente detecta e mostra o sucesso — cashback gerado e novo saldo. Sem ninguém precisar avisar.
-									</p>
-								</div>
-								<PhoneFrame label="Sucesso no celular">
-									<div className="pb-3">
-										<SuccessMockup kind="prize" phone />
-									</div>
-								</PhoneFrame>
+					<div className="mt-6 flex items-center gap-4 break-inside-avoid">
+						<div className="flex flex-1 items-center justify-between gap-4">
+							<div className="flex-1">
+								<h3 className="flex items-center gap-1.5 text-sm font-black uppercase tracking-tight text-green-700">
+									<ArrowRight className="h-4 w-4" /> Confirmação automática
+								</h3>
+								<p className="mt-1 text-xs leading-relaxed text-neutral-600">
+									Assim que a loja aprova, a tela do cliente detecta e mostra o sucesso — cashback gerado e novo saldo. Sem ninguém precisar avisar.
+								</p>
 							</div>
+							<PhoneFrame label="Sucesso no celular">
+								<div className="pb-3">
+									<SuccessMockup kind="prize" phone />
+								</div>
+							</PhoneFrame>
 						</div>
 					</div>
 				</Sheet>
 
-				{/* ============================ PAGE 5 — COMPARISON + TIPS ============================ */}
-				<Sheet pageNumber={5} totalPages={totalPages}>
+				{/* ============================ PAGE 8 — COMPARISON + TIPS ============================ */}
+				<Sheet pageNumber={8} totalPages={totalPages}>
 					<SectionTitle icon={QrCode} eyebrow="Resumo" title="Kiosk x Mobile e boas práticas" />
 
 					<div className="overflow-hidden rounded-2xl border border-neutral-200">
@@ -480,12 +556,6 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 						</div>
 					</div>
 
-					{/* QR recap */}
-					<div className="mt-8 grid grid-cols-2 gap-6">
-						<QrRecap title="Modo Kiosk" subtitle="Configure no tablet do balcão" qrUrl={org.poiQrCodeKioskDataUrl} icon={Tablet} colors={colors} />
-						<QrRecap title="Modo Mobile" subtitle="Para o cliente escanear" qrUrl={org.poiQrCodeMobileDataUrl} icon={Smartphone} colors={colors} />
-					</div>
-
 					{/* Powered by */}
 					<div className="mt-auto flex items-center justify-center gap-2 px-2 py-4 bg-[#24549C] text-white">
 						<p className="text-[0.65rem] font-medium">Powered by</p>
@@ -503,7 +573,7 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 						<Printer className="h-4 w-4" />
 						<p className="text-sm font-semibold text-foreground">Imprimir / Salvar PDF</p>
 					</div>
-					<p className="text-xs text-muted-foreground">Formato A4 retrato, 5 páginas. Na impressão, escolha "Salvar como PDF".</p>
+					<p className="text-xs text-muted-foreground">Formato A4 retrato, 8 páginas. Na impressão, escolha "Salvar como PDF".</p>
 				</div>
 				<Button type="button" className="w-full gap-2" onClick={handlePrint}>
 					<Printer className="h-4 w-4" />
@@ -611,34 +681,15 @@ function TipCard({ text, colors }: { text: string; colors: { primary: string } }
 	);
 }
 
-function QrRecap({
-	title,
-	subtitle,
-	qrUrl,
-	icon: Icon,
-	colors,
-}: {
-	title: string;
-	subtitle: string;
-	qrUrl: string | null;
-	icon: typeof Tablet;
-	colors: { primary: string };
-}) {
+function DataPoint({ label, detail, required, colors }: { label: string; detail: string; required?: boolean; colors: { primary: string } }) {
 	return (
-		<div className="flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-4">
-			<div
-				className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl"
-				style={{ backgroundColor: hexToRgba(colors.primary, 0.05) }}
-			>
-				{qrUrl ? <img src={qrUrl} alt={title} className="h-full w-full object-contain p-1.5" /> : <QrCode className="h-9 w-9 text-neutral-300" />}
-			</div>
-			<div>
-				<div className="flex items-center gap-1.5" style={{ color: colors.primary }}>
-					<Icon className="h-4 w-4" />
-					<h3 className="text-sm font-black uppercase tracking-tight">{title}</h3>
-				</div>
-				<p className="mt-1 text-xs text-neutral-600">{subtitle}</p>
-			</div>
+		<div className="flex items-start gap-2">
+			<div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: colors.primary }} />
+			<p className="text-xs leading-snug text-neutral-700">
+				<span className="font-bold text-neutral-900">{label}</span>
+				{required ? <span className="ml-1 text-[0.6rem] font-bold uppercase tracking-wider text-red-500">obrigatório</span> : null}
+				<span className="text-neutral-500"> — {detail}</span>
+			</p>
 		</div>
 	);
 }

@@ -1,9 +1,9 @@
 import { appApiHandler } from "@/lib/app-api";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
-import { type DBTransaction, db } from "@/services/drizzle";
-import { cashbackProgramBalances, cashbackProgramTransactions, organizations } from "@/services/drizzle/schema";
+import { db } from "@/services/drizzle";
+import { cashbackProgramBalances, cashbackProgramTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq, gt, lte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 async function getCashbackExpireRoute(_req: NextRequest) {
@@ -14,7 +14,7 @@ async function getCashbackExpireRoute(_req: NextRequest) {
 			columns: { id: true },
 		});
 
-		const today = dayjs().toDate();
+		const today = dayjs().endOf("day").toDate();
 
 		for (const organization of organizationsList) {
 			console.log(`[ORG: ${organization.id}] Processing organization...`);

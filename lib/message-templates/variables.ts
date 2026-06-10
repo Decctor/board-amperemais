@@ -34,6 +34,7 @@ export type TMessageTemplateVariables = {
 	cashbackLifetimeRedeemed: string;
 	cashbackExpiringAmount: string;
 	cashbackExpiringDate: string;
+	cashbackExpiringWindow: string;
 };
 
 export type TMessageTemplateVariable = {
@@ -157,6 +158,13 @@ export const MessageTemplateVariables: TMessageTemplateVariable[] = [
 		description: "Data em que o cashback irá expirar.",
 		contexto: "CASHBACK_EXPIRANDO",
 	},
+	{
+		id: "cashback_expiring_window",
+		label: "Janela de Cashback Expirando",
+		value: "cashbackExpiringWindow",
+		description: "Texto da janela em que o cashback está prestes a expirar, como \"nos próximos 7 dias\".",
+		contexto: "CASHBACK_EXPIRANDO",
+	},
 ];
 
 export type TInteractionContextMetadados = {
@@ -170,6 +178,7 @@ export type TInteractionContextMetadados = {
 	cashbackTotalResgatadoVida?: number;
 	cashbackExpirandoValor?: number;
 	cashbackExpirandoData?: string;
+	cashbackExpirandoJanela?: string;
 };
 
 export const MESSAGE_TEMPLATE_VARIABLE_CONTEXT_GROUP_LABELS: Record<TMessageTemplateVariableContextGroup, string> = {
@@ -238,6 +247,7 @@ export const MessageTemplateVariableExampleValues: Record<string, string> = {
 	cashbackLifetimeRedeemed: "R$ 138,00",
 	cashbackExpiringAmount: "R$ 10,00",
 	cashbackExpiringDate: "27/05/2026",
+	cashbackExpiringWindow: "nos próximos 7 dias",
 };
 
 export function isAllowedMessageTemplateVariable(identifier: string) {
