@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { TrackedLink } from "@/app/_components/ledger/TrackedLink";
 import { Reveal } from "@/app/_components/ledger/_primitives/Reveal";
 import { SectionEyebrow } from "./SectionEyebrow";
-import { FIRST_MONTH_PAYOUT, PARTNER_LOGIN_HREF, RECURRING_MONTH_PAYOUT } from "./program-facts";
+import { FIRST_MONTH_PAYOUT, FIRST_YEAR_PAYOUT, PARTNER_LOGIN_HREF, RECURRING_MONTH_PAYOUT, THIRD_MONTH_PAYOUT } from "./program-facts";
 
 const MIN_STORES = 1;
 const MAX_STORES = 30;
@@ -16,9 +16,9 @@ export function PartnersCalculator() {
 
 	const { activation, recurring, firstYear } = useMemo(
 		() => ({
-			activation: stores * FIRST_MONTH_PAYOUT,
+			activation: stores * (FIRST_MONTH_PAYOUT + THIRD_MONTH_PAYOUT),
 			recurring: stores * RECURRING_MONTH_PAYOUT,
-			firstYear: stores * (FIRST_MONTH_PAYOUT + RECURRING_MONTH_PAYOUT * 11),
+			firstYear: stores * FIRST_YEAR_PAYOUT,
 		}),
 		[stores],
 	);
@@ -91,7 +91,8 @@ export function PartnersCalculator() {
 							</div>
 
 							<p className="mt-7 text-[13px] leading-[1.6] text-[#171717]/55">
-								Cada loja ativa rende {formatToMoney(FIRST_MONTH_PAYOUT)} no primeiro mês e {formatToMoney(RECURRING_MONTH_PAYOUT)} por mês depois disso.
+								Cada loja ativa rende {formatToMoney(FIRST_MONTH_PAYOUT)} no primeiro mês, {formatToMoney(THIRD_MONTH_PAYOUT)} no terceiro mês e{" "}
+								{formatToMoney(RECURRING_MONTH_PAYOUT)} nas demais mensalidades.
 							</p>
 						</div>
 
@@ -107,14 +108,14 @@ export function PartnersCalculator() {
 									</span>
 									<span className="text-[15px] font-bold text-white/70">/mês</span>
 								</div>
-								<p className="mt-2 text-[13px] text-white/60">A partir do segundo mês, mês após mês.</p>
+								<p className="mt-2 text-[13px] text-white/60">Mensalidades sem bônus cheio, mês após mês.</p>
 							</div>
 
 							<div className="relative mt-8 grid grid-cols-2 gap-4">
 								<div className="rounded-2xl bg-white/10 p-4">
-									<p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/55">Bônus de ativação</p>
+									<p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/55">Bônus de 1º + 3º mês</p>
 									<p className="ledger-tabular mt-1.5 text-[22px] font-extrabold text-white">{formatToMoney(activation)}</p>
-									<p className="mt-0.5 text-[11px] text-white/50">no 1º mês</p>
+									<p className="mt-0.5 text-[11px] text-white/50">por loja mantida</p>
 								</div>
 								<div className="rounded-2xl bg-white/10 p-4">
 									<p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/55">Total no 1º ano</p>

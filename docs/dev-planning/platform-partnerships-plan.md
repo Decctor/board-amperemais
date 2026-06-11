@@ -20,9 +20,9 @@ Este domínio é diferente do `partners` comercial existente, que é escopado po
 - Cookie/localStorage servem para pré-preencher `indicadorCodigo` e como fallback backend quando o frontend enviar nulo.
 - Apenas invoices pagas geram comissão.
 - A base comissionável é o valor bruto do plano SaaS, excluindo consultoria/add-ons.
-- Para plano mensal: invoice 1 recebe 100%; invoices seguintes recebem 20%.
+- Para plano mensal: invoices 1 e 3 recebem 100%; demais invoices recebem 20%.
 - Para plano anual: usar comissão fixa de 27% sobre a base comissionável.
-- A equivalência matemática da regra mensal em um ano é 26,67%: `(100% + 11 * 20%) / 12`.
+- Plano anual mantém comissão fixa própria, sem equivalência automática com a regra mensal.
 - Cada comissão deve salvar snapshot da invoice e da regra aplicada.
 - Reembolso, chargeback ou correção devem gerar ajuste contábil explícito, não alteração silenciosa do lançamento original.
 - Payouts serão manuais, mensais, operados pelo financeiro.
@@ -267,7 +267,8 @@ Não incluir consultoria.
 ### Planos mensais
 
 - `numeroInvoiceAssinatura = 1`: `percentualComissaoBps = 10000`.
-- `numeroInvoiceAssinatura > 1`: `percentualComissaoBps = 2000`.
+- `numeroInvoiceAssinatura = 3`: `percentualComissaoBps = 10000`.
+- Demais invoices mensais: `percentualComissaoBps = 2000`.
 
 ### Planos anuais
 
@@ -277,13 +278,7 @@ Usar:
 percentualComissaoBps = 2700
 ```
 
-Justificativa:
-
-```txt
-(100% + 11 * 20%) / 12 = 26,67%
-```
-
-27% é a aproximação operacional recomendada.
+Percentual próprio para pagamento anual, mantido separado da regra de bônus por terceira mensalidade.
 
 ### Reembolsos, chargebacks e ajustes
 

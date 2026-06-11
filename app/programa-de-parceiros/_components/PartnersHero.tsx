@@ -4,11 +4,14 @@ import { TrackedAnchor, TrackedLink } from "@/app/_components/ledger/TrackedLink
 import { Reveal } from "@/app/_components/ledger/_primitives/Reveal";
 import {
 	COMMISSIONABLE_MONTHLY_BASE,
+	FIRST_YEAR_PAYOUT,
 	FIRST_INVOICE_PERCENT,
 	FIRST_MONTH_PAYOUT,
 	PARTNER_LOGIN_HREF,
 	RECURRING_MONTH_PAYOUT,
 	SUBSEQUENT_INVOICE_PERCENT,
+	THIRD_INVOICE_PERCENT,
+	THIRD_MONTH_PAYOUT,
 } from "./program-facts";
 
 const HERO_TRUST = ["Painel próprio de acompanhamento", "Pagamento mensal via PIX", "Sem custo para participar"];
@@ -17,12 +20,12 @@ const HERO_TRUST = ["Painel próprio de acompanhamento", "Pagamento mensal via P
 const STATEMENT_ROWS = [
 	{ month: "1º mês", detail: `${FIRST_INVOICE_PERCENT}% da mensalidade`, value: FIRST_MONTH_PAYOUT, highlight: true },
 	{ month: "2º mês", detail: `${SUBSEQUENT_INVOICE_PERCENT}% recorrente`, value: RECURRING_MONTH_PAYOUT, highlight: false },
-	{ month: "3º mês", detail: `${SUBSEQUENT_INVOICE_PERCENT}% recorrente`, value: RECURRING_MONTH_PAYOUT, highlight: false },
+	{ month: "3º mês", detail: `${THIRD_INVOICE_PERCENT}% bônus de permanência`, value: THIRD_MONTH_PAYOUT, highlight: true },
 	{ month: "4º mês", detail: `${SUBSEQUENT_INVOICE_PERCENT}% recorrente`, value: RECURRING_MONTH_PAYOUT, highlight: false },
 ];
 
 export function PartnersHero() {
-	const firstYearPerStore = FIRST_MONTH_PAYOUT + RECURRING_MONTH_PAYOUT * 11;
+	const firstYearPerStore = FIRST_YEAR_PAYOUT;
 
 	return (
 		<section className="ledger-canvas-tinted relative overflow-hidden pt-28 pb-16 sm:pt-32 lg:pt-36 lg:pb-24">

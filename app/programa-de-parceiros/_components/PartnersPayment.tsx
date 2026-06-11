@@ -8,6 +8,8 @@ import {
 	FIRST_MONTH_PAYOUT,
 	RECURRING_MONTH_PAYOUT,
 	SUBSEQUENT_INVOICE_PERCENT,
+	THIRD_INVOICE_PERCENT,
+	THIRD_MONTH_PAYOUT,
 	YEARLY_INVOICE_PERCENT,
 } from "./program-facts";
 
@@ -21,7 +23,15 @@ const TIERS = [
 		featured: true,
 	},
 	{
-		label: "Mensalidades seguintes",
+		label: "Terceira mensalidade",
+		percent: `${THIRD_INVOICE_PERCENT}%`,
+		caption: "Plano mensal",
+		helper: "Bônus de permanência quando o cliente indicado chega à terceira mensalidade paga.",
+		amount: `${formatToMoney(THIRD_MONTH_PAYOUT)} por loja`,
+		featured: true,
+	},
+	{
+		label: "Demais mensalidades",
 		percent: `${SUBSEQUENT_INVOICE_PERCENT}%`,
 		caption: "Plano mensal",
 		helper: "Recorrente, mês após mês, enquanto a loja continuar ativa na plataforma.",
@@ -56,7 +66,7 @@ export function PartnersPayment() {
 							100% no primeiro mês.
 						</span>
 						<span className="block ledger-fade text-[#24549c]" style={{ "--i": 3 } as React.CSSProperties} data-stagger>
-							Recorrência pra sempre.
+							E 100% no terceiro.
 						</span>
 					</h2>
 					<p
@@ -70,7 +80,7 @@ export function PartnersPayment() {
 				</Reveal>
 
 				<Reveal className="mt-12 lg:mt-16">
-					<div className="grid gap-5 lg:grid-cols-3 lg:gap-6">
+					<div className="grid gap-5 lg:grid-cols-4 lg:gap-6">
 						{TIERS.map((tier, index) => (
 							<div
 								key={tier.label}
@@ -82,14 +92,14 @@ export function PartnersPayment() {
 								style={{ "--i": index * 2 } as React.CSSProperties}
 								data-stagger
 							>
-								<div className="flex items-center justify-between">
+								<div className="flex items-center justify-between gap-3">
 									<p className={`text-[11px] font-extrabold uppercase tracking-[0.14em] ${tier.featured ? "text-white/65" : "text-[#171717]/50"}`}>
 										{tier.caption}
 									</p>
 									{tier.featured ? (
 										<span className="inline-flex items-center gap-1.5 rounded-full bg-[#ffb900] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#171717]">
 											<BadgeDollarSign className="h-3 w-3" strokeWidth={2.5} />
-											Bônus de ativação
+											Bônus
 										</span>
 									) : null}
 								</div>
@@ -106,9 +116,7 @@ export function PartnersPayment() {
 								<p className={`mt-3 text-[15px] font-extrabold ${tier.featured ? "text-white" : "text-[#171717]"}`}>{tier.label}</p>
 								<p className={`mt-1.5 flex-1 text-[14px] leading-[1.6] ${tier.featured ? "text-white/75" : "text-[#171717]/62"}`}>{tier.helper}</p>
 								<p
-									className={`mt-5 rounded-xl px-3.5 py-2.5 text-[13px] font-extrabold ${
-										tier.featured ? "bg-white/12 text-white" : "bg-[#24549c]/8 text-[#24549c]"
-									}`}
+									className={`mt-5 rounded-xl px-3.5 py-2.5 text-[13px] font-extrabold ${tier.featured ? "bg-white/12 text-white" : "bg-[#24549c]/8 text-[#24549c]"}`}
 								>
 									{tier.amount}
 								</p>

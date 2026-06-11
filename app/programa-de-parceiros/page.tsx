@@ -12,7 +12,7 @@ import { PartnersPayment } from "./_components/PartnersPayment";
 export const metadata: Metadata = {
 	title: "Programa de Parcerias | RecompraCRM",
 	description:
-		"Indique lojas para o RecompraCRM e ganhe comissão recorrente: 100% da primeira mensalidade e 20% das seguintes, com painel próprio e pagamento mensal via PIX.",
+		"Indique lojas para o RecompraCRM e ganhe comissão recorrente: 100% da primeira e da terceira mensalidade, mais 20% das demais, com painel próprio e pagamento mensal via PIX.",
 	openGraph: {
 		title: "Programa de Parcerias | RecompraCRM",
 		description: "Transforme suas indicações de lojistas em receita recorrente. Painel próprio e pagamento mensal via PIX.",

@@ -3,6 +3,7 @@ import {
 	PLATFORM_PARTNER_COMMISSION_RULE_VERSION,
 	PLATFORM_PARTNER_MONTHLY_FIRST_INVOICE_BPS,
 	PLATFORM_PARTNER_MONTHLY_SUBSEQUENT_INVOICE_BPS,
+	PLATFORM_PARTNER_MONTHLY_THIRD_INVOICE_BPS,
 	PLATFORM_PARTNER_RULE_SNAPSHOT,
 	PLATFORM_PARTNER_YEARLY_INVOICE_BPS,
 } from "@/lib/platform-partnerships/constants";
@@ -233,7 +234,9 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 		? PLATFORM_PARTNER_YEARLY_INVOICE_BPS
 		: numeroInvoiceAssinatura === 1
 			? PLATFORM_PARTNER_MONTHLY_FIRST_INVOICE_BPS
-			: PLATFORM_PARTNER_MONTHLY_SUBSEQUENT_INVOICE_BPS;
+			: numeroInvoiceAssinatura === 3
+				? PLATFORM_PARTNER_MONTHLY_THIRD_INVOICE_BPS
+				: PLATFORM_PARTNER_MONTHLY_SUBSEQUENT_INVOICE_BPS;
 	const valorComissaoCentavos = Math.round((valorBaseComissionavelCentavos * percentualComissaoBps) / 10000);
 	const now = new Date();
 

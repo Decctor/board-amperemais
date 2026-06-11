@@ -12,7 +12,12 @@ const COMMISSION_ROWS = [
 		helper: "confirmou pagamento, entrou no extrato.",
 	},
 	{
-		label: "Mensalidades seguintes",
+		label: "Terceira mensalidade",
+		value: "100%",
+		helper: "cliente permaneceu, novo bônus cheio.",
+	},
+	{
+		label: "Demais mensalidades",
 		value: "20%",
 		helper: "recorrente enquanto o cliente continuar ativo.",
 	},
@@ -123,7 +128,7 @@ export function LedgerPartnershipProgram() {
 											</div>
 											<div
 												className={`ledger-tabular rounded-2xl px-3.5 py-2 text-right text-[24px] font-extrabold leading-none ${
-													index === 0 ? "bg-[#ffb900] text-[#171717]" : "bg-[#24549c]/10 text-[#24549c]"
+													index === 0 || index === 1 ? "bg-[#ffb900] text-[#171717]" : "bg-[#24549c]/10 text-[#24549c]"
 												}`}
 											>
 												{row.value}
