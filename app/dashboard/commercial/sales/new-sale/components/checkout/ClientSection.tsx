@@ -1,14 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { formatToPhone } from "@/lib/formatting";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
-import { HatGlasses, User, UserRound, X } from "lucide-react";
+import { HatGlasses, PanelRightOpen, User, UserRound, X } from "lucide-react";
 
 type ClientSectionProps = {
 	saleState: TUseSaleState;
 	onOpenVinculationMenu: () => void;
+	onOpenContext?: () => void;
 };
 
-export default function ClientSection({ saleState, onOpenVinculationMenu }: ClientSectionProps) {
+export default function ClientSection({ saleState, onOpenVinculationMenu, onOpenContext }: ClientSectionProps) {
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center justify-between">
@@ -47,9 +48,16 @@ export default function ClientSection({ saleState, onOpenVinculationMenu }: Clie
 						<p className="text-sm font-semibold leading-none">{saleState.state.cliente.nome}</p>
 						<p className="text-xs text-muted-foreground">{formatToPhone(saleState.state.cliente.telefone)}</p>
 					</div>
-					<Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => saleState.clearCliente()}>
-						<X className="w-3 h-3" />
-					</Button>
+					<div className="flex items-center gap-1">
+						{onOpenContext ? (
+							<Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={onOpenContext} aria-label="Abrir contexto do cliente">
+								<PanelRightOpen className="w-3.5 h-3.5" />
+							</Button>
+						) : null}
+						<Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => saleState.clearCliente()}>
+							<X className="w-3 h-3" />
+						</Button>
+					</div>
 				</div>
 			) : null}
 		</div>

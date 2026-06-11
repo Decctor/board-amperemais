@@ -48,7 +48,7 @@ function TabsList({
   return (
     <div
       data-slot="tabs-list-scroll"
-      className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30"
+      className="w-full min-w-0 max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30"
     >
       <TabsPrimitive.List
         data-slot="tabs-list"

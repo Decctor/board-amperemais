@@ -21,6 +21,7 @@ type CheckoutPanelProps = {
 	onFinalizeSale: () => void;
 	isCreatingDraft?: boolean;
 	isFinalizingSale?: boolean;
+	onOpenContext?: () => void;
 };
 
 export default function CheckoutPanel({
@@ -30,6 +31,7 @@ export default function CheckoutPanel({
 	onFinalizeSale,
 	isCreatingDraft,
 	isFinalizingSale,
+	onOpenContext,
 }: CheckoutPanelProps) {
 	const [isVinculationMenuOpen, setIsVinculationMenuOpen] = useState(false);
 	const [isNewLocationOpen, setIsNewLocationOpen] = useState(false);
@@ -82,7 +84,7 @@ export default function CheckoutPanel({
 					resetOptionLabel="SELECIONE UM VENDEDOR"
 				/>
 
-				<ClientSection saleState={saleState} onOpenVinculationMenu={() => setIsVinculationMenuOpen(true)} />
+				<ClientSection saleState={saleState} onOpenVinculationMenu={() => setIsVinculationMenuOpen(true)} onOpenContext={onOpenContext} />
 				<ItemsSection saleState={saleState} />
 				<DeliverySection saleState={saleState} locationOptions={locationOptions} onOpenNewLocation={() => setIsNewLocationOpen(true)} />
 				<PaymentsSection saleState={saleState} />

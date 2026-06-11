@@ -18,7 +18,7 @@ export default function ProductsGridBlock({ productsData, isLoading, isError, er
 
 	if (productsData && productsData.products.length > 0) {
 		return (
-			<div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+			<div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-4 pb-4">
 				{productsData.products.map((product) => (
 					<ProductCard key={product.id} product={product} onClick={() => onProductClick(product)} />
 				))}

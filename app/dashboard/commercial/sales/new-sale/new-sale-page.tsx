@@ -12,7 +12,7 @@ import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";
 import { useMutation } from "@tanstack/react-query";
 import { Check, ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import CheckoutPanel from "./components/CheckoutPanel";
 import ProductBuilderModal from "./components/ProductBuilderModal";
@@ -20,6 +20,8 @@ import CategoriesBar from "./components/composition/CategoriesBar";
 import PaginationBlock from "./components/composition/PaginationBlock";
 import ProductsGridBlock from "./components/composition/ProductsGridBlock";
 import SearchBlock from "./components/composition/SearchBlock";
+import ClientContextPanel from "./components/context/ClientContextPanel";
+import ClientContextSheet from "./components/context/ClientContextSheet";
 
 function mapItemsToApi(saleState: TUseSaleState) {
 	return saleState.state.itens.map((item) => ({
@@ -49,7 +51,29 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 	const [searchValue, setSearchValue] = useState("");
 	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
 	const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
+	const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
+	const [isContextSheetOpen, setIsContextSheetOpen] = useState(false);
 	const saleState = useSaleState({ organizationConfig: organizationConfiguration });
+
+	const linkedClient = saleState.state.cliente;
+	const linkedClientId = linkedClient?.id ?? null;
+
+	// Unique product ids in the basket — drives cross-sell, stable against quantity changes.
+	const basketProductIds = useMemo(() => [...new Set(saleState.state.itens.map((item) => item.produtoId))], [saleState.state.itens]);
+
+	// Auto-open the context panel when a client is freshly linked; collapse when unlinked.
+	const previousClientIdRef = useRef<string | null>(null);
+	useEffect(() => {
+		const previousClientId = previousClientIdRef.current;
+		if (linkedClientId && linkedClientId !== previousClientId) {
+			setIsContextPanelOpen(true);
+		}
+		if (!linkedClientId) {
+			setIsContextPanelOpen(false);
+			setIsContextSheetOpen(false);
+		}
+		previousClientIdRef.current = linkedClientId;
+	}, [linkedClientId]);
 
 	const { mutate: createDraft, isPending: isCreatingDraft } = useMutation({
 		mutationKey: ["create-sale-draft"],
@@ -235,7 +259,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 					)}
 				</div>
 
-				<div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto pr-1 pb-20 lg:pb-0">
+				<div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 pr-1 pb-20 lg:pb-0">
 					<ProductsGridBlock
 						productsData={productsData}
 						isLoading={productsLoading}
@@ -256,6 +280,19 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 				</div>
 			</div>
 
+			{linkedClient ? (
+				<ClientContextPanel
+					isOpen={isContextPanelOpen}
+					onClose={() => setIsContextPanelOpen(false)}
+					clientId={linkedClient.id}
+					fallbackName={linkedClient.nome}
+					fallbackPhone={linkedClient.telefone}
+					basketProductIds={basketProductIds}
+					organizationCashbackProgram={organizationCashbackProgram}
+					onSelectProduct={handleProductClick}
+				/>
+			) : null}
+
 			<div className="hidden lg:block w-[420px] shrink-0 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 				<CheckoutPanel
 					organizationCashbackProgram={organizationCashbackProgram}
@@ -264,6 +301,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 					onFinalizeSale={handleFinalizeSale}
 					isCreatingDraft={isCreatingDraft}
 					isFinalizingSale={isFinalizingSale}
+					onOpenContext={() => setIsContextPanelOpen(true)}
 				/>
 			</div>
 
@@ -288,11 +326,28 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 									onFinalizeSale={handleFinalizeSale}
 									isCreatingDraft={isCreatingDraft}
 									isFinalizingSale={isFinalizingSale}
+									onOpenContext={() => {
+										setIsCheckoutDrawerOpen(false);
+										setIsContextSheetOpen(true);
+									}}
 								/>
 							</div>
 						</DrawerContent>
 					</Drawer>
 				</div>
+			) : null}
+
+			{isMobile && linkedClient ? (
+				<ClientContextSheet
+					open={isContextSheetOpen}
+					onOpenChange={setIsContextSheetOpen}
+					clientId={linkedClient.id}
+					fallbackName={linkedClient.nome}
+					fallbackPhone={linkedClient.telefone}
+					basketProductIds={basketProductIds}
+					organizationCashbackProgram={organizationCashbackProgram}
+					onSelectProduct={handleProductClick}
+				/>
 			) : null}
 
 			{builderProduct ? <ProductBuilderModal product={builderProduct} onAddToCart={saleState.addItem} onClose={() => setBuilderProduct(null)} /> : null}

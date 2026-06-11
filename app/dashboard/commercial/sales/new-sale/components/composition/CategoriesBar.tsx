@@ -11,7 +11,7 @@ type CategoriesBarProps = {
 
 export default function CategoriesBar({ groups, selectedGroup, onGroupSelect, isLoading }: CategoriesBarProps) {
 	return (
-		<div className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20">
+		<div className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
 			<div className="flex items-center gap-3 pb-1">
 				<Button
 					variant={selectedGroup === null ? "brand" : "ghost"}

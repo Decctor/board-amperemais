@@ -1,7 +1,8 @@
 import type { TGetSaleDraftOutput } from "@/app/api/pos/sales/route";
 import type { TGetPOSGroupsOutput } from "@/app/api/pos/groups/route";
 import type { TGetPOSProductsInput, TGetPOSProductsOutput } from "@/app/api/pos/products/route";
-import { useQuery } from "@tanstack/react-query";
+import type { TGetCrossSellOutput } from "@/app/api/pos/cross-sell/route";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useMemo, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
@@ -87,6 +88,38 @@ export function useSaleDraft({ saleId }: { saleId: string }) {
 			queryKey,
 			queryFn: () => fetchSaleDraft(saleId),
 			enabled: !!saleId,
+		}),
+		queryKey,
+	};
+}
+
+// ============================================================================
+// Cross-sell suggestions (client profile + current basket co-occurrence)
+// ============================================================================
+
+async function fetchCrossSellProducts({ clientId, basketKey }: { clientId: string; basketKey: string }) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("clientId", clientId);
+	if (basketKey) searchParams.set("basketProductIds", basketKey);
+	const { data } = await axios.get<TGetCrossSellOutput>(`/api/pos/cross-sell?${searchParams.toString()}`);
+	return data.data;
+}
+
+export function usePOSCrossSellProducts({ clientId, basketProductIds }: { clientId: string | null | undefined; basketProductIds: string[] }) {
+	// Stable key: ordered + deduped, so changing item quantity/order never refetches —
+	// only a product entering or leaving the basket does.
+	const basketKey = useMemo(() => [...new Set(basketProductIds)].sort().join(","), [basketProductIds]);
+	// Debounce so rapid cart edits don't fire a request per click.
+	const { key: debouncedBasketKey } = useDebounceMemo({ key: basketKey }, 600);
+
+	const queryKey = ["pos-cross-sell", clientId, debouncedBasketKey];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchCrossSellProducts({ clientId: clientId as string, basketKey: debouncedBasketKey }),
+			enabled: !!clientId,
+			placeholderData: keepPreviousData, // keep prior suggestions visible while refetching
+			staleTime: 60 * 1000,
 		}),
 		queryKey,
 	};
