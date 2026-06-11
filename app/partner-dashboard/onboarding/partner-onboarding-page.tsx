@@ -106,18 +106,6 @@ export default function PartnerOnboardingPage({ user }: { user: TAuthUserSession
 								required
 							/>
 						</div>
-						<TextInput
-							value={state.partner.arquivos.cpf ?? ""}
-							label="URL DO CPF"
-							placeholder="https://..."
-							handleChange={(value) => updatePartner({ arquivos: { ...state.partner.arquivos, cpf: value || undefined } })}
-						/>
-						<TextInput
-							value={state.partner.arquivos.cnpj ?? ""}
-							label="URL DO CNPJ"
-							placeholder="https://..."
-							handleChange={(value) => updatePartner({ arquivos: { ...state.partner.arquivos, cnpj: value || undefined } })}
-						/>
 					</div>
 					<CheckboxInput
 						checked={state.partner.aceiteTermos}
