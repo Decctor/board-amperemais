@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { incrementalRevenueExpr, sumIncrementalRevenueExpr } from "@/lib/conversions/incremental";
 import { db } from "@/services/drizzle";
 import { campaignConversions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -48,6 +49,7 @@ async function getConversionQuality({ input, session }: { input: TGetConversionQ
 			tipoConversao: campaignConversions.tipoConversao,
 			total: count(campaignConversions.id),
 			receitaTotal: sum(campaignConversions.vendaValor),
+			receitaIncremental: sumIncrementalRevenueExpr,
 		})
 		.from(campaignConversions)
 		.where(and(...baseConditions, isNotNull(campaignConversions.tipoConversao)))
@@ -91,6 +93,8 @@ async function getConversionQuality({ input, session }: { input: TGetConversionQ
 		.select({
 			totalConversoes: count(campaignConversions.id),
 			totalReceita: sum(campaignConversions.vendaValor),
+			totalReceitaIncremental: sumIncrementalRevenueExpr,
+			conversoesIncrementais: sql<number>`COUNT(*) FILTER (WHERE ${incrementalRevenueExpr} > 0)`,
 			avgTicketConversao: avg(campaignConversions.vendaValor),
 			avgTempoConversaoHoras: sql<number>`AVG(${campaignConversions.tempoParaConversaoMinutos}) / 60.0`,
 		})
@@ -119,6 +123,7 @@ async function getConversionQuality({ input, session }: { input: TGetConversionQ
 		label: typeLabels[item.tipoConversao ?? ""] ?? item.tipoConversao,
 		quantidade: item.total,
 		receita: Number(item.receitaTotal ?? 0),
+		receitaIncremental: Math.round(Number(item.receitaIncremental ?? 0) * 100) / 100,
 	}));
 
 	// Calculate percentages
@@ -136,6 +141,8 @@ async function getConversionQuality({ input, session }: { input: TGetConversionQ
 			resumo: {
 				totalConversoes,
 				totalReceita: Number(totals[0]?.totalReceita ?? 0),
+				totalReceitaIncremental: Math.round(Number(totals[0]?.totalReceitaIncremental ?? 0) * 100) / 100,
+				conversoesIncrementais: Number(totals[0]?.conversoesIncrementais ?? 0),
 				avgTicketConversao: Number(totals[0]?.avgTicketConversao ?? 0),
 				avgTempoConversaoHoras: Math.round((totals[0]?.avgTempoConversaoHoras ?? 0) * 100) / 100,
 				conversoesComCicloConfiavel: reliableCycleCount[0]?.total ?? 0,

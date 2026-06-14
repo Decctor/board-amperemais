@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
+import { countIncrementalConversionsExpr, sumIncrementalRevenueExpr } from "@/lib/conversions/incremental";
 import { checkCampaignWeeklyInteractionLimit } from "@/lib/interactions/campaign-weekly-limits";
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
@@ -77,6 +78,8 @@ async function getCampaignStats({ input, session }: { input: TGetCampaignStatsIn
 			.select({
 				total: count(campaignConversions.id),
 				receitaTotal: sum(campaignConversions.atribuicaoReceita),
+				receitaIncremental: sumIncrementalRevenueExpr,
+				conversoesIncrementais: countIncrementalConversionsExpr,
 				tempoMedioMinutos: avg(campaignConversions.tempoParaConversaoMinutos),
 				clientesConvertidos: countDistinct(campaignConversions.clienteId),
 				ticketMedio: avg(campaignConversions.vendaValor),
@@ -105,6 +108,8 @@ async function getCampaignStats({ input, session }: { input: TGetCampaignStatsIn
 
 	const conversoes = conversionsResult[0]?.total ?? 0;
 	const receitaAtribuida = Number(conversionsResult[0]?.receitaTotal ?? 0);
+	const receitaIncremental = Number(conversionsResult[0]?.receitaIncremental ?? 0);
+	const conversoesIncrementais = Number(conversionsResult[0]?.conversoesIncrementais ?? 0);
 	const tempoMedioMinutos = Number(conversionsResult[0]?.tempoMedioMinutos ?? 0);
 	const clientesConvertidos = conversionsResult[0]?.clientesConvertidos ?? 0;
 	const ticketMedioConversao = Number(conversionsResult[0]?.ticketMedio ?? 0);
@@ -124,9 +129,11 @@ async function getCampaignStats({ input, session }: { input: TGetCampaignStatsIn
 			totalEntregues,
 			totalFalhas,
 			conversoes,
+			conversoesIncrementais,
 			clientesConvertidos,
 			taxaConversao: Math.round(taxaConversao * 100) / 100,
 			receitaAtribuida,
+			receitaIncremental: Math.round(receitaIncremental * 100) / 100,
 			tempoMedioConversaoHoras: Math.round(tempoMedioConversaoHoras * 100) / 100,
 			ticketMedioConversao: Math.round(ticketMedioConversao * 100) / 100,
 			limiteSemanal: {
