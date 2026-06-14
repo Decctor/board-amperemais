@@ -1,3 +1,4 @@
+export * from "./CampaignReportImage";
 export * from "./ReportCard";
 export * from "./ReportGoalBar";
 export * from "./ReportHeader";

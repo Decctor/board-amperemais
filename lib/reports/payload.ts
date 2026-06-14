@@ -1,3 +1,4 @@
+import { getCampaignReportStats } from "./campaign-data-fetchers";
 import {
 	type PartnerRankingItem,
 	type ProductRankingItem,
@@ -9,7 +10,7 @@ import {
 	getSellerRankings,
 } from "./data-fetchers";
 import { getReportPeriod } from "./periods";
-import type { TReportFrequency, TReportTheme, TSalesReportPayload } from "./types";
+import type { TCampaignReportPayload, TReportFrequency, TReportTheme, TSalesReportPayload } from "./types";
 
 export const REPORT_THEME_DEFAULTS = {
 	primary: "#FFB900",
@@ -75,6 +76,39 @@ export async function buildSalesReportPayload({
 		topPartners,
 		topProducts,
 		timeline,
+	};
+}
+
+export async function buildCampaignReportPayload({
+	frequency,
+	organization,
+	referenceDate,
+}: BuildSalesReportPayloadParams): Promise<TCampaignReportPayload> {
+	const period = getReportPeriod(frequency, referenceDate);
+	const queryParams = {
+		after: period.after,
+		before: period.before,
+		comparisonAfter: period.comparisonAfter,
+		comparisonBefore: period.comparisonBefore,
+		organizacaoId: organization.id,
+	};
+
+	const [campaign, stats] = await Promise.all([getCampaignReportStats(queryParams), getOverallSalesStats(queryParams)]);
+
+	return {
+		theme: getReportTheme(organization),
+		period,
+		campaign,
+		commercial: {
+			faturamento: stats.faturamento,
+			qtdeVendas: stats.qtdeVendas.atual,
+			ticketMedio: stats.ticketMedio.atual,
+			qtdeItensVendidos: stats.qtdeItensVendidos.atual,
+			valorDiarioVendido: stats.valorDiarioVendido.atual,
+			itensPorVenda: stats.itensPorVendaMedio.atual,
+			margemBruta: stats.margemBruta.atual,
+			custoTotal: stats.custoTotal.atual,
+		},
 	};
 }
 

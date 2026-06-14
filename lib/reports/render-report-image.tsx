@@ -1,13 +1,20 @@
-import { SalesReportImage } from "@/components/Reports";
+import { CampaignReportImage, SalesReportImage } from "@/components/Reports";
 import { Resvg } from "@resvg/resvg-js";
 import React from "react";
 import satori from "satori";
 import { getReportFonts } from "./fonts";
-import type { TSalesReportPayload } from "./types";
+import type { TCampaignReportPayload, TSalesReportPayload } from "./types";
 
 type RenderReportImageOptions = {
 	payload: TSalesReportPayload;
 };
+
+type RenderCampaignReportImageOptions = {
+	payload: TCampaignReportPayload;
+};
+
+const CAMPAIGN_REPORT_WIDTH = 1080;
+const CAMPAIGN_REPORT_HEIGHT = 1920;
 
 function bufferToDataUrl(buffer: Buffer, mimeType: string) {
 	return `data:${mimeType};base64,${buffer.toString("base64")}`;
@@ -55,7 +62,35 @@ export async function renderReportPng({ payload }: RenderReportImageOptions): Pr
 	return resvg.render().asPng();
 }
 
+export async function renderCampaignReportSvg({ payload }: RenderCampaignReportImageOptions) {
+	const fonts = await getReportFonts();
+	const logoSrc = await resolveLogoDataUrl(payload.theme.logoUrl);
+
+	return satori(<CampaignReportImage payload={payload} logoSrc={logoSrc} />, {
+		width: CAMPAIGN_REPORT_WIDTH,
+		height: CAMPAIGN_REPORT_HEIGHT,
+		fonts,
+	});
+}
+
+export async function renderCampaignReportPng({ payload }: RenderCampaignReportImageOptions): Promise<Buffer> {
+	const svg = await renderCampaignReportSvg({ payload });
+	const resvg = new Resvg(svg, {
+		fitTo: {
+			mode: "width",
+			value: CAMPAIGN_REPORT_WIDTH,
+		},
+		font: {
+			loadSystemFonts: false,
+		},
+	});
+
+	return resvg.render().asPng();
+}
+
 export default {
 	renderReportSvg,
 	renderReportPng,
+	renderCampaignReportSvg,
+	renderCampaignReportPng,
 };

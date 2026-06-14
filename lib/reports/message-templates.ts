@@ -1,5 +1,6 @@
 import type { OverallSalesStatsResult, PartnerRankingItem, ProductRankingItem, SellerRankingItem } from "./data-fetchers";
 import { formatComparisonWithEmoji, formatCurrency, formatNumber, formatPercentage, truncateText } from "./formatters";
+import type { TCampaignReportPayload } from "./types";
 
 type ReportMessageInput = {
 	orgNome: string;
@@ -54,6 +55,61 @@ function formatProductLines(products: ProductRankingItem[], showQty = false): st
 			return `   ${i + 1}. ${truncateText(p.produtoNome, 25)} — ${formatCurrency(p.faturamento)}${qtyInfo}`;
 		})
 		.join("\n");
+}
+
+function getCampaignReportLabel(frequency: TCampaignReportPayload["period"]["frequency"]): string {
+	if (frequency === "daily") return "IMPACTO DAS CAMPANHAS · DIA";
+	if (frequency === "weekly") return "IMPACTO DAS CAMPANHAS · SEMANA";
+	if (frequency === "biweekly") return "IMPACTO DAS CAMPANHAS · QUINZENA";
+	return "IMPACTO DAS CAMPANHAS · MÊS";
+}
+
+export function buildCampaignReportMessage(payload: TCampaignReportPayload): string {
+	const { campaign, commercial, period, theme } = payload;
+	const comparacao = formatComparisonWithEmoji(campaign.receitaAtribuida.atual, campaign.receitaAtribuida.anterior);
+
+	const tiposLinhas =
+		campaign.distribuicaoTipos.length > 0
+			? campaign.distribuicaoTipos
+					.map((tipo) => `• ${tipo.label}: *${formatNumber(tipo.quantidade)}* (${safeCurrency(tipo.receita)})`)
+					.join("\n")
+			: "   _Sem conversões classificadas no período_";
+
+	const aceleracaoLinha = campaign.impactoFrequencia.confiavel
+		? `• Compras antecipadas: *${formatNumber(campaign.impactoFrequencia.totalAceleradas)}* (${formatNumber(
+				Math.round(campaign.impactoFrequencia.diasAntecipadosMedio),
+			)} dias antes, em média)`
+		: null;
+	const ticketLinha =
+		campaign.impactoMonetario.totalAcimaTicket > 0
+			? `• Compras acima do ticket: *${formatNumber(campaign.impactoMonetario.totalAcimaTicket)}*`
+			: null;
+
+	return [
+		`🚀 *${getCampaignReportLabel(period.frequency)}*`,
+		`📅 ${period.label} · ${theme.orgName}`,
+		"─".repeat(30),
+		"",
+		`💰 *Receita atribuída às campanhas:* ${formatCurrency(campaign.receitaAtribuida.atual)}`,
+		`${comparacao} vs. período anterior`,
+		"",
+		"📣 *Motor de campanhas*",
+		`• Mensagens enviadas: *${formatNumber(campaign.mensagensEnviadas.atual)}* para *${formatNumber(campaign.clientesAlcancados)}* clientes`,
+		`• Conversões geradas: *${formatNumber(campaign.conversoes.atual)}*`,
+		`• Clientes recuperados: *${formatNumber(campaign.clientesRecuperados)}* · Acelerados: *${formatNumber(campaign.clientesAcelerados)}*`,
+		`• Ticket médio convertido: *${safeCurrency(campaign.ticketMedioConversao)}*`,
+		"",
+		"🎯 *Tipos de conversão*",
+		tiposLinhas,
+		...(aceleracaoLinha || ticketLinha ? ["", "📈 *Qualidade das conversões*", aceleracaoLinha, ticketLinha].filter((line): line is string => line !== null) : []),
+		"",
+		"🛒 *Resumo comercial*",
+		`• Faturamento total: *${safeCurrency(commercial.faturamento.atual)}*`,
+		`• Vendas realizadas: *${formatNumber(commercial.qtdeVendas)}*`,
+		`• Ticket médio: *${safeCurrency(commercial.ticketMedio)}*`,
+		"",
+		"_Relatório automático · Recompra CRM_",
+	].join("\n");
 }
 
 export function buildDailyReportMessage({ orgNome, periodo, stats, topSellers, topPartners, topProducts }: ReportMessageInput): string {

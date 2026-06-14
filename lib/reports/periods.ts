@@ -1,7 +1,9 @@
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
+import weekOfYear from "dayjs/plugin/weekOfYear";
 import type { TReportFrequency, TReportPeriod } from "./types";
 
+dayjs.extend(weekOfYear);
 dayjs.locale("pt-br");
 
 export function getReportPeriod(frequency: TReportFrequency, referenceDate = new Date()): TReportPeriod {
@@ -38,7 +40,7 @@ export function getReportPeriod(frequency: TReportFrequency, referenceDate = new
 			before: before.toDate(),
 			comparisonAfter: comparisonAfter.toDate(),
 			comparisonBefore: comparisonBefore.toDate(),
-			storageKey: `${after.format("YYYY")}-W${after.format("WW")}`,
+			storageKey: `${after.format("YYYY")}-W${String(after.week()).padStart(2, "0")}`,
 		};
 	}
 

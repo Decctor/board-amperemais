@@ -1,4 +1,4 @@
-import type { TSalesReportPayload } from "./types";
+import type { TCampaignReportPayload, TSalesReportPayload } from "./types";
 import { formatComparisonWithEmoji, formatCurrency, formatNumber, formatPercentage } from "./formatters";
 
 function safeNumber(value: number) {
@@ -83,6 +83,37 @@ function buildCaption(payload: TSalesReportPayload) {
 		getThirdSummaryLine(payload),
 		"",
 		getHighlight(payload),
+		"",
+		"_Relatório automático · Recompra CRM_",
+	]
+		.filter((line) => line !== null)
+		.join("\n");
+}
+
+function getCampaignReportTitle(frequency: TCampaignReportPayload["period"]["frequency"]) {
+	if (frequency === "daily") return "IMPACTO DAS CAMPANHAS · DIA";
+	if (frequency === "weekly") return "IMPACTO DAS CAMPANHAS · SEMANA";
+	if (frequency === "biweekly") return "IMPACTO DAS CAMPANHAS · QUINZENA";
+	return "IMPACTO DAS CAMPANHAS · MÊS";
+}
+
+export function buildCampaignReportCaption(payload: TCampaignReportPayload) {
+	const { campaign, commercial, period, theme } = payload;
+	const comparison = `${formatComparisonWithEmoji(campaign.receitaAtribuida.atual, campaign.receitaAtribuida.anterior)} vs. período anterior`;
+
+	return [
+		`🚀 *${getCampaignReportTitle(period.frequency)}*`,
+		`📅 ${period.label} · ${theme.orgName}`,
+		"────────────────────",
+		`💰 *Receita atribuída:* ${formatCurrency(campaign.receitaAtribuida.atual)}`,
+		comparison,
+		"",
+		"📣 *Motor de campanhas*",
+		`• Mensagens enviadas: *${formatNumber(campaign.mensagensEnviadas.atual)}* para *${formatNumber(campaign.clientesAlcancados)}* clientes`,
+		`• Conversões geradas: *${formatNumber(campaign.conversoes.atual)}*`,
+		`• Clientes recuperados: *${formatNumber(campaign.clientesRecuperados)}* · Acelerados: *${formatNumber(campaign.clientesAcelerados)}*`,
+		"",
+		`🛒 *Faturamento total:* ${formatCurrency(commercial.faturamento.atual)} · ${formatNumber(commercial.qtdeVendas)} vendas`,
 		"",
 		"_Relatório automático · Recompra CRM_",
 	]

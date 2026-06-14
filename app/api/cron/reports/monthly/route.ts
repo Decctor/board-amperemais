@@ -1,14 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
+import { runRecurrentSalesReport } from "@/lib/reports/run-recurrent-sales-report";
 import { NextRequest, NextResponse } from "next/server";
 
-async function getBiweeklyReportRoute(_req: NextRequest) {
-	return NextResponse.json(
-		{
-			message: "Biweekly report skipped: biweekly report is disabled for now.",
-		},
-		{ status: 200 },
-	);
+async function getMonthlyReportRoute(_req: NextRequest) {
+	const result = await runRecurrentSalesReport({ frequency: "monthly" });
+	return NextResponse.json(result, { status: 200 });
 }
 
 export const runtime = "nodejs";
@@ -18,6 +15,6 @@ export const maxDuration = 60;
 export const GET = appApiHandler({
 	GET: async (req) => {
 		assertCronAuthorized(req);
-		return getBiweeklyReportRoute(req);
+		return getMonthlyReportRoute(req);
 	},
 });
