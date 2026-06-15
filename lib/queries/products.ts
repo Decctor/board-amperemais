@@ -11,8 +11,9 @@ import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } fr
 import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/app/api/products/stats/ranking/route";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
+import type { TGetProductsPortfolioAnalysisInput, TGetProductsPortfolioAnalysisOutput } from "@/app/api/products/stats/portfolio-analysis/route";
 
 async function fetchProducts(input: TGetProductsDefaultInput) {
 	try {
@@ -31,6 +32,8 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		if (input.priceMax) searchParams.set("priceMax", input.priceMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
+		if (input.abcClasses && input.abcClasses.length > 0) searchParams.set("abcClasses", input.abcClasses.join(","));
+		if (input.resultLimit) searchParams.set("resultLimit", input.resultLimit.toString());
 		if (input.statsSellerIds) searchParams.set("statsSellerIds", input.statsSellerIds.join(","));
 		const { data } = await axios.get<TGetProductsOutput>(`/api/products?${searchParams.toString()}`);
 		const result = data.data.default;
@@ -82,6 +85,8 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		stockStatus: initialFilters?.stockStatus || [],
 		priceMin: initialFilters?.priceMin || null,
 		priceMax: initialFilters?.priceMax || null,
+		abcClasses: initialFilters?.abcClasses || [],
+		resultLimit: initialFilters?.resultLimit ?? null,
 		orderByField: initialFilters?.orderByField || "nome",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
 	});
@@ -212,7 +217,14 @@ type UseProductsBySearchInfiniteQueryParams = {
 };
 export function useProductsBySearchInfiniteQuery({ initialSearch = "" }: UseProductsBySearchInfiniteQueryParams = {}) {
 	const [search, setSearch] = useState(initialSearch);
+	const [searchWasTouched, setSearchWasTouched] = useState(false);
 	const debouncedSearch = useDebounceMemo({ search }, 500);
+
+	useEffect(() => {
+		if (searchWasTouched) return;
+		setSearch(initialSearch);
+	}, [initialSearch, searchWasTouched]);
+
 	const query = useInfiniteQuery({
 		queryKey: ["products-by-search-infinite-query", debouncedSearch.search],
 		queryFn: ({ pageParam }) => fetchProductsBySearch({ search: debouncedSearch.search, page: pageParam }),
@@ -241,6 +253,7 @@ export function useProductsBySearchInfiniteQuery({ initialSearch = "" }: UseProd
 	const page = query.data?.pages.length ?? 1;
 
 	function updateSearch(value: string) {
+		setSearchWasTouched(true);
 		setSearch(value);
 	}
 
@@ -250,6 +263,7 @@ export function useProductsBySearchInfiniteQuery({ initialSearch = "" }: UseProd
 	}
 
 	function reset() {
+		setSearchWasTouched(true);
 		setSearch("");
 	}
 

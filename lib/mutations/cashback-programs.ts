@@ -9,6 +9,13 @@ import type {
 	TCreateCashbackProgramRedemptionOutput,
 } from "@/app/api/cashback-programs/transactions/redemption/route";
 import axios from "axios";
+import type {
+	TCreateCashbackProgramPrizeInput,
+	TCreateCashbackProgramPrizeOutput,
+	TUpdateCashbackProgramPrizeInput,
+	TUpdateCashbackProgramPrizeOutput,
+} from "@/app/api/cashback-programs/prizes/route";
+
 export async function createCashbackProgram(input: TCreateCashbackProgramInput) {
 	const { data } = await axios.post<TCreateCashbackProgramOutput>("/api/cashback-programs", input);
 	return data;
@@ -21,5 +28,15 @@ export async function updateCashbackProgram(input: TUpdateCashbackProgramInput) 
 
 export async function createCashbackProgramRedemption(input: TCreateCashbackProgramRedemptionInput) {
 	const { data } = await axios.post<TCreateCashbackProgramRedemptionOutput>("/api/cashback-programs/transactions/redemption", input);
+	return data;
+}
+
+export async function createCashbackProgramPrize(input: TCreateCashbackProgramPrizeInput) {
+	const { data } = await axios.post<TCreateCashbackProgramPrizeOutput>("/api/cashback-programs/prizes", input);
+	return data;
+}
+
+export async function updateCashbackProgramPrize(input: TUpdateCashbackProgramPrizeInput) {
+	const { data } = await axios.put<TUpdateCashbackProgramPrizeOutput>("/api/cashback-programs/prizes", input);
 	return data;
 }

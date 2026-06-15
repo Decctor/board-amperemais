@@ -1,6 +1,5 @@
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectProductWithVariants from "@/components/Inputs/SelectProductWithVariants";
-import type { TSelectProductWithVariantsValue } from "@/components/Inputs/SelectProductWithVariants";
 import TextInput from "@/components/Inputs/TextInput";
 import TextareaInput from "@/components/Inputs/TextareaInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";

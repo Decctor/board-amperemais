@@ -32,6 +32,7 @@ type SelectProductWithVariantsProps = {
 	drawerContentClassName?: string;
 	commandListClassName?: string;
 	showLabel?: boolean;
+	initialSearch?: string;
 	value: {
 		productId: string;
 		productVariantId?: string | null;
@@ -57,6 +58,7 @@ function SelectProductWithVariants({
 	drawerContentClassName,
 	commandListClassName,
 	showLabel = true,
+	initialSearch = "",
 	value,
 	editable = true,
 	resetOptionLabel,
@@ -69,7 +71,7 @@ function SelectProductWithVariants({
 	triggerProps,
 }: SelectProductWithVariantsProps) {
 	const { products, productsMatched, hasMorePages, loadMore, isLoading, isFetchingNextPage, isError, error, search, updateSearch } =
-		useProductsBySearchInfiniteQuery();
+		useProductsBySearchInfiniteQuery({ initialSearch });
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	const [isOpen, setIsOpen] = useState(false);
 	const [expandedProductIds, setExpandedProductIds] = useState<string[]>([]);
@@ -78,10 +80,12 @@ function SelectProductWithVariants({
 	const dialogContainer = (triggerRef.current?.closest("[data-dialog-container]") as HTMLElement) || null;
 
 	const selectedLabel = useMemo(() => {
-		if (selectedLabelProp) return selectedLabelProp;
 		if (!value?.productId) return resetOptionLabel;
-		if (!value.productVariantId) return products.find((product) => product.id === value.productId)?.nome ?? resetOptionLabel;
-		return `${products.find((product) => product.id === value.productId)?.nome ?? resetOptionLabel} - ${products.find((product) => product.id === value.productId)?.variantes?.find((variant) => variant.id === value.productVariantId)?.nome ?? resetOptionLabel}`;
+		const selectedProduct = products.find((product) => product.id === value.productId);
+		if (!selectedProduct) return selectedLabelProp ?? resetOptionLabel;
+		if (!value.productVariantId) return selectedProduct.nome;
+		const selectedVariant = selectedProduct.variantes?.find((variant) => variant.id === value.productVariantId);
+		return `${selectedProduct.nome} - ${selectedVariant?.nome ?? selectedLabelProp ?? resetOptionLabel}`;
 	}, [resetOptionLabel, selectedLabelProp, value, products]);
 
 	function toggleProduct(productId: string) {

@@ -1,11 +1,18 @@
 import type { TGetClientCashbackBalanceOutput } from "@/app/api/cashback-programs/clients/balance/route";
 import type { TTopCashbackClientsInput, TTopCashbackClientsOutput } from "@/app/api/cashback-programs/clients/top/route";
+import {
+	TGetCashbackProgramPrizesInput,
+	TGetCashbackProgramPrizesOutput,
+	TGetCashbackProgramPrizesOutputById,
+} from "@/app/api/cashback-programs/prizes/route";
 import type { TGetCashbackProgramOutput } from "@/app/api/cashback-programs/route";
 import type { TCashbackProgramsGraphInput, TCashbackProgramsGraphOutput } from "@/app/api/cashback-programs/stats/graph/route";
-import type { TCashbackProgramStatsInput, TCashbackProgramStatsOutput } from "@/app/api/cashback-programs/stats/route";
+import type { TCashbackProgramStatsOutput } from "@/app/api/cashback-programs/stats/route";
 import type { TCashbackProgramTransactionsInput, TCashbackProgramTransactionsOutput } from "@/app/api/cashback-programs/transactions/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { useDebounceMemo } from "../hooks/use-debounce";
+import { useState } from "react";
 
 async function fetchCashbackProgram() {
 	try {
@@ -140,5 +147,65 @@ export function useClientCashbackBalance({ clienteId }: { clienteId: string | nu
 			enabled: !!clienteId,
 		}),
 		queryKey,
+	};
+}
+
+/**
+ *
+ * PRIZES
+ */
+async function fetchCashbackProgramPrizes(input: TGetCashbackProgramPrizesInput) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("programId", input.programId as string);
+	if (input.search) searchParams.set("search", input.search);
+	searchParams.set("page", input.page.toString());
+	const { data } = await axios.get<TGetCashbackProgramPrizesOutput>(`/api/cashback-programs/prizes?${searchParams.toString()}`);
+	const defaultData = data.data.default;
+	if (!defaultData) throw new Error("Prêmios do programa de cashback não encontrados.");
+	return defaultData;
+}
+type TUseCashbackProgramPrizesInput = {
+	initialFilters: TGetCashbackProgramPrizesInput;
+};
+export function useCashbackProgramPrizes({ initialFilters }: TUseCashbackProgramPrizesInput) {
+	const [filters, setFilters] = useState<TGetCashbackProgramPrizesInput>({
+		programId: initialFilters.programId,
+		search: initialFilters.search,
+		page: initialFilters.page,
+	});
+
+	function updateFilters(newFilters: Partial<TGetCashbackProgramPrizesInput>) {
+		setFilters((prev) => ({ ...prev, ...newFilters }));
+	}
+
+	const debouncedSearch = useDebounceMemo({ search: filters.search }, 1000);
+	const finalFilters = { ...filters, ...debouncedSearch };
+
+	const queryKey = ["cashback-program-prizes", finalFilters];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchCashbackProgramPrizes(finalFilters),
+		}),
+		queryKey,
+		filters,
+		updateFilters,
+	};
+}
+
+async function fetchCashbackProgramPrizeById(id: string) {
+	const { data } = await axios.get<TGetCashbackProgramPrizesOutput>(`/api/cashback-programs/prizes?id=${id}`);
+	const byIdData = data.data.byId;
+	if (!byIdData) throw new Error("Prêmio do programa de cashback não encontrado.");
+	return byIdData;
+}
+
+export function useCashbackProgramPrizeById({ id }: { id: string }) {
+	return {
+		...useQuery({
+			queryKey: ["cashback-program-prize-by-id", id],
+			queryFn: () => fetchCashbackProgramPrizeById(id),
+		}),
+		queryKey: ["cashback-program-prize-by-id", id],
 	};
 }

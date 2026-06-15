@@ -1,4 +1,5 @@
 import { CashbackProgramPrizeSchema, CashbackProgramSchema } from "@/schemas/cashback-programs";
+import { ProductSchema } from "@/schemas/products";
 import { useCallback, useMemo, useState } from "react";
 import z from "zod";
 
@@ -113,3 +114,67 @@ export function useCashbackProgramState({ initialState }: TUseCashbackProgramSta
 	};
 }
 export type TUseCashbackProgramState = ReturnType<typeof useCashbackProgramState>;
+
+const CashbackProgramPrizeStateSchema = CashbackProgramPrizeSchema.omit({
+	dataInsercao: true,
+	dataAtualizacao: true,
+	organizacaoId: true,
+	programaId: true,
+}).extend({
+	produto: z
+		.object({
+			id: z.string({
+				required_error: "ID do produto não informado.",
+				invalid_type_error: "Tipo não válido para ID do produto.",
+			}),
+			nome: z.string({
+				required_error: "Nome do produto não informado.",
+				invalid_type_error: "Tipo não válido para nome do produto.",
+			}),
+		})
+		.optional()
+		.nullable(),
+});
+type TCashbackProgramPrizeState = z.infer<typeof CashbackProgramPrizeStateSchema>;
+
+type TUseCashbackProgramPrizeStateProps = {
+	initialState?: Partial<TCashbackProgramPrizeState>;
+};
+export function useCashbackProgramPrizeState({ initialState }: TUseCashbackProgramPrizeStateProps) {
+	const initialStateHolder: TCashbackProgramPrizeState = useMemo(() => {
+		return {
+			ativo: initialState?.ativo ?? true,
+			produtoId: initialState?.produtoId ?? null,
+			produtoVarianteId: initialState?.produtoVarianteId ?? null,
+			titulo: initialState?.titulo ?? "",
+			descricao: initialState?.descricao ?? null,
+			imagemCapaUrl: initialState?.imagemCapaUrl ?? null,
+			valor: initialState?.valor ?? 0,
+			produto: initialState?.produto ?? null,
+		};
+	}, []);
+
+	const [state, setState] = useState<TCashbackProgramPrizeState>(initialStateHolder);
+
+	const updateCashbackProgramPrize = useCallback((cashbackProgramPrize: Partial<TCashbackProgramPrizeState>) => {
+		setState((prev) => ({
+			...prev,
+			...cashbackProgramPrize,
+		}));
+	}, []);
+
+	const resetState = useCallback(() => {
+		setState(initialStateHolder);
+	}, [initialStateHolder]);
+
+	const redefineState = useCallback((state: TCashbackProgramPrizeState) => {
+		setState(state);
+	}, []);
+	return {
+		state,
+		updateCashbackProgramPrize,
+		resetState,
+		redefineState,
+	};
+}
+export type TUseCashbackProgramPrizeState = ReturnType<typeof useCashbackProgramPrizeState>;
