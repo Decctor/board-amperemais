@@ -3,7 +3,7 @@ import type { TGetConversionQualityInput } from "@/app/api/campaigns/stats/conve
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useConversionQuality } from "@/lib/queries/campaigns";
 import { cn } from "@/lib/utils";
-import { ArrowDownRight, ArrowUpRight, Clock, DollarSign, RefreshCw, Rocket, TrendingDown, TrendingUp, UserPlus, Users, Zap } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Clock, DollarSign, RefreshCw, Rocket, Sparkles, TrendingDown, TrendingUp, UserPlus, Users, Zap } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 type CampaignsConversionQualityProps = {
@@ -103,10 +103,18 @@ export default function CampaignsConversionQuality({ startDate, endDate, campanh
 				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
 					<h1 className="text-xs font-medium tracking-tight uppercase">QUALIDADE DAS CONVERSÕES</h1>
 					{data && (
-						<div className="flex items-center gap-1.5 rounded-md px-2 py-1 bg-primary/10">
-							<span className="text-xs font-bold text-foreground">
-								{formatDecimalPlaces(data.resumo.totalConversoes)} conversões | {formatToMoney(data.resumo.totalReceita)}
-							</span>
+						<div className="flex items-center gap-1.5 flex-wrap">
+							<div className="flex items-center gap-1.5 rounded-md px-2 py-1 bg-muted">
+								<span className="text-xs font-bold text-muted-foreground">
+									{formatDecimalPlaces(data.resumo.totalConversoes)} conversões | {formatToMoney(data.resumo.totalReceita)} atribuída
+								</span>
+							</div>
+							<div className="flex items-center gap-1.5 rounded-md px-2 py-1 bg-primary/10">
+								<Sparkles className="w-3 h-3 text-primary" />
+								<span className="text-xs font-bold text-foreground">
+									{formatDecimalPlaces(data.resumo.conversoesIncrementais)} incrementais | {formatToMoney(data.resumo.totalReceitaIncremental)}
+								</span>
+							</div>
 						</div>
 					)}
 				</div>
@@ -182,6 +190,7 @@ export default function CampaignsConversionQuality({ startDate, endDate, campanh
 													<div className="flex flex-col items-end">
 														<span className="text-xs font-bold">{formatDecimalPlaces(item.quantidade)}</span>
 														<span className="text-[0.65rem] text-muted-foreground">{formatToMoney(item.receita)}</span>
+														<span className="text-[0.65rem] font-semibold text-primary">{formatToMoney(item.receitaIncremental)} incr.</span>
 													</div>
 												</div>
 											);

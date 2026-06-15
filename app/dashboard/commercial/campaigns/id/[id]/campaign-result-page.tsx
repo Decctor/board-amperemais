@@ -47,6 +47,7 @@ import {
 	Send,
 	ShieldAlert,
 	ShoppingCart,
+	Sparkles,
 	Ticket,
 	TrendingUp,
 	UserPlus,
@@ -225,6 +226,12 @@ export default function CampaignResultPage({ campaignId, membership: _membership
 					current={{ value: performance?.conversoes ?? 0, format: (n) => formatDecimalPlaces(n) }}
 				/>
 				<StatUnitCard
+					title="CONVERSÕES INCREMENTAIS"
+					subtitle="Com impacto real sobre o comportamento basal"
+					icon={<Sparkles className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: performance?.conversoesIncrementais ?? 0, format: (n) => formatDecimalPlaces(n) }}
+				/>
+				<StatUnitCard
 					title="TAXA DE CONVERSÃO"
 					icon={<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: performance?.taxaConversao ?? 0, format: (n) => `${formatDecimalPlaces(n)}%` }}
@@ -233,6 +240,12 @@ export default function CampaignResultPage({ campaignId, membership: _membership
 					title="RECEITA ATRIBUÍDA"
 					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: performance?.receitaAtribuida ?? 0, format: (n) => formatToMoney(n) }}
+				/>
+				<StatUnitCard
+					title="RECEITA INCREMENTAL"
+					subtitle="Receita além do que o cliente já compraria"
+					icon={<Sparkles className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{ value: performance?.receitaIncremental ?? 0, format: (n) => formatToMoney(n) }}
 				/>
 				<StatUnitCard
 					title="TEMPO MÉDIO DE CONVERSÃO"
@@ -371,6 +384,7 @@ function CampaignConversionTypeDistributionSection({ distribution }: { distribut
 							<span className="text-xs text-muted-foreground">{formatDecimalPlaces(item.quantidade)} conv.</span>
 							<span className={cn("text-xs font-bold", config.textClass)}>{formatDecimalPlaces(item.percentual)}%</span>
 							<span className="text-xs text-muted-foreground">{formatToMoney(item.receita)}</span>
+							<span className="text-xs font-semibold text-primary">{formatToMoney(item.receitaIncremental)} incr.</span>
 						</div>
 					</div>
 					<div className="w-full bg-secondary rounded-full h-2">

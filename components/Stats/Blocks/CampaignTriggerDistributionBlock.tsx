@@ -9,6 +9,7 @@ type TriggerGroup = {
 	interacoes: number;
 	conversoes: number;
 	receita: number;
+	receitaIncremental: number;
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -46,12 +47,14 @@ export function CampaignTriggerDistributionBlock({ overall, isLoading }: Campaig
 					interacoes: 0,
 					conversoes: 0,
 					receita: 0,
+					receitaIncremental: 0,
 				});
 			}
 			const entry = map.get(gatilho)!;
 			entry.interacoes += Number(c.interacoes ?? 0);
 			entry.conversoes += Number(c.conversoes ?? 0);
 			entry.receita += Number(c.receitaTotal ?? 0);
+			entry.receitaIncremental += Number(c.receitaIncremental ?? 0);
 		}
 		return [...map.values()].sort((a, b) => b.receita - a.receita);
 	}, [overall]);
@@ -85,6 +88,7 @@ export function CampaignTriggerDistributionBlock({ overall, isLoading }: Campaig
 										<span>{formatDecimalPlaces(group.interacoes)} msg</span>
 										<span>{formatDecimalPlaces(group.conversoes)} conv.</span>
 										<span className="font-bold text-foreground">{formatToMoney(group.receita)}</span>
+										<span className="font-bold text-primary">{formatToMoney(group.receitaIncremental)} incr.</span>
 									</div>
 								</div>
 								<div className="w-full h-2 rounded-full bg-muted/30 overflow-hidden">

@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
+import { countIncrementalConversionsExpr, sumIncrementalRevenueExpr } from "@/lib/conversions/incremental";
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -80,6 +81,8 @@ async function getCampaignStatsOverall({ input, session }: { input: TGetCampaign
 			campanhaId: campaignConversions.campanhaId,
 			total: count(campaignConversions.id),
 			receitaTotal: sum(campaignConversions.atribuicaoReceita),
+			receitaIncremental: sumIncrementalRevenueExpr,
+			conversoesIncrementais: countIncrementalConversionsExpr,
 		})
 		.from(campaignConversions)
 		.where(
@@ -97,6 +100,8 @@ async function getCampaignStatsOverall({ input, session }: { input: TGetCampaign
 			{
 				total: c.total,
 				receita: Number(c.receitaTotal ?? 0),
+				receitaIncremental: Number(c.receitaIncremental ?? 0),
+				conversoesIncrementais: Number(c.conversoesIncrementais ?? 0),
 			},
 		]),
 	);
@@ -104,7 +109,7 @@ async function getCampaignStatsOverall({ input, session }: { input: TGetCampaign
 	// Build campaign analytics
 	const campanhasAnalytics = allCampaigns.map((campaign) => {
 		const interacoes = interactionsMap.get(campaign.id) ?? 0;
-		const conversionData = conversionsMap.get(campaign.id) ?? { total: 0, receita: 0 };
+		const conversionData = conversionsMap.get(campaign.id) ?? { total: 0, receita: 0, receitaIncremental: 0, conversoesIncrementais: 0 };
 		const taxaConversao = interacoes > 0 ? (conversionData.total / interacoes) * 100 : 0;
 
 		return {
@@ -114,8 +119,10 @@ async function getCampaignStatsOverall({ input, session }: { input: TGetCampaign
 			ativo: campaign.ativo,
 			interacoes,
 			conversoes: conversionData.total,
+			conversoesIncrementais: conversionData.conversoesIncrementais,
 			taxaConversao: Math.round(taxaConversao * 100) / 100,
 			receitaTotal: conversionData.receita,
+			receitaIncremental: Math.round(conversionData.receitaIncremental * 100) / 100,
 		};
 	});
 
@@ -128,7 +135,9 @@ async function getCampaignStatsOverall({ input, session }: { input: TGetCampaign
 		campanhasAtivas: allCampaigns.filter((c) => c.ativo).length,
 		interacoes: campanhasAnalytics.reduce((acc, c) => acc + c.interacoes, 0),
 		conversoes: campanhasAnalytics.reduce((acc, c) => acc + c.conversoes, 0),
+		conversoesIncrementais: campanhasAnalytics.reduce((acc, c) => acc + c.conversoesIncrementais, 0),
 		receita: campanhasAnalytics.reduce((acc, c) => acc + c.receitaTotal, 0),
+		receitaIncremental: Math.round(campanhasAnalytics.reduce((acc, c) => acc + c.receitaIncremental, 0) * 100) / 100,
 	};
 
 	const taxaConversaoGeral = totais.interacoes > 0 ? (totais.conversoes / totais.interacoes) * 100 : 0;
