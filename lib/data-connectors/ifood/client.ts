@@ -18,6 +18,8 @@ import {
 	type TIfoodOrder,
 	type TIfoodUserCodeResponse,
 } from "./types";
+// SANDBOX: remover import e bloco em getValidIfoodConfig ao deletar ifood/sandbox
+import { getValidIfoodSandboxConfig, isIfoodSandboxConfig } from "./sandbox";
 
 const IFOOD_TOKEN_REFRESH_SKEW_MINUTES = 10;
 const IFOOD_EVENTS_POLLING_LIMIT = 100;
@@ -121,6 +123,11 @@ export async function refreshIfoodToken(config: TIfoodConfig) {
 }
 
 export async function getValidIfoodConfig({ organizationId, config }: { organizationId: string; config: TIfoodConfig }) {
+	// SANDBOX: remover este bloco ao deletar ifood/sandbox
+	if (isIfoodSandboxConfig(config)) {
+		return getValidIfoodSandboxConfig({ organizationId, config });
+	}
+
 	const expiresAt = dayjs(config.expiresAt);
 	if (expiresAt.isValid() && expiresAt.subtract(IFOOD_TOKEN_REFRESH_SKEW_MINUTES, "minutes").isAfter(dayjs())) return config;
 

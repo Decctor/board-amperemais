@@ -23,6 +23,8 @@ import BlingLogo from "@/utils/images/integrations/bling-logo.png";
 import { Chip } from "../ui/chip";
 import ViewIntegration from "../Modals/Integrations/ViewIntegration";
 import ConfigureIntegration from "../Modals/Integrations/ConfigureIntegration";
+// SANDBOX: remover import e voltar IfoodIntegrationMenu ao deletar fluxo sandbox
+import { IfoodSandboxIntegrationMenu } from "./IfoodSandboxIntegrationMenu";
 
 type TIntegrationDefinition = {
 	id: TOrganizationIntegrationTypeEnum;
@@ -247,7 +249,8 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 			{isMenuOpen && selectedIntegrationId ? (
 				<ConfigureIntegration integrationType={selectedIntegrationId} closeMenu={() => setIsMenuOpen(false)} />
 			) : null}
-			{ifoodMenuIsOpen ? <IfoodIntegrationMenu closeMenu={() => setIfoodMenuIsOpen(false)} /> : null}
+			{/* SANDBOX: trocar de volta para IfoodIntegrationMenu ao remover fluxo sandbox */}
+			{ifoodMenuIsOpen ? <IfoodSandboxIntegrationMenu closeMenu={() => setIfoodMenuIsOpen(false)} /> : null}
 			{editingIntegrationMenuIsOpen && state.organization.integracaoConfiguracao ? (
 				<ViewIntegration
 					initialOrganizationIntegrationConfig={state.organization.integracaoConfiguracao}
