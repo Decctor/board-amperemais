@@ -12,7 +12,7 @@ import FulfillmentBoard from "./_components/fulfillment/fulfillment-board";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
-import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
+import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/components/ui/interactive-filter-formatting";
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";

@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary, formatInteractiveSortFieldSummary, isInteractiveSortActive } from "@/lib/interactive-filter-formatting";
+import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary, formatInteractiveSortFieldSummary, isInteractiveSortActive } from "@/components/ui/interactive-filter-formatting";
 import { useClients, useClientsOverallStats } from "@/lib/queries/clients";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";

@@ -6,7 +6,7 @@ import { CampaignQualityCardsBlock } from "@/components/Stats/Blocks/CampaignQua
 import { CampaignRankingBlock } from "@/components/Stats/Blocks/CampaignRankingBlock";
 import { CampaignTriggerDistributionBlock } from "@/components/Stats/Blocks/CampaignTriggerDistributionBlock";
 import { InteractiveFilter } from "@/components/ui/interactive-filter";
-import { formatInteractiveDateRangeSummary } from "@/lib/interactive-filter-formatting";
+import { formatInteractiveDateRangeSummary } from "@/components/ui/interactive-filter-formatting";
 import { useCampaignFunnel, useCampaignGraph, useCampaignStatsOverall, useConversionQuality } from "@/lib/queries/campaigns";
 import dayjs from "dayjs";
 import { Calendar } from "lucide-react";

@@ -23,7 +23,7 @@ import {
 	formatInteractiveDateRangeSummary,
 	formatInteractiveNumberRangeSummary,
 	formatInteractiveOptionSummary,
-} from "@/lib/interactive-filter-formatting";
+} from "@/components/ui/interactive-filter-formatting";
 import { usePartners, usePartnersOverallStats } from "@/lib/queries/partners";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";

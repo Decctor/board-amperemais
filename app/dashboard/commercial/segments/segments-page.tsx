@@ -24,7 +24,7 @@ import {
 	formatInteractiveCountSummary,
 	formatInteractiveDateRangeSummary,
 	formatInteractiveOptionSummary,
-} from "@/lib/interactive-filter-formatting";
+} from "@/components/ui/interactive-filter-formatting";
 import { syncSegmentations } from "@/lib/mutations/segmentations";
 import { useClients, useClientsBySearch } from "@/lib/queries/clients";
 import { fetchClientExportation } from "@/lib/queries/exportations";

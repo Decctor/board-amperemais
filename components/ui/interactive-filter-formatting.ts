@@ -1,4 +1,4 @@
-import type { InteractiveFilterOption, InteractiveFilterSortValue } from "@/components/ui/interactive-filter";
+import type { InteractiveFilterOption, InteractiveFilterSortValue } from "./interactive-filter";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 
 export function formatInteractiveOptionSummary<T extends string | number>(options: InteractiveFilterOption<T>[], values: T[]) {

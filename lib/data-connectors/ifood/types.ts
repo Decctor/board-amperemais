@@ -106,6 +106,27 @@ const NullableStringSchema = z
 		return String(value);
 	});
 
+const IfoodPhoneSchema = z
+	.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z
+			.object({
+				number: z.union([z.string(), z.number(), z.boolean()]).optional().nullable(),
+				localizer: z.union([z.string(), z.number(), z.boolean()]).optional().nullable(),
+			})
+			.passthrough(),
+	])
+	.optional()
+	.nullable()
+	.transform((value) => {
+		if (value === null || value === undefined) return null;
+		if (typeof value !== "object") return String(value);
+		const phoneNumber = value.number ?? value.localizer;
+		return phoneNumber === null || phoneNumber === undefined ? null : String(phoneNumber);
+	});
+
 const MoneySchema = z
 	.union([z.string(), z.number()])
 	.optional()
@@ -121,7 +142,7 @@ export const IfoodOrderCustomerSchema = z
 		id: NullableStringSchema,
 		name: NullableStringSchema,
 		documentNumber: NullableStringSchema,
-		phone: NullableStringSchema,
+		phone: IfoodPhoneSchema,
 		email: NullableStringSchema,
 	})
 	.passthrough();

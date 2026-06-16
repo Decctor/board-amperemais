@@ -61,7 +61,7 @@ import {
 	formatInteractiveOptionSummary,
 	formatInteractiveSortFieldSummary,
 	isInteractiveSortActive,
-} from "@/lib/interactive-filter-formatting";
+} from "@/components/ui/interactive-filter-formatting";
 type CampaignsPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;

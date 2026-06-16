@@ -7,7 +7,7 @@ import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInp
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { formatInteractiveCountSummary, formatInteractiveDateRangeSummary, formatInteractiveNumberRangeSummary, formatInteractiveOptionSummary } from "@/lib/interactive-filter-formatting";
+import { formatInteractiveCountSummary, formatInteractiveDateRangeSummary, formatInteractiveNumberRangeSummary, formatInteractiveOptionSummary } from "@/components/ui/interactive-filter-formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { RFMLabels } from "@/utils/rfm";

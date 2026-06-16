@@ -11,8 +11,53 @@ import type {
 } from "../types";
 import type { TIfoodEvent, TIfoodOrder, TIfoodOrderItem } from "./types";
 
-function pickOrderDate(order: TIfoodOrder) {
-	const rawDate = order.concludedAt || order.confirmedAt || order.createdAt;
+type TIfoodOrderEventState = {
+	statusText: string | null;
+	confirmedAt: string | null;
+	concludedAt: string | null;
+	cancelledAt: string | null;
+};
+
+const IFOOD_EVENT_STATUS_BY_CODE: Record<string, string> = {
+	PLC: "PLACED",
+	PLACED: "PLACED",
+	CFM: "CONFIRMED",
+	CONFIRMED: "CONFIRMED",
+	CON: "CONCLUDED",
+	CONCLUDED: "CONCLUDED",
+	CAN: "CANCELLED",
+	CANCELLED: "CANCELLED",
+	CANCELED: "CANCELED",
+};
+
+function getEventStatus(event: TIfoodEvent) {
+	const code = event.code.toUpperCase();
+	const fullCode = event.fullCode?.toUpperCase();
+	return IFOOD_EVENT_STATUS_BY_CODE[fullCode ?? ""] ?? IFOOD_EVENT_STATUS_BY_CODE[code] ?? null;
+}
+
+function getOrderEventState(events: TIfoodEvent[]): TIfoodOrderEventState {
+	const state: TIfoodOrderEventState = {
+		statusText: null,
+		confirmedAt: null,
+		concludedAt: null,
+		cancelledAt: null,
+	};
+
+	for (const event of events) {
+		const status = getEventStatus(event);
+		if (!status) continue;
+		state.statusText = status;
+		if (status === "CONFIRMED") state.confirmedAt = event.createdAt ?? state.confirmedAt;
+		if (status === "CONCLUDED") state.concludedAt = event.createdAt ?? state.concludedAt;
+		if (status === "CANCELLED" || status === "CANCELED") state.cancelledAt = event.createdAt ?? state.cancelledAt;
+	}
+
+	return state;
+}
+
+function pickOrderDate(order: TIfoodOrder, eventState: TIfoodOrderEventState) {
+	const rawDate = order.concludedAt || eventState.concludedAt || order.confirmedAt || eventState.confirmedAt || order.createdAt;
 	const parsedDate = rawDate ? dayjs(rawDate) : null;
 	if (!parsedDate?.isValid()) throw new Error(`Data inválida recebida do iFood. orderId="${order.id}"`);
 	return parsedDate.toDate();
@@ -106,21 +151,26 @@ export function mapIfoodSaleItem(item: TIfoodOrderItem): TCanonicalSaleItem {
 	};
 }
 
-function isCanceled(order: TIfoodOrder) {
-	const status = order.status?.toUpperCase();
-	return status === "CANCELLED" || status === "CANCELED" || !!order.cancelledAt;
+function isCanceled(order: TIfoodOrder, eventState: TIfoodOrderEventState) {
+	const status = (order.status || eventState.statusText)?.toUpperCase();
+	return status === "CANCELLED" || status === "CANCELED" || !!order.cancelledAt || !!eventState.cancelledAt;
 }
 
-function isValidSale(order: TIfoodOrder) {
-	const status = order.status?.toUpperCase();
-	return !isCanceled(order) && (status === "CONFIRMED" || status === "CONCLUDED" || !!order.confirmedAt || !!order.concludedAt);
+function isValidSale(order: TIfoodOrder, eventState: TIfoodOrderEventState) {
+	const status = (order.status || eventState.statusText)?.toUpperCase();
+	return (
+		!isCanceled(order, eventState) &&
+		(status === "CONFIRMED" || status === "CONCLUDED" || !!order.confirmedAt || !!eventState.confirmedAt || !!order.concludedAt || !!eventState.concludedAt)
+	);
 }
 
-export function mapIfoodSale(order: TIfoodOrder): TCanonicalSale {
-	const validSale = isValidSale(order);
-	const canceled = isCanceled(order);
+export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TCanonicalSale {
+	const eventState = getOrderEventState(events);
+	const validSale = isValidSale(order, eventState);
+	const canceled = isCanceled(order, eventState);
 	const totalDiscount = order.total.benefits || order.benefits.reduce((acc, benefit) => acc + benefit.value, 0);
 	const merchantName = order.merchant?.name || "IFOOD";
+	const statusText = order.status || eventState.statusText || "N/A";
 
 	return {
 		sourceSaleId: order.id,
@@ -139,9 +189,9 @@ export function mapIfoodSale(order: TIfoodOrder): TCanonicalSale {
 		movement: order.orderType || order.category || "N/A",
 		nature: validSale ? "SN01" : "SN99",
 		series: "N/A",
-		statusText: order.status || "N/A",
+		statusText,
 		type: "VENDA",
-		occurredAt: pickOrderDate(order),
+		occurredAt: pickOrderDate(order, eventState),
 		client: mapIfoodClient(order),
 		seller: null,
 		partner: null,
@@ -175,7 +225,15 @@ export function toCanonicalIfoodImportBatch({
 	events: TIfoodEvent[];
 	postProcess?: () => Promise<void>;
 }): TCanonicalImportBatch {
-	const sales = orders.map(mapIfoodSale);
+	const eventsByOrderId = new Map<string, TIfoodEvent[]>();
+	for (const event of events) {
+		if (!event.orderId) continue;
+		const orderEvents = eventsByOrderId.get(event.orderId) ?? [];
+		orderEvents.push(event);
+		eventsByOrderId.set(event.orderId, orderEvents);
+	}
+
+	const sales = orders.map((order) => mapIfoodSale(order, eventsByOrderId.get(order.id) ?? []));
 	const products = uniqueBy(
 		orders.flatMap((order) => order.items.map(mapIfoodProduct)),
 		(product) => product.code,

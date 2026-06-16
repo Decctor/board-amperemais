@@ -9,7 +9,7 @@ import {
 	formatInteractiveOptionSummary,
 	formatInteractiveSortFieldSummary,
 	isInteractiveSortActive,
-} from "@/lib/interactive-filter-formatting";
+} from "@/components/ui/interactive-filter-formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import type { TGetProductsDefaultInput } from "@/app/api/products/route";
 import { BadgeDollarSign, Calendar, ListFilter } from "lucide-react";

@@ -8,7 +8,7 @@ import {
 	formatInteractiveDateRangeSummary,
 	formatInteractiveNumberRangeSummary,
 	formatInteractiveOptionSummary,
-} from "@/lib/interactive-filter-formatting";
+} from "@/components/ui/interactive-filter-formatting";
 import type { TGetSalesInput, TGetSalesOutputByClientId } from "@/app/api/sales/route";
 
 import GeneralPaginationComponent from "@/components/Utils/Pagination";

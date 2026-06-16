@@ -25,7 +25,7 @@ import {
 	formatInteractiveOptionSummary,
 	formatInteractiveSortFieldSummary,
 	isInteractiveSortActive,
-} from "@/lib/interactive-filter-formatting";
+} from "@/components/ui/interactive-filter-formatting";
 import { useSellers, useSellersOverallStats } from "@/lib/queries/sellers";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
