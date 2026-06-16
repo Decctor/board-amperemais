@@ -3,10 +3,15 @@ import { createIfoodClient, getIfoodOrder, getValidIfoodConfig, acknowledgeIfood
 import { toCanonicalIfoodImportBatch } from "./mappers";
 import { IfoodConfigSchema, type TIfoodEvent } from "./types";
 
-const IFOOD_RELEVANT_ORDER_EVENT_CODES = new Set(["PLACED", "CONFIRMED", "CONCLUDED", "CANCELLED", "CANCELED"]);
+const IFOOD_RELEVANT_ORDER_EVENT_CODES = new Set(["PLC", "CFM", "CON", "CAN", "PLACED", "CONFIRMED", "CONCLUDED", "CANCELLED", "CANCELED"]);
 
 function getRelevantOrderEvents(events: TIfoodEvent[]) {
-	return events.filter((event) => event.orderId && IFOOD_RELEVANT_ORDER_EVENT_CODES.has(event.code.toUpperCase()));
+	return events.filter((event) => {
+		if (!event.orderId) return false;
+		const eventCode = event.code.toUpperCase();
+		const eventFullCode = event.fullCode?.toUpperCase();
+		return IFOOD_RELEVANT_ORDER_EVENT_CODES.has(eventCode) || (eventFullCode ? IFOOD_RELEVANT_ORDER_EVENT_CODES.has(eventFullCode) : false);
+	});
 }
 
 function uniqueOrderIds(events: TIfoodEvent[]) {

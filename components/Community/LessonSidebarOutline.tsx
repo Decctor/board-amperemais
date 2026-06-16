@@ -1,6 +1,6 @@
 "use client";
 
-import type { TCourseSection } from "@/lib/community-helpers";
+import type { TCourseSection } from "@/lib/community";
 import { CourseContentOutline } from "./CourseContentOutline";
 import Link from "next/link";
 

@@ -5,7 +5,7 @@ import { LessonSidebarOutline } from "@/components/Community/LessonSidebarOutlin
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { TCourseSection } from "@/lib/community-helpers";
+import type { TCourseSection } from "@/lib/community";
 import { updateProgress } from "@/lib/mutations/community";
 import { useCourseDetail, useLesson, useUserProgress } from "@/lib/queries/community";
 import { useUserSession } from "@/lib/queries/session";

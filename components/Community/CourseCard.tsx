@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ACCESS_CONFIG, type TCourseSummary, formatTotalDuration, getTotalDurationSeconds, getTotalLessons } from "@/lib/community-helpers";
+import { ACCESS_CONFIG, type TCourseSummary, formatTotalDuration, getTotalDurationSeconds, getTotalLessons } from "@/lib/community";
 import { BookOpen, Clock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";

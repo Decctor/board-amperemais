@@ -10,8 +10,7 @@ import { ContinueLearningCard } from "@/components/Community/ContinueLearningCar
 import { CourseCard } from "@/components/Community/CourseCard";
 import { EmptyContentPlaceholder } from "@/components/Community/EmptyContentPlaceholder";
 import { MaterialRow } from "@/components/Community/MaterialRow";
-import { buildContinueLearningItems, buildQuickAnswerItems } from "@/lib/community-hub";
-import type { TCourseSummary } from "@/lib/community-helpers";
+import { buildContinueLearningItems, buildQuickAnswerItems, type TCourseSummary } from "@/lib/community";
 import { useCourses, usePublicCommunityMaterials, useUserProgress } from "@/lib/queries/community";
 import { useUserSession } from "@/lib/queries/session";
 import { BookOpen, Search } from "lucide-react";

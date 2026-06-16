@@ -8,7 +8,7 @@ import { CourseCard } from "@/components/Community/CourseCard";
 import { EmptyContentPlaceholder } from "@/components/Community/EmptyContentPlaceholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ACCESS_CONFIG, type TCourseSummary, formatTotalDuration, getTotalDurationSeconds, getTotalLessons } from "@/lib/community-helpers";
+import { ACCESS_CONFIG, type TCourseSummary, formatTotalDuration, getTotalDurationSeconds, getTotalLessons } from "@/lib/community";
 import { useCourses } from "@/lib/queries/community";
 import { BookOpen, Clock, PlayCircle } from "lucide-react";
 import Image from "next/image";

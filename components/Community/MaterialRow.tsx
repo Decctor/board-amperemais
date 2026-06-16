@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateAsLocale } from "@/lib/formatting";
-import { getMaterialHref, MATERIAL_TYPE_LABELS, type TCommunityMaterialSummary } from "@/lib/community-hub";
+import { getMaterialHref, MATERIAL_TYPE_LABELS, type TCommunityMaterialSummary } from "@/lib/community";
 import { Calendar } from "lucide-react";
 import Link from "next/link";
 

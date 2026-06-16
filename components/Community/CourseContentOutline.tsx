@@ -8,7 +8,7 @@ import {
 	formatDuration,
 	getSectionDurationSeconds,
 	formatTotalDuration,
-} from "@/lib/community-helpers";
+} from "@/lib/community";
 import { cn } from "@/lib/utils";
 import { CheckCircle, ChevronDown, PlayCircle } from "lucide-react";
 import Link from "next/link";

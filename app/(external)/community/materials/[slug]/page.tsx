@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getErrorMessage } from "@/lib/errors";
 import { handleDownload } from "@/lib/files-storage";
-import { MATERIAL_TYPE_LABELS } from "@/lib/community-hub";
+import { MATERIAL_TYPE_LABELS } from "@/lib/community";
 import { claimCommunityMaterial } from "@/lib/mutations/community";
 import { usePublicCommunityMaterialBySlug } from "@/lib/queries/community";
 import { useUserSession } from "@/lib/queries/session";
