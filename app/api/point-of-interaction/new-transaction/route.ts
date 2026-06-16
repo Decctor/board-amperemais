@@ -340,6 +340,11 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			// Store current metadata for trigger evaluation
 			clientCurrentPurchaseCount = client.metadataTotalCompras ?? 0;
 			clientCurrentPurchaseValue = client.metadataValorTotalCompras ?? 0;
+
+			if (clientCurrentPurchaseCount === 0) {
+				clientIsNew = true;
+				clientRfmTitle = "CLIENTES RECENTES";
+			}
 		}
 
 		let salePartnerId: string | null = null;
