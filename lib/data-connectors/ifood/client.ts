@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
 import {
 	IFOOD_AUTH_BASE_URL,
+	IFOOD_EVENTS_BASE_URL,
 	IFOOD_MERCHANT_BASE_URL,
 	IFOOD_ORDER_BASE_URL,
 	IfoodEventsPollingOutputSchema,
@@ -167,9 +168,15 @@ export async function fetchIfoodMerchants(client: AxiosInstance) {
 	return normalizeMerchants(response.data);
 }
 
-export async function pollIfoodEvents(client: AxiosInstance) {
+export async function pollIfoodEvents(client: AxiosInstance, { merchantIds = [] }: { merchantIds?: string[] } = {}) {
 	try {
-		const response = await client.get<unknown>(`${IFOOD_ORDER_BASE_URL}/orders:polling`, {
+		const headers: Record<string, string> = {};
+		if (merchantIds.length) {
+			headers["x-polling-merchants"] = merchantIds.join(",");
+		}
+
+		const response = await client.get<unknown>(`${IFOOD_EVENTS_BASE_URL}/events:polling`, {
+			headers,
 			params: {
 				limit: IFOOD_EVENTS_POLLING_LIMIT,
 			},
@@ -191,7 +198,7 @@ export async function getIfoodOrder(client: AxiosInstance, orderId: string): Pro
 export async function acknowledgeIfoodEvents(client: AxiosInstance, eventIds: string[]) {
 	for (let index = 0; index < eventIds.length; index += IFOOD_ACKNOWLEDGMENT_CHUNK_SIZE) {
 		const acknowledgedEventIds = eventIds.slice(index, index + IFOOD_ACKNOWLEDGMENT_CHUNK_SIZE);
-		await client.post(`${IFOOD_ORDER_BASE_URL}/orders:acknowledgment`, {
+		await client.post(`${IFOOD_EVENTS_BASE_URL}/events/acknowledgment`, {
 			acknowledgedEventIds,
 		});
 	}

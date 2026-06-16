@@ -25,7 +25,7 @@ export async function fetchIfoodImportBatch({
 	const parsedConfig = IfoodConfigSchema.parse(config);
 	const validConfig = await getValidIfoodConfig({ organizationId, config: parsedConfig });
 	const client = createIfoodClient(validConfig);
-	const events = await pollIfoodEvents(client);
+	const events = await pollIfoodEvents(client, { merchantIds: validConfig.merchantIds });
 	const relevantEvents = getRelevantOrderEvents(events);
 	const orderIds = uniqueOrderIds(relevantEvents);
 	const orders = await Promise.all(orderIds.map((orderId) => getIfoodOrder(client, orderId)));

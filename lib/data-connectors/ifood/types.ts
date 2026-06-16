@@ -2,6 +2,7 @@ import z from "zod";
 
 export const IFOOD_API_BASE_URL = "https://merchant-api.ifood.com.br";
 export const IFOOD_AUTH_BASE_URL = `${IFOOD_API_BASE_URL}/authentication/v1.0`;
+export const IFOOD_EVENTS_BASE_URL = `${IFOOD_API_BASE_URL}/events/v1.0`;
 export const IFOOD_ORDER_BASE_URL = `${IFOOD_API_BASE_URL}/order/v1.0`;
 export const IFOOD_MERCHANT_BASE_URL = `${IFOOD_API_BASE_URL}/merchant/v1.0`;
 
