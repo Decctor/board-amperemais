@@ -1,7 +1,8 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
+import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
+import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
@@ -21,7 +22,7 @@ import {
 	sales,
 } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
 
@@ -177,21 +178,8 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	const PAGE_SIZE = 25;
 	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const {
-		id,
-		page,
-		search,
-		periodAfter,
-		periodBefore,
-		sellersIds,
-		partnersIds,
-		saleNatures,
-		clientId,
-		productGroups,
-		productIds,
-		totalMin,
-		totalMax,
-	} = input;
+	const { id, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures, clientId, productGroups, productIds, totalMin, totalMax } =
+		input;
 
 	if (id) {
 		const sale = await db.query.sales.findFirst({
@@ -647,6 +635,7 @@ const createSaleRoute: PagesRouteHandler<TCreateSaleOutput> = async (req, res) =
 				serie: "0",
 				situacao: "00",
 				tipo: "Venda de produtos",
+				processamentoOrigem: "INTERNO",
 				dataVenda: saleDate,
 			})
 			.returning({ id: sales.id });
@@ -831,11 +820,7 @@ const createSaleRoute: PagesRouteHandler<TCreateSaleOutput> = async (req, res) =
 						.returning({ id: interactions.id });
 
 					// Check for immediate processing (execucaoAgendadaValor === 0)
-					if (
-						campaign.execucaoAgendadaValor === 0 &&
-						campaign.whatsappTemplate &&
-						clientData
-					) {
+					if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate && clientData) {
 						immediateProcessingDataList.push({
 							interactionId: insertedInteraction.id,
 							organizationId: input.orgId,
@@ -913,9 +898,155 @@ const createSaleRoute: PagesRouteHandler<TCreateSaleOutput> = async (req, res) =
 	});
 };
 
+const DeleteSaleInputSchema = z.object({
+	id: z.string({ required_error: "ID da venda não informado." }),
+});
+export type TDeleteSaleInput = z.infer<typeof DeleteSaleInputSchema>;
+export type TDeleteSaleOutput = {
+	data: {
+		deletedSaleId: string;
+		cashbackReversal: Awaited<ReturnType<typeof reverseSaleCashback>> | null;
+	};
+	message: string;
+};
+
+function getValidClientSaleWhere({ orgId, clientId }: { orgId: string; clientId: string }) {
+	return and(
+		eq(sales.organizacaoId, orgId),
+		eq(sales.clienteId, clientId),
+		eq(sales.natureza, "SN01"),
+		gt(sales.valorTotal, 0),
+		or(isNull(sales.statusVenda), ne(sales.statusVenda, "CANCELADA")),
+	);
+}
+
+async function recalculateClientPurchaseMetadata({ tx, orgId, clientId }: { tx: DBTransaction; orgId: string; clientId: string }) {
+	const validSalesWhere = getValidClientSaleWhere({ orgId, clientId });
+	const [stats] = await tx
+		.select({
+			totalCompras: count(sales.id),
+			valorTotalCompras: sql<number>`COALESCE(SUM(${sales.valorTotal}), 0)`,
+		})
+		.from(sales)
+		.where(validSalesWhere);
+	const firstSale = await tx.query.sales.findFirst({
+		where: validSalesWhere,
+		columns: { id: true, dataVenda: true },
+		orderBy: (fields) => [asc(fields.dataVenda), asc(fields.id)],
+	});
+	const lastSale = await tx.query.sales.findFirst({
+		where: validSalesWhere,
+		columns: { id: true, dataVenda: true },
+		orderBy: (fields) => [desc(fields.dataVenda), desc(fields.id)],
+	});
+
+	await tx
+		.update(clients)
+		.set({
+			primeiraCompraId: firstSale?.id ?? null,
+			primeiraCompraData: firstSale?.dataVenda ?? null,
+			ultimaCompraId: lastSale?.id ?? null,
+			ultimaCompraData: lastSale?.dataVenda ?? null,
+			metadataTotalCompras: Number(stats?.totalCompras ?? 0),
+			metadataValorTotalCompras: Number(stats?.valorTotalCompras ?? 0),
+		})
+		.where(and(eq(clients.id, clientId), eq(clients.organizacaoId, orgId)));
+}
+
+const deleteSaleRoute: PagesRouteHandler<TDeleteSaleOutput> = async (req, res) => {
+	const input = DeleteSaleInputSchema.parse(req.query);
+	const sessionUser = await getCurrentSessionUncached();
+	if (!sessionUser) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	const orgId = sessionUser.membership?.organizacao.id;
+	if (!orgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	if (!sessionUser.membership?.permissoes.vendas.excluir) throw new createHttpError.Forbidden("Você não possui permissão para excluir vendas.");
+
+	const result = await db.transaction(async (tx) => {
+		const sale = await tx.query.sales.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, orgId)),
+			with: {
+				documentosFiscais: { columns: { id: true } },
+				lancamentosContabeis: { columns: { id: true } },
+				movimentacoesEstoque: { columns: { id: true } },
+				itens: {
+					columns: {
+						id: true,
+						quantidadeReservada: true,
+						quantidadeSeparada: true,
+						quantidadeEntregue: true,
+						quantidadeCancelada: true,
+					},
+				},
+			},
+		});
+
+		if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
+		if (sale.processamentoOrigem !== "INTERNO") {
+			throw new createHttpError.BadRequest("Somente vendas de origem interna podem ser excluídas.");
+		}
+		if (sale.statusVenda === "CONFIRMADA") {
+			throw new createHttpError.BadRequest("Vendas confirmadas devem ser canceladas pelo fluxo de cancelamento, não excluídas.");
+		}
+		if (sale.documentosFiscais.length > 0) {
+			throw new createHttpError.BadRequest("Não é possível excluir venda com documento fiscal vinculado.");
+		}
+		if (sale.lancamentosContabeis.length > 0) {
+			throw new createHttpError.BadRequest("Não é possível excluir venda com lançamento contábil vinculado.");
+		}
+		if (sale.movimentacoesEstoque.length > 0) {
+			throw new createHttpError.BadRequest("Não é possível excluir venda com movimentação de estoque vinculada.");
+		}
+		const hasOperationalItemProgress = sale.itens.some(
+			(item) => item.quantidadeReservada > 0 || item.quantidadeSeparada > 0 || item.quantidadeEntregue > 0 || item.quantidadeCancelada > 0,
+		);
+		if (hasOperationalItemProgress) {
+			throw new createHttpError.BadRequest("Não é possível excluir venda com itens em atendimento.");
+		}
+
+		const cashbackReversal = sale.clienteId
+			? await reverseSaleCashback({
+					tx,
+					saleId: sale.id,
+					clientId: sale.clienteId,
+					organizationId: orgId,
+					reason: "VENDA_EXCLUIDA",
+					mode: "delete",
+				})
+			: null;
+		console.log("[INFO] Cashback effects on sale deletion:", cashbackReversal);
+
+		console.log("[INFO] Deleting sale:", sale.id);
+		const deletedSale = await tx
+			.delete(sales)
+			.where(and(eq(sales.id, sale.id), eq(sales.organizacaoId, orgId)))
+			.returning({ id: sales.id });
+		if (!deletedSale[0]) throw new createHttpError.InternalServerError("Erro ao excluir venda.");
+		console.log("[INFO] Sale deleted:", deletedSale[0].id);
+		try {
+			if (sale.clienteId) {
+				console.log("[INFO] Recalculating client purchase metadata:", sale.clienteId);
+				await recalculateClientPurchaseMetadata({ tx, orgId, clientId: sale.clienteId });
+			}
+		} catch (error) {
+			console.error("[ERROR] Error recalculating client purchase metadata:", error);
+		}
+
+		return {
+			deletedSaleId: deletedSale[0].id,
+			cashbackReversal,
+		};
+	});
+
+	return res.status(200).json({
+		data: result,
+		message: "Venda excluída com sucesso.",
+	});
+};
+
 const routeHandlers = {
 	GET: getSalesRoute,
 	POST: createSaleRoute,
+	DELETE: deleteSaleRoute,
 } satisfies Partial<Record<"GET" | "POST" | "PUT" | "PATCH" | "DELETE", PagesRouteHandler<any>>>;
 
 export const GET = appApiHandler({
@@ -923,4 +1054,7 @@ export const GET = appApiHandler({
 });
 export const POST = appApiHandler({
 	POST: (request) => runPagesRouteHandler({ request, handler: routeHandlers.POST! }),
+});
+export const DELETE = appApiHandler({
+	DELETE: (request) => runPagesRouteHandler({ request, handler: routeHandlers.DELETE! }),
 });

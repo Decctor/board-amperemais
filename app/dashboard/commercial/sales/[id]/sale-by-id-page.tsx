@@ -2,12 +2,13 @@
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { LoadingButton } from "@/components/loading-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getAgeFromBirthdayDate } from "@/lib/dates";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDateBirthdayAsLocale, formatNameAsInitials, formatToMoney, formatToPhone } from "@/lib/formatting";
@@ -15,6 +16,7 @@ import { useSalesById } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
 import type { TGetSalesOutputById } from "@/app/api/sales/route";
 import {
+	AlertTriangle,
 	ArrowLeft,
 	ArrowRight,
 	BadgeDollarSign,
@@ -33,17 +35,23 @@ import {
 	Phone,
 	Receipt,
 	Tag,
+	Trash,
 	TrendingDown,
 	TrendingUp,
 	Truck,
 	Users,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteSale } from "@/lib/mutations/sales";
+import { useRouter } from "next/navigation";
 
 type SaleByIdPageProps = {
-	user: TAuthUserSession["user"];
 	saleId: string;
 	orgHasERPAccess: boolean;
+	userCanDeleteSales: boolean;
 	userFiscalPermissions: {
 		view: boolean;
 		configure: boolean;
@@ -59,22 +67,7 @@ function formatTimeToConversion(minutes: number): string {
 	return `${Math.round(minutes / 1440)}d`;
 }
 
-// Status label mapping
-const SITUACAO_LABELS: Record<string, string> = {
-	"00": "NORMAL",
-	"02": "CANCELADA",
-	"04": "DENEGADA",
-	"05": "INUTILIZADA",
-};
-
-const SITUACAO_COLORS: Record<string, string> = {
-	"00": "bg-green-500/10 text-green-600 dark:text-green-400",
-	"02": "bg-red-500/10 text-red-600 dark:text-red-400",
-	"04": "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-	"05": "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-};
-
-export default function SaleByIdPage({ user, saleId, orgHasERPAccess, userFiscalPermissions }: SaleByIdPageProps) {
+export default function SaleByIdPage({ saleId, userCanDeleteSales }: SaleByIdPageProps) {
 	const { data: sale, isLoading, isError, error, isSuccess } = useSalesById({ id: saleId });
 
 	if (isLoading) return <LoadingComponent />;
@@ -84,15 +77,18 @@ export default function SaleByIdPage({ user, saleId, orgHasERPAccess, userFiscal
 	return (
 		<div className="w-full h-full flex flex-col gap-4">
 			{/* Page Header */}
-			<div className="w-full flex items-center gap-3">
-				<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2">
-					<Link href={"/dashboard/commercial/sales"} className="flex items-center gap-1">
-						<ArrowLeft className="w-5 h-5" />
-						VOLTAR
-					</Link>
-				</Button>
+			<div className="flex items-center justify-between">
+				<div className="w-full flex items-center gap-3">
+					<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2">
+						<Link href={"/dashboard/commercial/sales"} className="flex items-center gap-1">
+							<ArrowLeft className="w-5 h-5" />
+							VOLTAR
+						</Link>
+					</Button>
 
-				<h1 className="text-lg font-bold tracking-tight">VENDA - {formatDateAsLocale(sale.dataVenda, true)}</h1>
+					<h1 className="text-lg font-bold tracking-tight">VENDA - {formatDateAsLocale(sale.dataVenda, true)}</h1>
+				</div>
+				<SaleDeleteButton sale={sale} userCanDeleteSales={userCanDeleteSales} />
 			</div>
 
 			{/* Sale Overview Section */}
@@ -362,7 +358,7 @@ function CampaignAttributionSection({
 				<div className="flex items-center gap-3">
 					<div className="flex flex-col items-center gap-1">
 						<div className="w-2 h-2 rounded-full bg-blue-500" />
-						<div className="w-px h-8 bg-gradient-to-b from-blue-500 to-green-500" />
+						<div className="w-px h-8 bg-linear-to-b from-blue-500 to-green-500" />
 						<div className="w-2 h-2 rounded-full bg-green-500" />
 					</div>
 					<div className="flex flex-col gap-4 flex-1">
@@ -623,5 +619,91 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 				)}
 			</div>
 		</div>
+	);
+}
+
+function SaleDeleteButton({ sale, userCanDeleteSales }: { sale: TGetSalesOutputById; userCanDeleteSales: boolean }) {
+	const router = useRouter();
+	const queryClient = useQueryClient();
+	const [deleteConfirmMenuIsOpen, setDeleteConfirmMenuIsOpen] = useState(false);
+	const saleIsInternal = sale.processamentoOrigem === "INTERNO";
+	const saleIsConfirmed = sale.statusVenda === "CONFIRMADA";
+	const hasFiscalDocuments = sale.documentosFiscais.length > 0;
+	const canOpenDeleteFlow = saleIsInternal && userCanDeleteSales;
+	const canSubmitDelete = canOpenDeleteFlow && !saleIsConfirmed && !hasFiscalDocuments;
+
+	const { mutate: handleDeleteSale, isPending } = useMutation({
+		mutationKey: ["delete-sale", sale.id],
+		mutationFn: deleteSale,
+		onSuccess: async (data) => {
+			setDeleteConfirmMenuIsOpen(false);
+			await queryClient.invalidateQueries({ queryKey: ["sales"] });
+			await queryClient.invalidateQueries({ queryKey: ["sales-by-id", sale.id] });
+			toast.success(data.message);
+			router.push("/dashboard/commercial/sales");
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+
+	if (!saleIsInternal) return null;
+	return (
+		<>
+			<Button
+				variant="ghost-destructive"
+				size="fit"
+				disabled={!userCanDeleteSales}
+				onClick={() => setDeleteConfirmMenuIsOpen(true)}
+				className="rounded-full flex items-center gap-1 px-2 py-2"
+			>
+				<Trash className="w-5 h-5" />
+				EXCLUIR VENDA
+			</Button>
+			<Dialog open={deleteConfirmMenuIsOpen} onOpenChange={(open) => (!isPending ? setDeleteConfirmMenuIsOpen(open) : null)}>
+				<DialogContent className="max-w-lg">
+					<DialogHeader>
+						<div className="flex items-center gap-2 text-destructive">
+							<AlertTriangle className="h-5 w-5" />
+							<DialogTitle>Excluir venda?</DialogTitle>
+						</div>
+						<DialogDescription>
+							Essa ação exclui a venda permanentemente, reverte os efeitos de cashback vinculados e remove conversões de campanha associadas à venda.
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="flex flex-col gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+						<div className="flex items-center justify-between gap-3 text-sm">
+							<span className="text-muted-foreground">Identificador</span>
+							<span className="font-bold">{sale.idExterno}</span>
+						</div>
+						<div className="flex items-center justify-between gap-3 text-sm">
+							<span className="text-muted-foreground">Valor</span>
+							<span className="font-bold">{formatToMoney(sale.valorTotal)}</span>
+						</div>
+						<div className="flex items-center justify-between gap-3 text-sm">
+							<span className="text-muted-foreground">Cliente</span>
+							<span className="font-bold">{sale.cliente?.nome ?? "AO CONSUMIDOR"}</span>
+						</div>
+					</div>
+
+					<div className="flex flex-col gap-2 text-sm text-muted-foreground">
+						<p>Antes de excluir, o sistema validará se não há efeitos fiscais, contábeis, de estoque ou atendimento que impedem a exclusão.</p>
+						{saleIsConfirmed ? <p className="font-medium text-destructive">Vendas confirmadas devem ser canceladas pelo fluxo de cancelamento.</p> : null}
+						{hasFiscalDocuments ? <p className="font-medium text-destructive">Esta venda possui documento fiscal vinculado e não pode ser excluída.</p> : null}
+						{!userCanDeleteSales ? <p className="font-medium text-destructive">Você não possui permissão para excluir vendas.</p> : null}
+					</div>
+
+					<DialogFooter>
+						<Button variant="outline" disabled={isPending} onClick={() => setDeleteConfirmMenuIsOpen(false)}>
+							CANCELAR
+						</Button>
+						<LoadingButton variant="destructive" loading={isPending} disabled={!canSubmitDelete} onClick={() => handleDeleteSale({ id: sale.id })}>
+							EXCLUIR DEFINITIVAMENTE
+						</LoadingButton>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</>
 	);
 }

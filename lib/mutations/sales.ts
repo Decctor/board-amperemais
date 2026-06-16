@@ -3,7 +3,7 @@ import type {
 	TCreatePointOfInteractionTransactionOutput,
 } from "@/app/api/point-of-interaction/new-transaction/route";
 import type { TUpdateSaleAttendanceStatusInput, TUpdateSaleAttendanceStatusOutput } from "@/app/api/pos/sales/attendance-status/route";
-import type { TCreateSaleInput, TCreateSaleOutput } from "@/app/api/sales/route";
+import type { TCreateSaleInput, TCreateSaleOutput, TDeleteSaleOutput } from "@/app/api/sales/route";
 import type { TBulkCreateSalesInput, TBulkCreateSalesOutput, TBulkSalesMapInput, TBulkSalesMapOutput } from "@/state-hooks/use-bulk-create-sales";
 import axios from "axios";
 
@@ -73,5 +73,12 @@ export async function bulkCreateSales(input: TBulkCreateSalesInput, onUploadProg
 	const { data } = await axios.post<TBulkCreateSalesOutput>("/api/sales/bulk", input, {
 		onUploadProgress: (progressEvent) => onUploadProgress?.(Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? 1))),
 	});
+	return data;
+}
+
+export async function deleteSale({ id }: { id: string }) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("id", id);
+	const { data } = await axios.delete<TDeleteSaleOutput>(`/api/sales?${searchParams.toString()}`);
 	return data;
 }

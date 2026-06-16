@@ -15,11 +15,12 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
 	const userHasFiscalConfigurePermission = sessionUser.membership.permissoes.fiscal.configurar;
 	const userHasFiscalEmitPermission = sessionUser.membership.permissoes.fiscal.emitir;
 	const userHasFiscalCancelPermission = sessionUser.membership.permissoes.fiscal.cancelar;
+	const userCanDeleteSales = sessionUser.membership.permissoes.vendas.excluir;
 	return (
 		<SaleByIdPage
-			user={sessionUser.user}
 			saleId={id}
 			orgHasERPAccess={orgHasERPAccess}
+			userCanDeleteSales={userCanDeleteSales}
 			userFiscalPermissions={{
 				view: userHasFiscalViewPermission,
 				configure: userHasFiscalConfigurePermission,

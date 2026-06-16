@@ -28,6 +28,7 @@
 		"backfill:shop-settings": "tsx ./scripts/backfill-shop-settings-configuration.ts",
 		"backfill:onboarding-conclusao": "tsx ./scripts/backfill-onboarding-conclusao.ts",
 		"backfill:poi-conversion-attribution": "tsx ./scripts/backfill-poi-conversion-attribution.ts",
+		"backfill:poi-sales-processing-source": "tsx ./scripts/backfill-poi-sales-processing-source.ts",
 		"knip": "knip",
 		"test:weekly-quota-recurrent": "tsx ./utils/scripts/test-recurrent-campaign-weekly-quota.ts",
 		"test:nuvemshop-fetch": "tsx ./utils/scripts/test-nuvemshop-fetch.ts",

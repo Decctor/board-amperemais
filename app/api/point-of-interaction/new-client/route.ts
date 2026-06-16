@@ -53,6 +53,7 @@ async function createClientViaPointOfInteraction({ input }: { input: TCreateClie
 				telefoneBase: clientPhoneAsBase,
 				dataNascimento: client.dataNascimento ? new Date(client.dataNascimento) : null,
 				canalAquisicao: "PONTO DE INTERAÇÃO",
+				analiseRFMTitulo: "CLIENTES RECENTES",
 			})
 			.returning({ id: clients.id });
 

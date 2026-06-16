@@ -1,6 +1,7 @@
 import type { DBTransaction } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions, interactions } from "@/services/drizzle/schema";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
+import createHttpError from "http-errors";
 
 type ReverseSaleCashbackParams = {
 	tx: DBTransaction;
@@ -8,17 +9,50 @@ type ReverseSaleCashbackParams = {
 	clientId: string;
 	organizationId: string;
 	reason: string; // e.g., "VENDA_CANCELADA", "VENDA_CANCELADA_RETROATIVA"
+	mode?: "cancel" | "delete";
 };
+
+const EPSILON = 1e-6;
+
+function normalizeValue(value: number) {
+	return Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
+}
+
+function appendReversalMetadata(metadata: unknown, extra: Record<string, unknown>) {
+	const sanitizedExtra = Object.fromEntries(Object.entries(extra).filter(([, value]) => value !== undefined));
+	if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+		return { ...metadata, ...sanitizedExtra };
+	}
+
+	return sanitizedExtra;
+}
+
+function getConsumedFromAccumulations(metadata: unknown) {
+	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata) || !("consumoFifo" in metadata)) return [];
+
+	const consumoFifo = (metadata as { consumoFifo?: unknown }).consumoFifo;
+	if (!Array.isArray(consumoFifo)) return [];
+
+	return consumoFifo.flatMap((item) => {
+		if (!item || typeof item !== "object") return [];
+		const accumulationTransactionId = (item as { accumulationTransactionId?: unknown }).accumulationTransactionId;
+		const consumedValue = (item as { consumedValue?: unknown }).consumedValue;
+		if (typeof accumulationTransactionId !== "string" || typeof consumedValue !== "number" || consumedValue <= 0) return [];
+		return [{ accumulationTransactionId, consumedValue }];
+	});
+}
 
 /**
  * Reverses cashback transactions associated with a canceled sale and cancels unprocessed interactions.
  *
  * This function:
- * 1. Finds all active or consumed cashback transactions linked to the sale
- * 2. Creates CANCELAMENTO transactions to reverse the cashback
- * 3. Updates the client's cashback balance
- * 4. Marks original transactions as EXPIRADO
- * 5. Deletes unprocessed scheduled interactions related to campaigns triggered by this sale
+ * 1. Reverses active redemptions linked to the sale and restores FIFO consumption
+ * 2. Reverses active or consumed accumulations linked to the sale
+ * 3. Creates CANCELAMENTO transactions to keep an audit trail
+ * 4. Updates the client's cashback balance
+ * 5. Marks original transactions as EXPIRADO
+ * 6. Deletes unprocessed scheduled interactions related to campaigns triggered by this sale
+ * 7. In delete mode, detaches cashback transactions from the sale so the sale can be physically deleted
  *
  * @param tx - Database transaction
  * @param saleId - ID of the canceled sale
@@ -27,46 +61,159 @@ type ReverseSaleCashbackParams = {
  * @param reason - Reason for cancellation (for audit trail)
  * @returns Object with reversal statistics
  */
-export async function reverseSaleCashback({ tx, saleId, clientId, organizationId, reason }: ReverseSaleCashbackParams): Promise<{
+export async function reverseSaleCashback({ tx, saleId, clientId, organizationId, reason, mode = "cancel" }: ReverseSaleCashbackParams): Promise<{
 	reversedTransactionsCount: number;
 	totalReversedAmount: number;
+	reversedAccumulationsCount: number;
+	reversedRedemptionsCount: number;
+	totalRestoredRedemptionAmount: number;
 	canceledInteractionsCount: number;
+	detachedTransactionsCount: number;
 }> {
-	console.log(`[CASHBACK_REVERSAL] Starting reversal for sale ${saleId}. Reason: ${reason}`);
+	console.log(`[CASHBACK_REVERSAL] Starting reversal for sale ${saleId}. Reason: ${reason}. Mode: ${mode}`);
 
-	// 1. Find all active or consumed cashback transactions related to this sale
-	const relatedTransactions = await tx.query.cashbackProgramTransactions.findMany({
+	const now = new Date();
+
+	const relatedAccumulations = await tx.query.cashbackProgramTransactions.findMany({
 		where: (fields, { and, eq, or }) =>
 			and(eq(fields.vendaId, saleId), eq(fields.tipo, "ACÚMULO"), or(eq(fields.status, "ATIVO"), eq(fields.status, "CONSUMIDO"))),
 	});
+	const relatedRedemptions = await tx.query.cashbackProgramTransactions.findMany({
+		where: (fields, { and, eq }) => and(eq(fields.vendaId, saleId), eq(fields.tipo, "RESGATE"), eq(fields.status, "ATIVO")),
+	});
 
-	if (relatedTransactions.length === 0) {
+	if (relatedAccumulations.length === 0 && relatedRedemptions.length === 0) {
 		console.log(`[CASHBACK_REVERSAL] No active cashback transactions found for sale ${saleId}. Nothing to reverse.`);
+		const detachedTransactionsCount =
+			mode === "delete"
+				? (
+						await tx
+							.update(cashbackProgramTransactions)
+							.set({ vendaId: null, dataAtualizacao: now })
+							.where(eq(cashbackProgramTransactions.vendaId, saleId))
+							.returning({ id: cashbackProgramTransactions.id })
+					).length
+				: 0;
+
 		return {
 			reversedTransactionsCount: 0,
 			totalReversedAmount: 0,
+			reversedAccumulationsCount: 0,
+			reversedRedemptionsCount: 0,
+			totalRestoredRedemptionAmount: 0,
 			canceledInteractionsCount: 0,
+			detachedTransactionsCount,
 		};
 	}
 
-	console.log(`[CASHBACK_REVERSAL] Found ${relatedTransactions.length} cashback transaction(s) to reverse for sale ${saleId}.`);
+	console.log(
+		`[CASHBACK_REVERSAL] Found ${relatedAccumulations.length} accumulation(s) and ${relatedRedemptions.length} redemption(s) to reverse for sale ${saleId}.`,
+	);
 
 	let totalReversedAmount = 0;
-	const now = new Date();
+	let totalRestoredRedemptionAmount = 0;
+	let reversedAccumulationsCount = 0;
+	let reversedRedemptionsCount = 0;
 
-	// 2. For each transaction, create a reversal and update balances
-	for (const transaction of relatedTransactions) {
+	for (const redemption of relatedRedemptions) {
+		const consumedFromAccumulations = getConsumedFromAccumulations(redemption.metadados);
+		for (const consumed of consumedFromAccumulations) {
+			await tx
+				.update(cashbackProgramTransactions)
+				.set({
+					valorRestante: sql`${cashbackProgramTransactions.valorRestante} + ${consumed.consumedValue}`,
+					status: "ATIVO",
+					dataAtualizacao: now,
+				})
+				.where(eq(cashbackProgramTransactions.id, consumed.accumulationTransactionId));
+		}
+
+		const currentBalance = await tx.query.cashbackProgramBalances.findFirst({
+			where: (fields, { and, eq }) =>
+				and(eq(fields.clienteId, redemption.clienteId), eq(fields.programaId, redemption.programaId), eq(fields.organizacaoId, organizationId)),
+		});
+		if (!currentBalance) {
+			console.error(
+				`[CASHBACK_REVERSAL] Balance not found for client ${redemption.clienteId} and program ${redemption.programaId}. Skipping redemption ${redemption.id}.`,
+			);
+			continue;
+		}
+
+		const restoredValue = normalizeValue(Math.abs(redemption.valor));
+		const newBalance = normalizeValue(currentBalance.saldoValorDisponivel + restoredValue);
+		const newRedeemedTotal = Math.max(0, normalizeValue(currentBalance.saldoValorResgatadoTotal - restoredValue));
+
+		await tx
+			.update(cashbackProgramBalances)
+			.set({
+				saldoValorDisponivel: newBalance,
+				saldoValorResgatadoTotal: newRedeemedTotal,
+				dataAtualizacao: now,
+			})
+			.where(eq(cashbackProgramBalances.id, currentBalance.id));
+
+		await tx
+			.update(cashbackProgramTransactions)
+			.set({
+				status: "EXPIRADO",
+				metadados: appendReversalMetadata(redemption.metadados, {
+					motivoExpiracao: reason,
+					vendaExcluidaId: mode === "delete" ? saleId : undefined,
+				}),
+				dataAtualizacao: now,
+			})
+			.where(eq(cashbackProgramTransactions.id, redemption.id));
+
+		await tx.insert(cashbackProgramTransactions).values({
+			organizacaoId: organizationId,
+			clienteId: redemption.clienteId,
+			vendaId: mode === "delete" ? null : saleId,
+			vendaValor: redemption.vendaValor,
+			programaId: redemption.programaId,
+			tipo: "CANCELAMENTO",
+			status: "ATIVO",
+			valor: restoredValue,
+			valorRestante: 0,
+			saldoValorAnterior: currentBalance.saldoValorDisponivel,
+			saldoValorPosterior: newBalance,
+			expiracaoData: null,
+			operadorId: redemption.operadorId,
+			operadorVendedorId: redemption.operadorVendedorId,
+			campanhaId: redemption.campanhaId,
+			dataInsercao: now,
+			metadados: {
+				transacaoOrigemId: redemption.id,
+				vendaOriginalId: saleId,
+				motivo: reason,
+			},
+		});
+
+		totalRestoredRedemptionAmount += restoredValue;
+		reversedRedemptionsCount += 1;
+	}
+
+	// For each accumulation, create a reversal and update balances.
+	for (const transaction of relatedAccumulations) {
 		const transactionClientId = transaction.clienteId;
-		// Only reverse the remaining amount (not already consumed)
+		if (mode === "delete" && transaction.valorRestante + EPSILON < transaction.valor) {
+			throw new createHttpError.Conflict(
+				"Esta venda gerou cashback que já foi utilizado em resgates posteriores. Estorne os resgates dependentes antes de excluir a venda.",
+			);
+		}
+
 		let amountToReverse = transaction.valorRestante;
 
 		if (amountToReverse <= 0) {
 			console.log(`[CASHBACK_REVERSAL] Transaction ${transaction.id} has no remaining value to reverse. Skipping but marking as EXPIRADO.`);
-			// Still mark as expired
 			await tx
 				.update(cashbackProgramTransactions)
 				.set({
 					status: "EXPIRADO",
+					metadados: appendReversalMetadata(transaction.metadados, {
+						motivoExpiracao: reason,
+						vendaExcluidaId: mode === "delete" ? saleId : undefined,
+					}),
+					dataAtualizacao: now,
 				})
 				.where(eq(cashbackProgramTransactions.id, transaction.id));
 			continue;
@@ -93,17 +240,23 @@ export async function reverseSaleCashback({ tx, saleId, clientId, organizationId
 				.set({
 					status: "EXPIRADO",
 					valorRestante: 0,
+					metadados: appendReversalMetadata(transaction.metadados, {
+						motivoExpiracao: reason,
+						vendaExcluidaId: mode === "delete" ? saleId : undefined,
+					}),
+					dataAtualizacao: now,
 				})
 				.where(eq(cashbackProgramTransactions.id, transaction.id));
 			continue;
 		}
-		const newBalance = Math.max(0, previousBalance - amountToReverse);
+		const newBalance = Math.max(0, normalizeValue(previousBalance - amountToReverse));
+		const newAccumulatedTotal = Math.max(0, normalizeValue(currentBalance.saldoValorAcumuladoTotal - amountToReverse));
 
 		// Create CANCELAMENTO transaction
 		await tx.insert(cashbackProgramTransactions).values({
 			organizacaoId: organizationId,
 			clienteId: transactionClientId,
-			vendaId: saleId,
+			vendaId: mode === "delete" ? null : saleId,
 			programaId: transaction.programaId,
 			tipo: "CANCELAMENTO",
 			status: "ATIVO",
@@ -117,6 +270,7 @@ export async function reverseSaleCashback({ tx, saleId, clientId, organizationId
 			dataInsercao: now,
 			metadados: {
 				transacaoOrigemId: transaction.id,
+				vendaOriginalId: saleId,
 				motivo: reason,
 			},
 		});
@@ -127,6 +281,11 @@ export async function reverseSaleCashback({ tx, saleId, clientId, organizationId
 			.set({
 				status: "EXPIRADO",
 				valorRestante: 0,
+				metadados: appendReversalMetadata(transaction.metadados, {
+					motivoExpiracao: reason,
+					vendaExcluidaId: mode === "delete" ? saleId : undefined,
+				}),
+				dataAtualizacao: now,
 			})
 			.where(eq(cashbackProgramTransactions.id, transaction.id));
 
@@ -135,11 +294,13 @@ export async function reverseSaleCashback({ tx, saleId, clientId, organizationId
 			.update(cashbackProgramBalances)
 			.set({
 				saldoValorDisponivel: newBalance,
+				saldoValorAcumuladoTotal: newAccumulatedTotal,
 				dataAtualizacao: now,
 			})
 			.where(eq(cashbackProgramBalances.id, currentBalance.id));
 
 		totalReversedAmount += amountToReverse;
+		reversedAccumulationsCount += 1;
 
 		console.log(
 			`[CASHBACK_REVERSAL] Reversed transaction ${transaction.id} for client ${transactionClientId}: R$ ${(amountToReverse / 100).toFixed(2)}. ` +
@@ -154,7 +315,7 @@ export async function reverseSaleCashback({ tx, saleId, clientId, organizationId
 	// - Were created around the same time as the sale
 	// Note: We can't directly link interactions to sales in the current schema,
 	// so we delete recent unprocessed interactions for safety
-	const relatedCampaignIds = relatedTransactions.reduce<string[]>((acc, transaction) => {
+	const relatedCampaignIds = [...relatedAccumulations, ...relatedRedemptions].reduce<string[]>((acc, transaction) => {
 		if (transaction.campanhaId) acc.push(transaction.campanhaId);
 		return acc;
 	}, []);
@@ -176,16 +337,31 @@ export async function reverseSaleCashback({ tx, saleId, clientId, organizationId
 		.returning({ id: interactions.id });
 
 	const canceledInteractionsCount = canceledInteractions.length;
+	const detachedTransactionsCount =
+		mode === "delete"
+			? (
+					await tx
+						.update(cashbackProgramTransactions)
+						.set({ vendaId: null, dataAtualizacao: now })
+						.where(eq(cashbackProgramTransactions.vendaId, saleId))
+						.returning({ id: cashbackProgramTransactions.id })
+				).length
+			: 0;
 
 	console.log(
 		`[CASHBACK_REVERSAL] Sale ${saleId} reversal completed. ` +
-			`Reversed ${relatedTransactions.length} transaction(s) totaling R$ ${(totalReversedAmount / 100).toFixed(2)}. ` +
-			`Canceled ${canceledInteractionsCount} unprocessed interaction(s).`,
+			`Reversed ${reversedAccumulationsCount} accumulation(s) totaling R$ ${(totalReversedAmount / 100).toFixed(2)}. ` +
+			`Restored ${reversedRedemptionsCount} redemption(s) totaling R$ ${(totalRestoredRedemptionAmount / 100).toFixed(2)}. ` +
+			`Canceled ${canceledInteractionsCount} unprocessed interaction(s). Detached ${detachedTransactionsCount} transaction(s).`,
 	);
 
 	return {
-		reversedTransactionsCount: relatedTransactions.length,
+		reversedTransactionsCount: reversedAccumulationsCount + reversedRedemptionsCount,
 		totalReversedAmount,
+		reversedAccumulationsCount,
+		reversedRedemptionsCount,
+		totalRestoredRedemptionAmount,
 		canceledInteractionsCount,
+		detachedTransactionsCount,
 	};
 }

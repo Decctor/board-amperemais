@@ -206,25 +206,6 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			transactionRequiresSaleProcessing,
 			transactionRequiresRedemptionProcessing,
 		});
-		// PRE-STEPS:
-		const {
-			campaignsForNewPurchase,
-			campaignsForFirstPurchase,
-			campaignsForCashbackAccumulation,
-			campaignsForTotalPurchaseCount,
-			campaignsForTotalPurchaseValue,
-			audiencesByCampaignId,
-		} = await getOrganizationCampaigns({
-			tx,
-			orgId: input.orgId,
-		});
-		console.log(`[POI ${input.orgId}] [CAMPAIGNS APPLICABLE]`, {
-			"CAMPAIGNS FOR NEW PURCHASE": campaignsForNewPurchase.length,
-			"CAMPAIGNS FOR FIRST PURCHASE": campaignsForFirstPurchase.length,
-			"CAMPAIGNS FOR CASHBACK ACCUMULATION": campaignsForCashbackAccumulation.length,
-			"CAMPAIGNS FOR TOTAL PURCHASE COUNT": campaignsForTotalPurchaseCount.length,
-			"CAMPAIGNS FOR TOTAL PURCHASE VALUE": campaignsForTotalPurchaseValue.length,
-		});
 		// FIRST STEP: Identifying the transaction operator
 		const operatorIdentifier = operatorContext?.operatorIdentifier ?? ("operatorIdentifier" in input ? input.operatorIdentifier : undefined);
 		const operatorSellerId = operatorContext?.operatorSellerId;
@@ -278,6 +259,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 		let visualClientAccumulatedCashbackValue = 0;
 		let visualClientNewOverallAvailableBalance: number | null = null;
 		if (!clientId) {
+			console.log("[INFO] No client ID provided. Creating new client.");
 			// Client's current all-time purchase value (from metadata)
 
 			// Create new client
@@ -298,6 +280,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					telefone: input.client.telefone,
 					telefoneBase: clientPhoneAsBase,
 					canalAquisicao: "PONTO DE INTERAÇÃO",
+					analiseRFMTitulo: "CLIENTES RECENTES",
 				})
 				.returning({ id: clients.id });
 
@@ -320,6 +303,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			clientCashbackAccumulatedBalance = ensuredBalance.saldoValorAcumuladoTotal;
 			clientCashbackRedeemedBalanceTotal = ensuredBalance.saldoValorResgatadoTotal;
 		} else {
+			console.log("[INFO] Client ID provided. Finding existing client.");
 			const client = await tx.query.clients.findFirst({
 				where: (fields, { and, eq }) => and(eq(fields.id, clientId as string), eq(fields.organizacaoId, input.orgId)),
 			});
@@ -347,6 +331,33 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			}
 		}
 
+		console.log("[INFO] Client metadata:", {
+			clientId,
+			clientFirstSaleId,
+			clientFirstSaleDate,
+			clientIsNew,
+			clientRfmTitle,
+			clientCurrentPurchaseCount,
+			clientCurrentPurchaseValue,
+		});
+		const {
+			campaignsForNewPurchase,
+			campaignsForFirstPurchase,
+			campaignsForCashbackAccumulation,
+			campaignsForTotalPurchaseCount,
+			campaignsForTotalPurchaseValue,
+			audiencesByCampaignId,
+		} = await getOrganizationCampaigns({
+			tx,
+			orgId: input.orgId,
+		});
+		console.log(`[POI ${input.orgId}] [CAMPAIGNS APPLICABLE]`, {
+			"CAMPAIGNS FOR NEW PURCHASE": campaignsForNewPurchase.length,
+			"CAMPAIGNS FOR FIRST PURCHASE": campaignsForFirstPurchase.length,
+			"CAMPAIGNS FOR CASHBACK ACCUMULATION": campaignsForCashbackAccumulation.length,
+			"CAMPAIGNS FOR TOTAL PURCHASE COUNT": campaignsForTotalPurchaseCount.length,
+			"CAMPAIGNS FOR TOTAL PURCHASE VALUE": campaignsForTotalPurchaseValue.length,
+		});
 		let salePartnerId: string | null = null;
 		let salePartnerClientId: string | null = null;
 		const normalizedPartnerCode = input.sale.partnerCode?.trim().toUpperCase() || null;
@@ -613,6 +624,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					serie: "0",
 					situacao: "00",
 					tipo: "Venda de produtos",
+					processamentoOrigem: "INTERNO",
 					dataVenda: saleDate,
 				})
 				.returning({ id: sales.id });
@@ -1113,6 +1125,7 @@ async function handleCampaignProcessingForFirstPurchase({
 	organizationCashbackTerminology,
 }: THandleCampaignProcessingForFirstPurchaseParams) {
 	if (campaignsForFirstPurchase.length === 0) return;
+	console.log("[INFO] Campaigns for first purchase:", campaignsForFirstPurchase);
 	const applicableCampaigns = campaignsForFirstPurchase.filter((campaign) => campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId));
 
 	console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] ${applicableCampaigns.length} applicable campaigns after filtering`);

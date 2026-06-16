@@ -1,8 +1,6 @@
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import { db } from "@/services/drizzle";
 import {
-	cashbackProgramBalances,
-	cashbackProgramTransactions,
 	accountingEntries,
 	financialTransactions,
 	productStockTransactions,
@@ -44,64 +42,6 @@ export async function processConfirmedSaleCancellation({
 	await db.transaction(async (tx) => {
 		if (sale.clienteId) {
 			await reverseSaleCashback({ tx, saleId, clientId: sale.clienteId, organizationId, reason });
-
-			const redemptions = await tx.query.cashbackProgramTransactions.findMany({
-				where: (fields, { and, eq }) =>
-					and(eq(fields.organizacaoId, organizationId), eq(fields.vendaId, saleId), eq(fields.tipo, "RESGATE"), eq(fields.status, "ATIVO")),
-			});
-			for (const redemption of redemptions) {
-				const consumedFromAccumulations =
-					redemption.metadados && typeof redemption.metadados === "object" && "consumoFifo" in redemption.metadados
-						? (redemption.metadados.consumoFifo as Array<{ accumulationTransactionId: string; consumedValue: number }>)
-						: [];
-				for (const consumed of consumedFromAccumulations) {
-					await tx
-						.update(cashbackProgramTransactions)
-						.set({
-							valorRestante: sql`${cashbackProgramTransactions.valorRestante} + ${consumed.consumedValue}`,
-							status: "ATIVO",
-							dataAtualizacao: new Date(),
-						})
-						.where(eq(cashbackProgramTransactions.id, consumed.accumulationTransactionId));
-				}
-
-				const balance = await tx.query.cashbackProgramBalances.findFirst({
-					where: and(
-						eq(cashbackProgramBalances.organizacaoId, organizationId),
-						eq(cashbackProgramBalances.clienteId, redemption.clienteId),
-						eq(cashbackProgramBalances.programaId, redemption.programaId),
-					),
-				});
-				if (!balance) continue;
-
-				const restoredValue = Math.abs(redemption.valor);
-				const newBalance = balance.saldoValorDisponivel + restoredValue;
-				await tx
-					.update(cashbackProgramBalances)
-					.set({
-						saldoValorDisponivel: newBalance,
-						saldoValorResgatadoTotal: Math.max(0, balance.saldoValorResgatadoTotal - restoredValue),
-						dataAtualizacao: new Date(),
-					})
-					.where(eq(cashbackProgramBalances.id, balance.id));
-				await tx.update(cashbackProgramTransactions).set({ status: "EXPIRADO" }).where(eq(cashbackProgramTransactions.id, redemption.id));
-				await tx.insert(cashbackProgramTransactions).values({
-					organizacaoId: organizationId,
-					clienteId: redemption.clienteId,
-					vendaId: saleId,
-					vendaValor: redemption.vendaValor,
-					programaId: redemption.programaId,
-					tipo: "CANCELAMENTO",
-					status: "ATIVO",
-					valor: restoredValue,
-					valorRestante: 0,
-					saldoValorAnterior: balance.saldoValorDisponivel,
-					saldoValorPosterior: newBalance,
-					expiracaoData: null,
-					operadorId: authorId,
-					metadados: { transacaoOrigemId: redemption.id, motivo: reason },
-				});
-			}
 		}
 
 		for (const transaction of sale.lancamentosContabeis.flatMap((entry) => entry.transacoesFinanceiras)) {

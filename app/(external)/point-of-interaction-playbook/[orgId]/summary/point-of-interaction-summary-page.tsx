@@ -2,11 +2,13 @@
 
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
+import { ARTHUR_WHATSAPP_NUMBER, LUCAS_WHATSAPP_NUMBER } from "@/config/internal-coms";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import LogoHorizontalRecompraCRM from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL.svg";
-import { Building2, Check, Database, MessageSquareQuote, Printer, ShieldCheck, Smartphone, Sparkles, Tablet } from "lucide-react";
+import { Building2, Check, Database, Headphones, MessageSquareQuote, Phone, Printer, ShieldCheck, Smartphone, Sparkles, Tablet } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { FaWhatsapp } from "react-icons/fa6";
 
 type SummaryOrg = {
 	id: TOrganizationEntity["id"];
@@ -34,6 +36,17 @@ const MOBILE_STEPS = [
 	"Envia a solicitação e vê a tela “Aguardando aprovação”.",
 	"No painel da loja, o operador aprova com a senha do vendedor.",
 ];
+
+const KIOSK_COUNTER_PHRASE =
+	"Oi, aproveita que estou passando sua venda e coloca seu telefone pra pontuar e ganhar cashback :)";
+
+const MOBILE_COUNTER_PHRASE =
+	"Oi, aproveita que estou passando sua venda e scaneia o código com seu telefone para pontuar e ganhar cashback :)";
+
+const SUPPORT_CONTACTS = [
+	{ name: "Lucas Fernandes", phone: "34 99662-6855", whatsapp: LUCAS_WHATSAPP_NUMBER },
+	{ name: "Arthur Carvalho", phone: "34 99948-0791", whatsapp: ARTHUR_WHATSAPP_NUMBER },
+] as const;
 
 export default function PointOfInteractionSummaryPage({ org }: PointOfInteractionSummaryPageProps) {
 	const { colors, getPrimaryGradientStyle } = useOrgColors();
@@ -102,13 +115,14 @@ export default function PointOfInteractionSummaryPage({ org }: PointOfInteractio
 					</div>
 
 					{/* Two flows */}
-					<div className="grid flex-1 grid-cols-2 gap-5">
+					<div className="grid grid-cols-2 items-start gap-5">
 						<FlowColumn
 							icon={Tablet}
 							title="Modo Kiosk"
 							subtitle="Tablet no balcão"
 							approval="Aprovação no próprio totem, com a senha do vendedor."
 							steps={KIOSK_STEPS}
+							counterPhrase={KIOSK_COUNTER_PHRASE}
 							colors={colors}
 						/>
 						<FlowColumn
@@ -117,22 +131,9 @@ export default function PointOfInteractionSummaryPage({ org }: PointOfInteractio
 							subtitle="Celular do cliente"
 							approval="Aprovação pelo painel da loja, em tempo real."
 							steps={MOBILE_STEPS}
+							counterPhrase={MOBILE_COUNTER_PHRASE}
 							colors={colors}
 						/>
-					</div>
-
-					{/* Script */}
-					<div
-						className="rounded-xl border-2 border-dashed px-5 py-4"
-						style={{ borderColor: hexToRgba(colors.primary, 0.3), backgroundColor: hexToRgba(colors.primary, 0.04) }}
-					>
-						<div className="mb-2 flex items-center gap-2">
-							<MessageSquareQuote className="h-4 w-4" style={{ color: colors.primary }} />
-							<h3 className="text-xs font-black uppercase tracking-wider text-neutral-700">Frase de balcão</h3>
-						</div>
-						<p className="text-sm font-medium italic leading-relaxed text-neutral-700">
-							“Ei, preenche seus dados aqui pelo QR Code — você já ganha cashback pra usar nas próximas visitas.”
-						</p>
 					</div>
 
 					{/* Data captured + counter reminders */}
@@ -173,6 +174,31 @@ export default function PointOfInteractionSummaryPage({ org }: PointOfInteractio
 							</ul>
 						</div>
 					</div>
+				</div>
+
+				{/* Support note */}
+				<div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-10 py-1.5 text-xs">
+					<div className="flex items-center gap-1 text-neutral-600">
+						<Headphones className="h-3 w-3" style={{ color: colors.primary }} />
+						<span className="font-bold uppercase tracking-wider">Suporte</span>
+					</div>
+					<span className="text-neutral-300">·</span>
+					{SUPPORT_CONTACTS.map((contact, index) => (
+						<div key={contact.name} className="flex items-center gap-2">
+							{index > 0 ? <span className="text-neutral-300">·</span> : null}
+							<a
+								href={`https://wa.me/${contact.whatsapp}?text=${encodeURIComponent("Olá! Preciso de suporte com o Ponto de Interação.")}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex items-center gap-1 rounded-full bg-neutral-50 px-2 py-0.5 text-neutral-600 transition-colors hover:bg-green-50 hover:text-neutral-900 print:bg-transparent print:px-0 print:pointer-events-none"
+							>
+								<FaWhatsapp className="h-3 w-3 shrink-0 text-green-500" />
+								<span className="font-semibold text-neutral-800">{contact.name}</span>
+								<Phone className="h-2.5 w-2.5 shrink-0 text-neutral-400" />
+								<span className="font-medium tabular-nums">{contact.phone}</span>
+							</a>
+						</div>
+					))}
 				</div>
 
 				{/* Footer */}
@@ -218,6 +244,7 @@ function FlowColumn({
 	subtitle,
 	approval,
 	steps,
+	counterPhrase,
 	colors,
 }: {
 	icon: typeof Tablet;
@@ -225,6 +252,7 @@ function FlowColumn({
 	subtitle: string;
 	approval: string;
 	steps: string[];
+	counterPhrase: string;
 	colors: { primary: string; primaryForeground: string };
 }) {
 	return (
@@ -262,6 +290,17 @@ function FlowColumn({
 					</li>
 				))}
 			</ol>
+
+			<div
+				className="rounded-lg border border-dashed px-3 py-2.5"
+				style={{ borderColor: hexToRgba(colors.primary, 0.3), backgroundColor: hexToRgba(colors.primary, 0.04) }}
+			>
+				<div className="mb-1 flex items-center gap-1.5">
+					<MessageSquareQuote className="h-3 w-3" style={{ color: colors.primary }} />
+					<span className="text-[0.6rem] font-bold uppercase tracking-wider text-neutral-500">Frase de balcão</span>
+				</div>
+				<p className="text-[0.7rem] font-medium italic leading-snug text-neutral-700">“{counterPhrase}”</p>
+			</div>
 		</div>
 	);
 }
