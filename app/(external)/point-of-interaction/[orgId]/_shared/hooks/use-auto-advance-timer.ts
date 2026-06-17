@@ -20,6 +20,13 @@ export function useAutoAdvanceTimer({ shouldStart, countdownSeconds = DEFAULT_CO
 		}
 	}, [shouldStart, countdown, isAdvancing, wasCancelled, countdownSeconds]);
 
+	// Stop countdown when lookup is no longer valid (e.g. phone cleared on cancel)
+	useEffect(() => {
+		if (!shouldStart && countdown !== null) {
+			setCountdown(null);
+		}
+	}, [shouldStart, countdown]);
+
 	// Handle countdown timer and auto-advance
 	useEffect(() => {
 		if (countdown === null || countdown < 0) return;

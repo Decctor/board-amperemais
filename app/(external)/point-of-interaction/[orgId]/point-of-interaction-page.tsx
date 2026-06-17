@@ -52,7 +52,6 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 		queryKey,
 		isLoading: isLoadingClient,
 		isSuccess: isSuccessClient,
-		params,
 		updateParams,
 	} = useClientByLookup({
 		initialParams: { orgId: org.id, phone: "", clientId: null },
@@ -77,13 +76,13 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 
 	// Auto-advance timer for found clients
 	const handleAdvance = useCallback(() => {
-		if (!client) return;
+		if (!client || !isPhoneComplete) return;
 		const modeParam = isMobileMode ? "&mode=mobile" : "";
 		router.push(`/point-of-interaction/${org.id}/new-transaction?clientId=${client.id}${modeParam}`);
-	}, [client, isMobileMode, org.id, router]);
+	}, [client, isMobileMode, isPhoneComplete, org.id, router]);
 
 	const { countdown, countdownSeconds, isAdvancing, wasCancelled, cancel, resetCancellation } = useAutoAdvanceTimer({
-		shouldStart: isSuccessClient && !!client,
+		shouldStart: isSuccessClient && !!client && isPhoneComplete,
 		onAdvance: handleAdvance,
 	});
 
@@ -127,23 +126,27 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 		setPhoneDigits((prev) => prev.slice(0, -1));
 	}
 
+	function clearClientLookup() {
+		queryClient.cancelQueries({ queryKey: ["client-by-lookup"] });
+		queryClient.removeQueries({ queryKey: ["client-by-lookup"] });
+		updateParams({ phone: "", clientId: null });
+	}
+
 	function handleReset() {
+		cancel();
 		setPhoneDigits("");
 		setNewClientName("");
 		setNewClientCpfCnpj("");
 		setNewClientDateOfBirth("");
 		setShowOptionalFields(false);
-		queryClient.cancelQueries({ queryKey });
-		queryClient.invalidateQueries({ queryKey });
-		updateParams({ phone: "", clientId: null });
-		cancel();
+		clearClientLookup();
 		resetCancellation();
 	}
 
-	async function handleCancelRedirect() {
-		await queryClient.cancelQueries({ queryKey });
-		await queryClient.invalidateQueries({ queryKey });
+	function handleCancelRedirect() {
 		cancel();
+		setPhoneDigits("");
+		clearClientLookup();
 	}
 
 	function handleSubmitNewClient() {
@@ -164,7 +167,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 	}
 
 	// UI state: determine what to show
-	const clientFound = isSuccessClient && !!client && !wasCancelled;
+	const clientFound = isSuccessClient && !!client && !wasCancelled && isPhoneComplete;
 	const clientNotFound = isSuccessClient && !client && isPhoneComplete;
 	const isIdleState = !clientFound && !clientNotFound && !isAdvancing && !isLoadingClient;
 	const isLoadingState = isLoadingClient && isPhoneComplete;

@@ -7,6 +7,7 @@ import TextareaInput from "@/components/Inputs/TextareaInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import type { TUseCashbackProgramPrizeState } from "@/state-hooks/use-cashback-program-state";
 import { getCashbackUnitLabel } from "@/lib/formatting";
+import CheckboxInput from "@/components/Inputs/CheckboxInput";
 
 type CashbackProgramsPrizesGeneralBlockProps = {
 	state: TUseCashbackProgramPrizeState["state"];
@@ -21,6 +22,15 @@ export default function CashbackProgramsPrizesGeneralBlock({
 }: CashbackProgramsPrizesGeneralBlockProps) {
 	return (
 		<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
+			<div className="w-full flex items-center justify-center">
+				<CheckboxInput
+					checked={state.ativo}
+					labelTrue="ATIVO"
+					labelFalse="ATIVO"
+					handleChange={(value) => updateCashbackProgramPrize({ ativo: value })}
+					justify="justify-center"
+				/>
+			</div>
 			<SelectProductWithVariants
 				label="PRODUTO"
 				initialSearch={state.produto?.nome ?? ""}
