@@ -98,6 +98,7 @@ export const CreatePointOfInteractionTransactionInputSchema = z.object({
 				invalid_type_error: "Tipo não válido para valor da transação.",
 			})
 			.gte(0, "Valor da transação deve ser positivo.")
+			.lte(1_000_000, "Valor da transação acima do limite permitido.")
 			.describe("O valor da transação."),
 		cashback: z
 			.object({
