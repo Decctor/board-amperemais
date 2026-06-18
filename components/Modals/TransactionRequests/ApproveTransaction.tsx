@@ -1,20 +1,31 @@
 "use client";
 
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
+import { Checkbox } from "@/components/ui/checkbox";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
+import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { approvePoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
+import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
+import { AlertTriangle } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 const OPERATOR_PASSWORD_LENGTH = 5;
 
+// Acima deste valor a aprovação exige uma confirmação explícita do operador, reduzindo a
+// chance de aprovar uma venda com a ordem de grandeza errada (ex.: R$ 20,96 digitado como R$ 2.096,00).
+// TODO: tornar configurável por organização quando houver necessidade.
+const HIGH_VALUE_CONFIRMATION_THRESHOLD = 1000;
+
 type ApproveTransactionProps = {
 	requestId: string;
 	clientDisplayName?: string;
+	valorBruto: number;
+	valorFinal: number;
 	/** Quando ausente, é obrigatório informar a senha do operador (vendedor). */
 	hasLinkedSeller: boolean;
 	closeModal: () => void;
@@ -26,8 +37,24 @@ type ApproveTransactionProps = {
 	};
 };
 
-export function ApproveTransaction({ requestId, clientDisplayName, hasLinkedSeller, closeModal, callbacks }: ApproveTransactionProps) {
+// Exibe o valor com os centavos visualmente separados, deixando a ordem de grandeza inequívoca.
+function HighlightedMoney({ value }: { value: number }) {
+	const [reais, centavos] = formatDecimalPlaces(value, 2, 2).split(",");
+	return (
+		<span className="font-black tabular-nums tracking-tight">
+			<span className="text-sm align-top text-muted-foreground">R$ </span>
+			<span className="text-4xl short:text-3xl">{reais}</span>
+			<span className="text-2xl short:text-xl text-muted-foreground">,{centavos}</span>
+		</span>
+	);
+}
+
+export function ApproveTransaction({ requestId, clientDisplayName, valorBruto, valorFinal, hasLinkedSeller, closeModal, callbacks }: ApproveTransactionProps) {
 	const [operatorPassword, setOperatorPassword] = useState("");
+	const [highValueConfirmed, setHighValueConfirmed] = useState(false);
+
+	const requiresHighValueConfirmation = valorFinal >= HIGH_VALUE_CONFIRMATION_THRESHOLD;
+	const hasDiscount = valorBruto > valorFinal;
 
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["approve-poi-transaction-request", requestId],
@@ -50,6 +77,10 @@ export function ApproveTransaction({ requestId, clientDisplayName, hasLinkedSell
 	});
 
 	const handleApprove = useCallback(() => {
+		if (requiresHighValueConfirmation && !highValueConfirmed) {
+			toast.error(`Confirme que o valor de ${formatToMoney(valorFinal)} está correto antes de aprovar.`);
+			return;
+		}
 		const code = operatorPassword;
 		if (!hasLinkedSeller) {
 			if (code.length !== OPERATOR_PASSWORD_LENGTH) {
@@ -64,7 +95,7 @@ export function ApproveTransaction({ requestId, clientDisplayName, hasLinkedSell
 			requestId,
 			operatorIdentifier: code.length === OPERATOR_PASSWORD_LENGTH ? code : undefined,
 		});
-	}, [hasLinkedSeller, mutate, operatorPassword, requestId]);
+	}, [hasLinkedSeller, highValueConfirmed, mutate, operatorPassword, requestId, requiresHighValueConfirmation, valorFinal]);
 
 	const description = hasLinkedSeller
 		? "Informe os 5 dígitos da senha do vendedor que receberá a venda. Se deixar em branco, será usado o vendedor vinculado ao seu usuário."
@@ -73,7 +104,7 @@ export function ApproveTransaction({ requestId, clientDisplayName, hasLinkedSell
 	return (
 		<ResponsiveMenuV2
 			menuTitle="APROVAR SOLICITAÇÃO"
-			menuDescription={clientDisplayName ? `${description} Cliente: ${clientDisplayName}.` : description}
+			menuDescription={clientDisplayName ? `Cliente: ${clientDisplayName}.` : "Confira o valor e identifique o operador."}
 			menuActionButtonText="APROVAR"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={handleApprove}
@@ -84,30 +115,60 @@ export function ApproveTransaction({ requestId, clientDisplayName, hasLinkedSell
 			dialogContentClassName="min-w-0 overflow-x-hidden sm:max-w-lg"
 			drawerContentClassName="overflow-x-hidden"
 		>
-			<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden py-2">
-				<Label htmlFor="poi-approve-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
-					SENHA DO OPERADOR (5 DÍGITOS)
-					{!hasLinkedSeller ? <span className="text-red-500">*</span> : null}
-				</Label>
-				<InputOTP
-					id="poi-approve-operator-password"
-					maxLength={OPERATOR_PASSWORD_LENGTH}
-					pattern={REGEXP_ONLY_DIGITS}
-					inputMode="numeric"
-					autoComplete="off"
-					pushPasswordManagerStrategy="none"
-					value={operatorPassword}
-					onChange={(value) => setOperatorPassword(value)}
-					containerClassName="mx-auto w-full max-w-full justify-center"
-				>
-					<InputOTPGroup>
-						<InputOTPSlot index={0} />
-						<InputOTPSlot index={1} />
-						<InputOTPSlot index={2} />
-						<InputOTPSlot index={3} />
-						<InputOTPSlot index={4} />
-					</InputOTPGroup>
-				</InputOTP>
+			<div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden py-2">
+				{/* Valor em destaque: o operador deve conferir o valor no momento da aprovação. */}
+				<div className="flex w-full flex-col items-center gap-1 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-5 text-center">
+					<span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">Valor a aprovar</span>
+					<HighlightedMoney value={valorFinal} />
+					{hasDiscount ? (
+						<span className="text-[0.7rem] font-medium text-muted-foreground">
+							Bruto: {formatToMoney(valorBruto)} · com desconto/resgate aplicado
+						</span>
+					) : null}
+				</div>
+
+				{requiresHighValueConfirmation ? (
+					<label
+						htmlFor="poi-approve-high-value"
+						className={cn(
+							"flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors",
+							highValueConfirmed ? "border-brand/40 bg-brand/5" : "border-amber-300 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/10",
+						)}
+					>
+						<Checkbox id="poi-approve-high-value" checked={highValueConfirmed} onCheckedChange={(v) => setHighValueConfirmed(v === true)} className="mt-0.5" />
+						<span className="flex items-start gap-1.5 text-xs font-medium leading-snug text-foreground/90">
+							<AlertTriangle className="mt-0.5 h-4 w-4 min-h-4 min-w-4 text-amber-500" />
+							Valor elevado. Confirmo que conferi e o valor de <strong className="font-black">{formatToMoney(valorFinal)}</strong> está correto.
+						</span>
+					</label>
+				) : null}
+
+				<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden">
+					<Label htmlFor="poi-approve-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
+						SENHA DO OPERADOR (5 DÍGITOS)
+						{!hasLinkedSeller ? <span className="text-red-500">*</span> : null}
+					</Label>
+					<p className="text-[0.7rem] text-muted-foreground">{description}</p>
+					<InputOTP
+						id="poi-approve-operator-password"
+						maxLength={OPERATOR_PASSWORD_LENGTH}
+						pattern={REGEXP_ONLY_DIGITS}
+						inputMode="numeric"
+						autoComplete="off"
+						pushPasswordManagerStrategy="none"
+						value={operatorPassword}
+						onChange={(value) => setOperatorPassword(value)}
+						containerClassName="mx-auto w-full max-w-full justify-center"
+					>
+						<InputOTPGroup>
+							<InputOTPSlot index={0} />
+							<InputOTPSlot index={1} />
+							<InputOTPSlot index={2} />
+							<InputOTPSlot index={3} />
+							<InputOTPSlot index={4} />
+						</InputOTPGroup>
+					</InputOTP>
+				</div>
 			</div>
 		</ResponsiveMenuV2>
 	);

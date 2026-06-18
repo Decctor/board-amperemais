@@ -23,6 +23,8 @@ type PointOfInteractionTransactionRequestsQueueProps = {
 type ApprovalTarget = {
 	requestId: string;
 	clientDisplayName: string;
+	valorBruto: number;
+	valorFinal: number;
 };
 
 export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVendedorId }: PointOfInteractionTransactionRequestsQueueProps) {
@@ -72,10 +74,12 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVende
 						<PoiTransactionRequestCard
 							key={request.id}
 							request={request}
-							onApprove={() =>
+							onApprove={({ valorBruto, valorFinal }) =>
 								setApprovalTarget({
 									requestId: request.id,
 									clientDisplayName: request.cliente?.nome ?? "Cliente não identificado",
+									valorBruto,
+									valorFinal,
 								})
 							}
 							onReject={() => rejectRequest(request.id)}
@@ -89,6 +93,8 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVende
 				<ApproveTransaction
 					requestId={approvalTarget.requestId}
 					clientDisplayName={approvalTarget.clientDisplayName}
+					valorBruto={approvalTarget.valorBruto}
+					valorFinal={approvalTarget.valorFinal}
 					hasLinkedSeller={hasLinkedSeller}
 					closeModal={() => setApprovalTarget(null)}
 					callbacks={{
@@ -110,7 +116,7 @@ function PoiTransactionRequestCard({
 	disabled,
 }: {
 	request: TGetPoiTransactionRequestsOutput["data"]["requests"][number];
-	onApprove: () => void;
+	onApprove: (data: { valorBruto: number; valorFinal: number }) => void;
 	onReject: () => void;
 	disabled: boolean;
 }) {
@@ -200,7 +206,13 @@ function PoiTransactionRequestCard({
 						<X className="w-4 min-w-4 h-4 min-h-4" />
 						REJEITAR
 					</Button>
-					<Button disabled={disabled} variant="brand" className="flex items-center gap-1.5" size="sm" onClick={onApprove}>
+					<Button
+						disabled={disabled}
+						variant="brand"
+						className="flex items-center gap-1.5"
+						size="sm"
+						onClick={() => onApprove({ valorBruto: resumo?.venda?.valorBruto ?? 0, valorFinal: resumo?.venda?.valorFinal ?? 0 })}
+					>
 						<CheckCheck className="w-4 min-w-4 h-4 min-h-4" />
 						APROVAR
 					</Button>
