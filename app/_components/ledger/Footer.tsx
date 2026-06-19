@@ -13,16 +13,16 @@ const FOOTER_GROUPS = [
 			{ label: "Como funciona", href: "#como-funciona" },
 			{ label: "Resultado real", href: "#movimento" },
 			{ label: "Planos", href: "#saldo" },
-			{ label: "Parcerias", href: "/programa-de-parceiros" },
+			{ label: "Parcerias", href: "/partnerships" },
 		],
 	},
 	{
 		title: "Funcionalidades",
 		links: [
-			{ label: "Cashback e Pontos", href: "/funcionalidades/programa-de-cashback" },
-			{ label: "Campanhas WhatsApp", href: "/funcionalidades/campanhas-whatsapp" },
-			{ label: "Ponto de Interação", href: "/funcionalidades/ponto-de-interacao" },
-			{ label: "Business Intelligence", href: "/funcionalidades/business-intelligence" },
+			{ label: "Cashback e Pontos", href: "/features/programa-de-cashback" },
+			{ label: "Campanhas WhatsApp", href: "/features/campanhas-whatsapp" },
+			{ label: "Ponto de Interação", href: "/features/ponto-de-interacao" },
+			{ label: "Business Intelligence", href: "/features/business-intelligence" },
 		],
 	},
 	{

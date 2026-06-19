@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 	const page = getFeaturePage(slug);
 	if (!page) return {};
 
-	const canonicalUrl = `https://recompracrm.com.br/funcionalidades/${page.slug}`;
+	const canonicalUrl = `https://recompracrm.com.br/features/${page.slug}`;
 
 	return {
 		title: page.title,
@@ -92,13 +92,9 @@ export default async function FuncionalidadePage({ params }: Props) {
 					</div>
 
 					{/* Emoji */}
-					<div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-4xl mb-6 border border-blue-100">
-						{page.coverEmoji}
-					</div>
+					<div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-4xl mb-6 border border-blue-100">{page.coverEmoji}</div>
 
-					<span className="inline-block text-xs font-bold text-[#24549C] bg-blue-50 px-3 py-1.5 rounded-full mb-4">
-						Funcionalidade
-					</span>
+					<span className="inline-block text-xs font-bold text-[#24549C] bg-blue-50 px-3 py-1.5 rounded-full mb-4">Funcionalidade</span>
 
 					<h1 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight tracking-tight mb-4">{page.headline}</h1>
 					<p className="text-lg text-slate-600 leading-relaxed mb-6">{page.description}</p>
@@ -125,12 +121,7 @@ export default async function FuncionalidadePage({ params }: Props) {
 					))}
 
 					{/* CTA */}
-					<ArticleCTA
-						headline={page.cta.headline}
-						sub={page.cta.sub}
-						buttonText={page.cta.buttonText}
-						whatsappMessage={page.cta.whatsappMessage}
-					/>
+					<ArticleCTA headline={page.cta.headline} sub={page.cta.sub} buttonText={page.cta.buttonText} whatsappMessage={page.cta.whatsappMessage} />
 
 					{/* Related blog posts */}
 					{relatedBlogPosts.length > 0 && (

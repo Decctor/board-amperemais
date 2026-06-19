@@ -31,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	];
 
 	const featureRoutes: MetadataRoute.Sitemap = FEATURE_PAGES.map((page) => ({
-		url: `${BASE_URL}/funcionalidades/${page.slug}`,
+		url: `${BASE_URL}/features/${page.slug}`,
 		lastModified: new Date(),
 		changeFrequency: "monthly" as const,
 		priority: 0.85,

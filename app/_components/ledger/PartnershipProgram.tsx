@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Reveal } from "./_primitives/Reveal";
 
 const PARTNER_LOGIN_HREF = "/auth/signin?redirectTo=%2Fpartner-dashboard";
-const PARTNER_PROGRAM_HREF = "/programa-de-parceiros";
+const PARTNER_PROGRAM_HREF = "/partnerships";
 
 const COMMISSION_ROWS = [
 	{
@@ -31,7 +31,7 @@ const COMMISSION_ROWS = [
 const FLOW_STEPS = [
 	{ icon: Link2, title: "Link próprio", text: "Você compartilha seu código com lojistas do seu relacionamento." },
 	{ icon: ReceiptText, title: "Onboarding rastreado", text: "O cliente informa o código ou chega pelo link de indicação." },
-	{ icon: CalendarCheck, title: "Receita recorrente", text: "As comissões aparecem no painel depois da invoice paga." },
+	{ icon: CalendarCheck, title: "Receita recorrente", text: "As comissões aparecem no painel depois do pagamento." },
 ];
 
 export function LedgerPartnershipProgram() {
@@ -137,30 +137,18 @@ export function LedgerPartnershipProgram() {
 									))}
 								</div>
 
-								<div className="border-t border-[#e5e5e5] bg-[#f7f9fc] p-5 sm:p-6 lg:border-l lg:border-t-0">
-									<div className="rounded-2xl border border-[#24549c]/15 bg-white p-4">
-										<div className="flex items-center justify-between gap-3 border-b border-dashed border-[#e5e5e5] pb-3">
-											<p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#737373]">Link de indicação</p>
-											<BadgeDollarSign className="h-4 w-4 text-[#ffb900]" strokeWidth={2.5} />
-										</div>
-										<p className="mt-3 break-all rounded-xl bg-[#24549c] px-3 py-2 text-[12px] font-extrabold text-white ledger-tabular">
-											recompracrm.com/r/seucodigo
-										</p>
-									</div>
-
-									<div className="mt-5 space-y-3">
-										{FLOW_STEPS.map((step) => (
-											<div key={step.title} className="flex gap-3">
-												<span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#24549c]/10 text-[#24549c]">
-													<step.icon className="h-4 w-4" strokeWidth={2.5} />
-												</span>
-												<div>
-													<p className="text-[13px] font-extrabold text-[#171717]">{step.title}</p>
-													<p className="mt-0.5 text-[12px] leading-snug text-[#171717]/62">{step.text}</p>
-												</div>
+								<div className="flex flex-col gap-6 items-center justify-center border-t border-[#e5e5e5] bg-[#f7f9fc] p-5 sm:p-6 lg:border-l lg:border-t-0">
+									{FLOW_STEPS.map((step) => (
+										<div key={step.title} className="flex gap-3">
+											<span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#24549c]/10 text-[#24549c]">
+												<step.icon className="h-4 w-4" strokeWidth={2.5} />
+											</span>
+											<div>
+												<p className="text-[13px] font-extrabold text-[#171717]">{step.title}</p>
+												<p className="mt-0.5 text-[12px] leading-snug text-[#171717]/62">{step.text}</p>
 											</div>
-										))}
-									</div>
+										</div>
+									))}
 								</div>
 							</div>
 						</div>

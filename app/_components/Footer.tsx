@@ -141,22 +141,22 @@ export default function FooterV2() {
 							<h4 className="font-bold text-slate-900 mb-3 text-sm">Funcionalidades</h4>
 							<ul className="space-y-2 text-sm text-slate-500">
 								<li>
-									<Link href="/funcionalidades/programa-de-cashback" className="hover:text-[#24549C] transition-colors">
+									<Link href="/features/programa-de-cashback" className="hover:text-[#24549C] transition-colors">
 										Cashback e Pontos
 									</Link>
 								</li>
 								<li>
-									<Link href="/funcionalidades/campanhas-whatsapp" className="hover:text-[#24549C] transition-colors">
+									<Link href="/features/campanhas-whatsapp" className="hover:text-[#24549C] transition-colors">
 										Campanhas WhatsApp
 									</Link>
 								</li>
 								<li>
-									<Link href="/funcionalidades/ponto-de-interacao" className="hover:text-[#24549C] transition-colors">
+									<Link href="/features/ponto-de-interacao" className="hover:text-[#24549C] transition-colors">
 										Ponto de Interação
 									</Link>
 								</li>
 								<li>
-									<Link href="/funcionalidades/business-intelligence" className="hover:text-[#24549C] transition-colors">
+									<Link href="/features/business-intelligence" className="hover:text-[#24549C] transition-colors">
 										Business Intelligence
 									</Link>
 								</li>

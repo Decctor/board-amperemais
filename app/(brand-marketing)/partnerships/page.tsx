@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import "../_components/ledger/ledger.css";
-import { LedgerFooter } from "../_components/ledger/Footer";
-import { LedgerNavbar } from "../_components/ledger/Navbar";
+import "../../_components/ledger/ledger.css";
+import { LedgerFooter } from "../../_components/ledger/Footer";
+import { LedgerNavbar } from "../../_components/ledger/Navbar";
 import { PartnersCalculator } from "./_components/PartnersCalculator";
 import { PartnersClosingCTA } from "./_components/PartnersClosingCTA";
 import { PartnersForWho } from "./_components/PartnersForWho";
