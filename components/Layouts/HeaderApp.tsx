@@ -7,7 +7,12 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "../ui/button";
 import { SidebarTrigger } from "../ui/sidebar";
-export default function AppHeader() {
+
+type AppHeaderProps = {
+	showSidebarTrigger?: boolean;
+};
+
+export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const title = getAppRouteTitle(pathname || "");
@@ -17,7 +22,7 @@ export default function AppHeader() {
 		<header className="flex flex-col gap-0.5">
 			<div className="flex items-center justify-between w-full">
 				<div className="flex items-center gap-2">
-					<SidebarTrigger />
+					{showSidebarTrigger ? <SidebarTrigger /> : null}
 					{redirectBackTo ? (
 						<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2 short:px-1.5 short:py-1">
 							<Link href={redirectBackTo} className="flex items-center gap-1">

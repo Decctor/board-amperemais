@@ -777,19 +777,9 @@ export const AppRoutes = [
 		description: "Painel de administração do sistema.",
 	},
 	{
-		path: "/admin-dashboard/crm",
-		title: "Funil de Vendas",
-		description: "Funil de vendas da plataforma.",
-	},
-	{
-		path: "/admin-dashboard/crm/dashboard",
-		title: "Dashboard",
-		description: "Dashboard do funil de vendas.",
-	},
-	{
-		path: "/admin-dashboard/crm/activities",
-		title: "Atividades",
-		description: "Painel de acompanhamento das atividades.",
+		path: "/admin-dashboard/partnerships",
+		title: "Parcerias",
+		description: "Gestão de parcerias da plataforma.",
 	},
 	{
 		path: "/admin-dashboard/community",

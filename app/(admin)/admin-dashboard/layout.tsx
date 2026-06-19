@@ -1,8 +1,7 @@
+import { AdminDock } from "@/components/Admin/AdminDock";
 import AppHeader from "@/components/Layouts/HeaderApp";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import { AdminSidebar } from "@/components/Sidebar/AdminSidebar";
 import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getCurrentSession } from "@/lib/authentication/session";
 import { redirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
@@ -18,15 +17,14 @@ export default async function AdminDashboardLayout({ children }: AdminDashboardL
 	if (!session.user.admin) return <UnauthorizedPage message="Oops, aparentemente você não possui permissão para acessar essa área." />;
 
 	return (
-		<SidebarProvider className="font-raleway">
-			<AdminSidebar user={session.user} organization={session.membership?.organizacao ?? null} />
+		<div className="font-raleway min-h-svh bg-background text-foreground">
 			<Suspense fallback={<LoadingComponent />}>
-				<SidebarInset className="overflow-y-auto p-6 flex flex-col gap-3">
-					<AppHeader />
-
+				<main className="flex min-h-svh flex-col gap-3 overflow-y-auto p-6 pb-28">
+					<AppHeader showSidebarTrigger={false} />
 					{children}
-				</SidebarInset>
+				</main>
 			</Suspense>
-		</SidebarProvider>
+			<AdminDock user={session.user} />
+		</div>
 	);
 }
