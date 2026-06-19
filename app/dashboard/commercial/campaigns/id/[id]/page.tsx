@@ -7,5 +7,5 @@ export default async function CampaignResultServerPage({ params }: { params: Pro
 	const sessionUser = await getCurrentSession();
 	if (!sessionUser) redirect("/auth/signin");
 	if (!sessionUser.membership) redirect("/onboarding");
-	return <CampaignResultPage campaignId={id} membership={sessionUser.membership} />;
+	return <CampaignResultPage campaignId={id} sessionUser={sessionUser.user} sessionUserOrg={sessionUser.membership.organizacao} />;
 }

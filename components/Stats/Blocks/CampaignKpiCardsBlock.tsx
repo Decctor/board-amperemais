@@ -56,7 +56,6 @@ export function CampaignKpiCardsBlock({ funnel, overall, isLoading }: CampaignKp
 			/>
 			<StatUnitCard
 				title="RECEITA INCREMENTAL"
-				subtitle="Impacto real"
 				current={{ value: overall?.totais.receitaIncremental ?? 0, format: (n) => formatToMoney(n) }}
 				icon={<Sparkles className="w-4 h-4" />}
 				className="w-full lg:w-1/6"

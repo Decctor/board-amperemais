@@ -4,22 +4,29 @@ import type { TGetCampaignsOutputById } from "@/app/api/campaigns/route";
 import { getTriggerConfigSummary } from "@/app/dashboard/commercial/campaigns/id/[id]/_helpers/trigger-config-summary";
 import { getCategoryById, getCategoryFromTrigger } from "@/app/dashboard/commercial/campaigns/new/_helpers/categories";
 import { getTriggerMeta } from "@/app/dashboard/commercial/campaigns/new/_helpers/triggers";
-import EditAudienceSection from "@/components/Modals/Campaigns/Sections/EditAudienceSection";
-import EditEffectsSection from "@/components/Modals/Campaigns/Sections/EditEffectsSection";
-import EditGeneralSection from "@/components/Modals/Campaigns/Sections/EditGeneralSection";
-import EditSendSection from "@/components/Modals/Campaigns/Sections/EditSendSection";
-import EditSettingsSection from "@/components/Modals/Campaigns/Sections/EditSettingsSection";
+import ControlCampaign from "@/components/Modals/Campaigns/ControlCampaign";
+import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
+import { buildOrganizationTemplateTheme } from "@/components/MessageTemplates/message-template-utils";
 import { Button } from "@/components/ui/button";
 import { SectionWrapper, SectionWrapperDataRow } from "@/components/ui/section-wrapper";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatToMoney } from "@/lib/formatting";
 import type { TAttributionModelEnum } from "@/schemas/enums";
-import { ArrowRightLeft, Clock, Coins, Filter, Lock, Pencil, SendHorizonal, Settings2, TextIcon, Users, Zap } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { getRFMConfigByLabel } from "@/utils/rfm";
+import { ArrowRightLeft, Clock, Coins, Eye, Filter, Lock, Pencil, SendHorizonal, Settings2, TextIcon, Users, Zap } from "lucide-react";
 import { useState } from "react";
 
 type CampaignConfigViewProps = {
 	campaign: TGetCampaignsOutputById;
-	membership: NonNullable<TAuthUserSession["membership"]>;
+	sessionUser: TAuthUserSession["user"];
+	sessionUserOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
+	onEditCallbacks?: {
+		onMutate?: () => void;
+		onSuccess?: () => void;
+		onError?: () => void;
+		onSettled?: () => void;
+	};
 };
 
 type OpenSection = "general" | "send" | "audience" | "effects" | "settings" | null;
@@ -35,6 +42,22 @@ function formatInterval(value: number | null | undefined, unit: string | null | 
 	return `${value} ${(unit ?? "DIAS").toLowerCase()}`;
 }
 
+function SegmentationPill({ label }: { label: string }) {
+	const rfmConfig = getRFMConfigByLabel(label);
+
+	return (
+		<span
+			className={cn(
+				"inline-flex items-center rounded-lg border border-transparent px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
+				rfmConfig.backgroundCollor,
+				rfmConfig.textCollor,
+			)}
+		>
+			{label}
+		</span>
+	);
+}
+
 function EditAction({ onClick }: { onClick: () => void }) {
 	return (
 		<Button variant="ghost" size="xs" onClick={onClick} className="flex items-center gap-1">
@@ -44,7 +67,7 @@ function EditAction({ onClick }: { onClick: () => void }) {
 	);
 }
 
-export default function CampaignConfigView({ campaign, membership }: CampaignConfigViewProps) {
+export default function CampaignConfigView({ campaign, sessionUser, sessionUserOrg, onEditCallbacks }: CampaignConfigViewProps) {
 	const [openSection, setOpenSection] = useState<OpenSection>(null);
 
 	const category = getCategoryById(getCategoryFromTrigger(campaign.gatilhoTipo));
@@ -55,6 +78,15 @@ export default function CampaignConfigView({ campaign, membership }: CampaignCon
 	const isRecurrentLike = campaign.gatilhoTipo === "RECORRENTE" || campaign.gatilhoTipo === "USO-UNICO";
 
 	const templateName = campaign.whatsappTemplate?.nome ?? null;
+	const templateContent = campaign.whatsappTemplate?.conteudo ?? null;
+	const organizationTheme = buildOrganizationTemplateTheme({
+		name: sessionUserOrg.nome,
+		logoUrl: sessionUserOrg.logoUrl,
+		primaryColor: sessionUserOrg.corPrimaria,
+		primaryForeground: sessionUserOrg.corPrimariaForeground,
+		secondaryColor: sessionUserOrg.corSecundaria,
+		secondaryForeground: sessionUserOrg.corSecundariaForeground,
+	});
 	const senderPhone = campaign.whatsappConexaoTelefone
 		? `(${campaign.whatsappConexaoTelefone.numero}) ${campaign.whatsappConexaoTelefone.nome}`
 		: null;
@@ -66,58 +98,89 @@ export default function CampaignConfigView({ campaign, membership }: CampaignCon
 
 	return (
 		<div className="flex w-full flex-col gap-3">
-			<div className="grid w-full grid-cols-1 items-start gap-3 lg:grid-cols-2">
-				{/* Informações gerais */}
-				<SectionWrapper
-					title="INFORMAÇÕES GERAIS"
-					icon={<TextIcon className="h-4 w-4 min-h-4 min-w-4" />}
-					actions={<EditAction onClick={() => setOpenSection("general")} />}
-				>
-					<div className="flex w-full flex-col gap-2">
-						<SectionWrapperDataRow icon={<TextIcon className="h-4 w-4 min-h-4 min-w-4" />} label="TÍTULO" value={campaign.titulo} />
-						<div className="flex w-full flex-col gap-0.5">
-							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DESCRIÇÃO</h3>
-							<p className="text-sm font-medium tracking-tight text-foreground">{campaign.descricao || "Nenhuma descrição definida..."}</p>
+			<SectionWrapper
+				title="INFORMAÇÕES GERAIS"
+				icon={<TextIcon className="h-4 w-4 min-h-4 min-w-4" />}
+				actions={<EditAction onClick={() => setOpenSection("general")} />}
+			>
+				<div className="flex w-full flex-col gap-2">
+					<SectionWrapperDataRow icon={<TextIcon className="h-4 w-4 min-h-4 min-w-4" />} label="TÍTULO" value={campaign.titulo} />
+					<div className="flex w-full flex-col gap-0.5">
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DESCRIÇÃO</h3>
+						<p className="text-sm font-medium tracking-tight text-foreground">{campaign.descricao || "Nenhuma descrição definida..."}</p>
+					</div>
+				</div>
+			</SectionWrapper>
+
+			<div className="w-full flex flex-col lg:flex-row gap-3">
+				<div className="w-full lg:w-1/2">
+					<SectionWrapper title="GATILHO" icon={<TriggerIcon className="h-4 w-4 min-h-4 min-w-4" />}>
+						<div className="flex w-full flex-col gap-2">
+							<SectionWrapperDataRow icon={<Zap className="h-4 w-4 min-h-4 min-w-4" />} label="CATEGORIA" value={category?.label ?? "Não definida"} />
+							<SectionWrapperDataRow
+								icon={<TriggerIcon className="h-4 w-4 min-h-4 min-w-4" />}
+								label="GATILHO"
+								value={trigger?.label ?? campaign.gatilhoTipo}
+							/>
+							{triggerSummary.length > 0 ? (
+								<div className="flex w-full flex-col gap-1">
+									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">CONFIGURAÇÃO</h3>
+									{triggerSummary.map((line) => (
+										<p key={line} className="text-sm font-medium tracking-tight text-foreground">
+											{line}
+										</p>
+									))}
+								</div>
+							) : null}
+							{trigger?.description ? <p className="text-xs leading-snug text-muted-foreground">{trigger.description}</p> : null}
 						</div>
-					</div>
-				</SectionWrapper>
-
-				{/* Gatilho — read only */}
-				<SectionWrapper title="GATILHO" icon={<TriggerIcon className="h-4 w-4 min-h-4 min-w-4" />}>
-					<div className="flex w-full flex-col gap-2">
-						<SectionWrapperDataRow icon={<Zap className="h-4 w-4 min-h-4 min-w-4" />} label="CATEGORIA" value={category?.label ?? "Não definida"} />
-						<SectionWrapperDataRow
-							icon={<TriggerIcon className="h-4 w-4 min-h-4 min-w-4" />}
-							label="GATILHO"
-							value={trigger?.label ?? campaign.gatilhoTipo}
-						/>
-						{triggerSummary.length > 0 ? (
-							<div className="flex w-full flex-col gap-1">
-								<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">CONFIGURAÇÃO</h3>
-								{triggerSummary.map((line) => (
-									<p key={line} className="text-sm font-medium tracking-tight text-foreground">
-										{line}
-									</p>
-								))}
-							</div>
-						) : null}
-						{trigger?.description ? <p className="text-xs leading-snug text-muted-foreground">{trigger.description}</p> : null}
-					</div>
-					<div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-						<Lock className="mt-0.5 h-3.5 w-3.5 min-h-3.5 min-w-3.5 text-muted-foreground" />
-						<p className="text-xs leading-snug text-muted-foreground">
-							O gatilho não pode ser alterado após a criação. Para usar outro gatilho, crie uma nova campanha.
-						</p>
-					</div>
-				</SectionWrapper>
-
-				{/* Mensagem & Envio */}
-				<SectionWrapper
-					title="MENSAGEM & ENVIO"
-					icon={<SendHorizonal className="h-4 w-4 min-h-4 min-w-4" />}
-					actions={<EditAction onClick={() => setOpenSection("send")} />}
-				>
-					<div className="flex w-full flex-col gap-2">
+						<div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+							<Lock className="mt-0.5 h-3.5 w-3.5 min-h-3.5 min-w-3.5 text-muted-foreground" />
+							<p className="text-xs leading-snug text-muted-foreground">
+								O gatilho não pode ser alterado após a criação. Para usar outro gatilho, crie uma nova campanha.
+							</p>
+						</div>
+					</SectionWrapper>
+				</div>
+				<div className="w-full lg:w-1/2">
+					<SectionWrapper
+						title="PÚBLICO"
+						icon={<Filter className="h-4 w-4 min-h-4 min-w-4" />}
+						actions={<EditAction onClick={() => setOpenSection("audience")} />}
+					>
+						<div className="flex w-full flex-col gap-2">
+							<SectionWrapperDataRow
+								icon={<Users className="h-4 w-4 min-h-4 min-w-4" />}
+								label="SEGMENTAÇÕES"
+								value={activeSegmentations.length > 0 ? `${activeSegmentations.length} ativa(s)` : "Todos os clientes"}
+							/>
+							{activeSegmentations.length > 0 ? (
+								<div className="flex flex-wrap gap-1.5">
+									{activeSegmentations.map((segmentation) => (
+										<SegmentationPill key={segmentation.id ?? segmentation.segmentacao} label={segmentation.segmentacao} />
+									))}
+								</div>
+							) : null}
+							<SectionWrapperDataRow
+								icon={<Filter className="h-4 w-4 min-h-4 min-w-4" />}
+								label="FILTROS ADICIONAIS"
+								value={
+									campaign.filtros && Array.isArray(campaign.filtros.itens) && campaign.filtros.itens.length > 0
+										? `${campaign.filtros.itens.length} no grupo principal`
+										: "Nenhum filtro"
+								}
+							/>
+						</div>
+					</SectionWrapper>
+				</div>
+			</div>
+			<SectionWrapper
+				title="MENSAGEM & ENVIO"
+				icon={<SendHorizonal className="h-4 w-4 min-h-4 min-w-4" />}
+				actions={<EditAction onClick={() => setOpenSection("send")} />}
+			>
+				<div className="flex w-full flex-col gap-4 lg:flex-row lg:items-start">
+					<div className="flex w-full flex-col gap-2 lg:w-3/5">
 						<SectionWrapperDataRow
 							icon={<SendHorizonal className="h-4 w-4 min-h-4 min-w-4" />}
 							label="TEMPLATE"
@@ -137,117 +200,138 @@ export default function CampaignConfigView({ campaign, membership }: CampaignCon
 							/>
 						) : null}
 					</div>
-				</SectionWrapper>
-
-				{/* Público */}
-				<SectionWrapper
-					title="PÚBLICO"
-					icon={<Filter className="h-4 w-4 min-h-4 min-w-4" />}
-					actions={<EditAction onClick={() => setOpenSection("audience")} />}
-				>
-					<div className="flex w-full flex-col gap-2">
-						<SectionWrapperDataRow
-							icon={<Users className="h-4 w-4 min-h-4 min-w-4" />}
-							label="SEGMENTAÇÕES"
-							value={activeSegmentations.length > 0 ? `${activeSegmentations.length} ativa(s)` : "Todos os clientes"}
-						/>
-						{activeSegmentations.length > 0 ? (
-							<p className="text-xs leading-snug text-muted-foreground">{activeSegmentations.map((s) => s.segmentacao).join(", ")}</p>
-						) : null}
-						<SectionWrapperDataRow
-							icon={<Filter className="h-4 w-4 min-h-4 min-w-4" />}
-							label="FILTROS ADICIONAIS"
-							value={
-								campaign.filtros && Array.isArray(campaign.filtros.itens) && campaign.filtros.itens.length > 0
-									? `${campaign.filtros.itens.length} no grupo principal`
-									: "Nenhum filtro"
-							}
-						/>
-					</div>
-				</SectionWrapper>
-
-				{/* Efeitos / Cashback */}
-				<SectionWrapper
-					title="EFEITOS / CASHBACK"
-					icon={<Coins className="h-4 w-4 min-h-4 min-w-4" />}
-					actions={<EditAction onClick={() => setOpenSection("effects")} />}
-				>
-					<div className="flex w-full flex-col gap-2">
-						{campaign.cashbackGeracaoAtivo ? (
-							<>
-								<SectionWrapperDataRow
-									icon={<Coins className="h-4 w-4 min-h-4 min-w-4" />}
-									label="GERAÇÃO DE CASHBACK"
-									value={
-										campaign.cashbackGeracaoTipo === "PERCENTUAL"
-											? `${campaign.cashbackGeracaoValor ?? 0}% do valor da venda`
-											: `${formatToMoney(campaign.cashbackGeracaoValor ?? 0)} fixo`
-									}
-								/>
-								<SectionWrapperDataRow
-									icon={<Clock className="h-4 w-4 min-h-4 min-w-4" />}
-									label="EXPIRAÇÃO"
-									value={
-										campaign.cashbackGeracaoExpiracaoValor
-											? formatInterval(campaign.cashbackGeracaoExpiracaoValor, campaign.cashbackGeracaoExpiracaoMedida)
-											: "Padrão (30 dias)"
-									}
-								/>
-							</>
-						) : (
-							<SectionWrapperDataRow icon={<Coins className="h-4 w-4 min-h-4 min-w-4" />} label="GERAÇÃO DE CASHBACK" value="Não gera cashback" />
-						)}
-					</div>
-				</SectionWrapper>
-
-				{/* Conversão & Ajustes */}
-				<SectionWrapper
-					title="CONVERSÃO & AJUSTES"
-					icon={<Settings2 className="h-4 w-4 min-h-4 min-w-4" />}
-					actions={<EditAction onClick={() => setOpenSection("settings")} />}
-				>
-					<div className="flex w-full flex-col gap-2">
-						<SectionWrapperDataRow
-							icon={<ArrowRightLeft className="h-4 w-4 min-h-4 min-w-4" />}
-							label="MODELO DE ATRIBUIÇÃO"
-							value={ATTRIBUTION_MODEL_LABELS[campaign.atribuicaoModelo] ?? campaign.atribuicaoModelo}
-						/>
-						<SectionWrapperDataRow
-							icon={<Clock className="h-4 w-4 min-h-4 min-w-4" />}
-							label="JANELA DE ATRIBUIÇÃO"
-							value={`${campaign.atribuicaoJanelaDias ?? 0} dias`}
-						/>
-						<SectionWrapperDataRow
-							icon={<Settings2 className="h-4 w-4 min-h-4 min-w-4" />}
-							label="RECORRÊNCIA POR CLIENTE"
-							value={
-								campaign.permitirRecorrencia
-									? `A cada ${formatInterval(campaign.frequenciaIntervaloValor, campaign.frequenciaIntervaloMedida)}`
-									: "Não permite repetição"
-							}
-						/>
-						<SectionWrapperDataRow
-							icon={<SendHorizonal className="h-4 w-4 min-h-4 min-w-4" />}
-							label="LIMITE SEMANAL DE ENVIOS"
-							value={campaign.limiteEnviosSemanais ? `${campaign.limiteEnviosSemanais} por semana` : "Sem limite"}
-						/>
-					</div>
-				</SectionWrapper>
+					{templateContent ? (
+						<div className="flex w-full flex-col gap-2 lg:w-2/5 lg:shrink-0">
+							<div className="flex items-center gap-2">
+								<Eye className="h-4 w-4 min-h-4 min-w-4 text-muted-foreground" />
+								<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">PREVIEW DO TEMPLATE</h3>
+							</div>
+							<TemplatePreview content={templateContent} organizationTheme={organizationTheme} compact />
+						</div>
+					) : null}
+				</div>
+			</SectionWrapper>
+			<div className="w-full flex flex-col lg:flex-row gap-3">
+				<div className="w-full lg:w-1/2">
+					<SectionWrapper
+						title="EFEITOS / CASHBACK"
+						icon={<Coins className="h-4 w-4 min-h-4 min-w-4" />}
+						actions={<EditAction onClick={() => setOpenSection("effects")} />}
+					>
+						<div className="flex w-full flex-col gap-2">
+							{campaign.cashbackGeracaoAtivo ? (
+								<>
+									<SectionWrapperDataRow
+										icon={<Coins className="h-4 w-4 min-h-4 min-w-4" />}
+										label="GERAÇÃO DE CASHBACK"
+										value={
+											campaign.cashbackGeracaoTipo === "PERCENTUAL"
+												? `${campaign.cashbackGeracaoValor ?? 0}% do valor da venda`
+												: `${formatToMoney(campaign.cashbackGeracaoValor ?? 0)} fixo`
+										}
+									/>
+									<SectionWrapperDataRow
+										icon={<Clock className="h-4 w-4 min-h-4 min-w-4" />}
+										label="EXPIRAÇÃO"
+										value={
+											campaign.cashbackGeracaoExpiracaoValor
+												? formatInterval(campaign.cashbackGeracaoExpiracaoValor, campaign.cashbackGeracaoExpiracaoMedida)
+												: "Padrão (30 dias)"
+										}
+									/>
+								</>
+							) : (
+								<SectionWrapperDataRow icon={<Coins className="h-4 w-4 min-h-4 min-w-4" />} label="GERAÇÃO DE CASHBACK" value="Não gera cashback" />
+							)}
+						</div>
+					</SectionWrapper>
+				</div>
+				<div className="w-full lg:w-1/2">
+					<SectionWrapper
+						title="CONVERSÃO & AJUSTES"
+						icon={<Settings2 className="h-4 w-4 min-h-4 min-w-4" />}
+						actions={<EditAction onClick={() => setOpenSection("settings")} />}
+					>
+						<div className="flex w-full flex-col gap-2">
+							<SectionWrapperDataRow
+								icon={<ArrowRightLeft className="h-4 w-4 min-h-4 min-w-4" />}
+								label="MODELO DE ATRIBUIÇÃO"
+								value={ATTRIBUTION_MODEL_LABELS[campaign.atribuicaoModelo] ?? campaign.atribuicaoModelo}
+							/>
+							<SectionWrapperDataRow
+								icon={<Clock className="h-4 w-4 min-h-4 min-w-4" />}
+								label="JANELA DE ATRIBUIÇÃO"
+								value={`${campaign.atribuicaoJanelaDias ?? 0} dias`}
+							/>
+							<SectionWrapperDataRow
+								icon={<Settings2 className="h-4 w-4 min-h-4 min-w-4" />}
+								label="RECORRÊNCIA POR CLIENTE"
+								value={
+									campaign.permitirRecorrencia
+										? `A cada ${formatInterval(campaign.frequenciaIntervaloValor, campaign.frequenciaIntervaloMedida)}`
+										: "Não permite repetição"
+								}
+							/>
+							<SectionWrapperDataRow
+								icon={<SendHorizonal className="h-4 w-4 min-h-4 min-w-4" />}
+								label="LIMITE SEMANAL DE ENVIOS"
+								value={campaign.limiteEnviosSemanais ? `${campaign.limiteEnviosSemanais} por semana` : "Sem limite"}
+							/>
+						</div>
+					</SectionWrapper>
+				</div>
 			</div>
 
-			{openSection === "general" ? <EditGeneralSection campaign={campaign} closeModal={closeModal} /> : null}
-			{openSection === "send" ? (
-				<EditSendSection
-					campaign={campaign}
-					organizationId={membership.organizacao.id}
-					organizationName={membership.organizacao.nome}
-					organizationLogoUrl={membership.organizacao.logoUrl}
+			{openSection === "general" ? (
+				<ControlCampaign
+					sessionUser={sessionUser}
+					sessionUserOrg={sessionUserOrg}
+					campaignId={campaign.id}
 					closeModal={closeModal}
+					section="general"
+					callbacks={onEditCallbacks}
 				/>
 			) : null}
-			{openSection === "audience" ? <EditAudienceSection campaign={campaign} closeModal={closeModal} /> : null}
-			{openSection === "effects" ? <EditEffectsSection campaign={campaign} closeModal={closeModal} /> : null}
-			{openSection === "settings" ? <EditSettingsSection campaign={campaign} closeModal={closeModal} /> : null}
+			{openSection === "send" ? (
+				<ControlCampaign
+					sessionUser={sessionUser}
+					sessionUserOrg={sessionUserOrg}
+					campaignId={campaign.id}
+					closeModal={closeModal}
+					callbacks={onEditCallbacks}
+					section="send"
+				/>
+			) : null}
+			{openSection === "audience" ? (
+				<ControlCampaign
+					sessionUser={sessionUser}
+					sessionUserOrg={sessionUserOrg}
+					campaignId={campaign.id}
+					closeModal={closeModal}
+					section="audience"
+					callbacks={onEditCallbacks}
+				/>
+			) : null}
+			{openSection === "effects" ? (
+				<ControlCampaign
+					sessionUser={sessionUser}
+					sessionUserOrg={sessionUserOrg}
+					campaignId={campaign.id}
+					closeModal={closeModal}
+					section="effects"
+					callbacks={onEditCallbacks}
+				/>
+			) : null}
+			{openSection === "settings" ? (
+				<ControlCampaign
+					sessionUser={sessionUser}
+					sessionUserOrg={sessionUserOrg}
+					campaignId={campaign.id}
+					closeModal={closeModal}
+					section="settings"
+					callbacks={onEditCallbacks}
+				/>
+			) : null}
 		</div>
 	);
 }

@@ -643,7 +643,6 @@ function CampaignsStatsView() {
 				/>
 				<StatUnitCard
 					title="CONVERSÕES INCREMENTAIS"
-					subtitle="Com impacto real sobre o comportamento basal"
 					icon={<SparklesIcon className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{
 						value: totals?.conversoesIncrementais || 0,
@@ -668,7 +667,6 @@ function CampaignsStatsView() {
 				/>
 				<StatUnitCard
 					title="RECEITA INCREMENTAL"
-					subtitle="Receita além do que o cliente já compraria"
 					icon={<SparklesIcon className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{
 						value: totals?.receitaIncremental || 0,

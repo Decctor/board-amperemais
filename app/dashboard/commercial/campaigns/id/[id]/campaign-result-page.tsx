@@ -125,7 +125,6 @@ export function CampaignStatsView({ campaignId }: CampaignStatsViewProps) {
 				/>
 				<StatUnitCard
 					title="CONVERSÕES INCREMENTAIS"
-					subtitle="Com impacto real sobre o comportamento basal"
 					icon={<Sparkles className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: performance?.conversoesIncrementais ?? 0, format: (n) => formatDecimalPlaces(n) }}
 				/>
@@ -141,7 +140,6 @@ export function CampaignStatsView({ campaignId }: CampaignStatsViewProps) {
 				/>
 				<StatUnitCard
 					title="RECEITA INCREMENTAL"
-					subtitle="Receita além do que o cliente já compraria"
 					icon={<Sparkles className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: performance?.receitaIncremental ?? 0, format: (n) => formatToMoney(n) }}
 				/>

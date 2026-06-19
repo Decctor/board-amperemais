@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import { buildCampaignStateFromEntity, buildCampaignUpdatePayload } from "@/components/Modals/Campaigns/Sections/utils";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { updateCampaign } from "@/lib/mutations/campaigns";
@@ -22,10 +21,11 @@ import { toast } from "sonner";
 
 type CampaignResultPageProps = {
 	campaignId: string;
-	membership: NonNullable<TAuthUserSession["membership"]>;
+	sessionUser: TAuthUserSession["user"];
+	sessionUserOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 };
 
-export default function CampaignResultPage({ campaignId, membership }: CampaignResultPageProps) {
+export default function CampaignResultPage({ campaignId, sessionUser, sessionUserOrg }: CampaignResultPageProps) {
 	const queryClient = useQueryClient();
 	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "config"]));
 	const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
@@ -43,13 +43,6 @@ export default function CampaignResultPage({ campaignId, membership }: CampaignR
 		},
 		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
 	});
-
-	function updateCampaignStatus(ativo: boolean) {
-		if (!campaign) return;
-		const state = buildCampaignStateFromEntity(campaign);
-		state.campaign.ativo = ativo;
-		handleStatusMutation(buildCampaignUpdatePayload(campaign.id, state));
-	}
 
 	if (isLoading) return <LoadingComponent />;
 	if (isError || !campaign) return <ErrorComponent msg={getErrorMessage(error) ?? "Campanha não encontrada."} />;
@@ -71,22 +64,11 @@ export default function CampaignResultPage({ campaignId, membership }: CampaignR
 					<div className="flex items-center gap-2">
 						{campaign.ativo ? (
 							<>
-								<div
-									className={cn(
-										"flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-white",
-										"bg-amber-500 dark:bg-amber-600",
-									)}
-								>
+								<div className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 bg-green-500 text-white")}>
 									<Check className="h-4 min-h-4 w-4 min-w-4" />
 									<p className="text-[0.65rem] font-bold tracking-tight uppercase">ATIVA</p>
 								</div>
-								<Button
-									variant="outline"
-									size="sm"
-									disabled={statusIsPending}
-									className="flex items-center gap-1.5"
-									onClick={() => setPauseDialogOpen(true)}
-								>
+								<Button variant="outline" size="sm" disabled={statusIsPending} className="flex items-center gap-1.5" onClick={() => setPauseDialogOpen(true)}>
 									<Pause className="h-4 min-h-4 w-4 min-w-4" />
 									PAUSAR
 								</Button>
@@ -97,7 +79,7 @@ export default function CampaignResultPage({ campaignId, membership }: CampaignR
 								size="fit"
 								disabled={statusIsPending}
 								className="flex items-center gap-1.5 rounded-xl bg-green-500 px-3 py-1.5 text-white hover:bg-green-600 hover:text-white dark:bg-green-600 dark:hover:bg-green-700"
-								onClick={() => updateCampaignStatus(true)}
+								onClick={() => handleStatusMutation({ campaignId, campaign: { ...campaign, ativo: true }, segmentations: campaign.segmentacoes ?? [] })}
 							>
 								<PlayIcon className="h-4 min-h-4 w-4 min-w-4" />
 								ATIVAR
@@ -122,7 +104,7 @@ export default function CampaignResultPage({ campaignId, membership }: CampaignR
 					<CampaignStatsView campaignId={campaignId} />
 				</TabsContent>
 				<TabsContent value="config" className="flex flex-col gap-3">
-					<CampaignConfigView campaign={campaign} membership={membership} />
+					<CampaignConfigView campaign={campaign} sessionUser={sessionUser} sessionUserOrg={sessionUserOrg} />
 				</TabsContent>
 			</Tabs>
 
@@ -130,7 +112,7 @@ export default function CampaignResultPage({ campaignId, membership }: CampaignR
 				open={pauseDialogOpen}
 				isPending={statusIsPending}
 				onCancel={() => setPauseDialogOpen(false)}
-				onConfirm={() => updateCampaignStatus(false)}
+				onConfirm={() => handleStatusMutation({ campaignId, campaign: { ...campaign, ativo: false }, segmentations: campaign.segmentacoes ?? [] })}
 			/>
 		</div>
 	);

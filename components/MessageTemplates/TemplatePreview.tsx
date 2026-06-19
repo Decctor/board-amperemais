@@ -14,6 +14,7 @@ import { Eye, FileText as FileTextIcon, ImageIcon, MapPin, VideoIcon } from "luc
 type TemplatePreviewProps = {
 	content?: TMessageTemplateContent | null;
 	organizationTheme?: OrganizationTemplateTheme;
+	compact?: boolean;
 };
 
 function getButtonIcon(tipo: TMessageTemplateContent["botoes"][number]["tipo"]) {
@@ -115,7 +116,7 @@ function MessageTemplateHeaderPreview({
 	return null;
 }
 
-function TemplatePreview({ content, organizationTheme }: TemplatePreviewProps) {
+function TemplatePreview({ content, organizationTheme, compact = false }: TemplatePreviewProps) {
 	if (!content) return null;
 
 	const { cabecalho, corpo, rodape, botoes } = content;
@@ -125,10 +126,15 @@ function TemplatePreview({ content, organizationTheme }: TemplatePreviewProps) {
 	const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 	const headerTextLength = cabecalho?.tipo === "TEXTO" ? (cabecalho.conteudoTexto?.length ?? 0) : 0;
 
-	return (
-		<ResponsiveMenuSection title="PREVIEW" icon={<Eye size={15} />}>
-			<div className="w-full h-full flex flex-col items-center justify-center gap-4 pb-4">
-				<div className="relative w-full max-w-md min-w-[300px] rounded-lg overflow-hidden bg-[#e5ddd5]">
+	const previewContent = (
+		<div className={compact ? "w-full flex flex-col items-center justify-center" : "w-full h-full flex flex-col items-center justify-center gap-4 pb-4"}>
+			<div
+				className={
+					compact
+						? "relative w-full rounded-lg overflow-hidden bg-[#e5ddd5]"
+						: "relative w-full max-w-md min-w-[300px] rounded-lg overflow-hidden bg-[#e5ddd5]"
+				}
+			>
 					<div
 						className="absolute inset-0 opacity-10"
 						style={{
@@ -137,7 +143,7 @@ function TemplatePreview({ content, organizationTheme }: TemplatePreviewProps) {
 						}}
 					/>
 
-					<div className="relative p-4 min-h-[300px] flex items-center justify-center">
+					<div className={compact ? "relative p-3 min-h-[200px] flex items-center justify-center" : "relative p-4 min-h-[300px] flex items-center justify-center"}>
 						<div className="bg-white rounded-lg shadow-md overflow-hidden max-w-[85%] relative">
 							{cabecalho && cabecalho.tipo !== "NENHUM" ? (
 								<div className="w-full">
@@ -175,46 +181,55 @@ function TemplatePreview({ content, organizationTheme }: TemplatePreviewProps) {
 					</div>
 				</div>
 
-				<div className="w-full max-w-md space-y-2 mt-2">
-					<div className="flex items-center justify-between text-xs">
-						<span className="text-foreground/60">Caracteres no corpo:</span>
-						<span className={bodyText.length > MESSAGE_TEMPLATE_BODY_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"}>
-							{bodyText.length} / {MESSAGE_TEMPLATE_BODY_MAX_LENGTH}
-						</span>
+				{!compact ? (
+					<div className="w-full max-w-md space-y-2 mt-2">
+						<div className="flex items-center justify-between text-xs">
+							<span className="text-foreground/60">Caracteres no corpo:</span>
+							<span className={bodyText.length > MESSAGE_TEMPLATE_BODY_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"}>
+								{bodyText.length} / {MESSAGE_TEMPLATE_BODY_MAX_LENGTH}
+							</span>
+						</div>
+
+						{cabecalho?.tipo === "TEXTO" && cabecalho.conteudoTexto ? (
+							<div className="flex items-center justify-between text-xs">
+								<span className="text-foreground/60">Caracteres no cabeçalho:</span>
+								<span
+									className={
+										headerTextLength > MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"
+									}
+								>
+									{headerTextLength} / {MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH}
+								</span>
+							</div>
+						) : null}
+
+						{footerText ? (
+							<div className="flex items-center justify-between text-xs">
+								<span className="text-foreground/60">Caracteres no rodapé:</span>
+								<span className={footerText.length > MESSAGE_TEMPLATE_FOOTER_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"}>
+									{footerText.length} / {MESSAGE_TEMPLATE_FOOTER_MAX_LENGTH}
+								</span>
+							</div>
+						) : null}
+
+						{botoes.length > 0 ? (
+							<div className="flex items-center justify-between text-xs">
+								<span className="text-foreground/60">Número de botões:</span>
+								<span className={botoes.length > MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT ? "text-red-500 font-semibold" : "text-foreground/80"}>
+									{botoes.length} / {MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT}
+								</span>
+							</div>
+						) : null}
 					</div>
-
-					{cabecalho?.tipo === "TEXTO" && cabecalho.conteudoTexto ? (
-						<div className="flex items-center justify-between text-xs">
-							<span className="text-foreground/60">Caracteres no cabeçalho:</span>
-							<span
-								className={
-									headerTextLength > MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"
-								}
-							>
-								{headerTextLength} / {MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH}
-							</span>
-						</div>
-					) : null}
-
-					{footerText ? (
-						<div className="flex items-center justify-between text-xs">
-							<span className="text-foreground/60">Caracteres no rodapé:</span>
-							<span className={footerText.length > MESSAGE_TEMPLATE_FOOTER_MAX_LENGTH ? "text-red-500 font-semibold" : "text-foreground/80"}>
-								{footerText.length} / {MESSAGE_TEMPLATE_FOOTER_MAX_LENGTH}
-							</span>
-						</div>
-					) : null}
-
-					{botoes.length > 0 ? (
-						<div className="flex items-center justify-between text-xs">
-							<span className="text-foreground/60">Número de botões:</span>
-							<span className={botoes.length > MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT ? "text-red-500 font-semibold" : "text-foreground/80"}>
-								{botoes.length} / {MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT}
-							</span>
-						</div>
-					) : null}
-				</div>
+				) : null}
 			</div>
+	);
+
+	if (compact) return previewContent;
+
+	return (
+		<ResponsiveMenuSection title="PREVIEW" icon={<Eye size={15} />}>
+			{previewContent}
 		</ResponsiveMenuSection>
 	);
 }
