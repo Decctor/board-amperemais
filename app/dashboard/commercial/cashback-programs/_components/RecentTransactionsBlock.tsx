@@ -121,33 +121,11 @@ type TransactionCardProps = {
 	cashbackProgramTerminology: TCashbackProgramTerminologyEnum;
 };
 function TransactionCard({ transaction, cashbackProgramTerminology }: TransactionCardProps) {
-	const getTransactionTypeBadge = (tipo: "ACÚMULO" | "RESGATE" | "EXPIRAÇÃO" | "CANCELAMENTO") => {
-		switch (tipo) {
-			case "ACÚMULO":
-				return (
-					<span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-						ACÚMULO
-					</span>
-				);
-			case "RESGATE":
-				return (
-					<span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
-						RESGATE
-					</span>
-				);
-			case "EXPIRAÇÃO":
-				return (
-					<span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-red-100 text-red-700 border border-red-200">
-						EXPIRAÇÃO
-					</span>
-				);
-			case "CANCELAMENTO":
-				return (
-					<span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-						CANCELAMENTO
-					</span>
-				);
-		}
+	const transactionValueBadgeStyles: Record<typeof transaction.tipo, string> = {
+		"ACÚMULO": "bg-green-100 text-green-700 border-green-200",
+		RESGATE: "bg-blue-100 text-blue-700 border-blue-200",
+		"EXPIRAÇÃO": "bg-red-100 text-red-700 border-red-200",
+		CANCELAMENTO: "bg-gray-100 text-gray-700 border-gray-200",
 	};
 
 	const getTransactionIcon = () => {
@@ -185,33 +163,36 @@ function TransactionCard({ transaction, cashbackProgramTerminology }: Transactio
 			</div>
 		);
 	};
-	const transactionTypeBadge = useMemo(() => getTransactionTypeBadge(transaction.tipo), [transaction.tipo]);
 	const transactionIcon = useMemo(() => getTransactionIcon(), [transaction.tipo]);
+	const transactionValueBadge = `${transaction.tipo === "RESGATE" ? "-" : "+"} ${formatCashbackValue(Math.abs(transaction.valor), cashbackProgramTerminology)}`;
 	return (
 		<HoverCard>
 			<HoverCardTrigger asChild>
 				<div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-primary/5 transition-colors cursor-pointer group">
 					{transactionIcon}
 
-					<div className="flex-1 flex flex-col gap-1">
-						<div className="flex items-center gap-2">
-							<span className="text-sm font-medium">{transaction.cliente.nome}</span>
-							{transactionTypeBadge}
-						</div>
+					<div className="flex-1 flex flex-col gap-1 min-w-0">
+						<span className="text-sm font-medium truncate">{transaction.cliente.nome}</span>
 						<div className="flex items-center gap-2 text-xs text-muted-foreground">
-							<div className="flex items-center gap-1.5">
-								<UserRound className="h-3 w-3 min-h-3 min-w-3" />
-								<span className="text-xs font-medium truncate text-end">{transaction.operadorVendedor?.nome}</span>
+							<div className="flex items-center gap-1.5 min-w-0">
+								<UserRound className="h-3 w-3 min-h-3 min-w-3 shrink-0" />
+								<span className="text-xs font-medium truncate">{transaction.operadorVendedor?.nome}</span>
 							</div>
-							<span>{formatDateAsLocale(transaction.dataInsercao, true)}</span>
-
-							{transaction.expiracaoData && <span>• Expira: {formatDateAsLocale(transaction.expiracaoData, true)}</span>}
+							<span className="shrink-0">{formatDateAsLocale(transaction.dataInsercao, true)}</span>
+							{transaction.expiracaoData && (
+								<span className="shrink-0">• Expira: {formatDateAsLocale(transaction.expiracaoData, true)}</span>
+							)}
 						</div>
 					</div>
 
-					<div className={cn("text-sm font-bold", transaction.tipo === "RESGATE" ? "text-red-600" : "text-green-600")}>
-						{transaction.tipo === "RESGATE" ? "-" : "+"} {formatCashbackValue(Math.abs(transaction.valor), cashbackProgramTerminology)}
-					</div>
+					<span
+						className={cn(
+							"inline-flex items-center rounded-md border px-2 py-1 text-xs font-bold shrink-0",
+							transactionValueBadgeStyles[transaction.tipo],
+						)}
+					>
+						{transactionValueBadge}
+					</span>
 				</div>
 			</HoverCardTrigger>
 			<HoverCardContent className="w-80 overflow-hidden p-4 flex flex-col gap-3" align="start">
