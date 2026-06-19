@@ -1,5 +1,8 @@
 import "@/utils/scripts/load-next-env";
 
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
 import { runDataCollectingV2, type TDataCollectingV2EffectsOptions } from "@/lib/data-collecting-v2";
 import { connection, db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
@@ -21,6 +24,7 @@ type TScriptOptions = {
 	endDate: Date;
 	processImmediateInteractions: boolean;
 	effects: TDataCollectingV2EffectsOptions;
+	rawOutputPath: string | null;
 };
 
 function getArgValue(name: string) {
@@ -59,6 +63,13 @@ function parseDateArg(names: string[], fallback: Date) {
 	return parsed.toDate();
 }
 
+function parseRawOutputPath() {
+	const explicitPath = getArgValue("out");
+	if (explicitPath !== null) return explicitPath;
+	if (hasFlag("out")) return "";
+	return null;
+}
+
 function parseRequiredEffectArg(name: string) {
 	const value = getArgValue(name);
 	if (value === "process") return true;
@@ -71,7 +82,7 @@ function printHelp() {
 
 	console.log(`
 Uso:
-  npm run sync:bling-collecting -- [--org=<organizationId>] [--start=<ISO>] [--end=<ISO>] --cashback=<process|skip> --campaigns=<process|skip> --conversion-attribution=<process|skip> [--process-immediate-interactions]
+  npm run sync:bling-collecting -- [--org=<organizationId>] [--start=<ISO>] [--end=<ISO>] --cashback=<process|skip> --campaigns=<process|skip> --conversion-attribution=<process|skip> [--process-immediate-interactions] [--out=<path>]
 
 Executa o mesmo pipeline de app/api/cron/data-collecting/route.ts via runDataCollectingV2,
 buscando vendas no Bling e inserindo/atualizando no banco.
@@ -94,9 +105,57 @@ Exemplo espelhando o cron (com campanhas/cashback):
 
 Observações:
   --cashback, --campaigns e --conversion-attribution são obrigatórios.
+  --out salva o payload bruto do Bling (batch.raw) em JSON após a sincronização.
+  Use --out sem valor para salvar em tmp/bling-sync-raw-<org>-<timestamp>.json.
   Por padrão, interações imediatas não são processadas.
   Use --process-immediate-interactions apenas com --campaigns=process.
 `);
+}
+
+function getDefaultRawOutputPath(organizationId: string) {
+	return path.join("tmp", `bling-sync-raw-${organizationId.slice(0, 8)}-${dayjs().format("YYYY-MM-DD-HHmmss")}.json`);
+}
+
+async function saveRawOutput({
+	outputPath,
+	organizationId,
+	organizationName,
+	window,
+	result,
+}: {
+	outputPath: string;
+	organizationId: string;
+	organizationName: string;
+	window: { startDate: Date; endDate: Date };
+	result: Awaited<ReturnType<typeof runDataCollectingV2>>;
+}) {
+	const rawBatch = result.rawBatches?.find((batch) => batch.organizationId === organizationId);
+	if (!rawBatch) {
+		console.warn(`[${SCRIPT_NAME}] Nenhum payload raw disponível para salvar (org=${organizationId}).`);
+		return;
+	}
+
+	const resolvedOutputPath = path.resolve(process.cwd(), outputPath);
+	await mkdir(path.dirname(resolvedOutputPath), { recursive: true });
+
+	const payload = {
+		meta: {
+			organizationId,
+			organizationName,
+			source: rawBatch.source,
+			window: {
+				startDate: window.startDate.toISOString(),
+				endDate: window.endDate.toISOString(),
+			},
+			savedAt: new Date().toISOString(),
+		},
+		raw: rawBatch.raw,
+		summary: result.summaries.find((summary) => summary.organizationId === organizationId) ?? null,
+		errors: result.errors.filter((error) => error.organizationId === organizationId),
+	};
+
+	await writeFile(resolvedOutputPath, JSON.stringify(payload, null, 2), "utf-8");
+	console.log(`[${SCRIPT_NAME}] Payload raw salvo em ${resolvedOutputPath}`);
 }
 
 function parseOptions(): TScriptOptions | null {
@@ -127,6 +186,7 @@ function parseOptions(): TScriptOptions | null {
 			processCampaigns,
 			processConversionAttribution: parseRequiredEffectArg("conversion-attribution"),
 		},
+		rawOutputPath: parseRawOutputPath(),
 	};
 }
 
@@ -198,11 +258,25 @@ async function main() {
 		},
 		processImmediateInteractions: options.processImmediateInteractions,
 		effects: options.effects,
+		includeRawInResult: options.rawOutputPath !== null,
 	});
 
 	const elapsedMs = Date.now() - startedAt;
 	console.log(`[${SCRIPT_NAME}] Sincronização concluída em ${elapsedMs}ms.`);
 	printSummary(result);
+
+	if (options.rawOutputPath) {
+		await saveRawOutput({
+			outputPath: options.rawOutputPath === "" ? getDefaultRawOutputPath(options.organizationId) : options.rawOutputPath,
+			organizationId: options.organizationId,
+			organizationName: organization.nome,
+			window: {
+				startDate: options.startDate,
+				endDate: options.endDate,
+			},
+			result,
+		});
+	}
 
 	if (result.errors.length > 0) {
 		process.exitCode = 1;

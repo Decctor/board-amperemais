@@ -2,6 +2,7 @@
 
 import { useCampaignUtilPreviewSegmentationAudience } from "@/lib/queries/campaigns";
 import { cn } from "@/lib/utils";
+import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
 import { RFMLabels } from "@/utils/rfm";
 import { Loader2 } from "lucide-react";
 import { useBuilderCampaign } from "./builder-provider";
@@ -10,15 +11,29 @@ function formatSegmentCount(n: number) {
 	return n.toLocaleString("pt-BR");
 }
 
-type SegmentationsPanelProps = {
+/**
+ * The slice of campaign-state needed to toggle RFM segmentations. Both the
+ * builder (via context) and the standalone section-edit modal (via a local
+ * `useCampaignState`) can satisfy it, keeping the selector UI reusable.
+ */
+export type TSegmentationsController = Pick<TUseCampaignState, "state" | "addSegmentation" | "updateSegmentation" | "deleteSegmentation">;
+
+type SegmentationsFieldProps = {
+	controller: TSegmentationsController;
 	title?: string;
 	description?: string;
 };
-export default function SegmentationsPanel({
+
+/**
+ * Presentational segmentation picker driven by an explicit controller. Use this
+ * directly when there is no BuilderProvider in scope (e.g. the section modal).
+ */
+export function SegmentationsField({
+	controller,
 	title = "Segmentações RFM",
 	description = "Selecione as segmentações que serão consideradas para esta campanha.",
-}: SegmentationsPanelProps) {
-	const { state, addSegmentation, updateSegmentation, deleteSegmentation } = useBuilderCampaign();
+}: SegmentationsFieldProps) {
+	const { state, addSegmentation, updateSegmentation, deleteSegmentation } = controller;
 	const { data: audience, isLoading } = useCampaignUtilPreviewSegmentationAudience();
 
 	function handleSegmentationToggle(labelText: string) {
@@ -77,4 +92,18 @@ export default function SegmentationsPanel({
 			</div>
 		</div>
 	);
+}
+
+type SegmentationsPanelProps = {
+	title?: string;
+	description?: string;
+};
+
+/**
+ * Builder-bound wrapper: pulls the controller from BuilderProvider context.
+ * Kept as the default export so the wizard stages stay unchanged.
+ */
+export default function SegmentationsPanel(props: SegmentationsPanelProps) {
+	const controller = useBuilderCampaign();
+	return <SegmentationsField controller={controller} {...props} />;
 }

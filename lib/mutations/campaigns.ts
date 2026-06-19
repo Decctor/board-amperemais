@@ -15,6 +15,7 @@ export async function createCampaign(input: TCreateCampaignInput) {
 
 export async function updateCampaign(input: TUpdateCampaignInput) {
 	try {
+		console.log("[INFO] [UPDATE-CAMPAIGN] Running updateCampaign", input);
 		const { data } = await axios.put<TUpdateCampaignOutput>("/api/campaigns", input);
 		return data;
 	} catch (error) {

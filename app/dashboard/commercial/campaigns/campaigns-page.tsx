@@ -304,7 +304,7 @@ function CampaignsDatabaseView() {
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center justify-end gap-2">
 				<Button className="flex items-center gap-2" size="sm" asChild>
-					<Link href="/dashboard/commercial/campaigns/builder">
+					<Link href="/dashboard/commercial/campaigns/new">
 						<Plus className="w-4 h-4 min-w-4 min-h-4" />
 						NOVA CAMPANHA
 					</Link>
@@ -885,7 +885,7 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 						TESTAR
 					</Button>
 					<Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
-						<Link href={`/dashboard/commercial/campaigns/builder?campaignId=${campaign.id}`}>
+						<Link href={`/dashboard/commercial/campaigns/id/${campaign.id}?view=config`}>
 							<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
 							EDITAR
 						</Link>

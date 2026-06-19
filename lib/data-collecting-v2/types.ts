@@ -70,6 +70,13 @@ export type TDataCollectingV2RunError = {
 	message: string;
 };
 
+export type TDataCollectingV2RawBatch = {
+	organizationId: string;
+	source: TCanonicalImportBatch["source"];
+	window: TCanonicalImportBatch["window"];
+	raw: unknown;
+};
+
 export type TDataCollectingV2RunSummary = {
 	organizationId: string;
 	source: TCanonicalImportBatch["source"];

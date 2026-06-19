@@ -304,7 +304,7 @@ async function fetchRawApiSamples({
 function printSummary(batch: Awaited<ReturnType<typeof blingDataConnector.fetchImportBatch>>) {
 	const validSales = batch.sales.filter((sale) => sale.isValidSale);
 	const canceledSales = batch.sales.filter((sale) => sale.isCanceled);
-	const raw = batch.raw as { sales?: unknown[]; contacts?: unknown[]; products?: unknown[]; channels?: unknown[] } | undefined;
+	const raw = batch.raw as { sales?: unknown[]; contacts?: unknown[]; products?: unknown[] } | undefined;
 
 	console.log("\n[BLING_FETCH_TEST] Resumo do fetch");
 	console.log({
@@ -317,7 +317,6 @@ function printSummary(batch: Awaited<ReturnType<typeof blingDataConnector.fetchI
 		rawSales: raw?.sales?.length ?? 0,
 		rawContacts: raw?.contacts?.length ?? 0,
 		rawProducts: raw?.products?.length ?? 0,
-		rawChannels: raw?.channels?.length ?? 0,
 		sales: batch.sales.length,
 		validSales: validSales.length,
 		canceledSales: canceledSales.length,

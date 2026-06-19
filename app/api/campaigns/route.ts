@@ -600,6 +600,7 @@ const updateCampaignRoute = async (request: NextRequest) => {
 
 	const input = await request.json();
 	const parsedInput = UpdateCampaignInputSchema.parse(input);
+	console.log("[INFO] [UPDATE-CAMPAIGN] Parsed input:", parsedInput);
 	const result = await updateCampaign({ input: parsedInput, session: session });
 	return NextResponse.json(result, { status: 200 });
 };

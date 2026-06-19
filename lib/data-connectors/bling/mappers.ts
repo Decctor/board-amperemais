@@ -9,7 +9,7 @@ import type {
 	TCanonicalSale,
 	TCanonicalSaleItem,
 } from "../types";
-import type { TBlingChannel, TBlingContact, TBlingProduct, TBlingSale, TBlingSaleItem } from "./types";
+import type { TBlingContact, TBlingProduct, TBlingSale, TBlingSaleItem } from "./types";
 
 function toStringId(value: string | number | null | undefined) {
 	if (value === null || value === undefined || value === "") return null;
@@ -134,13 +134,7 @@ function mapDeliveryMode(sale: TBlingSale): TCanonicalDeliveryMode {
 	return null;
 }
 
-function resolveChannel(sale: TBlingSale, channelsById: Map<string, TBlingChannel>) {
-	const lojaId = toStringId(sale.loja?.id);
-	const channel = lojaId ? channelsById.get(lojaId) : null;
-	return channel?.descricao || channel?.tipo || lojaId || "Bling";
-}
-
-export function mapBlingSaleToCanonicalSale({ sale, channelsById }: { sale: TBlingSale; channelsById: Map<string, TBlingChannel> }): TCanonicalSale {
+export function mapBlingSaleToCanonicalSale({ sale }: { sale: TBlingSale }): TCanonicalSale {
 	const sourceSaleId = toStringId(sale.id);
 	if (!sourceSaleId) throw new Error("[BLING_MAPPER] Pedido de venda recebido sem ID.");
 
@@ -159,7 +153,7 @@ export function mapBlingSaleToCanonicalSale({ sale, channelsById }: { sale: TBli
 		totalDiscount: explicitDiscount || itemDiscount,
 		totalSurcharge,
 		sellerName: sale.vendedor?.nome || "BLING",
-		channel: resolveChannel(sale, channelsById),
+		channel: "Bling",
 		deliveryMode: mapDeliveryMode(sale),
 		partnerIdentifier: null,
 		key: sourceSaleId,
@@ -203,18 +197,13 @@ export function toCanonicalBlingImportBatch({
 	sales,
 	contacts,
 	products,
-	channels,
 }: {
 	organizationId: string;
 	window: TCanonicalImportWindow;
 	sales: TBlingSale[];
 	contacts: TBlingContact[];
 	products: TBlingProduct[];
-	channels: TBlingChannel[];
 }): TCanonicalImportBatch {
-	const channelsById = new Map(
-		channels.map((channel) => [toStringId(channel.id), channel]).filter((entry): entry is [string, TBlingChannel] => !!entry[0]),
-	);
 	const contactsById = new Map(
 		contacts.map((contact) => [toStringId(contact.id), contact]).filter((entry): entry is [string, TBlingContact] => !!entry[0]),
 	);
@@ -224,7 +213,6 @@ export function toCanonicalBlingImportBatch({
 				...sale,
 				contato: (sale.contato?.id ? contactsById.get(String(sale.contato.id)) : null) ?? sale.contato,
 			},
-			channelsById,
 		}),
 	);
 	const itemProducts = sales.flatMap((sale) =>
@@ -256,6 +244,6 @@ export function toCanonicalBlingImportBatch({
 		partners: [],
 		productAddOns: [],
 		productAddOnOptions: [],
-		raw: { sales, contacts, products, channels },
+		raw: { sales, contacts, products },
 	};
 }

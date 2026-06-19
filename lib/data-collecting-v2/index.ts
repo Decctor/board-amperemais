@@ -15,6 +15,7 @@ import { syncSales } from "./sync-sales";
 import type {
 	TCampaignWithAudienceRelations,
 	TDataCollectingV2EffectsOptions,
+	TDataCollectingV2RawBatch,
 	TDataCollectingV2RunError,
 	TDataCollectingV2RunSummary,
 } from "./types";
@@ -27,6 +28,7 @@ export type TRunDataCollectingV2Params = {
 	window?: TCanonicalImportWindow;
 	processImmediateInteractions?: boolean;
 	effects?: Partial<TDataCollectingV2EffectsOptions>;
+	includeRawInResult?: boolean;
 };
 
 const DEFAULT_EFFECTS_OPTIONS: TDataCollectingV2EffectsOptions = {
@@ -137,11 +139,13 @@ async function processOrganization({
 	config,
 	window,
 	effects,
+	includeRawInResult,
 }: {
 	organizationId: string;
 	config: NonNullable<Awaited<ReturnType<typeof loadOrganizations>>[number]["integracaoConfiguracao"]>;
 	window: TCanonicalImportWindow;
 	effects: TDataCollectingV2EffectsOptions;
+	includeRawInResult?: boolean;
 }) {
 	const batch = await fetchConnectorImportBatch({ organizationId, config, window });
 	const campaignsForOrganization = effects.processCampaigns ? await loadCampaigns(organizationId) : [];
@@ -192,7 +196,11 @@ async function processOrganization({
 
 	await batch.postProcess?.();
 
-	return { summary, immediateProcessingDataList };
+	return {
+		summary,
+		immediateProcessingDataList,
+		raw: includeRawInResult ? batch.raw : undefined,
+	};
 }
 
 export async function runDataCollectingV2({
@@ -200,11 +208,13 @@ export async function runDataCollectingV2({
 	window = getDefaultImportWindow(),
 	processImmediateInteractions = true,
 	effects: effectsOverrides,
+	includeRawInResult = false,
 }: TRunDataCollectingV2Params = {}) {
 	const effects = { ...DEFAULT_EFFECTS_OPTIONS, ...effectsOverrides };
 	const organizationsForImport = await loadOrganizations(organizationIds);
 	const organizationsById = new Map(organizationsForImport.map((organization) => [organization.id, organization]));
 	const summaries: TDataCollectingV2RunSummary[] = [];
+	const rawBatches: TDataCollectingV2RawBatch[] = [];
 	const allImmediateProcessingData: ImmediateProcessingData[] = [];
 	const errors: TDataCollectingV2RunError[] = [];
 
@@ -213,14 +223,23 @@ export async function runDataCollectingV2({
 		if (organization.integracaoConfiguracao.tipo !== organization.integracaoTipo) continue;
 
 		try {
-			const { summary, immediateProcessingDataList } = await processOrganization({
+			const { summary, immediateProcessingDataList, raw } = await processOrganization({
 				organizationId: organization.id,
 				config: organization.integracaoConfiguracao,
 				window,
 				effects,
+				includeRawInResult,
 			});
 			console.log(`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Summary`, summary);
 			summaries.push(summary);
+			if (raw !== undefined) {
+				rawBatches.push({
+					organizationId: organization.id,
+					source: summary.source,
+					window,
+					raw,
+				});
+			}
 			allImmediateProcessingData.push(...immediateProcessingDataList);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Erro desconhecido ao processar organização.";
@@ -280,6 +299,7 @@ export async function runDataCollectingV2({
 		summaries,
 		immediateProcessingDataList: allImmediateProcessingData,
 		errors,
+		...(includeRawInResult ? { rawBatches } : {}),
 	};
 }
 

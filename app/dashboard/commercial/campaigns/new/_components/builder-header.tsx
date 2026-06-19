@@ -4,13 +4,12 @@ import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, CircleCheck, CircleDashed } from "lucide-react";
-import { useBuilderCampaign, useBuilderUi } from "./builder-provider";
+import { useBuilderCampaign } from "./builder-provider";
 import Link from "next/link";
 type BuilderHeaderProps = {
 	backToUrl: string;
 };
 export default function BuilderHeader({ backToUrl }: BuilderHeaderProps) {
-	const { mode } = useBuilderUi();
 	const { state, updateCampaign } = useBuilderCampaign();
 	const { campaign } = state;
 
@@ -25,9 +24,7 @@ export default function BuilderHeader({ backToUrl }: BuilderHeaderProps) {
 						</Link>
 					</Button>
 					<div className="flex flex-col">
-						<p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-							{mode === "edit" ? "Editando campanha" : "Nova campanha"}
-						</p>
+						<p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Nova campanha</p>
 						<h1 className="text-sm font-semibold tracking-tight">CONSTRUTOR DE CAMPANHAS</h1>
 					</div>
 				</div>

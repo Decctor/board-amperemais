@@ -31,7 +31,7 @@ function formatMaybeMoney(value: number | null | undefined) {
 }
 
 export default function StageReview({ validation, finalLoading, onSubmit }: StageReviewProps) {
-	const { selectedCategory, mode, back } = useBuilderUi();
+	const { selectedCategory, back } = useBuilderUi();
 	const { state } = useBuilderCampaign();
 	const { campaign } = state;
 	const category = getCategoryById(selectedCategory);
@@ -96,7 +96,7 @@ export default function StageReview({ validation, finalLoading, onSubmit }: Stag
 			<StageShell.Footer
 				onBack={back}
 				isFinalStage
-				finalLabel={mode === "edit" ? "ATUALIZAR CAMPANHA" : "CRIAR CAMPANHA"}
+				finalLabel="CRIAR CAMPANHA"
 				finalLoading={finalLoading}
 				onFinal={onSubmit}
 				nextDisabled={!validation.valid}

@@ -323,7 +323,7 @@ export const CampaignSchema = z.object({
 			invalid_type_error: "Tipo não válido para o intervalo de recorrência.",
 		})
 		.int("Intervalo de recorrência deve ser um número inteiro.")
-		.positive("Intervalo de recorrência deve ser positivo.")
+		.gte(0, "Intervalo de recorrência deve ser maior que zero.")
 		.optional()
 		.nullable()
 		.default(1),

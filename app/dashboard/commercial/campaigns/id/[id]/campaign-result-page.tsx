@@ -14,23 +14,14 @@ import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { retryCampaignInteraction } from "@/lib/mutations/campaigns";
-import {
-	useCampaignById,
-	useCampaignInteractionsLogs,
-	useCampaignStats,
-	useCampaignsConversions,
-	useConversionQuality,
-} from "@/lib/queries/campaigns";
+import { useCampaignInteractionsLogs, useCampaignStats, useCampaignsConversions, useConversionQuality } from "@/lib/queries/campaigns";
 import { cn } from "@/lib/utils";
-import type { TCampaignTriggerTypeEnum } from "@/schemas/enums";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import {
-	ArrowLeft,
 	BadgeDollarSign,
 	CalendarCheck,
 	CalendarClock,
@@ -38,10 +29,8 @@ import {
 	CircleX,
 	Clock,
 	Diamond,
-	Grid3x3,
 	MessageCircle,
 	MousePointerClick,
-	Pencil,
 	RefreshCw,
 	Rocket,
 	Send,
@@ -56,39 +45,15 @@ import {
 	Users,
 	Zap,
 } from "lucide-react";
-import Link from "next/link";
 import { memo, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { InteractionsSentStatusOptions } from "@/utils/select-options";
 
-type CampaignResultPageProps = {
+type CampaignStatsViewProps = {
 	campaignId: string;
-	user: TAuthUserSession["user"];
-	membership: NonNullable<TAuthUserSession["membership"]>;
 };
 
-const TRIGGER_TYPE_LABELS: Record<TCampaignTriggerTypeEnum, string> = {
-	"NOVA-COMPRA": "Nova Compra",
-	"PRIMEIRA-COMPRA": "Primeira Compra",
-	"PERMANÊNCIA-SEGMENTAÇÃO": "Permanência em Segmentação",
-	"ENTRADA-SEGMENTAÇÃO": "Entrada em Segmentação",
-	"CASHBACK-ACUMULADO": "Cashback Acumulado",
-	"CASHBACK-EXPIRANDO": "Cashback Expirando",
-	ANIVERSARIO_CLIENTE: "Aniversário do Cliente",
-	"QUANTIDADE-TOTAL-COMPRAS": "Qtd. Total de Compras",
-	"VALOR-TOTAL-COMPRAS": "Valor Total de Compras",
-	"PIOR-DIA-VENDAS": "Pior Dia de Vendas",
-	RECORRENTE: "Recorrente",
-	"USO-UNICO": "Uso Único",
-};
-
-const ATTRIBUTION_MODEL_LABELS: Record<string, string> = {
-	LAST_TOUCH: "Último Toque",
-	FIRST_TOUCH: "Primeiro Toque",
-	LINEAR: "Linear",
-};
-
-export default function CampaignResultPage({ campaignId, membership: _membership, user: _user }: CampaignResultPageProps) {
+export function CampaignStatsView({ campaignId }: CampaignStatsViewProps) {
 	const initialStartDate = dayjs().startOf("month").toDate();
 	const initialEndDate = dayjs().endOf("month").toDate();
 
@@ -100,8 +65,6 @@ export default function CampaignResultPage({ campaignId, membership: _membership
 		startDate: dayjs().startOf("month").subtract(1, "month").toDate(),
 		endDate: dayjs().endOf("month").subtract(1, "month").toDate(),
 	});
-
-	const { data: campaign, isLoading: campaignLoading, isError: campaignError } = useCampaignById({ id: campaignId });
 
 	const { data: performance } = useCampaignStats({
 		campaignId,
@@ -132,85 +95,20 @@ export default function CampaignResultPage({ campaignId, membership: _membership
 		});
 	};
 
-	if (campaignLoading) return <LoadingComponent />;
-	if (campaignError || !campaign) return <ErrorComponent msg="Campanha não encontrada." />;
-
 	return (
 		<div className="w-full flex flex-col gap-4">
-			{/* Header */}
-			<div className="w-full flex flex-col gap-2">
-				<div className="flex items-center gap-2">
-					<Button variant="ghost" size="sm" asChild className="flex items-center gap-1.5 px-2">
-						<Link href="/dashboard/commercial/campaigns">
-							<ArrowLeft className="w-4 h-4 min-w-4 min-h-4" />
-							VOLTAR
-						</Link>
-					</Button>
-				</div>
-				<div className="w-full flex items-center lg:items-start justify-between gap-3 flex-col lg:flex-row">
-					<div className="flex flex-col gap-1.5">
-						<div className="flex items-center gap-3 flex-wrap">
-							<h1 className="text-xl font-bold tracking-tight">{campaign.titulo}</h1>
-							<div
-								className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1 text-white text-xs font-bold", {
-									"bg-green-500 dark:bg-green-600": campaign.ativo,
-									"bg-gray-500 dark:bg-gray-600": !campaign.ativo,
-								})}
-							>
-								<CircleCheck className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-								{campaign.ativo ? "ATIVA" : "INATIVA"}
-							</div>
-						</div>
-						{campaign.descricao && <p className="text-sm text-muted-foreground">{campaign.descricao}</p>}
-						<div className="flex items-center gap-2 flex-wrap mt-1">
-							<div className="flex items-center gap-1.5 bg-secondary rounded-lg px-2 py-1 text-xs font-medium">
-								<Zap className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-								{TRIGGER_TYPE_LABELS[campaign.gatilhoTipo as TCampaignTriggerTypeEnum] ?? campaign.gatilhoTipo}
-							</div>
-							<div className="flex items-center gap-1.5 bg-secondary rounded-lg px-2 py-1 text-xs font-medium">
-								<TrendingUp className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-								{ATTRIBUTION_MODEL_LABELS[campaign.atribuicaoModelo ?? "LAST_TOUCH"] ?? campaign.atribuicaoModelo}
-							</div>
-							{campaign.atribuicaoJanelaDias && (
-								<div className="flex items-center gap-1.5 bg-secondary rounded-lg px-2 py-1 text-xs font-medium">
-									<Clock className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-									Janela: {campaign.atribuicaoJanelaDias} dias
-								</div>
-							)}
-							{campaign.segmentacoes && campaign.segmentacoes.length > 0 && (
-								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<div className="flex items-center gap-1.5 bg-secondary rounded-lg px-2 py-1 text-xs font-medium cursor-default">
-												<Grid3x3 className="w-3.5 h-3.5 min-w-3.5 min-h-3.5" />
-												{campaign.segmentacoes.length} {campaign.segmentacoes.length === 1 ? "segmentação" : "segmentações"}
-											</div>
-										</TooltipTrigger>
-										<TooltipContent className="max-w-xs">{campaign.segmentacoes.map((s) => s.segmentacao).join(", ")}</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
-							)}
-						</div>
-					</div>
-					<div className="flex items-center gap-3">
-						<DateIntervalInput
-							label="Período"
-							labelClassName="hidden"
-							className="hover:bg-accent hover:text-accent-foreground border-none shadow-none shrink-0"
-							value={{
-								after: filters.startDate,
-								before: filters.endDate,
-							}}
-							handleChange={handleDateChange}
-						/>
-						<Button size="sm" className="flex items-center gap-2" asChild>
-							<Link href={`/dashboard/commercial/campaigns/builder?campaignId=${campaignId}`}>
-								<Pencil className="w-4 h-4 min-w-4 min-h-4" />
-								EDITAR
-							</Link>
-						</Button>
-					</div>
-				</div>
+			{/* Period filter */}
+			<div className="w-full flex justify-end">
+				<DateIntervalInput
+					label="Período"
+					labelClassName="hidden"
+					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none shrink-0"
+					value={{
+						after: filters.startDate,
+						before: filters.endDate,
+					}}
+					handleChange={handleDateChange}
+				/>
 			</div>
 
 			{/* Section A — Core KPIs */}
