@@ -16,6 +16,10 @@ const BLING_TOKEN_REFRESH_SKEW_MINUTES = 10;
 const BLING_PAGE_LIMIT = 100;
 const BLING_MAX_PAGES_PER_SYNC = 100;
 const BLING_MAX_RETRIES = 3;
+const BLING_MIN_REQUEST_INTERVAL_MS = 400;
+const BLING_RATE_LIMIT_RETRY_MS = 10000;
+
+let blingRateLimitQueue = Promise.resolve();
 
 function getBlingCredentials() {
 	const clientId = process.env.BLING_CLIENT_ID;
@@ -50,6 +54,23 @@ function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function waitForBlingRateLimitSlot() {
+	const previousSlot = blingRateLimitQueue;
+	let releaseCurrentSlot: () => void = () => {};
+
+	blingRateLimitQueue = new Promise((resolve) => {
+		releaseCurrentSlot = resolve;
+	});
+
+	await previousSlot;
+	await delay(BLING_MIN_REQUEST_INTERVAL_MS);
+	releaseCurrentSlot();
+}
+
+function normalizeBlingTokenType(tokenType: string | null | undefined) {
+	return tokenType?.toLowerCase() === "bearer" ? "Bearer" : tokenType?.trim() || "Bearer";
+}
+
 export function getBlingRedirectUri() {
 	const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 	if (!appUrl) throw new Error("NEXT_PUBLIC_APP_URL não configurado.");
@@ -76,9 +97,9 @@ export async function exchangeBlingAuthorizationCode({ code }: { code: string })
 	const token = BlingTokenResponseSchema.parse(response.data);
 	return {
 		tipo: "BLING" as const,
-		accessToken: token.accessToken,
-		refreshToken: token.refreshToken,
-		tokenType: token.tokenType,
+		accessToken: token.accessToken.trim(),
+		refreshToken: token.refreshToken.trim(),
+		tokenType: normalizeBlingTokenType(token.tokenType),
 		scope: token.scope,
 		expiresAt: getExpiresAt(token.expiresIn),
 		connectedAt: new Date().toISOString(),
@@ -104,9 +125,9 @@ export async function refreshBlingToken(config: TBlingConfig): Promise<TBlingCon
 	const token = BlingTokenResponseSchema.parse(response.data);
 	return {
 		...config,
-		accessToken: token.accessToken,
-		refreshToken: token.refreshToken || config.refreshToken,
-		tokenType: token.tokenType || config.tokenType,
+		accessToken: token.accessToken.trim(),
+		refreshToken: (token.refreshToken || config.refreshToken).trim(),
+		tokenType: normalizeBlingTokenType(token.tokenType || config.tokenType),
 		scope: token.scope.length ? token.scope : config.scope,
 		expiresAt: getExpiresAt(token.expiresIn),
 	};
@@ -128,14 +149,24 @@ export async function getValidBlingConfig({ organizationId, config }: { organiza
 }
 
 export function createBlingClient(config: TBlingConfig): AxiosInstance {
-	return axios.create({
+	const accessToken = config.accessToken.trim();
+	const tokenType = normalizeBlingTokenType(config.tokenType);
+
+	const client = axios.create({
 		baseURL: BLING_API_BASE_URL,
 		headers: {
-			Authorization: `${config.tokenType || "Bearer"} ${config.accessToken}`,
+			Authorization: `${tokenType} ${accessToken}`,
 			"Content-Type": "application/json",
 		},
 		timeout: 30000,
 	});
+
+	client.interceptors.request.use(async (requestConfig) => {
+		await waitForBlingRateLimitSlot();
+		return requestConfig;
+	});
+
+	return client;
 }
 
 async function requestWithRetry<T>(request: () => Promise<T>, context: string): Promise<T> {
@@ -150,7 +181,7 @@ async function requestWithRetry<T>(request: () => Promise<T>, context: string): 
 			if (!shouldRetry || attempt === BLING_MAX_RETRIES) throw error;
 
 			const retryAfterMs = status === 429 ? getRetryAfterMs(error.response?.headers["retry-after"]) : null;
-			const waitMs = retryAfterMs ?? 1000 * 2 ** (attempt - 1);
+			const waitMs = retryAfterMs ?? (status === 429 ? BLING_RATE_LIMIT_RETRY_MS : 1000 * 2 ** (attempt - 1));
 			console.warn(
 				`[BLING_CLIENT] ${context} falhou com status ${status ?? error.code}. Tentativa ${attempt}/${BLING_MAX_RETRIES}; aguardando ${waitMs}ms.`,
 			);
