@@ -18,6 +18,7 @@ import { toast } from "sonner";
 type PointOfInteractionTransactionRequestsQueueProps = {
 	orgId: string;
 	usuarioVendedorId: string | null;
+	poiConfirmacaoValorObrigatoria: boolean;
 };
 
 type ApprovalTarget = {
@@ -25,9 +26,14 @@ type ApprovalTarget = {
 	clientDisplayName: string;
 	valorBruto: number;
 	valorFinal: number;
+	requiresSaleValueConfirmation: boolean;
 };
 
-export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVendedorId }: PointOfInteractionTransactionRequestsQueueProps) {
+export function PointOfInteractionTransactionRequestsQueue({
+	orgId,
+	usuarioVendedorId,
+	poiConfirmacaoValorObrigatoria,
+}: PointOfInteractionTransactionRequestsQueueProps) {
 	const queryClient = useQueryClient();
 	const { data: requests = [], isLoading, queryKey } = usePoiTransactionRequests();
 	const [approvalTarget, setApprovalTarget] = useState<ApprovalTarget | null>(null);
@@ -74,12 +80,13 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVende
 						<PoiTransactionRequestCard
 							key={request.id}
 							request={request}
-							onApprove={({ valorBruto, valorFinal }) =>
+							onApprove={({ valorBruto, valorFinal, isRewardMode }) =>
 								setApprovalTarget({
 									requestId: request.id,
 									clientDisplayName: request.cliente?.nome ?? "Cliente não identificado",
 									valorBruto,
 									valorFinal,
+									requiresSaleValueConfirmation: poiConfirmacaoValorObrigatoria && !isRewardMode,
 								})
 							}
 							onReject={() => rejectRequest(request.id)}
@@ -96,6 +103,8 @@ export function PointOfInteractionTransactionRequestsQueue({ orgId, usuarioVende
 					valorBruto={approvalTarget.valorBruto}
 					valorFinal={approvalTarget.valorFinal}
 					hasLinkedSeller={hasLinkedSeller}
+					requiresOperatorPassword={poiConfirmacaoValorObrigatoria}
+					requiresSaleValueConfirmation={approvalTarget.requiresSaleValueConfirmation}
 					closeModal={() => setApprovalTarget(null)}
 					callbacks={{
 						onSuccess: () => {
@@ -116,7 +125,7 @@ function PoiTransactionRequestCard({
 	disabled,
 }: {
 	request: TGetPoiTransactionRequestsOutput["data"]["requests"][number];
-	onApprove: (data: { valorBruto: number; valorFinal: number }) => void;
+	onApprove: (data: { valorBruto: number; valorFinal: number; isRewardMode: boolean }) => void;
 	onReject: () => void;
 	disabled: boolean;
 }) {
@@ -211,7 +220,13 @@ function PoiTransactionRequestCard({
 						variant="brand"
 						className="flex items-center gap-1.5"
 						size="sm"
-						onClick={() => onApprove({ valorBruto: resumo?.venda?.valorBruto ?? 0, valorFinal: resumo?.venda?.valorFinal ?? 0 })}
+						onClick={() =>
+							onApprove({
+								valorBruto: resumo?.venda?.valorBruto ?? 0,
+								valorFinal: resumo?.venda?.valorFinal ?? 0,
+								isRewardMode,
+							})
+						}
 					>
 						<CheckCheck className="w-4 min-w-4 h-4 min-h-4" />
 						APROVAR

@@ -7,6 +7,11 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatCashbackValue } from "@/lib/formatting";
 import { createPoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
 import { createPointOfInteractionSale } from "@/lib/mutations/sales";
+import {
+	getPoiSaleValueForConfirmation,
+	poiSaleRequiresValueConfirmation,
+	saleValuesMatch,
+} from "@/lib/point-of-interaction/sale-value-confirmation";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
@@ -81,6 +86,7 @@ type NewSaleContentProps = {
 		terminologia: TCashbackProgramTerminologyEnum;
 		modalidadeDescontosPermitida: boolean;
 		modalidadeRecompensasPermitida: boolean;
+		poiConfirmacaoValorObrigatoria: boolean;
 	};
 	clientId: string;
 	prizes: TPrize[];
@@ -96,6 +102,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		updateCashback,
 		updatePrizeRedemption,
 		updateOperatorIdentifier,
+		updateOperatorConfirmedSaleValue,
 		updateWatchTransactionRequest,
 		redefineState,
 	} = usePointOfInteractionNewSaleState(org.id, mode);
@@ -310,6 +317,16 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 			createRequestMutation({ payload });
 			return;
 		}
+		if (poiSaleRequiresValueConfirmation(org.poiConfirmacaoValorObrigatoria, payload.sale)) {
+			if (payload.operatorConfirmedSaleValue == null) {
+				toast.error("Confirme o valor final da venda.");
+				return;
+			}
+			if (!saleValuesMatch(payload.operatorConfirmedSaleValue, getPoiSaleValueForConfirmation(payload.sale))) {
+				toast.error("O valor confirmado não corresponde ao valor da venda.");
+				return;
+			}
+		}
 
 		createSaleMutation(payload);
 	};
@@ -410,6 +427,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								finalValue={finalValue}
 								operatorIdentifier={state.operatorIdentifier}
 								onOperatorIdentifierChange={updateOperatorIdentifier}
+								requiresSaleValueConfirmation={org.poiConfirmacaoValorObrigatoria}
+								operatorConfirmedSaleValue={state.operatorConfirmedSaleValue}
+								onOperatorConfirmedSaleValueChange={updateOperatorConfirmedSaleValue}
 								onSubmit={submitTransaction}
 							/>
 						)}
@@ -439,6 +459,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								terminology={org.terminologia}
 								operatorIdentifier={state.operatorIdentifier}
 								onOperatorIdentifierChange={updateOperatorIdentifier}
+								requiresSaleValueConfirmation={false}
+								operatorConfirmedSaleValue={state.operatorConfirmedSaleValue}
+								onOperatorConfirmedSaleValueChange={updateOperatorConfirmedSaleValue}
 								onSubmit={submitTransaction}
 							/>
 						)}
@@ -449,6 +472,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								finalValue={state.sale.valor}
 								operatorIdentifier={state.operatorIdentifier}
 								onOperatorIdentifierChange={updateOperatorIdentifier}
+								requiresSaleValueConfirmation={org.poiConfirmacaoValorObrigatoria}
+								operatorConfirmedSaleValue={state.operatorConfirmedSaleValue}
+								onOperatorConfirmedSaleValueChange={updateOperatorConfirmedSaleValue}
 								onSubmit={submitTransaction}
 							/>
 						)}

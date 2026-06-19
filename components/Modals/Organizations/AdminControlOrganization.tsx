@@ -1,6 +1,7 @@
 "use client";
 
 import AdminOrganizationPreferencesBlock from "@/components/Modals/Organizations/Blocks/Preferences";
+import AdminOrganizationPointOfInteractionBlock from "@/components/Modals/Organizations/Blocks/PointOfInteraction";
 import AdminOrganizationResourcesBlock from "@/components/Modals/Organizations/Blocks/Resources";
 import AdminOrganizationSummaryBlock from "@/components/Modals/Organizations/Blocks/Summary";
 import AdminOrganizationTrialPeriodBlock from "@/components/Modals/Organizations/Blocks/TrialPeriod";
@@ -75,6 +76,10 @@ export function AdminControlOrganization({ organizationId, closeModal, callbacks
 				<>
 					<AdminOrganizationSummaryBlock organization={state.organization} />
 					<AdminOrganizationTrialPeriodBlock organization={state.organization} updateOrganization={updateOrganization} />
+					<AdminOrganizationPointOfInteractionBlock
+						poiConfirmacaoValorObrigatoria={state.organization.poiConfirmacaoValorObrigatoria}
+						updateOrganization={updateOrganization}
+					/>
 					<AdminOrganizationResourcesBlock recursos={state.organization.configuracao.recursos} updateResource={updateConfigurationResources} />
 					<AdminOrganizationPreferencesBlock
 						preferencias={state.organization.configuracao.preferencias}

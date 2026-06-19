@@ -1,5 +1,4 @@
 import { ClientSchema } from "@/schemas/clients";
-import { PoiTransactionRequestStatusEnum } from "@/schemas/enums";
 import { SaleSchema } from "@/schemas/sales";
 import { useCallback, useState } from "react";
 import z from "zod";
@@ -62,6 +61,7 @@ export const PointOfInteractionNewInternalTransactionRequestStateSchema = z.obje
 		required_error: "Identificador do operador não informado.",
 		invalid_type_error: "Tipo não válido para identificador do operador.",
 	}),
+	operatorConfirmedSaleValue: z.number({ invalid_type_error: "Tipo não válido para o valor confirmado pelo operador." }).nullable(),
 });
 export type TPointOfInteractionNewInternalTransactionRequestState = z.infer<typeof PointOfInteractionNewInternalTransactionRequestStateSchema>;
 
@@ -70,6 +70,7 @@ export function usePointOfInteractionNewInternalTransactionRequestState() {
 		client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 		sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null },
 		operatorIdentifier: "",
+		operatorConfirmedSaleValue: null,
 	});
 
 	const updateClient = useCallback((client: Partial<TPointOfInteractionNewInternalTransactionRequestState["client"]>) => {
@@ -83,6 +84,7 @@ export function usePointOfInteractionNewInternalTransactionRequestState() {
 		setState((prev) => ({
 			...prev,
 			sale: { ...prev.sale, ...sale },
+			operatorConfirmedSaleValue: sale.valor !== undefined ? null : prev.operatorConfirmedSaleValue,
 		}));
 	}, []);
 
@@ -107,11 +109,16 @@ export function usePointOfInteractionNewInternalTransactionRequestState() {
 		}));
 	}, []);
 
+	const updateOperatorConfirmedSaleValue = useCallback((operatorConfirmedSaleValue: number | null) => {
+		setState((prev) => ({ ...prev, operatorConfirmedSaleValue }));
+	}, []);
+
 	const resetState = useCallback(() => {
 		setState({
 			client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 			sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null },
 			operatorIdentifier: "",
+			operatorConfirmedSaleValue: null,
 		});
 	}, []);
 
@@ -126,6 +133,7 @@ export function usePointOfInteractionNewInternalTransactionRequestState() {
 		updateCashback,
 		updatePrizeRedemption,
 		updateOperatorIdentifier,
+		updateOperatorConfirmedSaleValue,
 		resetState,
 		redefineState,
 	};

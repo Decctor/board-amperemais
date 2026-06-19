@@ -31,9 +31,9 @@ export const ModeSelectionStep = React.memo(function ModeSelectionStep({ onSelec
 				<button
 					type="button"
 					onClick={() => onSelectMode("prize")}
-					className="group flex flex-col items-center gap-4 short:gap-2 p-8 short:p-4 bg-amber-50 border-2 border-amber-200 rounded-3xl short:rounded-xl hover:border-amber-400 hover:bg-amber-100 transition-all cursor-pointer"
+					className="group flex flex-col items-center gap-4 short:gap-2 p-8 short:p-4 bg-brand-secondary/5 border-2 border-brand-secondary/20 rounded-3xl short:rounded-xl hover:border-brand-secondary hover:bg-brand-secondary/10 transition-all cursor-pointer"
 				>
-					<div className="p-4 short:p-2 bg-amber-100 rounded-2xl short:rounded-lg text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-all">
+					<div className="p-4 short:p-2 bg-brand-secondary/10 rounded-2xl short:rounded-lg text-brand-secondary group-hover:bg-brand-secondary group-hover:text-brand-secondary-foreground transition-all">
 						<Gift className="w-10 h-10 short:w-6 short:h-6" />
 					</div>
 					<div className="text-center">

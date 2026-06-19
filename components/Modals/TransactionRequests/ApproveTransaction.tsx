@@ -1,12 +1,14 @@
 "use client";
 
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
+import { SaleValueConfirmationInput } from "@/app/(external)/point-of-interaction/[orgId]/_shared/components/sale-value-confirmation-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { approvePoiTransactionRequest } from "@/lib/mutations/poi-transaction-requests";
+import { saleValuesMatch } from "@/lib/point-of-interaction/sale-value-confirmation";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
@@ -28,6 +30,8 @@ type ApproveTransactionProps = {
 	valorFinal: number;
 	/** Quando ausente, é obrigatório informar a senha do operador (vendedor). */
 	hasLinkedSeller: boolean;
+	requiresOperatorPassword: boolean;
+	requiresSaleValueConfirmation: boolean;
 	closeModal: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -49,8 +53,19 @@ function HighlightedMoney({ value }: { value: number }) {
 	);
 }
 
-export function ApproveTransaction({ requestId, clientDisplayName, valorBruto, valorFinal, hasLinkedSeller, closeModal, callbacks }: ApproveTransactionProps) {
+export function ApproveTransaction({
+	requestId,
+	clientDisplayName,
+	valorBruto,
+	valorFinal,
+	hasLinkedSeller,
+	requiresOperatorPassword,
+	requiresSaleValueConfirmation,
+	closeModal,
+	callbacks,
+}: ApproveTransactionProps) {
 	const [operatorPassword, setOperatorPassword] = useState("");
+	const [operatorConfirmedSaleValue, setOperatorConfirmedSaleValue] = useState<number | null>(null);
 	const [highValueConfirmed, setHighValueConfirmed] = useState(false);
 
 	const requiresHighValueConfirmation = valorFinal >= HIGH_VALUE_CONFIRMATION_THRESHOLD;
@@ -81,10 +96,22 @@ export function ApproveTransaction({ requestId, clientDisplayName, valorBruto, v
 			toast.error(`Confirme que o valor de ${formatToMoney(valorFinal)} está correto antes de aprovar.`);
 			return;
 		}
+		console.log({
+			requiresSaleValueConfirmation,
+			operatorConfirmedSaleValue,
+		});
 		const code = operatorPassword;
-		if (!hasLinkedSeller) {
+		if (requiresSaleValueConfirmation && operatorConfirmedSaleValue == null) {
+			toast.error("Confirme o valor final da venda.");
+			return;
+		}
+		if (requiresSaleValueConfirmation && operatorConfirmedSaleValue != null && !saleValuesMatch(operatorConfirmedSaleValue, valorFinal)) {
+			toast.error("O valor confirmado não corresponde ao valor da venda.");
+			return;
+		}
+		if (!hasLinkedSeller || requiresOperatorPassword) {
 			if (code.length !== OPERATOR_PASSWORD_LENGTH) {
-				toast.error("Informe os 5 dígitos da senha do operador para identificar o vendedor, ou vincule um vendedor ao seu usuário.");
+				toast.error("Informe os 5 dígitos da senha do operador.");
 				return;
 			}
 		} else if (code.length > 0 && code.length !== OPERATOR_PASSWORD_LENGTH) {
@@ -94,11 +121,26 @@ export function ApproveTransaction({ requestId, clientDisplayName, valorBruto, v
 		mutate({
 			requestId,
 			operatorIdentifier: code.length === OPERATOR_PASSWORD_LENGTH ? code : undefined,
+			operatorConfirmedSaleValue: requiresSaleValueConfirmation ? operatorConfirmedSaleValue : undefined,
 		});
-	}, [hasLinkedSeller, highValueConfirmed, mutate, operatorPassword, requestId, requiresHighValueConfirmation, valorFinal]);
+	}, [
+		hasLinkedSeller,
+		highValueConfirmed,
+		mutate,
+		operatorConfirmedSaleValue,
+		operatorPassword,
+		requestId,
+		requiresHighValueConfirmation,
+		requiresOperatorPassword,
+		requiresSaleValueConfirmation,
+		valorBruto,
+		valorFinal,
+	]);
 
 	const description = hasLinkedSeller
-		? "Informe os 5 dígitos da senha do vendedor que receberá a venda. Se deixar em branco, será usado o vendedor vinculado ao seu usuário."
+		? requiresOperatorPassword
+			? "Informe os 5 dígitos da senha do vendedor que receberá a venda."
+			: "Informe os 5 dígitos da senha do vendedor que receberá a venda. Se deixar em branco, será usado o vendedor vinculado ao seu usuário."
 		: "Informe os 5 dígitos da senha do operador (vendedor) que receberá esta venda.";
 
 	return (
@@ -121,9 +163,7 @@ export function ApproveTransaction({ requestId, clientDisplayName, valorBruto, v
 					<span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">Valor a aprovar</span>
 					<HighlightedMoney value={valorFinal} />
 					{hasDiscount ? (
-						<span className="text-[0.7rem] font-medium text-muted-foreground">
-							Bruto: {formatToMoney(valorBruto)} · com desconto/resgate aplicado
-						</span>
+						<span className="text-[0.7rem] font-medium text-muted-foreground">Bruto: {formatToMoney(valorBruto)} · com desconto/resgate aplicado</span>
 					) : null}
 				</div>
 
@@ -135,7 +175,12 @@ export function ApproveTransaction({ requestId, clientDisplayName, valorBruto, v
 							highValueConfirmed ? "border-brand/40 bg-brand/5" : "border-amber-300 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/10",
 						)}
 					>
-						<Checkbox id="poi-approve-high-value" checked={highValueConfirmed} onCheckedChange={(v) => setHighValueConfirmed(v === true)} className="mt-0.5" />
+						<Checkbox
+							id="poi-approve-high-value"
+							checked={highValueConfirmed}
+							onCheckedChange={(v) => setHighValueConfirmed(v === true)}
+							className="mt-0.5"
+						/>
 						<span className="flex items-start gap-1.5 text-xs font-medium leading-snug text-foreground/90">
 							<AlertTriangle className="mt-0.5 h-4 w-4 min-h-4 min-w-4 text-amber-500" />
 							Valor elevado. Confirmo que conferi e o valor de <strong className="font-black">{formatToMoney(valorFinal)}</strong> está correto.
@@ -143,10 +188,14 @@ export function ApproveTransaction({ requestId, clientDisplayName, valorBruto, v
 					</label>
 				) : null}
 
+				{requiresSaleValueConfirmation ? (
+					<SaleValueConfirmationInput value={operatorConfirmedSaleValue} onChange={setOperatorConfirmedSaleValue} compact />
+				) : null}
+
 				<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden">
 					<Label htmlFor="poi-approve-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
 						SENHA DO OPERADOR (5 DÍGITOS)
-						{!hasLinkedSeller ? <span className="text-red-500">*</span> : null}
+						{!hasLinkedSeller || requiresOperatorPassword ? <span className="text-red-500">*</span> : null}
 					</Label>
 					<p className="text-[0.7rem] text-muted-foreground">{description}</p>
 					<InputOTP

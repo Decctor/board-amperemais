@@ -65,6 +65,7 @@ export const organizations = newTable("organizations", {
 	corSecundariaForeground: text("cor_secundaria_foreground"), // Foreground for secondary color (hex, e.g., #FFFFFF)
 	poiQrCodeKioskDataUrl: text("poi_qr_code_kiosk_data_url"),
 	poiQrCodeMobileDataUrl: text("poi_qr_code_mobile_data_url"),
+	poiConfirmacaoValorObrigatoria: boolean("poi_confirmacao_valor_obrigatoria").notNull().default(false),
 	configuracao: jsonb("configuracao").$type<TOrganizationConfiguration>().notNull(),
 
 	// Fiscal config

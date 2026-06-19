@@ -2,10 +2,15 @@ import {
 	CreatePointOfInteractionTransactionRequestInputSchema,
 	processPointOfInteractionTransaction,
 } from "@/app/api/point-of-interaction/new-transaction/route";
-import { appApiHandler, errorHandler } from "@/lib/app-api";
+import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { getErrorMessage } from "@/lib/errors";
 import { withPoiTransactionProcessingResult } from "@/lib/point-of-interaction/transaction-requests";
+import {
+	getPoiSaleValueForConfirmation,
+	poiSaleRequiresValueConfirmation,
+	saleValuesMatch,
+} from "@/lib/point-of-interaction/sale-value-confirmation";
 import { db } from "@/services/drizzle";
 import { poiTransactionRequests } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -17,6 +22,11 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 const ApprovePoiTransactionRequestInputSchema = z.object({
 	requestId: z.string({ invalid_type_error: "Tipo não válido para ID da solicitação." }),
 	operatorIdentifier: z.string({ invalid_type_error: "Tipo não válido para identificador do operador." }).optional().nullable(),
+	operatorConfirmedSaleValue: z
+		.number({ invalid_type_error: "Tipo não válido para o valor confirmado pelo operador." })
+		.nonnegative("O valor confirmado pelo operador não pode ser negativo.")
+		.optional()
+		.nullable(),
 });
 export type TApprovePoiTransactionRequestInput = z.infer<typeof ApprovePoiTransactionRequestInputSchema>;
 async function approvePoiTransactionRequest({ session, input }: { session: TAuthUserSession; input: TApprovePoiTransactionRequestInput }) {
@@ -28,7 +38,30 @@ async function approvePoiTransactionRequest({ session, input }: { session: TAuth
 	const operatorMembershipId = membership.id;
 	let operatorSellerId: string | null = null;
 
-	const { requestId, operatorIdentifier } = input;
+	const { requestId, operatorIdentifier, operatorConfirmedSaleValue } = input;
+	const poiRequest = await db.query.poiTransactionRequests.findFirst({
+		where: and(eq(poiTransactionRequests.id, requestId), eq(poiTransactionRequests.organizacaoId, orgId)),
+		with: {
+			organizacao: {
+				columns: { poiConfirmacaoValorObrigatoria: true },
+			},
+		},
+	});
+
+	if (!poiRequest) throw new createHttpError.NotFound("Solicitação não encontrada.");
+	if (poiRequest.status !== "PENDENTE") throw new createHttpError.BadRequest("A solicitação não está pendente de aprovação.");
+
+	const transactionInput = CreatePointOfInteractionTransactionRequestInputSchema.parse(poiRequest.payloadSolicitacao);
+	if (poiRequest.organizacao.poiConfirmacaoValorObrigatoria && !operatorIdentifier) {
+		throw new createHttpError.BadRequest("Senha do operador não informada.");
+	}
+	if (poiSaleRequiresValueConfirmation(poiRequest.organizacao.poiConfirmacaoValorObrigatoria, transactionInput.sale)) {
+		if (operatorConfirmedSaleValue == null) throw new createHttpError.BadRequest("Confirmação do valor final da venda não informada.");
+		if (!saleValuesMatch(operatorConfirmedSaleValue, getPoiSaleValueForConfirmation(transactionInput.sale))) {
+			throw new createHttpError.BadRequest("O valor confirmado não corresponde ao valor da venda.");
+		}
+	}
+
 	if (operatorIdentifier) {
 		const operator = await db.query.sellers.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.senhaOperador, operatorIdentifier), eq(fields.organizacaoId, orgId)),
@@ -39,13 +72,6 @@ async function approvePoiTransactionRequest({ session, input }: { session: TAuth
 		if (!membership.usuarioVendedorId) throw new createHttpError.BadRequest("Seu usuário não possui vendedor vinculado para aprovar esta solicitação.");
 		operatorSellerId = membership.usuarioVendedorId;
 	}
-	const poiRequest = await db.query.poiTransactionRequests.findFirst({
-		where: and(eq(poiTransactionRequests.id, requestId), eq(poiTransactionRequests.organizacaoId, orgId)),
-	});
-
-	if (!poiRequest) throw new createHttpError.NotFound("Solicitação não encontrada.");
-	if (poiRequest.status !== "PENDENTE") throw new createHttpError.BadRequest("A solicitação não está pendente de aprovação.");
-
 	await db
 		.update(poiTransactionRequests)
 		.set({
@@ -57,10 +83,10 @@ async function approvePoiTransactionRequest({ session, input }: { session: TAuth
 		.where(eq(poiTransactionRequests.id, requestId));
 
 	try {
-		const input = CreatePointOfInteractionTransactionRequestInputSchema.parse(poiRequest.payloadSolicitacao);
 		const result = await processPointOfInteractionTransaction({
-			input,
+			input: transactionInput,
 			operatorContext: {
+				operatorConfirmedSaleValue,
 				operatorSellerId: operatorSellerId,
 				operatorUserId: operatorUserId,
 			},

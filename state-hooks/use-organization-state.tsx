@@ -71,6 +71,7 @@ export function useOrganizationState() {
 			corPrimariaForeground: null,
 			corSecundaria: null,
 			corSecundariaForeground: null,
+			poiConfirmacaoValorObrigatoria: false,
 			integracaoDataUltimaSincronizacao: null,
 		},
 		logoHolder: {
@@ -263,6 +264,7 @@ export function useOrganizationBaseState() {
 			corPrimariaForeground: null,
 			corSecundaria: null,
 			corSecundariaForeground: null,
+			poiConfirmacaoValorObrigatoria: false,
 			integracaoDataUltimaSincronizacao: null,
 		},
 	};

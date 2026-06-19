@@ -9,6 +9,11 @@ import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
+import {
+	getPoiSaleValueForConfirmation,
+	poiSaleRequiresValueConfirmation,
+	saleValuesMatch,
+} from "@/lib/point-of-interaction/sale-value-confirmation";
 import type { TInteractionContextMetadados } from "@/lib/message-templates";
 import type { TCashbackProgramTerminologyEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -140,11 +145,17 @@ export const CreatePointOfInteractionTransactionInputSchema = z.object({
 			invalid_type_error: "Tipo não válido para identificador do operador.",
 		})
 		.describe("O identificador do operador que aprovou a transação."),
+	operatorConfirmedSaleValue: z
+		.number({ invalid_type_error: "Tipo não válido para o valor confirmado pelo operador." })
+		.nonnegative("O valor confirmado pelo operador não pode ser negativo.")
+		.optional()
+		.nullable(),
 });
 export type TCreatePointOfInteractionTransactionInput = z.infer<typeof CreatePointOfInteractionTransactionInputSchema>;
 
 export const CreatePointOfInteractionTransactionRequestInputSchema = CreatePointOfInteractionTransactionInputSchema.omit({
 	operatorIdentifier: true,
+	operatorConfirmedSaleValue: true,
 });
 export type TCreatePointOfInteractionTransactionRequestInput = z.infer<typeof CreatePointOfInteractionTransactionRequestInputSchema>;
 
@@ -167,6 +178,7 @@ type TProcessPointOfInteractionTransactionParams = {
 	input: TProcessPointOfInteractionTransactionInput;
 	operatorContext?: {
 		operatorIdentifier?: string;
+		operatorConfirmedSaleValue?: number | null;
 		operatorSellerId?: string | null;
 		operatorUserId?: string | null;
 	};
@@ -182,6 +194,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					columns: {
 						id: true,
 						integracaoTipo: true,
+						poiConfirmacaoValorObrigatoria: true,
 					},
 				},
 			},
@@ -189,6 +202,17 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 
 		if (!program) {
 			throw new createHttpError.NotFound("Programa de cashback não encontrado.");
+		}
+
+		if (poiSaleRequiresValueConfirmation(program.organizacao.poiConfirmacaoValorObrigatoria, input.sale)) {
+			const operatorConfirmedSaleValue =
+				operatorContext?.operatorConfirmedSaleValue ?? ("operatorConfirmedSaleValue" in input ? input.operatorConfirmedSaleValue : null);
+			if (operatorConfirmedSaleValue == null) {
+				throw new createHttpError.BadRequest("Confirmação do valor final da venda não informada.");
+			}
+			if (!saleValuesMatch(operatorConfirmedSaleValue, getPoiSaleValueForConfirmation(input.sale))) {
+				throw new createHttpError.BadRequest("O valor confirmado não corresponde ao valor da venda.");
+			}
 		}
 
 		const cashbackProgramIsActive = program.ativo;

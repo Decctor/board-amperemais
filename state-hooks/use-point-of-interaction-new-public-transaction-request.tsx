@@ -66,6 +66,7 @@ export const PointOfInteractionNewSaleStateSchema = z.object({
 		required_error: "Identificador do operador não informado.",
 		invalid_type_error: "Tipo não válido para identificador do operador.",
 	}),
+	operatorConfirmedSaleValue: z.number({ invalid_type_error: "Tipo não válido para o valor confirmado pelo operador." }).nullable(),
 	interfaceMode: z.enum(["kiosk", "mobile"]),
 	watchTransactionRequestToken: z.string({ invalid_type_error: "Tipo não válido para token da solicitação." }).nullable(),
 	watchTransactionRequestStatus: PoiTransactionRequestStatusEnum.nullable(),
@@ -78,6 +79,7 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 		client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 		sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null },
 		operatorIdentifier: "",
+		operatorConfirmedSaleValue: null,
 		interfaceMode: initialInterfaceMode,
 		watchTransactionRequestToken: null,
 		watchTransactionRequestStatus: null,
@@ -94,6 +96,7 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 		setState((prev) => ({
 			...prev,
 			sale: { ...prev.sale, ...sale },
+			operatorConfirmedSaleValue: sale.valor !== undefined ? null : prev.operatorConfirmedSaleValue,
 		}));
 	}, []);
 
@@ -118,6 +121,13 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 		}));
 	}, []);
 
+	const updateOperatorConfirmedSaleValue = useCallback((operatorConfirmedSaleValue: number | null) => {
+		setState((prev) => ({
+			...prev,
+			operatorConfirmedSaleValue,
+		}));
+	}, []);
+
 	const updateWatchTransactionRequest = useCallback(
 		({ token, status }: { token?: string | null; status?: TPointOfInteractionNewSaleState["watchTransactionRequestStatus"] }) => {
 			setState((prev) => ({
@@ -135,6 +145,7 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 			client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 			sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null },
 			operatorIdentifier: "",
+			operatorConfirmedSaleValue: null,
 			interfaceMode: initialInterfaceMode,
 			watchTransactionRequestToken: null,
 			watchTransactionRequestStatus: null,
@@ -152,6 +163,7 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 		updateCashback,
 		updatePrizeRedemption,
 		updateOperatorIdentifier,
+		updateOperatorConfirmedSaleValue,
 		updateWatchTransactionRequest,
 		resetState,
 		redefineState,

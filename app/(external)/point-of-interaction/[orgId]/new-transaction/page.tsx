@@ -37,6 +37,7 @@ export default async function NewSalePage({
 			corPrimariaForeground: true,
 			corSecundaria: true,
 			corSecundariaForeground: true,
+			poiConfirmacaoValorObrigatoria: true,
 		},
 	});
 	if (!org) {

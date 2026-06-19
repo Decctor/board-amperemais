@@ -47,6 +47,7 @@ export const CreateOrganizationInputSchema = z.object({
 		configuracao: true,
 		poiQrCodeKioskDataUrl: true,
 		poiQrCodeMobileDataUrl: true,
+		poiConfirmacaoValorObrigatoria: true,
 		dataOnboardingConclusao: true,
 	}),
 	subscription: z

@@ -61,7 +61,11 @@ export const DEFAULT_ONBOARDING_CASHBACK_CONFIG: TOnboardingCashbackConfig = {
 };
 
 /** Builds a cashback config pre-filled from the niche preset (keeps the merchant's `ativo` choice). */
-export function buildCashbackConfigFromNiche(nicheValue: string | null | undefined, organizationName: string, ativo: boolean): TOnboardingCashbackConfig {
+export function buildCashbackConfigFromNiche(
+	nicheValue: string | null | undefined,
+	organizationName: string,
+	ativo: boolean,
+): TOnboardingCashbackConfig {
 	const preset = nicheValue ? getOrganizationNicheByValue(nicheValue)?.cashbackProgramDefault : null;
 	return {
 		...DEFAULT_ONBOARDING_CASHBACK_CONFIG,
@@ -120,6 +124,7 @@ export function useOrganizationOnboardingState({ initialStage, existingOrganizat
 				logoUrl: org?.logoUrl ?? null,
 				poiQrCodeKioskDataUrl: null,
 				poiQrCodeMobileDataUrl: null,
+				poiConfirmacaoValorObrigatoria: false,
 			},
 			organizationLogoHolder: { file: null, previewUrl: null },
 			cashback: buildCashbackConfigFromNiche(org?.atuacaoNicho, org?.nome ?? "", false),

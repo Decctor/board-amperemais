@@ -2,16 +2,29 @@
 
 import { formatToMoney } from "@/lib/formatting";
 import { OperatorConfirmationInput } from "../../_shared/components/operator-confirmation-input";
+import { SaleValueConfirmationInput } from "../../_shared/components/sale-value-confirmation-input";
 
 type ConfirmationStepProps = {
 	clientName: string;
 	finalValue: number;
 	operatorIdentifier: string;
 	onOperatorIdentifierChange: (identifier: string) => void;
+	requiresSaleValueConfirmation: boolean;
+	operatorConfirmedSaleValue: number | null;
+	onOperatorConfirmedSaleValueChange: (value: number | null) => void;
 	onSubmit: () => void;
 };
 
-export function ConfirmationStep({ clientName, finalValue, operatorIdentifier, onOperatorIdentifierChange, onSubmit }: ConfirmationStepProps) {
+export function ConfirmationStep({
+	clientName,
+	finalValue,
+	operatorIdentifier,
+	onOperatorIdentifierChange,
+	requiresSaleValueConfirmation,
+	operatorConfirmedSaleValue,
+	onOperatorConfirmedSaleValueChange,
+	onSubmit,
+}: ConfirmationStepProps) {
 	return (
 		<form
 			className="space-y-8 short:space-y-2 animate-in fade-in slide-in-from-bottom-4"
@@ -37,6 +50,9 @@ export function ConfirmationStep({ clientName, finalValue, operatorIdentifier, o
 			</div>
 
 			<OperatorConfirmationInput value={operatorIdentifier} onChange={onOperatorIdentifierChange} />
+			{requiresSaleValueConfirmation ? (
+				<SaleValueConfirmationInput value={operatorConfirmedSaleValue} onChange={onOperatorConfirmedSaleValueChange} />
+			) : null}
 		</form>
 	);
 }

@@ -3,6 +3,7 @@
 import { formatCashbackValue, formatToMoney } from "@/lib/formatting";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { OperatorConfirmationInput } from "../../_shared/components/operator-confirmation-input";
+import { SaleValueConfirmationInput } from "../../_shared/components/sale-value-confirmation-input";
 import type { TPrize } from "../../_shared/types";
 import { ArrowRight, Gift } from "lucide-react";
 import Image from "next/image";
@@ -14,6 +15,9 @@ type PrizeConfirmationStepProps = {
 	terminology: TCashbackProgramTerminologyEnum;
 	operatorIdentifier: string;
 	onOperatorIdentifierChange: (identifier: string) => void;
+	requiresSaleValueConfirmation: boolean;
+	operatorConfirmedSaleValue: number | null;
+	onOperatorConfirmedSaleValueChange: (value: number | null) => void;
 	onSubmit: () => void;
 };
 
@@ -24,6 +28,9 @@ export function PrizeConfirmationStep({
 	terminology,
 	operatorIdentifier,
 	onOperatorIdentifierChange,
+	requiresSaleValueConfirmation,
+	operatorConfirmedSaleValue,
+	onOperatorConfirmedSaleValueChange,
 	onSubmit,
 }: PrizeConfirmationStepProps) {
 	const balanceAfter = selectedPrize ? availableBalance - selectedPrize.valor : availableBalance;
@@ -85,6 +92,9 @@ export function PrizeConfirmationStep({
 				</div>
 			</div>
 
+			{requiresSaleValueConfirmation ? (
+				<SaleValueConfirmationInput value={operatorConfirmedSaleValue} onChange={onOperatorConfirmedSaleValueChange} />
+			) : null}
 			<OperatorConfirmationInput value={operatorIdentifier} onChange={onOperatorIdentifierChange} />
 		</form>
 	);

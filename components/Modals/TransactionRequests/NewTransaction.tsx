@@ -1,4 +1,5 @@
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
+import { SaleValueConfirmationInput } from "@/app/(external)/point-of-interaction/[orgId]/_shared/components/sale-value-confirmation-input";
 import NumberInput from "@/components/Inputs/NumberInput";
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,11 @@ import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { getErrorMessage } from "@/lib/errors";
 import { formatCashbackValue, formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { createPointOfInteractionSale } from "@/lib/mutations/sales";
+import {
+	getPoiSaleValueForConfirmation,
+	poiSaleRequiresValueConfirmation,
+	saleValuesMatch,
+} from "@/lib/point-of-interaction/sale-value-confirmation";
 import { useCashbackProgram } from "@/lib/queries/cashback-programs";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { Input } from "@/components/ui/input";
@@ -47,6 +53,7 @@ type TInternalPrize = {
 type NewTransactionProps = {
 	sessionOrgId: string;
 	sessionUser: TAuthUserSession["user"];
+	poiConfirmacaoValorObrigatoria: boolean;
 	closeMenu: () => void;
 	callbacks?: {
 		onMutate?: () => void;
@@ -55,10 +62,18 @@ type NewTransactionProps = {
 		onSettled?: () => void;
 	};
 };
-export function NewTransaction({ sessionOrgId, sessionUser, closeMenu, callbacks }: NewTransactionProps) {
+export function NewTransaction({ sessionOrgId, sessionUser, poiConfirmacaoValorObrigatoria, closeMenu, callbacks }: NewTransactionProps) {
 	const queryClient = useQueryClient();
-	const { state, updateClient, updateSale, updateCashback, updatePrizeRedemption, updateOperatorIdentifier, resetState } =
-		usePointOfInteractionNewInternalTransactionRequestState();
+	const {
+		state,
+		updateClient,
+		updateSale,
+		updateCashback,
+		updatePrizeRedemption,
+		updateOperatorIdentifier,
+		updateOperatorConfirmedSaleValue,
+		resetState,
+	} = usePointOfInteractionNewInternalTransactionRequestState();
 	const {
 		data: cashbackProgram,
 		isLoading: isLoadingCashbackProgram,
@@ -99,6 +114,7 @@ export function NewTransaction({ sessionOrgId, sessionUser, closeMenu, callbacks
 	);
 	const finalValue = useMemo(() => getFinalValue(state.sale.valor, state.sale.cashback), [state.sale.cashback, state.sale.valor]);
 	const isAttemptingToUseMoreCashbackThanAllowed = state.sale.cashback.aplicar && state.sale.cashback.valor > maximumCashbackAllowed;
+	const requiresSaleValueConfirmation = poiSaleRequiresValueConfirmation(poiConfirmacaoValorObrigatoria, state.sale);
 
 	useEffect(() => {
 		updateClientLookupParams({ orgId: sessionOrgId, phone: state.client.telefone });
@@ -167,12 +183,21 @@ export function NewTransaction({ sessionOrgId, sessionUser, closeMenu, callbacks
 		if (isAttemptingToUseMoreCashbackThanAllowed) return toast.error("O cashback aplicado excede o limite disponível para esta venda.");
 		if (flowMode === "prize" && !selectedPrize) return toast.error("Selecione uma recompensa.");
 		if (state.operatorIdentifier.length !== OPERATOR_PASSWORD_LENGTH) return toast.error("Informe os 5 dígitos da senha do operador.");
+		if (requiresSaleValueConfirmation && state.operatorConfirmedSaleValue == null) return toast.error("Confirme o valor final da venda.");
+		if (
+			requiresSaleValueConfirmation &&
+			state.operatorConfirmedSaleValue != null &&
+			!saleValuesMatch(state.operatorConfirmedSaleValue, getPoiSaleValueForConfirmation(state.sale))
+		) {
+			return toast.error("O valor confirmado não corresponde ao valor da venda.");
+		}
 
 		mutate({
 			orgId: sessionOrgId,
 			client: state.client,
 			sale: state.sale,
 			operatorIdentifier: state.operatorIdentifier,
+			operatorConfirmedSaleValue: requiresSaleValueConfirmation ? state.operatorConfirmedSaleValue : undefined,
 		});
 	}
 
@@ -226,6 +251,9 @@ export function NewTransaction({ sessionOrgId, sessionUser, closeMenu, callbacks
 				)}
 				<NewTransactionSummaryBlock state={state} finalValue={finalValue} terminology={terminology} selectedPrize={selectedPrize} />
 				<ResponsiveMenuSection title="OPERADOR" icon={<LockKeyhole className="h-4 min-h-4 w-4 min-w-4" />}>
+					{requiresSaleValueConfirmation ? (
+						<SaleValueConfirmationInput value={state.operatorConfirmedSaleValue} onChange={updateOperatorConfirmedSaleValue} compact />
+					) : null}
 					<p className="text-sm font-medium tracking-tight text-foreground/80">SENHA DO OPERADOR (5 DÍGITOS)</p>
 					<InputOTP
 						maxLength={OPERATOR_PASSWORD_LENGTH}

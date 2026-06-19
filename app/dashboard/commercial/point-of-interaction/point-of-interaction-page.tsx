@@ -27,11 +27,20 @@ export default function PointOfInteractionPage({ user, organization, usuarioVend
 					<PointOfInteractionLinksAndHelpers organization={organization} />
 				</div>
 				<div className="w-full md:w-1/2 md:h-full">
-					<PointOfInteractionTransactionRequestsQueue orgId={organization.id} usuarioVendedorId={usuarioVendedorId} />
+					<PointOfInteractionTransactionRequestsQueue
+						orgId={organization.id}
+						usuarioVendedorId={usuarioVendedorId}
+						poiConfirmacaoValorObrigatoria={organization.poiConfirmacaoValorObrigatoria}
+					/>
 				</div>
 			</div>
 			{newTransactionModalOpen ? (
-				<NewTransaction sessionOrgId={organization.id} sessionUser={user} closeMenu={() => setNewTransactionModalOpen(false)} />
+				<NewTransaction
+					sessionOrgId={organization.id}
+					sessionUser={user}
+					poiConfirmacaoValorObrigatoria={organization.poiConfirmacaoValorObrigatoria}
+					closeMenu={() => setNewTransactionModalOpen(false)}
+				/>
 			) : null}
 		</div>
 	);
