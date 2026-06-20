@@ -2,6 +2,7 @@ import { createSession, generateSessionToken, setSetSessionCookie } from "@/lib/
 import { sanitizeAuthRedirectTo } from "@/lib/authentication/redirect";
 import { db } from "@/services/drizzle";
 import { authMagicLinks } from "@/services/drizzle/schema";
+import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
@@ -43,6 +44,18 @@ export async function GET(request: NextRequest) {
 		});
 	}
 	console.log("[INFO] [AUTH MAGIC LINK CALLBACK] Auth verification token found:", authVerificationToken);
+
+	if (dayjs().isAfter(dayjs(authVerificationToken.dataExpiracao))) {
+		console.log("[ERROR] [AUTH MAGIC LINK CALLBACK] Auth verification token expired");
+		await db.delete(authMagicLinks).where(eq(authMagicLinks.id, authVerificationToken.id));
+		const error = "Token expirado.";
+		return new Response(null, {
+			status: 400,
+			headers: {
+				Location: `/auth/magic-link?error=${encodeURIComponent(error)}`,
+			},
+		});
+	}
 
 	if (!authVerificationToken.usuario) {
 		console.log("[ERROR] [AUTH MAGIC LINK CALLBACK] User not found");

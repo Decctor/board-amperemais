@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { EmailTemplate, sendEmailWithResend } from "@/lib/email";
+import { MAGIC_LINK_EXPIRES_IN_MINUTES, sendMagicLinkVerification } from "@/lib/authentication/magic-link-delivery";
 import { db } from "@/services/drizzle";
 import { authMagicLinks } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
 			usuario: {
 				columns: {
 					email: true,
+					telefone: true,
 				},
 			},
 		},
@@ -50,9 +51,6 @@ export async function GET(request: NextRequest) {
 
 	const verificationToken = randomBytes(32).toString("hex");
 	const verificationCode = Math.floor(100_000 + Math.random() * 900_000).toString(); // Gera código de 6 dígitos
-
-	const verificationTokenExpiresInMinutes = 30;
-
 	const insertAuthVerificationTokenResponse = await db
 		.insert(authMagicLinks)
 		.values({
@@ -60,7 +58,7 @@ export async function GET(request: NextRequest) {
 			token: verificationToken,
 			codigo: verificationCode,
 			dataInsercao: dayjs().toDate(),
-			dataExpiracao: dayjs().add(verificationTokenExpiresInMinutes, "minute").toDate(),
+			dataExpiracao: dayjs().add(MAGIC_LINK_EXPIRES_IN_MINUTES, "minutes").toDate(),
 		})
 		.returning({ id: authMagicLinks.id });
 
@@ -78,10 +76,12 @@ export async function GET(request: NextRequest) {
 		.where(and(eq(authMagicLinks.usuarioId, userId), ne(authMagicLinks.id, insertedAuthVerificationTokenId)))
 		.returning({ id: authMagicLinks.id });
 
-	await sendEmailWithResend(magicLink.usuario.email, EmailTemplate.AuthMagicLink, {
-		magicLink: `${process.env.NEXT_PUBLIC_URL}/auth/magic-link/verify/callback?token=${verificationToken}`,
+	await sendMagicLinkVerification({
+		email: magicLink.usuario.email,
+		phone: magicLink.usuario.telefone,
+		verificationToken,
 		verificationCode,
-		expiresInMinutes: verificationTokenExpiresInMinutes,
+		expiresInMinutes: MAGIC_LINK_EXPIRES_IN_MINUTES,
 	});
 
 	const deleteAuthVerificationTokensCount = deleteAuthVerificationTokensResponse.length;

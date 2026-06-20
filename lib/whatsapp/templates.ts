@@ -33,6 +33,8 @@ export type TemplateParameter =
 
 export type TemplateComponent = {
 	type: string;
+	sub_type?: string;
+	index?: string;
 	parameters?: TemplateParameter[];
 	text?: string;
 	buttons?: Array<{ type?: string; text?: string }>;

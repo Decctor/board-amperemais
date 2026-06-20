@@ -5,8 +5,8 @@ import { authMagicLinks, users } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { EmailTemplate, sendEmailWithResend } from "../email";
 import { formatAsSlug } from "../formatting";
+import { MAGIC_LINK_EXPIRES_IN_MINUTES, sendMagicLinkVerification } from "./magic-link-delivery";
 import { sanitizeAuthRedirectTo } from "./redirect";
 import { createSession, generateSessionToken, setSetSessionCookie } from "./session";
 import {
@@ -85,7 +85,7 @@ export async function login(_: TLoginResult, input: FormData): Promise<TLoginRes
 			codigo: verificationCode,
 			redirectTo,
 			dataInsercao: dayjs().toDate(),
-			dataExpiracao: dayjs().add(30, "minutes").toDate(),
+			dataExpiracao: dayjs().add(MAGIC_LINK_EXPIRES_IN_MINUTES, "minutes").toDate(),
 		})
 		.returning({ id: authMagicLinks.id });
 
@@ -100,12 +100,14 @@ export async function login(_: TLoginResult, input: FormData): Promise<TLoginRes
 		token: verificationToken,
 		code: verificationCode,
 	});
-	const emailSentResponse = await sendEmailWithResend(email, EmailTemplate.AuthMagicLink, {
-		magicLink: `${process.env.NEXT_PUBLIC_URL}/auth/magic-link/callback?token=${verificationToken}`,
+	const deliveryResponse = await sendMagicLinkVerification({
+		email,
+		phone: user.telefone,
+		verificationToken,
 		verificationCode,
-		expiresInMinutes: 30,
+		expiresInMinutes: MAGIC_LINK_EXPIRES_IN_MINUTES,
 	});
-	console.log("[INFO] [LOGIN] Email sent", { emailSentResponse });
+	console.log("[INFO] [LOGIN] Magic link delivery sent", { deliveryResponse });
 	return redirect(`/auth/magic-link?id=${insertedAuthMagicLinkId}`);
 }
 
@@ -185,7 +187,7 @@ export async function signUpWithEmail(_: TSignUpWithEmailResult, input: FormData
 			codigo: verificationCode,
 			redirectTo,
 			dataInsercao: dayjs().toDate(),
-			dataExpiracao: dayjs().add(30, "minutes").toDate(),
+			dataExpiracao: dayjs().add(MAGIC_LINK_EXPIRES_IN_MINUTES, "minutes").toDate(),
 		})
 		.returning({ id: authMagicLinks.id });
 
@@ -200,12 +202,14 @@ export async function signUpWithEmail(_: TSignUpWithEmailResult, input: FormData
 		token: verificationToken,
 		code: verificationCode,
 	});
-	const emailSentResponse = await sendEmailWithResend(email, EmailTemplate.AuthMagicLink, {
-		magicLink: `${process.env.NEXT_PUBLIC_URL}/auth/magic-link/callback?token=${verificationToken}`,
+	const deliveryResponse = await sendMagicLinkVerification({
+		email,
+		phone: "",
+		verificationToken,
 		verificationCode,
-		expiresInMinutes: 30,
+		expiresInMinutes: MAGIC_LINK_EXPIRES_IN_MINUTES,
 	});
-	console.log("[INFO] [SIGN UP WITH EMAIL] Email sent", emailSentResponse);
+	console.log("[INFO] [SIGN UP WITH EMAIL] Magic link delivery sent", deliveryResponse);
 	return redirect(`/auth/magic-link?id=${insertedAuthMagicLinkId}`);
 }
 type TVerifyMagicLinkCodeResult = {
