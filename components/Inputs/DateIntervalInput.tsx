@@ -2,9 +2,10 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { useId } from "react";
 import { Button } from "../ui/button";
 import { Calendar } from "../ui/calendar";
-import { Label } from "../ui/label";
+import { Field, FieldLabel } from "../ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 type DateIntervalInputProps = {
@@ -15,13 +16,18 @@ type DateIntervalInputProps = {
 	handleChange: (value: { after?: Date; before?: Date }) => void;
 };
 function DateIntervalInput({ label, labelClassName, className, value, handleChange }: DateIntervalInputProps) {
+	const generatedId = useId();
+	const inputIdentifier = `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
+
 	return (
-		<div className={cn("flex flex-col gap-1")}>
-			<Label className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>{label}</Label>
+		<Field className="gap-1">
+			<FieldLabel htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+				{label}
+			</FieldLabel>
 			<Popover>
 				<PopoverTrigger asChild>
 					<Button
-						id="date"
+						id={inputIdentifier}
 						variant={"outline"}
 						className={cn(
 							"w-full justify-start rounded-md border border-border bg-[#fff] text-left text-sm font-normal shadow-xs outline-hidden ease-in-out focus:border-border dark:bg-[#121212]",
@@ -45,7 +51,6 @@ function DateIntervalInput({ label, labelClassName, className, value, handleChan
 				</PopoverTrigger>
 				<PopoverContent className="w-auto p-0" align="start">
 					<Calendar
-						initialFocus
 						mode="range"
 						locale={ptBR}
 						defaultMonth={value?.after}
@@ -58,7 +63,7 @@ function DateIntervalInput({ label, labelClassName, className, value, handleChan
 					/>
 				</PopoverContent>
 			</Popover>
-		</div>
+		</Field>
 	);
 }
 

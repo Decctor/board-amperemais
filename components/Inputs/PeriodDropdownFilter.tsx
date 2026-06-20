@@ -1,7 +1,9 @@
 import { formatDateForInputValue } from "@/lib/formatting";
-import React, { type Dispatch, type SetStateAction, useRef, useState } from "react";
+import React, { type Dispatch, type SetStateAction, useId, useRef, useState } from "react";
 import { AiOutlineSearch } from "react-icons/ai";
 import { IoIosCalendar } from "react-icons/io";
+import { Field, FieldLabel } from "../ui/field";
+
 type DateFilterType = {
 	after: string | undefined;
 	before: string | undefined;
@@ -18,6 +20,9 @@ type PeriodDropdownFilterProps = {
 };
 function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: PeriodDropdownFilterProps) {
 	const ref = useRef<any>(null);
+	const generatedId = useId();
+	const afterInputId = `period_after_${generatedId}`;
+	const beforeInputId = `period_before_${generatedId}`;
 	const [dropdownIsOpen, setDropdownIsOpen] = useState<boolean>(false);
 	const [dateFilter, setDateFilter] = useState<DateFilterType>({
 		after: initialAfter,
@@ -68,9 +73,12 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
 				<div className="absolute -right-[400%] top-[45px] z-100 flex h-[115px] w-[350px] flex-col self-center rounded-md border border-gray-200 bg-white p-2 shadow-xs">
 					<h1 className="text-center text-sm font-medium text-gray-700">SELECIONE UM PERÍODO DE FILTRO</h1>
 					<div className="mt-2 flex w-full items-center justify-between">
-						<div className="flex flex-col items-start">
-							<h3 className="text-xs text-gray-500">DEPOIS DE:</h3>
+						<Field className="items-start gap-1">
+							<FieldLabel htmlFor={afterInputId} className="text-xs text-gray-500">
+								DEPOIS DE:
+							</FieldLabel>
 							<input
+								id={afterInputId}
 								type="date"
 								value={dateFilter.after ? formatDateForInputValue(dateFilter.after) : undefined}
 								className="text-xs text-gray-700 outline-hidden"
@@ -81,10 +89,13 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
 									}))
 								}
 							/>
-						</div>
-						<div className="flex flex-col items-end">
-							<h3 className="text-xs text-gray-500">ANTES DE:</h3>
+						</Field>
+						<Field className="items-end gap-1">
+							<FieldLabel htmlFor={beforeInputId} className="text-xs text-gray-500">
+								ANTES DE:
+							</FieldLabel>
 							<input
+								id={beforeInputId}
 								type="date"
 								value={dateFilter.before ? formatDateForInputValue(dateFilter.before) : undefined}
 								className="text-xs text-gray-700 outline-hidden"
@@ -95,7 +106,7 @@ function PeriodDropdownFilter({ initialAfter, initialBefore, setDateParam }: Per
 									}))
 								}
 							/>
-						</div>
+						</Field>
 					</div>
 					<div className="mt-2 flex w-full justify-between">
 						{msg.text ? <p className={`text-xs ${msg.color} italic`}>{msg.text}</p> : <div />}

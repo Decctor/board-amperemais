@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 import { UploadCloud, Video, X } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
@@ -53,10 +53,10 @@ export default function VideoInput({
 	}, [videoHolder.previewUrl]);
 
 	return (
-		<div className={cn("flex w-full flex-col gap-1.5", holderClassName)}>
-			<Label htmlFor={inputId} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+		<Field className={cn("gap-1.5", holderClassName)}>
+			<FieldLabel htmlFor={inputId} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 				{label}
-			</Label>
+			</FieldLabel>
 
 			<input
 				ref={inputRef}
@@ -119,7 +119,7 @@ export default function VideoInput({
 				</div>
 			</div>
 
-			<p className="text-xs text-muted-foreground">{hintText}</p>
-		</div>
+			<FieldDescription className="text-xs">{hintText}</FieldDescription>
+		</Field>
 	);
 }

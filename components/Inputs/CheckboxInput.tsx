@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import React from "react";
+import React, { useId } from "react";
 import { Checkbox } from "../ui/checkbox";
-import { Label } from "../ui/label";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "../ui/field";
 
 type CheckboxInputProps = {
 	checked: boolean;
@@ -28,27 +28,34 @@ function CheckboxInput({
 	justify = "justify-center",
 	padding = "0.75rem",
 }: CheckboxInputProps) {
-	const inputIdentifier = (checked ? labelTrue : labelFalse).toLowerCase().replaceAll(" ", "_");
+	const generatedId = useId();
+	const inputIdentifier = `${labelTrue.toLowerCase().replaceAll(" ", "_")}_${labelFalse.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
 	const descriptionId = `${inputIdentifier}_descricao`;
 	return (
-		<div className={`flex w-full items-center justify-center ${justify} gap-2 ${padding ? `p-[${padding}]` : "p-3"}`}>
+		<Field
+			orientation="horizontal"
+			className={cn("w-full items-center justify-center gap-2", justify, !padding && "p-3")}
+			data-disabled={!editable}
+			style={padding ? { padding } : undefined}
+		>
 			<Checkbox
 				id={inputIdentifier}
 				checked={checked}
+				disabled={!editable}
 				onCheckedChange={(e) => editable && handleChange(e === true)}
 				aria-describedby={description ? descriptionId : undefined}
 			/>
-			<div className="flex min-w-0 flex-col gap-1 text-start">
-				<Label htmlFor={inputIdentifier} className={cn("text-xs font-medium leading-snug", labelClassName)}>
+			<FieldContent className="min-w-0 gap-1 text-start">
+				<FieldLabel htmlFor={inputIdentifier} className={cn("text-xs font-medium leading-snug", labelClassName)}>
 					{checked ? labelTrue : labelFalse}
-				</Label>
+				</FieldLabel>
 				{description ? (
-					<p id={descriptionId} className={cn("text-xs leading-snug text-muted-foreground", descriptionClassName)}>
+					<FieldDescription id={descriptionId} className={cn("text-xs leading-snug", descriptionClassName)}>
 						{description}
-					</p>
+					</FieldDescription>
 				) : null}
-			</div>
-		</div>
+			</FieldContent>
+		</Field>
 	);
 }
 

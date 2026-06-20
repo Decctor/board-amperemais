@@ -1,8 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Label } from "../ui/label";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Field, FieldDescription, FieldLabel } from "../ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 type DurationOption<TMeasure extends string = string> = {
@@ -47,7 +47,8 @@ function DurationInput<TMeasure extends string = string>({
 	className,
 	labelClassName,
 }: DurationInputProps<TMeasure>) {
-	const inputIdentifier = useMemo(() => label.toLowerCase().replaceAll(" ", "_"), [label]);
+	const generatedId = useId();
+	const inputIdentifier = `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
 	const lastValueRef = useRef(value);
 	const [inputValue, setInputValue] = useState(() => {
 		if (value === null || value === undefined) return "";
@@ -77,11 +78,11 @@ function DurationInput<TMeasure extends string = string>({
 	}, [value]);
 
 	return (
-		<div className={cn("flex w-full flex-col gap-1.5", className)}>
-			<Label htmlFor={`${inputIdentifier}_value`} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+		<Field className={cn("gap-1.5", className)} data-disabled={!editable}>
+			<FieldLabel htmlFor={`${inputIdentifier}_value`} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 				{label}
 				{required && <span className="text-red-500">*</span>}
-			</Label>
+			</FieldLabel>
 			<div
 				className={cn(
 					"flex h-9 w-full overflow-hidden rounded-4xl border border-input bg-input/30 transition-colors focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
@@ -126,8 +127,8 @@ function DurationInput<TMeasure extends string = string>({
 					</SelectContent>
 				</Select>
 			</div>
-			{helperText && <p className="text-xs leading-relaxed text-muted-foreground">{helperText}</p>}
-		</div>
+			{helperText && <FieldDescription className="text-xs leading-relaxed">{helperText}</FieldDescription>}
+		</Field>
 	);
 }
 
