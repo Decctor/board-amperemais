@@ -79,19 +79,19 @@ export default function CampaignsExecutionBlock({
 			<div className="w-full flex flex-col gap-3">
 				<p className="text-center text-sm tracking-tight leading-snug text-muted-foreground">
 					{isRecorrente
-						? "Campanhas recorrentes são processadas em lotes. Escolha a faixa de três horas do dia em que os envios desta campanha podem ser incluídos na fila."
+						? "Campanhas recorrentes são processadas em lotes. Escolha a janela de uma hora do dia em que os envios desta campanha podem ser incluídos na fila."
 						: isUsoUnico
-							? "Campanhas de uso único também seguem processamento em lotes. Escolha a faixa de três horas em que o disparo pode entrar na fila."
-							: "Além do intervalo acima, escolha em qual parte do dia (faixas de três horas) os disparos desta automação podem ser processados."}
+							? "Campanhas de uso único também seguem processamento em lotes. Escolha a janela de uma hora em que o disparo pode entrar na fila."
+							: "Além do intervalo acima, escolha em qual janela de uma hora os disparos desta automação podem ser processados."}
 				</p>
 				<p className="text-center text-xs leading-snug text-muted-foreground">
 					O horário não é um minuto fixo por cliente: é uma janela de processamento; dentro dela o sistema distribui os envios conforme a fila e os limites
 					da conta.
 				</p>
 				<SelectInput
-					label="FAIXA DO DIA (BLOCO DE 3 H)"
+					label="JANELA DE ENVIO"
 					value={campaign.execucaoAgendadaBloco}
-					resetOptionLabel="SELECIONE A FAIXA DE HORÁRIO"
+					resetOptionLabel="SELECIONE A JANELA DE ENVIO"
 					options={InteractionsCronJobTimeBlocksOptions}
 					handleChange={(value) => updateCampaign({ execucaoAgendadaBloco: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaBloco"] })}
 					onReset={() => updateCampaign({ execucaoAgendadaBloco: "06:00" })}

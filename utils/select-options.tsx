@@ -21,6 +21,7 @@ import type {
 	TTimeDurationUnitsEnum,
 	TWhatsappTemplateStatusEnum,
 } from "@/schemas/enums";
+import { INTERACTIONS_CRON_TIME_BLOCKS } from "@/lib/campaigns/time-blocks";
 import { TInteractionsStatusEnum } from "@/schemas/interactions";
 import {
 	Archive,
@@ -252,16 +253,8 @@ export const TimeDurationUnitsOptions: { id: number; label: string; value: TTime
 	{ id: 4, label: "ANOS", value: "ANOS" },
 ];
 
-export const InteractionsCronJobTimeBlocksOptions: { id: number; label: string; value: TInteractionsCronJobTimeBlocksEnum }[] = [
-	{ id: 1, label: "00:00", value: "00:00" },
-	{ id: 2, label: "03:00", value: "03:00" },
-	{ id: 3, label: "06:00", value: "06:00" },
-	{ id: 4, label: "09:00", value: "09:00" },
-	{ id: 5, label: "12:00", value: "12:00" },
-	{ id: 6, label: "15:00", value: "15:00" },
-	{ id: 7, label: "18:00", value: "18:00" },
-	{ id: 8, label: "21:00", value: "21:00" },
-];
+export const InteractionsCronJobTimeBlocksOptions: { id: number; label: string; value: TInteractionsCronJobTimeBlocksEnum }[] =
+	INTERACTIONS_CRON_TIME_BLOCKS.map((block, index) => ({ id: index + 1, label: block, value: block }));
 
 export const InteractionsSentStatusOptions: {
 	id: number;

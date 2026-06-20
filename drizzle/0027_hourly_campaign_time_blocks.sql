@@ -1,0 +1,16 @@
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '01:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '02:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '04:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '05:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '07:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '08:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '10:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '11:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '13:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '14:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '16:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '17:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '19:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '20:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '22:00';
+ALTER TYPE "public"."interactions_cron_time_blocks" ADD VALUE IF NOT EXISTS '23:00';

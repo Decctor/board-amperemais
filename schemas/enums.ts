@@ -25,7 +25,32 @@ export const TimeDurationUnitsEnum = z.enum(["DIAS", "SEMANAS", "MESES", "ANOS"]
 export type TTimeDurationUnitsEnum = z.infer<typeof TimeDurationUnitsEnum>;
 export const InteractionTypeEnum = z.enum(["ENVIO-MENSAGEM", "ENVIO-EMAIL", "LIGAÇÃO", "ATENDIMENTO"]);
 export type TInteractionTypeEnum = z.infer<typeof InteractionTypeEnum>;
-export const InteractionsCronJobTimeBlocksEnum = z.enum(["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"]);
+export const InteractionsCronJobTimeBlocksEnum = z.enum([
+	"00:00",
+	"01:00",
+	"02:00",
+	"03:00",
+	"04:00",
+	"05:00",
+	"06:00",
+	"07:00",
+	"08:00",
+	"09:00",
+	"10:00",
+	"11:00",
+	"12:00",
+	"13:00",
+	"14:00",
+	"15:00",
+	"16:00",
+	"17:00",
+	"18:00",
+	"19:00",
+	"20:00",
+	"21:00",
+	"22:00",
+	"23:00",
+]);
 export type TInteractionsCronJobTimeBlocksEnum = z.infer<typeof InteractionsCronJobTimeBlocksEnum>;
 export const WhatsappTemplateCategoryEnum = z.enum(["AUTENTICAÇÃO", "MARKETING", "UTILIDADE"]);
 export type TWhatsappTemplateCategoryEnum = z.infer<typeof WhatsappTemplateCategoryEnum>;

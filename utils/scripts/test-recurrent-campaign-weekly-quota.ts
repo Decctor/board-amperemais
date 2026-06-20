@@ -1,4 +1,5 @@
 import "@/utils/scripts/load-next-env";
+import { getCurrentTimeBlock } from "@/lib/campaigns/time-blocks";
 import { createCampaignWeeklyLimitCache, checkCampaignWeeklyInteractionLimit } from "@/lib/interactions/campaign-weekly-limits";
 import { type ImmediateProcessingData, delay, processSingleInteractionImmediately } from "@/lib/interactions";
 import { DASTJS_TIME_DURATION_UNITS_MAP } from "@/lib/dates";
@@ -12,7 +13,6 @@ const SCRIPT_NAME = "TEST-RECURRENT-CAMPAIGN-WEEKLY-QUOTA";
 const DEFAULT_ORGANIZATION_ID = "27817d9a-cb04-4704-a1f4-15b81a3610d3";
 const DEFAULT_CAMPAIGN_ID = "e587f9c5-0c46-4956-ac50-c0058cc37846";
 const DEFAULT_TEST_PHONE = "34996626855";
-const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
 
 type TScriptOptions = {
 	mode: "preview" | "run";
@@ -46,23 +46,6 @@ type TCampaignContext = NonNullable<
 		>
 	>
 >;
-
-function getCurrentTimeBlock(currentTime = dayjs()): (typeof TIME_BLOCKS)[number] {
-	const currentTotalMinutes = currentTime.hour() * 60 + currentTime.minute();
-	let closestBlock = TIME_BLOCKS[0];
-
-	for (const block of TIME_BLOCKS) {
-		const [hour, minute] = block.split(":").map(Number);
-		const blockTotalMinutes = hour * 60 + minute;
-		if (blockTotalMinutes <= currentTotalMinutes) {
-			closestBlock = block;
-			continue;
-		}
-		break;
-	}
-
-	return closestBlock;
-}
 
 function shouldCampaignRunToday(campaign: {
 	recorrenciaTipo: string | null;

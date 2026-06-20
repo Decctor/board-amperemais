@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
-import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import { generateCashbackForCampaignBatch } from "@/lib/cashback/generate-campaign-cashback";
+import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
+import { INTERACTIONS_CRON_TIMEZONE, getCurrentTimeBlock, type TInteractionCronTimeBlock } from "@/lib/campaigns/time-blocks";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { notifyCampaignEnqueueFailure } from "@/lib/cron/notify-campaign-enqueue-failure";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
@@ -9,24 +10,15 @@ import { db } from "@/services/drizzle";
 import { campaigns, interactions } from "@/services/drizzle/schema";
 import type { TCampaignEntity, TInteractionEntity } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone";
-import utc from "dayjs/plugin/utc";
 import { and, eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"] as const;
-const INTERACTIONS_CRON_TIMEZONE = process.env.INTERACTIONS_CRON_TIMEZONE ?? "America/Sao_Paulo";
 const IMMEDIATE_PROCESSING_CONCURRENCY = 5;
 // Insertions are chunked so each transaction stays short and stays under Postgres'
 // 65535 bind-parameter limit (interactions: ~8 columns, cashback: ~13 columns per row).
 const ENQUEUE_CHUNK_SIZE = 1000;
 const MAX_ENQUEUE_ATTEMPTS = 3;
 const ENQUEUE_RETRY_BASE_DELAY_MS = 250;
-
-type TTimeBlock = (typeof TIME_BLOCKS)[number];
 
 type TOrganizationSingleUseSummary = {
 	activeCampaigns: number;
@@ -40,26 +32,6 @@ type TOrganizationSingleUseSummary = {
 };
 
 type TSingleUseCampaign = Awaited<ReturnType<typeof getSingleUseCampaignsForBlock>>[number];
-
-function getTimeBlockMinutes(block: TTimeBlock): number {
-	const [hour, minute] = block.split(":").map(Number);
-	return hour * 60 + minute;
-}
-
-function getCurrentTimeBlock(currentTime = dayjs()): TTimeBlock {
-	const currentTotalMinutes = currentTime.hour() * 60 + currentTime.minute();
-
-	let closestBlock: TTimeBlock = TIME_BLOCKS[0];
-	for (const block of TIME_BLOCKS) {
-		if (getTimeBlockMinutes(block) <= currentTotalMinutes) {
-			closestBlock = block;
-			continue;
-		}
-		break;
-	}
-
-	return closestBlock;
-}
 
 function createOrganizationSummary(): TOrganizationSingleUseSummary {
 	return {
@@ -100,7 +72,7 @@ async function getSingleUseCampaignsForBlock({
 }: {
 	organizationId: string;
 	currentDate: string;
-	currentTimeBlock: TTimeBlock;
+	currentTimeBlock: TInteractionCronTimeBlock;
 }) {
 	return db.query.campaigns.findMany({
 		where: (fields, { and, eq }) =>
@@ -127,8 +99,8 @@ async function getSingleUseCampaignsForBlock({
 }
 
 // Inserts a chunk of interactions (and their FIXO cashback) in a single short transaction.
-// On retries it first skips clients that already have an interaction for this campaign, so a
-// previous attempt whose COMMIT acknowledgement was lost does not create duplicates.
+// Clients already enqueued for this single-use campaign are skipped so repeated attempts do not
+// create duplicates.
 async function enqueueCampaignChunk({
 	organizationId,
 	campaign,
@@ -137,27 +109,31 @@ async function enqueueCampaignChunk({
 	currentTimeBlock,
 	cashbackActive,
 	cashbackValue,
-	isRetry,
 }: {
 	organizationId: string;
 	campaign: TSingleUseCampaign;
 	clientIds: string[];
 	currentDate: string;
-	currentTimeBlock: TTimeBlock;
+	currentTimeBlock: TInteractionCronTimeBlock;
 	cashbackActive: boolean;
 	cashbackValue: number;
-	isRetry: boolean;
 }): Promise<{ inserted: { id: string; clienteId: string }[]; cashbackGenerated: number }> {
 	return db.transaction(async (tx) => {
 		let clientIdsToInsert = clientIds;
 
-		if (isRetry) {
+		if (clientIdsToInsert.length > 0) {
 			const existing = await tx
 				.select({ clienteId: interactions.clienteId })
 				.from(interactions)
-				.where(and(eq(interactions.organizacaoId, organizationId), eq(interactions.campanhaId, campaign.id), inArray(interactions.clienteId, clientIds)));
+				.where(
+					and(
+						eq(interactions.organizacaoId, organizationId),
+						eq(interactions.campanhaId, campaign.id),
+						inArray(interactions.clienteId, clientIdsToInsert),
+					),
+				);
 			const existingClientIds = new Set(existing.map((row) => row.clienteId));
-			clientIdsToInsert = clientIds.filter((clientId) => !existingClientIds.has(clientId));
+			clientIdsToInsert = clientIdsToInsert.filter((clientId) => !existingClientIds.has(clientId));
 		}
 
 		if (clientIdsToInsert.length === 0) {
@@ -208,7 +184,7 @@ async function processSingleUseCampaign({
 	organizationId: string;
 	campaign: TSingleUseCampaign;
 	currentDate: string;
-	currentTimeBlock: TTimeBlock;
+	currentTimeBlock: TInteractionCronTimeBlock;
 	summary: TOrganizationSingleUseSummary;
 }) {
 	// Atomic claim up front guards against overlapping cron runs processing the same campaign twice.
@@ -260,7 +236,6 @@ async function processSingleUseCampaign({
 					currentTimeBlock,
 					cashbackActive,
 					cashbackValue,
-					isRetry: attempt > 1,
 				});
 				inserted = result.inserted;
 				summary.cashbacksGenerated += result.cashbackGenerated;

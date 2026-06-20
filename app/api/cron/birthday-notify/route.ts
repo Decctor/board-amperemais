@@ -1,6 +1,12 @@
 import { appApiHandler } from "@/lib/app-api";
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
+import {
+	INTERACTIONS_CRON_TIMEZONE,
+	getCurrentTimeBlock,
+	scheduledBlockHasArrived,
+	type TInteractionCronTimeBlock,
+} from "@/lib/campaigns/time-blocks";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
@@ -9,18 +15,8 @@ import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { clients, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone";
-import utc from "dayjs/plugin/utc";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"] as const;
-const INTERACTIONS_CRON_TIMEZONE = process.env.INTERACTIONS_CRON_TIMEZONE ?? "America/Sao_Paulo";
-
-type TTimeBlock = (typeof TIME_BLOCKS)[number];
 
 type TOrganizationBirthdayNotifySummary = {
 	activeCampaigns: number;
@@ -33,30 +29,6 @@ type TOrganizationBirthdayNotifySummary = {
 	immediateEligibleWithoutClientData: number;
 	cashbacksGenerated: number;
 };
-
-function getTimeBlockMinutes(block: TTimeBlock): number {
-	const [hour, minute] = block.split(":").map(Number);
-	return hour * 60 + minute;
-}
-
-function getCurrentTimeBlock(currentTime = dayjs()): TTimeBlock {
-	const currentTotalMinutes = currentTime.hour() * 60 + currentTime.minute();
-
-	let closestBlock: TTimeBlock = TIME_BLOCKS[0];
-	for (const block of TIME_BLOCKS) {
-		if (getTimeBlockMinutes(block) <= currentTotalMinutes) {
-			closestBlock = block;
-			continue;
-		}
-		break;
-	}
-
-	return closestBlock;
-}
-
-function scheduledBlockHasArrived(scheduledBlock: TTimeBlock, currentBlock: TTimeBlock): boolean {
-	return getTimeBlockMinutes(scheduledBlock) <= getTimeBlockMinutes(currentBlock);
-}
 
 /**
  * Helper function to check if a campaign can be scheduled for a client based on frequency rules
@@ -240,7 +212,7 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 							// Process immediately only when today's scheduled block has already arrived.
 							const scheduleIsToday = scheduleDate === currentDateAsISO8601;
 							const isImmediateCandidate = isAntes || campaign.execucaoAgendadaValor === 0;
-							const scheduledBlockArrived = scheduledBlockHasArrived(campaign.execucaoAgendadaBloco as TTimeBlock, currentTimeBlock);
+							const scheduledBlockArrived = scheduledBlockHasArrived(campaign.execucaoAgendadaBloco as TInteractionCronTimeBlock, currentTimeBlock);
 							const isImmediate = isImmediateCandidate && scheduleIsToday && scheduledBlockArrived;
 							const hasDeliveryConfig = !!campaign.whatsappTemplate;
 

@@ -1,22 +1,20 @@
 import { appApiHandler } from "@/lib/app-api";
+import {
+	INTERACTIONS_CRON_TIMEZONE,
+	getArrivedTimeBlocksForDate,
+	getCurrentTimeBlock,
+	type TInteractionCronTimeBlock,
+} from "@/lib/campaigns/time-blocks";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { processOrganizationInteractionsBatch } from "@/lib/interactions/process-organization-interactions";
 import type { ImmediateProcessingData } from "@/lib/interactions/types";
-import type { TInteractionsCronJobTimeBlocksEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone";
-import utc from "dayjs/plugin/utc";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"] as const;
-const INTERACTIONS_CRON_TIMEZONE = process.env.INTERACTIONS_CRON_TIMEZONE ?? "America/Sao_Paulo";
 const INTERACTIONS_PAGE_SIZE = 250;
 const SEND_CONCURRENCY = 10;
 const RUNTIME_BUDGET_MS = 295000;
@@ -69,34 +67,15 @@ function shouldContinueProcessing(startedAt: number) {
 	return Date.now() - startedAt < RUNTIME_BUDGET_MS;
 }
 
-function getCurrentTimeBlock(currentTime = dayjs()): (typeof TIME_BLOCKS)[number] {
-	const currentHour = currentTime.hour();
-	const currentMinute = currentTime.minute();
-	const currentTotalMinutes = currentHour * 60 + currentMinute;
-
-	let closestBlock: (typeof TIME_BLOCKS)[number] = TIME_BLOCKS[0];
-	for (const block of TIME_BLOCKS) {
-		const [hour, minute] = block.split(":").map(Number);
-		const blockMinutes = hour * 60 + minute;
-		if (blockMinutes <= currentTotalMinutes) {
-			closestBlock = block;
-			continue;
-		}
-		break;
-	}
-
-	return closestBlock;
-}
-
 async function fetchPendingInteractionsPage({
 	organizationId,
 	currentDateAsISO8601,
-	currentTimeBlock,
+	arrivedTimeBlocks,
 	excludedInteractionIds,
 }: {
 	organizationId: string;
 	currentDateAsISO8601: string;
-	currentTimeBlock: (typeof TIME_BLOCKS)[number];
+	arrivedTimeBlocks: TInteractionCronTimeBlock[];
 	excludedInteractionIds: Set<string>;
 }) {
 	const excludedIds = Array.from(excludedInteractionIds);
@@ -106,7 +85,7 @@ async function fetchPendingInteractionsPage({
 			const conditions = [
 				eq(fields.organizacaoId, organizationId),
 				eq(fields.agendamentoDataReferencia, currentDateAsISO8601),
-				eq(fields.agendamentoBlocoReferencia, currentTimeBlock as TInteractionsCronJobTimeBlocksEnum),
+				inArray(fields.agendamentoBlocoReferencia, arrivedTimeBlocks),
 				isNotNull(fields.campanhaId),
 				isNull(fields.dataExecucao),
 				sql`${fields.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
@@ -161,7 +140,7 @@ async function fetchPendingInteractionsPage({
 				},
 			},
 		},
-		orderBy: (fields, { asc }) => [asc(fields.dataInsercao), asc(fields.id)],
+		orderBy: (fields, { asc }) => [asc(fields.agendamentoBlocoReferencia), asc(fields.dataInsercao), asc(fields.id)],
 		limit: INTERACTIONS_PAGE_SIZE,
 	});
 }
@@ -254,12 +233,14 @@ async function getProcessInteractionsRoute(_req: NextRequest) {
 		const nowInCronTimezone = dayjs().tz(INTERACTIONS_CRON_TIMEZONE);
 		const currentDateAsISO8601 = nowInCronTimezone.format("YYYY-MM-DD");
 		const currentTimeBlock = getCurrentTimeBlock(nowInCronTimezone);
+		const arrivedTimeBlocks = getArrivedTimeBlocksForDate(currentTimeBlock);
 
 		console.log("[INFO] [PROCESS_INTERACTIONS] Iniciando processamento de interacoes", {
 			timezone: INTERACTIONS_CRON_TIMEZONE,
 			nowInTimezone: nowInCronTimezone.format(),
 			currentDate: currentDateAsISO8601,
 			currentTimeBlock,
+			arrivedTimeBlocks,
 			pageSize: INTERACTIONS_PAGE_SIZE,
 			sendConcurrency: SEND_CONCURRENCY,
 			runtimeBudgetMs: RUNTIME_BUDGET_MS,
@@ -295,7 +276,7 @@ async function getProcessInteractionsRoute(_req: NextRequest) {
 					const pendingInteractionsPage = await fetchPendingInteractionsPage({
 						organizationId: organization.id,
 						currentDateAsISO8601,
-						currentTimeBlock,
+						arrivedTimeBlocks,
 						excludedInteractionIds: attemptedInteractionIds,
 					});
 

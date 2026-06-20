@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
+import { INTERACTIONS_CRON_TIMEZONE, getCurrentTimeBlock, type TInteractionCronTimeBlock } from "@/lib/campaigns/time-blocks";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { notifyCampaignEnqueueFailure } from "@/lib/cron/notify-campaign-enqueue-failure";
 import { DASTJS_TIME_DURATION_UNITS_MAP } from "@/lib/dates";
@@ -9,16 +10,9 @@ import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { type TCampaignEntity, type TInteractionEntity, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone";
-import utc from "dayjs/plugin/utc";
 import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const TIME_BLOCKS = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
-const INTERACTIONS_CRON_TIMEZONE = process.env.INTERACTIONS_CRON_TIMEZONE ?? "America/Sao_Paulo";
 const IMMEDIATE_PROCESSING_CONCURRENCY = 5;
 // Insertions are chunked so each transaction stays short and stays under Postgres'
 // 65535 bind-parameter limit (interactions: ~8 columns per row).
@@ -27,28 +21,6 @@ const MAX_ENQUEUE_ATTEMPTS = 3;
 const ENQUEUE_RETRY_BASE_DELAY_MS = 250;
 
 type TRecurrentCampaign = Awaited<ReturnType<typeof getRecurrentCampaignsForBlock>>[number];
-
-function getCurrentTimeBlock(currentTime: dayjs.Dayjs): (typeof TIME_BLOCKS)[number] {
-	const currentHour = currentTime.hour();
-	const currentMinute = currentTime.minute();
-	const currentTotalMinutes = currentHour * 60 + currentMinute;
-
-	const timeBlocksInMinutes = TIME_BLOCKS.map((block) => {
-		const [hour, minute] = block.split(":").map(Number);
-		return hour * 60 + minute;
-	});
-
-	let closestBlock = TIME_BLOCKS[0];
-	for (let i = 0; i < timeBlocksInMinutes.length; i++) {
-		if (timeBlocksInMinutes[i] <= currentTotalMinutes) {
-			closestBlock = TIME_BLOCKS[i];
-		} else {
-			break;
-		}
-	}
-
-	return closestBlock;
-}
 
 function chunkArray<T>(array: T[], size: number): T[][] {
 	if (size <= 0) return [array];
@@ -112,7 +84,7 @@ async function getRecurrentCampaignsForBlock({
 	currentTimeBlock,
 }: {
 	organizationId: string;
-	currentTimeBlock: (typeof TIME_BLOCKS)[number];
+	currentTimeBlock: TInteractionCronTimeBlock;
 }) {
 	return db.query.campaigns.findMany({
 		where: (fields, { and, eq }) =>
@@ -146,14 +118,12 @@ async function enqueueRecurrentCampaignChunk({
 	clientIds,
 	currentDate,
 	currentTimeBlock,
-	isRetry,
 }: {
 	organizationId: string;
 	campaign: TRecurrentCampaign;
 	clientIds: string[];
 	currentDate: string;
-	currentTimeBlock: (typeof TIME_BLOCKS)[number];
-	isRetry: boolean;
+	currentTimeBlock: TInteractionCronTimeBlock;
 }): Promise<{ inserted: { id: string; clienteId: string }[] }> {
 	return db.transaction(async (tx) => {
 		let eligibleClientIds = clientIds;
@@ -173,12 +143,13 @@ async function enqueueRecurrentCampaignChunk({
 			eligibleClientIds = eligibleClientIds.filter((clientId) => !recentClientIds.has(clientId));
 		}
 
-		if (isRetry && eligibleClientIds.length > 0) {
+		if (eligibleClientIds.length > 0) {
 			const existing = await tx
 				.select({ clienteId: interactions.clienteId })
 				.from(interactions)
 				.where(
 					and(
+						eq(interactions.organizacaoId, organizationId),
 						eq(interactions.campanhaId, campaign.id),
 						inArray(interactions.clienteId, eligibleClientIds),
 						eq(interactions.agendamentoDataReferencia, currentDate),
@@ -302,7 +273,7 @@ async function processRecurrentCampaign({
 	organizationId: string;
 	campaign: TRecurrentCampaign;
 	currentDate: string;
-	currentTimeBlock: (typeof TIME_BLOCKS)[number];
+	currentTimeBlock: TInteractionCronTimeBlock;
 	weeklyLimitCache: TCampaignWeeklyLimitCache;
 }) {
 	const targetClientIds = await resolveCampaignAudienceClientIdsForCampaign({
@@ -334,7 +305,6 @@ async function processRecurrentCampaign({
 					clientIds: chunk,
 					currentDate,
 					currentTimeBlock,
-					isRetry: attempt > 1,
 				});
 				inserted = result.inserted;
 				break;
