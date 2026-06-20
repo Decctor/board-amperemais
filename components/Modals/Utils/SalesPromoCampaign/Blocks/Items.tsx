@@ -372,7 +372,6 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 					value={itemHolder.anuncioValorPromocional ?? null}
 					placeholder="Digite o valor promocional da condição especial..."
 					handleChange={(value) => setItemHolder({ ...itemHolder, anuncioValorPromocional: value })}
-					width="100%"
 				/>
 			</div>
 			{newProductMenuIsOpen && (
@@ -517,7 +516,6 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 					value={itemHolder.anuncioValorPromocional ?? null}
 					placeholder="Digite o valor promocional da condição especial..."
 					handleChange={(value) => setItemHolder({ ...itemHolder, anuncioValorPromocional: value })}
-					width="100%"
 				/>
 			</div>
 			{newProductMenuIsOpen && (

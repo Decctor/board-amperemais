@@ -32,28 +32,24 @@ export default function ClientProfileBlock({ client, updateClient }: ClientProfi
 					placeholder="Digite a profissão"
 					value={client.profissao ?? ""}
 					handleChange={(value) => updateClient({ profissao: value || null })}
-					width="100%"
 				/>
 				<TextInput
 					label="ONDE TRABALHA"
 					placeholder="Digite o local de trabalho"
 					value={client.ondeTrabalha ?? ""}
 					handleChange={(value) => updateClient({ ondeTrabalha: value || null })}
-					width="100%"
 				/>
 				<TextInput
 					label="ESTADO CIVIL"
 					placeholder="Digite o estado civil"
 					value={client.estadoCivil ?? ""}
 					handleChange={(value) => updateClient({ estadoCivil: value || null })}
-					width="100%"
 				/>
 				<TextInput
 					label="DEFICIÊNCIA"
 					placeholder="Digite a deficiência, se houver"
 					value={client.deficiencia ?? ""}
 					handleChange={(value) => updateClient({ deficiencia: value || null })}
-					width="100%"
 				/>
 			</div>
 			<TextareaInput

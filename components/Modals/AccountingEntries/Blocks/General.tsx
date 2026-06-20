@@ -30,7 +30,6 @@ export default function AccountingEntryGeneralBlock({
 				placeholder="Preencha o título do lançamento contábil..."
 				value={entry.titulo}
 				handleChange={(value) => updateEntry({ titulo: value })}
-				width="100%"
 				required
 				editable={titleEditable}
 			/>

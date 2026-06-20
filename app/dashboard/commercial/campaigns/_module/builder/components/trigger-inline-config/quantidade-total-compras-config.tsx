@@ -13,7 +13,6 @@ export default function QuantidadeTotalComprasConfig() {
 				value={state.campaign.gatilhoQuantidadeTotalCompras ?? null}
 				placeholder="Ex: 2 (segunda compra), 3 (terceira compra)..."
 				handleChange={(value) => updateCampaign({ gatilhoQuantidadeTotalCompras: value })}
-				width="100%"
 			/>
 		</div>
 	);

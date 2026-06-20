@@ -182,7 +182,6 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 								}
 								updateDelivery({ endereco: { ...deliveryAddress, localizacaoCep: formatToCEP(value) } });
 							}}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/3">
@@ -215,7 +214,6 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 							placeholder="Preencha aqui o bairro do endereço de entrega..."
 							value={deliveryAddress?.localizacaoBairro || ""}
 							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoBairro: value } })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/3">
@@ -224,7 +222,6 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 							placeholder="Preencha aqui o logradouro do endereço de entrega..."
 							value={deliveryAddress?.localizacaoLogradouro || ""}
 							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoLogradouro: value } })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/3">
@@ -233,7 +230,6 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 							placeholder="Preencha aqui o número do endereço de entrega..."
 							value={deliveryAddress?.localizacaoNumero || ""}
 							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoNumero: value } })}
-							width="100%"
 						/>
 					</div>
 				</div>
@@ -242,7 +238,6 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 					placeholder="Preencha aqui o complemento (apartamento, bloco, referência...) do endereço de entrega..."
 					value={deliveryAddress?.localizacaoComplemento || ""}
 					handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoComplemento: value } })}
-					width="100%"
 				/>
 			</div>
 		</div>

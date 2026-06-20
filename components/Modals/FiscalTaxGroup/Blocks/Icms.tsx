@@ -44,7 +44,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 						value={fiscalTaxGroup.aliquotaIcms}
 						placeholder="Ex.: 0"
 						handleChange={(value) => updateFiscalTaxGroup({ aliquotaIcms: value })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -53,7 +52,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 						value={fiscalTaxGroup.percentualReducaoBc}
 						placeholder="Ex.: 0"
 						handleChange={(value) => updateFiscalTaxGroup({ percentualReducaoBc: value })}
-						width="100%"
 					/>
 				</div>
 			</div>
@@ -64,7 +62,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 					value={fiscalTaxGroup.percentualCreditoSn}
 					placeholder="Ex.: 2.5"
 					handleChange={(value) => updateFiscalTaxGroup({ percentualCreditoSn: value })}
-					width="100%"
 				/>
 			) : null}
 
@@ -73,7 +70,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 				value={fiscalTaxGroup.aliquotaFcp}
 				placeholder="Ex.: 0 — Fundo de Combate à Pobreza"
 				handleChange={(value) => updateFiscalTaxGroup({ aliquotaFcp: value })}
-				width="100%"
 			/>
 
 			<div className="w-full flex items-center justify-center mt-1">
@@ -96,7 +92,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 								value={fiscalTaxGroup.mvaSt}
 								placeholder="Ex.: 40"
 								handleChange={(value) => updateFiscalTaxGroup({ mvaSt: value })}
-								width="100%"
 							/>
 						</div>
 						<div className="w-full lg:w-1/2">
@@ -105,7 +100,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 								value={fiscalTaxGroup.aliquotaInternaDestino}
 								placeholder="Ex.: 18"
 								handleChange={(value) => updateFiscalTaxGroup({ aliquotaInternaDestino: value })}
-								width="100%"
 							/>
 						</div>
 					</div>
@@ -116,7 +110,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 								value={fiscalTaxGroup.aliquotaIcmsSt}
 								placeholder="Opcional — usa a interna do destino se vazio"
 								handleChange={(value) => updateFiscalTaxGroup({ aliquotaIcmsSt: value })}
-								width="100%"
 							/>
 						</div>
 						<div className="w-full lg:w-1/2">
@@ -125,7 +118,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 								value={fiscalTaxGroup.percentualReducaoBcSt}
 								placeholder="Ex.: 0"
 								handleChange={(value) => updateFiscalTaxGroup({ percentualReducaoBcSt: value })}
-								width="100%"
 							/>
 						</div>
 					</div>
@@ -134,7 +126,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 						value={fiscalTaxGroup.aliquotaFcpSt}
 						placeholder="Ex.: 0 — FCP retido por ST"
 						handleChange={(value) => updateFiscalTaxGroup({ aliquotaFcpSt: value })}
-						width="100%"
 					/>
 				</div>
 			) : null}

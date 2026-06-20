@@ -12,7 +12,11 @@ type CampaignsExecutionBlockProps = {
 	updateCampaign: TUseCampaignState["updateCampaign"];
 	campaignSegmentations: TUseCampaignState["state"]["segmentations"];
 };
-export default function CampaignsExecutionBlock({ campaign, updateCampaign, campaignSegmentations: _campaignSegmentations }: CampaignsExecutionBlockProps) {
+export default function CampaignsExecutionBlock({
+	campaign,
+	updateCampaign,
+	campaignSegmentations: _campaignSegmentations,
+}: CampaignsExecutionBlockProps) {
 	const isRecorrente = campaign.gatilhoTipo === "RECORRENTE";
 	const isUsoUnico = campaign.gatilhoTipo === "USO-UNICO";
 	const supportsAntes = (TRIGGERS_SUPPORTING_ANTES as readonly string[]).includes(campaign.gatilhoTipo);
@@ -28,9 +32,8 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 				<div className="w-full flex flex-col gap-3">
 					<p className="text-center text-sm tracking-tight leading-snug text-muted-foreground">{intervalDescription}</p>
 					<p className="text-center text-xs leading-snug text-muted-foreground">
-						Use a unidade de tempo e o número para montar o intervalo — por exemplo, quantidade{" "}
-						<strong className="font-medium text-foreground">2</strong> com unidade{" "}
-						<strong className="font-medium text-foreground">DIAS</strong>
+						Use a unidade de tempo e o número para montar o intervalo — por exemplo, quantidade <strong className="font-medium text-foreground">2</strong>{" "}
+						com unidade <strong className="font-medium text-foreground">DIAS</strong>
 						{supportsAntes
 							? " significa dois dias antes ou depois do evento, conforme a opção acima."
 							: " significa dois dias após o gatilho considerar o cliente elegível."}
@@ -57,7 +60,9 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 								value={campaign.execucaoAgendadaMedida}
 								resetOptionLabel="SELECIONE A MEDIDA"
 								options={TimeDurationUnitsOptions}
-								handleChange={(value) => updateCampaign({ execucaoAgendadaMedida: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaMedida"] })}
+								handleChange={(value) =>
+									updateCampaign({ execucaoAgendadaMedida: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaMedida"] })
+								}
 								onReset={() => updateCampaign({ execucaoAgendadaMedida: "DIAS" })}
 								width="100%"
 							/>
@@ -68,7 +73,6 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 								value={campaign.execucaoAgendadaValor}
 								placeholder="Ex.: 3 (com DIAS = três dias de intervalo)"
 								handleChange={(value) => updateCampaign({ execucaoAgendadaValor: value })}
-								width="100%"
 							/>
 						</div>
 					</div>
@@ -83,7 +87,8 @@ export default function CampaignsExecutionBlock({ campaign, updateCampaign, camp
 							: "Além do intervalo acima, escolha em qual parte do dia (faixas de três horas) os disparos desta automação podem ser processados."}
 				</p>
 				<p className="text-center text-xs leading-snug text-muted-foreground">
-					O horário não é um minuto fixo por cliente: é uma janela de processamento; dentro dela o sistema distribui os envios conforme a fila e os limites da conta.
+					O horário não é um minuto fixo por cliente: é uma janela de processamento; dentro dela o sistema distribui os envios conforme a fila e os limites
+					da conta.
 				</p>
 				<SelectInput
 					label="FAIXA DO DIA (BLOCO DE 3 H)"

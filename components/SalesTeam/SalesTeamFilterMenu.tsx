@@ -60,7 +60,6 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								value={queryParamsHolder.search ?? ""}
 								placeholder={"Preenha aqui o nome do vendedor para filtro."}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, search: value }))}
-								width={"100%"}
 							/>
 							<MultipleSelectInput
 								label="VENDEDORES"
@@ -148,7 +147,6 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 										value={queryParamsHolder.statsTotalMin || null}
 										handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMin: value }))}
 										placeholder="Preencha aqui o valor para o filtro de mais quantidade que..."
-										width="100%"
 									/>
 								</div>
 								<div className="w-full lg:w-1/2">
@@ -157,7 +155,6 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 										value={queryParamsHolder.statsTotalMax || null}
 										handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMax: value }))}
 										placeholder="Preencha aqui o valor para o filtro de menos quantidade que..."
-										width="100%"
 									/>
 								</div>
 							</div>

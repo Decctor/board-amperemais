@@ -17,7 +17,6 @@ export default function CashbackProgramsExpirationBlock({ cashbackProgram, updat
 					label="VALOR DE VALIDADE P/ EXPIRAÇÃO"
 					placeholder="Preencha aqui o valor de validade para a expiração..."
 					handleChange={(value) => updateCashbackProgram({ expiracaoRegraValidadeValor: value })}
-					width="100%"
 				/>
 			</div>
 		</ResponsiveMenuSection>

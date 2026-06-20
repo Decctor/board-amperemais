@@ -39,7 +39,6 @@ function RFMAnalysisQueryParamsMenu({ filters, updateFilters, closeMenu }: RFMAn
 								value={filtersHolder.search ?? ""}
 								placeholder={"Preenha aqui o nome do cliente para filtro."}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, search: value }))}
-								width={"100%"}
 							/>
 							<MultipleSelectInput
 								label="CANAL DE AQUISIÇÃO"

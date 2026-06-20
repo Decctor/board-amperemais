@@ -15,7 +15,6 @@ export default function NovaCompraConfig() {
 				value={state.campaign.gatilhoNovaCompraValorMinimo ?? null}
 				placeholder="Deixe vazio para qualquer valor"
 				handleChange={(value) => updateCampaign({ gatilhoNovaCompraValorMinimo: value })}
-				width="100%"
 			/>
 		</div>
 	);

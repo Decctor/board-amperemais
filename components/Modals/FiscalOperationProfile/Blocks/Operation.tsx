@@ -56,9 +56,7 @@ export default function FiscalOperationProfileOperationBlock({
 						value={fiscalOperationProfile.presencaConsumidor}
 						options={CONSUMER_PRESENCE_OPTIONS}
 						resetOptionLabel="SELECIONE A PRESENÇA"
-						handleChange={(value) =>
-							updateFiscalOperationProfile({ presencaConsumidor: value as TFiscalOperationConsumerPresenceEnum })
-						}
+						handleChange={(value) => updateFiscalOperationProfile({ presencaConsumidor: value as TFiscalOperationConsumerPresenceEnum })}
 						onReset={() => updateFiscalOperationProfile({ presencaConsumidor: "OPERACAO_PRESENCIAL" })}
 						width="100%"
 					/>
@@ -72,7 +70,6 @@ export default function FiscalOperationProfileOperationBlock({
 						value={fiscalOperationProfile.cfopPadrao}
 						placeholder="Ex.: 5102"
 						handleChange={(value) => updateFiscalOperationProfile({ cfopPadrao: value })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -81,7 +78,6 @@ export default function FiscalOperationProfileOperationBlock({
 						value={fiscalOperationProfile.naturezaOperacao}
 						placeholder="Ex.: VENDA DE MERCADORIA"
 						handleChange={(value) => updateFiscalOperationProfile({ naturezaOperacao: value })}
-						width="100%"
 					/>
 				</div>
 			</div>

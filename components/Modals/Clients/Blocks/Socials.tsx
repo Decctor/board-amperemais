@@ -19,7 +19,6 @@ export default function ClientSocialsBlock({ client, updateClient }: ClientSocia
 				placeholder="dominio.com.br"
 				handleChange={(value) => updateClient({ websiteUrl: value || null })}
 				handleOnBlur={() => updateClient({ websiteUrl: normalizeWebsiteUrl(client.websiteUrl) })}
-				width="100%"
 			/>
 			<div className="grid w-full grid-cols-1 gap-2 md:grid-cols-3">
 				<SocialProfileInput

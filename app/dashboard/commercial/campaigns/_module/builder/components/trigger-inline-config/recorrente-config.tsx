@@ -61,7 +61,6 @@ export default function RecorrenteConfig() {
 						value={campaign.recorrenciaIntervalo ?? 1}
 						placeholder="Ex: 1 para toda semana, 2 para a cada 2 semanas..."
 						handleChange={(value) => updateCampaign({ recorrenciaIntervalo: value })}
-						width="100%"
 					/>
 				</div>
 			</div>

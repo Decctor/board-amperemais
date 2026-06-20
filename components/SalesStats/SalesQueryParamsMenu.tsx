@@ -118,7 +118,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 										value={queryParamsHolder.total.min || null}
 										handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, total: { ...prev.total, min: value } }))}
 										placeholder="Preencha aqui o valor para o filtro de mais quantidade que..."
-										width="100%"
 									/>
 								</div>
 								<div className="w-full lg:w-1/2">
@@ -127,7 +126,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 										value={queryParamsHolder.total.max || null}
 										handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, total: { ...prev.total, max: value } }))}
 										placeholder="Preencha aqui o valor para o filtro de menos quantidade que..."
-										width="100%"
 									/>
 								</div>
 							</div>

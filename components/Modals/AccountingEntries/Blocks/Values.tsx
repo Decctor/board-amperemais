@@ -19,7 +19,6 @@ export default function AccountingEntryValuesBlock({ entry, updateEntry, editabl
 				value={entry.valor}
 				handleChange={(value) => updateEntry({ valor: value })}
 				placeholder="Preencha o valor realizado..."
-				width="100%"
 				required
 				editable={editable}
 			/>
@@ -28,7 +27,6 @@ export default function AccountingEntryValuesBlock({ entry, updateEntry, editabl
 				value={entry.valorPrevisto}
 				handleChange={(value) => updateEntry({ valorPrevisto: value > 0 ? value : null })}
 				placeholder="Preencha o valor previsto..."
-				width="100%"
 				editable={editable}
 			/>
 		</ResponsiveMenuSection>

@@ -26,7 +26,6 @@ export default function CampaignsConversionBlock({ campaign, updateCampaign }: C
 				label="JANELA DE ATRIBUIÇÃO (DIAS)"
 				placeholder="Preencha aqui a janela de atribuição..."
 				handleChange={(value) => updateCampaign({ atribuicaoJanelaDias: value })}
-				width="100%"
 			/>
 		</ResponsiveMenuSection>
 	);

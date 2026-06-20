@@ -200,7 +200,6 @@ export function ClientStep({
 							value={newClientData.nome}
 							handleChange={(value) => onNewClientChange({ nome: value })}
 							onFocus={handleScrollOnFocus}
-							width="100%"
 						/>
 						<div className="w-full flex items-center justify-center">
 							<Button

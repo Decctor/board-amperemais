@@ -47,7 +47,6 @@ export default function CashbackProgramsGeneralBlock({ cashbackProgram, updateCa
 				label="TÍTULO"
 				placeholder="Preencha aqui o título do programa de cashback..."
 				handleChange={(value) => updateCashbackProgram({ titulo: value })}
-				width="100%"
 			/>
 			<TextareaInput
 				value={cashbackProgram.descricao ?? ""}

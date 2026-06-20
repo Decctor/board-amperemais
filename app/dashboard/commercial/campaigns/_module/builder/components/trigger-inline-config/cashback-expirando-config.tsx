@@ -31,11 +31,8 @@ export default function CashbackExpirandoConfig() {
 					value={state.campaign.gatilhoCashbackExpirandoValorMinimo ?? null}
 					placeholder="Ex: 10"
 					handleChange={(value) => updateCampaign({ gatilhoCashbackExpirandoValorMinimo: value })}
-					width="100%"
 				/>
-				<p className="text-xs text-muted-foreground">
-					Se o cliente tiver menos que esse valor expirando na janela, nenhuma mensagem será criada.
-				</p>
+				<p className="text-xs text-muted-foreground">Se o cliente tiver menos que esse valor expirando na janela, nenhuma mensagem será criada.</p>
 			</div>
 		</div>
 	);

@@ -32,7 +32,6 @@ function GoalGeneral({ goal, updateGoal, goalSellers }: GoalGeneralProps) {
 				placeholder="Preencha aqui o valor da meta..."
 				value={goal.objetivoValor}
 				handleChange={(value) => updateGoal({ objetivoValor: value })}
-				width="100%"
 			/>
 			{Math.abs(goalSellersTotalValue - goal.objetivoValor) > 1 ? (
 				<div className="w-full flex flex-col gap-1 border border-yellow-800 bg-yellow-100 text-yellow-800 p-2 rounded-md">
@@ -56,14 +55,12 @@ function GoalGeneral({ goal, updateGoal, goalSellers }: GoalGeneralProps) {
 					placeholder="Ex: 150 vendas no período..."
 					value={goal.objetivoQtdeVendas ?? undefined}
 					handleChange={(value) => updateGoal({ objetivoQtdeVendas: value || null })}
-					width="100%"
 				/>
 				<NumberInput
 					label="META DE NOVOS CLIENTES"
 					placeholder="Ex: 30 novos clientes no período..."
 					value={goal.objetivoNovosClientes ?? undefined}
 					handleChange={(value) => updateGoal({ objetivoNovosClientes: value || null })}
-					width="100%"
 				/>
 			</div>
 		</ResponsiveMenuSection>

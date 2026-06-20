@@ -37,7 +37,6 @@ export default function CashbackProgramsAccumulationBlock({
 						label={`VALOR DE ACUMULAÇÃO (${getCashbackUnitLabel(cashbackProgram.terminologia, { uppercase: true })})`}
 						placeholder={`Preencha aqui o valor de acúmulo em ${getCashbackUnitLabel(cashbackProgram.terminologia)}...`}
 						handleChange={(value) => updateCashbackProgram({ acumuloValor: value })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/3">
@@ -46,7 +45,6 @@ export default function CashbackProgramsAccumulationBlock({
 						label={`VALOR DE ACÚMULO PARCEIRO (${getCashbackUnitLabel(cashbackProgram.terminologia, { uppercase: true })})`}
 						placeholder={`Preencha aqui o valor de acúmulo do parceiro em ${getCashbackUnitLabel(cashbackProgram.terminologia)}...`}
 						handleChange={(value) => updateCashbackProgram({ acumuloValorParceiro: value })}
-						width="100%"
 					/>
 				</div>
 			</div>
@@ -59,7 +57,6 @@ export default function CashbackProgramsAccumulationBlock({
 					label="VALOR MÍNIMO P/ ACÚMULO"
 					placeholder="Preencha aqui o valor mínimo para o acúmulo..."
 					handleChange={(value) => updateCashbackProgram({ acumuloRegraValorMinimo: value })}
-					width="100%"
 				/>
 			</div>
 			{userOrgHasIntegration ? (

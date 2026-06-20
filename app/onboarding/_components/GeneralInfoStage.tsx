@@ -35,7 +35,6 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o nome da sua empresa..."
 							handleChange={(value) => updateOrganization({ nome: value })}
-							width="100%"
 							required
 						/>
 						<TextInput
@@ -45,7 +44,6 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o CNPJ da sua empresa..."
 							handleChange={(value) => updateOrganization({ cnpj: formatToCPForCNPJ(value) })}
-							width="100%"
 							required
 						/>
 						<TextInput
@@ -55,7 +53,6 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o email corporativo da sua empresa..."
 							handleChange={(value) => updateOrganization({ email: value })}
-							width="100%"
 						/>
 						<TextInput
 							value={state.organization.telefone || ""}
@@ -64,7 +61,6 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o telefone/whatsapp da sua empresa..."
 							handleChange={(value) => updateOrganization({ telefone: formatToPhone(value) })}
-							width="100%"
 						/>
 					</div>
 				</div>
@@ -84,9 +80,7 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 								onClick={() => updateOrganization({ atuacaoNicho: niche.value })}
 								className={cn(
 									"relative flex items-center gap-2.5 rounded-xl border-2 p-3 text-left transition-all duration-200 hover:-translate-y-0.5",
-									selected
-										? "border-[#FFB900] bg-[#FFB900]/5 shadow-sm ring-1 ring-[#FFB900]/20"
-										: "border-gray-100 bg-white hover:border-[#FFB900]/40",
+									selected ? "border-[#FFB900] bg-[#FFB900]/5 shadow-sm ring-1 ring-[#FFB900]/20" : "border-gray-100 bg-white hover:border-[#FFB900]/40",
 								)}
 							>
 								<span

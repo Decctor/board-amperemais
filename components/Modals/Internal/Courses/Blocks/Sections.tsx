@@ -140,7 +140,6 @@ function NewCommunityCourseSectionMenu({ closeMenu, addCommunityCourseSection }:
 				placeholder="Preencha aqui o título da seção..."
 				value={sectionHolder.titulo}
 				handleChange={(v) => updateSectionHolder({ titulo: v })}
-				width="100%"
 			/>
 			<TextareaInput
 				label="DESCRIÇÃO DA SEÇÃO"
@@ -189,7 +188,6 @@ function EditCommunityCourseSectionMenu({ closeMenu, initialSection, updateCommu
 				placeholder="Preencha aqui o título da seção..."
 				value={sectionHolder.titulo}
 				handleChange={(v) => updateSectionHolder({ titulo: v })}
-				width="100%"
 			/>
 			<TextareaInput
 				label="DESCRIÇÃO DA SEÇÃO"

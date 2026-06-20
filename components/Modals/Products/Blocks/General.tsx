@@ -39,7 +39,6 @@ export default function ProductStateGeneralBlock({
 					value={product.nome}
 					placeholder="Preencha aqui o nome do produto."
 					handleChange={(value) => updateProduct({ nome: value })}
-					width="100%"
 				/>
 				<TextareaInput
 					label="DESCRIÇÃO"
@@ -54,7 +53,6 @@ export default function ProductStateGeneralBlock({
 							value={product.codigo}
 							placeholder="Preencha aqui o código do produto."
 							handleChange={(value) => updateProduct({ codigo: value })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/2">
@@ -74,7 +72,6 @@ export default function ProductStateGeneralBlock({
 					value={product.grupo}
 					placeholder="Preencha aqui o grupo do produto."
 					handleChange={(value) => updateProduct({ grupo: value })}
-					width="100%"
 				/>
 
 				{showPricing ? (
@@ -85,7 +82,6 @@ export default function ProductStateGeneralBlock({
 								value={product.precoCusto ?? null}
 								placeholder="Preencha aqui o preço de custo do produto."
 								handleChange={(value) => updateProduct({ precoCusto: value })}
-								width="100%"
 							/>
 						</div>
 						<div className="w-full lg:w-1/2">
@@ -94,7 +90,6 @@ export default function ProductStateGeneralBlock({
 								value={product.precoVenda ?? null}
 								placeholder="Preencha aqui o preço de venda do produto."
 								handleChange={(value) => updateProduct({ precoVenda: value })}
-								width="100%"
 							/>
 						</div>
 					</div>

@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils";
 import type React from "react";
+import { useId } from "react";
+import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 
 type TextInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
-	width?: string;
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
@@ -18,7 +18,6 @@ type TextInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 	inputType?: "text" | "tel";
 };
 function TextInput({
-	width,
 	label,
 	labelClassName,
 	holderClassName,
@@ -30,16 +29,20 @@ function TextInput({
 	inputType = "text",
 	handleChange,
 	handleOnBlur,
+	id,
+	onBlur,
 	...props
 }: TextInputProps) {
-	const inputIdentifier = label.toLowerCase().replace(" ", "_");
+	const generatedId = useId();
+	const inputIdentifier = id ?? `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
+
 	return (
-		<div className={`flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
+		<Field className="gap-1" data-disabled={!editable}>
 			{showLabel ? (
-				<Label htmlFor={inputIdentifier} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+				<FieldLabel htmlFor={inputIdentifier} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
 					{required ? <span className="text-red-500">*</span> : null}
-				</Label>
+				</FieldLabel>
 			) : null}
 
 			<Input
@@ -47,7 +50,8 @@ function TextInput({
 				value={value}
 				onChange={(e) => handleChange(e.target.value)}
 				id={inputIdentifier}
-				onBlur={() => {
+				onBlur={(event) => {
+					onBlur?.(event);
 					if (handleOnBlur) handleOnBlur();
 					else return;
 				}}
@@ -59,7 +63,7 @@ function TextInput({
 					holderClassName,
 				)}
 			/>
-		</div>
+		</Field>
 	);
 }
 

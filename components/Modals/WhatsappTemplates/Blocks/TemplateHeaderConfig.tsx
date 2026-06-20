@@ -134,7 +134,6 @@ function TemplateHeaderConfigText({ header, onHeaderChange }: TemplateHeaderConf
 			value={header.conteudo}
 			placeholder="Digite o texto do cabeçalho (máx. 60 caracteres)"
 			handleChange={(value) => onHeaderChange({ ...header, conteudo: value })}
-			width="100%"
 		/>
 	);
 }

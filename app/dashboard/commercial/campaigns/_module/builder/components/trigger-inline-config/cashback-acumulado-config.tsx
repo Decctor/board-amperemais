@@ -17,7 +17,6 @@ export default function CashbackAcumuladoConfig() {
 						value={state.campaign.gatilhoNovoCashbackAcumuladoValorMinimo ?? null}
 						placeholder="Ex: 5 (R$ 5 acumulados na operação)"
 						handleChange={(value) => updateCampaign({ gatilhoNovoCashbackAcumuladoValorMinimo: value })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -26,7 +25,6 @@ export default function CashbackAcumuladoConfig() {
 						value={state.campaign.gatilhoTotalCashbackAcumuladoValorMinimo ?? null}
 						placeholder="Ex: 50 (R$ 50 totais já acumulados)"
 						handleChange={(value) => updateCampaign({ gatilhoTotalCashbackAcumuladoValorMinimo: value })}
-						width="100%"
 					/>
 				</div>
 			</div>

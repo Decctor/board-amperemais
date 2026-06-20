@@ -190,7 +190,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 									value={userState.nome}
 									placeholder="Seu nome completo"
 									handleChange={(val) => updateUserState({ nome: val })}
-									width="100%"
 								/>
 							</div>
 							<div className="w-full lg:w-1/2">
@@ -209,7 +208,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 									value={userState.email}
 									placeholder="seu.email@exemplo.com"
 									handleChange={(val) => updateUserState({ email: val })}
-									width="100%"
 								/>
 							</div>
 							<div className="w-full lg:w-1/2">
@@ -218,7 +216,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 									value={userState.telefone}
 									placeholder="(00) 00000-0000"
 									handleChange={(val) => updateUserState({ telefone: formatToPhone(val) })}
-									width="100%"
 								/>
 							</div>
 						</div>
@@ -234,7 +231,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 							value={userState.localizacaoCep || ""}
 							placeholder="00000-000"
 							handleChange={(val) => updateUserState({ localizacaoCep: formatToCEP(val) })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-2/3">
@@ -243,7 +239,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 							value={userState.localizacaoLogradouro || ""}
 							placeholder="Rua, Avenida, etc."
 							handleChange={(val) => updateUserState({ localizacaoLogradouro: val })}
-							width="100%"
 						/>
 					</div>
 				</div>
@@ -254,7 +249,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 							value={userState.localizacaoNumero || ""}
 							placeholder="123"
 							handleChange={(val) => updateUserState({ localizacaoNumero: val })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/3">
@@ -263,7 +257,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 							value={userState.localizacaoComplemento || ""}
 							placeholder="Apto 101"
 							handleChange={(val) => updateUserState({ localizacaoComplemento: val })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/3">
@@ -272,7 +265,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 							value={userState.localizacaoBairro || ""}
 							placeholder="Centro"
 							handleChange={(val) => updateUserState({ localizacaoBairro: val })}
-							width="100%"
 						/>
 					</div>
 				</div>
@@ -283,7 +275,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 							value={userState.localizacaoCidade || ""}
 							placeholder="São Paulo"
 							handleChange={(val) => updateUserState({ localizacaoCidade: val })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/3">
@@ -292,7 +283,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 							value={userState.localizacaoEstado || ""}
 							placeholder="SP"
 							handleChange={(val) => updateUserState({ localizacaoEstado: val ? val.toUpperCase().slice(0, 2) : "" })}
-							width="100%"
 						/>
 					</div>
 				</div>

@@ -27,7 +27,6 @@ export default function PurchaseOrderBlock({ purchase, updatePurchase }: Purchas
 							value={purchase.pedidoFornecedorNome || ""}
 							placeholder="Preencha aqui o nome do fornecedor..."
 							handleChange={(value) => updatePurchase({ pedidoFornecedorNome: value })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/2">
@@ -36,7 +35,6 @@ export default function PurchaseOrderBlock({ purchase, updatePurchase }: Purchas
 							value={purchase.pedidoFornecedorCnpj || ""}
 							placeholder="Preencha aqui o CNPJ do fornecedor..."
 							handleChange={(value) => updatePurchase({ pedidoFornecedorCnpj: formatToCNPJ(value) })}
-							width="100%"
 						/>
 					</div>
 				</div>
@@ -47,7 +45,6 @@ export default function PurchaseOrderBlock({ purchase, updatePurchase }: Purchas
 							value={purchase.pedidoFornecedorTelefone || ""}
 							placeholder="Preencha aqui o telefone do fornecedor..."
 							handleChange={(value) => updatePurchase({ pedidoFornecedorTelefone: formatToPhone(value) })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/2">
@@ -56,7 +53,6 @@ export default function PurchaseOrderBlock({ purchase, updatePurchase }: Purchas
 							value={purchase.pedidoFornecedorEmail || ""}
 							placeholder="Preencha aqui o email do fornecedor..."
 							handleChange={(value) => updatePurchase({ pedidoFornecedorEmail: value })}
-							width="100%"
 						/>
 					</div>
 				</div>

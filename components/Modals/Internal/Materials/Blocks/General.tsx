@@ -113,13 +113,7 @@ export default function MaterialGeneralBlock({ communityMaterial, updateCommunit
 						onReset={() => updateCommunityMaterial({ status: "RASCUNHO" })}
 					/>
 				</div>
-				<NumberInput
-					label="ORDEM"
-					placeholder="0"
-					value={communityMaterial.ordem}
-					handleChange={(value) => updateCommunityMaterial({ ordem: value })}
-					width="100%"
-				/>
+				<NumberInput label="ORDEM" placeholder="0" value={communityMaterial.ordem} handleChange={(value) => updateCommunityMaterial({ ordem: value })} />
 			</ResponsiveMenuSection>
 
 			<ResponsiveMenuSection title="PAGINA PUBLICA" icon={<Globe2 className="h-4 min-h-4 w-4 min-w-4" />}>

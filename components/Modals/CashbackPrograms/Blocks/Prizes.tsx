@@ -192,7 +192,6 @@ function NewPrizeMenu({ terminology, closeMenu, addCashbackProgramPrize }: NewPr
 			<TextInput
 				label="TÍTULO"
 				placeholder="Título do prêmio..."
-				width="100%"
 				value={newPrize.titulo}
 				handleChange={(value) => setNewPrize({ ...newPrize, titulo: value })}
 			/>
@@ -205,7 +204,6 @@ function NewPrizeMenu({ terminology, closeMenu, addCashbackProgramPrize }: NewPr
 			<NumberInput
 				label="VALOR"
 				placeholder={`Preencha aqui o valor do prêmio em ${getCashbackUnitLabel(terminology)}...`}
-				width="100%"
 				value={newPrize.valor}
 				handleChange={(value) => setNewPrize({ ...newPrize, valor: value })}
 			/>
@@ -259,7 +257,6 @@ function EditPrizeMenu({ initialPrize, terminology, closeMenu, updateCashbackPro
 			<TextInput
 				label="TÍTULO"
 				placeholder="Título do prêmio..."
-				width="100%"
 				value={newPrize.titulo}
 				handleChange={(value) => setNewPrize({ ...newPrize, titulo: value })}
 			/>
@@ -272,7 +269,6 @@ function EditPrizeMenu({ initialPrize, terminology, closeMenu, updateCashbackPro
 			<NumberInput
 				label="VALOR"
 				placeholder={`Preencha aqui o valor do prêmio em ${getCashbackUnitLabel(terminology)}...`}
-				width="100%"
 				value={newPrize.valor}
 				handleChange={(value) => setNewPrize({ ...newPrize, valor: value })}
 			/>

@@ -216,7 +216,6 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 
 	const inputLabelClass = "text-[0.65rem] whitespace-nowrap";
 	const inputHolderClass = "!p-2 h-8";
-	const inputWidth = "100%";
 
 	return (
 		<div className="flex w-full flex-col gap-2 rounded-lg border border-border/50 bg-muted/30 p-2">
@@ -235,7 +234,6 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 							value={option.quantidadeConsumo}
 							handleChange={(value) => updateOption({ quantidadeConsumo: value })}
 							label="QTD. CONSUMO"
-							width={inputWidth}
 							labelClassName="text-[0.65rem] text-foreground/80"
 							holderClassName="!p-1.5 h-7 w-20 bg-background/50 border-border"
 						/>
@@ -268,7 +266,6 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 				value={option.nome}
 				handleChange={(value) => updateOption({ nome: value })}
 				label="NOME"
-				width={inputWidth}
 				labelClassName={inputLabelClass}
 				holderClassName={inputHolderClass}
 			/>
@@ -279,7 +276,6 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 						value={option.codigo}
 						handleChange={(value) => updateOption({ codigo: value })}
 						label="CÓD. SKU"
-						width={inputWidth}
 						labelClassName={inputLabelClass}
 						holderClassName={inputHolderClass}
 					/>
@@ -290,7 +286,6 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 						value={option.precoDelta}
 						handleChange={(value) => updateOption({ precoDelta: value })}
 						label="DIF. PREÇO"
-						width={inputWidth}
 						labelClassName={inputLabelClass}
 						holderClassName={inputHolderClass}
 					/>
@@ -301,7 +296,6 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 						value={option.maxQtdePorItem}
 						handleChange={(value) => updateOption({ maxQtdePorItem: value })}
 						label="MAX QTD."
-						width={inputWidth}
 						labelClassName={inputLabelClass}
 						holderClassName={inputHolderClass}
 					/>

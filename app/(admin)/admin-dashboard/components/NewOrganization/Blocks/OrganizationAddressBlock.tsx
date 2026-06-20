@@ -25,7 +25,6 @@ export default function OrganizationAddressBlock({ organization, updateOrganizat
 						placeholder="Preencha aqui o estado da organização."
 						value={organization.localizacaoEstado || ""}
 						handleChange={(value) => updateOrganization({ localizacaoEstado: value })}
-						width="100%"
 					/>
 				</div>
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -34,14 +33,12 @@ export default function OrganizationAddressBlock({ organization, updateOrganizat
 						placeholder="Preencha aqui a cidade da organização."
 						value={organization.localizacaoCidade || ""}
 						handleChange={(value) => updateOrganization({ localizacaoCidade: value })}
-						width="100%"
 					/>
 					<TextInput
 						label="Bairro"
 						placeholder="Preencha aqui o bairro da organização."
 						value={organization.localizacaoBairro || ""}
 						handleChange={(value) => updateOrganization({ localizacaoBairro: value })}
-						width="100%"
 					/>
 				</div>
 				<TextInput
@@ -49,7 +46,6 @@ export default function OrganizationAddressBlock({ organization, updateOrganizat
 					placeholder="Preencha aqui o logradouro da organização."
 					value={organization.localizacaoLogradouro || ""}
 					handleChange={(value) => updateOrganization({ localizacaoLogradouro: value })}
-					width="100%"
 				/>
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 					<TextInput
@@ -63,7 +59,6 @@ export default function OrganizationAddressBlock({ organization, updateOrganizat
 						placeholder="Preencha aqui o complemento da organização."
 						value={organization.localizacaoComplemento || ""}
 						handleChange={(value) => updateOrganization({ localizacaoComplemento: value })}
-						width="100%"
 					/>
 				</div>
 			</div>

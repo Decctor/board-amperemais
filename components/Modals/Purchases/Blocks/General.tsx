@@ -48,7 +48,6 @@ export default function PurchaseGeneralBlock({ purchase, updatePurchase }: Purch
 				placeholder="Preencha aqui o título da compra..."
 				value={purchase.titulo}
 				handleChange={(value) => updatePurchase({ titulo: value })}
-				width="100%"
 			/>
 		</ResponsiveMenuSection>
 	);

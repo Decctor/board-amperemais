@@ -466,7 +466,6 @@ function NewTransactionDiscountFlow({
 				<NumberInput
 					label="VALOR"
 					placeholder={"Preencha aqui o valor da venda..."}
-					width="100%"
 					value={state.sale.valor}
 					handleChange={(value) => updateSale({ valor: value })}
 				/>
@@ -487,7 +486,6 @@ function NewTransactionDiscountFlow({
 							<NumberInput
 								label="VALOR DO CASHBACK"
 								placeholder="Preencha aqui o valor do cashback..."
-								width="100%"
 								value={state.sale.cashback.valor}
 								handleChange={(value) => updateCashback({ valor: value })}
 							/>

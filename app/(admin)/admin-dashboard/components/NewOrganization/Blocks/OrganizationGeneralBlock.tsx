@@ -48,28 +48,24 @@ export default function OrganizationGeneralBlock({ organization, updateOrganizat
 						placeholder="Preencha aqui o nome da organização."
 						value={organization.nome}
 						handleChange={(value) => updateOrganization({ nome: value })}
-						width="100%"
 					/>
 					<TextInput
 						label="CNPJ"
 						placeholder="Preencha aqui o CNPJ da organização."
 						value={organization.cnpj}
 						handleChange={(value) => updateOrganization({ cnpj: value })}
-						width="100%"
 					/>
 					<TextInput
 						label="Telefone"
 						placeholder="Preencha aqui o telefone da organização."
 						value={organization.telefone || ""}
 						handleChange={(value) => updateOrganization({ telefone: value })}
-						width="100%"
 					/>
 					<TextInput
 						label="Email"
 						placeholder="Preencha aqui o email da organização."
 						value={organization.email || ""}
 						handleChange={(value) => updateOrganization({ email: value })}
-						width="100%"
 					/>
 				</div>
 			</div>

@@ -173,7 +173,6 @@ function PaymentMethodCard({ methodOption, methodData, financialAccountOptions, 
 							placeholder="Número de dias..."
 							handleChange={(val) => update({ delayDiasPadrao: val })}
 							editable={editable}
-							width="100%"
 						/>
 					)}
 
@@ -198,7 +197,6 @@ function PaymentMethodCard({ methodOption, methodData, financialAccountOptions, 
 									placeholder="Ex: 2"
 									handleChange={(val) => updateParcelamento({ minParcelas: val ?? 1 })}
 									editable={editable}
-									width="100%"
 								/>
 								<NumberInput
 									label="MÁX. PARCELAS"
@@ -206,7 +204,6 @@ function PaymentMethodCard({ methodOption, methodData, financialAccountOptions, 
 									placeholder="Ex: 12"
 									handleChange={(val) => updateParcelamento({ maxParcelas: val })}
 									editable={editable}
-									width="100%"
 								/>
 								<NumberInput
 									label="INTERVALO (MESES)"
@@ -214,7 +211,6 @@ function PaymentMethodCard({ methodOption, methodData, financialAccountOptions, 
 									placeholder="Ex: 1"
 									handleChange={(val) => updateParcelamento({ intervaloMeses: val })}
 									editable={editable}
-									width="100%"
 								/>
 							</div>
 						)}
@@ -502,7 +498,6 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 							placeholder="Nome da sua empresa"
 							handleChange={(val) => updateOrgState({ nome: val })}
 							editable={userHasEditPermissions}
-							width="100%"
 						/>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<TextInput
@@ -511,7 +506,6 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 								placeholder="00.000.000/0000-00"
 								handleChange={() => {}}
 								editable={false}
-								width="100%"
 								holderClassName="bg-muted/50"
 							/>
 							<TextInput
@@ -520,7 +514,6 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 								placeholder="(00) 00000-0000"
 								handleChange={(val) => updateOrgState({ telefone: formatToPhone(val) })}
 								editable={userHasEditPermissions}
-								width="100%"
 							/>
 						</div>
 						<TextInput
@@ -529,7 +522,6 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 							placeholder="contato@empresa.com"
 							handleChange={(val) => updateOrgState({ email: val })}
 							editable={userHasEditPermissions}
-							width="100%"
 						/>
 					</div>
 				</div>
@@ -610,7 +602,6 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 								value={state.organization.configuracao.preferencias.limiteMensagensSemanaisViaCampanhas ?? null}
 								placeholder="Preencha aqui o valor do limite de envios por semana..."
 								handleChange={(value) => updatePreferencias({ limiteMensagensSemanaisViaCampanhas: value })}
-								width="100%"
 							/>
 						) : null}
 					</div>

@@ -59,7 +59,6 @@ export default function CampaignsConfigBlock({ campaign, updateCampaign }: Campa
 									value={campaign.frequenciaIntervaloValor ?? null}
 									placeholder="Ex.: 7 (use a medida ao lado — ex.: dias)"
 									handleChange={(value) => updateCampaign({ frequenciaIntervaloValor: value })}
-									width="100%"
 								/>
 							</div>
 						</div>
@@ -145,7 +144,6 @@ export default function CampaignsConfigBlock({ campaign, updateCampaign }: Campa
 							value={campaign.limiteEnviosSemanais ?? null}
 							placeholder="Preencha aqui o valor do limite de envios por semana..."
 							handleChange={(value) => updateCampaign({ limiteEnviosSemanais: value })}
-							width="100%"
 						/>
 					) : null}
 				</div>

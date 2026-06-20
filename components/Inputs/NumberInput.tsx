@@ -1,10 +1,9 @@
 import { cn } from "@/lib/utils";
-import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef, useId } from "react";
+import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 
 type NumberInputProps = {
-	width?: string;
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
@@ -20,7 +19,6 @@ type NumberInputProps = {
 const NUMERIC_PATTERN = /[^0-9,.-]/g;
 
 function NumberInput({
-	width,
 	label,
 	labelClassName,
 	holderClassName,
@@ -32,7 +30,8 @@ function NumberInput({
 	required = false,
 }: NumberInputProps) {
 	// Memoiza o inputIdentifier para evitar recálculo
-	const inputIdentifier = useMemo(() => label.toLowerCase().replace(" ", "_"), [label]);
+	const generatedId = useId();
+	const inputIdentifier = useMemo(() => `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`, [generatedId, label]);
 
 	// Estado interno para controle do input
 	const [inputValue, setInputValue] = useState<string>(() => {
@@ -86,29 +85,16 @@ function NumberInput({
 		}
 	}, [value]);
 
-	// Memoiza className do container
-	const containerClassName = useMemo(() => `flex w-full flex-col gap-1 lg:w-[${width || "350px"}]`, [width]);
-
 	// Memoiza className do label
 	const labelClasses = useMemo(() => cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName), [labelClassName]);
 
-	// Memoiza className do input
-	const inputClasses = useMemo(
-		() =>
-			cn(
-				"w-full rounded-md dark:bg-[#121212] border border-border p-3 text-sm shadow-sm outline-none duration-500 ease-in-out placeholder:italic focus:border-border",
-				holderClassName,
-			),
-		[holderClassName],
-	);
-
 	return (
-		<div className={containerClassName}>
+		<Field className="gap-1" data-disabled={!editable}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={labelClasses}>
+				<FieldLabel htmlFor={inputIdentifier} className={labelClasses}>
 					{label}
 					{required && <span className="text-red-500">*</span>}
-				</Label>
+				</FieldLabel>
 			)}
 
 			<Input
@@ -125,7 +111,7 @@ function NumberInput({
 					holderClassName,
 				)}
 			/>
-		</div>
+		</Field>
 	);
 }
 

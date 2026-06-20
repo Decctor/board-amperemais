@@ -49,7 +49,6 @@ export default function BuilderHeader({ backToUrl }: BuilderHeaderProps) {
 					value={campaign.titulo}
 					placeholder="Ex: Reativação de clientes em risco"
 					handleChange={(value) => updateCampaign({ titulo: value })}
-					width="100%"
 				/>
 			</div>
 		</header>

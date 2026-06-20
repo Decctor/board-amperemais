@@ -65,21 +65,14 @@ export default function CampaignsCashbackGenerationBlock({ campaign, updateCampa
 								<NumberInput
 									label={campaign.cashbackGeracaoTipo === "PERCENTUAL" ? "PERCENTUAL (%)" : "VALOR (R$)"}
 									value={campaign.cashbackGeracaoValor ?? null}
-									placeholder={
-										campaign.cashbackGeracaoTipo === "PERCENTUAL"
-											? "Ex: 5 para 5% de cashback..."
-											: "Ex: 10 para R$ 10,00 de cashback..."
-									}
+									placeholder={campaign.cashbackGeracaoTipo === "PERCENTUAL" ? "Ex: 5 para 5% de cashback..." : "Ex: 10 para R$ 10,00 de cashback..."}
 									handleChange={(value) => updateCampaign({ cashbackGeracaoValor: value })}
-									width="100%"
 								/>
 							</div>
 						</div>
 
 						{!canUsePercentual && (
-							<p className="text-xs text-amber-600 text-center">
-								O tipo PERCENTUAL só está disponível para gatilhos de NOVA COMPRA ou PRIMEIRA COMPRA.
-							</p>
+							<p className="text-xs text-amber-600 text-center">O tipo PERCENTUAL só está disponível para gatilhos de NOVA COMPRA ou PRIMEIRA COMPRA.</p>
 						)}
 
 						<div className="w-full flex flex-col gap-2 items-center lg:flex-row">
@@ -100,13 +93,10 @@ export default function CampaignsCashbackGenerationBlock({ campaign, updateCampa
 									value={campaign.cashbackGeracaoExpiracaoValor ?? null}
 									placeholder="Ex: 30 para expirar em 30 dias..."
 									handleChange={(value) => updateCampaign({ cashbackGeracaoExpiracaoValor: value })}
-									width="100%"
 								/>
 							</div>
 						</div>
-						<p className="text-xs text-muted-foreground text-center">
-							Se a expiração não for configurada, será usado o padrão de 30 dias.
-						</p>
+						<p className="text-xs text-muted-foreground text-center">Se a expiração não for configurada, será usado o padrão de 30 dias.</p>
 					</div>
 				) : null}
 			</div>

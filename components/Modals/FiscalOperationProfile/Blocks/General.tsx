@@ -55,7 +55,6 @@ export default function FiscalOperationProfileGeneralBlock({
 				label="NOME"
 				placeholder="Ex.: VENDA PRESENCIAL NFC-E"
 				handleChange={(value) => updateFiscalOperationProfile({ nome: value })}
-				width="100%"
 			/>
 			<TextareaInput
 				value={fiscalOperationProfile.descricao ?? ""}

@@ -56,7 +56,6 @@ export default function CommunityCourseGeneralBlock({
 				value={communityCourse.titulo}
 				placeholder="Preencha aqui o título do curso..."
 				handleChange={(value) => updateCommunityCourse({ titulo: value })}
-				width="100%"
 			/>
 			<TextareaInput
 				label="DESCRIÇÃO DO CURSO"

@@ -56,7 +56,6 @@ function PartnersFilterMenu({ queryParams, updateQueryParams, closeMenu }: Partn
 								value={queryParamsHolder.search ?? ""}
 								placeholder={"Preenha aqui o filtro de pesquisa..."}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, search: value }))}
-								width={"100%"}
 							/>
 						</div>
 
@@ -84,14 +83,12 @@ function PartnersFilterMenu({ queryParams, updateQueryParams, closeMenu }: Partn
 								placeholder="Preencha aqui o valor para o filtro de mais compras que..."
 								value={queryParamsHolder.statsTotalMin ?? null}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMin: value }))}
-								width="100%"
 							/>
 							<NumberInput
 								label="VALOR < QUE"
 								placeholder="Preencha aqui o valor para o filtro de menos compras que..."
 								value={queryParamsHolder.statsTotalMax ?? null}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsTotalMax: value }))}
-								width="100%"
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">

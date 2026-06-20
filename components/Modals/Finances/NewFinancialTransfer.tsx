@@ -113,7 +113,6 @@ export default function NewFinancialTransfer({ closeMenu, callbacks }: NewFinanc
 					placeholder="Informe o título da transferência..."
 					value={state.titulo}
 					handleChange={(titulo) => updateState({ titulo })}
-					width="100%"
 					required
 				/>
 				<TextareaInput
@@ -157,7 +156,6 @@ export default function NewFinancialTransfer({ closeMenu, callbacks }: NewFinanc
 					value={state.valor}
 					handleChange={(valor) => updateState({ valor })}
 					placeholder="Informe o valor da transferência..."
-					width="100%"
 					required
 				/>
 				<DateInput

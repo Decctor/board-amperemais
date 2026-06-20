@@ -47,7 +47,6 @@ export default function CashbackProgramsRedemptionLimitBlock({ cashbackProgram, 
 								: `Ex: 100 para ${getCashbackUnitLabel(cashbackProgram.terminologia)}...`
 						}
 						handleChange={(value) => updateCashbackProgram({ resgateLimiteValor: value })}
-						width="100%"
 						editable={!!cashbackProgram.resgateLimiteTipo}
 					/>
 				</div>

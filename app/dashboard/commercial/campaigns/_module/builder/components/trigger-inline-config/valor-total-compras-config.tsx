@@ -13,7 +13,6 @@ export default function ValorTotalComprasConfig() {
 				value={state.campaign.gatilhoValorTotalCompras ?? null}
 				placeholder="Ex: 1000 (disparar quando atingir R$ 1.000 em compras)"
 				handleChange={(value) => updateCampaign({ gatilhoValorTotalCompras: value })}
-				width="100%"
 			/>
 		</div>
 	);

@@ -414,7 +414,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 								handleSubmitNewClient();
 							}}
 						>
-							<TextInput label="NOME COMPLETO" placeholder="Digite o nome do cliente" value={newClientName} handleChange={setNewClientName} width="100%" />
+							<TextInput label="NOME COMPLETO" placeholder="Digite o nome do cliente" value={newClientName} handleChange={setNewClientName} />
 
 							<div className="w-full flex items-center justify-center">
 								<Button

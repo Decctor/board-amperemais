@@ -15,14 +15,12 @@ export default function UsersCredentialsBlock({ infoHolder, updateInfoHolder }: 
 				value={infoHolder.usuario}
 				placeholder="Preencha aqui o usuário de acesso..."
 				handleChange={(value) => updateInfoHolder({ usuario: value })}
-				width="100%"
 			/>
 			<TextInput
 				label="SENHA DE ACESSO"
 				value={infoHolder.senha}
 				placeholder="Preencha aqui a senha de acesso..."
 				handleChange={(value) => updateInfoHolder({ senha: value })}
-				width="100%"
 			/>
 		</ResponsiveMenuSection>
 	);

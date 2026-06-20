@@ -18,7 +18,6 @@ export default function PurchaseTransportBlock({ purchase, updatePurchase }: Pur
 						value={purchase.transporteTransportadoraNome || ""}
 						placeholder="Preencha aqui o nome da transportadora..."
 						handleChange={(value) => updatePurchase({ transporteTransportadoraNome: value })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -27,7 +26,6 @@ export default function PurchaseTransportBlock({ purchase, updatePurchase }: Pur
 						value={purchase.transporteTransportadoraCnpj || ""}
 						placeholder="Preencha aqui o CNPJ da transportadora..."
 						handleChange={(value) => updatePurchase({ transporteTransportadoraCnpj: formatToCNPJ(value) })}
-						width="100%"
 					/>
 				</div>
 			</div>
@@ -38,7 +36,6 @@ export default function PurchaseTransportBlock({ purchase, updatePurchase }: Pur
 						value={purchase.transporteTransportadoraTelefone || ""}
 						placeholder="Preencha aqui o telefone da transportadora..."
 						handleChange={(value) => updatePurchase({ transporteTransportadoraTelefone: formatToPhone(value) })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -47,7 +44,6 @@ export default function PurchaseTransportBlock({ purchase, updatePurchase }: Pur
 						value={purchase.transporteTransportadoraEmail || ""}
 						placeholder="Preencha aqui o email da transportadora..."
 						handleChange={(value) => updatePurchase({ transporteTransportadoraEmail: value })}
-						width="100%"
 					/>
 				</div>
 			</div>
@@ -56,7 +52,6 @@ export default function PurchaseTransportBlock({ purchase, updatePurchase }: Pur
 				value={purchase.transporteLinkRastreio || ""}
 				placeholder="Preencha aqui o link de rastreio..."
 				handleChange={(value) => updatePurchase({ transporteLinkRastreio: value })}
-				width="100%"
 			/>
 		</ResponsiveMenuSection>
 	);

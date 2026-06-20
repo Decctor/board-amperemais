@@ -53,7 +53,6 @@ export default function CashbackProgramsPrizesGeneralBlock({
 			<TextInput
 				label="TÍTULO"
 				placeholder="Título do prêmio..."
-				width="100%"
 				value={state.titulo}
 				handleChange={(value) => updateCashbackProgramPrize({ titulo: value })}
 			/>
@@ -66,7 +65,6 @@ export default function CashbackProgramsPrizesGeneralBlock({
 			<NumberInput
 				label="VALOR"
 				placeholder={`Preencha aqui o valor do prêmio em ${getCashbackUnitLabel(cashbackProgramTerminology)}...`}
-				width="100%"
 				value={state.valor}
 				handleChange={(value) => updateCashbackProgramPrize({ valor: value })}
 			/>

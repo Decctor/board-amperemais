@@ -46,7 +46,6 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 								value={filtersHolder.search ?? ""}
 								placeholder={"Preenha aqui o nome do cliente para filtro."}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, search: value }))}
-								width={"100%"}
 							/>
 						</div>
 

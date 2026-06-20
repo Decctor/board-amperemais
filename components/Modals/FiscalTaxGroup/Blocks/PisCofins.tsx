@@ -45,7 +45,6 @@ export default function FiscalTaxGroupPisCofinsBlock({ fiscalTaxGroup, updateFis
 						value={fiscalTaxGroup.aliquotaPis}
 						placeholder="Ex.: 0"
 						handleChange={(value) => updateFiscalTaxGroup({ aliquotaPis: value })}
-						width="100%"
 					/>
 				</div>
 			</div>
@@ -67,7 +66,6 @@ export default function FiscalTaxGroupPisCofinsBlock({ fiscalTaxGroup, updateFis
 						value={fiscalTaxGroup.aliquotaCofins}
 						placeholder="Ex.: 0"
 						handleChange={(value) => updateFiscalTaxGroup({ aliquotaCofins: value })}
-						width="100%"
 					/>
 				</div>
 			</div>

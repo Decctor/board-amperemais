@@ -68,7 +68,6 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 									value={regra.ufDestino ?? ""}
 									placeholder="Ex.: MG"
 									handleChange={(value) => updateRegra({ index, regra: { ufDestino: value ? value.toUpperCase() : null } })}
-									width="100%"
 								/>
 							</div>
 						</div>
@@ -116,7 +115,6 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 									value={regra.cfop ?? ""}
 									placeholder="Ex.: 6108"
 									handleChange={(value) => updateRegra({ index, regra: { cfop: value || null } })}
-									width="100%"
 								/>
 							</div>
 						</div>
@@ -126,7 +124,6 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 							value={regra.aliquotaIcms}
 							placeholder="Herdar do grupo se vazio"
 							handleChange={(value) => updateRegra({ index, regra: { aliquotaIcms: value } })}
-							width="100%"
 						/>
 					</div>
 				);
@@ -137,7 +134,27 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 					variant="ghost"
 					size="fit"
 					className="flex items-center gap-1 px-2 py-1 text-xs"
-					onClick={() => addRegra({ escopo: "INTERESTADUAL", ufDestino: null, indicadorDestinatario: null, finalidade: null, csosn: null, cfop: null, aliquotaIcms: null, percentualReducaoBc: null, percentualCreditoSn: null, temSubstituicaoTributaria: null, mvaSt: null, aliquotaIcmsSt: null, aliquotaInternaDestino: null, percentualReducaoBcSt: null, aliquotaFcp: null, aliquotaFcpSt: null, ativo: true })}
+					onClick={() =>
+						addRegra({
+							escopo: "INTERESTADUAL",
+							ufDestino: null,
+							indicadorDestinatario: null,
+							finalidade: null,
+							csosn: null,
+							cfop: null,
+							aliquotaIcms: null,
+							percentualReducaoBc: null,
+							percentualCreditoSn: null,
+							temSubstituicaoTributaria: null,
+							mvaSt: null,
+							aliquotaIcmsSt: null,
+							aliquotaInternaDestino: null,
+							percentualReducaoBcSt: null,
+							aliquotaFcp: null,
+							aliquotaFcpSt: null,
+							ativo: true,
+						})
+					}
 				>
 					<Plus className="h-3.5 w-3.5" />
 					ADICIONAR REGRA

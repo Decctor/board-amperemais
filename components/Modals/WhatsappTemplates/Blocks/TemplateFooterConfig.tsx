@@ -57,7 +57,6 @@ function TemplateFooterConfig({ footer, onFooterChange }: TemplateFooterConfigPr
 							value={footer.conteudo}
 							placeholder="Digite o texto do rodapé (máx. 60 caracteres)"
 							handleChange={handleFooterContentChange}
-							width="100%"
 						/>
 
 						{footer.conteudo.length > 60 && (

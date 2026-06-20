@@ -48,7 +48,6 @@ export default function RFMConfigMatrixForm({ infoHolder, setInfoHolder }: RFMCo
 								placeholder="Mín"
 								value={infoHolder.frequencia[score].min}
 								handleChange={(value) => handleValueChange("frequencia", score, "min", value)}
-								width="100%"
 							/>
 						</div>
 						<div className="w-full lg:w-1/2">
@@ -57,7 +56,6 @@ export default function RFMConfigMatrixForm({ infoHolder, setInfoHolder }: RFMCo
 								placeholder="Máx"
 								value={infoHolder.frequencia[score].max}
 								handleChange={(value) => handleValueChange("frequencia", score, "max", value)}
-								width="100%"
 							/>
 						</div>
 					</div>
@@ -70,7 +68,6 @@ export default function RFMConfigMatrixForm({ infoHolder, setInfoHolder }: RFMCo
 								placeholder="Mín"
 								value={infoHolder.recencia[score].min}
 								handleChange={(value) => handleValueChange("recencia", score, "min", value)}
-								width="100%"
 							/>
 						</div>
 						<div className="w-full lg:w-1/2">
@@ -79,7 +76,6 @@ export default function RFMConfigMatrixForm({ infoHolder, setInfoHolder }: RFMCo
 								placeholder="Máx"
 								value={infoHolder.recencia[score].max}
 								handleChange={(value) => handleValueChange("recencia", score, "max", value)}
-								width="100%"
 							/>
 						</div>
 					</div>
@@ -92,7 +88,6 @@ export default function RFMConfigMatrixForm({ infoHolder, setInfoHolder }: RFMCo
 								placeholder="Mín"
 								value={infoHolder.monetario[score].min}
 								handleChange={(value) => handleValueChange("monetario", score, "min", value)}
-								width="100%"
 							/>
 						</div>
 						<div className="w-full lg:w-1/2">
@@ -101,7 +96,6 @@ export default function RFMConfigMatrixForm({ infoHolder, setInfoHolder }: RFMCo
 								placeholder="Máx"
 								value={infoHolder.monetario[score].max}
 								handleChange={(value) => handleValueChange("monetario", score, "max", value)}
-								width="100%"
 							/>
 						</div>
 					</div>

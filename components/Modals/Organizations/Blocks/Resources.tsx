@@ -39,7 +39,6 @@ function ResourceRow({ title, description, access, onAccessChange, limitLabel, l
 					value={limitValue ?? null}
 					placeholder="Ilimitado (deixe vazio para sem limite)"
 					handleChange={onLimitChange}
-					width="100%"
 				/>
 			) : null}
 		</div>

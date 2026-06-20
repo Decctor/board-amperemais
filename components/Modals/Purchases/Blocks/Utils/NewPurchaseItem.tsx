@@ -126,14 +126,12 @@ export default function NewPurchaseItem({ addPurchaseItem, closeMenu }: NewPurch
 				placeholder="Digite a quantidade do item"
 				value={infoHolder.quantidade}
 				handleChange={(value) => updateInfoHolder({ quantidade: value })}
-				width="100%"
 			/>
 			<NumberInput
 				label="VALOR UNITÁRIO BRUTO"
 				placeholder="Digite o valor unitário bruto do item"
 				value={infoHolder.valorUnitarioBruto}
 				handleChange={(value) => updateInfoHolder({ valorUnitarioBruto: value })}
-				width="100%"
 			/>
 			<div className="w-full flex items-center justify-between px-2 py-1 rounded-lg bg-red-200">
 				<div className="flex items-center gap-1.5">

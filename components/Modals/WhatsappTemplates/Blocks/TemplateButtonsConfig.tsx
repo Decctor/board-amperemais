@@ -99,7 +99,6 @@ function TemplateButtonsConfig({ buttons, onButtonsChange }: TemplateButtonsConf
 									value={button.texto}
 									placeholder="Digite o texto do botão (máx. 25 caracteres)"
 									handleChange={(value) => handleButtonChange(index, { ...button, texto: value })}
-									width="100%"
 								/>
 
 								{button.tipo === "url" && (
@@ -113,7 +112,6 @@ function TemplateButtonsConfig({ buttons, onButtonsChange }: TemplateButtonsConf
 												dados: { ...button.dados, url: value },
 											})
 										}
-										width="100%"
 									/>
 								)}
 
@@ -128,7 +126,6 @@ function TemplateButtonsConfig({ buttons, onButtonsChange }: TemplateButtonsConf
 												dados: { ...button.dados, telefone: value },
 											})
 										}
-										width="100%"
 									/>
 								)}
 

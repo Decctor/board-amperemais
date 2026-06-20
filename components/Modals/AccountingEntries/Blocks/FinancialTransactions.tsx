@@ -237,7 +237,6 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 				placeholder="Preencha o título da transação..."
 				value={transaction.titulo}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, titulo: value }))}
-				width="100%"
 				required
 			/>
 			<SelectInput
@@ -259,7 +258,6 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 				value={transaction.valor}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, valor: value }))}
 				placeholder="Preencha o valor da transação..."
-				width="100%"
 			/>
 			<SelectInput
 				label="MÉTODO"
@@ -302,14 +300,12 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 					value={transaction.parcela}
 					handleChange={(value) => setTransaction((prev) => ({ ...prev, parcela: value > 0 ? value : null }))}
 					placeholder="Nº da parcela..."
-					width="100%"
 				/>
 				<NumberInput
 					label="TOTAL DE PARCELAS"
 					value={transaction.totalParcelas}
 					handleChange={(value) => setTransaction((prev) => ({ ...prev, totalParcelas: value > 0 ? value : null }))}
 					placeholder="Total de parcelas..."
-					width="100%"
 				/>
 			</div>
 		</ResponsiveMenu>
@@ -392,7 +388,6 @@ function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMen
 						value={dayInterval}
 						handleChange={(value) => setDayInterval(Math.max(0, Math.round(value || 0)))}
 						placeholder="Intervalo em dias..."
-						width="100%"
 					/>
 				</div>
 				<DateInput

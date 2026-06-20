@@ -13,13 +13,7 @@ export default function FiscalSeriesNumberingBlock({ fiscalSeries, updateFiscalS
 		<ResponsiveMenuSection title="NUMERAÇÃO" icon={<Hash className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex items-start gap-2 flex-col lg:flex-row">
 				<div className="w-full lg:w-1/2">
-					<TextInput
-						label="SÉRIE"
-						value={fiscalSeries.serie}
-						placeholder="Ex.: 1"
-						handleChange={(value) => updateFiscalSeries({ serie: value })}
-						width="100%"
-					/>
+					<TextInput label="SÉRIE" value={fiscalSeries.serie} placeholder="Ex.: 1" handleChange={(value) => updateFiscalSeries({ serie: value })} />
 				</div>
 				<div className="w-full lg:w-1/2">
 					<NumberInput
@@ -27,14 +21,12 @@ export default function FiscalSeriesNumberingBlock({ fiscalSeries, updateFiscalS
 						value={fiscalSeries.proximoNumero}
 						placeholder="Ex.: 1"
 						handleChange={(value) => updateFiscalSeries({ proximoNumero: value })}
-						width="100%"
 					/>
 				</div>
 			</div>
 			<p className="text-xs text-muted-foreground italic">
-				Atenção: o <span className="font-medium">próximo número</span> é incrementado automaticamente a cada emissão autorizada. Altere
-				manualmente apenas se precisar sincronizar com a numeração já utilizada junto à SEFAZ — valores incorretos podem causar rejeição de
-				documentos.
+				Atenção: o <span className="font-medium">próximo número</span> é incrementado automaticamente a cada emissão autorizada. Altere manualmente apenas
+				se precisar sincronizar com a numeração já utilizada junto à SEFAZ — valores incorretos podem causar rejeição de documentos.
 			</p>
 		</ResponsiveMenuSection>
 	);

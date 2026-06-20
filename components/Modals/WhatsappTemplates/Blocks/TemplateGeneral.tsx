@@ -25,7 +25,6 @@ export default function TemplateGeneral({ template, updateTemplate, blockNameCha
 					value={template.nome}
 					placeholder="nome_do_template"
 					handleChange={(value) => updateTemplate({ nome: formatMessageTemplateName(value) })}
-					width="100%"
 					editable={!blockNameChange}
 				/>
 			</div>

@@ -22,7 +22,11 @@ const MESSAGE_LIMIT_PRESETS = [
 	{ label: "5.000 / SEMANA", value: 5000 },
 ];
 
-export default function AdminOrganizationPreferencesBlock({ preferencias, hasErpAccess, updatePreferencias }: AdminOrganizationPreferencesBlockProps) {
+export default function AdminOrganizationPreferencesBlock({
+	preferencias,
+	hasErpAccess,
+	updatePreferencias,
+}: AdminOrganizationPreferencesBlockProps) {
 	const isCustomMessageSendingLimit = useMemo(() => {
 		const limit = preferencias.limiteMensagensSemanaisViaCampanhas;
 		return limit !== null && !MESSAGE_LIMIT_PRESETS.some((preset) => preset.value === limit);
@@ -41,9 +45,7 @@ export default function AdminOrganizationPreferencesBlock({ preferencias, hasErp
 							key={preset.label}
 							type="button"
 							size="sm"
-							variant={
-								preferencias.limiteMensagensSemanaisViaCampanhas === preset.value && !isCustomMessageSendingLimit ? "default" : "outline"
-							}
+							variant={preferencias.limiteMensagensSemanaisViaCampanhas === preset.value && !isCustomMessageSendingLimit ? "default" : "outline"}
 							onClick={() => updatePreferencias({ limiteMensagensSemanaisViaCampanhas: preset.value })}
 						>
 							{preset.label}
@@ -65,7 +67,6 @@ export default function AdminOrganizationPreferencesBlock({ preferencias, hasErp
 						value={preferencias.limiteMensagensSemanaisViaCampanhas ?? null}
 						placeholder="Preencha o limite semanal de envios..."
 						handleChange={(value) => updatePreferencias({ limiteMensagensSemanaisViaCampanhas: value })}
-						width="100%"
 					/>
 				) : null}
 			</div>
@@ -76,10 +77,7 @@ export default function AdminOrganizationPreferencesBlock({ preferencias, hasErp
 						<span className="text-sm font-medium tracking-tight">Rastreamento de estoque</span>
 						<span className="text-xs text-muted-foreground">Habilita controle e rastreamento de estoque nos produtos.</span>
 					</div>
-					<Switch
-						checked={preferencias.rastreamentoEstoque}
-						onCheckedChange={(checked) => updatePreferencias({ rastreamentoEstoque: checked })}
-					/>
+					<Switch checked={preferencias.rastreamentoEstoque} onCheckedChange={(checked) => updatePreferencias({ rastreamentoEstoque: checked })} />
 				</div>
 			) : null}
 		</ResponsiveMenuSection>

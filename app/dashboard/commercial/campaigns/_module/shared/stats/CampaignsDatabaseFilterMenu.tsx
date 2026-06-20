@@ -49,7 +49,6 @@ export default function CampaignsDatabaseFilterMenu({ filters, updateFilters, cl
 								value={filtersHolder.search ?? ""}
 								placeholder="Preencha aqui a pesquisa para filtro."
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, search: value }))}
-								width="100%"
 							/>
 						</div>
 

@@ -26,7 +26,6 @@ export default function FiscalTaxGroupGeneralBlock({ fiscalTaxGroup, updateFisca
 				label="NOME"
 				placeholder="Ex.: REVENDA PADRÃO (CSOSN 102)"
 				handleChange={(value) => updateFiscalTaxGroup({ nome: value })}
-				width="100%"
 			/>
 			<TextareaInput
 				value={fiscalTaxGroup.descricao ?? ""}

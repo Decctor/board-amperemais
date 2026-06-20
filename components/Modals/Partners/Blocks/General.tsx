@@ -31,42 +31,36 @@ export function GeneralBlock({ partner, updatePartner, avatarHolder, updateAvata
 					label="NOME"
 					placeholder="Preencha aqui o nome do parceiro..."
 					handleChange={(value) => updatePartner({ nome: value })}
-					width="100%"
 				/>
 				<TextInput
 					value={partner.codigoAfiliacao || ""}
 					label="CÓDIGO DE AFILIAÇÃO"
 					placeholder="Preencha aqui o código do parceiro..."
 					handleChange={(value) => updatePartner({ codigoAfiliacao: value.toUpperCase() })}
-					width="100%"
 				/>
 				<TextInput
 					value={partner.clienteId || ""}
 					label="CLIENTE VINCULADO (ID)"
 					placeholder="Opcional: sobrescreva o cliente vinculado..."
 					handleChange={(value) => updatePartner({ clienteId: value })}
-					width="100%"
 				/>
 				<TextInput
 					value={partner.cpfCnpj || ""}
 					label="CPF/CNPJ"
 					placeholder="Preencha aqui o CPF/CNPJ do parceiro..."
 					handleChange={(value) => updatePartner({ cpfCnpj: formatToCPForCNPJ(value) })}
-					width="100%"
 				/>
 				<TextInput
 					label="TELEFONE"
 					value={partner.telefone || ""}
 					placeholder="Preencha aqui o telefone do parceiro..."
 					handleChange={(value) => updatePartner({ telefone: formatToPhone(value), telefoneBase: formatPhoneAsBase(value) })}
-					width="100%"
 				/>
 				<TextInput
 					label="EMAIL"
 					value={partner.email || ""}
 					placeholder="Preencha aqui o email do parceiro..."
 					handleChange={(value) => updatePartner({ email: value })}
-					width="100%"
 				/>
 			</div>
 		</div>
