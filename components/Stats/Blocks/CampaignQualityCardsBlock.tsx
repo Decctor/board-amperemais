@@ -55,40 +55,24 @@ export function CampaignQualityCardsBlock({ quality, isLoading }: CampaignQualit
 			<StatUnitCard
 				title="ANTECIPAÇÃO DO CICLO"
 				current={{ value: diasAntecipados, format: (n) => `${n > 0 ? "+" : ""}${formatDecimalPlaces(n)} dias` }}
-				footer={
-					<p className="text-[0.65rem] text-muted-foreground leading-tight">
-						{diasAntecipados > 0 ? "Clientes voltando mais rápido" : "Sem redução significativa no ciclo"}
-					</p>
-				}
 				icon={<Zap className="w-4 h-4" />}
 				className="w-full lg:w-1/4"
 			/>
 			<StatUnitCard
 				title="AUMENTO NO TICKET"
 				current={{ value: upliftTicket, format: (n) => `${n > 0 ? "+" : ""}${formatDecimalPlaces(n)}%` }}
-				footer={
-					<p className="text-[0.65rem] text-muted-foreground leading-tight">
-						{upliftTicket > 0 ? "Aumento do ticket médio do cliente	" : "Sem aumento significativo no ticket médio"}
-					</p>
-				}
 				icon={<BadgeDollarSign className="w-4 h-4" />}
 				className="w-full lg:w-1/4"
 			/>
 			<StatUnitCard
 				title="CLIENTES RECUPERADOS"
 				current={{ value: recuperados, format: (n) => formatDecimalPlaces(n) }}
-				footer={<p className="text-[0.65rem] text-muted-foreground leading-tight">Clientes que voltaram a comprar</p>}
 				icon={<RefreshCw className="w-4 h-4" />}
 				className="w-full lg:w-1/4"
 			/>
 			<StatUnitCard
 				title="TEMPO P/ CONVERSÃO"
 				current={{ value: tempoConversao, format: (n) => `${formatDecimalPlaces(n)}h` }}
-				footer={
-					<p className="text-[0.65rem] text-muted-foreground leading-tight">
-						{tempoConversao < 24 ? "Conversão no mesmo dia" : "Conversão em mais de um dia"}
-					</p>
-				}
 				icon={<Clock className="w-4 h-4" />}
 				className="w-full lg:w-1/4"
 			/>
