@@ -50,7 +50,6 @@ export default function CampaignsConfigBlock({ campaign, updateCampaign }: Campa
 									options={TimeDurationUnitsOptions}
 									handleChange={(value) => updateCampaign({ frequenciaIntervaloMedida: value as TTimeDurationUnitsEnum })}
 									onReset={() => updateCampaign({ frequenciaIntervaloMedida: "DIAS" })}
-									width="100%"
 								/>
 							</div>
 							<div className="w-full lg:w-1/2">

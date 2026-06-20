@@ -47,7 +47,6 @@ export default function FiscalOperationProfileOperationBlock({
 						resetOptionLabel="SELECIONE UMA FINALIDADE"
 						handleChange={(value) => updateFiscalOperationProfile({ finalidade: value as TFiscalOperationFinalityEnum })}
 						onReset={() => updateFiscalOperationProfile({ finalidade: "NORMAL" })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -58,7 +57,6 @@ export default function FiscalOperationProfileOperationBlock({
 						resetOptionLabel="SELECIONE A PRESENÇA"
 						handleChange={(value) => updateFiscalOperationProfile({ presencaConsumidor: value as TFiscalOperationConsumerPresenceEnum })}
 						onReset={() => updateFiscalOperationProfile({ presencaConsumidor: "OPERACAO_PRESENCIAL" })}
-						width="100%"
 					/>
 				</div>
 			</div>

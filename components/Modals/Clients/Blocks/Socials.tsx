@@ -29,7 +29,6 @@ export default function ClientSocialsBlock({ client, updateClient }: ClientSocia
 					prefixIcon={<Instagram className="size-3.5" />}
 					placeholder="usuario"
 					handleChange={(value) => updateClient({ instagram: value })}
-					width="100%"
 				/>
 				<SocialProfileInput
 					label="LINKEDIN"
@@ -39,7 +38,6 @@ export default function ClientSocialsBlock({ client, updateClient }: ClientSocia
 					prefixIcon={<Linkedin className="size-3.5" />}
 					placeholder="in/usuario"
 					handleChange={(value) => updateClient({ linkedin: value })}
-					width="100%"
 				/>
 				<SocialProfileInput
 					label="X / TWITTER"
@@ -49,7 +47,6 @@ export default function ClientSocialsBlock({ client, updateClient }: ClientSocia
 					prefixIcon={<Twitter className="size-3.5" />}
 					placeholder="usuario"
 					handleChange={(value) => updateClient({ twitter: value })}
-					width="100%"
 				/>
 			</div>
 		</ResponsiveMenuSection>

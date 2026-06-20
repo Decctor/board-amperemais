@@ -251,7 +251,6 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 				resetOptionLabel="NÃO DEFINIDO"
 				onReset={() => setTransaction((prev) => ({ ...prev, tipo: "ENTRADA" }))}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, tipo: value as typeof prev.tipo }))}
-				width="100%"
 			/>
 			<NumberInput
 				label="VALOR"
@@ -271,19 +270,16 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 				resetOptionLabel="A DEFINIR"
 				onReset={() => setTransaction((prev) => ({ ...prev, metodo: "A_DEFINIR" }))}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, metodo: value as typeof prev.metodo }))}
-				width="100%"
 			/>
 			<DateInput
 				label="DATA DE PREVISÃO"
 				value={formatDateForInputValue(transaction.dataPrevisao)}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, dataPrevisao: formatDateOnInputChange(value, "date") ?? prev.dataPrevisao }))}
-				width="100%"
 			/>
 			<DateInput
 				label="DATA DE EFETIVAÇÃO"
 				value={formatDateForInputValue(transaction.dataEfetivacao)}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, dataEfetivacao: formatDateOnInputChange(value, "date") }))}
-				width="100%"
 			/>
 			<SelectInput
 				label="CONTA FINANCEIRA"
@@ -292,7 +288,6 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 				resetOptionLabel="NÃO DEFINIDA"
 				onReset={() => setTransaction((prev) => ({ ...prev, contaFinanceiraId: null }))}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, contaFinanceiraId: value }))}
-				width="100%"
 			/>
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				<NumberInput
@@ -394,7 +389,6 @@ function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMen
 					label="PRIMEIRO VENCIMENTO"
 					value={formatDateForInputValue(firstDate)}
 					handleChange={(value) => setFirstDate(formatDateOnInputChange(value, "date") ?? firstDate)}
-					width="100%"
 				/>
 				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<SelectInput
@@ -409,7 +403,6 @@ function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMen
 						resetOptionLabel="ENTRADA"
 						onReset={() => setTransactionType("ENTRADA")}
 						handleChange={(value) => setTransactionType(value as typeof transactionType)}
-						width="100%"
 					/>
 					<SelectInput
 						label="MÉTODO PADRÃO"
@@ -418,7 +411,6 @@ function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMen
 						resetOptionLabel="A DEFINIR"
 						onReset={() => setPaymentMethod("A_DEFINIR")}
 						handleChange={(value) => setPaymentMethod(value as typeof paymentMethod)}
-						width="100%"
 					/>
 				</div>
 				<Button type="button" onClick={generateDrafts}>

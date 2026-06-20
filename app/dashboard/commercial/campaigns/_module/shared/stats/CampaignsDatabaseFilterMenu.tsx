@@ -65,7 +65,6 @@ export default function CampaignsDatabaseFilterMenu({ filters, updateFilters, cl
 								}
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, triggerTypes: [] }))}
 								resetOptionLabel="TODOS"
-								width="100%"
 							/>
 						</div>
 
@@ -104,7 +103,6 @@ export default function CampaignsDatabaseFilterMenu({ filters, updateFilters, cl
 										statsPeriodAfter: formatDateOnInputChange(value, "date") as Date,
 									}))
 								}
-								width="100%"
 							/>
 							<DateInput
 								label="ANTES DE"
@@ -115,7 +113,6 @@ export default function CampaignsDatabaseFilterMenu({ filters, updateFilters, cl
 										statsPeriodBefore: formatDateOnInputChange(value, "date", "end") as Date,
 									}))
 								}
-								width="100%"
 							/>
 						</div>
 					</div>

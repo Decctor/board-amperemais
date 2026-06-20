@@ -14,7 +14,6 @@ export default function UsoUnicoConfig() {
 				label="DATA DO DISPARO"
 				value={state.campaign.gatilhoUsoUnicoDataReferencia ?? undefined}
 				handleChange={(value) => updateCampaign({ gatilhoUsoUnicoDataReferencia: value ?? null })}
-				width="100%"
 			/>
 		</div>
 	);

@@ -79,7 +79,6 @@ export default function OrganizationsMembershipInvitationsSellerBlock({
 							resetOptionLabel="NÃO DEFINIDO"
 							onReset={() => updateInvitation({ vendedorId: null })}
 							handleChange={(value) => updateInvitation({ vendedorId: value })}
-							width="100%"
 						/>
 					) : (
 						<p className="text-xs text-muted-foreground text-center">

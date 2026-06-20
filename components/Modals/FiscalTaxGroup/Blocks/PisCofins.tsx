@@ -36,7 +36,6 @@ export default function FiscalTaxGroupPisCofinsBlock({ fiscalTaxGroup, updateFis
 						resetOptionLabel="SELECIONE O CST"
 						handleChange={(value) => updateFiscalTaxGroup({ cstPis: value as TFiscalPisCofinsCstEnum })}
 						onReset={() => updateFiscalTaxGroup({ cstPis: "49" })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -57,7 +56,6 @@ export default function FiscalTaxGroupPisCofinsBlock({ fiscalTaxGroup, updateFis
 						resetOptionLabel="SELECIONE O CST"
 						handleChange={(value) => updateFiscalTaxGroup({ cstCofins: value as TFiscalPisCofinsCstEnum })}
 						onReset={() => updateFiscalTaxGroup({ cstCofins: "49" })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">

@@ -24,7 +24,6 @@ export default function LessonContentBlock({ lesson, updateLesson, videoHolder, 
 				value={lesson.tipoConteudo}
 				resetOptionLabel="SELECIONE O TIPO DE CONTEÚDO"
 				handleChange={(value) => updateLesson({ tipoConteudo: value as TCommunityLessonContentTypeEnum })}
-				width="100%"
 				options={LessonContentTypeOptions.map((option) => ({
 					id: option.id,
 					value: option.value,
@@ -33,9 +32,7 @@ export default function LessonContentBlock({ lesson, updateLesson, videoHolder, 
 				}))}
 				onReset={() => updateLesson({ tipoConteudo: "VIDEO" })}
 			/>
-			{showVideoUpload && (
-				<VideoInput label="ARQUIVO DE VÍDEO" videoHolder={videoHolder} updateVideoHolder={updateVideoHolder} />
-			)}
+			{showVideoUpload && <VideoInput label="ARQUIVO DE VÍDEO" videoHolder={videoHolder} updateVideoHolder={updateVideoHolder} />}
 
 			{showTextContent && (
 				<div className="flex flex-col gap-1.5">

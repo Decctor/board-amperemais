@@ -35,7 +35,6 @@ export default function AccountingEntryAccountsBlock({ entry, updateEntry, edita
 				resetOptionLabel="NÃO DEFINIDA"
 				onReset={() => updateEntry({ idContaDebito: "" })}
 				handleChange={(value) => updateEntry({ idContaDebito: value })}
-				width="100%"
 				required
 				editable={editable}
 			/>
@@ -46,7 +45,6 @@ export default function AccountingEntryAccountsBlock({ entry, updateEntry, edita
 				resetOptionLabel="NÃO DEFINIDA"
 				onReset={() => updateEntry({ idContaCredito: "" })}
 				handleChange={(value) => updateEntry({ idContaCredito: value })}
-				width="100%"
 				required
 				editable={editable}
 			/>

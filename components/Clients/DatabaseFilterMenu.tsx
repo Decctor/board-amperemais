@@ -55,13 +55,11 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 								label="DEPOIS DE"
 								value={formatDateForInputValue(filtersHolder.statsPeriodAfter)}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, statsPeriodAfter: formatDateOnInputChange(value, "date") as Date }))}
-								width="100%"
 							/>
 							<DateInput
 								label="ANTES DE"
 								value={formatDateForInputValue(filtersHolder.statsPeriodBefore)}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, statsPeriodBefore: formatDateOnInputChange(value, "date") as Date }))}
-								width="100%"
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
@@ -74,7 +72,6 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
 								resetOptionLabel="NENHUMA DEFINIDA"
-								width="100%"
 							/>
 							<MultipleSelectInput
 								label="CANAIS DE AQUISIÇÃO"
@@ -83,7 +80,6 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, acquisitionChannels: value as string[] }))}
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, acquisitionChannels: [] }))}
 								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
 							/>
 							<MultipleSelectInput
 								label="TÍTULOS DE SEGMENTAÇÃO"
@@ -92,7 +88,6 @@ function ClientsDatabaseFilterMenu({ filters, updateFilters, closeMenu }: Client
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, segmentationTitles: value as string[] }))}
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, segmentationTitles: [] }))}
 								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">

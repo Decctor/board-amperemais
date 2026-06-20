@@ -131,7 +131,6 @@ export default function NewFinancialTransfer({ closeMenu, callbacks }: NewFinanc
 					resetOptionLabel="Selecione a conta de origem"
 					onReset={() => updateState({ contaFinanceiraOrigemId: "" })}
 					handleChange={(contaFinanceiraOrigemId) => updateState({ contaFinanceiraOrigemId })}
-					width="100%"
 					required
 				/>
 				<div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
@@ -145,7 +144,6 @@ export default function NewFinancialTransfer({ closeMenu, callbacks }: NewFinanc
 					resetOptionLabel="Selecione a conta de destino"
 					onReset={() => updateState({ contaFinanceiraDestinoId: "" })}
 					handleChange={(contaFinanceiraDestinoId) => updateState({ contaFinanceiraDestinoId })}
-					width="100%"
 					required
 				/>
 			</ResponsiveMenuSection>
@@ -162,7 +160,6 @@ export default function NewFinancialTransfer({ closeMenu, callbacks }: NewFinanc
 					label="DATA DA TRANSFERÊNCIA"
 					value={formatDateForInputValue(state.dataEfetivacao)}
 					handleChange={(value) => updateState({ dataEfetivacao: formatDateOnInputChange(value, "date") ?? state.dataEfetivacao })}
-					width="100%"
 					required
 				/>
 			</ResponsiveMenuSection>

@@ -197,7 +197,6 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 									label="DATA DE NASCIMENTO"
 									value={formatDateForInputValue(userState.dataNascimento)}
 									handleChange={(val) => updateUserState({ dataNascimento: formatDateOnInputChange(val, "date") })}
-									width="100%"
 								/>
 							</div>
 						</div>

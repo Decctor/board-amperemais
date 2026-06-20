@@ -29,8 +29,8 @@ export default function FiscalOperationProfileSeriesBlock({
 	return (
 		<ResponsiveMenuSection title="SÉRIE PADRÃO" icon={<BookText className="h-4 min-h-4 w-4 min-w-4" />}>
 			<p className="text-sm font-medium text-muted-foreground">
-				Série fiscal padrão utilizada pela emissão deste perfil. Apenas séries do mesmo tipo de documento (
-				{fiscalOperationProfile.tipoDocumento}) ficam disponíveis.
+				Série fiscal padrão utilizada pela emissão deste perfil. Apenas séries do mesmo tipo de documento ({fiscalOperationProfile.tipoDocumento}) ficam
+				disponíveis.
 			</p>
 			<SelectInput
 				label="SÉRIE FISCAL PADRÃO"
@@ -39,7 +39,6 @@ export default function FiscalOperationProfileSeriesBlock({
 				resetOptionLabel={seriesOptions.length === 0 ? "NENHUMA SÉRIE DISPONÍVEL" : "NENHUMA SÉRIE VINCULADA"}
 				handleChange={(value) => updateFiscalOperationProfile({ seriePadraoId: value })}
 				onReset={() => updateFiscalOperationProfile({ seriePadraoId: null })}
-				width="100%"
 			/>
 		</ResponsiveMenuSection>
 	);

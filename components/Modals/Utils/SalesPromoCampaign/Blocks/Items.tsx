@@ -365,7 +365,6 @@ function NewItemMenu({ addItem, closeMenu }: NewItemMenuProps) {
 					label="DATA DA CONDIÇÃO ESPECIAL"
 					value={formatDateForInputValue(itemHolder.anuncioData)}
 					handleChange={(value) => setItemHolder({ ...itemHolder, anuncioData: formatDateOnInputChange(value, "string") ?? undefined })}
-					width="100%"
 				/>
 				<NumberInput
 					label="VALOR PROMOCIONAL DE ANÚNCIO"
@@ -509,7 +508,6 @@ function EditItemMenu({ initialItem, updateItem, closeMenu }: EditItemMenuProps)
 					label="DATA DA CONDIÇÃO ESPECIAL"
 					value={formatDateForInputValue(itemHolder.anuncioData)}
 					handleChange={(value) => setItemHolder({ ...itemHolder, anuncioData: formatDateOnInputChange(value, "string") ?? undefined })}
-					width="100%"
 				/>
 				<NumberInput
 					label="VALOR PROMOCIONAL DE ANÚNCIO"

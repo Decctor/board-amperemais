@@ -59,7 +59,6 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 									resetOptionLabel="SELECIONE O ESCOPO"
 									handleChange={(value) => updateRegra({ index, regra: { escopo: value as TFiscalTaxRuleScopeEnum } })}
 									onReset={() => updateRegra({ index, regra: { escopo: "INTRAESTADUAL" } })}
-									width="100%"
 								/>
 							</div>
 							<div className="w-full lg:w-1/2">
@@ -81,7 +80,6 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 									resetOptionLabel="QUALQUER"
 									handleChange={(value) => updateRegra({ index, regra: { indicadorDestinatario: value as TFiscalClientTaxIndicatorEnum } })}
 									onReset={() => updateRegra({ index, regra: { indicadorDestinatario: null } })}
-									width="100%"
 								/>
 							</div>
 							<div className="w-full lg:w-1/2">
@@ -92,7 +90,6 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 									resetOptionLabel="QUALQUER"
 									handleChange={(value) => updateRegra({ index, regra: { finalidade: value as TFiscalOperationFinalityEnum } })}
 									onReset={() => updateRegra({ index, regra: { finalidade: null } })}
-									width="100%"
 								/>
 							</div>
 						</div>
@@ -106,7 +103,6 @@ export default function FiscalTaxGroupRulesBlock({ regras, addRegra, updateRegra
 									resetOptionLabel="HERDAR DO GRUPO"
 									handleChange={(value) => updateRegra({ index, regra: { csosn: value as TFiscalIcmsCsosnEnum } })}
 									onReset={() => updateRegra({ index, regra: { csosn: null } })}
-									width="100%"
 								/>
 							</div>
 							<div className="w-full lg:w-1/2">

@@ -21,7 +21,6 @@ export default function UsersSellerBlock({ membershipHolder, updateMembership }:
 				resetOptionLabel="NÃO DEFINIDO"
 				onReset={() => updateMembership({ usuarioVendedorId: "" })}
 				handleChange={(value) => updateMembership({ usuarioVendedorId: value })}
-				width="100%"
 			/>
 		</ResponsiveMenuSection>
 	);

@@ -9,7 +9,6 @@ type SelectOption = {
 	url?: string;
 };
 type SelectWithImagesProps = {
-	width?: string;
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
@@ -23,7 +22,6 @@ type SelectWithImagesProps = {
 };
 
 function SelectWithImages({
-	width,
 	label,
 	labelClassName,
 	holderClassName,
@@ -38,7 +36,11 @@ function SelectWithImages({
 	return (
 		<SelectInput
 			label={label}
+			labelClassName={labelClassName}
+			holderClassName={holderClassName}
+			showLabel={showLabel}
 			value={value}
+			editable={editable}
 			resetOptionLabel={resetOptionLabel}
 			options={
 				options?.map((option) => ({

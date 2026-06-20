@@ -392,7 +392,6 @@ function SellersExcludedSalesFilterContent({ filters, updateFilters }: SellersIn
 			handleChange={(statsExcludedSalesIds) => updateFilters({ statsExcludedSalesIds: statsExcludedSalesIds as string[], page: 1 })}
 			onReset={() => updateFilters({ statsExcludedSalesIds: [], page: 1 })}
 			resetOptionLabel="VENDAS EXCLUÍDAS"
-			width="100%"
 		/>
 	);
 }

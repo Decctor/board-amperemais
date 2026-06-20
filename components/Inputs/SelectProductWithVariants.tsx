@@ -5,13 +5,13 @@ import { useProductsBySearchInfiniteQuery } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
 import type { TGetProductsBySearchOutput } from "@/app/api/products/search/route";
 import { BadgeCheck, Check, ChevronDown, ChevronRight, ChevronsUpDown, Package } from "lucide-react";
-import { type ComponentProps, type ReactNode, useMemo, useRef, useState } from "react";
+import { type ComponentProps, type ReactNode, useId, useMemo, useRef, useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
-import { Label } from "../ui/label";
+import { Field, FieldLabel } from "../ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 type TProductBySearch = TGetProductsBySearchOutput["data"]["products"][number];
@@ -23,7 +23,6 @@ export type TSelectProductWithVariantsValue = {
 } | null;
 
 type SelectProductWithVariantsProps = {
-	width?: string;
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
@@ -49,7 +48,6 @@ type SelectProductWithVariantsProps = {
 };
 
 function SelectProductWithVariants({
-	width,
 	label,
 	labelClassName,
 	holderClassName,
@@ -75,7 +73,8 @@ function SelectProductWithVariants({
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	const [isOpen, setIsOpen] = useState(false);
 	const [expandedProductIds, setExpandedProductIds] = useState<string[]>([]);
-	const inputIdentifier = label.toLowerCase().replace(" ", "_");
+	const generatedId = useId();
+	const inputIdentifier = `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const dialogContainer = (triggerRef.current?.closest("[data-dialog-container]") as HTMLElement) || null;
 
@@ -114,6 +113,7 @@ function SelectProductWithVariants({
 	const renderTrigger = () => (
 		<Button
 			ref={triggerRef}
+			id={inputIdentifier}
 			type="button"
 			disabled={!editable}
 			variant="outline"
@@ -277,11 +277,11 @@ function SelectProductWithVariants({
 
 	if (isDesktop) {
 		return (
-			<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
+			<Field className="gap-1" data-disabled={!editable}>
 				{showLabel && (
-					<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+					<FieldLabel htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 						{label}
-					</Label>
+					</FieldLabel>
 				)}
 				<Popover modal={false} open={isOpen} onOpenChange={setIsOpen}>
 					<PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
@@ -296,16 +296,16 @@ function SelectProductWithVariants({
 						{renderContent()}
 					</PopoverContent>
 				</Popover>
-			</div>
+			</Field>
 		);
 	}
 
 	return (
-		<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
+		<Field className="gap-1" data-disabled={!editable}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+				<FieldLabel htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
-				</Label>
+				</FieldLabel>
 			)}
 			<Drawer open={isOpen} onOpenChange={setIsOpen}>
 				<DrawerTrigger asChild>{renderTrigger()}</DrawerTrigger>
@@ -313,7 +313,7 @@ function SelectProductWithVariants({
 					<div className={cn("mt-4 flex min-h-0 flex-col border-t p-2 pb-8", drawerContentClassName)}>{renderContent()}</div>
 				</DrawerContent>
 			</Drawer>
-		</div>
+		</Field>
 	);
 }
 

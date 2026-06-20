@@ -5,17 +5,16 @@ import { useSalesSimplifiedSearch } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
 import type { TSalesSimplifiedSearchResult } from "@/app/api/sales/simplified-search/route";
 import { BadgeDollarSign, Check, ChevronsUpDown } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import GeneralPaginationComponent from "../Utils/Pagination";
 import { Button } from "../ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
-import { Label } from "../ui/label";
+import { Field, FieldLabel } from "../ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 type SelectInputProps<T> = {
-	width?: string;
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
@@ -28,7 +27,6 @@ type SelectInputProps<T> = {
 };
 
 function MultipleSalesSelectInput<T>({
-	width,
 	label,
 	labelClassName,
 	holderClassName,
@@ -64,7 +62,8 @@ function MultipleSalesSelectInput<T>({
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const dialogContainer = triggerRef.current?.closest("[data-dialog-container]") as HTMLElement | null;
 
-	const inputIdentifier = label.toLowerCase().replace(" ", "_");
+	const generatedId = useId();
+	const inputIdentifier = `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
 
 	function handleSelect({ id }: { id: string | number }) {
 		const ids = selectedIds ? [...selectedIds] : [];
@@ -94,6 +93,7 @@ function MultipleSalesSelectInput<T>({
 	const renderTrigger = () => (
 		<Button
 			ref={triggerRef}
+			id={inputIdentifier}
 			type="button"
 			disabled={!editable}
 			variant="outline"
@@ -180,11 +180,11 @@ function MultipleSalesSelectInput<T>({
 
 	if (isDesktop) {
 		return (
-			<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
+			<Field className="gap-1" data-disabled={!editable}>
 				{showLabel && (
-					<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+					<FieldLabel htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 						{label}
-					</Label>
+					</FieldLabel>
 				)}
 				<Popover open={isOpen} onOpenChange={setIsOpen}>
 					<PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
@@ -192,16 +192,16 @@ function MultipleSalesSelectInput<T>({
 						{renderContent()}
 					</PopoverContent>
 				</Popover>
-			</div>
+			</Field>
 		);
 	}
 
 	return (
-		<div className={cn("flex w-full flex-col gap-1", width && `w-[${width}]`)}>
+		<Field className="gap-1" data-disabled={!editable}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+				<FieldLabel htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
-				</Label>
+				</FieldLabel>
 			)}
 			<Drawer open={isOpen} onOpenChange={setIsOpen}>
 				<DrawerTrigger asChild>{renderTrigger()}</DrawerTrigger>
@@ -209,7 +209,7 @@ function MultipleSalesSelectInput<T>({
 					<div className="mt-4 border-t p-2 pb-8">{renderContent()}</div>
 				</DrawerContent>
 			</Drawer>
-		</div>
+		</Field>
 	);
 }
 

@@ -30,7 +30,6 @@ export default function CashbackProgramsRedemptionLimitBlock({ cashbackProgram, 
 						}
 						options={CashbackProgramRedemptionLimitTypeOptions}
 						onReset={() => updateCashbackProgram({ resgateLimiteTipo: null, resgateLimiteValor: null })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">

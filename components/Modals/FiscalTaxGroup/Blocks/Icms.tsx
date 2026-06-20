@@ -34,7 +34,6 @@ export default function FiscalTaxGroupIcmsBlock({ fiscalTaxGroup, updateFiscalTa
 				resetOptionLabel="SELECIONE O CSOSN"
 				handleChange={(value) => updateFiscalTaxGroup({ csosn: value as TFiscalIcmsCsosnEnum })}
 				onReset={() => updateFiscalTaxGroup({ csosn: "102" })}
-				width="100%"
 			/>
 
 			<div className="w-full flex items-start gap-2 flex-col lg:flex-row">

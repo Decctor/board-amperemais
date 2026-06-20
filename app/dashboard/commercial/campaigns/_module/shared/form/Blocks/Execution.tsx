@@ -50,7 +50,6 @@ export default function CampaignsExecutionBlock({
 										updateCampaign({ execucaoAgendadaDirecao: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaDirecao"] })
 									}
 									onReset={() => updateCampaign({ execucaoAgendadaDirecao: "DEPOIS" })}
-									width="100%"
 								/>
 							</div>
 						) : null}
@@ -64,7 +63,6 @@ export default function CampaignsExecutionBlock({
 									updateCampaign({ execucaoAgendadaMedida: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaMedida"] })
 								}
 								onReset={() => updateCampaign({ execucaoAgendadaMedida: "DIAS" })}
-								width="100%"
 							/>
 						</div>
 						<div className={supportsAntes ? "w-full lg:w-1/3" : "w-full lg:w-1/2"}>
@@ -97,7 +95,6 @@ export default function CampaignsExecutionBlock({
 					options={InteractionsCronJobTimeBlocksOptions}
 					handleChange={(value) => updateCampaign({ execucaoAgendadaBloco: value as TUseCampaignState["state"]["campaign"]["execucaoAgendadaBloco"] })}
 					onReset={() => updateCampaign({ execucaoAgendadaBloco: "06:00" })}
-					width="100%"
 				/>
 			</div>
 		</ResponsiveMenuSection>

@@ -19,13 +19,11 @@ export default function ClientProfileBlock({ client, updateClient }: ClientProfi
 					label="DATA DE NASCIMENTO"
 					value={formatDateForInputValue(client.dataNascimento)}
 					handleChange={(value) => updateClient({ dataNascimento: formatDateOnInputChange(value, "date") })}
-					width="100%"
 				/>
 				<DateInput
 					label="DATA DE FUNDAÇÃO"
 					value={formatDateForInputValue(client.dataFundacao)}
 					handleChange={(value) => updateClient({ dataFundacao: formatDateOnInputChange(value, "date") })}
-					width="100%"
 				/>
 				<TextInput
 					label="PROFISSÃO"

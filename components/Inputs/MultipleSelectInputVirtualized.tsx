@@ -2,11 +2,11 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { type ReactNode, useId, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
-import { Label } from "../ui/label";
+import { Field, FieldLabel } from "../ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 type SelectOption = {
 	id: string | number;
@@ -15,7 +15,6 @@ type SelectOption = {
 	startContent?: ReactNode;
 };
 type SelectInputProps = {
-	width?: string;
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
@@ -31,7 +30,6 @@ type SelectInputProps = {
 };
 
 function MultipleSelectInputVirtualized({
-	width,
 	label,
 	labelClassName,
 	holderClassName,
@@ -45,7 +43,8 @@ function MultipleSelectInputVirtualized({
 	itemHeight = 40,
 	maxHeight = 300,
 }: SelectInputProps) {
-	const inputIdentifier = label.toLowerCase().replaceAll(" ", "_");
+	const generatedId = useId();
+	const inputIdentifier = `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	const [isOpen, setIsOpen] = useState<boolean>(false);
 	const [searchValue, setSearchValue] = useState<string>("");
@@ -62,64 +61,31 @@ function MultipleSelectInputVirtualized({
 
 	const selectedOptions = options?.filter((o) => (selected ? selected.includes(o.value) : false)) ?? [];
 
-	return isDesktop ? (
-		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
-			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
-				{label}
-			</Label>
-			<Popover open={isOpen} onOpenChange={setIsOpen}>
-				<PopoverTrigger asChild>
-					<Button
-						ref={triggerRef}
-						type="button"
-						variant="outline"
-						aria-haspopup="listbox"
-						aria-expanded={isOpen}
-						className="w-full justify-between truncate border border-border"
-					>
-						<SelectedOptions selectedOptions={selectedOptions} placeholderText={resetOptionLabel} />
-						<ChevronsUpDown className="opacity-50" />
-					</Button>
-				</PopoverTrigger>
-				<PopoverContent container={dialogContainer} className="p-0 w-[var(--radix-popover-trigger-width)]">
-					<VirtualizedOptionsList
-						value={selected?.map((p) => p.toString()) ?? null}
-						selectedOptions={selectedOptions}
-						placeholderText={resetOptionLabel}
-						resetOptionText={resetOptionLabel}
-						handleChange={handleChange}
-						handleReset={onReset}
-						options={filteredOptions ?? []}
-						optionsStartContent={optionsStartContent}
-						closeMenu={() => setIsOpen(false)}
-						searchValue={searchValue}
-						setSearchValue={setSearchValue}
-						itemHeight={itemHeight}
-						maxHeight={maxHeight}
-					/>
-				</PopoverContent>
-			</Popover>
-		</div>
-	) : (
-		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
-			<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
-				{label}
-			</Label>
-			<Drawer open={isOpen} onOpenChange={setIsOpen}>
-				<DrawerTrigger asChild>
-					<Button
-						type="button"
-						variant="outline"
-						aria-haspopup="listbox"
-						aria-expanded={isOpen}
-						className="w-full justify-between truncate border border-border"
-					>
-						<SelectedOptions selectedOptions={selectedOptions} placeholderText={resetOptionLabel} />
-						<ChevronsUpDown className="opacity-50" />
-					</Button>
-				</DrawerTrigger>
-				<DrawerContent>
-					<div className="mt-4 border-t">
+	return (
+		<Field className="gap-1">
+			{showLabel ? (
+				<FieldLabel htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+					{label}
+				</FieldLabel>
+			) : null}
+
+			{isDesktop ? (
+				<Popover open={isOpen} onOpenChange={setIsOpen}>
+					<PopoverTrigger asChild>
+						<Button
+							ref={triggerRef}
+							id={inputIdentifier}
+							type="button"
+							variant="outline"
+							aria-haspopup="listbox"
+							aria-expanded={isOpen}
+							className={cn("w-full justify-between truncate border border-border", holderClassName)}
+						>
+							<SelectedOptions selectedOptions={selectedOptions} placeholderText={resetOptionLabel} />
+							<ChevronsUpDown className="opacity-50" />
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent container={dialogContainer} className="p-0 w-[var(--radix-popover-trigger-width)]">
 						<VirtualizedOptionsList
 							value={selected?.map((p) => p.toString()) ?? null}
 							selectedOptions={selectedOptions}
@@ -135,10 +101,45 @@ function MultipleSelectInputVirtualized({
 							itemHeight={itemHeight}
 							maxHeight={maxHeight}
 						/>
-					</div>
-				</DrawerContent>
-			</Drawer>
-		</div>
+					</PopoverContent>
+				</Popover>
+			) : (
+				<Drawer open={isOpen} onOpenChange={setIsOpen}>
+					<DrawerTrigger asChild>
+						<Button
+							id={inputIdentifier}
+							type="button"
+							variant="outline"
+							aria-haspopup="listbox"
+							aria-expanded={isOpen}
+							className={cn("w-full justify-between truncate border border-border", holderClassName)}
+						>
+							<SelectedOptions selectedOptions={selectedOptions} placeholderText={resetOptionLabel} />
+							<ChevronsUpDown className="opacity-50" />
+						</Button>
+					</DrawerTrigger>
+					<DrawerContent>
+						<div className="mt-4 border-t">
+							<VirtualizedOptionsList
+								value={selected?.map((p) => p.toString()) ?? null}
+								selectedOptions={selectedOptions}
+								placeholderText={resetOptionLabel}
+								resetOptionText={resetOptionLabel}
+								handleChange={handleChange}
+								handleReset={onReset}
+								options={filteredOptions}
+								optionsStartContent={optionsStartContent}
+								closeMenu={() => setIsOpen(false)}
+								searchValue={searchValue}
+								setSearchValue={setSearchValue}
+								itemHeight={itemHeight}
+								maxHeight={maxHeight}
+							/>
+						</div>
+					</DrawerContent>
+				</Drawer>
+			)}
+		</Field>
 	);
 }
 

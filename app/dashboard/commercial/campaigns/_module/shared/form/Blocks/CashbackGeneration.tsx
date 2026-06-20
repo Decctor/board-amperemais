@@ -58,7 +58,6 @@ export default function CampaignsCashbackGenerationBlock({ campaign, updateCampa
 									options={availableTypeOptions}
 									handleChange={(value) => updateCampaign({ cashbackGeracaoTipo: value as TCashbackProgramAccumulationTypeEnum })}
 									onReset={() => updateCampaign({ cashbackGeracaoTipo: null })}
-									width="100%"
 								/>
 							</div>
 							<div className="w-full lg:w-1/2">
@@ -84,7 +83,6 @@ export default function CampaignsCashbackGenerationBlock({ campaign, updateCampa
 									options={TimeDurationUnitsOptions}
 									handleChange={(value) => updateCampaign({ cashbackGeracaoExpiracaoMedida: value as TTimeDurationUnitsEnum })}
 									onReset={() => updateCampaign({ cashbackGeracaoExpiracaoMedida: null })}
-									width="100%"
 								/>
 							</div>
 							<div className="w-full lg:w-1/2">

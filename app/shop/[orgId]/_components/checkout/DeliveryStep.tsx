@@ -192,7 +192,6 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 							options={BrazilianStatesOptions}
 							resetOptionLabel="Selecione um estado"
 							onReset={() => updateDelivery({ endereco: { ...deliveryAddress, localizacaoEstado: null } })}
-							width="100%"
 						/>
 					</div>
 					<div className="w-full lg:w-1/3">
@@ -203,7 +202,6 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 							options={BrazilianCitiesOptionsFromUF(deliveryAddress?.localizacaoEstado ?? null)}
 							resetOptionLabel="Selecione uma cidade"
 							onReset={() => updateDelivery({ endereco: { ...deliveryAddress, localizacaoCidade: null } })}
-							width="100%"
 						/>
 					</div>
 				</div>

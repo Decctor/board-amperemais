@@ -119,7 +119,6 @@ export default function NewPurchaseItem({ addPurchaseItem, closeMenu }: NewPurch
 				}
 				onReset={() => updateInfoHolder({ produtoId: "", produtoVarianteId: null })}
 				resetOptionLabel="SELECIONE UM PRODUTO"
-				width="100%"
 			/>
 			<NumberInput
 				label="QUANTIDADE"

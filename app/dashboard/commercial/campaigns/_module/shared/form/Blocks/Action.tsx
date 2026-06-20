@@ -95,7 +95,10 @@ export default function CampaignsActionBlock({
 
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
-	const selectedTemplate = useMemo(() => allTemplates.find((template) => template.id === campaign.whatsappTemplateId), [allTemplates, campaign.whatsappTemplateId]);
+	const selectedTemplate = useMemo(
+		() => allTemplates.find((template) => template.id === campaign.whatsappTemplateId),
+		[allTemplates, campaign.whatsappTemplateId],
+	);
 
 	return (
 		<>
@@ -134,11 +137,11 @@ export default function CampaignsActionBlock({
 				/>
 			) : null}
 
-            <ResponsiveMenuSection title="AÇÃO" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
+			<ResponsiveMenuSection title="AÇÃO" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
 				<div className="flex w-full flex-col gap-3">
 					<p className="text-muted-foreground text-center text-sm leading-snug tracking-tight">
-						Quando o gatilho disparar para um cliente elegível, esta campanha tenta enviar o template pelo WhatsApp e por e-mail. O telefone abaixo define
-						o remetente do WhatsApp; se o cliente não tiver telefone ou e-mail, aquele canal é ignorado.
+						Quando o gatilho disparar para um cliente elegível, esta campanha tenta enviar o template pelo WhatsApp e por e-mail. O telefone abaixo define o
+						remetente do WhatsApp; se o cliente não tiver telefone ou e-mail, aquele canal é ignorado.
 					</p>
 
 					<SelectInput
@@ -148,7 +151,6 @@ export default function CampaignsActionBlock({
 						options={whatsappConnectionPhones}
 						handleChange={(value) => updateCampaign({ whatsappConexaoTelefoneId: value })}
 						onReset={() => updateCampaign({ whatsappConexaoTelefoneId: "" })}
-						width="100%"
 					/>
 
 					<p className="text-muted-foreground text-center text-xs leading-snug">
@@ -175,7 +177,6 @@ export default function CampaignsActionBlock({
 						})}
 						handleChange={(value) => updateCampaign({ whatsappTemplateId: value })}
 						onReset={() => updateCampaign({ whatsappTemplateId: "" })}
-						width="100%"
 					/>
 
 					<div className="flex w-full items-center justify-end gap-3">
@@ -220,7 +221,11 @@ export default function CampaignsActionBlock({
 										</span>
 									</div>
 								</TooltipTrigger>
-								<TooltipContent side="top" align="start" className="w-[360px] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl">
+								<TooltipContent
+									side="top"
+									align="start"
+									className="w-[360px] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl"
+								>
 									<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex max-h-72 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1">
 										<p className="text-xs font-semibold uppercase tracking-wide text-foreground">Templates fora da lista</p>
 										<div className="flex flex-col gap-2">

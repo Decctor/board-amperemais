@@ -61,7 +61,6 @@ export default function ProductStateGeneralBlock({
 							value={product.unidade}
 							resetOptionLabel="SELECIONE A UNIDADE"
 							handleChange={(value) => updateProduct({ unidade: value })}
-							width="100%"
 							options={UnitsOfMeasurementOptions}
 							onReset={() => updateProduct({ unidade: "UN" })}
 						/>

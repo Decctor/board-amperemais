@@ -170,7 +170,6 @@ function CommercialInlineFilters({ membership, queryParams, updateQueryParams }:
 									handleChange={(excludedSalesIds) => updateQueryParams({ excludedSalesIds: excludedSalesIds as string[] })}
 									onReset={() => updateQueryParams({ excludedSalesIds: [] })}
 									resetOptionLabel="VENDAS EXCLUÍDAS"
-									width="100%"
 								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
@@ -221,7 +220,6 @@ function CommercialExcludedSalesFilter({ queryParams, updateQueryParams }: Pick<
 					handleChange={(excludedSalesIds) => updateQueryParams({ excludedSalesIds: excludedSalesIds as string[] })}
 					onReset={() => updateQueryParams({ excludedSalesIds: [] })}
 					resetOptionLabel="VENDAS EXCLUÍDAS"
-					width="100%"
 				/>
 			</InteractiveFilter.Content>
 		</InteractiveFilter.Root>

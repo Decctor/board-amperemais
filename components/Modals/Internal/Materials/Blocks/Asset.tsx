@@ -50,7 +50,6 @@ export default function MaterialAssetBlock({
 				value={communityAsset.tipo ?? "DOCUMENT"}
 				resetOptionLabel="SELECIONE O TIPO DO ASSET"
 				handleChange={(value) => updateCommunityAsset({ tipo: value as TCommunityAssetTypeEnum })}
-				width="100%"
 				options={AssetTypeOptions}
 				onReset={() => updateCommunityAsset({ tipo: "DOCUMENT" })}
 			/>

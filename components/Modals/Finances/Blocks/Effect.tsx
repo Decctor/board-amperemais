@@ -57,7 +57,7 @@ export default function FinancialTransactionEffectBlock({
 
 	return (
 		<ResponsiveMenuSection title="EFETIVAÇÃO" icon={<CheckCircle2 className="h-4 w-4 min-h-4 min-w-4" />}>
-			<DateInput label="DATA DE EFETIVAÇÃO" value={effectDate} handleChange={setEffectDate} width="100%" />
+			<DateInput label="DATA DE EFETIVAÇÃO" value={effectDate} handleChange={setEffectDate} />
 			<SelectInput
 				label="CONTA FINANCEIRA"
 				value={selectedAccountId}
@@ -65,7 +65,6 @@ export default function FinancialTransactionEffectBlock({
 				options={financialAccountOptions}
 				handleChange={(value) => setSelectedAccountId(value)}
 				onReset={() => setSelectedAccountId(null)}
-				width="100%"
 			/>
 			<SelectInput
 				label="MÉTODO FINAL"
@@ -75,7 +74,6 @@ export default function FinancialTransactionEffectBlock({
 				handleChange={(value) => setSelectedMethod(value as TPaymentMethodEnum)}
 				onReset={() => setSelectedMethod("DINHEIRO")}
 				editable={allowMethodChange}
-				width="100%"
 			/>
 		</ResponsiveMenuSection>
 	);

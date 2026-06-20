@@ -552,7 +552,6 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 						handleChange={(value) => updatePreferencias({ relatoriosDestinatariosIds: value })}
 						onReset={() => updatePreferencias({ relatoriosDestinatariosIds: null })}
 						editable={userHasEditPermissions}
-						width="100%"
 					/>
 					{/* Message limit */}
 					<div className={cn("flex w-full flex-col gap-1")}>

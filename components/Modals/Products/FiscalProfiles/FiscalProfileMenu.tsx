@@ -177,7 +177,6 @@ function FiscalProfileMenuContent({
 				resetOptionLabel="SELECIONE A ORIGEM"
 				handleChange={(value) => updateFiscalProfile({ origemMercadoria: value as TFiscalProductOriginEnum })}
 				onReset={() => updateFiscalProfile({ origemMercadoria: "NACIONAL" })}
-				width="100%"
 			/>
 			<SelectInput
 				label="GRUPO TRIBUTÁRIO"
@@ -186,7 +185,6 @@ function FiscalProfileMenuContent({
 				resetOptionLabel="SEM GRUPO TRIBUTÁRIO"
 				handleChange={(value) => updateFiscalProfile({ grupoTributarioId: value })}
 				onReset={() => updateFiscalProfile({ grupoTributarioId: null })}
-				width="100%"
 			/>
 			<TextInput label="NCM" placeholder="Ex.: 12345678" value={state.ncm} handleChange={(value) => updateFiscalProfile({ ncm: value })} />
 			<TextInput
@@ -208,7 +206,6 @@ function FiscalProfileMenuContent({
 				resetOptionLabel="SELECIONE A UNIDADE"
 				handleChange={(value) => updateFiscalProfile({ unidadeComercial: value as string })}
 				onReset={() => updateFiscalProfile({ unidadeComercial: "UN" })}
-				width="100%"
 			/>
 			<TextInput
 				label="CÓDIGO DE BENEFÍCIO FISCAL"

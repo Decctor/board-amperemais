@@ -28,7 +28,6 @@ export default function CashbackProgramsAccumulationBlock({
 						handleChange={(value) => updateCashbackProgram({ acumuloTipo: value as TUseCashbackProgramState["state"]["cashbackProgram"]["acumuloTipo"] })}
 						options={CashbackProgramAccumulationTypeOptions}
 						onReset={() => updateCashbackProgram({ acumuloTipo: "FIXO" })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/3">

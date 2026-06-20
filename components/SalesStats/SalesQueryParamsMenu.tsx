@@ -51,7 +51,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 								}
 								resetOptionLabel="VENDEDOR"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, sellers: [] }))}
-								width="100%"
 							/>
 							<MultipleSelectInput
 								label="GRUPO DE PRODUTOS"
@@ -65,7 +64,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 								}
 								resetOptionLabel="GRUPO DE PRODUTOS"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, productGroups: [] }))}
-								width="100%"
 							/>
 							<MultipleSelectInput
 								label="CATEGORIA DE CLIENTES"
@@ -79,7 +77,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 								}
 								resetOptionLabel="CATEGORIA DE CLIENTES"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, clientRFMTitles: [] }))}
-								width="100%"
 							/>
 							<MultipleSalesSelectInput
 								label="VENDAS EXCLUÍDAS"
@@ -92,7 +89,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 								}
 								resetOptionLabel="VENDAS EXCLUÍDAS"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, excludedSalesIds: [] }))}
-								width="100%"
 							/>
 							<MultipleSelectInput
 								label="NATUREZA DA VENDA"
@@ -106,7 +102,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 								}
 								resetOptionLabel="NATUREZA DA VENDA"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, saleNatures: [] }))}
-								width="100%"
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
@@ -138,7 +133,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, after: formatDateOnInputChange(value, "string", "start") as string } }))
 								}
-								width="100%"
 							/>
 							<DateInput
 								label="ANTES DE"
@@ -146,7 +140,6 @@ function SalesQueryParamsMenu({ user, membership, queryParams, updateQueryParams
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({ ...prev, period: { ...prev.period, before: formatDateOnInputChange(value, "string", "end") as string } }))
 								}
-								width="100%"
 							/>
 						</div>
 					</div>

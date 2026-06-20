@@ -52,7 +52,6 @@ export default function RecorrenteConfig() {
 						options={RecurrenceFrequencyOptions}
 						handleChange={(value) => updateCampaign({ recorrenciaTipo: value as TRecurrenceFrequencyEnum })}
 						onReset={() => updateCampaign({ recorrenciaTipo: null })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -72,7 +71,6 @@ export default function RecorrenteConfig() {
 					options={DaysOfWeekOptions.map((o) => ({ ...o, value: String(o.value) }))}
 					handleChange={(values) => updateCampaign({ recorrenciaDiasSemana: JSON.stringify(values.map(Number)) })}
 					onReset={() => updateCampaign({ recorrenciaDiasSemana: null })}
-					width="100%"
 				/>
 			) : null}
 			{campaign.recorrenciaTipo === "MENSAL" ? (
@@ -83,7 +81,6 @@ export default function RecorrenteConfig() {
 					options={DaysOfMonthOptions}
 					handleChange={(values) => updateCampaign({ recorrenciaDiasMes: JSON.stringify(values.map(Number)) })}
 					onReset={() => updateCampaign({ recorrenciaDiasMes: null })}
-					width="100%"
 				/>
 			) : null}
 		</div>

@@ -65,7 +65,6 @@ function PartnersFilterMenu({ queryParams, updateQueryParams, closeMenu }: Partn
 								label="DEPOIS DE"
 								value={formatDateForInputValue(queryParamsHolder.statsPeriodAfter)}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsPeriodAfter: formatDateOnInputChange(value, "date") as Date }))}
-								width="100%"
 							/>
 							<DateInput
 								label="ANTES DE"
@@ -73,7 +72,6 @@ function PartnersFilterMenu({ queryParams, updateQueryParams, closeMenu }: Partn
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({ ...prev, statsPeriodBefore: formatDateOnInputChange(value, "date", "end") as Date }))
 								}
-								width="100%"
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
@@ -100,7 +98,6 @@ function PartnersFilterMenu({ queryParams, updateQueryParams, closeMenu }: Partn
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
 								resetOptionLabel="NENHUMA DEFINIDA"
-								width="100%"
 							/>
 						</div>
 					</div>

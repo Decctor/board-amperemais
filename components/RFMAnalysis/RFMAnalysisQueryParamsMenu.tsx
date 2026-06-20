@@ -52,7 +52,6 @@ function RFMAnalysisQueryParamsMenu({ filters, updateFilters, closeMenu }: RFMAn
 								}
 								resetOptionLabel="CANAL DE AQUISIÇÃO"
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, acquisitionChannels: [] }))}
-								width="100%"
 							/>
 							<MultipleSelectInput
 								label="CATEGORIA DE CLIENTES"
@@ -66,7 +65,6 @@ function RFMAnalysisQueryParamsMenu({ filters, updateFilters, closeMenu }: RFMAn
 								}
 								resetOptionLabel="CATEGORIA DE CLIENTES"
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, segmentationTitles: [] }))}
-								width="100%"
 							/>
 						</div>
 						<h1 className="w-full text-center text-[0.75rem] tracking-tight text-foreground/80">FILTRO PARA COMPRAS</h1>
@@ -81,7 +79,6 @@ function RFMAnalysisQueryParamsMenu({ filters, updateFilters, closeMenu }: RFMAn
 							}
 							resetOptionLabel="VENDAS EXCLUÍDAS"
 							onReset={() => setFiltersHolder((prev) => ({ ...prev, statsExcludedSalesIds: [] }))}
-							width="100%"
 						/>
 						<MultipleSelectInput
 							label="NATUREZA DA VENDA"
@@ -95,7 +92,6 @@ function RFMAnalysisQueryParamsMenu({ filters, updateFilters, closeMenu }: RFMAn
 							}
 							resetOptionLabel="NATUREZA DA VENDA"
 							onReset={() => setFiltersHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
-							width="100%"
 						/>
 
 						<div className="flex w-full flex-col gap-2">
@@ -104,13 +100,11 @@ function RFMAnalysisQueryParamsMenu({ filters, updateFilters, closeMenu }: RFMAn
 								label="DEPOIS DE"
 								value={formatDateForInputValue(filtersHolder.statsPeriodAfter)}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, statsPeriodAfter: formatDateOnInputChange(value, "date") as Date }))}
-								width="100%"
 							/>
 							<DateInput
 								label="ANTES DE"
 								value={formatDateForInputValue(filtersHolder.statsPeriodBefore)}
 								handleChange={(value) => setFiltersHolder((prev) => ({ ...prev, statsPeriodBefore: formatDateOnInputChange(value, "date") as Date }))}
-								width="100%"
 							/>
 						</div>
 					</div>

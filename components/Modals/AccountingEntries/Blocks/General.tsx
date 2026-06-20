@@ -37,7 +37,6 @@ export default function AccountingEntryGeneralBlock({
 				label="DATA DE COMPETÊNCIA"
 				value={formatDateForInputValue(entry.dataCompetencia)}
 				handleChange={(value) => updateEntry({ dataCompetencia: formatDateOnInputChange(value, "date") ?? entry.dataCompetencia })}
-				width="100%"
 				required
 				editable={competenceEditable}
 			/>

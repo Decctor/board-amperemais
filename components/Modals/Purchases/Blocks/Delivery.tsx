@@ -18,7 +18,6 @@ export default function PurchaseDeliveryBlock({ purchase, updatePurchase }: Purc
 						label="DATA DE ENVIO"
 						value={formatDateForInputValue(purchase.entregaDataEnvio)}
 						handleChange={(value) => updatePurchase({ entregaDataEnvio: formatDateOnInputChange(value, "date") })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/3">
@@ -26,7 +25,6 @@ export default function PurchaseDeliveryBlock({ purchase, updatePurchase }: Purc
 						label="DATA DE PREVISÃO DE RECEBIMENTO"
 						value={formatDateForInputValue(purchase.entregaDataRecebimentoPrevisao)}
 						handleChange={(value) => updatePurchase({ entregaDataRecebimentoPrevisao: formatDateOnInputChange(value, "date") })}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/3">
@@ -34,12 +32,9 @@ export default function PurchaseDeliveryBlock({ purchase, updatePurchase }: Purc
 						label="DATA DE RECEBIMENTO EFETIVO"
 						value={formatDateForInputValue(purchase.entregaDataRecebimentoEfetivacao)}
 						handleChange={(value) => updatePurchase({ entregaDataRecebimentoEfetivacao: formatDateOnInputChange(value, "date") })}
-						width="100%"
 						editable={isReceived}
 					/>
-					{!isReceived ? (
-						<p className="text-[0.65rem] text-muted-foreground mt-1">Disponível apenas quando o status da compra for RECEBIDA.</p>
-					) : null}
+					{!isReceived ? <p className="text-[0.65rem] text-muted-foreground mt-1">Disponível apenas quando o status da compra for RECEBIDA.</p> : null}
 				</div>
 			</div>
 		</ResponsiveMenuSection>

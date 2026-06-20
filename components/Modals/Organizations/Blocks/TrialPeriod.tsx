@@ -68,13 +68,11 @@ export default function AdminOrganizationTrialPeriodBlock({ organization, update
 					label="DATA DE INÍCIO"
 					value={formatDateForInputValue(organization.periodoTesteInicio)}
 					handleChange={(value) => updateOrganization({ periodoTesteInicio: formatDateOnInputChange(value, "date", "start") })}
-					width="100%"
 				/>
 				<DateInput
 					label="DATA DE FIM"
 					value={formatDateForInputValue(organization.periodoTesteFim)}
 					handleChange={(value) => updateOrganization({ periodoTesteFim: formatDateOnInputChange(value, "date", "end") })}
-					width="100%"
 				/>
 			</div>
 

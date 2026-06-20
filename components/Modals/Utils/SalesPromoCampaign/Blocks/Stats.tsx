@@ -25,7 +25,6 @@ export default function SalesPromoCampaignStatsBlock({ utilData, updateUtilData 
 								},
 							})
 						}
-						width="100%"
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
@@ -40,7 +39,6 @@ export default function SalesPromoCampaignStatsBlock({ utilData, updateUtilData 
 								},
 							})
 						}
-						width="100%"
 					/>
 				</div>
 			</div>

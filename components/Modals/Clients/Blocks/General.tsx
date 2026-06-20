@@ -42,7 +42,6 @@ export default function ClientGeneralBlock({ client, updateClient }: ClientGener
 				handleChange={(value) => updateClient({ canalAquisicao: value })}
 				onReset={() => updateClient({ canalAquisicao: null })}
 				resetOptionLabel="NÃO DEFINIDO"
-				width="100%"
 			/>
 		</ResponsiveMenuSection>
 	);

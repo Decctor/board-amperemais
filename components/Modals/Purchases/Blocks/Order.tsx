@@ -16,7 +16,6 @@ export default function PurchaseOrderBlock({ purchase, updatePurchase }: Purchas
 				label="DATA DO PEDIDO"
 				value={formatDateForInputValue(purchase.pedidoData)}
 				handleChange={(value) => updatePurchase({ pedidoData: formatDateOnInputChange(value, "date") })}
-				width="100%"
 			/>
 			<div className="w-full flex flex-col gap-1.5">
 				<h3 className="text-xs font-medium tracking-tight text-muted-foreground">DADOS DO FORNECEDOR</h3>

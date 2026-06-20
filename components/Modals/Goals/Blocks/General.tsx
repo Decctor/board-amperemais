@@ -19,13 +19,11 @@ function GoalGeneral({ goal, updateGoal, goalSellers }: GoalGeneralProps) {
 				label="DATA DE INÍCIO"
 				value={formatDateForInputValue(goal.dataInicio)}
 				handleChange={(value) => updateGoal({ dataInicio: formatDateOnInputChange(value, "date", "start") ?? undefined })}
-				width="100%"
 			/>
 			<DateInput
 				label="DATA DE FIM"
 				value={formatDateForInputValue(goal.dataFim)}
 				handleChange={(value) => updateGoal({ dataFim: formatDateOnInputChange(value, "date", "end") ?? undefined })}
-				width="100%"
 			/>
 			<NumberInput
 				label="META DE VALOR (R$)"

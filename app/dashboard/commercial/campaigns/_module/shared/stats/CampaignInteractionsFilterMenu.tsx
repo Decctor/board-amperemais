@@ -49,7 +49,6 @@ export default function CampaignInteractionsFilterMenu({ filters, updateFilters,
 								}
 								onReset={() => setFiltersHolder((prev) => ({ ...prev, status: [] }))}
 								resetOptionLabel="TODOS"
-								width="100%"
 							/>
 						</div>
 

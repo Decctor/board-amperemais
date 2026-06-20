@@ -133,7 +133,6 @@ function ClientLocationBlockCard({ location, isPrimary, updateClientLocation, re
 					}
 					onReset={() => updateClientLocation({ localizacaoEstado: null, localizacaoCidade: null })}
 					resetOptionLabel="NÃO DEFINIDO"
-					width="100%"
 				/>
 				<SelectInput
 					label="CIDADE"
@@ -142,7 +141,6 @@ function ClientLocationBlockCard({ location, isPrimary, updateClientLocation, re
 					handleChange={(value) => updateClientLocation({ localizacaoCidade: value || null })}
 					onReset={() => updateClientLocation({ localizacaoCidade: null })}
 					resetOptionLabel="NÃO DEFINIDO"
-					width="100%"
 				/>
 				<TextInput
 					label="BAIRRO"

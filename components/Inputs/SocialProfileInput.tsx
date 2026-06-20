@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { normalizeSocialProfile, type SocialProfilePlatform } from "@/lib/socials";
 import { cn } from "@/lib/utils";
 
+import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 
 type SocialProfileInputProps = {
 	label: string;
@@ -13,7 +13,6 @@ type SocialProfileInputProps = {
 	placeholder: string;
 	prefix: string;
 	prefixIcon?: ReactNode;
-	width?: string;
 	editable?: boolean;
 	handleChange: (value: string | null) => void;
 };
@@ -25,21 +24,21 @@ export default function SocialProfileInput({
 	placeholder,
 	prefix,
 	prefixIcon,
-	width,
 	editable = true,
 	handleChange,
 }: SocialProfileInputProps) {
-	const inputIdentifier = label.toLowerCase().replaceAll(" ", "_");
+	const generatedId = useId();
+	const inputIdentifier = `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
 
 	function commitValue(nextValue: string) {
 		handleChange(normalizeSocialProfile(nextValue, platform));
 	}
 
 	return (
-		<div className={`flex w-full flex-col gap-1 lg:w-[${width ? width : "350px"}]`}>
-			<Label htmlFor={inputIdentifier} className="text-sm font-medium tracking-tight text-foreground/80">
+		<Field className="gap-1" data-disabled={!editable}>
+			<FieldLabel htmlFor={inputIdentifier} className="text-sm font-medium tracking-tight text-foreground/80">
 				{label}
-			</Label>
+			</FieldLabel>
 			<div
 				className={cn(
 					"flex h-10 w-full items-center overflow-hidden rounded-md border border-border bg-background text-sm shadow-xs transition-colors focus-within:border-border",
@@ -61,6 +60,6 @@ export default function SocialProfileInput({
 					className="h-full min-w-0 flex-1 rounded-none border-0 px-3 py-1 text-sm shadow-none outline-hidden placeholder:italic focus-visible:ring-0"
 				/>
 			</div>
-		</div>
+		</Field>
 	);
 }

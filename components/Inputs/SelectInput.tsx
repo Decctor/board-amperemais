@@ -1,11 +1,11 @@
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
-import React, { type ReactNode, useMemo, useRef, useState } from "react";
+import React, { type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
-import { Label } from "../ui/label";
+import { Field, FieldLabel } from "../ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 type SelectOption = {
@@ -15,7 +15,6 @@ type SelectOption = {
 	startContent?: ReactNode;
 };
 type SelectInputProps = {
-	width?: string;
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
@@ -31,7 +30,6 @@ type SelectInputProps = {
 };
 
 function SelectInput({
-	width,
 	label,
 	labelClassName,
 	holderClassName,
@@ -45,70 +43,36 @@ function SelectInput({
 	onReset,
 	required = false,
 }: SelectInputProps) {
-	const inputIdentifier = label.toLowerCase().replaceAll(" ", "_");
+	const generatedId = useId();
+	const inputIdentifier = `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	const [isOpen, setIsOpen] = useState<boolean>(false);
-	return isDesktop ? (
-		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
+	return (
+		<Field className="gap-1" data-disabled={!editable}>
 			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
+				<FieldLabel htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
-				</Label>
+					{required ? <span className="text-red-500">*</span> : null}
+				</FieldLabel>
 			)}
-			<Popover open={isOpen} onOpenChange={setIsOpen}>
-				<PopoverTrigger asChild>
-					<Button
-						type="button"
-						disabled={!editable}
-						variant="outline"
-						aria-haspopup="listbox"
-						aria-expanded={isOpen}
-						className="w-full justify-between truncate border border-border"
-					>
-						<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
-						<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />
-					</Button>
-				</PopoverTrigger>
-				<PopoverContent
-					className="z-60 w-[var(--radix-popover-trigger-width)] p-0"
-					onWheel={(event) => event.stopPropagation()}
-				>
-					<OptionsList
-						value={value}
-						placeholderText={resetOptionLabel}
-						resetOptionText={resetOptionLabel}
-						handleChange={handleChange}
-						handleReset={onReset}
-						options={options ?? []}
-						optionsStartContent={optionsStartContent}
-						closeMenu={() => setIsOpen(false)}
-					/>
-				</PopoverContent>
-			</Popover>
-		</div>
-	) : (
-		<div className={cn("flex flex-col w-full gap-1", width && `w-[${width}]`)}>
-			{showLabel && (
-				<Label htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
-					{label}
-				</Label>
-			)}
-			<Drawer open={isOpen} onOpenChange={setIsOpen}>
-				<DrawerTrigger asChild>
-					<Button
-						type="button"
-						disabled={!editable}
-						variant="outline"
-						aria-haspopup="listbox"
-						aria-expanded={isOpen}
-						className="w-full justify-between border border-border"
-					>
-						<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
-						<ChevronsUpDown className="w-3 h-3 min-w-3 min-h-3" />
-					</Button>
-				</DrawerTrigger>
-				<DrawerContent>
-					<div className="mt-4 border-t">
+
+			{isDesktop ? (
+				<Popover open={isOpen} onOpenChange={setIsOpen}>
+					<PopoverTrigger asChild>
+						<Button
+							id={inputIdentifier}
+							type="button"
+							disabled={!editable}
+							variant="outline"
+							aria-haspopup="listbox"
+							aria-expanded={isOpen}
+							className={cn("w-full justify-between truncate border border-border", holderClassName)}
+						>
+							<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
+							<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent className="z-60 w-[var(--radix-popover-trigger-width)] p-0" onWheel={(event) => event.stopPropagation()}>
 						<OptionsList
 							value={value}
 							placeholderText={resetOptionLabel}
@@ -119,10 +83,41 @@ function SelectInput({
 							optionsStartContent={optionsStartContent}
 							closeMenu={() => setIsOpen(false)}
 						/>
-					</div>
-				</DrawerContent>
-			</Drawer>
-		</div>
+					</PopoverContent>
+				</Popover>
+			) : (
+				<Drawer open={isOpen} onOpenChange={setIsOpen}>
+					<DrawerTrigger asChild>
+						<Button
+							id={inputIdentifier}
+							type="button"
+							disabled={!editable}
+							variant="outline"
+							aria-haspopup="listbox"
+							aria-expanded={isOpen}
+							className={cn("w-full justify-between border border-border", holderClassName)}
+						>
+							<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
+							<ChevronsUpDown className="w-3 h-3 min-w-3 min-h-3" />
+						</Button>
+					</DrawerTrigger>
+					<DrawerContent>
+						<div className="mt-4 border-t">
+							<OptionsList
+								value={value}
+								placeholderText={resetOptionLabel}
+								resetOptionText={resetOptionLabel}
+								handleChange={handleChange}
+								handleReset={onReset}
+								options={options ?? []}
+								optionsStartContent={optionsStartContent}
+								closeMenu={() => setIsOpen(false)}
+							/>
+						</div>
+					</DrawerContent>
+				</Drawer>
+			)}
+		</Field>
 	);
 }
 

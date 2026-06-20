@@ -68,7 +68,6 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, sellersIds: [] }))}
 								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
 							/>
 							<MultipleSelectInput
 								label="NATUREZAS DE VENDA"
@@ -77,7 +76,6 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: value as string[] }))}
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsSaleNatures: [] }))}
 								resetOptionLabel="NENHUM DEFINIDO"
-								width="100%"
 							/>
 							<MultipleSalesSelectInput
 								label="VENDAS EXCLUÍDAS"
@@ -90,7 +88,6 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								}
 								resetOptionLabel="VENDAS EXCLUÍDAS"
 								onReset={() => setQueryParamsHolder((prev) => ({ ...prev, statsExcludedSalesIds: [] }))}
-								width="100%"
 							/>
 						</div>
 						<div className="flex w-full flex-col gap-2">
@@ -165,7 +162,6 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								label="DEPOIS DE"
 								value={formatDateForInputValue(queryParamsHolder.statsPeriodAfter)}
 								handleChange={(value) => setQueryParamsHolder((prev) => ({ ...prev, statsPeriodAfter: formatDateOnInputChange(value, "date") as Date }))}
-								width="100%"
 							/>
 							<DateInput
 								label="ANTES DE"
@@ -173,7 +169,6 @@ function SalesTeamFilterMenu({ queryParams, updateQueryParams, closeMenu }: Sale
 								handleChange={(value) =>
 									setQueryParamsHolder((prev) => ({ ...prev, statsPeriodBefore: formatDateOnInputChange(value, "date", "end") as Date }))
 								}
-								width="100%"
 							/>
 						</div>
 					</div>

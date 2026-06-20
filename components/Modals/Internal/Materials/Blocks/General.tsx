@@ -99,7 +99,6 @@ export default function MaterialGeneralBlock({ communityMaterial, updateCommunit
 						value={communityMaterial.tipo}
 						resetOptionLabel="SELECIONE O TIPO"
 						handleChange={(value) => updateCommunityMaterial({ tipo: value as TCommunityMaterialTypeEnum })}
-						width="100%"
 						options={MaterialTypeOptions}
 						onReset={() => updateCommunityMaterial({ tipo: "EBOOK" })}
 					/>
@@ -108,7 +107,6 @@ export default function MaterialGeneralBlock({ communityMaterial, updateCommunit
 						value={communityMaterial.status}
 						resetOptionLabel="SELECIONE O STATUS"
 						handleChange={(value) => updateCommunityMaterial({ status: value as TCommunityContentStatusEnum })}
-						width="100%"
 						options={MaterialStatusOptions}
 						onReset={() => updateCommunityMaterial({ status: "RASCUNHO" })}
 					/>

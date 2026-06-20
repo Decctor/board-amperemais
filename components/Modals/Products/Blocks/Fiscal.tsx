@@ -180,7 +180,6 @@ function NewProductFiscalProfileMenu({ closeMenu, addProductFiscalProfile }: New
 				resetOptionLabel="SELECIONE A ORIGEM"
 				handleChange={(value) => updateProfileHolder({ origemMercadoria: value as TFiscalProductOriginEnum })}
 				onReset={() => updateProfileHolder({ origemMercadoria: "NACIONAL" })}
-				width="100%"
 			/>
 			<TextInput label="NCM" placeholder="Ex.: 12345678" value={profileHolder.ncm} handleChange={(value) => updateProfileHolder({ ncm: value })} />
 			<TextInput
@@ -202,7 +201,6 @@ function NewProductFiscalProfileMenu({ closeMenu, addProductFiscalProfile }: New
 				resetOptionLabel="SELECIONE A UNIDADE"
 				handleChange={(value) => updateProfileHolder({ unidadeComercial: value as string })}
 				onReset={() => updateProfileHolder({ unidadeComercial: "UN" })}
-				width="100%"
 			/>
 			<TextInput
 				label="CÓDIGO DE BENEFÍCIO FISCAL"
@@ -264,7 +262,6 @@ function EditProductFiscalProfileMenu({ initialProfile, closeMenu, updateProduct
 				resetOptionLabel="SELECIONE A ORIGEM"
 				handleChange={(value) => updateProfileHolder({ origemMercadoria: value as TFiscalProductOriginEnum })}
 				onReset={() => updateProfileHolder({ origemMercadoria: "NACIONAL" })}
-				width="100%"
 			/>
 			<TextInput label="NCM" placeholder="Ex.: 12345678" value={profileHolder.ncm} handleChange={(value) => updateProfileHolder({ ncm: value })} />
 			<TextInput
@@ -286,7 +283,6 @@ function EditProductFiscalProfileMenu({ initialProfile, closeMenu, updateProduct
 				resetOptionLabel="SELECIONE A UNIDADE"
 				handleChange={(value) => updateProfileHolder({ unidadeComercial: value as string })}
 				onReset={() => updateProfileHolder({ unidadeComercial: "UN" })}
-				width="100%"
 			/>
 			<TextInput
 				label="CÓDIGO DE BENEFÍCIO FISCAL"
