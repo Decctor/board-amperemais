@@ -1,6 +1,6 @@
 import { getCurrentSession } from "@/lib/authentication/session";
 import { redirect } from "next/navigation";
-import CampaignResultPage from "./campaign-detail-page";
+import CampaignResultPage from "@/app/dashboard/commercial/campaigns/_module/detail/campaign-detail-page";
 
 export default async function CampaignResultServerPage({ params }: { params: Promise<{ id: string }> }) {
 	const { id } = await params;

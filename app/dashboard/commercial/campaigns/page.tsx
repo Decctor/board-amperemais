@@ -1,6 +1,6 @@
 import { getCurrentSession } from "@/lib/authentication/session";
 import { redirect } from "next/navigation";
-import CampaignsPage from "./campaigns-page";
+import CampaignsPage from "@/app/dashboard/commercial/campaigns/_module/overview/campaigns-page";
 
 export default async function CommercialCampaignsPage() {
 	const sessionUser = await getCurrentSession();

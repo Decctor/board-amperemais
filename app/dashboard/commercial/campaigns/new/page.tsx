@@ -1,6 +1,6 @@
 import { getCurrentSession } from "@/lib/authentication/session";
 import { redirect } from "next/navigation";
-import BuilderShell from "./_components/builder-shell";
+import BuilderShell from "@/app/dashboard/commercial/campaigns/_module/builder/components/builder-shell";
 
 export default async function CampaignBuilderPage() {
 	const sessionUser = await getCurrentSession();
