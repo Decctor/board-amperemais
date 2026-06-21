@@ -1,4 +1,5 @@
 import { db } from "@/services/drizzle";
+import { getIdentificationRate, getRepurchaseCycle, getSegmentDistribution } from "@/lib/commercial-analysis";
 import {
 	campaignConversions,
 	campaigns,
@@ -19,7 +20,16 @@ export async function getCampaignsPerformanceContext(orgId: string) {
 		end: dayjs().endOf("day").toDate(),
 	};
 
-	const [organization, availableWhatsappPhones, campaignsResult, interactionsGroupedByCampaignResult, conversionsGroupedByCampaignResult] = await Promise.all([
+	const [
+		organization,
+		availableWhatsappPhones,
+		campaignsResult,
+		interactionsGroupedByCampaignResult,
+		conversionsGroupedByCampaignResult,
+		identificationRate,
+		repurchaseCycle,
+		segmentDistribution,
+	] = await Promise.all([
 		db.query.organizations.findFirst({
 			where: eq(organizations.id, orgId),
 			columns: {
@@ -79,6 +89,9 @@ export async function getCampaignsPerformanceContext(orgId: string) {
 				),
 			)
 			.groupBy(campaignConversions.campanhaId),
+		getIdentificationRate({ organizacaoId: orgId }),
+		getRepurchaseCycle({ organizacaoId: orgId }),
+		getSegmentDistribution({ organizacaoId: orgId }),
 	]);
 
 	const interactionsGroupedByCampaignMap = new Map(interactionsGroupedByCampaignResult.map((item) => [item.campaignId, item]));
@@ -146,6 +159,14 @@ export async function getCampaignsPerformanceContext(orgId: string) {
 		periodoAnalise: {
 			inicio: last30DaysPeriod.start.toISOString(),
 			fim: last30DaysPeriod.end.toISOString(),
+		},
+		// Headline de diagnóstico comercial (últimos 12 meses), para o analista já
+		// receber a régua do negócio sem gastar tool calls. Cada métrica traz seu
+		// grau de suficiência para uso sob dado imperfeito.
+		diagnosticoComercial: {
+			taxaIdentificacao: identificationRate,
+			cicloRecompra: repurchaseCycle,
+			segmentos: segmentDistribution,
 		},
 		telefonesWhatsappDisponiveis: availableWhatsappPhones.map((phone) => ({
 			id: phone.id,

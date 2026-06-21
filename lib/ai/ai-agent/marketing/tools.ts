@@ -4,7 +4,8 @@ import { campaignConversions, campaigns, interactions } from "@/services/drizzle
 import { and, avg, count, countDistinct, eq, gte, lte, sum } from "drizzle-orm";
 import dayjs from "dayjs";
 import z from "zod";
-import { getIdentificationRate, getRepurchaseCycle, getSegmentDistribution } from "@/lib/commercial-analysis";
+import { getCashbackEconomics, getIdentificationRate, getRepurchaseCycle, getSegmentDistribution } from "@/lib/commercial-analysis";
+import { getRFMHealthForOrganization } from "@/lib/segmentations/rfm-health";
 import { getCustomerPurchaseInsights } from "@/lib/ai/ai-agent/database-tools";
 import { CampaignCreationSuggestionSchema, CampaignUpdateProposedChangesSchema, CampaignUpdateSuggestionSchema, type TMarketingSuggestion } from "./schemas";
 import { buildCampaignCurrentSummary, normalizeCampaignCreationSuggestion, normalizeCampaignUpdateSuggestion } from "./suggestions";
@@ -327,12 +328,47 @@ export function createGetCustomerInsightsTool() {
 	});
 }
 
+export function createGetCashbackEconomicsTool({ organizacaoId }: { organizacaoId: string }) {
+	return tool({
+		description:
+			"Mede a economia do programa de cashback: acúmulo vs. resgate vs. expiração, taxa de resgate (engajamento com o benefício), taxa de expiração (breakage) e passivo em aberto. Use para avaliar se o cashback está de fato trazendo o cliente de volta ou só acumulando saldo sem uso.",
+		inputSchema: z.object({ months: AnalysisMonthsSchema }).strict(),
+		execute: async ({ months }) => {
+			return await getCashbackEconomics({ organizacaoId, months: months ?? 12 });
+		},
+	});
+}
+
+export function createGetRFMHealthTool({ organizacaoId }: { organizacaoId: string }) {
+	return tool({
+		description:
+			"Avalia se a configuração RFM da organização está alinhada com o comportamento real da base: distribuição de segmentos, métricas de recência/frequência/monetário, faixas sugeridas por quintil, alertas de desalinhamento e um healthScore. Use para recomendar recalibrar a matriz RFM quando a segmentação parecer distorcida.",
+		inputSchema: z.object({ months: AnalysisMonthsSchema }).strict(),
+		execute: async ({ months }) => {
+			try {
+				const result = await getRFMHealthForOrganization({ organizacaoId, months: months ?? 12 });
+				// Omite os histogramas (orientados a gráfico) para economizar tokens; o
+				// agente raciocina sobre distribuição, métricas, faixas e alertas.
+				const { histograms: _histograms, ...data } = result.data;
+				return { data, message: result.message };
+			} catch (error) {
+				return {
+					data: null,
+					message: error instanceof Error ? error.message : "Não foi possível calcular a saúde da matriz RFM.",
+				};
+			}
+		},
+	});
+}
+
 export function createMarketingAnalystTools({ organizacaoId }: { organizacaoId: string }) {
 	return {
 		get_campaign_performance_by_id: createGetCampaignPerformanceByIdTool({ organizacaoId }),
 		get_identification_rate: createGetIdentificationRateTool({ organizacaoId }),
 		get_repurchase_cycle: createGetRepurchaseCycleTool({ organizacaoId }),
 		get_segment_distribution: createGetSegmentDistributionTool({ organizacaoId }),
+		get_cashback_economics: createGetCashbackEconomicsTool({ organizacaoId }),
+		get_rfm_health: createGetRFMHealthTool({ organizacaoId }),
 		get_customer_insights: createGetCustomerInsightsTool(),
 	};
 }
