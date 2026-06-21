@@ -1,4 +1,4 @@
-import RecompraIconWhite from "@/utils/svgs/logos/RECOMPRA - ICON - WHITE-N-BLACK.svg";
+import RecompraIconColorful from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
 
 /** Recompra brand blue (Figma azul-primario) — fills the Recompra badge. */
 const RECOMPRA_BLUE = "#24549C";
@@ -55,10 +55,10 @@ export default function OrganizationBrandWatermark({ organizationName, organizat
 					)}
 				</div>
 
-				{/* Recompra badge — blue fill so the all-white icon stays legible. */}
+				{/* Recompra badge — blue fill keeps the colorful icon's white bars legible. */}
 				<div style={{ ...circleBaseStyle, background: RECOMPRA_BLUE, zIndex: 1, marginLeft: -overlap }}>
 					<img
-						src={RecompraIconWhite.src}
+						src={RecompraIconColorful.src}
 						alt="Recompra"
 						crossOrigin="anonymous"
 						style={{ width: "86%", height: "86%", objectFit: "contain", display: "block" }}
