@@ -13,7 +13,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 import AdminMarketingContextExportMenu from "./AdminMarketingContextExportMenu";
-import AdminOrganizationStoryMenu from "./AdminOrganizationStoryMenu";
+import AdminOrganizationWatermarkMenu from "./AdminOrganizationWatermarkMenu";
 
 type AdminOrganizationCardProps = {
 	sessionUser: TAuthUserSession["user"];
@@ -30,7 +30,7 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 	const { id, nome, cnpj, logoUrl, dataInsercao } = organization;
 	const [controlModalOpen, setControlModalOpen] = useState(false);
 	const [marketingContextModalOpen, setMarketingContextModalOpen] = useState(false);
-	const [storyModalOpen, setStoryModalOpen] = useState(false);
+	const [watermarkModalOpen, setWatermarkModalOpen] = useState(false);
 
 	const adminUserIsMember = organization.membros.some((member) => member.usuarioId === sessionUser.id);
 	const { mutate: joinAsMemberMutation, isPending } = useMutation({
@@ -80,9 +80,9 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 					<BrainCircuit className="h-3.5 w-3.5" />
 					CONTEXTO IA
 				</Button>
-				<Button variant="secondary" size="sm" className="w-full" onClick={() => setStoryModalOpen(true)}>
+				<Button variant="secondary" size="sm" className="w-full" onClick={() => setWatermarkModalOpen(true)}>
 					<ImageIcon className="h-3.5 w-3.5" />
-					GERAR IMAGEM
+					MARCA D'ÁGUA
 				</Button>
 				<Button variant="outline" size="sm" className="w-full" onClick={() => setControlModalOpen(true)}>
 					<Settings2 className="h-3.5 w-3.5" />
@@ -107,8 +107,8 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 			{marketingContextModalOpen ? (
 				<AdminMarketingContextExportMenu organizationId={id} organizationName={nome} closeModal={() => setMarketingContextModalOpen(false)} />
 			) : null}
-			{storyModalOpen ? (
-				<AdminOrganizationStoryMenu organizationName={nome} organizationLogoUrl={logoUrl} closeModal={() => setStoryModalOpen(false)} />
+			{watermarkModalOpen ? (
+				<AdminOrganizationWatermarkMenu organizationName={nome} organizationLogoUrl={logoUrl} closeModal={() => setWatermarkModalOpen(false)} />
 			) : null}
 		</div>
 	);
