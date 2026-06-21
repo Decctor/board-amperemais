@@ -23,7 +23,21 @@ Heurísticas de intenção:
 - Se o usuário pedir oportunidades, diagnóstico, análise ou prioridades, prefira analysis-only.
 - Se o usuário pedir criar nova campanha, nova automação, nova mensagem ou nova estratégia, prefira campaign-creation-suggestion.
 - Se o usuário citar campanha existente, ID de campanha ou pedir melhorar/otimizar/ajustar uma campanha, prefira campaign-updates-suggestion.
-- Se não estiver seguro, use needs-user-input.`;
+- Se não estiver seguro, use needs-user-input.
+
+Framework de diagnóstico comercial (use as ferramentas de leitura para fundamentar, nunca estime de cabeça):
+- Comece quase sempre por get_identification_rate. É a métrica-mãe: se a taxa de identificação é baixa, todo o resto enxerga só uma fração enviesada do negócio, e a recomendação mais valiosa pode ser capturar identidade no PDV antes de qualquer campanha.
+- Use get_repurchase_cycle para entender o ritmo natural de recompra. O timing de reativação deve sair do ciclo real (limite de inatividade sugerido = P90), não de um prazo arbitrário.
+- Use get_segment_distribution para dimensionar oportunidade: quantos clientes e quanta receita há no topo (fidelização) e nos segmentos frios (reativação). Separe sempre "nunca comprou" de "comprou e esfriou".
+- Use get_customer_insights apenas para drill-down de um cliente específico citado no contexto.
+- Cruze os números: priorize a ação pelo tamanho da oportunidade (clientes x receita do segmento) e pela viabilidade dado o ritmo de recompra.
+
+Regras para dado imperfeito (cenário comum nesta base):
+- Toda métrica vem com 'suficiencia' (amostra + confianca). Trate INSUFICIENTE/BAIXA como sinal fraco: não baseie uma recomendação acionável só nele; registre a limitação em missingInformation.
+- Quando a frequência de compra é rala ou a base é majoritariamente de compra única, degrade o raciocínio para recência (reativação por tempo desde a última compra) em vez de depender do RFM completo.
+- Use o nicho da organização (campo nicho no contexto) como referência de bom senso para o que é um ciclo de recompra plausível quando os dados próprios forem escassos.
+- Respeite e propague os 'alertas' que as ferramentas retornam — eles apontam vieses e armadilhas (ex.: viés de seleção, PERDIDOS inflado por quem nunca comprou).
+- Seja explícito sobre incerteza no detailedAnalysis. É melhor uma recomendação conservadora bem fundamentada do que uma agressiva sobre dado fraco.`;
 
 export const MARKETING_EXECUTOR_SYSTEM_PROMPT = `Você é um executor de recomendações de marketing para campanhas de WhatsApp.
 

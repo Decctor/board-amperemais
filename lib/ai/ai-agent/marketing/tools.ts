@@ -4,9 +4,19 @@ import { campaignConversions, campaigns, interactions } from "@/services/drizzle
 import { and, avg, count, countDistinct, eq, gte, lte, sum } from "drizzle-orm";
 import dayjs from "dayjs";
 import z from "zod";
+import { getIdentificationRate, getRepurchaseCycle, getSegmentDistribution } from "@/lib/commercial-analysis";
+import { getCustomerPurchaseInsights } from "@/lib/ai/ai-agent/database-tools";
 import { CampaignCreationSuggestionSchema, CampaignUpdateProposedChangesSchema, CampaignUpdateSuggestionSchema, type TMarketingSuggestion } from "./schemas";
 import { buildCampaignCurrentSummary, normalizeCampaignCreationSuggestion, normalizeCampaignUpdateSuggestion } from "./suggestions";
 import { getWhatsappTemplatePlainText } from "./template-text";
+
+const AnalysisMonthsSchema = z
+	.number()
+	.int()
+	.positive()
+	.max(36)
+	.optional()
+	.describe("Janela de análise em meses (padrão 12).");
 
 type TGetCampaignPerformanceByIdInput = {
 	orgId: string;
@@ -273,9 +283,57 @@ export function createDraftCampaignUpdateSuggestionTool({ organizacaoId }: { org
 	});
 }
 
+export function createGetIdentificationRateTool({ organizacaoId }: { organizacaoId: string }) {
+	return tool({
+		description:
+			"Mede a taxa de identificação de cliente nas vendas (a métrica-mãe do diagnóstico). Toda análise de cliente é cega para vendas sem cliente identificado, então uma taxa baixa indica que a base analítica representa só uma fração — geralmente enviesada — do negócio. Também retorna o viés de seleção (ticket identificado vs. anônimo). Use no início de qualquer diagnóstico de organização.",
+		inputSchema: z.object({ months: AnalysisMonthsSchema }).strict(),
+		execute: async ({ months }) => {
+			return await getIdentificationRate({ organizacaoId, months: months ?? 12 });
+		},
+	});
+}
+
+export function createGetRepurchaseCycleTool({ organizacaoId }: { organizacaoId: string }) {
+	return tool({
+		description:
+			"Estima o ciclo natural de recompra da base (mediana e percentis P25/P75/P90 do intervalo entre compras, em dias). Use para calibrar quando um cliente fugiu do ciclo (limite de inatividade sugerido = P90) em vez de usar um prazo arbitrário, e para dimensionar o timing de campanhas de reativação.",
+		inputSchema: z.object({ months: AnalysisMonthsSchema }).strict(),
+		execute: async ({ months }) => {
+			return await getRepurchaseCycle({ organizacaoId, months: months ?? 12 });
+		},
+	});
+}
+
+export function createGetSegmentDistributionTool({ organizacaoId }: { organizacaoId: string }) {
+	return tool({
+		description:
+			"Retorna a distribuição da base pelos segmentos RFM já calculados, com nº de clientes e receita histórica por segmento, e separa explicitamente quem nunca comprou (não é alvo de reativação) dos genuinamente esfriados. Use para dimensionar a oportunidade de fidelização (topo) e de reativação (segmentos frios).",
+		inputSchema: z.object({}).strict(),
+		execute: async () => {
+			return await getSegmentDistribution({ organizacaoId });
+		},
+	});
+}
+
+export function createGetCustomerInsightsTool() {
+	return tool({
+		description:
+			"Aprofunda em um cliente específico: classificação RFM, estatísticas de compra, grupos favoritos e produtos mais comprados. Use apenas para drill-down quando o diagnóstico ou a recomendação dependerem de um cliente concreto citado no contexto.",
+		inputSchema: z.object({ clientId: z.string().describe("ID do cliente.") }).strict(),
+		execute: async ({ clientId }) => {
+			return await getCustomerPurchaseInsights(clientId);
+		},
+	});
+}
+
 export function createMarketingAnalystTools({ organizacaoId }: { organizacaoId: string }) {
 	return {
 		get_campaign_performance_by_id: createGetCampaignPerformanceByIdTool({ organizacaoId }),
+		get_identification_rate: createGetIdentificationRateTool({ organizacaoId }),
+		get_repurchase_cycle: createGetRepurchaseCycleTool({ organizacaoId }),
+		get_segment_distribution: createGetSegmentDistributionTool({ organizacaoId }),
+		get_customer_insights: createGetCustomerInsightsTool(),
 	};
 }
 
