@@ -205,8 +205,8 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 									/>
 								</div>
 
-								<Button className="h-12 w-full rounded-2xl font-black" onClick={handleSubmitNew} disabled={!nome.trim()}>
-									Continuar
+								<Button variant="brand" className="h-12 w-full rounded-2xl font-black" onClick={handleSubmitNew} disabled={!nome.trim()}>
+									CONTINUAR
 									<ArrowRight className="ml-1 h-4 w-4" />
 								</Button>
 							</motion.div>

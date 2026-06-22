@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getErrorMessage } from "@/lib/errors";
 import { createShopOrder } from "@/lib/mutations/shop";
 import { useMutation } from "@tanstack/react-query";
@@ -77,23 +77,27 @@ export default function CheckoutSheet() {
 	}, [checkoutStep]);
 
 	return (
-		<Drawer handleOnly open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
-			<DrawerContent className="flex max-h-[92dvh] flex-col overflow-hidden">
-				<DrawerHeader className="flex shrink-0 items-center gap-3 text-left">
-					<Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={handleBack}>
-						<ArrowLeft className="w-4 h-4" />
+		<Sheet open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
+			<SheetContent
+				side="bottom"
+				showCloseButton={false}
+				className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[side=bottom]:h-[92dvh]"
+			>
+				<div className="relative flex min-h-0 flex-1 flex-col">
+					<SheetHeader className="flex shrink-0 flex-row items-center gap-3 border-b p-4 text-left">
+					<Button variant="ghost" size="icon" className="-ml-2 h-8 w-8 shrink-0" onClick={handleBack}>
+						<ArrowLeft className="h-4 w-4" />
 					</Button>
-					<div className="flex-1">
-						<DrawerTitle className="text-lg font-black">{STEP_TITLES[checkoutStep]}</DrawerTitle>
-						<DrawerDescription>FINALIZAR PEDIDO</DrawerDescription>
+					<div className="min-w-0 flex-1">
+						<SheetTitle className="text-lg font-black">{STEP_TITLES[checkoutStep]}</SheetTitle>
+						<SheetDescription>FINALIZAR PEDIDO</SheetDescription>
 					</div>
-				</DrawerHeader>
+					</SheetHeader>
 
-				<div
-					ref={stepScrollRef}
-					className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex max-h-[calc(92dvh-8rem)] flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:px-0"
-				>
-					<div key={checkoutStep} className="flex flex-col gap-3">
+					<div
+						ref={stepScrollRef}
+						className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:px-6"
+					>
 						{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={() => orderState.nextStep()} />}
 
 						{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}
@@ -104,17 +108,17 @@ export default function CheckoutSheet() {
 
 						{checkoutStep === "REVISAO" && <OrderReviewStep onSubmit={() => submitOrder()} isSubmitting={isPending} />}
 					</div>
-				</div>
 
-				{isPending && (
-					<div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50">
-						<div className="flex flex-col items-center gap-3">
-							<Loader2 className="w-8 h-8 animate-spin text-primary" />
-							<p className="text-sm font-medium">Enviando pedido...</p>
+					{isPending && (
+						<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80">
+							<div className="flex flex-col items-center gap-3">
+								<Loader2 className="h-8 w-8 animate-spin text-primary" />
+								<p className="text-sm font-medium">Enviando pedido...</p>
+							</div>
 						</div>
-					</div>
-				)}
-			</DrawerContent>
-		</Drawer>
+					)}
+				</div>
+			</SheetContent>
+		</Sheet>
 	);
 }
