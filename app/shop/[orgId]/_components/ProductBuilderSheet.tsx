@@ -356,31 +356,31 @@ function OptionTile({
 	);
 
 	const text = (
-		<div className="flex min-w-0 flex-1 flex-col">
-			<span className="truncate text-sm font-semibold">{name}</span>
+		<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+			<span className="text-sm font-semibold leading-snug [overflow-wrap:anywhere]">{name}</span>
 			{showPrice && <span className="text-xs font-bold text-primary">{priceLabel}</span>}
 		</div>
 	);
 
 	const indicator =
 		control === "quantity" ? (
-			<span className="flex size-7 shrink-0 items-center justify-center rounded-lg border-2 border-muted-foreground/30 text-muted-foreground">
+			<span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border-2 border-muted-foreground/30 text-muted-foreground">
 				<Plus className="size-4" />
 			</span>
 		) : (
-			<SelectionIndicator selected={selected} shape={control === "radio" ? "circle" : "square"} />
+			<SelectionIndicator selected={selected} shape={control === "radio" ? "circle" : "square"} className="mt-0.5" />
 		);
 
 	return (
 		<div
 			className={cn(
-				"flex items-center gap-3 rounded-xl border p-2.5 transition-all duration-200",
+				"flex items-start gap-3 rounded-xl border p-2.5 transition-all duration-200",
 				selected ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/30" : "border-border",
 				addDisabled && "opacity-50",
 			)}
 		>
 			{quantityActive ? (
-				<div className="flex min-w-0 flex-1 items-center gap-3">
+				<div className="flex min-w-0 flex-1 items-start gap-3">
 					{media}
 					{text}
 				</div>
@@ -390,7 +390,7 @@ function OptionTile({
 					onClick={control === "quantity" ? onIncrement : onToggle}
 					aria-pressed={selected}
 					disabled={addDisabled}
-					className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-not-allowed"
+					className="flex min-w-0 flex-1 items-start gap-3 text-left disabled:cursor-not-allowed"
 				>
 					{media}
 					{text}
@@ -406,19 +406,21 @@ function OptionTile({
 					decrementDisabled={false}
 					incrementDisabled={quantity >= maxQty || groupFull}
 					size="sm"
+					className="mt-0.5 shrink-0"
 				/>
 			)}
 		</div>
 	);
 }
 
-function SelectionIndicator({ selected, shape }: { selected: boolean; shape: "circle" | "square" }) {
+function SelectionIndicator({ selected, shape, className }: { selected: boolean; shape: "circle" | "square"; className?: string }) {
 	return (
 		<span
 			className={cn(
 				"flex size-6 shrink-0 items-center justify-center border-2 transition-colors",
 				shape === "circle" ? "rounded-full" : "rounded-md",
 				selected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30",
+				className,
 			)}
 		>
 			<AnimatePresence>
@@ -445,15 +447,16 @@ type StepperProps = {
 	incrementDisabled?: boolean;
 	decrementDisabled?: boolean;
 	size?: "sm" | "default";
+	className?: string;
 };
 
-function Stepper({ value, onIncrement, onDecrement, incrementDisabled, decrementDisabled, size = "default" }: StepperProps) {
+function Stepper({ value, onIncrement, onDecrement, incrementDisabled, decrementDisabled, size = "default", className }: StepperProps) {
 	const btn = size === "sm" ? "size-7 rounded-lg" : "size-9 rounded-lg";
 	const icon = size === "sm" ? "size-3" : "size-4";
 	const valueWidth = size === "sm" ? "w-6 text-sm" : "w-10 text-lg";
 
 	return (
-		<div className="flex items-center gap-2">
+		<div className={cn("flex items-center gap-2", className)}>
 			<Button size="icon" variant="outline" className={btn} onClick={onDecrement} disabled={decrementDisabled}>
 				<Minus className={icon} />
 			</Button>
