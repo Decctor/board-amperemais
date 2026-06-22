@@ -69,12 +69,10 @@ export default function CheckoutSheet() {
 			orderState.nextStep();
 		}
 	};
-	console.log("[DEBUG] order state", orderState.state);
-
 	return (
 		<Drawer open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
-			<DrawerContent className="flex flex-col h-fit min-h-[50dvh] max-h-[90dvh]">
-				<DrawerHeader className="text-left flex items-center gap-3">
+			<DrawerContent className="flex max-h-[92dvh] min-h-0 flex-col overflow-hidden">
+				<DrawerHeader className="flex shrink-0 items-center gap-3 text-left">
 					<Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={handleBack}>
 						<ArrowLeft className="w-4 h-4" />
 					</Button>
@@ -84,7 +82,7 @@ export default function CheckoutSheet() {
 					</div>
 				</DrawerHeader>
 
-				<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-6 lg:px-0">
+				<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:px-0">
 					{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={() => orderState.nextStep()} />}
 
 					{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}

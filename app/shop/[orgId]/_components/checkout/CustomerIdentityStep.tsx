@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatToPhone } from "@/lib/formatting";
+import { formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -194,7 +194,8 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 									<Input
 										placeholder="000.000.000-00"
 										value={cpfCnpj}
-										onChange={(e) => setCpfCnpj(e.target.value)}
+										onChange={(e) => setCpfCnpj(formatToCPForCNPJ(e.target.value))}
+										inputMode="numeric"
 										className="h-12 text-base"
 										onFocus={(e) => {
 											setTimeout(() => {
