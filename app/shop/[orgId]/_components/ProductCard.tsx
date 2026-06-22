@@ -47,11 +47,11 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 		return (
 			<div className="group flex gap-3 p-3 rounded-xl border bg-card hover:bg-accent/50 transition-colors cursor-pointer" onClick={handleClick}>
 				{product.imagemCapaUrl ? (
-					<div className="relative w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-						<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover" />
+					<div className="relative w-32 h-32 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+						<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover" sizes="128px" />
 					</div>
 				) : (
-					<div className="w-24 h-24 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+					<div className="w-32 h-32 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
 						<span className="text-2xl font-black text-muted-foreground/50">{product.nome.charAt(0).toUpperCase()}</span>
 					</div>
 				)}

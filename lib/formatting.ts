@@ -198,6 +198,15 @@ export function formatStringAsOnlyDigits(s: string) {
 	return s.replace(/[^0-9]/g, "");
 }
 
+/** Remove o código do país (55) apenas para exibição/máscara; não altera persistência. */
+function normalizeBrazilianPhoneDigitsForDisplay(phone: string) {
+	let digits = formatStringAsOnlyDigits(phone);
+	if (digits.startsWith("55") && digits.length > 11) {
+		digits = digits.slice(2);
+	}
+	return digits.slice(0, 11);
+}
+
 // Retorna sempre a "base" comparável: DDD (2) + últimos 8 dígitos
 export function formatPhoneAsBase(phone: string) {
 	let d = formatStringAsOnlyDigits(phone);
@@ -220,12 +229,10 @@ export function formatPhoneAsBase(phone: string) {
 
 export function formatToPhone(value: string): string {
 	if (!value) return "";
-	value = value.replace(/\D/g, "");
-	// Limita a 11 dígitos (máximo para telefone brasileiro: DDD + 9 dígitos)
-	value = value.slice(0, 11);
-	value = value.replace(/(\d{2})(\d)/, "($1) $2");
-	value = value.replace(/(\d)(\d{4})$/, "$1-$2");
-	return value;
+	let digits = normalizeBrazilianPhoneDigitsForDisplay(value);
+	digits = digits.replace(/(\d{2})(\d)/, "($1) $2");
+	digits = digits.replace(/(\d)(\d{4})$/, "$1-$2");
+	return digits;
 }
 
 export function formatToCPF(value: string): string {

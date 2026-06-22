@@ -20,8 +20,7 @@ export function formatPhoneForInternalGateway(phone: string): string {
 	return onlyNumbers;
 }
 export function formatWhatsappIdAsPhone(whatsappId: string) {
-	const stringWithoutCountryCode = whatsappId.replace(/^55/, "");
-	return formatToPhone(stringWithoutCountryCode);
+	return formatToPhone(whatsappId);
 }
 
 /**
