@@ -1,4 +1,5 @@
 import type { TGetShopCatalogOutput } from "@/app/api/shop/[orgId]/catalog/route";
+import type { TGetPublicShopOrderOutput } from "@/app/api/shop/[orgId]/orders/[token]/route";
 import type { TShopClientLookupInput, TShopClientLookupOutput } from "@/app/api/shop/[orgId]/clients/lookup/route";
 import type { TGetShopOrdersInput, TGetShopOrdersOutput } from "@/app/api/shop/orders/route";
 import type { TGetShopSettingsOutput } from "@/app/api/shop/settings/route";
@@ -91,5 +92,31 @@ export function useShopOrders(initialParams?: Partial<TGetShopOrdersInput>) {
 		queryKey,
 		params,
 		updateParams,
+	};
+}
+
+const PUBLIC_ORDER_TERMINAL_STATUSES = new Set(["ENTREGUE", "CANCELADO"]);
+
+async function fetchPublicShopOrder({ orgId, token }: { orgId: string; token: string }) {
+	const { data } = await axios.get<TGetPublicShopOrderOutput>("/api/shop/" + orgId + "/orders/" + token);
+	return data.data;
+}
+
+export function usePublicShopOrder({ orgId, token }: { orgId: string; token: string }) {
+	const queryKey = ["public-shop-order", orgId, token] as const;
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchPublicShopOrder({ orgId, token }),
+			enabled: !!orgId && !!token,
+			staleTime: 10_000,
+			refetchInterval: (query) => {
+				const status = query.state.data?.order.statusAtendimento;
+				return status && PUBLIC_ORDER_TERMINAL_STATUSES.has(status) ? false : 20_000;
+			},
+			refetchIntervalInBackground: false,
+			refetchOnWindowFocus: true,
+		}),
+		queryKey,
 	};
 }

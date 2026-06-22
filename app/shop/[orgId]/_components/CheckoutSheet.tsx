@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { createShopOrder } from "@/lib/mutations/shop";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import CashbackStep from "./checkout/CashbackStep";
 import CustomerIdentityStep from "./checkout/CustomerIdentityStep";
@@ -23,6 +24,7 @@ const STEP_TITLES: Record<string, string> = {
 };
 
 export default function CheckoutSheet() {
+	const router = useRouter();
 	const { orgId, catalog, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
 	const { checkoutStep } = orderState.state;
 	const isOpen = catalog.disponibilidade.status === "ABERTA";
@@ -31,12 +33,9 @@ export default function CheckoutSheet() {
 		mutationKey: ["create-shop-order", orgId],
 		mutationFn: () => createShopOrder({ orgId, input: orderState.orderInput }),
 		onSuccess: (data) => {
-			orderState.setLastOrder({
-				saleId: data.data.saleId,
-				orderNumber: data.data.orderNumber,
-			});
 			orderState.clearCart();
 			setIsCheckoutOpen(false);
+			router.replace("/shop/" + orgId + "/pedidos/" + data.data.publicAccessToken);
 		},
 		onError: (error) => {
 			toast.error(getErrorMessage(error));

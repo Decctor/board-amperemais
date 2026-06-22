@@ -49,6 +49,7 @@ export const shopOrderRequests = newTable(
 			.references(() => organizations.id, { onDelete: "cascade" })
 			.notNull(),
 		idempotencyKey: varchar("idempotency_key", { length: 255 }).notNull(),
+		publicAccessTokenHash: varchar("public_access_token_hash", { length: 64 }).notNull(),
 		payloadHash: varchar("payload_hash", { length: 255 }).notNull(),
 		status: varchar("status", { length: 30 }).$type<"PROCESSANDO" | "CONCLUIDO" | "ERRO">().notNull().default("PROCESSANDO"),
 		vendaId: varchar("venda_id", { length: 255 }).references(() => sales.id, { onDelete: "set null" }),
@@ -58,6 +59,7 @@ export const shopOrderRequests = newTable(
 	},
 	(table) => ({
 		organizacaoIdempotencyKeyUnique: uniqueIndex("idx_shop_order_requests_org_idempotency_unique").on(table.organizacaoId, table.idempotencyKey),
+		publicAccessTokenHashUnique: uniqueIndex("idx_shop_order_requests_public_token_hash_unique").on(table.publicAccessTokenHash),
 		vendaIdIdx: index("idx_shop_order_requests_venda_id").on(table.vendaId),
 	}),
 );

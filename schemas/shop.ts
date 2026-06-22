@@ -360,6 +360,9 @@ export const CreateShopOrderInputSchema = z.object({
 	idempotencyKey: z
 		.string({ required_error: "Chave de idempotência não informada.", invalid_type_error: "Tipo não válido para chave de idempotência." })
 		.uuid(),
+	publicAccessToken: z
+		.string({ required_error: "Token público do pedido não informado.", invalid_type_error: "Tipo não válido para token público do pedido." })
+		.uuid("Token público do pedido inválido."),
 	cliente: ShopCustomerSchema,
 	entrega: ShopDeliverySchema,
 	pagamento: z.object({

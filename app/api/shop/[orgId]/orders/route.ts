@@ -21,6 +21,14 @@ function hashShopOrderPayload(input: ReturnType<typeof CreateShopOrderInputSchem
 	return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 
+function hashPublicAccessToken(token: string) {
+	return createHash("sha256").update(token).digest("hex");
+}
+
+function getPublicOrderNumber(saleId: string) {
+	return saleId.slice(0, 8).toUpperCase();
+}
+
 function getShopPaymentDescription(method: ReturnType<typeof CreateShopOrderInputSchema.parse>["pagamento"]["metodo"]) {
 	const labels = {
 		DINHEIRO: "Dinheiro",
@@ -295,7 +303,11 @@ async function createShopOrder(request: NextRequest) {
 		if (existingRequest.payloadHash !== payloadHash) throw new createHttpError.Conflict("A chave de idempotência já foi usada com outro pedido.");
 		if (existingRequest.status === "CONCLUIDO" && existingRequest.vendaId) {
 			return NextResponse.json({
-				data: { saleId: existingRequest.vendaId, orderNumber: existingRequest.vendaId },
+				data: {
+					saleId: existingRequest.vendaId,
+					orderNumber: getPublicOrderNumber(existingRequest.vendaId),
+					publicAccessToken: input.publicAccessToken,
+				},
 				message: "Pedido enviado com sucesso.",
 			});
 		}
@@ -345,7 +357,13 @@ async function createShopOrder(request: NextRequest) {
 
 	const [requestRecord] = await db
 		.insert(shopOrderRequests)
-		.values({ organizacaoId: orgId, idempotencyKey: input.idempotencyKey, payloadHash, status: "PROCESSANDO" })
+		.values({
+			organizacaoId: orgId,
+			idempotencyKey: input.idempotencyKey,
+			publicAccessTokenHash: hashPublicAccessToken(input.publicAccessToken),
+			payloadHash,
+			status: "PROCESSANDO",
+		})
 		.onConflictDoNothing()
 		.returning({ id: shopOrderRequests.id });
 	if (!requestRecord) throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
@@ -496,7 +514,8 @@ async function createShopOrder(request: NextRequest) {
 	return NextResponse.json({
 		data: {
 			saleId: saleId!,
-			orderNumber: saleId!,
+			orderNumber: getPublicOrderNumber(saleId!),
+			publicAccessToken: input.publicAccessToken,
 		},
 		message: "Pedido enviado com sucesso.",
 	});

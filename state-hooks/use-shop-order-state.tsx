@@ -23,6 +23,7 @@ type TShopOrderState = {
 		trocoPara: number | null;
 	};
 	idempotencyKey: string;
+	publicAccessToken: string;
 	checkoutStep: "CARRINHO" | "CLIENTE" | "ENTREGA" | "CASHBACK" | "PAGAMENTO" | "REVISAO" | "SUCESSO";
 	lastOrder: {
 		saleId: string;
@@ -40,6 +41,7 @@ type TStoredShopOrderState = {
 	cashback: TShopOrderState["cashback"];
 	payment: TShopOrderState["payment"];
 	idempotencyKey: string;
+	publicAccessToken: string;
 };
 
 function getStorageKey(orgId: string) {
@@ -56,6 +58,7 @@ function getDefaultState(orgId: string, mode: "CARDAPIO" | "CATALOGO"): TShopOrd
 		cashback: { resgateSolicitado: 0 },
 		payment: { metodo: "DINHEIRO", observacoes: "", precisaTroco: false, trocoPara: null },
 		idempotencyKey: crypto.randomUUID(),
+		publicAccessToken: crypto.randomUUID(),
 		checkoutStep: "CARRINHO",
 		lastOrder: null,
 	};
@@ -79,6 +82,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 				cashback: parsed.cashback ?? prev.cashback,
 				payment: parsed.payment ?? prev.payment,
 				idempotencyKey: parsed.idempotencyKey ?? prev.idempotencyKey,
+				publicAccessToken: parsed.publicAccessToken ?? prev.publicAccessToken,
 			}));
 		} catch {
 			window.localStorage.removeItem(getStorageKey(orgId));
@@ -103,9 +107,10 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			cashback: state.cashback,
 			payment: state.payment,
 			idempotencyKey: state.idempotencyKey,
+			publicAccessToken: state.publicAccessToken,
 		};
 		window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(payload));
-	}, [orgId, state.cart, state.customer, state.delivery, state.cashback, state.payment, state.idempotencyKey]);
+	}, [orgId, state.cart, state.customer, state.delivery, state.cashback, state.payment, state.idempotencyKey, state.publicAccessToken]);
 
 	const addItem = useCallback((item: TShopCartItem) => {
 		setState((prev) => ({
@@ -134,7 +139,13 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 	}, []);
 
 	const clearCart = useCallback(() => {
-		setState((prev) => ({ ...prev, cart: { items: [] }, cashback: { resgateSolicitado: 0 }, idempotencyKey: crypto.randomUUID() }));
+		setState((prev) => ({
+			...prev,
+			cart: { items: [] },
+			cashback: { resgateSolicitado: 0 },
+			idempotencyKey: crypto.randomUUID(),
+			publicAccessToken: crypto.randomUUID(),
+		}));
 		if (typeof window !== "undefined") window.localStorage.removeItem(getStorageKey(orgId));
 	}, [orgId]);
 
@@ -188,6 +199,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 	const orderInput = useMemo<TCreateShopOrderInput>(
 		() => ({
 			idempotencyKey: state.idempotencyKey,
+			publicAccessToken: state.publicAccessToken,
 			cliente: state.customer,
 			entrega: state.delivery,
 			itens: state.cart.items,
@@ -204,7 +216,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			cashbackResgateSolicitado: state.cashback.resgateSolicitado,
 			observacoes: null,
 		}),
-		[state.idempotencyKey, state.customer, state.delivery, state.cart.items, state.payment, state.cashback.resgateSolicitado],
+		[state.idempotencyKey, state.publicAccessToken, state.customer, state.delivery, state.cart.items, state.payment, state.cashback.resgateSolicitado],
 	);
 
 	return {
