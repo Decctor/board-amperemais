@@ -100,6 +100,18 @@ const UtilsCardapioWebImportationSchema = z.object({
 	}),
 });
 
+const UtilsNuvemshopImportationSchema = z.object({
+	identificador: z.enum(["NUVEMSHOP_IMPORTATION"]),
+	organizacaoId: z.string({
+		required_error: "Organização ID não informada.",
+		invalid_type_error: "Tipo não válido para a organização ID.",
+	}),
+	valor: z.object({
+		identificador: z.enum(["NUVEMSHOP_IMPORTATION"]),
+		dados: z.record(z.string(), z.any()),
+	}),
+});
+
 const UtilsCardapioWebCatalogSyncSchema = z.object({
 	identificador: z.enum(["CARDAPIO_WEB_CATALOG_SYNC"]),
 	organizacaoId: z.string({
@@ -221,6 +233,7 @@ export const UtilsSchema = z.discriminatedUnion("identificador", [
 	UtilsRFMSchema,
 	UtilsOnlineImportationSchema,
 	UtilsCardapioWebImportationSchema,
+	UtilsNuvemshopImportationSchema,
 	UtilsSalesPromoCampaignSchema,
 	UtilsNuvemFiscalApiTokenSchema,
 ]);
@@ -228,6 +241,7 @@ export const UtilsIdentifierSchema = z.enum([
 	"CONFIG_RFM",
 	"ONLINE_IMPORTATION",
 	"CARDAPIO_WEB_IMPORTATION",
+	"NUVEMSHOP_IMPORTATION",
 	"SALES_PROMO_CAMPAIGN",
 	"NUVEM_FISCAL_API_TOKEN",
 ]);

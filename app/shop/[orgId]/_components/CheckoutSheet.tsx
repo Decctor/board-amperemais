@@ -7,6 +7,7 @@ import { createShopOrder } from "@/lib/mutations/shop";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import CashbackStep from "./checkout/CashbackStep";
 import CustomerIdentityStep from "./checkout/CustomerIdentityStep";
@@ -68,9 +69,16 @@ export default function CheckoutSheet() {
 			orderState.nextStep();
 		}
 	};
+
+	const stepScrollRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		stepScrollRef.current?.scrollTo({ top: 0 });
+	}, [checkoutStep]);
+
 	return (
-		<Drawer open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
-			<DrawerContent className="flex max-h-[92dvh] min-h-0 flex-col overflow-hidden">
+		<Drawer handleOnly open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
+			<DrawerContent className="flex max-h-[92dvh] flex-col overflow-hidden">
 				<DrawerHeader className="flex shrink-0 items-center gap-3 text-left">
 					<Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={handleBack}>
 						<ArrowLeft className="w-4 h-4" />
@@ -81,16 +89,21 @@ export default function CheckoutSheet() {
 					</div>
 				</DrawerHeader>
 
-				<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:px-0">
-					{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={() => orderState.nextStep()} />}
+				<div
+					ref={stepScrollRef}
+					className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex max-h-[calc(92dvh-8rem)] flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:px-0"
+				>
+					<div key={checkoutStep} className="flex flex-col gap-3">
+						{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={() => orderState.nextStep()} />}
 
-					{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}
+						{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}
 
-					{checkoutStep === "CASHBACK" && <CashbackStep onNext={() => orderState.nextStep()} />}
+						{checkoutStep === "CASHBACK" && <CashbackStep onNext={() => orderState.nextStep()} />}
 
-					{checkoutStep === "PAGAMENTO" && <PaymentStep onNext={() => orderState.nextStep()} />}
+						{checkoutStep === "PAGAMENTO" && <PaymentStep onNext={() => orderState.nextStep()} />}
 
-					{checkoutStep === "REVISAO" && <OrderReviewStep onSubmit={() => submitOrder()} isSubmitting={isPending} />}
+						{checkoutStep === "REVISAO" && <OrderReviewStep onSubmit={() => submitOrder()} isSubmitting={isPending} />}
+					</div>
 				</div>
 
 				{isPending && (

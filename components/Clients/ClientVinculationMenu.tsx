@@ -19,6 +19,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import ResponsiveMenuViewOnly from "../Utils/ResponsiveMenuViewOnly";
 import { Input } from "../ui/input";
+import { LoadingButton } from "../loading-button";
 type ClientVinculationMenuProps = {
 	closeModal: () => void;
 	onSelectClient: (client: { id: string; nome: string; telefone: string }) => void;
@@ -140,6 +141,12 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 						updateClientLocation={updateClientLocation}
 						removeClientLocation={removeClientLocation}
 					/>
+					<div className="w-full flex items-center justify-end">
+						<LoadingButton onClick={handleCreateAndLink} className="flex items-center gap-1.5" loading={isPending}>
+							<LinkIcon className="w-3 min-w-3 h-3 min-h-3" />
+							VINCULAR
+						</LoadingButton>
+					</div>
 				</div>
 			) : null}
 		</ResponsiveMenuViewOnly>

@@ -28,6 +28,24 @@ const NuvemshopMoneySchema = z.union([z.string(), z.number()]).nullable().option
 	return Number.isFinite(numberValue) ? numberValue : 0;
 });
 
+const NuvemshopNullableMoneySchema = z.union([z.string(), z.number()]).nullable().optional().transform((value) => {
+	if (value === null || value === undefined || value === "") return null;
+	const numberValue = Number(value);
+	return Number.isFinite(numberValue) ? numberValue : null;
+});
+
+const NuvemshopStockSchema = z.union([z.string(), z.number()]).nullable().optional().transform((value) => {
+	if (value === null || value === undefined || value === "") return null;
+	const numberValue = Number(value);
+	return Number.isFinite(numberValue) ? numberValue : null;
+});
+
+const NuvemshopLocalizedStringSchema = z
+	.record(z.string().nullable().optional())
+	.nullable()
+	.optional()
+	.transform((value) => value ?? {});
+
 const NuvemshopCompletedAtSchema = z
 	.object({
 		date: z.string({ invalid_type_error: "Tipo inválido para data de conclusão do pedido." }).optional().nullable(),
@@ -123,3 +141,55 @@ export type TNuvemshopOrder = z.infer<typeof NuvemshopOrderSchema>;
 
 export const NuvemshopOrdersOutputSchema = z.array(NuvemshopOrderSchema);
 export type TNuvemshopOrdersOutput = z.infer<typeof NuvemshopOrdersOutputSchema>;
+
+const NuvemshopProductImageSchema = z
+	.object({
+		id: z.union([z.string(), z.number()]).optional().nullable(),
+		src: NuvemshopNullableStringSchema,
+		position: z.number({ invalid_type_error: "Tipo inválido para posição da imagem do produto Nuvem Shop." }).optional().nullable(),
+	})
+	.passthrough();
+
+const NuvemshopProductCategorySchema = z.union([
+	z
+		.object({
+			id: z.union([z.string(), z.number()]).optional().nullable(),
+			name: NuvemshopLocalizedStringSchema,
+		})
+		.passthrough(),
+	z.union([z.string(), z.number()]),
+]);
+
+const NuvemshopProductVariantValueSchema = NuvemshopLocalizedStringSchema;
+
+export const NuvemshopProductVariantSchema = z
+	.object({
+		id: z.union([z.string(), z.number()]).optional().nullable(),
+		product_id: z.union([z.string(), z.number()]).optional().nullable(),
+		values: z.array(NuvemshopProductVariantValueSchema).optional().default([]),
+		price: NuvemshopMoneySchema,
+		promotional_price: NuvemshopNullableMoneySchema,
+		cost: NuvemshopNullableMoneySchema,
+		stock_management: z.boolean({ invalid_type_error: "Tipo inválido para controle de estoque do produto Nuvem Shop." }).optional().nullable(),
+		stock: NuvemshopStockSchema,
+		sku: NuvemshopNullableStringSchema,
+	})
+	.passthrough();
+export type TNuvemshopProductVariant = z.infer<typeof NuvemshopProductVariantSchema>;
+
+export const NuvemshopProductSchema = z
+	.object({
+		id: z.union([z.string(), z.number()]),
+		name: NuvemshopLocalizedStringSchema,
+		description: NuvemshopLocalizedStringSchema,
+		images: z.array(NuvemshopProductImageSchema).optional().default([]),
+		categories: z.array(NuvemshopProductCategorySchema).optional().default([]),
+		brand: NuvemshopNullableStringSchema,
+		published: z.boolean({ invalid_type_error: "Tipo inválido para publicação do produto Nuvem Shop." }).optional().default(true),
+		variants: z.array(NuvemshopProductVariantSchema).optional().default([]),
+	})
+	.passthrough();
+export type TNuvemshopProduct = z.infer<typeof NuvemshopProductSchema>;
+
+export const NuvemshopProductsOutputSchema = z.array(NuvemshopProductSchema);
+export type TNuvemshopProductsOutput = z.infer<typeof NuvemshopProductsOutputSchema>;

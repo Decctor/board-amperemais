@@ -9,7 +9,7 @@ import type {
 	TCanonicalSale,
 	TCanonicalSaleItem,
 } from "../types";
-import type { TNuvemshopOrder, TNuvemshopOrderProduct } from "./types";
+import type { TNuvemshopOrder, TNuvemshopOrderProduct, TNuvemshopProduct, TNuvemshopProductVariant } from "./types";
 
 function stripBrazilCountryCode(phone: string) {
 	const digits = phone.replace(/\D/g, "");
@@ -24,6 +24,16 @@ function toStringId(value: string | number | null | undefined) {
 
 function compactJoin(values: Array<string | null | undefined>, separator = " - ") {
 	return values.filter((value): value is string => !!value && value.trim().length > 0).join(separator);
+}
+
+function pickLocalizedValue(value: Record<string, string | null | undefined>) {
+	return value.pt || value["pt-BR"] || value.es || value.en || Object.values(value).find((item) => !!item) || null;
+}
+
+function stripHtml(value: string | null) {
+	if (!value) return null;
+	const text = value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+	return text.length > 0 ? text : null;
 }
 
 function parseOrderDate(order: TNuvemshopOrder) {
@@ -92,6 +102,78 @@ export function mapNuvemshopProduct(product: TNuvemshopOrderProduct): TCanonical
 		ncm: "N/A",
 		type: "PRODUTO",
 	};
+}
+
+function getCatalogProductCode(product: TNuvemshopProduct, variant: TNuvemshopProductVariant | null) {
+	return (
+		variant?.sku ||
+		toStringId(variant?.id) ||
+		toStringId(variant?.product_id) ||
+		toStringId(product.id) ||
+		"PRODUTO-NUVEM-SHOP"
+	);
+}
+
+function getCatalogProductName(product: TNuvemshopProduct, variant: TNuvemshopProductVariant | null, productCode: string) {
+	const productName = pickLocalizedValue(product.name) || productCode;
+	const variantValues = variant?.values.map(pickLocalizedValue).filter((value): value is string => !!value) ?? [];
+	if (variantValues.length === 0) return productName;
+	return `${productName} - ${variantValues.join(" / ")}`;
+}
+
+function getCatalogProductImageUrl(product: TNuvemshopProduct) {
+	const images = product.images.filter((image) => !!image.src);
+	if (images.length === 0) return null;
+
+	let firstImage = images[0];
+	for (const image of images) {
+		if ((image.position ?? Number.MAX_SAFE_INTEGER) < (firstImage.position ?? Number.MAX_SAFE_INTEGER)) {
+			firstImage = image;
+		}
+	}
+	return firstImage.src;
+}
+
+function getCatalogProductGroup(product: TNuvemshopProduct) {
+	const firstNamedCategory = product.categories.find(
+		(category): category is Extract<(typeof product.categories)[number], { name: Record<string, string | null | undefined> }> =>
+			typeof category === "object" && category !== null && "name" in category,
+	);
+
+	return (firstNamedCategory ? pickLocalizedValue(firstNamedCategory.name) : null) || product.brand || "Nuvem Shop";
+}
+
+function mapNuvemshopCatalogProductVariant(product: TNuvemshopProduct, variant: TNuvemshopProductVariant | null) {
+	const productCode = getCatalogProductCode(product, variant);
+	const salePrice = variant?.promotional_price && variant.promotional_price > 0 ? variant.promotional_price : (variant?.price ?? 0);
+
+	return {
+		idExterno: toStringId(variant?.id) || toStringId(product.id) || productCode,
+		ativo: product.published,
+		codigo: productCode,
+		nome: getCatalogProductName(product, variant, productCode),
+		descricao: stripHtml(pickLocalizedValue(product.description)),
+		imagemCapaUrl: getCatalogProductImageUrl(product),
+		precoVenda: salePrice,
+		precoCusto: variant?.cost ?? null,
+		unidade: "UN",
+		grupo: getCatalogProductGroup(product),
+		ncm: "N/A",
+		tipo: "PRODUTO",
+		status: product.published ? "ACTIVE" : "INACTIVE",
+		quantidade: variant?.stock ?? null,
+		controlaEstoque: variant?.stock_management ?? false,
+	};
+}
+
+export function mapNuvemshopCatalogProducts(products: TNuvemshopProduct[]) {
+	return uniqueBy(
+		products.flatMap((product) => {
+			if (product.variants.length === 0) return [mapNuvemshopCatalogProductVariant(product, null)];
+			return product.variants.map((variant) => mapNuvemshopCatalogProductVariant(product, variant));
+		}),
+		(product) => product.codigo,
+	);
 }
 
 export function mapNuvemshopSaleItem(product: TNuvemshopOrderProduct): TCanonicalSaleItem {

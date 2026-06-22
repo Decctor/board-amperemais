@@ -39,6 +39,10 @@ const nextConfig = {
 			},
 			{
 				protocol: "https",
+				hostname: "acdn-us.mitiendanube.com",
+			},
+			{
+				protocol: "https",
 				hostname: "brave-warbler-898.convex.cloud",
 			},
 			{

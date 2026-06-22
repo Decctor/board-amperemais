@@ -1,11 +1,20 @@
 import axios, { isAxiosError, type AxiosInstance } from "axios";
 import type { TCanonicalImportWindow } from "../types";
 import { toCanonicalNuvemshopImportBatch } from "./mappers";
-import { NuvemshopConfigSchema, NuvemshopOrdersOutputSchema, type TNuvemshopConfig, type TNuvemshopOrder } from "./types";
+import {
+	NuvemshopConfigSchema,
+	NuvemshopOrdersOutputSchema,
+	NuvemshopProductsOutputSchema,
+	type TNuvemshopConfig,
+	type TNuvemshopOrder,
+	type TNuvemshopProduct,
+} from "./types";
 
 const NUVEMSHOP_API_URL = "https://api.nuvemshop.com.br";
 const NUVEMSHOP_ORDERS_PER_PAGE = 200;
+const NUVEMSHOP_PRODUCTS_PER_PAGE = 200;
 const NUVEMSHOP_MAX_PAGES_PER_WINDOW = 50;
+const NUVEMSHOP_MAX_PRODUCT_PAGES = 500;
 
 function getUserAgent() {
 	const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://recompracrm.com";
@@ -77,6 +86,36 @@ async function getNuvemshopOrdersPage({
 	}
 }
 
+async function getNuvemshopProductsPage({ client, page }: { client: AxiosInstance; page: number }) {
+	try {
+		const response = await client.get<unknown>("/products", {
+			params: {
+				page,
+				per_page: NUVEMSHOP_PRODUCTS_PER_PAGE,
+				fields: "id,name,description,images,categories,brand,published,variants",
+			},
+		});
+
+		return NuvemshopProductsOutputSchema.parse(response.data);
+	} catch (error) {
+		if (isAxiosError(error) && error.response?.status === 429) {
+			const retryAfterMs = getRetryAfterMs(error.response.headers["retry-after"]) ?? 30000;
+			console.warn(`[NUVEMSHOP] Rate limit atingido ao buscar produtos. Aguardando ${retryAfterMs / 1000}s antes de tentar novamente.`);
+			await delay(retryAfterMs);
+			const response = await client.get<unknown>("/products", {
+				params: {
+					page,
+					per_page: NUVEMSHOP_PRODUCTS_PER_PAGE,
+					fields: "id,name,description,images,categories,brand,published,variants",
+				},
+			});
+			return NuvemshopProductsOutputSchema.parse(response.data);
+		}
+
+		throw error;
+	}
+}
+
 export async function fetchAllNuvemshopOrders(config: TNuvemshopConfig, window: TCanonicalImportWindow) {
 	const client = createNuvemshopClient(config);
 	const orders: TNuvemshopOrder[] = [];
@@ -89,6 +128,24 @@ export async function fetchAllNuvemshopOrders(config: TNuvemshopConfig, window: 
 	}
 
 	return orders;
+}
+
+export async function fetchAllNuvemshopProducts(config: TNuvemshopConfig) {
+	const parsedConfig = NuvemshopConfigSchema.parse({
+		...config,
+		storeId: String(config.storeId),
+	});
+	const client = createNuvemshopClient(parsedConfig);
+	const products: TNuvemshopProduct[] = [];
+
+	for (let page = 1; page <= NUVEMSHOP_MAX_PRODUCT_PAGES; page++) {
+		const pageProducts = await getNuvemshopProductsPage({ client, page });
+		products.push(...pageProducts);
+
+		if (pageProducts.length < NUVEMSHOP_PRODUCTS_PER_PAGE) break;
+	}
+
+	return products;
 }
 
 export async function fetchNuvemshopImportBatch({

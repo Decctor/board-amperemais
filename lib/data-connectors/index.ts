@@ -7,6 +7,8 @@ import type { TCanonicalImportBatch, TDataConnectorFetchInput, TDataConnectorKin
 
 export * from "./types";
 export * from "./status-mappers";
+export { syncProductsForOrganization } from "./catalog-sync";
+export type { TSyncProductsForOrganizationResult } from "./catalog-sync";
 
 export async function fetchConnectorImportBatch(input: TDataConnectorFetchInput): Promise<TCanonicalImportBatch> {
 	if (input.config.tipo === "CARDAPIO-WEB") {

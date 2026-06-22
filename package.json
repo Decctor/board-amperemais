@@ -36,6 +36,7 @@
 		"test:bling-fetch": "tsx ./scripts/test-bling-fetch.ts",
 		"sync:bling-collecting": "tsx ./scripts/sync-bling-collecting.ts",
 		"sync:nuvemshop-manual": "tsx ./utils/scripts/sync-nuvemshop-manual-collecting.ts",
+		"sync:organization-products": "tsx ./utils/scripts/sync-organization-products.ts",
 		"sync:organization-manual": "tsx ./utils/scripts/sync-organization-manual-collecting.ts",
 		"marketing-agent:run": "tsx ./scripts/run-marketing-agent.ts",
 		"marketing-agent:test": "tsx ./scripts/test-marketing-agent.ts",
