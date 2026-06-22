@@ -178,6 +178,17 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 		)
 	).flat();
 
+	if (phones.length === 0) {
+		console.error("[ERROR] [WHATSAPP_CONNECT_CALLBACK] Nenhum número Cloud API encontrado nos WABAs autorizados.");
+		return NextResponse.json(
+			{
+				error: "Nenhum número de WhatsApp Cloud API foi encontrado na conta conectada.",
+				hint: "Verifique se o número está registrado na API Cloud da Meta e se as permissões de mensagens foram concedidas.",
+			},
+			{ status: 400 },
+		);
+	}
+
 	const insertedPhones = await db.transaction(async (tx) => {
 		const whatsappConnection: TNewWhatsappConnection = {
 			organizacaoId: userOrgId,
@@ -204,18 +215,22 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 			)
 			.returning({ id: whatsappConnectionPhones.id, whatsappBusinessAccountId: whatsappConnectionPhones.whatsappBusinessAccountId });
 
+		if (insertedWhatsappConnectionPhones.length === 0) {
+			throw new Error("Failed to insert whatsapp connection phones");
+		}
+
+		const firstPhoneId = insertedWhatsappConnectionPhones[0]?.id;
+		if (firstPhoneId) {
+			await tx
+				.update(campaigns)
+				.set({
+					whatsappConexaoTelefoneId: firstPhoneId,
+				})
+				.where(and(eq(campaigns.organizacaoId, userOrgId), isNull(campaigns.whatsappConexaoTelefoneId)));
+		}
+
 		return insertedWhatsappConnectionPhones;
 	});
-
-	const firstPhoneId = insertedPhones[0]?.id;
-	if (firstPhoneId) {
-		await db
-			.update(campaigns)
-			.set({
-				whatsappConexaoTelefoneId: firstPhoneId,
-			})
-			.where(and(eq(campaigns.organizacaoId, userOrgId), isNull(campaigns.whatsappConexaoTelefoneId)));
-	}
 
 	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Starting automatic message template submission for connected phones");
 	const insertedPhoneIds = new Set(insertedPhones.map((phone) => phone.id));
