@@ -3,14 +3,17 @@ import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
-import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
+import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductOptionSchema, ProductOptionValueSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
 import { db, type DBTransaction } from "@/services/drizzle";
 import {
 	productAddOnOptions,
 	productAddOnReferences,
 	productAddOns,
 	productFiscalProfiles,
+	productOptionValues,
+	productOptions,
 	productStockTransactions,
+	productVariantOptionValues,
 	productVariants,
 	products,
 	saleItems,
@@ -270,6 +273,20 @@ async function getProducts({ input, session }: GetProductsParams) {
 						},
 						perfisFiscais: {
 							where: (fields, { eq }) => eq(fields.ativo, true),
+						},
+						valoresOpcoes: {
+							with: {
+								opcao: true,
+								valor: true,
+							},
+						},
+					},
+				},
+				opcoes: {
+					orderBy: (fields, { asc }) => asc(fields.ordem),
+					with: {
+						valores: {
+							orderBy: (fields, { asc }) => asc(fields.ordem),
 						},
 					},
 				},
@@ -617,6 +634,29 @@ const UpdateProductFiscalProfileInputSchema = ProductFiscalProfileSchema.omit({
 		.nullable(),
 });
 
+// Referência de valor de eixo dentro de uma variante (junção variante <-> valor).
+const UpdateProductVariantOptionValueInputSchema = z.object({
+	opcaoReferenciaId: z.string({ invalid_type_error: "Tipo não válido para referência do eixo." }),
+	valorReferenciaId: z.string({ invalid_type_error: "Tipo não válido para referência do valor." }),
+	id: z.string({ invalid_type_error: "Tipo não válido para ID da junção." }).optional().nullable(),
+	opcaoId: z.string({ invalid_type_error: "Tipo não válido para ID do eixo." }).optional().nullable(),
+	opcaoValorId: z.string({ invalid_type_error: "Tipo não válido para ID do valor." }).optional().nullable(),
+	deletar: z.boolean({ invalid_type_error: "Tipo não válido para deletar junção." }).optional().nullable(),
+});
+
+const UpdateProductOptionValueInputSchema = ProductOptionValueSchema.omit({ organizacaoId: true, opcaoId: true }).extend({
+	referenciaId: z.string({ invalid_type_error: "Tipo não válido para referência do valor." }),
+	id: z.string({ invalid_type_error: "Tipo não válido para ID do valor." }).optional().nullable(),
+	deletar: z.boolean({ invalid_type_error: "Tipo não válido para deletar valor." }).optional().nullable(),
+});
+
+const UpdateProductOptionInputSchema = ProductOptionSchema.omit({ organizacaoId: true, produtoId: true }).extend({
+	referenciaId: z.string({ invalid_type_error: "Tipo não válido para referência do eixo." }),
+	id: z.string({ invalid_type_error: "Tipo não válido para ID do eixo." }).optional().nullable(),
+	deletar: z.boolean({ invalid_type_error: "Tipo não válido para deletar eixo." }).optional().nullable(),
+	valores: z.array(UpdateProductOptionValueInputSchema),
+});
+
 const UpdateProductVariantInputSchema = ProductVariantSchema.omit({
 	organizacaoId: true,
 	produtoId: true,
@@ -624,6 +664,7 @@ const UpdateProductVariantInputSchema = ProductVariantSchema.omit({
 	imagemCapaUrl: z.string().optional().nullable(),
 	addOns: z.array(UpdateProductAddOnInputSchema),
 	perfisFiscais: z.array(UpdateProductFiscalProfileInputSchema),
+	opcoesValores: z.array(UpdateProductVariantOptionValueInputSchema).default([]),
 	id: z
 		.string({
 			invalid_type_error: "Tipo não válido para ID da variante.",
@@ -645,6 +686,7 @@ const UpdateProductInputSchema = z.object({
 	}),
 	product: ProductSchema.omit({ organizacaoId: true }),
 	productVariants: z.array(UpdateProductVariantInputSchema),
+	productOptions: z.array(UpdateProductOptionInputSchema).default([]),
 	productAddOns: z.array(UpdateProductAddOnInputSchema),
 	productFiscalProfiles: z.array(UpdateProductFiscalProfileInputSchema),
 });
@@ -653,6 +695,123 @@ export type TUpdateProductInput = z.infer<typeof UpdateProductInputSchema>;
 type TUpdateProductAddOnInput = z.infer<typeof UpdateProductAddOnInputSchema>;
 type TUpdateProductAddOnOptionInput = z.infer<typeof UpdateProductAddOnOptionInputSchema>;
 type TUpdateProductFiscalProfileInput = z.infer<typeof UpdateProductFiscalProfileInputSchema>;
+type TUpdateProductOptionInput = z.infer<typeof UpdateProductOptionInputSchema>;
+type TUpdateProductVariantOptionValueInput = z.infer<typeof UpdateProductVariantOptionValueInputSchema>;
+
+// Resolve referenciaId -> id real para eixos e valores, fazendo insert/update/delete dos filhos.
+async function upsertProductOptions({
+	tx,
+	userOrgId,
+	productId,
+	options,
+}: {
+	tx: DBTransaction;
+	userOrgId: string;
+	productId: string;
+	options: TUpdateProductOptionInput[];
+}) {
+	const optionRefToId = new Map<string, string>();
+	const valueRefToId = new Map<string, string>();
+
+	for (const option of options) {
+		if (option.id && option.deletar) {
+			// Hard delete: o cascade remove valores e as junções com variantes.
+			await tx
+				.delete(productOptions)
+				.where(and(eq(productOptions.id, option.id), eq(productOptions.produtoId, productId), eq(productOptions.organizacaoId, userOrgId)));
+			continue;
+		}
+
+		let optionId = option.id ?? null;
+		if (optionId) {
+			await tx
+				.update(productOptions)
+				.set({ nome: option.nome, tipo: option.tipo, ordem: option.ordem })
+				.where(and(eq(productOptions.id, optionId), eq(productOptions.produtoId, productId), eq(productOptions.organizacaoId, userOrgId)));
+		} else {
+			const [created] = await tx
+				.insert(productOptions)
+				.values({ organizacaoId: userOrgId, produtoId: productId, nome: option.nome, tipo: option.tipo, ordem: option.ordem })
+				.returning({ id: productOptions.id });
+			if (!created?.id) throw new createHttpError.InternalServerError("Erro ao criar eixo de variação.");
+			optionId = created.id;
+		}
+		optionRefToId.set(option.referenciaId, optionId);
+
+		for (const value of option.valores) {
+			if (value.id && value.deletar) {
+				await tx
+					.delete(productOptionValues)
+					.where(and(eq(productOptionValues.id, value.id), eq(productOptionValues.opcaoId, optionId), eq(productOptionValues.organizacaoId, userOrgId)));
+				continue;
+			}
+
+			const valueFields = {
+				nome: value.nome,
+				valorAuxiliar: value.valorAuxiliar ?? null,
+				imagemCapaUrl: value.imagemCapaUrl ?? null,
+				ordem: value.ordem,
+			};
+
+			let valueId = value.id ?? null;
+			if (valueId) {
+				await tx
+					.update(productOptionValues)
+					.set(valueFields)
+					.where(and(eq(productOptionValues.id, valueId), eq(productOptionValues.opcaoId, optionId), eq(productOptionValues.organizacaoId, userOrgId)));
+			} else {
+				const [created] = await tx
+					.insert(productOptionValues)
+					.values({ organizacaoId: userOrgId, opcaoId: optionId, ...valueFields })
+					.returning({ id: productOptionValues.id });
+				if (!created?.id) throw new createHttpError.InternalServerError("Erro ao criar valor de variação.");
+				valueId = created.id;
+			}
+			valueRefToId.set(value.referenciaId, valueId);
+		}
+	}
+
+	return { optionRefToId, valueRefToId };
+}
+
+// Substitui as junções de uma variante pelo conjunto desejado (resolvendo referenciaId -> id real).
+async function syncVariantOptionValues({
+	tx,
+	userOrgId,
+	variantId,
+	refs,
+	optionRefToId,
+	valueRefToId,
+}: {
+	tx: DBTransaction;
+	userOrgId: string;
+	variantId: string;
+	refs: TUpdateProductVariantOptionValueInput[];
+	optionRefToId: Map<string, string>;
+	valueRefToId: Map<string, string>;
+}) {
+	const desired: Array<{ opcaoId: string; opcaoValorId: string }> = [];
+	for (const ref of refs) {
+		if (ref.deletar) continue;
+		const opcaoId = ref.opcaoId ?? optionRefToId.get(ref.opcaoReferenciaId) ?? null;
+		const opcaoValorId = ref.opcaoValorId ?? valueRefToId.get(ref.valorReferenciaId) ?? null;
+		if (!opcaoId || !opcaoValorId) continue; // referência a um eixo/valor que não foi enviado ou foi removido
+		desired.push({ opcaoId, opcaoValorId });
+	}
+
+	await tx
+		.delete(productVariantOptionValues)
+		.where(and(eq(productVariantOptionValues.produtoVarianteId, variantId), eq(productVariantOptionValues.organizacaoId, userOrgId)));
+
+	for (const item of desired) {
+		await tx.insert(productVariantOptionValues).values({
+			organizacaoId: userOrgId,
+			produtoVarianteId: variantId,
+			opcaoId: item.opcaoId,
+			opcaoValorId: item.opcaoValorId,
+		});
+	}
+}
 
 async function upsertProductAddOnOptions({
 	tx,
@@ -916,6 +1075,14 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 			profiles: input.productFiscalProfiles,
 		});
 
+		// Upsert dos eixos/valores de variação antes das variantes, para resolver as junções.
+		const { optionRefToId, valueRefToId } = await upsertProductOptions({
+			tx,
+			userOrgId,
+			productId: input.productId,
+			options: input.productOptions,
+		});
+
 		for (const variant of input.productVariants) {
 			if (variant.id && variant.deletar) {
 				await tx
@@ -974,6 +1141,15 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 
 				variantId = createdVariant.id;
 			}
+
+			await syncVariantOptionValues({
+				tx,
+				userOrgId,
+				variantId,
+				refs: variant.opcoesValores,
+				optionRefToId,
+				valueRefToId,
+			});
 
 			for (const [addOnIndex, addOn] of variant.addOns.entries()) {
 				await upsertScopedProductAddOn({
@@ -1034,6 +1210,21 @@ const CreateProductAddOnInputSchema = ProductAddOnSchema.omit({ organizacaoId: t
 	),
 });
 
+// Referência de valor de eixo dentro de uma variante recém-criada (por referenciaId local).
+const CreateProductVariantOptionValueInputSchema = z.object({
+	opcaoReferenciaId: z.string({ invalid_type_error: "Tipo não válido para referência do eixo." }),
+	valorReferenciaId: z.string({ invalid_type_error: "Tipo não válido para referência do valor." }),
+});
+
+const CreateProductOptionValueInputSchema = ProductOptionValueSchema.omit({ organizacaoId: true, opcaoId: true }).extend({
+	referenciaId: z.string({ invalid_type_error: "Tipo não válido para referência do valor." }),
+});
+
+const CreateProductOptionInputSchema = ProductOptionSchema.omit({ organizacaoId: true, produtoId: true }).extend({
+	referenciaId: z.string({ invalid_type_error: "Tipo não válido para referência do eixo." }),
+	valores: z.array(CreateProductOptionValueInputSchema),
+});
+
 const CreateProductVariantInputSchema = ProductVariantSchema.omit({
 	organizacaoId: true,
 	produtoId: true,
@@ -1041,11 +1232,13 @@ const CreateProductVariantInputSchema = ProductVariantSchema.omit({
 	imagemCapaUrl: z.string().optional().nullable(),
 	addOns: z.array(CreateProductAddOnInputSchema),
 	perfisFiscais: z.array(ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true })),
+	opcoesValores: z.array(CreateProductVariantOptionValueInputSchema).default([]),
 });
 
 const CreateProductInputSchema = z.object({
 	product: ProductSchema.omit({ organizacaoId: true }),
 	productVariants: z.array(CreateProductVariantInputSchema),
+	productOptions: z.array(CreateProductOptionInputSchema).default([]),
 	productAddOns: z.array(CreateProductAddOnInputSchema),
 	productFiscalProfiles: z.array(ProductFiscalProfileSchema.omit({ organizacaoId: true, produtoId: true, produtoVarianteId: true })),
 });
@@ -1115,6 +1308,34 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 			});
 		}
 
+		// 1.2 Create variant option axes and their values, tracking referenciaId -> real id.
+		const optionRefToId = new Map<string, string>();
+		const valueRefToId = new Map<string, string>();
+		for (const option of input.productOptions) {
+			const [createdOption] = await tx
+				.insert(productOptions)
+				.values({ organizacaoId: userOrgId, produtoId: productId, nome: option.nome, tipo: option.tipo, ordem: option.ordem })
+				.returning({ id: productOptions.id });
+			if (!createdOption?.id) throw new createHttpError.InternalServerError("Erro ao criar eixo de variação.");
+			optionRefToId.set(option.referenciaId, createdOption.id);
+
+			for (const value of option.valores) {
+				const [createdValue] = await tx
+					.insert(productOptionValues)
+					.values({
+						organizacaoId: userOrgId,
+						opcaoId: createdOption.id,
+						nome: value.nome,
+						valorAuxiliar: value.valorAuxiliar ?? null,
+						imagemCapaUrl: value.imagemCapaUrl ?? null,
+						ordem: value.ordem,
+					})
+					.returning({ id: productOptionValues.id });
+				if (!createdValue?.id) throw new createHttpError.InternalServerError("Erro ao criar valor de variação.");
+				valueRefToId.set(value.referenciaId, createdValue.id);
+			}
+		}
+
 		const insertedProductVariantIds = [];
 		const insertedProductAddOnIds = [];
 		// 2. Create product variants (if any)
@@ -1138,6 +1359,19 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 			if (!createdVariant?.id) throw new createHttpError.InternalServerError("Erro ao criar variante do produto.");
 
 			insertedProductVariantIds.push(createdVariant.id);
+
+			// 2.0 Link the variant to its option-value combination (Cor: Preto, Tamanho: G).
+			for (const ref of variant.opcoesValores) {
+				const opcaoId = optionRefToId.get(ref.opcaoReferenciaId);
+				const opcaoValorId = valueRefToId.get(ref.valorReferenciaId);
+				if (!opcaoId || !opcaoValorId) continue; // referência a um eixo/valor que não foi enviado
+				await tx.insert(productVariantOptionValues).values({
+					organizacaoId: userOrgId,
+					produtoVarianteId: createdVariant.id,
+					opcaoId,
+					opcaoValorId,
+				});
+			}
 
 			// 2.1 Checking if variant allows stock tracking and if quantity is greater than 0
 			if (variant.rastreamentoEstoqueAtivo && variant.quantidade && variant.quantidade > 0) {

@@ -105,8 +105,30 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 				ativo: variant.ativo,
 				addOns: processedVariantAddOns,
 				perfisFiscais: [],
+				opcoesValores: (variant.opcoesValores ?? [])
+					.filter((ref) => !ref.deletar)
+					.map((ref) => ({ opcaoReferenciaId: ref.opcaoReferenciaId, valorReferenciaId: ref.valorReferenciaId })),
 			});
 		}
+
+		// Process variant option axes and their values (filter out deleted ones).
+		const processedOptions: TCreateProductInput["productOptions"] = state.productOptions
+			.filter((option) => !option.deletar)
+			.map((option) => ({
+				referenciaId: option.referenciaId,
+				nome: option.nome,
+				tipo: option.tipo,
+				ordem: option.ordem,
+				valores: option.valores
+					.filter((value) => !value.deletar)
+					.map((value) => ({
+						referenciaId: value.referenciaId,
+						nome: value.nome,
+						valorAuxiliar: value.valorAuxiliar ?? null,
+						imagemCapaUrl: value.imagemCapaUrl ?? null,
+						ordem: value.ordem,
+					})),
+			}));
 
 		// 3. Process product addOns (filter out deleted ones)
 		const processedAddOns: TCreateProductInput["productAddOns"] = state.productAddOns
@@ -132,6 +154,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 				rastreamentoEstoqueAtivo: state.product.rastreamentoEstoqueAtivo,
 			},
 			productVariants: processedVariants,
+			productOptions: processedOptions,
 			productAddOns: processedAddOns,
 			productFiscalProfiles: [],
 		};
