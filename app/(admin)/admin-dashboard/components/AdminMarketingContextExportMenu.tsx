@@ -81,7 +81,7 @@ export default function AdminMarketingContextExportMenu({ organizationId, organi
 	return (
 		<ResponsiveMenu
 			menuTitle="EXPORTAR CONTEXTO PARA IA"
-			menuDescription={`Gere um JSON agregado com dados comerciais, clientes, RFM e produtos de ${organizationName}.`}
+			menuDescription={`Gere um JSON agregado com dados comerciais, clientes, RFM, produtos, campanhas e cashback de ${organizationName}.`}
 			menuActionButtonText="BAIXAR JSON"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={handleSubmit}
@@ -114,7 +114,7 @@ export default function AdminMarketingContextExportMenu({ organizationId, organi
 				<div className="grid grid-cols-1 gap-2 text-sm text-foreground/75">
 					<div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 p-3">
 						<BrainCircuit className="h-4 w-4 min-h-4 min-w-4 text-primary" />
-						<span>Resultados comerciais, comparação com período anterior, RFM, base de clientes e distribuições agregadas.</span>
+						<span>Resultados comerciais, comparação com período anterior, RFM, base de clientes, campanhas, cashback e distribuições agregadas.</span>
 					</div>
 					<div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 p-3">
 						<Download className="h-4 w-4 min-h-4 min-w-4 text-primary" />

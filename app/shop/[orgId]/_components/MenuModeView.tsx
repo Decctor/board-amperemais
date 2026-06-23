@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { normalizeForSearch } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
@@ -43,12 +44,12 @@ export default function MenuModeView() {
 		let filtered = products;
 
 		if (searchValue.trim()) {
-			const search = searchValue.toLowerCase().trim();
+			const search = normalizeForSearch(searchValue);
 			filtered = filtered.filter(
 				(p) =>
-					p.nome.toLowerCase().includes(search) ||
-					p.codigo?.toLowerCase().includes(search) ||
-					p.grupo?.toLowerCase().includes(search),
+					normalizeForSearch(p.nome).includes(search) ||
+					(p.codigo && normalizeForSearch(p.codigo).includes(search)) ||
+					(p.grupo && normalizeForSearch(p.grupo).includes(search)),
 			);
 		}
 

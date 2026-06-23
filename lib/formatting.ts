@@ -28,6 +28,14 @@ export function formatDateBirthdayAsLocale(date?: string | Date | null, showAge 
 	if (showAge) return `${formatDateAsLocale(date)} (${getAgeFromBirthdayDate(date)} anos)`;
 	return formatDateAsLocale(date);
 }
+export function normalizeForSearch(string: string) {
+	return string
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.trim();
+}
+
 export function formatAsSlug(string: string) {
 	return string
 		.normalize("NFD")

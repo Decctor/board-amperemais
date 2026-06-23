@@ -13,10 +13,16 @@ import { getWhatsappTemplatePlainText } from "./template-text";
 
 export type TMarketingCampaignsPerformanceContext = Awaited<ReturnType<typeof getCampaignsPerformanceContext>>;
 
-export async function getCampaignsPerformanceContext(orgId: string) {
-	const last30DaysPeriod = {
+export async function getCampaignsPerformanceContext(
+	orgId: string,
+	period: { start: Date; end: Date } = {
 		start: dayjs().subtract(30, "days").startOf("day").toDate(),
 		end: dayjs().endOf("day").toDate(),
+	},
+) {
+	const last30DaysPeriod = {
+		start: period.start,
+		end: period.end,
 	};
 
 	const [organization, availableWhatsappPhones, campaignsResult, interactionsGroupedByCampaignResult, conversionsGroupedByCampaignResult] = await Promise.all([

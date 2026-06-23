@@ -3,14 +3,18 @@
 import type { TGetRFMHealthOutput } from "@/app/api/segmentations/rfm-health/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { updateRFMConfig } from "@/lib/mutations/configs";
 import { useRFMHealth } from "@/lib/queries/segmentations";
 import { cn } from "@/lib/utils";
 import type { TRFMConfig } from "@/utils/rfm";
-import { AlertTriangle, CheckCircle2, HeartPulse, Info, Settings2, ShieldAlert } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Check, CheckCircle2, HeartPulse, Info, Settings2, ShieldAlert } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
+import { toast } from "sonner";
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type TRFMHealthData = TGetRFMHealthOutput["data"];
@@ -96,12 +100,12 @@ export default function SegmentsPageRFMHealth({ onOpenConfig }: SegmentsPageRFMH
 			</div>
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{data ? <RFMHealthContent data={data} onOpenConfig={onOpenConfig} /> : null}
+			{data ? <RFMHealthContent data={data} /> : null}
 		</div>
 	);
 }
 
-function RFMHealthContent({ data, onOpenConfig }: { data: TRFMHealthData; onOpenConfig: () => void }) {
+function RFMHealthContent({ data }: { data: TRFMHealthData }) {
 	if (data.totalClients === 0) {
 		return (
 			<div className="w-full py-12 flex flex-col items-center justify-center gap-2 text-center">
@@ -120,7 +124,7 @@ function RFMHealthContent({ data, onOpenConfig }: { data: TRFMHealthData; onOpen
 				<DistributionBlock distribution={data.labelDistribution} totalClients={data.totalClients} />
 			</div>
 			<HistogramsBlock data={data} />
-			<ConfigComparisonBlock rfmConfig={data.rfmConfig} suggestedConfig={data.suggestedConfig} onOpenConfig={onOpenConfig} />
+			<ConfigComparisonBlock rfmConfig={data.rfmConfig} suggestedConfig={data.suggestedConfig} />
 		</div>
 	);
 }
@@ -438,17 +442,37 @@ function HistogramTooltip({
 	);
 }
 
-function ConfigComparisonBlock({ rfmConfig, suggestedConfig, onOpenConfig }: { rfmConfig: TRFMConfig; suggestedConfig: TRFMConfig; onOpenConfig: () => void }) {
+function ConfigComparisonBlock({ rfmConfig, suggestedConfig }: { rfmConfig: TRFMConfig; suggestedConfig: TRFMConfig }) {
+	const queryClient = useQueryClient();
+	const { mutate: applySuggestedConfig, isPending } = useMutation({
+		mutationKey: ["apply-rfm-suggested-config"],
+		mutationFn: updateRFMConfig,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			queryClient.invalidateQueries({ queryKey: ["rfm-config"] });
+			queryClient.invalidateQueries({ queryKey: ["rfm-health"] });
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+
 	return (
 		<section className="flex w-full flex-col gap-3 border-t border-border pt-5">
 			<SectionHeader
 				title="Configuração atual vs sugestão por percentis"
-				description="A sugestão divide a base em quintis com base no comportamento real. Use como referência, o ajuste final continua manual."
+				description="A sugestão divide a base em quintis com base no comportamento real. Clique em Aplicar para usá-la como nova configuração."
 				action={
-					<Button variant="outline" size="sm" className="flex items-center gap-2" onClick={onOpenConfig}>
-						<Settings2 className="w-3.5 h-3.5" />
-						AJUSTAR
-					</Button>
+					<LoadingButton
+						variant="outline"
+						size="sm"
+						className="flex items-center gap-2"
+						loading={isPending}
+						onClick={() => applySuggestedConfig({ rfmConfig: suggestedConfig })}
+					>
+						<Check className="w-3.5 h-3.5" />
+						APLICAR
+					</LoadingButton>
 				}
 			/>
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">

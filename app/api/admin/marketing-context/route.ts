@@ -1,9 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
+import { getCampaignsPerformanceContext } from "@/lib/ai/ai-agent/marketing/context";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { buildDiscreteHistogram, buildHistogram, summarizeMetric } from "@/utils/analytics";
 import { getRFMConfigByLabel, RFMLabels } from "@/utils/rfm";
 import { db } from "@/services/drizzle";
-import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
+import { cashbackProgramTransactions, cashbackPrograms, clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import { and, asc, count, countDistinct, desc, eq, gte, isNotNull, lte, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -108,6 +109,144 @@ async function getSalesSummaryForPeriod({ organizationId, periodAfter, periodBef
 	};
 }
 
+async function getCashbackContextForPeriod({ organizationId, periodAfter, periodBefore }: { organizationId: string; periodAfter: Date; periodBefore: Date }) {
+	const [programRows, transactionSummaryRows] = await Promise.all([
+		db
+			.select({
+				id: cashbackPrograms.id,
+				ativo: cashbackPrograms.ativo,
+				titulo: cashbackPrograms.titulo,
+				descricao: cashbackPrograms.descricao,
+				terminologia: cashbackPrograms.terminologia,
+				modalidadeDescontosPermitida: cashbackPrograms.modalidadeDescontosPermitida,
+				modalidadeRecompensasPermitida: cashbackPrograms.modalidadeRecompensasPermitida,
+				acumuloTipo: cashbackPrograms.acumuloTipo,
+				acumuloValor: cashbackPrograms.acumuloValor,
+				acumuloValorParceiro: cashbackPrograms.acumuloValorParceiro,
+				acumuloRegraValorMinimo: cashbackPrograms.acumuloRegraValorMinimo,
+				acumuloPermitirViaIntegracao: cashbackPrograms.acumuloPermitirViaIntegracao,
+				acumuloPermitirViaPontoIntegracao: cashbackPrograms.acumuloPermitirViaPontoIntegracao,
+				expiracaoRegraValidadeValor: cashbackPrograms.expiracaoRegraValidadeValor,
+				resgateLimiteTipo: cashbackPrograms.resgateLimiteTipo,
+				resgateLimiteValor: cashbackPrograms.resgateLimiteValor,
+				dataInsercao: cashbackPrograms.dataInsercao,
+				dataAtualizacao: cashbackPrograms.dataAtualizacao,
+			})
+			.from(cashbackPrograms)
+			.where(eq(cashbackPrograms.organizacaoId, organizationId))
+			.orderBy(desc(cashbackPrograms.ativo), asc(cashbackPrograms.titulo)),
+		db
+			.select({
+				programaId: cashbackProgramTransactions.programaId,
+				tipo: cashbackProgramTransactions.tipo,
+				quantidade: count(cashbackProgramTransactions.id),
+				valorTotal: sum(cashbackProgramTransactions.valor),
+			})
+			.from(cashbackProgramTransactions)
+			.where(
+				and(
+					eq(cashbackProgramTransactions.organizacaoId, organizationId),
+					gte(cashbackProgramTransactions.dataInsercao, periodAfter),
+					lte(cashbackProgramTransactions.dataInsercao, periodBefore),
+				),
+			)
+			.groupBy(cashbackProgramTransactions.programaId, cashbackProgramTransactions.tipo),
+	]);
+
+	const metricsByProgramId = new Map<string, { distribuido: number; resgatado: number; acumulacoes: number; resgates: number }>();
+	for (const row of transactionSummaryRows) {
+		const current = metricsByProgramId.get(row.programaId) ?? {
+			distribuido: 0,
+			resgatado: 0,
+			acumulacoes: 0,
+			resgates: 0,
+		};
+
+		if (row.tipo === "ACÚMULO") {
+			current.distribuido += toNumber(row.valorTotal);
+			current.acumulacoes += toNumber(row.quantidade);
+		}
+		if (row.tipo === "RESGATE") {
+			current.resgatado += Math.abs(toNumber(row.valorTotal));
+			current.resgates += toNumber(row.quantidade);
+		}
+
+		metricsByProgramId.set(row.programaId, current);
+	}
+
+	let totalDistribuidoNoPeriodo = 0;
+	let totalResgatadoNoPeriodo = 0;
+	let quantidadeAcumulosNoPeriodo = 0;
+	let quantidadeResgatesNoPeriodo = 0;
+
+	const programas = programRows.map((program) => {
+		const metrics = metricsByProgramId.get(program.id) ?? {
+			distribuido: 0,
+			resgatado: 0,
+			acumulacoes: 0,
+			resgates: 0,
+		};
+		totalDistribuidoNoPeriodo += metrics.distribuido;
+		totalResgatadoNoPeriodo += metrics.resgatado;
+		quantidadeAcumulosNoPeriodo += metrics.acumulacoes;
+		quantidadeResgatesNoPeriodo += metrics.resgates;
+
+		return {
+			id: program.id,
+			ativo: program.ativo,
+			titulo: program.titulo,
+			descricao: program.descricao,
+			terminologia: program.terminologia,
+			modalidadesPermitidas: {
+				descontos: program.modalidadeDescontosPermitida,
+				recompensas: program.modalidadeRecompensasPermitida,
+			},
+			regras: {
+				acumulo: {
+					tipo: program.acumuloTipo,
+					valor: program.acumuloValor,
+					valorParceiro: program.acumuloValorParceiro,
+					valorMinimoParaAcumulo: program.acumuloRegraValorMinimo,
+					permitirViaIntegracao: program.acumuloPermitirViaIntegracao,
+					permitirViaPontoIntegracao: program.acumuloPermitirViaPontoIntegracao,
+				},
+				expiracao: {
+					validadeEmDias: program.expiracaoRegraValidadeValor,
+				},
+				resgate: {
+					limiteTipo: program.resgateLimiteTipo,
+					limiteValor: program.resgateLimiteValor,
+				},
+			},
+			metricasPeriodo: {
+				totalDistribuido: metrics.distribuido,
+				totalResgatado: metrics.resgatado,
+				taxaResgatePercentual: safeDivide(metrics.resgatado, metrics.distribuido) * 100,
+				quantidadeAcumulos: metrics.acumulacoes,
+				quantidadeResgates: metrics.resgates,
+			},
+			dataInsercao: program.dataInsercao,
+			dataAtualizacao: program.dataAtualizacao,
+		};
+	});
+
+	return {
+		observacoes: [
+			"Total distribuído considera transações agregadas do tipo ACÚMULO no período.",
+			"Total resgatado considera o valor absoluto de transações agregadas do tipo RESGATE no período.",
+			"Não inclui saldos individuais nem lista de transações de clientes.",
+		],
+		metricasGeraisPeriodo: {
+			totalDistribuido: totalDistribuidoNoPeriodo,
+			totalResgatado: totalResgatadoNoPeriodo,
+			taxaResgatePercentual: safeDivide(totalResgatadoNoPeriodo, totalDistribuidoNoPeriodo) * 100,
+			quantidadeAcumulos: quantidadeAcumulosNoPeriodo,
+			quantidadeResgates: quantidadeResgatesNoPeriodo,
+		},
+		programas,
+	};
+}
+
 async function exportMarketingContext({ input }: { input: TExportMarketingContextInput }) {
 	if (input.periodAfter > input.periodBefore) throw new createHttpError.BadRequest("Período inicial deve ser anterior ao período final.");
 
@@ -152,6 +291,8 @@ async function exportMarketingContext({ input }: { input: TExportMarketingContex
 		clientCityRows,
 		acquisitionRows,
 		natureRows,
+		campaignsPerformanceContext,
+		cashbackContext,
 	] = await Promise.all([
 		getSalesSummaryForPeriod({ organizationId: input.organizationId, periodAfter: input.periodAfter, periodBefore: input.periodBefore }),
 		getSalesSummaryForPeriod({ organizationId: input.organizationId, periodAfter: previousAfter, periodBefore: previousBefore }),
@@ -288,6 +429,11 @@ async function exportMarketingContext({ input }: { input: TExportMarketingContex
 			.where(and(eq(sales.organizacaoId, input.organizationId), gte(sales.dataVenda, input.periodAfter), lte(sales.dataVenda, input.periodBefore)))
 			.groupBy(sales.natureza)
 			.orderBy(desc(sql`sum(${sales.valorTotal})`)),
+		getCampaignsPerformanceContext(input.organizationId, {
+			start: input.periodAfter,
+			end: input.periodBefore,
+		}),
+		getCashbackContextForPeriod({ organizationId: input.organizationId, periodAfter: input.periodAfter, periodBefore: input.periodBefore }),
 	]);
 
 	const clientBase = clientBaseRows[0];
@@ -463,6 +609,8 @@ async function exportMarketingContext({ input }: { input: TExportMarketingContex
 					faturamento: toNumber(row.faturamento),
 				})),
 			},
+			campanhasMarketing: campaignsPerformanceContext,
+			cashback: cashbackContext,
 		},
 		message: "Contexto de marketing exportado com sucesso.",
 	};
