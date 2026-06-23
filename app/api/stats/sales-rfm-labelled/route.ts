@@ -12,9 +12,24 @@ export type TRFMSegmentPeriodStats = {
 	totalRevenue: number;
 	totalPurchasesQty: number;
 	avgTicket: number;
-	avgPurchaseCycleDays: number;
+	medianPurchaseCycleDays: number;
 	avgBasketSize: number;
+	/** Quantidade de clientes com 2+ compras no período, usados no cálculo do ciclo. */
+	cycleSampleClientsQty: number;
+	/** cycleSampleClientsQty / clientsQty do segmento. */
+	repeatPurchaseRate: number;
+	/** Média de dias desde a última compra, entre os clientes que compraram no período. */
+	avgRecencyDays: number;
+	/** avgRecencyDays / medianPurchaseCycleDays — quantos ciclos de atraso o segmento acumula. Null se não há ciclo calculável. */
+	cycleLagRatio: number | null;
 };
+
+function getMedian(values: number[]): number {
+	if (values.length === 0) return 0;
+	const sorted = [...values].sort((a, b) => a - b);
+	const mid = Math.floor(sorted.length / 2);
+	return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
 
 export type TRFMLabelledStats = {
 	rfmLabel: string;
@@ -122,34 +137,52 @@ const getSalesRFMLabelledRoute: PagesRouteHandler<GetResponse> = async (req, res
 		itemsQtyBySegment.set(row.rfmLabel, row.totalItemsQty ? Number(row.totalItemsQty) : 0);
 	}
 
-	const cycleStatsBySegment = new Map<string, { totalDaysSpan: number; totalIntervals: number }>();
+	// Intervalo médio de recompra de cada cliente (apenas clientes com 2+ compras no período).
+	const cycleIntervalsBySegment = new Map<string, number[]>();
+	// Dias desde a última compra de cada cliente que comprou no período (1+ compras).
+	const recencyStatsBySegment = new Map<string, { totalRecencyDays: number; clientsQty: number }>();
+
 	for (const row of purchaseCycleByClientRows) {
 		if (!row.rfmLabel || !row.firstPurchaseDate || !row.lastPurchaseDate) continue;
 
 		const purchasesQty = Number(row.purchasesQty);
+
+		const currentRowRecencyDays = dayjs(periodBefore).diff(dayjs(row.lastPurchaseDate), "day", true);
+		const existingRecencyStats = recencyStatsBySegment.get(row.rfmLabel) || { totalRecencyDays: 0, clientsQty: 0 };
+		recencyStatsBySegment.set(row.rfmLabel, {
+			totalRecencyDays: existingRecencyStats.totalRecencyDays + currentRowRecencyDays,
+			clientsQty: existingRecencyStats.clientsQty + 1,
+		});
+
 		if (purchasesQty <= 1) continue;
 
 		const currentRowDaysSpan = dayjs(row.lastPurchaseDate).diff(dayjs(row.firstPurchaseDate), "day", true);
-		const currentRowIntervals = purchasesQty - 1;
-		const existingStats = cycleStatsBySegment.get(row.rfmLabel) || { totalDaysSpan: 0, totalIntervals: 0 };
-
-		cycleStatsBySegment.set(row.rfmLabel, {
-			totalDaysSpan: existingStats.totalDaysSpan + currentRowDaysSpan,
-			totalIntervals: existingStats.totalIntervals + currentRowIntervals,
-		});
+		const currentRowAvgInterval = currentRowDaysSpan / (purchasesQty - 1);
+		const existingIntervals = cycleIntervalsBySegment.get(row.rfmLabel) || [];
+		existingIntervals.push(currentRowAvgInterval);
+		cycleIntervalsBySegment.set(row.rfmLabel, existingIntervals);
 	}
 
 	function getSegmentPeriodStats(rfmLabel: string): TRFMSegmentPeriodStats {
 		const salesStats = salesStatsBySegment.get(rfmLabel) || { totalRevenue: 0, totalPurchasesQty: 0 };
 		const totalItemsQty = itemsQtyBySegment.get(rfmLabel) || 0;
-		const cycleStats = cycleStatsBySegment.get(rfmLabel);
+		const cycleIntervals = cycleIntervalsBySegment.get(rfmLabel) || [];
+		const recencyStats = recencyStatsBySegment.get(rfmLabel);
+		const clientsQty = clientsQtyBySegment[rfmLabel] || 0;
+
+		const medianPurchaseCycleDays = getMedian(cycleIntervals);
+		const avgRecencyDays = recencyStats && recencyStats.clientsQty > 0 ? recencyStats.totalRecencyDays / recencyStats.clientsQty : 0;
 
 		return {
 			totalRevenue: salesStats.totalRevenue,
 			totalPurchasesQty: salesStats.totalPurchasesQty,
 			avgTicket: salesStats.totalPurchasesQty > 0 ? salesStats.totalRevenue / salesStats.totalPurchasesQty : 0,
-			avgPurchaseCycleDays: cycleStats && cycleStats.totalIntervals > 0 ? cycleStats.totalDaysSpan / cycleStats.totalIntervals : 0,
+			medianPurchaseCycleDays,
 			avgBasketSize: salesStats.totalPurchasesQty > 0 ? totalItemsQty / salesStats.totalPurchasesQty : 0,
+			cycleSampleClientsQty: cycleIntervals.length,
+			repeatPurchaseRate: clientsQty > 0 ? cycleIntervals.length / clientsQty : 0,
+			avgRecencyDays,
+			cycleLagRatio: medianPurchaseCycleDays > 0 ? avgRecencyDays / medianPurchaseCycleDays : null,
 		};
 	}
 
