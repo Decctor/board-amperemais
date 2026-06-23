@@ -148,5 +148,38 @@ Frentes de trabalho (todas aditivas/opcionais — food connectors intactos):
 - Food-service: `product_add_ons`/`options`/`references` inalterados.
 - Variantes planas atuais: válidas (sem linhas de junção → usam `nome` livre).
 - Conectores de food (Cardápio-Web, iFood): inalterados (variants opcionais).
+
+## Implementação da Fatia 5 (integrações) — notas
+
+Decisão prática que diverge levemente do esboço inicial: em vez de adicionar
+`variants?` ao `TCanonicalProduct` (que serve ao pipeline de **vendas**, não ao
+catálogo), a estrutura é tratada onde de fato existe:
+
+- **Catálogo Nuvem Shop** (`lib/data-connectors/nuvemshop`): `NuvemshopProduct`
+  passa a parsear `attributes` (nomes dos eixos), pareados posicionalmente com
+  `variant.values`. O novo `mapNuvemshopStructuredCatalog` emite produtos
+  **pai + eixos/valores + variantes** em vez de achatar cada variante num produto
+  solto. `catalog-sync` persiste tudo numa transação: produto pai casado por
+  `codigo` (a tabela `products` não tem `id_externo`; estruturados usam
+  `NS-{product_id}`, simples mantêm o SKU), variantes por `id_externo`
+  (variant_id) com fallback no SKU, eixos/valores por nome, e junções por
+  replace.
+- **Vendas** (`lib/data-collecting-v2`): `variantsByCode` indexa o SKU das
+  variantes → `{ produtoId, produtoVarianteId, opcoes }`. O item de venda resolve
+  **variante primeiro** (setando `produto_variante_id`) e só então o produto
+  plano; o auto-create de produtos planos pula SKUs que já são variantes (evita
+  duplicar). Os eixos são "snapshotados" em `sale_items.metadados.opcoes`.
+
+Compatibilidade: orgs sem variantes estruturadas têm `variantsByCode` vazio →
+comportamento idêntico ao atual. Produtos **simples** (sem eixos) continuam
+casados pelo SKU, sem duplicar.
+
+### Follow-up pendente (Fatia 6 — backfill)
+
+Orgs já sincronizadas têm produtos planos (codigo = SKU da variante) da era do
+achatamento. O novo sync cria os pais estruturados (`NS-{product_id}`) ao lado
+deles; as vendas passam a ligar nas variantes novas. Falta um one-off para
+**desativar/reconciliar os produtos planos antigos** que viraram variantes —
+deliberadamente fora desta fatia por mexer em dados de produção.
 </content>
 </invoke>

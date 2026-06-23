@@ -34,11 +34,19 @@ export type TResolvedClientForImport = {
 	isNew: boolean;
 };
 
+export type TResolvedVariantForImport = {
+	produtoId: string;
+	produtoVarianteId: string;
+	// Snapshot dos eixos (Cor: Preto, Tamanho: G) para gravar em sale_items.metadados.
+	opcoes: Array<{ eixo: string; valor: string }>;
+};
+
 export type TResolvedAuxiliaryEntities = {
 	clientsByExternalId: Map<string, TResolvedClientForImport>;
 	clientsByName: Map<string, TResolvedClientForImport>;
 	clientsByBasePhone: Map<string, TResolvedClientForImport>;
 	productsByCode: Map<string, string>;
+	variantsByCode: Map<string, TResolvedVariantForImport>;
 	sellersByIdentifier: Map<string, string>;
 	partnersByIdentifier: Map<string, { id: string; clientId: string | null }>;
 	productAddOnsByExternalId: Map<string, string>;
