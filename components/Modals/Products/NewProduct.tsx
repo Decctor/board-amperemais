@@ -152,6 +152,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 					imagemCapaHolder: { file: null, previewUrl: null },
 				},
 				productVariants: [],
+				productOptions: [],
 				productAddOns: [],
 				productFiscalProfiles: [],
 			});
