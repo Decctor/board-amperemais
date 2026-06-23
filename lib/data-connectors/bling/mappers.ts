@@ -50,6 +50,24 @@ export function isBlingValidSaleStatus(status: string | number | null | undefine
 	return value.includes("CONFIRM") || value.includes("FATUR") || value.includes("ATEND") || value === "1" || value === "9";
 }
 
+function normalizeSituacaoNumber(value: string | number | null | undefined) {
+	if (value === null || value === undefined || value === "") return null;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Situação "Em aberto" desta conta Bling (situacao.id=6, situacao.valor=0). */
+export function isBlingEmAbertoValidSaleSituacao(sale: TBlingSale) {
+	const situacao = sale.situacao;
+	if (!situacao) return false;
+	return normalizeSituacaoNumber(situacao.id) === 6 && normalizeSituacaoNumber(situacao.valor) === 0;
+}
+
+export function isBlingValidSale({ sale, statusText }: { sale: TBlingSale; statusText: string }) {
+	if (isBlingEmAbertoValidSaleSituacao(sale)) return true;
+	return isBlingValidSaleStatus(statusText);
+}
+
 export function mapBlingContactToCanonicalClient(contact: TBlingContact | null | undefined): TCanonicalClient | null {
 	if (!contact) return null;
 
@@ -140,7 +158,7 @@ export function mapBlingSaleToCanonicalSale({ sale }: { sale: TBlingSale }): TCa
 
 	const statusText = getSaleStatusText(sale);
 	const canceled = isBlingCanceledSaleStatus(statusText);
-	const validSale = isBlingValidSaleStatus(statusText);
+	const validSale = isBlingValidSale({ sale, statusText });
 	const itemDiscount = sale.itens.reduce((acc, item) => acc + mapBlingSaleItemToCanonicalSaleItem(item).discountValue, 0);
 	const explicitDiscount = sale.desconto?.valor ?? 0;
 	const totalSurcharge = (sale.transporte?.frete ?? 0) + sale.outrasDespesas;
