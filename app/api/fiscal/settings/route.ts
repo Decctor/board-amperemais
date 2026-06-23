@@ -43,7 +43,7 @@ async function updateFiscalSettings({ input }: { input: TUpdateFiscalSettingsInp
 
 	const updated = await updateFiscalSettingsData({
 		organizacaoId: orgId,
-		fiscalProvedor: input.fiscalProvedor,
+		fiscalProvedor: "NUVEM_FISCAL",
 		fiscalEmissaoAutomatica: input.fiscalEmissaoAutomatica,
 		fiscalConfiguracao: input.fiscalConfiguracao,
 	});

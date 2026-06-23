@@ -20,7 +20,7 @@ function mapDestinatario(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
 		CPF: cpfCnpj && cpfCnpj.length <= 11 ? cpfCnpj : undefined,
 		CNPJ: cpfCnpj && cpfCnpj.length > 11 ? cpfCnpj : undefined,
 		xNome: snapshot.nome,
-		email: snapshot.email,
+		email: nonEmptyString(typeof snapshot.email === "string" ? snapshot.email : null),
 		indIEDest: 9,
 	};
 }

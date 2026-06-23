@@ -27,7 +27,7 @@ function mapDestinatario(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
 		CPF: cpfCnpj && cpfCnpj.length <= 11 ? cpfCnpj : undefined,
 		CNPJ: cpfCnpj && cpfCnpj.length > 11 ? cpfCnpj : undefined,
 		xNome: typeof snapshot.nome === "string" ? snapshot.nome : undefined,
-		email: typeof snapshot.email === "string" ? snapshot.email : undefined,
+		email: nonEmptyString(typeof snapshot.email === "string" ? snapshot.email : null),
 		indIEDest: mapDestinatarioIndicator(snapshot),
 		...(inscricaoEstadual ? { IE: inscricaoEstadual } : {}),
 	};

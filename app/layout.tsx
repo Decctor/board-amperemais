@@ -62,7 +62,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				<MarketingTrackingScript />
 				<Analytics />
 				<GoogleTagManager gtmId="GTM-KHTDGQL4" />
-			</body>
+			{/* impeccable-live-start */}
+<script src="http://localhost:8400/live.js"></script>
+{/* impeccable-live-end */}
+</body>
 		</html>
 	);
 }
