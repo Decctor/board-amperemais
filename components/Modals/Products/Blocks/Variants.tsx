@@ -12,8 +12,11 @@ import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
+type VariantOptionTag = { opcaoNome: string; valorNome: string; isColor: boolean; hex: string };
+
 type ProductStateVariantsBlockProps = {
 	variants: TUseProductState["state"]["productVariants"];
+	options?: TUseProductState["state"]["productOptions"];
 	addVariant: TUseProductState["addProductVariant"];
 	updateVariant: TUseProductState["updateProductVariant"];
 	updateVariantImageHolder: TUseProductState["updateProductVariantImageHolder"];
@@ -22,6 +25,7 @@ type ProductStateVariantsBlockProps = {
 };
 export default function ProductStateVariantsBlock({
 	variants,
+	options = [],
 	addVariant,
 	updateVariant,
 	updateVariantImageHolder: _updateVariantImageHolder,
@@ -30,6 +34,28 @@ export default function ProductStateVariantsBlock({
 }: ProductStateVariantsBlockProps) {
 	const [newVariantMenuIsOpen, setNewVariantMenuIsOpen] = useState(false);
 	const [editVariantIndex, setEditVariantIndex] = useState<number | null>(null);
+
+	// Resolve as referências de valor (referenciaId) -> rótulo legível do eixo/valor.
+	const valueLookup = new Map<string, VariantOptionTag>();
+	for (const option of options) {
+		if (option.deletar) continue;
+		for (const value of option.valores) {
+			if (value.deletar) continue;
+			valueLookup.set(value.referenciaId, {
+				opcaoNome: option.nome,
+				valorNome: value.nome,
+				isColor: option.tipo === "COR",
+				hex: value.valorAuxiliar ?? "#24549c",
+			});
+		}
+	}
+	function resolveTags(variant: TUseProductState["state"]["productVariants"][number]): VariantOptionTag[] {
+		return (variant.opcoesValores ?? [])
+			.filter((ref) => !ref.deletar)
+			.map((ref) => valueLookup.get(ref.valorReferenciaId))
+			.filter((tag): tag is VariantOptionTag => !!tag);
+	}
+
 	const validVariants = variants.map((variant, index) => ({ ...variant, originalIndex: index })).filter((variant) => !variant.deletar);
 	const editingVariant = isValidNumber(editVariantIndex) ? variants[editVariantIndex as number] : null;
 	const content = (
@@ -45,6 +71,7 @@ export default function ProductStateVariantsBlock({
 					<ProductVariantsBlockVariant
 						key={variant.id || `temp-variant-${variant.originalIndex}`}
 						variant={variant}
+						tags={resolveTags(variant)}
 						handleEditClick={() => setEditVariantIndex(variant.originalIndex)}
 						handleDeleteClick={() => removeVariant(variant.originalIndex)}
 					/>
@@ -336,10 +363,11 @@ function EditProductVariantMenu({ initialVariant, closeMenu, updateVariant }: Ed
 
 type ProductVariantsBlockVariantProps = {
 	variant: TUseProductState["state"]["productVariants"][number];
+	tags: VariantOptionTag[];
 	handleEditClick: () => void;
 	handleDeleteClick: () => void;
 };
-function ProductVariantsBlockVariant({ variant, handleEditClick, handleDeleteClick }: ProductVariantsBlockVariantProps) {
+function ProductVariantsBlockVariant({ variant, tags, handleEditClick, handleDeleteClick }: ProductVariantsBlockVariantProps) {
 	return (
 		<div className={cn("bg-card border-border flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-1.5 py-2 shadow-2xs")}>
 			<div className="flex items-center justify-center">
@@ -375,6 +403,21 @@ function ProductVariantsBlockVariant({ variant, handleEditClick, handleDeleteCli
 						</div>
 					</div>
 				</div>
+				{tags.length > 0 ? (
+					<div className="flex w-full flex-wrap items-center gap-1">
+						{tags.map((tag, index) => (
+							<div
+								key={`${tag.opcaoNome}-${tag.valorNome}-${index}`}
+								className="flex items-center gap-1 rounded-full border border-border bg-muted/40 py-0.5 pl-1.5 pr-2"
+							>
+								{tag.isColor ? <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-border" style={{ backgroundColor: tag.hex }} /> : null}
+								<span className="text-[0.6rem] font-medium text-muted-foreground">
+									<span className="uppercase tracking-tight text-foreground/50">{tag.opcaoNome}:</span> {tag.valorNome}
+								</span>
+							</div>
+						))}
+					</div>
+				) : null}
 				<div className="w-full flex items-center justify-end">
 					<Button onClick={handleEditClick} size="fit" variant="ghost" className="flex items-center gap-1 px-2 py-1 text-xs">
 						<Pencil className="w-4 h-4 min-w-4 min-h-4" />

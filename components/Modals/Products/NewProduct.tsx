@@ -9,6 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import ProductAddOnsBlock from "./Blocks/AddOns";
 import ProductGeneralBlock from "./Blocks/General";
+import ProductStateOptionsBlock from "./Blocks/Options";
 import ProductVariantsBlock from "./Blocks/Variants";
 import ProductStockBlock from "./Blocks/Stock";
 import ProductFiscalBlock from "./Blocks/Fiscal";
@@ -35,6 +36,13 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 		updateProductVariant,
 		updateProductVariantImageHolder,
 		removeProductVariant,
+		addProductOption,
+		updateProductOption,
+		removeProductOption,
+		addProductOptionValue,
+		updateProductOptionValue,
+		removeProductOptionValue,
+		generateVariantMatrix,
 		removeVariantFiscalProfile,
 		addVariantFiscalProfile,
 		updateVariantFiscalProfile,
@@ -183,8 +191,20 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 		>
 			<ProductGeneralBlock product={state.product} updateProduct={updateProduct} updateProductImageHolder={updateProductImageHolder} />
 			<ProductStockBlock product={state.product} updateProduct={updateProduct} />
+			<ProductStateOptionsBlock
+				options={state.productOptions}
+				addProductOption={addProductOption}
+				updateProductOption={updateProductOption}
+				removeProductOption={removeProductOption}
+				addProductOptionValue={addProductOptionValue}
+				updateProductOptionValue={updateProductOptionValue}
+				removeProductOptionValue={removeProductOptionValue}
+				generateVariantMatrix={generateVariantMatrix}
+				baseDefaults={{ precoVenda: state.product.precoVenda, precoCusto: state.product.precoCusto }}
+			/>
 			<ProductVariantsBlock
 				variants={state.productVariants}
+				options={state.productOptions}
 				addVariant={addProductVariant}
 				updateVariant={updateProductVariant}
 				removeVariant={removeProductVariant}
