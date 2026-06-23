@@ -1,7 +1,7 @@
 import { TGetProductsOutputById } from "@/app/api/products/route";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { formatToMoney } from "@/lib/formatting";
-import { Package, Pencil, GitBranch, DollarSign, CodeIcon, TagIcon, Plus } from "lucide-react";
+import { Package, Pencil, GitBranch, DollarSign, CodeIcon, TagIcon, Plus, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
@@ -11,6 +11,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createProductVariant, updateProductVariant } from "@/lib/mutations/products";
 import { TUseProductVariantState } from "@/state-hooks/use-product-state";
 import VariantMenu from "@/components/Modals/Products/Variants/VariantMenu";
+import ManageVariations from "@/components/Modals/Products/Variations/ManageVariations";
 import { uploadFile } from "@/lib/files-storage";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ type ProductVariantsInformationProps = {
 export default function ProductVariantsInformation({ product, sectionWrapperClassName, callbacks }: ProductVariantsInformationProps) {
 	const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
 	const [newVariantMenuIsOpen, setNewVariantMenuIsOpen] = useState(false);
+	const [manageVariationsIsOpen, setManageVariationsIsOpen] = useState(false);
 
 	async function handleCreationVariantSubmiting(state: TUseProductVariantState["state"]) {
 		let coverImageUrl = state.imagemCapaUrl;
@@ -124,7 +126,11 @@ export default function ProductVariantsInformation({ product, sectionWrapperClas
 			title="VARIANTES"
 			wrapperClassName={sectionWrapperClassName}
 			actions={
-				<div className="flex items-center gap-3">
+				<div className="flex items-center gap-1">
+					<Button variant="ghost" size="xs" onClick={() => setManageVariationsIsOpen(true)} className="flex items-center gap-1">
+						<SlidersHorizontal className="w-4 h-4 min-w-4 min-h-4" />
+						VARIAÇÕES
+					</Button>
 					<Button variant="ghost" size="xs" onClick={() => setNewVariantMenuIsOpen(true)} className="flex items-center gap-1">
 						<Plus className="w-4 h-4 min-w-4 min-h-4" />
 						ADICIONAR
@@ -165,6 +171,7 @@ export default function ProductVariantsInformation({ product, sectionWrapperClas
 					submitVariantIsLoading={isCreatingVariant}
 				/>
 			) : null}
+			{manageVariationsIsOpen ? <ManageVariations product={product} closeMenu={() => setManageVariationsIsOpen(false)} callbacks={callbacks} /> : null}
 		</SectionWrapper>
 	);
 }
@@ -211,6 +218,23 @@ function ProductVariantCard({ variant, handleEditClick }: ProductVariantCardProp
 						) : null}
 					</div>
 				</div>
+				{variant.valoresOpcoes.length > 0 ? (
+					<div className="flex w-full flex-wrap items-center gap-1">
+						{variant.valoresOpcoes.map((assignment) => (
+							<div key={assignment.id} className="flex items-center gap-1 rounded-full border border-border bg-muted/40 py-0.5 pl-1.5 pr-2">
+								{assignment.opcao.tipo === "COR" ? (
+									<span
+										className="h-2.5 w-2.5 shrink-0 rounded-full border border-border"
+										style={{ backgroundColor: assignment.valor.valorAuxiliar ?? "#24549c" }}
+									/>
+								) : null}
+								<span className="text-[0.6rem] font-medium text-muted-foreground">
+									<span className="uppercase tracking-tight text-foreground/50">{assignment.opcao.nome}:</span> {assignment.valor.nome}
+								</span>
+							</div>
+						))}
+					</div>
+				) : null}
 				<div className="w-full flex items-center justify-end">
 					<Button onClick={handleEditClick} size="fit" variant="ghost" className="flex items-center gap-1 px-2 py-1 text-xs">
 						<Pencil className="w-4 h-4 min-w-4 min-h-4" />
