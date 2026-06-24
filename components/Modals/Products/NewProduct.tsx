@@ -216,6 +216,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 			<ProductStockBlock product={state.product} updateProduct={updateProduct} />
 			<ProductStateOptionsBlock
 				options={state.productOptions}
+				variants={state.productVariants}
 				addProductOption={addProductOption}
 				updateProductOption={updateProductOption}
 				removeProductOption={removeProductOption}

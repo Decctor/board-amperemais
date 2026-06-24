@@ -7,6 +7,7 @@ import {
 	ProductSchema,
 	ProductVariantSchema,
 } from "@/schemas/products";
+import { buildVariantMatrixCombos, variantComboSignature } from "@/lib/products/variant-matrix";
 import { useCallback, useMemo, useState } from "react";
 import z from "zod";
 
@@ -404,38 +405,15 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 	// Variantes "planas" (sem opcoesValores) sao preservadas intactas.
 	const generateVariantMatrix = useCallback((defaults?: { precoVenda?: number; precoCusto?: number }) => {
 		setState((prev) => {
-			const activeOptions = prev.productOptions
-				.filter((option) => !option.deletar)
-				.map((option) => ({ ...option, valores: option.valores.filter((value) => !value.deletar) }))
-				.filter((option) => option.valores.length > 0)
-				.sort((a, b) => a.ordem - b.ordem);
-
-			if (activeOptions.length === 0) return prev;
-
-			type Combo = Array<{ opcaoReferenciaId: string; valorReferenciaId: string; valorNome: string }>;
-			let combos: Combo[] = [[]];
-			for (const option of activeOptions) {
-				const next: Combo[] = [];
-				for (const combo of combos) {
-					for (const value of option.valores) {
-						next.push([...combo, { opcaoReferenciaId: option.referenciaId, valorReferenciaId: value.referenciaId, valorNome: value.nome }]);
-					}
-				}
-				combos = next;
-			}
-
-			const signatureOf = (refs: { valorReferenciaId: string }[]) =>
-				refs
-					.map((ref) => ref.valorReferenciaId)
-					.sort()
-					.join("|");
+			const combos = buildVariantMatrixCombos(prev.productOptions);
+			if (combos.length === 0) return prev;
 
 			const flatVariants = prev.productVariants.filter((variant) => (variant.opcoesValores ?? []).length === 0);
 			const matrixVariants = prev.productVariants.filter((variant) => (variant.opcoesValores ?? []).length > 0);
-			const matrixBySignature = new Map(matrixVariants.map((variant) => [signatureOf(variant.opcoesValores ?? []), variant]));
+			const matrixBySignature = new Map(matrixVariants.map((variant) => [variantComboSignature(variant.opcoesValores ?? []), variant]));
 
 			const kept: TProductState["productVariants"] = combos.map((combo) => {
-				const signature = signatureOf(combo);
+				const signature = variantComboSignature(combo);
 				const existing = matrixBySignature.get(signature);
 				if (existing) {
 					matrixBySignature.delete(signature);

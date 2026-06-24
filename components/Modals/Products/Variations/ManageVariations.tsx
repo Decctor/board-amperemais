@@ -171,6 +171,7 @@ export default function ManageVariations({ product, closeMenu, callbacks }: Mana
 		>
 			<ProductStateOptionsBlock
 				options={state.productOptions}
+				variants={state.productVariants}
 				addProductOption={addProductOption}
 				updateProductOption={updateProductOption}
 				removeProductOption={removeProductOption}
