@@ -226,10 +226,11 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
 		}
 		const transactionRequiresRedemptionProcessing = cashbackProgramIsActive && requestedCashbackRedemption;
-		console.log({
+		console.log("[POI] [TRANSACTION_FLAGS]", {
 			transactionRequiresAccumulationProcessing,
 			transactionRequiresSaleProcessing,
 			transactionRequiresRedemptionProcessing,
+			integracaoTipo: program.organizacao.integracaoTipo ?? null,
 		});
 		// FIRST STEP: Identifying the transaction operator
 		const operatorIdentifier = operatorContext?.operatorIdentifier ?? ("operatorIdentifier" in input ? input.operatorIdentifier : undefined);
@@ -731,7 +732,21 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				});
 			}
 
-			// TODO: Handle campaign proccesing for NOVA-COMPRA, PRIMEIRA-COMPRA, QUANTIDADE-TOTAL-COMPRAS, VALOR-TOTAL-COMPRAS
+		}
+
+		const shouldProcessPurchaseCampaigns =
+			transactionRequiresSaleProcessing || transactionRequiresAccumulationProcessing || transactionRequiresRedemptionProcessing;
+
+		if (shouldProcessPurchaseCampaigns) {
+			console.log(`[POI ${input.orgId}] [CAMPAIGNS] Iniciando processamento de campanhas de compra`, {
+				transactionRequiresSaleProcessing,
+				transactionRequiresAccumulationProcessing,
+				transactionRequiresRedemptionProcessing,
+				transactionSaleId,
+				effectiveSaleValue,
+				clientId,
+			});
+
 			// Processing PRIMEIRA-COMPRA campaign for new clients
 			if (clientIsNew)
 				await handleCampaignProcessingForFirstPurchase({
@@ -750,7 +765,12 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
 					organizationCashbackTerminology: program.terminologia,
 				});
+
 			const wouldCauseDoubleInteraction = clientIsNew && campaignsForFirstPurchase.length > 0 && campaignsForNewPurchase.length > 0;
+			if (wouldCauseDoubleInteraction) {
+				console.log(`[POI ${input.orgId}] [NOVA-COMPRA] Pulando campanhas de nova compra para evitar interação duplicada com primeira compra`);
+			}
+
 			// Processing NOVA-COMPRA campaign for existing clients or new clients (if no double interaction would occur)
 			if (!wouldCauseDoubleInteraction)
 				await handleCampaignProcessingForNewPurchase({
@@ -770,42 +790,50 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
 					terminologia: program.terminologia,
 				});
-			// Processing QUANTIDADE-TOTAL-COMPRAS campaigns
-			await handleCampaignProcessingForTotalPurchaseCount({
-				tx,
-				orgId: input.orgId,
-				campaignsForTotalPurchaseCount: campaignsForTotalPurchaseCount,
-				audiencesByCampaignId,
-				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
-				saleId: transactionSaleId,
-				saleValue: effectiveSaleValue,
-				clientId: clientId,
-				clientNewTotalPurchaseCount: clientCurrentPurchaseCount,
-				sellerName: operator.nome,
-				transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
-				clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
-				clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
-				clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
-				organizationCashbackTerminology: program.terminologia,
-			});
-			// Processing VALOR-TOTAL-COMPRAS campaigns
-			await handleCampaignProcessingForTotalPurchaseValue({
-				tx,
-				orgId: input.orgId,
-				campaignsForTotalPurchaseValue: campaignsForTotalPurchaseValue,
-				audiencesByCampaignId,
-				addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
-				saleId: transactionSaleId,
-				saleValue: effectiveSaleValue,
-				clientId: clientId,
-				clientNewTotalPurchaseValue: clientCurrentPurchaseValue,
-				sellerName: operator.nome,
-				transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
-				clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
-				clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
-				clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
-				organizationCashbackTerminology: program.terminologia,
-			});
+
+			// QUANTIDADE/VALOR dependem de metadata de compra atualizada — só quando a venda é criada internamente
+			if (transactionRequiresSaleProcessing) {
+				await handleCampaignProcessingForTotalPurchaseCount({
+					tx,
+					orgId: input.orgId,
+					campaignsForTotalPurchaseCount: campaignsForTotalPurchaseCount,
+					audiencesByCampaignId,
+					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
+					saleId: transactionSaleId,
+					saleValue: effectiveSaleValue,
+					clientId: clientId,
+					clientNewTotalPurchaseCount: clientCurrentPurchaseCount,
+					sellerName: operator.nome,
+					transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
+					clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
+					clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
+					clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
+					organizationCashbackTerminology: program.terminologia,
+				});
+				await handleCampaignProcessingForTotalPurchaseValue({
+					tx,
+					orgId: input.orgId,
+					campaignsForTotalPurchaseValue: campaignsForTotalPurchaseValue,
+					audiencesByCampaignId,
+					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
+					saleId: transactionSaleId,
+					saleValue: effectiveSaleValue,
+					clientId: clientId,
+					clientNewTotalPurchaseValue: clientCurrentPurchaseValue,
+					sellerName: operator.nome,
+					transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
+					clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
+					clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
+					clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
+					organizationCashbackTerminology: program.terminologia,
+				});
+			} else {
+				console.log(
+					`[POI ${input.orgId}] [CAMPAIGNS] Pulando campanhas de quantidade/valor total — venda não criada internamente (integracaoTipo=${program.organizacao.integracaoTipo ?? "null"})`,
+				);
+			}
+		} else {
+			console.log(`[POI ${input.orgId}] [CAMPAIGNS] Nenhuma campanha de compra processada — transação sem acúmulo, resgate ou venda interna`);
 		}
 
 		return {
@@ -853,7 +881,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 		// This allows us to return the response immediately while ensuring the background work finishes
 		waitUntil(Promise.all(processingPromises));
 	} else {
-		console.log("[POI] [IMMEDIATE_PROCESS] No interactions to process immediately");
+		console.log("[POI] [IMMEDIATE_PROCESS] Nenhuma interação para processar imediatamente");
 	}
 
 	return {
@@ -973,7 +1001,14 @@ async function handleCampaignProcessingForNewPurchase({
 	clientCashbackRedeemedBalanceTotal,
 	terminologia,
 }: THandleCampaignProcessingForNewPurchaseParams) {
-	if (campaignsForNewPurchase.length === 0) return;
+	console.log("")
+	if (campaignsForNewPurchase.length === 0) {
+		console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Nenhuma campanha ativa com gatilho NOVA-COMPRA`);
+		return;
+	}
+
+	console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Avaliando ${campaignsForNewPurchase.length} campanha(s) para cliente ${clientId} com saleValue=${saleValue}`);
+
 	const applicableCampaigns = campaignsForNewPurchase.filter((campaign) => {
 		// Validate campaign trigger for new purchase
 		const meetsNewPurchaseValueTrigger =
@@ -982,11 +1017,23 @@ async function handleCampaignProcessingForNewPurchase({
 			saleValue >= campaign.gatilhoNovaCompraValorMinimo;
 
 		const meetsSegmentationTrigger = campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId);
+		const audienceSize = audiencesByCampaignId.get(campaign.id)?.size ?? 0;
+
+		console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Campanha "${campaign.titulo}" (${campaign.id}):`, {
+			meetsNewPurchaseValueTrigger,
+			meetsSegmentationTrigger,
+			gatilhoNovaCompraValorMinimo: campaign.gatilhoNovaCompraValorMinimo,
+			saleValue,
+			audienceSize,
+			execucaoAgendadaValor: campaign.execucaoAgendadaValor,
+			hasWhatsappTemplate: !!campaign.whatsappTemplate,
+			hasWhatsappConnection: !!campaign.whatsappConexaoTelefone?.conexao,
+		});
 
 		return meetsNewPurchaseValueTrigger && meetsSegmentationTrigger;
 	});
 
-	console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] ${applicableCampaigns.length} applicable campaigns after filtering`);
+	console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] ${applicableCampaigns.length} campanha(s) aplicável(is) após filtros`);
 
 	if (applicableCampaigns.length > 0) {
 		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de nova compra aplicáveis encontradas para o cliente ${clientId}.`);
