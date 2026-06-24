@@ -34,7 +34,13 @@ export function SaleValueStep({ value, onChange, onSubmit }: SaleValueStepProps)
 	const handleScrollOnFocus = useAutoScrollOnFocus(300);
 
 	return (
-		<div className="space-y-8 short:space-y-2 animate-in fade-in slide-in-from-bottom-4">
+		<form
+			className="space-y-8 short:space-y-2 animate-in fade-in slide-in-from-bottom-4"
+			onSubmit={(e) => {
+				e.preventDefault();
+				onSubmit();
+			}}
+		>
 			<div className="text-center space-y-2 short:space-y-0.5">
 				<h2 className="text-xl short:text-lg font-black uppercase tracking-tight">Qual o valor da compra?</h2>
 				<p className="text-muted-foreground short:text-xs">Digite os centavos da direita para a esquerda.</p>
@@ -44,23 +50,19 @@ export function SaleValueStep({ value, onChange, onSubmit }: SaleValueStepProps)
 				<Input
 					type="text"
 					inputMode="numeric"
+					enterKeyHint="go"
 					autoComplete="off"
 					value={formatValueForInput(value)}
 					onChange={(e) => onChange(parseInputToValue(e.target.value))}
 					className="h-24 short:h-14 text-5xl short:text-3xl font-black text-center rounded-3xl short:rounded-xl border-4 short:border border-brand/20 focus:border-brand px-12 short:px-9"
 					onFocus={handleScrollOnFocus}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							onSubmit();
-						}
-					}}
 				/>
 			</div>
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 short:gap-1.5 max-w-xl mx-auto">
 				{VALUE_HELPERS.map((h) => (
 					<Button
 						key={h}
+						type="button"
 						variant="secondary"
 						onClick={() => onChange(value + h)}
 						className="h-14 short:h-9 rounded-xl short:rounded-lg font-black text-lg short:text-base"
@@ -69,6 +71,7 @@ export function SaleValueStep({ value, onChange, onSubmit }: SaleValueStepProps)
 					</Button>
 				))}
 				<Button
+					type="button"
 					variant="ghost"
 					onClick={() => onChange(0)}
 					className="h-14 short:h-9 rounded-xl short:rounded-lg font-bold text-muted-foreground col-span-2 md:col-span-4 italic short:text-sm"
@@ -76,6 +79,6 @@ export function SaleValueStep({ value, onChange, onSubmit }: SaleValueStepProps)
 					<X className="w-4 h-4 short:w-3 short:h-3 mr-1" /> LIMPAR VALOR
 				</Button>
 			</div>
-		</div>
+		</form>
 	);
 }
