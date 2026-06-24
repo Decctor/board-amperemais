@@ -6,6 +6,7 @@ import {
 	submitMessageTemplateToWhatsappPhone,
 } from "@/app/api/message-templates/_lib";
 import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
+import { triggerSmbAppContactsSync } from "@/lib/whatsapp/smb-contacts-sync";
 import { db } from "@/services/drizzle";
 import { messageTemplates, type TNewWhatsappConnection, whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema";
 import { campaigns } from "@/services/drizzle/schema/campaigns";
@@ -213,7 +214,11 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 					numero: phone.numero,
 				})),
 			)
-			.returning({ id: whatsappConnectionPhones.id, whatsappBusinessAccountId: whatsappConnectionPhones.whatsappBusinessAccountId });
+			.returning({
+				id: whatsappConnectionPhones.id,
+				whatsappBusinessAccountId: whatsappConnectionPhones.whatsappBusinessAccountId,
+				whatsappTelefoneId: whatsappConnectionPhones.whatsappTelefoneId,
+			});
 
 		if (insertedWhatsappConnectionPhones.length === 0) {
 			throw new Error("Failed to insert whatsapp connection phones");
@@ -232,6 +237,25 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 		return insertedWhatsappConnectionPhones;
 	});
 
+	for (const phone of insertedPhones) {
+		if (!phone.whatsappTelefoneId || !accessToken) continue;
+		try {
+			const contactsSync = await triggerSmbAppContactsSync({
+				phoneNumberId: phone.whatsappTelefoneId,
+				accessToken,
+			});
+			console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Contacts sync result:", {
+				phoneId: phone.id,
+				...contactsSync,
+			});
+		} catch (error) {
+			// The WhatsApp connection must remain usable even if the asynchronous contacts sync cannot be requested.
+			console.error("[ERROR] [WHATSAPP_CONNECT_CALLBACK] Failed to request contacts sync:", {
+				phoneId: phone.id,
+				error,
+			});
+		}
+	}
 	console.log("[INFO] [WHATSAPP_CONNECT_CALLBACK] Starting automatic message template submission for connected phones");
 	const insertedPhoneIds = new Set(insertedPhones.map((phone) => phone.id));
 	const phonesToSync = (await getOrganizationWhatsappPhones(userOrgId)).filter((phone) => insertedPhoneIds.has(phone.id));

@@ -25,6 +25,12 @@ import {
 	parseWebhookIncomingMessage,
 	parseWebhookMessageEcho,
 } from "@/lib/whatsapp/parsing";
+import {
+	parseSmbAppStateSyncWebhook,
+	resolveOrganizationIdByWhatsappPhoneNumberId,
+	type TSmbAppStateSyncEvent,
+	upsertClientsFromSmbAppStateSync,
+} from "@/lib/whatsapp/smb-contacts-sync";
 import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
@@ -102,6 +108,11 @@ async function postWhatsappWebhookRoute(req: NextRequest) {
  */
 async function processWebhookAsync(body: WebhookBody): Promise<void> {
 	try {
+		const contactsSyncEvents = parseSmbAppStateSyncWebhook(body);
+		if (contactsSyncEvents.length > 0) {
+			await handleSmbAppStateSync(contactsSyncEvents);
+			return;
+		}
 		// Handle template events
 		if (isTemplateEvent(body)) {
 			await handleTemplateEvent(body);
@@ -125,6 +136,26 @@ async function processWebhookAsync(body: WebhookBody): Promise<void> {
 		}
 	} catch (error) {
 		console.error("[WHATSAPP_WEBHOOK] Error processing webhook:", error);
+	}
+}
+
+async function handleSmbAppStateSync(events: TSmbAppStateSyncEvent[]): Promise<void> {
+	for (const event of events) {
+		const organizationId = await resolveOrganizationIdByWhatsappPhoneNumberId(event.whatsappPhoneNumberId);
+		if (!organizationId) {
+			console.warn("[WHATSAPP_WEBHOOK] [SMB_APP_STATE_SYNC] Organização não encontrada para o telefone:", event.whatsappPhoneNumberId);
+			continue;
+		}
+
+		const result = await upsertClientsFromSmbAppStateSync({
+			organizationId,
+			contacts: event.contacts,
+		});
+		console.log("[WHATSAPP_WEBHOOK] [SMB_APP_STATE_SYNC] Contatos processados:", {
+			whatsappPhoneNumberId: event.whatsappPhoneNumberId,
+			organizationId,
+			...result,
+		});
 	}
 }
 
