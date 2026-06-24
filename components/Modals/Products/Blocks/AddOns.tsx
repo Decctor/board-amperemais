@@ -11,7 +11,7 @@ import { SPREADSHEET_TABLE_ATTR, type SpreadsheetGridBounds } from "@/lib/spread
 import { cn } from "@/lib/utils";
 import type { TProductAddOnOptionState, TProductAddOnState, TUseProductState } from "@/state-hooks/use-product-state";
 import { Check, Layers, LinkIcon, Plus, Unplug } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import ProductVinculation from "../ProductVinculation";
 
@@ -31,10 +31,30 @@ const ADDON_OPTION_TABLE_GRID =
 
 const ADDON_OPTION_DESKTOP_ROW = cn("hidden w-full lg:grid", ADDON_OPTION_TABLE_GRID, "items-center gap-x-1 px-2");
 
-const ADDON_GROUP_HEADER_GRID =
-	"grid-cols-[minmax(0,32fr)_minmax(0,24fr)_minmax(0,8fr)_minmax(0,8fr)_minmax(2.5rem,6fr)_minmax(2.5rem,5fr)]";
+function AddOnGroupIndexBadge({ index, draft }: { index?: number; draft?: boolean }) {
+	if (draft) {
+		return (
+			<span className="inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-background px-1.5">
+				<Plus className="h-3.5 w-3.5 text-muted-foreground" />
+			</span>
+		);
+	}
 
-const ADDON_GROUP_DESKTOP_ROW = cn("hidden w-full lg:grid", ADDON_GROUP_HEADER_GRID, "items-center gap-x-2 px-3");
+	return (
+		<span className="inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background px-1.5 text-[0.65rem] font-semibold tabular-nums tracking-tight text-muted-foreground">
+			{String(index).padStart(2, "0")}
+		</span>
+	);
+}
+
+function AddOnGroupMetaChip({ label, children }: { label: string; children: ReactNode }) {
+	return (
+		<div className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background/80 px-2">
+			<span className="text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+			{children}
+		</div>
+	);
+}
 
 type ProductStateAddOnsBlockProps = {
 	addOns: TUseProductState["state"]["productAddOns"];
@@ -105,16 +125,17 @@ function AddOnGroupsList({
 	removeProductAddOnOption,
 }: AddOnGroupsListProps) {
 	return (
-		<div className="flex w-full flex-col gap-3">
+		<div className="flex w-full flex-col gap-5">
 			{validAddOns.length === 0 ? (
 				<div className="flex w-full items-center justify-center rounded-md border border-border px-3 py-3">
 					<p className="text-center text-xs font-medium tracking-tight text-muted-foreground">Preencha o grupo abaixo.</p>
 				</div>
 			) : null}
 
-			{validAddOns.map((addOn) => (
+			{validAddOns.map((addOn, groupIndex) => (
 				<AddOnGroupPanel
 					key={addOn.id || `temp-addon-${addOn.originalIndex}`}
+					groupIndex={groupIndex + 1}
 					addOn={addOn}
 					onUpdate={(partial) => updateProductAddOn(addOn.originalIndex, partial)}
 					onRemove={() => removeProductAddOn(addOn.originalIndex)}
@@ -130,6 +151,7 @@ function AddOnGroupsList({
 }
 
 type AddOnGroupPanelProps = {
+	groupIndex: number;
 	addOn: ValidAddOnRow;
 	onUpdate: (partial: Partial<Omit<TProductAddOnState, "opcoes">>) => void;
 	onRemove: () => void;
@@ -138,7 +160,7 @@ type AddOnGroupPanelProps = {
 	removeOption: (optionIndex: number) => void;
 };
 
-function AddOnGroupPanel({ addOn, onUpdate, onRemove, addOption, updateOption, removeOption }: AddOnGroupPanelProps) {
+function AddOnGroupPanel({ groupIndex, addOn, onUpdate, onRemove, addOption, updateOption, removeOption }: AddOnGroupPanelProps) {
 	const validOptions = useMemo(
 		() => addOn.opcoes.map((option, index) => ({ ...option, originalIndex: index })).filter((option) => !option.deletar),
 		[addOn.opcoes],
@@ -159,8 +181,8 @@ function AddOnGroupPanel({ addOn, onUpdate, onRemove, addOption, updateOption, r
 	}
 
 	return (
-		<div className="flex w-full flex-col overflow-hidden rounded-md border border-border bg-background">
-			<AddOnGroupHeader addOn={addOn} onUpdate={handleGroupUpdate} onRemove={onRemove} />
+		<div className="flex w-full flex-col overflow-hidden rounded-lg border border-border bg-background shadow-xs">
+			<AddOnGroupHeader groupIndex={groupIndex} addOn={addOn} onUpdate={handleGroupUpdate} onRemove={onRemove} />
 
 			<AddOnOptionTable
 				validOptions={validOptions}
@@ -174,91 +196,95 @@ function AddOnGroupPanel({ addOn, onUpdate, onRemove, addOption, updateOption, r
 }
 
 type AddOnGroupHeaderProps = {
+	groupIndex: number;
 	addOn: ValidAddOnRow;
 	onUpdate: (partial: Partial<Omit<TProductAddOnState, "opcoes">>) => void;
 	onRemove: () => void;
 };
 
-function AddOnGroupHeader({ addOn, onUpdate, onRemove }: AddOnGroupHeaderProps) {
+function AddOnGroupHeader({ groupIndex, addOn, onUpdate, onRemove }: AddOnGroupHeaderProps) {
 	return (
-		<div className="border-b border-border bg-muted/30">
-			<div
-				className={cn(
-					ADDON_GROUP_DESKTOP_ROW,
-					"pt-2 pb-0.5 text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground",
-				)}
-			>
-				<span className="min-w-0 px-1">Nome (cliente)</span>
-				<span className="min-w-0 px-1">Nome interno</span>
-				<span className="min-w-0 px-1 text-center">Mín</span>
-				<span className="min-w-0 px-1 text-center">Máx</span>
-				<span className="min-w-0 px-1 text-center">Ativo</span>
-				<span className="min-w-0 px-1 text-center">Ações</span>
-			</div>
+		<div className="border-b border-border bg-muted">
+			<div className="hidden flex-col gap-2 px-3 py-2.5 lg:flex">
+				<div className="flex items-start justify-between gap-3">
+					<div className="flex min-w-0 flex-1 items-start gap-2.5">
+						<AddOnGroupIndexBadge index={groupIndex} />
+						<div className="min-w-0 flex-1 space-y-1">
+							<div className="min-w-0 [&_button]:h-9 [&_button]:text-sm [&_button]:font-semibold [&_button]:text-foreground [&_input]:h-9 [&_input]:text-sm [&_input]:font-semibold">
+								<EditableTextCell
+									value={addOn.nome}
+									ariaLabel="Nome do grupo para o cliente"
+									align="left"
+									emptyDisplay="Nome do grupo"
+									onCommit={(nome) => onUpdate({ nome })}
+								/>
+							</div>
+							<div className="flex min-w-0 items-center gap-1.5">
+								<span className="shrink-0 text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">Interno</span>
+								<div className="min-w-0 flex-1 [&_button]:h-7 [&_button]:text-xs [&_input]:h-7 [&_input]:text-xs">
+									<EditableTextCell
+										value={addOn.internoNome ?? ""}
+										ariaLabel="Nome interno do grupo"
+										align="left"
+										emptyDisplay="Nome interno"
+										onCommit={(internoNome) => onUpdate({ internoNome })}
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
 
-			<div className={cn(ADDON_GROUP_DESKTOP_ROW, "pb-2 pt-0.5")}>
-				<div className="min-w-0 px-1">
-					<EditableTextCell
-						value={addOn.nome}
-						ariaLabel="Nome do grupo para o cliente"
-						align="left"
-						onCommit={(nome) => onUpdate({ nome })}
-					/>
-				</div>
-				<div className="min-w-0 px-1">
-					<EditableTextCell
-						value={addOn.internoNome ?? ""}
-						ariaLabel="Nome interno do grupo"
-						align="left"
-						emptyDisplay="Nome interno"
-						onCommit={(internoNome) => onUpdate({ internoNome })}
-					/>
-				</div>
-				<div className="min-w-0 px-1">
-					<EditableNumberCell
-						value={addOn.minOpcoes}
-						ariaLabel="Mínimo de opções"
-						min={0}
-						format={(value) => String(Math.round(value))}
-						onCommit={(minOpcoes) => onUpdate({ minOpcoes: Math.round(minOpcoes) })}
-					/>
-				</div>
-				<div className="min-w-0 px-1">
-					<EditableNumberCell
-						value={addOn.maxOpcoes}
-						ariaLabel="Máximo de opções"
-						min={1}
-						format={(value) => String(Math.round(value))}
-						onCommit={(maxOpcoes) => onUpdate({ maxOpcoes: Math.round(maxOpcoes) })}
-					/>
-				</div>
-				<div className="flex min-w-0 justify-center px-1">
-					<AddOnActiveToggle active={addOn.ativo} onToggle={() => onUpdate({ ativo: !addOn.ativo })} />
-				</div>
-				<div className="flex min-w-0 justify-center px-1">
-					<DeleteRowButton onRemove={onRemove} ariaLabel="Remover grupo de adicionais" />
+					<div className="flex shrink-0 items-center gap-1.5">
+						<AddOnGroupMetaChip label="Mín">
+							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
+								<EditableNumberCell
+									value={addOn.minOpcoes}
+									ariaLabel="Mínimo de opções"
+									min={0}
+									format={(value) => String(Math.round(value))}
+									onCommit={(minOpcoes) => onUpdate({ minOpcoes: Math.round(minOpcoes) })}
+								/>
+							</div>
+						</AddOnGroupMetaChip>
+						<AddOnGroupMetaChip label="Máx">
+							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
+								<EditableNumberCell
+									value={addOn.maxOpcoes}
+									ariaLabel="Máximo de opções"
+									min={1}
+									format={(value) => String(Math.round(value))}
+									onCommit={(maxOpcoes) => onUpdate({ maxOpcoes: Math.round(maxOpcoes) })}
+								/>
+							</div>
+						</AddOnGroupMetaChip>
+						<AddOnActiveToggle active={addOn.ativo} onToggle={() => onUpdate({ ativo: !addOn.ativo })} />
+						<DeleteRowButton onRemove={onRemove} ariaLabel="Remover grupo de adicionais" />
+					</div>
 				</div>
 			</div>
 
 			<div className="flex flex-col gap-2 p-3 lg:hidden">
-				<div className="flex items-start justify-between gap-2">
-					<div className="grid min-w-0 flex-1 grid-cols-1 gap-2">
-						<MobileEditableField label="Nome (cliente)">
-							<EditableTextCell
-								value={addOn.nome}
-								ariaLabel="Nome do grupo para o cliente"
-								onCommit={(nome) => onUpdate({ nome })}
-							/>
-						</MobileEditableField>
-						<MobileEditableField label="Nome interno">
-							<EditableTextCell
-								value={addOn.internoNome ?? ""}
-								ariaLabel="Nome interno do grupo"
-								onCommit={(internoNome) => onUpdate({ internoNome })}
-							/>
-						</MobileEditableField>
+				<div className="flex items-start gap-2">
+					<AddOnGroupIndexBadge index={groupIndex} />
+					<div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+						<div className="grid min-w-0 flex-1 grid-cols-1 gap-2">
+							<MobileEditableField label="Nome (cliente)">
+								<EditableTextCell
+									value={addOn.nome}
+									ariaLabel="Nome do grupo para o cliente"
+									onCommit={(nome) => onUpdate({ nome })}
+								/>
+							</MobileEditableField>
+							<MobileEditableField label="Nome interno">
+								<EditableTextCell
+									value={addOn.internoNome ?? ""}
+									ariaLabel="Nome interno do grupo"
+									onCommit={(internoNome) => onUpdate({ internoNome })}
+								/>
+							</MobileEditableField>
+						</div>
+						<DeleteRowButton onRemove={onRemove} ariaLabel="Remover grupo de adicionais" />
 					</div>
-					<DeleteRowButton onRemove={onRemove} ariaLabel="Remover grupo de adicionais" />
 				</div>
 				<div className="grid grid-cols-3 gap-2">
 					<MobileEditableField label="Mín">
@@ -321,7 +347,7 @@ function AddOnOptionTable({ validOptions, gridBounds, addOption, updateOption, r
 			<div
 				className={cn(
 					ADDON_OPTION_DESKTOP_ROW,
-					"min-h-8 border-b border-border bg-muted/60 py-1.5 text-[0.68rem] font-medium uppercase text-muted-foreground",
+					"min-h-8 border-b border-border bg-background py-1.5 text-[0.68rem] font-medium uppercase text-muted-foreground",
 				)}
 			>
 				<p className="min-w-0 px-1 text-start">Opção</p>
@@ -361,7 +387,7 @@ type AddOnOptionTableRowProps = {
 
 function AddOnOptionTableRow({ option, gridRow, gridBounds, onUpdate, onRemove }: AddOnOptionTableRowProps) {
 	return (
-		<div className="border-t border-border">
+		<div className={cn("border-t border-border", gridRow % 2 === 1 && "bg-muted/10")}>
 			<div className={cn(ADDON_OPTION_DESKTOP_ROW, "min-h-11 py-1 text-xs transition-colors hover:bg-muted/40")}>
 				<div className="min-w-0 px-1">
 					<EditableTextCell
@@ -761,55 +787,68 @@ function DraftAddOnGroupPanel({ addProductAddOn }: DraftAddOnGroupPanelProps) {
 	}
 
 	return (
-		<div className="overflow-hidden rounded-md border border-dashed border-border bg-muted/20">
-			<div className={cn(ADDON_GROUP_DESKTOP_ROW, "py-2")}>
-				<div className="flex min-w-0 items-center gap-1 px-1">
-					<Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-					<div className="min-w-0 flex-1">
-						<EditableTextCell
-							value={draftAddOn.nome}
-							ariaLabel="Nome do novo grupo para o cliente"
-							align="left"
-							onCommit={(nome) => updateDraft({ nome })}
-						/>
+		<div className="overflow-hidden rounded-lg border border-dashed border-border bg-muted/30 shadow-xs">
+			<div className="hidden flex-col gap-2 px-3 py-2.5 lg:flex">
+				<div className="flex items-start justify-between gap-3">
+					<div className="flex min-w-0 flex-1 items-start gap-2.5">
+						<AddOnGroupIndexBadge draft />
+						<div className="min-w-0 flex-1 space-y-1">
+							<p className="text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">Novo grupo</p>
+							<div className="min-w-0 [&_button]:h-9 [&_button]:text-sm [&_button]:font-semibold [&_button]:text-foreground [&_input]:h-9 [&_input]:text-sm [&_input]:font-semibold">
+								<EditableTextCell
+									value={draftAddOn.nome}
+									ariaLabel="Nome do novo grupo para o cliente"
+									align="left"
+									emptyDisplay="Nome do grupo"
+									onCommit={(nome) => updateDraft({ nome })}
+								/>
+							</div>
+							<div className="flex min-w-0 items-center gap-1.5">
+								<span className="shrink-0 text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">Interno</span>
+								<div className="min-w-0 flex-1 [&_button]:h-7 [&_button]:text-xs [&_input]:h-7 [&_input]:text-xs">
+									<EditableTextCell
+										value={draftAddOn.internoNome ?? ""}
+										ariaLabel="Nome interno do novo grupo"
+										align="left"
+										emptyDisplay="Nome interno"
+										onCommit={(internoNome) => updateDraft({ internoNome })}
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div className="flex shrink-0 items-center gap-1.5">
+						<AddOnGroupMetaChip label="Mín">
+							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
+								<EditableNumberCell
+									value={draftAddOn.minOpcoes}
+									ariaLabel="Mínimo do novo grupo"
+									min={0}
+									format={(value) => String(Math.round(value))}
+									onCommit={(minOpcoes) => updateDraft({ minOpcoes: Math.round(minOpcoes) })}
+								/>
+							</div>
+						</AddOnGroupMetaChip>
+						<AddOnGroupMetaChip label="Máx">
+							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
+								<EditableNumberCell
+									value={draftAddOn.maxOpcoes}
+									ariaLabel="Máximo do novo grupo"
+									min={1}
+									format={(value) => String(Math.round(value))}
+									onCommit={(maxOpcoes) => updateDraft({ maxOpcoes: Math.round(maxOpcoes) })}
+								/>
+							</div>
+						</AddOnGroupMetaChip>
+						<AddOnActiveToggle active={draftAddOn.ativo} onToggle={() => updateDraft({ ativo: !draftAddOn.ativo })} />
 					</div>
 				</div>
-				<div className="min-w-0 px-1">
-					<EditableTextCell
-						value={draftAddOn.internoNome ?? ""}
-						ariaLabel="Nome interno do novo grupo"
-						align="left"
-						emptyDisplay="Nome interno"
-						onCommit={(internoNome) => updateDraft({ internoNome })}
-					/>
-				</div>
-				<div className="min-w-0 px-1">
-					<EditableNumberCell
-						value={draftAddOn.minOpcoes}
-						ariaLabel="Mínimo do novo grupo"
-						min={0}
-						format={(value) => String(Math.round(value))}
-						onCommit={(minOpcoes) => updateDraft({ minOpcoes: Math.round(minOpcoes) })}
-					/>
-				</div>
-				<div className="min-w-0 px-1">
-					<EditableNumberCell
-						value={draftAddOn.maxOpcoes}
-						ariaLabel="Máximo do novo grupo"
-						min={1}
-						format={(value) => String(Math.round(value))}
-						onCommit={(maxOpcoes) => updateDraft({ maxOpcoes: Math.round(maxOpcoes) })}
-					/>
-				</div>
-				<div className="flex min-w-0 justify-center px-1">
-					<AddOnActiveToggle active={draftAddOn.ativo} onToggle={() => updateDraft({ ativo: !draftAddOn.ativo })} />
-				</div>
-				<div aria-hidden className="min-w-0 px-1" />
 			</div>
 
 			<div className="flex flex-col gap-2 p-3 lg:hidden">
 				<div className="flex items-start gap-2">
-					<Plus className="mt-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+					<AddOnGroupIndexBadge draft />
 					<div className="grid min-w-0 flex-1 grid-cols-1 gap-2">
 						<MobileEditableField label="Nome (cliente)">
 							<EditableTextCell
