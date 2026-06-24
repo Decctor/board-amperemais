@@ -186,6 +186,8 @@ export const NuvemshopProductSchema = z
 		categories: z.array(NuvemshopProductCategorySchema).optional().default([]),
 		brand: NuvemshopNullableStringSchema,
 		published: z.boolean({ invalid_type_error: "Tipo inválido para publicação do produto Nuvem Shop." }).optional().default(true),
+		// Nomes dos eixos de variação ("Cor", "Tamanho"), alinhados posicionalmente com variant.values.
+		attributes: z.array(NuvemshopLocalizedStringSchema).optional().default([]),
 		variants: z.array(NuvemshopProductVariantSchema).optional().default([]),
 	})
 	.passthrough();

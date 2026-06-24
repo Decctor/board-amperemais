@@ -1,7 +1,46 @@
 import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
-import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
+import {
+	ProductAddOnOptionSchema,
+	ProductAddOnSchema,
+	ProductOptionSchema,
+	ProductOptionValueSchema,
+	ProductSchema,
+	ProductVariantSchema,
+} from "@/schemas/products";
+import { buildVariantMatrixCombos, variantComboSignature } from "@/lib/products/variant-matrix";
 import { useCallback, useMemo, useState } from "react";
 import z from "zod";
+
+// -----------------------------------------------------------------------------
+// VARIANT OPTIONS — local state schemas (eixos/valores estruturados)
+// -----------------------------------------------------------------------------
+// referenciaId is a client-side stable key used to wire variants <-> values
+// before any server id exists, so the matrix can be generated fully in-memory.
+
+export const VariantOptionValueRefStateSchema = z.object({
+	id: z.string().optional(), // junction row id (when persisted)
+	opcaoReferenciaId: z.string(), // local key -> productOptions[].referenciaId
+	valorReferenciaId: z.string(), // local key -> option value referenciaId
+	opcaoId: z.string().optional().nullable(), // resolved server id (edit flow)
+	opcaoValorId: z.string().optional().nullable(),
+	deletar: z.boolean().optional(),
+});
+export type TVariantOptionValueRefState = z.infer<typeof VariantOptionValueRefStateSchema>;
+
+export const ProductOptionValueStateSchema = ProductOptionValueSchema.omit({ organizacaoId: true, opcaoId: true }).extend({
+	referenciaId: z.string(),
+	id: z.string().optional(),
+	deletar: z.boolean().optional(),
+});
+export type TProductOptionValueState = z.infer<typeof ProductOptionValueStateSchema>;
+
+export const ProductOptionStateSchema = ProductOptionSchema.omit({ organizacaoId: true, produtoId: true }).extend({
+	referenciaId: z.string(),
+	id: z.string().optional(),
+	deletar: z.boolean().optional(),
+	valores: z.array(ProductOptionValueStateSchema),
+});
+export type TProductOptionState = z.infer<typeof ProductOptionStateSchema>;
 
 export const ProductStateSchema = z.object({
 	product: ProductSchema.omit({ organizacaoId: true }).extend({
@@ -84,6 +123,7 @@ export const ProductStateSchema = z.object({
 						.optional(),
 				}),
 			),
+			opcoesValores: z.array(VariantOptionValueRefStateSchema).optional(),
 			id: z
 				.string({
 					required_error: "ID da variante não informado.",
@@ -98,6 +138,7 @@ export const ProductStateSchema = z.object({
 				.optional(),
 		}),
 	),
+	productOptions: z.array(ProductOptionStateSchema),
 	productAddOns: z.array(
 		ProductAddOnSchema.omit({ organizacaoId: true }).extend({
 			opcoes: z.array(
@@ -181,6 +222,7 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 		},
 		productFiscalProfiles: initialState?.productFiscalProfiles ?? [],
 		productVariants: initialState?.productVariants ?? [],
+		productOptions: initialState?.productOptions ?? [],
 		productAddOns: initialState?.productAddOns ?? [],
 	});
 
@@ -257,6 +299,148 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 				...prev,
 				productVariants: prev.productVariants.filter((_, i) => i !== index),
 			};
+		});
+	}, []);
+
+	// ===== EIXOS DE VARIAÇÃO (OPTIONS) E SEUS VALORES =====
+
+	const addProductOption = useCallback((option?: Partial<TProductOptionState>) => {
+		setState((prev) => ({
+			...prev,
+			productOptions: [
+				...prev.productOptions,
+				{
+					referenciaId: option?.referenciaId ?? crypto.randomUUID(),
+					id: option?.id,
+					nome: option?.nome ?? "",
+					tipo: option?.tipo ?? "TEXTO",
+					ordem: option?.ordem ?? prev.productOptions.filter((o) => !o.deletar).length,
+					valores: option?.valores ?? [],
+					deletar: option?.deletar,
+				},
+			],
+		}));
+	}, []);
+
+	const updateProductOption = useCallback((index: number, updates: Partial<Omit<TProductOptionState, "valores" | "referenciaId">>) => {
+		setState((prev) => ({
+			...prev,
+			productOptions: prev.productOptions.map((option, i) => (i === index ? { ...option, ...updates } : option)),
+		}));
+	}, []);
+
+	const removeProductOption = useCallback((index: number) => {
+		setState((prev) => {
+			const option = prev.productOptions[index];
+			// Existente (tem id) -> soft-delete; nova -> remove da lista
+			if (option?.id) {
+				return {
+					...prev,
+					productOptions: prev.productOptions.map((o, i) => (i === index ? { ...o, deletar: true } : o)),
+				};
+			}
+			return {
+				...prev,
+				productOptions: prev.productOptions.filter((_, i) => i !== index),
+			};
+		});
+	}, []);
+
+	const addProductOptionValue = useCallback((optionIndex: number, value?: Partial<TProductOptionValueState>) => {
+		setState((prev) => ({
+			...prev,
+			productOptions: prev.productOptions.map((option, i) => {
+				if (i !== optionIndex) return option;
+				return {
+					...option,
+					valores: [
+						...option.valores,
+						{
+							referenciaId: value?.referenciaId ?? crypto.randomUUID(),
+							id: value?.id,
+							nome: value?.nome ?? "",
+							valorAuxiliar: value?.valorAuxiliar ?? null,
+							imagemCapaUrl: value?.imagemCapaUrl ?? null,
+							ordem: value?.ordem ?? option.valores.filter((v) => !v.deletar).length,
+							deletar: value?.deletar,
+						},
+					],
+				};
+			}),
+		}));
+	}, []);
+
+	const updateProductOptionValue = useCallback(
+		(optionIndex: number, valueIndex: number, updates: Partial<Omit<TProductOptionValueState, "referenciaId">>) => {
+			setState((prev) => ({
+				...prev,
+				productOptions: prev.productOptions.map((option, i) =>
+					i === optionIndex ? { ...option, valores: option.valores.map((v, j) => (j === valueIndex ? { ...v, ...updates } : v)) } : option,
+				),
+			}));
+		},
+		[],
+	);
+
+	const removeProductOptionValue = useCallback((optionIndex: number, valueIndex: number) => {
+		setState((prev) => ({
+			...prev,
+			productOptions: prev.productOptions.map((option, i) => {
+				if (i !== optionIndex) return option;
+				const value = option.valores[valueIndex];
+				// Existente (tem id) -> soft-delete; novo -> remove da lista
+				if (value?.id) {
+					return { ...option, valores: option.valores.map((v, j) => (j === valueIndex ? { ...v, deletar: true } : v)) };
+				}
+				return { ...option, valores: option.valores.filter((_, j) => j !== valueIndex) };
+			}),
+		}));
+	}, []);
+
+	// Gera o produto cartesiano dos eixos ativos em variantes, reconciliando com as
+	// variantes ja existentes pela assinatura da combinacao de valores:
+	// - combinacao existente -> preservada (e reativada se estava marcada p/ remover)
+	// - combinacao nova -> variante nova
+	// - variante de matriz cuja combinacao deixou de existir -> soft-delete (se persistida) ou descartada
+	// Variantes "planas" (sem opcoesValores) sao preservadas intactas.
+	const generateVariantMatrix = useCallback((defaults?: { precoVenda?: number; precoCusto?: number }) => {
+		setState((prev) => {
+			const combos = buildVariantMatrixCombos(prev.productOptions);
+			if (combos.length === 0) return prev;
+
+			const flatVariants = prev.productVariants.filter((variant) => (variant.opcoesValores ?? []).length === 0);
+			const matrixVariants = prev.productVariants.filter((variant) => (variant.opcoesValores ?? []).length > 0);
+			const matrixBySignature = new Map(matrixVariants.map((variant) => [variantComboSignature(variant.opcoesValores ?? []), variant]));
+
+			const kept: TProductState["productVariants"] = combos.map((combo) => {
+				const signature = variantComboSignature(combo);
+				const existing = matrixBySignature.get(signature);
+				if (existing) {
+					matrixBySignature.delete(signature);
+					return { ...existing, deletar: undefined };
+				}
+				const newVariant: TProductState["productVariants"][number] = {
+					nome: combo.map((ref) => ref.valorNome).join(" / "),
+					codigo: "",
+					precoCusto: defaults?.precoCusto ?? 0,
+					precoVenda: defaults?.precoVenda ?? 0,
+					quantidade: 0,
+					ativo: true,
+					rastreamentoEstoqueAtivo: false,
+					imagemCapaHolder: { file: null, previewUrl: null },
+					perfisFiscais: [],
+					addOns: [],
+					opcoesValores: combo.map((ref) => ({ opcaoReferenciaId: ref.opcaoReferenciaId, valorReferenciaId: ref.valorReferenciaId })),
+				};
+				return newVariant;
+			});
+
+			const removed: TProductState["productVariants"] = [];
+			for (const variant of matrixBySignature.values()) {
+				if (variant.id) removed.push({ ...variant, deletar: true });
+			}
+
+			return { ...prev, productVariants: [...flatVariants, ...kept, ...removed] };
 		});
 	}, []);
 
@@ -577,6 +761,14 @@ export const useProductState = ({ initialState }: UseProductStateProps = {}) => 
 		updateProductVariant,
 		updateProductVariantImageHolder,
 		removeProductVariant,
+		// Eixos de variação e seus valores
+		addProductOption,
+		updateProductOption,
+		removeProductOption,
+		addProductOptionValue,
+		updateProductOptionValue,
+		removeProductOptionValue,
+		generateVariantMatrix,
 		// Add-ons do produto
 		addProductAddOn,
 		updateProductAddOn,
@@ -674,6 +866,7 @@ export const ProductVariantStateSchema = ProductVariantSchema.omit({ organizacao
 				.optional(),
 		}),
 	),
+	opcoesValores: z.array(VariantOptionValueRefStateSchema).optional(),
 });
 export type TProductVariantState = z.infer<typeof ProductVariantStateSchema>;
 

@@ -1,6 +1,6 @@
 import type { TCanonicalClient, TCanonicalImportBatch } from "@/lib/data-connectors";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
-import { clients, partners, productAddOnOptions, productAddOns, products, sellers } from "@/services/drizzle/schema";
+import { clients, partners, productAddOnOptions, productAddOns, productVariants, products, sellers } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
 import type { TDataCollectingV2Executor, TResolvedAuxiliaryEntities, TResolvedClientForImport } from "./types";
 
@@ -120,6 +120,7 @@ export async function syncAuxiliaryEntities({
 		clientsByName: new Map(),
 		clientsByBasePhone: new Map(),
 		productsByCode: new Map(),
+		variantsByCode: new Map(),
 		sellersByIdentifier: new Map(),
 		partnersByIdentifier: new Map(),
 		productAddOnsByExternalId: new Map(),
@@ -201,8 +202,33 @@ export async function syncAuxiliaryEntities({
 	});
 	for (const product of existingProducts) context.productsByCode.set(product.codigo, product.id);
 
+	// Variantes estruturadas: indexadas pelo código (SKU) para que itens de venda liguem à variante
+	// certa em vez de criar um produto plano duplicado.
+	const existingVariants = await tx.query.productVariants.findMany({
+		where: eq(productVariants.organizacaoId, batch.organizationId),
+		columns: { id: true, produtoId: true, codigo: true },
+		with: {
+			valoresOpcoes: {
+				with: {
+					opcao: { columns: { nome: true } },
+					valor: { columns: { nome: true } },
+				},
+			},
+		},
+	});
+	for (const variant of existingVariants) {
+		if (!variant.codigo) continue;
+		context.variantsByCode.set(variant.codigo, {
+			produtoId: variant.produtoId,
+			produtoVarianteId: variant.id,
+			opcoes: variant.valoresOpcoes.map((assignment) => ({ eixo: assignment.opcao.nome, valor: assignment.valor.nome })),
+		});
+	}
+
 	for (const product of uniqueBy(batch.products, (value) => value.code)) {
 		if (context.productsByCode.has(product.code)) continue;
+		// Já existe como variante estruturada: não cria produto plano duplicado.
+		if (context.variantsByCode.has(product.code)) continue;
 		const inserted = await tx
 			.insert(products)
 			.values({

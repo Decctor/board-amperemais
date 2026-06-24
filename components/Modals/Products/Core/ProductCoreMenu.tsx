@@ -83,6 +83,7 @@ export default function ProductCoreMenu({ product, closeMenu, callbacks }: Produ
 					rastreamentoEstoqueAtivo: state.rastreamentoEstoqueAtivo,
 				},
 				productVariants: [],
+				productOptions: [],
 				productAddOns: [],
 				productFiscalProfiles: [],
 			});

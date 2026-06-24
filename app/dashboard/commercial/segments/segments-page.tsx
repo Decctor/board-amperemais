@@ -696,12 +696,32 @@ function RFMSegmentDetailContent({ item, style, formatDecimal }: RFMSegmentDetai
 					<p className="font-semibold">{formatToMoney(item.segmentPeriodStats.avgTicket)}</p>
 				</div>
 				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
-					<p className="text-muted-foreground">Ciclo médio de compra</p>
-					<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgPurchaseCycleDays)} dias</p>
-				</div>
-				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
 					<p className="text-muted-foreground">Basket médio</p>
 					<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgBasketSize, 2)} itens</p>
+				</div>
+				<div className="h-px w-full bg-border" />
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Ciclo de recompra (mediana)</p>
+					<p className="font-semibold">
+						{item.segmentPeriodStats.cycleSampleClientsQty > 0 ? `${formatDecimal(item.segmentPeriodStats.medianPurchaseCycleDays)} dias` : "—"}
+					</p>
+				</div>
+				<p className="-mt-1 text-[0.65rem] text-muted-foreground">
+					Baseado em {item.segmentPeriodStats.cycleSampleClientsQty} de {item.clientsQty} clientes (2+ compras no período)
+				</p>
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Taxa de recompra</p>
+					<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.repeatPurchaseRate * 100)}%</p>
+				</div>
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Recência média</p>
+					<p className="font-semibold">{formatDecimal(item.segmentPeriodStats.avgRecencyDays)} dias</p>
+				</div>
+				<div className="flex w-full items-center justify-between gap-3 text-[0.75rem]">
+					<p className="text-muted-foreground">Atraso (vs. ciclo)</p>
+					<p className="font-semibold">
+						{item.segmentPeriodStats.cycleLagRatio !== null ? `${formatDecimal(item.segmentPeriodStats.cycleLagRatio)}x` : "—"}
+					</p>
 				</div>
 			</div>
 		</div>

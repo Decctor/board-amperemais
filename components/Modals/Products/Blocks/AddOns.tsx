@@ -1,17 +1,60 @@
-import CheckboxInput from "@/components/Inputs/CheckboxInput";
-import NumberInput from "@/components/Inputs/NumberInput";
-import TextInput from "@/components/Inputs/TextInput";
-import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
+"use client";
+
+import DeleteRowButton from "@/components/Spreadsheet/DeleteRowButton";
+import EditableNumberCell from "@/components/Spreadsheet/EditableNumberCell";
+import EditableTextCell from "@/components/Spreadsheet/EditableTextCell";
+import MobileEditableField from "@/components/Spreadsheet/MobileEditableField";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { formatToMoney } from "@/lib/formatting";
+import { SPREADSHEET_TABLE_ATTR, type SpreadsheetGridBounds } from "@/lib/spreadsheet-navigation";
 import { cn } from "@/lib/utils";
-import { isValidNumber } from "@/lib/validation";
-import type { TProductAddOnOptionState, TUseProductState } from "@/state-hooks/use-product-state";
-import { Check, Layers, LinkIcon, Pencil, Plus, Trash2, Unplug, X } from "lucide-react";
-import { useState } from "react";
+import type { TProductAddOnOptionState, TProductAddOnState, TUseProductState } from "@/state-hooks/use-product-state";
+import { Check, Layers, LinkIcon, Plus, Unplug } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import ProductVinculation from "../ProductVinculation";
+
+const ADDON_OPTION_GRID_COL = {
+	NAME: 0,
+	CODE: 1,
+	PRICE: 2,
+	MAX_QTY: 3,
+	STOCK: 4,
+	ACTIVE: 5,
+} as const;
+
+const ADDON_OPTION_GRID_COL_COUNT = 6;
+
+const ADDON_OPTION_TABLE_GRID =
+	"grid-cols-[minmax(0,28fr)_minmax(0,12fr)_minmax(0,12fr)_minmax(0,10fr)_minmax(0,18fr)_minmax(2.5rem,6fr)_minmax(2.5rem,5fr)]";
+
+const ADDON_OPTION_DESKTOP_ROW = cn("hidden w-full lg:grid", ADDON_OPTION_TABLE_GRID, "items-center gap-x-1 px-2");
+
+function AddOnGroupIndexBadge({ index, draft }: { index?: number; draft?: boolean }) {
+	if (draft) {
+		return (
+			<span className="inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-background px-1.5">
+				<Plus className="h-3.5 w-3.5 text-muted-foreground" />
+			</span>
+		);
+	}
+
+	return (
+		<span className="inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background px-1.5 text-[0.65rem] font-semibold tabular-nums tracking-tight text-muted-foreground">
+			{String(index).padStart(2, "0")}
+		</span>
+	);
+}
+
+function AddOnGroupMetaChip({ label, children }: { label: string; children: ReactNode }) {
+	return (
+		<div className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background/80 px-2">
+			<span className="text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+			{children}
+		</div>
+	);
+}
 
 type ProductStateAddOnsBlockProps = {
 	addOns: TUseProductState["state"]["productAddOns"];
@@ -24,6 +67,8 @@ type ProductStateAddOnsBlockProps = {
 	embedded?: boolean;
 };
 
+type ValidAddOnRow = TProductAddOnState & { originalIndex: number };
+
 export default function ProductStateAddOnsBlock({
 	addOns,
 	addProductAddOn,
@@ -34,58 +79,21 @@ export default function ProductStateAddOnsBlock({
 	removeProductAddOnOption,
 	embedded = false,
 }: ProductStateAddOnsBlockProps) {
-	const [newAddOnMenuIsOpen, setNewAddOnMenuIsOpen] = useState(false);
-	const [editAddOnIndex, setEditAddOnIndex] = useState<number | null>(null);
-
-	const validAddOns = addOns.map((addOn, index) => ({ ...addOn, originalIndex: index })).filter((addOn) => !addOn.deletar);
-	const editingAddOn = isValidNumber(editAddOnIndex) ? addOns[editAddOnIndex as number] : null;
+	const validAddOns = useMemo(
+		() => addOns.map((addOn, index) => ({ ...addOn, originalIndex: index })).filter((addOn) => !addOn.deletar),
+		[addOns],
+	);
 
 	const content = (
-		<>
-			<div className="flex w-full items-center justify-end gap-2">
-				<Button onClick={() => setNewAddOnMenuIsOpen((prev) => !prev)} size="fit" variant="ghost" className="flex items-center gap-1 px-2 py-1 text-xs">
-					<Plus className="w-4 h-4 min-w-4 min-h-4" />
-					ADICIONAR GRUPO
-				</Button>
-			</div>
-			{validAddOns.length > 0 ? (
-				<div className="flex flex-col gap-4 w-full">
-					{validAddOns.map((addOn) => (
-						<ProductAddOnGroupCard
-							key={addOn.id || `temp-${addOn.originalIndex}`}
-							addOn={addOn}
-							index={addOn.originalIndex}
-							handleEditClick={() => setEditAddOnIndex(addOn.originalIndex)}
-							handleDeleteClick={() => removeProductAddOn(addOn.originalIndex)}
-							addOption={addProductAddOnOption}
-							updateOption={updateProductAddOnOption}
-							removeOption={removeProductAddOnOption}
-						/>
-					))}
-				</div>
-			) : (
-				<div className="w-full text-center text-sm font-medium tracking-tight text-muted-foreground">Nenhum grupo de adicionais criado.</div>
-			)}
-			{newAddOnMenuIsOpen ? (
-				<NewProductAddOnMenu
-					closeMenu={() => setNewAddOnMenuIsOpen(false)}
-					addAddOn={(i) => {
-						addProductAddOn(i);
-						setNewAddOnMenuIsOpen(false);
-					}}
-				/>
-			) : null}
-			{editingAddOn && editAddOnIndex !== null ? (
-				<EditProductAddOnMenu
-					initialAddOn={editingAddOn}
-					closeMenu={() => setEditAddOnIndex(null)}
-					updateAddOn={(i) => {
-						updateProductAddOn(editAddOnIndex, i);
-						setEditAddOnIndex(null);
-					}}
-				/>
-			) : null}
-		</>
+		<AddOnGroupsList
+			validAddOns={validAddOns}
+			addProductAddOn={addProductAddOn}
+			updateProductAddOn={updateProductAddOn}
+			removeProductAddOn={removeProductAddOn}
+			addProductAddOnOption={addProductAddOnOption}
+			updateProductAddOnOption={updateProductAddOnOption}
+			removeProductAddOnOption={removeProductAddOnOption}
+		/>
 	);
 
 	if (embedded) return content;
@@ -97,331 +105,454 @@ export default function ProductStateAddOnsBlock({
 	);
 }
 
-// ... MENUS ...
-
-type NewProductAddOnMenuProps = {
-	closeMenu: () => void;
-	addAddOn: TUseProductState["addProductAddOn"];
+type AddOnGroupsListProps = {
+	validAddOns: ValidAddOnRow[];
+	addProductAddOn: TUseProductState["addProductAddOn"];
+	updateProductAddOn: TUseProductState["updateProductAddOn"];
+	removeProductAddOn: TUseProductState["removeProductAddOn"];
+	addProductAddOnOption: TUseProductState["addProductAddOnOption"];
+	updateProductAddOnOption: TUseProductState["updateProductAddOnOption"];
+	removeProductAddOnOption: TUseProductState["removeProductAddOnOption"];
 };
 
-function NewProductAddOnMenu({ closeMenu, addAddOn }: NewProductAddOnMenuProps) {
-	const [holder, setHolder] = useState<TUseProductState["state"]["productAddOns"][number]>({
-		nome: "",
-		internoNome: "",
-		minOpcoes: 0,
-		maxOpcoes: 1,
-		ativo: true,
-		opcoes: [],
-	});
-
-	function updateHolder(updates: Partial<typeof holder>) {
-		setHolder((prev) => ({ ...prev, ...updates }));
-	}
-
-	function validateAndAdd() {
-		if (!holder.nome) return toast.error("Nome do grupo não informado.");
-		if (!holder.internoNome) return toast.error("Nome interno do grupo não informado.");
-		if (holder.minOpcoes < 0) return toast.error("Mínimo de opções inválido.");
-		if (holder.maxOpcoes < 1) return toast.error("Máximo de opções deve ser pelo menos 1.");
-		if (holder.maxOpcoes < holder.minOpcoes) return toast.error("Máximo de opções não pode ser menor que o mínimo.");
-
-		addAddOn(holder);
-	}
-
+function AddOnGroupsList({
+	validAddOns,
+	addProductAddOn,
+	updateProductAddOn,
+	removeProductAddOn,
+	addProductAddOnOption,
+	updateProductAddOnOption,
+	removeProductAddOnOption,
+}: AddOnGroupsListProps) {
 	return (
-		<ResponsiveMenu
-			menuTitle="NOVO GRUPO DE ADICIONAIS"
-			menuDescription="Defina as regras para este grupo de adicionais."
-			menuActionButtonText="ADICIONAR GRUPO"
-			menuCancelButtonText="CANCELAR"
-			closeMenu={closeMenu}
-			actionFunction={validateAndAdd}
-			actionIsLoading={false}
-			stateIsLoading={false}
-			stateError={null}
-		>
-			<TextInput label="NOME (PARA O CLIENTE)" placeholder="Ex: Escolha o molho" value={holder.nome} handleChange={(v) => updateHolder({ nome: v })} />
-			<TextInput
-				label="NOME INTERNO"
-				placeholder="Ex: Molhos Especiais"
-				value={holder.internoNome}
-				handleChange={(v) => updateHolder({ internoNome: v })}
-			/>
-			<div className="flex w-full gap-2">
-				<NumberInput label="MÍNIMO" placeholder="0" value={holder.minOpcoes} handleChange={(v) => updateHolder({ minOpcoes: v })} />
-				<NumberInput label="MÁXIMO" placeholder="1" value={holder.maxOpcoes} handleChange={(v) => updateHolder({ maxOpcoes: v })} />
-			</div>
-			<CheckboxInput labelTrue="ATIVO" labelFalse="INATIVO" checked={holder.ativo} handleChange={(v) => updateHolder({ ativo: v })} />
-		</ResponsiveMenu>
+		<div className="flex w-full flex-col gap-5">
+			{validAddOns.length === 0 ? (
+				<div className="flex w-full items-center justify-center rounded-md border border-border px-3 py-3">
+					<p className="text-center text-xs font-medium tracking-tight text-muted-foreground">Preencha o grupo abaixo.</p>
+				</div>
+			) : null}
+
+			{validAddOns.map((addOn, groupIndex) => (
+				<AddOnGroupPanel
+					key={addOn.id || `temp-addon-${addOn.originalIndex}`}
+					groupIndex={groupIndex + 1}
+					addOn={addOn}
+					onUpdate={(partial) => updateProductAddOn(addOn.originalIndex, partial)}
+					onRemove={() => removeProductAddOn(addOn.originalIndex)}
+					addOption={(option) => addProductAddOnOption(addOn.originalIndex, option)}
+					updateOption={(optionIndex, partial) => updateProductAddOnOption(addOn.originalIndex, optionIndex, partial)}
+					removeOption={(optionIndex) => removeProductAddOnOption(addOn.originalIndex, optionIndex)}
+				/>
+			))}
+
+			<DraftAddOnGroupPanel addProductAddOn={addProductAddOn} />
+		</div>
 	);
 }
 
-type EditProductAddOnMenuProps = {
-	initialAddOn: TUseProductState["state"]["productAddOns"][number];
-	closeMenu: () => void;
-	updateAddOn: (info: TUseProductState["state"]["productAddOns"][number]) => void;
+type AddOnGroupPanelProps = {
+	groupIndex: number;
+	addOn: ValidAddOnRow;
+	onUpdate: (partial: Partial<Omit<TProductAddOnState, "opcoes">>) => void;
+	onRemove: () => void;
+	addOption: (option: TProductAddOnOptionState) => void;
+	updateOption: (optionIndex: number, partial: Partial<TProductAddOnOptionState>) => void;
+	removeOption: (optionIndex: number) => void;
 };
 
-function EditProductAddOnMenu({ initialAddOn, closeMenu, updateAddOn }: EditProductAddOnMenuProps) {
-	const [holder, setHolder] = useState(initialAddOn);
+function AddOnGroupPanel({ groupIndex, addOn, onUpdate, onRemove, addOption, updateOption, removeOption }: AddOnGroupPanelProps) {
+	const validOptions = useMemo(
+		() => addOn.opcoes.map((option, index) => ({ ...option, originalIndex: index })).filter((option) => !option.deletar),
+		[addOn.opcoes],
+	);
 
-	function updateHolder(updates: Partial<typeof holder>) {
-		setHolder((prev) => ({ ...prev, ...updates }));
-	}
+	const gridBounds: SpreadsheetGridBounds = useMemo(
+		() => ({
+			rowCount: validOptions.length + 1,
+			colCount: ADDON_OPTION_GRID_COL_COUNT,
+		}),
+		[validOptions.length],
+	);
 
-	function validateAndUpdate() {
-		if (!holder.nome) return toast.error("Nome do grupo não informado.");
-		if (!holder.internoNome) return toast.error("Nome interno do grupo não informado.");
-		if (holder.minOpcoes < 0) return toast.error("Mínimo de opções inválido.");
-		if (holder.maxOpcoes < 1) return toast.error("Máximo de opções deve ser pelo menos 1.");
-		if (holder.maxOpcoes < holder.minOpcoes) return toast.error("Máximo de opções não pode ser menor que o mínimo.");
-
-		updateAddOn(holder);
+	function handleGroupUpdate(partial: Partial<Omit<TProductAddOnState, "opcoes">>) {
+		const next = { ...addOn, ...partial };
+		if (!validateAddOnGroupFields(next)) return;
+		onUpdate(partial);
 	}
 
 	return (
-		<ResponsiveMenu
-			menuTitle="EDITAR GRUPO"
-			menuDescription="Edite as regras para este grupo de adicionais."
-			menuActionButtonText="SALVAR ALTERAÇÕES"
-			menuCancelButtonText="CANCELAR"
-			closeMenu={closeMenu}
-			actionFunction={validateAndUpdate}
-			actionIsLoading={false}
-			stateIsLoading={false}
-			stateError={null}
-		>
-			<TextInput label="NOME (PARA O CLIENTE)" placeholder="Ex: Escolha o molho" value={holder.nome} handleChange={(v) => updateHolder({ nome: v })} />
-			<TextInput
-				label="NOME INTERNO"
-				placeholder="Ex: Molhos Especiais"
-				value={holder.internoNome}
-				handleChange={(v) => updateHolder({ internoNome: v })}
+		<div className="flex w-full flex-col overflow-hidden rounded-lg border border-border bg-background shadow-xs">
+			<AddOnGroupHeader groupIndex={groupIndex} addOn={addOn} onUpdate={handleGroupUpdate} onRemove={onRemove} />
+
+			<AddOnOptionTable
+				validOptions={validOptions}
+				gridBounds={gridBounds}
+				addOption={addOption}
+				updateOption={updateOption}
+				removeOption={removeOption}
 			/>
-			<div className="flex w-full gap-2">
-				<NumberInput label="MÍNIMO" placeholder="0" value={holder.minOpcoes} handleChange={(v) => updateHolder({ minOpcoes: v })} />
-				<NumberInput label="MÁXIMO" placeholder="1" value={holder.maxOpcoes} handleChange={(v) => updateHolder({ maxOpcoes: v })} />
-			</div>
-			<CheckboxInput labelTrue="ATIVO" labelFalse="INATIVO" checked={holder.ativo} handleChange={(v) => updateHolder({ ativo: v })} />
-		</ResponsiveMenu>
+		</div>
 	);
 }
 
-// ... CARDS ...
-
-type ProductAddOnGroupCardProps = {
-	addOn: TUseProductState["state"]["productAddOns"][number];
-	index: number;
-	handleEditClick: () => void;
-	handleDeleteClick: () => void;
-	addOption: TUseProductState["addProductAddOnOption"];
-	updateOption: TUseProductState["updateProductAddOnOption"];
-	removeOption: TUseProductState["removeProductAddOnOption"];
+type AddOnGroupHeaderProps = {
+	groupIndex: number;
+	addOn: ValidAddOnRow;
+	onUpdate: (partial: Partial<Omit<TProductAddOnState, "opcoes">>) => void;
+	onRemove: () => void;
 };
 
-function ProductAddOnGroupCard({
-	addOn,
-	index,
-	handleEditClick,
-	handleDeleteClick,
-	addOption,
-	updateOption,
-	removeOption,
-}: ProductAddOnGroupCardProps) {
-	const validOptions = addOn.opcoes.map((opt, idx) => ({ ...opt, originalIndex: idx })).filter((opt) => !opt.deletar);
-
-	function handleAddNewOption() {
-		addOption(index, {
-			nome: "",
-			codigo: "",
-			precoDelta: 0,
-			maxQtdePorItem: 1,
-			ativo: true,
-			quantidadeConsumo: 1,
-		});
-	}
-
+function AddOnGroupHeader({ groupIndex, addOn, onUpdate, onRemove }: AddOnGroupHeaderProps) {
 	return (
-		<div className={cn("bg-card border-border flex w-full flex-col gap-2 rounded-xl border p-3 shadow-2xs")}>
-			{/* HEADER DO GRUPO */}
-			<div className="flex w-full items-start justify-between gap-4 border-b border-border pb-2">
-				<div className="flex flex-col gap-0.5">
-					<h1 className="text-sm font-bold tracking-tight">{addOn.nome}</h1>
-					<p className="text-xs text-muted-foreground italic">{addOn.internoNome}</p>
-					<div className="flex items-center gap-2 mt-1">
-						<span className="text-[0.65rem] font-medium bg-primary/10 text-foreground px-1.5 py-0.5 rounded-md">MÍN: {addOn.minOpcoes}</span>
-						<span className="text-[0.65rem] font-medium bg-primary/10 text-foreground px-1.5 py-0.5 rounded-md">MÁX: {addOn.maxOpcoes}</span>
-						<span
-							className={cn(
-								"text-[0.65rem] font-medium px-1.5 py-0.5 rounded-md",
-								addOn.ativo ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive",
-							)}
-						>
-							{addOn.ativo ? "ATIVO" : "INATIVO"}
-						</span>
+		<div className="border-b border-border bg-muted">
+			<div className="hidden flex-col gap-2 px-3 py-2.5 lg:flex">
+				<div className="flex items-start justify-between gap-3">
+					<div className="flex min-w-0 flex-1 items-start gap-2.5">
+						<AddOnGroupIndexBadge index={groupIndex} />
+						<div className="min-w-0 flex-1 space-y-1">
+							<div className="min-w-0 [&_button]:h-9 [&_button]:text-sm [&_button]:font-semibold [&_button]:text-foreground [&_input]:h-9 [&_input]:text-sm [&_input]:font-semibold">
+								<EditableTextCell
+									value={addOn.nome}
+									ariaLabel="Nome do grupo para o cliente"
+									align="left"
+									emptyDisplay="Nome do grupo"
+									onCommit={(nome) => onUpdate({ nome })}
+								/>
+							</div>
+							<div className="flex min-w-0 items-center gap-1.5">
+								<span className="shrink-0 text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">Interno</span>
+								<div className="min-w-0 flex-1 [&_button]:h-7 [&_button]:text-xs [&_input]:h-7 [&_input]:text-xs">
+									<EditableTextCell
+										value={addOn.internoNome ?? ""}
+										ariaLabel="Nome interno do grupo"
+										align="left"
+										emptyDisplay="Nome interno"
+										onCommit={(internoNome) => onUpdate({ internoNome })}
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div className="flex shrink-0 items-center gap-1.5">
+						<AddOnGroupMetaChip label="Mín">
+							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
+								<EditableNumberCell
+									value={addOn.minOpcoes}
+									ariaLabel="Mínimo de opções"
+									min={0}
+									format={(value) => String(Math.round(value))}
+									onCommit={(minOpcoes) => onUpdate({ minOpcoes: Math.round(minOpcoes) })}
+								/>
+							</div>
+						</AddOnGroupMetaChip>
+						<AddOnGroupMetaChip label="Máx">
+							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
+								<EditableNumberCell
+									value={addOn.maxOpcoes}
+									ariaLabel="Máximo de opções"
+									min={1}
+									format={(value) => String(Math.round(value))}
+									onCommit={(maxOpcoes) => onUpdate({ maxOpcoes: Math.round(maxOpcoes) })}
+								/>
+							</div>
+						</AddOnGroupMetaChip>
+						<AddOnActiveToggle active={addOn.ativo} onToggle={() => onUpdate({ ativo: !addOn.ativo })} />
+						<DeleteRowButton onRemove={onRemove} ariaLabel="Remover grupo de adicionais" />
 					</div>
 				</div>
-				<div className="flex items-center gap-1">
-					<Button onClick={handleEditClick} size="icon" variant="ghost" className="h-7 w-7">
-						<Pencil className="w-4 h-4 text-muted-foreground" />
-					</Button>
-					<Button onClick={handleDeleteClick} size="icon" variant="ghost" className="h-7 w-7 hover:text-destructive">
-						<Trash2 className="w-4 h-4" />
-					</Button>
+			</div>
+
+			<div className="flex flex-col gap-2 p-3 lg:hidden">
+				<div className="flex items-start gap-2">
+					<AddOnGroupIndexBadge index={groupIndex} />
+					<div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+						<div className="grid min-w-0 flex-1 grid-cols-1 gap-2">
+							<MobileEditableField label="Nome (cliente)">
+								<EditableTextCell
+									value={addOn.nome}
+									ariaLabel="Nome do grupo para o cliente"
+									onCommit={(nome) => onUpdate({ nome })}
+								/>
+							</MobileEditableField>
+							<MobileEditableField label="Nome interno">
+								<EditableTextCell
+									value={addOn.internoNome ?? ""}
+									ariaLabel="Nome interno do grupo"
+									onCommit={(internoNome) => onUpdate({ internoNome })}
+								/>
+							</MobileEditableField>
+						</div>
+						<DeleteRowButton onRemove={onRemove} ariaLabel="Remover grupo de adicionais" />
+					</div>
 				</div>
-			</div>
-
-			{/* LISTA DE OPÇÕES */}
-			<div className="flex flex-col w-full gap-2 mt-1">
-				{validOptions.map((option) => (
-					<ProductAddOnOptionCard
-						key={option.id || `temp-opt-${option.originalIndex}`}
-						option={option}
-						updateOption={(updates) => updateOption(index, option.originalIndex, updates)}
-						removeOption={() => removeOption(index, option.originalIndex)}
-					/>
-				))}
-			</div>
-
-			{/* BOTÃO ADICIONAR OPÇÃO */}
-			<div className="w-full flex justify-center mt-2">
-				<Button
-					onClick={handleAddNewOption}
-					size="sm"
-					variant="outline"
-					className="w-full border-dashed border-border/30 text-foreground/70 hover:text-foreground hover:border-border/60 hover:bg-primary/5 h-8 text-xs"
-				>
-					<Plus className="w-3.5 h-3.5 mr-1" />
-					ADICIONAR OPÇÃO
-				</Button>
+				<div className="grid grid-cols-3 gap-2">
+					<MobileEditableField label="Mín">
+						<EditableNumberCell
+							value={addOn.minOpcoes}
+							ariaLabel="Mínimo de opções"
+							min={0}
+							format={(value) => String(Math.round(value))}
+							onCommit={(minOpcoes) => onUpdate({ minOpcoes: Math.round(minOpcoes) })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Máx">
+						<EditableNumberCell
+							value={addOn.maxOpcoes}
+							ariaLabel="Máximo de opções"
+							min={1}
+							format={(value) => String(Math.round(value))}
+							onCommit={(maxOpcoes) => onUpdate({ maxOpcoes: Math.round(maxOpcoes) })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Ativo">
+						<div className="flex h-8 items-center">
+							<AddOnActiveToggle active={addOn.ativo} onToggle={() => onUpdate({ ativo: !addOn.ativo })} />
+						</div>
+					</MobileEditableField>
+				</div>
 			</div>
 		</div>
 	);
 }
 
-type ProductAddOnOptionCardProps = {
-	option: TProductAddOnOptionState;
-	updateOption: (updates: Partial<TProductAddOnOptionState>) => void;
-	removeOption: () => void;
+function AddOnActiveToggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			size="icon"
+			onClick={onToggle}
+			aria-label={active ? "Grupo ativo" : "Grupo inativo"}
+			className={cn("h-8 w-8", active ? "text-green-600 hover:text-green-700" : "text-muted-foreground")}
+		>
+			<Check className={cn("h-4 w-4", !active && "opacity-20")} />
+		</Button>
+	);
+}
+
+type ValidOptionRow = TProductAddOnOptionState & { originalIndex: number };
+
+type AddOnOptionTableProps = {
+	validOptions: ValidOptionRow[];
+	gridBounds: SpreadsheetGridBounds;
+	addOption: (option: TProductAddOnOptionState) => void;
+	updateOption: (optionIndex: number, partial: Partial<TProductAddOnOptionState>) => void;
+	removeOption: (optionIndex: number) => void;
 };
 
-function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductAddOnOptionCardProps) {
-	const [vinculationModalIsOpen, setVinculationModalIsOpen] = useState(false);
-
-	const inputLabelClass = "text-[0.65rem] whitespace-nowrap";
-	const inputHolderClass = "!p-2 h-8";
-
+function AddOnOptionTable({ validOptions, gridBounds, addOption, updateOption, removeOption }: AddOnOptionTableProps) {
 	return (
-		<div className="flex w-full flex-col gap-2 rounded-lg border border-border/50 bg-muted/30 p-2">
-			{option.produtoConsumo ? (
-				<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-primary/10 p-1.5">
-					<div className="flex min-w-0 flex-1 items-center gap-2">
-						<LinkIcon className="h-3.5 w-3.5 shrink-0 text-foreground" />
-						<div className="flex min-w-0 flex-col">
-							<span className="text-[0.65rem] font-bold uppercase tracking-tight text-foreground/80">CONSUMO DE ESTOQUE VINCULADO A:</span>
-							<p className="line-clamp-1 text-xs font-medium text-foreground">{option.produtoConsumo}</p>
-						</div>
-					</div>
-					<div className="flex shrink-0 items-center gap-2">
-						<NumberInput
-							placeholder="1"
-							value={option.quantidadeConsumo}
-							handleChange={(v) => updateOption({ quantidadeConsumo: v })}
-							label="QTD. CONSUMO"
-							labelClassName="text-[0.65rem] text-foreground/80"
-							holderClassName="!p-1.5 h-7 w-20 bg-background/50 border-border"
-						/>
-						<Button
-							onClick={() => updateOption({ produtoConsumo: null, produtoId: null, produtoVarianteId: null, quantidadeConsumo: 1 })}
-							size="icon"
-							variant="ghost"
-							className="h-7 w-7 text-foreground/60 hover:bg-destructive/10 hover:text-destructive"
-							title="Desvincular Produto"
-						>
-							<Unplug className="h-3.5 w-3.5" />
-						</Button>
-					</div>
-				</div>
-			) : (
-				<div className="flex items-center justify-center py-1">
-					<Button
-						onClick={() => setVinculationModalIsOpen(true)}
-						size="sm"
-						variant="ghost"
-						className="h-7 w-full gap-1.5 border border-dashed border-border bg-background/50 text-xs text-muted-foreground hover:border-border/50 hover:text-foreground"
-					>
-						<LinkIcon className="h-3 w-3" />
-						VINCULAR ITEM DE CONSUMO NO ESTOQUE
-					</Button>
-				</div>
-			)}
+		<div {...{ [SPREADSHEET_TABLE_ATTR]: "true" }} className="flex w-full flex-col">
+			<div
+				className={cn(
+					ADDON_OPTION_DESKTOP_ROW,
+					"min-h-8 border-b border-border bg-background py-1.5 text-[0.68rem] font-medium uppercase text-muted-foreground",
+				)}
+			>
+				<p className="min-w-0 px-1 text-start">Opção</p>
+				<p className="min-w-0 px-1 text-center">Código</p>
+				<p className="min-w-0 px-1 text-center">Δ Preço</p>
+				<p className="min-w-0 px-1 text-center">Máx qtd</p>
+				<p className="min-w-0 px-1 text-center">Estoque</p>
+				<p className="min-w-0 px-1 text-center">Ativo</p>
+				<p className="min-w-0 px-1 text-center">Ações</p>
+			</div>
 
-			<TextInput
-				placeholder="Nome da Opção"
-				value={option.nome}
-				handleChange={(v) => updateOption({ nome: v })}
-				label="NOME"
-				labelClassName={inputLabelClass}
-				holderClassName={inputHolderClass}
-			/>
+			<div className="flex w-full flex-col bg-background">
+				{validOptions.map((option, rowIndex) => (
+					<AddOnOptionTableRow
+						key={option.id || `temp-opt-${option.originalIndex}`}
+						option={option}
+						gridRow={rowIndex}
+						gridBounds={gridBounds}
+						onUpdate={(partial) => updateOption(option.originalIndex, partial)}
+						onRemove={() => removeOption(option.originalIndex)}
+					/>
+				))}
 
-			<div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,0.75fr)_auto] sm:items-end">
-				<div className="min-w-0">
-					<TextInput
-						placeholder="Cód. SKU"
-						value={option.codigo}
-						handleChange={(v) => updateOption({ codigo: v })}
-						label="CÓD. SKU"
-						labelClassName={inputLabelClass}
-						holderClassName={inputHolderClass}
+				<DraftAddOnOptionRow addOption={addOption} gridRow={validOptions.length} gridBounds={gridBounds} />
+			</div>
+		</div>
+	);
+}
+
+type AddOnOptionTableRowProps = {
+	option: ValidOptionRow;
+	gridRow: number;
+	gridBounds: SpreadsheetGridBounds;
+	onUpdate: (partial: Partial<TProductAddOnOptionState>) => void;
+	onRemove: () => void;
+};
+
+function AddOnOptionTableRow({ option, gridRow, gridBounds, onUpdate, onRemove }: AddOnOptionTableRowProps) {
+	return (
+		<div className={cn("border-t border-border", gridRow % 2 === 1 && "bg-muted/10")}>
+			<div className={cn(ADDON_OPTION_DESKTOP_ROW, "min-h-11 py-1 text-xs transition-colors hover:bg-muted/40")}>
+				<div className="min-w-0 px-1">
+					<EditableTextCell
+						value={option.nome}
+						ariaLabel="Editar nome da opção"
+						align="left"
+						gridRow={gridRow}
+						gridCol={ADDON_OPTION_GRID_COL.NAME}
+						gridBounds={gridBounds}
+						onCommit={(nome) => onUpdate({ nome })}
 					/>
 				</div>
-				<div className="min-w-0">
-					<NumberInput
-						placeholder="0,00"
+				<div className="min-w-0 px-1">
+					<EditableTextCell
+						value={option.codigo ?? ""}
+						ariaLabel="Editar código da opção"
+						align="center"
+						gridRow={gridRow}
+						gridCol={ADDON_OPTION_GRID_COL.CODE}
+						gridBounds={gridBounds}
+						onCommit={(codigo) => onUpdate({ codigo })}
+					/>
+				</div>
+				<div className="min-w-0 px-1">
+					<EditableNumberCell
 						value={option.precoDelta}
-						handleChange={(v) => updateOption({ precoDelta: v })}
-						label="DIF. PREÇO"
-						labelClassName={inputLabelClass}
-						holderClassName={inputHolderClass}
+						ariaLabel="Editar diferença de preço"
+						min={0}
+						gridRow={gridRow}
+						gridCol={ADDON_OPTION_GRID_COL.PRICE}
+						gridBounds={gridBounds}
+						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+						onCommit={(precoDelta) => onUpdate({ precoDelta })}
 					/>
 				</div>
-				<div className="min-w-0">
-					<NumberInput
-						placeholder="1"
-						value={option.maxQtdePorItem}
-						handleChange={(v) => updateOption({ maxQtdePorItem: v })}
-						label="MAX QTD."
-						labelClassName={inputLabelClass}
-						holderClassName={inputHolderClass}
+				<div className="min-w-0 px-1">
+					<EditableNumberCell
+						value={option.maxQtdePorItem ?? 1}
+						ariaLabel="Editar quantidade máxima"
+						min={1}
+						gridRow={gridRow}
+						gridCol={ADDON_OPTION_GRID_COL.MAX_QTY}
+						gridBounds={gridBounds}
+						format={(value) => String(Math.round(value))}
+						onCommit={(maxQtdePorItem) => onUpdate({ maxQtdePorItem: Math.round(maxQtdePorItem) })}
 					/>
 				</div>
-				<div className="col-span-2 flex shrink-0 items-center justify-end gap-1 sm:col-span-1 sm:pb-0.5">
-					<Button
-						onClick={() => updateOption({ ativo: !option.ativo })}
-						size="icon"
-						variant="ghost"
-						className={cn("h-8 w-8", option.ativo ? "text-emerald-500 hover:text-emerald-600" : "text-muted-foreground")}
-						title={option.ativo ? "Ativo" : "Inativo"}
-					>
-						<Check className={cn("h-4 w-4", !option.ativo && "opacity-20")} />
-					</Button>
-					<Button
-						onClick={removeOption}
-						size="icon"
-						variant="ghost"
-						className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-						title="Remover Opção"
-					>
-						<Trash2 className="h-4 w-4" />
-					</Button>
+				<div className="min-w-0 px-1">
+					<AddOnStockCell option={option} onUpdate={onUpdate} />
+				</div>
+				<div className="flex min-w-0 justify-center px-1">
+					<AddOnActiveToggle active={option.ativo} onToggle={() => onUpdate({ ativo: !option.ativo })} />
+				</div>
+				<div className="flex min-w-0 justify-center px-1">
+					<DeleteRowButton onRemove={onRemove} ariaLabel="Remover opção" />
 				</div>
 			</div>
+
+			<div className="flex w-full flex-col gap-2 p-2 lg:hidden">
+				<div className="flex items-start justify-between gap-2">
+					<div className="min-w-0 flex-1">
+						<MobileEditableField label="Opção">
+							<EditableTextCell
+								value={option.nome}
+								ariaLabel="Editar nome da opção"
+								onCommit={(nome) => onUpdate({ nome })}
+							/>
+						</MobileEditableField>
+					</div>
+					<DeleteRowButton onRemove={onRemove} ariaLabel="Remover opção" />
+				</div>
+				<div className="grid grid-cols-2 gap-2">
+					<MobileEditableField label="Código">
+						<EditableTextCell
+							value={option.codigo ?? ""}
+							ariaLabel="Editar código da opção"
+							align="center"
+							onCommit={(codigo) => onUpdate({ codigo })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Máx qtd">
+						<EditableNumberCell
+							value={option.maxQtdePorItem ?? 1}
+							ariaLabel="Editar quantidade máxima"
+							min={1}
+							format={(value) => String(Math.round(value))}
+							onCommit={(maxQtdePorItem) => onUpdate({ maxQtdePorItem: Math.round(maxQtdePorItem) })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Δ Preço">
+						<EditableNumberCell
+							value={option.precoDelta}
+							ariaLabel="Editar diferença de preço"
+							min={0}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(precoDelta) => onUpdate({ precoDelta })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Ativo">
+						<div className="flex h-8 items-center">
+							<AddOnActiveToggle active={option.ativo} onToggle={() => onUpdate({ ativo: !option.ativo })} />
+						</div>
+					</MobileEditableField>
+				</div>
+				<MobileEditableField label="Estoque">
+					<AddOnStockCell option={option} onUpdate={onUpdate} />
+				</MobileEditableField>
+			</div>
+		</div>
+	);
+}
+
+type AddOnStockCellProps = {
+	option: TProductAddOnOptionState;
+	onUpdate: (partial: Partial<TProductAddOnOptionState>) => void;
+};
+
+function AddOnStockCell({ option, onUpdate }: AddOnStockCellProps) {
+	const [vinculationModalIsOpen, setVinculationModalIsOpen] = useState(false);
+
+	if (option.produtoConsumo) {
+		return (
+			<>
+				<div className="flex min-w-0 items-center gap-1">
+					<LinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+					<span className="min-w-0 flex-1 truncate text-xs text-foreground/80" title={option.produtoConsumo}>
+						{option.produtoConsumo}
+					</span>
+					<div className="w-14 shrink-0">
+						<EditableNumberCell
+							value={option.quantidadeConsumo}
+							ariaLabel="Quantidade de consumo"
+							min={0.000001}
+							onCommit={(quantidadeConsumo) => onUpdate({ quantidadeConsumo })}
+						/>
+					</div>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						onClick={() => onUpdate({ produtoConsumo: null, produtoId: null, produtoVarianteId: null, quantidadeConsumo: 1 })}
+						aria-label="Desvincular produto de estoque"
+						className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+					>
+						<Unplug className="h-3.5 w-3.5" />
+					</Button>
+				</div>
+			</>
+		);
+	}
+
+	return (
+		<>
+			<button
+				type="button"
+				onClick={() => setVinculationModalIsOpen(true)}
+				className="flex h-8 w-full items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+			>
+				-
+			</button>
 			{vinculationModalIsOpen ? (
 				<ProductVinculation
 					closeModal={() => setVinculationModalIsOpen(false)}
 					handleSelection={(product, variant) => {
-						updateOption(
+						onUpdate(
 							variant
 								? { produtoConsumo: variant.nome, produtoId: null, produtoVarianteId: variant.id }
 								: { produtoConsumo: product.nome, produtoId: product.id, produtoVarianteId: null },
@@ -430,6 +561,337 @@ function ProductAddOnOptionCard({ option, updateOption, removeOption }: ProductA
 					}}
 				/>
 			) : null}
+		</>
+	);
+}
+
+function createEmptyAddOnOption(): TProductAddOnOptionState {
+	return {
+		nome: "",
+		codigo: "",
+		precoDelta: 0,
+		maxQtdePorItem: 1,
+		ativo: true,
+		quantidadeConsumo: 1,
+	};
+}
+
+function isDraftAddOnOptionReady(option: TProductAddOnOptionState) {
+	return Boolean(option.nome.trim() && option.codigo?.trim());
+}
+
+function validateDraftAddOnOption(option: TProductAddOnOptionState) {
+	if (!option.nome.trim()) {
+		toast.error("Nome da opção não informado.");
+		return false;
+	}
+	if (!option.codigo?.trim()) {
+		toast.error("Código da opção não informado.");
+		return false;
+	}
+	return true;
+}
+
+type DraftAddOnOptionRowProps = {
+	addOption: (option: TProductAddOnOptionState) => void;
+	gridRow: number;
+	gridBounds: SpreadsheetGridBounds;
+};
+
+function DraftAddOnOptionRow({ addOption, gridRow, gridBounds }: DraftAddOnOptionRowProps) {
+	const [draftOption, setDraftOption] = useState<TProductAddOnOptionState>(() => createEmptyAddOnOption());
+
+	function updateDraft(partial: Partial<TProductAddOnOptionState>) {
+		const nextDraft = { ...draftOption, ...partial };
+
+		if (isDraftAddOnOptionReady(nextDraft)) {
+			if (!validateDraftAddOnOption(nextDraft)) {
+				setDraftOption(nextDraft);
+				return;
+			}
+			addOption(nextDraft);
+			setDraftOption(createEmptyAddOnOption());
+			return;
+		}
+
+		setDraftOption(nextDraft);
+	}
+
+	return (
+		<div className="border-t border-dashed border-border bg-muted/20">
+			<div className={cn(ADDON_OPTION_DESKTOP_ROW, "min-h-11 py-1 text-xs transition-colors hover:bg-muted/40")}>
+				<div className="flex min-w-0 items-center gap-1 px-1">
+					<Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+					<div className="min-w-0 flex-1">
+						<EditableTextCell
+							value={draftOption.nome}
+							ariaLabel="Nome da nova opção"
+							align="left"
+							gridRow={gridRow}
+							gridCol={ADDON_OPTION_GRID_COL.NAME}
+							gridBounds={gridBounds}
+							onCommit={(nome) => updateDraft({ nome })}
+						/>
+					</div>
+				</div>
+				<div className="min-w-0 px-1">
+					<EditableTextCell
+						value={draftOption.codigo ?? ""}
+						ariaLabel="Código da nova opção"
+						align="center"
+						gridRow={gridRow}
+						gridCol={ADDON_OPTION_GRID_COL.CODE}
+						gridBounds={gridBounds}
+						onCommit={(codigo) => updateDraft({ codigo })}
+					/>
+				</div>
+				<div className="min-w-0 px-1">
+					<EditableNumberCell
+						value={draftOption.precoDelta}
+						ariaLabel="Diferença de preço da nova opção"
+						min={0}
+						gridRow={gridRow}
+						gridCol={ADDON_OPTION_GRID_COL.PRICE}
+						gridBounds={gridBounds}
+						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+						onCommit={(precoDelta) => updateDraft({ precoDelta })}
+					/>
+				</div>
+				<div className="min-w-0 px-1">
+					<EditableNumberCell
+						value={draftOption.maxQtdePorItem ?? 1}
+						ariaLabel="Quantidade máxima da nova opção"
+						min={1}
+						gridRow={gridRow}
+						gridCol={ADDON_OPTION_GRID_COL.MAX_QTY}
+						gridBounds={gridBounds}
+						format={(value) => String(Math.round(value))}
+						onCommit={(maxQtdePorItem) => updateDraft({ maxQtdePorItem: Math.round(maxQtdePorItem) })}
+					/>
+				</div>
+				<div className="min-w-0 px-1">
+					<span className="flex h-8 w-full items-center justify-center text-xs text-muted-foreground">-</span>
+				</div>
+				<div className="flex min-w-0 justify-center px-1">
+					<AddOnActiveToggle active={draftOption.ativo} onToggle={() => updateDraft({ ativo: !draftOption.ativo })} />
+				</div>
+				<div aria-hidden className="min-w-0 px-1" />
+			</div>
+
+			<div className="flex w-full flex-col gap-2 p-2 lg:hidden">
+				<div className="flex items-start gap-2">
+					<Plus className="mt-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+					<div className="min-w-0 flex-1">
+						<MobileEditableField label="Opção">
+							<EditableTextCell
+								value={draftOption.nome}
+								ariaLabel="Nome da nova opção"
+								onCommit={(nome) => updateDraft({ nome })}
+							/>
+						</MobileEditableField>
+					</div>
+				</div>
+				<div className="grid grid-cols-2 gap-2">
+					<MobileEditableField label="Código">
+						<EditableTextCell
+							value={draftOption.codigo ?? ""}
+							ariaLabel="Código da nova opção"
+							align="center"
+							onCommit={(codigo) => updateDraft({ codigo })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Máx qtd">
+						<EditableNumberCell
+							value={draftOption.maxQtdePorItem ?? 1}
+							ariaLabel="Quantidade máxima da nova opção"
+							min={1}
+							format={(value) => String(Math.round(value))}
+							onCommit={(maxQtdePorItem) => updateDraft({ maxQtdePorItem: Math.round(maxQtdePorItem) })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Δ Preço">
+						<EditableNumberCell
+							value={draftOption.precoDelta}
+							ariaLabel="Diferença de preço da nova opção"
+							min={0}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(precoDelta) => updateDraft({ precoDelta })}
+						/>
+					</MobileEditableField>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function createEmptyAddOn(): TProductAddOnState {
+	return {
+		nome: "",
+		internoNome: "",
+		minOpcoes: 0,
+		maxOpcoes: 1,
+		ativo: true,
+		opcoes: [],
+	};
+}
+
+function isDraftAddOnReady(addOn: TProductAddOnState) {
+	return Boolean(addOn.nome.trim() && addOn.internoNome?.trim() && addOn.maxOpcoes >= 1 && addOn.minOpcoes >= 0 && addOn.maxOpcoes >= addOn.minOpcoes);
+}
+
+function validateAddOnGroupFields(addOn: Pick<TProductAddOnState, "nome" | "internoNome" | "minOpcoes" | "maxOpcoes">) {
+	if (!addOn.nome.trim()) {
+		toast.error("Nome do grupo não informado.");
+		return false;
+	}
+	if (!addOn.internoNome?.trim()) {
+		toast.error("Nome interno do grupo não informado.");
+		return false;
+	}
+	if (addOn.minOpcoes < 0) {
+		toast.error("Mínimo de opções inválido.");
+		return false;
+	}
+	if (addOn.maxOpcoes < 1) {
+		toast.error("Máximo de opções deve ser pelo menos 1.");
+		return false;
+	}
+	if (addOn.maxOpcoes < addOn.minOpcoes) {
+		toast.error("Máximo de opções não pode ser menor que o mínimo.");
+		return false;
+	}
+	return true;
+}
+
+type DraftAddOnGroupPanelProps = {
+	addProductAddOn: TUseProductState["addProductAddOn"];
+};
+
+function DraftAddOnGroupPanel({ addProductAddOn }: DraftAddOnGroupPanelProps) {
+	const [draftAddOn, setDraftAddOn] = useState<TProductAddOnState>(() => createEmptyAddOn());
+
+	function updateDraft(partial: Partial<Omit<TProductAddOnState, "opcoes">>) {
+		const nextDraft = { ...draftAddOn, ...partial };
+
+		if (isDraftAddOnReady(nextDraft)) {
+			if (!validateAddOnGroupFields(nextDraft)) {
+				setDraftAddOn(nextDraft);
+				return;
+			}
+			addProductAddOn(nextDraft);
+			setDraftAddOn(createEmptyAddOn());
+			return;
+		}
+
+		setDraftAddOn(nextDraft);
+	}
+
+	return (
+		<div className="overflow-hidden rounded-lg border border-dashed border-border bg-muted/30 shadow-xs">
+			<div className="hidden flex-col gap-2 px-3 py-2.5 lg:flex">
+				<div className="flex items-start justify-between gap-3">
+					<div className="flex min-w-0 flex-1 items-start gap-2.5">
+						<AddOnGroupIndexBadge draft />
+						<div className="min-w-0 flex-1 space-y-1">
+							<p className="text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">Novo grupo</p>
+							<div className="min-w-0 [&_button]:h-9 [&_button]:text-sm [&_button]:font-semibold [&_button]:text-foreground [&_input]:h-9 [&_input]:text-sm [&_input]:font-semibold">
+								<EditableTextCell
+									value={draftAddOn.nome}
+									ariaLabel="Nome do novo grupo para o cliente"
+									align="left"
+									emptyDisplay="Nome do grupo"
+									onCommit={(nome) => updateDraft({ nome })}
+								/>
+							</div>
+							<div className="flex min-w-0 items-center gap-1.5">
+								<span className="shrink-0 text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">Interno</span>
+								<div className="min-w-0 flex-1 [&_button]:h-7 [&_button]:text-xs [&_input]:h-7 [&_input]:text-xs">
+									<EditableTextCell
+										value={draftAddOn.internoNome ?? ""}
+										ariaLabel="Nome interno do novo grupo"
+										align="left"
+										emptyDisplay="Nome interno"
+										onCommit={(internoNome) => updateDraft({ internoNome })}
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div className="flex shrink-0 items-center gap-1.5">
+						<AddOnGroupMetaChip label="Mín">
+							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
+								<EditableNumberCell
+									value={draftAddOn.minOpcoes}
+									ariaLabel="Mínimo do novo grupo"
+									min={0}
+									format={(value) => String(Math.round(value))}
+									onCommit={(minOpcoes) => updateDraft({ minOpcoes: Math.round(minOpcoes) })}
+								/>
+							</div>
+						</AddOnGroupMetaChip>
+						<AddOnGroupMetaChip label="Máx">
+							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
+								<EditableNumberCell
+									value={draftAddOn.maxOpcoes}
+									ariaLabel="Máximo do novo grupo"
+									min={1}
+									format={(value) => String(Math.round(value))}
+									onCommit={(maxOpcoes) => updateDraft({ maxOpcoes: Math.round(maxOpcoes) })}
+								/>
+							</div>
+						</AddOnGroupMetaChip>
+						<AddOnActiveToggle active={draftAddOn.ativo} onToggle={() => updateDraft({ ativo: !draftAddOn.ativo })} />
+					</div>
+				</div>
+			</div>
+
+			<div className="flex flex-col gap-2 p-3 lg:hidden">
+				<div className="flex items-start gap-2">
+					<AddOnGroupIndexBadge draft />
+					<div className="grid min-w-0 flex-1 grid-cols-1 gap-2">
+						<MobileEditableField label="Nome (cliente)">
+							<EditableTextCell
+								value={draftAddOn.nome}
+								ariaLabel="Nome do novo grupo para o cliente"
+								onCommit={(nome) => updateDraft({ nome })}
+							/>
+						</MobileEditableField>
+						<MobileEditableField label="Nome interno">
+							<EditableTextCell
+								value={draftAddOn.internoNome ?? ""}
+								ariaLabel="Nome interno do novo grupo"
+								onCommit={(internoNome) => updateDraft({ internoNome })}
+							/>
+						</MobileEditableField>
+					</div>
+				</div>
+				<div className="grid grid-cols-3 gap-2">
+					<MobileEditableField label="Mín">
+						<EditableNumberCell
+							value={draftAddOn.minOpcoes}
+							ariaLabel="Mínimo do novo grupo"
+							min={0}
+							format={(value) => String(Math.round(value))}
+							onCommit={(minOpcoes) => updateDraft({ minOpcoes: Math.round(minOpcoes) })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Máx">
+						<EditableNumberCell
+							value={draftAddOn.maxOpcoes}
+							ariaLabel="Máximo do novo grupo"
+							min={1}
+							format={(value) => String(Math.round(value))}
+							onCommit={(maxOpcoes) => updateDraft({ maxOpcoes: Math.round(maxOpcoes) })}
+						/>
+					</MobileEditableField>
+					<MobileEditableField label="Ativo">
+						<div className="flex h-8 items-center">
+							<AddOnActiveToggle active={draftAddOn.ativo} onToggle={() => updateDraft({ ativo: !draftAddOn.ativo })} />
+						</div>
+					</MobileEditableField>
+				</div>
+			</div>
 		</div>
 	);
 }

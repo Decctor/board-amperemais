@@ -153,6 +153,13 @@ export function formatToMoney(value: string | number, tag = "R$") {
 		maximumFractionDigits: 2,
 	})}`;
 }
+
+/** Valor numérico bruto para inputs editáveis (vírgula decimal). */
+export function formatNumericInputValue(value: number | null | undefined) {
+	if (value === null || value === undefined) return "";
+	return value.toString().replace(".", ",");
+}
+
 export function formatDecimalPlaces(value: string | number, minPlaces?: number, maxPlaces?: number) {
 	return Number(value).toLocaleString("pt-br", {
 		minimumFractionDigits: minPlaces != null && minPlaces !== undefined ? minPlaces : 0,

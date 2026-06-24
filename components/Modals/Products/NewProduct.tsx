@@ -9,6 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import ProductAddOnsBlock from "./Blocks/AddOns";
 import ProductGeneralBlock from "./Blocks/General";
+import ProductStateOptionsBlock from "./Blocks/Options";
 import ProductVariantsBlock from "./Blocks/Variants";
 import ProductStockBlock from "./Blocks/Stock";
 import ProductFiscalBlock from "./Blocks/Fiscal";
@@ -35,6 +36,13 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 		updateProductVariant,
 		updateProductVariantImageHolder,
 		removeProductVariant,
+		addProductOption,
+		updateProductOption,
+		removeProductOption,
+		addProductOptionValue,
+		updateProductOptionValue,
+		removeProductOptionValue,
+		generateVariantMatrix,
 		removeVariantFiscalProfile,
 		addVariantFiscalProfile,
 		updateVariantFiscalProfile,
@@ -97,8 +105,30 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 				ativo: variant.ativo,
 				addOns: processedVariantAddOns,
 				perfisFiscais: [],
+				opcoesValores: (variant.opcoesValores ?? [])
+					.filter((ref) => !ref.deletar)
+					.map((ref) => ({ opcaoReferenciaId: ref.opcaoReferenciaId, valorReferenciaId: ref.valorReferenciaId })),
 			});
 		}
+
+		// Process variant option axes and their values (filter out deleted ones).
+		const processedOptions: TCreateProductInput["productOptions"] = state.productOptions
+			.filter((option) => !option.deletar)
+			.map((option) => ({
+				referenciaId: option.referenciaId,
+				nome: option.nome,
+				tipo: option.tipo,
+				ordem: option.ordem,
+				valores: option.valores
+					.filter((value) => !value.deletar)
+					.map((value) => ({
+						referenciaId: value.referenciaId,
+						nome: value.nome,
+						valorAuxiliar: value.valorAuxiliar ?? null,
+						imagemCapaUrl: value.imagemCapaUrl ?? null,
+						ordem: value.ordem,
+					})),
+			}));
 
 		// 3. Process product addOns (filter out deleted ones)
 		const processedAddOns: TCreateProductInput["productAddOns"] = state.productAddOns
@@ -124,6 +154,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 				rastreamentoEstoqueAtivo: state.product.rastreamentoEstoqueAtivo,
 			},
 			productVariants: processedVariants,
+			productOptions: processedOptions,
 			productAddOns: processedAddOns,
 			productFiscalProfiles: [],
 		};
@@ -152,6 +183,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 					imagemCapaHolder: { file: null, previewUrl: null },
 				},
 				productVariants: [],
+				productOptions: [],
 				productAddOns: [],
 				productFiscalProfiles: [],
 			});
@@ -182,8 +214,21 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 		>
 			<ProductGeneralBlock product={state.product} updateProduct={updateProduct} updateProductImageHolder={updateProductImageHolder} />
 			<ProductStockBlock product={state.product} updateProduct={updateProduct} />
+			<ProductStateOptionsBlock
+				options={state.productOptions}
+				variants={state.productVariants}
+				addProductOption={addProductOption}
+				updateProductOption={updateProductOption}
+				removeProductOption={removeProductOption}
+				addProductOptionValue={addProductOptionValue}
+				updateProductOptionValue={updateProductOptionValue}
+				removeProductOptionValue={removeProductOptionValue}
+				generateVariantMatrix={generateVariantMatrix}
+				baseDefaults={{ precoVenda: state.product.precoVenda, precoCusto: state.product.precoCusto }}
+			/>
 			<ProductVariantsBlock
 				variants={state.productVariants}
+				options={state.productOptions}
 				addVariant={addProductVariant}
 				updateVariant={updateProductVariant}
 				removeVariant={removeProductVariant}
