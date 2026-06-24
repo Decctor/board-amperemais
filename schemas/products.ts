@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StockMovementTypeEnum } from "./enums";
+import { StockMovementTypeEnum, VariantOptionTypeEnum } from "./enums";
 
 export const ProductSchema = z.object({
 	organizacaoId: z.string({
@@ -121,6 +121,86 @@ export const ProductVariantSchema = z.object({
 		})
 		.default(false),
 });
+
+// -----------------------------------------------------------------------------
+// VARIANT OPTIONS (eixos de variacao: "Tamanho", "Cor")
+// -----------------------------------------------------------------------------
+export const ProductOptionSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para ID da organização.",
+	}),
+	produtoId: z.string({
+		required_error: "ID do produto não informado.",
+		invalid_type_error: "Tipo não válido para ID do produto.",
+	}),
+	nome: z.string({
+		required_error: "Nome do eixo de variação não informado.",
+		invalid_type_error: "Tipo não válido para nome do eixo de variação.",
+	}),
+	tipo: VariantOptionTypeEnum.default("TEXTO"),
+	ordem: z
+		.number({
+			required_error: "Ordem do eixo de variação não informada.",
+			invalid_type_error: "Tipo não válido para ordem do eixo de variação.",
+		})
+		.default(0),
+});
+export type TProductOption = z.infer<typeof ProductOptionSchema>;
+
+export const ProductOptionValueSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para ID da organização.",
+	}),
+	opcaoId: z.string({
+		required_error: "ID do eixo de variação não informado.",
+		invalid_type_error: "Tipo não válido para ID do eixo de variação.",
+	}),
+	nome: z.string({
+		required_error: "Nome do valor de variação não informado.",
+		invalid_type_error: "Tipo não válido para nome do valor de variação.",
+	}),
+	valorAuxiliar: z
+		.string({
+			invalid_type_error: "Tipo não válido para valor auxiliar do valor de variação.",
+		})
+		.optional()
+		.nullable(),
+	imagemCapaUrl: z
+		.string({
+			invalid_type_error: "Tipo não válido para URL da imagem capa do valor de variação.",
+		})
+		.optional()
+		.nullable(),
+	ordem: z
+		.number({
+			required_error: "Ordem do valor de variação não informada.",
+			invalid_type_error: "Tipo não válido para ordem do valor de variação.",
+		})
+		.default(0),
+});
+export type TProductOptionValue = z.infer<typeof ProductOptionValueSchema>;
+
+export const ProductVariantOptionValueSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para ID da organização.",
+	}),
+	produtoVarianteId: z.string({
+		required_error: "ID da variante não informado.",
+		invalid_type_error: "Tipo não válido para ID da variante.",
+	}),
+	opcaoId: z.string({
+		required_error: "ID do eixo de variação não informado.",
+		invalid_type_error: "Tipo não válido para ID do eixo de variação.",
+	}),
+	opcaoValorId: z.string({
+		required_error: "ID do valor de variação não informado.",
+		invalid_type_error: "Tipo não válido para ID do valor de variação.",
+	}),
+});
+export type TProductVariantOptionValue = z.infer<typeof ProductVariantOptionValueSchema>;
 
 export const ProductAddOnSchema = z.object({
 	organizacaoId: z.string({

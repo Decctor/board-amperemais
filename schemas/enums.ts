@@ -218,6 +218,9 @@ export const FiscalInboundManifestEventEnum = z.enum(["CIENCIA", "CONFIRMACAO", 
 export type TFiscalInboundManifestEventEnum = z.infer<typeof FiscalInboundManifestEventEnum>;
 export const StockMovementTypeEnum = z.enum(["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 export type TStockMovementTypeEnum = z.infer<typeof StockMovementTypeEnum>;
+// Tipo de eixo de variante (TEXTO simples, COR com swatch, NUMERO).
+export const VariantOptionTypeEnum = z.enum(["TEXTO", "COR", "NUMERO"]);
+export type TVariantOptionTypeEnum = z.infer<typeof VariantOptionTypeEnum>;
 export const SaleProcessingSourceEnum = z.enum(["EXTERNO", "INTERNO"]);
 export type TSaleProcessingSourceEnum = z.infer<typeof SaleProcessingSourceEnum>;
 // Status comercial da venda. FATURADA foi removido: o faturamento e derivado dos documentos fiscais relacionados.

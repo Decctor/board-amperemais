@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, index, integer, primaryKey, text, timestamp, varchar, vector } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, primaryKey, text, timestamp, uniqueIndex, varchar, vector } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
-import { productClientReferenceWindowEnum, stockMovementTypeEnum } from "./enums";
+import { productClientReferenceWindowEnum, stockMovementTypeEnum, variantOptionTypeEnum } from "./enums";
 import { organizations } from "./organizations";
 import { saleItems, sales } from "./sales";
 import { users } from "./users";
@@ -44,6 +44,7 @@ export const products = newTable(
 export const productsRelations = relations(products, ({ one, many }) => ({
 	pedidos: many(saleItems),
 	variantes: many(productVariants),
+	opcoes: many(productOptions),
 	addOnsReferencias: many(productAddOnReferences),
 	perfisFiscais: many(productFiscalProfiles),
 	referenciasClientes: many(productClientReferences),
@@ -94,10 +95,133 @@ export const productVariantsRelations = relations(productVariants, ({ one, many 
 	}),
 	addOnsReferencias: many(productAddOnReferences),
 	perfisFiscais: many(productFiscalProfiles),
+	valoresOpcoes: many(productVariantOptionValues),
 }));
 
 export type TProductVariantEntity = typeof productVariants.$inferSelect;
 export type TNewProductVariantEntity = typeof productVariants.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// PRODUCT OPTIONS (eixos de variacao: "Tamanho", "Cor", "Material")
+// -----------------------------------------------------------------------------
+//
+export const productOptions = newTable(
+	"product_options",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		produtoId: varchar("produto_id", { length: 255 })
+			.notNull()
+			.references(() => products.id, { onDelete: "cascade" }),
+		idExterno: text("id_externo"),
+		nome: text("nome").notNull(), // "Tamanho", "Cor"
+		tipo: variantOptionTypeEnum("tipo").default("TEXTO").notNull(), // drive a UI: texto, swatch de cor, numero
+		ordem: integer("ordem").default(0).notNull(), // "Tamanho" antes de "Cor"?
+	},
+	(table) => ({
+		produtoIdx: index("idx_product_options_produto").on(table.produtoId),
+	}),
+);
+export const productOptionsRelations = relations(productOptions, ({ one, many }) => ({
+	produto: one(products, {
+		fields: [productOptions.produtoId],
+		references: [products.id],
+	}),
+	valores: many(productOptionValues),
+}));
+
+export type TProductOptionEntity = typeof productOptions.$inferSelect;
+export type TNewProductOptionEntity = typeof productOptions.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// PRODUCT OPTION VALUES (valores de cada eixo: "P", "M", "G" / "Preto", "Branco")
+// -----------------------------------------------------------------------------
+//
+export const productOptionValues = newTable(
+	"product_option_values",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		opcaoId: varchar("opcao_id", { length: 255 })
+			.notNull()
+			.references(() => productOptions.id, { onDelete: "cascade" }),
+		idExterno: text("id_externo"),
+		nome: text("nome").notNull(), // "G", "Preto"
+		valorAuxiliar: text("valor_auxiliar"), // hex "#000000" quando tipo = COR
+		imagemCapaUrl: text("imagem_capa_url"), // foto compartilhada por todos os tamanhos dessa cor
+		ordem: integer("ordem").default(0).notNull(),
+	},
+	(table) => ({
+		opcaoIdx: index("idx_product_option_values_opcao").on(table.opcaoId),
+	}),
+);
+export const productOptionValuesRelations = relations(productOptionValues, ({ one, many }) => ({
+	opcao: one(productOptions, {
+		fields: [productOptionValues.opcaoId],
+		references: [productOptions.id],
+	}),
+	variantesAtribuicoes: many(productVariantOptionValues),
+}));
+
+export type TProductOptionValueEntity = typeof productOptionValues.$inferSelect;
+export type TNewProductOptionValueEntity = typeof productOptionValues.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// PRODUCT VARIANT OPTION VALUES (juncao variante <-> valor de eixo)
+// -----------------------------------------------------------------------------
+// A variante "Camiseta Preta G" tem duas linhas aqui: {Cor: Preto} e {Tamanho: G}.
+export const productVariantOptionValues = newTable(
+	"product_variant_option_values",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		produtoVarianteId: varchar("produto_variante_id", { length: 255 })
+			.notNull()
+			.references(() => productVariants.id, { onDelete: "cascade" }),
+		// opcaoId redundante (derivavel via valor) para sustentar o indice unico por eixo
+		opcaoId: varchar("opcao_id", { length: 255 })
+			.notNull()
+			.references(() => productOptions.id, { onDelete: "cascade" }),
+		opcaoValorId: varchar("opcao_valor_id", { length: 255 })
+			.notNull()
+			.references(() => productOptionValues.id, { onDelete: "cascade" }),
+	},
+	(table) => ({
+		// 1 valor por eixo por variante: impede "G" e "M" na mesma variante
+		varianteOpcaoUnq: uniqueIndex("unq_variant_option").on(table.produtoVarianteId, table.opcaoId),
+		varianteIdx: index("idx_variant_option_values_variante").on(table.produtoVarianteId),
+		opcaoValorIdx: index("idx_variant_option_values_valor").on(table.opcaoValorId),
+	}),
+);
+export const productVariantOptionValuesRelations = relations(productVariantOptionValues, ({ one }) => ({
+	variante: one(productVariants, {
+		fields: [productVariantOptionValues.produtoVarianteId],
+		references: [productVariants.id],
+	}),
+	opcao: one(productOptions, {
+		fields: [productVariantOptionValues.opcaoId],
+		references: [productOptions.id],
+	}),
+	valor: one(productOptionValues, {
+		fields: [productVariantOptionValues.opcaoValorId],
+		references: [productOptionValues.id],
+	}),
+}));
+
+export type TProductVariantOptionValueEntity = typeof productVariantOptionValues.$inferSelect;
+export type TNewProductVariantOptionValueEntity = typeof productVariantOptionValues.$inferInsert;
 
 // -----------------------------------------------------------------------------
 // PRODUCT ADDONS

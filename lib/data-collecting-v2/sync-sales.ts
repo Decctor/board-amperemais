@@ -13,8 +13,17 @@ function getPartner(context: TResolvedAuxiliaryEntities, sale: TCanonicalSale) {
 	return sale.partnerIdentifier ? (context.partnersByIdentifier.get(sale.partnerIdentifier) ?? null) : null;
 }
 
-function getProductId(context: TResolvedAuxiliaryEntities, item: TCanonicalSaleItem) {
-	return context.productsByCode.get(item.productCode);
+// Resolve o item de venda para uma variante estruturada (preferencial) ou para um produto plano.
+function resolveSaleItemTarget(context: TResolvedAuxiliaryEntities, item: TCanonicalSaleItem) {
+	const variant = context.variantsByCode.get(item.productCode);
+	if (variant) {
+		return { produtoId: variant.produtoId, produtoVarianteId: variant.produtoVarianteId, opcoes: variant.opcoes };
+	}
+	const produtoId = context.productsByCode.get(item.productCode);
+	if (produtoId) {
+		return { produtoId, produtoVarianteId: null, opcoes: [] as Array<{ eixo: string; valor: string }> };
+	}
+	return null;
 }
 
 function buildSaleValues({
@@ -78,8 +87,11 @@ async function insertSaleItems({
 	items: TCanonicalSaleItem[];
 }) {
 	for (const item of items) {
-		const productId = getProductId(context, item);
-		if (!productId) continue;
+		const target = resolveSaleItemTarget(context, item);
+		if (!target) continue;
+
+		// Snapshot dos eixos da variante no momento da venda (robusto a rename/delete posterior).
+		const metadados = target.opcoes.length > 0 ? { ...(item.metadata ?? {}), opcoes: target.opcoes } : item.metadata;
 
 		const inserted = await tx
 			.insert(saleItems)
@@ -87,7 +99,8 @@ async function insertSaleItems({
 				organizacaoId: batch.organizationId,
 				vendaId: saleId,
 				clienteId: clientId,
-				produtoId: productId,
+				produtoId: target.produtoId,
+				produtoVarianteId: target.produtoVarianteId,
 				quantidade: item.quantity,
 				valorVendaUnitario: item.unitSaleValue,
 				valorCustoUnitario: item.unitCostValue,
@@ -95,7 +108,7 @@ async function insertSaleItems({
 				valorTotalDesconto: item.discountValue,
 				valorVendaTotalLiquido: item.netSaleValue,
 				valorCustoTotal: item.totalCostValue,
-				metadados: item.metadata,
+				metadados,
 			})
 			.returning({ id: saleItems.id });
 

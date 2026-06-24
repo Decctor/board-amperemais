@@ -236,6 +236,9 @@ export const fiscalTaxRuleScopeEnum = pgEnum("fiscal_tax_rule_scope", ["INTRAEST
 
 export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA_AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
 
+// Tipo de eixo de variante (drive a UI: texto simples, swatch de cor, valor numerico).
+export const variantOptionTypeEnum = pgEnum("variant_option_type", ["TEXTO", "COR", "NUMERO"]);
+
 export const saleProcessingSourceEnum = pgEnum("origem_processamento_venda", ["EXTERNO", "INTERNO"]);
 
 // Status comercial da venda. FATURADA foi removido: o faturamento e inferido dos documentos fiscais (fiscalOutboundDocuments).

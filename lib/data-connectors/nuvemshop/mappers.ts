@@ -114,13 +114,6 @@ function getCatalogProductCode(product: TNuvemshopProduct, variant: TNuvemshopPr
 	);
 }
 
-function getCatalogProductName(product: TNuvemshopProduct, variant: TNuvemshopProductVariant | null, productCode: string) {
-	const productName = pickLocalizedValue(product.name) || productCode;
-	const variantValues = variant?.values.map(pickLocalizedValue).filter((value): value is string => !!value) ?? [];
-	if (variantValues.length === 0) return productName;
-	return `${productName} - ${variantValues.join(" / ")}`;
-}
-
 function getCatalogProductImageUrl(product: TNuvemshopProduct) {
 	const images = product.images.filter((image) => !!image.src);
 	if (images.length === 0) return null;
@@ -143,37 +136,138 @@ function getCatalogProductGroup(product: TNuvemshopProduct) {
 	return (firstNamedCategory ? pickLocalizedValue(firstNamedCategory.name) : null) || product.brand || "Nuvem Shop";
 }
 
-function mapNuvemshopCatalogProductVariant(product: TNuvemshopProduct, variant: TNuvemshopProductVariant | null) {
-	const productCode = getCatalogProductCode(product, variant);
-	const salePrice = variant?.promotional_price && variant.promotional_price > 0 ? variant.promotional_price : (variant?.price ?? 0);
+// Nomes dos eixos vêm de product.attributes, pareados posicionalmente com cada variant.values.
+function getCatalogAxisNames(product: TNuvemshopProduct): string[] {
+	return (product.attributes ?? []).map((attribute, index) => pickLocalizedValue(attribute)?.trim() || `Opção ${index + 1}`);
+}
 
-	return {
-		idExterno: toStringId(variant?.id) || toStringId(product.id) || productCode,
-		ativo: product.published,
-		codigo: productCode,
-		nome: getCatalogProductName(product, variant, productCode),
+// Estruturado = tem eixos declarados E variantes que carregam valores (ex: vestuário Cor × Tamanho).
+function isStructuredCatalogProduct(product: TNuvemshopProduct): boolean {
+	const axisCount = product.attributes?.length ?? 0;
+	return axisCount > 0 && product.variants.some((variant) => (variant.values?.length ?? 0) > 0);
+}
+
+function buildVariantValueLabels(variant: TNuvemshopProductVariant, axisNames: string[]): Array<{ opcao: string; valor: string }> {
+	const labels: Array<{ opcao: string; valor: string }> = [];
+	variant.values.forEach((value, index) => {
+		const valor = pickLocalizedValue(value)?.trim();
+		if (!valor) return;
+		labels.push({ opcao: axisNames[index] ?? `Opção ${index + 1}`, valor });
+	});
+	return labels;
+}
+
+function variantSalePrice(variant: TNuvemshopProductVariant | null) {
+	return variant?.promotional_price && variant.promotional_price > 0 ? variant.promotional_price : (variant?.price ?? 0);
+}
+
+export type TNuvemshopCatalogOption = { nome: string; valores: string[] };
+export type TNuvemshopCatalogVariant = {
+	idExterno: string;
+	codigo: string;
+	nome: string;
+	precoVenda: number;
+	precoCusto: number | null;
+	quantidade: number | null;
+	controlaEstoque: boolean;
+	ativo: boolean;
+	imagemCapaUrl: string | null;
+	valores: Array<{ opcao: string; valor: string }>;
+};
+export type TNuvemshopCatalogProduct = {
+	idExterno: string;
+	codigo: string;
+	nome: string;
+	descricao: string | null;
+	imagemCapaUrl: string | null;
+	unidade: string;
+	grupo: string;
+	ncm: string;
+	tipo: string;
+	ativo: boolean;
+	controlaEstoque: boolean;
+	precoVenda: number;
+	precoCusto: number | null;
+	quantidade: number | null;
+	options: TNuvemshopCatalogOption[];
+	variants: TNuvemshopCatalogVariant[];
+};
+
+export function mapNuvemshopCatalogProduct(product: TNuvemshopProduct): TNuvemshopCatalogProduct {
+	const productId = toStringId(product.id) ?? getCatalogProductCode(product, null);
+	const productName = pickLocalizedValue(product.name) || `Produto ${productId}`;
+	const baseFields = {
+		nome: productName,
 		descricao: stripHtml(pickLocalizedValue(product.description)),
 		imagemCapaUrl: getCatalogProductImageUrl(product),
-		precoVenda: salePrice,
-		precoCusto: variant?.cost ?? null,
 		unidade: "UN",
 		grupo: getCatalogProductGroup(product),
 		ncm: "N/A",
 		tipo: "PRODUTO",
-		status: product.published ? "ACTIVE" : "INACTIVE",
-		quantidade: variant?.stock ?? null,
-		controlaEstoque: variant?.stock_management ?? false,
+		ativo: product.published,
+	};
+
+	// Produto simples (sem eixos): a única variante vira o próprio produto, como antes.
+	if (!isStructuredCatalogProduct(product)) {
+		const variant = product.variants[0] ?? null;
+		return {
+			idExterno: productId,
+			codigo: getCatalogProductCode(product, variant),
+			...baseFields,
+			controlaEstoque: variant?.stock_management ?? false,
+			precoVenda: variantSalePrice(variant),
+			precoCusto: variant?.cost ?? null,
+			quantidade: variant?.stock ?? null,
+			options: [],
+			variants: [],
+		};
+	}
+
+	const axisNames = getCatalogAxisNames(product);
+
+	const options: TNuvemshopCatalogOption[] = axisNames.map((nome, axisIndex) => {
+		const valores: string[] = [];
+		for (const variant of product.variants) {
+			const valor = pickLocalizedValue(variant.values[axisIndex] ?? {})?.trim();
+			if (valor && !valores.includes(valor)) valores.push(valor);
+		}
+		return { nome, valores };
+	});
+
+	const variants: TNuvemshopCatalogVariant[] = product.variants.map((variant) => {
+		const valores = buildVariantValueLabels(variant, axisNames);
+		return {
+			idExterno: toStringId(variant.id) ?? getCatalogProductCode(product, variant),
+			codigo: getCatalogProductCode(product, variant),
+			nome: valores.length > 0 ? valores.map((value) => value.valor).join(" / ") : productName,
+			precoVenda: variantSalePrice(variant),
+			precoCusto: variant.cost ?? null,
+			quantidade: variant.stock ?? null,
+			controlaEstoque: variant.stock_management ?? false,
+			ativo: product.published,
+			imagemCapaUrl: null,
+			valores,
+		};
+	});
+
+	// Preço base do pai = menor preço entre as variantes (somente para exibição na listagem).
+	const precoVenda = variants.reduce((min, variant) => (variant.precoVenda < min ? variant.precoVenda : min), variants[0]?.precoVenda ?? 0);
+
+	return {
+		idExterno: productId,
+		codigo: `NS-${productId}`,
+		...baseFields,
+		controlaEstoque: product.variants.some((variant) => variant.stock_management),
+		precoVenda,
+		precoCusto: null,
+		quantidade: null,
+		options,
+		variants,
 	};
 }
 
-export function mapNuvemshopCatalogProducts(products: TNuvemshopProduct[]) {
-	return uniqueBy(
-		products.flatMap((product) => {
-			if (product.variants.length === 0) return [mapNuvemshopCatalogProductVariant(product, null)];
-			return product.variants.map((variant) => mapNuvemshopCatalogProductVariant(product, variant));
-		}),
-		(product) => product.codigo,
-	);
+export function mapNuvemshopStructuredCatalog(products: TNuvemshopProduct[]): TNuvemshopCatalogProduct[] {
+	return uniqueBy(products.map(mapNuvemshopCatalogProduct), (product) => product.codigo);
 }
 
 export function mapNuvemshopSaleItem(product: TNuvemshopOrderProduct): TCanonicalSaleItem {
