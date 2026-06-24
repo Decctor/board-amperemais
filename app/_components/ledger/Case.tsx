@@ -21,7 +21,7 @@ const CITIES = [
 
 export function LedgerCase() {
 	return (
-		<section id="movimento" className="ledger-canvas relative py-20 lg:py-28 overflow-hidden">
+		<section id="movimento" className="ledger-canvas ledger-deferred relative py-20 lg:py-28 overflow-hidden">
 			<div className="mx-auto max-w-7xl px-5 lg:px-8">
 				{/* Section header */}
 				<Reveal className="mb-12 lg:mb-16">
@@ -55,8 +55,14 @@ export function LedgerCase() {
 				<Reveal>
 					<div className="relative ledger-fade rounded-3xl bg-gradient-to-br from-[#24549c] to-[#1a3d7a] text-white shadow-[0_28px_60px_-20px_rgba(36,84,156,0.45),0_8px_16px_rgba(36,84,156,0.18)] overflow-hidden">
 						{/* decorative blobs */}
-						<div className="absolute -top-20 -right-20 w-[280px] h-[280px] rounded-full bg-[#ffb900]/12 blur-3xl pointer-events-none" aria-hidden />
-						<div className="absolute -bottom-32 -left-20 w-[320px] h-[320px] rounded-full bg-white/6 blur-3xl pointer-events-none" aria-hidden />
+						<div
+							className="ledger-ambient absolute -top-20 -right-20 w-[280px] h-[280px] rounded-full bg-[#ffb900]/12 blur-3xl pointer-events-none"
+							aria-hidden
+						/>
+						<div
+							className="ledger-ambient absolute -bottom-32 -left-20 w-[320px] h-[320px] rounded-full bg-white/6 blur-3xl pointer-events-none"
+							aria-hidden
+						/>
 
 						{/* Header */}
 						<div className="relative px-6 lg:px-10 py-4 border-b border-white/15 flex items-center justify-between flex-wrap gap-3">

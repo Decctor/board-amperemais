@@ -1,104 +1,130 @@
 "use client";
 
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
-import { trackPlatformPartner } from "@/lib/mutations/platform-partnerships";
-import { useMutation } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 const LANDING_SCROLL_DEPTH_MILESTONES = [25, 50, 75, 90] as const;
-const LANDING_SECTION_IDS = ["funcionalidades", "plataforma", "campanhas", "planos", "contato"] as const;
+const LANDING_SECTION_IDS = ["como-funciona", "movimento", "inventario", "saldo", "parcerias", "contato"] as const;
+const PARTNER_INDICATOR_STORAGE_KEY = "recompra_partner_indicator";
 
-export default function LandingAnalyticsTracker() {
-	const trackedDepthMilestones = useRef<Set<number>>(new Set());
-	const trackedSections = useRef<Set<string>>(new Set());
-	const { mutate: trackPartnerReferral } = useMutation({
-		mutationKey: ["track-platform-partner-referral"],
-		mutationFn: trackPlatformPartner,
-		onError: (error) => {
-			console.error("[WARN] [PARTNER_ATTRIBUTION] Failed to track partner referral:", error);
-		},
-	});
+type TIdleWindow = Window &
+	typeof globalThis & {
+		requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+		cancelIdleCallback?: (handle: number) => void;
+	};
 
-	useEffect(() => {
-		captureClientEvent({
-			event: "landing_page_viewed",
-		});
-	}, []);
+function trackPartnerReferral(params: URLSearchParams) {
+	const ref = params.get("ref")?.trim();
+	if (!ref) return;
 
-	useEffect(() => {
-		const params = new URLSearchParams(window.location.search);
-		const ref = params.get("ref");
-		if (!ref) return;
+	window.localStorage.setItem(PARTNER_INDICATOR_STORAGE_KEY, ref.toUpperCase());
 
-		window.localStorage.setItem("recompra_partner_indicator", ref.trim().toUpperCase());
-		trackPartnerReferral({
+	void fetch("/api/platform-partners/track", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		credentials: "same-origin",
+		keepalive: true,
+		body: JSON.stringify({
 			codigo: ref,
 			origemUrl: window.location.href,
 			utmSource: params.get("utm_source"),
 			utmMedium: params.get("utm_medium"),
 			utmCampaign: params.get("utm_campaign"),
+		}),
+	})
+		.then((response) => {
+			if (!response.ok) {
+				console.error(`[WARN] [PARTNER_ATTRIBUTION] Failed to track partner referral: ${response.status}`);
+			}
+		})
+		.catch((error: unknown) => {
+			console.error("[WARN] [PARTNER_ATTRIBUTION] Failed to track partner referral:", error);
 		});
-	}, [trackPartnerReferral]);
+}
 
+export default function LandingAnalyticsTracker() {
 	useEffect(() => {
-		const handleScroll = () => {
-			const scrollTop = window.scrollY;
-			const documentHeight = document.documentElement.scrollHeight;
-			const viewportHeight = window.innerHeight;
-			const maxScrollable = documentHeight - viewportHeight;
+		const idleWindow = window as TIdleWindow;
+		const trackedDepthMilestones = new Set<number>();
+		const trackedSections = new Set<string>();
+		let animationFrameId: number | null = null;
+		let idleCallbackId: number | null = null;
+
+		const runInitialTracking = () => {
+			captureClientEvent({ event: "landing_page_viewed" });
+			trackPartnerReferral(new URLSearchParams(window.location.search));
+		};
+
+		if (idleWindow.requestIdleCallback) {
+			idleCallbackId = idleWindow.requestIdleCallback(runInitialTracking, { timeout: 1500 });
+		} else {
+			idleCallbackId = window.setTimeout(runInitialTracking, 1);
+		}
+
+		const trackScrollDepth = () => {
+			animationFrameId = null;
+			const maxScrollable = document.documentElement.scrollHeight - window.innerHeight;
 			if (maxScrollable <= 0) return;
 
-			const scrollPercent = Math.round((scrollTop / maxScrollable) * 100);
-
+			const scrollPercent = Math.round((window.scrollY / maxScrollable) * 100);
 			for (const milestone of LANDING_SCROLL_DEPTH_MILESTONES) {
-				if (scrollPercent >= milestone && !trackedDepthMilestones.current.has(milestone)) {
-					trackedDepthMilestones.current.add(milestone);
-					captureClientEvent({
-						event: "landing_scroll_depth",
-						properties: {
-							depth_percent: milestone,
-						},
-					});
-				}
+				if (scrollPercent < milestone || trackedDepthMilestones.has(milestone)) continue;
+
+				trackedDepthMilestones.add(milestone);
+				captureClientEvent({
+					event: "landing_scroll_depth",
+					properties: { depth_percent: milestone },
+				});
+			}
+
+			if (trackedDepthMilestones.size === LANDING_SCROLL_DEPTH_MILESTONES.length) {
+				window.removeEventListener("scroll", scheduleScrollDepthTracking);
 			}
 		};
 
-		window.addEventListener("scroll", handleScroll, { passive: true });
-		handleScroll();
+		const scheduleScrollDepthTracking = () => {
+			if (animationFrameId !== null) return;
+			animationFrameId = window.requestAnimationFrame(trackScrollDepth);
+		};
 
-		return () => window.removeEventListener("scroll", handleScroll);
-	}, []);
+		window.addEventListener("scroll", scheduleScrollDepthTracking, { passive: true });
+		scheduleScrollDepthTracking();
 
-	useEffect(() => {
 		const observer = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) {
 					if (!entry.isIntersecting) continue;
 
 					const sectionId = entry.target.id;
-					if (!sectionId || trackedSections.current.has(sectionId)) continue;
+					if (!sectionId || trackedSections.has(sectionId)) continue;
 
-					trackedSections.current.add(sectionId);
+					trackedSections.add(sectionId);
+					observer.unobserve(entry.target);
 					captureClientEvent({
 						event: "landing_section_viewed",
-						properties: {
-							section_id: sectionId,
-						},
+						properties: { section_id: sectionId },
 					});
 				}
+
+				if (trackedSections.size === LANDING_SECTION_IDS.length) observer.disconnect();
 			},
 			{ threshold: 0.35 },
 		);
 
-		const trackedElements = LANDING_SECTION_IDS.map((sectionId) => document.getElementById(sectionId)).filter(
-			(element): element is HTMLElement => !!element,
-		);
-
-		for (const element of trackedElements) {
-			observer.observe(element);
+		for (const sectionId of LANDING_SECTION_IDS) {
+			const element = document.getElementById(sectionId);
+			if (element) observer.observe(element);
 		}
 
-		return () => observer.disconnect();
+		return () => {
+			window.removeEventListener("scroll", scheduleScrollDepthTracking);
+			observer.disconnect();
+			if (animationFrameId !== null) window.cancelAnimationFrame(animationFrameId);
+			if (idleCallbackId !== null) {
+				if (idleWindow.cancelIdleCallback) idleWindow.cancelIdleCallback(idleCallbackId);
+				else window.clearTimeout(idleCallbackId);
+			}
+		};
 	}, []);
 
 	return null;

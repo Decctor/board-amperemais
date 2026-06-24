@@ -87,7 +87,7 @@ export function LedgerFeatures() {
 	];
 
 	return (
-		<section id="inventario" className="ledger-canvas-soft relative py-20 lg:py-28">
+		<section id="inventario" className="ledger-canvas-soft ledger-deferred relative py-20 lg:py-28">
 			<div className="mx-auto max-w-7xl px-5 lg:px-8">
 				{/* Section header */}
 				<Reveal className="mb-14 lg:mb-20">

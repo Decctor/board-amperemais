@@ -24,12 +24,7 @@ export function LedgerHero() {
 			{/* dot grid pattern */}
 			<div className="ledger-dot-grid absolute inset-0 pointer-events-none" aria-hidden />
 
-			{/* soft brand glow blobs */}
-			<div
-				className="absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full bg-[#24549c]/8 blur-[130px] pointer-events-none"
-				aria-hidden
-			/>
-			<div className="absolute top-10 -right-32 w-[460px] h-[460px] rounded-full bg-[#ffb900]/10 blur-[110px] pointer-events-none" aria-hidden />
+			<div className="ledger-hero-ambient absolute inset-0 pointer-events-none" aria-hidden />
 
 			<div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 lg:px-8">
 				<Reveal className="flex flex-col items-center text-center">

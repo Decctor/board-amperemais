@@ -32,10 +32,10 @@ const CONSULTORIA_WHATSAPP =
 
 export function LedgerPricing() {
 	return (
-		<section id="saldo" className="ledger-canvas relative py-20 lg:py-28 overflow-hidden">
+		<section id="saldo" className="ledger-canvas ledger-deferred relative py-20 lg:py-28 overflow-hidden">
 			{/* Subtle brand glow */}
 			<div
-				className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-[#24549c]/4 blur-[120px] pointer-events-none"
+				className="ledger-ambient absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-[#24549c]/4 blur-[120px] pointer-events-none"
 				aria-hidden
 			/>
 
@@ -122,7 +122,10 @@ export function LedgerPricing() {
 								data-stagger
 							>
 								{/* decorative blob */}
-								<div className="absolute -top-16 -right-16 w-[200px] h-[200px] rounded-full bg-[#ffb900]/15 blur-3xl pointer-events-none" aria-hidden />
+								<div
+									className="ledger-ambient absolute -top-16 -right-16 w-[200px] h-[200px] rounded-full bg-[#ffb900]/15 blur-3xl pointer-events-none"
+									aria-hidden
+								/>
 
 								{/* Floating stamp */}
 								<div className="absolute -top-3 -right-2 z-[25]">

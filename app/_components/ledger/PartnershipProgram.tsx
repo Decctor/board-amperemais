@@ -36,7 +36,7 @@ const FLOW_STEPS = [
 
 export function LedgerPartnershipProgram() {
 	return (
-		<section id="parcerias" className="relative overflow-hidden bg-[#f7f9fc] py-20 lg:py-28">
+		<section id="parcerias" className="ledger-deferred relative overflow-hidden bg-[#f7f9fc] py-20 lg:py-28">
 			<div className="absolute inset-x-0 top-0 h-px bg-[#24549c]/10" aria-hidden />
 			<div className="mx-auto max-w-7xl px-5 lg:px-8">
 				<Reveal>

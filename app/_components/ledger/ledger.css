@@ -182,6 +182,16 @@
 	background: linear-gradient(180deg, #f5f8fd 0%, #ffffff 100%);
 }
 
+.ledger-hero-ambient {
+	background:
+		radial-gradient(ellipse 45% 38% at 50% 8%, rgba(36, 84, 156, 0.11), transparent 72%),
+		radial-gradient(circle 30% at 92% 18%, rgba(255, 185, 0, 0.1), transparent 72%);
+}
+
+.ledger-deferred {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 900px;
+}
 /* ===== Hero dot grid ===== */
 
 .ledger-dot-grid {
@@ -287,5 +297,16 @@
 	.ledger-reveal .ledger-fade {
 		opacity: 1 !important;
 		transform: none !important;
+	}
+}
+
+@media (max-width: 767px) {
+	.ledger-ambient {
+		display: none;
+	}
+
+	.ledger-marquee-track {
+		animation: none;
+		transform: none;
 	}
 }

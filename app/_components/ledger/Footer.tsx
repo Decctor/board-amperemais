@@ -47,10 +47,16 @@ const FOOTER_GROUPS = [
 
 export function LedgerClosingCTA() {
 	return (
-		<section id="contato" className="relative py-20 lg:py-28 overflow-hidden bg-gradient-to-br from-[#24549c] to-[#1a3d7a] text-white">
+		<section id="contato" className="ledger-deferred relative py-20 lg:py-28 overflow-hidden bg-gradient-to-br from-[#24549c] to-[#1a3d7a] text-white">
 			{/* decorative blobs */}
-			<div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-[#ffb900]/12 blur-[120px] pointer-events-none" aria-hidden />
-			<div className="absolute -bottom-40 -left-32 w-[400px] h-[400px] rounded-full bg-white/6 blur-[100px] pointer-events-none" aria-hidden />
+			<div
+				className="ledger-ambient absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-[#ffb900]/12 blur-[120px] pointer-events-none"
+				aria-hidden
+			/>
+			<div
+				className="ledger-ambient absolute -bottom-40 -left-32 w-[400px] h-[400px] rounded-full bg-white/6 blur-[100px] pointer-events-none"
+				aria-hidden
+			/>
 
 			<div className="relative mx-auto max-w-5xl px-5 lg:px-8 text-center">
 				<Reveal>
