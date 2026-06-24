@@ -4,6 +4,7 @@ export * from "./common";
 export * from "./clients";
 export * from "./products";
 export * from "./sales";
+export * from "./sales-sessions";
 export * from "./sellers";
 export * from "./goals";
 export * from "./utils";

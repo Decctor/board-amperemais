@@ -317,3 +317,14 @@ export type TPlatformPartnerCommissionStatusEnum = z.infer<typeof PlatformPartne
 
 export const PlatformPartnerPayoutStatusEnum = z.enum(["RASCUNHO", "APROVADO", "PAGO", "CANCELADO"]);
 export type TPlatformPartnerPayoutStatusEnum = z.infer<typeof PlatformPartnerPayoutStatusEnum>;
+
+export const SalesSessionStatusEnum = z.enum(["ABERTA", "FECHADA", "CONFERIDA", "CANCELADA"]);
+export type TSalesSessionStatusEnum = z.infer<typeof SalesSessionStatusEnum>;
+
+// Escopo da sessão de venda: como resolver "qual sessão?". Nesta versão só OPERADOR (responsável).
+export const SalesSessionScopeEnum = z.enum(["OPERADOR"]);
+export type TSalesSessionScopeEnum = z.infer<typeof SalesSessionScopeEnum>;
+
+// Movimento manual de caixa dentro de uma sessão.
+export const SalesSessionMovementTypeEnum = z.enum(["SANGRIA", "SUPRIMENTO"]);
+export type TSalesSessionMovementTypeEnum = z.infer<typeof SalesSessionMovementTypeEnum>;

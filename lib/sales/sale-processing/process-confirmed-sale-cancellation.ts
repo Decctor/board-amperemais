@@ -1,4 +1,5 @@
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
+import { registerRefundCashMovement, resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { db } from "@/services/drizzle";
 import {
 	accountingEntries,
@@ -16,11 +17,14 @@ export async function processConfirmedSaleCancellation({
 	saleId,
 	authorId,
 	reason,
+	sessaoVendaId,
 }: {
 	organizationId: string;
 	saleId: string;
 	authorId: string;
 	reason: string;
+	// Sessão de venda atualmente aberta (informada pelo cliente). O estorno de dinheiro cai nela.
+	sessaoVendaId?: string | null;
 }) {
 	const sale = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, saleId), eq(fields.organizacaoId, organizationId)),
@@ -39,6 +43,14 @@ export async function processConfirmedSaleCancellation({
 		throw new createHttpError.BadRequest("Cancele o documento fiscal da venda antes de cancelar o pedido.");
 	}
 
+	// Estorno de gaveta: total de dinheiro efetivamente recebido nesta venda (só métodos de gaveta).
+	const cashEfetivado = sale.lancamentosContabeis
+		.flatMap((entry) => entry.transacoesFinanceiras)
+		.filter((transaction) => transaction.metodo === "DINHEIRO" && transaction.dataEfetivacao)
+		.reduce((acc, transaction) => acc + transaction.valor, 0);
+	// A sessão é uma lente: o estorno cai sempre na sessão atualmente aberta, nunca na original (imutável).
+	const activeSession = sessaoVendaId ? await resolveActiveSalesSession({ orgId: organizationId, sessaoVendaId }) : null;
+
 	await db.transaction(async (tx) => {
 		if (sale.clienteId) {
 			await reverseSaleCashback({ tx, saleId, clientId: sale.clienteId, organizationId, reason });
@@ -52,18 +64,35 @@ export async function processConfirmedSaleCancellation({
 		}
 		const originalEntry = sale.lancamentosContabeis[0];
 		if (originalEntry) {
-			await tx.insert(accountingEntries).values({
-				organizacaoId: organizationId,
-				vendaId: saleId,
-				origemTipo: "VENDA",
-				titulo: `ESTORNO VENDA #${saleId}`,
-				anotacoes: reason,
-				idContaDebito: originalEntry.idContaCredito,
-				idContaCredito: originalEntry.idContaDebito,
-				valor: originalEntry.valor,
-				dataCompetencia: new Date(),
-				autorId: authorId,
-			});
+			const [reversalEntry] = await tx
+				.insert(accountingEntries)
+				.values({
+					organizacaoId: organizationId,
+					vendaId: saleId,
+					origemTipo: "ESTORNO",
+					titulo: `ESTORNO VENDA #${saleId}`,
+					anotacoes: reason,
+					idContaDebito: originalEntry.idContaCredito,
+					idContaCredito: originalEntry.idContaDebito,
+					valor: originalEntry.valor,
+					dataCompetencia: new Date(),
+					autorId: authorId,
+				})
+				.returning({ id: accountingEntries.id });
+
+			// Saída de dinheiro do caixa na sessão atual, refletindo o estorno na gaveta.
+			if (activeSession && reversalEntry?.id) {
+				await registerRefundCashMovement({
+					tx,
+					orgId: organizationId,
+					sessaoVendaId: activeSession.id,
+					lancamentoContabilId: reversalEntry.id,
+					valorDinheiro: cashEfetivado,
+					contaFinanceiraId: activeSession.contaFinanceiraId ?? null,
+					autorId,
+					titulo: `ESTORNO DINHEIRO VENDA #${saleId}`,
+				});
+			}
 		}
 
 		for (const movement of sale.movimentacoesEstoque.filter((item) => item.tipo === "SAIDA")) {

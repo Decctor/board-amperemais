@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import { resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { processSaleConfirmation } from "@/lib/sales/sale-processing";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -47,6 +48,7 @@ const CreateAndConfirmSaleInputSchema = z.object({
 	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
+	sessaoVendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da sessão de venda." }).optional().nullable(),
 	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
 });
 export type TCreateAndConfirmSaleInput = z.infer<typeof CreateAndConfirmSaleInputSchema>;
@@ -80,6 +82,18 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	]);
 
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
+
+	// Sessões de venda (caixa): enforcement opcional/obrigatório + validação da sessão informada pelo cliente.
+	const sessaoObrigatoria = organization.configuracao.preferencias.sessoesVenda?.obrigatorio ?? false;
+	if (sessaoObrigatoria && !input.sessaoVendaId) {
+		throw new createHttpError.BadRequest("Nenhum caixa aberto. Abra uma sessão de venda para continuar.");
+	}
+	let sessaoVendaId: string | null = null;
+	if (input.sessaoVendaId) {
+		const activeSession = await resolveActiveSalesSession({ orgId, sessaoVendaId: input.sessaoVendaId });
+		if (!activeSession) throw new createHttpError.BadRequest("Sessão de venda inválida ou não está aberta.");
+		sessaoVendaId = activeSession.id;
+	}
 
 	const organizationSaleDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.vendas;
 	if (!organizationSaleDefaults.debitoContaId || !organizationSaleDefaults.creditoContaId) {
@@ -226,6 +240,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 		saleCashbackRedemptionValue: input.cashbackResgate,
 		accountingEntryDebitAccountId: organizationSaleDefaults.debitoContaId,
 		accountingEntryCreditAccountId: organizationSaleDefaults.creditoContaId,
+		sessaoVendaId,
 	});
 
 	return {

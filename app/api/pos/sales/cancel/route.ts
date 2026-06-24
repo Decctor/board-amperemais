@@ -20,6 +20,7 @@ const CancelSaleInputSchema = z.object({
 		.min(3)
 		.optional()
 		.default("Cancelamento solicitado pelo usuário."),
+	sessaoVendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da sessão de venda." }).optional().nullable(),
 });
 
 // ============================================================================
@@ -32,7 +33,11 @@ async function cancelSale(request: NextRequest) {
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
 
 	const { searchParams } = new URL(request.url);
-	const input = CancelSaleInputSchema.parse({ id: searchParams.get("id"), reason: searchParams.get("reason") ?? undefined });
+	const input = CancelSaleInputSchema.parse({
+		id: searchParams.get("id"),
+		reason: searchParams.get("reason") ?? undefined,
+		sessaoVendaId: searchParams.get("sessaoVendaId") ?? undefined,
+	});
 
 	const orgId = session.membership.organizacao.id;
 
@@ -51,6 +56,7 @@ async function cancelSale(request: NextRequest) {
 			saleId: input.id,
 			authorId: session.user.id,
 			reason: input.reason,
+			sessaoVendaId: input.sessaoVendaId,
 		});
 		return NextResponse.json({ data: result, message: "Venda cancelada com sucesso." });
 	}

@@ -27,6 +27,8 @@ type ProcessSaleConfirmationInput = {
 	initialAttendanceStatus?: ReturnType<typeof resolveInitialAttendanceStatus>;
 	accumulateCashback?: boolean;
 	emitFiscal?: boolean;
+	// Sessão de venda que recortou esta venda (nullable). Carimba a venda e seus movimentos financeiros.
+	sessaoVendaId?: string | null;
 };
 
 export async function processSaleConfirmation(input: ProcessSaleConfirmationInput) {
@@ -60,6 +62,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 				statusAtendimento: initialAttendanceStatus,
 				natureza: "SN01",
 				dataVenda: new Date(),
+				sessaoVendaId: input.sessaoVendaId ?? null,
 			})
 			.where(eq(sales.id, input.saleId));
 
@@ -94,6 +97,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 		organizacaoId: input.organization.id,
 		pagamentos: input.salePayments,
 		autorId: input.saleAuthorId,
+		sessaoVendaId: input.sessaoVendaId ?? null,
 	});
 
 	let cashbackRedemptionResult: {
