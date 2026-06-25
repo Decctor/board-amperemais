@@ -206,6 +206,7 @@ async function processChunkImmediateInteractions({
 			analiseRFMTitulo: true,
 			metadataProdutoMaisCompradoId: true,
 			metadataGrupoProdutoMaisComprado: true,
+			metadataProdutoSugeridoId: true,
 		},
 	});
 	const clientDataById = new Map(clientsData.map((client) => [client.id, client]));
@@ -226,6 +227,7 @@ async function processChunkImmediateInteractions({
 				analiseRFMTitulo: clientData.analiseRFMTitulo,
 				metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
 				metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
+				metadataProdutoSugeridoId: clientData.metadataProdutoSugeridoId,
 			},
 			campaign: {
 				autorId: campaign.autorId,

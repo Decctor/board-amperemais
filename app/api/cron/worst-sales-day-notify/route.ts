@@ -204,6 +204,7 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 										analiseRFMTitulo: true,
 										metadataProdutoMaisCompradoId: true,
 										metadataGrupoProdutoMaisComprado: true,
+										metadataProdutoSugeridoId: true,
 									},
 								});
 
@@ -219,6 +220,7 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 											analiseRFMTitulo: clientData.analiseRFMTitulo,
 											metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
 											metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
+											metadataProdutoSugeridoId: clientData.metadataProdutoSugeridoId,
 										},
 										campaign: {
 											autorId: campaign.autorId,

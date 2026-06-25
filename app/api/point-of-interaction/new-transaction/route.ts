@@ -1049,6 +1049,7 @@ async function handleCampaignProcessingForNewPurchase({
 				analiseRFMTitulo: true,
 				metadataProdutoMaisCompradoId: true,
 				metadataGrupoProdutoMaisComprado: true,
+				metadataProdutoSugeridoId: true,
 			},
 		});
 
@@ -1276,6 +1277,7 @@ async function handleCampaignProcessingForFirstPurchase({
 						analiseRFMTitulo: true,
 						metadataProdutoMaisCompradoId: true,
 						metadataGrupoProdutoMaisComprado: true,
+						metadataProdutoSugeridoId: true,
 					},
 				});
 
@@ -1395,6 +1397,7 @@ async function handleCampaignProcessingForCashbackAccumulation({
 			analiseRFMTitulo: true,
 			metadataProdutoMaisCompradoId: true,
 			metadataGrupoProdutoMaisComprado: true,
+			metadataProdutoSugeridoId: true,
 		},
 	});
 
@@ -1524,6 +1527,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 				analiseRFMTitulo: true,
 				metadataProdutoMaisCompradoId: true,
 				metadataGrupoProdutoMaisComprado: true,
+				metadataProdutoSugeridoId: true,
 			},
 		});
 
@@ -1675,6 +1679,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 				analiseRFMTitulo: true,
 				metadataProdutoMaisCompradoId: true,
 				metadataGrupoProdutoMaisComprado: true,
+				metadataProdutoSugeridoId: true,
 			},
 		});
 

@@ -249,6 +249,7 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 									analiseRFMTitulo: true,
 									metadataProdutoMaisCompradoId: true,
 									metadataGrupoProdutoMaisComprado: true,
+									metadataProdutoSugeridoId: true,
 								},
 							});
 

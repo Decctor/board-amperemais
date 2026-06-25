@@ -763,6 +763,7 @@ const createSaleRoute: PagesRouteHandler<TCreateSaleOutput> = async (req, res) =
 						analiseRFMTitulo: true,
 						metadataProdutoMaisCompradoId: true,
 						metadataGrupoProdutoMaisComprado: true,
+						metadataProdutoSugeridoId: true,
 					},
 				});
 
@@ -832,6 +833,7 @@ const createSaleRoute: PagesRouteHandler<TCreateSaleOutput> = async (req, res) =
 								analiseRFMTitulo: clientData.analiseRFMTitulo,
 								metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
 								metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
+								metadataProdutoSugeridoId: clientData.metadataProdutoSugeridoId,
 							},
 							campaign: {
 								autorId: campaign.autorId,

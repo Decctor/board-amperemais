@@ -60,6 +60,7 @@ export const clients = newTable(
 		metadataValorTotalCompras: doublePrecision("metadata_valor_total_compras").default(0), // All-time total purchase value
 		metadataProdutoMaisCompradoId: varchar("metadata_produto_mais_comprado_id", { length: 255 }), // Most purchased product ID
 		metadataGrupoProdutoMaisComprado: text("metadata_grupo_produto_mais_comprado"), // Most purchased product group
+		metadataProdutoSugeridoId: varchar("metadata_produto_sugerido_id", { length: 255 }), // Cross-sell suggestion (computed by cron)
 		metadataUltimaAtualizacao: timestamp("metadata_ultima_atualizacao"), // Last metadata update timestamp
 
 		dataNascimento: timestamp("data_nascimento"),
