@@ -7,6 +7,47 @@ import createHttpError from "http-errors";
 
 const META_GRAPH_API_VERSION = "v25.0";
 
+type TMetaGraphError = {
+	message?: string;
+	code?: number;
+	error_subcode?: number;
+	fbtrace_id?: string;
+	error_data?: {
+		messaging_product?: string;
+		details?: string;
+	};
+};
+
+function getMetaSyncContactsErrorMessage(error: TMetaGraphError | undefined) {
+	const code = error?.code;
+	const details = error?.error_data?.details?.trim() ?? "";
+	const detailsLower = details.toLowerCase();
+
+	if (code === 2593107 || detailsLower.includes("maximum number of times")) {
+		return "A sincronização inicial de contatos deste número já foi realizada. A Meta permite apenas uma solicitação por onboarding. Novos contatos passam a chegar automaticamente via webhook; para sincronizar tudo de novo, desconecte o número no app WhatsApp Business e reconecte.";
+	}
+	if (code === 2593108 || detailsLower.includes("24 hours") || detailsLower.includes("time window")) {
+		return "O prazo de 24 horas para solicitar a sincronização inicial de contatos expirou. Desconecte o número no app WhatsApp Business (Configurações → Conta → WhatsApp Business Platform → Desconectar) e reconecte pelo Recompra CRM para iniciar um novo onboarding.";
+	}
+
+	return details || error?.message || "Não foi possível solicitar a sincronização de contatos na Meta.";
+}
+
+function throwMetaSyncContactsError(error: TMetaGraphError | undefined) {
+	const message = getMetaSyncContactsErrorMessage(error);
+	console.error("[SMB_CONTACTS_SYNC] Meta API error:", {
+		code: error?.code,
+		errorSubcode: error?.error_subcode,
+		details: error?.error_data?.details,
+		fbtraceId: error?.fbtrace_id,
+		message: error?.message,
+	});
+
+	const httpError = createHttpError(400, message);
+	httpError.expose = true;
+	throw httpError;
+}
+
 export type TSmbAppStateSyncContact = {
 	fullName: string | null;
 	firstName: string | null;
@@ -151,11 +192,11 @@ export async function requestSmbAppContactsSync(phoneNumberId: string, accessTok
 	});
 	const result = (await response.json()) as {
 		request_id?: string;
-		error?: { message?: string };
+		error?: TMetaGraphError;
 	};
 
 	if (!response.ok) {
-		throw new createHttpError.BadGateway(result.error?.message ?? "Não foi possível solicitar a sincronização de contatos na Meta.");
+		throwMetaSyncContactsError(result.error);
 	}
 
 	return { requestId: result.request_id ?? null };

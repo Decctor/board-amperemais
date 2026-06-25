@@ -107,16 +107,14 @@ export default function ViewConnectionPhone({ context, closeMenu }: ViewConnecti
 				</div>
 
 				{isMetaConnection ? (
-					<div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+					<div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3">
 						<div className="flex items-start gap-3">
 							<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
 								<UsersRound className="h-4 w-4" />
 							</div>
 							<div>
 								<p className="text-sm font-bold tracking-tight">Contatos do WhatsApp Business</p>
-								<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-									Solicite à Meta uma nova sincronização dos contatos deste número.
-								</p>
+								<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Solicite à Meta uma nova sincronização dos contatos deste número.</p>
 							</div>
 						</div>
 						<LoadingButton
