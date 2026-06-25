@@ -146,6 +146,7 @@ async function pushImmediateProcessingDataIfNeeded({
 			analiseRFMTitulo: true,
 			metadataProdutoMaisCompradoId: true,
 			metadataGrupoProdutoMaisComprado: true,
+			metadataProdutoSugeridoId: true,
 		},
 	});
 

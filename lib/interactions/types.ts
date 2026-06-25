@@ -12,6 +12,7 @@ export type ImmediateProcessingData = {
 		analiseRFMTitulo: string | null;
 		metadataProdutoMaisCompradoId: TClientEntity["metadataProdutoMaisCompradoId"];
 		metadataGrupoProdutoMaisComprado: TClientEntity["metadataGrupoProdutoMaisComprado"];
+		metadataProdutoSugeridoId: TClientEntity["metadataProdutoSugeridoId"];
 	};
 	campaign: {
 		autorId: string;

@@ -270,14 +270,17 @@ export async function sendReservedInteraction(
 
 		const organizationContext = await resolveOrganizationMessagingContext(organizationId);
 		const hasHubAccess = params.hasHubAccess ?? organizationContext.hasHubAccess;
-		const clientFavoriteProduct = client.metadataProdutoMaisCompradoId
-			? ((
-					await db.query.products.findFirst({
-						where: (fields, { eq }) => eq(fields.id, client.metadataProdutoMaisCompradoId as string),
-						columns: { nome: true },
-					})
-				)?.nome ?? "")
-			: "";
+		// Resolve favorite and suggested product names in a single indexed lookup to avoid an extra round-trip on the hot path.
+		const productIdsToResolve = [client.metadataProdutoMaisCompradoId, client.metadataProdutoSugeridoId].filter(Boolean) as string[];
+		const resolvedProductNames = productIdsToResolve.length
+			? await db.query.products.findMany({
+					where: (fields, { inArray }) => inArray(fields.id, productIdsToResolve),
+					columns: { id: true, nome: true },
+				})
+			: [];
+		const productNameById = new Map(resolvedProductNames.map((product) => [product.id, product.nome]));
+		const clientFavoriteProduct = client.metadataProdutoMaisCompradoId ? (productNameById.get(client.metadataProdutoMaisCompradoId) ?? "") : "";
+		const clientSuggestedProduct = client.metadataProdutoSugeridoId ? (productNameById.get(client.metadataProdutoSugeridoId) ?? "") : "";
 
 		const cashbackTerminology = contextMetadados?.terminologia ?? organizationContext.organizationCashbackTerminology;
 		const contextVars = buildContextVariablesMap(contextMetadados, cashbackTerminology);
@@ -288,7 +291,7 @@ export async function sendReservedInteraction(
 			clientSegmentation: client.analiseRFMTitulo ?? "",
 			clientFavoriteProduct,
 			clientFavoriteProductGroup: client.metadataGrupoProdutoMaisComprado ?? "",
-			clientSuggestedProduct: "",
+			clientSuggestedProduct,
 			...contextVars,
 		};
 		const runtimeContext: TMessageTemplateRuntimeContext = {

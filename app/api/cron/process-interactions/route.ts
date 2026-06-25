@@ -115,6 +115,7 @@ async function fetchPendingInteractionsPage({
 					analiseRFMTitulo: true,
 					metadataProdutoMaisCompradoId: true,
 					metadataGrupoProdutoMaisComprado: true,
+					metadataProdutoSugeridoId: true,
 				},
 			},
 			campanha: {
@@ -214,6 +215,7 @@ function buildImmediateProcessingData({
 			analiseRFMTitulo: interaction.cliente.analiseRFMTitulo,
 			metadataProdutoMaisCompradoId: interaction.cliente.metadataProdutoMaisCompradoId,
 			metadataGrupoProdutoMaisComprado: interaction.cliente.metadataGrupoProdutoMaisComprado,
+			metadataProdutoSugeridoId: interaction.cliente.metadataProdutoSugeridoId,
 		},
 		campaign: {
 			autorId: campaign.autorId,
