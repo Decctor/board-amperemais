@@ -9,7 +9,7 @@ export type TNuvemFiscalDfeResponse = {
 	codigo_status?: number;
 	motivo_status?: string;
 	autorizacao?: {
-		protocolo?: string;
+		numero_protocolo?: string;
 		data_recebimento?: string;
 		codigo_status?: number;
 		motivo_status?: string;
@@ -23,4 +23,3 @@ export type TNuvemFiscalCancelResponse = {
 	data_recebimento?: string;
 	motivo_status?: string;
 };
-

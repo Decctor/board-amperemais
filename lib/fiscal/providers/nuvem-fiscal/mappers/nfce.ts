@@ -10,6 +10,7 @@ import {
 	mapConsumerPresenceToNfeCode,
 	mapFiscalFinalityToNfeCode,
 	mapTaxRegistration,
+	resolveFiscalItemName,
 	nonEmptyString,
 	onlyDigits,
 } from "./utils";
@@ -88,7 +89,7 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 					prod: {
 						cProd: item.produtoId,
 						cEAN: "SEM GTIN",
-						xProd: item.metadados && typeof item.metadados === "object" && "descricao" in item.metadados ? item.metadados.descricao : `ITEM ${index + 1}`,
+						xProd: resolveFiscalItemName(item.metadados, `ITEM ${index + 1}`),
 						NCM: formatNcmForNuvemFiscal(perfil?.ncm),
 						CEST: formatCestForNuvemFiscal(perfil?.cest),
 						CFOP: result.cfop ?? perfil?.cfopPadrao ?? context.operacao.cfopPadrao,

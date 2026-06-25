@@ -27,6 +27,16 @@ export function nonEmptyString(value: string | null | undefined) {
 	const trimmed = value?.trim();
 	return trimmed || undefined;
 }
+export function resolveFiscalItemName(metadata: unknown, fallback: string) {
+	if (!metadata || typeof metadata !== "object") return fallback;
+
+	const values = metadata as { nome?: unknown; descricao?: unknown };
+	for (const value of [values.nome, values.descricao]) {
+		if (typeof value === "string" && value.trim()) return value.trim();
+	}
+
+	return fallback;
+}
 
 export function mapTaxRegistration(value: string | null | undefined) {
 	const trimmed = nonEmptyString(value);

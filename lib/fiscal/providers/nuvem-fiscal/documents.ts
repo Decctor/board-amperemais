@@ -23,7 +23,6 @@ import { mapSaleContextToNfcePayload } from "./mappers/nfce";
 import { mapSaleContextToNfePayload } from "./mappers/nfe";
 import type { TNuvemFiscalCancelResponse, TNuvemFiscalDfeResponse } from "./types";
 
-
 function mapDfeStatus(status: TNuvemFiscalDfeResponse["status"]): TProviderDocumentDetails["status"] {
 	switch (status) {
 		case "autorizado":
@@ -71,7 +70,7 @@ function mapDfeResponse(
 		chaveAcesso: response.chave ?? null,
 		numero: response.numero?.toString() ?? null,
 		serie: response.serie?.toString() ?? null,
-		protocolo: response.autorizacao?.protocolo ?? null,
+		protocolo: response.autorizacao?.numero_protocolo ?? null,
 		dataEmissao: response.data_emissao ? new Date(response.data_emissao) : null,
 		dataAutorizacao: response.autorizacao?.data_recebimento ? new Date(response.autorizacao.data_recebimento) : null,
 		codigoStatus: (response.autorizacao?.codigo_status ?? response.codigo_status)?.toString() ?? null,
