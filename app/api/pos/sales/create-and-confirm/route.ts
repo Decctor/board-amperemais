@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
-import { processSaleConfirmation } from "@/lib/sales/sale-processing";
+import { processSaleConfirmationInTransaction, processSaleConfirmationPostCommit } from "@/lib/sales/sale-processing";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
 import createHttpError from "http-errors";
@@ -82,7 +82,9 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
 
 	const organizationSaleDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.vendas;
-	if (!organizationSaleDefaults.debitoContaId || !organizationSaleDefaults.creditoContaId) {
+	const accountingEntryDebitAccountId = organizationSaleDefaults.debitoContaId;
+	const accountingEntryCreditAccountId = organizationSaleDefaults.creditoContaId;
+	if (!accountingEntryDebitAccountId || !accountingEntryCreditAccountId) {
 		throw new createHttpError.InternalServerError("A organizacao nao possui contas padrao de vendas configuradas.");
 	}
 	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
@@ -106,9 +108,25 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 		return sum + custo * item.quantidade;
 	}, 0);
 
+	const salePayments = input.pagamentos.map((payment) => {
+		const methodDefaults = organizationPaymentMethodDefaults[payment.metodo];
+		if (!methodDefaults?.suportado) {
+			throw new createHttpError.BadRequest(`O método de pagamento ${payment.metodo} não está habilitado para esta organização.`);
+		}
+
+		return {
+			metodo: payment.metodo,
+			valor: payment.valor,
+			totalParcelas: payment.totalParcelas ?? undefined,
+			efetivacaoTipo: payment.efetivacaoTipo,
+			dataPrevisao: payment.dataPrevisao ?? undefined,
+			observacoes: payment.observacoes ?? undefined,
+			contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
+		};
+	});
 	const idExterno = `POS-${Date.now()}`;
 
-	const saleId = await db.transaction(async (tx) => {
+	const transactionResult = await db.transaction(async (tx) => {
 		const insertedSale = await tx
 			.insert(sales)
 			.values({
@@ -198,35 +216,31 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 			}
 		}
 
-		return newSaleId;
+		const confirmation = await processSaleConfirmationInTransaction({
+			tx,
+			input: {
+				organization,
+				saleId: newSaleId,
+				salePayments,
+				saleAuthorId: session.user.id,
+				saleClientId: input.clienteId ?? null,
+				saleCashbackProgramId: input.cashbackProgramaId,
+				saleCashbackRedemptionValue: input.cashbackResgate,
+				accountingEntryDebitAccountId,
+				accountingEntryCreditAccountId,
+			},
+		});
+
+		return { saleId: newSaleId, confirmation };
 	});
 
-	const confirmation = await processSaleConfirmation({
+	const fiscal = await processSaleConfirmationPostCommit({
 		organization,
-		saleId,
-		salePayments: input.pagamentos.map((payment) => {
-			const methodDefaults = organizationPaymentMethodDefaults[payment.metodo];
-			if (!methodDefaults?.suportado) {
-				throw new createHttpError.BadRequest(`O método de pagamento ${payment.metodo} não está habilitado para esta organização.`);
-			}
-
-			return {
-				metodo: payment.metodo,
-				valor: payment.valor,
-				totalParcelas: payment.totalParcelas ?? undefined,
-				efetivacaoTipo: payment.efetivacaoTipo,
-				dataPrevisao: payment.dataPrevisao ?? undefined,
-				observacoes: payment.observacoes ?? undefined,
-				contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
-			};
-		}),
+		saleId: transactionResult.saleId,
 		saleAuthorId: session.user.id,
-		saleClientId: input.clienteId ?? null,
-		saleCashbackProgramId: input.cashbackProgramaId,
-		saleCashbackRedemptionValue: input.cashbackResgate,
-		accountingEntryDebitAccountId: organizationSaleDefaults.debitoContaId,
-		accountingEntryCreditAccountId: organizationSaleDefaults.creditoContaId,
 	});
+	const confirmation = { ...transactionResult.confirmation, fiscal };
+	const saleId = transactionResult.saleId;
 
 	return {
 		data: {

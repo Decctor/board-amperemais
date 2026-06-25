@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { db } from "@/services/drizzle";
+import { db, type DBTransaction } from "@/services/drizzle";
 import { financialTransactions } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
 import type { IPaymentProvider, TPaymentIntentResult, TProcessPaymentsInput, TRefundResult } from "../types";
@@ -15,7 +15,7 @@ function buildTransactionTitle(method: string, observacoes?: string | null) {
 }
 
 export class LocalPaymentProvider implements IPaymentProvider {
-	async processPayments(input: TProcessPaymentsInput): Promise<TPaymentIntentResult[]> {
+	async processPayments(input: TProcessPaymentsInput, tx: DBTransaction): Promise<TPaymentIntentResult[]> {
 		const results: TPaymentIntentResult[] = [];
 
 		for (const pagamento of input.pagamentos) {
@@ -31,9 +31,11 @@ export class LocalPaymentProvider implements IPaymentProvider {
 				for (let parcela = 1; parcela <= totalParcelas; parcela++) {
 					const valorParcela = parcela === totalParcelas ? Number((pagamento.valor - valorAcumulado).toFixed(2)) : valorParcelaBase;
 					valorAcumulado += valorParcela;
-					const dataPrevisao = dayjs(primeiraData).add(parcela - 1, "month").toDate();
+					const dataPrevisao = dayjs(primeiraData)
+						.add(parcela - 1, "month")
+						.toDate();
 
-					const [inserted] = await db
+					const [inserted] = await tx
 						.insert(financialTransactions)
 						.values({
 							organizacaoId: input.organizacaoId,
@@ -69,7 +71,7 @@ export class LocalPaymentProvider implements IPaymentProvider {
 			const dataEfetivacao = isImmediate ? now : null;
 			const provedorStatus = isImmediate ? "APROVADO" : "PENDENTE";
 
-			const [inserted] = await db
+			const [inserted] = await tx
 				.insert(financialTransactions)
 				.values({
 					organizacaoId: input.organizacaoId,

@@ -1,4 +1,4 @@
-export { processSaleConfirmation } from "./process-sale-confirmation";
+export { processSaleConfirmation, processSaleConfirmationInTransaction, processSaleConfirmationPostCommit } from "./process-sale-confirmation";
 export { createAccountingEntry } from "./create-accounting-entry";
 export { processStockDeduction } from "./process-stock-deduction";
 export { processSaleAttendanceStatusChange } from "./process-sale-attendance-status-change";

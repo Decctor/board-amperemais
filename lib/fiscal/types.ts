@@ -3,6 +3,7 @@ import type {
 	TFiscalDocumentLifecycleStatusEnum,
 	TFiscalDocumentStatusEnum,
 	TFiscalDocumentTypeEnum,
+	TPaymentMethodEnum,
 } from "@/schemas/enums";
 import type { TOrganizationFiscalConfig } from "@/schemas/organizations";
 import type {
@@ -35,6 +36,11 @@ export type TFiscalOrganization = TOrganizationEntity & {
 	fiscalConfiguracao: TOrganizationFiscalConfig | null;
 };
 
+export type TFiscalSalePayment = {
+	metodo: TPaymentMethodEnum;
+	valor: number;
+};
+
 export type TFiscalSaleContext = {
 	venda: TSaleForFiscal;
 	organizacao: TFiscalOrganization;
@@ -44,6 +50,7 @@ export type TFiscalSaleContext = {
 	gruposTributarios: TFiscalTaxGroupWithRules[];
 	ibptRates: TFiscalIbptRateEntity[];
 	destinatarioSnapshot: Record<string, unknown> | null;
+	pagamentos: TFiscalSalePayment[];
 };
 
 export type TEmitirDocumentoInput = {
@@ -175,8 +182,16 @@ export interface IFiscalProvider {
 	consultarDocumento(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
 	sincronizarDocumento(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
 	cancelarDocumento(input: TCancelDocumentInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails>;
-	cartaCorrecaoDocumento(input: TFiscalCorrectionInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderCorrectionResult>;
-	inutilizarNumeracao(input: TFiscalInutilizationInput, documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderInutilizationResult>;
+	cartaCorrecaoDocumento(
+		input: TFiscalCorrectionInput,
+		documento: TFiscalDocument,
+		organizacao: TFiscalOrganization,
+	): Promise<TProviderCorrectionResult>;
+	inutilizarNumeracao(
+		input: TFiscalInutilizationInput,
+		documento: TFiscalDocument,
+		organizacao: TFiscalOrganization,
+	): Promise<TProviderInutilizationResult>;
 	baixarXml(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
 	baixarPdf(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<ArrayBuffer | null>;
 	sincronizarEmpresa(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult>;

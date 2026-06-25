@@ -1,7 +1,7 @@
 import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
-import { db } from "@/services/drizzle";
+import { db, type DBTransaction } from "@/services/drizzle";
 import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, sales } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -11,7 +11,7 @@ import { createAccountingEntry } from "./create-accounting-entry";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "./process-sale-automatic-fiscal-emission";
 import { processStockDeduction } from "./process-stock-deduction";
 
-type ProcessSaleConfirmationInput = {
+export type TProcessSaleConfirmationInput = {
 	organization: TOrganizationEntity;
 
 	saleId: string;
@@ -29,8 +29,14 @@ type ProcessSaleConfirmationInput = {
 	emitFiscal?: boolean;
 };
 
-export async function processSaleConfirmation(input: ProcessSaleConfirmationInput) {
-	const sale = await db.query.sales.findFirst({
+type TProcessSaleConfirmationPostCommitInput = Pick<TProcessSaleConfirmationInput, "organization" | "saleId" | "saleAuthorId" | "emitFiscal">;
+
+/**
+ * Confirms a sale using the caller-owned transaction.
+ * All database effects must use `tx`; external effects run after commit.
+ */
+export async function processSaleConfirmationInTransaction({ tx, input }: { tx: DBTransaction; input: TProcessSaleConfirmationInput }) {
+	const sale = await tx.query.sales.findFirst({
 		where: (fields, { eq }) => eq(fields.id, input.saleId),
 		with: {
 			itens: {
@@ -52,49 +58,48 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 	// Status operacional inicial conforme a modalidade de entrega.
 	const initialAttendanceStatus = input.initialAttendanceStatus ?? resolveInitialAttendanceStatus(sale.entregaModalidade);
 
-	const transactionResult = await db.transaction(async (tx) => {
-		await tx
-			.update(sales)
-			.set({
-				statusVenda: "CONFIRMADA",
-				statusAtendimento: initialAttendanceStatus,
-				natureza: "SN01",
-				dataVenda: new Date(),
-			})
-			.where(eq(sales.id, input.saleId));
+	await tx
+		.update(sales)
+		.set({
+			statusVenda: "CONFIRMADA",
+			statusAtendimento: initialAttendanceStatus,
+			natureza: "SN01",
+			dataVenda: new Date(),
+		})
+		.where(eq(sales.id, input.saleId));
 
-		const entry = await createAccountingEntry(tx, {
-			organizacaoId: input.organization.id,
-			vendaId: input.saleId,
-			valor: sale.valorTotal,
-			titulo: `VENDA #${sale.id}`,
-			idContaDebito: input.accountingEntryDebitAccountId,
-			idContaCredito: input.accountingEntryCreditAccountId,
-			autorId: input.saleAuthorId,
-		});
-
-		// A confirmacao NAO baixa estoque obrigatoriamente. A baixa fisica acontece na entrega.
-		// Quando a venda ja nasce ENTREGUE (ex.: balcao/PRESENCIAL), a entrega e imediata: baixa aqui.
-		if (initialAttendanceStatus === "ENTREGUE" && input.organization.configuracao.preferencias.rastreamentoEstoque) {
-			await processStockDeduction(tx, {
-				organizationId: input.organization.id,
-				saleId: input.saleId,
-				saleItems: sale.itens,
-				saleAuthorId: input.saleAuthorId,
-			});
-		}
-
-		return { entry };
-	});
-
-	const paymentProvider = getPaymentProvider(input.organization);
-	const paymentResults = await paymentProvider.processPayments({
-		vendaId: input.saleId,
-		lancamentoContabilId: transactionResult.entry.id,
+	const entry = await createAccountingEntry(tx, {
 		organizacaoId: input.organization.id,
-		pagamentos: input.salePayments,
+		vendaId: input.saleId,
+		valor: sale.valorTotal,
+		titulo: `VENDA #${sale.id}`,
+		idContaDebito: input.accountingEntryDebitAccountId,
+		idContaCredito: input.accountingEntryCreditAccountId,
 		autorId: input.saleAuthorId,
 	});
+
+	// A confirmacao NAO baixa estoque obrigatoriamente. A baixa fisica acontece na entrega.
+	// Quando a venda ja nasce ENTREGUE (ex.: balcao/PRESENCIAL), a entrega e imediata: baixa aqui.
+	if (initialAttendanceStatus === "ENTREGUE" && input.organization.configuracao.preferencias.rastreamentoEstoque) {
+		await processStockDeduction(tx, {
+			organizationId: input.organization.id,
+			saleId: input.saleId,
+			saleItems: sale.itens,
+			saleAuthorId: input.saleAuthorId,
+		});
+	}
+
+	const paymentProvider = getPaymentProvider(input.organization);
+	const paymentResults = await paymentProvider.processPayments(
+		{
+			vendaId: input.saleId,
+			lancamentoContabilId: entry.id,
+			organizacaoId: input.organization.id,
+			pagamentos: input.salePayments,
+			autorId: input.saleAuthorId,
+		},
+		tx,
+	);
 
 	let cashbackRedemptionResult: {
 		transactionId: string;
@@ -107,7 +112,7 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 	if (redemptionValue > 0) {
 		if (!clientId) throw new createHttpError.BadRequest("Cliente nao informado para resgate de cashback.");
 
-		cashbackRedemptionResult = await db.transaction(async (tx) => {
+		cashbackRedemptionResult = await (async () => {
 			const existingRedemption = await tx.query.cashbackProgramTransactions.findFirst({
 				where: and(
 					eq(cashbackProgramTransactions.organizacaoId, input.organization.id),
@@ -184,13 +189,13 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 				transactionId,
 				newBalance: redemptionResult.newBalance,
 			};
-		});
+		})();
 	}
 
 	let cashbackAccumulationResult: Awaited<ReturnType<typeof accumulateCashbackForClient>> | null = null;
 
 	if (clientId && input.accumulateCashback !== false) {
-		cashbackAccumulationResult = await db.transaction(async (tx) => {
+		cashbackAccumulationResult = await (async () => {
 			const program = input.saleCashbackProgramId
 				? await tx.query.cashbackPrograms.findFirst({
 						where: and(
@@ -219,24 +224,35 @@ export async function processSaleConfirmation(input: ProcessSaleConfirmationInpu
 					processamentoOrigem: sale.processamentoOrigem,
 				},
 			});
-		});
+		})();
 	}
-
-	const fiscalResult =
-		input.emitFiscal === false
-			? { status: "NAO_SOLICITADO" as const, reason: "DESATIVADO_PELO_FLUXO" as const }
-			: await processSaleAutomaticFiscalEmissionIfEligible({
-					organization: input.organization,
-					saleId: input.saleId,
-					authorId: input.saleAuthorId,
-				});
 
 	return {
 		vendaId: input.saleId,
-		lancamentoContabilId: transactionResult.entry.id,
+		lancamentoContabilId: entry.id,
 		pagamentos: paymentResults,
 		cashbackResgate: cashbackRedemptionResult,
 		cashbackAcumulo: cashbackAccumulationResult,
-		fiscal: fiscalResult,
+	};
+}
+export async function processSaleConfirmationPostCommit(input: TProcessSaleConfirmationPostCommitInput) {
+	if (input.emitFiscal === false) {
+		return { status: "NAO_SOLICITADO" as const, reason: "DESATIVADO_PELO_FLUXO" as const };
+	}
+
+	return processSaleAutomaticFiscalEmissionIfEligible({
+		organization: input.organization,
+		saleId: input.saleId,
+		authorId: input.saleAuthorId,
+	});
+}
+
+export async function processSaleConfirmation(input: TProcessSaleConfirmationInput) {
+	const confirmation = await db.transaction((tx) => processSaleConfirmationInTransaction({ tx, input }));
+	const fiscal = await processSaleConfirmationPostCommit(input);
+
+	return {
+		...confirmation,
+		fiscal,
 	};
 }

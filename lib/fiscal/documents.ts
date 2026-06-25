@@ -9,7 +9,8 @@ import { FiscalReadinessError } from "./errors";
 import { computeSaleTaxation } from "./taxation-context";
 import { ManualFiscalProvider } from "./providers/manual";
 import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
-import { findActiveFiscalSeries, findDefaultOperationProfileForType, loadFiscalOrganization, reserveFiscalSeriesNumber } from "./settings";
+import { findActiveFiscalSeries, loadFiscalOrganization, reserveFiscalSeriesNumber } from "./settings";
+import { resolveOperationProfileForSale } from "./operation-profile";
 import { downloadStoredFiscalAsset, getFiscalAssetContentType, storeFiscalAsset, type TFiscalAssetType } from "./storage";
 import type {
 	IFiscalProvider,
@@ -20,6 +21,7 @@ import type {
 	TProviderDocumentDetails,
 	TSaleForFiscal,
 	TFiscalSaleContext,
+	TFiscalSalePayment,
 	TSyncDocumentInput,
 } from "./types";
 
@@ -228,6 +230,34 @@ async function loadProductFiscalProfilesForSale(venda: TSaleForFiscal) {
 	});
 }
 
+async function loadSalePayments({ saleId, organizationId }: { saleId: string; organizationId: string }) {
+	const entries = await db.query.accountingEntries.findMany({
+		where: (fields, operators) => operators.and(operators.eq(fields.vendaId, saleId), operators.eq(fields.organizacaoId, organizationId)),
+		columns: { id: true },
+		with: {
+			transacoesFinanceiras: {
+				columns: {
+					valor: true,
+					tipo: true,
+					metodo: true,
+					provedorStatus: true,
+				},
+			},
+		},
+	});
+
+	const totalsByMethod = new Map<TFiscalSalePayment["metodo"], number>();
+	for (const transaction of entries.flatMap((entry) => entry.transacoesFinanceiras)) {
+		if (transaction.tipo !== "ENTRADA") continue;
+		if (["CANCELADO", "ESTORNADO"].includes(transaction.provedorStatus ?? "")) continue;
+		totalsByMethod.set(transaction.metodo, (totalsByMethod.get(transaction.metodo) ?? 0) + transaction.valor);
+	}
+
+	return [...totalsByMethod.entries()].map(([metodo, valor]) => ({
+		metodo,
+		valor: Math.round((valor + Number.EPSILON) * 100) / 100,
+	}));
+}
 async function loadTaxGroupsForProfiles(perfisProdutos: { grupoTributarioId: string | null }[]): Promise<TFiscalTaxGroupWithRules[]> {
 	const grupoIds = [...new Set(perfisProdutos.map((perfil) => perfil.grupoTributarioId).filter((id): id is string => !!id))];
 	if (grupoIds.length === 0) return [];
@@ -280,7 +310,12 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
 		if (!fiscalConfig.nuvemFiscal?.nfce?.csc) throw new FiscalReadinessError("CSC da NFC-e nao configurado.");
 		if (!fiscalConfig.nuvemFiscal?.nfce?.idCsc) throw new FiscalReadinessError("ID CSC da NFC-e nao configurado.");
 	}
-
+	if (context.operacao.finalidade !== "DEVOLUCAO" && context.pagamentos.length > 0) {
+		const paymentTotal = context.pagamentos.reduce((total, payment) => total + payment.valor, 0);
+		if (Math.abs(paymentTotal - context.venda.valorTotal) > 0.01) {
+			throw new FiscalReadinessError("A soma dos pagamentos nao corresponde ao valor total da venda.");
+		}
+	}
 
 	if (context.perfisProdutos.length === 0) throw new FiscalReadinessError("Nenhum perfil fiscal de produto encontrado para a venda.");
 }
@@ -293,18 +328,24 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 	if (!organizacao) throw new createHttpError.NotFound("Organizacao nao encontrada para emissao fiscal.");
 
 	const ambiente = organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO";
-	const operacaoDefaultId = input.operationProfileId ?? organizacao.fiscalConfiguracao?.operacaoPadraoPorTipo?.[input.tipo] ?? null;
-	const operacao = await findDefaultOperationProfileForType({
+	const operacao = await resolveOperationProfileForSale({
 		organizacaoId: input.organizacaoId,
 		tipoDocumento: input.tipo,
-		profileId: operacaoDefaultId,
+		signals: {
+			canal: venda.canal,
+			entregaModalidade: venda.entregaModalidade,
+		},
+		operationProfileId: input.operationProfileId,
+		operacaoPadraoPorTipoId: organizacao.fiscalConfiguracao?.operacaoPadraoPorTipo?.[input.tipo] ?? null,
 	});
-	if (!operacao) throw new createHttpError.BadRequest("Perfil de operacao fiscal nao configurado.");
 
 	const serie = operacao.seriePadrao ?? (await findActiveFiscalSeries({ organizacaoId: input.organizacaoId, tipoDocumento: input.tipo, ambiente }));
 	if (!serie) throw new createHttpError.BadRequest("Serie fiscal nao configurada.");
 
-	const perfisProdutos = await loadProductFiscalProfilesForSale(venda);
+	const [perfisProdutos, pagamentos] = await Promise.all([
+		loadProductFiscalProfilesForSale(venda),
+		loadSalePayments({ saleId: venda.id, organizationId: input.organizacaoId }),
+	]);
 	const gruposTributarios = await loadTaxGroupsForProfiles(perfisProdutos);
 	const ibptRates = await loadIbptRatesForSale({ perfisProdutos, uf: organizacao.fiscalConfiguracao?.endereco.uf });
 
@@ -317,6 +358,7 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 		gruposTributarios,
 		ibptRates,
 		destinatarioSnapshot: buildDestinatarioSnapshot(venda),
+		pagamentos,
 	};
 }
 

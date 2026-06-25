@@ -231,12 +231,40 @@ export async function findDefaultOperationProfileForType({
 	organizacaoId,
 	tipoDocumento,
 	profileId,
+	presencaConsumidor,
+	finalidade,
 }: {
 	organizacaoId: string;
 	tipoDocumento: typeof fiscalOperationProfiles.$inferSelect.tipoDocumento;
 	profileId?: string | null;
+	presencaConsumidor?: typeof fiscalOperationProfiles.$inferSelect.presencaConsumidor | Array<typeof fiscalOperationProfiles.$inferSelect.presencaConsumidor>;
+	finalidade?: typeof fiscalOperationProfiles.$inferSelect.finalidade;
 }) {
 	if (profileId) return findFiscalOperationProfileById({ fiscalOperationProfileId: profileId, organizationId: organizacaoId });
+
+	const presencaCandidates = presencaConsumidor ? (Array.isArray(presencaConsumidor) ? presencaConsumidor : [presencaConsumidor]) : null;
+
+	if (presencaCandidates?.length) {
+		for (const presenca of presencaCandidates) {
+			const profile = await db.query.fiscalOperationProfiles.findFirst({
+				where: (fields, operators) =>
+					operators.and(
+						operators.eq(fields.organizacaoId, organizacaoId),
+						operators.eq(fields.tipoDocumento, tipoDocumento),
+						operators.eq(fields.ativo, true),
+						operators.eq(fields.presencaConsumidor, presenca),
+						...(finalidade ? [operators.eq(fields.finalidade, finalidade)] : []),
+					),
+				with: {
+					seriePadrao: true,
+				},
+				orderBy: (fields, operators) => operators.asc(fields.nome),
+			});
+			if (profile) return profile;
+		}
+
+		return null;
+	}
 
 	return db.query.fiscalOperationProfiles.findFirst({
 		where: (fields, operators) =>
@@ -244,6 +272,7 @@ export async function findDefaultOperationProfileForType({
 				operators.eq(fields.organizacaoId, organizacaoId),
 				operators.eq(fields.tipoDocumento, tipoDocumento),
 				operators.eq(fields.ativo, true),
+				...(finalidade ? [operators.eq(fields.finalidade, finalidade)] : []),
 			),
 		with: {
 			seriePadrao: true,

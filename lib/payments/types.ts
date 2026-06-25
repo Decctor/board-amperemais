@@ -1,4 +1,5 @@
 import type { TPaymentMethodEnum } from "@/schemas/enums";
+import type { DBTransaction } from "@/services/drizzle";
 
 export type TPaymentSplit = {
 	metodo: TPaymentMethodEnum;
@@ -31,7 +32,7 @@ export type TRefundResult = {
 };
 
 export interface IPaymentProvider {
-	processPayments(input: TProcessPaymentsInput): Promise<TPaymentIntentResult[]>;
+	processPayments(input: TProcessPaymentsInput, tx: DBTransaction): Promise<TPaymentIntentResult[]>;
 	refundPayment(transacaoId: string, valor?: number): Promise<TRefundResult>;
 	getPaymentStatus(provedorReferencia: string): Promise<string>;
 }

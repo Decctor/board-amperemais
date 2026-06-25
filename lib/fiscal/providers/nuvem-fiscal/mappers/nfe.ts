@@ -3,6 +3,7 @@ import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import { UF_TO_IBGE_CODE } from "@/lib/fiscal/engine";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
 import { buildItemImposto } from "./imposto";
+import { mapSalePaymentsToNfe } from "./pagamento";
 import {
 	formatCestForNuvemFiscal,
 	formatNcmForNuvemFiscal,
@@ -136,14 +137,12 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 			},
 			transp: { modFrete: 9 },
 			pag: {
-				detPag: [
-					{
-						tPag: "99",
-						vPag: context.venda.valorTotal,
-					},
-				],
+				detPag: mapSalePaymentsToNfe({
+					payments: context.pagamentos,
+					saleTotal: context.venda.valorTotal,
+					isReturn: context.operacao.finalidade === "DEVOLUCAO",
+				}),
 			},
 		},
 	};
 }
-

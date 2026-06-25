@@ -18,9 +18,15 @@ import { basename, extname, join } from "node:path";
 
 function parseNumber(value: string | undefined): number {
 	if (!value) return 0;
-	const normalized = value.trim().replace(/\./g, "").replace(",", ".");
+
+	const raw = value.trim();
+	const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
 	const parsed = Number(normalized);
-	return Number.isFinite(parsed) ? parsed : 0;
+	if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+		throw new Error(`Alíquota IBPT inválida: ${value}`);
+	}
+
+	return parsed;
 }
 
 function parseBrDate(value: string | undefined): Date | null {
@@ -44,7 +50,8 @@ function parseUfFile(filePath: string, uf: string): IbptRow[] {
 
 	for (let i = startIndex; i < lines.length; i++) {
 		const cols = lines[i].split(";");
-		const [codigo, _ex, tipo, descricao, nacionalfederal, importadosfederal, estadual, municipal, vigenciainicio, vigenciafim, chave, versao, fonte] = cols;
+		const [codigo, _ex, tipo, descricao, nacionalfederal, importadosfederal, estadual, municipal, vigenciainicio, vigenciafim, chave, versao, fonte] =
+			cols;
 		// tipo 0 = NCM (ignoramos NBS/LC116)
 		if (tipo !== undefined && tipo.trim() !== "0") continue;
 		if (!codigo?.trim()) continue;

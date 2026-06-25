@@ -3,6 +3,7 @@ import { computeSaleTaxation } from "@/lib/fiscal/taxation-context";
 import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
 import { buildItemImposto } from "./imposto";
+import { mapSalePaymentsToNfe } from "./pagamento";
 import {
 	formatCestForNuvemFiscal,
 	formatNcmForNuvemFiscal,
@@ -29,12 +30,10 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 	const fiscalConfig = context.organizacao.fiscalConfiguracao!;
 	const uf = fiscalConfig.endereco.uf.toUpperCase();
 	const taxation = computeSaleTaxation(context);
-	const payments = [
-		{
-			tPag: "99",
-			vPag: context.venda.valorTotal,
-		},
-	];
+	const payments = mapSalePaymentsToNfe({
+		payments: context.pagamentos,
+		saleTotal: context.venda.valorTotal,
+	});
 
 	return {
 		ambiente: fiscalConfig.ambiente === "PRODUCAO" ? "producao" : "homologacao",

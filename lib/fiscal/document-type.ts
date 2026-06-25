@@ -1,21 +1,9 @@
 import type { TFiscalDocumentTypeEnum } from "@/schemas/enums";
 import { findDefaultOperationProfileForType } from "./settings";
+import { resolveAutoDocumentType, type TAutoDocumentTypeSignals } from "./sale-fiscal-signals";
 
-export type TAutoDocumentTypeSignals = {
-	canal?: string | null;
-	entregaModalidade?: string | null;
-	destinatarioCpfCnpj?: string | null;
-};
-
-// Regra pura de selecao do tipo de documento na auto-emissao.
-// B2B (destinatario com CNPJ), canal SHOP ou venda com entrega → NF-e; caso contrario → NFC-e.
-export function resolveAutoDocumentType({ canal, entregaModalidade, destinatarioCpfCnpj }: TAutoDocumentTypeSignals): Extract<TFiscalDocumentTypeEnum, "NFCE" | "NFE"> {
-	const cpfCnpjDigits = (destinatarioCpfCnpj ?? "").replace(/\D/g, "");
-	if (cpfCnpjDigits.length > 11) return "NFE";
-	if ((canal ?? "").toUpperCase() === "SHOP") return "NFE";
-	if ((entregaModalidade ?? "").toUpperCase() === "ENTREGA") return "NFE";
-	return "NFCE";
-}
+export type { TAutoDocumentTypeSignals, TFiscalOperationProfileSignals } from "./sale-fiscal-signals";
+export { resolveAutoDocumentType, resolveExpectedConsumerPresenceCandidates } from "./sale-fiscal-signals";
 
 // Resolve o tipo considerando a configuracao da organizacao: se a NF-e for preferida mas nao houver
 // operacao fiscal configurada para NF-e, cai para NFC-e (default seguro do varejo).
