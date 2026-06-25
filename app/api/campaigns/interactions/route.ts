@@ -218,6 +218,7 @@ async function retryCampaignInteraction({ input, session }: { input: TRetryCampa
 					analiseRFMTitulo: true,
 					metadataProdutoMaisCompradoId: true,
 					metadataGrupoProdutoMaisComprado: true,
+					metadataProdutoSugeridoId: true,
 				},
 			},
 			campanha: {
@@ -273,6 +274,7 @@ async function retryCampaignInteraction({ input, session }: { input: TRetryCampa
 			analiseRFMTitulo: interaction.cliente.analiseRFMTitulo,
 			metadataProdutoMaisCompradoId: interaction.cliente.metadataProdutoMaisCompradoId,
 			metadataGrupoProdutoMaisComprado: interaction.cliente.metadataGrupoProdutoMaisComprado,
+			metadataProdutoSugeridoId: interaction.cliente.metadataProdutoSugeridoId,
 		},
 		campaign: {
 			autorId: campaignAuthorId,

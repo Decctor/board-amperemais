@@ -166,6 +166,7 @@ async function getTargetClients(options: TScriptOptions, campaign: TCampaignCont
 		analiseRFMTitulo: string | null;
 		metadataProdutoMaisCompradoId: string | null;
 		metadataGrupoProdutoMaisComprado: string | null;
+		metadataProdutoSugeridoId: string | null;
 	}[] = [];
 
 	if (segmentationValues.length > 0) {
@@ -178,6 +179,7 @@ async function getTargetClients(options: TScriptOptions, campaign: TCampaignCont
 				analiseRFMTitulo: clients.analiseRFMTitulo,
 				metadataProdutoMaisCompradoId: clients.metadataProdutoMaisCompradoId,
 				metadataGrupoProdutoMaisComprado: clients.metadataGrupoProdutoMaisComprado,
+				metadataProdutoSugeridoId: clients.metadataProdutoSugeridoId,
 			})
 			.from(clients)
 			.where(and(eq(clients.organizacaoId, options.organizationId), inArray(clients.analiseRFMTitulo, segmentationValues)));
@@ -191,6 +193,7 @@ async function getTargetClients(options: TScriptOptions, campaign: TCampaignCont
 				analiseRFMTitulo: clients.analiseRFMTitulo,
 				metadataProdutoMaisCompradoId: clients.metadataProdutoMaisCompradoId,
 				metadataGrupoProdutoMaisComprado: clients.metadataGrupoProdutoMaisComprado,
+				metadataProdutoSugeridoId: clients.metadataProdutoSugeridoId,
 			})
 			.from(clients)
 			.where(eq(clients.organizacaoId, options.organizationId));
@@ -265,6 +268,7 @@ async function createTestInteractions(
 					analiseRFMTitulo: client.analiseRFMTitulo,
 					metadataProdutoMaisCompradoId: client.metadataProdutoMaisCompradoId,
 					metadataGrupoProdutoMaisComprado: client.metadataGrupoProdutoMaisComprado,
+					metadataProdutoSugeridoId: client.metadataProdutoSugeridoId,
 				},
 				campaign: {
 					autorId: campaign.autorId,

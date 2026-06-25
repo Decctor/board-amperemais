@@ -272,6 +272,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 									analiseRFMTitulo: true,
 									metadataProdutoMaisCompradoId: true,
 									metadataGrupoProdutoMaisComprado: true,
+									metadataProdutoSugeridoId: true,
 								},
 							});
 
@@ -287,6 +288,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 										analiseRFMTitulo: clientData.analiseRFMTitulo,
 										metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
 										metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
+										metadataProdutoSugeridoId: clientData.metadataProdutoSugeridoId,
 									},
 									campaign: {
 										autorId: campaign.autorId,
@@ -405,6 +407,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 									analiseRFMTitulo: true,
 									metadataProdutoMaisCompradoId: true,
 									metadataGrupoProdutoMaisComprado: true,
+									metadataProdutoSugeridoId: true,
 								},
 							});
 
@@ -420,6 +423,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 										analiseRFMTitulo: clientData.analiseRFMTitulo,
 										metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
 										metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
+										metadataProdutoSugeridoId: clientData.metadataProdutoSugeridoId,
 									},
 									campaign: {
 										autorId: campaign.autorId,

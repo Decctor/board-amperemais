@@ -66,6 +66,7 @@ async function testCampaign({
 			analiseRFMTitulo: true,
 			metadataProdutoMaisCompradoId: true,
 			metadataGrupoProdutoMaisComprado: true,
+			metadataProdutoSugeridoId: true,
 		},
 	});
 
@@ -110,6 +111,7 @@ async function testCampaign({
 				analiseRFMTitulo: client.analiseRFMTitulo,
 				metadataProdutoMaisCompradoId: client.metadataProdutoMaisCompradoId,
 				metadataGrupoProdutoMaisComprado: client.metadataGrupoProdutoMaisComprado,
+				metadataProdutoSugeridoId: client.metadataProdutoSugeridoId,
 			},
 			campaign: {
 				autorId: userId,
