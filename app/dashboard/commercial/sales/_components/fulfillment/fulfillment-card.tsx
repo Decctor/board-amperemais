@@ -1,5 +1,6 @@
 "use client";
 
+import type { TPatchSalesFulfillmentInput } from "@/app/api/sales/fulfillment/route";
 import type { TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
 import {
 	DropdownMenu,
@@ -9,16 +10,18 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatToMoney } from "@/lib/formatting";
+import { formatToMoney, formatToPhone } from "@/lib/formatting";
+import { QuickActionRow } from "./quick-actions/QuickActionRow";
 import { cn } from "@/lib/utils";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CircleUser, Clock, GripVertical, Loader2, MoveRight, StickyNote } from "lucide-react";
+import { CircleUser, Clock, GripVertical, Loader2, MoveRight } from "lucide-react";
 import { forwardRef, type CSSProperties } from "react";
-import { ATTENDANCE_STATUS_LABEL, DELIVERY_MODE_META, FINANCIAL_BADGE_META, FISCAL_BADGE_META, getValidBoardTargets } from "./config";
+import { ATTENDANCE_STATUS_LABEL, FINANCIAL_BADGE_META, getValidBoardTargets } from "./config";
+import { CardQuickActions, fulfillmentCardShowsFinancialBadge, getPaymentControlTone, QuickPaymentMethodControl } from "./quick-actions/CardQuickActions";
 
 const TONE_CLASSES: Record<"success" | "muted" | "neutral" | "danger", string> = {
 	success: "border-green-200 bg-green-100 text-green-600",
@@ -43,11 +46,13 @@ function StatusPill({ label, tone, icon }: { label: string; tone: "success" | "m
 
 type FulfillmentCardProps = {
 	card: TSalesFulfillmentCard;
+	organizationConfig: TOrganizationConfiguration;
 	isPending?: boolean;
 	isDragging?: boolean;
 	isOverlay?: boolean;
 	awaitingConfirm?: boolean;
 	onMove?: (target: TSaleAttendanceStatusEnum) => void;
+	onPatch?: (input: TPatchSalesFulfillmentInput) => void;
 	onConfirmDelivery?: () => void;
 	onDeliverWithoutPayment?: () => void;
 	onCancelConfirm?: () => void;
@@ -60,11 +65,13 @@ type FulfillmentCardProps = {
 export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(function FulfillmentCard(
 	{
 		card,
+		organizationConfig,
 		isPending,
 		isDragging,
 		isOverlay,
 		awaitingConfirm,
 		onMove,
+		onPatch,
 		onConfirmDelivery,
 		onDeliverWithoutPayment,
 		onCancelConfirm,
@@ -75,25 +82,16 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 	},
 	ref,
 ) {
-	const modalidade = card.entregaModalidade ? DELIVERY_MODE_META[card.entregaModalidade] : null;
-	const ModalidadeIcon = modalidade?.icon;
 	const financeiro = FINANCIAL_BADGE_META[card.financeiro];
-	const fiscal = FISCAL_BADGE_META[card.fiscal];
 	const moveTargets = onMove ? getValidBoardTargets(card.statusAtendimento) : [];
-	const pendingPayment = card.pagamentos.find(
-		(payment) => !payment.dataEfetivacao && !["CANCELADO", "ESTORNADO"].includes(payment.provedorStatus ?? ""),
-	);
-	const paymentLabel = pendingPayment
-		? pendingPayment.metodo === "DINHEIRO"
-			? "Dinheiro"
-			: pendingPayment.metodo === "PIX"
-				? "PIX"
-				: pendingPayment.metodo === "CARTAO_DEBITO"
-					? "Débito"
-					: pendingPayment.metodo === "CARTAO_CREDITO"
-						? "Crédito"
-						: "A definir"
-		: null;
+	const editablePayments = card.pagamentos.filter((payment) => payment.editavel);
+	const primaryPendingPayment = editablePayments[0] ?? null;
+	const clientPhone = card.cliente?.telefone ? formatToPhone(card.cliente.telefone) : null;
+	const hasPaymentSection =
+		Boolean(onPatch) &&
+		(card.pagamentos.some((payment) => payment.editavel || payment.dataEfetivacao != null) ||
+			card.resumoPagamentos.totalPendentes > 0);
+	const showFinancialBadge = fulfillmentCardShowsFinancialBadge(card, hasPaymentSection);
 
 	return (
 		<div
@@ -116,7 +114,6 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 			) : null}
 
 			<div className="flex items-start gap-1.5">
-				{/* Drag handle: only this area initiates the drag, keeping the kebab clickable. */}
 				{awaitingConfirm ? (
 					<span className="mt-0.5 w-4" />
 				) : (
@@ -161,32 +158,28 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 				) : null}
 			</div>
 
-			<div className="flex items-center justify-between gap-2">
-				<span className="text-sm font-bold tabular-nums">{formatToMoney(card.valorTotal)}</span>
-				{modalidade && ModalidadeIcon ? (
-					<span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-						<ModalidadeIcon className="h-3 w-3" />
-						{modalidade.label}
-					</span>
-				) : null}
+			<div className="flex items-center justify-between gap-2 pl-5">
+				{clientPhone ? (
+					<span className="truncate text-[11px] tabular-nums text-muted-foreground">{clientPhone}</span>
+				) : (
+					<span className="text-[11px] text-muted-foreground/50">—</span>
+				)}
+				<span className="shrink-0 text-sm font-bold tabular-nums">{formatToMoney(card.valorTotal)}</span>
 			</div>
 
-			<div className="flex flex-wrap items-center gap-1.5">
-				{paymentLabel ? <StatusPill label={paymentLabel} tone="muted" /> : null}
-				<StatusPill label={financeiro.label} tone={financeiro.tone} icon={financeiro.icon} />
-				<StatusPill label={fiscal.label} tone={fiscal.tone} icon={fiscal.icon} />
-			</div>
+			{onPatch ? (
+				<CardQuickActions
+					card={card}
+					organizationConfig={organizationConfig}
+					disabled={isPending || awaitingConfirm}
+					onPatch={onPatch}
+				/>
+			) : null}
 
-			{card.observacoes || card.pagamentoObservacoes ? (
-				<Tooltip>
-					<TooltipTrigger className="inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-						<StickyNote className="h-3 w-3" />
-						Observações
-					</TooltipTrigger>
-					<TooltipContent className="max-w-72 whitespace-normal">
-						{[card.observacoes, card.pagamentoObservacoes].filter(Boolean).join("\n")}
-					</TooltipContent>
-				</Tooltip>
+			{showFinancialBadge ? (
+				<div className="flex flex-wrap items-center gap-1.5">
+					<StatusPill label={financeiro.label} tone={financeiro.tone} icon={financeiro.icon} />
+				</div>
 			) : null}
 
 			{card.dataVenda ? (
@@ -201,8 +194,26 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 					<p className="text-[11px] leading-snug text-muted-foreground">
 						{card.financeiro === "RECEBIDA"
 							? "Confirmar entrega? Isso registra a baixa física de estoque do pedido."
-							: `Pagamento pendente${paymentLabel ? ` via ${paymentLabel}` : ""}. Confirme o recebimento antes de entregar.`}
+						 : `Pagamento pendente${editablePayments.length > 0 ? ` (${editablePayments.length} recebimento${editablePayments.length > 1 ? "s" : ""})` : ""}. Confirme o recebimento antes de entregar.`}
 					</p>
+					{card.financeiro !== "RECEBIDA" && primaryPendingPayment && onPatch ? (
+						<div className="flex flex-col gap-1.5">
+							{editablePayments.map((payment, index) => (
+								<QuickActionRow
+									key={payment.id}
+									label={editablePayments.length > 1 ? `Receber ${index + 1}` : "Receber como"}
+								>
+									<QuickPaymentMethodControl
+										payment={payment}
+										saleId={card.id}
+										organizationConfig={organizationConfig}
+										tone={getPaymentControlTone(payment)}
+										onPatch={onPatch}
+									/>
+								</QuickActionRow>
+							))}
+						</div>
+					) : null}
 					<div className="flex items-center gap-1.5">
 						<button
 							type="button"

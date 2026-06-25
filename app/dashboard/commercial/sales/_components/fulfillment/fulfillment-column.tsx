@@ -1,7 +1,8 @@
 "use client";
 
-import type { TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
+import type { TPatchSalesFulfillmentInput, TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
 import { cn } from "@/lib/utils";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { ATTENDANCE_COLUMN_META, type TBoardStatus } from "./config";
@@ -9,17 +10,21 @@ import { FulfillmentCard } from "./fulfillment-card";
 
 function DraggableCard({
 	card,
+	organizationConfig,
 	isPending,
 	awaitingConfirm,
 	onMove,
+	onPatch,
 	onConfirmDelivery,
 	onDeliverWithoutPayment,
 	onCancelConfirm,
 }: {
 	card: TSalesFulfillmentCard;
+	organizationConfig: TOrganizationConfiguration;
 	isPending: boolean;
 	awaitingConfirm: boolean;
 	onMove: (card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum) => void;
+	onPatch: (input: TPatchSalesFulfillmentInput) => void;
 	onConfirmDelivery: (card: TSalesFulfillmentCard) => void;
 	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
 	onCancelConfirm: () => void;
@@ -34,10 +39,12 @@ function DraggableCard({
 		<FulfillmentCard
 			ref={setNodeRef}
 			card={card}
+			organizationConfig={organizationConfig}
 			isPending={isPending}
 			isDragging={isDragging}
 			awaitingConfirm={awaitingConfirm}
 			onMove={(target) => onMove(card, target)}
+			onPatch={onPatch}
 			onConfirmDelivery={() => onConfirmDelivery(card)}
 			onDeliverWithoutPayment={() => onDeliverWithoutPayment(card)}
 			onCancelConfirm={onCancelConfirm}
@@ -51,18 +58,22 @@ function DraggableCard({
 export function FulfillmentColumn({
 	status,
 	cards,
+	organizationConfig,
 	pendingCardIds,
 	confirmCardId,
 	onMove,
+	onPatch,
 	onConfirmDelivery,
 	onDeliverWithoutPayment,
 	onCancelConfirm,
 }: {
 	status: TBoardStatus;
 	cards: TSalesFulfillmentCard[];
+	organizationConfig: TOrganizationConfiguration;
 	pendingCardIds: Set<string>;
 	confirmCardId: string | null;
 	onMove: (card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum) => void;
+	onPatch: (input: TPatchSalesFulfillmentInput) => void;
 	onConfirmDelivery: (card: TSalesFulfillmentCard) => void;
 	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
 	onCancelConfirm: () => void;
@@ -97,9 +108,11 @@ export function FulfillmentColumn({
 						<DraggableCard
 							key={card.id}
 							card={card}
+							organizationConfig={organizationConfig}
 							isPending={pendingCardIds.has(card.id)}
 							awaitingConfirm={confirmCardId === card.id}
 							onMove={onMove}
+							onPatch={onPatch}
 							onConfirmDelivery={onConfirmDelivery}
 							onDeliverWithoutPayment={onDeliverWithoutPayment}
 							onCancelConfirm={onCancelConfirm}

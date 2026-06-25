@@ -86,9 +86,6 @@ export async function processSaleAttendanceStatusChange(input: ProcessSaleAttend
 			if (settledTotal + pendingTotal < sale.valorTotal) throw new createHttpError.BadRequest("Os pagamentos registrados não cobrem o total da venda.");
 
 			for (const transaction of pendingTransactions) {
-				if (input.paymentMethod && transaction.metodo !== "A_DEFINIR" && transaction.metodo !== input.paymentMethod) {
-					throw new createHttpError.BadRequest("O método de pagamento informado difere da intenção registrada.");
-				}
 				await tx
 					.update(financialTransactions)
 					.set({

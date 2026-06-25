@@ -1,4 +1,4 @@
-import type { TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
+import type { TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum, TPaymentMethodEnum } from "@/schemas/enums";
 
 /**
  * Status financeiro e fiscal DERIVADOS de uma venda.
@@ -112,4 +112,146 @@ export function computeSaleFiscalStatus({ documents }: { documents: FiscalDocume
 		if (mapped.includes(status)) return status;
 	}
 	return "PENDENTE";
+}
+
+const NON_EDITABLE_PAYMENT_STATUSES = new Set(["CANCELADO", "ESTORNADO"]);
+
+export type SalePaymentTransactionInput = {
+	id: string;
+	lancamentoContabilId: string;
+	titulo?: string | null;
+	valor: number;
+	tipo?: string | null;
+	metodo: TPaymentMethodEnum;
+	parcela?: number | null;
+	totalParcelas?: number | null;
+	dataEfetivacao?: Date | string | null;
+	dataPrevisao?: Date | string | null;
+	provedorStatus?: string | null;
+};
+
+export type ClassifiedPayment = {
+	id: string;
+	metodo: TPaymentMethodEnum;
+	valor: number;
+	parcela: number | null;
+	totalParcelas: number | null;
+	dataEfetivacao: Date | string | null;
+	dataPrevisao: Date | string | null;
+	provedorStatus: string | null;
+	editavel: boolean;
+	motivoNaoEditavel: string | null;
+	grupoParcelasId: string | null;
+};
+
+export type PaymentClassification = {
+	todas: ClassifiedPayment[];
+	editaveis: ClassifiedPayment[];
+	efetivadas: ClassifiedPayment[];
+	gruposParcelas: Record<string, ClassifiedPayment[]>;
+	resumo: {
+		totalEditaveis: number;
+		totalPendentes: number;
+		totalEfetivadas: number;
+	};
+};
+
+export function toDateOrNull(value: Date | string | null | undefined): Date | null {
+	if (value == null) return null;
+	const parsed = value instanceof Date ? value : new Date(value);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function getPaymentNonEditableReason(transaction: SalePaymentTransactionInput): string | null {
+	if (transaction.tipo && transaction.tipo !== "ENTRADA") {
+		return "Somente recebimentos podem ser alterados aqui.";
+	}
+	if (toDateOrNull(transaction.dataEfetivacao) != null) {
+		return "Pagamento já recebido.";
+	}
+	if (NON_EDITABLE_PAYMENT_STATUSES.has(transaction.provedorStatus ?? "")) {
+		return "Transação cancelada ou estornada.";
+	}
+	if (transaction.metodo === "CASHBACK") {
+		return "Resgate de cashback não pode ser alterado aqui.";
+	}
+	return null;
+}
+
+export function isPaymentTransactionEditable(transaction: SalePaymentTransactionInput): boolean {
+	return getPaymentNonEditableReason(transaction) == null;
+}
+
+export function isPaymentOverdue(
+	payment: Pick<ClassifiedPayment, "dataEfetivacao" | "dataPrevisao" | "provedorStatus">,
+	now = new Date(),
+): boolean {
+	if (toDateOrNull(payment.dataEfetivacao) != null) return false;
+	if (NON_EDITABLE_PAYMENT_STATUSES.has(payment.provedorStatus ?? "")) return false;
+	const previsao = toDateOrNull(payment.dataPrevisao);
+	if (!previsao) return false;
+	return previsao.getTime() < now.getTime();
+}
+
+function resolveInstallmentGroupId(transaction: SalePaymentTransactionInput): string | null {
+	if (!transaction.totalParcelas || transaction.totalParcelas <= 1) return null;
+	return `${transaction.lancamentoContabilId}:${transaction.metodo}:${transaction.totalParcelas}`;
+}
+
+export function classifySalePaymentTransactions(transactions: SalePaymentTransactionInput[]): PaymentClassification {
+	const todas: ClassifiedPayment[] = transactions.map((transaction) => {
+		const motivoNaoEditavel = getPaymentNonEditableReason(transaction);
+		return {
+			id: transaction.id,
+			metodo: transaction.metodo,
+			valor: transaction.valor,
+			parcela: transaction.parcela ?? null,
+			totalParcelas: transaction.totalParcelas ?? null,
+			dataEfetivacao: toDateOrNull(transaction.dataEfetivacao),
+			dataPrevisao: toDateOrNull(transaction.dataPrevisao),
+			provedorStatus: transaction.provedorStatus ?? null,
+			editavel: motivoNaoEditavel == null,
+			motivoNaoEditavel,
+			grupoParcelasId: resolveInstallmentGroupId(transaction),
+		};
+	});
+
+	const editaveis = todas.filter((payment) => payment.editavel);
+	const efetivadas = todas.filter((payment) => payment.dataEfetivacao != null);
+	const pendentes = todas.filter(
+		(payment) => payment.dataEfetivacao == null && !NON_EDITABLE_PAYMENT_STATUSES.has(payment.provedorStatus ?? ""),
+	);
+
+	const gruposParcelas: Record<string, ClassifiedPayment[]> = {};
+	for (const payment of todas) {
+		if (!payment.grupoParcelasId) continue;
+		if (!gruposParcelas[payment.grupoParcelasId]) gruposParcelas[payment.grupoParcelasId] = [];
+		gruposParcelas[payment.grupoParcelasId].push(payment);
+	}
+
+	return {
+		todas,
+		editaveis,
+		efetivadas,
+		gruposParcelas,
+		resumo: {
+			totalEditaveis: editaveis.length,
+			totalPendentes: pendentes.length,
+			totalEfetivadas: efetivadas.length,
+		},
+	};
+}
+
+export function buildPaymentTransactionTitle(method: TPaymentMethodEnum, observacoes?: string | null) {
+	const base = `Pagamento via ${method}`;
+	if (!observacoes?.trim()) return `${base} - Venda`;
+	return `${base} - ${observacoes.trim()}`;
+}
+
+export function extractPaymentObservacoesFromTitle(titulo: string | null | undefined): string | null {
+	if (!titulo?.includes(" - ")) return null;
+	const parts = titulo.split(" - ").slice(1);
+	const joined = parts.join(" - ").trim();
+	if (!joined || joined === "Venda") return null;
+	return joined;
 }

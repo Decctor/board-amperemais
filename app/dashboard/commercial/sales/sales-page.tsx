@@ -67,7 +67,7 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 					<SalesHistoryView organization={organization} />
 				</TabsContent>
 				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
-					<FulfillmentBoard />
+					<FulfillmentBoard organizationConfig={organization.configuracao} />
 				</TabsContent>
 			</Tabs>
 		</div>

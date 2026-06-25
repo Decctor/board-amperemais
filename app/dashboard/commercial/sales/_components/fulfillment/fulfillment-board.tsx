@@ -1,13 +1,15 @@
 "use client";
 
-import type { TGetSalesFulfillmentOutput, TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
+import type { TGetSalesFulfillmentOutput, TPatchSalesFulfillmentInput, TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/lib/errors";
-import { updateSaleAttendanceStatus } from "@/lib/mutations/sales";
+import { patchSalesFulfillment, updateSaleAttendanceStatus } from "@/lib/mutations/sales";
 import { SALES_FULFILLMENT_QUERY_KEY, useSalesFulfillment } from "@/lib/queries/sales-fulfillment";
 import { isValidAttendanceTransition } from "@/lib/sales/sale-processing/attendance";
+import { cn } from "@/lib/utils";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import {
 	DndContext,
@@ -23,36 +25,30 @@ import {
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { ATTENDANCE_COLUMN_META, ATTENDANCE_STATUS_LABEL, BOARD_STATUSES, type TBoardStatus, transitionNeedsConfirmation } from "./config";
 import { FulfillmentCard } from "./fulfillment-card";
 import { FulfillmentColumn } from "./fulfillment-column";
 
 const KANBAN_SCROLL_CLASS = "scrollbar-subtle";
-
-/**
- * Altura máxima do board em desktop: desconta só o chrome *acima* dele
- * (padding do layout, AppHeader, abas). A barra "X pedidos" fica dentro e
- * o kanban usa flex-1 — evita somar ~100dvh de kanban + header da página.
- */
 const BOARD_DESKTOP_MAX_HEIGHT = "md:max-h-[calc(100dvh-10.5rem)] md:overflow-hidden";
 
 type FulfillmentData = TGetSalesFulfillmentOutput["data"];
 
+type FulfillmentBoardProps = {
+	organizationConfig: TOrganizationConfiguration;
+};
+
 const screenReaderInstructions: ScreenReaderInstructions = {
-	// O arrastar e por ponteiro/toque. Para teclado e leitores de tela, cada card tem um botao
-	// "Mover pedido" com as etapas validas, que e o caminho acessivel completo.
 	draggable: "Para mover um pedido pelo teclado, use o botão 'Mover pedido' em cada card e escolha a etapa de destino.",
 };
 
-export default function FulfillmentBoard() {
+export default function FulfillmentBoard({ organizationConfig }: FulfillmentBoardProps) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [pendingCardIds, setPendingCardIds] = useState<Set<string>>(new Set());
 	const [confirm, setConfirm] = useState<{ cardId: string; previousStatus: TSaleAttendanceStatusEnum } | null>(null);
 
-	// Pausa o auto-refresh enquanto ha movimento otimista em voo ou confirmacao aberta.
 	const paused = pendingCardIds.size > 0 || confirm !== null;
 	const { data, isLoading, isError, error, refetch, isRefetching } = useSalesFulfillment({ paused });
 	const queryClient = useQueryClient();
@@ -81,9 +77,77 @@ export default function FulfillmentBoard() {
 		);
 	}
 
-	// Optimistic controller: the card is already in the target column (moved in `initiateMove`).
-	// We fire the request and, on failure, roll back ONLY this card to its previous status, so a
-	// failure on one move never clobbers other cards moved concurrently.
+	function replaceCard(updatedCard: TSalesFulfillmentCard) {
+		queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
+			old ? { cards: old.cards.map((card) => (card.id === updatedCard.id ? updatedCard : card)) } : old,
+		);
+	}
+
+	const handlePatchCard = useCallback(
+		async (input: TPatchSalesFulfillmentInput) => {
+			const currentCard = cards.find((card) => card.id === input.id);
+			if (!currentCard) return;
+
+			setPendingCardIds((prev) => new Set(prev).add(input.id));
+
+			if (input.entrega) {
+				queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
+					old
+						? {
+								cards: old.cards.map((card) =>
+									card.id === input.id
+										? {
+												...card,
+												entregaModalidade: input.entrega!.modalidade,
+												comandaNumero:
+													input.entrega!.modalidade === "COMANDA" ? (input.entrega!.comandaNumero ?? null) : null,
+											}
+										: card,
+								),
+							}
+						: old,
+				);
+			}
+
+			if (input.pagamento) {
+				queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
+					old
+						? {
+								cards: old.cards.map((card) =>
+									card.id === input.id
+										? {
+												...card,
+												pagamentos: card.pagamentos.map((payment) =>
+													payment.id === input.pagamento!.transacaoId
+														? { ...payment, metodo: input.pagamento!.metodo }
+														: payment,
+												),
+											}
+										: card,
+								),
+							}
+						: old,
+				);
+			}
+
+			try {
+				const result = await patchSalesFulfillment(input);
+				replaceCard(result.data.card);
+				toast.success(result.message);
+			} catch (err) {
+				if (currentCard) replaceCard(currentCard);
+				toast.error(getErrorMessage(err));
+			} finally {
+				setPendingCardIds((prev) => {
+					const next = new Set(prev);
+					next.delete(input.id);
+					return next;
+				});
+			}
+		},
+		[cards, queryClient],
+	);
+
 	async function commitMove(
 		card: TSalesFulfillmentCard,
 		target: TSaleAttendanceStatusEnum,
@@ -99,6 +163,7 @@ export default function FulfillmentBoard() {
 				allowUnpaidDelivery: options?.allowUnpaidDelivery ?? false,
 			});
 			toast.success(`Pedido movido para ${ATTENDANCE_STATUS_LABEL[target]}.`);
+			await queryClient.invalidateQueries({ queryKey: SALES_FULFILLMENT_QUERY_KEY });
 		} catch (err) {
 			setCardStatus(card.id, previousStatus);
 			toast.error(getErrorMessage(err));
@@ -226,9 +291,11 @@ export default function FulfillmentBoard() {
 								key={status}
 								status={status}
 								cards={grouped[status]}
+								organizationConfig={organizationConfig}
 								pendingCardIds={pendingCardIds}
 								confirmCardId={confirm?.cardId ?? null}
 								onMove={initiateMove}
+								onPatch={handlePatchCard}
 								onConfirmDelivery={handleConfirmDelivery}
 								onDeliverWithoutPayment={handleDeliverWithoutPayment}
 								onCancelConfirm={handleCancelConfirm}
@@ -236,7 +303,9 @@ export default function FulfillmentBoard() {
 						))}
 					</div>
 
-					<DragOverlay dropAnimation={null}>{activeCard ? <FulfillmentCard card={activeCard} isOverlay /> : null}</DragOverlay>
+					<DragOverlay dropAnimation={null}>
+						{activeCard ? <FulfillmentCard card={activeCard} organizationConfig={organizationConfig} isOverlay /> : null}
+					</DragOverlay>
 				</DndContext>
 			)}
 		</div>
