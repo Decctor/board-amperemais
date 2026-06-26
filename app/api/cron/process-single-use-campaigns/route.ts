@@ -10,7 +10,7 @@ import { db } from "@/services/drizzle";
 import { campaigns, interactions } from "@/services/drizzle/schema";
 import type { TCampaignEntity, TInteractionEntity } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const IMMEDIATE_PROCESSING_CONCURRENCY = 5;
@@ -174,6 +174,25 @@ async function enqueueCampaignChunk({
 	});
 }
 
+async function countPersistedInteractionsForCampaignChunk({
+	organizationId,
+	campaignId,
+	interactionIds,
+}: {
+	organizationId: string;
+	campaignId: string;
+	interactionIds: string[];
+}) {
+	if (interactionIds.length === 0) return 0;
+
+	const [row] = await db
+		.select({ total: count(interactions.id) })
+		.from(interactions)
+		.where(and(eq(interactions.organizacaoId, organizationId), eq(interactions.campanhaId, campaignId), inArray(interactions.id, interactionIds)));
+
+	return Number(row?.total ?? 0);
+}
+
 async function processSingleUseCampaign({
 	organizationId,
 	campaign,
@@ -257,6 +276,30 @@ async function processSingleUseCampaign({
 
 		summary.interactionsInserted += inserted.length;
 		campaignEnqueuedCount += inserted.length;
+
+		if (inserted.length > 0) {
+			const persistedInteractionsCount = await countPersistedInteractionsForCampaignChunk({
+				organizationId,
+				campaignId: campaign.id,
+				interactionIds: inserted.map((row) => row.id),
+			});
+
+			console.log(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] [SINGLE_USE_CAMPAIGNS] Enqueue chunk persisted check`, {
+				requestedClients: chunk.length,
+				insertedInteractions: inserted.length,
+				persistedInteractions: persistedInteractionsCount,
+				cashbackActive,
+				sampleInteractionIds: inserted.slice(0, 3).map((row) => row.id),
+			});
+
+			if (persistedInteractionsCount !== inserted.length) {
+				console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] [SINGLE_USE_CAMPAIGNS] Enqueue persistence mismatch`, {
+					insertedInteractions: inserted.length,
+					persistedInteractions: persistedInteractionsCount,
+					sampleInteractionIds: inserted.slice(0, 5).map((row) => row.id),
+				});
+			}
+		}
 
 		if (!hasDeliveryConfig) {
 			summary.immediateEligibleWithoutDeliveryConfig += inserted.length;

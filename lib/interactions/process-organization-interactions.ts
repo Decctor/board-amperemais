@@ -122,6 +122,16 @@ export async function processOrganizationInteractionsBatch({
 		});
 	}
 
+	if (claimResult.missingInteractionIds.length > 0) {
+		const sampleMissingInteractionIds = claimResult.missingInteractionIds.slice(0, 5);
+		console.warn(`[ORG: ${organizationId}] [WARN] [PROCESS_ORGANIZATION_INTERACTIONS_BATCH] Missing interactions during reservation`, {
+			missingInteractions: claimResult.missingInteractionIds.length,
+			totalInteractions: deduplicatedInteractions.length,
+			sampleMissingInteractionIds,
+			sampleMissingInteractionOrganizations: sampleMissingInteractionIds.map((interactionId) => interactionsById.get(interactionId)?.organizationId ?? null),
+		});
+	}
+
 	const claimedInteractions = claimResult.claimedInteractionIds
 		.map((interactionId) => interactionsById.get(interactionId))
 		.filter((interaction): interaction is ImmediateProcessingData => !!interaction);
