@@ -85,8 +85,6 @@ export const sendEmailWithResend = async <T extends EmailTemplate>(
 			subject: subject,
 			react: templateComponent,
 		});
-		console.log("RESPONSE RESEND", data);
-		console.log("ERROR RESEND", error);
 		if (error) throw new Error(error.message);
 		return { success: true, data };
 	} catch (error) {
