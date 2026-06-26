@@ -1,6 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { emitFiscalDocument, getFiscalDocumentById, listFiscalDocumentEvents, listFiscalDocuments } from "@/lib/fiscal/documents";
+import {
+	emitFiscalDocument,
+	getFiscalDocumentDetailsById,
+	listFiscalDocumentEvents,
+	listFiscalDocuments,
+} from "@/lib/fiscal/documents";
 import { FiscalDocumentTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
@@ -34,7 +39,7 @@ async function getFiscalDocuments({ input }: { input: TGetFiscalDocumentsInput }
 	if (!userHasFiscalViewPermission) throw new createHttpError.Forbidden("Oops, você não possui permissão para visualizar o módulo fiscal.");
 
 	if (input.documentId) {
-		const document = await getFiscalDocumentById({ documentId: input.documentId, organizationId: orgId });
+		const document = await getFiscalDocumentDetailsById({ documentId: input.documentId, organizationId: orgId });
 		if (!document || document.organizacaoId !== orgId) throw new createHttpError.NotFound("Documento fiscal não encontrado.");
 		const events = await listFiscalDocumentEvents({ documentId: document.id, organizationId: orgId });
 		return {

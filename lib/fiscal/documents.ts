@@ -48,6 +48,42 @@ export async function getFiscalDocumentById({ documentId, organizationId }: GetF
 		where: (fields, operators) => operators.and(operators.eq(fields.id, documentId), operators.eq(fields.organizacaoId, organizationId)),
 	});
 }
+
+export async function getFiscalDocumentDetailsById({ documentId, organizationId }: GetFiscalDocumentByIdParams) {
+	return db.query.fiscalOutboundDocuments.findFirst({
+		where: (fields, operators) => operators.and(operators.eq(fields.id, documentId), operators.eq(fields.organizacaoId, organizationId)),
+		with: {
+			venda: {
+				columns: {
+					id: true,
+					valorTotal: true,
+					dataVenda: true,
+					statusVenda: true,
+					canal: true,
+				},
+				with: {
+					cliente: {
+						columns: {
+							id: true,
+							nome: true,
+							cpfCnpj: true,
+							telefone: true,
+						},
+					},
+					itens: true,
+				},
+			},
+			documentoOrigem: {
+				columns: {
+					id: true,
+					numero: true,
+					tipo: true,
+					chaveAcesso: true,
+				},
+			},
+		},
+	});
+}
 export async function listFiscalDocuments({
 	organizacaoId,
 	page = 1,
@@ -77,7 +113,14 @@ export async function listFiscalDocuments({
 		db.query.fiscalOutboundDocuments.findMany({
 			where: whereClause,
 			with: {
-				venda: { columns: { id: true, valorTotal: true, dataVenda: true, statusVenda: true } },
+				venda: {
+					columns: { id: true, valorTotal: true, dataVenda: true, statusVenda: true },
+					with: {
+						cliente: {
+							columns: { nome: true },
+						},
+					},
+				},
 			},
 			orderBy: (fields, operators) => operators.desc(fields.dataInsercao),
 			offset,
