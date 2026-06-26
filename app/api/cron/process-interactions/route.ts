@@ -12,7 +12,7 @@ import type { ImmediateProcessingData } from "@/lib/interactions/types";
 import { db } from "@/services/drizzle";
 import { interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const INTERACTIONS_PAGE_SIZE = 250;
@@ -88,8 +88,7 @@ async function fetchPendingInteractionsPage({
 				inArray(fields.agendamentoBlocoReferencia, arrivedTimeBlocks),
 				isNotNull(fields.campanhaId),
 				isNull(fields.dataExecucao),
-				sql`${fields.statusEnvio} IS DISTINCT FROM 'BLOQUEADA'`,
-				sql`${fields.statusEnvio} IS DISTINCT FROM 'FALHOU'`,
+				isNull(fields.statusEnvio),
 			];
 
 			if (excludedIds.length > 0) {

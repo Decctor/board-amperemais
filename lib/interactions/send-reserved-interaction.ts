@@ -212,6 +212,7 @@ async function persistInteractionDeliveryState({
 		.set({
 			statusEnvio,
 			erroEnvio,
+			...(statusEnvio === "ENVIADO" ? { dataEnvio: new Date() } : {}),
 			metadados: {
 				...baseMetadata,
 				...(clientMessageId ? { clientMessageId } : {}),
