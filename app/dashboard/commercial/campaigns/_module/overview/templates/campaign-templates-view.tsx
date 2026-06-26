@@ -7,5 +7,5 @@ type CampaignTemplatesViewProps = {
 };
 
 export function CampaignTemplatesView({ organizationName }: CampaignTemplatesViewProps) {
-	return <CommunicationTemplatesPage organizationName={organizationName} />;
+	return <CommunicationTemplatesPage organizationName={organizationName} showNewTemplateAction={false} />;
 }

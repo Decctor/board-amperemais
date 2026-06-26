@@ -26,6 +26,7 @@ import { createMessageTemplatePhone, syncMessageTemplates } from "@/lib/mutation
 import { toast } from "sonner";
 type CommunicationTemplatesPageProps = {
 	organizationName: string;
+	showNewTemplateAction?: boolean;
 };
 
 function getWhatsappConnectionPhones(whatsappConnections: TGetWhatsappConnectionsOutput["data"]) {
@@ -39,7 +40,10 @@ function getWhatsappConnectionPhones(whatsappConnections: TGetWhatsappConnection
 	);
 }
 type TGetWhatsappConnectionPhones = ReturnType<typeof getWhatsappConnectionPhones>;
-export default function CommunicationTemplatesPage({ organizationName: _organizationName }: CommunicationTemplatesPageProps) {
+export default function CommunicationTemplatesPage({
+	organizationName: _organizationName,
+	showNewTemplateAction = true,
+}: CommunicationTemplatesPageProps) {
 	const queryClient = useQueryClient();
 
 	const { data: whatsappConnections } = useWhatsappConnections();
@@ -83,37 +87,39 @@ export default function CommunicationTemplatesPage({ organizationName: _organiza
 		onSettled: handleOnSettled,
 	});
 	return (
-		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex flex-col gap-3">
-				<div className="w-full flex items-center justify-end gap-2">
-					{hasMetaCloudApiConnection ? (
-						<LoadingButton
-							size="sm"
-							variant="secondary"
-							className="flex items-center gap-2"
-							onClick={() => syncTemplatesMutation({})}
-							loading={isSyncingTemplates}
-							disabled={isSyncingTemplates}
-						>
-							<RefreshCw className="w-4 h-4 min-w-4 min-h-4" />
-							SINCRONIZAR TEMPLATES
-						</LoadingButton>
-					) : null}
-					<Button size="sm" asChild>
-						<Link href="/dashboard/communication/builder" className="flex items-center gap-2">
-							<Plus className="w-4 h-4 min-w-4 min-h-4" />
-							NOVO TEMPLATE
-						</Link>
-					</Button>
-				</div>
-				<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
-					<Input
-						value={params.search ?? ""}
-						placeholder="Pesquisar template..."
-						onChange={(e) => updateParams({ search: e.target.value })}
-						className="grow rounded-xl"
-					/>
-				</div>
+		<div className="flex h-full w-full flex-col gap-3">
+			<div className="flex w-full flex-col gap-3">
+				{hasMetaCloudApiConnection || showNewTemplateAction ? (
+					<div className="flex w-full items-center justify-end gap-2">
+						{hasMetaCloudApiConnection ? (
+							<LoadingButton
+								size="sm"
+								variant="secondary"
+								className="flex items-center gap-2"
+								onClick={() => syncTemplatesMutation({})}
+								loading={isSyncingTemplates}
+								disabled={isSyncingTemplates}
+							>
+								<RefreshCw className="h-4 w-4 min-h-4 min-w-4" />
+								SINCRONIZAR TEMPLATES
+							</LoadingButton>
+						) : null}
+						{showNewTemplateAction ? (
+							<Button size="sm" asChild>
+								<Link href="/dashboard/communication/builder" className="flex items-center gap-2">
+									<Plus className="h-4 w-4 min-h-4 min-w-4" />
+									NOVO TEMPLATE
+								</Link>
+							</Button>
+						) : null}
+					</div>
+				) : null}
+				<Input
+					value={params.search ?? ""}
+					placeholder="Pesquisar template..."
+					onChange={(e) => updateParams({ search: e.target.value })}
+					className="w-full rounded-xl"
+				/>
 
 				<GeneralPaginationComponent
 					activePage={params.page ?? 1}

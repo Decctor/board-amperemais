@@ -34,6 +34,7 @@ import {
 	Package,
 	Phone,
 	Receipt,
+	ShoppingCart,
 	Tag,
 	Trash,
 	TrendingDown,
@@ -92,21 +93,20 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales }: SaleByIdPag
 			</div>
 
 			{/* Sale Overview Section */}
-			<SaleOverviewSection sale={sale} />
+			<div className="w-full flex flex-col lg:flex-row gap-4 lg:items-stretch">
+				<div className="w-full lg:w-1/2 flex">
+					<SaleOverviewSection sale={sale} />
+				</div>
+				<div className="w-full lg:w-1/2 flex">
+					<ClientSection client={sale.cliente} />
+				</div>
+			</div>
 			<div className="w-full flex flex-col lg:flex-row gap-4 lg:items-stretch">
 				<div className="w-full lg:w-1/2 flex">
 					<CampaignAttributionSection attribution={sale.atribuicaoCampanhaConversao} saleDate={sale.dataVenda} />
 				</div>
 				<div className="w-full lg:w-1/2 flex">
 					<CashbackTransactionsSection transactions={sale.transacoesCashback} />
-				</div>
-			</div>
-			<div className="w-full flex flex-col lg:flex-row gap-4 lg:items-stretch">
-				<div className="w-full lg:w-1/2 flex">
-					<ClientSection client={sale.cliente} />
-				</div>
-				<div className="w-full lg:w-1/2 flex">
-					<ParticipantsSection vendedor={sale.vendedor} parceiro={sale.parceiro} />
 				</div>
 			</div>
 			{/* Sale Items Section */}
@@ -116,6 +116,8 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales }: SaleByIdPag
 }
 
 function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
+	const sellerName = sale.vendedor?.nome ?? "Não atribuído";
+	const partnerName = sale.parceiro?.nome ?? "Não atribuído";
 	return (
 		<SectionWrapper title="VISÃO GERAL DA VENDA" icon={<Receipt className="w-4 h-4 min-w-4 min-h-4" />}>
 			<div className="w-full flex flex-col gap-2">
@@ -155,27 +157,23 @@ function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 				</div>
 			</div>
 			<div className="w-full flex flex-col gap-2">
-				<h1 className="text-xs leading-none tracking-tight">INFORMAÇÕES DO DOCUMENTO</h1>
+				<h1 className="text-xs leading-none tracking-tight">PARTICIPANTES</h1>
 				<div className="w-full flex flex-col gap-1.5">
-					<div className="flex items-center gap-1.5">
-						<FileText className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DOCUMENTO</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{sale.documento}</h3>
+					<div className="w-full flex items-center gap-1.5">
+						<Avatar className="w-5 h-5 min-w-5 min-h-5">
+							<AvatarImage src={sale.vendedor?.avatarUrl ?? undefined} alt={sellerName} />
+							<AvatarFallback className="text-xs uppercase">{formatNameAsInitials(sellerName)}</AvatarFallback>
+						</Avatar>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VENDEDOR</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{sellerName}</h3>
 					</div>
-					<div className="flex items-center gap-1.5">
-						<FileText className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">MODELO</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{sale.modelo || "N/A"}</h3>
-					</div>
-					<div className="flex items-center gap-1.5">
-						<FileText className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">SÉRIE</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{sale.serie || "N/A"}</h3>
-					</div>
-					<div className="flex items-start gap-1.5">
-						<FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">CHAVE</h3>
-						<h3 className="text-sm font-semibold tracking-tight break-all">{sale.chave || "N/A"}</h3>
+					<div className="w-full flex items-center gap-1.5">
+						<Avatar className="w-5 h-5 min-w-5 min-h-5">
+							<AvatarImage src={sale.parceiro?.avatarUrl ?? undefined} alt={partnerName} />
+							<AvatarFallback className="text-xs uppercase">{formatNameAsInitials(partnerName)}</AvatarFallback>
+						</Avatar>
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">PARCEIRO</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{partnerName}</h3>
 					</div>
 				</div>
 			</div>
@@ -276,61 +274,16 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 						{[client.localizacaoCidade, client.localizacaoEstado].filter(Boolean).join(", ") || "NÃO DEFINIDO"}
 					</h3>
 				</div>
-			</div>
-		</SectionWrapper>
-	);
-}
-
-function ParticipantsSection({ vendedor, parceiro }: { vendedor: TGetSalesOutputById["vendedor"]; parceiro: TGetSalesOutputById["parceiro"] }) {
-	return (
-		<SectionWrapper title="PARTICIPANTES" icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}>
-			<div className="w-full flex flex-col gap-4">
-				{vendedor ? (
-					<div className="flex items-center gap-3">
-						<Avatar className="w-10 h-10">
-							<AvatarImage src={vendedor.avatarUrl ?? undefined} alt={vendedor.nome} />
-							<AvatarFallback>{formatNameAsInitials(vendedor.nome)}</AvatarFallback>
-						</Avatar>
-						<div className="flex flex-col">
-							<span className="text-[0.65rem] text-muted-foreground font-medium uppercase leading-none">Vendedor</span>
-							<span className="text-sm font-bold leading-tight mt-0.5">{vendedor.nome}</span>
-						</div>
-					</div>
-				) : (
-					<div className="flex items-center gap-3">
-						<Avatar className="w-10 h-10">
-							<AvatarImage src={undefined} alt={"Vendedor não atribuído"} />
-							<AvatarFallback>N/A</AvatarFallback>
-						</Avatar>
-						<div className="flex flex-col">
-							<span className="text-[0.65rem] text-muted-foreground font-medium uppercase leading-none">Vendedor</span>
-							<span className="text-sm font-bold leading-tight mt-0.5">VENDEDOR NÃO ATRIBUÍDO</span>
-						</div>
-					</div>
-				)}
-				{parceiro ? (
-					<div className="flex items-center gap-3">
-						<Avatar className="w-10 h-10">
-							<AvatarImage src={parceiro.avatarUrl ?? undefined} alt={parceiro.nome} />
-							<AvatarFallback>{formatNameAsInitials(parceiro.nome)}</AvatarFallback>
-						</Avatar>
-						<div className="flex flex-col">
-							<span className="text-[0.65rem] text-muted-foreground font-medium uppercase leading-none">Parceiro</span>
-							<span className="text-sm font-bold leading-tight mt-0.5">{parceiro.nome}</span>
-						</div>
-					</div>
-				) : (
-					<div className="flex items-center gap-3">
-						<Avatar className="w-10 h-10">
-							<AvatarImage src={undefined} alt={"Parceiro não atribuído"} />
-							<AvatarFallback>N/A</AvatarFallback>
-						</Avatar>
-						<div className="flex flex-col">
-							<span className="text-[0.65rem] text-muted-foreground font-medium uppercase leading-none">Parceiro</span>
-							<span className="text-sm font-bold leading-tight mt-0.5">PARCEIRO NÃO ATRIBUÍDO</span>
-						</div>
-					</div>
-				)}
+				<div className="flex items-center gap-1.5">
+					<BadgeDollarSign className="w-4 h-4 text-muted-foreground" />
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR TOTAL COMPRO</h3>
+					<h3 className="text-sm font-semibold tracking-tight">{formatToMoney(client.metadataValorTotalCompras || 0)}</h3>
+				</div>
+				<div className="flex items-center gap-1.5">
+					<ShoppingCart className="w-4 h-4 text-muted-foreground" />
+					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TOTAL DE COMPRAS</h3>
+					<h3 className="text-sm font-semibold tracking-tight">{client.metadataTotalCompras || 0}</h3>
+				</div>
 			</div>
 		</SectionWrapper>
 	);
@@ -690,7 +643,9 @@ function SaleDeleteButton({ sale, userCanDeleteSales }: { sale: TGetSalesOutputB
 					<div className="flex flex-col gap-2 text-sm text-muted-foreground">
 						<p>Antes de excluir, o sistema validará se não há efeitos fiscais, contábeis, de estoque ou atendimento que impedem a exclusão.</p>
 						{saleIsConfirmed ? <p className="font-medium text-destructive">Vendas confirmadas devem ser canceladas pelo fluxo de cancelamento.</p> : null}
-						{hasFiscalDocuments ? <p className="font-medium text-destructive">Esta venda possui documento fiscal vinculado e não pode ser excluída.</p> : null}
+						{hasFiscalDocuments ? (
+							<p className="font-medium text-destructive">Esta venda possui documento fiscal vinculado e não pode ser excluída.</p>
+						) : null}
 						{!userCanDeleteSales ? <p className="font-medium text-destructive">Você não possui permissão para excluir vendas.</p> : null}
 					</div>
 

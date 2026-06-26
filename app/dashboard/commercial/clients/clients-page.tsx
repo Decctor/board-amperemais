@@ -14,7 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary, formatInteractiveSortFieldSummary, isInteractiveSortActive } from "@/components/ui/interactive-filter-formatting";
+import {
+	formatInteractiveDateRangeSummary,
+	formatInteractiveOptionSummary,
+	formatInteractiveSortFieldSummary,
+	isInteractiveSortActive,
+} from "@/components/ui/interactive-filter-formatting";
 import { useClients, useClientsOverallStats } from "@/lib/queries/clients";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
@@ -36,6 +41,7 @@ import {
 	UserPlus,
 	UserRoundX,
 	Users,
+	Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
@@ -46,6 +52,7 @@ import { RFMLabels } from "@/utils/rfm";
 import ControlClient from "@/components/Modals/Clients/ControlClient";
 import { Pencil } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import NewClient from "@/components/Modals/Clients/NewClient";
 type ClientsPageProps = {
 	user: TAuthUserSession["user"];
 };
@@ -77,6 +84,7 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 
 function ClientsDatabaseView() {
 	const queryClient = useQueryClient();
+	const [newClientModalIsOpen, setNewClientModalIsOpen] = useState<boolean>(false);
 	const [editingClientId, setEditingClientId] = useState<string | null>(null);
 	const {
 		data: clientsResult,
@@ -109,12 +117,18 @@ function ClientsDatabaseView() {
 					onChange={(e) => updateFilters({ search: e.target.value })}
 					className="grow rounded-xl"
 				/>
-				<Button variant={"ghost"} className="flex items-center gap-2" size="sm" asChild>
-					<Link href="/dashboard/commercial/clients/bulk-insert">
-						<FileSpreadsheet className="w-4 h-4 min-w-4 min-h-4" />
-						IMPORTAR CLIENTES
-					</Link>
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button variant={"ghost"} className="flex items-center gap-2" size="sm" asChild>
+						<Link href="/dashboard/commercial/clients/bulk-insert">
+							<FileSpreadsheet className="w-4 h-4 min-w-4 min-h-4" />
+							IMPORTAR CLIENTES
+						</Link>
+					</Button>
+					<Button className="flex items-center gap-2" size="sm" onClick={() => setNewClientModalIsOpen(true)}>
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						NOVO CLIENTE
+					</Button>
+				</div>
 			</div>
 			<GeneralPaginationComponent
 				activePage={filters.page}
@@ -143,6 +157,9 @@ function ClientsDatabaseView() {
 						onSettled: handleOnSettled,
 					}}
 				/>
+			) : null}
+			{newClientModalIsOpen ? (
+				<NewClient closeModal={() => setNewClientModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 		</div>
 	);

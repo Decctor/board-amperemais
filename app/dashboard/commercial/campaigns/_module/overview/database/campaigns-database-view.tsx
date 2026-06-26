@@ -33,7 +33,6 @@ import {
 	MessageCircle,
 	MousePointerClick,
 	PencilIcon,
-	Plus,
 	Send,
 	SparklesIcon,
 	TrendingUp,
@@ -237,20 +236,12 @@ export function CampaignsDatabaseView() {
 	});
 	return (
 		<div className="w-full flex flex-col gap-3">
-			<div className="w-full flex items-center justify-end gap-2">
-				<Button className="flex items-center gap-2" size="sm" asChild>
-					<Link href="/dashboard/commercial/campaigns/new">
-						<Plus className="w-4 h-4 min-w-4 min-h-4" />
-						NOVA CAMPANHA
-					</Link>
-				</Button>
-			</div>
-			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
+			<div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
 				<Input
 					value={filters.search ?? ""}
 					placeholder="Pesquisar campanha..."
 					onChange={(e) => updateFilters({ search: e.target.value })}
-					className="grow rounded-xl"
+					className="w-full grow rounded-xl lg:min-w-0"
 				/>
 
 				<DateIntervalInput

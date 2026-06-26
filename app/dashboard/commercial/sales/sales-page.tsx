@@ -2,6 +2,7 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
+import { ActionToolbar } from "@/components/ui/action-toolbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -48,23 +49,37 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
 
 	// Organizações sem o módulo de ERP não veem a interface de abas: só o histórico.
-	if (!orgHasERPAccess) return <SalesHistoryView organization={organization} />;
+	if (!orgHasERPAccess) {
+		return (
+			<div className="flex h-full w-full flex-col gap-3">
+				<div className="flex items-center justify-end">
+					<SalesModuleActions orgHasERPAccess={false} />
+				</div>
+				<SalesHistoryView />
+			</div>
+		);
+	}
 
 	return (
-		<div className="w-full h-full flex flex-col gap-3">
-			<Tabs defaultValue="historico" className="w-full h-full flex flex-col">
-				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
-					<TabsTrigger value="historico" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
-						<ReceiptText className="w-4 h-4 min-w-4 min-h-4" />
-						Histórico
-					</TabsTrigger>
-					<TabsTrigger value="atendimento" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
-						<LayoutGrid className="w-4 h-4 min-w-4 min-h-4" />
-						Atendimento
-					</TabsTrigger>
-				</TabsList>
-				<TabsContent value="historico" className="flex flex-col gap-3 mt-3">
-					<SalesHistoryView organization={organization} />
+		<div className="flex h-full w-full flex-col gap-3">
+			<Tabs defaultValue="historico" className="flex h-full w-full flex-col">
+				<div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+					<TabsList className="h-fit w-fit max-w-full justify-self-start">
+						<TabsTrigger value="historico" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+							<ReceiptText className="h-4 w-4 min-h-4 min-w-4" />
+							Histórico
+						</TabsTrigger>
+						<TabsTrigger value="atendimento" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+							<LayoutGrid className="h-4 w-4 min-h-4 min-w-4" />
+							Atendimento
+						</TabsTrigger>
+					</TabsList>
+					<div className="justify-self-end">
+						<SalesModuleActions orgHasERPAccess />
+					</div>
+				</div>
+				<TabsContent value="historico" className="mt-3 flex flex-col gap-3">
+					<SalesHistoryView />
 				</TabsContent>
 				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
 					<FulfillmentBoard organizationConfig={organization.configuracao} />
@@ -74,8 +89,22 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 	);
 }
 
-function SalesHistoryView({ organization }: { organization: SalesPageProps["organization"] }) {
-	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
+function SalesModuleActions({ orgHasERPAccess }: { orgHasERPAccess: boolean }) {
+	return (
+		<ActionToolbar>
+			<ActionToolbar.Action asChild icon={FileSpreadsheet}>
+				<Link href="/dashboard/commercial/sales/bulk-insert">IMPORTAR VENDAS</Link>
+			</ActionToolbar.Action>
+			{orgHasERPAccess ? (
+				<ActionToolbar.Primary asChild icon={Plus}>
+					<Link href="/dashboard/commercial/sales/new-sale">NOVA VENDA</Link>
+				</ActionToolbar.Primary>
+			) : null}
+		</ActionToolbar>
+	);
+}
+
+function SalesHistoryView() {
 	const {
 		data: salesResult,
 		isLoading,
@@ -102,29 +131,13 @@ function SalesHistoryView({ organization }: { organization: SalesPageProps["orga
 	const totalPages = salesResult?.totalPages;
 
 	return (
-		<div className="w-full h-full flex flex-col gap-3">
-			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">
-				<Input
-					value={params.search ?? ""}
-					placeholder="Pesquisar venda (nome do cliente)..."
-					onChange={(e) => updateParams({ search: e.target.value })}
-					className="grow rounded-xl"
-				/>
-				<Button variant={"ghost"} className="flex items-center gap-2" size="sm" asChild>
-					<Link href="/dashboard/commercial/sales/bulk-insert">
-						<FileSpreadsheet className="w-4 h-4 min-w-4 min-h-4" />
-						IMPORTAR VENDAS
-					</Link>
-				</Button>
-				{orgHasERPAccess ? (
-					<Button className="flex items-center gap-2" size="sm" asChild>
-						<Link href="/dashboard/commercial/sales/new-sale">
-							<Plus className="w-4 h-4 min-w-4 min-h-4" />
-							NOVA VENDA
-						</Link>
-					</Button>
-				) : null}
-			</div>
+		<div className="flex h-full w-full flex-col gap-3">
+			<Input
+				value={params.search ?? ""}
+				placeholder="Pesquisar venda (nome do cliente)..."
+				onChange={(e) => updateParams({ search: e.target.value })}
+				className="w-full rounded-xl"
+			/>
 			<SalesInlineFilters filters={params} updateFilters={updateParams} />
 
 			<GeneralPaginationComponent

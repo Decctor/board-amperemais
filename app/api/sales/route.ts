@@ -203,6 +203,8 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 						localizacaoLogradouro: true,
 						localizacaoNumero: true,
 						localizacaoComplemento: true,
+						metadataValorTotalCompras: true,
+						metadataTotalCompras: true,
 					},
 				},
 				vendedor: {
