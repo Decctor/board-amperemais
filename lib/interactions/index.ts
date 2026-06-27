@@ -2,6 +2,15 @@ export { processSingleInteractionImmediately, delay } from "./process-single-int
 export { buildContextVariablesMap, sendReservedInteraction } from "./send-reserved-interaction";
 export { processOrganizationInteractionsBatch } from "./process-organization-interactions";
 export { processMultipleInteractions } from "./process-multiple-interactions";
+export {
+	markInteractionBlocked,
+	markInteractionDelivered,
+	markInteractionFailed,
+	markInteractionQueued,
+	markInteractionRead,
+	markInteractionSent,
+	updateInteractionDeliveryState,
+} from "./delivery-state";
 export type {
 	ImmediateProcessingData,
 	ProcessSingleInteractionResult,

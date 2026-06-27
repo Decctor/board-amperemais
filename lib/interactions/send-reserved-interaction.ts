@@ -12,8 +12,9 @@ import type { TInteractionContextMetadados, TMessageTemplateVariables } from "@/
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { chatMessages, chats, interactions } from "@/services/drizzle/schema";
-import { and, eq } from "drizzle-orm";
+import { chatMessages, chats } from "@/services/drizzle/schema";
+import { eq } from "drizzle-orm";
+import { markInteractionBlocked, markInteractionFailed, updateInteractionDeliveryState } from "./delivery-state";
 import type { ImmediateProcessingData, TSendReservedInteractionResult } from "./types";
 
 export type TChatPromiseCache = Map<string, Promise<string | null>>;
@@ -60,13 +61,11 @@ async function failInteractionSend({
 		await db.update(chatMessages).set({ whatsappMessageStatus: "FALHOU" }).where(eq(chatMessages.id, insertedChatMessageId));
 	}
 
-	await db
-		.update(interactions)
-		.set({
-			statusEnvio: "FALHOU",
-			erroEnvio: errorMessage,
-		})
-		.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
+	await markInteractionFailed({
+		interactionId,
+		organizationId,
+		erroEnvio: errorMessage,
+	});
 }
 
 async function blockInteractionSend({
@@ -78,13 +77,11 @@ async function blockInteractionSend({
 	organizationId: string;
 	errorMessage: string;
 }) {
-	await db
-		.update(interactions)
-		.set({
-			statusEnvio: "BLOQUEADA",
-			erroEnvio: errorMessage,
-		})
-		.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
+	await markInteractionBlocked({
+		interactionId,
+		organizationId,
+		erroEnvio: errorMessage,
+	});
 }
 
 async function resolveOrganizationMessagingContext(organizationId: string) {
@@ -166,14 +163,9 @@ async function getOrCreateChatId({
 	}
 }
 
-function getInteractionMetadata(metadados: unknown) {
-	return metadados && typeof metadados === "object" && !Array.isArray(metadados) ? (metadados as Record<string, unknown>) : {};
-}
-
 async function persistInteractionDeliveryState({
 	interactionId,
 	organizationId,
-	baseMetadata,
 	statusEnvio,
 	erroEnvio,
 	chatMessageId,
@@ -191,7 +183,6 @@ async function persistInteractionDeliveryState({
 }: {
 	interactionId: string;
 	organizationId: string;
-	baseMetadata: Record<string, unknown>;
 	statusEnvio: "BLOQUEADA" | "FALHOU" | "PENDENTE" | "ENVIADO";
 	erroEnvio: string | null;
 	chatMessageId?: string | null;
@@ -207,30 +198,27 @@ async function persistInteractionDeliveryState({
 	whatsappStatus?: string | null;
 	emailStatus?: string | null;
 }) {
-	await db
-		.update(interactions)
-		.set({
-			statusEnvio,
-			erroEnvio,
-			...(statusEnvio === "ENVIADO" ? { dataEnvio: new Date() } : {}),
-			metadados: {
-				...baseMetadata,
-				...(clientMessageId ? { clientMessageId } : {}),
-				...(jobId ? { jobId } : {}),
-				...(chatMessageId ? { chatMessageId } : {}),
-				...(whatsappMessageId ? { whatsappMessageId } : {}),
-				...(emailMessageId ? { emailMessageId } : {}),
-				...(whatsappStatus ? { whatsappStatus } : {}),
-				...(emailStatus ? { emailStatus } : {}),
-				whatsappTemplateId: messageTemplateId,
-				messageTemplateId,
-				channelsAttempted,
-				channelsSkipped,
-				channelsSent,
-				channelErrors,
-			},
-		})
-		.where(and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)));
+	await updateInteractionDeliveryState({
+		interactionId,
+		organizationId,
+		statusEnvio,
+		erroEnvio,
+		metadataPatch: {
+			...(clientMessageId ? { clientMessageId } : {}),
+			...(jobId ? { jobId } : {}),
+			...(chatMessageId ? { chatMessageId } : {}),
+			...(whatsappMessageId ? { whatsappMessageId } : {}),
+			...(emailMessageId ? { emailMessageId } : {}),
+			...(whatsappStatus ? { whatsappStatus } : {}),
+			...(emailStatus ? { emailStatus } : {}),
+			whatsappTemplateId: messageTemplateId,
+			messageTemplateId,
+			channelsAttempted,
+			channelsSkipped,
+			channelsSent,
+			channelErrors,
+		},
+	});
 }
 
 function buildWhatsappPlainContent({
@@ -262,11 +250,11 @@ export async function sendReservedInteraction(
 	try {
 		const interaction = await db.query.interactions.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, interactionId), eq(fields.organizacaoId, organizationId)),
-			columns: { id: true, metadados: true },
+			columns: { id: true },
 		});
 
 		if (!interaction) {
-			return { success: false, status: "FAILED", error: "Interacao nao encontrada para processamento." };
+			return { success: false, status: "FAILED", error: "Interação não encontrada para processamento." };
 		}
 
 		const organizationContext = await resolveOrganizationMessagingContext(organizationId);
@@ -466,7 +454,6 @@ export async function sendReservedInteraction(
 		const successfulChannels = [whatsappMessageId || interactionJobId ? "WHATSAPP" : null, emailMessageId ? "EMAIL" : null].filter(
 			(channel): channel is string => Boolean(channel),
 		);
-		const baseInteractionMetadata = getInteractionMetadata(interaction.metadados);
 		const whatsappStatus = whatsappMessageId || interactionJobId ? interactionStatusEnvio : channelErrors.WHATSAPP ? "FALHOU" : null;
 		const emailStatus = emailMessageId ? "ENVIADO" : channelErrors.EMAIL ? "FALHOU" : null;
 
@@ -480,7 +467,6 @@ export async function sendReservedInteraction(
 			await persistInteractionDeliveryState({
 				interactionId,
 				organizationId,
-				baseMetadata: baseInteractionMetadata,
 				statusEnvio: "BLOQUEADA",
 				erroEnvio: errorMessage,
 				messageTemplateId: campaign.whatsappTemplate.id,
@@ -506,7 +492,6 @@ export async function sendReservedInteraction(
 			await persistInteractionDeliveryState({
 				interactionId,
 				organizationId,
-				baseMetadata: baseInteractionMetadata,
 				statusEnvio: "FALHOU",
 				erroEnvio: errorMessage,
 				chatMessageId: insertedChatMessageId,
@@ -524,7 +509,6 @@ export async function sendReservedInteraction(
 		await persistInteractionDeliveryState({
 			interactionId,
 			organizationId,
-			baseMetadata: baseInteractionMetadata,
 			statusEnvio: interactionStatusEnvio,
 			erroEnvio: Object.keys(channelErrors).length > 0 ? Object.values(channelErrors).join(" | ") : null,
 			chatMessageId: insertedChatMessageId,

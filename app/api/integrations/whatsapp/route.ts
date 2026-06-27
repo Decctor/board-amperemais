@@ -3,6 +3,7 @@ import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
+import { updateInteractionDeliveryState } from "@/lib/interactions/delivery-state";
 import {
 	buildWhatsappTemplateSyncPatch,
 	getMetaWhatsappTemplate,
@@ -330,29 +331,35 @@ async function handleStatusUpdate(body: WebhookBody): Promise<void> {
 
 	const previousInteraction = await db.query.interactions.findFirst({
 		where: sql`${interactions.metadados}->>'whatsappMessageId' = ${statusUpdate.whatsappMessageId}`,
+		columns: {
+			id: true,
+			organizacaoId: true,
+		},
 	});
-	const previousMetadata =
-		previousInteraction?.metadados && typeof previousInteraction.metadados === "object" && !Array.isArray(previousInteraction.metadados)
-			? (previousInteraction.metadados as Record<string, unknown>)
-			: {};
-
 	await db
 		.update(chatMessages)
 		.set({ status, whatsappMessageStatus: whatsappStatus })
 		.where(eq(chatMessages.whatsappMessageId, statusUpdate.whatsappMessageId));
 
-	await db
-		.update(interactions)
-		.set({
+	if (previousInteraction) {
+		if (!previousInteraction.organizacaoId) {
+			console.warn("[WHATSAPP_WEBHOOK] Interação sem organizacaoId; atualizando estado de entrega apenas por id:", {
+				interactionId: previousInteraction.id,
+				whatsappMessageId: statusUpdate.whatsappMessageId,
+			});
+		}
+
+		await updateInteractionDeliveryState({
+			interactionId: previousInteraction.id,
+			organizationId: previousInteraction.organizacaoId ?? undefined,
 			statusEnvio: INTERACTION_STATUS_MAPPING[whatsappStatus],
 			erroEnvio: whatsappStatus === "FALHOU" ? (statusUpdate.errorMessage ?? "Mensagem não entregue pelo WhatsApp.") : null,
-			metadados: {
-				...previousMetadata,
+			metadataPatch: {
 				whatsappMessageId: statusUpdate.whatsappMessageId,
 				...(statusUpdate.errors && statusUpdate.errors.length > 0 ? { whatsappErrors: statusUpdate.errors } : {}),
 			},
-		})
-		.where(sql`${interactions.metadados}->>'whatsappMessageId' = ${statusUpdate.whatsappMessageId}`);
+		});
+	}
 	console.log("[WHATSAPP_WEBHOOK] Status updated for message:", statusUpdate.whatsappMessageId);
 }
 

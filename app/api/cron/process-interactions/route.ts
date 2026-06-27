@@ -175,6 +175,8 @@ async function markInteractionsAsFailed({
 }) {
 	if (interactionIds.length === 0) return;
 
+	// Essas interações foram lidas com status nulo (ver fetchPendingInteractionsPage), então não há
+	// risco de downgrade: um UPDATE em lote é correto e evita N transações.
 	await db
 		.update(interactions)
 		.set({

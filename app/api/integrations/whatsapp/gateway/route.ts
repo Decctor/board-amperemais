@@ -3,6 +3,7 @@ import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { uploadChatMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
+import { updateInteractionDeliveryState } from "@/lib/interactions/delivery-state";
 import { downloadMedia, sendMessage as sendInternalGatewayMessage } from "@/lib/whatsapp/internal-gateway";
 import { type AppWhatsappStatus, mapWhatsAppStatusToAppStatus } from "@/lib/whatsapp/parsing";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
@@ -458,6 +459,7 @@ function getRecord(value: unknown): Record<string, unknown> {
 async function resolveMessageTargets({ clientMessageId, whatsappMessageId }: { clientMessageId?: string; whatsappMessageId?: string }): Promise<{
 	chatMessageId: string | null;
 	interactionId: string | null;
+	interactionOrganizationId: string | null;
 	interactionMetadados: Record<string, unknown>;
 }> {
 	if (clientMessageId) {
@@ -469,13 +471,14 @@ async function resolveMessageTargets({ clientMessageId, whatsappMessageId }: { c
 			return {
 				chatMessageId: chatMessage.id,
 				interactionId: null,
+				interactionOrganizationId: null,
 				interactionMetadados: {},
 			};
 		}
 
 		const interaction = await db.query.interactions.findFirst({
 			where: (fields, { eq }) => eq(fields.id, clientMessageId),
-			columns: { id: true, metadados: true },
+			columns: { id: true, organizacaoId: true, metadados: true },
 		});
 
 		if (interaction) {
@@ -485,6 +488,7 @@ async function resolveMessageTargets({ clientMessageId, whatsappMessageId }: { c
 			return {
 				chatMessageId: chatMessageIdFromMetadata,
 				interactionId: interaction.id,
+				interactionOrganizationId: interaction.organizacaoId,
 				interactionMetadados,
 			};
 		}
@@ -498,13 +502,14 @@ async function resolveMessageTargets({ clientMessageId, whatsappMessageId }: { c
 			}),
 			db.query.interactions.findFirst({
 				where: sql`${interactions.metadados}->>'whatsappMessageId' = ${whatsappMessageId}`,
-				columns: { id: true, metadados: true },
+				columns: { id: true, organizacaoId: true, metadados: true },
 			}),
 		]);
 
 		return {
 			chatMessageId: chatMessage?.id ?? null,
 			interactionId: interaction?.id ?? null,
+			interactionOrganizationId: interaction?.organizacaoId ?? null,
 			interactionMetadados: getRecord(interaction?.metadados),
 		};
 	}
@@ -512,6 +517,7 @@ async function resolveMessageTargets({ clientMessageId, whatsappMessageId }: { c
 	return {
 		chatMessageId: null,
 		interactionId: null,
+		interactionOrganizationId: null,
 		interactionMetadados: {},
 	};
 }
@@ -547,17 +553,15 @@ async function handleMessageSent(body: Extract<WebhookBody, { event: "message.se
 	}
 
 	if (targets.interactionId) {
-		await db
-			.update(interactions)
-			.set({
-				statusEnvio: INTERACTION_STATUS_MAPPING[whatsappStatus],
-				metadados: {
-					...targets.interactionMetadados,
-					clientMessageId: data.clientMessageId ?? targets.interactionMetadados.clientMessageId,
-					whatsappMessageId: data.whatsappMessageId,
-				},
-			})
-			.where(eq(interactions.id, targets.interactionId));
+		await updateInteractionDeliveryState({
+			interactionId: targets.interactionId,
+			organizationId: targets.interactionOrganizationId ?? undefined,
+			statusEnvio: INTERACTION_STATUS_MAPPING[whatsappStatus],
+			metadataPatch: {
+				clientMessageId: data.clientMessageId ?? targets.interactionMetadados.clientMessageId,
+				whatsappMessageId: data.whatsappMessageId,
+			},
+		});
 	}
 
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message sent reconciled:", {
@@ -597,17 +601,15 @@ async function handleMessageUpdated(body: Extract<WebhookBody, { event: "message
 	}
 
 	if (targets.interactionId) {
-		await db
-			.update(interactions)
-			.set({
-				statusEnvio: INTERACTION_STATUS_MAPPING[whatsappStatus],
-				metadados: {
-					...targets.interactionMetadados,
-					clientMessageId: data.clientMessageId ?? targets.interactionMetadados.clientMessageId,
-					whatsappMessageId: data.whatsappMessageId ?? targets.interactionMetadados.whatsappMessageId,
-				},
-			})
-			.where(eq(interactions.id, targets.interactionId));
+		await updateInteractionDeliveryState({
+			interactionId: targets.interactionId,
+			organizationId: targets.interactionOrganizationId ?? undefined,
+			statusEnvio: INTERACTION_STATUS_MAPPING[whatsappStatus],
+			metadataPatch: {
+				clientMessageId: data.clientMessageId ?? targets.interactionMetadados.clientMessageId,
+				whatsappMessageId: data.whatsappMessageId ?? targets.interactionMetadados.whatsappMessageId,
+			},
+		});
 	}
 
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message updated:", {
