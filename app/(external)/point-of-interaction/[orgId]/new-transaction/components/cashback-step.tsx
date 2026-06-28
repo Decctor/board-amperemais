@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { VirtualKeyboard } from "@/components/ui/virtual-keyboard";
 import { formatCashbackValue, formatToMoney, getCashbackUnitLabel } from "@/lib/formatting";
 import { useAutoScrollOnFocus } from "@/lib/hooks/use-auto-scroll-on-focus";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ type CashbackStepProps = {
 	finalValue: number;
 	redemptionLimit: TRedemptionLimit;
 	onSubmit: () => void;
+	mode: "kiosk" | "mobile";
 };
 
 export function CashbackStep({
@@ -35,9 +37,12 @@ export function CashbackStep({
 	finalValue,
 	redemptionLimit,
 	onSubmit,
+	mode,
 }: CashbackStepProps) {
 	const handleScrollOnFocus = useAutoScrollOnFocus(300);
 	const limitDescription = getLimitDescription(redemptionLimit);
+	const isKiosk = mode === "kiosk";
+	const isPoints = redemptionLimit.terminologia === "PONTOS";
 
 	return (
 		<form
@@ -113,14 +118,29 @@ export function CashbackStep({
 							<Label className="font-bold text-xs short:text-[0.65rem] text-muted-foreground uppercase tracking-widest text-center block">
 								Valor a Resgatar em {getCashbackUnitLabel(redemptionLimit.terminologia)}
 							</Label>
-							<Input
-								type="number"
-								max={maxAllowed}
-								value={amount}
-								onChange={(e) => onAmountChange(Number(e.target.value))}
-								className="h-14 short:h-11 text-2xl short:text-xl font-black text-center rounded-2xl short:rounded-lg border-2 short:border border-green-200 bg-green-50/30"
-								onFocus={handleScrollOnFocus}
-							/>
+							{isKiosk ? (
+								<VirtualKeyboard
+									type="currency"
+									label={`Valor a resgatar em ${getCashbackUnitLabel(redemptionLimit.terminologia)}`}
+									description={`Limite para esta compra: ${formatCashbackValue(maxAllowed, redemptionLimit.terminologia)}.`}
+									value={amount}
+									onChange={onAmountChange}
+									fractionDigits={isPoints ? 0 : 2}
+									formatValue={(v) => formatCashbackValue(v, redemptionLimit.terminologia)}
+									confirmLabel="Usar valor"
+									placeholder={formatCashbackValue(0, redemptionLimit.terminologia)}
+									triggerClassName="h-14 short:h-11 text-2xl short:text-xl font-black rounded-2xl short:rounded-lg border-2 short:border border-green-200 bg-green-50/30 hover:border-green-400"
+								/>
+							) : (
+								<Input
+									type="number"
+									max={maxAllowed}
+									value={amount}
+									onChange={(e) => onAmountChange(Number(e.target.value))}
+									className="h-14 short:h-11 text-2xl short:text-xl font-black text-center rounded-2xl short:rounded-lg border-2 short:border border-green-200 bg-green-50/30"
+									onFocus={handleScrollOnFocus}
+								/>
+							)}
 						</div>
 					)}
 				</div>
