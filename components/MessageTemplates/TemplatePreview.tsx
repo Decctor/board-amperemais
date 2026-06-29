@@ -7,7 +7,8 @@ import {
 	MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH,
 } from "@/lib/message-templates/constants";
 import { convertHtmlToWhatsappText } from "@/lib/message-templates/formatting";
-import { replaceMessageTemplateVariablesWithExamples } from "@/lib/message-templates/parsing";
+import { replaceMessageTemplateVariables, replaceMessageTemplateVariablesWithExamples } from "@/lib/message-templates/parsing";
+import type { TMessageTemplateRuntimeValues } from "@/lib/message-templates/types";
 import type { TMessageTemplateContent } from "@/schemas/message-templates";
 import { Eye, FileText as FileTextIcon, ImageIcon, MapPin, VideoIcon } from "lucide-react";
 
@@ -15,7 +16,21 @@ type TemplatePreviewProps = {
 	content?: TMessageTemplateContent | null;
 	organizationTheme?: OrganizationTemplateTheme;
 	compact?: boolean;
+	variables?: TMessageTemplateRuntimeValues;
 };
+
+function resolvePreviewText(
+	text: string,
+	parameters: TMessageTemplateContent["corpo"]["parametros"],
+	variables?: TMessageTemplateRuntimeValues,
+) {
+	if (variables) {
+		return convertHtmlToWhatsappText(replaceMessageTemplateVariables(text, variables));
+	}
+
+	const plainText = convertHtmlToWhatsappText(text);
+	return replaceMessageTemplateVariablesWithExamples(plainText, parameters);
+}
 
 function getButtonIcon(tipo: TMessageTemplateContent["botoes"][number]["tipo"]) {
 	if (tipo === "RESPOSTA RÁPIDA") return "↩️ ";
@@ -28,15 +43,17 @@ function MessageTemplateHeaderPreview({
 	cabecalho,
 	organizationTheme,
 	parameters,
+	variables,
 }: {
 	cabecalho: NonNullable<TMessageTemplateContent["cabecalho"]>;
 	organizationTheme?: OrganizationTemplateTheme;
 	parameters: TMessageTemplateContent["corpo"]["parametros"];
+	variables?: TMessageTemplateRuntimeValues;
 }) {
 	if (cabecalho.tipo === "NENHUM") return null;
 
 	if (cabecalho.tipo === "TEXTO") {
-		const headerText = replaceMessageTemplateVariablesWithExamples(cabecalho.conteudoTexto ?? "", parameters);
+		const headerText = resolvePreviewText(cabecalho.conteudoTexto ?? "", parameters, variables);
 		return (
 			<div className="px-3 pt-3">
 				<p className="font-semibold text-sm text-gray-900">{headerText || "Texto do cabeçalho"}</p>
@@ -116,13 +133,13 @@ function MessageTemplateHeaderPreview({
 	return null;
 }
 
-function TemplatePreview({ content, organizationTheme, compact = false }: TemplatePreviewProps) {
+function TemplatePreview({ content, organizationTheme, compact = false, variables }: TemplatePreviewProps) {
 	if (!content) return null;
 
 	const { cabecalho, corpo, rodape, botoes } = content;
 	const bodyText = convertHtmlToWhatsappText(corpo.conteudo);
-	const bodyWithExamples = replaceMessageTemplateVariablesWithExamples(bodyText, corpo.parametros);
-	const footerText = rodape ? replaceMessageTemplateVariablesWithExamples(rodape, corpo.parametros) : null;
+	const bodyPreviewText = resolvePreviewText(corpo.conteudo, corpo.parametros, variables);
+	const footerText = rodape ? resolvePreviewText(rodape, corpo.parametros, variables) : null;
 	const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 	const headerTextLength = cabecalho?.tipo === "TEXTO" ? (cabecalho.conteudoTexto?.length ?? 0) : 0;
 
@@ -147,12 +164,17 @@ function TemplatePreview({ content, organizationTheme, compact = false }: Templa
 						<div className="bg-white rounded-lg shadow-md overflow-hidden max-w-[85%] relative">
 							{cabecalho && cabecalho.tipo !== "NENHUM" ? (
 								<div className="w-full">
-									<MessageTemplateHeaderPreview cabecalho={cabecalho} organizationTheme={organizationTheme} parameters={corpo.parametros} />
+									<MessageTemplateHeaderPreview
+										cabecalho={cabecalho}
+										organizationTheme={organizationTheme}
+										parameters={corpo.parametros}
+										variables={variables}
+									/>
 								</div>
 							) : null}
 
 							<div className="px-3 py-2 pt-3">
-								<div className="whitespace-pre-wrap text-sm text-gray-900 break-words">{bodyWithExamples || "Digite o conteúdo da mensagem..."}</div>
+								<div className="whitespace-pre-wrap text-sm text-gray-900 break-words">{bodyPreviewText || "Digite o conteúdo da mensagem..."}</div>
 
 								{footerText ? (
 									<div className="mt-2">

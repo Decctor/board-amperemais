@@ -1,5 +1,7 @@
 export { processSingleInteractionImmediately, delay } from "./process-single-interaction";
-export { buildContextVariablesMap, sendReservedInteraction } from "./send-reserved-interaction";
+export { buildContextVariablesMap, buildInteractionMessageVariables } from "./message-preview";
+export type { TInteractionMessagePreviewClient } from "./message-preview";
+export { sendReservedInteraction } from "./send-reserved-interaction";
 export { processOrganizationInteractionsBatch } from "./process-organization-interactions";
 export { processMultipleInteractions } from "./process-multiple-interactions";
 export {

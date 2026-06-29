@@ -645,6 +645,7 @@ function InteractionLogCard({ interaction }: { interaction: TGetCampaignInteract
 							</ClientHoverCard>
 						</div>
 						<div className="flex items-center gap-3">
+							<InteractionCard.MessagePreview />
 							<InteractionCard.DataForNerds />
 							{interaction.erroEnvio ? (
 								<TooltipProvider>

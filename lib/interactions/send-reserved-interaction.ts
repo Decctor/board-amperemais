@@ -1,5 +1,4 @@
 import { EmailTemplate, sendEmailWithResend } from "@/lib/email";
-import { formatCashbackValue, formatToMoney } from "@/lib/formatting";
 import {
 	buildWhatsappTemplateSendPayload,
 	convertHtmlToWhatsappText,
@@ -8,43 +7,17 @@ import {
 } from "@/lib/message-templates";
 import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
 import { parseTemplatePayloadToGatewayContent, sendMessage } from "@/lib/whatsapp/internal-gateway";
-import type { TInteractionContextMetadados, TMessageTemplateVariables } from "@/lib/message-templates";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
-import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
+import { buildInteractionMessageVariables } from "./message-preview";
 import { markInteractionBlocked, markInteractionFailed, updateInteractionDeliveryState } from "./delivery-state";
 import type { ImmediateProcessingData, TSendReservedInteractionResult } from "./types";
 
 export type TChatPromiseCache = Map<string, Promise<string | null>>;
 
-export function buildContextVariablesMap(
-	ctx?: TInteractionContextMetadados,
-	terminology: TCashbackProgramTerminologyEnum = "DINHEIRO",
-): Omit<
-	Record<keyof TMessageTemplateVariables, string>,
-	| "clientName"
-	| "clientPhoneNumber"
-	| "clientEmail"
-	| "clientSegmentation"
-	| "clientFavoriteProduct"
-	| "clientFavoriteProductGroup"
-	| "clientSuggestedProduct"
-> {
-	return {
-		purchaseValue: formatToMoney(ctx?.compraValor ?? 0),
-		purchaseCashbackAccumulated: formatCashbackValue(ctx?.compraCashbackAcumulado ?? 0, terminology),
-		purchaseCashbackNewBalance: formatCashbackValue(ctx?.compraCashbackNovoSaldo ?? 0, terminology),
-		purchaseSellerName: ctx?.compraVendedorNome ?? "",
-		cashbackAvailableBalance: formatCashbackValue(ctx?.cashbackSaldoDisponivel ?? 0, terminology),
-		cashbackLifetimeAccumulated: formatCashbackValue(ctx?.cashbackTotalAcumuladoVida ?? 0, terminology),
-		cashbackLifetimeRedeemed: formatCashbackValue(ctx?.cashbackTotalResgatadoVida ?? 0, terminology),
-		cashbackExpiringAmount: formatCashbackValue(ctx?.cashbackExpirandoValor ?? 0, terminology),
-		cashbackExpiringDate: ctx?.cashbackExpirandoData ?? "",
-		cashbackExpiringWindow: ctx?.cashbackExpirandoJanela ?? "",
-	};
-}
+export { buildContextVariablesMap } from "./message-preview";
 
 async function failInteractionSend({
 	interactionId,
@@ -272,17 +245,19 @@ export async function sendReservedInteraction(
 		const clientSuggestedProduct = client.metadataProdutoSugeridoId ? (productNameById.get(client.metadataProdutoSugeridoId) ?? "") : "";
 
 		const cashbackTerminology = contextMetadados?.terminologia ?? organizationContext.organizationCashbackTerminology;
-		const contextVars = buildContextVariablesMap(contextMetadados, cashbackTerminology);
-		const messageTemplateVariablesValuesMap: Record<keyof TMessageTemplateVariables, string> = {
-			clientEmail: client.email ?? "",
-			clientName: client.nome,
-			clientPhoneNumber: effectivePhoneNumber ?? "",
-			clientSegmentation: client.analiseRFMTitulo ?? "",
-			clientFavoriteProduct,
-			clientFavoriteProductGroup: client.metadataGrupoProdutoMaisComprado ?? "",
-			clientSuggestedProduct,
-			...contextVars,
-		};
+		const messageTemplateVariablesValuesMap = buildInteractionMessageVariables({
+			client: {
+				nome: client.nome,
+				telefone: effectivePhoneNumber,
+				email: client.email,
+				analiseRFMTitulo: client.analiseRFMTitulo,
+				metadataGrupoProdutoMaisComprado: client.metadataGrupoProdutoMaisComprado,
+				metadataProdutoMaisCompradoNome: clientFavoriteProduct,
+				metadataProdutoSugeridoNome: clientSuggestedProduct,
+			},
+			contextMetadados,
+			terminology: cashbackTerminology,
+		});
 		const runtimeContext: TMessageTemplateRuntimeContext = {
 			origin: process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL || "",
 			organizacaoId: organizationId,

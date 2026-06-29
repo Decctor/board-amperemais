@@ -2,6 +2,7 @@
 
 import type { TGetCampaignInteractionsOutputItems } from "@/app/api/campaigns/interactions/route";
 import ClientHoverCard from "@/components/Clients/ClientHoverCard";
+import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
 import { WhatsappIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
@@ -9,13 +10,15 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
+import { buildInteractionMessageVariables } from "@/lib/interactions/message-preview";
 import { retryCampaignInteraction } from "@/lib/mutations/campaigns";
+import type { TInteractionContextMetadados } from "@/lib/message-templates";
 import { cn } from "@/lib/utils";
 import { InteractionMetadataSchema, type TInteractionDeliveryChannelEnum, type TInteractionMetadata } from "@/schemas/interactions";
 import { InteractionsSentStatusOptions } from "@/utils/select-options";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { Calendar, CalendarCheck, Code, Mail, RefreshCw, UserRound } from "lucide-react";
+import { Calendar, CalendarCheck, Code, Eye, Mail, RefreshCw, UserRound } from "lucide-react";
 import { cloneElement, createContext, isValidElement, use, useMemo, type ReactNode } from "react";
 import { BsCalendarPlus } from "react-icons/bs";
 import { toast } from "sonner";
@@ -234,6 +237,45 @@ function NerdsChannelCard({ block }: { block: NerdsChannelBlock }) {
 	);
 }
 
+function InteractionCardMessagePreview({ className }: { className?: string }) {
+	const { interaction } = useInteractionCard();
+	const templateContent = interaction.campanha?.whatsappTemplate?.conteudo ?? null;
+
+	const variables = useMemo(
+		() =>
+			buildInteractionMessageVariables({
+				client: interaction.cliente,
+				contextMetadados: (interaction.metadados ?? undefined) as TInteractionContextMetadados | undefined,
+			}),
+		[interaction.cliente, interaction.metadados],
+	);
+
+	if (!templateContent) return null;
+
+	return (
+		<HoverCard openDelay={200} closeDelay={100}>
+			<HoverCardTrigger asChild>
+				<Button
+					type="button"
+					size="icon"
+					variant="ghost"
+					className={cn("h-7 w-7 text-muted-foreground hover:text-foreground", className)}
+					aria-label="Preview da mensagem"
+				>
+					<Eye className="h-4 w-4" />
+				</Button>
+			</HoverCardTrigger>
+			<HoverCardContent
+				className="w-[360px] overflow-auto p-2 max-h-[70vh] scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
+				align="end"
+				side="bottom"
+			>
+				<TemplatePreview content={templateContent} variables={variables} compact />
+			</HoverCardContent>
+		</HoverCard>
+	);
+}
+
 function InteractionCardDataForNerds({ className }: { className?: string }) {
 	const { interaction } = useInteractionCard();
 	const metadata = parseInteractionMetadata(interaction.metadados);
@@ -397,6 +439,7 @@ export const InteractionCard = {
 	Footer: InteractionCardFooter,
 	CampaignTitle: InteractionCardCampaignTitle,
 	ClientChip: InteractionCardClientChip,
+	MessagePreview: InteractionCardMessagePreview,
 	DataForNerds: InteractionCardDataForNerds,
 	SentStatus: InteractionCardSentStatus,
 	RetryButton: InteractionCardRetryButton,

@@ -77,6 +77,7 @@ export function CampaignsInteractionsView() {
 												<InteractionCard.ClientChip />
 											</InteractionCard.Leading>
 											<InteractionCard.Actions>
+												<InteractionCard.MessagePreview />
 												<InteractionCard.DataForNerds />
 												<InteractionCard.RetryButton />
 												<InteractionCard.SentStatus />

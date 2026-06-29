@@ -7,6 +7,7 @@ import { InteractionsStatusEnum } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema/clients";
 import { interactions } from "@/services/drizzle/schema/interactions";
+import { products } from "@/services/drizzle/schema/products";
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -158,17 +159,61 @@ async function getCampaignInteractions({ input, session }: { input: TGetCampaign
 					id: true,
 					titulo: true,
 				},
+				with: {
+					whatsappTemplate: {
+						columns: {
+							id: true,
+							conteudo: true,
+						},
+					},
+				},
 			},
 			cliente: {
 				columns: {
 					id: true,
 					nome: true,
+					telefone: true,
+					email: true,
+					analiseRFMTitulo: true,
+					metadataGrupoProdutoMaisComprado: true,
+					metadataProdutoMaisCompradoId: true,
+					metadataProdutoSugeridoId: true,
 				},
 			},
 		},
 	});
 
-	const interactionsMap = new Map(interactionsResult.map((interaction) => [interaction.id, interaction]));
+	const productIds = new Set<string>();
+	for (const interaction of interactionsResult) {
+		if (interaction.cliente.metadataProdutoMaisCompradoId) productIds.add(interaction.cliente.metadataProdutoMaisCompradoId);
+		if (interaction.cliente.metadataProdutoSugeridoId) productIds.add(interaction.cliente.metadataProdutoSugeridoId);
+	}
+
+	const resolvedProducts =
+		productIds.size > 0
+			? await db.query.products.findMany({
+					where: inArray(products.id, [...productIds]),
+					columns: { id: true, nome: true },
+				})
+			: [];
+	const productNameById = new Map(resolvedProducts.map((product) => [product.id, product.nome]));
+
+	const enrichedInteractions = interactionsResult.map((interaction) => {
+		const { metadataProdutoMaisCompradoId, metadataProdutoSugeridoId, ...clientColumns } = interaction.cliente;
+
+		return {
+			...interaction,
+			cliente: {
+				...clientColumns,
+				metadataProdutoMaisCompradoNome: metadataProdutoMaisCompradoId
+					? (productNameById.get(metadataProdutoMaisCompradoId) ?? null)
+					: null,
+				metadataProdutoSugeridoNome: metadataProdutoSugeridoId ? (productNameById.get(metadataProdutoSugeridoId) ?? null) : null,
+			},
+		};
+	});
+
+	const interactionsMap = new Map(enrichedInteractions.map((interaction) => [interaction.id, interaction]));
 	const orderedItems = interactionIds
 		.map((id) => interactionsMap.get(id))
 		.filter((interaction): interaction is NonNullable<typeof interaction> => !!interaction);
