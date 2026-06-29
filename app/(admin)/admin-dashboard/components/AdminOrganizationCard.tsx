@@ -8,11 +8,12 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { joinAsMember } from "@/lib/mutations/admin";
 import { useMutation } from "@tanstack/react-query";
-import { BrainCircuit, Building2, Calendar, Settings2, Users } from "lucide-react";
+import { BrainCircuit, Building2, Calendar, ImageIcon, Settings2, Users } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 import AdminMarketingContextExportMenu from "./AdminMarketingContextExportMenu";
+import AdminOrganizationWatermarkMenu from "./AdminOrganizationWatermarkMenu";
 
 type AdminOrganizationCardProps = {
 	sessionUser: TAuthUserSession["user"];
@@ -29,6 +30,7 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 	const { id, nome, cnpj, logoUrl, dataInsercao } = organization;
 	const [controlModalOpen, setControlModalOpen] = useState(false);
 	const [marketingContextModalOpen, setMarketingContextModalOpen] = useState(false);
+	const [watermarkModalOpen, setWatermarkModalOpen] = useState(false);
 
 	const adminUserIsMember = organization.membros.some((member) => member.usuarioId === sessionUser.id);
 	const { mutate: joinAsMemberMutation, isPending } = useMutation({
@@ -78,6 +80,10 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 					<BrainCircuit className="h-3.5 w-3.5" />
 					CONTEXTO IA
 				</Button>
+				<Button variant="secondary" size="sm" className="w-full" onClick={() => setWatermarkModalOpen(true)}>
+					<ImageIcon className="h-3.5 w-3.5" />
+					MARCA D'ÁGUA
+				</Button>
 				<Button variant="outline" size="sm" className="w-full" onClick={() => setControlModalOpen(true)}>
 					<Settings2 className="h-3.5 w-3.5" />
 					GERENCIAR
@@ -100,6 +106,9 @@ export default function AdminOrganizationCard({ sessionUser, organization, callb
 			{controlModalOpen ? <AdminControlOrganization organizationId={id} closeModal={() => setControlModalOpen(false)} callbacks={callbacks} /> : null}
 			{marketingContextModalOpen ? (
 				<AdminMarketingContextExportMenu organizationId={id} organizationName={nome} closeModal={() => setMarketingContextModalOpen(false)} />
+			) : null}
+			{watermarkModalOpen ? (
+				<AdminOrganizationWatermarkMenu organizationName={nome} organizationLogoUrl={logoUrl} closeModal={() => setWatermarkModalOpen(false)} />
 			) : null}
 		</div>
 	);
