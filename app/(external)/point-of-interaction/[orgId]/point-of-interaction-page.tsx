@@ -2,6 +2,7 @@
 
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
+import { VirtualKeyboard } from "@/components/ui/virtual-keyboard";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
 import { formatCashbackValue, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
@@ -49,7 +50,6 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 	// Client lookup
 	const {
 		data: client,
-		queryKey,
 		isLoading: isLoadingClient,
 		isSuccess: isSuccessClient,
 		updateParams,
@@ -414,7 +414,19 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 								handleSubmitNewClient();
 							}}
 						>
-							<TextInput label="NOME COMPLETO" placeholder="Digite o nome do cliente" value={newClientName} handleChange={setNewClientName} />
+							<div className="flex flex-col gap-1.5">
+								<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">NOME COMPLETO</span>
+								<VirtualKeyboard
+									type="text"
+									label="Nome completo"
+									description="Digite o nome do cliente para criar o cadastro."
+									placeholder="Digite o nome do cliente"
+									value={newClientName}
+									onChange={setNewClientName}
+									confirmLabel="Confirmar nome"
+									triggerClassName="h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium"
+								/>
+							</div>
 
 							<div className="w-full flex items-center justify-center">
 								<Button
@@ -431,13 +443,21 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 
 							{showOptionalFields ? (
 								<div className="flex flex-col gap-3">
-									<TextInput
-										label="CPF/CNPJ"
-										inputType="tel"
-										placeholder="Digite o CPF/CNPJ do cliente"
-										value={newClientCpfCnpj}
-										handleChange={(value) => setNewClientCpfCnpj(formatToCPForCNPJ(value))}
-									/>
+									<div className="flex flex-col gap-1.5">
+										<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">CPF/CNPJ</span>
+										<VirtualKeyboard
+											type="numeric"
+											label="CPF/CNPJ"
+											description="Digite apenas os números do documento do cliente."
+											placeholder="Digite o CPF/CNPJ do cliente"
+											value={newClientCpfCnpj.replace(/\D/g, "")}
+											onChange={(value) => setNewClientCpfCnpj(formatToCPForCNPJ(value))}
+											maxLength={14}
+											formatValue={formatToCPForCNPJ}
+											confirmLabel="Confirmar documento"
+											triggerClassName="h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium"
+										/>
+									</div>
 									<div className="flex flex-col gap-1.5">
 										<label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">DATA DE NASCIMENTO</label>
 										<input

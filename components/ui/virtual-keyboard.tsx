@@ -65,6 +65,7 @@ type NumericProps = BaseProps & {
 	value: string;
 	onChange: (value: string) => void;
 	maxLength?: number;
+	formatValue?: (value: string) => string;
 	/** Mascara o preview com pontos (senha). */
 	secret?: boolean;
 };
@@ -303,7 +304,12 @@ function DigitKeypad({
 
 			<div className="grid grid-cols-3 gap-2.5">
 				{allowClear ? (
-					<button type="button" onClick={onClear} aria-label="Limpar valor" className={cn(KEY_BASE, "text-sm font-black uppercase tracking-wide text-muted-foreground")}>
+					<button
+						type="button"
+						onClick={onClear}
+						aria-label="Limpar valor"
+						className={cn(KEY_BASE, "text-sm font-black uppercase tracking-wide text-muted-foreground")}
+					>
 						Limpar
 					</button>
 				) : (
@@ -455,6 +461,9 @@ function getDisplayValue(props: VirtualKeyboardProps): string {
 	if (props.type === "numeric" && props.secret) {
 		return "•".repeat(props.value.length);
 	}
+	if (props.type === "numeric" && props.formatValue) {
+		return props.formatValue(props.value);
+	}
 	return props.value;
 }
 
@@ -465,5 +474,6 @@ function getPreviewValue(props: VirtualKeyboardProps): string {
 	}
 	if (props.value.length === 0) return props.placeholder ?? "";
 	if (props.type === "numeric" && props.secret) return "•".repeat(props.value.length);
+	if (props.type === "numeric" && props.formatValue) return props.formatValue(props.value);
 	return props.value;
 }
