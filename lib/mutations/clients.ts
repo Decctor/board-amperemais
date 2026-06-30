@@ -4,6 +4,7 @@ import type {
 } from "@/app/api/point-of-interaction/new-client/route";
 import type { TCreateClientInput, TCreateClientOutput, TUpdateClientInput, TUpdateClientOutput } from "@/app/api/clients/route";
 import type { TBulkCreateClientsInput, TBulkCreateClientsOutput } from "@/app/api/clients/bulk/route";
+import type { TCreateClientTagInput, TCreateClientTagOutput, TUpdateClientTagInput, TUpdateClientTagOutput } from "@/app/api/clients/tags/route";
 import type { TBulkClientsMapInput, TBulkClientsMapOutput } from "@/state-hooks/use-bulk-create-clients";
 import axios from "axios";
 
@@ -32,5 +33,15 @@ export async function suggestClientsSheetMapping(input: TBulkClientsMapInput) {
 
 export async function createClientViaPointOfInteraction(info: TCreateClientViaPointOfInteractionInput) {
 	const { data } = await axios.post<TCreateClientViaPointOfInteractionOutput>("/api/point-of-interaction/new-client", info);
+	return data;
+}
+
+export async function createClientTag(info: TCreateClientTagInput) {
+	const { data } = await axios.post<TCreateClientTagOutput>("/api/clients/tags", info);
+	return data;
+}
+
+export async function updateClientTag(info: TUpdateClientTagInput) {
+	const { data } = await axios.put<TUpdateClientTagOutput>("/api/clients/tags", info);
 	return data;
 }

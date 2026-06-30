@@ -3,10 +3,10 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { createSimplifiedEmailSearchCondition, createSimplifiedPhoneSearchCondition, createSimplifiedSearchCondition } from "@/lib/search";
-import { ClientLocationSchema, ClientSchema } from "@/schemas/clients";
+import { ClientLocationSchema, ClientSchema, ClientTagReferenceSchema } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
-import { clientLocations } from "@/services/drizzle/schema/clients";
+import { clientLocations, clientTagReferences } from "@/services/drizzle/schema/clients";
 import { and, asc, count, desc, eq, gte, inArray, lte, max, min, notInArray, or, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
@@ -95,6 +95,11 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 			where: (fields, { and, eq }) => and(eq(fields.id, clientId), eq(fields.organizacaoId, userOrgId)),
 			with: {
 				localizacoes: true,
+				tagReferencias: {
+					with: {
+						tag: true,
+					},
+				},
 			},
 		});
 		if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
@@ -336,6 +341,12 @@ const CreateClientInputSchema = z.object({
 			dataInsercao: true,
 		}),
 	),
+	clientTags: z.array(
+		ClientTagReferenceSchema.omit({ clienteId: true, organizacaoId: true }).extend({
+			id: z.string({ invalid_type_error: "Tipo não válido para o ID da tag do cliente." }).optional(),
+			deletar: z.boolean({ invalid_type_error: "Tipo não válido para a flag de exclusão da tag do cliente." }).optional(),
+		}),
+	),
 });
 
 export type TCreateClientInput = z.infer<typeof CreateClientInputSchema>;
@@ -386,6 +397,16 @@ async function createClientService({ input, session }: { input: TCreateClientInp
 					localizacaoComplemento: location.localizacaoComplemento,
 					localizacaoLatitude: location.localizacaoLatitude,
 					localizacaoLongitude: location.localizacaoLongitude,
+				})),
+			);
+		}
+
+		if (input.clientTags.length > 0) {
+			await tx.insert(clientTagReferences).values(
+				input.clientTags.map((reference) => ({
+					organizacaoId: userOrgId,
+					clienteId: insertedClientId,
+					clienteTagId: reference.clienteTagId,
 				})),
 			);
 		}
@@ -444,6 +465,12 @@ const UpdateClientInputSchema = z.object({
 				.nullable(),
 		}),
 	),
+	clientTags: z.array(
+		ClientTagReferenceSchema.omit({ clienteId: true, organizacaoId: true }).extend({
+			id: z.string({ invalid_type_error: "Tipo não válido para o ID da tag do cliente." }).optional(),
+			deletar: z.boolean({ invalid_type_error: "Tipo não válido para a flag de exclusão da tag do cliente." }).optional(),
+		}),
+	),
 });
 export type TUpdateClientInput = z.infer<typeof UpdateClientInputSchema>;
 
@@ -478,7 +505,14 @@ async function updateClientService({ input, session }: { input: TUpdateClientInp
 			fatherEntityId: updatedClientId,
 			organizacaoId: userOrgId,
 		});
-
+		await handleSimpleChildRowsProcessing({
+			trx: tx,
+			table: clientTagReferences,
+			entities: input.clientTags,
+			fatherEntityKey: "clienteId",
+			fatherEntityId: updatedClientId,
+			organizacaoId: userOrgId,
+		});
 		return {
 			updatedId: updatedClientId,
 		};

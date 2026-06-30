@@ -11,6 +11,7 @@ import ClientGeneralBlock from "./Blocks/General";
 import ClientLocationsBlock from "./Blocks/Locations";
 import ClientProfileBlock from "./Blocks/Profile";
 import ClientSocialsBlock from "./Blocks/Socials";
+import ClientTagsBlock from "./Blocks/Tags";
 
 type NewClientProps = {
 	closeModal: () => void;
@@ -26,11 +27,13 @@ function buildCreateClientInput(input: TCreateClientInput): TCreateClientInput {
 	return {
 		client: input.client,
 		clientLocations: input.clientLocations,
+		clientTags: input.clientTags,
 	};
 }
 
 function NewClient({ closeModal, callbacks }: NewClientProps) {
-	const { state, updateClient, addClientLocation, updateClientLocation, removeClientLocation, resetState } = useClientState();
+	const { state, updateClient, addClientLocation, updateClientLocation, removeClientLocation, resetState, addClientTag, removeClientTag } =
+		useClientState();
 
 	const { mutate: handleCreateClient, isPending } = useMutation({
 		mutationKey: ["create-client"],
@@ -78,6 +81,11 @@ function NewClient({ closeModal, callbacks }: NewClientProps) {
 						localizacaoLatitude: location.localizacaoLatitude,
 						localizacaoLongitude: location.localizacaoLongitude,
 					})),
+				clientTags: state.clientTags
+					.filter((tagReference) => !tagReference.deletar)
+					.map((tagReference) => ({
+						clienteTagId: tagReference.clienteTagId,
+					})),
 			}),
 		);
 	}
@@ -105,6 +113,7 @@ function NewClient({ closeModal, callbacks }: NewClientProps) {
 				updateClientLocation={updateClientLocation}
 				removeClientLocation={removeClientLocation}
 			/>
+			<ClientTagsBlock tags={state.clientTags} addClientTag={addClientTag} removeClientTag={removeClientTag} />
 		</ResponsiveMenu>
 	);
 }

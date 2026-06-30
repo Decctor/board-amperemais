@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useCallback, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
+import { TGetClientTagsOutput } from "@/app/api/clients/tags/route";
 
 async function fetchClients(input: TGetClientsInput) {
 	try {
@@ -272,5 +273,20 @@ export function useClientsRanking(input: TGetClientsRankingInput) {
 			queryFn: () => fetchClientsRanking(input),
 		}),
 		queryKey: ["clients-ranking", input],
+	};
+}
+
+async function fetchClientTags() {
+	const { data } = await axios.get<TGetClientTagsOutput>("/api/clients/tags");
+	return data.data.default;
+}
+
+export function useClientTags() {
+	return {
+		...useQuery({
+			queryKey: ["client-tags"],
+			queryFn: () => fetchClientTags(),
+		}),
+		queryKey: ["client-tags"],
 	};
 }

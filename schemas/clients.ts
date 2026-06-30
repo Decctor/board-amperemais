@@ -1,6 +1,73 @@
 import { z } from "zod";
-import { FiscalClientTaxIndicatorEnum, SaleNatureEnum } from "./enums";
+import { ClientTagIconEnum, FiscalClientTaxIndicatorEnum, SaleNatureEnum } from "./enums";
 import type { TSale } from "./sales";
+
+export const ClientTagMetadataSchema = z.discriminatedUnion("tipo", [
+	z.object({
+		tipo: z.literal("MANUAL"),
+		descricao: z.string().max(255).nullable().optional(),
+	}),
+]);
+export type TClientTagMetadata = z.infer<typeof ClientTagMetadataSchema>;
+export const ClientTagSchema = z.object({
+	organizacaoId: z.string({
+		invalid_type_error: "Tipo não válido para ID da organização.",
+		required_error: "ID da organização não informado.",
+	}),
+	titulo: z
+		.string({
+			required_error: "Título do tag não informado.",
+			invalid_type_error: "Tipo não válido para o título do tag.",
+		})
+		.min(1)
+		.max(50),
+	tituloNormalizado: z
+		.string({
+			required_error: "Título normalizado do tag não informado.",
+			invalid_type_error: "Tipo não válido para o título normalizado do tag.",
+		})
+		.min(1)
+		.max(80),
+	icone: ClientTagIconEnum.default("Tag"),
+	cor: z
+		.string({
+			required_error: "Cor do tag não informada.",
+			invalid_type_error: "Tipo não válido para a cor do tag.",
+		})
+		.max(15),
+	corForeground: z
+		.string({
+			required_error: "Cor do tag não informada.",
+			invalid_type_error: "Tipo não válido para a cor do tag.",
+		})
+		.max(15),
+	metadados: ClientTagMetadataSchema.default({ tipo: "MANUAL" }),
+	autorId: z.string({
+		required_error: "ID do autor do tag não informado.",
+		invalid_type_error: "Tipo não válido para o ID do autor do tag.",
+	}),
+	dataInsercao: z
+		.date({
+			required_error: "Data de inserção do tag não informada.",
+			invalid_type_error: "Tipo não válido para a data de inserção do tag.",
+		})
+		.optional(),
+});
+
+export const ClientTagReferenceSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para ID da organização.",
+	}),
+	clienteId: z.string({
+		required_error: "ID do cliente não informado.",
+		invalid_type_error: "Tipo não válido para ID do cliente.",
+	}),
+	clienteTagId: z.string({
+		required_error: "ID do tag não informado.",
+		invalid_type_error: "Tipo não válido para ID do tag.",
+	}),
+});
 
 export const ClientSchema = z.object({
 	idExterno: z.string({ invalid_type_error: "Tipo não válido para ID externo." }).optional().nullable(),

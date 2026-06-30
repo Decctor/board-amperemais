@@ -1,10 +1,12 @@
 import { relations, sql } from "drizzle-orm";
-import { doublePrecision, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { doublePrecision, index, integer, jsonb, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { cashbackProgramBalances, cashbackProgramTransactions } from "./cashback-programs";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
 import { fiscalClientTaxIndicatorEnum } from "./enums";
+import { users } from "./users";
+import { TClientTagMetadata } from "@/schemas/clients";
 
 export const clients = newTable(
 	"clients",
@@ -81,6 +83,86 @@ export const clients = newTable(
 	}),
 );
 
+export const clientTags = newTable(
+	"client_tags",
+	{
+		id: varchar("id", { length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		titulo: varchar("titulo", { length: 50 }).notNull(),
+		tituloNormalizado: varchar("titulo_normalizado", { length: 80 }).notNull(),
+		icone: varchar("icone", { length: 64 }).notNull().default("Tag"),
+		cor: varchar("cor", { length: 15 }).notNull(),
+		corForeground: varchar("cor_foreground", { length: 15 }).notNull(),
+		metadados: jsonb("metadados")
+			.$type<TClientTagMetadata>()
+			.notNull()
+			.default(sql`'{"tipo":"MANUAL"}'::jsonb`),
+		autorId: varchar("autor_id", { length: 255 })
+			.references(() => users.id)
+			.notNull(),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao", { mode: "date" }).$onUpdate(() => new Date()),
+	},
+	(table) => ({
+		organizacaoTituloUnique: uniqueIndex("client_tags_organizacao_titulo_normalizado_unique").on(table.organizacaoId, table.tituloNormalizado),
+		organizacaoTituloIdx: index("client_tags_organizacao_titulo_idx").on(table.organizacaoId, table.tituloNormalizado),
+	}),
+);
+export const clientTagsRelations = relations(clientTags, ({ one, many }) => ({
+	organizacao: one(organizations, {
+		fields: [clientTags.organizacaoId],
+		references: [organizations.id],
+	}),
+	autor: one(users, {
+		fields: [clientTags.autorId],
+		references: [users.id],
+	}),
+	referenciasClientes: many(clientTagReferences),
+}));
+export const clientTagReferences = newTable(
+	"client_tag_references",
+	{
+		id: varchar("id", { length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		clienteId: varchar("cliente_id", { length: 255 })
+			.references(() => clients.id, { onDelete: "cascade" })
+			.notNull(),
+		clienteTagId: varchar("cliente_tag_id", { length: 255 })
+			.references(() => clientTags.id, { onDelete: "cascade" })
+			.notNull(),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		clienteTagUnique: uniqueIndex("client_tag_refs_cliente_tag_unique").on(table.clienteId, table.clienteTagId),
+		organizacaoIdTagIdx: index("client_tag_refs_organizacao_id_tag_idx").on(table.organizacaoId, table.clienteTagId),
+		clienteIdx: index("client_tag_refs_cliente_idx").on(table.clienteId),
+	}),
+);
+export const clientTagReferencesRelations = relations(clientTagReferences, ({ one }) => ({
+	organizacao: one(organizations, {
+		fields: [clientTagReferences.organizacaoId],
+		references: [organizations.id],
+	}),
+	tag: one(clientTags, {
+		fields: [clientTagReferences.clienteTagId],
+		references: [clientTags.id],
+	}),
+	cliente: one(clients, {
+		fields: [clientTagReferences.clienteId],
+		references: [clients.id],
+	}),
+}));
+
 export const clientLocations = newTable(
 	"client_locations",
 	{
@@ -112,9 +194,14 @@ export const clientsRelations = relations(clients, ({ many }) => ({
 	saldos: many(cashbackProgramBalances),
 	transacoesCashback: many(cashbackProgramTransactions),
 	localizacoes: many(clientLocations),
+	tagReferencias: many(clientTagReferences),
 }));
 export type TClientEntity = typeof clients.$inferSelect;
 export type TNewClientEntity = typeof clients.$inferInsert;
+export type TClientTagEntity = typeof clientTags.$inferSelect;
+export type TNewClientTagEntity = typeof clientTags.$inferInsert;
+export type TClientTagReferenceEntity = typeof clientTagReferences.$inferSelect;
+export type TNewClientTagReferenceEntity = typeof clientTagReferences.$inferInsert;
 
 export const clientLocationsRelations = relations(clientLocations, ({ one }) => ({
 	cliente: one(clients, {

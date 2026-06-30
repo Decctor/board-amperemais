@@ -56,6 +56,20 @@ import {
 	XCircle,
 	XCircleIcon,
 	ArrowRight,
+	Tag,
+	Tags,
+	Utensils,
+	ShoppingBag,
+	Truck,
+	Building2,
+	BriefcaseBusiness,
+	Star,
+	Heart,
+	BadgeCheck,
+	Sparkles,
+	MessageCircle,
+	Mail,
+	Users,
 } from "lucide-react";
 
 export const CommunityCourseStatusOptions: {
@@ -638,3 +652,44 @@ export const WhatsappTemplateStatusUIDetailsMap: Record<
 export function getWhatsappTemplateStatusUIDetails(status: TWhatsappTemplateStatusEnum) {
 	return WhatsappTemplateStatusUIDetailsMap[status];
 }
+
+export const TagsColorPalette = [
+	{ primary: "#FF0000", secondary: "#FFCCCB" },
+	{ primary: "#0000FF", secondary: "#DCEFFF" },
+	{ primary: "#008000", secondary: "#C1E1C1" },
+	{ primary: "#FEAD41", secondary: "#FFFACD" },
+	{ primary: "#800080", secondary: "#E6E6FA" },
+	{ primary: "#C13F55", secondary: "#FFE4E1" },
+	{ primary: "#4B0082", secondary: "#D9D9F3" },
+	{ primary: "#000000", secondary: "#F8F8F8" },
+	{ primary: "#FF9D00", secondary: "#FFF4E2" },
+	{ primary: "#07ABAB", secondary: "#E0FFFF" },
+	{ primary: "#8B4513", secondary: "#EFE8E2" },
+	{ primary: "#008CFF", secondary: "#D8EFFA" },
+	{ primary: "#2E8B57", secondary: "#98FB98" },
+	{ primary: "#DC143C", secondary: "#FFCBB7" },
+	{ primary: "#9932CC", secondary: "#D9D0F3" },
+	{ primary: "#FF1493", secondary: "#FCD8DD" },
+	{ primary: "#003365", secondary: "#87CEFA" },
+	{ primary: "#FF4500", secondary: "#FCE0D4" },
+	{ primary: "#058A05", secondary: "#B7FDB7" },
+	{ primary: "#ECAA02", secondary: "#F3F0D3" },
+];
+
+export const ClientTagIconMap = {
+	Tag,
+	Tags,
+	Store,
+	Utensils,
+	ShoppingBag,
+	Truck,
+	Building2,
+	BriefcaseBusiness,
+	Star,
+	Heart,
+	BadgeCheck,
+	Sparkles,
+	MessageCircle,
+	Mail,
+	Users,
+} satisfies Record<string, React.ComponentType>;

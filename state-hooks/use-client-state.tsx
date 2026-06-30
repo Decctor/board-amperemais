@@ -1,4 +1,4 @@
-import { ClientLocationSchema, ClientSchema } from "@/schemas/clients";
+import { ClientLocationSchema, ClientSchema, ClientTagReferenceSchema, ClientTagSchema } from "@/schemas/clients";
 import { useCallback, useMemo, useState } from "react";
 import z from "zod";
 
@@ -24,6 +24,18 @@ export const ClientLocationStateSchema = ClientLocationSchema.omit({
 export const ClientStateSchema = z.object({
 	client: ClientSchema,
 	clientLocations: z.array(ClientLocationStateSchema),
+	clientTags: z.array(
+		ClientTagReferenceSchema.omit({ clienteId: true, organizacaoId: true }).extend({
+			tag: ClientTagSchema.pick({
+				titulo: true,
+				icone: true,
+				cor: true,
+				corForeground: true,
+			}),
+			id: z.string({ invalid_type_error: "Tipo não válido para o ID da tag do cliente." }).optional(),
+			deletar: z.boolean({ invalid_type_error: "Tipo não válido para a flag de exclusão da tag do cliente." }).optional(),
+		}),
+	),
 });
 
 export type TClientState = z.infer<typeof ClientStateSchema>;
@@ -78,6 +90,7 @@ function getDefaultState(initialState?: Partial<TClientState>): TClientState {
 			dataInsercao: initialState?.client?.dataInsercao ?? new Date(),
 		},
 		clientLocations: initialState?.clientLocations ?? [],
+		clientTags: initialState?.clientTags ?? [],
 	};
 }
 
@@ -195,6 +208,43 @@ export function useClientState({ initialState }: UseClientStateProps = {}) {
 		});
 	}, []);
 
+	const addClientTag = useCallback((tag: TClientState["clientTags"][number]) => {
+		setState((prev) => ({
+			...prev,
+			clientTags: [...prev.clientTags, tag],
+		}));
+	}, []);
+
+	const updateClientTag = useCallback((index: number, changes: Partial<TClientState["clientTags"][number]>) => {
+		setState((prev) => ({
+			...prev,
+			clientTags: prev.clientTags.map((tag, tagIndex) => (tagIndex === index ? { ...tag, ...changes } : tag)),
+		}));
+	}, []);
+
+	const removeClientTag = useCallback((index: number) => {
+		setState((prev) => {
+			const clientTag = prev.clientTags[index];
+			if (!clientTag) return prev;
+
+			const nextClientTags = clientTag.id
+				? prev.clientTags.map((current, currentIndex) =>
+						currentIndex === index
+							? {
+									...current,
+									deletar: true,
+								}
+							: current,
+					)
+				: prev.clientTags.filter((_, currentIndex) => currentIndex !== index);
+
+			return {
+				...prev,
+				clientTags: nextClientTags,
+			};
+		});
+	}, []);
+
 	const redefineState = useCallback((newState: TClientState) => {
 		setState(syncClientMainLocation(newState));
 	}, []);
@@ -209,6 +259,9 @@ export function useClientState({ initialState }: UseClientStateProps = {}) {
 		addClientLocation,
 		updateClientLocation,
 		removeClientLocation,
+		addClientTag,
+		updateClientTag,
+		removeClientTag,
 		redefineState,
 		resetState,
 	};

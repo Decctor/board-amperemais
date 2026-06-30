@@ -10,6 +10,7 @@ import ClientGeneralBlock from "./Blocks/General";
 import ClientLocationsBlock from "./Blocks/Locations";
 import ClientProfileBlock from "./Blocks/Profile";
 import ClientSocialsBlock from "./Blocks/Socials";
+import ClientTagsBlock from "./Blocks/Tags";
 import { useClientById } from "@/lib/queries/clients";
 import { useEffect } from "react";
 
@@ -26,7 +27,17 @@ type ControlClientProps = {
 
 function ControlClient({ clientId, closeModal, callbacks }: ControlClientProps) {
 	const { data: client, isLoading, isError, error } = useClientById({ id: clientId });
-	const { state, updateClient, addClientLocation, updateClientLocation, removeClientLocation, resetState, redefineState } = useClientState();
+	const {
+		state,
+		updateClient,
+		addClientLocation,
+		updateClientLocation,
+		removeClientLocation,
+		addClientTag,
+		removeClientTag,
+		resetState,
+		redefineState,
+	} = useClientState();
 
 	const { mutate: handleUpdateClient, isPending } = useMutation({
 		mutationKey: ["update-client", clientId],
@@ -74,12 +85,33 @@ function ControlClient({ clientId, closeModal, callbacks }: ControlClientProps) 
 				localizacaoLatitude: location.localizacaoLatitude,
 				localizacaoLongitude: location.localizacaoLongitude,
 			})),
+			clientTags: state.clientTags.map((tagReference) => ({
+				id: tagReference.id ?? undefined,
+				deletar: tagReference.deletar ?? false,
+				clienteTagId: tagReference.clienteTagId,
+			})),
 		});
 	}
 
 	useEffect(() => {
-		if (client) redefineState({ client: client, clientLocations: client.localizacoes });
+		if (!client) return;
+
+		redefineState({
+			client,
+			clientLocations: client.localizacoes,
+			clientTags: client.tagReferencias.map((reference) => ({
+				id: reference.id,
+				clienteTagId: reference.clienteTagId,
+				tag: {
+					titulo: reference.tag.titulo,
+					icone: reference.tag.icone,
+					cor: reference.tag.cor,
+					corForeground: reference.tag.corForeground,
+				},
+			})),
+		});
 	}, [client, redefineState]);
+
 	return (
 		<ResponsiveMenu
 			menuTitle="EDITAR CLIENTE"
@@ -103,6 +135,7 @@ function ControlClient({ clientId, closeModal, callbacks }: ControlClientProps) 
 				updateClientLocation={updateClientLocation}
 				removeClientLocation={removeClientLocation}
 			/>
+			<ClientTagsBlock tags={state.clientTags} addClientTag={addClientTag} removeClientTag={removeClientTag} />
 		</ResponsiveMenu>
 	);
 }
