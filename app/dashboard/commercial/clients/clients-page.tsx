@@ -53,6 +53,7 @@ import ControlClient from "@/components/Modals/Clients/ControlClient";
 import { Pencil } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import NewClient from "@/components/Modals/Clients/NewClient";
+import ExportClients from "@/components/Modals/Clients/ExportClients";
 type ClientsPageProps = {
 	user: TAuthUserSession["user"];
 };
@@ -85,6 +86,7 @@ export default function ClientsPage({ user }: ClientsPageProps) {
 function ClientsDatabaseView() {
 	const queryClient = useQueryClient();
 	const [newClientModalIsOpen, setNewClientModalIsOpen] = useState<boolean>(false);
+	const [exportClientsModalIsOpen, setExportClientsModalIsOpen] = useState<boolean>(false);
 	const [editingClientId, setEditingClientId] = useState<string | null>(null);
 	const {
 		data: clientsResult,
@@ -118,10 +120,14 @@ function ClientsDatabaseView() {
 					className="grow rounded-xl"
 				/>
 				<div className="flex items-center gap-2">
+					<Button variant="ghost" className="flex items-center gap-2" size="sm" onClick={() => setExportClientsModalIsOpen(true)}>
+						<FileSpreadsheet className="w-4 h-4 min-w-4 min-h-4" />
+						EXPORTAR
+					</Button>
 					<Button variant={"ghost"} className="flex items-center gap-2" size="sm" asChild>
 						<Link href="/dashboard/commercial/clients/bulk-insert">
 							<FileSpreadsheet className="w-4 h-4 min-w-4 min-h-4" />
-							IMPORTAR CLIENTES
+							IMPORTAR
 						</Link>
 					</Button>
 					<Button className="flex items-center gap-2" size="sm" onClick={() => setNewClientModalIsOpen(true)}>
@@ -161,6 +167,7 @@ function ClientsDatabaseView() {
 			{newClientModalIsOpen ? (
 				<NewClient closeModal={() => setNewClientModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
+			{exportClientsModalIsOpen ? <ExportClients filters={filters} closeModal={() => setExportClientsModalIsOpen(false)} /> : null}
 		</div>
 	);
 }
