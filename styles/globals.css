@@ -467,3 +467,8 @@
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.56 0.021 213.5);
 }
+
+/* Sonner: mantém posição estável no hover (pausa o timer, sem "subir") */
+[data-sonner-toast][data-mounted="true"][data-expanded="true"] {
+	--y: translateY(0) !important;
+}

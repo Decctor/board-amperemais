@@ -14,6 +14,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getErrorMessage } from "@/lib/errors";
+import { showSuccessActionToast } from "@/lib/toasts/show-action-toast";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { completeProduction } from "@/lib/mutations/productions";
 import { cn } from "@/lib/utils";
@@ -101,11 +102,15 @@ export default function ProductionsPage() {
 			const createdStockLotIds = data.data.createdStockLots.map((stockLot) => stockLot.id);
 			if (createdStockLotIds.length === 0) return toast.success(data.message);
 
-			toast.success(data.message, {
-				action: {
-					label: "IMPRIMIR ETIQUETAS",
-					onClick: () => window.open(`/dashboard/operational/stock-lots/labels/preview?ids=${createdStockLotIds.join(",")}`, "_blank", "noopener,noreferrer"),
-				},
+			showSuccessActionToast({
+				message: data.message,
+				actionLabel: "IMPRIMIR ETIQUETAS",
+				onAction: () =>
+					window.open(
+						`/dashboard/operational/stock-lots/labels/preview?ids=${createdStockLotIds.join(",")}`,
+						"_blank",
+						"noopener,noreferrer",
+					),
 			});
 		},
 		onError: (error) => toast.error(getErrorMessage(error)),

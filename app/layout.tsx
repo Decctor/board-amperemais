@@ -57,7 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 			<body className={cn(`min-h-screen min-w-screen bg-background text-foreground overflow-x-hidden antialiased font-raleway ${raleway.variable}`)}>
 				<ProvidersWrapper>
 					{children}
-					<Toaster />
+					<Toaster position="bottom-right" visibleToasts={4} gap={12} />
 				</ProvidersWrapper>
 				<MarketingTrackingScript />
 				<Analytics />
