@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TimeDurationUnitsEnum } from "./enums";
+import { ProductionOriginEnum, ProductionStatusEnum, TimeDurationUnitsEnum } from "./enums";
 
 const PRODUCTION_DURATION_UNITS = ["MINUTOS", "HORAS", "DIAS"] as const;
 
@@ -152,3 +152,170 @@ export const ProductionRecipeOutputSchema = ProductionRecipeOutputBaseSchema.sup
 	}
 });
 export type TProductionRecipeOutput = z.infer<typeof ProductionRecipeOutputSchema>;
+
+const OptionalDateStringSchema = z
+	.string({
+		invalid_type_error: "Tipo não válido para data.",
+	})
+	.datetime({ message: "Tipo não válido para data." })
+	.optional()
+	.nullable()
+	.transform((value) => (value ? new Date(value) : null));
+
+export const ProductionBaseSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para ID da organização.",
+	}),
+	receitaId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da receita.",
+		})
+		.optional()
+		.nullable(),
+	titulo: z
+		.string({
+			required_error: "Título da produção não informado.",
+			invalid_type_error: "Tipo não válido para título da produção.",
+		})
+		.min(1, { message: "Título da produção não informado." }),
+	origem: ProductionOriginEnum.default("MANUAL"),
+	status: ProductionStatusEnum.default("RASCUNHO"),
+	vendaId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da venda.",
+		})
+		.optional()
+		.nullable(),
+	vendaItemId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID do item da venda.",
+		})
+		.optional()
+		.nullable(),
+	dataInicio: OptionalDateStringSchema,
+	dataPrevisaoConclusao: OptionalDateStringSchema,
+	dataConclusao: OptionalDateStringSchema,
+	observacoes: z
+		.string({
+			invalid_type_error: "Tipo não válido para observações da produção.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => {
+			const trimmed = value?.trim();
+			return trimmed ? trimmed : null;
+		}),
+	autorId: z
+		.string({
+			invalid_type_error: "Tipo não válido para autor da produção.",
+		})
+		.optional()
+		.nullable(),
+	dataInsercao: z
+		.string({
+			required_error: "Data de inserção não informada.",
+			invalid_type_error: "Tipo não válido para data de inserção.",
+		})
+		.datetime({ message: "Tipo não válido para data de inserção." })
+		.default(new Date().toISOString())
+		.transform((val) => new Date(val)),
+});
+export type TProduction = z.infer<typeof ProductionBaseSchema>;
+
+export const ProductionInputSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para ID da organização.",
+	}),
+	producaoId: z.string({
+		required_error: "ID da produção não informado.",
+		invalid_type_error: "Tipo não válido para ID da produção.",
+	}),
+	produtoId: z.string({
+		required_error: "ID do produto não informado.",
+		invalid_type_error: "Tipo não válido para ID do produto.",
+	}),
+	produtoVarianteId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da variante.",
+		})
+		.optional()
+		.nullable(),
+	quantidadePrevista: z
+		.number({
+			invalid_type_error: "Tipo não válido para quantidade prevista do insumo.",
+		})
+		.nonnegative({ message: "Quantidade prevista do insumo não pode ser negativa." })
+		.optional()
+		.nullable(),
+	quantidadeReal: z
+		.number({
+			invalid_type_error: "Tipo não válido para quantidade real do insumo.",
+		})
+		.nonnegative({ message: "Quantidade real do insumo não pode ser negativa." })
+		.optional()
+		.nullable(),
+});
+export type TProductionInput = z.infer<typeof ProductionInputSchema>;
+
+export const ProductionOutputBaseSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para ID da organização.",
+	}),
+	producaoId: z.string({
+		required_error: "ID da produção não informado.",
+		invalid_type_error: "Tipo não válido para ID da produção.",
+	}),
+	produtoId: z.string({
+		required_error: "ID do produto não informado.",
+		invalid_type_error: "Tipo não válido para ID do produto.",
+	}),
+	produtoVarianteId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da variante.",
+		})
+		.optional()
+		.nullable(),
+	quantidadePrevista: z
+		.number({
+			invalid_type_error: "Tipo não válido para quantidade prevista da saída.",
+		})
+		.nonnegative({ message: "Quantidade prevista da saída não pode ser negativa." })
+		.optional()
+		.nullable(),
+	quantidadeReal: z
+		.number({
+			invalid_type_error: "Tipo não válido para quantidade real da saída.",
+		})
+		.nonnegative({ message: "Quantidade real da saída não pode ser negativa." })
+		.optional()
+		.nullable(),
+	prazoValidadeMedida: ProductionDurationUnitEnum.optional().nullable(),
+	prazoValidadeValor: z
+		.number({
+			invalid_type_error: "Tipo não válido para prazo de validade.",
+		})
+		.nonnegative({ message: "Prazo de validade não pode ser negativo." })
+		.optional()
+		.nullable(),
+	dataValidade: OptionalDateStringSchema,
+});
+export const ProductionOutputSchema = ProductionOutputBaseSchema.superRefine((value, ctx) => {
+	if (value.prazoValidadeValor != null && !value.prazoValidadeMedida) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ["prazoValidadeMedida"],
+			message: "Medida do prazo de validade não informada.",
+		});
+	}
+	if (value.prazoValidadeMedida && value.prazoValidadeValor == null) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ["prazoValidadeValor"],
+			message: "Valor do prazo de validade não informado.",
+		});
+	}
+});
+export type TProductionOutput = z.infer<typeof ProductionOutputSchema>;

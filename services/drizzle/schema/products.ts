@@ -1,13 +1,14 @@
 import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, index, integer, primaryKey, text, timestamp, uniqueIndex, varchar, vector } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
-import { productClientReferenceWindowEnum, stockMovementTypeEnum, variantOptionTypeEnum } from "./enums";
+import { productClientReferenceWindowEnum, stockLotStatusEnum, stockMovementTypeEnum, variantOptionTypeEnum } from "./enums";
 import { organizations } from "./organizations";
 import { saleItems, sales } from "./sales";
 import { users } from "./users";
 import { purchaseItems, purchases } from "./purchases";
 import { productFiscalProfiles } from "./fiscal";
 import { clients } from "./clients";
+import { productionInputs, productionOutputs, productions } from "./productions";
 
 export const products = newTable(
 	"products",
@@ -41,7 +42,7 @@ export const products = newTable(
 		codigoIdx: index("idx_products_codigo").on(table.codigo),
 	}),
 );
-export const productsRelations = relations(products, ({ one, many }) => ({
+export const productsRelations = relations(products, ({ many }) => ({
 	pedidos: many(saleItems),
 	variantes: many(productVariants),
 	opcoes: many(productOptions),
@@ -289,7 +290,7 @@ export const productAddOnOptions = newTable("product_add_on_options", {
 
 	ativo: boolean("ativo").default(true),
 });
-export const productAddOnOptionsRelations = relations(productAddOnOptions, ({ one, many }) => ({
+export const productAddOnOptionsRelations = relations(productAddOnOptions, ({ one }) => ({
 	produtoAddOn: one(productAddOns, {
 		fields: [productAddOnOptions.produtoAddOnId],
 		references: [productAddOns.id],
@@ -335,6 +336,65 @@ export const productAddOnReferencesRelations = relations(productAddOnReferences,
 	}),
 }));
 
+export const productStockLots = newTable(
+	"product_stock_lots",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.notNull()
+			.references(() => organizations.id, { onDelete: "cascade" }),
+		produtoId: varchar("produto_id", { length: 255 })
+			.notNull()
+			.references(() => products.id, { onDelete: "cascade" }),
+		produtoVarianteId: varchar("produto_variante_id", { length: 255 }).references(() => productVariants.id, { onDelete: "set null" }),
+		codigoLote: text("codigo_lote"),
+		dataFabricacao: timestamp("data_fabricacao"),
+		dataValidade: timestamp("data_validade"),
+		quantidadeInicial: doublePrecision("quantidade_inicial").notNull(),
+		quantidadeAtual: doublePrecision("quantidade_atual").notNull(),
+		status: stockLotStatusEnum("status").default("ATIVO").notNull(),
+		producaoId: varchar("producao_id", { length: 255 }).references(() => productions.id, { onDelete: "set null" }),
+		compraId: varchar("compra_id", { length: 255 }).references(() => purchases.id, { onDelete: "set null" }),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		organizacaoIdx: index("idx_product_stock_lots_organizacao").on(table.organizacaoId),
+		produtoIdx: index("idx_product_stock_lots_produto").on(table.produtoId),
+		varianteIdx: index("idx_product_stock_lots_variante").on(table.produtoVarianteId),
+		statusIdx: index("idx_product_stock_lots_status").on(table.status),
+		validadeIdx: index("idx_product_stock_lots_validade").on(table.dataValidade),
+		producaoIdx: index("idx_product_stock_lots_producao").on(table.producaoId),
+	}),
+);
+
+export const productStockLotsRelations = relations(productStockLots, ({ one }) => ({
+	organizacao: one(organizations, {
+		fields: [productStockLots.organizacaoId],
+		references: [organizations.id],
+	}),
+	produto: one(products, {
+		fields: [productStockLots.produtoId],
+		references: [products.id],
+	}),
+	produtoVariante: one(productVariants, {
+		fields: [productStockLots.produtoVarianteId],
+		references: [productVariants.id],
+	}),
+	producao: one(productions, {
+		fields: [productStockLots.producaoId],
+		references: [productions.id],
+	}),
+	compra: one(purchases, {
+		fields: [productStockLots.compraId],
+		references: [purchases.id],
+	}),
+}));
+
+export type TProductStockLot = typeof productStockLots.$inferSelect;
+export type TNewProductStockLot = typeof productStockLots.$inferInsert;
+
 export const productStockTransactions = newTable(
 	"product_stock_transactions",
 	{
@@ -363,6 +423,11 @@ export const productStockTransactions = newTable(
 			onDelete: "set null",
 		}),
 
+		producaoId: varchar("producao_id", { length: 255 }).references(() => productions.id, { onDelete: "set null" }),
+		producaoEntradaId: varchar("producao_entrada_id", { length: 255 }).references(() => productionInputs.id, { onDelete: "set null" }),
+		producaoSaidaId: varchar("producao_saida_id", { length: 255 }).references(() => productionOutputs.id, { onDelete: "set null" }),
+		loteId: varchar("lote_id", { length: 255 }).references(() => productStockLots.id, { onDelete: "set null" }),
+
 		tipo: stockMovementTypeEnum("tipo").default("SAIDA").notNull(),
 
 		// Quantity related fields
@@ -386,6 +451,8 @@ export const productStockTransactions = newTable(
 		produtoIdIdx: index("idx_product_stock_transactions_produto_id").on(table.produtoId),
 		produtoVarianteIdIdx: index("idx_product_stock_transactions_variante_id").on(table.produtoVarianteId),
 		vendaIdIdx: index("idx_product_stock_transactions_venda_id").on(table.vendaId),
+		producaoIdIdx: index("idx_product_stock_transactions_producao_id").on(table.producaoId),
+		loteIdIdx: index("idx_product_stock_transactions_lote_id").on(table.loteId),
 		tipoIdx: index("idx_product_stock_transactions_tipo").on(table.tipo),
 	}),
 );
@@ -414,6 +481,22 @@ export const productStockTransactionsRelations = relations(productStockTransacti
 	compraItem: one(purchaseItems, {
 		fields: [productStockTransactions.compraItemId],
 		references: [purchaseItems.id],
+	}),
+	producao: one(productions, {
+		fields: [productStockTransactions.producaoId],
+		references: [productions.id],
+	}),
+	producaoEntrada: one(productionInputs, {
+		fields: [productStockTransactions.producaoEntradaId],
+		references: [productionInputs.id],
+	}),
+	producaoSaida: one(productionOutputs, {
+		fields: [productStockTransactions.producaoSaidaId],
+		references: [productionOutputs.id],
+	}),
+	lote: one(productStockLots, {
+		fields: [productStockTransactions.loteId],
+		references: [productStockLots.id],
 	}),
 	operador: one(users, {
 		fields: [productStockTransactions.operadorId],

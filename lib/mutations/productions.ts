@@ -1,4 +1,13 @@
 import type {
+	TCreateProductionInput,
+	TCreateProductionOutput,
+	TDeleteProductionInput,
+	TDeleteProductionOutput,
+	TUpdateProductionInput,
+	TUpdateProductionOutput,
+} from "@/app/api/productions/route";
+import type { TCompleteProductionInput, TCompleteProductionOutput } from "@/app/api/productions/complete/route";
+import type {
 	TCreateProductionRecipeInput,
 	TCreateProductionRecipeOutput,
 	TDeleteProductionRecipeInput,
@@ -7,6 +16,26 @@ import type {
 	TUpdateProductionRecipeOutput,
 } from "@/app/api/productions/recipes/route";
 import axios from "axios";
+
+export async function completeProduction(input: TCompleteProductionInput) {
+	const { data } = await axios.post<TCompleteProductionOutput>("/api/productions/complete", input);
+	return data;
+}
+
+export async function createProduction(input: TCreateProductionInput) {
+	const { data } = await axios.post<TCreateProductionOutput>("/api/productions", input);
+	return data;
+}
+
+export async function updateProduction(input: TUpdateProductionInput) {
+	const { data } = await axios.put<TUpdateProductionOutput>("/api/productions", input);
+	return data;
+}
+
+export async function deleteProduction(input: TDeleteProductionInput) {
+	const { data } = await axios.delete<TDeleteProductionOutput>(`/api/productions?productionId=${input.productionId}`);
+	return data;
+}
 
 export async function createProductionRecipe(input: TCreateProductionRecipeInput) {
 	const { data } = await axios.post<TCreateProductionRecipeOutput>("/api/productions/recipes", input);
