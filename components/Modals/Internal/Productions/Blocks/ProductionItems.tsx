@@ -5,8 +5,13 @@ import DeleteRowButton from "@/components/Spreadsheet/DeleteRowButton";
 import EditableNumberCell from "@/components/Spreadsheet/EditableNumberCell";
 import MobileEditableField from "@/components/Spreadsheet/MobileEditableField";
 import SpreadsheetCellWrapper from "@/components/Spreadsheet/SpreadsheetCellWrapper";
+import {
+	normalizeValidityDurationMeasure,
+	VALIDITY_DURATION_OPTIONS,
+	ValidityDurationMeasureCell,
+	ValidityDurationValueCell,
+} from "@/components/Spreadsheet/ValidityDurationCells";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatNameAsInitials } from "@/lib/formatting";
 import {
 	consumeProgrammaticSpreadsheetFocus,
@@ -20,14 +25,6 @@ import { BoxIcon, Package, PackageCheck, Plus } from "lucide-react";
 import Image from "next/image";
 import { useMemo, useState } from "react";
 
-type ProductionDurationOptionValue = "MINUTOS" | "HORAS" | "DIAS";
-
-const VALIDITY_DURATION_OPTIONS: { id: string; label: string; value: ProductionDurationOptionValue }[] = [
-	{ id: "MINUTOS", label: "Minutos", value: "MINUTOS" },
-	{ id: "HORAS", label: "Horas", value: "HORAS" },
-	{ id: "DIAS", label: "Dias", value: "DIAS" },
-];
-
 const PRODUCTION_INPUT_GRID_COL = {
 	PRODUCT: 0,
 	QTY_PLANNED: 1,
@@ -40,11 +37,12 @@ const PRODUCTION_OUTPUT_GRID_COL = {
 	PRODUCT: 0,
 	QTY_PLANNED: 1,
 	QTY_REAL: 2,
-	VALIDITY: 3,
-	EXPIRY_DATE: 4,
+	VALIDITY_VALUE: 3,
+	VALIDITY_MEASURE: 4,
+	EXPIRY_DATE: 5,
 } as const;
 
-const PRODUCTION_OUTPUT_GRID_COL_COUNT = 5;
+const PRODUCTION_OUTPUT_GRID_COL_COUNT = 6;
 
 type ProductionInputState = TProductionState["productionInputs"][number];
 type ProductionOutputState = TProductionState["productionOutputs"][number];
@@ -143,7 +141,8 @@ export function ProductionOutputsBlock({
 					<p className="w-[8%] px-2 text-center">Un.</p>
 					<p className="w-[12%] px-2 text-center">Qtd. prev.</p>
 					<p className="w-[12%] px-2 text-center">Qtd. real</p>
-					<p className="w-[18%] px-2 text-center">Prazo validade</p>
+					<p className="w-[10%] px-2 text-center">Prazo</p>
+					<p className="w-[8%] px-2 text-center">Med.</p>
 					<p className="w-[13%] px-2 text-center">Validade real</p>
 					<p className="w-[5%] px-2 text-center">Ações</p>
 				</div>
@@ -381,14 +380,22 @@ function ProductionOutputTableRow({ item, gridRow, gridBounds, handleUpdate, han
 						onCommit={(quantidadeReal) => handleUpdate({ quantidadeReal })}
 					/>
 				</div>
-				<div className="w-[18%] px-1">
-					<ValidityDurationCell
+				<div className="w-[10%] px-1">
+					<ValidityDurationValueCell
 						value={item.prazoValidadeValor}
 						measure={prazoValidadeMedida}
 						gridRow={gridRow}
-						gridCol={PRODUCTION_OUTPUT_GRID_COL.VALIDITY}
+						gridCol={PRODUCTION_OUTPUT_GRID_COL.VALIDITY_VALUE}
 						gridBounds={gridBounds}
-						onValueChange={(prazoValidadeValor) => handleUpdate({ prazoValidadeValor })}
+						onCommit={(prazoValidadeValor) => handleUpdate({ prazoValidadeValor })}
+					/>
+				</div>
+				<div className="w-[8%] px-1">
+					<ValidityDurationMeasureCell
+						measure={prazoValidadeMedida}
+						gridRow={gridRow}
+						gridCol={PRODUCTION_OUTPUT_GRID_COL.VALIDITY_MEASURE}
+						gridBounds={gridBounds}
 						onMeasureChange={(prazoValidadeMedida) => handleUpdate({ prazoValidadeMedida })}
 						onReset={() => handleUpdate({ prazoValidadeMedida: null, prazoValidadeValor: null })}
 					/>
@@ -518,14 +525,22 @@ function DraftProductionOutputRow({
 						onCommit={(quantidadeReal) => updateDraftItem({ quantidadeReal })}
 					/>
 				</div>
-				<div className="w-[18%] px-1">
-					<ValidityDurationCell
+				<div className="w-[10%] px-1">
+					<ValidityDurationValueCell
 						value={draftItem.prazoValidadeValor}
 						measure={prazoValidadeMedida}
 						gridRow={gridRow}
-						gridCol={PRODUCTION_OUTPUT_GRID_COL.VALIDITY}
+						gridCol={PRODUCTION_OUTPUT_GRID_COL.VALIDITY_VALUE}
 						gridBounds={gridBounds}
-						onValueChange={(prazoValidadeValor) => updateDraftItem({ prazoValidadeValor })}
+						onCommit={(prazoValidadeValor) => updateDraftItem({ prazoValidadeValor })}
+					/>
+				</div>
+				<div className="w-[8%] px-1">
+					<ValidityDurationMeasureCell
+						measure={prazoValidadeMedida}
+						gridRow={gridRow}
+						gridCol={PRODUCTION_OUTPUT_GRID_COL.VALIDITY_MEASURE}
+						gridBounds={gridBounds}
 						onMeasureChange={(prazoValidadeMedida) => updateDraftItem({ prazoValidadeMedida })}
 						onReset={() => updateDraftItem({ prazoValidadeMedida: null, prazoValidadeValor: null })}
 					/>
@@ -683,70 +698,6 @@ function ProductThumb({ imageUrl, label }: { imageUrl?: string | null; label: st
 	);
 }
 
-function ValidityDurationCell({
-	value,
-	measure,
-	gridRow,
-	gridCol,
-	gridBounds,
-	onValueChange,
-	onMeasureChange,
-	onReset,
-}: {
-	value: number | null | undefined;
-	measure: ProductionDurationOptionValue | null | undefined;
-	gridRow: number;
-	gridCol: number;
-	gridBounds: SpreadsheetGridBounds;
-	onValueChange: (value: number) => void;
-	onMeasureChange: (value: ProductionDurationOptionValue) => void;
-	onReset: () => void;
-}) {
-	const measureLabel = VALIDITY_DURATION_OPTIONS.find((option) => option.value === measure)?.label;
-
-	return (
-		<div className="flex h-8 items-center gap-1">
-			<div className="min-w-0 flex-1">
-				<EditableNumberCell
-					value={value ?? 0}
-					ariaLabel="Editar prazo de validade"
-					min={0}
-					gridRow={gridRow}
-					gridCol={gridCol}
-					gridBounds={gridBounds}
-					emptyDisplay="-"
-					format={(nextValue) => (nextValue > 0 && measure ? `${nextValue} ${measureLabel ?? measure}` : "-")}
-					onCommit={(prazoValidadeValor) => onValueChange(prazoValidadeValor)}
-				/>
-			</div>
-			<Select
-				value={measure ?? undefined}
-				onValueChange={(nextMeasure) => {
-					if (nextMeasure === "__reset__") {
-						onReset();
-						return;
-					}
-					onMeasureChange(nextMeasure as ProductionDurationOptionValue);
-				}}
-			>
-				<SelectTrigger className="h-8 w-[4.5rem] shrink-0 border-border px-1.5 text-[0.65rem] shadow-none">
-					<SelectValue placeholder="Med." />
-				</SelectTrigger>
-				<SelectContent>
-					{VALIDITY_DURATION_OPTIONS.map((option) => (
-						<SelectItem key={option.id} value={option.value} className="text-xs">
-							{option.label}
-						</SelectItem>
-					))}
-					<SelectItem value="__reset__" className="text-xs text-muted-foreground">
-						Limpar
-					</SelectItem>
-				</SelectContent>
-			</Select>
-		</div>
-	);
-}
-
 function ProductionDateCell({
 	value,
 	gridRow,
@@ -847,11 +798,6 @@ function normalizeOutputValues(item: ProductionOutputState): ProductionOutputSta
 		quantidadeReal: Number(item.quantidadeReal) || 0,
 		prazoValidadeValor: item.prazoValidadeValor == null ? null : Number(item.prazoValidadeValor) || 0,
 	};
-}
-
-function normalizeValidityDurationMeasure(value: ProductionOutputState["prazoValidadeMedida"]): ProductionDurationOptionValue | null {
-	if (value === "MINUTOS" || value === "HORAS" || value === "DIAS") return value;
-	return null;
 }
 
 function getItemDisplayName(item: ProductItemLike) {

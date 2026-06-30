@@ -55,17 +55,19 @@ export default function StatUnitCard({
 					{subtitle && <p className="text-[0.65rem] text-muted-foreground">{subtitle}</p>}
 				</div>
 				<div className="flex items-center gap-2">
-					{showComparison && !isNeutral && (
-						<div
-							className={cn(
-								"inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold ",
-								isGood ? "bg-green-200 text-green-700" : "bg-red-200 text-red-700",
-							)}
-						>
-							{isGood ? <TrendingUp className="h-3 min-h-3 w-3 min-w-3" /> : <TrendingDown className="h-3 min-h-3 w-3 min-w-3" />}
-							{formatDecimalPlaces(changeAbs)}%
-						</div>
-					)}
+					<div className="inline-flex min-h-[22px] items-center">
+						{showComparison && !isNeutral ? (
+							<div
+								className={cn(
+									"inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold ",
+									isGood ? "bg-green-200 text-green-700" : "bg-red-200 text-red-700",
+								)}
+							>
+								{isGood ? <TrendingUp className="h-3 min-h-3 w-3 min-w-3" /> : <TrendingDown className="h-3 min-h-3 w-3 min-w-3" />}
+								{formatDecimalPlaces(changeAbs)}%
+							</div>
+						) : null}
+					</div>
 					{icon}
 				</div>
 			</div>
@@ -73,11 +75,12 @@ export default function StatUnitCard({
 				<div className="text-2xl font-bold" style={{ color: colors.secondary }}>
 					{current.format(current.value)}
 				</div>
-				{showComparison ? (
-					<p className="text-muted-foreground text-xs tracking-tight">
-						{previousLabel}: {previous?.format(previous?.value || 0)}
-					</p>
-				) : null}
+				<p
+					className={cn("text-muted-foreground min-h-4 text-xs tracking-tight", !showComparison && "invisible")}
+					aria-hidden={!showComparison}
+				>
+					{showComparison ? `${previousLabel}: ${previous.format(previous.value)}` : "\u00A0"}
+				</p>
 			</div>
 			{footer ? <div className="w-full">{footer}</div> : null}
 		</div>

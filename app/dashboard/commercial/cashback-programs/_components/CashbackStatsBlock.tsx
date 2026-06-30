@@ -29,6 +29,11 @@ type CashbackStatsBlockProps = {
 	terminology: TCashbackProgramTerminologyEnum;
 };
 
+function buildPreviousStat(anterior: number | undefined, format: (n: number) => string) {
+	if (anterior === undefined) return undefined;
+	return { value: anterior, format };
+}
+
 export default function CashbackStatsBlock({ period, terminology }: CashbackStatsBlockProps) {
 	const [debouncedPeriod] = useDebounce(period, 1000);
 
@@ -41,32 +46,28 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					title="Total de Participantes"
 					icon={<UsersRound className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalParticipants.atual || 0, format: (n) => formatDecimalPlaces(n) }}
-					previous={
-						stats?.totalParticipants.anterior ? { value: stats.totalParticipants.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined
-					}
+					previous={buildPreviousStat(stats?.totalParticipants.anterior, (n) => formatDecimalPlaces(n))}
 					className="w-full lg:w-1/4"
 				/>
 				<StatUnitCard
 					title="Total de Novos Participantes"
 					icon={<UserRoundPlus className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalNewParticipants.atual || 0, format: (n) => formatDecimalPlaces(n) }}
-					previous={
-						stats?.totalNewParticipants.anterior ? { value: stats.totalNewParticipants.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined
-					}
+					previous={buildPreviousStat(stats?.totalNewParticipants.anterior, (n) => formatDecimalPlaces(n))}
 					className="w-full lg:w-1/4"
 				/>
 				<StatUnitCard
 					title="Total de Clientes"
 					icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalClients.atual || 0, format: (n) => formatDecimalPlaces(n) }}
-					previous={stats?.totalClients.anterior ? { value: stats.totalClients.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined}
+					previous={buildPreviousStat(stats?.totalClients.anterior, (n) => formatDecimalPlaces(n))}
 					className="w-full lg:w-1/4"
 				/>
 				<StatUnitCard
 					title="Total de Novos Clientes"
 					icon={<UserPlus className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalNewClients.atual || 0, format: (n) => formatDecimalPlaces(n) }}
-					previous={stats?.totalNewClients.anterior ? { value: stats.totalNewClients.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined}
+					previous={buildPreviousStat(stats?.totalNewClients.anterior, (n) => formatDecimalPlaces(n))}
 					className="w-full lg:w-1/4"
 				/>
 			</div>
@@ -78,14 +79,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 						value: stats?.revenueFromRecurrentClients.atual ? Number(stats.revenueFromRecurrentClients.atual) : 0,
 						format: (n) => formatToMoney(n),
 					}}
-					previous={
-						stats?.revenueFromRecurrentClients.anterior
-							? {
-									value: stats.revenueFromRecurrentClients.anterior || 0,
-									format: (n) => formatToMoney(n),
-								}
-							: undefined
-					}
+					previous={buildPreviousStat(stats?.revenueFromRecurrentClients.anterior, (n) => formatToMoney(n))}
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
@@ -101,14 +95,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 						value: stats?.revenueFromNewClients.atual ? Number(stats.revenueFromNewClients.atual) : 0,
 						format: (n) => formatToMoney(n),
 					}}
-					previous={
-						stats?.revenueFromNewClients.anterior
-							? {
-									value: stats.revenueFromNewClients.anterior || 0,
-									format: (n) => formatToMoney(n),
-								}
-							: undefined
-					}
+					previous={buildPreviousStat(stats?.revenueFromNewClients.anterior, (n) => formatToMoney(n))}
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
@@ -124,14 +111,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 						value: stats?.revenueFromNonIdentifiedClients.atual ? Number(stats.revenueFromNonIdentifiedClients.atual) : 0,
 						format: (n) => formatToMoney(n),
 					}}
-					previous={
-						stats?.revenueFromNonIdentifiedClients.anterior
-							? {
-									value: stats.revenueFromNonIdentifiedClients.anterior || 0,
-									format: (n) => formatToMoney(n),
-								}
-							: undefined
-					}
+					previous={buildPreviousStat(stats?.revenueFromNonIdentifiedClients.anterior, (n) => formatToMoney(n))}
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
@@ -146,14 +126,14 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					title="Nº TOTAL DE VENDAS"
 					icon={<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalSalesCount.atual || 0, format: (n) => formatDecimalPlaces(n) }}
-					previous={stats?.totalSalesCount.anterior ? { value: stats.totalSalesCount.anterior || 0, format: (n) => formatDecimalPlaces(n) } : undefined}
+					previous={buildPreviousStat(stats?.totalSalesCount.anterior, (n) => formatDecimalPlaces(n))}
 					className="w-full lg:w-1/2"
 				/>
 				<StatUnitCard
 					title="VALOR TOTAL VENDIDO"
 					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalSalesValue.atual || 0, format: (n) => formatToMoney(n) }}
-					previous={stats?.totalSalesValue.anterior ? { value: stats.totalSalesValue.anterior || 0, format: (n) => formatToMoney(n) } : undefined}
+					previous={buildPreviousStat(stats?.totalSalesValue.anterior, (n) => formatToMoney(n))}
 					className="w-full lg:w-1/2"
 				/>
 			</div>
@@ -162,11 +142,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					title="Nº VENDAS COM CASHBACK"
 					icon={<ShoppingCart className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.salesWithCashbackCount.atual || 0, format: (n) => formatDecimalPlaces(n) }}
-					previous={
-						stats?.salesWithCashbackCount.anterior
-							? { value: stats.salesWithCashbackCount.anterior || 0, format: (n) => formatDecimalPlaces(n) }
-							: undefined
-					}
+					previous={buildPreviousStat(stats?.salesWithCashbackCount.anterior, (n) => formatDecimalPlaces(n))}
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
@@ -179,9 +155,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					title="VALOR VENDIDO COM CASHBACK"
 					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.salesWithCashbackValue.atual || 0, format: (n) => formatToMoney(n) }}
-					previous={
-						stats?.salesWithCashbackValue.anterior ? { value: stats.salesWithCashbackValue.anterior || 0, format: (n) => formatToMoney(n) } : undefined
-					}
+					previous={buildPreviousStat(stats?.salesWithCashbackValue.anterior, (n) => formatToMoney(n))}
 					footer={
 						<div className="flex items-center gap-1">
 							<p className="text-muted-foreground text-xs font-medium tracking-tight uppercase">REPRESENTATIVIDADE:</p>
@@ -196,42 +170,28 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					title="Cashback Gerado"
 					icon={<CirclePlus className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalCashbackGenerated.atual || 0, format: (n) => formatCashbackValue(n, terminology) }}
-					previous={
-						stats?.totalCashbackGenerated.anterior
-							? { value: stats.totalCashbackGenerated.anterior || 0, format: (n) => formatCashbackValue(n, terminology) }
-							: undefined
-					}
+					previous={buildPreviousStat(stats?.totalCashbackGenerated.anterior, (n) => formatCashbackValue(n, terminology))}
 					className="w-full lg:w-1/5"
 				/>
 				<StatUnitCard
 					title="Cashback Resgatado"
 					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalCashbackRescued.atual || 0, format: (n) => formatCashbackValue(n, terminology) }}
-					previous={
-						stats?.totalCashbackRescued.anterior
-							? { value: stats.totalCashbackRescued.anterior || 0, format: (n) => formatCashbackValue(n, terminology) }
-							: undefined
-					}
+					previous={buildPreviousStat(stats?.totalCashbackRescued.anterior, (n) => formatCashbackValue(n, terminology))}
 					className="w-full lg:w-1/5"
 				/>
 				<StatUnitCard
 					title="Taxa de Resgate"
 					icon={<Percent className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.redemptionRate.atual || 0, format: (n) => `${formatDecimalPlaces(n)}%` }}
-					previous={
-						stats?.redemptionRate.anterior ? { value: stats.redemptionRate.anterior || 0, format: (n) => `${formatDecimalPlaces(n)}%` } : undefined
-					}
+					previous={buildPreviousStat(stats?.redemptionRate.anterior, (n) => `${formatDecimalPlaces(n)}%`)}
 					className="w-full lg:w-1/5"
 				/>
 				<StatUnitCard
 					title="Cashback Expirado"
 					icon={<XCircle className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalExpiredCashback.atual || 0, format: (n) => formatCashbackValue(n, terminology) }}
-					previous={
-						stats?.totalExpiredCashback.anterior
-							? { value: stats.totalExpiredCashback.anterior || 0, format: (n) => formatCashbackValue(n, terminology) }
-							: undefined
-					}
+					previous={buildPreviousStat(stats?.totalExpiredCashback.anterior, (n) => formatCashbackValue(n, terminology))}
 					className="w-full lg:w-1/5"
 					lowerIsBetter={true}
 				/>
@@ -239,11 +199,7 @@ export default function CashbackStatsBlock({ period, terminology }: CashbackStat
 					title="Cashback Expirando"
 					icon={<Clock className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{ value: stats?.totalExpiringCashback.atual || 0, format: (n) => formatCashbackValue(n, terminology) }}
-					previous={
-						stats?.totalExpiringCashback.anterior
-							? { value: stats.totalExpiringCashback.anterior || 0, format: (n) => formatCashbackValue(n, terminology) }
-							: undefined
-					}
+					previous={buildPreviousStat(stats?.totalExpiringCashback.anterior, (n) => formatCashbackValue(n, terminology))}
 					className="w-full lg:w-1/5"
 					lowerIsBetter={true}
 				/>

@@ -752,6 +752,16 @@ export const AppRoutes = [
 		description: "Hub de atendimento com os clientes.",
 	},
 	{
+		path: "/dashboard/operational/productions",
+		title: "Produções",
+		description: "Painel de acompanhamento e gestão das produções do seu negócio.",
+	},
+	{
+		path: "/dashboard/operational/stock-lots",
+		title: "Lotes de Estoque",
+		description: "Painel de acompanhamento e gestão dos lotes de estoque do seu negócio.",
+	},
+	{
 		path: "/dashboard/operational/finances",
 		title: "Finanças",
 		description: "Painel de acompanhamento e gestão das finanças do seu negócio.",
