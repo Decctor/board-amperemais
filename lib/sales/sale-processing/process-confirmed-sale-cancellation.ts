@@ -81,11 +81,12 @@ export async function processConfirmedSaleCancellation({
 			if (movement.loteId) {
 				const stockLot = await tx.query.productStockLots.findFirst({
 					where: and(eq(productStockLots.id, movement.loteId), eq(productStockLots.organizacaoId, organizationId)),
-					columns: { id: true, dataValidade: true },
+					columns: { id: true, dataValidade: true, status: true },
 				});
 
 				if (stockLot) {
-					const nextStatus = stockLot.dataValidade && stockLot.dataValidade < new Date() ? "VENCIDO" : "ATIVO";
+					const nextStatus =
+						stockLot.status === "DESCARTADO" ? "DESCARTADO" : stockLot.dataValidade && stockLot.dataValidade < new Date() ? "VENCIDO" : "ATIVO";
 					await tx
 						.update(productStockLots)
 						.set({

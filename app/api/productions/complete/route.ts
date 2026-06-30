@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { applyStockMovement, isStockTrackingActive } from "@/lib/stock/apply-stock-movement";
+import { consumeStockLotsByFefo } from "@/lib/stock/consume-stock-lots-fefo";
 import { db } from "@/services/drizzle";
 import { productStockLots, productionOutputs, productions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -48,13 +49,13 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 			const realQuantity = inputItem.quantidadeReal ?? 0;
 			if (realQuantity <= 0) continue;
 
-			const movement = await applyStockMovement({
+			const consumedLots = await consumeStockLotsByFefo({
 				trx: tx,
 				organizationId,
 				userId,
 				produtoId: inputItem.produtoId,
 				produtoVarianteId: inputItem.produtoVarianteId,
-				signedQuantity: -realQuantity,
+				quantidade: realQuantity,
 				movementType: "SAIDA_PRODUCAO",
 				reason: "Consumo de insumo em produção",
 				unitCost: null,
@@ -62,11 +63,36 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 					producaoId: production.id,
 					producaoEntradaId: inputItem.id,
 				},
-				validateSufficientStock: true,
+				allowPartial: true,
 			});
 
-			if (movement.applied && movement.previousUnitCost != null) {
-				consumedCostTotal += realQuantity * movement.previousUnitCost;
+			const consumedFromLots = consumedLots.reduce((total, lot) => total + lot.quantidadeConsumida, 0);
+			for (const lot of consumedLots) {
+				if (lot.applied && lot.unitCost != null) consumedCostTotal += lot.quantidadeConsumida * lot.unitCost;
+			}
+
+			const remainingQuantity = realQuantity - consumedFromLots;
+			if (remainingQuantity > 0) {
+				const movement = await applyStockMovement({
+					trx: tx,
+					organizationId,
+					userId,
+					produtoId: inputItem.produtoId,
+					produtoVarianteId: inputItem.produtoVarianteId,
+					signedQuantity: -remainingQuantity,
+					movementType: "SAIDA_PRODUCAO",
+					reason: "Consumo de insumo em produção",
+					unitCost: null,
+					links: {
+						producaoId: production.id,
+						producaoEntradaId: inputItem.id,
+					},
+					validateSufficientStock: true,
+				});
+
+				if (movement.applied && movement.previousUnitCost != null) {
+					consumedCostTotal += remainingQuantity * movement.previousUnitCost;
+				}
 			}
 		}
 

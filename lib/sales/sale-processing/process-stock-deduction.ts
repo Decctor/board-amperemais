@@ -1,9 +1,7 @@
 import { applyStockMovement } from "@/lib/stock/apply-stock-movement";
 import { consumeStockLotsByFefo } from "@/lib/stock/consume-stock-lots-fefo";
 import { DBTransaction } from "@/services/drizzle";
-import { productStockLots } from "@/services/drizzle/schema";
 import type { TSaleItemEntity } from "@/services/drizzle/schema/sales";
-import { and, eq, isNull } from "drizzle-orm";
 import createHttpError from "http-errors";
 
 type SaleItemForStock = TSaleItemEntity & {
@@ -56,18 +54,6 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 
 	const optionMap = new Map(addOnOptions.map((option) => [option.id, option]));
 
-	async function hasAnyStockLot({ productId, variantId }: { productId: string; variantId?: string | null }) {
-		const lot = await tx.query.productStockLots.findFirst({
-			where: and(
-				eq(productStockLots.organizacaoId, params.organizationId),
-				eq(productStockLots.produtoId, productId),
-				variantId ? eq(productStockLots.produtoVarianteId, variantId) : isNull(productStockLots.produtoVarianteId),
-			),
-			columns: { id: true },
-		});
-		return !!lot;
-	}
-
 	async function deductStock({
 		productId,
 		variantId,
@@ -83,22 +69,25 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 	}) {
 		if (quantity <= 0) return;
 
-		const hasLots = await hasAnyStockLot({ productId, variantId });
-		if (hasLots) {
-			await consumeStockLotsByFefo({
-				trx: tx,
-				organizationId: params.organizationId,
-				userId: params.saleAuthorId,
-				produtoId: productId,
-				produtoVarianteId: variantId,
-				quantidade: quantity,
-				movementType: "SAIDA",
-				reason,
-				links: {
-					vendaId: params.saleId,
-					vendaItemId: saleItemId,
-				},
-			});
+		const consumedLots = await consumeStockLotsByFefo({
+			trx: tx,
+			organizationId: params.organizationId,
+			userId: params.saleAuthorId,
+			produtoId: productId,
+			produtoVarianteId: variantId,
+			quantidade: quantity,
+			movementType: "SAIDA",
+			reason,
+			links: {
+				vendaId: params.saleId,
+				vendaItemId: saleItemId,
+			},
+			allowPartial: true,
+		});
+		const consumedFromLots = consumedLots.reduce((total, lot) => total + lot.quantidadeConsumida, 0);
+		const remainingQuantity = quantity - consumedFromLots;
+
+		if (remainingQuantity <= 0) {
 			return;
 		}
 
@@ -108,7 +97,7 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 			userId: params.saleAuthorId,
 			produtoId: productId,
 			produtoVarianteId: variantId,
-			signedQuantity: -quantity,
+			signedQuantity: -remainingQuantity,
 			movementType: "SAIDA",
 			reason,
 			links: {

@@ -26,6 +26,7 @@ type ConsumeStockLotsByFefoParams = {
 	movementType?: TStockMovementTypeEnum;
 	unitCost?: number | null;
 	links?: StockLotConsumptionLinks;
+	allowPartial?: boolean;
 };
 
 export type TConsumedStockLot = {
@@ -35,6 +36,8 @@ export type TConsumedStockLot = {
 	quantidadeAnterior: number;
 	quantidadePosterior: number;
 	dataValidade: Date | null;
+	unitCost: number | null;
+	applied: boolean;
 };
 
 export async function consumeStockLotsByFefo({
@@ -48,6 +51,7 @@ export async function consumeStockLotsByFefo({
 	movementType = "SAIDA",
 	unitCost = null,
 	links,
+	allowPartial = false,
 }: ConsumeStockLotsByFefoParams): Promise<TConsumedStockLot[]> {
 	if (quantidade <= 0) throw new createHttpError.BadRequest("Quantidade para consumo por lote deve ser maior que zero.");
 
@@ -65,7 +69,7 @@ export async function consumeStockLotsByFefo({
 	});
 
 	const totalAvailable = availableLots.reduce((total, lot) => total + lot.quantidadeAtual, 0);
-	if (totalAvailable < quantidade) {
+	if (!allowPartial && totalAvailable < quantidade) {
 		throw new createHttpError.BadRequest("Saldo em lotes insuficiente para consumir a quantidade informada.");
 	}
 
@@ -78,7 +82,7 @@ export async function consumeStockLotsByFefo({
 		const quantityToConsume = Math.min(remainingQuantity, lot.quantidadeAtual);
 		const nextQuantity = lot.quantidadeAtual - quantityToConsume;
 
-		await applyStockMovement({
+		const movement = await applyStockMovement({
 			trx,
 			organizationId,
 			userId,
@@ -110,6 +114,8 @@ export async function consumeStockLotsByFefo({
 			quantidadeAnterior: lot.quantidadeAtual,
 			quantidadePosterior: nextQuantity,
 			dataValidade: lot.dataValidade,
+			unitCost: movement.previousUnitCost,
+			applied: movement.applied,
 		});
 
 		remainingQuantity -= quantityToConsume;
