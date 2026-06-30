@@ -17,6 +17,8 @@ const DEFAULT_CASHBACK_EXPIRING_ANTECEDENCIA_MEDIDA: TTimeDurationUnitsEnum = "D
 
 function formatCashbackExpiringWindow(value: number, measure: TTimeDurationUnitsEnum) {
 	const labels: Record<TTimeDurationUnitsEnum, { singular: string; plural: string }> = {
+		MINUTOS: { singular: "minuto", plural: "minutos" },
+		HORAS: { singular: "hora", plural: "horas" },
 		DIAS: { singular: "dia", plural: "dias" },
 		SEMANAS: { singular: "semana", plural: "semanas" },
 		MESES: { singular: "mês", plural: "meses" },
@@ -235,10 +237,7 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 							})
 							.returning({ id: interactions.id });
 
-						if (
-							campaign.execucaoAgendadaValor === 0 &&
-							campaign.whatsappTemplate
-						) {
+						if (campaign.execucaoAgendadaValor === 0 && campaign.whatsappTemplate) {
 							const clientData = await tx.query.clients.findFirst({
 								where: (fields, { eq }) => eq(fields.id, clienteId),
 								columns: {

@@ -19,7 +19,7 @@ export const campaignExecutionDelayDirectionEnum = pgEnum("campaign_execution_de
 
 export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", ["DIARIO", "SEMANAL", "MENSAL"]);
 
-export const timeDurationUnitsEnum = pgEnum("time_duration_units", ["DIAS", "SEMANAS", "MESES", "ANOS"]);
+export const timeDurationUnitsEnum = pgEnum("time_duration_units", ["MINUTOS", "HORAS", "DIAS", "SEMANAS", "MESES", "ANOS"]);
 
 export const interactionTypeEnum = pgEnum("interaction_type", ["ENVIO-MENSAGEM", "ENVIO-EMAIL", "LIGAÇÃO", "ATENDIMENTO"]);
 export const interactionsCronJobTimeBlocksEnum = pgEnum("interactions_cron_time_blocks", [
@@ -234,7 +234,21 @@ export const fiscalPisCofinsCstEnum = pgEnum("fiscal_pis_cofins_cst", ["01", "02
 
 export const fiscalTaxRuleScopeEnum = pgEnum("fiscal_tax_rule_scope", ["INTRAESTADUAL", "INTERESTADUAL"]);
 
-export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["ENTRADA_AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
+export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
+	"ENTRADA_AQUISICAO",
+	"SAIDA",
+	"AJUSTE",
+	"ENTRADA_DEVOLUCAO",
+	"SAIDA_PRODUCAO",
+	"ENTRADA_PRODUCAO",
+	"DESCARTE",
+]);
+
+export const productionStatusEnum = pgEnum("production_status", ["RASCUNHO", "PLANEJADA", "EM_PRODUCAO", "CONCLUIDA", "CANCELADA"]);
+
+export const productionOriginEnum = pgEnum("production_origin", ["MANUAL", "PEDIDO", "AGENDADA"]);
+
+export const stockLotStatusEnum = pgEnum("stock_lot_status", ["ATIVO", "ESGOTADO", "VENCIDO", "DESCARTADO"]);
 
 // Tipo de eixo de variante (drive a UI: texto simples, swatch de cor, valor numerico).
 export const variantOptionTypeEnum = pgEnum("variant_option_type", ["TEXTO", "COR", "NUMERO"]);

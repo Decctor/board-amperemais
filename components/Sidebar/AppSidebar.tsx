@@ -1,10 +1,10 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import type { TUserSession } from "@/schemas/users";
 import {
 	BadgePercent,
 	BookText,
 	CirclePlay,
+	Factory,
 	Goal,
 	Grid3X3,
 	Handshake,
@@ -14,9 +14,7 @@ import {
 	Package,
 	ShoppingCart,
 	Store,
-	Tag,
 	UserRound,
-	Users,
 	UsersRound,
 	Wallet,
 } from "lucide-react";
@@ -169,6 +167,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
 			},
 			{
+				title: "Produções",
+				url: "/dashboard/operational/productions",
+				icon: <Factory className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+			},
+			{
 				title: "Financeiro",
 				url: "/dashboard/operational/finances",
 				icon: <Wallet className="w-4 h-4" />,
@@ -192,7 +197,7 @@ function filterSidebarConfig(
 	return config
 		.map((group) => ({
 			group: group.group,
-			items: group.items.filter((item) => item.checkAccess(organization)).map(({ checkAccess, ...rest }) => rest),
+			items: group.items.filter((item) => item.checkAccess(organization)).map(({ checkAccess: _checkAccess, ...rest }) => rest),
 		}))
 		.filter((group) => group.items.length > 0);
 }

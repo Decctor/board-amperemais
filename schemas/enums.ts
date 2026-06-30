@@ -21,7 +21,7 @@ export const CampaignExecutionDelayDirectionEnum = z.enum(["ANTES", "DEPOIS"]);
 export type TCampaignExecutionDelayDirectionEnum = z.infer<typeof CampaignExecutionDelayDirectionEnum>;
 export const RecurrenceFrequencyEnum = z.enum(["DIARIO", "SEMANAL", "MENSAL"]);
 export type TRecurrenceFrequencyEnum = z.infer<typeof RecurrenceFrequencyEnum>;
-export const TimeDurationUnitsEnum = z.enum(["DIAS", "SEMANAS", "MESES", "ANOS"]);
+export const TimeDurationUnitsEnum = z.enum(["MINUTOS", "HORAS", "DIAS", "SEMANAS", "MESES", "ANOS"]);
 export type TTimeDurationUnitsEnum = z.infer<typeof TimeDurationUnitsEnum>;
 export const InteractionTypeEnum = z.enum(["ENVIO-MENSAGEM", "ENVIO-EMAIL", "LIGAÇÃO", "ATENDIMENTO"]);
 export type TInteractionTypeEnum = z.infer<typeof InteractionTypeEnum>;
@@ -216,8 +216,22 @@ export type TFiscalTaxRuleScopeEnum = z.infer<typeof FiscalTaxRuleScopeEnum>;
 // Eventos de manifestacao do destinatario (DF-e / notas recebidas).
 export const FiscalInboundManifestEventEnum = z.enum(["CIENCIA", "CONFIRMACAO", "DESCONHECIMENTO", "NAO_REALIZADA"]);
 export type TFiscalInboundManifestEventEnum = z.infer<typeof FiscalInboundManifestEventEnum>;
-export const StockMovementTypeEnum = z.enum(["ENTRADA _AQUISICAO", "SAIDA", "AJUSTE", "ENTRADA_DEVOLUCAO"]);
+export const StockMovementTypeEnum = z.enum([
+	"ENTRADA_AQUISICAO",
+	"SAIDA",
+	"AJUSTE",
+	"ENTRADA_DEVOLUCAO",
+	"SAIDA_PRODUCAO",
+	"ENTRADA_PRODUCAO",
+	"DESCARTE",
+]);
 export type TStockMovementTypeEnum = z.infer<typeof StockMovementTypeEnum>;
+export const ProductionStatusEnum = z.enum(["RASCUNHO", "PLANEJADA", "EM_PRODUCAO", "CONCLUIDA", "CANCELADA"]);
+export type TProductionStatusEnum = z.infer<typeof ProductionStatusEnum>;
+export const ProductionOriginEnum = z.enum(["MANUAL", "PEDIDO", "AGENDADA"]);
+export type TProductionOriginEnum = z.infer<typeof ProductionOriginEnum>;
+export const StockLotStatusEnum = z.enum(["ATIVO", "ESGOTADO", "VENCIDO", "DESCARTADO"]);
+export type TStockLotStatusEnum = z.infer<typeof StockLotStatusEnum>;
 // Tipo de eixo de variante (TEXTO simples, COR com swatch, NUMERO).
 export const VariantOptionTypeEnum = z.enum(["TEXTO", "COR", "NUMERO"]);
 export type TVariantOptionTypeEnum = z.infer<typeof VariantOptionTypeEnum>;

@@ -71,7 +71,15 @@ export function getYearStringsBetweenDates({ initialDate, endDate }: { initialDa
 
 	return strings;
 }
-export function getHoursDiff({ start, finish, businessOnly }: { start: string | Date; finish: string | Date; businessOnly?: boolean }) {
+export function getHoursDiff({
+	start,
+	finish,
+	businessOnly: _businessOnly,
+}: {
+	start: string | Date;
+	finish: string | Date;
+	businessOnly?: boolean;
+}) {
 	// if (businessOnly) {
 	//   // @ts-ignore
 	//   const hourDiff = dayjs(finish).businessDiff(dayjs(start), 'hour')
@@ -445,6 +453,8 @@ export function getPeriodUtils({
 }
 
 export const DASTJS_TIME_DURATION_UNITS_MAP: Record<TTimeDurationUnitsEnum, ManipulateType> = {
+	MINUTOS: "minute",
+	HORAS: "hour",
 	DIAS: "day",
 	SEMANAS: "week",
 	MESES: "month",
