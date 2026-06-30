@@ -1,4 +1,5 @@
 import { buildCampaignReportPayload, type TReportOrganization } from "@/lib/reports/payload";
+import { shouldRunReportOnDate } from "@/lib/reports/periods";
 import reportImageRenderer from "@/lib/reports/render-report-image";
 import { uploadReportImage } from "@/lib/reports/storage";
 import type { TCampaignReportPayload, TReportFrequency } from "@/lib/reports/types";
@@ -131,6 +132,7 @@ async function fetchReportOrganizationById(organizationId: string) {
 
 type RunRecurrentSalesReportParams = {
 	frequency: TReportFrequency;
+	referenceDate?: Date;
 };
 
 type SendApprovedReportTemplateParams = {
@@ -244,11 +246,27 @@ export async function runRecurrentSalesReportForRecipient({
 	};
 }
 
-export async function runRecurrentSalesReport({ frequency }: RunRecurrentSalesReportParams) {
+export async function runRecurrentSalesReport({ frequency, referenceDate = new Date() }: RunRecurrentSalesReportParams) {
 	const logLabel = getReportLogLabel(frequency);
 
 	try {
 		console.log(`[INFO] [${logLabel}] Starting recurrent sales report generation`);
+
+		if (!shouldRunReportOnDate(frequency, referenceDate)) {
+			const referenceDateLabel = referenceDate.toISOString().slice(0, 10);
+			console.log(`[INFO] [${logLabel}] Skipping report generation for non-applicable date: ${referenceDateLabel}`);
+
+			return {
+				message: "Relatório não executado: data fora da recorrência configurada.",
+				sent: 0,
+				total: 0,
+				skipped: true,
+				reason: "non-applicable-date",
+				frequency,
+				referenceDate: referenceDateLabel,
+				results: [],
+			};
+		}
 
 		const whatsappToken = process.env.META_ACCESS_TOKEN;
 		const whatsappPhoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
@@ -283,6 +301,7 @@ export async function runRecurrentSalesReport({ frequency }: RunRecurrentSalesRe
 				const payload = await buildCampaignReportPayload({
 					frequency,
 					organization: organization as TReportOrganization,
+					referenceDate,
 				});
 
 				if (shouldSkipReport(payload)) {

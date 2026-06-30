@@ -45,9 +45,9 @@ export function getReportPeriod(frequency: TReportFrequency, referenceDate = new
 	}
 
 	if (frequency === "biweekly") {
-		const isFirstHalf = baseDate.date() <= 15;
+		const isFirstHalfClosed = baseDate.date() > 15;
 
-		if (isFirstHalf) {
+		if (isFirstHalfClosed) {
 			const target = baseDate.startOf("month");
 			const targetEnd = baseDate.date(15).endOf("day");
 			const comparisonMonth = baseDate.subtract(1, "month");
@@ -65,10 +65,11 @@ export function getReportPeriod(frequency: TReportFrequency, referenceDate = new
 			};
 		}
 
-		const target = baseDate.date(16).startOf("day");
-		const targetEnd = baseDate.endOf("month");
-		const comparisonAfter = baseDate.startOf("month");
-		const comparisonBefore = baseDate.date(15).endOf("day");
+		const targetMonth = baseDate.subtract(1, "month");
+		const target = targetMonth.date(16).startOf("day");
+		const targetEnd = targetMonth.endOf("month");
+		const comparisonAfter = targetMonth.startOf("month");
+		const comparisonBefore = targetMonth.date(15).endOf("day");
 
 		return {
 			frequency,
@@ -92,4 +93,14 @@ export function getReportPeriod(frequency: TReportFrequency, referenceDate = new
 		comparisonBefore: comparison.endOf("month").toDate(),
 		storageKey: target.format("YYYY-MM"),
 	};
+}
+
+export function shouldRunReportOnDate(frequency: TReportFrequency, referenceDate = new Date()) {
+	const baseDate = dayjs(referenceDate);
+
+	if (frequency === "daily") return true;
+	if (frequency === "weekly") return baseDate.day() === 0;
+	if (frequency === "monthly") return baseDate.date() === 1;
+
+	return baseDate.date() === 16;
 }

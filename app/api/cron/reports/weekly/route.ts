@@ -14,7 +14,7 @@ export const maxDuration = 60;
 
 export const GET = appApiHandler({
 	GET: async (req) => {
-		// assertCronAuthorized(req);
+		assertCronAuthorized(req);
 		return getWeeklyReportRoute(req);
 	},
 });
