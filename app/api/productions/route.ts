@@ -339,7 +339,7 @@ async function createProduction({ input, session }: { input: TCreateProductionIn
 				})),
 			);
 		}
-
+		console.log("[DEBUG] [CREATE PRODUCTION] Production created successfully with ID:", insertedProduction.id);
 		return {
 			data: {
 				insertedId: insertedProduction.id,

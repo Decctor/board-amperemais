@@ -99,6 +99,7 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 		const outputQuantityTotal = outputsWithRealQuantity.reduce((total, output) => total + (output.quantidadeReal ?? 0), 0);
 		const producedUnitCost = consumedCostTotal > 0 && outputQuantityTotal > 0 ? consumedCostTotal / outputQuantityTotal : null;
 		const completedAt = new Date();
+		const createdStockLots: { id: string; codigoLote: string | null }[] = [];
 
 		for (const [index, outputItem] of outputsWithRealQuantity.entries()) {
 			const realQuantity = outputItem.quantidadeReal ?? 0;
@@ -138,9 +139,10 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 						status: "ATIVO",
 						producaoId: production.id,
 					})
-					.returning({ id: productStockLots.id });
+					.returning({ id: productStockLots.id, codigoLote: productStockLots.codigoLote });
 				loteId = insertedLot?.id ?? null;
 				if (!loteId) throw new createHttpError.InternalServerError("Erro ao criar lote da produção.");
+				createdStockLots.push({ id: loteId, codigoLote: insertedLot.codigoLote });
 			}
 
 			await applyStockMovement({
@@ -176,6 +178,7 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 		return {
 			data: {
 				completedId: updatedProduction.id,
+				createdStockLots,
 			},
 			message: "Produção concluída com sucesso.",
 		};

@@ -1,0 +1,246 @@
+.shell {
+	display: flex;
+	width: 100%;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: var(--card);
+	padding: 14px 16px;
+}
+
+.toolbarText {
+	min-width: 0;
+}
+
+.toolbarTitle {
+	font-size: 0.95rem;
+	font-weight: 800;
+	letter-spacing: 0;
+	line-height: 1.15;
+}
+
+.toolbarDescription {
+	margin-top: 4px;
+	color: var(--muted-foreground);
+	font-size: 0.75rem;
+	line-height: 1.35;
+}
+
+.sheet {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 14px;
+	align-items: start;
+}
+
+.label {
+	position: relative;
+	display: flex;
+	width: 60mm;
+	height: 80mm;
+	flex-direction: column;
+	overflow: hidden;
+	border: 1px solid #171717;
+	background: #fff;
+	color: #111;
+	font-family: "Arial Narrow", Arial, sans-serif;
+}
+
+.topStripe,
+.bottomStripe {
+	height: 2.5mm;
+	width: 100%;
+	flex: 0 0 auto;
+	background: #ef4b22;
+}
+
+.content {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	flex-direction: column;
+	padding: 2.4mm 2.6mm 2mm;
+}
+
+.headline {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 2mm;
+	border-bottom: 0.35mm solid #8a8a8a;
+	padding-bottom: 1.8mm;
+}
+
+.productName {
+	max-width: 43mm;
+	font-size: 4.2mm;
+	font-weight: 900;
+	letter-spacing: 0;
+	line-height: 1.02;
+	text-transform: uppercase;
+}
+
+.variantName {
+	margin-top: 1.2mm;
+	font-size: 2.2mm;
+	font-weight: 800;
+	line-height: 1.05;
+	text-transform: uppercase;
+}
+
+.quantity {
+	padding-top: 1.1mm;
+	font-size: 2.2mm;
+	font-weight: 900;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.details {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75mm;
+	border-bottom: 0.35mm solid #8a8a8a;
+	padding: 2mm 0 1.9mm;
+}
+
+.detailRow {
+	display: grid;
+	grid-template-columns: 24mm 1fr;
+	gap: 1.5mm;
+	align-items: baseline;
+	min-height: 3mm;
+}
+
+.detailLabel {
+	font-size: 2.35mm;
+	font-weight: 900;
+	line-height: 1;
+	text-transform: uppercase;
+}
+
+.detailValue {
+	overflow: hidden;
+	font-size: 2.2mm;
+	font-weight: 700;
+	line-height: 1.05;
+	text-align: right;
+	text-overflow: ellipsis;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.footer {
+	display: grid;
+	grid-template-columns: 1fr 21mm;
+	gap: 2.4mm;
+	min-height: 0;
+	padding-top: 2mm;
+}
+
+.orgBlock {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: 0.65mm;
+}
+
+.orgLine,
+.codeLine {
+	overflow: hidden;
+	font-size: 2.05mm;
+	font-weight: 800;
+	line-height: 1.05;
+	text-overflow: ellipsis;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.codeLine {
+	margin-top: auto;
+	font-size: 2.15mm;
+	font-weight: 900;
+}
+
+.qrBox {
+	align-self: end;
+	width: 21mm;
+	height: 21mm;
+	border: 0.35mm solid #111;
+	background: #fff;
+	padding: 0.7mm;
+}
+
+.qrBox img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.emptyState {
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: var(--card);
+	padding: 20px;
+	color: var(--muted-foreground);
+	font-size: 0.9rem;
+}
+
+@page {
+	size: 60mm 80mm;
+	margin: 0;
+}
+
+@media print {
+	:global(body *) {
+		visibility: hidden !important;
+	}
+
+	.printArea,
+	.printArea * {
+		visibility: visible !important;
+	}
+
+	.shell {
+		display: block;
+	}
+
+	.toolbar {
+		display: none !important;
+	}
+
+	.printArea {
+		position: absolute;
+		top: 0;
+		left: 0;
+		display: block;
+		width: 60mm;
+	}
+
+	.sheet {
+		display: block;
+	}
+
+	.label {
+		width: 60mm;
+		height: 80mm;
+		break-after: page;
+		border: 0;
+		box-shadow: none;
+		page-break-after: always;
+	}
+
+	.label:last-child {
+		break-after: auto;
+		page-break-after: auto;
+	}
+}

@@ -4,7 +4,7 @@ import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
-import { formatCashbackValue, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
@@ -28,6 +28,26 @@ type PointOfInteractionContentProps = {
 	};
 	mode: "kiosk" | "mobile";
 };
+
+function getCashbackAccumulationCopy(cashbackProgram: TCashbackProgramEntity): string {
+	const { acumuloTipo, acumuloValor, acumuloRegraValorMinimo, terminologia } = cashbackProgram;
+
+	let copy: string;
+
+	if (acumuloTipo === "PERCENTUAL") {
+		const referencePurchaseValue = 100;
+		const earnedPerReference = (referencePurchaseValue * acumuloValor) / 100;
+		copy = `A cada ${formatToMoney(referencePurchaseValue)} gastos, você ganha ${formatCashbackValue(earnedPerReference, terminologia)}`;
+	} else {
+		copy = `Ganhe ${formatCashbackValue(acumuloValor, terminologia)} por compra`;
+	}
+
+	if (acumuloRegraValorMinimo > 0) {
+		copy += ` ( para compras a partir de ${formatToMoney(acumuloRegraValorMinimo)} )`;
+	}
+
+	return copy;
+}
 
 export default function PointOfInteractionContent({ org, cashbackProgram, mode }: PointOfInteractionContentProps) {
 	const router = useRouter();
@@ -204,11 +224,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 									</div>
 									<div className="flex flex-col min-w-0">
 										<span className="text-[0.65rem] font-bold uppercase text-muted-foreground tracking-widest">Acúmulo</span>
-										<span className="text-sm font-extrabold text-foreground leading-snug">
-											Ganhe {cashbackProgram.acumuloValor}
-											{cashbackProgram.acumuloTipo === "PERCENTUAL" ? "%" : ` ${cashbackProgram.terminologia === "PONTOS" ? "pontos" : "reais"}`} a cada R$ 1,00
-											gasto
-										</span>
+										<span className="text-sm font-extrabold text-foreground leading-snug">{getCashbackAccumulationCopy(cashbackProgram)}</span>
 									</div>
 								</div>
 

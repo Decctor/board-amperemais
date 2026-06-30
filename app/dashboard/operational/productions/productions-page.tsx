@@ -19,17 +19,56 @@ import { completeProduction } from "@/lib/mutations/productions";
 import { cn } from "@/lib/utils";
 import { useProductionRecipes, useProductions } from "@/lib/queries/productions";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, CheckCircle2, Clock, Factory, Package, PackageCheck, Pencil, Plus } from "lucide-react";
+import {
+	Calendar,
+	CalendarCheck,
+	CalendarPlus,
+	CheckCheck,
+	CheckCircle2,
+	ClipboardList,
+	Clock,
+	Factory,
+	FileIcon,
+	Package,
+	PackageCheck,
+	Pencil,
+	Plus,
+	X,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 const PRODUCTION_STATUS_CONFIG = {
-	RASCUNHO: { label: "Rascunho", className: "bg-muted text-muted-foreground" },
-	PLANEJADA: { label: "Planejada", className: "bg-primary/10 text-primary" },
-	EM_PRODUCAO: { label: "Em produção", className: "bg-brand/30 text-foreground" },
-	CONCLUIDA: { label: "Concluída", className: "bg-green-100 text-green-700" },
-	CANCELADA: { label: "Cancelada", className: "bg-destructive/10 text-destructive" },
+	RASCUNHO: {
+		label: "RASCUNHO",
+		icon: <FileIcon className="h-4 w-4 min-h-4 min-w-4 text-gray-600" />,
+		className: "bg-gray-200 text-gray-600",
+	},
+	PLANEJADA: {
+		label: "PLANEJADA",
+		icon: <Calendar className="h-4 w-4 min-h-4 min-w-4 text-blue-600" />,
+		className: "bg-blue-200 text-blue-600",
+	},
+	EM_PRODUCAO: {
+		label: "EM PRODUÇÃO",
+		icon: <Factory className="h-4 w-4 min-h-4 min-w-4 text-yellow-600" />,
+		className: "bg-yellow-200 text-yellow-600",
+	},
+	CONCLUIDA: {
+		label: "CONCLUÍDA",
+		icon: <CheckCheck className="h-4 w-4 min-h-4 min-w-4 text-green-600" />,
+		className: "bg-green-200 text-green-600",
+	},
+	CANCELADA: {
+		label: "CANCELADA",
+		icon: <X className="h-4 w-4 min-h-4 min-w-4 text-red-600" />,
+		className: "bg-red-200 text-red-600",
+	},
 } as const;
+
+function formatCountLabel(count: number, singular: string, plural: string) {
+	return `${count} ${count === 1 ? singular : plural}`;
+}
 
 export default function ProductionsPage() {
 	const queryClient = useQueryClient();
@@ -46,23 +85,44 @@ export default function ProductionsPage() {
 	});
 
 	const handleProductionsOnMutate = async () => await queryClient.cancelQueries({ queryKey: productionsQuery.queryKey });
-	const handleProductionsOnSettled = async () => await queryClient.invalidateQueries({ queryKey: productionsQuery.queryKey });
+	const handleProductionsOnSettled = async () => {
+		await Promise.all([
+			queryClient.invalidateQueries({ queryKey: productionsQuery.queryKey }),
+			queryClient.invalidateQueries({ queryKey: ["product-stock-lots"] }),
+		]);
+	};
 	const handleRecipesOnMutate = async () => await queryClient.cancelQueries({ queryKey: recipesQuery.queryKey });
 	const handleRecipesOnSettled = async () => await queryClient.invalidateQueries({ queryKey: recipesQuery.queryKey });
 	const { mutate: handleCompleteProductionMutation, isPending: productionCompletionIsPending } = useMutation({
 		mutationKey: ["complete-production"],
 		mutationFn: completeProduction,
 		onMutate: handleProductionsOnMutate,
-		onSuccess: (data) => toast.success(data.message),
+		onSuccess: (data) => {
+			const createdStockLotIds = data.data.createdStockLots.map((stockLot) => stockLot.id);
+			if (createdStockLotIds.length === 0) return toast.success(data.message);
+
+			toast.success(data.message, {
+				action: {
+					label: "IMPRIMIR ETIQUETAS",
+					onClick: () => window.open(`/dashboard/operational/stock-lots/labels/preview?ids=${createdStockLotIds.join(",")}`, "_blank", "noopener,noreferrer"),
+				},
+			});
+		},
 		onError: (error) => toast.error(getErrorMessage(error)),
 		onSettled: handleProductionsOnSettled,
 	});
 
 	return (
 		<Tabs defaultValue="producoes" className="flex w-full flex-col gap-3">
-			<TabsList>
-				<TabsTrigger value="producoes">PRODUÇÕES</TabsTrigger>
-				<TabsTrigger value="receitas">RECEITAS</TabsTrigger>
+			<TabsList className="flex h-fit w-fit items-center gap-1.5 self-start rounded-lg px-2 py-1">
+				<TabsTrigger value="producoes" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+					<Factory className="h-4 w-4 min-h-4 min-w-4" />
+					PRODUÇÕES
+				</TabsTrigger>
+				<TabsTrigger value="receitas" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+					<ClipboardList className="h-4 w-4 min-h-4 min-w-4" />
+					RECEITAS
+				</TabsTrigger>
 			</TabsList>
 			<TabsContent value="producoes" className="flex w-full flex-col gap-3">
 				<ProductionsTab
@@ -259,21 +319,58 @@ function ProductionCard({ production, onEdit, onComplete, completionIsPending }:
 	const canComplete = production.status !== "CONCLUIDA" && production.status !== "CANCELADA";
 
 	return (
-		<div className="flex w-full flex-col gap-3 rounded-xl border border-border bg-card px-4 py-4 shadow-2xs">
-			<div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-				<div className="flex min-w-0 gap-3">
-					<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-						<Factory className="h-4 w-4" />
-					</div>
-					<div className="min-w-0">
-						<div className="flex flex-wrap items-center gap-2">
-							<h2 className="truncate text-sm font-bold tracking-tight">{production.titulo}</h2>
-							<span className={cn("rounded-full px-2 py-0.5 text-[0.65rem] font-semibold", statusConfig.className)}>{statusConfig.label}</span>
-						</div>
-						{production.receita?.titulo ? <p className="line-clamp-1 text-xs leading-relaxed text-muted-foreground">{production.receita.titulo}</p> : null}
-					</div>
+		<div className="bg-card border-border flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
+				<div className="min-w-0">
+					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{production.titulo}</h1>
+					{production.receita?.titulo ? (
+						<p className="line-clamp-1 text-[0.65rem] text-muted-foreground">{production.receita.titulo}</p>
+					) : null}
 				</div>
-				<div className="flex flex-wrap items-center gap-2 self-start">
+				<div className={cn("flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1", statusConfig.className)}>
+					{statusConfig.icon}
+					<span className="text-xs font-medium uppercase tracking-tight">{statusConfig.label}</span>
+				</div>
+			</div>
+
+			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
+				<div className="flex flex-wrap items-center gap-2">
+					<div className="flex items-center gap-1">
+						<Package className="h-4 w-4 min-h-4 min-w-4" />
+						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+							{formatCountLabel(production.entradas.length, "ENTRADA", "ENTRADAS")}
+						</span>
+					</div>
+					<div className="flex items-center gap-1">
+						<PackageCheck className="h-4 w-4 min-h-4 min-w-4" />
+						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+							{formatCountLabel(production.saidas.length, "SAÍDA", "SAÍDAS")}
+						</span>
+					</div>
+					{production.dataPrevisaoConclusao ? (
+						<div className="flex items-center gap-1">
+							<Clock className="h-4 w-4 min-h-4 min-w-4" />
+							<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+								PREVISÃO: {formatDateAsLocale(production.dataPrevisaoConclusao, false)}
+							</span>
+						</div>
+					) : null}
+					<div className="flex items-center gap-1">
+						<CalendarPlus className="h-4 w-4 min-h-4 min-w-4" />
+						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+							CRIADA EM: {formatDateAsLocale(production.dataInsercao, true)}
+						</span>
+					</div>
+					{production.dataConclusao ? (
+						<div className="flex items-center gap-1">
+							<CalendarCheck className="h-4 w-4 min-h-4 min-w-4 text-green-600" />
+							<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+								CONCLUÍDA EM: {formatDateAsLocale(production.dataConclusao, true)}
+							</span>
+						</div>
+					) : null}
+				</div>
+				<div className="flex flex-wrap items-center gap-2">
 					{canComplete ? (
 						<Button variant="ghost-default" size="xs" onClick={onComplete} disabled={completionIsPending}>
 							<CheckCircle2 className="h-4 w-4" />
@@ -285,27 +382,6 @@ function ProductionCard({ production, onEdit, onComplete, completionIsPending }:
 						EDITAR
 					</Button>
 				</div>
-			</div>
-
-			<div className="flex flex-wrap items-center gap-2 text-[0.7rem] font-medium text-muted-foreground">
-				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-					<Package className="h-3.5 w-3.5" />
-					{production.entradas.length} entrada(s)
-				</span>
-				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-					<PackageCheck className="h-3.5 w-3.5" />
-					{production.saidas.length} saída(s)
-				</span>
-				{production.dataPrevisaoConclusao ? (
-					<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-						<Clock className="h-3.5 w-3.5" />
-						{formatDateAsLocale(production.dataPrevisaoConclusao, false)}
-					</span>
-				) : null}
-				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-					<CalendarPlus className="h-3.5 w-3.5" />
-					{formatDateAsLocale(production.dataInsercao, true)}
-				</span>
 			</div>
 		</div>
 	);
@@ -320,42 +396,45 @@ function ProductionRecipeCard({ recipe, onEdit }: ProductionRecipeCardProps) {
 	const hasDuration = Boolean(recipe.previsaoTempoValor && recipe.previsaoTempoMedida);
 
 	return (
-		<div className="flex w-full flex-col gap-3 rounded-xl border border-border bg-card px-4 py-4 shadow-2xs">
-			<div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-				<div className="flex min-w-0 gap-3">
-					<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-						<Factory className="h-4 w-4" />
+		<div className="bg-card border-border flex w-full flex-col gap-1.5 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="min-w-0">
+				<h1 className="text-xs font-bold tracking-tight lg:text-sm">{recipe.titulo}</h1>
+				{recipe.descricao ? <p className="line-clamp-2 text-[0.65rem] text-muted-foreground">{recipe.descricao}</p> : null}
+			</div>
+
+			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
+				<div className="flex flex-wrap items-center gap-2">
+					<div className="flex items-center gap-1">
+						<Package className="h-4 w-4 min-h-4 min-w-4" />
+						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+							{formatCountLabel(recipe.insumos.length, "INSUMO", "INSUMOS")}
+						</span>
 					</div>
-					<div className="min-w-0">
-						<h2 className="truncate text-sm font-bold tracking-tight">{recipe.titulo}</h2>
-						{recipe.descricao ? <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{recipe.descricao}</p> : null}
+					<div className="flex items-center gap-1">
+						<PackageCheck className="h-4 w-4 min-h-4 min-w-4" />
+						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+							{formatCountLabel(recipe.saidas.length, "SAÍDA", "SAÍDAS")}
+						</span>
+					</div>
+					{hasDuration ? (
+						<div className="flex items-center gap-1">
+							<Clock className="h-4 w-4 min-h-4 min-w-4" />
+							<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+								{`${recipe.previsaoTempoValor} ${recipe.previsaoTempoMedida}`}
+							</span>
+						</div>
+					) : null}
+					<div className="flex items-center gap-1">
+						<CalendarPlus className="h-4 w-4 min-h-4 min-w-4" />
+						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
+							CRIADA EM: {formatDateAsLocale(recipe.dataInsercao, true)}
+						</span>
 					</div>
 				</div>
-				<Button variant="ghost" size="xs" onClick={onEdit} className="self-start">
+				<Button variant="ghost" size="xs" onClick={onEdit}>
 					<Pencil className="h-4 w-4" />
 					EDITAR
 				</Button>
-			</div>
-
-			<div className="flex flex-wrap items-center gap-2 text-[0.7rem] font-medium text-muted-foreground">
-				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-					<Package className="h-3.5 w-3.5" />
-					{recipe.insumos.length} insumo(s)
-				</span>
-				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-					<PackageCheck className="h-3.5 w-3.5" />
-					{recipe.saidas.length} saída(s)
-				</span>
-				{hasDuration ? (
-					<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-						<Clock className="h-3.5 w-3.5" />
-						{`${recipe.previsaoTempoValor} ${recipe.previsaoTempoMedida?.toLowerCase()}`}
-					</span>
-				) : null}
-				<span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
-					<CalendarPlus className="h-3.5 w-3.5" />
-					{formatDateAsLocale(recipe.dataInsercao, true)}
-				</span>
 			</div>
 		</div>
 	);
