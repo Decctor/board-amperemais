@@ -1,13 +1,7 @@
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
+import { applyStockMovement } from "@/lib/stock/apply-stock-movement";
 import { db } from "@/services/drizzle";
-import {
-	accountingEntries,
-	financialTransactions,
-	productStockTransactions,
-	productVariants,
-	products,
-	sales,
-} from "@/services/drizzle/schema";
+import { accountingEntries, financialTransactions, productStockLots, sales } from "@/services/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 
@@ -67,28 +61,40 @@ export async function processConfirmedSaleCancellation({
 		}
 
 		for (const movement of sale.movimentacoesEstoque.filter((item) => item.tipo === "SAIDA")) {
-			if (movement.produtoVarianteId) {
-				await tx
-					.update(productVariants)
-					.set({ quantidade: sql`${productVariants.quantidade} + ${movement.quantidade}` })
-					.where(and(eq(productVariants.id, movement.produtoVarianteId), eq(productVariants.organizacaoId, organizationId)));
-			} else {
-				await tx
-					.update(products)
-					.set({ quantidade: sql`${products.quantidade} + ${movement.quantidade}` })
-					.where(and(eq(products.id, movement.produtoId), eq(products.organizacaoId, organizationId)));
-			}
-			await tx.insert(productStockTransactions).values({
-				organizacaoId: organizationId,
+			await applyStockMovement({
+				trx: tx,
+				organizationId,
+				userId: authorId,
 				produtoId: movement.produtoId,
 				produtoVarianteId: movement.produtoVarianteId,
-				tipo: "ENTRADA_DEVOLUCAO",
-				quantidade: movement.quantidade,
-				motivo: `Estorno de venda cancelada: ${reason}`,
-				vendaId: saleId,
-				vendaItemId: movement.vendaItemId,
-				operadorId: authorId,
+				signedQuantity: movement.quantidade,
+				movementType: "ENTRADA_DEVOLUCAO",
+				reason: `Estorno de venda cancelada: ${reason}`,
+				unitCost: movement.custoUnitarioMovimentado,
+				links: {
+					loteId: movement.loteId,
+					vendaId: saleId,
+					vendaItemId: movement.vendaItemId,
+				},
 			});
+
+			if (movement.loteId) {
+				const stockLot = await tx.query.productStockLots.findFirst({
+					where: and(eq(productStockLots.id, movement.loteId), eq(productStockLots.organizacaoId, organizationId)),
+					columns: { id: true, dataValidade: true },
+				});
+
+				if (stockLot) {
+					const nextStatus = stockLot.dataValidade && stockLot.dataValidade < new Date() ? "VENCIDO" : "ATIVO";
+					await tx
+						.update(productStockLots)
+						.set({
+							quantidadeAtual: sql`${productStockLots.quantidadeAtual} + ${movement.quantidade}`,
+							status: nextStatus,
+						})
+						.where(and(eq(productStockLots.id, movement.loteId), eq(productStockLots.organizacaoId, organizationId)));
+				}
+			}
 		}
 
 		await tx

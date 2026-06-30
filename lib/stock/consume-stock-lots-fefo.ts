@@ -18,7 +18,7 @@ type StockLotConsumptionLinks = {
 type ConsumeStockLotsByFefoParams = {
 	trx: DBTransaction;
 	organizationId: string;
-	userId: string;
+	userId: string | null;
 	produtoId: string;
 	produtoVarianteId?: string | null;
 	quantidade: number;

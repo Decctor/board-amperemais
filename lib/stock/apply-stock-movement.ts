@@ -18,7 +18,7 @@ type StockMovementLinks = {
 type ApplyStockMovementParams = {
 	trx: DBTransaction;
 	organizationId: string;
-	userId: string;
+	userId: string | null;
 	produtoId: string;
 	produtoVarianteId?: string | null;
 	signedQuantity: number;
