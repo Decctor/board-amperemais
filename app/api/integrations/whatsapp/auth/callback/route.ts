@@ -162,7 +162,7 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 				const phoneNumbersDataResult = await phoneNumbersResponse.json();
 				const phoneNumbersList = (phoneNumbersDataResult.data ?? []) as Array<{
 					id: string;
-					verified_name: string;
+					verified_name?: string | null;
 					display_phone_number: string;
 					platform_type: string;
 				}>;
@@ -170,7 +170,7 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 				return phoneNumbersList
 					.filter((phoneNumbersData) => phoneNumbersData.platform_type === "CLOUD_API")
 					.map((phoneNumbersData) => ({
-						nome: phoneNumbersData.verified_name,
+						nome: phoneNumbersData.verified_name?.trim() || phoneNumbersData.display_phone_number,
 						whatsappBusinessAccountId,
 						whatsappTelefoneId: phoneNumbersData.id,
 						numero: phoneNumbersData.display_phone_number,
