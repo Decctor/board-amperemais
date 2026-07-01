@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { appApiHandler } from "@/lib/app-api";
-import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { applyCampaignBonusToInteractionMetadata, buildBaseCashbackInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
 import { resolveCampaignAudienceClientIds } from "@/lib/campaigns/filters";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
@@ -243,6 +243,38 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 			const transactionStartedAt = Date.now();
 
 			await db.transaction(async (tx) => {
+				const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
+					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
+					columns: { terminologia: true },
+				});
+				const cashbackTerminology = cashbackProgram?.terminologia ?? "DINHEIRO";
+				const runningBalanceByClientId = new Map<string, { available: number; accumulated: number }>();
+				const clientBalanceCache = new Map<
+					string,
+					{ saldoValorDisponivel: number; saldoValorAcumuladoTotal: number; saldoValorResgatadoTotal: number }
+				>();
+
+				async function getClientBalance(clientId: string) {
+					const cached = clientBalanceCache.get(clientId);
+					if (cached) return cached;
+
+					const balance = await tx.query.cashbackProgramBalances.findFirst({
+						where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organization.id), eq(fields.clienteId, clientId)),
+						columns: {
+							saldoValorDisponivel: true,
+							saldoValorAcumuladoTotal: true,
+							saldoValorResgatadoTotal: true,
+						},
+					});
+					const normalizedBalance = {
+						saldoValorDisponivel: balance?.saldoValorDisponivel ?? 0,
+						saldoValorAcumuladoTotal: balance?.saldoValorAcumuladoTotal ?? 0,
+						saldoValorResgatadoTotal: balance?.saldoValorResgatadoTotal ?? 0,
+					};
+					clientBalanceCache.set(clientId, normalizedBalance);
+					return normalizedBalance;
+				}
+
 				for (const [_index, results] of accumulatedResultsByClient.entries()) {
 					const calculatedRecency = dayjs().diff(dayjs(results.lastPurchaseDate), "days");
 					const calculatedFrequency = results.purchaseCount;
@@ -296,6 +328,34 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 								unit: campaign.execucaoAgendadaMedida,
 								value: campaign.execucaoAgendadaValor,
 							});
+							const clientBalance = await getClientBalance(results.clientId);
+							const running = runningBalanceByClientId.get(results.clientId) ?? {
+								available: clientBalance.saldoValorDisponivel,
+								accumulated: clientBalance.saldoValorAcumuladoTotal,
+							};
+							const bonusResult = await applyCampaignBonusToInteractionMetadata({
+								tx,
+								baseMetadata: buildBaseCashbackInteractionMetadata({
+									terminologia: cashbackTerminology,
+									availableBalance: running.available,
+									accumulatedTotal: running.accumulated,
+									redeemedTotal: clientBalance.saldoValorResgatadoTotal,
+								}),
+								campaign,
+								organizationId: organization.id,
+								clientId: results.clientId,
+								saleId: null,
+								saleValue: null,
+								enabled: campaign.cashbackGeracaoTipo === "FIXO",
+							});
+							runningBalanceByClientId.set(results.clientId, {
+								available: bonusResult.runningAvailableBalance,
+								accumulated: bonusResult.runningAccumulatedTotal,
+							});
+							const interactionContextMetadados = bonusResult.metadata;
+							if (bonusResult.bonusAmount !== null) {
+								generatedCashbacksCount += 1;
+							}
 							const [insertedInteraction] = await tx
 								.insert(interactions)
 								.values({
@@ -307,6 +367,7 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 									descricao: `Cliente se enquadrou no parâmetro de entrada na classificação RFM ${newRFMLabel}.`,
 									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+									metadados: interactionContextMetadados,
 								})
 								.returning({ id: interactions.id });
 							scheduledInteractionsCount += 1;
@@ -352,26 +413,11 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 										},
 										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
 										whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
+										contextMetadados: interactionContextMetadados,
 									});
 								}
 							}
 
-							// Generate campaign cashback for ENTRADA-SEGMENTAÇÃO trigger (FIXO only)
-							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
-								await generateCashbackForCampaign({
-									tx,
-									organizationId: organization.id,
-									clientId: results.clientId,
-									campaignId: campaign.id,
-									cashbackType: "FIXO",
-									cashbackValue: campaign.cashbackGeracaoValor,
-									saleId: null,
-									saleValue: null,
-									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-								});
-								generatedCashbacksCount += 1;
-							}
 						}
 					} else {
 						const lastRFMLabelModification = results.clientRFMLastLabelModification;
@@ -433,6 +479,34 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 								unit: campaign.execucaoAgendadaMedida,
 								value: campaign.execucaoAgendadaValor,
 							});
+							const clientBalance = await getClientBalance(results.clientId);
+							const running = runningBalanceByClientId.get(results.clientId) ?? {
+								available: clientBalance.saldoValorDisponivel,
+								accumulated: clientBalance.saldoValorAcumuladoTotal,
+							};
+							const bonusResult = await applyCampaignBonusToInteractionMetadata({
+								tx,
+								baseMetadata: buildBaseCashbackInteractionMetadata({
+									terminologia: cashbackTerminology,
+									availableBalance: running.available,
+									accumulatedTotal: running.accumulated,
+									redeemedTotal: clientBalance.saldoValorResgatadoTotal,
+								}),
+								campaign,
+								organizationId: organization.id,
+								clientId: results.clientId,
+								saleId: null,
+								saleValue: null,
+								enabled: campaign.cashbackGeracaoTipo === "FIXO",
+							});
+							runningBalanceByClientId.set(results.clientId, {
+								available: bonusResult.runningAvailableBalance,
+								accumulated: bonusResult.runningAccumulatedTotal,
+							});
+							const interactionContextMetadados = bonusResult.metadata;
+							if (bonusResult.bonusAmount !== null) {
+								generatedCashbacksCount += 1;
+							}
 							const [insertedInteraction] = await tx
 								.insert(interactions)
 								.values({
@@ -444,6 +518,7 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 									descricao: `Cliente se enquadrou no parâmetro de permanência na classificação RFM ${newRFMLabel}.`,
 									agendamentoDataReferencia: dayjs(interactionScheduleDate).format("YYYY-MM-DD"),
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+									metadados: interactionContextMetadados,
 								})
 								.returning({ id: interactions.id });
 							scheduledInteractionsCount += 1;
@@ -489,26 +564,11 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 										},
 										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
 										whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
+										contextMetadados: interactionContextMetadados,
 									});
 								}
 							}
 
-							// Generate campaign cashback for PERMANÊNCIA-SEGMENTAÇÃO trigger (FIXO only)
-							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
-								await generateCashbackForCampaign({
-									tx,
-									organizationId: organization.id,
-									clientId: results.clientId,
-									campaignId: campaign.id,
-									cashbackType: "FIXO",
-									cashbackValue: campaign.cashbackGeracaoValor,
-									saleId: null,
-									saleValue: null,
-									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-								});
-								generatedCashbacksCount += 1;
-							}
 						}
 					}
 

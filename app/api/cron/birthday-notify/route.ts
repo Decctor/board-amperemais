@@ -1,5 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { applyCampaignBonusToInteractionMetadata, buildBaseCashbackInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import {
 	INTERACTIONS_CRON_TIMEZONE,
@@ -126,6 +126,13 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 					return;
 				}
 
+				const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
+					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
+					columns: { terminologia: true },
+				});
+				const cashbackTerminology = cashbackProgram?.terminologia ?? "DINHEIRO";
+				const runningBalanceByClientId = new Map<string, { available: number; accumulated: number }>();
+
 				// Process each campaign individually (each may target a different birthday date based on direction)
 				for (const campaign of birthdayCampaigns) {
 					let targetMonth: number;
@@ -182,6 +189,22 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 					);
 					organizationSummary.matchingClients += targetBirthdayClients.length;
 
+					const birthdayClientIds = targetBirthdayClients.map((client) => client.id);
+					const clientBalances =
+						birthdayClientIds.length > 0
+							? await tx.query.cashbackProgramBalances.findMany({
+									where: (fields, { and, eq, inArray }) =>
+										and(eq(fields.organizacaoId, organization.id), inArray(fields.clienteId, birthdayClientIds)),
+									columns: {
+										clienteId: true,
+										saldoValorDisponivel: true,
+										saldoValorAcumuladoTotal: true,
+										saldoValorResgatadoTotal: true,
+									},
+								})
+							: [];
+					const clientBalanceMap = new Map(clientBalances.map((balance) => [balance.clienteId, balance]));
+
 					// Schedule notifications for each matching client
 					for (const client of targetBirthdayClients) {
 						const canSchedule = await canScheduleCampaignForClient(
@@ -194,6 +217,35 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 						);
 
 						if (canSchedule) {
+							const clientBalance = clientBalanceMap.get(client.id);
+							const running = runningBalanceByClientId.get(client.id) ?? {
+								available: clientBalance?.saldoValorDisponivel ?? 0,
+								accumulated: clientBalance?.saldoValorAcumuladoTotal ?? 0,
+							};
+							const bonusResult = await applyCampaignBonusToInteractionMetadata({
+								tx,
+								baseMetadata: buildBaseCashbackInteractionMetadata({
+									terminologia: cashbackTerminology,
+									availableBalance: running.available,
+									accumulatedTotal: running.accumulated,
+									redeemedTotal: clientBalance?.saldoValorResgatadoTotal ?? 0,
+								}),
+								campaign,
+								organizationId: organization.id,
+								clientId: client.id,
+								saleId: null,
+								saleValue: null,
+								enabled: campaign.cashbackGeracaoTipo === "FIXO",
+							});
+							runningBalanceByClientId.set(client.id, {
+								available: bonusResult.runningAvailableBalance,
+								accumulated: bonusResult.runningAccumulatedTotal,
+							});
+							const interactionContextMetadados = bonusResult.metadata;
+							if (bonusResult.bonusAmount !== null) {
+								organizationSummary.cashbacksGenerated += 1;
+							}
+
 							organizationSummary.interactionsInserted += 1;
 							const [insertedInteraction] = await tx
 								.insert(interactions)
@@ -206,6 +258,7 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 									descricao: `Feliz aniversário, ${client.nome}!`,
 									agendamentoDataReferencia: scheduleDate,
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+									metadados: interactionContextMetadados,
 								})
 								.returning({ id: interactions.id });
 
@@ -254,6 +307,7 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 										},
 										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
 										whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
+										contextMetadados: interactionContextMetadados,
 									});
 								} else {
 									organizationSummary.immediateEligibleWithoutClientData += 1;
@@ -264,22 +318,6 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 								organizationSummary.interactionsScheduledForProcessInteractions += 1;
 							}
 
-							// Generate campaign cashback for ANIVERSARIO_CLIENTE trigger (FIXO only)
-							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
-								await generateCashbackForCampaign({
-									tx,
-									organizationId: organization.id,
-									clientId: client.id,
-									campaignId: campaign.id,
-									cashbackType: "FIXO",
-									cashbackValue: campaign.cashbackGeracaoValor,
-									saleId: null,
-									saleValue: null,
-									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-								});
-								organizationSummary.cashbacksGenerated += 1;
-							}
 						} else {
 							organizationSummary.skippedByFrequencyRules += 1;
 						}

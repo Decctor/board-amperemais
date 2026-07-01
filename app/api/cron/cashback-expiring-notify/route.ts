@@ -1,5 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { applyCampaignBonusToInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
@@ -212,15 +212,25 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 						});
 
 						const clientBalance = clientBalanceMap.get(clienteId);
-						const interactionContextMetadados = {
-							terminologia: cashbackTerminology,
-							cashbackExpirandoValor: cashbackInfo.totalExpiring,
-							cashbackExpirandoData: formatDateAsLocale(cashbackInfo.windowEndDate) ?? undefined,
-							cashbackExpirandoJanela: cashbackExpiringWindow,
-							cashbackSaldoDisponivel: clientBalance?.saldoValorDisponivel ?? 0,
-							cashbackTotalAcumuladoVida: clientBalance?.saldoValorAcumuladoTotal ?? 0,
-							cashbackTotalResgatadoVida: clientBalance?.saldoValorResgatadoTotal ?? 0,
-						};
+						const bonusResult = await applyCampaignBonusToInteractionMetadata({
+							tx,
+							baseMetadata: {
+								terminologia: cashbackTerminology,
+								cashbackExpirandoValor: cashbackInfo.totalExpiring,
+								cashbackExpirandoData: formatDateAsLocale(cashbackInfo.windowEndDate) ?? undefined,
+								cashbackExpirandoJanela: cashbackExpiringWindow,
+								cashbackSaldoDisponivel: clientBalance?.saldoValorDisponivel ?? 0,
+								cashbackTotalAcumuladoVida: clientBalance?.saldoValorAcumuladoTotal ?? 0,
+								cashbackTotalResgatadoVida: clientBalance?.saldoValorResgatadoTotal ?? 0,
+							},
+							campaign,
+							organizationId: organization.id,
+							clientId: clienteId,
+							saleId: null,
+							saleValue: null,
+							enabled: campaign.cashbackGeracaoTipo === "FIXO",
+						});
+						const interactionContextMetadados = bonusResult.metadata;
 
 						const [insertedInteraction] = await tx
 							.insert(interactions)
@@ -269,20 +279,6 @@ async function getCashbackExpiringNotifyRoute(_req: NextRequest) {
 							}
 						}
 
-						if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
-							await generateCashbackForCampaign({
-								tx,
-								organizationId: organization.id,
-								clientId: clienteId,
-								campaignId: campaign.id,
-								cashbackType: "FIXO",
-								cashbackValue: campaign.cashbackGeracaoValor,
-								saleId: null,
-								saleValue: null,
-								expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-								expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-							});
-						}
 					}
 				}
 			});

@@ -1,8 +1,8 @@
 import { appApiHandler } from "@/lib/app-api";
 import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureCashbackBalanceForClient } from "@/lib/cashback/accumulation";
-import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
+import { applyCampaignBonusToInteractionMetadata, buildBasePurchaseInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
@@ -972,7 +972,7 @@ type THandleCampaignProcessingForNewPurchaseParams = {
 	campaignsForNewPurchase: TGetOrganizationCampaignsOutput["campaignsForNewPurchase"];
 	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
-	saleId: string;
+	saleId: string | null;
 	saleValue: number;
 	clientId: string;
 	clientRFMTitle: string;
@@ -1061,16 +1061,8 @@ async function handleCampaignProcessingForNewPurchase({
 			`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Client data for immediate processing: ${clientData ? `found (telefone: ${clientData.telefone})` : "NOT FOUND"}`,
 		);
 
-		const interactionContextMetadados: TInteractionContextMetadados = {
-			terminologia,
-			compraValor: saleValue,
-			compraCashbackAcumulado: transactionAccumulatedCashback,
-			compraCashbackNovoSaldo: clientCashbackAvailableBalance,
-			compraVendedorNome: sellerName,
-			cashbackSaldoDisponivel: clientCashbackAvailableBalance,
-			cashbackTotalAcumuladoVida: clientCashbackAccumulatedBalance,
-			cashbackTotalResgatadoVida: clientCashbackRedeemedBalanceTotal,
-		};
+		let runningAvailableBalance = clientCashbackAvailableBalance;
+		let runningAccumulatedTotal = clientCashbackAccumulatedBalance;
 
 		for (const campaign of applicableCampaigns) {
 			console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Processing campaign "${campaign.titulo}"`);
@@ -1089,6 +1081,27 @@ async function handleCampaignProcessingForNewPurchase({
 				console.log(`[ORG: ${orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
 				continue;
 			}
+
+			const bonusResult = await applyCampaignBonusToInteractionMetadata({
+				tx,
+				baseMetadata: buildBasePurchaseInteractionMetadata({
+					terminologia,
+					saleValue,
+					transactionAccumulatedCashback,
+					availableBalance: runningAvailableBalance,
+					accumulatedTotal: runningAccumulatedTotal,
+					redeemedTotal: clientCashbackRedeemedBalanceTotal,
+					sellerName,
+				}),
+				campaign,
+				organizationId: orgId,
+				clientId,
+				saleId,
+				saleValue,
+			});
+			const interactionContextMetadados = bonusResult.metadata;
+			runningAvailableBalance = bonusResult.runningAvailableBalance;
+			runningAccumulatedTotal = bonusResult.runningAccumulatedTotal;
 
 			const interactionScheduleDate = getPostponedDateFromReferenceDate({
 				date: dayjs().toDate(),
@@ -1143,22 +1156,6 @@ async function handleCampaignProcessingForNewPurchase({
 				console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] NOT adding to immediate processing - conditions not met`);
 			}
 
-			// Generate campaign cashback for NOVA-COMPRA trigger
-			if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
-				console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Generating campaign cashback`);
-				await generateCashbackForCampaign({
-					tx,
-					organizationId: orgId,
-					clientId: clientId,
-					campaignId: campaign.id,
-					cashbackType: campaign.cashbackGeracaoTipo,
-					cashbackValue: campaign.cashbackGeracaoValor,
-					saleId: saleId,
-					saleValue: saleValue,
-					expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-					expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-				});
-			}
 		}
 	} else {
 		console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] No applicable campaigns found after filtering`);
@@ -1171,7 +1168,7 @@ type THandleCampaignProcessingForFirstPurchaseParams = {
 	campaignsForFirstPurchase: TGetOrganizationCampaignsOutput["campaignsForFirstPurchase"];
 	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
-	saleId: string;
+	saleId: string | null;
 	saleValue: number;
 	clientId: string;
 	sellerName: string;
@@ -1206,16 +1203,8 @@ async function handleCampaignProcessingForFirstPurchase({
 	if (applicableCampaigns.length > 0) {
 		console.log(`[ORG: ${orgId}] ${applicableCampaigns.length} campanhas de primeira compra aplicáveis encontradas para o cliente ${clientId}.`);
 
-		const interactionContextMetadados: TInteractionContextMetadados = {
-			terminologia: organizationCashbackTerminology,
-			compraValor: saleValue,
-			compraCashbackAcumulado: transactionAccumulatedCashback,
-			compraCashbackNovoSaldo: clientCashbackAvailableBalance,
-			compraVendedorNome: sellerName,
-			cashbackSaldoDisponivel: clientCashbackAvailableBalance,
-			cashbackTotalAcumuladoVida: clientCashbackAccumulatedBalance,
-			cashbackTotalResgatadoVida: clientCashbackRedeemedBalanceTotal,
-		};
+		let runningAvailableBalance = clientCashbackAvailableBalance;
+		let runningAccumulatedTotal = clientCashbackAccumulatedBalance;
 
 		for (const campaign of applicableCampaigns) {
 			console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] Processing campaign "${campaign.titulo}"`);
@@ -1234,6 +1223,27 @@ async function handleCampaignProcessingForFirstPurchase({
 				console.log(`[ORG: ${orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
 				continue;
 			}
+
+			const bonusResult = await applyCampaignBonusToInteractionMetadata({
+				tx,
+				baseMetadata: buildBasePurchaseInteractionMetadata({
+					terminologia: organizationCashbackTerminology,
+					saleValue,
+					transactionAccumulatedCashback,
+					availableBalance: runningAvailableBalance,
+					accumulatedTotal: runningAccumulatedTotal,
+					redeemedTotal: clientCashbackRedeemedBalanceTotal,
+					sellerName,
+				}),
+				campaign,
+				organizationId: orgId,
+				clientId,
+				saleId,
+				saleValue,
+			});
+			const interactionContextMetadados = bonusResult.metadata;
+			runningAvailableBalance = bonusResult.runningAvailableBalance;
+			runningAccumulatedTotal = bonusResult.runningAccumulatedTotal;
 
 			const interactionScheduleDate = getPostponedDateFromReferenceDate({
 				date: dayjs().toDate(),
@@ -1302,22 +1312,6 @@ async function handleCampaignProcessingForFirstPurchase({
 				console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] NOT adding to immediate processing - conditions not met`);
 			}
 
-			// Generate campaign cashback for PRIMEIRA-COMPRA trigger
-			if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
-				console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] Generating campaign cashback`);
-				await generateCashbackForCampaign({
-					tx,
-					organizationId: orgId,
-					clientId: clientId,
-					campaignId: campaign.id,
-					cashbackType: campaign.cashbackGeracaoTipo,
-					cashbackValue: campaign.cashbackGeracaoValor,
-					saleId: saleId,
-					saleValue: saleValue,
-					expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-					expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-				});
-			}
 		}
 	}
 }
@@ -1472,7 +1466,7 @@ type THandleCampaignProcessingForTotalPurchaseCountParams = {
 	campaignsForTotalPurchaseCount: TGetOrganizationCampaignsOutput["campaignsForTotalPurchaseCount"];
 	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
-	saleId: string;
+	saleId: string | null;
 	saleValue: number;
 	clientId: string;
 	clientNewTotalPurchaseCount: number;
@@ -1531,16 +1525,8 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 			},
 		});
 
-		const interactionContextMetadados: TInteractionContextMetadados = {
-			terminologia: organizationCashbackTerminology,
-			compraValor: saleValue,
-			compraCashbackAcumulado: transactionAccumulatedCashback,
-			compraCashbackNovoSaldo: clientCashbackAvailableBalance,
-			compraVendedorNome: sellerName,
-			cashbackSaldoDisponivel: clientCashbackAvailableBalance,
-			cashbackTotalAcumuladoVida: clientCashbackAccumulatedBalance,
-			cashbackTotalResgatadoVida: clientCashbackRedeemedBalanceTotal,
-		};
+		let runningAvailableBalance = clientCashbackAvailableBalance;
+		let runningAccumulatedTotal = clientCashbackAccumulatedBalance;
 
 		for (const campaign of applicableCampaigns) {
 			const canSchedule = await canScheduleCampaignForClient(
@@ -1556,6 +1542,27 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 				console.log(`[ORG: ${orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
 				continue;
 			}
+
+			const bonusResult = await applyCampaignBonusToInteractionMetadata({
+				tx,
+				baseMetadata: buildBasePurchaseInteractionMetadata({
+					terminologia: organizationCashbackTerminology,
+					saleValue,
+					transactionAccumulatedCashback,
+					availableBalance: runningAvailableBalance,
+					accumulatedTotal: runningAccumulatedTotal,
+					redeemedTotal: clientCashbackRedeemedBalanceTotal,
+					sellerName,
+				}),
+				campaign,
+				organizationId: orgId,
+				clientId,
+				saleId,
+				saleValue,
+			});
+			const interactionContextMetadados = bonusResult.metadata;
+			runningAvailableBalance = bonusResult.runningAvailableBalance;
+			runningAccumulatedTotal = bonusResult.runningAccumulatedTotal;
 
 			const interactionScheduleDate = getPostponedDateFromReferenceDate({
 				date: dayjs().toDate(),
@@ -1597,21 +1604,6 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 				});
 			}
 
-			// Generate campaign cashback if configured
-			if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
-				await generateCashbackForCampaign({
-					tx,
-					organizationId: orgId,
-					clientId: clientId,
-					campaignId: campaign.id,
-					cashbackType: campaign.cashbackGeracaoTipo,
-					cashbackValue: campaign.cashbackGeracaoValor,
-					saleId: saleId,
-					saleValue: saleValue,
-					expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-					expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-				});
-			}
 		}
 	}
 }
@@ -1622,7 +1614,7 @@ type THandleCampaignProcessingForTotalPurchaseValueParams = {
 	campaignsForTotalPurchaseValue: TGetOrganizationCampaignsOutput["campaignsForTotalPurchaseValue"];
 	audiencesByCampaignId: TGetOrganizationCampaignsOutput["audiencesByCampaignId"];
 	addToImmediateProcessingDataList: (data: ImmediateProcessingData) => void;
-	saleId: string;
+	saleId: string | null;
 	saleValue: number;
 	clientId: string;
 	clientNewTotalPurchaseValue: number;
@@ -1683,16 +1675,8 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 			},
 		});
 
-		const interactionContextMetadados: TInteractionContextMetadados = {
-			terminologia: organizationCashbackTerminology,
-			compraValor: saleValue,
-			compraCashbackAcumulado: transactionAccumulatedCashback,
-			compraCashbackNovoSaldo: clientCashbackAvailableBalance,
-			compraVendedorNome: sellerName,
-			cashbackSaldoDisponivel: clientCashbackAvailableBalance,
-			cashbackTotalAcumuladoVida: clientCashbackAccumulatedBalance,
-			cashbackTotalResgatadoVida: clientCashbackRedeemedBalanceTotal,
-		};
+		let runningAvailableBalance = clientCashbackAvailableBalance;
+		let runningAccumulatedTotal = clientCashbackAccumulatedBalance;
 
 		for (const campaign of applicableCampaigns) {
 			const canSchedule = await canScheduleCampaignForClient(
@@ -1708,6 +1692,27 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 				console.log(`[ORG: ${orgId}] [CAMPAIGN_FREQUENCY] Skipping campaign ${campaign.titulo} for client ${clientId} due to frequency limits.`);
 				continue;
 			}
+
+			const bonusResult = await applyCampaignBonusToInteractionMetadata({
+				tx,
+				baseMetadata: buildBasePurchaseInteractionMetadata({
+					terminologia: organizationCashbackTerminology,
+					saleValue,
+					transactionAccumulatedCashback,
+					availableBalance: runningAvailableBalance,
+					accumulatedTotal: runningAccumulatedTotal,
+					redeemedTotal: clientCashbackRedeemedBalanceTotal,
+					sellerName,
+				}),
+				campaign,
+				organizationId: orgId,
+				clientId,
+				saleId,
+				saleValue,
+			});
+			const interactionContextMetadados = bonusResult.metadata;
+			runningAvailableBalance = bonusResult.runningAvailableBalance;
+			runningAccumulatedTotal = bonusResult.runningAccumulatedTotal;
 
 			const interactionScheduleDate = getPostponedDateFromReferenceDate({
 				date: dayjs().toDate(),
@@ -1749,21 +1754,6 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 				});
 			}
 
-			// Generate campaign cashback if configured
-			if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
-				await generateCashbackForCampaign({
-					tx,
-					organizationId: orgId,
-					clientId: clientId,
-					campaignId: campaign.id,
-					cashbackType: campaign.cashbackGeracaoTipo,
-					cashbackValue: campaign.cashbackGeracaoValor,
-					saleId: saleId,
-					saleValue: saleValue,
-					expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-					expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-				});
-			}
 		}
 	}
 }

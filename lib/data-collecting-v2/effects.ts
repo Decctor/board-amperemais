@@ -1,9 +1,10 @@
 import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
-import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
+import { applyCampaignBonusToInteractionMetadata, buildBasePurchaseInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import type { ImmediateProcessingData } from "@/lib/interactions";
+import type { TInteractionContextMetadados } from "@/lib/message-templates";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { cashbackProgramBalances, cashbackPrograms, clients, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -129,7 +130,7 @@ async function pushImmediateProcessingDataIfNeeded({
 	insertedInteractionId: string;
 	organizationId: string;
 	clientId: string;
-	metadata: Record<string, unknown>;
+	metadata: TInteractionContextMetadados;
 	immediateProcessingDataList: ImmediateProcessingData[];
 }) {
 	if (campaign.execucaoAgendadaValor !== 0 || !campaign.whatsappTemplate) {
@@ -167,35 +168,6 @@ async function pushImmediateProcessingDataIfNeeded({
 	});
 
 	return true;
-}
-
-async function ensureBalance({
-	tx,
-	organizationId,
-	programId,
-	clientId,
-	balancesByClientId,
-}: {
-	tx: TDataCollectingV2Executor;
-	organizationId: string;
-	programId: string;
-	clientId: string;
-	balancesByClientId: Map<string, TBalanceCacheEntry>;
-}) {
-	const existing = balancesByClientId.get(clientId);
-	if (existing) return existing;
-
-	await tx.insert(cashbackProgramBalances).values({
-		organizacaoId: organizationId,
-		programaId: programId,
-		clienteId: clientId,
-		saldoValorDisponivel: 0,
-		saldoValorAcumuladoTotal: 0,
-	});
-
-	const balance = { programaId: programId, clienteId: clientId, saldoValorDisponivel: 0, saldoValorAcumuladoTotal: 0 };
-	balancesByClientId.set(clientId, balance);
-	return balance;
 }
 
 function updateBalanceCache({
@@ -377,15 +349,40 @@ export async function processDataCollectingV2Effects({
 				unit: campaign.execucaoAgendadaMedida,
 				value: campaign.execucaoAgendadaValor,
 			});
-			const metadata = {
-				terminologia: cashbackProgram?.terminologia ?? "DINHEIRO",
-				compraValor: persistedSale.sale.totalValue,
-				compraVendedorNome: persistedSale.sale.sellerName,
-				compraQuantidadeTotal: persistedSale.newTotalPurchaseCount,
-				compraValorTotalAcumulado: persistedSale.newTotalPurchaseValue,
-				cashbackSaldoDisponivel: balancesByClientId.get(persistedSale.clientId)?.saldoValorDisponivel,
-				cashbackTotalAcumuladoVida: balancesByClientId.get(persistedSale.clientId)?.saldoValorAcumuladoTotal,
-			};
+			const currentBalance = balancesByClientId.get(persistedSale.clientId);
+			const bonusResult = await applyCampaignBonusToInteractionMetadata({
+				tx,
+				baseMetadata: buildBasePurchaseInteractionMetadata({
+					terminologia: cashbackProgram?.terminologia ?? "DINHEIRO",
+					saleValue: persistedSale.sale.totalValue,
+					transactionAccumulatedCashback: saleCashbackAccumulation?.buyerAccumulatedValue ?? 0,
+					availableBalance: currentBalance?.saldoValorDisponivel ?? 0,
+					accumulatedTotal: currentBalance?.saldoValorAcumuladoTotal ?? 0,
+					sellerName: persistedSale.sale.sellerName,
+					totalPurchaseCount: persistedSale.newTotalPurchaseCount ?? undefined,
+					totalPurchaseValue: persistedSale.newTotalPurchaseValue ?? undefined,
+				}),
+				campaign,
+				organizationId,
+				clientId: persistedSale.clientId,
+				saleId: persistedSale.id,
+				saleValue: persistedSale.sale.totalValue,
+				enabled: !!cashbackProgram?.ativo,
+			});
+			const metadata = bonusResult.metadata;
+			if (bonusResult.bonusAmount !== null) {
+				cashbackTransactionsCount += 1;
+				cashbackAccumulatedValue += bonusResult.bonusAmount;
+				if (cashbackProgram) {
+					updateBalanceCache({
+						balancesByClientId,
+						programId: cashbackProgram.id,
+						clientId: persistedSale.clientId,
+						availableBalance: bonusResult.runningAvailableBalance,
+						accumulatedTotal: bonusResult.runningAccumulatedTotal,
+					});
+				}
+			}
 
 			const [insertedInteraction] = await tx
 				.insert(interactions)
@@ -414,34 +411,6 @@ export async function processDataCollectingV2Effects({
 				immediateProcessingDataList,
 			});
 			if (pushedImmediate) immediateInteractionsCount += 1;
-
-			if (cashbackProgram?.ativo && campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
-				await ensureBalance({ tx, organizationId, programId: cashbackProgram.id, clientId: persistedSale.clientId, balancesByClientId });
-				const result = await generateCashbackForCampaign({
-					tx,
-					organizationId,
-					clientId: persistedSale.clientId,
-					campaignId: campaign.id,
-					cashbackType: campaign.cashbackGeracaoTipo,
-					cashbackValue: campaign.cashbackGeracaoValor,
-					saleId: persistedSale.id,
-					saleValue: persistedSale.sale.totalValue,
-					expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-					expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-				});
-
-				if (result) {
-					cashbackTransactionsCount += 1;
-					cashbackAccumulatedValue += result.cashbackAmount;
-					updateBalanceCache({
-						balancesByClientId,
-						programId: cashbackProgram.id,
-						clientId: persistedSale.clientId,
-						availableBalance: result.clientNewAvailableBalance,
-						accumulatedTotal: result.clientNewAccumulatedTotal,
-					});
-				}
-			}
 		}
 
 		if (saleCashbackAccumulation && saleCashbackAccumulation.buyerAccumulatedValue > 0 && persistedSale.clientId) {
@@ -459,6 +428,9 @@ export async function processDataCollectingV2Effects({
 				return meetsNewCashbackThreshold && meetsTotalCashbackThreshold;
 			});
 
+			let runningAvailableBalance = saleCashbackAccumulation.buyerAvailableBalance;
+			let runningAccumulatedTotal = saleCashbackAccumulation.buyerAccumulatedTotal;
+
 			for (const campaign of cashbackAccumulationCampaigns) {
 				const canSchedule = await canScheduleCampaignForClient({ tx, clientId: persistedSale.clientId, campaign });
 				if (!canSchedule) continue;
@@ -468,15 +440,42 @@ export async function processDataCollectingV2Effects({
 					unit: campaign.execucaoAgendadaMedida,
 					value: campaign.execucaoAgendadaValor,
 				});
-				const metadata = {
-					terminologia: cashbackProgram?.terminologia ?? "DINHEIRO",
-					cashbackAcumuladoValor: saleCashbackAccumulation.buyerAccumulatedValue,
-					compraValor: persistedSale.sale.totalValue,
-					compraCashbackAcumulado: saleCashbackAccumulation.buyerAccumulatedValue,
-					compraCashbackNovoSaldo: saleCashbackAccumulation.buyerAvailableBalance,
-					cashbackSaldoDisponivel: saleCashbackAccumulation.buyerAvailableBalance,
-					cashbackTotalAcumuladoVida: saleCashbackAccumulation.buyerAccumulatedTotal,
-				};
+				const bonusResult = await applyCampaignBonusToInteractionMetadata({
+					tx,
+					baseMetadata: {
+						...buildBasePurchaseInteractionMetadata({
+							terminologia: cashbackProgram?.terminologia ?? "DINHEIRO",
+							saleValue: persistedSale.sale.totalValue,
+							transactionAccumulatedCashback: saleCashbackAccumulation.buyerAccumulatedValue,
+							availableBalance: runningAvailableBalance,
+							accumulatedTotal: runningAccumulatedTotal,
+							sellerName: persistedSale.sale.sellerName,
+						}),
+						cashbackAcumuladoValor: saleCashbackAccumulation.buyerAccumulatedValue,
+					},
+					campaign,
+					organizationId,
+					clientId: persistedSale.clientId,
+					saleId: persistedSale.id,
+					saleValue: persistedSale.sale.totalValue,
+					enabled: !!cashbackProgram?.ativo,
+				});
+				const metadata = bonusResult.metadata;
+				runningAvailableBalance = bonusResult.runningAvailableBalance;
+				runningAccumulatedTotal = bonusResult.runningAccumulatedTotal;
+				if (bonusResult.bonusAmount !== null) {
+					cashbackTransactionsCount += 1;
+					cashbackAccumulatedValue += bonusResult.bonusAmount;
+					if (cashbackProgram) {
+						updateBalanceCache({
+							balancesByClientId,
+							programId: cashbackProgram.id,
+							clientId: persistedSale.clientId,
+							availableBalance: runningAvailableBalance,
+							accumulatedTotal: runningAccumulatedTotal,
+						});
+					}
+				}
 
 				const [insertedInteraction] = await tx
 					.insert(interactions)
@@ -505,34 +504,6 @@ export async function processDataCollectingV2Effects({
 					immediateProcessingDataList,
 				});
 				if (pushedImmediate) immediateInteractionsCount += 1;
-
-				if (cashbackProgram?.ativo && campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo && campaign.cashbackGeracaoValor) {
-					await ensureBalance({ tx, organizationId, programId: cashbackProgram.id, clientId: persistedSale.clientId, balancesByClientId });
-					const result = await generateCashbackForCampaign({
-						tx,
-						organizationId,
-						clientId: persistedSale.clientId,
-						campaignId: campaign.id,
-						cashbackType: campaign.cashbackGeracaoTipo,
-						cashbackValue: campaign.cashbackGeracaoValor,
-						saleId: persistedSale.id,
-						saleValue: persistedSale.sale.totalValue,
-						expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-						expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-					});
-
-					if (result) {
-						cashbackTransactionsCount += 1;
-						cashbackAccumulatedValue += result.cashbackAmount;
-						updateBalanceCache({
-							balancesByClientId,
-							programId: cashbackProgram.id,
-							clientId: persistedSale.clientId,
-							availableBalance: result.clientNewAvailableBalance,
-							accumulatedTotal: result.clientNewAccumulatedTotal,
-						});
-					}
-				}
 			}
 		}
 	}

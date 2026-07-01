@@ -173,6 +173,9 @@ export type TInteractionContextMetadados = {
 	compraCashbackAcumulado?: number;
 	compraCashbackNovoSaldo?: number;
 	compraVendedorNome?: string;
+	compraQuantidadeTotal?: number;
+	compraValorTotalAcumulado?: number;
+	cashbackAcumuladoValor?: number;
 	cashbackSaldoDisponivel?: number;
 	cashbackTotalAcumuladoVida?: number;
 	cashbackTotalResgatadoVida?: number;

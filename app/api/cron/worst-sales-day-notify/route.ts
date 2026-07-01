@@ -1,5 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { applyCampaignBonusToInteractionMetadata, buildBaseCashbackInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
@@ -126,6 +126,13 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 
 				console.log(`[ORG: ${organization.id}] Worst sales day of week: ${worstDayOfWeek} (0=Sun, 6=Sat)`);
 
+				const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
+					where: (fields, { eq }) => eq(fields.organizacaoId, organization.id),
+					columns: { terminologia: true },
+				});
+				const cashbackTerminology = cashbackProgram?.terminologia ?? "DINHEIRO";
+				const runningBalanceByClientId = new Map<string, { available: number; accumulated: number }>();
+
 				for (const campaign of worstDayCampaigns) {
 					let targetDayOfWeek: number;
 					let scheduleDate: string;
@@ -166,6 +173,21 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 
 					console.log(`[ORG: ${organization.id}] [CAMPAIGN: ${campaign.id}] Found ${targetClientIds.length} matching clients.`);
 
+					const clientBalances =
+						targetClientIds.length > 0
+							? await tx.query.cashbackProgramBalances.findMany({
+									where: (fields, { and, eq, inArray }) =>
+										and(eq(fields.organizacaoId, organization.id), inArray(fields.clienteId, targetClientIds)),
+									columns: {
+										clienteId: true,
+										saldoValorDisponivel: true,
+										saldoValorAcumuladoTotal: true,
+										saldoValorResgatadoTotal: true,
+									},
+								})
+							: [];
+					const clientBalanceMap = new Map(clientBalances.map((balance) => [balance.clienteId, balance]));
+
 					for (const clientId of targetClientIds) {
 						const canSchedule = await canScheduleCampaignForClient(
 							tx,
@@ -177,6 +199,32 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 						);
 
 						if (canSchedule) {
+							const clientBalance = clientBalanceMap.get(clientId);
+							const running = runningBalanceByClientId.get(clientId) ?? {
+								available: clientBalance?.saldoValorDisponivel ?? 0,
+								accumulated: clientBalance?.saldoValorAcumuladoTotal ?? 0,
+							};
+							const bonusResult = await applyCampaignBonusToInteractionMetadata({
+								tx,
+								baseMetadata: buildBaseCashbackInteractionMetadata({
+									terminologia: cashbackTerminology,
+									availableBalance: running.available,
+									accumulatedTotal: running.accumulated,
+									redeemedTotal: clientBalance?.saldoValorResgatadoTotal ?? 0,
+								}),
+								campaign,
+								organizationId: organization.id,
+								clientId,
+								saleId: null,
+								saleValue: null,
+								enabled: campaign.cashbackGeracaoTipo === "FIXO",
+							});
+							runningBalanceByClientId.set(clientId, {
+								available: bonusResult.runningAvailableBalance,
+								accumulated: bonusResult.runningAccumulatedTotal,
+							});
+							const interactionContextMetadados = bonusResult.metadata;
+
 							const [insertedInteraction] = await tx
 								.insert(interactions)
 								.values({
@@ -188,6 +236,7 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 									descricao: `Campanha para o pior dia de vendas da semana.`,
 									agendamentoDataReferencia: scheduleDate,
 									agendamentoBlocoReferencia: campaign.execucaoAgendadaBloco,
+									metadados: interactionContextMetadados,
 								})
 								.returning({ id: interactions.id });
 
@@ -229,25 +278,11 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 										},
 										whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
 										whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
+										contextMetadados: interactionContextMetadados,
 									});
 								}
 							}
 
-							// Generate campaign cashback (FIXO only, no sale context)
-							if (campaign.cashbackGeracaoAtivo && campaign.cashbackGeracaoTipo === "FIXO" && campaign.cashbackGeracaoValor) {
-								await generateCashbackForCampaign({
-									tx,
-									organizationId: organization.id,
-									clientId: clientId,
-									campaignId: campaign.id,
-									cashbackType: "FIXO",
-									cashbackValue: campaign.cashbackGeracaoValor,
-									saleId: null,
-									saleValue: null,
-									expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-									expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-								});
-							}
 						}
 					}
 				}
