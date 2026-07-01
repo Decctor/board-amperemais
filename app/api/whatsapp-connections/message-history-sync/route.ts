@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { buildWhatsappPhoneSyncMetadataPatch } from "@/lib/whatsapp/connection-phone-metadata";
-import { triggerSmbAppContactsSync } from "@/lib/whatsapp/smb-contacts-sync";
+import { triggerSmbAppMessageHistorySync } from "@/lib/whatsapp/smb-message-history-sync";
 import { db } from "@/services/drizzle";
 import { whatsappConnectionPhones } from "@/services/drizzle/schema/whatsapp-connections";
 import { eq } from "drizzle-orm";
@@ -9,15 +9,15 @@ import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-const SyncWhatsappContactsInputSchema = z.object({
+const SyncWhatsappMessageHistoryInputSchema = z.object({
 	phoneId: z.string({
 		required_error: "ID do telefone não informado.",
 		invalid_type_error: "Tipo inválido para ID do telefone.",
 	}),
 });
-export type TSyncWhatsappContactsInput = z.infer<typeof SyncWhatsappContactsInputSchema>;
+export type TSyncWhatsappMessageHistoryInput = z.infer<typeof SyncWhatsappMessageHistoryInputSchema>;
 
-async function syncWhatsappContacts({ input, organizationId }: { input: TSyncWhatsappContactsInput; organizationId: string }) {
+async function syncWhatsappMessageHistory({ input, organizationId }: { input: TSyncWhatsappMessageHistoryInput; organizationId: string }) {
 	const phone = await db.query.whatsappConnectionPhones.findFirst({
 		where: eq(whatsappConnectionPhones.id, input.phoneId),
 		with: {
@@ -36,13 +36,13 @@ async function syncWhatsappContacts({ input, organizationId }: { input: TSyncWha
 		throw new createHttpError.NotFound("Telefone do WhatsApp não encontrado.");
 	}
 	if (phone.conexao.tipoConexao !== "META_CLOUD_API") {
-		throw new createHttpError.BadRequest("A sincronização de contatos está disponível apenas para conexões com a API oficial.");
+		throw new createHttpError.BadRequest("A sincronização de histórico está disponível apenas para conexões com a API oficial.");
 	}
 	if (!phone.whatsappTelefoneId || !phone.conexao.token) {
-		throw new createHttpError.BadRequest("O telefone não possui as credenciais necessárias para sincronizar contatos.");
+		throw new createHttpError.BadRequest("O telefone não possui as credenciais necessárias para sincronizar o histórico.");
 	}
 
-	const result = await triggerSmbAppContactsSync({
+	const result = await triggerSmbAppMessageHistorySync({
 		phoneNumberId: phone.whatsappTelefoneId,
 		accessToken: phone.conexao.token,
 	});
@@ -55,7 +55,7 @@ async function syncWhatsappContacts({ input, organizationId }: { input: TSyncWha
 		.set({
 			metadados: buildWhatsappPhoneSyncMetadataPatch({
 				currentMetadata: phone.metadados,
-				syncType: "contacts",
+				syncType: "messageHistory",
 				requestedAt,
 				requestId: result.requestId,
 				onboardingAt: phone.conexao.dataInsercao,
@@ -65,12 +65,12 @@ async function syncWhatsappContacts({ input, organizationId }: { input: TSyncWha
 
 	return {
 		data: result,
-		message: "Sincronização de contatos solicitada com sucesso.",
+		message: "Sincronização do histórico de mensagens solicitada com sucesso.",
 	};
 }
-export type TSyncWhatsappContactsOutput = Awaited<ReturnType<typeof syncWhatsappContacts>>;
+export type TSyncWhatsappMessageHistoryOutput = Awaited<ReturnType<typeof syncWhatsappMessageHistory>>;
 
-async function syncWhatsappContactsRoute(request: NextRequest) {
+async function syncWhatsappMessageHistoryRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
@@ -80,11 +80,11 @@ async function syncWhatsappContactsRoute(request: NextRequest) {
 		throw new createHttpError.Forbidden("Sua organização não possui acesso ao módulo de atendimentos via WhatsApp Hub.");
 	}
 
-	const input = SyncWhatsappContactsInputSchema.parse({
+	const input = SyncWhatsappMessageHistoryInputSchema.parse({
 		phoneId: request.nextUrl.searchParams.get("phoneId"),
 	});
-	const result = await syncWhatsappContacts({ input, organizationId });
+	const result = await syncWhatsappMessageHistory({ input, organizationId });
 	return NextResponse.json(result, { status: 202 });
 }
 
-export const POST = appApiHandler({ POST: syncWhatsappContactsRoute });
+export const POST = appApiHandler({ POST: syncWhatsappMessageHistoryRoute });

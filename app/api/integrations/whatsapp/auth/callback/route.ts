@@ -6,6 +6,7 @@ import {
 	submitMessageTemplateToWhatsappPhone,
 } from "@/app/api/message-templates/_lib";
 import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
+import { buildWhatsappPhoneSyncMetadataPatch } from "@/lib/whatsapp/connection-phone-metadata";
 import { triggerSmbAppContactsSync } from "@/lib/whatsapp/smb-contacts-sync";
 import { db } from "@/services/drizzle";
 import { messageTemplates, type TNewWhatsappConnection, whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema";
@@ -190,6 +191,7 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 		);
 	}
 
+	const onboardingAt = new Date();
 	const insertedPhones = await db.transaction(async (tx) => {
 		const whatsappConnection: TNewWhatsappConnection = {
 			organizacaoId: userOrgId,
@@ -197,6 +199,7 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 			dataExpiracao: accessTokenExpiresAt ?? dayjs().add(1, "month").toDate(),
 			autorId: sessionUser.user.id,
 			metaEscopo: debugData.data?.scopes.join(","),
+			dataInsercao: onboardingAt,
 		};
 
 		const insertedWhatsappConnection = await tx.insert(whatsappConnections).values(whatsappConnection).returning({ id: whatsappConnections.id });
@@ -212,12 +215,18 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 					whatsappBusinessAccountId: phone.whatsappBusinessAccountId,
 					whatsappTelefoneId: phone.whatsappTelefoneId,
 					numero: phone.numero,
+					metadados: buildWhatsappPhoneSyncMetadataPatch({
+						currentMetadata: null,
+						syncType: "contacts",
+						onboardingAt,
+					}),
 				})),
 			)
 			.returning({
 				id: whatsappConnectionPhones.id,
 				whatsappBusinessAccountId: whatsappConnectionPhones.whatsappBusinessAccountId,
 				whatsappTelefoneId: whatsappConnectionPhones.whatsappTelefoneId,
+				metadados: whatsappConnectionPhones.metadados,
 			});
 
 		if (insertedWhatsappConnectionPhones.length === 0) {
@@ -248,6 +257,20 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 				phoneId: phone.id,
 				...contactsSync,
 			});
+			if (contactsSync.requested) {
+				await db
+					.update(whatsappConnectionPhones)
+					.set({
+						metadados: buildWhatsappPhoneSyncMetadataPatch({
+							currentMetadata: phone.metadados,
+							syncType: "contacts",
+							requestedAt: new Date(),
+							requestId: contactsSync.requestId,
+							onboardingAt,
+						}),
+					})
+					.where(eq(whatsappConnectionPhones.id, phone.id));
+			}
 		} catch (error) {
 			// The WhatsApp connection must remain usable even if the asynchronous contacts sync cannot be requested.
 			console.error("[ERROR] [WHATSAPP_CONNECT_CALLBACK] Failed to request contacts sync:", {

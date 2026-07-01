@@ -32,6 +32,7 @@ import {
 	type TSmbAppStateSyncEvent,
 	upsertClientsFromSmbAppStateSync,
 } from "@/lib/whatsapp/smb-contacts-sync";
+import { importWhatsappMessageHistoryEvents, parseWhatsappMessageHistoryWebhook, type TWhatsappMessageHistoryEvent } from "@/lib/whatsapp/smb-message-history-sync";
 import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
@@ -63,6 +64,7 @@ type WebhookBody = {
 					profile: { name: string };
 					wa_id: string;
 				}>;
+				history?: Array<unknown>;
 				messages?: Array<unknown>;
 				statuses?: Array<unknown>;
 			};
@@ -114,6 +116,11 @@ async function processWebhookAsync(body: WebhookBody): Promise<void> {
 			await handleSmbAppStateSync(contactsSyncEvents);
 			return;
 		}
+		const messageHistoryEvents = parseWhatsappMessageHistoryWebhook(body);
+		if (messageHistoryEvents.length > 0) {
+			await handleWhatsappMessageHistory(messageHistoryEvents);
+			return;
+		}
 		// Handle template events
 		if (isTemplateEvent(body)) {
 			await handleTemplateEvent(body);
@@ -138,6 +145,11 @@ async function processWebhookAsync(body: WebhookBody): Promise<void> {
 	} catch (error) {
 		console.error("[WHATSAPP_WEBHOOK] Error processing webhook:", error);
 	}
+}
+
+async function handleWhatsappMessageHistory(events: TWhatsappMessageHistoryEvent[]): Promise<void> {
+	const result = await importWhatsappMessageHistoryEvents(events);
+	console.log("[WHATSAPP_WEBHOOK] [MESSAGE_HISTORY] Eventos processados:", result);
 }
 
 async function handleSmbAppStateSync(events: TSmbAppStateSyncEvent[]): Promise<void> {

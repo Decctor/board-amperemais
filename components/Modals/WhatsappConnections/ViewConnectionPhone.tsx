@@ -7,10 +7,10 @@ import { MetaIcon, RecompraCRMIconColorful, WhatsappIcon } from "@/components/ic
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToPhone } from "@/lib/formatting";
 import { disconnectInternalGateway } from "@/lib/mutations/internal-gateway";
-import { deleteWhatsappConnection, syncWhatsappContacts } from "@/lib/mutations/whatsapp-connections";
+import { deleteWhatsappConnection, syncWhatsappContacts, syncWhatsappMessageHistory } from "@/lib/mutations/whatsapp-connections";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, RefreshCw, UsersRound } from "lucide-react";
+import { AlertTriangle, History, RefreshCw, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 
 type TWhatsappConnection = TGetWhatsappConnectionsOutput["data"][number];
@@ -57,6 +57,12 @@ export default function ViewConnectionPhone({ context, closeMenu }: ViewConnecti
 	const { mutate: handleContactsSync, isPending: isSyncingContacts } = useMutation({
 		mutationKey: ["sync-whatsapp-contacts", phone.id],
 		mutationFn: () => syncWhatsappContacts(phone.id),
+		onSuccess: (data) => toast.success(data.message),
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+	const { mutate: handleMessageHistorySync, isPending: isSyncingMessageHistory } = useMutation({
+		mutationKey: ["sync-whatsapp-message-history", phone.id],
+		mutationFn: () => syncWhatsappMessageHistory(phone.id),
 		onSuccess: (data) => toast.success(data.message),
 		onError: (error) => toast.error(getErrorMessage(error)),
 	});
@@ -122,11 +128,37 @@ export default function ViewConnectionPhone({ context, closeMenu }: ViewConnecti
 							size="sm"
 							className="shrink-0 gap-2"
 							loading={isSyncingContacts}
-							disabled={isDisconnecting}
+							disabled={isDisconnecting || isSyncingMessageHistory}
 							onClick={() => handleContactsSync()}
 						>
 							<RefreshCw className="h-4 w-4" />
 							SINCRONIZAR CONTATOS
+						</LoadingButton>
+					</div>
+				) : null}
+				{isMetaConnection ? (
+					<div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3">
+						<div className="flex items-start gap-3">
+							<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+								<History className="h-4 w-4" />
+							</div>
+							<div>
+								<p className="text-sm font-bold tracking-tight">Histórico de mensagens</p>
+								<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+									Solicite à Meta a carga inicial do histórico deste número, sem processamento de IA para mídias.
+								</p>
+							</div>
+						</div>
+						<LoadingButton
+							variant="outline"
+							size="sm"
+							className="shrink-0 gap-2"
+							loading={isSyncingMessageHistory}
+							disabled={isDisconnecting || isSyncingContacts}
+							onClick={() => handleMessageHistorySync()}
+						>
+							<History className="h-4 w-4" />
+							SINCRONIZAR HISTÓRICO
 						</LoadingButton>
 					</div>
 				) : null}
