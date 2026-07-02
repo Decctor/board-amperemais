@@ -1,7 +1,8 @@
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
+import { cancelCouponRedemption } from "@/lib/coupons/redemption";
 import { applyStockMovement } from "@/lib/stock/apply-stock-movement";
 import { db } from "@/services/drizzle";
-import { accountingEntries, financialTransactions, productStockLots, sales } from "@/services/drizzle/schema";
+import { accountingEntries, couponRedemptions, financialTransactions, productStockLots, sales } from "@/services/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 
@@ -36,6 +37,15 @@ export async function processConfirmedSaleCancellation({
 	await db.transaction(async (tx) => {
 		if (sale.clienteId) {
 			await reverseSaleCashback({ tx, saleId, clientId: sale.clienteId, organizationId, reason });
+		}
+
+		// Devolve o uso de cupons da venda: marca o resgate como CANCELADO e reincrementa a atribuição.
+		const saleCouponRedemptions = await tx.query.couponRedemptions.findMany({
+			where: and(eq(couponRedemptions.vendaId, saleId), eq(couponRedemptions.organizacaoId, organizationId), eq(couponRedemptions.status, "UTILIZADO")),
+			columns: { id: true },
+		});
+		for (const redemption of saleCouponRedemptions) {
+			await cancelCouponRedemption({ trx: tx, organizacaoId: organizationId, redemptionId: redemption.id });
 		}
 
 		for (const transaction of sale.lancamentosContabeis.flatMap((entry) => entry.transacoesFinanceiras)) {

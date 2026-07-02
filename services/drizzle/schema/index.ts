@@ -25,6 +25,7 @@ export * from "./community";
 export * from "./suppliers";
 export * from "./purchases";
 export * from "./poi-transaction-requests";
+export * from "./coupons";
 export * from "./shop";
 export * from "./platform-partnerships";
 export * from "./productions";

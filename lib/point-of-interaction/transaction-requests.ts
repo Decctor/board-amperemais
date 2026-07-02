@@ -21,6 +21,14 @@ export type TPoiTransactionRequestSummary = {
 		prizeTitulo?: string | null;
 		prizeImageUrl?: string | null;
 	} | null;
+	cupom: {
+		cupomId: string;
+		valorDesconto: number | null;
+		titulo?: string | null;
+		codigo?: string | null;
+		validacaoModo?: string | null;
+		condicoesTexto?: string | null;
+	} | null;
 	resultadoProcessamento?: TCreatePointOfInteractionTransactionOutput["data"] | null;
 	statusPublico?: TPoiTransactionRequestStatusEnum;
 };
@@ -28,6 +36,7 @@ export type TPoiTransactionRequestSummary = {
 export function buildPoiTransactionRequestSummary(
 	input: TCreatePointOfInteractionTransactionRequestInput,
 	prizeInfo?: { titulo?: string | null; imagemCapaUrl?: string | null } | null,
+	couponInfo?: { titulo?: string | null; codigo?: string | null; validacaoModo?: string | null; condicoesTexto?: string | null } | null,
 ): TPoiTransactionRequestSummary {
 	return {
 		cliente: {
@@ -53,6 +62,16 @@ export function buildPoiTransactionRequestSummary(
 				prizeSaleValue: input.sale.prizeRedemption.prizeSaleValue,
 				prizeTitulo: prizeInfo?.titulo ?? null,
 				prizeImageUrl: prizeInfo?.imagemCapaUrl ?? null,
+			}
+			: null,
+		cupom: input.sale.coupon
+			? {
+				cupomId: input.sale.coupon.cupomId,
+				valorDesconto: input.sale.coupon.valorDesconto ?? null,
+				titulo: couponInfo?.titulo ?? null,
+				codigo: couponInfo?.codigo ?? null,
+				validacaoModo: couponInfo?.validacaoModo ?? null,
+				condicoesTexto: couponInfo?.condicoesTexto ?? null,
 			}
 			: null,
 	};

@@ -1,0 +1,74 @@
+import { appApiHandler } from "@/lib/app-api";
+import { getAvailableCouponsForClient } from "@/lib/coupons/availability";
+import { evaluateCouponAgainstSaleValue } from "@/lib/coupons/engine";
+import { type NextRequest, NextResponse } from "next/server";
+import z from "zod";
+
+const GetPoiAvailableCouponsInputSchema = z.object({
+	orgId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para o ID da organização.",
+	}),
+	clienteId: z.string({
+		required_error: "ID do cliente não informado.",
+		invalid_type_error: "Tipo não válido para o ID do cliente.",
+	}),
+	valorVenda: z
+		.string({ invalid_type_error: "Tipo não válido para o valor da venda." })
+		.optional()
+		.nullable()
+		.transform((value) => (value ? Number(value) : null)),
+});
+export type TGetPoiAvailableCouponsInput = z.infer<typeof GetPoiAvailableCouponsInputSchema>;
+
+// Endpoint público (como as demais rotas do ponto de interação): o tablet da loja
+// identifica o cliente pelo telefone e lista os cupons resgatáveis nessa superfície.
+async function getPoiAvailableCoupons({ input }: { input: TGetPoiAvailableCouponsInput }) {
+	const availableCoupons = await getAvailableCouponsForClient({
+		organizacaoId: input.orgId,
+		clienteId: input.clienteId,
+		surface: "PONTO_INTERACAO",
+	});
+
+	const coupons = availableCoupons.map((coupon) => {
+		const evaluation =
+			coupon.validacaoModo === "AUTOMATICA" && input.valorVenda
+				? evaluateCouponAgainstSaleValue({ coupon, targets: coupon.alvos, saleValue: input.valorVenda })
+				: null;
+		return {
+			id: coupon.id,
+			titulo: coupon.titulo,
+			descricao: coupon.descricao,
+			imagemCapaUrl: coupon.imagemCapaUrl,
+			codigo: coupon.codigo,
+			escopo: coupon.escopo,
+			validacaoModo: coupon.validacaoModo,
+			condicoesTexto: coupon.condicoesTexto,
+			beneficioTipo: coupon.beneficioTipo,
+			beneficioValor: coupon.beneficioValor,
+			beneficioDescontoMaximo: coupon.beneficioDescontoMaximo,
+			beneficioAplicacao: coupon.beneficioAplicacao,
+			vigenciaFim: coupon.vigenciaFim,
+			atribuicaoVigente: coupon.atribuicaoVigente ? { id: coupon.atribuicaoVigente.id, expiracaoData: coupon.atribuicaoVigente.expiracaoData } : null,
+			avaliacao: evaluation,
+		};
+	});
+
+	return {
+		data: { coupons },
+		message: "Cupons disponíveis encontrados com sucesso.",
+	};
+}
+export type TGetPoiAvailableCouponsOutput = Awaited<ReturnType<typeof getPoiAvailableCoupons>>;
+
+async function getPoiAvailableCouponsRoute(request: NextRequest) {
+	const input = GetPoiAvailableCouponsInputSchema.parse({
+		orgId: request.nextUrl.searchParams.get("orgId") ?? undefined,
+		clienteId: request.nextUrl.searchParams.get("clienteId") ?? undefined,
+		valorVenda: request.nextUrl.searchParams.get("valorVenda") ?? undefined,
+	});
+	const result = await getPoiAvailableCoupons({ input });
+	return NextResponse.json(result, { status: 200 });
+}
+
+export const GET = appApiHandler({ GET: getPoiAvailableCouponsRoute });

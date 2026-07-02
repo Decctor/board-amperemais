@@ -323,3 +323,31 @@ export const platformPartnerReferralStatusEnum = pgEnum("platform_partner_referr
 export const platformPartnerCommissionStatusEnum = pgEnum("platform_partner_commission_status", ["PENDENTE", "APROVADA", "CANCELADA", "PAGA"]);
 
 export const platformPartnerPayoutStatusEnum = pgEnum("platform_partner_payout_status", ["RASCUNHO", "APROVADO", "PAGO", "CANCELADO"]);
+
+// ============================================================================
+// COUPONS
+// ============================================================================
+
+export const couponScopeEnum = pgEnum("coupon_scope", ["GLOBAL", "INDIVIDUAL"]);
+
+export const couponValidationModeEnum = pgEnum("coupon_validation_mode", ["AUTOMATICA", "MANUAL"]);
+
+export const couponBenefitTypeEnum = pgEnum("coupon_benefit_type", [
+	"DESCONTO_FIXO",
+	"DESCONTO_PERCENTUAL",
+	"PRECO_FIXO",
+	"COMPRE_X_LEVE_Y",
+	"BRINDE",
+]);
+
+export const couponBenefitScopeEnum = pgEnum("coupon_benefit_scope", ["VENDA_TOTAL", "ITENS_ELEGIVEIS"]);
+
+export const couponTargetOperatorEnum = pgEnum("coupon_target_operator", ["QUALQUER", "TODOS"]);
+
+export const couponTargetRoleEnum = pgEnum("coupon_target_role", ["ELEGIVEL", "BENEFICIADO"]);
+
+export const couponGrantOriginEnum = pgEnum("coupon_grant_origin", ["MANUAL", "CAMPANHA", "SISTEMA"]);
+
+export const couponRedemptionStatusEnum = pgEnum("coupon_redemption_status", ["UTILIZADO", "CANCELADO"]);
+
+export const couponRedemptionSourceEnum = pgEnum("coupon_redemption_source", ["POS", "PONTO_INTERACAO", "LOJA_DIGITAL"]);
