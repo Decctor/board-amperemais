@@ -58,6 +58,18 @@ export const CartItemSchema = z.object({
 	modificadores: z.array(CartItemModifierSchema),
 });
 
+export const SaleAppliedCouponSchema = z.object({
+	cupomId: z.string({ required_error: "ID do cupom não informado.", invalid_type_error: "Tipo não válido para ID do cupom." }),
+	valorDesconto: z.number({
+		required_error: "Valor de desconto do cupom não informado.",
+		invalid_type_error: "Tipo não válido para valor de desconto do cupom.",
+	}),
+	codigo: z.string({ invalid_type_error: "Tipo não válido para código do cupom." }).optional().nullable(),
+	titulo: z.string({ invalid_type_error: "Tipo não válido para título do cupom." }).optional().nullable(),
+	validacaoModo: z.enum(["AUTOMATICA", "MANUAL"], { invalid_type_error: "Tipo não válido para modo de validação do cupom." }).optional().nullable(),
+});
+export type TSaleAppliedCoupon = z.infer<typeof SaleAppliedCouponSchema>;
+
 export const SaleDraftMetadataSchema = z.object({
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
 	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }),
@@ -105,6 +117,7 @@ export const SaleStateSchema = z.object({
 	comandaNumero: z.string({ invalid_type_error: "Tipo não válido para número da comanda." }).optional().nullable(),
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
+	cupomResgate: SaleAppliedCouponSchema.optional().nullable(),
 	success: SaleSuccessSchema,
 });
 
@@ -133,6 +146,7 @@ export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleSt
 		comandaNumero: initialState?.comandaNumero ?? null,
 		pagamentos: initialState?.pagamentos ?? [],
 		cashbackResgate: initialState?.cashbackResgate ?? 0,
+		cupomResgate: initialState?.cupomResgate ?? null,
 		success: initialState?.success ?? null,
 	};
 }
@@ -146,7 +160,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	}, []);
 
 	const clearCliente = useCallback(() => {
-		setState((prev) => ({ ...prev, cliente: null, entregaLocalizacaoId: null, cashbackResgate: 0 }));
+		setState((prev) => ({ ...prev, cliente: null, entregaLocalizacaoId: null, cashbackResgate: 0, cupomResgate: null }));
 	}, []);
 
 	const setModoCliente = useCallback((modoCliente: TSaleState["modoCliente"]) => {
@@ -157,6 +171,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 			entregaModalidade: modoCliente === "CONSUMIDOR" && prev.entregaModalidade === "ENTREGA" ? "PRESENCIAL" : prev.entregaModalidade,
 			entregaLocalizacaoId: modoCliente === "CONSUMIDOR" ? null : prev.entregaLocalizacaoId,
 			cashbackResgate: modoCliente === "CONSUMIDOR" ? 0 : prev.cashbackResgate,
+			cupomResgate: modoCliente === "CONSUMIDOR" ? null : prev.cupomResgate,
 		}));
 	}, []);
 
@@ -187,7 +202,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	}, []);
 
 	const clearCart = useCallback(() => {
-		setState((prev) => ({ ...prev, itens: [], pagamentos: [], cashbackResgate: 0 }));
+		setState((prev) => ({ ...prev, itens: [], pagamentos: [], cashbackResgate: 0, cupomResgate: null }));
 	}, []);
 
 	const setDescontoGeral = useCallback((descontoGeral: number) => {
@@ -283,6 +298,10 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		[organizationConfig],
 	);
 
+	const setCupomResgate = useCallback((cupomResgate: TSaleAppliedCoupon | null) => {
+		setState((prev) => ({ ...prev, cupomResgate }));
+	}, []);
+
 	const setCashbackResgate = useCallback((cashbackResgate: number) => {
 		setState((prev) => {
 			const nextValue = Math.max(0, cashbackResgate || 0);
@@ -315,10 +334,13 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	const totalDescontoItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorDesconto, 0), [state.itens]);
 	const totalItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0), [state.itens]);
 	const itemCount = useMemo(() => state.itens.reduce((sum, item) => sum + item.quantidade, 0), [state.itens]);
-	const valorAntesCashback = useMemo(
+	const cupomDesconto = useMemo(() => state.cupomResgate?.valorDesconto ?? 0, [state.cupomResgate]);
+	const valorAntesCupom = useMemo(
 		() => Math.max(0, totalItens - state.descontoGeral + state.acrescimoGeral),
 		[totalItens, state.descontoGeral, state.acrescimoGeral],
 	);
+	// Mesma ordem do backend: base - descontos gerais + acréscimos → cupom → cashback.
+	const valorAntesCashback = useMemo(() => Math.max(0, valorAntesCupom - cupomDesconto), [valorAntesCupom, cupomDesconto]);
 	const valorFinal = useMemo(() => Math.max(0, valorAntesCashback - state.cashbackResgate), [valorAntesCashback, state.cashbackResgate]);
 	const totalPagamentos = useMemo(() => state.pagamentos.reduce((sum, p) => sum + p.valor, 0), [state.pagamentos]);
 	const valorRestante = useMemo(() => Math.max(0, valorFinal - totalPagamentos), [valorFinal, totalPagamentos]);
@@ -396,12 +418,15 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		removePagamento,
 		updatePagamento,
 		setCashbackResgate,
+		setCupomResgate,
 		setSuccess,
 		clearSuccess,
 		subtotal,
 		totalDescontoItens,
 		totalItens,
 		itemCount,
+		cupomDesconto,
+		valorAntesCupom,
 		valorAntesCashback,
 		valorFinal,
 		totalPagamentos,

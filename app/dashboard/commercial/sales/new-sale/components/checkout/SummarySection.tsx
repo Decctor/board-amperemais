@@ -7,6 +7,7 @@ import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { DollarSign, Minus, Plus, Wallet } from "lucide-react";
 import { useEffect } from "react";
+import CouponRedemptionSection from "./CouponRedemptionSection";
 
 type CashbackRedemptionBlockProps = {
 	saleState: TUseSaleState;
@@ -112,6 +113,7 @@ export default function SummarySection({ saleState, organizationCashbackProgram 
 				<span>{formatToMoney(saleState.totalItens)}</span>
 			</div>
 			<div className="flex flex-col gap-1.5">
+				{saleState.state.cliente ? <CouponRedemptionSection saleState={saleState} clientId={saleState.state.cliente.id} /> : null}
 				{saleState.state.cliente ? (
 					<CashbackRedemptionBlock saleState={saleState} clientId={saleState.state.cliente.id} organizationCashbackProgram={organizationCashbackProgram} />
 				) : null}
@@ -148,6 +150,12 @@ export default function SummarySection({ saleState, organizationCashbackProgram 
 				onChange={(event) => saleState.setObservacoes(event.target.value)}
 			/>
 			<Separator />
+			{saleState.state.cupomResgate ? (
+				<div className="flex items-center justify-between text-sm text-green-600">
+					<span>Cupom {saleState.state.cupomResgate.codigo ?? ""}</span>
+					<span>-{formatToMoney(saleState.state.cupomResgate.valorDesconto)}</span>
+				</div>
+			) : null}
 			{saleState.state.cashbackResgate > 0 ? (
 				<div className="flex items-center justify-between text-sm text-green-600">
 					<span>Desconto em cashback</span>

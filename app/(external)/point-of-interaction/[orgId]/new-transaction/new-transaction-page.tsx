@@ -13,6 +13,7 @@ import {
 	saleValuesMatch,
 } from "@/lib/point-of-interaction/sale-value-confirmation";
 import { useClientByLookup } from "@/lib/queries/clients";
+import { type TPoiAvailableCoupon, usePoiAvailableCoupons } from "@/lib/queries/coupons";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
@@ -38,6 +39,7 @@ import {
 	getRedemptionLimitConfig,
 } from "../_shared/helpers/cashback-calculations";
 import type { TPrize, TStepDefinition } from "../_shared/types";
+import { CouponSelectionBlock } from "./components/coupon-selection-block";
 import { CashbackStep } from "./components/kiosk/cashback-step";
 import { ConfirmationStep as KioskConfirmationStep } from "./components/kiosk/confirmation-step";
 import { ModeSelectionStep } from "./components/kiosk/mode-selection-step";
@@ -101,6 +103,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		updateSale,
 		updateCashback,
 		updatePrizeRedemption,
+		updateCoupon,
 		updateOperatorIdentifier,
 		updateOperatorConfirmedSaleValue,
 		updateWatchTransactionRequest,
@@ -115,6 +118,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const [showModeSelection, setShowModeSelection] = React.useState(false);
 	const [selectedPrize, setSelectedPrize] = React.useState<TPrize | null>(null);
 	const [prizeFlowIntent, setPrizeFlowIntent] = React.useState<"redeem" | "sale-only" | null>(null);
+
+	// Coupon flow state (display info; the payload holds only cupomId + valorDesconto)
+	const [selectedCoupon, setSelectedCoupon] = React.useState<TPoiAvailableCoupon | null>(null);
 
 	const hasPrizes = prizes.length > 0;
 	const isDiscountModeAllowed = org.modalidadeDescontosPermitida;
@@ -151,11 +157,55 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const availableCashback = useMemo(() => getAvailableCashback(client?.saldos), [client?.saldos]);
 	const cashbackAccumulationConfig = useMemo(() => getCashbackAccumulationConfig(client?.saldos), [client?.saldos]);
 	const redemptionLimitConfig = useMemo(() => getRedemptionLimitConfig(client?.saldos), [client?.saldos]);
+	// Coupons available for the identified client (discount flow only; evaluated against the informed sale value)
+	const { data: availableCoupons, isLoading: isLoadingCoupons } = usePoiAvailableCoupons({
+		orgId: org.id,
+		clienteId: clientId,
+		valorVenda: state.sale.valor,
+	});
+	const couponDiscount = useMemo(() => {
+		if (!state.sale.coupon) return 0;
+		return state.sale.coupon.valorDesconto ?? 0;
+	}, [state.sale.coupon]);
+
 	const maximumCashbackAllowed = useMemo(
-		() => getMaxCashbackToUse(availableCashback, state.sale.valor, redemptionLimitConfig),
-		[availableCashback, state.sale.valor, redemptionLimitConfig],
+		() => getMaxCashbackToUse(availableCashback, Math.max(0, state.sale.valor - couponDiscount), redemptionLimitConfig),
+		[availableCashback, state.sale.valor, couponDiscount, redemptionLimitConfig],
 	);
-	const finalValue = useMemo(() => getFinalValue(state.sale.valor, state.sale.cashback), [state.sale.valor, state.sale.cashback]);
+	const finalValue = useMemo(
+		() => Math.max(0, getFinalValue(state.sale.valor, state.sale.cashback) - couponDiscount),
+		[state.sale.valor, state.sale.cashback, couponDiscount],
+	);
+
+	// Mantém o desconto do cupom AUTOMATICA em sincronia com o valor da venda (o servidor é o autoritativo);
+	// remove a seleção quando o cupom deixa de ser elegível.
+	useEffect(() => {
+		if (!selectedCoupon || selectedCoupon.validacaoModo !== "AUTOMATICA" || !availableCoupons) return;
+		const freshCoupon = availableCoupons.find((coupon) => coupon.id === selectedCoupon.id);
+		if (!freshCoupon || !freshCoupon.avaliacao || !freshCoupon.avaliacao.elegivel) {
+			setSelectedCoupon(null);
+			updateCoupon(null);
+			return;
+		}
+		const freshDiscountValue = freshCoupon.avaliacao.valorDesconto;
+		if (Math.abs((state.sale.coupon?.valorDesconto ?? 0) - freshDiscountValue) > 0.01) {
+			updateCoupon({ cupomId: freshCoupon.id, valorDesconto: freshDiscountValue });
+		}
+	}, [selectedCoupon, availableCoupons, state.sale.coupon?.valorDesconto, updateCoupon]);
+
+	const handleSelectCoupon = (coupon: TPoiAvailableCoupon) => {
+		playAction();
+		setSelectedCoupon(coupon);
+		updateCoupon({
+			cupomId: coupon.id,
+			valorDesconto: coupon.validacaoModo === "AUTOMATICA" && coupon.avaliacao?.elegivel ? coupon.avaliacao.valorDesconto : null,
+		});
+	};
+
+	const handleClearCoupon = () => {
+		setSelectedCoupon(null);
+		updateCoupon(null);
+	};
 
 	// Auto-populate client state when data loads
 	useEffect(() => {
@@ -241,6 +291,8 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 		updatePrizeRedemption(null);
 		updateCashback({ aplicar: false, valor: 0 });
 		updateSale({ valor: 0 });
+		setSelectedCoupon(null);
+		updateCoupon(null);
 		setShowModeSelection(false);
 		playAction();
 		setCurrentStep(1);
@@ -327,6 +379,18 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 				return;
 			}
 		}
+		// Cupom MANUAL no totem: o operador precisa informar o valor do desconto na confirmação.
+		if (payload.sale.coupon && selectedCoupon?.validacaoModo === "MANUAL") {
+			const couponDiscountValue = payload.sale.coupon.valorDesconto ?? 0;
+			if (couponDiscountValue <= 0) {
+				toast.error("Informe o valor do desconto do cupom (validação do operador).");
+				return;
+			}
+			if (couponDiscountValue > payload.sale.valor) {
+				toast.error("O desconto do cupom não pode superar o valor da venda.");
+				return;
+			}
+		}
 
 		createSaleMutation(payload);
 	};
@@ -399,26 +463,35 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						{!showModeSelection && !isPrizeMode && currentStep === 1 && (
 							<SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} />
 						)}
-						{/* Step 2: Cashback */}
+						{/* Step 2: Cashback (+ cupons disponíveis) */}
 						{!showModeSelection && !isPrizeMode && currentStep === 2 && (
-							<CashbackStep
-								available={availableCashback}
-								maxAllowed={maximumCashbackAllowed}
-								saleValue={state.sale.valor}
-								applied={state.sale.cashback.aplicar}
-								amount={state.sale.cashback.valor}
-								isAttemptingToUseMoreCashbackThanAllowed={isAttemptingToUseMoreCashbackThanAllowed}
-								finalValue={finalValue}
-								redemptionLimit={{ ...redemptionLimitConfig, terminologia: org.terminologia }}
-								onToggle={(v) =>
-									updateCashback({
-										aplicar: v,
-										valor: v ? maximumCashbackAllowed : 0,
-									})
-								}
-								onAmountChange={(v) => updateCashback({ valor: v })}
-								onSubmit={handleNextStep}
-							/>
+							<div className="flex flex-col gap-6 short:gap-3">
+								<CouponSelectionBlock
+									coupons={availableCoupons ?? []}
+									isLoading={isLoadingCoupons}
+									selectedCouponId={selectedCoupon?.id ?? null}
+									onSelect={handleSelectCoupon}
+									onClear={handleClearCoupon}
+								/>
+								<CashbackStep
+									available={availableCashback}
+									maxAllowed={maximumCashbackAllowed}
+									saleValue={state.sale.valor}
+									applied={state.sale.cashback.aplicar}
+									amount={state.sale.cashback.valor}
+									isAttemptingToUseMoreCashbackThanAllowed={isAttemptingToUseMoreCashbackThanAllowed}
+									finalValue={finalValue}
+									redemptionLimit={{ ...redemptionLimitConfig, terminologia: org.terminologia }}
+									onToggle={(v) =>
+										updateCashback({
+											aplicar: v,
+											valor: v ? maximumCashbackAllowed : 0,
+										})
+									}
+									onAmountChange={(v) => updateCashback({ valor: v })}
+									onSubmit={handleNextStep}
+								/>
+							</div>
 						)}
 						{/* Step 3: Confirmation (totem apenas; no mobile a solicitação é enviada no último passo de dados) */}
 						{!showModeSelection && !isPrizeMode && currentStep === 3 && !isMobileMode && (
@@ -430,6 +503,21 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 								requiresSaleValueConfirmation={org.poiConfirmacaoValorObrigatoria}
 								operatorConfirmedSaleValue={state.operatorConfirmedSaleValue}
 								onOperatorConfirmedSaleValueChange={updateOperatorConfirmedSaleValue}
+								appliedCoupon={
+									selectedCoupon
+										? {
+												codigo: selectedCoupon.codigo,
+												titulo: selectedCoupon.titulo,
+												validacaoModo: selectedCoupon.validacaoModo,
+												condicoesTexto: selectedCoupon.condicoesTexto,
+												valorDesconto: state.sale.coupon?.valorDesconto ?? null,
+											}
+										: null
+								}
+								onCouponDiscountChange={(value) => {
+									if (!state.sale.coupon) return;
+									updateCoupon({ ...state.sale.coupon, valorDesconto: value });
+								}}
 								onSubmit={submitTransaction}
 							/>
 						)}
@@ -527,11 +615,20 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										value: state.sale.valor,
 										variant: "brand",
 									},
-									...(state.sale.cashback.aplicar
+									...(state.sale.coupon && couponDiscount > 0
+										? [
+												{
+													label: `CUPOM ${selectedCoupon?.codigo ?? ""}`,
+													value: -couponDiscount,
+													variant: "green" as const,
+												},
+											]
+										: []),
+									...(state.sale.cashback.aplicar || couponDiscount > 0
 										? [
 												{
 													label: "VALOR COM DESCONTO",
-													value: state.sale.valor - state.sale.cashback.valor,
+													value: Math.max(0, state.sale.valor - state.sale.cashback.valor - couponDiscount),
 													variant: "green" as const,
 												},
 											]

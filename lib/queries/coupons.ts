@@ -1,4 +1,6 @@
 import type { TGetCouponGrantsInput, TGetCouponGrantsOutput } from "@/app/api/coupons/grants/route";
+import type { TGetPoiAvailableCouponsOutput } from "@/app/api/point-of-interaction/coupons/available/route";
+import type { TGetAvailablePosCouponsInput, TGetAvailablePosCouponsOutput } from "@/app/api/pos/coupons/available/route";
 import type { TGetCouponsInput, TGetCouponsOutput } from "@/app/api/coupons/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -83,3 +85,54 @@ export function useCouponGrants({ couponId }: { couponId: string }) {
 		updateQueryParams,
 	};
 }
+
+async function fetchPosAvailableCoupons(input: TGetAvailablePosCouponsInput) {
+	const { data } = await axios.post<TGetAvailablePosCouponsOutput>("/api/pos/coupons/available", input);
+	return data.data.coupons;
+}
+
+/**
+ * Cupons disponíveis para o cliente vinculado no PDV, avaliados contra o carrinho atual
+ * (cupons AUTOMATICA retornam `avaliacao` com o desconto computado pelo servidor).
+ */
+export function usePosAvailableCoupons({ clienteId, itens }: { clienteId: string | null; itens: TGetAvailablePosCouponsInput["itens"] }) {
+	const debouncedInput = useDebounceMemo({ clienteId, itens }, 500);
+	const queryKey = ["pos-available-coupons", debouncedInput];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchPosAvailableCoupons({ clienteId: debouncedInput.clienteId as string, itens: debouncedInput.itens }),
+			enabled: !!debouncedInput.clienteId,
+		}),
+		queryKey,
+	};
+}
+export type TPosAvailableCoupon = Awaited<ReturnType<typeof fetchPosAvailableCoupons>>[number];
+
+async function fetchPoiAvailableCoupons(input: { orgId: string; clienteId: string; valorVenda?: number | null }) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("orgId", input.orgId);
+	searchParams.set("clienteId", input.clienteId);
+	if (input.valorVenda) searchParams.set("valorVenda", input.valorVenda.toString());
+	const { data } = await axios.get<TGetPoiAvailableCouponsOutput>(`/api/point-of-interaction/coupons/available?${searchParams.toString()}`);
+	return data.data.coupons;
+}
+
+/**
+ * Cupons disponíveis para o cliente identificado no ponto de interação (endpoint público).
+ * Quando `valorVenda` é informado, cupons AUTOMATICA de venda total retornam o desconto estimado.
+ */
+export function usePoiAvailableCoupons({ orgId, clienteId, valorVenda }: { orgId: string; clienteId: string | null; valorVenda?: number | null }) {
+	const debouncedInput = useDebounceMemo({ orgId, clienteId, valorVenda: valorVenda ?? null }, 500);
+	const queryKey = ["poi-available-coupons", debouncedInput];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () =>
+				fetchPoiAvailableCoupons({ orgId: debouncedInput.orgId, clienteId: debouncedInput.clienteId as string, valorVenda: debouncedInput.valorVenda }),
+			enabled: !!debouncedInput.clienteId,
+		}),
+		queryKey,
+	};
+}
+export type TPoiAvailableCoupon = Awaited<ReturnType<typeof fetchPoiAvailableCoupons>>[number];

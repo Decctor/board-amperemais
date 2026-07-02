@@ -21,12 +21,22 @@ type PointOfInteractionTransactionRequestsQueueProps = {
 	poiConfirmacaoValorObrigatoria: boolean;
 };
 
+type TApprovalCoupon = {
+	cupomId: string;
+	valorDesconto: number | null;
+	titulo: string | null;
+	codigo: string | null;
+	validacaoModo: string | null;
+	condicoesTexto: string | null;
+};
+
 type ApprovalTarget = {
 	requestId: string;
 	clientDisplayName: string;
 	valorBruto: number;
 	valorFinal: number;
 	requiresSaleValueConfirmation: boolean;
+	coupon: TApprovalCoupon | null;
 };
 
 export function PointOfInteractionTransactionRequestsQueue({
@@ -80,13 +90,14 @@ export function PointOfInteractionTransactionRequestsQueue({
 						<PoiTransactionRequestCard
 							key={request.id}
 							request={request}
-							onApprove={({ valorBruto, valorFinal, isRewardMode }) =>
+							onApprove={({ valorBruto, valorFinal, isRewardMode, coupon }) =>
 								setApprovalTarget({
 									requestId: request.id,
 									clientDisplayName: request.cliente?.nome ?? "Cliente não identificado",
 									valorBruto,
 									valorFinal,
 									requiresSaleValueConfirmation: poiConfirmacaoValorObrigatoria && !isRewardMode,
+									coupon,
 								})
 							}
 							onReject={() => rejectRequest(request.id)}
@@ -102,6 +113,7 @@ export function PointOfInteractionTransactionRequestsQueue({
 					clientDisplayName={approvalTarget.clientDisplayName}
 					valorBruto={approvalTarget.valorBruto}
 					valorFinal={approvalTarget.valorFinal}
+					coupon={approvalTarget.coupon}
 					hasLinkedSeller={hasLinkedSeller}
 					requiresOperatorPassword={poiConfirmacaoValorObrigatoria}
 					requiresSaleValueConfirmation={approvalTarget.requiresSaleValueConfirmation}
@@ -125,7 +137,7 @@ function PoiTransactionRequestCard({
 	disabled,
 }: {
 	request: TGetPoiTransactionRequestsOutput["data"]["requests"][number];
-	onApprove: (data: { valorBruto: number; valorFinal: number; isRewardMode: boolean }) => void;
+	onApprove: (data: { valorBruto: number; valorFinal: number; isRewardMode: boolean; coupon: TApprovalCoupon | null }) => void;
 	onReject: () => void;
 	disabled: boolean;
 }) {
@@ -133,7 +145,9 @@ function PoiTransactionRequestCard({
 		cliente?: { nome?: string; telefone?: string };
 		venda?: { valorBruto?: number; valorResgate?: number; valorFinal?: number; modo?: string };
 		recompensa?: { prizeValue?: number; prizeSaleValue?: number; prizeTitulo?: string | null; prizeImageUrl?: string | null } | null;
+		cupom?: TApprovalCoupon | null;
 	};
+	const requestCoupon = resumo?.cupom ?? null;
 	const isRewardMode = resumo?.venda?.modo === "RECOMPENSA";
 
 	// Prize info: prefer data from approved transaction, fallback to summary
@@ -175,6 +189,23 @@ function PoiTransactionRequestCard({
 					</div>
 				</div>
 			</div>
+
+			{requestCoupon ? (
+				<div className="flex items-center gap-2.5 rounded-lg border border-brand/20 bg-brand/5 px-3 py-2">
+					<div className="flex h-10 w-10 min-h-10 min-w-10 items-center justify-center rounded-md bg-brand/10">
+						<BadgePercent className="h-5 w-5 text-brand" />
+					</div>
+					<div className="flex flex-col gap-0.5">
+						<p className="text-[0.65rem] font-semibold uppercase tracking-tight text-brand">
+							Cupom {requestCoupon.codigo ?? ""} — {requestCoupon.titulo ?? ""}
+						</p>
+						<p className="text-xs font-bold">
+							{requestCoupon.valorDesconto ? `Desconto: ${formatToMoney(requestCoupon.valorDesconto)}` : "Desconto a informar pelo operador na aprovação"}
+						</p>
+						{requestCoupon.condicoesTexto ? <p className="text-[0.65rem] text-muted-foreground">Condições: {requestCoupon.condicoesTexto}</p> : null}
+					</div>
+				</div>
+			) : null}
 
 			{isRewardMode && (prizeDescricao || prizeImageUrl) && (
 				<div className="flex items-center gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800/40 dark:bg-purple-900/10">
@@ -225,6 +256,7 @@ function PoiTransactionRequestCard({
 								valorBruto: resumo?.venda?.valorBruto ?? 0,
 								valorFinal: resumo?.venda?.valorFinal ?? 0,
 								isRewardMode,
+								coupon: requestCoupon,
 							})
 						}
 					>

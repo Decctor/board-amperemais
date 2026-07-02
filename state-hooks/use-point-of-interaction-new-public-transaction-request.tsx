@@ -57,6 +57,18 @@ export const PointOfInteractionNewSaleStateSchema = z.object({
 				})
 				.optional()
 				.nullable(),
+			// Cupom selecionado: em cupons AUTOMATICA o valorDesconto vem do servidor;
+			// em cupons MANUAL ele é informado pelo operador (na confirmação do totem ou na aprovação da solicitação).
+			coupon: z
+				.object({
+					cupomId: z.string({
+						required_error: "ID do cupom não informado.",
+						invalid_type_error: "Tipo não válido para ID do cupom.",
+					}),
+					valorDesconto: z.number({ invalid_type_error: "Tipo não válido para o valor de desconto do cupom." }).optional().nullable(),
+				})
+				.optional()
+				.nullable(),
 		})
 		.refine((data) => data.valor > 0, {
 			message: "Valor da venda deve ser positivo.",
@@ -77,7 +89,7 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 	const [state, setState] = useState<TPointOfInteractionNewSaleState>({
 		orgId: initialOrgId,
 		client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
-		sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null },
+		sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null, coupon: null },
 		operatorIdentifier: "",
 		operatorConfirmedSaleValue: null,
 		interfaceMode: initialInterfaceMode,
@@ -114,6 +126,13 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 		}));
 	}, []);
 
+	const updateCoupon = useCallback((coupon: TPointOfInteractionNewSaleState["sale"]["coupon"]) => {
+		setState((prev) => ({
+			...prev,
+			sale: { ...prev.sale, coupon },
+		}));
+	}, []);
+
 	const updateOperatorIdentifier = useCallback((operatorIdentifier: string) => {
 		setState((prev) => ({
 			...prev,
@@ -143,7 +162,7 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 		setState({
 			orgId: initialOrgId,
 			client: { id: null, nome: "", cpfCnpj: null, telefone: "" },
-			sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null },
+			sale: { valor: 0, cashback: { aplicar: false, valor: 0 }, partnerCode: null, prizeRedemption: null, coupon: null },
 			operatorIdentifier: "",
 			operatorConfirmedSaleValue: null,
 			interfaceMode: initialInterfaceMode,
@@ -162,6 +181,7 @@ export function usePointOfInteractionNewSaleState(initialOrgId: string, initialI
 		updateSale,
 		updateCashback,
 		updatePrizeRedemption,
+		updateCoupon,
 		updateOperatorIdentifier,
 		updateOperatorConfirmedSaleValue,
 		updateWatchTransactionRequest,

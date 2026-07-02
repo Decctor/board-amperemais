@@ -19,7 +19,16 @@ import {
 import type { TInteractionContextMetadados } from "@/lib/message-templates";
 import type { TCashbackProgramTerminologyEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { cashbackProgramTransactions, cashbackPrograms, clients, couponRedemptions, interactions, partners, saleItems, sales } from "@/services/drizzle/schema";
+import {
+	cashbackProgramTransactions,
+	cashbackPrograms,
+	clients,
+	couponRedemptions,
+	interactions,
+	partners,
+	saleItems,
+	sales,
+} from "@/services/drizzle/schema";
 import { waitUntil } from "@vercel/functions";
 import dayjs from "dayjs";
 import { and, eq } from "drizzle-orm";
@@ -199,6 +208,8 @@ type TProcessPointOfInteractionTransactionParams = {
 	operatorContext?: {
 		operatorIdentifier?: string;
 		operatorConfirmedSaleValue?: number | null;
+		// Desconto do cupom MANUAL informado pelo operador na aprovação da solicitação.
+		operatorCouponDiscountValue?: number | null;
 		operatorSellerId?: string | null;
 		operatorUserId?: string | null;
 	};
@@ -518,8 +529,9 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				if (!evaluation.elegivel) throw new createHttpError.BadRequest(`Cupom não elegível: ${evaluation.motivo}`);
 				couponDiscountValue = evaluation.valorDesconto;
 			} else {
-				// MANUAL: o operador valida as condições (condicoesTexto) e informa o valor do desconto.
-				couponDiscountValue = requestedCoupon.valorDesconto ?? 0;
+				// MANUAL: o operador valida as condições (condicoesTexto) e informa o valor do desconto
+				// (na confirmação do totem, ou na aprovação da solicitação via operatorContext).
+				couponDiscountValue = operatorContext?.operatorCouponDiscountValue ?? requestedCoupon.valorDesconto ?? 0;
 				if (couponDiscountValue <= 0) throw new createHttpError.BadRequest("Informe o valor do desconto do cupom de validação manual.");
 				if (couponDiscountValue > effectiveSaleValue) {
 					throw new createHttpError.BadRequest("O desconto do cupom não pode superar o valor da venda.");
@@ -802,7 +814,6 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					},
 				});
 			}
-
 		}
 
 		const shouldProcessPurchaseCampaigns =
@@ -1074,13 +1085,15 @@ async function handleCampaignProcessingForNewPurchase({
 	clientCashbackRedeemedBalanceTotal,
 	terminologia,
 }: THandleCampaignProcessingForNewPurchaseParams) {
-	console.log("")
+	console.log("");
 	if (campaignsForNewPurchase.length === 0) {
 		console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Nenhuma campanha ativa com gatilho NOVA-COMPRA`);
 		return;
 	}
 
-	console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Avaliando ${campaignsForNewPurchase.length} campanha(s) para cliente ${clientId} com saleValue=${saleValue}`);
+	console.log(
+		`[POI] [ORG: ${orgId}] [NOVA-COMPRA] Avaliando ${campaignsForNewPurchase.length} campanha(s) para cliente ${clientId} com saleValue=${saleValue}`,
+	);
 
 	const applicableCampaigns = campaignsForNewPurchase.filter((campaign) => {
 		// Validate campaign trigger for new purchase
@@ -1228,7 +1241,6 @@ async function handleCampaignProcessingForNewPurchase({
 			} else {
 				console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] NOT adding to immediate processing - conditions not met`);
 			}
-
 		}
 	} else {
 		console.log(`[POI] [ORG: ${orgId}] [NOVA-COMPRA] No applicable campaigns found after filtering`);
@@ -1384,7 +1396,6 @@ async function handleCampaignProcessingForFirstPurchase({
 			} else {
 				console.log(`[POI] [ORG: ${orgId}] [PRIMEIRA-COMPRA] NOT adding to immediate processing - conditions not met`);
 			}
-
 		}
 	}
 }
@@ -1676,7 +1687,6 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 					contextMetadados: interactionContextMetadados,
 				});
 			}
-
 		}
 	}
 }
@@ -1826,7 +1836,6 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 					contextMetadados: interactionContextMetadados,
 				});
 			}
-
 		}
 	}
 }

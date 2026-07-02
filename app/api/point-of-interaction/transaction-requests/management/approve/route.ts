@@ -27,6 +27,11 @@ const ApprovePoiTransactionRequestInputSchema = z.object({
 		.nonnegative("O valor confirmado pelo operador não pode ser negativo.")
 		.optional()
 		.nullable(),
+	operatorCouponDiscountValue: z
+		.number({ invalid_type_error: "Tipo não válido para o valor de desconto do cupom." })
+		.positive("O valor de desconto do cupom deve ser maior que zero.")
+		.optional()
+		.nullable(),
 });
 export type TApprovePoiTransactionRequestInput = z.infer<typeof ApprovePoiTransactionRequestInputSchema>;
 async function approvePoiTransactionRequest({ session, input }: { session: TAuthUserSession; input: TApprovePoiTransactionRequestInput }) {
@@ -38,7 +43,7 @@ async function approvePoiTransactionRequest({ session, input }: { session: TAuth
 	const operatorMembershipId = membership.id;
 	let operatorSellerId: string | null = null;
 
-	const { requestId, operatorIdentifier, operatorConfirmedSaleValue } = input;
+	const { requestId, operatorIdentifier, operatorConfirmedSaleValue, operatorCouponDiscountValue } = input;
 	const poiRequest = await db.query.poiTransactionRequests.findFirst({
 		where: and(eq(poiTransactionRequests.id, requestId), eq(poiTransactionRequests.organizacaoId, orgId)),
 		with: {
@@ -87,6 +92,7 @@ async function approvePoiTransactionRequest({ session, input }: { session: TAuth
 			input: transactionInput,
 			operatorContext: {
 				operatorConfirmedSaleValue,
+				operatorCouponDiscountValue,
 				operatorSellerId: operatorSellerId,
 				operatorUserId: operatorUserId,
 			},

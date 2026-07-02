@@ -3,6 +3,7 @@
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { SaleValueConfirmationInput } from "@/app/(external)/point-of-interaction/[orgId]/_shared/components/sale-value-confirmation-input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
@@ -23,11 +24,22 @@ const OPERATOR_PASSWORD_LENGTH = 5;
 // TODO: tornar configurável por organização quando houver necessidade.
 const HIGH_VALUE_CONFIRMATION_THRESHOLD = 1000;
 
+type TApproveTransactionCoupon = {
+	cupomId: string;
+	valorDesconto: number | null;
+	titulo: string | null;
+	codigo: string | null;
+	validacaoModo: string | null;
+	condicoesTexto: string | null;
+};
+
 type ApproveTransactionProps = {
 	requestId: string;
 	clientDisplayName?: string;
 	valorBruto: number;
 	valorFinal: number;
+	/** Cupom solicitado na transação (quando MANUAL sem valor, o operador informa o desconto aqui). */
+	coupon?: TApproveTransactionCoupon | null;
 	/** Quando ausente, é obrigatório informar a senha do operador (vendedor). */
 	hasLinkedSeller: boolean;
 	requiresOperatorPassword: boolean;
@@ -58,6 +70,7 @@ export function ApproveTransaction({
 	clientDisplayName,
 	valorBruto,
 	valorFinal,
+	coupon,
 	hasLinkedSeller,
 	requiresOperatorPassword,
 	requiresSaleValueConfirmation,
@@ -66,10 +79,13 @@ export function ApproveTransaction({
 }: ApproveTransactionProps) {
 	const [operatorPassword, setOperatorPassword] = useState("");
 	const [operatorConfirmedSaleValue, setOperatorConfirmedSaleValue] = useState<number | null>(null);
+	const [operatorCouponDiscountValue, setOperatorCouponDiscountValue] = useState<number | null>(null);
 	const [highValueConfirmed, setHighValueConfirmed] = useState(false);
 
 	const requiresHighValueConfirmation = valorFinal >= HIGH_VALUE_CONFIRMATION_THRESHOLD;
 	const hasDiscount = valorBruto > valorFinal;
+	// Cupom MANUAL enviado sem valor: o desconto é definido pelo operador na aprovação.
+	const requiresCouponDiscountInput = !!coupon && coupon.validacaoModo === "MANUAL" && !coupon.valorDesconto;
 
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["approve-poi-transaction-request", requestId],
@@ -109,6 +125,16 @@ export function ApproveTransaction({
 			toast.error("O valor confirmado não corresponde ao valor da venda.");
 			return;
 		}
+		if (requiresCouponDiscountInput) {
+			if (!operatorCouponDiscountValue || operatorCouponDiscountValue <= 0) {
+				toast.error("Informe o valor do desconto do cupom (validação do operador).");
+				return;
+			}
+			if (operatorCouponDiscountValue > valorBruto) {
+				toast.error("O desconto do cupom não pode superar o valor da venda.");
+				return;
+			}
+		}
 		if (!hasLinkedSeller || requiresOperatorPassword) {
 			if (code.length !== OPERATOR_PASSWORD_LENGTH) {
 				toast.error("Informe os 5 dígitos da senha do operador.");
@@ -122,14 +148,17 @@ export function ApproveTransaction({
 			requestId,
 			operatorIdentifier: code.length === OPERATOR_PASSWORD_LENGTH ? code : undefined,
 			operatorConfirmedSaleValue: requiresSaleValueConfirmation ? operatorConfirmedSaleValue : undefined,
+			operatorCouponDiscountValue: requiresCouponDiscountInput ? operatorCouponDiscountValue : undefined,
 		});
 	}, [
 		hasLinkedSeller,
 		highValueConfirmed,
 		mutate,
 		operatorConfirmedSaleValue,
+		operatorCouponDiscountValue,
 		operatorPassword,
 		requestId,
+		requiresCouponDiscountInput,
 		requiresHighValueConfirmation,
 		requiresOperatorPassword,
 		requiresSaleValueConfirmation,
@@ -186,6 +215,36 @@ export function ApproveTransaction({
 							Valor elevado. Confirmo que conferi e o valor de <strong className="font-black">{formatToMoney(valorFinal)}</strong> está correto.
 						</span>
 					</label>
+				) : null}
+
+				{coupon ? (
+					<div className="flex w-full flex-col gap-2 rounded-xl border border-brand/20 bg-brand/5 px-3 py-3">
+						<div className="flex items-center justify-between">
+							<span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+								Cupom {coupon.codigo ?? ""} — {coupon.titulo ?? ""}
+							</span>
+							{coupon.valorDesconto ? <span className="text-xs font-black text-green-600">- {formatToMoney(coupon.valorDesconto)}</span> : null}
+						</div>
+						{coupon.condicoesTexto ? <p className="text-[0.7rem] text-muted-foreground">Condições: {coupon.condicoesTexto}</p> : null}
+						{requiresCouponDiscountInput ? (
+							<div className="flex flex-col gap-1">
+								<Label htmlFor="poi-approve-coupon-discount" className="text-xs font-medium tracking-tight text-foreground/80">
+									DESCONTO DO CUPOM (R$)<span className="text-red-500">*</span>
+								</Label>
+								<p className="text-[0.7rem] text-muted-foreground">Confira as condições do cupom na compra e informe o valor do desconto concedido.</p>
+								<Input
+									id="poi-approve-coupon-discount"
+									type="number"
+									placeholder="Ex: 25 para R$ 25,00..."
+									value={operatorCouponDiscountValue ?? ""}
+									onChange={(event) => {
+										const inputValue = Number(event.target.value);
+										setOperatorCouponDiscountValue(Number.isFinite(inputValue) && inputValue > 0 ? inputValue : null);
+									}}
+								/>
+							</div>
+						) : null}
+					</div>
 				) : null}
 
 				{requiresSaleValueConfirmation ? (
