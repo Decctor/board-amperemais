@@ -64,12 +64,16 @@ export async function processFiscalQueue({ limit = 25 }: { limit?: number } = {}
 		}
 
 		try {
+			// Repassa o encadeamento de devolucao persistido no documento: sem ele a referencia
+			// seria recalculada sem o sufixo ":dev:" e a emissao cairia no documento da venda original.
 			await emitFiscalDocument({
 				vendaId: doc.vendaId as string,
 				tipo: doc.tipo,
 				organizacaoId: doc.organizacaoId,
 				lancamentoContabilId: doc.lancamentoContabilId,
 				origem: "AUTOMATICA",
+				documentoOrigemId: doc.documentoOrigemId,
+				chaveAcessoReferencia: doc.chaveAcessoReferencia,
 			});
 			// Sucesso, rejeicao ou processamento: nao reagenda automaticamente.
 			await releaseDocument(doc.id, null);

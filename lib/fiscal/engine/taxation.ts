@@ -212,8 +212,8 @@ export function computeDocumentTotals(items: { result: TItemTaxResult; valorBrut
 	totals.vPIS = round2(totals.vPIS);
 	totals.vCOFINS = round2(totals.vCOFINS);
 	totals.vTotTrib = round2(totals.vTotTrib);
-	// vNF = produtos - desconto + ST (frete/seguro/outros fora de escopo nesta fase)
-	totals.vNF = round2(totals.vProd - totals.vDesc + totals.vST);
+	// vNF = produtos - desconto + ST + FCP-ST (regra W16 / NT 2016.002; frete/seguro/outros fora de escopo nesta fase)
+	totals.vNF = round2(totals.vProd - totals.vDesc + totals.vST + totals.vFCPST);
 
 	return totals;
 }

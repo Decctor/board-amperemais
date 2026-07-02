@@ -380,6 +380,9 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 		},
 		operationProfileId: input.operationProfileId,
 		operacaoPadraoPorTipoId: organizacao.fiscalConfiguracao?.operacaoPadraoPorTipo?.[input.tipo] ?? null,
+		// Documento encadeado a um original e sempre devolucao: garante o perfil DEVOLUCAO
+		// mesmo quando o operationProfileId nao foi repassado (ex.: retentativa via worker).
+		finalidade: input.documentoOrigemId ? "DEVOLUCAO" : "NORMAL",
 	});
 
 	const serie = operacao.seriePadrao ?? (await findActiveFiscalSeries({ organizacaoId: input.organizacaoId, tipoDocumento: input.tipo, ambiente }));

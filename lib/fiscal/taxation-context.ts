@@ -28,7 +28,10 @@ function readDestinatarioIndicador(context: TFiscalSaleContext): TFiscalClientTa
 export function buildSaleScenario(context: TFiscalSaleContext): TFiscalTaxScenario {
 	const fiscalConfig = context.organizacao.fiscalConfiguracao;
 	const ufOrigem = (fiscalConfig?.endereco.uf ?? "").toUpperCase();
-	const ufDestino = readDestinatarioUf(context) ?? ufOrigem;
+	// NFC-e (mod 65) e sempre operacao interna (idDest = 1, CFOP 5xxx): o endereco do cliente
+	// nao pode dirigir o cenario para regras/CFOP interestaduais.
+	const isNfce = context.operacao.tipoDocumento === "NFCE";
+	const ufDestino = isNfce ? ufOrigem : (readDestinatarioUf(context) ?? ufOrigem);
 	const escopo = ufOrigem && ufDestino && ufOrigem !== ufDestino ? "INTERESTADUAL" : "INTRAESTADUAL";
 
 	return {

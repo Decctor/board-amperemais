@@ -3,6 +3,9 @@
 Data: 2026-07-01
 Escopo revisado: `lib/fiscal/**` (engine, taxation-context, documents, worker, settings, operation-profile, providers Nuvem Fiscal/Manual, inbound, storage, notifications, rejections), `app/api/fiscal/**`, `app/api/cron/fiscal-*`, `services/drizzle/schema/fiscal.ts` + `fiscal_outbound_documents` (financial.ts), `schemas/fiscal.ts`, integração com o fluxo de venda (`process-sale-automatic-fiscal-emission.ts`).
 
+> **Status (2026-07-02):** os quatro achados CRÍTICOS (C1–C4) foram corrigidos neste branch
+> (`fix: resolve critical fiscal emission bugs (C1-C4)`). Os demais itens permanecem em aberto.
+
 Legenda de severidade:
 - **CRÍTICO** — pode emitir documento fiscal errado ou travar/duplicar emissão em produção.
 - **ALTO** — corrupção de dados, corrida ou falha silenciosa com impacto fiscal.

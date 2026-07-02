@@ -33,7 +33,7 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 	const taxation = computeSaleTaxation(context);
 	const payments = mapSalePaymentsToNfe({
 		payments: context.pagamentos,
-		saleTotal: context.venda.valorTotal,
+		saleTotal: taxation.totais.vNF,
 	});
 
 	return {
@@ -127,7 +127,7 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 					vPIS: taxation.totais.vPIS,
 					vCOFINS: taxation.totais.vCOFINS,
 					vOutro: 0,
-					vNF: context.venda.valorTotal,
+					vNF: taxation.totais.vNF,
 					vTotTrib: taxation.totais.vTotTrib,
 				},
 			},
