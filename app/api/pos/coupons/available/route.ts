@@ -58,9 +58,7 @@ async function getAvailablePosCoupons({ input, session }: { input: TGetAvailable
 
 	const coupons = availableCoupons.map((coupon) => {
 		const evaluation =
-			coupon.validacaoModo === "AUTOMATICA" && cartItems.length > 0
-				? evaluateCouponAgainstCart({ coupon, targets: coupon.alvos, cartItems })
-				: null;
+			coupon.validacaoModo === "AUTOMATICA" && cartItems.length > 0 ? evaluateCouponAgainstCart({ coupon, targets: coupon.alvos, cartItems }) : null;
 		return {
 			id: coupon.id,
 			titulo: coupon.titulo,

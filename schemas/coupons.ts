@@ -353,14 +353,8 @@ export const AppliedCouponSchema = z.object({
 			invalid_type_error: "Tipo não válido para o valor de desconto do cupom aplicado.",
 		})
 		.min(0.01, "O valor de desconto do cupom aplicado deve ser maior que zero."),
-	codigo: z
-		.string({ invalid_type_error: "Tipo não válido para o código do cupom aplicado." })
-		.optional()
-		.nullable(),
-	titulo: z
-		.string({ invalid_type_error: "Tipo não válido para o título do cupom aplicado." })
-		.optional()
-		.nullable(),
+	codigo: z.string({ invalid_type_error: "Tipo não válido para o código do cupom aplicado." }).optional().nullable(),
+	titulo: z.string({ invalid_type_error: "Tipo não válido para o título do cupom aplicado." }).optional().nullable(),
 });
 export type TAppliedCoupon = z.infer<typeof AppliedCouponSchema>;
 

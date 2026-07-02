@@ -57,9 +57,7 @@ export async function getAvailableCouponsForClient({
 		db
 			.select({ cupomId: couponRedemptions.cupomId, total: count() })
 			.from(couponRedemptions)
-			.where(
-				and(inArray(couponRedemptions.cupomId, couponIds), eq(couponRedemptions.status, "UTILIZADO"), eq(couponRedemptions.clienteId, clienteId)),
-			)
+			.where(and(inArray(couponRedemptions.cupomId, couponIds), eq(couponRedemptions.status, "UTILIZADO"), eq(couponRedemptions.clienteId, clienteId)))
 			.groupBy(couponRedemptions.cupomId),
 	]);
 	const totalCountByCouponId = new Map(totalCounts.map((row) => [row.cupomId, row.total]));

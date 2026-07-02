@@ -153,17 +153,19 @@ export async function processCouponRedemption({
  * Cancela um resgate de cupom (ex: cancelamento da venda vinculada), devolvendo o uso:
  * marca a linha do ledger como CANCELADA e reincrementa a atribuição quando houver.
  */
-export async function cancelCouponRedemption({ trx, organizacaoId, redemptionId }: { trx: DBTransaction; organizacaoId: string; redemptionId: string }) {
+export async function cancelCouponRedemption({
+	trx,
+	organizacaoId,
+	redemptionId,
+}: {
+	trx: DBTransaction;
+	organizacaoId: string;
+	redemptionId: string;
+}) {
 	const updatedRedemptions = await trx
 		.update(couponRedemptions)
 		.set({ status: "CANCELADO", dataAtualizacao: new Date() })
-		.where(
-			and(
-				eq(couponRedemptions.id, redemptionId),
-				eq(couponRedemptions.organizacaoId, organizacaoId),
-				eq(couponRedemptions.status, "UTILIZADO"),
-			),
-		)
+		.where(and(eq(couponRedemptions.id, redemptionId), eq(couponRedemptions.organizacaoId, organizacaoId), eq(couponRedemptions.status, "UTILIZADO")))
 		.returning({ id: couponRedemptions.id, atribuicaoId: couponRedemptions.atribuicaoId });
 	const cancelledRedemption = updatedRedemptions[0];
 	if (!cancelledRedemption) throw new createHttpError.NotFound("Resgate de cupom não encontrado ou já cancelado.");

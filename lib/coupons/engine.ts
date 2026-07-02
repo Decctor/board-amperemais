@@ -226,8 +226,7 @@ export function evaluateCouponAgainstCart({
 	const eligibilityTargets = targets.filter((target) => target.papel === "ELEGIVEL");
 	if (eligibilityTargets.length > 0) {
 		const satisfiedTargets = eligibilityTargets.filter((target) => getTargetMatchedQuantity(cartItems, target) >= (target.quantidadeMinima ?? 1));
-		const isSatisfied =
-			coupon.condicaoAlvosOperador === "TODOS" ? satisfiedTargets.length === eligibilityTargets.length : satisfiedTargets.length > 0;
+		const isSatisfied = coupon.condicaoAlvosOperador === "TODOS" ? satisfiedTargets.length === eligibilityTargets.length : satisfiedTargets.length > 0;
 		if (!isSatisfied) return { elegivel: false, motivo: "O carrinho não contém os produtos exigidos pelo cupom." };
 	}
 
@@ -273,7 +272,9 @@ export function evaluateCouponAgainstCart({
 	}
 
 	const benefitBaseTotal =
-		coupon.beneficioAplicacao === "VENDA_TOTAL" ? cartGrossTotal : benefitItems.reduce((sum, item) => sum + item.quantidade * item.valorVendaUnitario, 0);
+		coupon.beneficioAplicacao === "VENDA_TOTAL"
+			? cartGrossTotal
+			: benefitItems.reduce((sum, item) => sum + item.quantidade * item.valorVendaUnitario, 0);
 
 	let totalDiscount = 0;
 	let itemDiscounts: Array<{ chave: string; valorDesconto: number }> = [];

@@ -332,7 +332,13 @@ export const couponScopeEnum = pgEnum("coupon_scope", ["GLOBAL", "INDIVIDUAL"]);
 
 export const couponValidationModeEnum = pgEnum("coupon_validation_mode", ["AUTOMATICA", "MANUAL"]);
 
-export const couponBenefitTypeEnum = pgEnum("coupon_benefit_type", ["DESCONTO_FIXO", "DESCONTO_PERCENTUAL", "PRECO_FIXO", "COMPRE_X_LEVE_Y", "BRINDE"]);
+export const couponBenefitTypeEnum = pgEnum("coupon_benefit_type", [
+	"DESCONTO_FIXO",
+	"DESCONTO_PERCENTUAL",
+	"PRECO_FIXO",
+	"COMPRE_X_LEVE_Y",
+	"BRINDE",
+]);
 
 export const couponBenefitScopeEnum = pgEnum("coupon_benefit_scope", ["VENDA_TOTAL", "ITENS_ELEGIVEIS"]);
 

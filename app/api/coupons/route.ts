@@ -77,19 +77,13 @@ function assertCouponCoherence({
 }
 
 const GetCouponsInputSchema = z.object({
-	id: z
-		.string({ invalid_type_error: "Tipo inválido para o ID do cupom." })
-		.optional()
-		.nullable(),
+	id: z.string({ invalid_type_error: "Tipo inválido para o ID do cupom." }).optional().nullable(),
 	page: z
 		.string({ invalid_type_error: "Tipo inválido para página." })
 		.optional()
 		.nullable()
 		.transform((value) => (value ? Number(value) : 1)),
-	search: z
-		.string({ invalid_type_error: "Tipo inválido para busca." })
-		.optional()
-		.nullable(),
+	search: z.string({ invalid_type_error: "Tipo inválido para busca." }).optional().nullable(),
 	activeOnly: z
 		.string({ invalid_type_error: "Tipo inválido para ativo." })
 		.optional()
@@ -244,14 +238,8 @@ async function createCouponRoute(request: NextRequest) {
 }
 
 const ChildRowControlSchema = {
-	id: z
-		.string({ invalid_type_error: "Tipo não válido para o ID." })
-		.optional()
-		.nullable(),
-	deletar: z
-		.boolean({ invalid_type_error: "Tipo não válido para deletar." })
-		.optional()
-		.nullable(),
+	id: z.string({ invalid_type_error: "Tipo não válido para o ID." }).optional().nullable(),
+	deletar: z.boolean({ invalid_type_error: "Tipo não válido para deletar." }).optional().nullable(),
 };
 
 const UpdateCouponInputSchema = z.object({
@@ -260,18 +248,32 @@ const UpdateCouponInputSchema = z.object({
 		invalid_type_error: "Tipo não válido para o ID do cupom.",
 	}),
 	coupon: CouponSchema.omit({ dataInsercao: true, dataAtualizacao: true, autorId: true }),
-	couponTargets: z.array(CouponTargetInputSchema.innerType().extend(ChildRowControlSchema).superRefine((target, ctx) => {
-		if (target.deletar) return;
-		if ([target.produtoId, target.produtoVarianteId, target.grupo].filter(Boolean).length !== 1) {
-			ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Cada alvo do cupom deve referenciar exatamente um produto, variante ou grupo de produtos." });
-		}
-	})),
-	couponAudiences: z.array(CouponAudienceInputSchema.innerType().extend(ChildRowControlSchema).superRefine((audience, ctx) => {
-		if (audience.deletar) return;
-		if ([audience.clienteTagId, audience.segmentacaoRFM].filter(Boolean).length !== 1) {
-			ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Cada audiência do cupom deve referenciar exatamente uma tag de cliente ou segmentação RFM." });
-		}
-	})),
+	couponTargets: z.array(
+		CouponTargetInputSchema.innerType()
+			.extend(ChildRowControlSchema)
+			.superRefine((target, ctx) => {
+				if (target.deletar) return;
+				if ([target.produtoId, target.produtoVarianteId, target.grupo].filter(Boolean).length !== 1) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "Cada alvo do cupom deve referenciar exatamente um produto, variante ou grupo de produtos.",
+					});
+				}
+			}),
+	),
+	couponAudiences: z.array(
+		CouponAudienceInputSchema.innerType()
+			.extend(ChildRowControlSchema)
+			.superRefine((audience, ctx) => {
+				if (audience.deletar) return;
+				if ([audience.clienteTagId, audience.segmentacaoRFM].filter(Boolean).length !== 1) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "Cada audiência do cupom deve referenciar exatamente uma tag de cliente ou segmentação RFM.",
+					});
+				}
+			}),
+	),
 });
 export type TUpdateCouponInput = z.infer<typeof UpdateCouponInputSchema>;
 
@@ -345,10 +347,7 @@ async function deleteCoupon({ input, session }: { input: TDeleteCouponInput; ses
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const redemptionCountResult = await db
-		.select({ total: count() })
-		.from(couponRedemptions)
-		.where(eq(couponRedemptions.cupomId, input.id));
+	const redemptionCountResult = await db.select({ total: count() }).from(couponRedemptions).where(eq(couponRedemptions.cupomId, input.id));
 	if ((redemptionCountResult[0]?.total ?? 0) > 0) {
 		throw new createHttpError.BadRequest("Esse cupom já possui resgates registrados e não pode ser excluído. Desative-o para impedir novos usos.");
 	}
