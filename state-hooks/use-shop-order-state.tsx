@@ -1,9 +1,10 @@
 "use client";
 
+import type { TAppliedCoupon } from "@/schemas/coupons";
 import type { TCreateShopOrderInput, TShopCartItem, TShopCustomer, TShopDelivery, TShopPaymentMethod } from "@/schemas/shop";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const SHOP_CART_STORAGE_VERSION = 2;
+const SHOP_CART_STORAGE_VERSION = 3;
 
 type TShopOrderState = {
 	orgId: string;
@@ -15,6 +16,9 @@ type TShopOrderState = {
 	delivery: TShopDelivery;
 	cashback: {
 		resgateSolicitado: number;
+	};
+	coupon: {
+		resgate: TAppliedCoupon | null;
 	};
 	payment: {
 		metodo: TShopPaymentMethod;
@@ -39,6 +43,7 @@ type TStoredShopOrderState = {
 	customer: Partial<TShopCustomer>;
 	delivery: Partial<TShopDelivery>;
 	cashback: TShopOrderState["cashback"];
+	coupon?: TShopOrderState["coupon"];
 	payment: TShopOrderState["payment"];
 	idempotencyKey: string;
 	publicAccessToken: string;
@@ -56,6 +61,7 @@ function getDefaultState(orgId: string, mode: "CARDAPIO" | "CATALOGO"): TShopOrd
 		customer: { id: null, nome: "", cpfCnpj: null, telefone: "" },
 		delivery: { modalidade: "RETIRADA", endereco: null },
 		cashback: { resgateSolicitado: 0 },
+		coupon: { resgate: null },
 		payment: { metodo: "DINHEIRO", observacoes: "", precisaTroco: false, trocoPara: null },
 		idempotencyKey: crypto.randomUUID(),
 		publicAccessToken: crypto.randomUUID(),
@@ -80,6 +86,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 				customer: { ...prev.customer, ...parsed.customer },
 				delivery: { ...prev.delivery, ...parsed.delivery },
 				cashback: parsed.cashback ?? prev.cashback,
+				coupon: parsed.coupon ?? prev.coupon,
 				payment: parsed.payment ?? prev.payment,
 				idempotencyKey: parsed.idempotencyKey ?? prev.idempotencyKey,
 				publicAccessToken: parsed.publicAccessToken ?? prev.publicAccessToken,
@@ -105,17 +112,19 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			customer: state.customer,
 			delivery: state.delivery,
 			cashback: state.cashback,
+			coupon: state.coupon,
 			payment: state.payment,
 			idempotencyKey: state.idempotencyKey,
 			publicAccessToken: state.publicAccessToken,
 		};
 		window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(payload));
-	}, [orgId, state.cart, state.customer, state.delivery, state.cashback, state.payment, state.idempotencyKey, state.publicAccessToken]);
+	}, [orgId, state.cart, state.customer, state.delivery, state.cashback, state.coupon, state.payment, state.idempotencyKey, state.publicAccessToken]);
 
 	const addItem = useCallback((item: TShopCartItem) => {
 		setState((prev) => ({
 			...prev,
 			cart: { items: [...prev.cart.items, { ...item, tempId: item.tempId ?? crypto.randomUUID() }] },
+			coupon: { resgate: null },
 			idempotencyKey: crypto.randomUUID(),
 		}));
 	}, []);
@@ -126,6 +135,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			cart: {
 				items: prev.cart.items.map((item) => (item.tempId === tempId ? { ...item, quantidade: Math.max(1, quantidade) } : item)),
 			},
+			coupon: { resgate: null },
 			idempotencyKey: crypto.randomUUID(),
 		}));
 	}, []);
@@ -134,6 +144,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 		setState((prev) => ({
 			...prev,
 			cart: { items: prev.cart.items.filter((item) => item.tempId !== tempId) },
+			coupon: { resgate: null },
 			idempotencyKey: crypto.randomUUID(),
 		}));
 	}, []);
@@ -143,6 +154,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			...prev,
 			cart: { items: [] },
 			cashback: { resgateSolicitado: 0 },
+			coupon: { resgate: null },
 			idempotencyKey: crypto.randomUUID(),
 			publicAccessToken: crypto.randomUUID(),
 		}));
@@ -150,7 +162,17 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 	}, [orgId]);
 
 	const updateCustomer = useCallback((customer: Partial<TShopCustomer>) => {
-		setState((prev) => ({ ...prev, customer: { ...prev.customer, ...customer }, idempotencyKey: crypto.randomUUID() }));
+		setState((prev) => {
+			const nextCustomer = { ...prev.customer, ...customer };
+			const shouldClearBenefits = customer.id !== undefined && customer.id !== prev.customer.id;
+			return {
+				...prev,
+				customer: nextCustomer,
+				cashback: shouldClearBenefits ? { resgateSolicitado: 0 } : prev.cashback,
+				coupon: shouldClearBenefits ? { resgate: null } : prev.coupon,
+				idempotencyKey: crypto.randomUUID(),
+			};
+		});
 	}, []);
 
 	const updateDelivery = useCallback((delivery: Partial<TShopDelivery>) => {
@@ -159,6 +181,10 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 
 	const updateCashback = useCallback((cashback: Partial<TShopOrderState["cashback"]>) => {
 		setState((prev) => ({ ...prev, cashback: { ...prev.cashback, ...cashback }, idempotencyKey: crypto.randomUUID() }));
+	}, []);
+
+	const updateCoupon = useCallback((coupon: TShopOrderState["coupon"]["resgate"]) => {
+		setState((prev) => ({ ...prev, coupon: { resgate: coupon }, idempotencyKey: crypto.randomUUID() }));
 	}, []);
 
 	const updatePayment = useCallback((payment: Partial<TShopOrderState["payment"]>) => {
@@ -214,9 +240,19 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 						.join(" ") || null,
 			},
 			cashbackResgateSolicitado: state.cashback.resgateSolicitado,
+			cupomResgate: state.coupon.resgate,
 			observacoes: null,
 		}),
-		[state.idempotencyKey, state.publicAccessToken, state.customer, state.delivery, state.cart.items, state.payment, state.cashback.resgateSolicitado],
+		[
+			state.idempotencyKey,
+			state.publicAccessToken,
+			state.customer,
+			state.delivery,
+			state.cart.items,
+			state.payment,
+			state.cashback.resgateSolicitado,
+			state.coupon.resgate,
+		],
 	);
 
 	return {
@@ -229,6 +265,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 		updateCustomer,
 		updateDelivery,
 		updateCashback,
+		updateCoupon,
 		updatePayment,
 		setCheckoutStep,
 		nextStep,

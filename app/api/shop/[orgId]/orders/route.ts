@@ -1,10 +1,13 @@
 import { appApiHandler } from "@/lib/app-api";
+import { getAvailableCouponsForClient } from "@/lib/coupons/availability";
+import { type TCouponCartItem, evaluateCouponAgainstCart } from "@/lib/coupons/engine";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { processSaleConfirmation } from "@/lib/sales/sale-processing";
 import { getShopCatalogProducts, type TShopCatalogProduct } from "@/lib/shop/catalog";
 import { getShopAvailability } from "@/lib/shop/availability";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
+import type { TAppliedCoupon } from "@/schemas/coupons";
 import { CreateShopOrderInputSchema, type TShopDraftMetadata } from "@/schemas/shop";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances, clientLocations, clients, saleItemModifiers, saleItems, sales, shopOrderRequests } from "@/services/drizzle/schema";
@@ -53,6 +56,7 @@ type CalculatedItem = {
 	nome: string;
 	codigo: string;
 	imagemUrl: string | null;
+	grupo: string | null;
 	quantidade: number;
 	valorUnitarioBase: number;
 	valorModificadores: number;
@@ -144,6 +148,7 @@ function calculateShopItem({
 		nome: itemName,
 		codigo: variant?.codigo ?? product.codigo,
 		imagemUrl: variant?.imagemCapaUrl ?? product.imagemCapaUrl,
+		grupo: product.grupo,
 		quantidade: quantity,
 		valorUnitarioBase: basePrice,
 		valorModificadores: modifiersPrice,
@@ -271,6 +276,50 @@ async function validateCashbackRequest({
 	return { programId: program.id };
 }
 
+async function validateCouponRequest({
+	orgId,
+	clientId,
+	appliedCoupon,
+	calculatedItems,
+}: {
+	orgId: string;
+	clientId: string;
+	appliedCoupon: TAppliedCoupon | null | undefined;
+	calculatedItems: CalculatedItem[];
+}): Promise<TAppliedCoupon | null> {
+	if (!appliedCoupon) return null;
+
+	const availableCoupons = await getAvailableCouponsForClient({
+		organizacaoId: orgId,
+		clienteId: clientId,
+		surface: "LOJA_DIGITAL",
+	});
+	const coupon = availableCoupons.find((item) => item.id === appliedCoupon.cupomId);
+	if (!coupon) throw new createHttpError.BadRequest("Cupom não disponível para este cliente.");
+	if (coupon.validacaoModo !== "AUTOMATICA") throw new createHttpError.BadRequest("Cupom de validação manual não pode ser usado na loja digital.");
+
+	const cartItems: TCouponCartItem[] = calculatedItems.map((item, index) => ({
+		chave: String(index),
+		produtoId: item.produtoId,
+		produtoVarianteId: item.produtoVarianteId,
+		grupo: item.grupo,
+		quantidade: item.quantidade,
+		valorVendaUnitario: item.valorUnitarioFinal,
+	}));
+	const evaluation = evaluateCouponAgainstCart({ coupon, targets: coupon.alvos, cartItems });
+	if (!evaluation.elegivel) throw new createHttpError.BadRequest(`Cupom não elegível para este pedido: ${evaluation.motivo}`);
+	if (Math.abs(evaluation.valorDesconto - appliedCoupon.valorDesconto) > 0.01) {
+		throw new createHttpError.BadRequest("O desconto do cupom está desatualizado. Reaplique o cupom e tente novamente.");
+	}
+
+	return {
+		cupomId: coupon.id,
+		valorDesconto: evaluation.valorDesconto,
+		codigo: coupon.codigo,
+		titulo: coupon.titulo,
+	};
+}
+
 async function createShopOrder(request: NextRequest) {
 	const orgId = extractOrgId(request.nextUrl.pathname);
 	const body = await request.json();
@@ -347,13 +396,23 @@ async function createShopOrder(request: NextRequest) {
 			? await createDeliveryLocation({ orgId, clientId: client.id, address: input.entrega.endereco })
 			: null;
 
-	const requestedCashback = Math.min(input.cashbackResgateSolicitado, subtotal);
+	const appliedCoupon = await validateCouponRequest({
+		orgId,
+		clientId: client.id,
+		appliedCoupon: input.cupomResgate,
+		calculatedItems,
+	});
+	const couponDiscount = appliedCoupon?.valorDesconto ?? 0;
+	const saleValueBeforeCashback = Math.max(0, subtotal - couponDiscount);
+	const requestedCashback = Math.min(input.cashbackResgateSolicitado, saleValueBeforeCashback);
 	const { programId } = await validateCashbackRequest({
 		orgId,
 		clientId: client.id,
-		saleSubtotal: subtotal,
+		saleSubtotal: saleValueBeforeCashback,
 		requestedValue: requestedCashback,
 	});
+	const discountsTotal = couponDiscount + requestedCashback;
+	const totalToPay = Math.max(0, subtotal - discountsTotal);
 
 	const [requestRecord] = await db
 		.insert(shopOrderRequests)
@@ -374,6 +433,7 @@ async function createShopOrder(request: NextRequest) {
 		subtotalItens: subtotal,
 		cashbackResgateSolicitado: requestedCashback,
 		cashbackProgramaId: programId,
+		cupom: appliedCoupon,
 		pagamento: {
 			tipo: "NO_LOCAL",
 			metodo: input.pagamento.metodo,
@@ -396,8 +456,8 @@ async function createShopOrder(request: NextRequest) {
 					organizacaoId: orgId,
 					clienteId: client.id,
 					idExterno: `SHOP-${input.idempotencyKey}`,
-					valorTotal: Math.max(0, subtotal - requestedCashback),
-					descontosTotal: requestedCashback > 0 ? requestedCashback : null,
+					valorTotal: totalToPay,
+					descontosTotal: discountsTotal > 0 ? discountsTotal : null,
 					acrescimosTotal: null,
 					custoTotal: calculatedItems.reduce((sum, item) => sum + item.valorCustoTotal, 0),
 					vendedorNome: "",
@@ -445,6 +505,7 @@ async function createShopOrder(request: NextRequest) {
 							imagemUrl: item.imagemUrl,
 							produtoId: item.produtoId,
 							produtoVarianteId: item.produtoVarianteId,
+							grupo: item.grupo,
 							valorUnitarioBase: item.valorUnitarioBase,
 							valorModificadores: item.valorModificadores,
 							modificadores: item.modificadores,
@@ -484,7 +545,7 @@ async function createShopOrder(request: NextRequest) {
 			salePayments: [
 				{
 					metodo: input.pagamento.metodo,
-					valor: Math.max(0, subtotal - requestedCashback),
+					valor: totalToPay,
 					efetivacaoTipo: "PENDENTE",
 					dataPrevisao: new Date(),
 					observacoes: input.pagamento.observacoes ?? metadata.pagamento.descricao,
@@ -495,6 +556,9 @@ async function createShopOrder(request: NextRequest) {
 			saleClientId: client.id,
 			saleCashbackProgramId: programId,
 			saleCashbackRedemptionValue: requestedCashback,
+			saleCouponId: appliedCoupon?.cupomId ?? null,
+			saleCouponDeclaredDiscountValue: appliedCoupon?.valorDesconto ?? null,
+			saleCouponRedemptionSurface: appliedCoupon ? "LOJA_DIGITAL" : undefined,
 			accountingEntryDebitAccountId: organizationSaleDefaults.debitoContaId,
 			accountingEntryCreditAccountId: organizationSaleDefaults.creditoContaId,
 			initialAttendanceStatus: "NAO_INICIADO",

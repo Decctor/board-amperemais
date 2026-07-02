@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AppliedCouponSchema, type TAppliedCoupon } from "./coupons";
 import {
 	PaymentMethodEnum,
 	ShopCompositionBlockTypeEnum,
@@ -374,6 +375,7 @@ export const CreateShopOrderInputSchema = z.object({
 		.number({ invalid_type_error: "Tipo não válido para resgate de cashback." })
 		.nonnegative("Valor de cashback não pode ser negativo.")
 		.default(0),
+	cupomResgate: AppliedCouponSchema.optional().nullable(),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).optional().nullable(),
 });
 export type TCreateShopOrderInput = z.infer<typeof CreateShopOrderInputSchema>;
@@ -384,6 +386,7 @@ export type TShopDraftMetadata = {
 	subtotalItens: number;
 	cashbackResgateSolicitado: number;
 	cashbackProgramaId: string | null;
+	cupom: TAppliedCoupon | null;
 	pagamento: {
 		tipo: "NO_LOCAL";
 		metodo: TShopPaymentMethod;
