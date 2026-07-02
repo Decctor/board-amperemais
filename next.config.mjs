@@ -50,6 +50,10 @@ const nextConfig = {
 				hostname: "image.mux.com",
 			},
 			{
+				protocol: "https",
+				hostname: "upload.wikimedia.org",
+			},
+			{
 				protocol: "http",
 				hostname: "localhost",
 			},
